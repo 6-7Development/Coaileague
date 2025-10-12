@@ -16,6 +16,7 @@ import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
 import Dashboard from "@/pages/dashboard";
 import Schedule from "@/pages/schedule";
+import TimeTracking from "@/pages/time-tracking";
 import Employees from "@/pages/employees";
 import Clients from "@/pages/clients";
 import Invoices from "@/pages/invoices";
@@ -62,6 +63,7 @@ function AppContent() {
                 <Route path="/" component={Dashboard} />
                 <Route path="/dashboard" component={Dashboard} />
                 <Route path="/schedule" component={Schedule} />
+                <Route path="/time-tracking" component={TimeTracking} />
                 <Route path="/employees" component={Employees} />
                 <Route path="/clients" component={Clients} />
                 <Route path="/invoices" component={Invoices} />

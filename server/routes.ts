@@ -445,6 +445,101 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============================================================================
+  // TIME TRACKING ROUTES
+  // ============================================================================
+  
+  app.get('/api/time-entries', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const workspace = await storage.getWorkspaceByOwnerId(userId);
+      
+      if (!workspace) {
+        return res.status(404).json({ message: "Workspace not found" });
+      }
+
+      const timeEntries = await storage.getTimeEntriesByWorkspace(workspace.id);
+      res.json(timeEntries);
+    } catch (error) {
+      console.error("Error fetching time entries:", error);
+      res.status(500).json({ message: "Failed to fetch time entries" });
+    }
+  });
+
+  app.post('/api/time-entries/clock-in', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const workspace = await storage.getWorkspaceByOwnerId(userId);
+      
+      if (!workspace) {
+        return res.status(404).json({ message: "Workspace not found" });
+      }
+
+      const validated = insertTimeEntrySchema.parse({
+        ...req.body,
+        workspaceId: workspace.id,
+        clockIn: new Date().toISOString(),
+      });
+
+      const timeEntry = await storage.createTimeEntry(validated);
+      res.json(timeEntry);
+    } catch (error: any) {
+      console.error("Error clocking in:", error);
+      res.status(400).json({ message: error.message || "Failed to clock in" });
+    }
+  });
+
+  app.patch('/api/time-entries/:id/clock-out', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const workspace = await storage.getWorkspaceByOwnerId(userId);
+      
+      if (!workspace) {
+        return res.status(404).json({ message: "Workspace not found" });
+      }
+
+      const timeEntry = await storage.getTimeEntry(req.params.id, workspace.id);
+      if (!timeEntry) {
+        return res.status(404).json({ message: "Time entry not found" });
+      }
+
+      const clockOut = new Date();
+      const clockIn = new Date(timeEntry.clockIn);
+      const totalHours = ((clockOut.getTime() - clockIn.getTime()) / (1000 * 60 * 60)).toFixed(2);
+      
+      const hourlyRate = timeEntry.hourlyRate || "0";
+      const totalAmount = (parseFloat(totalHours) * parseFloat(hourlyRate as string)).toFixed(2);
+
+      const updated = await storage.updateTimeEntry(req.params.id, workspace.id, {
+        clockOut: clockOut.toISOString(),
+        totalHours,
+        totalAmount,
+      });
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error clocking out:", error);
+      res.status(400).json({ message: error.message || "Failed to clock out" });
+    }
+  });
+
+  app.get('/api/time-entries/unbilled/:clientId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const workspace = await storage.getWorkspaceByOwnerId(userId);
+      
+      if (!workspace) {
+        return res.status(404).json({ message: "Workspace not found" });
+      }
+
+      const unbilledEntries = await storage.getUnbilledTimeEntries(workspace.id, req.params.clientId);
+      res.json(unbilledEntries);
+    } catch (error) {
+      console.error("Error fetching unbilled time entries:", error);
+      res.status(500).json({ message: "Failed to fetch unbilled time entries" });
+    }
+  });
+
+  // ============================================================================
   // STRIPE ROUTES (Ready for when keys are added)
   // ============================================================================
   
