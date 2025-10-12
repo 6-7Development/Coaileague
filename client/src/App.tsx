@@ -21,8 +21,14 @@ import Clients from "@/pages/clients";
 import Invoices from "@/pages/invoices";
 import Settings from "@/pages/settings";
 
-function Router() {
+function AppContent() {
   const { isAuthenticated, isLoading } = useAuth();
+  
+  // Custom sidebar width for better workspace layout
+  const style = {
+    "--sidebar-width": "16rem",
+    "--sidebar-width-icon": "4rem",
+  };
 
   if (isLoading) {
     return (
@@ -43,51 +49,39 @@ function Router() {
 
   return (
     <ProtectedRoute>
-      <Switch>
-        <Route path="/" component={Dashboard} />
-        <Route path="/dashboard" component={Dashboard} />
-        <Route path="/schedule" component={Schedule} />
-        <Route path="/employees" component={Employees} />
-        <Route path="/clients" component={Clients} />
-        <Route path="/invoices" component={Invoices} />
-        <Route path="/settings" component={Settings} />
-        <Route component={NotFound} />
-      </Switch>
+      <SidebarProvider style={style as React.CSSProperties}>
+        <div className="flex h-screen w-full">
+          <AppSidebar />
+          <div className="flex flex-col flex-1 min-w-0">
+            <header className="flex items-center justify-between h-16 px-6 border-b bg-background sticky top-0 z-10">
+              <SidebarTrigger data-testid="button-sidebar-toggle" />
+              <ThemeToggle />
+            </header>
+            <main className="flex-1 overflow-hidden">
+              <Switch>
+                <Route path="/" component={Dashboard} />
+                <Route path="/dashboard" component={Dashboard} />
+                <Route path="/schedule" component={Schedule} />
+                <Route path="/employees" component={Employees} />
+                <Route path="/clients" component={Clients} />
+                <Route path="/invoices" component={Invoices} />
+                <Route path="/settings" component={Settings} />
+                <Route component={NotFound} />
+              </Switch>
+            </main>
+          </div>
+        </div>
+      </SidebarProvider>
     </ProtectedRoute>
   );
 }
 
 export default function App() {
-  const { isAuthenticated, isLoading } = useAuth();
-  
-  // Custom sidebar width for better workspace layout
-  const style = {
-    "--sidebar-width": "16rem",
-    "--sidebar-width-icon": "4rem",
-  };
-
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="dark">
         <TooltipProvider>
-          {!isLoading && isAuthenticated ? (
-            <SidebarProvider style={style as React.CSSProperties}>
-              <div className="flex h-screen w-full">
-                <AppSidebar />
-                <div className="flex flex-col flex-1 min-w-0">
-                  <header className="flex items-center justify-between h-16 px-6 border-b bg-background sticky top-0 z-10">
-                    <SidebarTrigger data-testid="button-sidebar-toggle" />
-                    <ThemeToggle />
-                  </header>
-                  <main className="flex-1 overflow-hidden">
-                    <Router />
-                  </main>
-                </div>
-              </div>
-            </SidebarProvider>
-          ) : (
-            <Router />
-          )}
+          <AppContent />
           <Toaster />
         </TooltipProvider>
       </ThemeProvider>
