@@ -626,6 +626,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============================================================================
+  // ANALYTICS ROUTES
+  // ============================================================================
+  
+  app.get('/api/analytics', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const workspace = await storage.getWorkspaceByOwnerId(userId);
+      
+      if (!workspace) {
+        return res.status(404).json({ message: "Workspace not found" });
+      }
+
+      const analytics = await storage.getWorkspaceAnalytics(workspace.id);
+      res.json({
+        ...analytics,
+        workspace: {
+          subscriptionTier: workspace.subscriptionTier,
+          maxEmployees: workspace.maxEmployees,
+          maxClients: workspace.maxClients,
+        },
+      });
+    } catch (error) {
+      console.error("Error fetching analytics:", error);
+      res.status(500).json({ message: "Failed to fetch analytics" });
+    }
+  });
+
+  // ============================================================================
   // STRIPE ROUTES (Ready for when keys are added)
   // ============================================================================
   

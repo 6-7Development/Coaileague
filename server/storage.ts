@@ -79,6 +79,18 @@ export interface IStorage {
   // Invoice Line Item operations
   createInvoiceLineItem(item: InsertInvoiceLineItem): Promise<InvoiceLineItem>;
   getInvoiceLineItems(invoiceId: string): Promise<InvoiceLineItem[]>;
+  
+  // Analytics operations
+  getWorkspaceAnalytics(workspaceId: string): Promise<{
+    totalRevenue: number;
+    totalHoursWorked: number;
+    activeEmployees: number;
+    activeClients: number;
+    employeeCount: number;
+    clientCount: number;
+    totalInvoices: number;
+    paidInvoices: number;
+  }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -435,6 +447,76 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(invoiceLineItems)
       .where(eq(invoiceLineItems.invoiceId, invoiceId));
+  }
+
+  // ============================================================================
+  // ANALYTICS OPERATIONS
+  // ============================================================================
+  
+  async getWorkspaceAnalytics(workspaceId: string): Promise<{
+    totalRevenue: number;
+    totalHoursWorked: number;
+    activeEmployees: number;
+    activeClients: number;
+    employeeCount: number;
+    clientCount: number;
+    totalInvoices: number;
+    paidInvoices: number;
+  }> {
+    // Get all invoices for revenue calculation
+    const allInvoices = await db
+      .select()
+      .from(invoices)
+      .where(eq(invoices.workspaceId, workspaceId));
+
+    const totalRevenue = allInvoices.reduce((sum, inv) => {
+      // businessAmount is stored as decimal string, parse safely
+      const businessAmount = parseFloat(String(inv.businessAmount || "0"));
+      return sum + (isNaN(businessAmount) ? 0 : businessAmount);
+    }, 0);
+
+    const paidInvoices = allInvoices.filter(inv => inv.status === 'paid').length;
+
+    // Get time entries for hours calculation
+    const allTimeEntries = await db
+      .select()
+      .from(timeEntries)
+      .where(eq(timeEntries.workspaceId, workspaceId));
+
+    const totalHoursWorked = allTimeEntries.reduce((sum, entry) => {
+      // totalHours is stored as decimal string, parse safely
+      const hours = parseFloat(String(entry.totalHours || "0"));
+      return sum + (isNaN(hours) ? 0 : hours);
+    }, 0);
+
+    // Get employee counts
+    const allEmployees = await db
+      .select()
+      .from(employees)
+      .where(eq(employees.workspaceId, workspaceId));
+
+    const activeEmployees = allEmployees.filter(emp => emp.isActive).length;
+    const employeeCount = allEmployees.length;
+
+    // Get client counts
+    const allClients = await db
+      .select()
+      .from(clients)
+      .where(eq(clients.workspaceId, workspaceId));
+
+    const activeClients = allClients.filter(client => client.isActive).length;
+    const clientCount = allClients.length;
+
+    return {
+      totalRevenue,
+      totalHoursWorked,
+      activeEmployees,
+      activeClients,
+      employeeCount,
+      clientCount,
+      totalInvoices: allInvoices.length,
+      paidInvoices,
+    };
   }
 }
 
