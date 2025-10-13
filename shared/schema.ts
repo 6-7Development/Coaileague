@@ -5,6 +5,7 @@ import { sql } from 'drizzle-orm';
 import { relations } from 'drizzle-orm';
 import {
   index,
+  uniqueIndex,
   jsonb,
   pgTable,
   timestamp,
@@ -354,15 +355,21 @@ export type InvoiceLineItem = typeof invoiceLineItems.$inferSelect;
 // ============================================================================
 
 // Manager Assignments (which managers oversee which employees)
+// NOTE: Application layer MUST validate:
+//   1. Both manager and employee belong to the same workspace
+//   2. managerId has workspaceRole = 'manager' or 'owner'
 export const managerAssignments = pgTable("manager_assignments", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
-  managerId: varchar("manager_id").notNull().references(() => employees.id, { onDelete: 'cascade' }), // Employee with manager role
-  employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }), // Employee being managed
+  managerId: varchar("manager_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
+  employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
   
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => ({
+  // Ensure no duplicate manager-employee pairs
+  uniqueManagerEmployee: uniqueIndex("unique_manager_employee").on(table.managerId, table.employeeId),
+}));
 
 export const insertManagerAssignmentSchema = createInsertSchema(managerAssignments).omit({
   id: true,

@@ -11,6 +11,7 @@ import {
   timeEntries,
   invoices,
   invoiceLineItems,
+  managerAssignments,
   type User,
   type UpsertUser,
   type Workspace,
@@ -29,6 +30,8 @@ import {
   type InsertInvoice,
   type InvoiceLineItem,
   type InsertInvoiceLineItem,
+  type ManagerAssignment,
+  type InsertManagerAssignment,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, isNotNull } from "drizzle-orm";
@@ -101,6 +104,13 @@ export interface IStorage {
     totalInvoices: number;
     paidInvoices: number;
   }>;
+  
+  // Manager Assignment operations
+  createManagerAssignment(assignment: InsertManagerAssignment): Promise<ManagerAssignment>;
+  getManagerAssignmentsByWorkspace(workspaceId: string): Promise<ManagerAssignment[]>;
+  getManagerAssignmentsByManager(managerId: string, workspaceId: string): Promise<ManagerAssignment[]>;
+  getManagerAssignmentsByEmployee(employeeId: string, workspaceId: string): Promise<ManagerAssignment[]>;
+  deleteManagerAssignment(id: string, workspaceId: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -580,6 +590,61 @@ export class DatabaseStorage implements IStorage {
       totalInvoices: allInvoices.length,
       paidInvoices,
     };
+  }
+
+  // ============================================================================
+  // MANAGER ASSIGNMENT OPERATIONS
+  // ============================================================================
+  
+  async createManagerAssignment(assignmentData: InsertManagerAssignment): Promise<ManagerAssignment> {
+    const [assignment] = await db
+      .insert(managerAssignments)
+      .values(assignmentData)
+      .returning();
+    return assignment;
+  }
+
+  async getManagerAssignmentsByWorkspace(workspaceId: string): Promise<ManagerAssignment[]> {
+    return await db
+      .select()
+      .from(managerAssignments)
+      .where(eq(managerAssignments.workspaceId, workspaceId));
+  }
+
+  async getManagerAssignmentsByManager(managerId: string, workspaceId: string): Promise<ManagerAssignment[]> {
+    return await db
+      .select()
+      .from(managerAssignments)
+      .where(
+        and(
+          eq(managerAssignments.managerId, managerId),
+          eq(managerAssignments.workspaceId, workspaceId)
+        )
+      );
+  }
+
+  async getManagerAssignmentsByEmployee(employeeId: string, workspaceId: string): Promise<ManagerAssignment[]> {
+    return await db
+      .select()
+      .from(managerAssignments)
+      .where(
+        and(
+          eq(managerAssignments.employeeId, employeeId),
+          eq(managerAssignments.workspaceId, workspaceId)
+        )
+      );
+  }
+
+  async deleteManagerAssignment(id: string, workspaceId: string): Promise<boolean> {
+    const result = await db
+      .delete(managerAssignments)
+      .where(
+        and(
+          eq(managerAssignments.id, id),
+          eq(managerAssignments.workspaceId, workspaceId)
+        )
+      );
+    return result.rowCount !== null && result.rowCount > 0;
   }
 }
 
