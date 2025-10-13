@@ -34,6 +34,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Demo login route - bypasses authentication for demo workspace
+  app.get('/api/demo-login', async (req: any, res) => {
+    try {
+      const DEMO_USER_ID = "demo-user-00000000";
+      
+      // Check if demo user exists, create if not
+      let demoUser = await storage.getUser(DEMO_USER_ID);
+      if (!demoUser) {
+        // Seed demo workspace
+        const { seedDemoWorkspace } = await import("./seed-demo");
+        await seedDemoWorkspace();
+        demoUser = await storage.getUser(DEMO_USER_ID);
+      }
+
+      // Create session manually (bypass OIDC)
+      req.session.passport = {
+        user: {
+          claims: {
+            sub: DEMO_USER_ID,
+            email: "demo@shiftsync.app",
+            first_name: "Demo",
+            last_name: "User"
+          }
+        }
+      };
+
+      await new Promise((resolve, reject) => {
+        req.session.save((err: any) => {
+          if (err) reject(err);
+          else resolve(undefined);
+        });
+      });
+
+      // Redirect to dashboard
+      res.redirect('/dashboard');
+    } catch (error) {
+      console.error("Error in demo login:", error);
+      res.status(500).json({ message: "Failed to start demo" });
+    }
+  });
+
   // ============================================================================
   // WORKSPACE ROUTES
   // ============================================================================

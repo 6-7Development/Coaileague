@@ -11,6 +11,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { ProtectedRoute } from "@/components/protected-route";
+import { DemoBanner } from "@/components/demo-banner";
 import { useAuth } from "@/hooks/useAuth";
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
@@ -55,6 +56,7 @@ function AppContent() {
         <div className="flex h-screen w-full">
           <AppSidebar />
           <div className="flex flex-col flex-1 min-w-0">
+            <DemoBanner />
             <header className="flex items-center justify-between h-16 px-6 border-b bg-background sticky top-0 z-10">
               <SidebarTrigger data-testid="button-sidebar-toggle" />
               <ThemeToggle />

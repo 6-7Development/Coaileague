@@ -30,7 +30,12 @@ export default function Landing() {
                 >
                   Get Started Free
                 </Button>
-                <Button size="lg" variant="outline" data-testid="button-view-demo">
+                <Button 
+                  size="lg" 
+                  variant="outline" 
+                  onClick={() => window.location.href = "/api/demo-login"}
+                  data-testid="button-view-demo"
+                >
                   View Demo
                 </Button>
               </div>
