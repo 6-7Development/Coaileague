@@ -31,11 +31,21 @@ export default function Dashboard() {
     enabled: isAuthenticated,
   });
 
+  // Fetch employees to determine user's workspace role
+  const { data: allEmployees } = useQuery({
+    queryKey: ['/api/employees'],
+    enabled: isAuthenticated,
+  });
+
   // Fetch active employees (clocked in)
   const { data: activeEmployees } = useQuery({
     queryKey: ['/api/employees', { status: 'active' }],
     enabled: isAuthenticated,
   });
+
+  // Determine current user's workspace role
+  const currentEmployee = allEmployees?.find((emp: any) => emp.userId === user?.id);
+  const workspaceRole = currentEmployee?.workspaceRole || 'employee';
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -65,6 +75,290 @@ export default function Dashboard() {
   const payrollProcessed = (stats as any)?.totalRevenue || 284000;
   const costSavings = (stats as any)?.costSavings || 22000;
 
+  // Render Manager Dashboard
+  if (workspaceRole === 'manager') {
+    return (
+      <div className="flex-1 overflow-auto">
+        <div className="container mx-auto p-6 lg:p-8 space-y-8 relative z-10">
+          {/* Top Bar */}
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h1 className="text-4xl lg:text-5xl font-black tracking-tight mb-2" data-testid="text-dashboard-title">
+                Welcome back, {firstName}
+              </h1>
+              <p className="text-lg text-muted-foreground" data-testid="text-dashboard-subtitle">
+                Manage your team and track performance
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <Button variant="outline" size="default" data-testid="button-team-report">
+                Team Report
+              </Button>
+              <Button 
+                size="default"
+                asChild
+                data-testid="button-approve-time"
+              >
+                <Link href="/time-tracking">
+                  <CheckCircle2 className="mr-2 h-4 w-4" />
+                  Approve Time
+                </Link>
+              </Button>
+            </div>
+          </div>
+
+          {/* Manager Stats Grid */}
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+            <div className="glass-card rounded-2xl p-7" data-testid="card-metric-team-size">
+              <div className="flex justify-between items-center mb-4">
+                <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  Team Size
+                </div>
+                <div className="icon-box w-10 h-10">
+                  <Users className="h-5 w-5 text-red-500" />
+                </div>
+              </div>
+              <div className="text-4xl font-black mb-2 stat-value-gradient" data-testid="text-metric-team-size">
+                24
+              </div>
+              <div className="text-sm font-semibold text-chart-2 flex items-center gap-1">
+                <span>↑ 2 vs last week</span>
+              </div>
+            </div>
+
+            <div className="glass-card rounded-2xl p-7" data-testid="card-metric-active-now">
+              <div className="flex justify-between items-center mb-4">
+                <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  Active Now
+                </div>
+                <div className="icon-box w-10 h-10">
+                  <CheckCircle2 className="h-5 w-5 text-red-500" />
+                </div>
+              </div>
+              <div className="text-4xl font-black mb-2 stat-value-gradient" data-testid="text-metric-active-now">
+                18
+              </div>
+              <div className="text-sm font-semibold text-muted-foreground">
+                75% of team clocked in
+              </div>
+            </div>
+
+            <div className="glass-card rounded-2xl p-7" data-testid="card-metric-pending-approvals">
+              <div className="flex justify-between items-center mb-4">
+                <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  Pending Approvals
+                </div>
+                <div className="icon-box w-10 h-10">
+                  <Clock className="h-5 w-5 text-red-500" />
+                </div>
+              </div>
+              <div className="text-4xl font-black mb-2 stat-value-gradient" data-testid="text-metric-pending-approvals">
+                7
+              </div>
+              <div className="text-sm font-semibold text-yellow-500 flex items-center gap-1">
+                <span>Needs review</span>
+              </div>
+            </div>
+
+            <div className="glass-card rounded-2xl p-7" data-testid="card-metric-team-hours">
+              <div className="flex justify-between items-center mb-4">
+                <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  Team Hours
+                </div>
+                <div className="icon-box w-10 h-10">
+                  <BarChart3 className="h-5 w-5 text-red-500" />
+                </div>
+              </div>
+              <div className="text-4xl font-black mb-2 stat-value-gradient" data-testid="text-metric-team-hours">
+                342
+              </div>
+              <div className="text-sm font-semibold text-muted-foreground">
+                This week
+              </div>
+            </div>
+          </div>
+
+          {/* Manager Main Grid */}
+          <div className="grid gap-8 lg:grid-cols-[2fr_1fr]">
+            {/* Team Members */}
+            <Card className="glass-card rounded-2xl p-8 border-0" data-testid="card-team-members">
+              <div className="flex items-center justify-between mb-8">
+                <h2 className="text-2xl font-black">My Team</h2>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  asChild
+                  data-testid="button-view-all-team"
+                >
+                  <Link href="/employees">
+                    View All <ArrowRight className="ml-1 h-4 w-4" />
+                  </Link>
+                </Button>
+              </div>
+              
+              <div className="space-y-4">
+                {[
+                  { name: "Alex Chen", role: "Technician", location: "Site A", initials: "AC", status: "active" },
+                  { name: "Maria Rodriguez", role: "Consultant", location: "Site B", initials: "MR", status: "active" },
+                  { name: "James Wilson", role: "Driver", location: "Remote", initials: "JW", status: "break" },
+                  { name: "Emily Foster", role: "Technician", location: "Site A", initials: "EF", status: "active" },
+                  { name: "David Park", role: "Team Lead", location: "Site C", initials: "DP", status: "active" },
+                ].map((employee, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center justify-between p-4 rounded-xl list-item-hover bg-white/[0.03]"
+                    data-testid={`team-member-item-${index}`}
+                  >
+                    <div className="flex items-center gap-4">
+                      <Avatar className="h-11 w-11 rounded-xl bg-gradient-to-br from-red-500 to-red-700">
+                        <AvatarFallback className="rounded-xl bg-gradient-to-br from-red-500 to-red-700 text-white font-black text-lg">
+                          {employee.initials}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <h4 className="font-bold mb-1">{employee.name}</h4>
+                        <p className="text-sm text-muted-foreground">
+                          {employee.role} • {employee.location}
+                        </p>
+                      </div>
+                    </div>
+                    {employee.status === 'active' ? (
+                      <Badge className="bg-green-500/15 text-green-500 border-0 font-semibold">
+                        <div className="w-2 h-2 bg-green-500 rounded-full mr-2 pulse-dot" />
+                        Active
+                      </Badge>
+                    ) : (
+                      <Badge className="bg-yellow-500/15 text-yellow-500 border-0 font-semibold">
+                        On Break
+                      </Badge>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </Card>
+
+            {/* Manager Actions */}
+            <Card className="glass-card rounded-2xl p-8 border-0" data-testid="card-manager-actions">
+              <h2 className="text-2xl font-black mb-8">Actions</h2>
+              
+              <div className="space-y-4">
+                <Link href="/time-tracking" data-testid="link-action-approve-time">
+                  <div className="flex items-center gap-4 p-5 rounded-xl list-item-hover bg-white/[0.03] cursor-pointer border border-white/[0.08]">
+                    <div className="icon-box w-11 h-11">
+                      <CheckCircle2 className="h-5 w-5 text-red-500" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold mb-1">Approve Time</h4>
+                      <p className="text-sm text-muted-foreground">7 entries pending</p>
+                    </div>
+                  </div>
+                </Link>
+
+                <Link href="/schedule" data-testid="link-action-manage-schedule">
+                  <div className="flex items-center gap-4 p-5 rounded-xl list-item-hover bg-white/[0.03] cursor-pointer border border-white/[0.08]">
+                    <div className="icon-box w-11 h-11">
+                      <Clock className="h-5 w-5 text-red-500" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold mb-1">Manage Schedules</h4>
+                      <p className="text-sm text-muted-foreground">Update team shifts</p>
+                    </div>
+                  </div>
+                </Link>
+
+                <Link href="/analytics" data-testid="link-action-team-reports">
+                  <div className="flex items-center gap-4 p-5 rounded-xl list-item-hover bg-white/[0.03] cursor-pointer border border-white/[0.08]">
+                    <div className="icon-box w-11 h-11">
+                      <BarChart3 className="h-5 w-5 text-red-500" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold mb-1">Team Reports</h4>
+                      <p className="text-sm text-muted-foreground">View performance metrics</p>
+                    </div>
+                  </div>
+                </Link>
+
+                <Link href="/employees" data-testid="link-action-send-message">
+                  <div className="flex items-center gap-4 p-5 rounded-xl list-item-hover bg-white/[0.03] cursor-pointer border border-white/[0.08]">
+                    <div className="icon-box w-11 h-11">
+                      <FileText className="h-5 w-5 text-red-500" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold mb-1">Send Message</h4>
+                      <p className="text-sm text-muted-foreground">Contact your team</p>
+                    </div>
+                  </div>
+                </Link>
+              </div>
+            </Card>
+          </div>
+
+          {/* Bottom Section */}
+          <div className="grid gap-8 lg:grid-cols-2">
+            {/* Pending Approvals */}
+            <Card className="glass-card rounded-2xl p-8 border-0" data-testid="card-pending-time">
+              <div className="flex items-center justify-between mb-8">
+                <h2 className="text-2xl font-black">Pending Time Entries</h2>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  data-testid="button-view-all-pending"
+                >
+                  View All <ArrowRight className="ml-1 h-4 w-4" />
+                </Button>
+              </div>
+              
+              <div className="space-y-4">
+                {[
+                  { employee: "Alex Chen", hours: "8.5", date: "Today", amount: "$255" },
+                  { employee: "Maria Rodriguez", hours: "7.0", date: "Today", amount: "$210" },
+                  { employee: "Emily Foster", hours: "9.0", date: "Yesterday", amount: "$270" },
+                ].map((entry, index) => (
+                  <div key={index} className="flex gap-4 p-4 rounded-xl bg-white/[0.02]" data-testid={`pending-entry-${index}`}>
+                    <div className="icon-box w-10 h-10 flex-shrink-0">
+                      <Clock className="h-5 w-5 text-yellow-500" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-bold text-sm mb-1">{entry.employee}</h4>
+                      <p className="text-sm text-muted-foreground mb-2">{entry.hours} hrs • {entry.date} • {entry.amount}</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="outline" data-testid={`button-approve-${index}`}>
+                        Approve
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+
+            {/* Team Performance */}
+            <Card className="glass-card rounded-2xl p-8 border-0" data-testid="card-team-performance">
+              <div className="flex items-center justify-between mb-8">
+                <h2 className="text-2xl font-black">Team Performance</h2>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  asChild
+                  data-testid="button-view-analytics"
+                >
+                  <Link href="/analytics">
+                    View Details <ArrowRight className="ml-1 h-4 w-4" />
+                  </Link>
+                </Button>
+              </div>
+              
+              <div className="h-48 bg-white/[0.02] rounded-xl flex items-center justify-center">
+                <BarChart3 className="h-20 w-20 text-muted-foreground/20" />
+              </div>
+            </Card>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Render Owner Dashboard (default)
   return (
     <div className="flex-1 overflow-auto">
       <div className="container mx-auto p-6 lg:p-8 space-y-8 relative z-10">
