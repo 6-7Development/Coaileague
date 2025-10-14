@@ -3,6 +3,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
+import { startOfDay } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -168,10 +169,7 @@ export default function Schedule() {
   });
 
   const generateInvoicesMutation = useMutation({
-    mutationFn: async () => {
-      const weekStart = weekDates[0];
-      const weekEnd = weekDates[6];
-      
+    mutationFn: async ({ weekStart, weekEnd }: { weekStart: Date; weekEnd: Date }) => {
       // Filter unbilled shifts in current week
       const weekShifts = shifts.filter(shift => {
         const shiftDate = new Date(shift.startTime);
@@ -246,11 +244,14 @@ export default function Schedule() {
     return Array.from({ length: 7 }, (_, i) => {
       const date = new Date(curr);
       date.setDate(first + i);
-      return date;
+      return startOfDay(date); // Normalize to midnight
     });
   };
 
   const weekDates = getWeekDates();
+  const weekStart = weekDates[0]; // Sunday at 00:00:00
+  const weekEnd = new Date(weekDates[6]);
+  weekEnd.setHours(23, 59, 59, 999); // Saturday at 23:59:59
 
   const previousWeek = () => {
     const newDate = new Date(currentDate);
@@ -323,10 +324,7 @@ export default function Schedule() {
   };
 
   // Copy entire week to next week
-  const copyWeekForward = () => {
-    const weekStart = weekDates[0];
-    const weekEnd = weekDates[6];
-    
+  const copyWeekForward = async () => {
     const weekShifts = shifts.filter(shift => {
       const shiftDate = new Date(shift.startTime);
       return shiftDate >= weekStart && shiftDate <= weekEnd;
@@ -341,7 +339,8 @@ export default function Schedule() {
       return;
     }
 
-    weekShifts.forEach(shift => {
+    // Copy shifts without showing individual toasts
+    const promises = weekShifts.map(shift => {
       const startTime = new Date(shift.startTime);
       const endTime = new Date(shift.endTime);
       
@@ -349,7 +348,7 @@ export default function Schedule() {
       startTime.setDate(startTime.getDate() + 7);
       endTime.setDate(endTime.getDate() + 7);
 
-      createShiftMutation.mutate({
+      return apiRequest("POST", "/api/shifts", {
         employeeId: shift.employeeId,
         clientId: shift.clientId,
         startTime: startTime.toISOString(),
@@ -358,10 +357,20 @@ export default function Schedule() {
       });
     });
 
-    toast({
-      title: "Week Copied",
-      description: `${weekShifts.length} shifts copied to next week`,
-    });
+    try {
+      await Promise.all(promises);
+      queryClient.invalidateQueries({ queryKey: ["/api/shifts"] });
+      toast({
+        title: "Week Copied",
+        description: `${weekShifts.length} shifts copied to next week`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to copy week",
+        variant: "destructive",
+      });
+    }
   };
 
   // Detect scheduling conflicts
@@ -386,9 +395,6 @@ export default function Schedule() {
 
   // Calculate week statistics
   const weekStats = useMemo(() => {
-    const weekStart = weekDates[0];
-    const weekEnd = weekDates[6];
-    
     const weekShifts = shifts.filter(shift => {
       const shiftDate = new Date(shift.startTime);
       return shiftDate >= weekStart && shiftDate <= weekEnd;
@@ -413,7 +419,7 @@ export default function Schedule() {
       estimatedCost: estimatedCost.toFixed(2),
       clientShifts: weekShifts.filter(s => s.clientId).length,
     };
-  }, [shifts, weekDates, employees]);
+  }, [shifts, weekStart, weekEnd, employees]);
 
   // Color palette for shifts (matching Sling style)
   const shiftColors = [
@@ -506,7 +512,7 @@ export default function Schedule() {
                     Copy Week Forward
                   </DropdownMenuItem>
                   <DropdownMenuItem 
-                    onClick={() => generateInvoicesMutation.mutate()}
+                    onClick={() => generateInvoicesMutation.mutate({ weekStart, weekEnd })}
                     disabled={generateInvoicesMutation.isPending || weekStats.clientShifts === 0}
                   >
                     <FileText className="mr-2 h-4 w-4" />
