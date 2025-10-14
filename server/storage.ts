@@ -22,6 +22,8 @@ import {
   reportAttachments,
   customerReportAccess,
   supportTickets,
+  auditLogs,
+  featureFlags,
   type User,
   type UpsertUser,
   type Workspace,
@@ -61,9 +63,13 @@ import {
   type InsertCustomerReportAccess,
   type SupportTicket,
   type InsertSupportTicket,
+  type AuditLog,
+  type InsertAuditLog,
+  type FeatureFlag,
+  type InsertFeatureFlag,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, isNotNull, or, like } from "drizzle-orm";
+import { eq, and, desc, isNotNull, or, like, sql } from "drizzle-orm";
 
 // Storage Interface with Multi-Tenant Methods
 export interface IStorage {
@@ -184,6 +190,15 @@ export interface IStorage {
   createSupportTicket(ticket: InsertSupportTicket): Promise<SupportTicket>;
   getSupportTickets(workspaceId: string): Promise<SupportTicket[]>;
   updateSupportTicket(id: string, data: Partial<InsertSupportTicket>): Promise<SupportTicket>;
+  
+  // Audit Log operations (Security & Compliance)
+  createAuditLog(log: InsertAuditLog): Promise<AuditLog>;
+  getAuditLogs(workspaceId: string, filters?: { userId?: string; entityType?: string; action?: string; startDate?: Date; endDate?: Date; limit?: number; offset?: number }): Promise<AuditLog[]>;
+  
+  // Feature Flag operations (Monetization)
+  getFeatureFlags(workspaceId: string): Promise<FeatureFlag | undefined>;
+  createFeatureFlags(flags: InsertFeatureFlag): Promise<FeatureFlag>;
+  updateFeatureFlags(workspaceId: string, data: Partial<InsertFeatureFlag>): Promise<FeatureFlag>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1130,6 +1145,95 @@ export class DatabaseStorage implements IStorage {
       .update(supportTickets)
       .set({ ...data, updatedAt: new Date() })
       .where(eq(supportTickets.id, id))
+      .returning();
+    
+    return updated;
+  }
+  
+  // ============================================================================
+  // AUDIT LOG OPERATIONS (Security & Compliance)
+  // ============================================================================
+  
+  async createAuditLog(log: InsertAuditLog): Promise<AuditLog> {
+    const [newLog] = await db
+      .insert(auditLogs)
+      .values(log)
+      .returning();
+    
+    return newLog;
+  }
+  
+  async getAuditLogs(
+    workspaceId: string,
+    filters?: {
+      userId?: string;
+      entityType?: string;
+      action?: string;
+      startDate?: Date;
+      endDate?: Date;
+      limit?: number;
+      offset?: number;
+    }
+  ): Promise<AuditLog[]> {
+    // Apply filters if provided
+    const conditions = [eq(auditLogs.workspaceId, workspaceId)];
+    
+    if (filters?.userId) {
+      conditions.push(eq(auditLogs.userId, filters.userId));
+    }
+    if (filters?.entityType) {
+      conditions.push(eq(auditLogs.entityType, filters.entityType));
+    }
+    if (filters?.action) {
+      conditions.push(eq(auditLogs.action, filters.action as any));
+    }
+    if (filters?.startDate) {
+      conditions.push(sql`${auditLogs.createdAt} >= ${filters.startDate}`);
+    }
+    if (filters?.endDate) {
+      conditions.push(sql`${auditLogs.createdAt} <= ${filters.endDate}`);
+    }
+    
+    // Support pagination with explicit offset/limit controls
+    const limit = Math.min(filters?.limit || 1000, 1000); // Cap at 1000 for performance
+    const offset = filters?.offset || 0;
+    
+    return await db
+      .select()
+      .from(auditLogs)
+      .where(and(...conditions))
+      .orderBy(desc(auditLogs.createdAt))
+      .limit(limit)
+      .offset(offset);
+  }
+  
+  // ============================================================================
+  // FEATURE FLAG OPERATIONS (Monetization)
+  // ============================================================================
+  
+  async getFeatureFlags(workspaceId: string): Promise<FeatureFlag | undefined> {
+    const [flags] = await db
+      .select()
+      .from(featureFlags)
+      .where(eq(featureFlags.workspaceId, workspaceId));
+    
+    return flags;
+  }
+  
+  async createFeatureFlags(flags: InsertFeatureFlag): Promise<FeatureFlag> {
+    const [newFlags] = await db
+      .insert(featureFlags)
+      .values(flags)
+      .returning();
+    
+    return newFlags;
+  }
+  
+  async updateFeatureFlags(workspaceId: string, data: Partial<InsertFeatureFlag>): Promise<FeatureFlag> {
+    const [updated] = await db
+      .update(featureFlags)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(featureFlags.workspaceId, workspaceId))
       .returning();
     
     return updated;

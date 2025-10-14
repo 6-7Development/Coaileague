@@ -5,6 +5,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
+import { auditContextMiddleware } from "./middleware/audit";
 import { 
   sendShiftAssignmentEmail, 
   sendInvoiceGeneratedEmail, 
@@ -35,6 +36,9 @@ import crypto from "crypto";
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
+  
+  // Audit logging middleware (captures request context for all authenticated requests)
+  app.use(auditContextMiddleware);
 
   // ============================================================================
   // AUTH ROUTES

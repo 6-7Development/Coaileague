@@ -854,19 +854,44 @@ export const auditLogs = pgTable("audit_logs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
   
-  userId: varchar("user_id").references(() => users.id),
+  // Actor information
+  userId: varchar("user_id").notNull().references(() => users.id),
+  userEmail: varchar("user_email").notNull(), // Denormalized for audit trail persistence
+  userRole: varchar("user_role").notNull(), // Role at time of action
+  
+  // Action details
   action: auditActionEnum("action").notNull(),
   entityType: varchar("entity_type").notNull(), // 'employee', 'shift', 'invoice', etc.
-  entityId: varchar("entity_id"),
+  entityId: varchar("entity_id").notNull(),
   
+  // Change tracking
   changes: jsonb("changes"), // { before: {...}, after: {...} }
-  metadata: jsonb("metadata"), // Additional context
-  ipAddress: varchar("ip_address"),
-  userAgent: varchar("user_agent"),
+  metadata: jsonb("metadata"), // Additional context (API endpoint, feature flag, etc.)
   
-  createdAt: timestamp("created_at").defaultNow(),
+  // Request context
+  ipAddress: varchar("ip_address").notNull(),
+  userAgent: text("user_agent").notNull(), // Required for SOC2/GDPR traceability
+  requestId: varchar("request_id"), // For correlating related actions
+  
+  // Compliance flags
+  isSensitiveData: boolean("is_sensitive_data").default(false), // PII, financial data, etc.
+  complianceTag: varchar("compliance_tag"), // 'gdpr', 'soc2', 'hipaa', etc.
+  
+  // Immutability - audit logs should NEVER be deleted
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_audit_workspace_created").on(table.workspaceId, table.createdAt),
+  index("idx_audit_user_created").on(table.userId, table.createdAt),
+  index("idx_audit_entity").on(table.entityType, table.entityId),
+  index("idx_audit_action_created").on(table.action, table.createdAt),
+]);
+
+export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({
+  id: true,
+  createdAt: true,
 });
 
+export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
 export type AuditLog = typeof auditLogs.$inferSelect;
 
 // ============================================================================
@@ -1394,3 +1419,68 @@ export const insertSupportTicketSchema = createInsertSchema(supportTickets).omit
 
 export type InsertSupportTicket = z.infer<typeof insertSupportTicketSchema>;
 export type SupportTicket = typeof supportTickets.$inferSelect;
+
+// ============================================================================
+// SECURITY & COMPLIANCE
+// ============================================================================
+
+// Feature Flags - Control access to premium features per workspace
+export const featureFlags = pgTable("feature_flags", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().unique().references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  // Tier-based features (aligned with pricing)
+  tier: varchar("tier").notNull().default("basic"), // 'basic', 'professional', 'premium', 'enterprise'
+  
+  // Core Features (Basic Tier - $49/month)
+  hasEmployeeManagement: boolean("has_employee_management").default(true),
+  hasClientManagement: boolean("has_client_management").default(true),
+  hasBasicScheduling: boolean("has_basic_scheduling").default(true),
+  hasTimeTracking: boolean("has_time_tracking").default(true),
+  
+  // Professional Features (Professional Tier - $149/month)
+  hasInvoiceGeneration: boolean("has_invoice_generation").default(false),
+  hasAnalyticsDashboard: boolean("has_analytics_dashboard").default(false),
+  hasEmployeeOnboarding: boolean("has_employee_onboarding").default(false),
+  
+  // Premium Features (Premium Tier - $299/month)
+  hasReportManagementSystem: boolean("has_report_management_system").default(false),
+  hasGpsTracking: boolean("has_gps_tracking").default(false),
+  hasAdvancedRbac: boolean("has_advanced_rbac").default(false),
+  hasComplianceTools: boolean("has_compliance_tools").default(false),
+  
+  // Enterprise Features (Enterprise Tier - $599/month)
+  hasWhiteLabelRms: boolean("has_white_label_rms").default(false),
+  hasCustomBranding: boolean("has_custom_branding").default(false),
+  hasApiAccess: boolean("has_api_access").default(false),
+  hasSsoIntegration: boolean("has_sso_integration").default(false),
+  hasDedicatedSupport: boolean("has_dedicated_support").default(false),
+  
+  // Add-on Features (Additional cost)
+  hasAutomatedPayroll: boolean("has_automated_payroll").default(false), // +$99/month
+  hasSmsNotifications: boolean("has_sms_notifications").default(false), // +$29/month
+  hasAdvancedAnalytics: boolean("has_advanced_analytics").default(false), // +$79/month
+  
+  // Usage limits
+  maxEmployees: integer("max_employees").default(5),
+  maxClients: integer("max_clients").default(10),
+  maxReportsPerMonth: integer("max_reports_per_month").default(10),
+  maxStorageGb: integer("max_storage_gb").default(5),
+  
+  // Billing integration
+  stripeSubscriptionId: varchar("stripe_subscription_id"),
+  billingCycle: varchar("billing_cycle").default("monthly"), // 'monthly', 'annual'
+  trialEndsAt: timestamp("trial_ends_at"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertFeatureFlagSchema = createInsertSchema(featureFlags).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertFeatureFlag = z.infer<typeof insertFeatureFlagSchema>;
+export type FeatureFlag = typeof featureFlags.$inferSelect;
