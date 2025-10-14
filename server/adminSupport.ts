@@ -146,6 +146,11 @@ export interface WorkspaceDetail {
     stripeConnected: boolean;
   };
   tickets: SupportTicket[];
+  businessCategory: {
+    category: string;
+    availableTemplates: string[];
+    installedTemplates: Array<{ name: string; category: string; isActive: boolean }>;
+  };
 }
 
 /**
@@ -273,6 +278,18 @@ export async function getWorkspaceDetail(
     .orderBy(desc(supportTickets.createdAt))
     .limit(20);
 
+  // Get business category and form templates
+  const { reportTemplates } = await import("@shared/schema");
+  const installedTemplates = await db
+    .select()
+    .from(reportTemplates)
+    .where(eq(reportTemplates.workspaceId, workspaceId));
+
+  // Get available templates for this category
+  const { getTemplatesForCategory } = await import("./seedFormTemplates");
+  const category = workspace.businessCategory || 'general';
+  const availableTemplates = getTemplatesForCategory(category).map(t => t.name);
+
   return {
     workspace,
     owner,
@@ -286,6 +303,15 @@ export async function getWorkspaceDetail(
       stripeConnected: !!workspace.stripeAccountId,
     },
     tickets,
+    businessCategory: {
+      category,
+      availableTemplates,
+      installedTemplates: installedTemplates.map(t => ({
+        name: t.name,
+        category: t.category || '',
+        isActive: t.isActive || false,
+      })),
+    },
   };
 }
 

@@ -86,6 +86,11 @@ interface WorkspaceDetail {
     stripeConnected: boolean;
   };
   tickets: any[];
+  businessCategory: {
+    category: string;
+    availableTemplates: string[];
+    installedTemplates: Array<{ name: string; category: string; isActive: boolean }>;
+  };
 }
 
 export default function AdminSupportPage() {
@@ -332,7 +337,7 @@ export default function AdminSupportPage() {
 
               {/* Overview Tab */}
               <TabsContent value="overview" className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   <Card>
                     <CardHeader>
                       <CardTitle className="text-sm">Subscription</CardTitle>
@@ -341,6 +346,20 @@ export default function AdminSupportPage() {
                       <Badge>{workspaceDetail.subscription?.plan || "free"}</Badge>
                       <p className="text-sm text-muted-foreground mt-2">
                         Status: {workspaceDetail.subscription?.status || "active"}
+                      </p>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-sm">Business Category</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <Badge variant="outline">
+                        {workspaceDetail.businessCategory.category}
+                      </Badge>
+                      <p className="text-sm text-muted-foreground mt-2">
+                        {workspaceDetail.businessCategory.installedTemplates.length} / {workspaceDetail.businessCategory.availableTemplates.length} templates installed
                       </p>
                     </CardContent>
                   </Card>
@@ -380,6 +399,41 @@ export default function AdminSupportPage() {
                           <span>{activity.description}</span>
                         </div>
                       ))}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm">Form Templates & Features</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div>
+                        <p className="text-xs font-semibold text-muted-foreground mb-2">Available Templates ({workspaceDetail.businessCategory.availableTemplates.length})</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {workspaceDetail.businessCategory.availableTemplates.map((template, i) => (
+                            <Badge key={i} variant="outline" className="text-xs">
+                              {template}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      {workspaceDetail.businessCategory.installedTemplates.length > 0 && (
+                        <div>
+                          <p className="text-xs font-semibold text-muted-foreground mb-2">Installed & Active ({workspaceDetail.businessCategory.installedTemplates.filter(t => t.isActive).length})</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {workspaceDetail.businessCategory.installedTemplates
+                              .filter(t => t.isActive)
+                              .map((template, i) => (
+                                <Badge key={i} className="text-xs">
+                                  {template.name}
+                                </Badge>
+                              ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
