@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,6 +32,15 @@ interface MenuItem {
 export function CADMenuBar() {
   const [, setLocation] = useLocation();
   const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   const menus: MenuItem[] = [
     {
@@ -118,7 +127,7 @@ export function CADMenuBar() {
         { label: "Report Bug" },
         { label: "Feature Request" },
         { separator: true },
-        { label: "About ShiftSync" },
+        { label: "About Clockwork" },
       ],
     },
   ];
@@ -174,7 +183,7 @@ export function CADMenuBar() {
       <div className="flex-1" />
 
       <div className="text-xs text-[hsl(var(--cad-text-secondary))] font-mono">
-        {new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
+        {currentTime.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
       </div>
     </div>
   );

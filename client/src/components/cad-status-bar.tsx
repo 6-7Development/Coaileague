@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -10,6 +11,15 @@ interface StatusIndicator {
 
 export function CADStatusBar() {
   const { user } = useAuth();
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   const { data: workspace } = useQuery<{ name: string; subscriptionTier: string }>({
     queryKey: ["/api/workspaces/current"],
@@ -102,7 +112,7 @@ export function CADStatusBar() {
         </div>
 
         <div className="text-[hsl(var(--cad-text-secondary))] font-mono" data-testid="status-clock">
-          {new Date().toLocaleTimeString("en-US", {
+          {currentTime.toLocaleTimeString("en-US", {
             hour: "2-digit",
             minute: "2-digit",
             second: "2-digit",

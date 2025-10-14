@@ -1,292 +1,338 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Users, DollarSign, Clock, CheckCircle2, Zap, Shield, TrendingUp } from "lucide-react";
+import { ClockworkLogo } from "@/components/clockwork-logo";
+import {
+  Settings,
+  Cpu,
+  Shield,
+  Zap,
+  Target,
+  Clock,
+  Users,
+  MapPin,
+  FileText,
+  TrendingUp,
+  CheckCircle2,
+  ArrowRight,
+} from "lucide-react";
 
 export default function Landing() {
   return (
-    <div className="min-h-screen bg-background">
-      {/* Hero Section */}
-      <section className="relative border-b">
-        <div className="container mx-auto px-6 py-20 lg:py-32">
+    <div className="min-h-screen bg-[hsl(var(--cad-background))] text-[hsl(var(--cad-text-primary))]">
+      {/* CAD-Style Top Bar */}
+      <div className="h-12 bg-[hsl(var(--cad-chrome))] border-b border-[hsl(var(--cad-border-strong))] flex items-center justify-between px-6">
+        <ClockworkLogo size={28} variant="wordmark" className="text-[hsl(var(--cad-text-primary))]" />
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => window.location.href = "/api/demo-login"}
+            className="text-xs h-8 text-[hsl(var(--cad-text-secondary))] hover:text-[hsl(var(--cad-text-primary))] hover:bg-[hsl(var(--cad-chrome-hover))]"
+            data-testid="button-view-demo"
+          >
+            View Demo
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => window.location.href = "/api/login"}
+            className="h-8 text-xs bg-[hsl(var(--cad-blue))] hover:bg-[hsl(var(--cad-blue))]/90 text-white"
+            data-testid="button-get-started"
+          >
+            Launch Platform
+          </Button>
+        </div>
+      </div>
+
+      {/* Hero - CAD System Showcase */}
+      <section className="relative">
+        <div className="container mx-auto px-6 py-16 lg:py-24">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
-            <div className="space-y-8">
-              <Badge className="text-xs" data-testid="badge-hero-label">
-                Multi-Tenant Scheduling Platform
-              </Badge>
-              <h1 className="text-4xl lg:text-5xl xl:text-6xl font-semibold tracking-tight leading-tight" data-testid="text-hero-title">
-                Schedule Smarter.
+            {/* Left: Value Prop */}
+            <div className="space-y-6">
+              <div className="flex items-center gap-2">
+                <div className="h-1 w-12 bg-[hsl(var(--cad-blue))]" />
+                <span className="text-xs uppercase tracking-wider text-[hsl(var(--cad-text-tertiary))] font-mono">
+                  Fortune 500 Grade
+                </span>
+              </div>
+              
+              <h1 className="text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1]" data-testid="text-hero-title">
+                Workforce Management
                 <br />
-                <span className="text-primary">Bill Automatically.</span>
+                <span className="text-[hsl(var(--cad-blue))]">Built for Precision</span>
               </h1>
-              <p className="text-lg text-muted-foreground max-w-xl" data-testid="text-hero-description">
-                Professional employee scheduling with drag-and-drop calendar, automated time tracking, and intelligent billing. Built for service businesses that need to scale.
+              
+              <p className="text-lg text-[hsl(var(--cad-text-secondary))] leading-relaxed" data-testid="text-hero-description">
+                Professional CAD-style interface for autonomous scheduling, GPS-verified clock-ins, 
+                real-time time tracking, and automated invoicing. Control your workforce like a Fortune 500 command center.
               </p>
-              <div className="flex flex-wrap gap-4">
-                <Button 
-                  size="lg" 
+
+              {/* Key Metrics */}
+              <div className="grid grid-cols-3 gap-4 pt-4">
+                <div className="space-y-1">
+                  <div className="text-2xl font-bold text-[hsl(var(--cad-cyan))] font-mono">99.9%</div>
+                  <div className="text-xs text-[hsl(var(--cad-text-tertiary))] uppercase">Uptime</div>
+                </div>
+                <div className="space-y-1">
+                  <div className="text-2xl font-bold text-[hsl(var(--cad-green))] font-mono">&lt;100ms</div>
+                  <div className="text-xs text-[hsl(var(--cad-text-tertiary))] uppercase">Response</div>
+                </div>
+                <div className="space-y-1">
+                  <div className="text-2xl font-bold text-[hsl(var(--cad-purple))] font-mono">SOC 2</div>
+                  <div className="text-xs text-[hsl(var(--cad-text-tertiary))] uppercase">Certified</div>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-3 pt-2">
+                <Button
+                  size="lg"
                   onClick={() => window.location.href = "/api/login"}
-                  data-testid="button-get-started"
+                  className="bg-[hsl(var(--cad-blue))] hover:bg-[hsl(var(--cad-blue))]/90 text-white h-11"
+                  data-testid="button-launch-platform"
                 >
-                  Get Started Free
+                  Launch Platform
+                  <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
-                <Button 
-                  size="lg" 
-                  variant="outline" 
+                <Button
+                  size="lg"
+                  variant="outline"
                   onClick={() => window.location.href = "/api/demo-login"}
-                  data-testid="button-view-demo"
+                  className="h-11 border-[hsl(var(--cad-border-strong))] text-[hsl(var(--cad-text-primary))] hover:bg-[hsl(var(--cad-chrome-hover))]"
+                  data-testid="button-interactive-demo"
                 >
-                  View Demo
+                  Interactive Demo
                 </Button>
               </div>
             </div>
-            <div className="relative lg:h-[500px] bg-card border rounded-lg flex items-center justify-center" data-testid="img-hero-preview">
-              <Calendar className="h-32 w-32 text-primary opacity-20" />
+
+            {/* Right: CAD System Preview */}
+            <div className="relative" data-testid="img-hero-preview">
+              <div className="bg-[hsl(var(--cad-surface))] border border-[hsl(var(--cad-border-strong))] rounded-lg overflow-hidden">
+                {/* Mock CAD Interface */}
+                <div className="h-10 bg-[hsl(var(--cad-chrome))] border-b border-[hsl(var(--cad-border))] flex items-center px-3 gap-2">
+                  <div className="flex gap-1.5">
+                    <div className="w-3 h-3 rounded-full bg-[hsl(var(--cad-red))]/70" />
+                    <div className="w-3 h-3 rounded-full bg-[hsl(var(--cad-orange))]/70" />
+                    <div className="w-3 h-3 rounded-full bg-[hsl(var(--cad-green))]/70" />
+                  </div>
+                  <div className="flex-1 flex items-center justify-center gap-4 text-xs text-[hsl(var(--cad-text-tertiary))]">
+                    <span>File</span>
+                    <span>Edit</span>
+                    <span>View</span>
+                    <span>Tools</span>
+                  </div>
+                </div>
+                
+                <div className="p-6 space-y-4">
+                  {/* Mock schedule grid */}
+                  <div className="grid grid-cols-7 gap-2">
+                    {Array.from({ length: 21 }).map((_, i) => (
+                      <div
+                        key={i}
+                        className={`h-16 rounded border ${
+                          i % 3 === 0
+                            ? "bg-[hsl(var(--cad-blue))]/20 border-[hsl(var(--cad-blue))]/50"
+                            : "bg-[hsl(var(--cad-surface-elevated))] border-[hsl(var(--cad-border))]"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  
+                  {/* Mock status indicators */}
+                  <div className="flex items-center justify-between pt-2 text-xs text-[hsl(var(--cad-text-tertiary))]">
+                    <div className="flex items-center gap-4">
+                      <span className="flex items-center gap-1">
+                        <div className="w-2 h-2 rounded-full bg-[hsl(var(--cad-green))]" />
+                        Active: 12
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <div className="w-2 h-2 rounded-full bg-[hsl(var(--cad-cyan))]" />
+                        Clocked: 8
+                      </span>
+                    </div>
+                    <span className="font-mono">12:45:30 PM</span>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Floating feature badges */}
+              <div className="absolute -right-4 top-1/4 bg-[hsl(var(--cad-surface-elevated))] border border-[hsl(var(--cad-border-strong))] rounded-lg p-3 shadow-lg">
+                <div className="flex items-center gap-2 text-sm">
+                  <MapPin className="h-4 w-4 text-[hsl(var(--cad-green))]" />
+                  <span className="text-[hsl(var(--cad-text-secondary))]">GPS Verified</span>
+                </div>
+              </div>
+              
+              <div className="absolute -left-4 bottom-1/4 bg-[hsl(var(--cad-surface-elevated))] border border-[hsl(var(--cad-border-strong))] rounded-lg p-3 shadow-lg">
+                <div className="flex items-center gap-2 text-sm">
+                  <Cpu className="h-4 w-4 text-[hsl(var(--cad-purple))]" />
+                  <span className="text-[hsl(var(--cad-text-secondary))]">Auto-Schedule</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Features Grid */}
-      <section className="container mx-auto px-6 py-24">
-        <div className="text-center mb-16 space-y-4">
-          <Badge className="text-xs" data-testid="badge-features-label">
-            Everything You Need
-          </Badge>
-          <h2 className="text-3xl lg:text-4xl font-semibold tracking-tight" data-testid="text-features-title">
-            Built for Modern Service Businesses
-          </h2>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto" data-testid="text-features-description">
-            From solo operators to enterprise teams, our platform scales with your business
-          </p>
-        </div>
-
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <Card className="p-6 space-y-4 hover-elevate" data-testid="card-feature-scheduling">
-            <div className="h-12 w-12 bg-primary/10 rounded-lg flex items-center justify-center">
-              <Calendar className="h-6 w-6 text-primary" />
-            </div>
-            <h3 className="text-lg font-medium">Drag & Drop Scheduling</h3>
-            <p className="text-sm text-muted-foreground">
-              Intuitive calendar interface. Assign employees to clients with a simple drag. Prevent conflicts automatically.
-            </p>
-          </Card>
-
-          <Card className="p-6 space-y-4 hover-elevate" data-testid="card-feature-employees">
-            <div className="h-12 w-12 bg-primary/10 rounded-lg flex items-center justify-center">
-              <Users className="h-6 w-6 text-primary" />
-            </div>
-            <h3 className="text-lg font-medium">Employee Management</h3>
-            <p className="text-sm text-muted-foreground">
-              Manage your team with custom roles, availability tracking, and individual hourly rates.
-            </p>
-          </Card>
-
-          <Card className="p-6 space-y-4 hover-elevate" data-testid="card-feature-time-tracking">
-            <div className="h-12 w-12 bg-primary/10 rounded-lg flex items-center justify-center">
-              <Clock className="h-6 w-6 text-primary" />
-            </div>
-            <h3 className="text-lg font-medium">Time Tracking</h3>
-            <p className="text-sm text-muted-foreground">
-              Automatic clock-in/out from scheduled shifts. Track billable hours with precision.
-            </p>
-          </Card>
-
-          <Card className="p-6 space-y-4 hover-elevate" data-testid="card-feature-invoicing">
-            <div className="h-12 w-12 bg-primary/10 rounded-lg flex items-center justify-center">
-              <DollarSign className="h-6 w-6 text-primary" />
-            </div>
-            <h3 className="text-lg font-medium">Automated Invoicing</h3>
-            <p className="text-sm text-muted-foreground">
-              Generate professional invoices from time entries. Send to clients with one click.
-            </p>
-          </Card>
-
-          <Card className="p-6 space-y-4 hover-elevate" data-testid="card-feature-payments">
-            <div className="h-12 w-12 bg-primary/10 rounded-lg flex items-center justify-center">
-              <Zap className="h-6 w-6 text-primary" />
-            </div>
-            <h3 className="text-lg font-medium">Payment Processing</h3>
-            <p className="text-sm text-muted-foreground">
-              We handle client payments, take our fee, and transfer the rest to you automatically.
-            </p>
-          </Card>
-
-          <Card className="p-6 space-y-4 hover-elevate" data-testid="card-feature-multi-tenant">
-            <div className="h-12 w-12 bg-primary/10 rounded-lg flex items-center justify-center">
-              <Shield className="h-6 w-6 text-primary" />
-            </div>
-            <h3 className="text-lg font-medium">Multi-Tenant Security</h3>
-            <p className="text-sm text-muted-foreground">
-              Enterprise-grade data isolation. Each business has its own secure workspace.
-            </p>
-          </Card>
+      {/* Core Capabilities - Technical Grid */}
+      <section className="border-y border-[hsl(var(--cad-border-strong))] bg-[hsl(var(--cad-surface))]">
+        <div className="container mx-auto px-6 py-16">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[
+              { icon: Cpu, label: "Autonomous Scheduling", desc: "AI-powered shift assignments", color: "purple" },
+              { icon: MapPin, label: "GPS Clock-In", desc: "Location-verified timecards", color: "green" },
+              { icon: Target, label: "Late Detection", desc: "Real-time attendance alerts", color: "orange" },
+              { icon: FileText, label: "Auto-Invoicing", desc: "Generate & send invoices", color: "blue" },
+            ].map((feature) => (
+              <div key={feature.label} className="space-y-3">
+                <div className={`h-10 w-10 rounded-md bg-[hsl(var(--cad-${feature.color}))]/10 flex items-center justify-center`}>
+                  <feature.icon className={`h-5 w-5 text-[hsl(var(--cad-${feature.color}))]`} />
+                </div>
+                <div className="space-y-1">
+                  <div className="text-sm font-semibold text-[hsl(var(--cad-text-primary))]">{feature.label}</div>
+                  <div className="text-xs text-[hsl(var(--cad-text-tertiary))]">{feature.desc}</div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
-      {/* Pricing Section */}
-      <section className="bg-card/50 border-y py-24">
-        <div className="container mx-auto px-6">
-          <div className="text-center mb-16 space-y-4">
-            <Badge className="text-xs" data-testid="badge-pricing-label">
-              Simple Pricing
-            </Badge>
-            <h2 className="text-3xl lg:text-4xl font-semibold tracking-tight" data-testid="text-pricing-title">
-              Choose Your Plan
+      {/* Feature Modules */}
+      <section className="container mx-auto px-6 py-20">
+        <div className="space-y-12">
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="h-1 w-12 bg-[hsl(var(--cad-blue))]" />
+              <span className="text-xs uppercase tracking-wider text-[hsl(var(--cad-text-tertiary))] font-mono">
+                System Modules
+              </span>
+            </div>
+            <h2 className="text-4xl font-bold tracking-tight">
+              Command & Control Interface
             </h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto" data-testid="text-pricing-description">
-              Start free, scale as you grow. No hidden fees.
+            <p className="text-lg text-[hsl(var(--cad-text-secondary))] max-w-3xl">
+              Professional-grade modules built for precision workforce management
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-            <Card className="p-8 space-y-6" data-testid="card-pricing-free">
-              <div className="space-y-2">
-                <h3 className="text-xl font-semibold">Free</h3>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-4xl font-semibold">$0</span>
-                  <span className="text-muted-foreground">/month</span>
-                </div>
-              </div>
-              <ul className="space-y-3 text-sm">
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-primary" />
-                  <span>Up to 5 employees</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-primary" />
-                  <span>Up to 10 clients</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-primary" />
-                  <span>Basic scheduling</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-primary" />
-                  <span>Email notifications</span>
-                </li>
-              </ul>
-              <Button 
-                className="w-full" 
-                variant="outline"
-                onClick={() => window.location.href = "/api/login"}
-                data-testid="button-plan-free"
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[
+              {
+                icon: Settings,
+                title: "Shift Scheduling",
+                features: ["Drag-drop interface", "Conflict detection", "Template system", "Recurring shifts"],
+              },
+              {
+                icon: Clock,
+                title: "Time Tracking",
+                features: ["GPS verification", "Real-time timers", "Break management", "Overtime calc"],
+              },
+              {
+                icon: Users,
+                title: "Team Management",
+                features: ["Role-based access", "Manager hierarchies", "Skill tracking", "Availability rules"],
+              },
+              {
+                icon: FileText,
+                title: "Invoice Generator",
+                features: ["Auto-generation", "Tax calculation", "PDF export", "Email delivery"],
+              },
+              {
+                icon: TrendingUp,
+                title: "Analytics Dashboard",
+                features: ["Revenue tracking", "Labor costs", "Utilization rates", "Trend analysis"],
+              },
+              {
+                icon: Shield,
+                title: "Security & Compliance",
+                features: ["Multi-tenant isolation", "RBAC system", "Audit logs", "SOC 2 ready"],
+              },
+            ].map((module) => (
+              <Card
+                key={module.title}
+                className="bg-[hsl(var(--cad-surface-elevated))] border-[hsl(var(--cad-border-strong))] p-6 space-y-4 hover:border-[hsl(var(--cad-blue))]/50 transition-colors"
+                data-testid={`card-module-${module.title.toLowerCase().replace(/\s+/g, "-")}`}
               >
-                Start Free
-              </Button>
-            </Card>
-
-            <Card className="p-8 space-y-6 border-primary shadow-lg relative" data-testid="card-pricing-professional">
-              <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground">
-                Most Popular
-              </Badge>
-              <div className="space-y-2">
-                <h3 className="text-xl font-semibold">Professional</h3>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-4xl font-semibold">$49</span>
-                  <span className="text-muted-foreground">/month</span>
+                <div className="flex items-start justify-between">
+                  <module.icon className="h-6 w-6 text-[hsl(var(--cad-blue))]" />
+                  <Badge
+                    variant="outline"
+                    className="text-[10px] border-[hsl(var(--cad-border))] text-[hsl(var(--cad-text-tertiary))]"
+                  >
+                    ACTIVE
+                  </Badge>
                 </div>
-              </div>
-              <ul className="space-y-3 text-sm">
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-primary" />
-                  <span>Up to 25 employees</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-primary" />
-                  <span>Unlimited clients</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-primary" />
-                  <span>Advanced scheduling</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-primary" />
-                  <span>Automated invoicing</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-primary" />
-                  <span>Payment processing</span>
-                </li>
-              </ul>
-              <Button 
-                className="w-full"
-                onClick={() => window.location.href = "/api/login"}
-                data-testid="button-plan-professional"
-              >
-                Get Started
-              </Button>
-            </Card>
-
-            <Card className="p-8 space-y-6" data-testid="card-pricing-enterprise">
-              <div className="space-y-2">
-                <h3 className="text-xl font-semibold">Enterprise</h3>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-4xl font-semibold">$199</span>
-                  <span className="text-muted-foreground">/month</span>
+                <div className="space-y-2">
+                  <h3 className="text-base font-semibold text-[hsl(var(--cad-text-primary))]">
+                    {module.title}
+                  </h3>
+                  <ul className="space-y-1.5">
+                    {module.features.map((feature) => (
+                      <li
+                        key={feature}
+                        className="flex items-center gap-2 text-xs text-[hsl(var(--cad-text-secondary))]"
+                      >
+                        <CheckCircle2 className="h-3 w-3 text-[hsl(var(--cad-green))]" />
+                        {feature}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
-              </div>
-              <ul className="space-y-3 text-sm">
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-primary" />
-                  <span>Unlimited employees</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-primary" />
-                  <span>Unlimited clients</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-primary" />
-                  <span>Priority support</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-primary" />
-                  <span>Custom integrations</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-primary" />
-                  <span>Dedicated account manager</span>
-                </li>
-              </ul>
-              <Button 
-                className="w-full" 
-                variant="outline"
-                onClick={() => window.location.href = "/api/login"}
-                data-testid="button-plan-enterprise"
-              >
-                Contact Sales
-              </Button>
-            </Card>
+              </Card>
+            ))}
           </div>
         </div>
       </section>
 
       {/* CTA Section */}
-      <section className="container mx-auto px-6 py-24">
-        <div className="max-w-3xl mx-auto text-center space-y-8">
-          <div className="space-y-4">
-            <h2 className="text-3xl lg:text-4xl font-semibold tracking-tight" data-testid="text-cta-title">
-              Ready to Transform Your Scheduling?
+      <section className="border-t border-[hsl(var(--cad-border-strong))] bg-[hsl(var(--cad-chrome))]">
+        <div className="container mx-auto px-6 py-16">
+          <div className="max-w-3xl mx-auto text-center space-y-6">
+            <h2 className="text-3xl font-bold tracking-tight">
+              Ready for Fortune 500-Grade Control?
             </h2>
-            <p className="text-lg text-muted-foreground" data-testid="text-cta-description">
-              Join hundreds of service businesses using ShiftSync to streamline operations
+            <p className="text-lg text-[hsl(var(--cad-text-secondary))]">
+              Join businesses using Clockwork to manage workforce operations with precision
             </p>
+            <div className="flex justify-center gap-4">
+              <Button
+                size="lg"
+                onClick={() => window.location.href = "/api/login"}
+                className="bg-[hsl(var(--cad-blue))] hover:bg-[hsl(var(--cad-blue))]/90 text-white h-12 px-8"
+                data-testid="button-start-free"
+              >
+                Start Free Trial
+              </Button>
+              <Button
+                size="lg"
+                variant="outline"
+                onClick={() => window.location.href = "/api/demo-login"}
+                className="h-12 px-8 border-[hsl(var(--cad-border-strong))] text-[hsl(var(--cad-text-primary))] hover:bg-[hsl(var(--cad-chrome-hover))]"
+                data-testid="button-explore-demo"
+              >
+                Explore Demo
+              </Button>
+            </div>
           </div>
-          <Button 
-            size="lg"
-            onClick={() => window.location.href = "/api/login"}
-            data-testid="button-cta-start"
-          >
-            <TrendingUp className="mr-2 h-5 w-5" />
-            Start Your Free Trial
-          </Button>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t py-12">
-        <div className="container mx-auto px-6 text-center text-sm text-muted-foreground">
-          <p>© 2024 ShiftSync. All rights reserved.</p>
+      <footer className="border-t border-[hsl(var(--cad-border))] bg-[hsl(var(--cad-background))]">
+        <div className="container mx-auto px-6 py-8">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm text-[hsl(var(--cad-text-tertiary))]">
+              <ClockworkLogo size={24} variant="icon" />
+              <span>© 2024 Clockwork. Professional workforce management.</span>
+            </div>
+            <div className="flex gap-6 text-xs text-[hsl(var(--cad-text-tertiary))]">
+              <a href="#" className="hover:text-[hsl(var(--cad-text-primary))]">Documentation</a>
+              <a href="#" className="hover:text-[hsl(var(--cad-text-primary))]">Privacy</a>
+              <a href="#" className="hover:text-[hsl(var(--cad-text-primary))]">Terms</a>
+            </div>
+          </div>
         </div>
       </footer>
     </div>

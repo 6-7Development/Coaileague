@@ -16,6 +16,7 @@ import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { ClockworkLogo } from "@/components/clockwork-logo";
 
 const menuItems = [
   {
@@ -71,14 +72,12 @@ export function AppSidebar() {
 
   return (
     <Sidebar>
-      <SidebarHeader className="p-4 border-b">
+      <SidebarHeader className="p-4 border-b bg-[hsl(var(--cad-surface))] border-[hsl(var(--cad-border))]">
         <div className="flex items-center gap-3">
-          <div className="h-8 w-8 bg-primary rounded-md flex items-center justify-center">
-            <Building2 className="h-5 w-5 text-primary-foreground" />
-          </div>
+          <ClockworkLogo size={32} variant="icon" />
           <div className="flex flex-col">
-            <span className="text-sm font-semibold">ShiftSync</span>
-            <span className="text-xs text-muted-foreground">Workspace</span>
+            <span className="text-sm font-semibold text-[hsl(var(--cad-text-primary))]">Clockwork</span>
+            <span className="text-xs text-[hsl(var(--cad-text-tertiary))]">Workspace</span>
           </div>
         </div>
       </SidebarHeader>

@@ -1,7 +1,7 @@
-# ShiftSync - Multi-Tenant SaaS Scheduling Platform
+# Clockwork - Fortune 500 Workforce Management Platform
 
 ## Project Overview
-ShiftSync is a comprehensive multi-tenant scheduling and workforce management platform where businesses subscribe to manage employee schedules, track time, and handle client appointments. The platform processes payments from end customers, takes a configurable platform fee, and distributes the remainder to business subscribers (similar to QuickBooks model).
+Clockwork is a professional CAD-style workforce management platform with Fortune 500-grade precision. The platform features autonomous scheduling, GPS clock-in verification, time tracking, and automated invoicing. The platform processes payments from end customers, takes a configurable platform fee, and distributes the remainder to business subscribers (similar to QuickBooks model).
 
 ## Architecture
 - **Frontend**: React + Vite + TypeScript + Wouter (routing) + TanStack Query + shadcn/ui
