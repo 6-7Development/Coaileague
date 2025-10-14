@@ -27,6 +27,7 @@ import Clients from "@/pages/clients";
 import Invoices from "@/pages/invoices";
 import Analytics from "@/pages/analytics";
 import Settings from "@/pages/settings";
+import OnboardingPage from "@/pages/onboarding";
 
 function AppContent() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -50,6 +51,7 @@ function AppContent() {
       <Switch>
         <Route path="/" component={Landing} />
         <Route path="/pricing" component={Pricing} />
+        <Route path="/onboarding/:token" component={OnboardingPage} />
         <Route component={Landing} />
       </Switch>
     );
