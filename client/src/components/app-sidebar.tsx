@@ -16,7 +16,7 @@ import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { ClockworkLogo } from "@/components/clockwork-logo";
+import { WorkforceOSLogo } from "@/components/workforceos-logo";
 
 const menuItems = [
   {
@@ -73,13 +73,7 @@ export function AppSidebar() {
   return (
     <Sidebar>
       <SidebarHeader className="p-4 border-b bg-[hsl(var(--cad-surface))] border-[hsl(var(--cad-border))]">
-        <div className="flex items-center gap-3">
-          <ClockworkLogo size={32} variant="icon" />
-          <div className="flex flex-col">
-            <span className="text-sm font-semibold text-[hsl(var(--cad-text-primary))]">Clockwork</span>
-            <span className="text-xs text-[hsl(var(--cad-text-tertiary))]">Workspace</span>
-          </div>
-        </div>
+        <WorkforceOSLogo size="sm" showText={true} />
       </SidebarHeader>
       
       <SidebarContent>
