@@ -6,6 +6,7 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { 
   Plus,
   ChevronLeft,
@@ -368,8 +369,25 @@ export default function Schedule() {
         </div>
 
         {shiftsLoading ? (
-          <div className="flex justify-center py-8">
-            <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
+          <div className="grid grid-cols-7 gap-2">
+            {weekDates.map((date, index) => (
+              <Card key={index}>
+                <div className="p-3 border-b">
+                  <Skeleton className="h-4 w-12 mb-1" />
+                  <Skeleton className="h-7 w-8" />
+                </div>
+                <div className="p-2 space-y-2 min-h-[200px]">
+                  <Card className="p-2">
+                    <Skeleton className="h-4 w-24 mb-1" />
+                    <Skeleton className="h-3 w-20" />
+                  </Card>
+                  <Card className="p-2">
+                    <Skeleton className="h-4 w-28 mb-1" />
+                    <Skeleton className="h-3 w-16" />
+                  </Card>
+                </div>
+              </Card>
+            ))}
           </div>
         ) : (
           <div className="grid grid-cols-7 gap-2">
