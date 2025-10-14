@@ -273,31 +273,45 @@ Business Amount = Total - Platform Fee
 
 **Total**: 35 fully functional endpoints + 2 ready for Stripe activation
 
-## Pricing Tiers
+## Pricing Tiers (Fortune 500 Value-Based)
 
-### Starter - $49/month
+### Starter - $199/month
+**Replaces manual scheduling ($45k/year in savings)**
 - Up to 15 employees
-- Drag-drop scheduling
+- Smart scheduling with AI suggestions
 - Shift templates & recurring shifts
 - Time tracking with clock-in/out
 - Auto-invoice generation
-- Basic analytics
-- Email support
+- Basic analytics dashboard
+- Employee portal access
+- Email & chat support
 
-### Professional - $149/month (Most Popular)
+### Professional - $799/month (Most Popular)
+**Replaces HR + Scheduling teams ($130k/year in savings)**
 - Up to 100 employees
-- All Starter features
+- Everything in Starter
+- **GPS clock-in verification**
+- **Job posting & hiring workflow**
+- **Employee file management**
+- **Audit compliance tools**
 - Multi-client management
 - Manager assignments (RBAC)
-- Advanced analytics
+- Advanced analytics & forecasting
 - Priority support
 
-### Enterprise - Custom Pricing
+### Enterprise - $2,499/month
+**Replaces entire workforce operations ($250k+/year in savings)**
 - Unlimited employees
-- All Professional features
-- Priority support & SLA
+- Everything in Professional
+- **Auto-payroll processing**
+- **API access & webhooks**
+- **SSO/SAML integration**
+- **White-label branding**
+- Custom integrations (ADP, Workday, QuickBooks)
 - Dedicated account manager
-- Future features (2025): Custom integrations, API access & webhooks, white-label options, SSO/SAML, audit compliance, auto-payroll, GPS verification
+- 99.9% uptime SLA
+- Priority phone support
+- Custom feature development
 
 ## Fortune 500 Feature Roadmap
 

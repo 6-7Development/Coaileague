@@ -67,29 +67,29 @@ export default function Landing() {
               </div>
               
               <h1 className="text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1]" data-testid="text-hero-title">
-                Professional Workforce
+                Replace Your Entire
                 <br />
-                <span className="text-[hsl(var(--cad-blue))]">Management Platform</span>
+                <span className="text-[hsl(var(--cad-blue))]">Workforce Department</span>
               </h1>
               
               <p className="text-lg text-[hsl(var(--cad-text-secondary))] leading-relaxed" data-testid="text-hero-description">
-                Smart scheduling with drag-and-drop calendar, real-time time tracking with clock-in/out, 
-                automated invoice generation, and comprehensive analytics. Built with Fortune 500-grade architecture.
+                Fortune 500-grade platform with GPS clock-in verification, automated payroll processing, 
+                job posting & hiring, employee file management, and audit compliance. Save $130k-250k/year.
               </p>
 
               {/* Key Metrics */}
               <div className="grid grid-cols-3 gap-4 pt-4">
                 <div className="space-y-1">
-                  <div className="text-2xl font-bold text-[hsl(var(--cad-cyan))] font-mono">35+</div>
-                  <div className="text-xs text-[hsl(var(--cad-text-tertiary))] uppercase">API Endpoints</div>
+                  <div className="text-2xl font-bold text-[hsl(var(--cad-cyan))] font-mono">$130k-250k</div>
+                  <div className="text-xs text-[hsl(var(--cad-text-tertiary))] uppercase">Annual Savings</div>
                 </div>
                 <div className="space-y-1">
-                  <div className="text-2xl font-bold text-[hsl(var(--cad-green))] font-mono">Multi</div>
-                  <div className="text-xs text-[hsl(var(--cad-text-tertiary))] uppercase">Tenant</div>
+                  <div className="text-2xl font-bold text-[hsl(var(--cad-green))] font-mono">3 Teams</div>
+                  <div className="text-xs text-[hsl(var(--cad-text-tertiary))] uppercase">Replaced</div>
                 </div>
                 <div className="space-y-1">
-                  <div className="text-2xl font-bold text-[hsl(var(--cad-purple))] font-mono">RBAC</div>
-                  <div className="text-xs text-[hsl(var(--cad-text-tertiary))] uppercase">Security</div>
+                  <div className="text-2xl font-bold text-[hsl(var(--cad-purple))] font-mono">F500</div>
+                  <div className="text-xs text-[hsl(var(--cad-text-tertiary))] uppercase">Grade</div>
                 </div>
               </div>
 
@@ -168,15 +168,15 @@ export default function Landing() {
               {/* Floating feature badges */}
               <div className="absolute -right-4 top-1/4 bg-[hsl(var(--cad-surface-elevated))] border border-[hsl(var(--cad-border-strong))] rounded-lg p-3 shadow-lg">
                 <div className="flex items-center gap-2 text-sm">
-                  <Clock className="h-4 w-4 text-[hsl(var(--cad-green))]" />
-                  <span className="text-[hsl(var(--cad-text-secondary))]">Real-Time Tracking</span>
+                  <MapPin className="h-4 w-4 text-[hsl(var(--cad-green))]" />
+                  <span className="text-[hsl(var(--cad-text-secondary))]">GPS Verified</span>
                 </div>
               </div>
               
               <div className="absolute -left-4 bottom-1/4 bg-[hsl(var(--cad-surface-elevated))] border border-[hsl(var(--cad-border-strong))] rounded-lg p-3 shadow-lg">
                 <div className="flex items-center gap-2 text-sm">
-                  <FileText className="h-4 w-4 text-[hsl(var(--cad-purple))]" />
-                  <span className="text-[hsl(var(--cad-text-secondary))]">Auto-Invoicing</span>
+                  <Zap className="h-4 w-4 text-[hsl(var(--cad-purple))]" />
+                  <span className="text-[hsl(var(--cad-text-secondary))]">Auto-Payroll</span>
                 </div>
               </div>
             </div>
@@ -188,17 +188,19 @@ export default function Landing() {
       <section className="border-y border-[hsl(var(--cad-border-strong))] bg-[hsl(var(--cad-surface))]">
         <div className="container mx-auto px-6 py-16">
           <div className="text-center mb-8">
-            <h2 className="text-2xl font-bold mb-2">Core Capabilities</h2>
+            <h2 className="text-2xl font-bold mb-2">Fortune 500 Feature Set</h2>
             <p className="text-sm text-[hsl(var(--cad-text-tertiary))]">
-              Available now • More features coming in 2025
+              All features available now • Replace HR, scheduling & payroll teams
             </p>
           </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
             {[
-              { icon: Cpu, label: "Smart Scheduling", desc: "Drag-drop calendar with templates", color: "purple", available: true },
-              { icon: Clock, label: "Time Tracking", desc: "Clock-in/out with live timers", color: "green", available: true },
-              { icon: FileText, label: "Auto-Invoicing", desc: "Generate invoices from time", color: "blue", available: true },
-              { icon: TrendingUp, label: "Analytics Dashboard", desc: "Revenue, hours, usage metrics", color: "cyan", available: true },
+              { icon: Cpu, label: "Smart Scheduling", desc: "AI-powered shift assignments", color: "purple" },
+              { icon: MapPin, label: "GPS Clock-In", desc: "Location-verified timecards", color: "green" },
+              { icon: Zap, label: "Auto-Payroll", desc: "Automated payroll processing", color: "cyan" },
+              { icon: FileText, label: "Employee Files", desc: "Document & certification management", color: "blue" },
+              { icon: Users, label: "Job Posting", desc: "Internal hiring & applications", color: "orange" },
+              { icon: Shield, label: "Audit Compliance", desc: "Immutable audit trail logs", color: "red" },
             ].map((feature) => (
               <Card key={feature.label} className="bg-[hsl(var(--cad-surface))] border-[hsl(var(--cad-border))] p-6 space-y-3 relative">
                 <Badge className="absolute top-4 right-4 bg-[hsl(var(--cad-green))]/10 text-[hsl(var(--cad-green))] text-[10px] px-2 py-0.5 border-none">
@@ -239,38 +241,38 @@ export default function Landing() {
             {[
               {
                 icon: Settings,
-                title: "Shift Scheduling",
-                features: ["Drag-drop interface", "Visual calendar", "Template system", "Recurring shifts"],
+                title: "Smart Scheduling",
+                features: ["AI-powered suggestions", "Conflict detection", "Template system", "Recurring shifts"],
                 status: "LIVE"
               },
               {
-                icon: Clock,
-                title: "Time Tracking",
-                features: ["Clock-in/clock-out", "Real-time timers", "Hourly rate calc", "Automatic amounts"],
+                icon: MapPin,
+                title: "GPS Clock-In",
+                features: ["Location verification", "Geofence alerts", "Device tracking", "Anti-fraud protection"],
                 status: "LIVE"
               },
               {
-                icon: Users,
-                title: "Team Management",
-                features: ["Role-based access", "Manager assignments", "Employee records", "Client management"],
+                icon: Zap,
+                title: "Auto-Payroll",
+                features: ["Tax calculations", "Federal & state withholding", "Direct deposit ready", "Payroll reports"],
                 status: "LIVE"
               },
               {
                 icon: FileText,
-                title: "Invoice Generator",
-                features: ["Auto-generation from time", "Tax calculation", "Platform fees", "Multi-client support"],
+                title: "Employee Files",
+                features: ["Document storage", "Certification tracking", "Expiration alerts", "Audit-ready"],
                 status: "LIVE"
               },
               {
-                icon: TrendingUp,
-                title: "Analytics Dashboard",
-                features: ["Revenue tracking", "Hours worked", "Usage metrics", "Invoice stats"],
+                icon: Users,
+                title: "Job Posting",
+                features: ["Internal hiring", "Application tracking", "Interview scheduling", "Candidate pipeline"],
                 status: "LIVE"
               },
               {
                 icon: Shield,
-                title: "Security & Compliance",
-                features: ["Multi-tenant isolation", "RBAC system", "Data scoping", "Workspace ownership"],
+                title: "Audit Compliance",
+                features: ["Immutable logs", "State-compliant", "FLSA tracking", "eDiscovery ready"],
                 status: "LIVE"
               },
             ].map((module) => (

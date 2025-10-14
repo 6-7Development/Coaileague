@@ -484,3 +484,256 @@ export const invoiceLineItemsRelations = relations(invoiceLineItems, ({ one }) =
     references: [shifts.id],
   }),
 }));
+
+// ============================================================================
+// FORTUNE 500 FEATURES - Job Posting & Hiring
+// ============================================================================
+
+export const jobPostingStatusEnum = pgEnum('job_posting_status', ['draft', 'active', 'closed', 'filled']);
+export const applicationStatusEnum = pgEnum('application_status', ['pending', 'reviewed', 'interviewed', 'offered', 'hired', 'rejected']);
+
+export const jobPostings = pgTable("job_postings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  title: varchar("title").notNull(),
+  department: varchar("department"),
+  location: varchar("location"),
+  employmentType: varchar("employment_type"), // 'full-time', 'part-time', 'contract'
+  description: text("description").notNull(),
+  requirements: text("requirements"),
+  
+  salaryMin: decimal("salary_min", { precision: 10, scale: 2 }),
+  salaryMax: decimal("salary_max", { precision: 10, scale: 2 }),
+  
+  status: jobPostingStatusEnum("status").default("draft"),
+  postedBy: varchar("posted_by").references(() => users.id),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  closedAt: timestamp("closed_at"),
+});
+
+export const insertJobPostingSchema = createInsertSchema(jobPostings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertJobPosting = z.infer<typeof insertJobPostingSchema>;
+export type JobPosting = typeof jobPostings.$inferSelect;
+
+export const jobApplications = pgTable("job_applications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  jobPostingId: varchar("job_posting_id").notNull().references(() => jobPostings.id, { onDelete: 'cascade' }),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  applicantName: varchar("applicant_name").notNull(),
+  applicantEmail: varchar("applicant_email").notNull(),
+  applicantPhone: varchar("applicant_phone"),
+  resumeUrl: varchar("resume_url"),
+  coverLetter: text("cover_letter"),
+  
+  status: applicationStatusEnum("status").default("pending"),
+  reviewedBy: varchar("reviewed_by").references(() => users.id),
+  notes: text("notes"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertJobApplicationSchema = createInsertSchema(jobApplications).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertJobApplication = z.infer<typeof insertJobApplicationSchema>;
+export type JobApplication = typeof jobApplications.$inferSelect;
+
+// ============================================================================
+// FORTUNE 500 FEATURES - Employee File Management
+// ============================================================================
+
+export const documentTypeEnum = pgEnum('document_type', ['certification', 'license', 'contract', 'policy', 'id', 'other']);
+
+export const employeeFiles = pgTable("employee_files", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
+  
+  fileName: varchar("file_name").notNull(),
+  fileUrl: varchar("file_url").notNull(),
+  fileSize: integer("file_size"), // bytes
+  mimeType: varchar("mime_type"),
+  
+  documentType: documentTypeEnum("document_type").default("other"),
+  title: varchar("title").notNull(),
+  description: text("description"),
+  
+  expirationDate: timestamp("expiration_date"),
+  isExpired: boolean("is_expired").default(false),
+  
+  uploadedBy: varchar("uploaded_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertEmployeeFileSchema = createInsertSchema(employeeFiles).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertEmployeeFile = z.infer<typeof insertEmployeeFileSchema>;
+export type EmployeeFile = typeof employeeFiles.$inferSelect;
+
+// ============================================================================
+// FORTUNE 500 FEATURES - Audit Trail System
+// ============================================================================
+
+export const auditActionEnum = pgEnum('audit_action', [
+  'create', 'update', 'delete', 
+  'login', 'logout', 
+  'clock_in', 'clock_out',
+  'generate_invoice', 'payment_received',
+  'assign_manager', 'remove_manager'
+]);
+
+export const auditLogs = pgTable("audit_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  userId: varchar("user_id").references(() => users.id),
+  action: auditActionEnum("action").notNull(),
+  entityType: varchar("entity_type").notNull(), // 'employee', 'shift', 'invoice', etc.
+  entityId: varchar("entity_id"),
+  
+  changes: jsonb("changes"), // { before: {...}, after: {...} }
+  metadata: jsonb("metadata"), // Additional context
+  ipAddress: varchar("ip_address"),
+  userAgent: varchar("user_agent"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type AuditLog = typeof auditLogs.$inferSelect;
+
+// ============================================================================
+// FORTUNE 500 FEATURES - API Access
+// ============================================================================
+
+export const apiKeys = pgTable("api_keys", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  name: varchar("name").notNull(),
+  keyHash: varchar("key_hash").notNull().unique(), // Hashed API key
+  keyPrefix: varchar("key_prefix").notNull(), // First 8 chars for display
+  
+  scopes: text("scopes").array(), // ['read:employees', 'write:shifts', etc.]
+  isActive: boolean("is_active").default(true),
+  
+  lastUsedAt: timestamp("last_used_at"),
+  expiresAt: timestamp("expires_at"),
+  
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  revokedAt: timestamp("revoked_at"),
+});
+
+export const insertApiKeySchema = createInsertSchema(apiKeys).omit({
+  id: true,
+  createdAt: true,
+  lastUsedAt: true,
+  revokedAt: true,
+});
+
+export type InsertApiKey = z.infer<typeof insertApiKeySchema>;
+export type ApiKey = typeof apiKeys.$inferSelect;
+
+// ============================================================================
+// FORTUNE 500 FEATURES - GPS Clock-in Verification
+// ============================================================================
+
+export const gpsLocations = pgTable("gps_locations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  timeEntryId: varchar("time_entry_id").references(() => timeEntries.id, { onDelete: 'cascade' }),
+  
+  latitude: decimal("latitude", { precision: 10, scale: 7 }).notNull(),
+  longitude: decimal("longitude", { precision: 10, scale: 7 }).notNull(),
+  accuracy: decimal("accuracy", { precision: 6, scale: 2 }), // meters
+  
+  address: varchar("address"),
+  verified: boolean("verified").default(false),
+  deviceInfo: jsonb("device_info"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type GpsLocation = typeof gpsLocations.$inferSelect;
+
+// ============================================================================
+// FORTUNE 500 FEATURES - Payroll Automation
+// ============================================================================
+
+export const payrollStatusEnum = pgEnum('payroll_status', ['draft', 'pending', 'approved', 'processed', 'paid']);
+
+export const payrollRuns = pgTable("payroll_runs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  periodStart: timestamp("period_start").notNull(),
+  periodEnd: timestamp("period_end").notNull(),
+  
+  status: payrollStatusEnum("status").default("draft"),
+  
+  totalGrossPay: decimal("total_gross_pay", { precision: 12, scale: 2 }).default("0.00"),
+  totalTaxes: decimal("total_taxes", { precision: 12, scale: 2 }).default("0.00"),
+  totalNetPay: decimal("total_net_pay", { precision: 12, scale: 2 }).default("0.00"),
+  
+  processedBy: varchar("processed_by").references(() => users.id),
+  processedAt: timestamp("processed_at"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertPayrollRunSchema = createInsertSchema(payrollRuns).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertPayrollRun = z.infer<typeof insertPayrollRunSchema>;
+export type PayrollRun = typeof payrollRuns.$inferSelect;
+
+export const payrollEntries = pgTable("payroll_entries", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  payrollRunId: varchar("payroll_run_id").notNull().references(() => payrollRuns.id, { onDelete: 'cascade' }),
+  employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  regularHours: decimal("regular_hours", { precision: 8, scale: 2 }).default("0.00"),
+  overtimeHours: decimal("overtime_hours", { precision: 8, scale: 2 }).default("0.00"),
+  hourlyRate: decimal("hourly_rate", { precision: 10, scale: 2 }).notNull(),
+  
+  grossPay: decimal("gross_pay", { precision: 10, scale: 2 }).default("0.00"),
+  federalTax: decimal("federal_tax", { precision: 10, scale: 2 }).default("0.00"),
+  stateTax: decimal("state_tax", { precision: 10, scale: 2 }).default("0.00"),
+  socialSecurity: decimal("social_security", { precision: 10, scale: 2 }).default("0.00"),
+  medicare: decimal("medicare", { precision: 10, scale: 2 }).default("0.00"),
+  netPay: decimal("net_pay", { precision: 10, scale: 2 }).default("0.00"),
+  
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertPayrollEntrySchema = createInsertSchema(payrollEntries).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertPayrollEntry = z.infer<typeof insertPayrollEntrySchema>;
+export type PayrollEntry = typeof payrollEntries.$inferSelect;
