@@ -245,8 +245,21 @@ export default function Support() {
             {resourceCategories.map((category) => (
               <Card
                 key={category.title}
-                className="bg-[hsl(var(--cad-surface-elevated))] border-[hsl(var(--cad-border-strong))] p-6 space-y-4 hover:border-[hsl(var(--cad-blue))]/50 transition-colors cursor-pointer"
+                className="bg-[hsl(var(--cad-surface-elevated))] border-[hsl(var(--cad-border-strong))] p-6 space-y-4 hover:border-[hsl(var(--cad-blue))]/50 hover-elevate active-elevate-2 transition-all duration-200 cursor-pointer"
                 data-testid={`card-resource-${category.title.toLowerCase().replace(/\s+/g, "-")}`}
+                onClick={() => {
+                  if (category.title === "Documentation") {
+                    window.open("/docs/LOGIN_GUIDE.md", "_blank");
+                  } else if (category.title === "Knowledge Base") {
+                    window.open("/docs/FEATURES_SHOWCASE.md", "_blank");
+                  } else if (category.title === "Video Tutorials") {
+                    window.open("/api/demo-login", "_self");
+                  } else if (category.title === "Keyboard Shortcuts") {
+                    // Trigger command palette
+                    const event = new KeyboardEvent('keydown', { key: 'k', ctrlKey: true });
+                    document.dispatchEvent(event);
+                  }
+                }}
               >
                 <div className={`h-12 w-12 rounded-md bg-[hsl(var(--cad-${category.color}))]/10 flex items-center justify-center`}>
                   <category.icon className={`h-6 w-6 text-[hsl(var(--cad-${category.color}))]`} />
@@ -259,7 +272,7 @@ export default function Support() {
                 </div>
                 <ul className="space-y-1.5 pt-2 border-t border-[hsl(var(--cad-border))]">
                   {category.items.map((item) => (
-                    <li key={item} className="text-xs text-[hsl(var(--cad-text-secondary))] flex items-center gap-2 hover:text-[hsl(var(--cad-text-primary))] cursor-pointer">
+                    <li key={item} className="text-xs text-[hsl(var(--cad-text-secondary))] flex items-center gap-2 hover:text-[hsl(var(--cad-text-primary))] transition-colors">
                       <ExternalLink className="h-3 w-3" />
                       {item}
                     </li>
@@ -275,17 +288,24 @@ export default function Support() {
           <h2 className="text-2xl font-bold mb-6">Popular Topics</h2>
           <div className="grid md:grid-cols-3 gap-6">
             {[
-              { icon: Users, title: "Employee Management", articles: 24 },
-              { icon: Clock, title: "Time Tracking & GPS", articles: 18 },
-              { icon: DollarSign, title: "Invoicing & Payments", articles: 15 },
-              { icon: Settings, title: "Workspace Settings", articles: 21 },
-              { icon: Shield, title: "Security & Compliance", articles: 12 },
-              { icon: Zap, title: "Integrations & API", articles: 16 },
+              { icon: Users, title: "Employee Management", articles: 24, path: "/employees" },
+              { icon: Clock, title: "Time Tracking & GPS", articles: 18, path: "/time-tracking" },
+              { icon: DollarSign, title: "Invoicing & Payments", articles: 15, path: "/invoices" },
+              { icon: Settings, title: "Workspace Settings", articles: 21, path: "/settings" },
+              { icon: Shield, title: "Security & Compliance", articles: 12, action: () => window.open("/docs/SECURITY.md", "_blank") },
+              { icon: Zap, title: "Integrations & API", articles: 16, path: "/settings" },
             ].map((topic) => (
               <Card
                 key={topic.title}
-                className="bg-[hsl(var(--cad-surface))] border-[hsl(var(--cad-border))] p-5 flex items-center gap-4 hover:border-[hsl(var(--cad-blue))]/50 transition-colors cursor-pointer"
+                className="bg-[hsl(var(--cad-surface))] border-[hsl(var(--cad-border))] p-5 flex items-center gap-4 hover:border-[hsl(var(--cad-blue))]/50 hover-elevate active-elevate-2 transition-all duration-200 cursor-pointer"
                 data-testid={`card-topic-${topic.title.toLowerCase().replace(/\s+/g, "-")}`}
+                onClick={() => {
+                  if (topic.action) {
+                    topic.action();
+                  } else if (topic.path) {
+                    window.location.href = topic.path;
+                  }
+                }}
               >
                 <topic.icon className="h-5 w-5 text-[hsl(var(--cad-blue))]" />
                 <div className="flex-1">
@@ -348,6 +368,11 @@ export default function Support() {
               variant="outline"
               className="w-full border-[hsl(var(--cad-purple))] text-[hsl(var(--cad-purple))] hover:bg-[hsl(var(--cad-purple))]/10"
               data-testid="button-download-resources"
+              onClick={() => {
+                // Open the features showcase and login guide
+                window.open("/docs/FEATURES_SHOWCASE.md", "_blank");
+                setTimeout(() => window.open("/docs/LOGIN_GUIDE.md", "_blank"), 500);
+              }}
             >
               Browse Downloads
             </Button>
@@ -365,6 +390,7 @@ export default function Support() {
               variant="outline"
               className="w-full border-[hsl(var(--cad-green))] text-[hsl(var(--cad-green))] hover:bg-[hsl(var(--cad-green))]/10"
               data-testid="button-watch-tutorials"
+              onClick={() => window.location.href = "/api/demo-login"}
             >
               Watch Tutorials
             </Button>

@@ -17,6 +17,7 @@ import { CADMenuBar } from "@/components/cad-menu-bar";
 import { CADToolbar } from "@/components/cad-toolbar";
 import { CADStatusBar } from "@/components/cad-status-bar";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { CommandPalette } from "@/components/command-palette";
 import { useAuth } from "@/hooks/useAuth";
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
@@ -68,6 +69,7 @@ function AppContent() {
   return (
     <ProtectedRoute>
       <SidebarProvider style={style as React.CSSProperties}>
+        <CommandPalette />
         <div className="flex flex-col h-screen w-full bg-[hsl(var(--cad-background))] relative">
           {/* Animated Background Mesh */}
           <div className="bg-mesh" aria-hidden="true" />
