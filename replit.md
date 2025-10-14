@@ -97,12 +97,10 @@ The platform features a CAD-style professional interface with an application fra
 10. **WAF Integration**: Web Application Firewall for advanced threat protection
 
 ### Monetization Strategy & Feature Tiers
-**Pricing Architecture (Cost-Plus Model):**
-- **Basic Tier** ($49/month): Core employee/client management, basic scheduling, time tracking
-- **Professional Tier** ($149/month): + Invoice generation, analytics dashboard, employee onboarding
-- **Premium Tier** ($299/month): + RMS, GPS tracking, advanced RBAC, compliance tools
-- **Enterprise Tier** ($599/month): + White-label RMS, custom branding, API access, SSO, dedicated support
-- **Add-Ons**: Automated payroll (+$99/month), SMS notifications (+$29/month), Advanced analytics (+$79/month)
+**Premium Pricing Architecture (High-Value Model - 90% Profit Margin):**
+- **Professional Tier** ($799/month): Replace scheduler + billing clerk positions. Saves $75k-$90k/year. Features: Smart scheduling (Better than Sling), auto-billing, GPS clock-in, photo timestamps, RMS, onboarding, analytics. Up to 50 employees.
+- **Enterprise Tier** ($2,999/month): Replace HR + Payroll + Scheduling + Billing teams. Saves $164k-$200k/year. Features: Everything in Professional + Auto-payroll, full RMS with customer portal, SOC2 compliance, RBAC, job posting, advanced analytics. Up to 250 employees.
+- **Fortune 500 Tier** ($7,999/month): Replace entire workforce department (5+ staff positions). Saves $409k-$505k/year. Features: Everything in Enterprise + White-label RMS, API access, custom integrations (ADP, Workday, QuickBooks), dedicated account manager, 99.95% SLA, custom development, priority 1-hour support. Unlimited employees.
 
 **White-Label RMS Capability** (Enterprise Add-On +$199/month):
 - Custom branding per workspace (logo, colors, domain)
