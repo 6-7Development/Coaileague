@@ -41,7 +41,9 @@ export default function Employees() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
+  const [isApprovalDialogOpen, setIsApprovalDialogOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+  const [approvalPayRate, setApprovalPayRate] = useState("");
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -157,6 +159,48 @@ export default function Employees() {
     }
   };
 
+  const approveMutation = useMutation({
+    mutationFn: async (data: { employeeId: string; hourlyRate: number }) => {
+      return await apiRequest("POST", "/api/employees/approve", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/employees"] });
+      toast({
+        title: "Employee Approved",
+        description: "Employee has been approved and activated with pay rate set",
+      });
+      setIsApprovalDialogOpen(false);
+      setSelectedEmployee(null);
+      setApprovalPayRate("");
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to approve employee",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleApproveEmployee = () => {
+    if (!selectedEmployee?.id) return;
+    
+    const rate = parseFloat(approvalPayRate);
+    if (isNaN(rate) || rate <= 0) {
+      toast({
+        title: "Invalid Pay Rate",
+        description: "Please enter a valid hourly rate greater than 0",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    approveMutation.mutate({
+      employeeId: selectedEmployee.id,
+      hourlyRate: rate,
+    });
+  };
+
   const getOnboardingStatusBadge = (status?: string) => {
     if (!status || status === 'not_started') {
       return (
@@ -171,6 +215,14 @@ export default function Employees() {
         <Badge variant="default" className="text-xs">
           <Clock className="h-3 w-3 mr-1" />
           In Progress
+        </Badge>
+      );
+    }
+    if (status === 'pending_review') {
+      return (
+        <Badge variant="default" className="text-xs bg-orange-600 hover:bg-orange-700">
+          <AlertCircle className="h-3 w-3 mr-1" />
+          Pending Approval
         </Badge>
       );
     }
@@ -192,6 +244,8 @@ export default function Employees() {
   const filteredEmployees = employees?.filter(emp =>
     `${emp.firstName} ${emp.lastName}`.toLowerCase().includes(searchQuery.toLowerCase())
   ) || [];
+
+  const pendingApprovals = employees?.filter(emp => emp.onboardingStatus === 'pending_review') || [];
 
   return (
     <ModernLayout>
@@ -316,6 +370,32 @@ export default function Employees() {
           />
         </div>
 
+        {/* Pending Approvals Alert */}
+        {pendingApprovals.length > 0 && (
+          <Card className="border-orange-500/50 bg-orange-500/10" data-testid="alert-pending-approvals">
+            <CardContent className="p-4">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="h-5 w-5 text-orange-600 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <h4 className="font-semibold text-orange-900 dark:text-orange-100">
+                    {pendingApprovals.length} Employee{pendingApprovals.length > 1 ? 's' : ''} Pending Approval
+                  </h4>
+                  <p className="text-sm text-orange-800 dark:text-orange-200 mt-1">
+                    These employees completed onboarding but need pay rates set before they can be activated for work. Click "Approve & Set Pay Rate" to review and activate them.
+                  </p>
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {pendingApprovals.map(emp => (
+                      <Badge key={emp.id} variant="secondary" className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100">
+                        {emp.firstName} {emp.lastName}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {isLoading ? (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {[1, 2, 3, 4, 5, 6].map((i) => (
@@ -395,7 +475,22 @@ export default function Employees() {
                       ${employee.hourlyRate || "0"}/hr
                     </span>
                   </div>
-                  {employee.onboardingStatus !== 'completed' && (
+                  {employee.onboardingStatus === 'pending_review' && (
+                    <Button
+                      className="w-full mt-2 bg-orange-600 hover:bg-orange-700"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedEmployee(employee);
+                        setApprovalPayRate(employee.hourlyRate || "");
+                        setIsApprovalDialogOpen(true);
+                      }}
+                      data-testid={`button-approve-${employee.id}`}
+                    >
+                      <CheckCircle2 className="h-3 w-3 mr-2" />
+                      Approve & Set Pay Rate
+                    </Button>
+                  )}
+                  {employee.onboardingStatus !== 'completed' && employee.onboardingStatus !== 'pending_review' && (
                     <Button
                       variant="outline"
                       size="sm"
@@ -462,6 +557,77 @@ export default function Employees() {
                 data-testid="button-confirm-invite"
               >
                 {inviteMutation.isPending ? "Sending..." : "Send Invitation"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Approval Dialog */}
+        <Dialog open={isApprovalDialogOpen} onOpenChange={setIsApprovalDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Approve Employee & Set Pay Rate</DialogTitle>
+              <DialogDescription>
+                {selectedEmployee?.firstName} {selectedEmployee?.lastName} has completed onboarding. Set their hourly pay rate to activate them for work.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Employee:</span>
+                  <span className="font-medium">
+                    {selectedEmployee?.firstName} {selectedEmployee?.lastName}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Email:</span>
+                  <span className="font-medium">{selectedEmployee?.email}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Role:</span>
+                  <span className="font-medium">{selectedEmployee?.role || "Employee"}</span>
+                </div>
+              </div>
+              
+              <div className="border-t pt-4">
+                <Label htmlFor="payRate">Hourly Pay Rate * (Required)</Label>
+                <div className="flex items-center gap-2 mt-2">
+                  <DollarSign className="h-5 w-5 text-muted-foreground" />
+                  <Input
+                    id="payRate"
+                    type="number"
+                    step="0.01"
+                    placeholder="25.00"
+                    value={approvalPayRate}
+                    onChange={(e) => setApprovalPayRate(e.target.value)}
+                    data-testid="input-approval-pay-rate"
+                  />
+                  <span className="text-sm text-muted-foreground">/hour</span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  This rate will be used for payroll calculations and time tracking
+                </p>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsApprovalDialogOpen(false);
+                  setSelectedEmployee(null);
+                  setApprovalPayRate("");
+                }}
+                data-testid="button-cancel-approval"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleApproveEmployee}
+                disabled={approveMutation.isPending}
+                className="bg-green-600 hover:bg-green-700"
+                data-testid="button-confirm-approval"
+              >
+                {approveMutation.isPending ? "Approving..." : "Approve & Activate"}
               </Button>
             </DialogFooter>
           </DialogContent>

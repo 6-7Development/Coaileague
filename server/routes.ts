@@ -34,6 +34,7 @@ import {
 } from "@shared/schema";
 import crypto from "crypto";
 import { sql } from "drizzle-orm";
+import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
@@ -344,6 +345,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting employee:", error);
       res.status(500).json({ message: "Failed to delete employee" });
+    }
+  });
+
+  // Approve employee and set pay rate (post-onboarding) - MANAGER/OWNER ONLY
+  app.post('/api/employees/approve', requireManager, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user?.currentWorkspaceId) {
+        return res.status(403).json({ message: "No workspace selected" });
+      }
+
+      // Validate request body
+      const approvalSchema = z.object({
+        employeeId: z.string().min(1, "Employee ID is required"),
+        hourlyRate: z.number().positive("Hourly rate must be greater than 0"),
+      });
+
+      const { employeeId, hourlyRate } = approvalSchema.parse(req.body);
+
+      // Get employee and verify status (also validates workspace ownership)
+      const existingEmployee = await storage.getEmployee(employeeId, user.currentWorkspaceId);
+      
+      if (!existingEmployee) {
+        return res.status(404).json({ message: "Employee not found or does not belong to your workspace" });
+      }
+
+      if (existingEmployee.onboardingStatus !== 'pending_review') {
+        return res.status(400).json({ 
+          message: `Employee must be in 'pending_review' status. Current status: ${existingEmployee.onboardingStatus}` 
+        });
+      }
+
+      // Update employee with pay rate and mark as completed
+      const employee = await storage.updateEmployee(employeeId, user.currentWorkspaceId, {
+        hourlyRate: hourlyRate.toString(),
+        onboardingStatus: 'completed',
+      });
+
+      if (!employee) {
+        return res.status(404).json({ message: "Failed to update employee" });
+      }
+
+      // Audit log
+      console.log(`[AUDIT] Manager ${userId} approved employee ${employeeId} with hourly rate $${hourlyRate}`);
+
+      res.json(employee);
+    } catch (error: any) {
+      console.error("Error approving employee:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
+      res.status(400).json({ message: error.message || "Failed to approve employee" });
     }
   });
 

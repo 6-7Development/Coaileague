@@ -22,6 +22,8 @@ import {
   Zap,
   Download,
   ExternalLink,
+  LifeBuoy,
+  ArrowRight,
 } from "lucide-react";
 import {
   Accordion,
@@ -188,7 +190,7 @@ export default function Support() {
         </div>
 
         {/* Search Bar */}
-        <div className="max-w-2xl mx-auto mb-16">
+        <div className="max-w-2xl mx-auto mb-8">
           <div className="relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[hsl(var(--cad-text-tertiary))]" />
             <Input
@@ -199,6 +201,45 @@ export default function Support() {
               data-testid="input-search"
             />
           </div>
+        </div>
+
+        {/* Customer Support Portal CTA */}
+        <div className="max-w-2xl mx-auto mb-16">
+          <Card className="bg-gradient-to-br from-[hsl(var(--cad-blue))]/10 to-[hsl(var(--cad-purple))]/10 border-[hsl(var(--cad-blue))]/30 hover-elevate active-elevate-2 cursor-pointer transition-all duration-200" data-testid="card-support-tickets">
+            <div className="p-6" onClick={() => window.location.href = "/support/tickets"}>
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start gap-4">
+                  <div className="h-12 w-12 rounded-md bg-[hsl(var(--cad-blue))]/20 flex items-center justify-center flex-shrink-0">
+                    <LifeBuoy className="h-6 w-6 text-[hsl(var(--cad-blue))]" />
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="text-lg font-semibold flex items-center gap-2">
+                      Need Direct Support?
+                      <Badge className="bg-[hsl(var(--cad-blue))] text-white">24/7 Available</Badge>
+                    </h3>
+                    <p className="text-sm text-[hsl(var(--cad-text-secondary))]">
+                      Submit a support ticket and our team will assist you. Track all your tickets, get priority help, and receive expert guidance for technical issues, billing questions, or feature requests.
+                    </p>
+                    <div className="flex items-center gap-4 pt-2">
+                      <span className="text-xs text-[hsl(var(--cad-text-tertiary))]">
+                        ⚡ Average response: 1 hour
+                      </span>
+                      <span className="text-xs text-[hsl(var(--cad-text-tertiary))]">
+                        📞 Phone & Email Support
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <Button 
+                  className="bg-[hsl(var(--cad-blue))] hover:bg-[hsl(var(--cad-blue))]/90 text-white flex-shrink-0"
+                  data-testid="button-open-tickets"
+                >
+                  Open Tickets
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </Card>
         </div>
 
         {/* System Status */}
