@@ -37,6 +37,7 @@ The platform features a CAD-style professional interface with an application fra
 - **Advanced Scheduling System** (Better than Sling): Sling-style grid layout with drag-and-drop shift management, real-time week statistics (hours, labor cost, billable shifts), bulk operations (copy week forward), automated invoice generation from scheduled shifts, shift conflict detection with visual warnings, quick actions menu (duplicate, delete), color-coded shifts by client, normalized week boundaries for accurate filtering.
 - **Employee Onboarding System**: Features an email invitation workflow with secure, single-use tokens, a multi-step onboarding flow (personal info, tax classification, availability, document upload, e-signature capture), legal compliance features (W-4/W-9 tracking, contract signatures, SOP acknowledgements), and automatic employee number generation.
 - **Demo System**: An interactive demo workspace pre-populated with sample data is available, resetting every 24 hours.
+- **Admin Usage Dashboard**: Platform cost tracking and credit balance monitoring at `/admin/usage` with operational cost breakdown, profit margin analysis, runway projections, and low-balance alerts (currently uses simulated data - real-time integration requires Replit API access).
 
 ### Feature Specifications
 - **Core Features**: Employee management (CRUD), client management (CRUD), shift scheduling, multi-tenant data isolation, responsive design, dark mode, demo system with 24-hour reset.
