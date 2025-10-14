@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,12 +13,27 @@ import {
   Plus,
   TrendingUp,
   TrendingDown,
+  Sparkles,
+  Crown,
 } from "lucide-react";
 import { Link } from "wouter";
+import { FeatureCard } from "@/components/feature-card";
+import { UpgradeModal } from "@/components/upgrade-modal";
+import { PREMIUM_FEATURES, type PremiumFeature } from "@/data/premiumFeatures";
 
 export default function Dashboard() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
+  const [selectedFeature, setSelectedFeature] = useState<PremiumFeature | null>(null);
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+
+  // TODO: Get this from workspace query - for now, assume 'starter' tier
+  const workspaceTier = 'starter'; // 'starter', 'professional', 'enterprise'
+
+  const handleUnlockFeature = (feature: PremiumFeature) => {
+    setSelectedFeature(feature);
+    setIsUpgradeModalOpen(true);
+  };
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -135,6 +150,53 @@ export default function Dashboard() {
           </Card>
         </div>
 
+        {/* Premium Features Section */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-md bg-[hsl(var(--cad-blue))]/10">
+                <Crown className="h-5 w-5 text-[hsl(var(--cad-blue))]" />
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold cad-text-primary">
+                  Unlock Premium Features
+                </h2>
+                <p className="text-sm cad-text-secondary">
+                  Powerful add-ons to save time and increase revenue
+                </p>
+              </div>
+            </div>
+            <Badge className="bg-[hsl(var(--cad-orange))]/10 border-[hsl(var(--cad-orange))]/30 text-[hsl(var(--cad-orange))] hover:bg-[hsl(var(--cad-orange))]/20">
+              <Sparkles className="h-3 w-3 mr-1" />
+              Save $100k+/year
+            </Badge>
+          </div>
+
+          {/* Feature Cards Grid */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {PREMIUM_FEATURES.slice(0, 6).map((feature) => (
+              <FeatureCard
+                key={feature.id}
+                feature={feature}
+                isLocked={true} // TODO: Check workspace tier and add-ons
+                onUnlock={() => handleUnlockFeature(feature)}
+              />
+            ))}
+          </div>
+
+          {PREMIUM_FEATURES.length > 6 && (
+            <div className="text-center pt-2">
+              <Button 
+                variant="ghost" 
+                size="sm"
+                data-testid="button-view-all-features"
+              >
+                View All {PREMIUM_FEATURES.length} Premium Features
+              </Button>
+            </div>
+          )}
+        </div>
+
         {/* Main Content Grid */}
         <div className="grid gap-6 lg:grid-cols-2">
           {/* Upcoming Shifts */}
@@ -219,6 +281,13 @@ export default function Dashboard() {
           </Card>
         </div>
       </div>
+
+      {/* Upgrade Modal */}
+      <UpgradeModal
+        isOpen={isUpgradeModalOpen}
+        onClose={() => setIsUpgradeModalOpen(false)}
+        feature={selectedFeature}
+      />
     </div>
   );
 }
