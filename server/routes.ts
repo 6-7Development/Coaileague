@@ -24,6 +24,11 @@ import {
   insertOnboardingApplicationSchema,
   insertDocumentSignatureSchema,
   insertEmployeeCertificationSchema,
+  insertReportTemplateSchema,
+  insertReportSubmissionSchema,
+  insertReportAttachmentSchema,
+  insertCustomerReportAccessSchema,
+  insertSupportTicketSchema,
 } from "@shared/schema";
 import crypto from "crypto";
 
@@ -1336,6 +1341,216 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error processing contact form:", error);
       res.status(500).json({ message: "Failed to submit contact form. Please try again." });
+    }
+  });
+
+  // ============================================================================
+  // REPORT MANAGEMENT SYSTEM (RMS) ROUTES
+  // ============================================================================
+
+  // Get all report templates (with activation status per workspace)
+  app.get('/api/report-templates', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user?.currentWorkspaceId) {
+        return res.status(403).json({ message: "No workspace selected" });
+      }
+
+      const templates = await storage.getReportTemplatesByWorkspace(user.currentWorkspaceId);
+      res.json(templates);
+    } catch (error) {
+      console.error("Error fetching report templates:", error);
+      res.status(500).json({ message: "Failed to fetch report templates" });
+    }
+  });
+
+  // Toggle template activation for workspace
+  app.post('/api/report-templates/:id/toggle', isAuthenticated, requireOwner, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      const template = await storage.toggleReportTemplateActivation(id, user!.currentWorkspaceId!);
+      res.json(template);
+    } catch (error) {
+      console.error("Error toggling template activation:", error);
+      res.status(500).json({ message: "Failed to toggle template activation" });
+    }
+  });
+
+  // Get report submissions (for employees/supervisors)
+  app.get('/api/report-submissions', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user?.currentWorkspaceId) {
+        return res.status(403).json({ message: "No workspace selected" });
+      }
+
+      const { status, employeeId } = req.query;
+      const submissions = await storage.getReportSubmissions(user.currentWorkspaceId, { 
+        status: status as string, 
+        employeeId: employeeId as string 
+      });
+      res.json(submissions);
+    } catch (error) {
+      console.error("Error fetching report submissions:", error);
+      res.status(500).json({ message: "Failed to fetch report submissions" });
+    }
+  });
+
+  // Create new report submission
+  app.post('/api/report-submissions', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user?.currentWorkspaceId) {
+        return res.status(403).json({ message: "No workspace selected" });
+      }
+
+      const validated = insertReportSubmissionSchema.parse({
+        ...req.body,
+        workspaceId: user.currentWorkspaceId,
+      });
+
+      const submission = await storage.createReportSubmission(validated);
+      res.json(submission);
+    } catch (error) {
+      console.error("Error creating report submission:", error);
+      res.status(500).json({ message: "Failed to create report submission" });
+    }
+  });
+
+  // Update report submission (for drafts or revisions)
+  app.patch('/api/report-submissions/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const submission = await storage.updateReportSubmission(id, req.body);
+      res.json(submission);
+    } catch (error) {
+      console.error("Error updating report submission:", error);
+      res.status(500).json({ message: "Failed to update report submission" });
+    }
+  });
+
+  // Supervisor approve/reject report
+  app.post('/api/report-submissions/:id/review', isAuthenticated, requireManager, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { approved, reviewNotes } = req.body;
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+
+      const submission = await storage.reviewReportSubmission(id, {
+        approved,
+        reviewNotes,
+        reviewedBy: user!.id,
+      });
+
+      res.json(submission);
+    } catch (error) {
+      console.error("Error reviewing report submission:", error);
+      res.status(500).json({ message: "Failed to review report submission" });
+    }
+  });
+
+  // Generate customer access token for approved report
+  app.post('/api/report-submissions/:id/generate-access', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { expirationDays = 30 } = req.body;
+      
+      const accessToken = crypto.randomBytes(32).toString('hex');
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + expirationDays);
+
+      const access = await storage.createCustomerReportAccess({
+        submissionId: id,
+        clientId: req.body.clientId,
+        accessToken,
+        expiresAt,
+      });
+
+      res.json(access);
+    } catch (error) {
+      console.error("Error generating customer access:", error);
+      res.status(500).json({ message: "Failed to generate customer access" });
+    }
+  });
+
+  // Customer portal - view report by access token (no auth required)
+  app.get('/api/customer-reports/:token', async (req, res) => {
+    try {
+      const { token } = req.params;
+      
+      const access = await storage.getCustomerReportAccessByToken(token);
+      if (!access) {
+        return res.status(404).json({ message: "Report not found or access expired" });
+      }
+
+      if (access.isRevoked || new Date() > new Date(access.expiresAt)) {
+        return res.status(403).json({ message: "Access expired or revoked" });
+      }
+
+      // Update access tracking
+      await storage.trackCustomerReportAccess(access.id);
+
+      const report = await storage.getReportSubmissionById(access.submissionId);
+      res.json(report);
+    } catch (error) {
+      console.error("Error fetching customer report:", error);
+      res.status(500).json({ message: "Failed to fetch report" });
+    }
+  });
+
+  // Support Tickets - Create ticket
+  app.post('/api/support-tickets', async (req, res) => {
+    try {
+      const validated = insertSupportTicketSchema.parse(req.body);
+      
+      // Generate ticket number
+      const ticketNumber = `TKT-${new Date().getFullYear()}-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
+      
+      const ticket = await storage.createSupportTicket({
+        ...validated,
+        ticketNumber,
+      });
+
+      res.json(ticket);
+    } catch (error) {
+      console.error("Error creating support ticket:", error);
+      res.status(500).json({ message: "Failed to create support ticket" });
+    }
+  });
+
+  // Get support tickets
+  app.get('/api/support-tickets', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user?.currentWorkspaceId) {
+        return res.status(403).json({ message: "No workspace selected" });
+      }
+
+      const tickets = await storage.getSupportTickets(user.currentWorkspaceId);
+      res.json(tickets);
+    } catch (error) {
+      console.error("Error fetching support tickets:", error);
+      res.status(500).json({ message: "Failed to fetch support tickets" });
+    }
+  });
+
+  // Update support ticket status
+  app.patch('/api/support-tickets/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const ticket = await storage.updateSupportTicket(id, req.body);
+      res.json(ticket);
+    } catch (error) {
+      console.error("Error updating support ticket:", error);
+      res.status(500).json({ message: "Failed to update support ticket" });
     }
   });
 

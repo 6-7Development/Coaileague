@@ -1215,3 +1215,182 @@ export const insertPlatformRevenueSchema = createInsertSchema(platformRevenue).o
 
 export type InsertPlatformRevenue = z.infer<typeof insertPlatformRevenueSchema>;
 export type PlatformRevenue = typeof platformRevenue.$inferSelect;
+
+// ============================================================================
+// REPORT MANAGEMENT SYSTEM (RMS)
+// ============================================================================
+
+// Report Templates - Configurable report types per workspace
+export const reportTemplates = pgTable("report_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  // Template details
+  name: varchar("name").notNull(), // "Daily Activity Report", "Incident Write-up", etc.
+  description: text("description"),
+  category: varchar("category"), // 'security', 'healthcare', 'retail', 'construction', etc.
+  
+  // Field configuration (JSON array of field definitions)
+  // Example: [{ name: "location", label: "Location", type: "text", required: true }, ...]
+  fields: jsonb("fields").notNull(),
+  
+  // Activation status
+  isActive: boolean("is_active").default(false), // Whether activated for this workspace
+  isSystemTemplate: boolean("is_system_template").default(false), // Built-in vs custom
+  
+  // Metadata
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertReportTemplateSchema = createInsertSchema(reportTemplates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertReportTemplate = z.infer<typeof insertReportTemplateSchema>;
+export type ReportTemplate = typeof reportTemplates.$inferSelect;
+
+// Report Submissions - Actual reports created by employees
+export const reportSubmissions = pgTable("report_submissions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  templateId: varchar("template_id").notNull().references(() => reportTemplates.id, { onDelete: 'cascade' }),
+  
+  // Report metadata
+  reportNumber: varchar("report_number").notNull(), // Auto-generated unique number (e.g., "RPT-2024-001")
+  employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
+  clientId: varchar("client_id").references(() => clients.id, { onDelete: 'set null' }), // End customer receiving report
+  
+  // Form data (JSON object with filled field values)
+  formData: jsonb("form_data").notNull(),
+  
+  // Workflow status
+  status: varchar("status").default("draft"), // 'draft', 'pending_review', 'approved', 'rejected', 'sent_to_customer'
+  
+  // Review tracking
+  reviewedBy: varchar("reviewed_by").references(() => employees.id),
+  reviewedAt: timestamp("reviewed_at"),
+  reviewNotes: text("review_notes"),
+  
+  // Customer delivery
+  sentToCustomerAt: timestamp("sent_to_customer_at"),
+  customerViewedAt: timestamp("customer_viewed_at"),
+  
+  // Timestamps
+  submittedAt: timestamp("submitted_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertReportSubmissionSchema = createInsertSchema(reportSubmissions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertReportSubmission = z.infer<typeof insertReportSubmissionSchema>;
+export type ReportSubmission = typeof reportSubmissions.$inferSelect;
+
+// Report Attachments - Photos, documents, etc.
+export const reportAttachments = pgTable("report_attachments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  submissionId: varchar("submission_id").notNull().references(() => reportSubmissions.id, { onDelete: 'cascade' }),
+  
+  // File details
+  fileName: varchar("file_name").notNull(),
+  fileType: varchar("file_type").notNull(), // 'image/jpeg', 'application/pdf', etc.
+  fileSize: integer("file_size"), // In bytes
+  fileData: text("file_data"), // Base64 encoded for MVP (will upgrade to object storage)
+  
+  // Metadata
+  uploadedBy: varchar("uploaded_by").references(() => users.id),
+  uploadedAt: timestamp("uploaded_at").defaultNow(),
+  
+  // Optional: Location/timestamp when photo was taken
+  capturedAt: timestamp("captured_at"),
+  gpsLocation: jsonb("gps_location"), // { lat, lng, accuracy }
+});
+
+export const insertReportAttachmentSchema = createInsertSchema(reportAttachments).omit({
+  id: true,
+  uploadedAt: true,
+});
+
+export type InsertReportAttachment = z.infer<typeof insertReportAttachmentSchema>;
+export type ReportAttachment = typeof reportAttachments.$inferSelect;
+
+// Customer Report Access - Manage time-limited access for end customers
+export const customerReportAccess = pgTable("customer_report_access", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  submissionId: varchar("submission_id").notNull().references(() => reportSubmissions.id, { onDelete: 'cascade' }),
+  clientId: varchar("client_id").notNull().references(() => clients.id, { onDelete: 'cascade' }),
+  
+  // Access control
+  accessToken: varchar("access_token").notNull().unique(), // Unique token for secure access
+  expiresAt: timestamp("expires_at").notNull(), // Time-limited access (e.g., 30-60 days)
+  
+  // Usage tracking
+  accessCount: integer("access_count").default(0),
+  lastAccessedAt: timestamp("last_accessed_at"),
+  
+  // Status
+  isRevoked: boolean("is_revoked").default(false),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertCustomerReportAccessSchema = createInsertSchema(customerReportAccess).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertCustomerReportAccess = z.infer<typeof insertCustomerReportAccessSchema>;
+export type CustomerReportAccess = typeof customerReportAccess.$inferSelect;
+
+// Support Tickets - Help desk for report requests and template requests
+export const supportTickets = pgTable("support_tickets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  // Ticket details
+  ticketNumber: varchar("ticket_number").notNull(), // Auto-generated (e.g., "TKT-2024-001")
+  type: varchar("type").notNull(), // 'report_request', 'template_request', 'support', 'other'
+  priority: varchar("priority").default("normal"), // 'low', 'normal', 'high', 'urgent'
+  
+  // Requester (can be client or employee)
+  clientId: varchar("client_id").references(() => clients.id),
+  employeeId: varchar("employee_id").references(() => employees.id),
+  requestedBy: varchar("requested_by"), // Name/email if external
+  
+  // Ticket content
+  subject: varchar("subject").notNull(),
+  description: text("description").notNull(),
+  
+  // For report requests
+  reportSubmissionId: varchar("report_submission_id").references(() => reportSubmissions.id),
+  
+  // Status tracking
+  status: varchar("status").default("open"), // 'open', 'in_progress', 'resolved', 'closed'
+  assignedTo: varchar("assigned_to").references(() => employees.id),
+  
+  // Resolution
+  resolution: text("resolution"),
+  resolvedAt: timestamp("resolved_at"),
+  resolvedBy: varchar("resolved_by").references(() => users.id),
+  
+  // Timestamps
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertSupportTicketSchema = createInsertSchema(supportTickets).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertSupportTicket = z.infer<typeof insertSupportTicketSchema>;
+export type SupportTicket = typeof supportTickets.$inferSelect;
