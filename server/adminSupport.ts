@@ -1,0 +1,567 @@
+// Admin Support Service - Platform-level customer support tools
+// For non-technical support staff to help customers
+
+import { eq, like, or, desc, and, isNull, sql } from "drizzle-orm";
+import { db } from "./db";
+import {
+  workspaces,
+  users,
+  employees,
+  subscriptions,
+  invoices,
+  supportTickets,
+  timeEntries,
+  shifts,
+  clients,
+  type Workspace,
+  type User,
+  type Employee,
+  type Subscription,
+  type SupportTicket,
+  type Invoice,
+  type TimeEntry,
+  type Shift,
+} from "@shared/schema";
+
+// ============================================================================
+// Customer Search & Discovery
+// ============================================================================
+
+export interface CustomerSearchResult {
+  workspace: Workspace;
+  owner: User;
+  subscription?: Subscription;
+  stats: {
+    employeeCount: number;
+    clientCount: number;
+    invoiceCount: number;
+    activeTickets: number;
+  };
+}
+
+/**
+ * Search for customers by email, workspace name, or company name
+ * Platform admin use only - searches across ALL workspaces
+ */
+export async function searchCustomers(
+  query: string
+): Promise<CustomerSearchResult[]> {
+  const searchPattern = `%${query}%`;
+
+  // Find matching workspaces or users
+  const matchedWorkspaces = await db
+    .select({
+      workspace: workspaces,
+      owner: users,
+    })
+    .from(workspaces)
+    .leftJoin(users, eq(workspaces.ownerId, users.id))
+    .where(
+      or(
+        like(workspaces.name, searchPattern),
+        like(workspaces.companyName, searchPattern),
+        like(users.email, searchPattern),
+        like(users.firstName, searchPattern),
+        like(users.lastName, searchPattern)
+      )
+    )
+    .limit(50);
+
+  // Fetch stats for each workspace
+  const results: CustomerSearchResult[] = [];
+
+  for (const { workspace, owner } of matchedWorkspaces) {
+    if (!workspace || !owner) continue;
+
+    // Get subscription
+    const [subscription] = await db
+      .select()
+      .from(subscriptions)
+      .where(eq(subscriptions.workspaceId, workspace.id))
+      .limit(1);
+
+    // Get stats
+    const [employeeCount] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(employees)
+      .where(eq(employees.workspaceId, workspace.id));
+
+    const [clientCount] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(clients)
+      .where(eq(clients.workspaceId, workspace.id));
+
+    const [invoiceCount] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(invoices)
+      .where(eq(invoices.workspaceId, workspace.id));
+
+    const [ticketCount] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(supportTickets)
+      .where(
+        and(
+          eq(supportTickets.workspaceId, workspace.id),
+          or(
+            eq(supportTickets.status, "open"),
+            eq(supportTickets.status, "in_progress")
+          )
+        )
+      );
+
+    results.push({
+      workspace,
+      owner,
+      subscription,
+      stats: {
+        employeeCount: employeeCount?.count || 0,
+        clientCount: clientCount?.count || 0,
+        invoiceCount: invoiceCount?.count || 0,
+        activeTickets: ticketCount?.count || 0,
+      },
+    });
+  }
+
+  return results;
+}
+
+// ============================================================================
+// Workspace Detail View
+// ============================================================================
+
+export interface WorkspaceDetail {
+  workspace: Workspace;
+  owner: User;
+  subscription?: Subscription;
+  users: Array<{ user: User; employee?: Employee }>;
+  recentActivity: Array<{
+    type: string;
+    description: string;
+    timestamp: Date;
+  }>;
+  billing: {
+    totalRevenue: string;
+    paidInvoices: number;
+    pendingInvoices: number;
+    stripeConnected: boolean;
+  };
+  tickets: SupportTicket[];
+}
+
+/**
+ * Get comprehensive details for a specific workspace
+ * Used for admin support dashboard customer detail view
+ */
+export async function getWorkspaceDetail(
+  workspaceId: string
+): Promise<WorkspaceDetail | null> {
+  // Get workspace and owner
+  const [workspaceData] = await db
+    .select({
+      workspace: workspaces,
+      owner: users,
+    })
+    .from(workspaces)
+    .leftJoin(users, eq(workspaces.ownerId, users.id))
+    .where(eq(workspaces.id, workspaceId))
+    .limit(1);
+
+  if (!workspaceData?.workspace || !workspaceData.owner) {
+    return null;
+  }
+
+  const { workspace, owner } = workspaceData;
+
+  // Get subscription
+  const [subscription] = await db
+    .select()
+    .from(subscriptions)
+    .where(eq(subscriptions.workspaceId, workspaceId))
+    .limit(1);
+
+  // Get all users in workspace (via employees table)
+  const workspaceEmployees = await db
+    .select({
+      employee: employees,
+      user: users,
+    })
+    .from(employees)
+    .leftJoin(users, eq(employees.userId, users.id))
+    .where(eq(employees.workspaceId, workspaceId));
+
+  const usersInWorkspace = workspaceEmployees.map(
+    ({ employee, user }: { employee: Employee | null; user: User | null }) => ({
+      employee: employee || undefined,
+      user: user || ({} as User),
+    })
+  );
+
+  // Get recent activity (invoices, time entries, shifts)
+  const recentInvoices = await db
+    .select()
+    .from(invoices)
+    .where(eq(invoices.workspaceId, workspaceId))
+    .orderBy(desc(invoices.createdAt))
+    .limit(5);
+
+  const recentTimeEntries = await db
+    .select()
+    .from(timeEntries)
+    .where(eq(timeEntries.workspaceId, workspaceId))
+    .orderBy(desc(timeEntries.createdAt))
+    .limit(5);
+
+  const recentShifts = await db
+    .select()
+    .from(shifts)
+    .where(eq(shifts.workspaceId, workspaceId))
+    .orderBy(desc(shifts.createdAt))
+    .limit(5);
+
+  // Build activity feed
+  const recentActivity: Array<{
+    type: string;
+    description: string;
+    timestamp: Date;
+  }> = [
+    ...recentInvoices.map((inv: Invoice) => ({
+      type: "invoice",
+      description: `Invoice ${inv.invoiceNumber} - ${inv.status} - $${inv.total}`,
+      timestamp: inv.createdAt!,
+    })),
+    ...recentTimeEntries.map((entry: TimeEntry) => ({
+      type: "time_entry",
+      description: `Time entry - ${entry.totalHours || "0"} hours - $${entry.totalAmount || "0"}`,
+      timestamp: entry.createdAt!,
+    })),
+    ...recentShifts.map((shift: Shift) => ({
+      type: "shift",
+      description: `Shift created - ${shift.title || "Untitled"}`,
+      timestamp: shift.createdAt!,
+    })),
+  ]
+    .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+    .slice(0, 10);
+
+  // Calculate billing stats
+  const paidInvoices = await db
+    .select()
+    .from(invoices)
+    .where(
+      and(eq(invoices.workspaceId, workspaceId), eq(invoices.status, "paid"))
+    );
+
+  const pendingInvoices = await db
+    .select()
+    .from(invoices)
+    .where(
+      and(
+        eq(invoices.workspaceId, workspaceId),
+        or(eq(invoices.status, "draft"), eq(invoices.status, "sent"))
+      )
+    );
+
+  const totalRevenue = paidInvoices
+    .reduce((sum: number, inv: Invoice) => sum + parseFloat(inv.total || "0"), 0)
+    .toFixed(2);
+
+  // Get support tickets
+  const tickets = await db
+    .select()
+    .from(supportTickets)
+    .where(eq(supportTickets.workspaceId, workspaceId))
+    .orderBy(desc(supportTickets.createdAt))
+    .limit(20);
+
+  return {
+    workspace,
+    owner,
+    subscription,
+    users: usersInWorkspace,
+    recentActivity,
+    billing: {
+      totalRevenue,
+      paidInvoices: paidInvoices.length,
+      pendingInvoices: pendingInvoices.length,
+      stripeConnected: !!workspace.stripeAccountId,
+    },
+    tickets,
+  };
+}
+
+// ============================================================================
+// Admin Actions
+// ============================================================================
+
+/**
+ * Send a password reset email to a user
+ * Used when customers can't log in
+ */
+export async function sendPasswordResetEmail(
+  userId: string,
+  adminUserId: string
+): Promise<{ success: boolean; message: string }> {
+  // In a real implementation, this would:
+  // 1. Generate a secure reset token
+  // 2. Store it in database with expiration
+  // 3. Send email via Resend integration
+  // 4. Log the action in system_audit_logs
+
+  // For now, return a placeholder
+  return {
+    success: true,
+    message: `Password reset email would be sent (Resend integration required)`,
+  };
+}
+
+/**
+ * Change a user's workspace role
+ * Used to grant/revoke permissions
+ */
+export async function changeUserRole(
+  employeeId: string,
+  newRole: "employee" | "manager" | "supervisor" | "owner",
+  adminUserId: string
+): Promise<{ success: boolean; message: string }> {
+  try {
+    await db
+      .update(employees)
+      .set({
+        workspaceRole: newRole,
+        updatedAt: new Date(),
+      })
+      .where(eq(employees.id, employeeId));
+
+    // Log the action (audit trail)
+    // await createSystemAuditLog({
+    //   userId: adminUserId,
+    //   action: 'change_user_role',
+    //   entityType: 'employee',
+    //   entityId: employeeId,
+    //   changes: { newRole },
+    // });
+
+    return {
+      success: true,
+      message: `User role updated to ${newRole}`,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: `Failed to update role: ${error}`,
+    };
+  }
+}
+
+/**
+ * Update workspace subscription tier
+ * Used for manual upgrades/downgrades
+ */
+export async function updateSubscriptionTier(
+  workspaceId: string,
+  newTier: "free" | "starter" | "professional" | "enterprise",
+  adminUserId: string
+): Promise<{ success: boolean; message: string }> {
+  try {
+    const [subscription] = await db
+      .select()
+      .from(subscriptions)
+      .where(eq(subscriptions.workspaceId, workspaceId))
+      .limit(1);
+
+    if (!subscription) {
+      // Create new subscription
+      await db.insert(subscriptions).values({
+        workspaceId,
+        plan: newTier,
+        status: "active",
+      });
+    } else {
+      // Update existing
+      await db
+        .update(subscriptions)
+        .set({
+          plan: newTier,
+          updatedAt: new Date(),
+        })
+        .where(eq(subscriptions.workspaceId, workspaceId));
+    }
+
+    return {
+      success: true,
+      message: `Subscription updated to ${newTier} tier`,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: `Failed to update subscription: ${error}`,
+    };
+  }
+}
+
+/**
+ * Get Stripe account status for a workspace
+ * Used to troubleshoot payment issues
+ */
+export async function getStripeStatus(workspaceId: string): Promise<{
+  connected: boolean;
+  customerId?: string;
+  accountId?: string;
+  subscriptionId?: string;
+  status: string;
+}> {
+  const [workspace] = await db
+    .select()
+    .from(workspaces)
+    .where(eq(workspaces.id, workspaceId))
+    .limit(1);
+
+  if (!workspace) {
+    return { connected: false, status: "Workspace not found" };
+  }
+
+  return {
+    connected: !!workspace.stripeAccountId,
+    customerId: workspace.stripeCustomerId || undefined,
+    accountId: workspace.stripeAccountId || undefined,
+    subscriptionId: workspace.stripeSubscriptionId || undefined,
+    status: workspace.stripeAccountId
+      ? "Connected"
+      : "Not connected - Customer needs to connect Stripe",
+  };
+}
+
+// ============================================================================
+// Support Ticket Management
+// ============================================================================
+
+/**
+ * Create a support ticket on behalf of a customer
+ * Used when customers contact support via email/phone
+ */
+export async function createSupportTicket(data: {
+  workspaceId: string;
+  subject: string;
+  description: string;
+  type: string;
+  priority: string;
+  createdByAdmin: string;
+}): Promise<{ success: boolean; ticket?: SupportTicket; message?: string }> {
+  try {
+    // Generate ticket number
+    const [lastTicket] = await db
+      .select()
+      .from(supportTickets)
+      .where(eq(supportTickets.workspaceId, data.workspaceId))
+      .orderBy(desc(supportTickets.createdAt))
+      .limit(1);
+
+    let ticketNumber = "TKT-2025-001";
+    if (lastTicket?.ticketNumber) {
+      const match = lastTicket.ticketNumber.match(/TKT-(\d+)-(\d+)/);
+      if (match) {
+        const year = new Date().getFullYear();
+        const num = parseInt(match[2]) + 1;
+        ticketNumber = `TKT-${year}-${String(num).padStart(3, "0")}`;
+      }
+    }
+
+    const [ticket] = await db
+      .insert(supportTickets)
+      .values({
+        workspaceId: data.workspaceId,
+        ticketNumber,
+        type: data.type,
+        priority: data.priority,
+        subject: data.subject,
+        description: data.description,
+        status: "open",
+      })
+      .returning();
+
+    return {
+      success: true,
+      ticket,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: `Failed to create ticket: ${error}`,
+    };
+  }
+}
+
+/**
+ * Update support ticket status
+ */
+export async function updateTicketStatus(
+  ticketId: string,
+  status: "open" | "in_progress" | "resolved" | "closed",
+  resolution?: string,
+  resolvedBy?: string
+): Promise<{ success: boolean; message?: string }> {
+  try {
+    await db
+      .update(supportTickets)
+      .set({
+        status,
+        resolution: resolution || undefined,
+        resolvedAt: status === "resolved" || status === "closed" ? new Date() : undefined,
+        resolvedBy: resolvedBy || undefined,
+        updatedAt: new Date(),
+      })
+      .where(eq(supportTickets.id, ticketId));
+
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      message: `Failed to update ticket: ${error}`,
+    };
+  }
+}
+
+// ============================================================================
+// Platform Statistics
+// ============================================================================
+
+/**
+ * Get platform-wide statistics
+ * Used for admin dashboard overview
+ */
+export async function getPlatformStats() {
+  const [workspaceCount] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(workspaces);
+
+  const [userCount] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(users);
+
+  const [activeSubscriptions] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(subscriptions)
+    .where(eq(subscriptions.status, "active"));
+
+  const [openTickets] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(supportTickets)
+    .where(eq(supportTickets.status, "open"));
+
+  const [totalInvoices] = await db
+    .select({
+      count: sql<number>`count(*)::int`,
+      total: sql<string>`COALESCE(SUM(CAST(total AS DECIMAL)), 0)`,
+    })
+    .from(invoices)
+    .where(eq(invoices.status, "paid"));
+
+  return {
+    totalWorkspaces: workspaceCount?.count || 0,
+    totalUsers: userCount?.count || 0,
+    activeSubscriptions: activeSubscriptions?.count || 0,
+    openTickets: openTickets?.count || 0,
+    totalRevenue: totalInvoices?.total || "0",
+    invoiceCount: totalInvoices?.count || 0,
+  };
+}
