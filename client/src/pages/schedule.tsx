@@ -1,14 +1,24 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 import { 
   Plus,
   ChevronLeft,
   ChevronRight,
+  Copy,
+  FileText,
+  Clock,
+  DollarSign,
+  Zap,
+  MoreVertical,
+  Trash2,
+  Files,
+  AlertTriangle,
 } from "lucide-react";
 import ModernLayout from "@/components/ModernLayout";
 import {
@@ -20,6 +30,13 @@ import {
   DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import {
@@ -35,7 +52,9 @@ import type { Shift, Employee, Client } from "@shared/schema";
 export default function Schedule() {
   const { toast } = useToast();
   const [isAddShiftOpen, setIsAddShiftOpen] = useState(false);
+  const [isTemplateOpen, setIsTemplateOpen] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedShift, setSelectedShift] = useState<Shift | null>(null);
   const [formData, setFormData] = useState({
     employeeId: "",
     clientId: "",
@@ -123,6 +142,61 @@ export default function Schedule() {
       toast({
         title: "Error",
         description: error.message || "Failed to update shift",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteShiftMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return await apiRequest("DELETE", `/api/shifts/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/shifts"] });
+      toast({
+        title: "Success",
+        description: "Shift deleted successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete shift",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const generateInvoicesMutation = useMutation({
+    mutationFn: async () => {
+      const weekStart = weekDates[0];
+      const weekEnd = weekDates[6];
+      
+      // Filter unbilled shifts in current week
+      const weekShifts = shifts.filter(shift => {
+        const shiftDate = new Date(shift.startTime);
+        return shiftDate >= weekStart && shiftDate <= weekEnd && shift.clientId;
+      });
+
+      if (weekShifts.length === 0) {
+        throw new Error("No client shifts found this week");
+      }
+
+      return await apiRequest("POST", "/api/invoices/generate-from-shifts", {
+        shiftIds: weekShifts.map(s => s.id)
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+      toast({
+        title: "Invoices Generated",
+        description: "Client invoices created from this week's shifts",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to generate invoices",
         variant: "destructive",
       });
     },
@@ -225,6 +299,122 @@ export default function Schedule() {
     return client ? `${client.firstName} ${client.lastName}` : null;
   };
 
+  const getEmployeeName = (employeeId: string) => {
+    const employee = employees.find(e => e.id === employeeId);
+    return employee ? `${employee.firstName} ${employee.lastName}` : "Unknown";
+  };
+
+  // Duplicate shift to same employee, next day
+  const duplicateShift = (shift: Shift) => {
+    const startTime = new Date(shift.startTime);
+    const endTime = new Date(shift.endTime);
+    
+    // Move to next day
+    startTime.setDate(startTime.getDate() + 1);
+    endTime.setDate(endTime.getDate() + 1);
+
+    createShiftMutation.mutate({
+      employeeId: shift.employeeId,
+      clientId: shift.clientId,
+      startTime: startTime.toISOString(),
+      endTime: endTime.toISOString(),
+      description: shift.description,
+    });
+  };
+
+  // Copy entire week to next week
+  const copyWeekForward = () => {
+    const weekStart = weekDates[0];
+    const weekEnd = weekDates[6];
+    
+    const weekShifts = shifts.filter(shift => {
+      const shiftDate = new Date(shift.startTime);
+      return shiftDate >= weekStart && shiftDate <= weekEnd;
+    });
+
+    if (weekShifts.length === 0) {
+      toast({
+        title: "No Shifts",
+        description: "No shifts to copy this week",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    weekShifts.forEach(shift => {
+      const startTime = new Date(shift.startTime);
+      const endTime = new Date(shift.endTime);
+      
+      // Move to next week (7 days forward)
+      startTime.setDate(startTime.getDate() + 7);
+      endTime.setDate(endTime.getDate() + 7);
+
+      createShiftMutation.mutate({
+        employeeId: shift.employeeId,
+        clientId: shift.clientId,
+        startTime: startTime.toISOString(),
+        endTime: endTime.toISOString(),
+        description: shift.description,
+      });
+    });
+
+    toast({
+      title: "Week Copied",
+      description: `${weekShifts.length} shifts copied to next week`,
+    });
+  };
+
+  // Detect scheduling conflicts
+  const hasConflict = (shift: Shift, allShifts: Shift[]) => {
+    const shiftStart = new Date(shift.startTime);
+    const shiftEnd = new Date(shift.endTime);
+    
+    return allShifts.some(other => {
+      if (other.id === shift.id) return false;
+      if (other.employeeId !== shift.employeeId) return false;
+      
+      const otherStart = new Date(other.startTime);
+      const otherEnd = new Date(other.endTime);
+      
+      return (
+        (shiftStart >= otherStart && shiftStart < otherEnd) ||
+        (shiftEnd > otherStart && shiftEnd <= otherEnd) ||
+        (shiftStart <= otherStart && shiftEnd >= otherEnd)
+      );
+    });
+  };
+
+  // Calculate week statistics
+  const weekStats = useMemo(() => {
+    const weekStart = weekDates[0];
+    const weekEnd = weekDates[6];
+    
+    const weekShifts = shifts.filter(shift => {
+      const shiftDate = new Date(shift.startTime);
+      return shiftDate >= weekStart && shiftDate <= weekEnd;
+    });
+
+    const totalHours = weekShifts.reduce((sum, shift) => {
+      const duration = new Date(shift.endTime).getTime() - new Date(shift.startTime).getTime();
+      return sum + (duration / (1000 * 60 * 60));
+    }, 0);
+
+    const estimatedCost = weekShifts.reduce((sum, shift) => {
+      const employee = employees.find(e => e.id === shift.employeeId);
+      const hourlyRate = Number(employee?.hourlyRate) || 15;
+      const duration = new Date(shift.endTime).getTime() - new Date(shift.startTime).getTime();
+      const hours = duration / (1000 * 60 * 60);
+      return sum + (hours * hourlyRate);
+    }, 0);
+
+    return {
+      totalShifts: weekShifts.length,
+      totalHours: totalHours.toFixed(1),
+      estimatedCost: estimatedCost.toFixed(2),
+      clientShifts: weekShifts.filter(s => s.clientId).length,
+    };
+  }, [shifts, weekDates, employees]);
+
   // Color palette for shifts (matching Sling style)
   const shiftColors = [
     'bg-rose-500/90',
@@ -260,15 +450,37 @@ export default function Schedule() {
     <ModernLayout>
       <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
         <div className="space-y-4 sm:space-y-6">
-          {/* Header */}
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
+          {/* Header with Stats */}
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="flex-1 min-w-0">
               <h2 className="text-2xl sm:text-3xl font-bold mb-1" data-testid="text-schedule-title">
                 Schedule
               </h2>
               <p className="text-sm sm:text-base text-[hsl(var(--cad-text-secondary))]" data-testid="text-schedule-subtitle">
                 Week {formatWeekRange()}
               </p>
+              
+              {/* Week Statistics */}
+              <div className="flex flex-wrap gap-4 mt-3">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-[hsl(var(--cad-blue))]" />
+                  <span className="text-sm">
+                    <span className="font-semibold">{weekStats.totalHours}</span> hours
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <DollarSign className="h-4 w-4 text-emerald-500" />
+                  <span className="text-sm">
+                    <span className="font-semibold">${weekStats.estimatedCost}</span> labor cost
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-amber-500" />
+                  <span className="text-sm">
+                    <span className="font-semibold">{weekStats.clientShifts}</span> billable shifts
+                  </span>
+                </div>
+              </div>
             </div>
           
             <div className="flex items-center gap-3">
@@ -280,6 +492,29 @@ export default function Schedule() {
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
+              
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" data-testid="button-bulk-actions">
+                    <Zap className="mr-2 h-4 w-4" />
+                    Bulk Actions
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuItem onClick={copyWeekForward}>
+                    <Copy className="mr-2 h-4 w-4" />
+                    Copy Week Forward
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={() => generateInvoicesMutation.mutate()}
+                    disabled={generateInvoicesMutation.isPending || weekStats.clientShifts === 0}
+                  >
+                    <FileText className="mr-2 h-4 w-4" />
+                    {generateInvoicesMutation.isPending ? "Generating..." : "Generate Invoices"}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
               <Dialog open={isAddShiftOpen} onOpenChange={setIsAddShiftOpen}>
                 <DialogTrigger asChild>
                   <Button data-testid="button-add-shift">
@@ -480,23 +715,60 @@ export default function Schedule() {
                             const endTime = new Date(shift.endTime);
                             const clientName = getClientName(shift.clientId);
                             const colorClass = getShiftColor(shift.clientId);
+                            const hasShiftConflict = hasConflict(shift, shifts);
                             
                             return (
-                              <div
-                                key={shift.id}
-                                className={`${colorClass} text-white rounded px-2 py-1.5 cursor-move hover:opacity-90 transition-opacity`}
-                                draggable
-                                onDragStart={(e) => handleDragStart(e, shift)}
-                                data-testid={`shift-${shift.id}`}
-                              >
-                                <div className="text-xs font-medium leading-tight">
-                                  {startTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })} - {endTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
-                                </div>
-                                {clientName && (
-                                  <div className="text-xs opacity-90 truncate">
-                                    {clientName}
+                              <div key={shift.id} className="relative group">
+                                <div
+                                  className={`${colorClass} text-white rounded px-2 py-1.5 cursor-move hover:opacity-90 transition-opacity ${
+                                    hasShiftConflict ? 'ring-2 ring-red-500' : ''
+                                  }`}
+                                  draggable
+                                  onDragStart={(e) => handleDragStart(e, shift)}
+                                  data-testid={`shift-${shift.id}`}
+                                >
+                                  {hasShiftConflict && (
+                                    <AlertTriangle className="h-3 w-3 absolute -top-1 -right-1 text-red-500 bg-white rounded-full" />
+                                  )}
+                                  <div className="text-xs font-medium leading-tight">
+                                    {startTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })} - {endTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
                                   </div>
-                                )}
+                                  {clientName && (
+                                    <div className="text-xs opacity-90 truncate">
+                                      {clientName}
+                                    </div>
+                                  )}
+                                </div>
+                                
+                                {/* Quick actions menu */}
+                                <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        className="h-6 w-6 bg-white/90 hover:bg-white"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        <MoreVertical className="h-3 w-3" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                      <DropdownMenuItem onClick={() => duplicateShift(shift)}>
+                                        <Files className="mr-2 h-4 w-4" />
+                                        Duplicate to Next Day
+                                      </DropdownMenuItem>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem 
+                                        onClick={() => deleteShiftMutation.mutate(shift.id)}
+                                        className="text-destructive"
+                                      >
+                                        <Trash2 className="mr-2 h-4 w-4" />
+                                        Delete Shift
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </div>
                               </div>
                             );
                           })}
