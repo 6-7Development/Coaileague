@@ -71,26 +71,29 @@ export function AppSidebar() {
   };
 
   return (
-    <Sidebar>
-      <SidebarHeader className="p-4 border-b bg-[hsl(var(--cad-surface))] border-[hsl(var(--cad-border))]">
+    <Sidebar className="sidebar-glass">
+      <SidebarHeader className="p-6 border-b border-white/[0.08]">
         <WorkforceOSLogo size="sm" showText={true} />
       </SidebarHeader>
       
-      <SidebarContent>
+      <SidebarContent className="px-3 py-4">
         <SidebarGroup>
-          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+          <SidebarGroupLabel className="px-3 mb-3 text-xs font-black uppercase tracking-wider text-muted-foreground/70">
+            Navigation
+          </SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="space-y-1">
               {menuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton 
                     asChild 
                     isActive={location === item.url}
-                    data-testid={`link-${item.title.toLowerCase()}`}
+                    data-testid={`link-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
+                    className="hover-elevate active-elevate-2 overflow-visible"
                   >
                     <Link href={item.url}>
                       <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
+                      <span className="font-semibold">{item.title}</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -100,16 +103,16 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="p-4 border-t">
-        <div className="flex items-center gap-3 mb-3">
-          <Avatar className="h-9 w-9">
-            <AvatarImage src={user?.profileImageUrl || undefined} className="object-cover" />
-            <AvatarFallback className="text-xs">
+      <SidebarFooter className="p-4 border-t border-white/[0.08]">
+        <div className="flex flex-wrap items-center gap-3 mb-4 p-3 rounded-xl bg-white/[0.03]">
+          <Avatar className="h-10 w-10 rounded-xl bg-gradient-to-br from-red-500 to-red-700 dark:from-red-600 dark:to-red-800">
+            <AvatarImage src={user?.profileImageUrl || undefined} className="object-cover rounded-xl" />
+            <AvatarFallback className="text-sm font-black rounded-xl bg-gradient-to-br from-red-500 to-red-700 dark:from-red-600 dark:to-red-800 text-white dark:text-white">
               {getInitials(user?.firstName, user?.lastName)}
             </AvatarFallback>
           </Avatar>
           <div className="flex flex-col overflow-hidden">
-            <span className="text-sm font-medium truncate" data-testid="text-user-name">
+            <span className="text-sm font-bold truncate" data-testid="text-user-name">
               {user?.firstName || user?.lastName 
                 ? `${user?.firstName || ""} ${user?.lastName || ""}`.trim()
                 : "User"}
