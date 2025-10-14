@@ -199,19 +199,21 @@ export default function ReportsPage() {
   const [activeTab, setActiveTab] = useState("templates");
   const [isNewReportOpen, setIsNewReportOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<ReportTemplate | null>(null);
-  const { toast } = useToast();
+  const [reviewSubmission, setReviewSubmission] = useState<ReportSubmission | null>(null);
+  const [reviewNotes, setReviewNotes] = useState("");
+  const { toast} = useToast();
 
   const { data: templates = [], isLoading: templatesLoading, error: templatesError } = useQuery<ReportTemplate[]>({
-    queryKey: ["/api/reports/templates"],
+    queryKey: ["/api/report-templates"],
   });
 
   const { data: submissions = [], isLoading: submissionsLoading, error: submissionsError } = useQuery<ReportSubmission[]>({
-    queryKey: ["/api/reports/submissions"],
+    queryKey: ["/api/report-submissions"],
   });
 
   const toggleActivation = useMutation({
     mutationFn: async (templateId: string) => {
-      const res = await fetch(`/api/reports/templates/${templateId}/toggle`, {
+      const res = await fetch(`/api/report-templates/${templateId}/toggle`, {
         method: "POST",
         credentials: "include",
       });
@@ -219,7 +221,7 @@ export default function ReportsPage() {
       return await res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/reports/templates"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/report-templates"] });
       toast({
         title: "Template Updated",
         description: "Template activation status has been changed",
@@ -236,7 +238,7 @@ export default function ReportsPage() {
 
   const submitReport = useMutation({
     mutationFn: async (data: { templateId: string; formData: Record<string, any> }) => {
-      const res = await fetch("/api/reports/submissions", {
+      const res = await fetch("/api/report-submissions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -246,7 +248,7 @@ export default function ReportsPage() {
       return await res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/reports/submissions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/report-submissions"] });
       toast({
         title: "Report Submitted",
         description: "Your report has been submitted for review",
@@ -258,6 +260,35 @@ export default function ReportsPage() {
       toast({
         title: "Error",
         description: error.message || "Failed to submit report",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const reviewReport = useMutation({
+    mutationFn: async (data: { submissionId: string; approved: boolean; reviewNotes: string }) => {
+      const res = await fetch(`/api/report-submissions/${data.submissionId}/review`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ approved: data.approved, reviewNotes: data.reviewNotes }),
+      });
+      if (!res.ok) throw new Error("Failed to review report");
+      return await res.json();
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/report-submissions"] });
+      toast({
+        title: variables.approved ? "Report Approved" : "Report Rejected",
+        description: `Report has been ${variables.approved ? "approved" : "rejected"}`,
+      });
+      setReviewSubmission(null);
+      setReviewNotes("");
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to review report",
         variant: "destructive",
       });
     },
@@ -638,18 +669,12 @@ export default function ReportsPage() {
                         </div>
                         <div className="flex gap-2">
                           <Button
-                            variant="destructive"
+                            variant="outline"
                             size="sm"
-                            data-testid={`button-reject-${submission.id}`}
+                            onClick={() => setReviewSubmission(submission)}
+                            data-testid={`button-review-${submission.id}`}
                           >
-                            Reject
-                          </Button>
-                          <Button
-                            variant="default"
-                            size="sm"
-                            data-testid={`button-approve-${submission.id}`}
-                          >
-                            Approve
+                            Review
                           </Button>
                         </div>
                       </div>
@@ -660,6 +685,109 @@ export default function ReportsPage() {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* Review Dialog */}
+        <Dialog open={!!reviewSubmission} onOpenChange={(open) => {
+          if (!open) {
+            setReviewSubmission(null);
+            setReviewNotes("");
+          }
+        }}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Review Report</DialogTitle>
+              <DialogDescription>
+                Review and approve or reject this report submission
+              </DialogDescription>
+            </DialogHeader>
+            {reviewSubmission && (
+              <div className="space-y-4">
+                <div className="p-4 bg-muted rounded-md">
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <span className="font-medium">Report Number:</span> {reviewSubmission.reportNumber}
+                    </div>
+                    <div>
+                      <span className="font-medium">Status:</span> {getStatusBadge(reviewSubmission.status)}
+                    </div>
+                    <div>
+                      <span className="font-medium">Submitted:</span> {reviewSubmission.submittedAt ? new Date(reviewSubmission.submittedAt).toLocaleDateString() : 'N/A'}
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="font-medium mb-2">Report Data:</h4>
+                  <div className="p-4 bg-muted rounded-md space-y-2">
+                    {Object.entries(reviewSubmission.formData as Record<string, any> || {}).map(([key, value]) => (
+                      <div key={key} className="text-sm">
+                        <span className="font-medium capitalize">{key.replace(/_/g, ' ')}:</span>{' '}
+                        <span className="text-muted-foreground">{String(value)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium mb-2 block">
+                    Review Notes {reviewNotes.trim() && <span className="text-muted-foreground">(Optional)</span>}
+                  </label>
+                  <Textarea
+                    placeholder="Enter any notes about this review..."
+                    value={reviewNotes}
+                    onChange={(e) => setReviewNotes(e.target.value)}
+                    rows={4}
+                    data-testid="input-review-notes"
+                  />
+                </div>
+
+                <div className="flex gap-2 pt-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setReviewSubmission(null);
+                      setReviewNotes("");
+                    }}
+                    disabled={reviewReport.isPending}
+                    data-testid="button-cancel-review"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={() => {
+                      reviewReport.mutate({
+                        submissionId: reviewSubmission.id,
+                        approved: false,
+                        reviewNotes: reviewNotes.trim() || "Rejected",
+                      });
+                    }}
+                    disabled={reviewReport.isPending}
+                    data-testid="button-reject-confirm"
+                    className="flex-1"
+                  >
+                    {reviewReport.isPending ? "Processing..." : "Reject Report"}
+                  </Button>
+                  <Button
+                    variant="default"
+                    onClick={() => {
+                      reviewReport.mutate({
+                        submissionId: reviewSubmission.id,
+                        approved: true,
+                        reviewNotes: reviewNotes.trim() || "Approved",
+                      });
+                    }}
+                    disabled={reviewReport.isPending}
+                    data-testid="button-approve-confirm"
+                    className="flex-1"
+                  >
+                    {reviewReport.isPending ? "Processing..." : "Approve Report"}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </ModernLayout>
   );
