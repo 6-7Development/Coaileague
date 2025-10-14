@@ -13,6 +13,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import ModernLayout from "@/components/ModernLayout";
 import {
   Select,
   SelectContent,
@@ -159,15 +160,15 @@ export default function TimeTracking() {
   }
 
   return (
-    <div className="flex-1 overflow-auto">
-      <div className="container mx-auto p-6 lg:p-8 space-y-8">
-        {/* Header */}
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl lg:text-4xl font-semibold tracking-tight" data-testid="text-timetracking-title">
-              Time Tracking
-            </h1>
-            <p className="text-muted-foreground mt-1" data-testid="text-timetracking-subtitle">
+    <ModernLayout>
+      <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
+        <div className="space-y-4 sm:space-y-6">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h2 className="text-2xl sm:text-3xl font-bold mb-1" data-testid="text-timetracking-title">
+                Time Tracking
+              </h2>
+              <p className="text-sm sm:text-base text-[hsl(var(--cad-text-secondary))]" data-testid="text-timetracking-subtitle">
               Manage employee clock-ins and timesheet reports
             </p>
           </div>
@@ -409,7 +410,8 @@ export default function TimeTracking() {
             )}
           </CardContent>
         </Card>
+        </div>
       </div>
-    </div>
+    </ModernLayout>
   );
 }

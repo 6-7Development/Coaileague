@@ -152,27 +152,27 @@
   --elevate-1: rgba(255,255,255, .04);
   --elevate-2: rgba(255,255,255, .09);
 
-  /* CAD Professional Dark Theme - Fortune 500 Grade */
-  --cad-background: 215 20% 8%;        /* Near black, like AutoCAD */
-  --cad-surface: 215 18% 11%;          /* Panels, cards */
-  --cad-surface-elevated: 215 16% 14%; /* Dialogs, modals */
-  --cad-chrome: 215 15% 13%;           /* Menu/toolbar/status bar */
-  --cad-chrome-hover: 215 15% 18%;     /* Hover states on chrome */
-  --cad-chrome-active: 215 15% 24%;    /* Active/pressed chrome */
+  /* Modern Dark Theme - Clean & Organized */
+  --cad-background: 222 47% 5%;        /* gray-950 equivalent */
+  --cad-surface: 217 19% 12%;          /* gray-900 equivalent */
+  --cad-surface-elevated: 217 19% 16%; /* Elevated cards */
+  --cad-chrome: 217 19% 12%;           /* gray-900 for header/nav */
+  --cad-chrome-hover: 217 19% 16%;     /* Hover states */
+  --cad-chrome-active: 217 19% 20%;    /* Active states */
   
-  /* Borders - Subtle, professional */
-  --cad-border: 215 12% 22%;           /* Subtle panel dividers */
-  --cad-border-strong: 215 12% 32%;    /* Strong dividers */
+  /* Borders - Clean separation */
+  --cad-border: 217 19% 20%;           /* gray-800 equivalent */
+  --cad-border-strong: 217 19% 28%;    /* Stronger dividers */
   
-  /* Text hierarchy - High precision */
-  --cad-text-primary: 215 8% 92%;      /* Primary text */
-  --cad-text-secondary: 215 8% 68%;    /* Secondary text */
-  --cad-text-tertiary: 215 8% 48%;     /* Disabled, meta info */
-  --cad-text-inverted: 215 20% 12%;    /* On bright backgrounds */
+  /* Text hierarchy - Clear & readable */
+  --cad-text-primary: 217 10% 95%;     /* gray-100 */
+  --cad-text-secondary: 217 8% 65%;    /* gray-400 */
+  --cad-text-tertiary: 217 9% 45%;     /* gray-500 */
+  --cad-text-inverted: 217 19% 12%;    /* On bright backgrounds */
   
-  /* Status & Accent Colors */
-  --cad-blue: 210 100% 58%;            /* Primary actions */
-  --cad-green: 142 76% 48%;            /* Success, confirmed */
+  /* Accent Colors - Indigo primary */
+  --cad-blue: 239 84% 67%;             /* indigo-500 primary */
+  --cad-green: 142 76% 48%;            /* emerald-400 */
   --cad-orange: 38 92% 58%;            /* Warnings, pending */
   --cad-red: 0 84% 58%;                /* Errors, conflicts */
   --cad-purple: 271 76% 60%;           /* Info, templates */

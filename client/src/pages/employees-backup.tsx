@@ -32,7 +32,6 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import type { Employee } from "@shared/schema";
-import ModernLayout from "@/components/ModernLayout";
 
 export default function Employees() {
   const { toast } = useToast();
@@ -193,18 +192,17 @@ export default function Employees() {
   ) || [];
 
   return (
-    <ModernLayout>
-      <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
-        <div className="space-y-4 sm:space-y-6">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <h2 className="text-2xl sm:text-3xl font-bold mb-1" data-testid="text-employees-title">
-                Employees
-              </h2>
-              <p className="text-sm sm:text-base text-[hsl(var(--cad-text-secondary))]" data-testid="text-employees-subtitle">
-                Manage your team members and their schedules
-              </p>
-            </div>
+    <div className="flex-1 overflow-auto">
+      <div className="container mx-auto p-6 lg:p-8 space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl lg:text-4xl font-semibold tracking-tight" data-testid="text-employees-title">
+              Employees
+            </h1>
+            <p className="text-muted-foreground mt-1" data-testid="text-employees-subtitle">
+              Manage your team members and their schedules
+            </p>
+          </div>
           
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
@@ -446,8 +444,7 @@ export default function Employees() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-        </div>
       </div>
-    </ModernLayout>
+    </div>
   );
 }

@@ -11,6 +11,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import ModernLayout from "@/components/ModernLayout";
 import {
   Dialog,
   DialogContent,
@@ -230,17 +231,18 @@ export default function Schedule() {
   };
 
   return (
-    <div className="flex-1 overflow-auto">
-      <div className="container mx-auto p-6 lg:p-8 space-y-6">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl lg:text-4xl font-semibold tracking-tight" data-testid="text-schedule-title">
-              Schedule
-            </h1>
-            <p className="text-muted-foreground mt-1" data-testid="text-schedule-subtitle">
-              Manage employee shifts and assignments
-            </p>
-          </div>
+    <ModernLayout>
+      <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
+        <div className="space-y-4 sm:space-y-6">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h2 className="text-2xl sm:text-3xl font-bold mb-1" data-testid="text-schedule-title">
+                Schedule
+              </h2>
+              <p className="text-sm sm:text-base text-[hsl(var(--cad-text-secondary))]" data-testid="text-schedule-subtitle">
+                Manage employee shifts and assignments
+              </p>
+            </div>
           
           <Dialog open={isAddShiftOpen} onOpenChange={setIsAddShiftOpen}>
             <DialogTrigger asChild>
@@ -429,7 +431,8 @@ export default function Schedule() {
             })}
           </div>
         )}
+        </div>
       </div>
-    </div>
+    </ModernLayout>
   );
 }

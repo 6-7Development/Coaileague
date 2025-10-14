@@ -17,6 +17,7 @@ import {
   Phone,
   FileText,
 } from "lucide-react";
+import ModernLayout from "@/components/ModernLayout";
 import {
   Dialog,
   DialogContent,
@@ -126,17 +127,18 @@ export default function Clients() {
   ) || [];
 
   return (
-    <div className="flex-1 overflow-auto">
-      <div className="container mx-auto p-6 lg:p-8 space-y-6">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl lg:text-4xl font-semibold tracking-tight" data-testid="text-clients-title">
-              Clients
-            </h1>
-            <p className="text-muted-foreground mt-1" data-testid="text-clients-subtitle">
-              Manage your customers and their appointments
-            </p>
-          </div>
+    <ModernLayout>
+      <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
+        <div className="space-y-4 sm:space-y-6">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h2 className="text-2xl sm:text-3xl font-bold mb-1" data-testid="text-clients-title">
+                Clients
+              </h2>
+              <p className="text-sm sm:text-base text-[hsl(var(--cad-text-secondary))]" data-testid="text-clients-subtitle">
+                Manage your customers and their appointments
+              </p>
+            </div>
           
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
@@ -316,7 +318,8 @@ export default function Clients() {
             ))}
           </div>
         )}
+        </div>
       </div>
-    </div>
+    </ModernLayout>
   );
 }
