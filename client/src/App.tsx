@@ -30,6 +30,7 @@ import Clients from "@/pages/clients";
 import Invoices from "@/pages/invoices";
 import Analytics from "@/pages/analytics";
 import Settings from "@/pages/settings";
+import Reports from "@/pages/reports";
 import OnboardingPage from "@/pages/onboarding";
 
 function AppContent() {
@@ -84,6 +85,7 @@ function AppContent() {
                 <Route path="/employees" component={Employees} />
                 <Route path="/clients" component={Clients} />
                 <Route path="/invoices" component={Invoices} />
+                <Route path="/reports" component={Reports} />
                 <Route path="/analytics" component={Analytics} />
                 <Route path="/settings" component={Settings} />
                 <Route path="/contact" component={Contact} />
