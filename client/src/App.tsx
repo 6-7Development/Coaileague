@@ -18,6 +18,7 @@ import { CADStatusBar } from "@/components/cad-status-bar";
 import { useAuth } from "@/hooks/useAuth";
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
+import Pricing from "@/pages/pricing";
 import Dashboard from "@/pages/dashboard";
 import Schedule from "@/pages/schedule";
 import TimeTracking from "@/pages/time-tracking";
@@ -48,6 +49,7 @@ function AppContent() {
     return (
       <Switch>
         <Route path="/" component={Landing} />
+        <Route path="/pricing" component={Pricing} />
         <Route component={Landing} />
       </Switch>
     );

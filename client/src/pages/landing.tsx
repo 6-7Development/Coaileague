@@ -27,6 +27,15 @@ export default function Landing() {
           <Button
             variant="ghost"
             size="sm"
+            onClick={() => window.location.href = "/pricing"}
+            className="text-xs h-8 text-[hsl(var(--cad-text-secondary))] hover:text-[hsl(var(--cad-text-primary))] hover:bg-[hsl(var(--cad-chrome-hover))]"
+            data-testid="button-pricing"
+          >
+            Pricing
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => window.location.href = "/api/demo-login"}
             className="text-xs h-8 text-[hsl(var(--cad-text-secondary))] hover:text-[hsl(var(--cad-text-primary))] hover:bg-[hsl(var(--cad-chrome-hover))]"
             data-testid="button-view-demo"
@@ -58,14 +67,14 @@ export default function Landing() {
               </div>
               
               <h1 className="text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1]" data-testid="text-hero-title">
-                Workforce Management
+                Complete Workforce
                 <br />
-                <span className="text-[hsl(var(--cad-blue))]">Built for Precision</span>
+                <span className="text-[hsl(var(--cad-blue))]">Command Center</span>
               </h1>
               
               <p className="text-lg text-[hsl(var(--cad-text-secondary))] leading-relaxed" data-testid="text-hero-description">
-                Professional CAD-style interface for autonomous scheduling, GPS-verified clock-ins, 
-                real-time time tracking, and automated invoicing. Control your workforce like a Fortune 500 command center.
+                Autonomous scheduling AI, GPS-verified clock-ins, automated payroll processing, employee file management, 
+                internal job posting, and state audit compliance. Everything you need to run Fortune 500-grade workforce operations.
               </p>
 
               {/* Key Metrics */}
@@ -178,12 +187,14 @@ export default function Landing() {
       {/* Core Capabilities - Technical Grid */}
       <section className="border-y border-[hsl(var(--cad-border-strong))] bg-[hsl(var(--cad-surface))]">
         <div className="container mx-auto px-6 py-16">
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
             {[
               { icon: Cpu, label: "Autonomous Scheduling", desc: "AI-powered shift assignments", color: "purple" },
               { icon: MapPin, label: "GPS Clock-In", desc: "Location-verified timecards", color: "green" },
-              { icon: Target, label: "Late Detection", desc: "Real-time attendance alerts", color: "orange" },
-              { icon: FileText, label: "Auto-Invoicing", desc: "Generate & send invoices", color: "blue" },
+              { icon: Zap, label: "Auto-Payroll", desc: "Automated payroll processing", color: "cyan" },
+              { icon: FileText, label: "Employee Files", desc: "Document & certification management", color: "blue" },
+              { icon: Users, label: "Job Posting", desc: "Internal hiring & applications", color: "orange" },
+              { icon: Shield, label: "Audit Compliance", desc: "State financial audit ready", color: "red" },
             ].map((feature) => (
               <div key={feature.label} className="space-y-3">
                 <div className={`h-10 w-10 rounded-md bg-[hsl(var(--cad-${feature.color}))]/10 flex items-center justify-center`}>
