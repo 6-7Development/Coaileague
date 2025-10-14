@@ -80,7 +80,7 @@ export const workspaces = pgTable("workspaces", {
   stripeSubscriptionId: varchar("stripe_subscription_id"),
   
   // Platform fee
-  platformFeePercentage: decimal("platform_fee_percentage", { precision: 5, scale: 2 }).default("10.00"),
+  platformFeePercentage: decimal("platform_fee_percentage", { precision: 5, scale: 2 }).default("3.00"),
   
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -146,7 +146,8 @@ export type WorkspaceTheme = typeof workspaceThemes.$inferSelect;
 // ENUMS
 // ============================================================================
 
-export const workspaceRoleEnum = pgEnum('workspace_role', ['owner', 'manager', 'employee']);
+export const workspaceRoleEnum = pgEnum('workspace_role', ['owner', 'manager', 'supervisor', 'employee']);
+export const platformRoleEnum = pgEnum('platform_role', ['root', 'sysop', 'auditor']);
 
 // ============================================================================
 // EMPLOYEE & CLIENT TABLES
@@ -986,3 +987,231 @@ export const insertPayrollEntrySchema = createInsertSchema(payrollEntries).omit(
 
 export type InsertPayrollEntry = z.infer<typeof insertPayrollEntrySchema>;
 export type PayrollEntry = typeof payrollEntries.$inferSelect;
+
+// ============================================================================
+// FORTUNE 500 FEATURES - Platform-Level Roles (Root, Sysop, Auditor)
+// ============================================================================
+
+// Platform roles that exist outside workspace tenancy
+export const platformRoles = pgTable("platform_roles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  role: platformRoleEnum("role").notNull(),
+  
+  // Assignment tracking
+  grantedBy: varchar("granted_by").references(() => users.id),
+  grantedReason: text("granted_reason"),
+  revokedAt: timestamp("revoked_at"),
+  revokedBy: varchar("revoked_by").references(() => users.id),
+  revokedReason: text("revoked_reason"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  uniqueUserRole: uniqueIndex("unique_user_platform_role").on(table.userId, table.role),
+}));
+
+export const insertPlatformRoleSchema = createInsertSchema(platformRoles).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertPlatformRole = z.infer<typeof insertPlatformRoleSchema>;
+export type PlatformRole = typeof platformRoles.$inferSelect;
+
+// System-wide audit log for platform operations
+export const systemAuditLogs = pgTable("system_audit_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  platformRole: platformRoleEnum("platform_role"),
+  
+  action: varchar("action").notNull(), // 'create_workspace', 'delete_user', 'grant_role', etc.
+  entityType: varchar("entity_type").notNull(),
+  entityId: varchar("entity_id"),
+  workspaceId: varchar("workspace_id").references(() => workspaces.id),
+  
+  changes: jsonb("changes"), // { before: {...}, after: {...} }
+  metadata: jsonb("metadata"),
+  ipAddress: varchar("ip_address"),
+  userAgent: varchar("user_agent"),
+  requiresConfirmation: boolean("requires_confirmation").default(false),
+  confirmedBy: varchar("confirmed_by").references(() => users.id),
+  confirmedAt: timestamp("confirmed_at"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type SystemAuditLog = typeof systemAuditLogs.$inferSelect;
+
+// ============================================================================
+// FORTUNE 500 FEATURES - Resignation & Notice System
+// ============================================================================
+
+export const noticeTypeEnum = pgEnum('notice_type', ['resignation', 'role_change', 'termination']);
+export const noticeStatusEnum = pgEnum('notice_status', ['submitted', 'acknowledged', 'completed', 'cancelled']);
+
+export const employeeNotices = pgTable("employee_notices", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
+  
+  noticeType: noticeTypeEnum("notice_type").notNull(),
+  currentRole: varchar("current_role"), // Current workspaceRole
+  
+  // Notice details
+  submittedDate: timestamp("submitted_date").defaultNow(),
+  effectiveDate: timestamp("effective_date").notNull(), // Last day or when change takes effect
+  reason: text("reason"),
+  
+  // Status tracking
+  status: noticeStatusEnum("status").default("submitted"),
+  acknowledgedBy: varchar("acknowledged_by").references(() => users.id),
+  acknowledgedAt: timestamp("acknowledged_at"),
+  
+  // Early release option
+  releasedEarly: boolean("released_early").default(false),
+  releasedBy: varchar("released_by").references(() => users.id),
+  releasedAt: timestamp("released_at"),
+  actualEndDate: timestamp("actual_end_date"),
+  
+  // Rehiring policy compliance
+  eligibleForRehire: boolean("eligible_for_rehire").default(true),
+  rehireNotes: text("rehire_notes"),
+  
+  // Audit trail (kept for 2 years)
+  retentionUntil: timestamp("retention_until"), // Auto-set to 2 years from completion
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertEmployeeNoticeSchema = createInsertSchema(employeeNotices).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertEmployeeNotice = z.infer<typeof insertEmployeeNoticeSchema>;
+export type EmployeeNotice = typeof employeeNotices.$inferSelect;
+
+// ============================================================================
+// FORTUNE 500 FEATURES - Subscription & Billing Management
+// ============================================================================
+
+export const subscriptionPlanEnum = pgEnum('subscription_plan', ['free', 'starter', 'professional', 'enterprise']);
+export const billingCycleEnum = pgEnum('billing_cycle', ['monthly', 'annual']);
+export const subscriptionStatusEnum = pgEnum('subscription_status', ['trial', 'active', 'past_due', 'cancelled', 'suspended']);
+
+export const subscriptions = pgTable("subscriptions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().unique().references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  // Plan details
+  plan: subscriptionPlanEnum("plan").default("free"),
+  billingCycle: billingCycleEnum("billing_cycle").default("monthly"),
+  status: subscriptionStatusEnum("status").default("active"),
+  
+  // Pricing (in cents)
+  basePrice: integer("base_price").default(0), // Monthly base price
+  platformFeePercentage: decimal("platform_fee_percentage", { precision: 5, scale: 2 }).default("3.00"), // 3% invoice fee
+  
+  // Limits
+  maxEmployees: integer("max_employees").default(5),
+  maxClients: integer("max_clients").default(10),
+  currentEmployees: integer("current_employees").default(0),
+  currentClients: integer("current_clients").default(0),
+  
+  // Trial tracking
+  trialStartedAt: timestamp("trial_started_at"),
+  trialEndsAt: timestamp("trial_ends_at"),
+  
+  // Billing dates
+  currentPeriodStart: timestamp("current_period_start").defaultNow(),
+  currentPeriodEnd: timestamp("current_period_end"),
+  cancelAt: timestamp("cancel_at"),
+  canceledAt: timestamp("canceled_at"),
+  
+  // Stripe integration
+  stripeSubscriptionId: varchar("stripe_subscription_id"),
+  stripeCustomerId: varchar("stripe_customer_id"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertSubscriptionSchema = createInsertSchema(subscriptions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertSubscription = z.infer<typeof insertSubscriptionSchema>;
+export type Subscription = typeof subscriptions.$inferSelect;
+
+// Overage tracking for exceeding plan limits
+export const overageCharges = pgTable("overage_charges", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  subscriptionId: varchar("subscription_id").notNull().references(() => subscriptions.id, { onDelete: 'cascade' }),
+  
+  // Period
+  periodStart: timestamp("period_start").notNull(),
+  periodEnd: timestamp("period_end").notNull(),
+  
+  // Overage details
+  overageType: varchar("overage_type").notNull(), // 'employees', 'clients', 'invoices'
+  limit: integer("limit").notNull(),
+  actual: integer("actual").notNull(),
+  overage: integer("overage").notNull(),
+  
+  // Pricing
+  unitPrice: decimal("unit_price", { precision: 10, scale: 2 }).notNull(), // Price per overage unit
+  totalCharge: decimal("total_charge", { precision: 10, scale: 2 }).notNull(),
+  
+  // Payment
+  invoiced: boolean("invoiced").default(false),
+  invoiceId: varchar("invoice_id"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertOverageChargeSchema = createInsertSchema(overageCharges).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertOverageCharge = z.infer<typeof insertOverageChargeSchema>;
+export type OverageCharge = typeof overageCharges.$inferSelect;
+
+// Platform revenue tracking (our cuts from invoices + subscriptions)
+export const platformRevenue = pgTable("platform_revenue", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  // Revenue source
+  revenueType: varchar("revenue_type").notNull(), // 'subscription', 'invoice_fee', 'overage', 'setup_fee'
+  sourceId: varchar("source_id"), // invoiceId, subscriptionId, etc.
+  
+  // Amounts (in cents)
+  amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
+  feePercentage: decimal("fee_percentage", { precision: 5, scale: 2 }),
+  
+  // Tracking
+  collectedAt: timestamp("collected_at"),
+  status: varchar("status").default("pending"), // 'pending', 'collected', 'failed'
+  
+  // Period
+  periodStart: timestamp("period_start"),
+  periodEnd: timestamp("period_end"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertPlatformRevenueSchema = createInsertSchema(platformRevenue).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertPlatformRevenue = z.infer<typeof insertPlatformRevenueSchema>;
+export type PlatformRevenue = typeof platformRevenue.$inferSelect;
