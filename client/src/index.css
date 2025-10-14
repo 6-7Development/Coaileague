@@ -211,6 +211,25 @@
   --muted-border: hsl(from hsl(var(--muted)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
   --accent-border: hsl(from hsl(var(--accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
   --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+
+  /* CAD-style application colors */
+  --cad-background: 215 20% 8%;
+  --cad-surface: 215 18% 11%;
+  --cad-surface-elevated: 215 16% 14%;
+  --cad-border: 215 12% 22%;
+  --cad-border-strong: 215 12% 32%;
+  --cad-chrome: 215 15% 13%;
+  --cad-chrome-hover: 215 15% 18%;
+  --cad-chrome-active: 215 15% 24%;
+  --cad-text-primary: 215 8% 92%;
+  --cad-text-secondary: 215 8% 68%;
+  --cad-text-tertiary: 215 8% 48%;
+  --cad-blue: 210 100% 58%;
+  --cad-green: 142 76% 48%;
+  --cad-orange: 38 92% 58%;
+  --cad-red: 0 84% 58%;
+  --cad-purple: 271 76% 60%;
+  --cad-cyan: 188 94% 54%;
 }
 
 @layer base {

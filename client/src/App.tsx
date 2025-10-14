@@ -12,6 +12,9 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { ProtectedRoute } from "@/components/protected-route";
 import { DemoBanner } from "@/components/demo-banner";
+import { CADMenuBar } from "@/components/cad-menu-bar";
+import { CADToolbar } from "@/components/cad-toolbar";
+import { CADStatusBar } from "@/components/cad-status-bar";
 import { useAuth } from "@/hooks/useAuth";
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
@@ -53,15 +56,14 @@ function AppContent() {
   return (
     <ProtectedRoute>
       <SidebarProvider style={style as React.CSSProperties}>
-        <div className="flex h-screen w-full">
-          <AppSidebar />
-          <div className="flex flex-col flex-1 min-w-0">
-            <DemoBanner />
-            <header className="flex items-center justify-between h-16 px-6 border-b bg-background sticky top-0 z-10">
-              <SidebarTrigger data-testid="button-sidebar-toggle" />
-              <ThemeToggle />
-            </header>
-            <main className="flex-1 overflow-hidden">
+        <div className="flex flex-col h-screen w-full bg-[hsl(var(--cad-background))]">
+          <DemoBanner />
+          <CADMenuBar />
+          <CADToolbar />
+          
+          <div className="flex flex-1 min-h-0">
+            <AppSidebar />
+            <main className="flex-1 overflow-hidden bg-[hsl(var(--cad-background))]">
               <Switch>
                 <Route path="/" component={Dashboard} />
                 <Route path="/dashboard" component={Dashboard} />
@@ -76,6 +78,8 @@ function AppContent() {
               </Switch>
             </main>
           </div>
+          
+          <CADStatusBar />
         </div>
       </SidebarProvider>
     </ProtectedRoute>
