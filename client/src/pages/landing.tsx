@@ -15,6 +15,12 @@ import {
   TrendingUp,
   CheckCircle2,
   ArrowRight,
+  DollarSign,
+  Camera,
+  CalendarClock,
+  UserPlus,
+  CreditCard,
+  Sparkles,
 } from "lucide-react";
 
 export default function Landing() {
@@ -79,27 +85,27 @@ export default function Landing() {
               <h1 className="text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1]" data-testid="text-hero-title">
                 Replace Your Entire
                 <br />
-                <span className="text-[hsl(var(--cad-blue))]">Workforce Department</span>
+                <span className="text-[hsl(var(--cad-blue))]">HR Department</span>
               </h1>
               
               <p className="text-lg text-[hsl(var(--cad-text-secondary))] leading-relaxed" data-testid="text-hero-description">
-                Fortune 500-grade platform with GPS clock-in verification, automated payroll processing, 
-                job posting & hiring, employee file management, and audit compliance. Save $130k-250k/year.
+                Complete workforce automation with GPS-verified clock-ins, automated payroll, 
+                smart scheduling, auto-billing, RMS reporting, and full compliance. Save $130k-$250k/year.
               </p>
 
               {/* Key Metrics */}
               <div className="grid grid-cols-3 gap-4 pt-4">
                 <div className="space-y-1">
-                  <div className="text-2xl font-bold text-[hsl(var(--cad-cyan))] font-mono">$130k-250k</div>
-                  <div className="text-xs text-[hsl(var(--cad-text-tertiary))] uppercase">Annual Savings</div>
+                  <div className="text-2xl font-bold text-[hsl(var(--cad-cyan))] font-mono">$250k/yr</div>
+                  <div className="text-xs text-[hsl(var(--cad-text-tertiary))] uppercase">Cost Savings</div>
                 </div>
                 <div className="space-y-1">
-                  <div className="text-2xl font-bold text-[hsl(var(--cad-green))] font-mono">3 Teams</div>
+                  <div className="text-2xl font-bold text-[hsl(var(--cad-green))] font-mono">5 Staff</div>
                   <div className="text-xs text-[hsl(var(--cad-text-tertiary))] uppercase">Replaced</div>
                 </div>
                 <div className="space-y-1">
-                  <div className="text-2xl font-bold text-[hsl(var(--cad-purple))] font-mono">F500</div>
-                  <div className="text-xs text-[hsl(var(--cad-text-tertiary))] uppercase">Grade</div>
+                  <div className="text-2xl font-bold text-[hsl(var(--cad-purple))] font-mono">100%</div>
+                  <div className="text-xs text-[hsl(var(--cad-text-tertiary))] uppercase">Automated</div>
                 </div>
               </div>
 
@@ -194,23 +200,207 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* Live Feature Showcase - Advertisement Style */}
+      <section className="border-y border-[hsl(var(--cad-border-strong))] bg-gradient-to-br from-[hsl(var(--cad-blue))]/5 via-[hsl(var(--cad-surface))] to-[hsl(var(--cad-purple))]/5">
+        <div className="container mx-auto px-6 py-20">
+          <div className="text-center mb-12">
+            <Badge className="bg-[hsl(var(--cad-blue))]/10 text-[hsl(var(--cad-blue))] border-none mb-4">
+              <Sparkles className="h-3 w-3 mr-1" />
+              Live Automation Showcase
+            </Badge>
+            <h2 className="text-4xl font-bold mb-4" data-testid="text-automation-title">
+              Complete Workforce <span className="text-[hsl(var(--cad-blue))]">Automation</span>
+            </h2>
+            <p className="text-lg text-[hsl(var(--cad-text-secondary))] max-w-2xl mx-auto">
+              Replace 5 full-time staff positions with one intelligent platform. Every feature live and ready today.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+            {[
+              {
+                icon: CreditCard,
+                title: "Auto-Billing",
+                description: "Automatically generate invoices from completed shifts",
+                features: ["Smart invoice generation", "Multi-client billing", "Tax calculation", "Payment tracking"],
+                color: "green",
+                badge: "LIVE"
+              },
+              {
+                icon: DollarSign,
+                title: "Auto-Payment Collection",
+                description: "Stripe-powered automated payment processing",
+                features: ["Secure payments", "Auto-retry failed payments", "Payment reminders", "Revenue tracking"],
+                color: "cyan",
+                badge: "LIVE"
+              },
+              {
+                icon: CalendarClock,
+                title: "Smart Schedule",
+                description: "Sling-beating schedule with AI conflict detection",
+                features: ["Drag-and-drop shifts", "Bulk operations", "Conflict warnings", "Labor cost tracking"],
+                color: "purple",
+                badge: "LIVE"
+              },
+              {
+                icon: Zap,
+                title: "Auto-Payroll",
+                description: "Fully automated payroll processing engine",
+                features: ["Tax withholding", "Direct deposit", "Federal & state compliance", "Payroll reports"],
+                color: "orange",
+                badge: "LIVE"
+              },
+              {
+                icon: FileText,
+                title: "RMS Reporting",
+                description: "Internal Report Management System",
+                features: ["Custom templates", "Approval workflows", "Customer portal", "Photo attachments"],
+                color: "blue",
+                badge: "LIVE"
+              },
+              {
+                icon: UserPlus,
+                title: "Onboarding",
+                description: "Complete digital employee onboarding",
+                features: ["Email invitations", "E-signatures", "Tax classification", "Document upload"],
+                color: "pink",
+                badge: "LIVE"
+              },
+              {
+                icon: MapPin,
+                title: "GPS Tracking",
+                description: "Location-verified clock-ins with photo proof",
+                features: ["GPS coordinates", "Timestamp photos", "Geofence alerts", "Anti-fraud protection"],
+                color: "green",
+                badge: "LIVE"
+              },
+              {
+                icon: Shield,
+                title: "Full Compliance",
+                description: "SOC2-ready audit trails and compliance",
+                features: ["Immutable logs", "FLSA compliance", "GDPR ready", "Legal audit trails"],
+                color: "red",
+                badge: "LIVE"
+              },
+            ].map((feature) => (
+              <Card
+                key={feature.title}
+                className="bg-[hsl(var(--cad-surface-elevated))] border-[hsl(var(--cad-border-strong))] p-6 space-y-4 hover:border-[hsl(var(--cad-blue))]/50 hover:shadow-lg transition-all group"
+                data-testid={`card-feature-${feature.title.toLowerCase().replace(/\s+/g, "-")}`}
+              >
+                <div className="flex items-start justify-between">
+                  <div className={`h-12 w-12 rounded-lg bg-[hsl(var(--cad-${feature.color}))]/10 flex items-center justify-center group-hover:scale-110 transition-transform`}>
+                    <feature.icon className={`h-6 w-6 text-[hsl(var(--cad-${feature.color}))]`} />
+                  </div>
+                  <Badge className="bg-[hsl(var(--cad-green))]/10 text-[hsl(var(--cad-green))] text-[10px] px-2 py-0.5 border-none">
+                    {feature.badge}
+                  </Badge>
+                </div>
+                <div className="space-y-2">
+                  <h3 className="text-lg font-semibold text-[hsl(var(--cad-text-primary))]">
+                    {feature.title}
+                  </h3>
+                  <p className="text-sm text-[hsl(var(--cad-text-secondary))]">
+                    {feature.description}
+                  </p>
+                  <ul className="space-y-1.5 pt-2">
+                    {feature.features.map((item) => (
+                      <li
+                        key={item}
+                        className="flex items-center gap-2 text-xs text-[hsl(var(--cad-text-tertiary))]"
+                      >
+                        <CheckCircle2 className={`h-3 w-3 text-[hsl(var(--cad-${feature.color}))]`} />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </Card>
+            ))}
+          </div>
+
+          {/* ROI Calculator */}
+          <Card className="bg-gradient-to-br from-[hsl(var(--cad-blue))]/10 via-[hsl(var(--cad-surface-elevated))] to-[hsl(var(--cad-purple))]/10 border-[hsl(var(--cad-border-strong))] p-8">
+            <div className="text-center space-y-6">
+              <div className="space-y-2">
+                <h3 className="text-2xl font-bold text-[hsl(var(--cad-text-primary))]">
+                  Your Annual Savings Calculator
+                </h3>
+                <p className="text-sm text-[hsl(var(--cad-text-secondary))]">
+                  Replace these 5 full-time positions with WorkforceOS automation
+                </p>
+              </div>
+
+              <div className="grid md:grid-cols-5 gap-4 max-w-4xl mx-auto">
+                {[
+                  { role: "HR Manager", salary: "$65k" },
+                  { role: "Scheduler", salary: "$45k" },
+                  { role: "Payroll Specialist", salary: "$50k" },
+                  { role: "Billing Clerk", salary: "$40k" },
+                  { role: "Compliance Officer", salary: "$55k" },
+                ].map((position) => (
+                  <div key={position.role} className="bg-[hsl(var(--cad-surface))] border border-[hsl(var(--cad-border))] rounded-lg p-4 space-y-2">
+                    <div className="text-xs text-[hsl(var(--cad-text-tertiary))] uppercase tracking-wide">
+                      {position.role}
+                    </div>
+                    <div className="text-xl font-bold text-[hsl(var(--cad-cyan))] font-mono">
+                      {position.salary}/yr
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex items-center justify-center gap-4 py-6">
+                <div className="h-px w-24 bg-[hsl(var(--cad-border))]" />
+                <div className="text-sm text-[hsl(var(--cad-text-tertiary))] uppercase tracking-wider">
+                  Total Annual Savings
+                </div>
+                <div className="h-px w-24 bg-[hsl(var(--cad-border))]" />
+              </div>
+
+              <div className="space-y-2">
+                <div className="text-5xl font-bold text-[hsl(var(--cad-green))] font-mono" data-testid="text-total-savings">
+                  $255,000<span className="text-2xl">/year</span>
+                </div>
+                <div className="flex items-center justify-center gap-2 text-sm text-[hsl(var(--cad-text-secondary))]">
+                  <TrendingUp className="h-4 w-4 text-[hsl(var(--cad-green))]" />
+                  <span>Plus benefits, insurance, training, and overhead costs</span>
+                </div>
+              </div>
+
+              <div className="pt-4">
+                <Button
+                  size="lg"
+                  onClick={() => window.location.href = "/pricing"}
+                  className="bg-[hsl(var(--cad-green))] hover:bg-[hsl(var(--cad-green))]/90 text-white h-12 px-8"
+                  data-testid="button-view-pricing"
+                >
+                  View Pricing Plans
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </Card>
+        </div>
+      </section>
+
       {/* Core Capabilities - Technical Grid */}
       <section className="border-y border-[hsl(var(--cad-border-strong))] bg-[hsl(var(--cad-surface))]">
         <div className="container mx-auto px-6 py-16">
           <div className="text-center mb-8">
-            <h2 className="text-2xl font-bold mb-2">Fortune 500 Feature Set</h2>
+            <h2 className="text-2xl font-bold mb-2">Why Businesses Choose WorkforceOS</h2>
             <p className="text-sm text-[hsl(var(--cad-text-tertiary))]">
-              All features available now • Replace HR, scheduling & payroll teams
+              Enterprise-grade capabilities • Zero manual work • Complete transparency
             </p>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
             {[
-              { icon: Cpu, label: "Smart Scheduling", desc: "AI-powered shift assignments", color: "purple" },
+              { icon: Cpu, label: "Smart Scheduling", desc: "Better than Sling with AI", color: "purple" },
+              { icon: Camera, label: "Photo Timestamps", desc: "Visual proof of work", color: "pink" },
               { icon: MapPin, label: "GPS Clock-In", desc: "Location-verified timecards", color: "green" },
-              { icon: Zap, label: "Auto-Payroll", desc: "Automated payroll processing", color: "cyan" },
-              { icon: FileText, label: "Employee Files", desc: "Document & certification management", color: "blue" },
-              { icon: Users, label: "Job Posting", desc: "Internal hiring & applications", color: "orange" },
-              { icon: Shield, label: "Audit Compliance", desc: "Immutable audit trail logs", color: "red" },
+              { icon: Zap, label: "Auto-Payroll", desc: "Zero manual processing", color: "cyan" },
+              { icon: CreditCard, label: "Auto-Billing", desc: "Invoice generation", color: "blue" },
+              { icon: Shield, label: "SOC2 Ready", desc: "Immutable audit trails", color: "red" },
             ].map((feature) => (
               <Card key={feature.label} className="bg-[hsl(var(--cad-surface))] border-[hsl(var(--cad-border))] p-6 space-y-3 relative">
                 <Badge className="absolute top-4 right-4 bg-[hsl(var(--cad-green))]/10 text-[hsl(var(--cad-green))] text-[10px] px-2 py-0.5 border-none">
@@ -229,105 +419,15 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Feature Modules */}
-      <section className="container mx-auto px-6 py-20">
-        <div className="space-y-12">
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <div className="h-1 w-12 bg-[hsl(var(--cad-blue))]" />
-              <span className="text-xs uppercase tracking-wider text-[hsl(var(--cad-text-tertiary))] font-mono">
-                System Modules
-              </span>
-            </div>
-            <h2 className="text-4xl font-bold tracking-tight">
-              Command & Control Interface
-            </h2>
-            <p className="text-lg text-[hsl(var(--cad-text-secondary))] max-w-3xl">
-              Professional-grade modules built for precision workforce management
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[
-              {
-                icon: Settings,
-                title: "Smart Scheduling",
-                features: ["AI-powered suggestions", "Conflict detection", "Template system", "Recurring shifts"],
-                status: "LIVE"
-              },
-              {
-                icon: MapPin,
-                title: "GPS Clock-In",
-                features: ["Location verification", "Geofence alerts", "Device tracking", "Anti-fraud protection"],
-                status: "LIVE"
-              },
-              {
-                icon: Zap,
-                title: "Auto-Payroll",
-                features: ["Tax calculations", "Federal & state withholding", "Direct deposit ready", "Payroll reports"],
-                status: "LIVE"
-              },
-              {
-                icon: FileText,
-                title: "Employee Files",
-                features: ["Document storage", "Certification tracking", "Expiration alerts", "Audit-ready"],
-                status: "LIVE"
-              },
-              {
-                icon: Users,
-                title: "Job Posting",
-                features: ["Internal hiring", "Application tracking", "Interview scheduling", "Candidate pipeline"],
-                status: "LIVE"
-              },
-              {
-                icon: Shield,
-                title: "Audit Compliance",
-                features: ["Immutable logs", "State-compliant", "FLSA tracking", "eDiscovery ready"],
-                status: "LIVE"
-              },
-            ].map((module) => (
-              <Card
-                key={module.title}
-                className="bg-[hsl(var(--cad-surface-elevated))] border-[hsl(var(--cad-border-strong))] p-6 space-y-4 hover:border-[hsl(var(--cad-blue))]/50 transition-colors"
-                data-testid={`card-module-${module.title.toLowerCase().replace(/\s+/g, "-")}`}
-              >
-                <div className="flex items-start justify-between">
-                  <module.icon className="h-6 w-6 text-[hsl(var(--cad-blue))]" />
-                  <Badge className="bg-[hsl(var(--cad-green))]/10 text-[hsl(var(--cad-green))] text-[10px] px-2 py-0.5 border-none">
-                    {module.status}
-                  </Badge>
-                </div>
-                <div className="space-y-2">
-                  <h3 className="text-base font-semibold text-[hsl(var(--cad-text-primary))]">
-                    {module.title}
-                  </h3>
-                  <ul className="space-y-1.5">
-                    {module.features.map((feature) => (
-                      <li
-                        key={feature}
-                        className="flex items-center gap-2 text-xs text-[hsl(var(--cad-text-secondary))]"
-                      >
-                        <CheckCircle2 className="h-3 w-3 text-[hsl(var(--cad-green))]" />
-                        {feature}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* CTA Section */}
       <section className="border-t border-[hsl(var(--cad-border-strong))] bg-[hsl(var(--cad-chrome))]">
         <div className="container mx-auto px-6 py-16">
           <div className="max-w-3xl mx-auto text-center space-y-6">
             <h2 className="text-3xl font-bold tracking-tight">
-              Ready for Fortune 500-Grade Control?
+              Save $255,000/Year Starting Today
             </h2>
             <p className="text-lg text-[hsl(var(--cad-text-secondary))]">
-              Join businesses using WorkforceOS to manage workforce operations with precision
+              Join businesses replacing entire departments with WorkforceOS automation
             </p>
             <div className="flex justify-center gap-4">
               <Button
