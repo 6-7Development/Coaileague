@@ -3,9 +3,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { 
   Plus,
@@ -51,7 +49,7 @@ export default function Schedule() {
     queryKey: ["/api/shifts"],
   });
 
-  const { data: employees = [] } = useQuery<Employee[]>({
+  const { data: employees = [], isLoading: employeesLoading } = useQuery<Employee[]>({
     queryKey: ["/api/employees"],
   });
 
@@ -131,15 +129,17 @@ export default function Schedule() {
   });
 
   // Drag and drop handlers
-  const handleDragStart = (e: any, shift: Shift) => {
+  const handleDragStart = (e: React.DragEvent, shift: Shift) => {
     e.dataTransfer.setData("shiftId", shift.id);
+    e.dataTransfer.effectAllowed = "move";
   };
 
-  const handleDragOver = (e: any) => {
+  const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
   };
 
-  const handleDrop = (e: any, targetDate: Date) => {
+  const handleDrop = (e: React.DragEvent, targetEmployeeId: string, targetDate: Date) => {
     e.preventDefault();
     const shiftId = e.dataTransfer.getData("shiftId");
     const shift = shifts.find(s => s.id === shiftId);
@@ -159,20 +159,19 @@ export default function Schedule() {
     updateShiftMutation.mutate({
       id: shiftId,
       data: {
+        employeeId: targetEmployeeId,
         startTime: newStartTime.toISOString(),
         endTime: newEndTime.toISOString(),
       },
     });
   };
 
-  const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  const timeSlots = Array.from({ length: 24 }, (_, i) => `${i.toString().padStart(2, '0')}:00`);
-
   const getWeekDates = () => {
     const curr = new Date(currentDate);
     const first = curr.getDate() - curr.getDay();
     return Array.from({ length: 7 }, (_, i) => {
-      const date = new Date(curr.setDate(first + i));
+      const date = new Date(curr);
+      date.setDate(first + i);
       return date;
     });
   };
@@ -213,16 +212,11 @@ export default function Schedule() {
     });
   };
 
-  const getShiftsForDay = (date: Date) => {
+  const getShiftsForEmployeeAndDay = (employeeId: string, date: Date) => {
     return shifts.filter(shift => {
       const shiftDate = new Date(shift.startTime);
-      return shiftDate.toDateString() === date.toDateString();
+      return shift.employeeId === employeeId && shiftDate.toDateString() === date.toDateString();
     });
-  };
-
-  const getEmployeeName = (employeeId: string) => {
-    const employee = employees.find(e => e.id === employeeId);
-    return employee ? `${employee.firstName} ${employee.lastName}` : "Unknown";
   };
 
   const getClientName = (clientId: string | null) => {
@@ -231,224 +225,289 @@ export default function Schedule() {
     return client ? `${client.firstName} ${client.lastName}` : null;
   };
 
+  // Color palette for shifts (matching Sling style)
+  const shiftColors = [
+    'bg-rose-500/90',
+    'bg-amber-500/90',
+    'bg-blue-500/90',
+    'bg-purple-500/90',
+    'bg-emerald-500/90',
+    'bg-pink-500/90',
+  ];
+
+  const getShiftColor = (clientId: string | null) => {
+    if (!clientId) return shiftColors[0];
+    const hash = clientId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    return shiftColors[hash % shiftColors.length];
+  };
+
+  const formatDateHeader = (date: Date) => {
+    const dayNames = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+    return {
+      day: dayNames[date.getDay()],
+      date: date.getDate()
+    };
+  };
+
+  const formatWeekRange = () => {
+    const startDate = weekDates[0].getDate();
+    const endDate = weekDates[6].getDate();
+    const month = weekDates[0].toLocaleDateString('en-US', { month: 'short' });
+    return `${startDate} - ${endDate} ${month}`;
+  };
+
   return (
     <ModernLayout>
       <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
         <div className="space-y-4 sm:space-y-6">
+          {/* Header */}
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <h2 className="text-2xl sm:text-3xl font-bold mb-1" data-testid="text-schedule-title">
                 Schedule
               </h2>
               <p className="text-sm sm:text-base text-[hsl(var(--cad-text-secondary))]" data-testid="text-schedule-subtitle">
-                Manage employee shifts and assignments
+                Week {formatWeekRange()}
               </p>
             </div>
           
-          <Dialog open={isAddShiftOpen} onOpenChange={setIsAddShiftOpen}>
-            <DialogTrigger asChild>
-              <Button data-testid="button-add-shift">
-                <Plus className="mr-2 h-4 w-4" />
-                Create Shift
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl">
-              <DialogHeader>
-                <DialogTitle>Create New Shift</DialogTitle>
-                <DialogDescription>
-                  Schedule a shift and assign an employee
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="employee">Employee *</Label>
-                    <Select value={formData.employeeId} onValueChange={(value) => setFormData({ ...formData, employeeId: value })}>
-                      <SelectTrigger id="employee" data-testid="select-shift-employee">
-                        <SelectValue placeholder="Select employee" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {employees.length === 0 ? (
-                          <SelectItem value="none">No employees available</SelectItem>
-                        ) : (
-                          employees.map((emp) => (
-                            <SelectItem key={emp.id} value={emp.id}>
-                              {emp.firstName} {emp.lastName} - {emp.role || "Employee"}
-                            </SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="client">Client (Optional)</Label>
-                    <Select value={formData.clientId} onValueChange={(value) => setFormData({ ...formData, clientId: value })}>
-                      <SelectTrigger id="client" data-testid="select-shift-client">
-                        <SelectValue placeholder="Select client" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="">None</SelectItem>
-                        {clients.map((client) => (
-                          <SelectItem key={client.id} value={client.id}>
-                            {client.firstName} {client.lastName}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="date">Date *</Label>
-                  <Input 
-                    id="date" 
-                    type="date" 
-                    value={formData.startDate}
-                    onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                    data-testid="input-shift-date" 
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="startTime">Start Time *</Label>
-                    <Input 
-                      id="startTime" 
-                      type="time" 
-                      value={formData.startTime}
-                      onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
-                      data-testid="input-shift-start" 
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="endTime">End Time *</Label>
-                    <Input 
-                      id="endTime" 
-                      type="time" 
-                      value={formData.endTime}
-                      onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
-                      data-testid="input-shift-end" 
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="description">Description (Optional)</Label>
-                  <Textarea 
-                    id="description" 
-                    placeholder="Shift notes or special instructions..." 
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    data-testid="textarea-shift-description" 
-                  />
-                </div>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="icon" onClick={previousWeek} data-testid="button-prev-week">
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button variant="outline" size="icon" onClick={nextWeek} data-testid="button-next-week">
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
               </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsAddShiftOpen(false)}>
-                  Cancel
-                </Button>
-                <Button 
-                  onClick={handleSubmit}
-                  disabled={createShiftMutation.isPending || employees.length === 0}
-                  data-testid="button-save-shift"
-                >
-                  {createShiftMutation.isPending ? "Creating..." : "Create Shift"}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </div>
-
-        <div className="flex items-center justify-between">
-          <Button variant="outline" size="sm" onClick={previousWeek} data-testid="button-prev-week">
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <div className="text-lg font-medium">
-            {weekDates[0].toLocaleDateString('en-US', { month: 'long', day: 'numeric' })} - {weekDates[6].toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-          </div>
-          <Button variant="outline" size="sm" onClick={nextWeek} data-testid="button-next-week">
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-
-        {shiftsLoading ? (
-          <div className="grid grid-cols-7 gap-2">
-            {weekDates.map((date, index) => (
-              <Card key={index}>
-                <div className="p-3 border-b">
-                  <Skeleton className="h-4 w-12 mb-1" />
-                  <Skeleton className="h-7 w-8" />
-                </div>
-                <div className="p-2 space-y-2 min-h-[200px]">
-                  <Card className="p-2">
-                    <Skeleton className="h-4 w-24 mb-1" />
-                    <Skeleton className="h-3 w-20" />
-                  </Card>
-                  <Card className="p-2">
-                    <Skeleton className="h-4 w-28 mb-1" />
-                    <Skeleton className="h-3 w-16" />
-                  </Card>
-                </div>
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <div className="grid grid-cols-7 gap-2">
-            {weekDates.map((date, index) => {
-              const dayShifts = getShiftsForDay(date);
-              const isToday = date.toDateString() === new Date().toDateString();
-              
-              return (
-                <Card 
-                  key={index} 
-                  className={isToday ? "border-primary" : ""} 
-                  data-testid={`day-column-${index}`}
-                  onDragOver={handleDragOver}
-                  onDrop={(e) => handleDrop(e, date)}
-                >
-                  <div className="p-3 border-b">
-                    <div className="text-sm font-medium">{weekDays[index]}</div>
-                    <div className={`text-xl font-semibold ${isToday ? "text-primary" : ""}`}>
-                      {date.getDate()}
+              <Dialog open={isAddShiftOpen} onOpenChange={setIsAddShiftOpen}>
+                <DialogTrigger asChild>
+                  <Button data-testid="button-add-shift">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Create Shift
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle>Create New Shift</DialogTitle>
+                    <DialogDescription>
+                      Schedule a shift and assign an employee
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="employee">Employee *</Label>
+                        <Select value={formData.employeeId} onValueChange={(value) => setFormData({ ...formData, employeeId: value })}>
+                          <SelectTrigger id="employee" data-testid="select-shift-employee">
+                            <SelectValue placeholder="Select employee" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {employees.length === 0 ? (
+                              <SelectItem value="none">No employees available</SelectItem>
+                            ) : (
+                              employees.map((emp) => (
+                                <SelectItem key={emp.id} value={emp.id}>
+                                  {emp.firstName} {emp.lastName} - {emp.role || "Employee"}
+                                </SelectItem>
+                              ))
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="client">Client (Optional)</Label>
+                        <Select value={formData.clientId} onValueChange={(value) => setFormData({ ...formData, clientId: value })}>
+                          <SelectTrigger id="client" data-testid="select-shift-client">
+                            <SelectValue placeholder="Select client" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="">None</SelectItem>
+                            {clients.map((client) => (
+                              <SelectItem key={client.id} value={client.id}>
+                                {client.firstName} {client.lastName}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="date">Date *</Label>
+                      <Input 
+                        id="date" 
+                        type="date" 
+                        value={formData.startDate}
+                        onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                        data-testid="input-shift-date" 
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="startTime">Start Time *</Label>
+                        <Input 
+                          id="startTime" 
+                          type="time" 
+                          value={formData.startTime}
+                          onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+                          data-testid="input-shift-start" 
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="endTime">End Time *</Label>
+                        <Input 
+                          id="endTime" 
+                          type="time" 
+                          value={formData.endTime}
+                          onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
+                          data-testid="input-shift-end" 
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="description">Description (Optional)</Label>
+                      <Textarea 
+                        id="description" 
+                        placeholder="Shift notes or special instructions..." 
+                        value={formData.description}
+                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                        data-testid="textarea-shift-description" 
+                      />
                     </div>
                   </div>
-                  <div className="p-2 space-y-2 min-h-[200px]">
-                    {dayShifts.length === 0 ? (
-                      <p className="text-xs text-muted-foreground text-center py-4">
-                        Drag shift here
-                      </p>
-                    ) : (
-                      dayShifts.map((shift) => {
-                        const startTime = new Date(shift.startTime);
-                        const endTime = new Date(shift.endTime);
-                        const clientName = getClientName(shift.clientId);
-                        
-                        return (
-                          <Card 
-                            key={shift.id} 
-                            className="p-2 hover-elevate cursor-move" 
-                            data-testid={`shift-${shift.id}`}
-                            draggable
-                            onDragStart={(e) => handleDragStart(e, shift)}
-                          >
-                            <div className="text-xs font-medium truncate">
-                              {getEmployeeName(shift.employeeId)}
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {startTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} - {endTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
-                            </div>
-                            {clientName && (
-                              <Badge variant="secondary" className="text-xs mt-1">
-                                {clientName}
-                              </Badge>
-                            )}
-                          </Card>
-                        );
-                      })
-                    )}
-                  </div>
-                </Card>
-              );
-            })}
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsAddShiftOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button 
+                      onClick={handleSubmit}
+                      disabled={createShiftMutation.isPending || employees.length === 0}
+                      data-testid="button-save-shift"
+                    >
+                      {createShiftMutation.isPending ? "Creating..." : "Create Shift"}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </div>
           </div>
-        )}
+
+          {/* Sling-style Schedule Grid */}
+          <div className="border border-[hsl(var(--cad-border))] rounded-lg overflow-hidden">
+            {/* Header Row */}
+            <div className="grid grid-cols-8 bg-[hsl(var(--cad-chrome))] border-b border-[hsl(var(--cad-border))]">
+              {/* Empty corner cell */}
+              <div className="border-r border-[hsl(var(--cad-border))] p-3" />
+              
+              {/* Date headers */}
+              {weekDates.map((date, index) => {
+                const { day, date: dayNum } = formatDateHeader(date);
+                const isToday = date.toDateString() === new Date().toDateString();
+                
+                return (
+                  <div
+                    key={index}
+                    className={`p-3 text-center border-r border-[hsl(var(--cad-border))] last:border-r-0 ${
+                      isToday ? 'bg-[hsl(var(--cad-blue))]/10' : ''
+                    }`}
+                  >
+                    <div className="text-xs text-[hsl(var(--cad-text-secondary))] font-medium">
+                      {day}
+                    </div>
+                    <div className={`text-lg font-semibold ${
+                      isToday ? 'text-[hsl(var(--cad-blue))]' : 'text-[hsl(var(--cad-text-primary))]'
+                    }`}>
+                      {dayNum}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Employee Rows */}
+            {shiftsLoading || employeesLoading ? (
+              <div className="p-8">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-4 py-4">
+                    <Skeleton className="h-5 w-32" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                ))}
+              </div>
+            ) : employees.length === 0 ? (
+              <div className="p-12 text-center">
+                <p className="text-[hsl(var(--cad-text-secondary))]">
+                  No employees found. Add employees to start scheduling.
+                </p>
+              </div>
+            ) : (
+              employees.map((employee, empIndex) => (
+                <div
+                  key={employee.id}
+                  className={`grid grid-cols-8 border-b border-[hsl(var(--cad-border))] last:border-b-0 ${
+                    empIndex % 2 === 0 ? 'bg-[hsl(var(--cad-chrome))]/30' : ''
+                  }`}
+                >
+                  {/* Employee name cell */}
+                  <div className="border-r border-[hsl(var(--cad-border))] p-3 flex items-center">
+                    <div className="min-w-0">
+                      <div className="font-medium text-sm text-[hsl(var(--cad-text-primary))] truncate">
+                        {employee.firstName} {employee.lastName}
+                      </div>
+                      {employee.role && (
+                        <div className="text-xs text-[hsl(var(--cad-text-secondary))] truncate">
+                          {employee.role}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Shift cells for each day */}
+                  {weekDates.map((date, dateIndex) => {
+                    const dayShifts = getShiftsForEmployeeAndDay(employee.id, date);
+                    
+                    return (
+                      <div
+                        key={dateIndex}
+                        className="border-r border-[hsl(var(--cad-border))] last:border-r-0 p-2 min-h-[80px] relative"
+                        onDragOver={handleDragOver}
+                        onDrop={(e) => handleDrop(e, employee.id, date)}
+                        data-testid={`cell-${employee.id}-${dateIndex}`}
+                      >
+                        <div className="space-y-1">
+                          {dayShifts.map((shift) => {
+                            const startTime = new Date(shift.startTime);
+                            const endTime = new Date(shift.endTime);
+                            const clientName = getClientName(shift.clientId);
+                            const colorClass = getShiftColor(shift.clientId);
+                            
+                            return (
+                              <div
+                                key={shift.id}
+                                className={`${colorClass} text-white rounded px-2 py-1.5 cursor-move hover:opacity-90 transition-opacity`}
+                                draggable
+                                onDragStart={(e) => handleDragStart(e, shift)}
+                                data-testid={`shift-${shift.id}`}
+                              >
+                                <div className="text-xs font-medium leading-tight">
+                                  {startTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })} - {endTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                                </div>
+                                {clientName && (
+                                  <div className="text-xs opacity-90 truncate">
+                                    {clientName}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ))
+            )}
+          </div>
         </div>
       </div>
     </ModernLayout>
