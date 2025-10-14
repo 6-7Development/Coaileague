@@ -135,6 +135,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get workspace theme
+  app.get('/api/workspace/theme', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { resolveWorkspaceForUser } = await import("./rbac");
+      const { workspaceId, error } = await resolveWorkspaceForUser(userId);
+      
+      if (error || !workspaceId) {
+        return res.json(null);
+      }
+
+      const theme = await storage.getWorkspaceTheme(workspaceId);
+      res.json(theme);
+    } catch (error) {
+      console.error("Error fetching workspace theme:", error);
+      res.json(null);
+    }
+  });
+
   // ============================================================================
   // EMPLOYEE ROUTES (Multi-tenant isolated)
   // ============================================================================

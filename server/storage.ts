@@ -4,6 +4,7 @@
 import {
   users,
   workspaces,
+  workspaceThemes,
   employees,
   clients,
   shifts,
@@ -20,6 +21,7 @@ import {
   type UpsertUser,
   type Workspace,
   type InsertWorkspace,
+  type WorkspaceTheme,
   type Employee,
   type InsertEmployee,
   type Client,
@@ -59,6 +61,9 @@ export interface IStorage {
   getWorkspace(id: string): Promise<Workspace | undefined>;
   getWorkspaceByOwnerId(ownerId: string): Promise<Workspace | undefined>;
   updateWorkspace(id: string, data: Partial<InsertWorkspace>): Promise<Workspace | undefined>;
+  
+  // Workspace theme operations
+  getWorkspaceTheme(workspaceId: string): Promise<WorkspaceTheme | null>;
   
   // Employee operations
   createEmployee(employee: InsertEmployee): Promise<Employee>;
@@ -211,6 +216,14 @@ export class DatabaseStorage implements IStorage {
       .where(eq(workspaces.id, id))
       .returning();
     return workspace;
+  }
+
+  async getWorkspaceTheme(workspaceId: string): Promise<WorkspaceTheme | null> {
+    const [theme] = await db
+      .select()
+      .from(workspaceThemes)
+      .where(eq(workspaceThemes.workspaceId, workspaceId));
+    return theme || null;
   }
 
   // ============================================================================

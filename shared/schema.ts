@@ -95,6 +95,53 @@ export const insertWorkspaceSchema = createInsertSchema(workspaces).omit({
 export type InsertWorkspace = z.infer<typeof insertWorkspaceSchema>;
 export type Workspace = typeof workspaces.$inferSelect;
 
+// White-label theming for Enterprise workspaces
+export const workspaceThemes = pgTable("workspace_themes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().unique().references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  // Theming tier - determines what can be customized
+  tier: varchar("tier").default("standard"), // 'standard', 'professional', 'white_label'
+  
+  // Color customization (HSL format: "H S% L%")
+  primaryColor: varchar("primary_color"), // e.g., "210 100% 58%" for blue
+  secondaryColor: varchar("secondary_color"),
+  successColor: varchar("success_color"),
+  warningColor: varchar("warning_color"),
+  errorColor: varchar("error_color"),
+  
+  // Logo & branding assets
+  logoUrl: text("logo_url"), // Sidebar logo (max 180×40px)
+  logoUrlInverted: text("logo_url_inverted"), // For light backgrounds
+  faviconUrl: text("favicon_url"),
+  loginBackgroundUrl: text("login_background_url"), // Hero background
+  
+  // Typography (must be web-safe or loaded font)
+  fontFamily: varchar("font_family"), // e.g., "Inter, sans-serif"
+  
+  // Domain settings (Enterprise tier only)
+  customDomain: varchar("custom_domain"), // e.g., "schedule.acmecorp.com"
+  customEmailDomain: varchar("custom_email_domain"), // e.g., "notifications@acmecorp.com"
+  
+  // Branding removals (Enterprise tier only)
+  removePoweredBy: boolean("remove_powered_by").default(false),
+  removeClockworkLogo: boolean("remove_clockwork_logo").default(false),
+  removeWatermarks: boolean("remove_watermarks").default(false),
+  
+  // Metadata
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertWorkspaceThemeSchema = createInsertSchema(workspaceThemes).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertWorkspaceTheme = z.infer<typeof insertWorkspaceThemeSchema>;
+export type WorkspaceTheme = typeof workspaceThemes.$inferSelect;
+
 // ============================================================================
 // ENUMS
 // ============================================================================

@@ -120,6 +120,26 @@
   /* Fallback for older browsers */
   --destructive-border: hsl(var(--destructive));
   --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+
+  /* CAD Professional Theme - Light Mode (for compatibility) */
+  --cad-background: 217 10% 96%;       /* Light gray background */
+  --cad-surface: 217 10% 98%;          /* Lighter panels */
+  --cad-surface-elevated: 0 0% 100%;   /* White for modals */
+  --cad-chrome: 217 12% 94%;           /* Light menu/toolbar */
+  --cad-chrome-hover: 217 12% 90%;     /* Hover states */
+  --cad-chrome-active: 217 12% 85%;    /* Active states */
+  --cad-border: 217 15% 88%;           /* Light borders */
+  --cad-border-strong: 217 15% 78%;    /* Stronger dividers */
+  --cad-text-primary: 217 25% 15%;     /* Dark text */
+  --cad-text-secondary: 217 20% 40%;   /* Secondary text */
+  --cad-text-tertiary: 217 15% 60%;    /* Tertiary text */
+  --cad-text-inverted: 217 10% 98%;    /* Light text on dark */
+  --cad-blue: 210 100% 58%;            /* Primary blue */
+  --cad-green: 142 76% 48%;            /* Success green */
+  --cad-orange: 38 92% 58%;            /* Warning orange */
+  --cad-red: 0 84% 58%;                /* Error red */
+  --cad-purple: 271 76% 60%;           /* Info purple */
+  --cad-cyan: 188 94% 54%;             /* Active cyan */
 }
 
 .dark {
@@ -132,47 +152,54 @@
   --elevate-1: rgba(255,255,255, .04);
   --elevate-2: rgba(255,255,255, .09);
 
-  --background: 217 20% 12%;
+  /* CAD Professional Dark Theme - Fortune 500 Grade */
+  --cad-background: 215 20% 8%;        /* Near black, like AutoCAD */
+  --cad-surface: 215 18% 11%;          /* Panels, cards */
+  --cad-surface-elevated: 215 16% 14%; /* Dialogs, modals */
+  --cad-chrome: 215 15% 13%;           /* Menu/toolbar/status bar */
+  --cad-chrome-hover: 215 15% 18%;     /* Hover states on chrome */
+  --cad-chrome-active: 215 15% 24%;    /* Active/pressed chrome */
+  
+  /* Borders - Subtle, professional */
+  --cad-border: 215 12% 22%;           /* Subtle panel dividers */
+  --cad-border-strong: 215 12% 32%;    /* Strong dividers */
+  
+  /* Text hierarchy - High precision */
+  --cad-text-primary: 215 8% 92%;      /* Primary text */
+  --cad-text-secondary: 215 8% 68%;    /* Secondary text */
+  --cad-text-tertiary: 215 8% 48%;     /* Disabled, meta info */
+  --cad-text-inverted: 215 20% 12%;    /* On bright backgrounds */
+  
+  /* Status & Accent Colors */
+  --cad-blue: 210 100% 58%;            /* Primary actions */
+  --cad-green: 142 76% 48%;            /* Success, confirmed */
+  --cad-orange: 38 92% 58%;            /* Warnings, pending */
+  --cad-red: 0 84% 58%;                /* Errors, conflicts */
+  --cad-purple: 271 76% 60%;           /* Info, templates */
+  --cad-cyan: 188 94% 54%;             /* Active timers */
 
-  --foreground: 217 10% 95%;
-
-  --border: 217 15% 28%;
-
-  --card: 217 18% 16%;
-
-  --card-foreground: 217 10% 95%;
-
-  --card-border: 217 16% 22%;
-
-  --sidebar: 217 16% 20%;
-
-  --sidebar-foreground: 217 10% 95%;
-
-  --sidebar-border: 217 15% 26%;
-
-  --sidebar-primary: 220 85% 58%;
-
+  /* Map to Shadcn tokens */
+  --background: var(--cad-background);
+  --foreground: var(--cad-text-primary);
+  --border: var(--cad-border);
+  --card: var(--cad-surface);
+  --card-foreground: var(--cad-text-primary);
+  --card-border: var(--cad-border);
+  --sidebar: var(--cad-chrome);
+  --sidebar-foreground: var(--cad-text-primary);
+  --sidebar-border: var(--cad-border-strong);
+  --sidebar-primary: var(--cad-blue);
   --sidebar-primary-foreground: 220 10% 98%;
-
   --sidebar-accent: 217 14% 24%;
-
-  --sidebar-accent-foreground: 217 10% 90%;
-
-  --sidebar-ring: 220 85% 58%;
-
-  --popover: 217 17% 22%;
-
-  --popover-foreground: 217 10% 95%;
-
-  --popover-border: 217 16% 28%;
-
-  --primary: 220 85% 58%;
-
+  --sidebar-accent-foreground: var(--cad-text-primary);
+  --sidebar-ring: var(--cad-blue);
+  --popover: var(--cad-surface-elevated);
+  --popover-foreground: var(--cad-text-primary);
+  --popover-border: var(--cad-border-strong);
+  --primary: var(--cad-blue);
   --primary-foreground: 220 10% 98%;
-
   --secondary: 217 15% 26%;
-
-  --secondary-foreground: 217 10% 90%;
+  --secondary-foreground: var(--cad-text-primary);
 
   --muted: 217 14% 24%;
 
@@ -211,25 +238,6 @@
   --muted-border: hsl(from hsl(var(--muted)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
   --accent-border: hsl(from hsl(var(--accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
   --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
-
-  /* CAD-style application colors */
-  --cad-background: 215 20% 8%;
-  --cad-surface: 215 18% 11%;
-  --cad-surface-elevated: 215 16% 14%;
-  --cad-border: 215 12% 22%;
-  --cad-border-strong: 215 12% 32%;
-  --cad-chrome: 215 15% 13%;
-  --cad-chrome-hover: 215 15% 18%;
-  --cad-chrome-active: 215 15% 24%;
-  --cad-text-primary: 215 8% 92%;
-  --cad-text-secondary: 215 8% 68%;
-  --cad-text-tertiary: 215 8% 48%;
-  --cad-blue: 210 100% 58%;
-  --cad-green: 142 76% 48%;
-  --cad-orange: 38 92% 58%;
-  --cad-red: 0 84% 58%;
-  --cad-purple: 271 76% 60%;
-  --cad-cyan: 188 94% 54%;
 }
 
 @layer base {
@@ -351,5 +359,73 @@
   .border.active-elevate-2:not(.no-active-interaction-elevate)::after,
   .border.hover-elevate:not(.no-hover-interaction-elevate)::after {
     inset: -1px;
+  }
+
+  /* CAD-Style Professional Utilities */
+  .cad-panel {
+    @apply bg-[hsl(var(--cad-surface))] border border-[hsl(var(--cad-border))] rounded-md;
+  }
+
+  .cad-chrome {
+    @apply bg-[hsl(var(--cad-chrome))] border-b border-[hsl(var(--cad-border-strong))];
+  }
+
+  .cad-text-primary {
+    @apply text-[hsl(var(--cad-text-primary))];
+  }
+
+  .cad-text-secondary {
+    @apply text-[hsl(var(--cad-text-secondary))];
+  }
+
+  .cad-text-tertiary {
+    @apply text-[hsl(var(--cad-text-tertiary))];
+  }
+
+  /* Status Colors */
+  .cad-status-success {
+    @apply text-[hsl(var(--cad-green))];
+  }
+
+  .cad-status-warning {
+    @apply text-[hsl(var(--cad-orange))];
+  }
+
+  .cad-status-error {
+    @apply text-[hsl(var(--cad-red))];
+  }
+
+  .cad-status-info {
+    @apply text-[hsl(var(--cad-purple))];
+  }
+
+  .cad-status-active {
+    @apply text-[hsl(var(--cad-cyan))];
+  }
+
+  /* Dense UI - CAD Style */
+  .cad-compact {
+    @apply text-xs leading-tight;
+  }
+
+  .cad-monospace {
+    @apply font-mono text-xs;
+  }
+
+  /* Professional Grid Lines */
+  .cad-grid-bg {
+    background-image: 
+      linear-gradient(to right, hsl(var(--cad-border)) 1px, transparent 1px),
+      linear-gradient(to bottom, hsl(var(--cad-border)) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+
+  /* Precision borders for panels */
+  .cad-divider-v {
+    @apply border-r border-[hsl(var(--cad-border-strong))];
+  }
+
+  .cad-divider-h {
+    @apply border-b border-[hsl(var(--cad-border-strong))];
   }
 }
