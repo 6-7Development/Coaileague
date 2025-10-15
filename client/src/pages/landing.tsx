@@ -95,9 +95,9 @@ export default function Landing() {
         <div className="container mx-auto px-4 sm:px-6 py-12 sm:py-16 lg:py-24">
           <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
             {/* Left: Value Prop */}
-            <div className="space-y-6 text-center lg:text-left">
+            <div className="space-y-4 sm:space-y-6 text-center lg:text-left">
               {/* Large Animated Logo */}
-              <div className="flex justify-center lg:justify-start mb-8">
+              <div className="flex justify-center lg:justify-start">
                 <WorkforceOSLogo size="xl" showText={false} />
               </div>
 
@@ -108,18 +108,18 @@ export default function Landing() {
                 </span>
               </div>
               
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-black tracking-tight leading-[1.1]" data-testid="text-hero-title">
+              <h1 className="text-2xl sm:text-3xl lg:text-5xl xl:text-6xl font-black tracking-tight leading-tight sm:leading-[1.1]" data-testid="text-hero-title">
                 <span className="text-[hsl(var(--cad-blue))]">Complete Workforce Automation</span>
               </h1>
               
-              <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-[hsl(var(--cad-text-primary))] leading-tight" data-testid="text-hero-subtitle">
+              <p className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-[hsl(var(--cad-text-primary))] leading-snug sm:leading-tight" data-testid="text-hero-subtitle">
                 Replace 5 Full-Time Staff Positions with One Intelligent Platform
               </p>
               
-              <p className="text-base sm:text-lg text-[hsl(var(--cad-text-secondary))] leading-relaxed" data-testid="text-hero-description">
+              <p className="text-sm sm:text-base lg:text-lg text-[hsl(var(--cad-text-secondary))] leading-relaxed max-w-3xl mx-auto lg:mx-0" data-testid="text-hero-description">
                 GPS time tracking • Smart scheduling • Auto-payroll • Client invoicing • Benefits management • 
                 Performance reviews • PTO workflows • RMS reporting • Live support • Admin command center • 
-                Multi-portal access • White-label ready. Every feature live and ready today.
+                Multi-portal access • White-label ready
               </p>
 
               {/* Key Metrics */}

@@ -11,6 +11,9 @@ export function WorkforceOSLogo({
   showText = true,
   className 
 }: WorkforceOSLogoProps) {
+  // Generate unique ID for this logo instance to prevent SVG ID conflicts
+  const uniqueId = Math.random().toString(36).substr(2, 9);
+  
   const sizes = {
     sm: {
       container: "w-8 h-8",
@@ -25,7 +28,7 @@ export function WorkforceOSLogo({
       text: "text-3xl"
     },
     xl: {
-      container: "w-20 h-20",
+      container: "w-24 h-24",
       text: "text-4xl"
     }
   };
@@ -47,15 +50,15 @@ export function WorkforceOSLogo({
           className="w-full h-full"
         >
           <defs>
-            {/* Brand gradient */}
-            <linearGradient id="brandGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            {/* Brand gradient - unique per instance */}
+            <linearGradient id={`brandGradient-${uniqueId}`} x1="0%" y1="0%" x2="100%" y2="100%">
               <stop offset="0%" stopColor="#6366f1" />
-              <stop offset="100%" stopColor="#4f46e5" />
+              <stop offset="100%" stopColor="#a855f7" />
             </linearGradient>
             
-            {/* Glow effect */}
-            <filter id="glow">
-              <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+            {/* Glow effect - unique per instance */}
+            <filter id={`glow-${uniqueId}`}>
+              <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
               <feMerge>
                 <feMergeNode in="coloredBlur"/>
                 <feMergeNode in="SourceGraphic"/>
@@ -67,82 +70,82 @@ export function WorkforceOSLogo({
           <circle 
             cx="50" 
             cy="50" 
-            r="45" 
-            stroke="url(#brandGradient)" 
-            strokeWidth="3" 
+            r="42" 
+            stroke={`url(#brandGradient-${uniqueId})`}
+            strokeWidth="4" 
             fill="none"
-            opacity="0.3"
+            opacity="0.5"
           >
             <animate
               attributeName="stroke-dasharray"
-              from="0,283"
-              to="283,0"
+              from="0,264"
+              to="264,0"
               dur="3s"
               repeatCount="indefinite"
             />
           </circle>
 
           {/* People icons - workforce */}
-          <g filter="url(#glow)">
+          <g filter={`url(#glow-${uniqueId})`}>
             {/* Person 1 */}
-            <circle cx="35" cy="40" r="6" fill="url(#brandGradient)">
+            <circle cx="35" cy="38" r="5" fill={`url(#brandGradient-${uniqueId})`}>
               <animate
                 attributeName="opacity"
-                values="0.6;1;0.6"
+                values="0.7;1;0.7"
                 dur="2s"
                 repeatCount="indefinite"
               />
             </circle>
             <path 
-              d="M 35 48 Q 28 50, 28 56 L 42 56 Q 42 50, 35 48" 
-              fill="url(#brandGradient)"
+              d="M 35 45 Q 29 47, 29 52 L 41 52 Q 41 47, 35 45" 
+              fill={`url(#brandGradient-${uniqueId})`}
             >
               <animate
                 attributeName="opacity"
-                values="0.6;1;0.6"
+                values="0.7;1;0.7"
                 dur="2s"
                 repeatCount="indefinite"
               />
             </path>
 
-            {/* Person 2 */}
-            <circle cx="50" cy="35" r="7" fill="url(#brandGradient)">
+            {/* Person 2 - Center */}
+            <circle cx="50" cy="34" r="6" fill={`url(#brandGradient-${uniqueId})`}>
               <animate
                 attributeName="opacity"
-                values="1;0.6;1"
+                values="1;0.7;1"
                 dur="2s"
                 repeatCount="indefinite"
               />
             </circle>
             <path 
-              d="M 50 44 Q 42 46, 42 53 L 58 53 Q 58 46, 50 44" 
-              fill="url(#brandGradient)"
+              d="M 50 42 Q 43 44, 43 50 L 57 50 Q 57 44, 50 42" 
+              fill={`url(#brandGradient-${uniqueId})`}
             >
               <animate
                 attributeName="opacity"
-                values="1;0.6;1"
+                values="1;0.7;1"
                 dur="2s"
                 repeatCount="indefinite"
               />
             </path>
 
             {/* Person 3 */}
-            <circle cx="65" cy="40" r="6" fill="url(#brandGradient)">
+            <circle cx="65" cy="38" r="5" fill={`url(#brandGradient-${uniqueId})`}>
               <animate
                 attributeName="opacity"
-                values="0.6;1;0.6"
+                values="0.7;1;0.7"
                 dur="2s"
                 begin="0.5s"
                 repeatCount="indefinite"
               />
             </circle>
             <path 
-              d="M 65 48 Q 58 50, 58 56 L 72 56 Q 72 50, 65 48" 
-              fill="url(#brandGradient)"
+              d="M 65 45 Q 59 47, 59 52 L 71 52 Q 71 47, 65 45" 
+              fill={`url(#brandGradient-${uniqueId})`}
             >
               <animate
                 attributeName="opacity"
-                values="0.6;1;0.6"
+                values="0.7;1;0.7"
                 dur="2s"
                 begin="0.5s"
                 repeatCount="indefinite"
@@ -153,18 +156,18 @@ export function WorkforceOSLogo({
           {/* Clock element - time tracking */}
           <circle 
             cx="50" 
-            cy="72" 
-            r="12" 
-            stroke="url(#brandGradient)" 
+            cy="70" 
+            r="11" 
+            stroke={`url(#brandGradient-${uniqueId})`}
             strokeWidth="2.5" 
             fill="none"
           />
           <line 
             x1="50" 
-            y1="72" 
+            y1="70" 
             x2="50" 
-            y2="65" 
-            stroke="url(#brandGradient)" 
+            y2="64" 
+            stroke={`url(#brandGradient-${uniqueId})`}
             strokeWidth="2.5" 
             strokeLinecap="round"
           >
@@ -172,18 +175,18 @@ export function WorkforceOSLogo({
               attributeName="transform"
               attributeType="XML"
               type="rotate"
-              from="0 50 72"
-              to="360 50 72"
+              from="0 50 70"
+              to="360 50 70"
               dur="4s"
               repeatCount="indefinite"
             />
           </line>
           <line 
             x1="50" 
-            y1="72" 
-            x2="56" 
-            y2="72" 
-            stroke="url(#brandGradient)" 
+            y1="70" 
+            x2="55" 
+            y2="70" 
+            stroke={`url(#brandGradient-${uniqueId})`}
             strokeWidth="2" 
             strokeLinecap="round"
           >
@@ -191,8 +194,8 @@ export function WorkforceOSLogo({
               attributeName="transform"
               attributeType="XML"
               type="rotate"
-              from="0 50 72"
-              to="360 50 72"
+              from="0 50 70"
+              to="360 50 70"
               dur="48s"
               repeatCount="indefinite"
             />
@@ -200,8 +203,8 @@ export function WorkforceOSLogo({
 
           {/* Growth arrow - analytics/progress */}
           <path 
-            d="M 75 82 L 82 75 L 89 82" 
-            stroke="url(#brandGradient)" 
+            d="M 78 82 L 84 76 L 90 82" 
+            stroke={`url(#brandGradient-${uniqueId})`}
             strokeWidth="3" 
             fill="none" 
             strokeLinecap="round" 
@@ -209,7 +212,7 @@ export function WorkforceOSLogo({
           >
             <animate
               attributeName="opacity"
-              values="0.4;1;0.4"
+              values="0.5;1;0.5"
               dur="1.5s"
               repeatCount="indefinite"
             />
@@ -217,7 +220,7 @@ export function WorkforceOSLogo({
               attributeName="transform"
               attributeType="XML"
               type="translate"
-              values="0,3; 0,0; 0,3"
+              values="0,2; 0,0; 0,2"
               dur="1.5s"
               repeatCount="indefinite"
             />
