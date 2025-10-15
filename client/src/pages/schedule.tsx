@@ -56,6 +56,8 @@ export default function Schedule() {
   const [isTemplateOpen, setIsTemplateOpen] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedShift, setSelectedShift] = useState<Shift | null>(null);
+  const [draggedShift, setDraggedShift] = useState<Shift | null>(null);
+  const [dragOverCell, setDragOverCell] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     employeeId: "",
     clientId: "",
@@ -200,15 +202,33 @@ export default function Schedule() {
     },
   });
 
-  // Drag and drop handlers
+  // Drag and drop handlers with smooth visual feedback
   const handleDragStart = (e: React.DragEvent, shift: Shift) => {
     e.dataTransfer.setData("shiftId", shift.id);
     e.dataTransfer.effectAllowed = "move";
+    setDraggedShift(shift);
+    
+    // Create custom drag image for smooth effect
+    const dragElement = e.currentTarget as HTMLElement;
+    dragElement.style.opacity = "0.5";
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
+  const handleDragEnd = (e: React.DragEvent) => {
+    const dragElement = e.currentTarget as HTMLElement;
+    dragElement.style.opacity = "1";
+    setDraggedShift(null);
+    setDragOverCell(null);
+  };
+
+  const handleDragOver = (e: React.DragEvent, employeeId: string, date: Date) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
+    const cellKey = `${employeeId}-${date.toISOString()}`;
+    setDragOverCell(cellKey);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverCell(null);
   };
 
   const handleDrop = (e: React.DragEvent, targetEmployeeId: string, targetDate: Date) => {
@@ -228,6 +248,27 @@ export default function Schedule() {
     
     const newEndTime = new Date(newStartTime.getTime() + duration);
 
+    // Check for conflicts before updating
+    const tempShift = {
+      ...shift,
+      employeeId: targetEmployeeId,
+      startTime: newStartTime.toISOString(),
+      endTime: newEndTime.toISOString(),
+    };
+
+    const wouldConflict = hasConflict(tempShift as Shift, shifts);
+
+    if (wouldConflict) {
+      toast({
+        title: "Scheduling Conflict",
+        description: `This shift overlaps with another shift for ${getEmployeeName(targetEmployeeId)}`,
+        variant: "destructive",
+      });
+      setDraggedShift(null);
+      setDragOverCell(null);
+      return;
+    }
+
     updateShiftMutation.mutate({
       id: shiftId,
       data: {
@@ -236,6 +277,9 @@ export default function Schedule() {
         endTime: newEndTime.toISOString(),
       },
     });
+
+    setDraggedShift(null);
+    setDragOverCell(null);
   };
 
   const getWeekDates = () => {
@@ -462,8 +506,11 @@ export default function Schedule() {
               <h2 className="text-2xl sm:text-3xl font-bold mb-1" data-testid="text-schedule-title">
                 Schedule Management
               </h2>
-              <p className="text-sm text-[hsl(var(--cad-text-secondary))]" data-testid="text-schedule-subtitle">
-                Drag and drop shifts to assign employees · Week {formatWeekRange()}
+              <p className="text-sm text-slate-400" data-testid="text-schedule-subtitle">
+                <span className="inline-flex items-center gap-1">
+                  <span className="h-2 w-2 bg-emerald-400 rounded-full animate-pulse" />
+                  Drag and drop shifts to assign employees
+                </span> · Week {formatWeekRange()}
               </p>
             </div>
           
@@ -666,12 +713,22 @@ export default function Schedule() {
             </div>
           </div>
 
-          {/* Sling-style Schedule Grid */}
-          <div className="border border-[hsl(var(--cad-border))] rounded-lg overflow-hidden">
+          {/* GetSling-style Schedule Grid with Smooth Drag & Drop */}
+          <div className="border border-indigo-500/20 rounded-lg overflow-hidden card-interactive">
+            {/* Drag Indicator */}
+            {draggedShift && (
+              <div className="bg-indigo-500/10 border-b border-indigo-400 px-4 py-2 flex items-center gap-2 animate-pulse">
+                <div className="h-2 w-2 bg-indigo-400 rounded-full animate-ping" />
+                <span className="text-sm text-indigo-400 font-medium">
+                  Dragging shift for {getEmployeeName(draggedShift.employeeId)} - Drop in any cell to reschedule
+                </span>
+              </div>
+            )}
+            
             {/* Header Row */}
-            <div className="grid grid-cols-8 bg-[hsl(var(--cad-chrome))] border-b border-[hsl(var(--cad-border))]">
+            <div className="grid grid-cols-8 bg-slate-900/50 border-b border-slate-700">
               {/* Empty corner cell */}
-              <div className="border-r border-[hsl(var(--cad-border))] p-3" />
+              <div className="border-r border-slate-700 p-3" />
               
               {/* Date headers */}
               {weekDates.map((date, index) => {
@@ -681,15 +738,15 @@ export default function Schedule() {
                 return (
                   <div
                     key={index}
-                    className={`p-3 text-center border-r border-[hsl(var(--cad-border))] last:border-r-0 ${
-                      isToday ? 'bg-[hsl(var(--cad-blue))]/10' : ''
+                    className={`p-3 text-center border-r border-slate-700 last:border-r-0 transition-colors ${
+                      isToday ? 'bg-indigo-500/20' : ''
                     }`}
                   >
-                    <div className="text-xs text-[hsl(var(--cad-text-secondary))] font-medium">
+                    <div className="text-xs text-slate-400 font-medium">
                       {day}
                     </div>
                     <div className={`text-lg font-semibold ${
-                      isToday ? 'text-[hsl(var(--cad-blue))]' : 'text-[hsl(var(--cad-text-primary))]'
+                      isToday ? 'text-indigo-400' : 'text-white'
                     }`}>
                       {dayNum}
                     </div>
@@ -710,7 +767,7 @@ export default function Schedule() {
               </div>
             ) : employees.length === 0 ? (
               <div className="p-12 text-center">
-                <p className="text-[hsl(var(--cad-text-secondary))]">
+                <p className="text-slate-400">
                   No employees found. Add employees to start scheduling.
                 </p>
               </div>
@@ -718,18 +775,18 @@ export default function Schedule() {
               employees.map((employee, empIndex) => (
                 <div
                   key={employee.id}
-                  className={`grid grid-cols-8 border-b border-[hsl(var(--cad-border))] last:border-b-0 ${
-                    empIndex % 2 === 0 ? 'bg-[hsl(var(--cad-chrome))]/30' : ''
-                  }`}
+                  className={`grid grid-cols-8 border-b border-slate-700 last:border-b-0 transition-colors ${
+                    empIndex % 2 === 0 ? 'bg-slate-900/30' : 'bg-slate-900/10'
+                  } hover:bg-slate-800/30`}
                 >
                   {/* Employee name cell */}
-                  <div className="border-r border-[hsl(var(--cad-border))] p-3 flex items-center">
+                  <div className="border-r border-slate-700 p-3 flex items-center">
                     <div className="min-w-0">
-                      <div className="font-medium text-sm text-[hsl(var(--cad-text-primary))] truncate">
+                      <div className="font-medium text-sm text-white truncate">
                         {employee.firstName} {employee.lastName}
                       </div>
                       {employee.role && (
-                        <div className="text-xs text-[hsl(var(--cad-text-secondary))] truncate">
+                        <div className="text-xs text-slate-400 truncate">
                           {employee.role}
                         </div>
                       )}
@@ -739,36 +796,43 @@ export default function Schedule() {
                   {/* Shift cells for each day */}
                   {weekDates.map((date, dateIndex) => {
                     const dayShifts = getShiftsForEmployeeAndDay(employee.id, date);
+                    const cellKey = `${employee.id}-${date.toISOString()}`;
+                    const isDropTarget = dragOverCell === cellKey;
                     
                     return (
                       <div
                         key={dateIndex}
-                        className="border-r border-[hsl(var(--cad-border))] last:border-r-0 p-2 min-h-[80px] relative group/cell"
-                        onDragOver={handleDragOver}
+                        className={`border-r border-slate-700 last:border-r-0 p-2 min-h-[80px] relative group/cell transition-all duration-200 ${
+                          isDropTarget ? 'bg-indigo-500/20 ring-2 ring-indigo-400 ring-inset' : ''
+                        }`}
+                        onDragOver={(e) => handleDragOver(e, employee.id, date)}
+                        onDragLeave={handleDragLeave}
                         onDrop={(e) => handleDrop(e, employee.id, date)}
                         data-testid={`cell-${employee.id}-${dateIndex}`}
                       >
                         {/* GetSling-style: Click + to create shift for this date/employee */}
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover/cell:opacity-100 transition-opacity bg-[hsl(var(--cad-chrome))] hover:bg-[hsl(var(--cad-blue))]/20 hover:text-[hsl(var(--cad-blue))] z-10"
-                          onClick={() => {
-                            const dateStr = date.toISOString().split('T')[0];
-                            setFormData({
-                              employeeId: employee.id,
-                              clientId: "",
-                              startDate: dateStr,
-                              startTime: "09:00",
-                              endTime: "17:00",
-                              description: ""
-                            });
-                            setIsAddShiftOpen(true);
-                          }}
-                          data-testid={`button-quick-add-${employee.id}-${dateIndex}`}
-                        >
-                          <Plus className="h-4 w-4" />
-                        </Button>
+                        {!draggedShift && (
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover/cell:opacity-100 transition-all duration-200 bg-slate-800 hover:bg-indigo-500 hover:text-white z-10"
+                            onClick={() => {
+                              const dateStr = date.toISOString().split('T')[0];
+                              setFormData({
+                                employeeId: employee.id,
+                                clientId: "",
+                                startDate: dateStr,
+                                startTime: "09:00",
+                                endTime: "17:00",
+                                description: ""
+                              });
+                              setIsAddShiftOpen(true);
+                            }}
+                            data-testid={`button-quick-add-${employee.id}-${dateIndex}`}
+                          >
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                        )}
                         
                         <div className="space-y-1">
                           {dayShifts.map((shift) => {
@@ -781,11 +845,12 @@ export default function Schedule() {
                             return (
                               <div key={shift.id} className="relative group">
                                 <div
-                                  className={`${colorClass} text-white rounded px-2 py-1.5 cursor-move hover:opacity-90 transition-opacity ${
-                                    hasShiftConflict ? 'ring-2 ring-red-500' : ''
-                                  }`}
+                                  className={`${colorClass} text-white rounded-md px-2 py-1.5 cursor-move hover:ring-2 hover:ring-white/30 transition-all duration-200 transform hover:scale-105 ${
+                                    hasShiftConflict ? 'ring-2 ring-rose-500 animate-pulse-glow' : ''
+                                  } ${draggedShift?.id === shift.id ? 'opacity-50 scale-95' : ''}`}
                                   draggable
                                   onDragStart={(e) => handleDragStart(e, shift)}
+                                  onDragEnd={handleDragEnd}
                                   data-testid={`shift-${shift.id}`}
                                 >
                                   {hasShiftConflict && (
