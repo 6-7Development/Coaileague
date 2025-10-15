@@ -1,9 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
 import { db } from './db';
-import { employees, workspaces } from '@shared/schema';
-import { eq, and } from 'drizzle-orm';
+import { employees, workspaces, platformRoles } from '@shared/schema';
+import { eq, and, isNull } from 'drizzle-orm';
 
 export type WorkspaceRole = 'owner' | 'manager' | 'employee';
+export type PlatformRole = 'platform_admin' | 'deputy_admin' | 'deputy_assistant' | 'sysop' | 'none';
 
 export interface AuthenticatedRequest extends Request {
   user?: {
@@ -15,6 +16,7 @@ export interface AuthenticatedRequest extends Request {
   workspaceId?: string;
   workspaceRole?: WorkspaceRole;
   employeeId?: string;
+  platformRole?: PlatformRole;
 }
 
 export async function getUserWorkspaceRole(
@@ -211,3 +213,49 @@ export async function validateManagerAssignment(
 
   return { valid: true };
 }
+
+// ============================================================================
+// PLATFORM ROLE MIDDLEWARE
+// ============================================================================
+
+export async function getUserPlatformRole(userId: string): Promise<PlatformRole> {
+  const platformRole = await db.query.platformRoles.findFirst({
+    where: and(
+      eq(platformRoles.userId, userId),
+      isNull(platformRoles.revokedAt)
+    ),
+  });
+
+  return (platformRole?.role as PlatformRole) || 'none';
+}
+
+export function requirePlatformRole(allowedRoles: PlatformRole[]) {
+  return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    if (!req.user?.id) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const platformRole = await getUserPlatformRole(req.user.id);
+    
+    if (!allowedRoles.includes(platformRole)) {
+      return res.status(403).json({ 
+        error: `This action requires platform role: ${allowedRoles.join(' or ')}`,
+        currentPlatformRole: platformRole
+      });
+    }
+
+    req.platformRole = platformRole;
+    next();
+  };
+}
+
+// Require platform admin role (highest level)
+export const requirePlatformAdmin = requirePlatformRole(['platform_admin']);
+
+// Require any platform staff role (admin, deputy admin, deputy assistant, or sysop)
+export const requirePlatformStaff = requirePlatformRole([
+  'platform_admin',
+  'deputy_admin',
+  'deputy_assistant',
+  'sysop'
+]);

@@ -17,7 +17,7 @@ import {
   sendOnboardingInviteEmail,
   sendReportDeliveryEmail
 } from "./email";
-import { requireOwner, requireManager, validateManagerAssignment, type AuthenticatedRequest } from "./rbac";
+import { requireOwner, requireManager, validateManagerAssignment, requirePlatformStaff, requirePlatformAdmin, type AuthenticatedRequest } from "./rbac";
 import { 
   insertWorkspaceSchema,
   insertEmployeeSchema,
@@ -184,7 +184,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Update workspace
+  // Update workspace (Users can only update basic settings, Platform Admin can update critical org info)
   app.patch('/api/workspace', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -194,14 +194,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Workspace not found" });
       }
 
-      // Validate partial update, ensure no ownerId override
-      const { ownerId, ...updateData } = req.body;
-      const validated = insertWorkspaceSchema.partial().parse(updateData);
+      // SECURITY: Users can only update basic settings, not critical organization data
+      // Platform admins use the /api/admin/workspace endpoint for full control
+      const allowedFields = ['name', 'companyWebsite', 'companyPhone', 'logoUrl'];
+      const filteredData: any = {};
+      for (const key of allowedFields) {
+        if (req.body[key] !== undefined) {
+          filteredData[key] = req.body[key];
+        }
+      }
 
+      if (Object.keys(filteredData).length === 0) {
+        return res.status(400).json({ message: "No valid fields to update" });
+      }
+
+      const validated = insertWorkspaceSchema.partial().parse(filteredData);
       const updated = await storage.updateWorkspace(workspace.id, validated);
       res.json(updated);
     } catch (error: any) {
       console.error("Error updating workspace:", error);
+      res.status(400).json({ message: error.message || "Failed to update workspace" });
+    }
+  });
+
+  // Update workspace organization info (Platform Admin Staff ONLY)
+  app.patch('/api/admin/workspace/:workspaceId', requirePlatformStaff, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { workspaceId } = req.params;
+      
+      // Verify workspace exists
+      const workspace = await storage.getWorkspace(workspaceId);
+      if (!workspace) {
+        return res.status(404).json({ message: "Workspace not found" });
+      }
+
+      // Platform staff can update ANY workspace field except ownerId
+      const { ownerId, ...updateData } = req.body;
+      const validated = insertWorkspaceSchema.partial().parse(updateData);
+
+      const updated = await storage.updateWorkspace(workspaceId, validated);
+      
+      // Audit log
+      console.log(`[AUDIT] Platform staff ${req.user!.id} (${req.platformRole}) updated workspace ${workspaceId}`);
+      
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating workspace (admin):", error);
       res.status(400).json({ message: error.message || "Failed to update workspace" });
     }
   });
@@ -2534,7 +2572,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const adminSupport = await import("./adminSupport");
 
   // Search customers (platform admin only)
-  app.get('/api/admin/support/search', isAuthenticated, async (req: any, res) => {
+  app.get('/api/admin/support/search', requirePlatformStaff, async (req: AuthenticatedRequest, res) => {
     try {
       const { q } = req.query;
       
@@ -2555,7 +2593,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get workspace detail (platform admin only)
-  app.get('/api/admin/support/workspace/:id', isAuthenticated, async (req: any, res) => {
+  app.get('/api/admin/support/workspace/:id', requirePlatformStaff, async (req: AuthenticatedRequest, res) => {
     try {
       const { id } = req.params;
 
@@ -2577,9 +2615,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get platform statistics (platform admin only)
-  app.get('/api/admin/support/stats', isAuthenticated, async (req: any, res) => {
+  app.get('/api/admin/support/stats', requirePlatformStaff, async (req: AuthenticatedRequest, res) => {
     try {
-      // In production, add platform role check here
       const stats = await adminSupport.getPlatformStats();
       res.json(stats);
     } catch (error) {
@@ -2589,7 +2626,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Change user role (platform admin action)
-  app.post('/api/admin/support/change-role', isAuthenticated, async (req: any, res) => {
+  app.post('/api/admin/support/change-role', requirePlatformStaff, async (req: AuthenticatedRequest, res) => {
     try {
       const { employeeId, newRole } = req.body;
       const adminUserId = req.user.claims.sub;
@@ -2606,7 +2643,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ACCOUNT CONTROL ACTIONS - Suspend/Freeze/Lock accounts
   
   // Suspend account (general suspension)
-  app.post('/api/admin/support/suspend-account', isAuthenticated, async (req: any, res) => {
+  app.post('/api/admin/support/suspend-account', requirePlatformStaff, async (req: AuthenticatedRequest, res) => {
     try {
       const { workspaceId, reason } = req.body;
       const adminUserId = req.user.claims.sub;
@@ -2627,7 +2664,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Unsuspend account
-  app.post('/api/admin/support/unsuspend-account', isAuthenticated, async (req: any, res) => {
+  app.post('/api/admin/support/unsuspend-account', requirePlatformStaff, async (req: AuthenticatedRequest, res) => {
     try {
       const { workspaceId } = req.body;
       
@@ -2647,7 +2684,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Freeze account (for non-payment)
-  app.post('/api/admin/support/freeze-account', isAuthenticated, async (req: any, res) => {
+  app.post('/api/admin/support/freeze-account', requirePlatformStaff, async (req: AuthenticatedRequest, res) => {
     try {
       const { workspaceId, reason } = req.body;
       const adminUserId = req.user.claims.sub;
@@ -2667,7 +2704,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Unfreeze account
-  app.post('/api/admin/support/unfreeze-account', isAuthenticated, async (req: any, res) => {
+  app.post('/api/admin/support/unfreeze-account', requirePlatformStaff, async (req: AuthenticatedRequest, res) => {
     try {
       const { workspaceId } = req.body;
       
@@ -2686,7 +2723,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Lock account (emergency lock)
-  app.post('/api/admin/support/lock-account', isAuthenticated, async (req: any, res) => {
+  app.post('/api/admin/support/lock-account', requirePlatformStaff, async (req: AuthenticatedRequest, res) => {
     try {
       const { workspaceId, reason } = req.body;
       const adminUserId = req.user.claims.sub;
@@ -2706,7 +2743,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Unlock account
-  app.post('/api/admin/support/unlock-account', isAuthenticated, async (req: any, res) => {
+  app.post('/api/admin/support/unlock-account', requirePlatformStaff, async (req: AuthenticatedRequest, res) => {
     try {
       const { workspaceId } = req.body;
       
@@ -2729,7 +2766,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================================================
 
   // Delete user/employee from any workspace
-  app.post('/api/admin/support/delete-user', isAuthenticated, async (req: any, res) => {
+  app.post('/api/admin/support/delete-user', requirePlatformStaff, async (req: AuthenticatedRequest, res) => {
     try {
       const { userId, workspaceId, reason } = req.body;
       const adminUserId = req.user.claims.sub;
@@ -2754,7 +2791,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Change user role (promote/demote)
-  app.post('/api/admin/support/change-user-role', isAuthenticated, async (req: any, res) => {
+  app.post('/api/admin/support/change-user-role', requirePlatformStaff, async (req: AuthenticatedRequest, res) => {
     try {
       const { userId, newRole, workspaceId } = req.body;
       const adminUserId = req.user.claims.sub;
@@ -2782,7 +2819,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================================================
 
   // Manually create client in any workspace
-  app.post('/api/admin/support/create-client', isAuthenticated, async (req: any, res) => {
+  app.post('/api/admin/support/create-client', requirePlatformStaff, async (req: AuthenticatedRequest, res) => {
     try {
       const { workspaceId, clientData } = req.body;
       const adminUserId = req.user.claims.sub;
@@ -2956,7 +2993,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get Stripe status (platform admin diagnostic)
-  app.get('/api/admin/support/stripe-status/:workspaceId', isAuthenticated, async (req: any, res) => {
+  app.get('/api/admin/support/stripe-status/:workspaceId', requirePlatformStaff, async (req: AuthenticatedRequest, res) => {
     try {
       const { workspaceId } = req.params;
 
@@ -2970,7 +3007,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create support ticket (admin on behalf of customer)
-  app.post('/api/admin/support/create-ticket', isAuthenticated, async (req: any, res) => {
+  app.post('/api/admin/support/create-ticket', requirePlatformStaff, async (req: AuthenticatedRequest, res) => {
     try {
       const adminUserId = req.user.claims.sub;
       
@@ -2988,7 +3025,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update ticket status (admin action)
-  app.post('/api/admin/support/update-ticket', isAuthenticated, async (req: any, res) => {
+  app.post('/api/admin/support/update-ticket', requirePlatformStaff, async (req: AuthenticatedRequest, res) => {
     try {
       const { ticketId, status, resolution } = req.body;
       const adminUserId = req.user.claims.sub;
@@ -3015,27 +3052,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
   } = await import("./platformAdmin");
 
   // Platform dashboard statistics
-  app.get('/api/platform/stats', isAuthenticated, async (req, res) => {
+  app.get('/api/platform/stats', requirePlatformStaff, async (req, res) => {
     await getPlatformStats(req, res);
   });
 
   // Search workspaces (cross-tenant admin search)
-  app.get('/api/platform/workspaces/search', isAuthenticated, async (req, res) => {
+  app.get('/api/platform/workspaces/search', requirePlatformStaff, async (req, res) => {
     await searchWorkspaces(req, res);
   });
 
   // Get workspace admin detail
-  app.get('/api/platform/workspaces/:workspaceId', isAuthenticated, async (req, res) => {
+  app.get('/api/platform/workspaces/:workspaceId', requirePlatformStaff, async (req, res) => {
     await getWorkspaceAdminDetail(req, res);
   });
 
   // Get all platform users
-  app.get('/api/platform/users', isAuthenticated, async (req, res) => {
+  app.get('/api/platform/users', requirePlatformStaff, async (req, res) => {
     await getPlatformUsers(req, res);
   });
 
   // Create platform user (admin or support staff)
-  app.post('/api/platform/users', isAuthenticated, async (req, res) => {
+  app.post('/api/platform/users', requirePlatformAdmin, async (req, res) => {
     await createPlatformUser(req, res);
   });
 
@@ -3270,6 +3307,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // CUSTOM FORMS - Organization-Specific Form Templates
   // ============================================================================
 
+  // Validation schemas for custom forms
+  const createCustomFormSchema = z.object({
+    workspaceId: z.string().min(1, "Organization ID is required"),
+    name: z.string().min(1, "Form name is required").max(200),
+    description: z.string().optional(),
+    category: z.enum(['onboarding', 'rms', 'compliance', 'custom']).optional(),
+    template: z.any(), // JSON template
+    requiresSignature: z.boolean().optional(),
+    signatureType: z.enum(['typed_name', 'drawn', 'uploaded']).optional(),
+    signatureText: z.string().optional(),
+    requiresDocuments: z.boolean().optional(),
+    documentTypes: z.any().optional(), // JSON array
+    maxDocuments: z.number().int().positive().optional(),
+    isActive: z.boolean().optional(),
+    accessibleBy: z.any().optional(), // JSON array
+    createdByRole: z.string().optional(),
+  });
+
+  const updateCustomFormSchema = z.object({
+    name: z.string().min(1).max(200).optional(),
+    description: z.string().optional(),
+    category: z.enum(['onboarding', 'rms', 'compliance', 'custom']).optional(),
+    template: z.any().optional(),
+    requiresSignature: z.boolean().optional(),
+    signatureType: z.enum(['typed_name', 'drawn', 'uploaded']).optional(),
+    signatureText: z.string().optional(),
+    requiresDocuments: z.boolean().optional(),
+    documentTypes: z.any().optional(),
+    maxDocuments: z.number().int().positive().optional(),
+    isActive: z.boolean().optional(),
+    accessibleBy: z.any().optional(),
+  });
+
   // Get all custom forms for organization
   app.get('/api/custom-forms', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
@@ -3317,23 +3387,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Create custom form (Platform Admin/Support only)
-  app.post('/api/custom-forms', requireAuth, async (req: AuthenticatedRequest, res) => {
+  // Create custom form (Platform Staff only)
+  app.post('/api/custom-forms', requirePlatformStaff, async (req: AuthenticatedRequest, res) => {
     try {
       const userId = req.user!.id;
+      const platformRole = req.platformRole;
       
-      // TODO: Add platform role check - only platform admins/support can create forms
-      // For now, allow workspace owners to create forms for their organization
-      
-      const workspace = await storage.getWorkspaceByOwnerId(userId);
+      // Validate request body
+      const validationResult = createCustomFormSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          message: "Invalid form data",
+          errors: validationResult.error.errors
+        });
+      }
+
+      const validatedData = validationResult.data;
+
+      // Verify workspace exists
+      const workspace = await storage.getWorkspace(validatedData.workspaceId);
       if (!workspace) {
         return res.status(404).json({ message: "Workspace not found" });
       }
 
       const formData = {
-        ...req.body,
-        organizationId: workspace.id,
+        ...validatedData,
+        organizationId: validatedData.workspaceId,
         createdBy: userId,
+        createdByRole: platformRole,
       };
 
       const form = await storage.createCustomForm(formData);
@@ -3344,24 +3425,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Update custom form (Platform Admin/Support only)
-  app.patch('/api/custom-forms/:id', requireAuth, async (req: AuthenticatedRequest, res) => {
+  // Update custom form (Platform Staff only)
+  app.patch('/api/custom-forms/:id', requirePlatformStaff, async (req: AuthenticatedRequest, res) => {
     try {
       const { id } = req.params;
-      const userId = req.user!.id;
       
       const form = await storage.getCustomForm(id);
       if (!form) {
         return res.status(404).json({ message: "Form not found" });
       }
 
-      // TODO: Add platform role check
-      const workspace = await storage.getWorkspaceByOwnerId(userId);
-      if (!workspace || workspace.id !== form.organizationId) {
-        return res.status(403).json({ message: "Access denied" });
+      // Validate request body - ONLY allow whitelisted fields
+      const validationResult = updateCustomFormSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          message: "Invalid form data",
+          errors: validationResult.error.errors
+        });
       }
 
-      const updated = await storage.updateCustomForm(id, req.body);
+      // SECURITY: Use validated data only (prevents organizationId tampering)
+      const updated = await storage.updateCustomForm(id, validationResult.data);
       res.json(updated);
     } catch (error) {
       console.error("Error updating custom form:", error);
@@ -3369,21 +3453,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Delete custom form (Platform Admin/Support only)
-  app.delete('/api/custom-forms/:id', requireAuth, async (req: AuthenticatedRequest, res) => {
+  // Delete custom form (Platform Staff only)
+  app.delete('/api/custom-forms/:id', requirePlatformStaff, async (req: AuthenticatedRequest, res) => {
     try {
       const { id } = req.params;
-      const userId = req.user!.id;
       
       const form = await storage.getCustomForm(id);
       if (!form) {
         return res.status(404).json({ message: "Form not found" });
-      }
-
-      // TODO: Add platform role check
-      const workspace = await storage.getWorkspaceByOwnerId(userId);
-      if (!workspace || workspace.id !== form.organizationId) {
-        return res.status(403).json({ message: "Access denied" });
       }
 
       await storage.deleteCustomForm(id);
@@ -3397,6 +3474,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================================================
   // CUSTOM FORM SUBMISSIONS
   // ============================================================================
+
+  // Validation schema for custom form submissions
+  const createCustomFormSubmissionSchema = z.object({
+    formId: z.string().min(1, "Form ID is required"),
+    workspaceId: z.string().min(1, "Workspace ID is required"),
+    submittedByName: z.string().optional(),
+    formData: z.any(), // JSON data
+    eSignature: z.any().optional(), // JSON signature data
+    documents: z.any().optional(), // JSON documents array
+    status: z.enum(['draft', 'completed', 'archived']).optional(),
+  });
 
   // Get all form submissions for organization
   app.get('/api/custom-form-submissions', requireAuth, async (req: AuthenticatedRequest, res) => {
@@ -3449,15 +3537,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/custom-form-submissions', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const userId = req.user!.id;
-      const workspace = await storage.getWorkspaceByOwnerId(userId);
       
+      // Validate request body
+      const validationResult = createCustomFormSubmissionSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          message: "Invalid submission data",
+          errors: validationResult.error.errors
+        });
+      }
+
+      const validatedData = validationResult.data;
+
+      // Verify user has access to the workspace
+      const workspace = await storage.getWorkspace(validatedData.workspaceId);
       if (!workspace) {
         return res.status(404).json({ message: "Workspace not found" });
       }
 
+      // Verify form exists and belongs to this workspace
+      const form = await storage.getCustomForm(validatedData.formId);
+      if (!form || form.organizationId !== validatedData.workspaceId) {
+        return res.status(404).json({ message: "Form not found or access denied" });
+      }
+
+      // SECURITY: Use validated data only, enforce workspace scoping
       const submissionData = {
-        ...req.body,
-        organizationId: workspace.id,
+        ...validatedData,
+        organizationId: validatedData.workspaceId,
         submittedBy: userId,
         submittedAt: new Date(),
       };
