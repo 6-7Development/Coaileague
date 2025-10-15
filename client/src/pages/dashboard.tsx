@@ -19,7 +19,7 @@ export default function Dashboard() {
   });
 
   // Fetch employees to determine user's workspace role
-  const { data: allEmployees } = useQuery({
+  const { data: allEmployees } = useQuery<any[]>({
     queryKey: ['/api/employees'],
     enabled: isAuthenticated,
   });
@@ -73,82 +73,96 @@ export default function Dashboard() {
             </p>
           </div>
 
-            {/* Metrics Grid */}
+            {/* Metrics Grid - Indigo/Purple Gradient Theme */}
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-              <div className="bg-[hsl(var(--cad-surface))] border border-[hsl(var(--cad-border))] rounded-xl p-4 sm:p-6" data-testid="card-employees">
+              <div className="card-interactive p-4 sm:p-6 hover-lift animate-slide-up" data-testid="card-employees">
                 <div className="flex items-center justify-between mb-3 sm:mb-4">
-                  <Users className="w-6 h-6 sm:w-8 sm:h-8 text-[hsl(var(--cad-blue))]" />
-                  <span className="text-[10px] sm:text-xs font-semibold text-[hsl(var(--cad-green))] bg-emerald-950 px-2 py-1 rounded">+12%</span>
+                  <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg bg-indigo-500/20 flex items-center justify-center">
+                    <Users className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-400" />
+                  </div>
+                  <span className="text-[10px] sm:text-xs font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded">+12%</span>
                 </div>
-                <p className="text-[hsl(var(--cad-text-secondary))] text-xs sm:text-sm mb-1">Total Employees</p>
-                <p className="text-2xl sm:text-3xl font-bold">{totalEmployees}</p>
+                <p className="text-slate-400 text-xs sm:text-sm mb-1">Total Employees</p>
+                <p className="text-2xl sm:text-3xl font-bold gradient-text">{totalEmployees}</p>
               </div>
 
-              <div className="bg-[hsl(var(--cad-surface))] border border-[hsl(var(--cad-border))] rounded-xl p-4 sm:p-6" data-testid="card-active">
+              <div className="card-interactive p-4 sm:p-6 hover-lift animate-slide-up" style={{ animationDelay: '0.1s' }} data-testid="card-active">
                 <div className="flex items-center justify-between mb-3 sm:mb-4">
-                  <Activity className="w-6 h-6 sm:w-8 sm:h-8 text-[hsl(var(--cad-blue))]" />
-                  <span className="text-[10px] sm:text-xs font-semibold text-[hsl(var(--cad-green))] bg-emerald-950 px-2 py-1 rounded">+8%</span>
+                  <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg bg-purple-500/20 flex items-center justify-center">
+                    <Activity className="w-5 h-5 sm:w-6 sm:h-6 text-purple-400" />
+                  </div>
+                  <span className="text-[10px] sm:text-xs font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded">+8%</span>
                 </div>
-                <p className="text-[hsl(var(--cad-text-secondary))] text-xs sm:text-sm mb-1">Active Today</p>
-                <p className="text-2xl sm:text-3xl font-bold">{activeToday}</p>
+                <p className="text-slate-400 text-xs sm:text-sm mb-1">Active Today</p>
+                <p className="text-2xl sm:text-3xl font-bold gradient-text">{activeToday}</p>
               </div>
 
-              <div className="bg-[hsl(var(--cad-surface))] border border-[hsl(var(--cad-border))] rounded-xl p-4 sm:p-6 col-span-2 lg:col-span-1" data-testid="card-completed">
+              <div className="card-interactive p-4 sm:p-6 hover-lift animate-slide-up col-span-2 lg:col-span-1" style={{ animationDelay: '0.2s' }} data-testid="card-completed">
                 <div className="flex items-center justify-between mb-3 sm:mb-4">
-                  <CheckCircle className="w-6 h-6 sm:w-8 sm:h-8 text-[hsl(var(--cad-green))]" />
-                  <span className="text-[10px] sm:text-xs font-semibold text-[hsl(var(--cad-green))] bg-emerald-950 px-2 py-1 rounded">+23%</span>
+                  <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg bg-emerald-500/20 flex items-center justify-center">
+                    <CheckCircle className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-400" />
+                  </div>
+                  <span className="text-[10px] sm:text-xs font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded">+23%</span>
                 </div>
-                <p className="text-[hsl(var(--cad-text-secondary))] text-xs sm:text-sm mb-1">Tasks Completed</p>
-                <p className="text-2xl sm:text-3xl font-bold">{completedToday.toLocaleString()}</p>
+                <p className="text-slate-400 text-xs sm:text-sm mb-1">Tasks Completed</p>
+                <p className="text-2xl sm:text-3xl font-bold gradient-text">{completedToday.toLocaleString()}</p>
               </div>
 
-              <div className="bg-[hsl(var(--cad-surface))] border border-[hsl(var(--cad-border))] rounded-xl p-4 sm:p-6" data-testid="card-efficiency">
+              <div className="card-interactive p-4 sm:p-6 hover-lift animate-slide-up" style={{ animationDelay: '0.3s' }} data-testid="card-efficiency">
                 <div className="flex items-center justify-between mb-3 sm:mb-4">
-                  <Target className="w-6 h-6 sm:w-8 sm:h-8 text-violet-400" />
-                  <span className="text-[10px] sm:text-xs font-semibold text-[hsl(var(--cad-green))] bg-emerald-950 px-2 py-1 rounded">+2%</span>
+                  <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg bg-violet-500/20 flex items-center justify-center">
+                    <Target className="w-5 h-5 sm:w-6 sm:h-6 text-violet-400" />
+                  </div>
+                  <span className="text-[10px] sm:text-xs font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded">+2%</span>
                 </div>
-                <p className="text-[hsl(var(--cad-text-secondary))] text-xs sm:text-sm mb-1">Efficiency</p>
-                <p className="text-2xl sm:text-3xl font-bold">{efficiency}%</p>
+                <p className="text-slate-400 text-xs sm:text-sm mb-1">Efficiency</p>
+                <p className="text-2xl sm:text-3xl font-bold gradient-text">{efficiency}%</p>
               </div>
 
-              <div className="bg-[hsl(var(--cad-surface))] border border-[hsl(var(--cad-border))] rounded-xl p-4 sm:p-6" data-testid="card-revenue">
+              <div className="card-interactive p-4 sm:p-6 hover-lift animate-slide-up" style={{ animationDelay: '0.4s' }} data-testid="card-revenue">
                 <div className="flex items-center justify-between mb-3 sm:mb-4">
-                  <DollarSign className="w-6 h-6 sm:w-8 sm:h-8 text-[hsl(var(--cad-green))]" />
-                  <span className="text-[10px] sm:text-xs font-semibold text-[hsl(var(--cad-green))] bg-emerald-950 px-2 py-1 rounded">+18%</span>
+                  <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg bg-emerald-500/20 flex items-center justify-center">
+                    <DollarSign className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-400" />
+                  </div>
+                  <span className="text-[10px] sm:text-xs font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded">+18%</span>
                 </div>
-                <p className="text-[hsl(var(--cad-text-secondary))] text-xs sm:text-sm mb-1">Revenue</p>
-                <p className="text-2xl sm:text-3xl font-bold">${(totalRevenue / 1000).toFixed(1)}K</p>
+                <p className="text-slate-400 text-xs sm:text-sm mb-1">Revenue</p>
+                <p className="text-2xl sm:text-3xl font-bold gradient-text">${(totalRevenue / 1000).toFixed(1)}K</p>
               </div>
 
-              <div className="bg-[hsl(var(--cad-surface))] border border-[hsl(var(--cad-border))] rounded-xl p-4 sm:p-6" data-testid="card-uptime">
+              <div className="card-interactive p-4 sm:p-6 hover-lift animate-slide-up" style={{ animationDelay: '0.5s' }} data-testid="card-uptime">
                 <div className="flex items-center justify-between mb-3 sm:mb-4">
-                  <Clock className="w-6 h-6 sm:w-8 sm:h-8 text-amber-400" />
-                  <span className="text-[10px] sm:text-xs font-semibold text-[hsl(var(--cad-green))] bg-emerald-950 px-2 py-1 rounded">+0.2%</span>
+                  <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg bg-amber-500/20 flex items-center justify-center">
+                    <Clock className="w-5 h-5 sm:w-6 sm:h-6 text-amber-400" />
+                  </div>
+                  <span className="text-[10px] sm:text-xs font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded">+0.2%</span>
                 </div>
-                <p className="text-[hsl(var(--cad-text-secondary))] text-xs sm:text-sm mb-1">Uptime</p>
-                <p className="text-2xl sm:text-3xl font-bold">{uptime}%</p>
+                <p className="text-slate-400 text-xs sm:text-sm mb-1">Uptime</p>
+                <p className="text-2xl sm:text-3xl font-bold gradient-text">{uptime}%</p>
               </div>
             </div>
 
             {/* Recent Activity */}
-            <div className="bg-[hsl(var(--cad-surface))] border border-[hsl(var(--cad-border))] rounded-xl p-4 sm:p-6" data-testid="card-activity">
+            <div className="card-interactive p-4 sm:p-6 hover-lift" data-testid="card-activity">
               <h3 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4 flex items-center gap-2">
-                <Activity className="w-4 h-4 sm:w-5 sm:h-5 text-[hsl(var(--cad-blue))]" />
-                Recent Activity
+                <div className="h-8 w-8 rounded-lg bg-indigo-500/20 flex items-center justify-center">
+                  <Activity className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-400" />
+                </div>
+                <span className="gradient-text">Recent Activity</span>
               </h3>
               <div className="space-y-2 sm:space-y-3">
                 {recentActivities.map((activity, idx) => (
-                  <div key={idx} className="flex items-start gap-3 sm:gap-4 p-3 sm:p-4 bg-[hsl(var(--cad-background))]/50 rounded-lg hover-elevate">
-                    <div className={`w-2 h-2 rounded-full mt-1.5 sm:mt-2 flex-shrink-0 ${
-                      activity.status === 'success' ? 'bg-[hsl(var(--cad-green))]' : 
-                      activity.status === 'info' ? 'bg-[hsl(var(--cad-blue))]' : 'bg-amber-500'
+                  <div key={idx} className="flex items-start gap-3 sm:gap-4 p-3 sm:p-4 bg-slate-900/30 rounded-lg hover-elevate">
+                    <div className={`w-2 h-2 rounded-full mt-1.5 sm:mt-2 flex-shrink-0 animate-pulse-glow ${
+                      activity.status === 'success' ? 'bg-emerald-400' : 
+                      activity.status === 'info' ? 'bg-indigo-400' : 'bg-amber-400'
                     }`}></div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start sm:items-center justify-between gap-2 mb-1 flex-col sm:flex-row">
-                        <span className="font-semibold text-sm sm:text-base text-[hsl(var(--cad-blue))] truncate">{activity.user}</span>
-                        <span className="text-[10px] sm:text-xs text-[hsl(var(--cad-text-secondary))] flex-shrink-0">{activity.time}</span>
+                        <span className="font-semibold text-sm sm:text-base text-indigo-400 truncate">{activity.user}</span>
+                        <span className="text-[10px] sm:text-xs text-slate-400 flex-shrink-0">{activity.time}</span>
                       </div>
-                      <p className="text-xs sm:text-sm text-[hsl(var(--cad-text-secondary))]">{activity.action}</p>
+                      <p className="text-xs sm:text-sm text-slate-400">{activity.action}</p>
                     </div>
                   </div>
                 ))}
