@@ -39,6 +39,7 @@ import AdminSupport from "@/pages/admin-support";
 import AdminCommandCenter from "@/pages/admin-command-center";
 import EmployeePortal from "@/pages/employee-portal";
 import AuditorPortal from "@/pages/auditor-portal";
+import ClientPortal from "@/pages/client-portal";
 import CustomerSupport from "@/pages/customer-support";
 
 function AppContent() {
@@ -101,6 +102,7 @@ function AppContent() {
                 <Route path="/admin/command" component={AdminCommandCenter} />
                 <Route path="/employee/portal" component={EmployeePortal} />
                 <Route path="/auditor/portal" component={AuditorPortal} />
+                <Route path="/client/portal" component={ClientPortal} />
                 <Route path="/settings" component={Settings} />
                 <Route path="/contact" component={Contact} />
                 <Route path="/support/tickets" component={CustomerSupport} />
