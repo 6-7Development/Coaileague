@@ -32,12 +32,12 @@ export function WorkforceOSLogo({
 
   return (
     <div className={cn("flex items-center gap-3", className)}>
-      {/* Logo Icon with shimmer effect */}
+      {/* Logo Icon with indigo/purple gradient */}
       <div 
         className={cn(
           "relative flex items-center justify-center font-black overflow-hidden",
-          "bg-gradient-to-br from-[#ef4444] to-[#dc2626]",
-          "shadow-[0_10px_35px_rgba(239,68,68,0.4)]",
+          "bg-gradient-to-br from-[#6366f1] to-[#4f46e5]",
+          "shadow-[0_10px_35px_rgba(99,102,241,0.4)]",
           sizes[size].icon
         )}
         data-testid="logo-icon"
