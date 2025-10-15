@@ -50,6 +50,7 @@ import HRBenefits from "@/pages/hr-benefits";
 import HRReviews from "@/pages/hr-reviews";
 import HRPTO from "@/pages/hr-pto";
 import HRTerminations from "@/pages/hr-terminations";
+import HelpdeskChat from "@/pages/helpdesk-chat";
 
 function AppContent() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -124,6 +125,7 @@ function AppContent() {
                 <Route path="/settings" component={Settings} />
                 <Route path="/contact" component={Contact} />
                 <Route path="/support/tickets" component={CustomerSupport} />
+                <Route path="/support/chat" component={HelpdeskChat} />
                 <Route path="/support" component={Support} />
                 <Route component={NotFound} />
               </Switch>
