@@ -2065,3 +2065,168 @@ export type InsertChatConversation = z.infer<typeof insertChatConversationSchema
 export type ChatConversation = typeof chatConversations.$inferSelect;
 export type InsertChatMessage = z.infer<typeof insertChatMessageSchema>;
 export type ChatMessage = typeof chatMessages.$inferSelect;
+
+// ============================================================================
+// SALES & MARKETING AUTOMATION SYSTEM
+// ============================================================================
+
+// Lead Management - Prospect database for sales outreach
+export const leads = pgTable("leads", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Company information
+  companyName: varchar("company_name").notNull(),
+  industry: varchar("industry"), // 'security', 'healthcare', 'cleaning', 'construction', 'property_management', etc.
+  companyWebsite: varchar("company_website"),
+  estimatedEmployees: integer("estimated_employees"),
+  
+  // Contact information
+  contactName: varchar("contact_name"),
+  contactTitle: varchar("contact_title"),
+  contactEmail: varchar("contact_email").notNull(),
+  contactPhone: varchar("contact_phone"),
+  
+  // Lead scoring & qualification
+  leadStatus: varchar("lead_status").default("new"), // 'new', 'contacted', 'qualified', 'demo_scheduled', 'proposal_sent', 'won', 'lost'
+  leadScore: integer("lead_score").default(0), // 0-100
+  estimatedValue: decimal("estimated_value", { precision: 10, scale: 2 }),
+  
+  // Campaign tracking
+  source: varchar("source"), // 'manual', 'linkedin', 'email_campaign', 'web_form', 'referral'
+  lastCampaignId: varchar("last_campaign_id"),
+  lastContactedAt: timestamp("last_contacted_at"),
+  
+  // Notes & follow-up
+  notes: text("notes"),
+  nextFollowUpDate: timestamp("next_follow_up_date"),
+  assignedTo: varchar("assigned_to"), // Platform admin user ID
+  
+  // Conversion tracking
+  convertedToWorkspaceId: varchar("converted_to_workspace_id").references(() => workspaces.id, { onDelete: 'set null' }),
+  convertedAt: timestamp("converted_at"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Email Templates - Industry-specific templates with AI personalization
+export const emailTemplates = pgTable("email_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Template metadata
+  name: varchar("name").notNull(),
+  targetIndustry: varchar("target_industry"), // 'security', 'healthcare', 'cleaning', etc. (null = general)
+  category: varchar("category").notNull(), // 'cold_outreach', 'follow_up', 'demo_invitation', 'proposal', 'nurture'
+  
+  // Email content
+  subject: varchar("subject").notNull(),
+  bodyTemplate: text("body_template").notNull(), // Supports {{variables}} for personalization
+  
+  // AI personalization
+  useAI: boolean("use_ai").default(true), // Use OpenAI to personalize
+  aiPrompt: text("ai_prompt"), // Instructions for AI personalization
+  
+  // Status
+  isActive: boolean("is_active").default(true),
+  
+  // Performance metrics
+  timesSent: integer("times_sent").default(0),
+  openRate: decimal("open_rate", { precision: 5, scale: 2 }),
+  responseRate: decimal("response_rate", { precision: 5, scale: 2 }),
+  
+  createdBy: varchar("created_by"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Email Campaigns - Track bulk email sends
+export const emailCampaigns = pgTable("email_campaigns", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Campaign details
+  name: varchar("name").notNull(),
+  templateId: varchar("template_id").notNull().references(() => emailTemplates.id, { onDelete: 'restrict' }),
+  targetIndustry: varchar("target_industry"), // Filter leads by industry
+  
+  // Campaign status
+  status: varchar("status").default("draft"), // 'draft', 'scheduled', 'sending', 'sent', 'paused'
+  scheduledFor: timestamp("scheduled_for"),
+  
+  // Targeting criteria
+  leadFilters: jsonb("lead_filters"), // Store advanced filtering criteria
+  
+  // Performance metrics
+  totalSent: integer("total_sent").default(0),
+  totalOpened: integer("total_opened").default(0),
+  totalClicked: integer("total_clicked").default(0),
+  totalReplied: integer("total_replied").default(0),
+  totalBounced: integer("total_bounced").default(0),
+  
+  createdBy: varchar("created_by"),
+  createdAt: timestamp("created_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+});
+
+// Email Sends - Individual email tracking
+export const emailSends = pgTable("email_sends", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Relationships
+  campaignId: varchar("campaign_id").references(() => emailCampaigns.id, { onDelete: 'cascade' }),
+  leadId: varchar("lead_id").notNull().references(() => leads.id, { onDelete: 'cascade' }),
+  templateId: varchar("template_id").notNull().references(() => emailTemplates.id, { onDelete: 'restrict' }),
+  
+  // Email details
+  toEmail: varchar("to_email").notNull(),
+  subject: varchar("subject").notNull(),
+  bodyHtml: text("body_html").notNull(),
+  bodyText: text("body_text"),
+  
+  // Delivery status
+  status: varchar("status").default("pending"), // 'pending', 'sent', 'delivered', 'opened', 'clicked', 'replied', 'bounced', 'failed'
+  
+  // Tracking
+  sentAt: timestamp("sent_at"),
+  deliveredAt: timestamp("delivered_at"),
+  openedAt: timestamp("opened_at"),
+  clickedAt: timestamp("clicked_at"),
+  repliedAt: timestamp("replied_at"),
+  
+  // External IDs (from email service provider)
+  externalId: varchar("external_id"), // Resend message ID
+  errorMessage: text("error_message"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertLeadSchema = createInsertSchema(leads).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertEmailTemplateSchema = createInsertSchema(emailTemplates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertEmailCampaignSchema = createInsertSchema(emailCampaigns).omit({
+  id: true,
+  createdAt: true,
+  completedAt: true,
+});
+
+export const insertEmailSendSchema = createInsertSchema(emailSends).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertLead = z.infer<typeof insertLeadSchema>;
+export type Lead = typeof leads.$inferSelect;
+export type InsertEmailTemplate = z.infer<typeof insertEmailTemplateSchema>;
+export type EmailTemplate = typeof emailTemplates.$inferSelect;
+export type InsertEmailCampaign = z.infer<typeof insertEmailCampaignSchema>;
+export type EmailCampaign = typeof emailCampaigns.$inferSelect;
+export type InsertEmailSend = z.infer<typeof insertEmailSendSchema>;
+export type EmailSend = typeof emailSends.$inferSelect;
