@@ -10,7 +10,7 @@ Do not make changes to the file `Y`.
 
 ## System Architecture
 ### UI/UX Decisions
-The platform features a CAD-style professional interface with a dark mode theme, emphasizing precision and control. It includes an application frame (menu, toolbar, status bar) and real-time indicators. The design is modern, professional, and mobile-first, utilizing indigo accents for brand consistency.
+The platform features a CAD-style professional interface with a dark mode theme, emphasizing precision and control. It includes an application frame (menu, toolbar, status bar) and real-time indicators. The design is modern, professional, and mobile-first, utilizing indigo/purple gradient accents for brand consistency. Logout functionality is accessible across all layouts (sidebar, command palette, ModernLayout header).
 
 ### Technical Implementations
 - **Frontend**: React, Vite, TypeScript, Wouter, TanStack Query, shadcn/ui. Form validation with `react-hook-form` and `zod`.
@@ -47,7 +47,8 @@ The platform features a CAD-style professional interface with a dark mode theme,
     - **Feature Flags**: Database-backed tier-based feature visibility system with LockedFeature component.
 - **Support & Communication**:
     - **Live Chat System (REST API)**: Production-ready chat support with conversation management, message history, workspace isolation, status tracking (open/resolved/closed), priority levels, and CSAT ratings. Implements secure polling pattern for real-time-like experience. WebSocket disabled pending authentication implementation.
-    - **Email Notifications**: Fully activated Resend integration with templates for HR workflows, shift assignments, invoicing, and onboarding.
+    - **MSN/IRC Style Helpdesk Chat**: Classic 3-column chat interface for support staff and admins. Features user list with role badges (admin/support/customer) and online status indicators, IRC-style message display with timestamps and color-coded usernames, conversation info panel, and retro dark theme aesthetic.
+    - **Email Notifications**: Fully activated Resend integration with templates for HR workflows, shift assignments, invoicing, onboarding, and report delivery to clients.
 - **Implemented but Requires Activation**: Stripe Connect payment processing.
 - **Database Schema Ready (Needs UI)**: GPS clock-in, automated payroll processing.
 
