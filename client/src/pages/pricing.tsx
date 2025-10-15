@@ -19,9 +19,9 @@ export default function Pricing() {
   const tiers: PricingTier[] = [
     {
       name: "Starter",
-      price: "$299",
-      savings: "$5k-$8k/month",
-      roi: "20x ROI",
+      price: "$1,499",
+      savings: "$6k-$10k/month",
+      roi: "5x ROI",
       description: "Essential automation - Replace 1-2 part-time staff",
       cta: "Start Free Trial",
       features: [
@@ -41,9 +41,9 @@ export default function Pricing() {
     },
     {
       name: "Professional",
-      price: "$799",
-      savings: "$10k-$15k/month",
-      roi: "15x ROI",
+      price: "$2,999",
+      savings: "$12k-$18k/month",
+      roi: "5x ROI",
       description: "Replace scheduler + billing clerk + payroll staff",
       cta: "Start Free Trial",
       popular: true,
@@ -64,9 +64,9 @@ export default function Pricing() {
     },
     {
       name: "Enterprise",
-      price: "$2,999",
-      savings: "$25k-$40k/month",
-      roi: "12x ROI",
+      price: "$7,999",
+      savings: "$32k-$48k/month",
+      roi: "5x ROI",
       description: "Replace HR + Payroll + Billing + Scheduling teams",
       cta: "Start Free Trial",
       features: [
@@ -77,7 +77,7 @@ export default function Pricing() {
         { name: "Advanced analytics & forecasting", included: true },
         { name: "Multi-workspace management", included: true },
         { name: "SOC2-ready audit compliance", included: true },
-        { name: "Priority support (2-hour response)", included: true },
+        { name: "Priority support (1-hour response)", included: true },
         { name: "Dedicated account manager", included: true },
         { name: "White-label branding", included: false },
         { name: "Custom feature development", included: false },
@@ -85,9 +85,9 @@ export default function Pricing() {
     },
     {
       name: "Fortune 500",
-      price: "$7,999",
-      savings: "$60k-$120k/month",
-      roi: "10x ROI",
+      price: "$19,999",
+      savings: "$80k-$150k/month",
+      roi: "5x ROI",
       description: "Complete workforce automation - Replace entire departments",
       cta: "Contact Sales",
       features: [
@@ -97,9 +97,9 @@ export default function Pricing() {
         { name: "Custom domain & SSL", included: true },
         { name: "Custom feature development", included: true },
         { name: "99.99% uptime SLA", included: true },
-        { name: "Priority phone support (30-min response)", included: true },
+        { name: "Priority phone support (15-min response)", included: true },
         { name: "White-glove onboarding & training", included: true },
-        { name: "Monthly executive business reviews", included: true },
+        { name: "Weekly executive business reviews", included: true },
         { name: "Custom integrations (ADP, Workday, QuickBooks)", included: true },
       ],
     },
