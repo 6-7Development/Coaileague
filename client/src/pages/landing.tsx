@@ -96,6 +96,11 @@ export default function Landing() {
           <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
             {/* Left: Value Prop */}
             <div className="space-y-6 text-center lg:text-left">
+              {/* Large Animated Logo */}
+              <div className="flex justify-center lg:justify-start mb-8">
+                <WorkforceOSLogo size="xl" showText={false} />
+              </div>
+
               <div className="flex items-center gap-2 justify-center lg:justify-start">
                 <div className="h-1 w-12 bg-[hsl(var(--cad-blue))]" />
                 <span className="text-xs uppercase tracking-wider text-[hsl(var(--cad-text-tertiary))] font-mono">
