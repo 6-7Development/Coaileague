@@ -421,14 +421,14 @@ export default function Schedule() {
     };
   }, [shifts, weekStart, weekEnd, employees]);
 
-  // Color palette for shifts (matching Sling style)
+  // Color palette for shifts (Indigo/Purple Gradient Theme)
   const shiftColors = [
-    'bg-rose-500/90',
-    'bg-amber-500/90',
-    'bg-blue-500/90',
-    'bg-purple-500/90',
-    'bg-emerald-500/90',
-    'bg-pink-500/90',
+    'shift-indigo',     // Primary indigo gradient
+    'shift-emerald',    // Success/active shifts
+    'shift-amber',      // Warning/pending
+    'shift-purple',     // Alternative purple
+    'bg-blue-600/90',   // Info
+    'bg-rose-600/90',   // Critical
   ];
 
   const getShiftColor = (clientId: string | null) => {
@@ -611,58 +611,58 @@ export default function Schedule() {
             </div>
           </div>
 
-          {/* Modern Stats Cards */}
+          {/* Modern Stats Cards - Indigo/Purple Gradient Theme */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-card border border-border rounded-xl p-5 hover-elevate transition-all duration-300">
+            <div className="card-interactive p-5 hover-lift animate-slide-up">
               <div className="flex items-center justify-between mb-3">
-                <div className="h-12 w-12 rounded-lg bg-gradient-to-br from-indigo-500/10 to-indigo-600/10 flex items-center justify-center">
-                  <Clock className="h-6 w-6 text-indigo-500" />
+                <div className="h-12 w-12 rounded-lg bg-indigo-500/20 flex items-center justify-center">
+                  <Clock className="h-6 w-6 text-indigo-400" />
                 </div>
-                <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-600 border-0">
+                <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-400 border-0">
                   +8%
                 </Badge>
               </div>
-              <div className="text-3xl font-bold text-foreground mb-1">{weekStats.totalHours}</div>
-              <div className="text-sm text-muted-foreground">Hours Scheduled</div>
+              <div className="text-3xl font-bold gradient-text mb-1">{weekStats.totalHours}</div>
+              <div className="text-sm text-slate-400">Hours Scheduled</div>
             </div>
 
-            <div className="bg-card border border-border rounded-xl p-5 hover-elevate transition-all duration-300">
+            <div className="card-interactive p-5 hover-lift animate-slide-up" style={{ animationDelay: '0.1s' }}>
               <div className="flex items-center justify-between mb-3">
-                <div className="h-12 w-12 rounded-lg bg-gradient-to-br from-emerald-500/10 to-emerald-600/10 flex items-center justify-center">
-                  <DollarSign className="h-6 w-6 text-emerald-500" />
+                <div className="h-12 w-12 rounded-lg bg-emerald-500/20 flex items-center justify-center">
+                  <DollarSign className="h-6 w-6 text-emerald-400" />
                 </div>
-                <Badge variant="secondary" className="bg-rose-500/10 text-rose-600 border-0">
+                <Badge variant="secondary" className="bg-rose-500/10 text-rose-400 border-0">
                   +5%
                 </Badge>
               </div>
-              <div className="text-3xl font-bold text-foreground mb-1">${weekStats.estimatedCost}</div>
-              <div className="text-sm text-muted-foreground">Labor Cost</div>
+              <div className="text-3xl font-bold gradient-text mb-1">${weekStats.estimatedCost}</div>
+              <div className="text-sm text-slate-400">Labor Cost</div>
             </div>
 
-            <div className="bg-card border border-border rounded-xl p-5 hover-elevate transition-all duration-300">
+            <div className="card-interactive p-5 hover-lift animate-slide-up" style={{ animationDelay: '0.2s' }}>
               <div className="flex items-center justify-between mb-3">
-                <div className="h-12 w-12 rounded-lg bg-gradient-to-br from-amber-500/10 to-amber-600/10 flex items-center justify-center">
-                  <FileText className="h-6 w-6 text-amber-500" />
+                <div className="h-12 w-12 rounded-lg bg-amber-500/20 flex items-center justify-center">
+                  <FileText className="h-6 w-6 text-amber-400" />
                 </div>
-                <Badge variant="secondary" className="bg-indigo-500/10 text-indigo-600 border-0">
+                <Badge variant="secondary" className="bg-indigo-500/10 text-indigo-400 border-0">
                   Active
                 </Badge>
               </div>
-              <div className="text-3xl font-bold text-foreground mb-1">{weekStats.clientShifts}</div>
-              <div className="text-sm text-muted-foreground">Billable Shifts</div>
+              <div className="text-3xl font-bold gradient-text mb-1">{weekStats.clientShifts}</div>
+              <div className="text-sm text-slate-400">Billable Shifts</div>
             </div>
 
-            <div className="bg-card border border-border rounded-xl p-5 hover-elevate transition-all duration-300">
+            <div className="card-interactive p-5 hover-lift animate-slide-up" style={{ animationDelay: '0.3s' }}>
               <div className="flex items-center justify-between mb-3">
-                <div className="h-12 w-12 rounded-lg bg-gradient-to-br from-violet-500/10 to-violet-600/10 flex items-center justify-center">
-                  <Zap className="h-6 w-6 text-violet-500" />
+                <div className="h-12 w-12 rounded-lg bg-purple-500/20 flex items-center justify-center">
+                  <Zap className="h-6 w-6 text-purple-400" />
                 </div>
-                <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-600 border-0">
+                <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-400 border-0">
                   98.2%
                 </Badge>
               </div>
-              <div className="text-3xl font-bold text-foreground mb-1">{weekStats.totalShifts}</div>
-              <div className="text-sm text-muted-foreground">Total Shifts</div>
+              <div className="text-3xl font-bold gradient-text mb-1">{weekStats.totalShifts}</div>
+              <div className="text-sm text-slate-400">Total Shifts</div>
             </div>
           </div>
 
