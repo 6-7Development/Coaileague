@@ -1,9 +1,10 @@
 import { useState, ReactNode } from "react";
 import { 
   Users, BarChart3, Settings, Calendar, Clock, TrendingUp, 
-  FileText, Target, Zap, Menu, X 
+  FileText, Target, Zap, Menu, X, LogOut 
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
+import { Button } from "@/components/ui/button";
 
 interface ModernLayoutProps {
   children: ReactNode;
@@ -65,6 +66,16 @@ export default function ModernLayout({ children }: ModernLayoutProps) {
                 <span className="text-sm font-semibold text-[hsl(var(--cad-green))]">Operational</span>
               </div>
             </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => window.location.href = "/api/logout"}
+              data-testid="button-logout"
+              className="text-[hsl(var(--cad-text-secondary))] hover:text-[hsl(var(--cad-text-primary))]"
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Logout
+            </Button>
           </div>
         </div>
       </header>
@@ -116,6 +127,19 @@ export default function ModernLayout({ children }: ModernLayoutProps) {
                   </button>
                 </Link>
               ))}
+              <Button
+                variant="ghost"
+                size="default"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  window.location.href = "/api/logout";
+                }}
+                data-testid="button-logout-mobile"
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-[hsl(var(--cad-text-secondary))] hover:bg-[hsl(var(--cad-chrome-hover))] hover:text-[hsl(var(--cad-text-primary))]"
+              >
+                <LogOut className="w-5 h-5" />
+                <span className="font-medium">Logout</span>
+              </Button>
             </nav>
           </div>
         )}
