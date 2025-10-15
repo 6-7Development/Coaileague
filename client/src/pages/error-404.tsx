@@ -3,7 +3,7 @@ import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button";
 import { AlertCircle, Home, ArrowLeft, Search } from "lucide-react";
 
-export default function NotFound() {
+export default function Error404() {
   const [, setLocation] = useLocation();
 
   return (

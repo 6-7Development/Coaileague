@@ -3304,6 +3304,195 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============================================================================
+  // SALES PORTAL API ROUTES (Platform Staff Only)
+  // ============================================================================
+
+  // Get all email templates
+  app.get('/api/sales/templates', requirePlatformStaff, async (req: AuthenticatedRequest, res) => {
+    try {
+      const templates = await db.select().from(emailTemplates).orderBy(emailTemplates.createdAt);
+      res.json(templates);
+    } catch (error) {
+      console.error("Error fetching email templates:", error);
+      res.status(500).json({ message: "Failed to fetch email templates" });
+    }
+  });
+
+  // Get all leads
+  app.get('/api/sales/leads', requirePlatformStaff, async (req: AuthenticatedRequest, res) => {
+    try {
+      const allLeads = await db.select().from(leads).orderBy(leads.createdAt);
+      res.json(allLeads);
+    } catch (error) {
+      console.error("Error fetching leads:", error);
+      res.status(500).json({ message: "Failed to fetch leads" });
+    }
+  });
+
+  // Zod validation schema for lead creation
+  const createLeadSchema = z.object({
+    companyName: z.string().min(1, "Company name is required"),
+    contactEmail: z.string().email("Valid email is required"),
+    contactName: z.string().optional(),
+    industry: z.string().optional(),
+    contactPhone: z.string().optional(),
+    contactTitle: z.string().optional(),
+    estimatedEmployees: z.number().int().positive().optional(),
+  });
+
+  // Create a new lead
+  app.post('/api/sales/leads', requirePlatformStaff, async (req: AuthenticatedRequest, res) => {
+    try {
+      // Validate request body
+      const validationResult = createLeadSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          message: "Invalid lead data",
+          errors: validationResult.error.errors
+        });
+      }
+
+      const validatedData = validationResult.data;
+
+      const [newLead] = await db.insert(leads).values({
+        ...validatedData,
+        leadStatus: 'new',
+        leadSource: 'manual',
+        leadScore: 0,
+      }).returning();
+
+      res.json(newLead);
+    } catch (error) {
+      console.error("Error creating lead:", error);
+      res.status(500).json({ message: "Failed to create lead" });
+    }
+  });
+
+  // Zod validation schema for sales email
+  const sendSalesEmailSchema = z.object({
+    templateId: z.string().min(1, "Template ID is required"),
+    toEmail: z.string().email("Valid email is required"),
+    toName: z.string().optional(),
+    companyName: z.string().min(1, "Company name is required"),
+    industry: z.string().optional(),
+  });
+
+  // Send email with AI personalization
+  app.post('/api/sales/send-email', requirePlatformStaff, async (req: AuthenticatedRequest, res) => {
+    try {
+      // Validate request body
+      const validationResult = sendSalesEmailSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          message: "Invalid request data",
+          errors: validationResult.error.errors
+        });
+      }
+
+      const { templateId, toEmail, toName, companyName, industry } = validationResult.data;
+
+      // Get the email template
+      const [template] = await db.select().from(emailTemplates).where(eq(emailTemplates.id, templateId)).limit(1);
+      
+      if (!template) {
+        return res.status(404).json({ message: "Email template not found" });
+      }
+
+      // Get Resend client with error handling
+      const { getUncachableResendClient } = await import('./email');
+      let client, fromEmail;
+      
+      try {
+        const result = await getUncachableResendClient();
+        client = result.client;
+        fromEmail = result.fromEmail;
+      } catch (credError) {
+        console.error("Resend configuration error:", credError);
+        return res.status(503).json({ 
+          message: "Email service is not configured. Please contact support.",
+          error: "RESEND_NOT_CONFIGURED"
+        });
+      }
+
+      // Personalize email content
+      let subject = template.subject;
+      let bodyHtml = template.bodyTemplate;
+
+      // Replace template variables (safe string replacement)
+      const replacements: Record<string, string> = {
+        '{{companyName}}': companyName,
+        '{{contactName}}': toName || 'there',
+        '{{industry}}': industry || 'your industry',
+      };
+
+      Object.entries(replacements).forEach(([key, value]) => {
+        subject = subject.split(key).join(value);
+        bodyHtml = bodyHtml.split(key).join(value);
+      });
+
+      // AI personalization if enabled
+      if (template.useAI && template.aiPrompt) {
+        try {
+          // Check if OpenAI is configured
+          if (!process.env.OPENAI_API_KEY) {
+            console.warn("OpenAI API key not configured, skipping AI personalization");
+          } else {
+            const OpenAI = (await import('openai')).default;
+            const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+            const aiResponse = await openai.chat.completions.create({
+              model: 'gpt-4',
+              messages: [
+                {
+                  role: 'system',
+                  content: template.aiPrompt || 'Personalize this sales email to be more engaging and relevant to the company.'
+                },
+                {
+                  role: 'user',
+                  content: `Company: ${companyName}\nIndustry: ${industry || 'Unknown'}\n\nEmail Body:\n${bodyHtml}`
+                }
+              ],
+              max_tokens: 500,
+            });
+
+            bodyHtml = aiResponse.choices[0]?.message?.content || bodyHtml;
+          }
+        } catch (aiError) {
+          console.error("AI personalization failed, using template:", aiError);
+          // Continue with template version if AI fails
+        }
+      }
+
+      // Send email via Resend
+      const { data, error } = await client.emails.send({
+        from: fromEmail,
+        to: toEmail,
+        subject,
+        html: bodyHtml,
+      });
+
+      if (error) {
+        console.error("Resend error:", error);
+        return res.status(500).json({ message: "Failed to send email", error });
+      }
+
+      // Log email send
+      await db.insert(emailSends).values({
+        templateId,
+        toEmail,
+        subject,
+        bodyHtml,
+        status: 'sent',
+      });
+
+      res.json({ success: true, emailId: data?.id });
+    } catch (error) {
+      console.error("Error sending email:", error);
+      res.status(500).json({ message: "Failed to send email" });
+    }
+  });
+
+  // ============================================================================
   // CUSTOM FORMS - Organization-Specific Form Templates
   // ============================================================================
 
