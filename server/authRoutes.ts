@@ -194,7 +194,7 @@ router.post("/api/auth/logout", (req, res) => {
 // ============================================================================
 
 router.get("/api/auth/me", requireAuth, (req, res) => {
-  const user = req.user;
+  const user = req.user!; // requireAuth ensures user exists
   res.json({
     user: {
       id: user.id,
