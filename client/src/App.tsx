@@ -45,6 +45,7 @@ import EmployeePortal from "@/pages/employee-portal";
 import AuditorPortal from "@/pages/auditor-portal";
 import ClientPortal from "@/pages/client-portal";
 import CustomerSupport from "@/pages/customer-support";
+import Billing from "@/pages/billing";
 
 function AppContent() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -103,6 +104,7 @@ function AppContent() {
                 <Route path="/invoices" component={Invoices} />
                 <Route path="/reports" component={Reports} />
                 <Route path="/analytics" component={Analytics} />
+                <Route path="/billing" component={Billing} />
                 <Route path="/admin/usage" component={AdminUsage} />
                 <Route path="/admin/support" component={AdminSupport} />
                 <Route path="/admin/command" component={AdminCommandCenter} />

@@ -257,6 +257,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Upgrade workspace billing tier
+  app.post('/api/workspace/upgrade', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const workspace = await storage.getWorkspaceByOwnerId(userId);
+      
+      if (!workspace) {
+        return res.status(404).json({ message: "Workspace not found" });
+      }
+
+      const { tier } = req.body;
+      
+      // Map tiers to platform fees (transaction-based revenue model)
+      const tierConfig: Record<string, { fee: number; name: string; price: number }> = {
+        professional: { fee: 10, name: "Professional", price: 799 },
+        enterprise: { fee: 5, name: "Enterprise", price: 2999 },
+        fortune500: { fee: 2, name: "Fortune 500", price: 7999 },
+      };
+
+      if (!tierConfig[tier]) {
+        return res.status(400).json({ message: "Invalid tier selected" });
+      }
+
+      const config = tierConfig[tier];
+
+      // Update workspace with new tier and platform fee
+      const updated = await storage.updateWorkspace(workspace.id, {
+        billingTier: tier,
+        platformFeePercentage: config.fee,
+        subscriptionAmount: config.price.toString(),
+        subscriptionStatus: "active",
+      });
+
+      // Log platform revenue event
+      await storage.createPlatformRevenue({
+        workspaceId: workspace.id,
+        revenueType: "subscription",
+        amount: config.price.toString(),
+        platformFee: "0", // Subscription revenue is 100% platform revenue
+        description: `Upgraded to ${config.name} tier - $${config.price}/mo`,
+      });
+
+      res.json({
+        message: `Successfully upgraded to ${config.name} tier`,
+        workspace: updated,
+      });
+    } catch (error: any) {
+      console.error("Error upgrading workspace:", error);
+      res.status(500).json({ message: error.message || "Failed to upgrade workspace" });
+    }
+  });
+
   // ============================================================================
   // EMPLOYEE ROUTES (Multi-tenant isolated)
   // ============================================================================
