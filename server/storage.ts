@@ -24,6 +24,8 @@ import {
   supportTickets,
   auditLogs,
   featureFlags,
+  platformRevenue,
+  workspaceAiUsage,
   type User,
   type UpsertUser,
   type Workspace,
@@ -67,6 +69,10 @@ import {
   type InsertAuditLog,
   type FeatureFlag,
   type InsertFeatureFlag,
+  type PlatformRevenue,
+  type InsertPlatformRevenue,
+  type WorkspaceAiUsage,
+  type InsertWorkspaceAiUsage,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, isNotNull, or, like, sql } from "drizzle-orm";
