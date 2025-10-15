@@ -51,6 +51,7 @@ import HRReviews from "@/pages/hr-reviews";
 import HRPTO from "@/pages/hr-pto";
 import HRTerminations from "@/pages/hr-terminations";
 import HelpdeskChat from "@/pages/helpdesk-chat";
+import SupportDashboard from "@/pages/support-dashboard";
 
 function AppContent() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -117,6 +118,7 @@ function AppContent() {
                 <Route path="/admin/usage" component={AdminUsage} />
                 <Route path="/admin/support" component={AdminSupport} />
                 <Route path="/admin/command" component={AdminCommandCenter} />
+                <Route path="/support/dashboard" component={SupportDashboard} />
                 <Route path="/platform/admin" component={PlatformAdmin} />
                 <Route path="/platform/users" component={PlatformUsers} />
                 <Route path="/employee/portal" component={EmployeePortal} />

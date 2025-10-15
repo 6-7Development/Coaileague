@@ -2838,6 +2838,97 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Grant voice to user (remove silence) - Managers and Owners only
+  app.post('/api/chat/conversations/:id/grant-voice', isAuthenticated, requireManager, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user.claims.sub;
+      const userName = req.user.claims.name || req.user.claims.email || 'Support Agent';
+      
+      // Get conversation first to determine workspace
+      const conversation = await storage.getChatConversation(id);
+      if (!conversation) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+
+      // CRITICAL: Verify user's workspace matches conversation's workspace (tenant scoping)
+      // requireManager already validates role, now we validate workspace membership
+      const userWorkspace = await storage.getWorkspaceByOwnerId(userId);
+      
+      // If user is not the owner, they might be a manager - check workspaceId from request
+      const workspaceId = req.workspaceId || userWorkspace?.id;
+      
+      if (!workspaceId || workspaceId !== conversation.workspaceId) {
+        return res.status(403).json({ message: "Access denied: Conversation belongs to a different workspace" });
+      }
+
+      // Grant voice (remove silence)
+      const updated = await storage.updateChatConversation(id, {
+        isSilenced: false,
+        voiceGrantedBy: userId,
+        voiceGrantedAt: new Date(),
+      });
+
+      // Send system message about voice being granted
+      const { HelpBotService } = await import('./ai/help-bot');
+      const systemMessage = await HelpBotService.generateVoiceGrantedMessage(userName);
+      
+      await storage.createChatMessage({
+        conversationId: id,
+        senderName: 'help_bot',
+        senderType: 'bot',
+        message: systemMessage,
+        messageType: 'system',
+      });
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Error granting voice:", error);
+      res.status(500).json({ message: "Failed to grant voice" });
+    }
+  });
+
+  // Help bot: Send AI response
+  app.post('/api/chat/help-bot/respond', isAuthenticated, async (req: any, res) => {
+    try {
+      const { conversationId, userMessage, previousMessages } = req.body;
+      const userId = req.user.claims.sub;
+      const workspace = await storage.getWorkspaceByOwnerId(userId);
+      
+      if (!workspace) {
+        return res.status(404).json({ message: "Workspace not found" });
+      }
+
+      // Verify conversation belongs to workspace
+      const conversation = await storage.getChatConversation(conversationId);
+      if (!conversation || conversation.workspaceId !== workspace.id) {
+        return res.status(403).json({ message: "Unauthorized" });
+      }
+
+      const { HelpBotService } = await import('./ai/help-bot');
+      const botResponse = await HelpBotService.generateResponse(userMessage, {
+        conversationId,
+        customerName: conversation.customerName || undefined,
+        customerEmail: conversation.customerEmail || undefined,
+        previousMessages,
+      });
+
+      // Save bot response as message
+      const message = await storage.createChatMessage({
+        conversationId,
+        senderName: 'help_bot',
+        senderType: 'bot',
+        message: botResponse,
+        messageType: 'text',
+      });
+
+      res.json(message);
+    } catch (error) {
+      console.error("Error generating bot response:", error);
+      res.status(500).json({ message: "Failed to generate bot response" });
+    }
+  });
+
   // Return the server we created at the top with WebSocket
   return server;
 }

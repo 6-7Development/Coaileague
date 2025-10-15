@@ -10,14 +10,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { 
   MessageSquare, Send, Users, AlertCircle, Shield, 
-  Headphones, User, Circle, Settings, Info, Menu, X
+  Headphones, User, Circle, Settings, Info, Menu, X,
+  Bot, Mic, MicOff, Sparkles
 } from "lucide-react";
 import type { ChatConversation, ChatMessage } from "@shared/schema";
 
 interface OnlineUser {
   id: string;
   name: string;
-  role: 'admin' | 'support' | 'customer';
+  role: 'admin' | 'support' | 'customer' | 'bot';
   status: 'online' | 'away' | 'busy';
   avatar?: string;
 }
@@ -27,11 +28,15 @@ export default function HelpdeskChatPage() {
   const [messageText, setMessageText] = useState("");
   const [mobileView, setMobileView] = useState<'chat' | 'users' | 'info'>('chat');
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  
+  // Static users including help_bot
   const [onlineUsers] = useState<OnlineUser[]>([
+    { id: 'bot-1', name: 'help_bot', role: 'bot', status: 'online' },
     { id: '1', name: 'Admin Sarah', role: 'admin', status: 'online' },
     { id: '2', name: 'Support Mike', role: 'support', status: 'online' },
     { id: '3', name: 'Support Lisa', role: 'support', status: 'away' },
   ]);
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -68,6 +73,27 @@ export default function HelpdeskChatPage() {
     },
   });
 
+  const grantVoice = useMutation({
+    mutationFn: async (conversationId: string) => {
+      return await apiRequest(`/api/chat/conversations/${conversationId}/grant-voice`, "POST", {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/chat/conversations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/chat/conversations", selectedConversation, "messages"] });
+      toast({
+        title: "Voice Granted",
+        description: "User can now send messages",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to grant voice",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedConversation || !messageText.trim()) return;
@@ -88,6 +114,8 @@ export default function HelpdeskChatPage() {
         return <Shield className="w-3 h-3 text-red-500" />;
       case 'support':
         return <Headphones className="w-3 h-3 text-blue-500" />;
+      case 'bot':
+        return <Bot className="w-3 h-3 text-purple-500" />;
       default:
         return <User className="w-3 h-3 text-gray-500" />;
     }
@@ -112,6 +140,8 @@ export default function HelpdeskChatPage() {
         return 'bg-red-500/10 text-red-500 border-red-500/20';
       case 'support':
         return 'bg-blue-500/10 text-blue-500 border-blue-500/20';
+      case 'bot':
+        return 'bg-purple-500/10 text-purple-500 border-purple-500/20';
       default:
         return 'bg-gray-500/10 text-gray-500 border-gray-500/20';
     }
@@ -145,13 +175,20 @@ export default function HelpdeskChatPage() {
               data-testid={`user-${user.id}`}
             >
               <div className="relative">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                  user.role === 'bot' 
+                    ? 'bg-gradient-to-br from-purple-600 to-pink-600' 
+                    : 'bg-gradient-to-br from-indigo-600 to-purple-600'
+                }`}>
                   {getRoleIcon(user.role)}
                 </div>
                 <div className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-[#1e1e1e] ${getStatusColor(user.status)}`} />
               </div>
               <div className="flex-1 min-w-0 text-left">
-                <p className="text-sm font-medium text-white truncate">{user.name}</p>
+                <div className="flex items-center gap-1.5">
+                  <p className="text-sm font-medium text-white truncate">{user.name}</p>
+                  {user.role === 'bot' && <Sparkles className="w-3 h-3 text-purple-400 flex-shrink-0" />}
+                </div>
                 <Badge className={`text-[10px] h-4 px-1.5 ${getRoleBadgeColor(user.role)}`}>
                   {user.role}
                 </Badge>
@@ -202,6 +239,37 @@ export default function HelpdeskChatPage() {
             <Separator className="bg-[#3a3a3a]" />
 
             <div>
+              <p className="text-gray-400 mb-2">Voice Status</p>
+              <div className="flex items-center gap-2">
+                {selectedConv.isSilenced ? (
+                  <>
+                    <Badge variant="outline" className="bg-red-500/10 text-red-500 border-red-500/20">
+                      <MicOff className="w-3 h-3 mr-1" />
+                      Silenced
+                    </Badge>
+                    <Button
+                      size="sm"
+                      onClick={() => grantVoice.mutate(selectedConv.id)}
+                      disabled={grantVoice.isPending}
+                      className="bg-green-600 hover:bg-green-700 h-7"
+                      data-testid="button-grant-voice"
+                    >
+                      <Mic className="w-3 h-3 mr-1" />
+                      Grant Voice
+                    </Button>
+                  </>
+                ) : (
+                  <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/20">
+                    <Mic className="w-3 h-3 mr-1" />
+                    Has Voice
+                  </Badge>
+                )}
+              </div>
+            </div>
+
+            <Separator className="bg-[#3a3a3a]" />
+
+            <div>
               <p className="text-gray-400 mb-2">Created</p>
               <p className="text-white text-sm">
                 {selectedConv.createdAt ? new Date(selectedConv.createdAt).toLocaleString() : 'N/A'}
@@ -215,6 +283,18 @@ export default function HelpdeskChatPage() {
                   <p className="text-gray-400 mb-2">Last Message</p>
                   <p className="text-white text-sm">
                     {new Date(selectedConv.lastMessageAt as Date).toLocaleString()}
+                  </p>
+                </div>
+              </>
+            )}
+
+            {selectedConv.voiceGrantedAt && (
+              <>
+                <Separator className="bg-[#3a3a3a]" />
+                <div>
+                  <p className="text-gray-400 mb-2">Voice Granted</p>
+                  <p className="text-white text-sm">
+                    {new Date(selectedConv.voiceGrantedAt as Date).toLocaleString()}
                   </p>
                 </div>
               </>
@@ -259,13 +339,21 @@ export default function HelpdeskChatPage() {
           ))}
         </select>
         {selectedConv && (
-          <Badge variant="outline" className={
-            selectedConv.priority === 'urgent' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
-            selectedConv.priority === 'high' ? 'bg-orange-500/10 text-orange-500 border-orange-500/20' :
-            'bg-blue-500/10 text-blue-500 border-blue-500/20'
-          }>
-            {selectedConv.priority}
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className={
+              selectedConv.priority === 'urgent' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
+              selectedConv.priority === 'high' ? 'bg-orange-500/10 text-orange-500 border-orange-500/20' :
+              'bg-blue-500/10 text-blue-500 border-blue-500/20'
+            }>
+              {selectedConv.priority}
+            </Badge>
+            {selectedConv.isSilenced && (
+              <Badge variant="outline" className="bg-red-500/10 text-red-500 border-red-500/20">
+                <MicOff className="w-3 h-3 mr-1" />
+                Silenced
+              </Badge>
+            )}
+          </div>
         )}
       </div>
 
@@ -287,18 +375,24 @@ export default function HelpdeskChatPage() {
             {messages.map((msg) => (
               <div
                 key={msg.id}
-                className={`flex gap-2 flex-wrap ${msg.senderType === 'system' ? 'text-yellow-500 italic' : 'text-gray-300'}`}
+                className={`flex gap-2 flex-wrap ${
+                  msg.senderType === 'system' ? 'text-yellow-500 italic' :
+                  msg.senderType === 'bot' ? 'text-purple-400' :
+                  'text-gray-300'
+                }`}
                 data-testid={`message-${msg.id}`}
               >
                 <span className="text-gray-500 text-xs flex-shrink-0">
                   [{formatTime(msg.createdAt)}]
                 </span>
-                <span className={`flex-shrink-0 ${
+                <span className={`flex items-center gap-1 flex-shrink-0 ${
                   msg.senderType === 'support' ? 'text-blue-400 font-semibold' :
                   msg.senderType === 'customer' ? 'text-green-400 font-semibold' :
+                  msg.senderType === 'bot' ? 'text-purple-400 font-semibold' :
                   'text-gray-400'
                 }`}>
-                  {msg.senderType === 'support' && <Headphones className="w-3 h-3 inline mr-1" />}
+                  {msg.senderType === 'support' && <Headphones className="w-3 h-3 inline" />}
+                  {msg.senderType === 'bot' && <Bot className="w-3 h-3 inline" />}
                   {msg.senderType === 'system' && '***'}
                   {msg.senderName}:
                 </span>
@@ -313,25 +407,34 @@ export default function HelpdeskChatPage() {
       {/* Message Input - Classic IRC Style */}
       {selectedConversation && (
         <div className="p-3 bg-[#1e1e1e] border-t border-[#3a3a3a]">
-          <form onSubmit={handleSendMessage} className="flex gap-2">
-            <Input
-              value={messageText}
-              onChange={(e) => setMessageText(e.target.value)}
-              placeholder="Type your message..."
-              className="flex-1 bg-[#2b2b2b] border-[#3a3a3a] text-white placeholder:text-gray-500 font-mono min-h-[44px]"
-              disabled={sendMessage.isPending}
-              data-testid="input-message"
-            />
-            <Button
-              type="submit"
-              size="icon"
-              disabled={!messageText.trim() || sendMessage.isPending}
-              className="bg-indigo-600 hover:bg-indigo-700 min-h-[44px] min-w-[44px]"
-              data-testid="button-send-message"
-            >
-              <Send className="w-4 h-4" />
-            </Button>
-          </form>
+          {selectedConv?.isSilenced ? (
+            <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded">
+              <MicOff className="w-4 h-4 text-red-500 flex-shrink-0" />
+              <p className="text-sm text-red-400">
+                User is silenced. Grant voice to allow messaging.
+              </p>
+            </div>
+          ) : (
+            <form onSubmit={handleSendMessage} className="flex gap-2">
+              <Input
+                value={messageText}
+                onChange={(e) => setMessageText(e.target.value)}
+                placeholder="Type your message..."
+                className="flex-1 bg-[#2b2b2b] border-[#3a3a3a] text-white placeholder:text-gray-500 font-mono min-h-[44px]"
+                disabled={sendMessage.isPending}
+                data-testid="input-message"
+              />
+              <Button
+                type="submit"
+                size="icon"
+                disabled={!messageText.trim() || sendMessage.isPending}
+                className="bg-indigo-600 hover:bg-indigo-700 min-h-[44px] min-w-[44px]"
+                data-testid="button-send-message"
+              >
+                <Send className="w-4 h-4" />
+              </Button>
+            </form>
+          )}
         </div>
       )}
     </div>
@@ -350,7 +453,7 @@ export default function HelpdeskChatPage() {
               <h1 className="text-base md:text-lg font-bold text-white truncate" data-testid="text-chat-title">
                 WorkforceOS Support Chat
               </h1>
-              <p className="text-xs text-gray-400 hidden sm:block">Live Support Helpdesk</p>
+              <p className="text-xs text-gray-400 hidden sm:block">Live Support Helpdesk • AI-Powered</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -439,6 +542,11 @@ export default function HelpdeskChatPage() {
           <span className="truncate">{conversations.length} conversations</span>
           <span className="hidden sm:inline">•</span>
           <span className="hidden sm:inline">{messages.length} messages</span>
+          <span className="hidden md:inline">•</span>
+          <span className="hidden md:inline flex items-center gap-1">
+            <Bot className="w-3 h-3 text-purple-400" />
+            help_bot online
+          </span>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           <Circle className={`w-2 h-2 fill-green-500`} />

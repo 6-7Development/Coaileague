@@ -102,7 +102,7 @@ const adminMenuItems = [
   },
   {
     title: "Support Dashboard",
-    url: "/admin/support",
+    url: "/support/dashboard",
     icon: Headphones,
   },
   {
