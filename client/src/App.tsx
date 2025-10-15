@@ -53,6 +53,7 @@ import HRPTO from "@/pages/hr-pto";
 import HRTerminations from "@/pages/hr-terminations";
 import HelpdeskChat from "@/pages/helpdesk-chat";
 import SupportDashboard from "@/pages/support-dashboard";
+import SalesPortal from "@/pages/sales-portal";
 
 function AppContent() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -123,6 +124,7 @@ function AppContent() {
                 <Route path="/support/dashboard" component={SupportDashboard} />
                 <Route path="/platform/admin" component={PlatformAdmin} />
                 <Route path="/platform/users" component={PlatformUsers} />
+                <Route path="/platform/sales" component={SalesPortal} />
                 <Route path="/employee/portal" component={EmployeePortal} />
                 <Route path="/auditor/portal" component={AuditorPortal} />
                 <Route path="/client/portal" component={ClientPortal} />
