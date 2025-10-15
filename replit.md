@@ -96,8 +96,18 @@ The platform offers Professional, Enterprise, and Fortune 500 tiers with increas
 - ✅ **RBAC Complete**: Platform staff vs regular user access properly segregated
 - ⏳ **Pending**: Stripe test keys for final E2E validation (user will provide before marketing launch)
 
+## AI Sales CRM (Production Ready - Oct 15, 2025)
+### **Complete AI-Powered Lead Generation & Sales Management**
+- **AI Lead Discovery**: GPT-4 powered prospect generation with industry targeting, regional filtering, synthetic demo data compliance (GDPR/CCPA safe)
+- **Sales Pipeline**: 7-stage tracking (new → contacted → qualified → demo → proposal → won/lost), lead scoring, deal value forecasting
+- **CRM Features**: Notes tracking, follow-up reminders, assigned sales rep management, conversion analytics
+- **Email Campaigns**: 7 industry-specific templates, AI personalization, Resend delivery, email logging
+- **Security**: Request validation (1-20 lead limit), strict AI output schema validation, email domain whitelisting (example.com/demo.com/test.com), cost controls
+- **APIs**: POST /api/sales/ai-generate-leads, PATCH /api/sales/leads/:id, POST /api/sales/send-email (all architect-approved)
+
 ## External Dependencies
 - **Database**: Neon (PostgreSQL)
 - **ORM**: Drizzle ORM
 - **Payment Processing**: Stripe Connect (ready for activation - requires test keys for final validation)
-- **Email**: Resend (for notifications and password reset)
+- **Email**: Resend (for notifications, password reset, and sales campaigns)
+- **AI**: OpenAI GPT-4 (for lead generation and email personalization)
