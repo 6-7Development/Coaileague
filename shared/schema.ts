@@ -228,6 +228,197 @@ export const insertEmployeeSchema = createInsertSchema(employees).omit({
 export type InsertEmployee = z.infer<typeof insertEmployeeSchema>;
 export type Employee = typeof employees.$inferSelect;
 
+// Employee Benefits (Insurance, 401k, PTO, etc.)
+export const benefitTypeEnum = pgEnum('benefit_type', [
+  'health_insurance',
+  'dental_insurance', 
+  'vision_insurance',
+  'life_insurance',
+  '401k',
+  'pto_vacation',
+  'sick_leave',
+  'bonus',
+  'equity',
+  'other'
+]);
+
+export const benefitStatusEnum = pgEnum('benefit_status', ['pending', 'active', 'expired', 'cancelled']);
+
+export const employeeBenefits = pgTable("employee_benefits", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
+  
+  // Benefit details
+  benefitType: benefitTypeEnum("benefit_type").notNull(),
+  benefitName: varchar("benefit_name").notNull(), // e.g., "Blue Cross PPO", "Company 401k Match"
+  provider: varchar("provider"), // Insurance company or 401k provider
+  
+  // Coverage & amounts
+  coverageAmount: decimal("coverage_amount", { precision: 12, scale: 2 }), // For insurance policies
+  employeeContribution: decimal("employee_contribution", { precision: 10, scale: 2 }), // Monthly deduction
+  employerContribution: decimal("employer_contribution", { precision: 10, scale: 2 }), // Monthly company cost
+  
+  // PTO/Leave specific
+  ptoHoursPerYear: decimal("pto_hours_per_year", { precision: 10, scale: 2 }),
+  ptoHoursAccrued: decimal("pto_hours_accrued", { precision: 10, scale: 2 }).default("0"),
+  ptoHoursUsed: decimal("pto_hours_used", { precision: 10, scale: 2 }).default("0"),
+  
+  // 401k specific
+  contributionPercentage: decimal("contribution_percentage", { precision: 5, scale: 2 }), // % of salary
+  matchPercentage: decimal("match_percentage", { precision: 5, scale: 2 }), // Employer match %
+  
+  // Status & dates
+  status: benefitStatusEnum("status").default("active"),
+  startDate: timestamp("start_date"),
+  endDate: timestamp("end_date"),
+  
+  // Additional info
+  policyNumber: varchar("policy_number"),
+  notes: text("notes"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertEmployeeBenefitSchema = createInsertSchema(employeeBenefits).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertEmployeeBenefit = z.infer<typeof insertEmployeeBenefitSchema>;
+export type EmployeeBenefit = typeof employeeBenefits.$inferSelect;
+
+// Performance Reviews (HR Management)
+export const reviewStatusEnum = pgEnum('review_status', ['draft', 'in_progress', 'completed', 'cancelled']);
+export const reviewTypeEnum = pgEnum('review_type', ['annual', 'quarterly', 'probation', '90_day', 'promotion', 'pip']);
+
+export const performanceReviews = pgTable("performance_reviews", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
+  reviewerId: varchar("reviewer_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
+  
+  // Review details
+  reviewType: reviewTypeEnum("review_type").notNull(),
+  reviewPeriodStart: timestamp("review_period_start"),
+  reviewPeriodEnd: timestamp("review_period_end"),
+  
+  // Ratings (1-5 scale)
+  overallRating: integer("overall_rating"), // 1-5
+  technicalSkillsRating: integer("technical_skills_rating"),
+  communicationRating: integer("communication_rating"),
+  teamworkRating: integer("teamwork_rating"),
+  leadershipRating: integer("leadership_rating"),
+  attendanceRating: integer("attendance_rating"),
+  
+  // Feedback
+  strengths: text("strengths"),
+  areasForImprovement: text("areas_for_improvement"),
+  goals: text("goals").array(), // Array of goal strings
+  reviewerComments: text("reviewer_comments"),
+  employeeComments: text("employee_comments"),
+  
+  // Status & completion
+  status: reviewStatusEnum("status").default("draft"),
+  completedAt: timestamp("completed_at"),
+  
+  // Salary/promotion decisions
+  salaryAdjustment: decimal("salary_adjustment", { precision: 10, scale: 2 }),
+  promotionRecommended: boolean("promotion_recommended").default(false),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertPerformanceReviewSchema = createInsertSchema(performanceReviews).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertPerformanceReview = z.infer<typeof insertPerformanceReviewSchema>;
+export type PerformanceReview = typeof performanceReviews.$inferSelect;
+
+// PTO Requests (Paid Time Off / Vacation Management)
+export const ptoStatusEnum = pgEnum('pto_status', ['pending', 'approved', 'denied', 'cancelled']);
+export const ptoTypeEnum = pgEnum('pto_type', ['vacation', 'sick', 'personal', 'bereavement', 'unpaid']);
+
+export const ptoRequests = pgTable("pto_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
+  approverId: varchar("approver_id").references(() => employees.id, { onDelete: 'set null' }),
+  
+  // Request details
+  ptoType: ptoTypeEnum("pto_type").notNull(),
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date").notNull(),
+  totalHours: decimal("total_hours", { precision: 10, scale: 2 }).notNull(),
+  
+  // Request & approval
+  requestNotes: text("request_notes"),
+  status: ptoStatusEnum("status").default("pending"),
+  approvedAt: timestamp("approved_at"),
+  denialReason: text("denial_reason"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertPtoRequestSchema = createInsertSchema(ptoRequests).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertPtoRequest = z.infer<typeof insertPtoRequestSchema>;
+export type PtoRequest = typeof ptoRequests.$inferSelect;
+
+// Employee Terminations (Offboarding / Exit Management)
+export const terminationTypeEnum = pgEnum('termination_type', ['voluntary', 'involuntary', 'retirement', 'layoff', 'end_of_contract']);
+export const terminationStatusEnum = pgEnum('termination_status', ['pending', 'in_progress', 'completed']);
+
+export const employeeTerminations = pgTable("employee_terminations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
+  terminatedBy: varchar("terminated_by").notNull().references(() => employees.id, { onDelete: 'cascade' }),
+  
+  // Termination details
+  terminationType: terminationTypeEnum("termination_type").notNull(),
+  terminationDate: timestamp("termination_date").notNull(),
+  lastWorkingDay: timestamp("last_working_day").notNull(),
+  
+  // Documentation
+  reason: text("reason").notNull(),
+  exitInterviewNotes: text("exit_interview_notes"),
+  rehireEligible: boolean("rehire_eligible").default(false),
+  
+  // Offboarding checklist
+  equipmentReturned: boolean("equipment_returned").default(false),
+  accessRevoked: boolean("access_revoked").default(false),
+  finalPaymentProcessed: boolean("final_payment_processed").default(false),
+  exitInterviewCompleted: boolean("exit_interview_completed").default(false),
+  
+  // Status
+  status: terminationStatusEnum("status").default("pending"),
+  completedAt: timestamp("completed_at"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertEmployeeTerminationSchema = createInsertSchema(employeeTerminations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertEmployeeTermination = z.infer<typeof insertEmployeeTerminationSchema>;
+export type EmployeeTermination = typeof employeeTerminations.$inferSelect;
+
 // Clients (End customers of the workspace/business)
 export const clients = pgTable("clients", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

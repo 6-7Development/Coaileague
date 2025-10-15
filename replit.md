@@ -36,8 +36,17 @@ The platform features a CAD-style professional interface with a dark mode theme,
 ### Feature Specifications
 - **Core**: Employee/client management, scheduling, multi-tenancy, responsive design, dark mode, 24-hour resetting demo system.
 - **Advanced**: Time tracking, automated invoicing, analytics, RBAC, advanced scheduling, employee onboarding, RMS with photo requirements, industry-specific forms, shift orders.
+- **HR Management Suite (Backend Complete)**:
+    - **Employee Benefits**: Health insurance, 401(k), PTO accrual tracking, benefit enrollment management with full CRUD operations.
+    - **Performance Reviews**: Multi-dimensional ratings (communication, teamwork, quality, etc.), goal setting/tracking, salary adjustment recommendations, review type support (annual, probation, mid-year).
+    - **PTO Management**: Vacation/sick leave requests with approval workflows, accrual tracking, manager approval/denial with reason tracking.
+    - **Employee Terminations**: Offboarding workflows with reason tracking (voluntary/involuntary), exit interview notes, asset recovery checklists, final pay tracking, status management (initiated/processing/completed).
+- **Billing & Monetization**:
+    - **White-Label Upgrade System**: Tier-based pricing UI with feature comparison (Professional/Enterprise/Fortune 500), API endpoint for subscription tier upgrades, automatic UI refresh on tier changes.
+    - **Transaction-Based Revenue**: Platform fee system (3-10%) with automated Stripe Connect payment splitting (ready for activation).
+    - **Feature Flags**: Database-backed tier-based feature visibility system with LockedFeature component.
 - **Implemented but Requires Activation**: Email notifications (Resend), Stripe Connect payment processing.
-- **Database Schema Ready (Needs UI)**: GPS clock-in, automated payroll processing.
+- **Database Schema Ready (Needs UI)**: GPS clock-in, automated payroll processing, HR management dashboards.
 
 ### Monetization Strategy
 The platform offers Professional, Enterprise, and Fortune 500 tiers with increasing features and cost savings. Additional offerings include a White-Label RMS capability for custom branding and a database-backed feature flag system for granular control over feature availability based on billing tiers.

@@ -6,6 +6,10 @@ import {
   workspaces,
   workspaceThemes,
   employees,
+  employeeBenefits,
+  performanceReviews,
+  ptoRequests,
+  employeeTerminations,
   clients,
   shifts,
   shiftTemplates,
@@ -33,6 +37,14 @@ import {
   type WorkspaceTheme,
   type Employee,
   type InsertEmployee,
+  type EmployeeBenefit,
+  type InsertEmployeeBenefit,
+  type PerformanceReview,
+  type InsertPerformanceReview,
+  type PtoRequest,
+  type InsertPtoRequest,
+  type EmployeeTermination,
+  type InsertEmployeeTermination,
   type Client,
   type InsertClient,
   type Shift,
@@ -214,6 +226,38 @@ export interface IStorage {
   createAiUsage(usage: InsertWorkspaceAiUsage): Promise<WorkspaceAiUsage>;
   getAiUsage(workspaceId: string, filters?: { feature?: string; billingPeriod?: string }): Promise<WorkspaceAiUsage[]>;
   getAiUsageSummary(workspaceId: string, billingPeriod: string): Promise<{ totalCost: number; totalCharge: number; operationCount: number }>;
+  
+  // Employee Benefits operations (HR)
+  createEmployeeBenefit(benefit: InsertEmployeeBenefit): Promise<EmployeeBenefit>;
+  getEmployeeBenefit(id: string, workspaceId: string): Promise<EmployeeBenefit | undefined>;
+  getEmployeeBenefitsByEmployee(employeeId: string, workspaceId: string): Promise<EmployeeBenefit[]>;
+  getEmployeeBenefitsByWorkspace(workspaceId: string): Promise<EmployeeBenefit[]>;
+  updateEmployeeBenefit(id: string, workspaceId: string, data: Partial<InsertEmployeeBenefit>): Promise<EmployeeBenefit | undefined>;
+  deleteEmployeeBenefit(id: string, workspaceId: string): Promise<boolean>;
+  
+  // Performance Review operations (HR)
+  createPerformanceReview(review: InsertPerformanceReview): Promise<PerformanceReview>;
+  getPerformanceReview(id: string, workspaceId: string): Promise<PerformanceReview | undefined>;
+  getPerformanceReviewsByEmployee(employeeId: string, workspaceId: string): Promise<PerformanceReview[]>;
+  getPerformanceReviewsByWorkspace(workspaceId: string): Promise<PerformanceReview[]>;
+  updatePerformanceReview(id: string, workspaceId: string, data: Partial<InsertPerformanceReview>): Promise<PerformanceReview | undefined>;
+  deletePerformanceReview(id: string, workspaceId: string): Promise<boolean>;
+  
+  // PTO Request operations (HR)
+  createPtoRequest(request: InsertPtoRequest): Promise<PtoRequest>;
+  getPtoRequest(id: string, workspaceId: string): Promise<PtoRequest | undefined>;
+  getPtoRequestsByEmployee(employeeId: string, workspaceId: string): Promise<PtoRequest[]>;
+  getPtoRequestsByWorkspace(workspaceId: string, filters?: { status?: string }): Promise<PtoRequest[]>;
+  updatePtoRequest(id: string, workspaceId: string, data: Partial<InsertPtoRequest>): Promise<PtoRequest | undefined>;
+  approvePtoRequest(id: string, workspaceId: string, approverId: string): Promise<PtoRequest | undefined>;
+  denyPtoRequest(id: string, workspaceId: string, approverId: string, denialReason: string): Promise<PtoRequest | undefined>;
+  
+  // Employee Termination operations (HR)
+  createEmployeeTermination(termination: InsertEmployeeTermination): Promise<EmployeeTermination>;
+  getEmployeeTermination(id: string, workspaceId: string): Promise<EmployeeTermination | undefined>;
+  getEmployeeTerminationsByWorkspace(workspaceId: string): Promise<EmployeeTermination[]>;
+  updateEmployeeTermination(id: string, workspaceId: string, data: Partial<InsertEmployeeTermination>): Promise<EmployeeTermination | undefined>;
+  completeTermination(id: string, workspaceId: string): Promise<EmployeeTermination | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1347,6 +1391,294 @@ export class DatabaseStorage implements IStorage {
     );
     
     return summary;
+  }
+
+  // ============================================================================
+  // EMPLOYEE BENEFITS OPERATIONS (HR)
+  // ============================================================================
+  
+  async createEmployeeBenefit(benefit: InsertEmployeeBenefit): Promise<EmployeeBenefit> {
+    const [newBenefit] = await db
+      .insert(employeeBenefits)
+      .values(benefit)
+      .returning();
+    
+    return newBenefit;
+  }
+  
+  async getEmployeeBenefit(id: string, workspaceId: string): Promise<EmployeeBenefit | undefined> {
+    const [benefit] = await db
+      .select()
+      .from(employeeBenefits)
+      .where(and(eq(employeeBenefits.id, id), eq(employeeBenefits.workspaceId, workspaceId)));
+    
+    return benefit;
+  }
+  
+  async getEmployeeBenefitsByEmployee(employeeId: string, workspaceId: string): Promise<EmployeeBenefit[]> {
+    return await db
+      .select()
+      .from(employeeBenefits)
+      .where(
+        and(
+          eq(employeeBenefits.employeeId, employeeId),
+          eq(employeeBenefits.workspaceId, workspaceId)
+        )
+      )
+      .orderBy(desc(employeeBenefits.createdAt));
+  }
+  
+  async getEmployeeBenefitsByWorkspace(workspaceId: string): Promise<EmployeeBenefit[]> {
+    return await db
+      .select()
+      .from(employeeBenefits)
+      .where(eq(employeeBenefits.workspaceId, workspaceId))
+      .orderBy(desc(employeeBenefits.createdAt));
+  }
+  
+  async updateEmployeeBenefit(
+    id: string,
+    workspaceId: string,
+    data: Partial<InsertEmployeeBenefit>
+  ): Promise<EmployeeBenefit | undefined> {
+    const [updated] = await db
+      .update(employeeBenefits)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(employeeBenefits.id, id), eq(employeeBenefits.workspaceId, workspaceId)))
+      .returning();
+    
+    return updated;
+  }
+  
+  async deleteEmployeeBenefit(id: string, workspaceId: string): Promise<boolean> {
+    const result = await db
+      .delete(employeeBenefits)
+      .where(and(eq(employeeBenefits.id, id), eq(employeeBenefits.workspaceId, workspaceId)))
+      .returning();
+    
+    return result.length > 0;
+  }
+
+  // ============================================================================
+  // PERFORMANCE REVIEW OPERATIONS (HR)
+  // ============================================================================
+  
+  async createPerformanceReview(review: InsertPerformanceReview): Promise<PerformanceReview> {
+    const [newReview] = await db
+      .insert(performanceReviews)
+      .values(review)
+      .returning();
+    
+    return newReview;
+  }
+  
+  async getPerformanceReview(id: string, workspaceId: string): Promise<PerformanceReview | undefined> {
+    const [review] = await db
+      .select()
+      .from(performanceReviews)
+      .where(and(eq(performanceReviews.id, id), eq(performanceReviews.workspaceId, workspaceId)));
+    
+    return review;
+  }
+  
+  async getPerformanceReviewsByEmployee(employeeId: string, workspaceId: string): Promise<PerformanceReview[]> {
+    return await db
+      .select()
+      .from(performanceReviews)
+      .where(
+        and(
+          eq(performanceReviews.employeeId, employeeId),
+          eq(performanceReviews.workspaceId, workspaceId)
+        )
+      )
+      .orderBy(desc(performanceReviews.createdAt));
+  }
+  
+  async getPerformanceReviewsByWorkspace(workspaceId: string): Promise<PerformanceReview[]> {
+    return await db
+      .select()
+      .from(performanceReviews)
+      .where(eq(performanceReviews.workspaceId, workspaceId))
+      .orderBy(desc(performanceReviews.createdAt));
+  }
+  
+  async updatePerformanceReview(
+    id: string,
+    workspaceId: string,
+    data: Partial<InsertPerformanceReview>
+  ): Promise<PerformanceReview | undefined> {
+    const [updated] = await db
+      .update(performanceReviews)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(performanceReviews.id, id), eq(performanceReviews.workspaceId, workspaceId)))
+      .returning();
+    
+    return updated;
+  }
+  
+  async deletePerformanceReview(id: string, workspaceId: string): Promise<boolean> {
+    const result = await db
+      .delete(performanceReviews)
+      .where(and(eq(performanceReviews.id, id), eq(performanceReviews.workspaceId, workspaceId)))
+      .returning();
+    
+    return result.length > 0;
+  }
+
+  // ============================================================================
+  // PTO REQUEST OPERATIONS (HR)
+  // ============================================================================
+  
+  async createPtoRequest(request: InsertPtoRequest): Promise<PtoRequest> {
+    const [newRequest] = await db
+      .insert(ptoRequests)
+      .values(request)
+      .returning();
+    
+    return newRequest;
+  }
+  
+  async getPtoRequest(id: string, workspaceId: string): Promise<PtoRequest | undefined> {
+    const [request] = await db
+      .select()
+      .from(ptoRequests)
+      .where(and(eq(ptoRequests.id, id), eq(ptoRequests.workspaceId, workspaceId)));
+    
+    return request;
+  }
+  
+  async getPtoRequestsByEmployee(employeeId: string, workspaceId: string): Promise<PtoRequest[]> {
+    return await db
+      .select()
+      .from(ptoRequests)
+      .where(
+        and(
+          eq(ptoRequests.employeeId, employeeId),
+          eq(ptoRequests.workspaceId, workspaceId)
+        )
+      )
+      .orderBy(desc(ptoRequests.createdAt));
+  }
+  
+  async getPtoRequestsByWorkspace(workspaceId: string, filters?: { status?: string }): Promise<PtoRequest[]> {
+    const conditions = [eq(ptoRequests.workspaceId, workspaceId)];
+    
+    if (filters?.status) {
+      conditions.push(eq(ptoRequests.status, filters.status as any));
+    }
+    
+    return await db
+      .select()
+      .from(ptoRequests)
+      .where(and(...conditions))
+      .orderBy(desc(ptoRequests.createdAt));
+  }
+  
+  async updatePtoRequest(
+    id: string,
+    workspaceId: string,
+    data: Partial<InsertPtoRequest>
+  ): Promise<PtoRequest | undefined> {
+    const [updated] = await db
+      .update(ptoRequests)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(ptoRequests.id, id), eq(ptoRequests.workspaceId, workspaceId)))
+      .returning();
+    
+    return updated;
+  }
+  
+  async approvePtoRequest(id: string, workspaceId: string, approverId: string): Promise<PtoRequest | undefined> {
+    const [approved] = await db
+      .update(ptoRequests)
+      .set({
+        status: "approved",
+        approverId,
+        approvedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(and(eq(ptoRequests.id, id), eq(ptoRequests.workspaceId, workspaceId)))
+      .returning();
+    
+    return approved;
+  }
+  
+  async denyPtoRequest(
+    id: string,
+    workspaceId: string,
+    approverId: string,
+    denialReason: string
+  ): Promise<PtoRequest | undefined> {
+    const [denied] = await db
+      .update(ptoRequests)
+      .set({
+        status: "denied",
+        approverId,
+        denialReason,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(ptoRequests.id, id), eq(ptoRequests.workspaceId, workspaceId)))
+      .returning();
+    
+    return denied;
+  }
+
+  // ============================================================================
+  // EMPLOYEE TERMINATION OPERATIONS (HR)
+  // ============================================================================
+  
+  async createEmployeeTermination(termination: InsertEmployeeTermination): Promise<EmployeeTermination> {
+    const [newTermination] = await db
+      .insert(employeeTerminations)
+      .values(termination)
+      .returning();
+    
+    return newTermination;
+  }
+  
+  async getEmployeeTermination(id: string, workspaceId: string): Promise<EmployeeTermination | undefined> {
+    const [termination] = await db
+      .select()
+      .from(employeeTerminations)
+      .where(and(eq(employeeTerminations.id, id), eq(employeeTerminations.workspaceId, workspaceId)));
+    
+    return termination;
+  }
+  
+  async getEmployeeTerminationsByWorkspace(workspaceId: string): Promise<EmployeeTermination[]> {
+    return await db
+      .select()
+      .from(employeeTerminations)
+      .where(eq(employeeTerminations.workspaceId, workspaceId))
+      .orderBy(desc(employeeTerminations.createdAt));
+  }
+  
+  async updateEmployeeTermination(
+    id: string,
+    workspaceId: string,
+    data: Partial<InsertEmployeeTermination>
+  ): Promise<EmployeeTermination | undefined> {
+    const [updated] = await db
+      .update(employeeTerminations)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(employeeTerminations.id, id), eq(employeeTerminations.workspaceId, workspaceId)))
+      .returning();
+    
+    return updated;
+  }
+  
+  async completeTermination(id: string, workspaceId: string): Promise<EmployeeTermination | undefined> {
+    const [completed] = await db
+      .update(employeeTerminations)
+      .set({
+        status: "completed",
+        completedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(and(eq(employeeTerminations.id, id), eq(employeeTerminations.workspaceId, workspaceId)))
+      .returning();
+    
+    return completed;
   }
 }
 

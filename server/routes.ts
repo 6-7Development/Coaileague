@@ -284,9 +284,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Update workspace with new tier and platform fee
       const updated = await storage.updateWorkspace(workspace.id, {
-        billingTier: tier,
+        subscriptionTier: tier,
         platformFeePercentage: config.fee,
-        subscriptionAmount: config.price.toString(),
         subscriptionStatus: "active",
       });
 
@@ -460,6 +459,390 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: error.errors[0].message });
       }
       res.status(400).json({ message: error.message || "Failed to approve employee" });
+    }
+  });
+
+  // ============================================================================
+  // EMPLOYEE BENEFITS ROUTES (HR Management)
+  // ============================================================================
+  
+  app.get('/api/benefits', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const workspace = await storage.getWorkspaceByOwnerId(userId);
+      
+      if (!workspace) {
+        return res.status(404).json({ message: "Workspace not found" });
+      }
+
+      const benefits = await storage.getEmployeeBenefitsByWorkspace(workspace.id);
+      res.json(benefits);
+    } catch (error) {
+      console.error("Error fetching benefits:", error);
+      res.status(500).json({ message: "Failed to fetch benefits" });
+    }
+  });
+
+  app.get('/api/benefits/employee/:employeeId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const workspace = await storage.getWorkspaceByOwnerId(userId);
+      
+      if (!workspace) {
+        return res.status(404).json({ message: "Workspace not found" });
+      }
+
+      const { employeeId } = req.params;
+      const benefits = await storage.getEmployeeBenefitsByEmployee(employeeId, workspace.id);
+      res.json(benefits);
+    } catch (error) {
+      console.error("Error fetching employee benefits:", error);
+      res.status(500).json({ message: "Failed to fetch employee benefits" });
+    }
+  });
+
+  app.post('/api/benefits', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const workspace = await storage.getWorkspaceByOwnerId(userId);
+      
+      if (!workspace) {
+        return res.status(404).json({ message: "Workspace not found" });
+      }
+
+      // Import schema for validation
+      const { insertEmployeeBenefitSchema } = await import("@shared/schema");
+      
+      const validated = insertEmployeeBenefitSchema.parse({
+        ...req.body,
+        workspaceId: workspace.id,
+      });
+
+      const benefit = await storage.createEmployeeBenefit(validated);
+      res.status(201).json(benefit);
+    } catch (error: any) {
+      console.error("Error creating benefit:", error);
+      res.status(400).json({ message: error.message || "Failed to create benefit" });
+    }
+  });
+
+  app.patch('/api/benefits/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const workspace = await storage.getWorkspaceByOwnerId(userId);
+      
+      if (!workspace) {
+        return res.status(404).json({ message: "Workspace not found" });
+      }
+
+      const { id } = req.params;
+      
+      // Validate and strip privileged fields to prevent tenant reassignment
+      const { insertEmployeeBenefitSchema } = await import("@shared/schema");
+      const validated = insertEmployeeBenefitSchema
+        .partial()
+        .omit({ workspaceId: true, employeeId: true })
+        .parse(req.body);
+      
+      const updated = await storage.updateEmployeeBenefit(id, workspace.id, validated);
+      
+      if (!updated) {
+        return res.status(404).json({ message: "Benefit not found" });
+      }
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating benefit:", error);
+      res.status(400).json({ message: error.message || "Failed to update benefit" });
+    }
+  });
+
+  app.delete('/api/benefits/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const workspace = await storage.getWorkspaceByOwnerId(userId);
+      
+      if (!workspace) {
+        return res.status(404).json({ message: "Workspace not found" });
+      }
+
+      const { id } = req.params;
+      const deleted = await storage.deleteEmployeeBenefit(id, workspace.id);
+      
+      if (!deleted) {
+        return res.status(404).json({ message: "Benefit not found" });
+      }
+
+      res.json({ message: "Benefit deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting benefit:", error);
+      res.status(500).json({ message: "Failed to delete benefit" });
+    }
+  });
+
+  // ============================================================================
+  // PERFORMANCE REVIEW ROUTES (HR Management)
+  // ============================================================================
+  
+  app.get('/api/reviews', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const workspace = await storage.getWorkspaceByOwnerId(userId);
+      
+      if (!workspace) {
+        return res.status(404).json({ message: "Workspace not found" });
+      }
+
+      const reviews = await storage.getPerformanceReviewsByWorkspace(workspace.id);
+      res.json(reviews);
+    } catch (error) {
+      console.error("Error fetching reviews:", error);
+      res.status(500).json({ message: "Failed to fetch reviews" });
+    }
+  });
+
+  app.post('/api/reviews', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const workspace = await storage.getWorkspaceByOwnerId(userId);
+      
+      if (!workspace) {
+        return res.status(404).json({ message: "Workspace not found" });
+      }
+
+      const { insertPerformanceReviewSchema } = await import("@shared/schema");
+      const validated = insertPerformanceReviewSchema.parse({
+        ...req.body,
+        workspaceId: workspace.id,
+      });
+
+      const review = await storage.createPerformanceReview(validated);
+      res.status(201).json(review);
+    } catch (error: any) {
+      console.error("Error creating review:", error);
+      res.status(400).json({ message: error.message || "Failed to create review" });
+    }
+  });
+
+  app.patch('/api/reviews/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const workspace = await storage.getWorkspaceByOwnerId(userId);
+      
+      if (!workspace) {
+        return res.status(404).json({ message: "Workspace not found" });
+      }
+
+      const { id } = req.params;
+      
+      // Validate and strip privileged fields to prevent tenant reassignment
+      const { insertPerformanceReviewSchema } = await import("@shared/schema");
+      const validated = insertPerformanceReviewSchema
+        .partial()
+        .omit({ workspaceId: true, employeeId: true })
+        .parse(req.body);
+      
+      const updated = await storage.updatePerformanceReview(id, workspace.id, validated);
+      
+      if (!updated) {
+        return res.status(404).json({ message: "Review not found" });
+      }
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating review:", error);
+      res.status(400).json({ message: error.message || "Failed to update review" });
+    }
+  });
+
+  // ============================================================================
+  // PTO REQUEST ROUTES (HR Management)
+  // ============================================================================
+  
+  app.get('/api/pto', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const workspace = await storage.getWorkspaceByOwnerId(userId);
+      
+      if (!workspace) {
+        return res.status(404).json({ message: "Workspace not found" });
+      }
+
+      const status = req.query.status as string | undefined;
+      const requests = await storage.getPtoRequestsByWorkspace(workspace.id, { status });
+      res.json(requests);
+    } catch (error) {
+      console.error("Error fetching PTO requests:", error);
+      res.status(500).json({ message: "Failed to fetch PTO requests" });
+    }
+  });
+
+  app.post('/api/pto', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const workspace = await storage.getWorkspaceByOwnerId(userId);
+      
+      if (!workspace) {
+        return res.status(404).json({ message: "Workspace not found" });
+      }
+
+      const { insertPtoRequestSchema } = await import("@shared/schema");
+      const validated = insertPtoRequestSchema.parse({
+        ...req.body,
+        workspaceId: workspace.id,
+      });
+
+      const request = await storage.createPtoRequest(validated);
+      res.status(201).json(request);
+    } catch (error: any) {
+      console.error("Error creating PTO request:", error);
+      res.status(400).json({ message: error.message || "Failed to create PTO request" });
+    }
+  });
+
+  app.patch('/api/pto/:id/approve', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const workspace = await storage.getWorkspaceByOwnerId(userId);
+      
+      if (!workspace) {
+        return res.status(404).json({ message: "Workspace not found" });
+      }
+
+      const { id } = req.params;
+      const { approverId } = req.body;
+      const approved = await storage.approvePtoRequest(id, workspace.id, approverId);
+      
+      if (!approved) {
+        return res.status(404).json({ message: "PTO request not found" });
+      }
+
+      res.json(approved);
+    } catch (error: any) {
+      console.error("Error approving PTO request:", error);
+      res.status(400).json({ message: error.message || "Failed to approve PTO request" });
+    }
+  });
+
+  app.patch('/api/pto/:id/deny', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const workspace = await storage.getWorkspaceByOwnerId(userId);
+      
+      if (!workspace) {
+        return res.status(404).json({ message: "Workspace not found" });
+      }
+
+      const { id } = req.params;
+      const { approverId, denialReason } = req.body;
+      const denied = await storage.denyPtoRequest(id, workspace.id, approverId, denialReason);
+      
+      if (!denied) {
+        return res.status(404).json({ message: "PTO request not found" });
+      }
+
+      res.json(denied);
+    } catch (error: any) {
+      console.error("Error denying PTO request:", error);
+      res.status(400).json({ message: error.message || "Failed to deny PTO request" });
+    }
+  });
+
+  // ============================================================================
+  // EMPLOYEE TERMINATION ROUTES (HR Management)
+  // ============================================================================
+  
+  app.get('/api/terminations', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const workspace = await storage.getWorkspaceByOwnerId(userId);
+      
+      if (!workspace) {
+        return res.status(404).json({ message: "Workspace not found" });
+      }
+
+      const terminations = await storage.getEmployeeTerminationsByWorkspace(workspace.id);
+      res.json(terminations);
+    } catch (error) {
+      console.error("Error fetching terminations:", error);
+      res.status(500).json({ message: "Failed to fetch terminations" });
+    }
+  });
+
+  app.post('/api/terminations', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const workspace = await storage.getWorkspaceByOwnerId(userId);
+      
+      if (!workspace) {
+        return res.status(404).json({ message: "Workspace not found" });
+      }
+
+      const { insertEmployeeTerminationSchema } = await import("@shared/schema");
+      const validated = insertEmployeeTerminationSchema.parse({
+        ...req.body,
+        workspaceId: workspace.id,
+      });
+
+      const termination = await storage.createEmployeeTermination(validated);
+      res.status(201).json(termination);
+    } catch (error: any) {
+      console.error("Error creating termination:", error);
+      res.status(400).json({ message: error.message || "Failed to create termination" });
+    }
+  });
+
+  app.patch('/api/terminations/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const workspace = await storage.getWorkspaceByOwnerId(userId);
+      
+      if (!workspace) {
+        return res.status(404).json({ message: "Workspace not found" });
+      }
+
+      const { id } = req.params;
+      
+      // Validate and strip privileged fields to prevent tenant reassignment
+      const { insertEmployeeTerminationSchema } = await import("@shared/schema");
+      const validated = insertEmployeeTerminationSchema
+        .partial()
+        .omit({ workspaceId: true, employeeId: true })
+        .parse(req.body);
+      
+      const updated = await storage.updateEmployeeTermination(id, workspace.id, validated);
+      
+      if (!updated) {
+        return res.status(404).json({ message: "Termination not found" });
+      }
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating termination:", error);
+      res.status(400).json({ message: error.message || "Failed to update termination" });
+    }
+  });
+
+  app.patch('/api/terminations/:id/complete', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const workspace = await storage.getWorkspaceByOwnerId(userId);
+      
+      if (!workspace) {
+        return res.status(404).json({ message: "Workspace not found" });
+      }
+
+      const { id } = req.params;
+      const completed = await storage.completeTermination(id, workspace.id);
+      
+      if (!completed) {
+        return res.status(404).json({ message: "Termination not found" });
+      }
+
+      res.json(completed);
+    } catch (error: any) {
+      console.error("Error completing termination:", error);
+      res.status(400).json({ message: error.message || "Failed to complete termination" });
     }
   });
 

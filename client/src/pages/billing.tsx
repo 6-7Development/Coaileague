@@ -49,7 +49,7 @@ export default function Billing() {
     );
   }
 
-  const currentTier = workspace?.billingTier || "professional";
+  const currentTier = workspace?.subscriptionTier || "professional";
   const platformFee = workspace?.platformFeePercentage || 10;
 
   const tiers = [
