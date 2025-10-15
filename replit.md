@@ -45,7 +45,10 @@ The platform features a CAD-style professional interface with a dark mode theme,
     - **White-Label Upgrade System**: Tier-based pricing UI with feature comparison (Professional/Enterprise/Fortune 500), API endpoint for subscription tier upgrades, automatic UI refresh on tier changes.
     - **Transaction-Based Revenue**: Platform fee system (3-10%) with automated Stripe Connect payment splitting (ready for activation).
     - **Feature Flags**: Database-backed tier-based feature visibility system with LockedFeature component.
-- **Implemented but Requires Activation**: Email notifications (Resend), Stripe Connect payment processing.
+- **Support & Communication**:
+    - **Live Chat System (REST API)**: Production-ready chat support with conversation management, message history, workspace isolation, status tracking (open/resolved/closed), priority levels, and CSAT ratings. Implements secure polling pattern for real-time-like experience. WebSocket disabled pending authentication implementation.
+    - **Email Notifications**: Fully activated Resend integration with templates for HR workflows, shift assignments, invoicing, and onboarding.
+- **Implemented but Requires Activation**: Stripe Connect payment processing.
 - **Database Schema Ready (Needs UI)**: GPS clock-in, automated payroll processing, HR management dashboards.
 
 ### Monetization Strategy
