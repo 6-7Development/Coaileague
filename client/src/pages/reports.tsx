@@ -294,6 +294,35 @@ export default function ReportsPage() {
     },
   });
 
+  const sendToClient = useMutation({
+    mutationFn: async (submissionId: string) => {
+      const res = await fetch(`/api/report-submissions/${submissionId}/send-to-client`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to send report to client");
+      }
+      return await res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/report-submissions"] });
+      toast({
+        title: "Report Sent to Client",
+        description: `Report ${data.submission.reportNumber} has been emailed to the client`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send report to client",
+        variant: "destructive",
+      });
+    },
+  });
+
   const activeTemplates = templates.filter(t => t.isActive);
   const inactiveTemplates = templates.filter(t => !t.isActive);
 
@@ -616,9 +645,22 @@ export default function ReportsPage() {
                             </p>
                           )}
                         </div>
-                        <Button variant="outline" size="sm" data-testid={`button-view-${submission.id}`}>
-                          View Details
-                        </Button>
+                        <div className="flex gap-2">
+                          {submission.status === 'approved' && (
+                            <Button 
+                              variant="default" 
+                              size="sm" 
+                              onClick={() => sendToClient.mutate(submission.id)}
+                              disabled={sendToClient.isPending}
+                              data-testid={`button-send-to-client-${submission.id}`}
+                            >
+                              {sendToClient.isPending ? "Sending..." : "Send to Client"}
+                            </Button>
+                          )}
+                          <Button variant="outline" size="sm" data-testid={`button-view-${submission.id}`}>
+                            View Details
+                          </Button>
+                        </div>
                       </div>
                     ))}
                   </div>

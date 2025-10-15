@@ -314,6 +314,57 @@ export const emailTemplates = {
         </p>
       </div>
     `
+  }),
+
+  reportDelivery: (data: {
+    clientName: string;
+    reportNumber: string;
+    reportName: string;
+    submittedBy: string;
+    submittedDate: string;
+    reportData: Record<string, any>;
+    attachmentCount?: number;
+  }) => ({
+    subject: `Report Delivery: ${data.reportName} [${data.reportNumber}]`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); padding: 30px; border-radius: 8px 8px 0 0;">
+          <h2 style="color: white; margin: 0;">Report Delivered</h2>
+        </div>
+        <div style="background-color: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+          <p>Hello ${data.clientName},</p>
+          <p>A new report has been completed and delivered to you.</p>
+          
+          <div style="background-color: #eef2ff; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #6366f1;">
+            <p style="margin: 5px 0;"><strong>Report Name:</strong> ${data.reportName}</p>
+            <p style="margin: 5px 0;"><strong>Tracking ID:</strong> <span style="font-family: monospace; background-color: #ddd6fe; padding: 2px 6px; border-radius: 4px;">${data.reportNumber}</span></p>
+            <p style="margin: 5px 0;"><strong>Submitted By:</strong> ${data.submittedBy}</p>
+            <p style="margin: 5px 0;"><strong>Submitted Date:</strong> ${data.submittedDate}</p>
+            ${data.attachmentCount ? `<p style="margin: 5px 0;"><strong>Attachments:</strong> ${data.attachmentCount} photo(s)</p>` : ''}
+          </div>
+
+          <h3 style="color: #6366f1; margin-top: 30px;">Report Details</h3>
+          <div style="background-color: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            ${Object.entries(data.reportData)
+              .map(([key, value]) => `
+                <p style="margin: 8px 0;">
+                  <strong style="color: #374151;">${key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}:</strong> 
+                  <span style="color: #6b7280;">${value || 'N/A'}</span>
+                </p>
+              `)
+              .join('')}
+          </div>
+
+          <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">
+            Please retain this tracking ID (<strong>${data.reportNumber}</strong>) for your records.
+          </p>
+          
+          <p style="color: #6b7280; font-size: 12px; margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+            This is an automated report delivery from WorkforceOS.
+          </p>
+        </div>
+      </div>
+    `
   })
 };
 
@@ -534,6 +585,28 @@ export async function sendTerminationNoticeEmail(
     return { success: true, data: result };
   } catch (error) {
     console.error('Error sending termination notice email:', error);
+    return { success: false, error };
+  }
+}
+
+export async function sendReportDeliveryEmail(
+  to: string,
+  data: Parameters<typeof emailTemplates.reportDelivery>[0]
+) {
+  try {
+    const { client, fromEmail } = await getUncachableResendClient();
+    const template = emailTemplates.reportDelivery(data);
+    
+    const result = await client.emails.send({
+      from: fromEmail,
+      to: [to],
+      subject: template.subject,
+      html: template.html,
+    });
+
+    return { success: true, data: result };
+  } catch (error) {
+    console.error('Error sending report delivery email:', error);
     return { success: false, error };
   }
 }

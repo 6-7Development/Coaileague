@@ -4,6 +4,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { db } from "./db";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { setupAuth as setupCustomAuth, requireAuth } from "./auth"; // Custom auth
 import authRoutes from "./authRoutes"; // Custom auth routes
@@ -13,7 +14,8 @@ import {
   sendShiftAssignmentEmail, 
   sendInvoiceGeneratedEmail, 
   sendEmployeeOnboardingEmail,
-  sendOnboardingInviteEmail 
+  sendOnboardingInviteEmail,
+  sendReportDeliveryEmail
 } from "./email";
 import { requireOwner, requireManager, validateManagerAssignment, type AuthenticatedRequest } from "./rbac";
 import { 
@@ -35,9 +37,13 @@ import {
   insertSupportTicketSchema,
   insertChatConversationSchema,
   insertChatMessageSchema,
+  clients,
+  employees,
+  reportTemplates,
+  reportAttachments,
 } from "@shared/schema";
 import crypto from "crypto";
-import { sql } from "drizzle-orm";
+import { sql, eq } from "drizzle-orm";
 import { z } from "zod";
 import { setupWebSocket } from "./websocket";
 
@@ -2323,6 +2329,95 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error reviewing report submission:", error);
       res.status(500).json({ message: "Failed to review report submission" });
+    }
+  });
+
+  // Send approved report to client via email
+  app.post('/api/report-submissions/:id/send-to-client', isAuthenticated, requireManager, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user?.currentWorkspaceId) {
+        return res.status(403).json({ message: "No workspace selected" });
+      }
+      
+      // Get report submission
+      const submission = await storage.getReportSubmissionById(id);
+      if (!submission) {
+        return res.status(404).json({ message: "Report not found" });
+      }
+
+      // CRITICAL: Validate workspace ownership - prevent cross-tenant access
+      if (submission.workspaceId !== user.currentWorkspaceId) {
+        return res.status(403).json({ message: "Access denied to this report" });
+      }
+
+      // Verify report is approved
+      if (submission.status !== 'approved') {
+        return res.status(400).json({ message: "Only approved reports can be sent to clients" });
+      }
+
+      // Verify client is assigned
+      if (!submission.clientId) {
+        return res.status(400).json({ message: "No client assigned to this report" });
+      }
+
+      // Get client details (workspace-scoped through storage)
+      const clients = await storage.getClientsByWorkspace(user.currentWorkspaceId);
+      const client = clients.find(c => c.id === submission.clientId);
+      if (!client || !client.email) {
+        return res.status(400).json({ message: "Client not found or has no email address" });
+      }
+
+      // Get employee details (workspace-scoped through storage)
+      const employees = await storage.getEmployeesByWorkspace(user.currentWorkspaceId);
+      const employee = employees.find(e => e.id === submission.employeeId);
+      const employeeName = employee ? `${employee.firstName} ${employee.lastName}` : 'Unknown Employee';
+
+      // Get template details (workspace-scoped through storage)
+      const templates = await storage.getReportTemplatesByWorkspace(user.currentWorkspaceId);
+      const template = templates.find(t => t.id === submission.templateId);
+      const reportName = template?.name || 'Report';
+
+      // Get attachment count (workspace-scoped through submission validation)
+      const attachments = await db.select().from(reportAttachments).where(eq(reportAttachments.submissionId, id));
+      const attachmentCount = attachments.length;
+
+      // Send email to client
+      const emailResult = await sendReportDeliveryEmail(client.email, {
+        clientName: client.companyName || `${client.firstName} ${client.lastName}`,
+        reportNumber: submission.reportNumber,
+        reportName,
+        submittedBy: employeeName,
+        submittedDate: new Date(submission.submittedAt || submission.createdAt).toLocaleDateString('en-US', { 
+          year: 'numeric', 
+          month: 'long', 
+          day: 'numeric' 
+        }),
+        reportData: submission.formData as Record<string, any>,
+        attachmentCount: attachmentCount > 0 ? attachmentCount : undefined,
+      });
+
+      if (!emailResult.success) {
+        console.error('Failed to send report email:', emailResult.error);
+        return res.status(500).json({ message: "Failed to send email to client" });
+      }
+
+      // Update report status to 'sent_to_customer'
+      const updatedSubmission = await storage.updateReportSubmission(id, {
+        status: 'sent_to_customer',
+      });
+
+      res.json({ 
+        success: true, 
+        submission: updatedSubmission,
+        emailSent: true 
+      });
+    } catch (error) {
+      console.error("Error sending report to client:", error);
+      res.status(500).json({ message: "Failed to send report to client" });
     }
   });
 
