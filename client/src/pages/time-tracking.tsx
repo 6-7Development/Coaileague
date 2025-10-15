@@ -141,8 +141,8 @@ export default function TimeTracking() {
 
     clockInMutation.mutate({
       employeeId: selectedEmployee,
-      clientId: selectedClient || undefined,
-      shiftId: selectedShift || undefined,
+      clientId: selectedClient && selectedClient !== "none" ? selectedClient : undefined,
+      shiftId: selectedShift && selectedShift !== "none" ? selectedShift : undefined,
       notes: notes || undefined,
       hourlyRate,
     });
@@ -210,15 +210,16 @@ export default function TimeTracking() {
                       <SelectValue placeholder="Select shift" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">None</SelectItem>
+                      <SelectItem value="none">None</SelectItem>
                       {shifts
                         .filter(shift => !selectedEmployee || shift.employeeId === selectedEmployee)
                         .map(shift => {
                           const shiftEmployee = employees.find(e => e.id === shift.employeeId);
                           const shiftClient = clients.find(c => c.id === shift.clientId);
+                          const startTime = typeof shift.startTime === 'string' ? shift.startTime : shift.startTime.toISOString();
                           return (
                             <SelectItem key={shift.id} value={shift.id}>
-                              {shiftEmployee?.firstName} - {format(parseISO(shift.startTime as string), "MMM d, h:mm a")}
+                              {shiftEmployee?.firstName} - {format(parseISO(startTime), "MMM d, h:mm a")}
                               {shiftClient && ` (${shiftClient.firstName} ${shiftClient.lastName})`}
                             </SelectItem>
                           );
@@ -234,7 +235,7 @@ export default function TimeTracking() {
                       <SelectValue placeholder="Select client" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">None</SelectItem>
+                      <SelectItem value="none">None</SelectItem>
                       {clients.map(client => (
                         <SelectItem key={client.id} value={client.id}>
                           {client.firstName} {client.lastName}
@@ -306,7 +307,7 @@ export default function TimeTracking() {
                         )}
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <Calendar className="h-4 w-4" />
-                          <span key={now}>Started {formatDistanceToNow(parseISO(entry.clockIn), { addSuffix: false })} ago</span>
+                          <span key={now}>Started {formatDistanceToNow(parseISO(typeof entry.clockIn === 'string' ? entry.clockIn : entry.clockIn.toISOString()), { addSuffix: false })} ago</span>
                         </div>
                         {entry.notes && (
                           <p className="text-sm text-muted-foreground mt-2">{entry.notes}</p>
@@ -379,8 +380,8 @@ export default function TimeTracking() {
                           <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <Calendar className="h-4 w-4" />
                             <span>
-                              {format(parseISO(entry.clockIn), "MMM d, yyyy h:mm a")} - 
-                              {entry.clockOut && format(parseISO(entry.clockOut), " h:mm a")}
+                              {format(parseISO(typeof entry.clockIn === 'string' ? entry.clockIn : entry.clockIn.toISOString()), "MMM d, yyyy h:mm a")} - 
+                              {entry.clockOut && format(parseISO(typeof entry.clockOut === 'string' ? entry.clockOut : entry.clockOut.toISOString()), " h:mm a")}
                             </span>
                           </div>
                           {entry.notes && (

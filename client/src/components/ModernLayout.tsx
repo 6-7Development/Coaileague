@@ -29,9 +29,9 @@ export default function ModernLayout({ children }: ModernLayoutProps) {
   };
 
   return (
-    <div className="min-h-screen bg-[hsl(var(--cad-background))] text-[hsl(var(--cad-text-primary))]">
+    <div className="h-screen flex flex-col bg-[hsl(var(--cad-background))] text-[hsl(var(--cad-text-primary))]">
       {/* Header */}
-      <header className="bg-[hsl(var(--cad-chrome))] border-b border-[hsl(var(--cad-border))] px-4 sm:px-6 py-3 sm:py-4 sticky top-0 z-50">
+      <header className="bg-[hsl(var(--cad-chrome))] border-b border-[hsl(var(--cad-border))] px-4 sm:px-6 py-3 sm:py-4 sticky top-0 z-50 flex-shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 sm:gap-3">
             <div className="bg-gradient-to-br from-[hsl(var(--cad-blue))] to-indigo-600 p-1.5 sm:p-2 rounded-lg">
@@ -69,9 +69,9 @@ export default function ModernLayout({ children }: ModernLayoutProps) {
         </div>
       </header>
 
-      <div className="flex flex-col lg:flex-row">
+      <div className="flex flex-col lg:flex-row flex-1 min-h-0">
         {/* Sidebar - Desktop */}
-        <aside className="hidden lg:block w-64 bg-[hsl(var(--cad-chrome))] border-r border-[hsl(var(--cad-border))] min-h-screen p-4">
+        <aside className="hidden lg:block w-64 bg-[hsl(var(--cad-chrome))] border-r border-[hsl(var(--cad-border))] p-4 overflow-y-auto">
           <nav className="space-y-2">
             {navItems.map((item) => (
               <Link
@@ -96,8 +96,8 @@ export default function ModernLayout({ children }: ModernLayoutProps) {
 
         {/* Mobile Menu */}
         {mobileMenuOpen && (
-          <div className="lg:hidden fixed inset-0 bg-[hsl(var(--cad-chrome))] z-40 pt-16">
-            <nav className="p-4 space-y-2">
+          <div className="lg:hidden fixed inset-0 bg-[hsl(var(--cad-chrome))] z-40 pt-16 overflow-y-auto">
+            <nav className="p-4 space-y-2 pb-safe">
               {navItems.map((item) => (
                 <Link
                   key={item.id}
@@ -121,7 +121,7 @@ export default function ModernLayout({ children }: ModernLayoutProps) {
         )}
 
         {/* Main Content */}
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden">
           {children}
         </main>
       </div>

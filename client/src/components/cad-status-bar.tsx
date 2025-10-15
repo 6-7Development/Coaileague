@@ -77,7 +77,7 @@ export function CADStatusBar() {
   };
 
   return (
-    <div className="h-8 bg-[hsl(var(--cad-chrome))] border-t border-[hsl(var(--cad-border))] flex items-center px-3 gap-6 text-xs font-medium">
+    <div className="hidden lg:flex h-8 bg-[hsl(var(--cad-chrome))] border-t border-[hsl(var(--cad-border))] items-center px-3 gap-6 text-xs font-medium">
       {/* Left section - Workspace info */}
       <div className="flex items-center gap-6">
         {indicators.map((indicator) => (
