@@ -20,7 +20,7 @@ export default function Pricing() {
     {
       name: "Starter",
       price: "$1,499",
-      savings: "$6k-$10k/month",
+      savings: "$6k/month",
       roi: "4x ROI",
       description: "Essential automation - Replace 1-2 part-time staff",
       cta: "Start Free Trial",
@@ -42,7 +42,7 @@ export default function Pricing() {
     {
       name: "Professional",
       price: "$2,999",
-      savings: "$12k-$18k/month",
+      savings: "$12k/month",
       roi: "4x ROI",
       description: "Replace scheduler + billing clerk + payroll staff",
       cta: "Start Free Trial",
@@ -65,7 +65,7 @@ export default function Pricing() {
     {
       name: "Enterprise",
       price: "$7,999",
-      savings: "$32k-$48k/month",
+      savings: "$32k/month",
       roi: "4x ROI",
       description: "Replace HR + Payroll + Billing + Scheduling teams",
       cta: "Start Free Trial",
@@ -86,7 +86,7 @@ export default function Pricing() {
     {
       name: "Fortune 500",
       price: "$19,999",
-      savings: "$80k-$150k/month",
+      savings: "$80k/month",
       roi: "4x ROI",
       description: "Complete workforce automation - Replace entire departments",
       cta: "Contact Sales",

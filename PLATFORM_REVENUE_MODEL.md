@@ -42,10 +42,10 @@ businessAmount: $974.25 (subscriber receives this)
 | Subscription Tier | Monthly Fee | Platform Fee % | Customer Saves (Payroll) | Net Customer Savings | ROI |
 |------------------|-------------|----------------|-------------------------|---------------------|-----|
 | **Free** | $0 | 10% | Free trial period | N/A | N/A |
-| **Starter** | $1,499/mo | 7% | $6k-$10k/month | $4.5k-$8.5k/month | 4x |
-| **Professional** | $2,999/mo | 5% | $12k-$18k/month | $9k-$15k/month | 4x |
-| **Enterprise** | $7,999/mo | 3% | $32k-$48k/month | $24k-$40k/month | 4x |
-| **Fortune 500** | $19,999/mo | 2% | $80k-$150k/month | $60k-$130k/month | 4x |
+| **Starter** | $1,499/mo | 7% | $6k/month | $4.5k/month | 4x |
+| **Professional** | $2,999/mo | 5% | $12k/month | $9k/month | 4x |
+| **Enterprise** | $7,999/mo | 3% | $32k/month | $24k/month | 4x |
+| **Fortune 500** | $19,999/mo | 2% | $80k/month | $60k/month | 4x |
 
 **Note**: Subscription fee = 25% of payroll savings. Platform fees on transactions are additional revenue.
 
