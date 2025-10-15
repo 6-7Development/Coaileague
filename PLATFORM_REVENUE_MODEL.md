@@ -39,21 +39,24 @@ businessAmount: $974.25 (subscriber receives this)
 
 ## 📊 Revenue Tiers & Platform Fees
 
-| Subscription Tier | Monthly Fee | Platform Fee % | Value Delivered | Net Customer Savings |
-|------------------|-------------|----------------|-----------------|---------------------|
-| **Free** | $0 | 10% | Free trial period | N/A |
-| **Starter** | $1,499/mo | 7% | Saves $6k-$10k/month | $4.5k-$8.5k/month (25% value capture) |
-| **Professional** | $2,999/mo | 5% | Saves $12k-$18k/month | $9k-$15k/month (25% value capture) |
-| **Enterprise** | $7,999/mo | 3% | Saves $32k-$48k/month | $24k-$40k/month (25% value capture) |
-| **Fortune 500** | $19,999/mo | 2% | Saves $80k-$150k/month | $60k-$130k/month (25% value capture) |
+| Subscription Tier | Monthly Fee | Platform Fee % | Customer Saves (Payroll) | Net Customer Savings | ROI |
+|------------------|-------------|----------------|-------------------------|---------------------|-----|
+| **Free** | $0 | 10% | Free trial period | N/A | N/A |
+| **Starter** | $1,499/mo | 7% | $6k-$10k/month | $4.5k-$8.5k/month | 4x |
+| **Professional** | $2,999/mo | 5% | $12k-$18k/month | $9k-$15k/month | 4x |
+| **Enterprise** | $7,999/mo | 3% | $32k-$48k/month | $24k-$40k/month | 4x |
+| **Fortune 500** | $19,999/mo | 2% | $80k-$150k/month | $60k-$130k/month | 4x |
+
+**Note**: Subscription fee = 25% of payroll savings. Platform fees on transactions are additional revenue.
 
 ### Revenue Calculation Example:
-**Professional Tier Client** (5% platform fee):
+**Professional Tier Client** (5% platform fee + subscription):
+- Customer saves: $12,000/month in payroll costs (scheduler, billing clerk, payroll staff)
+- Subscription fee: $2,999/month (25% of $12k savings)
 - Monthly transaction volume: $100,000
-- Platform fee revenue: $5,000/month
-- Subscription revenue: $2,999/month
-- **Total revenue from client: $7,999/month**
-- **Customer saves: $15,000/month (payroll costs) - $7,999 (our fees) = $7,001 net savings** ✅
+- Platform fee (5%): $5,000/month (additional revenue on top of subscription)
+- **Total revenue from client: $7,999/month ($2,999 subscription + $5,000 platform fee)**
+- **Customer net savings: $12,000 - $2,999 = $9,001/month** (4x ROI from subscription alone)
 
 ---
 

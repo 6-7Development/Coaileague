@@ -21,7 +21,7 @@ export default function Pricing() {
       name: "Starter",
       price: "$1,499",
       savings: "$6k-$10k/month",
-      roi: "5x ROI",
+      roi: "4x ROI",
       description: "Essential automation - Replace 1-2 part-time staff",
       cta: "Start Free Trial",
       features: [
@@ -43,7 +43,7 @@ export default function Pricing() {
       name: "Professional",
       price: "$2,999",
       savings: "$12k-$18k/month",
-      roi: "5x ROI",
+      roi: "4x ROI",
       description: "Replace scheduler + billing clerk + payroll staff",
       cta: "Start Free Trial",
       popular: true,
@@ -66,7 +66,7 @@ export default function Pricing() {
       name: "Enterprise",
       price: "$7,999",
       savings: "$32k-$48k/month",
-      roi: "5x ROI",
+      roi: "4x ROI",
       description: "Replace HR + Payroll + Billing + Scheduling teams",
       cta: "Start Free Trial",
       features: [
@@ -87,7 +87,7 @@ export default function Pricing() {
       name: "Fortune 500",
       price: "$19,999",
       savings: "$80k-$150k/month",
-      roi: "5x ROI",
+      roi: "4x ROI",
       description: "Complete workforce automation - Replace entire departments",
       cta: "Contact Sales",
       features: [
@@ -254,26 +254,26 @@ export default function Pricing() {
                 {
                   plan: "Professional",
                   price: "$2,999/mo",
-                  replaces: ["Scheduler ($50k/yr)", "Billing Clerk ($45k/yr)", "Payroll Staff ($55k/yr)"],
-                  totalSaved: "$150k/yr",
+                  replaces: ["Scheduler ($55k/yr)", "Billing Clerk ($48k/yr)", "Payroll Staff ($41k/yr)"],
+                  totalSaved: "$144k/yr",
                   costOfPlan: "$36k/yr",
-                  netSavings: "$114k/yr"
+                  netSavings: "$108k/yr"
                 },
                 {
                   plan: "Enterprise",
                   price: "$7,999/mo",
-                  replaces: ["HR Manager ($85k/yr)", "Payroll ($70k/yr)", "Scheduler ($50k/yr)", "Billing ($45k/yr)", "Compliance ($80k/yr)"],
-                  totalSaved: "$330k/yr",
+                  replaces: ["HR Manager ($120k/yr)", "Payroll ($88k/yr)", "Scheduler ($80k/yr)", "Billing ($56k/yr)", "Compliance ($40k/yr)"],
+                  totalSaved: "$384k/yr",
                   costOfPlan: "$96k/yr",
-                  netSavings: "$234k/yr"
+                  netSavings: "$288k/yr"
                 },
                 {
                   plan: "Fortune 500",
                   price: "$19,999/mo",
-                  replaces: ["Full HR Dept ($300k/yr)", "Compliance ($100k/yr)", "Benefits ($150k/yr)", "Payroll ($120k/yr)"],
-                  totalSaved: "$670k/yr",
+                  replaces: ["Full HR Dept ($380k/yr)", "Compliance ($180k/yr)", "Benefits ($220k/yr)", "Payroll ($180k/yr)"],
+                  totalSaved: "$960k/yr",
                   costOfPlan: "$240k/yr",
-                  netSavings: "$430k/yr"
+                  netSavings: "$720k/yr"
                 },
               ].map((breakdown) => (
                 <div key={breakdown.plan} className="bg-slate-900/50 border border-indigo-500/20 rounded-lg p-6 space-y-4">
@@ -324,7 +324,7 @@ export default function Pricing() {
             {[
               {
                 q: "Why are the prices higher than competitors?",
-                a: "Because we replace 3-5 full-time staff positions with complete automation. Our Enterprise plan costs $96k/year but saves you $234k annually - that's a 5x return. Most competitors only replace scheduling, not your entire HR department.",
+                a: "Because we replace 3-5 full-time staff positions with complete automation. Our Enterprise plan costs $96k/year but saves you $288k annually - that's a 4x return on investment. Most competitors only replace scheduling, not your entire HR department.",
               },
               {
                 q: "What's included in the free trial?",
