@@ -149,36 +149,42 @@
   --opaque-button-border-intensity: 9;  /* In terms of percentages */
 
   /* Backgrounds applied on top of other backgrounds when hovered/active */
-  --elevate-1: rgba(255,255,255, .04);
-  --elevate-2: rgba(255,255,255, .09);
+  --elevate-1: rgba(99, 102, 241, 0.04);
+  --elevate-2: rgba(99, 102, 241, 0.12);
 
-  /* Modern Dark Theme - Clean & Organized */
-  --cad-background: 222 47% 5%;        /* gray-950 equivalent */
-  --cad-surface: 217 19% 12%;          /* gray-900 equivalent */
-  --cad-surface-elevated: 217 19% 16%; /* Elevated cards */
-  --cad-chrome: 217 19% 12%;           /* gray-900 for header/nav */
-  --cad-chrome-hover: 217 19% 16%;     /* Hover states */
-  --cad-chrome-active: 217 19% 20%;    /* Active states */
+  /* Indigo/Purple Gradient Theme - ASMR Fortune 500 Design */
+  --cad-background: 222 47% 11%;        /* #0f172a - Deep slate */
+  --cad-surface: 215 25% 17%;           /* #1e293b - Slate 800 */
+  --cad-surface-elevated: 217 19% 20%;  /* Elevated cards with subtle lift */
+  --cad-chrome: 222 47% 11%;            /* Deep slate for header */
+  --cad-chrome-hover: 215 25% 17%;      /* Hover states */
+  --cad-chrome-active: 217 19% 20%;     /* Active states */
   
-  /* Borders - Clean separation */
-  --cad-border: 217 19% 20%;           /* gray-800 equivalent */
-  --cad-border-strong: 217 19% 28%;    /* Stronger dividers */
+  /* Indigo gradient borders */
+  --cad-border: 239 31% 25%;            /* rgba(99, 102, 241, 0.2) equivalent */
+  --cad-border-strong: 239 45% 35%;     /* Stronger indigo dividers */
   
-  /* Text hierarchy - Clear & readable */
-  --cad-text-primary: 217 10% 95%;     /* gray-100 */
-  --cad-text-secondary: 217 8% 65%;    /* gray-400 */
-  --cad-text-tertiary: 217 9% 45%;     /* gray-500 */
-  --cad-text-inverted: 217 19% 12%;    /* On bright backgrounds */
+  /* Text hierarchy - Indigo accents */
+  --cad-text-primary: 210 40% 92%;      /* #e2e8f0 - Slate 200 */
+  --cad-text-secondary: 215 14% 64%;    /* #94a3b8 - Slate 400 */
+  --cad-text-tertiary: 216 12% 80%;     /* #cbd5e1 - Slate 300 */
+  --cad-text-accent: 239 84% 80%;       /* #a5b4fc - Indigo 300 */
+  --cad-text-inverted: 222 47% 11%;     /* On bright backgrounds */
   
-  /* Accent Colors - Indigo primary */
-  --cad-blue: 239 84% 67%;             /* indigo-500 primary */
-  --cad-green: 142 76% 48%;            /* emerald-400 */
-  --cad-orange: 38 92% 58%;            /* Warnings, pending */
-  --cad-red: 0 84% 58%;                /* Errors, conflicts */
-  --cad-purple: 271 76% 60%;           /* Info, templates */
-  --cad-cyan: 188 94% 54%;             /* Active timers */
+  /* Primary Indigo Colors */
+  --cad-indigo-500: 239 84% 67%;        /* #6366f1 - Primary brand */
+  --cad-indigo-600: 243 75% 59%;        /* #4f46e5 - Darker indigo */
+  --cad-indigo-300: 239 84% 80%;        /* #a5b4fc - Light accents */
+  --cad-indigo-200: 239 90% 87%;        /* #c7d2fe - Muted accents */
+  
+  /* Accent Colors */
+  --cad-green: 142 76% 59%;             /* #10b981 - Success/Emerald */
+  --cad-orange: 38 92% 58%;             /* #f59e0b - Warning/Amber */
+  --cad-red: 0 72% 58%;                 /* #ef4444 - Error/Red */
+  --cad-purple: 271 76% 60%;            /* Info purple */
+  --cad-cyan: 188 94% 54%;              /* Active timers */
 
-  /* Map to Shadcn tokens */
+  /* Map to Shadcn tokens with Indigo theme */
   --background: var(--cad-background);
   --foreground: var(--cad-text-primary);
   --border: var(--cad-border);
@@ -188,15 +194,15 @@
   --sidebar: var(--cad-chrome);
   --sidebar-foreground: var(--cad-text-primary);
   --sidebar-border: var(--cad-border-strong);
-  --sidebar-primary: var(--cad-blue);
+  --sidebar-primary: var(--cad-indigo-500);
   --sidebar-primary-foreground: 220 10% 98%;
   --sidebar-accent: 217 14% 24%;
   --sidebar-accent-foreground: var(--cad-text-primary);
-  --sidebar-ring: var(--cad-blue);
+  --sidebar-ring: var(--cad-indigo-500);
   --popover: var(--cad-surface-elevated);
   --popover-foreground: var(--cad-text-primary);
   --popover-border: var(--cad-border-strong);
-  --primary: var(--cad-blue);
+  --primary: var(--cad-indigo-500);
   --primary-foreground: 220 10% 98%;
   --secondary: 217 15% 26%;
   --secondary-foreground: var(--cad-text-primary);
@@ -205,17 +211,17 @@
 
   --muted-foreground: 217 10% 65%;
 
-  --accent: 220 16% 25%;
+  --accent: 239 40% 30%;
 
-  --accent-foreground: 220 10% 92%;
+  --accent-foreground: var(--cad-indigo-300);
 
   --destructive: 0 72% 58%;
 
   --destructive-foreground: 0 10% 98%;
 
   --input: 217 18% 42%;
-  --ring: 220 85% 58%;
-  --chart-1: 220 85% 65%;
+  --ring: var(--cad-indigo-500);
+  --chart-1: var(--cad-indigo-500);
   --chart-2: 142 65% 58%;
   --chart-3: 38 92% 62%;
   --chart-4: 271 70% 68%;
@@ -521,4 +527,160 @@
       grid-template-columns: 2fr 1fr;
     }
   }
+}
+/* ============================================================================
+   INDIGO/PURPLE GRADIENT THEME - ASMR Interactive Styles
+   ============================================================================ */
+
+/* Gradient Text Effect for Stats & Headlines */
+.gradient-text {
+  background: linear-gradient(135deg, #a5b4fc, #6366f1);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Indigo Gradient Background for Cards */
+.bg-indigo-gradient {
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+}
+
+/* Dark Slate Gradient Background (Main Background) */
+.bg-slate-gradient {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+}
+
+/* Semi-transparent Card Background */
+.bg-card-translucent {
+  background: rgba(15, 23, 42, 0.8);
+}
+
+/* Pulse Animation for Status Indicators */
+@keyframes pulse-glow {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.2);
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Smooth Slide In Animation */
+@keyframes slide-in {
+  from {
+    transform: translateX(400px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in {
+  animation: slide-in 0.3s ease-out;
+}
+
+/* Slide Up Animation */
+@keyframes slide-up {
+  from {
+    transform: translateY(100px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out;
+}
+
+/* ASMR Hover Lift Effect */
+.hover-lift {
+  transition: all 0.3s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 30px rgba(99, 102, 241, 0.2);
+}
+
+/* Interactive Card with Indigo Border Glow */
+.card-interactive {
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: 12px;
+  transition: all 0.3s ease;
+}
+
+.card-interactive:hover {
+  border-color: rgba(99, 102, 241, 0.5);
+  box-shadow: 0 10px 30px rgba(99, 102, 241, 0.2);
+}
+
+/* Locked Feature Styling */
+.locked-feature {
+  background: rgba(99, 102, 241, 0.08);
+  border: 2px dashed rgba(99, 102, 241, 0.3);
+  border-radius: 12px;
+  opacity: 0.7;
+  position: relative;
+  cursor: not-allowed;
+}
+
+.lock-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: linear-gradient(135deg, #f59e0b, #ef4444);
+  color: white;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  z-index: 10;
+}
+
+/* Interactive Button Scale */
+.btn-scale {
+  transition: all 0.3s ease;
+}
+
+.btn-scale:hover {
+  transform: scale(1.05);
+  box-shadow: 0 5px 15px rgba(99, 102, 241, 0.4);
+}
+
+.btn-scale:active {
+  transform: scale(0.98);
+}
+
+/* Feature Unlock Animation */
+@keyframes feature-unlock {
+  0% {
+    opacity: 0.7;
+    border-style: dashed;
+  }
+  50% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 1;
+    border-style: solid;
+  }
+}
+
+.animate-unlock {
+  animation: feature-unlock 0.6s ease-out forwards;
 }

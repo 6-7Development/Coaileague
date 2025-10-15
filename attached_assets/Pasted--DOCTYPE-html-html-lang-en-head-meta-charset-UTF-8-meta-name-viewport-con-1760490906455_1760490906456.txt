@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WorkForceOS - Schedule Management</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f7fa;
+            color: #2d3748;
+        }
+        
+        .top-nav {
+            background: white;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 0 24px;
+            height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+        
+        .nav-left {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 700;
+            font-size: 20px;
+            color: #4c51bf;
+        }
+        
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+        
+        .nav-tabs {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .nav-tab {
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 14px;
+            color: #4a5568;
+            transition: all 0.2s ease;
+            border: none;
+            background: transparent;
+        }
+        
+        .nav-tab:hover {
+            background: #f7fafc;
+            color: #2d3748;
+        }
+        
+        .nav-tab.active {
+            background: #edf2f7;
+            color: #4c51bf;
+            font-weight: 600;
+        }
+        
+        .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        
+        .icon-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border: 1px solid #e2e8f0;
+            background: white;
+            transition: all 0.2s ease;
+            font-size: 18px;
+        }
+        
+        .icon-btn:hover {
+            background: #f7fafc;
+            border-color: #cbd5e0;
+        }
+        
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 6px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .user-menu:hover {
+            background: #f7fafc;
+        }
+        
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 13px;
+        }
+        
+        .main-container {
+            margin-top: 64px;
+            padding: 24px;
+            max-width: 1800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .schedule-header {
+            background: white;
+            border-radius: 12px;
+            padding: 20px 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header-left h1 {
+            font-size: 24px;
+            font-weight: 700;
+            color: #1a202c;
+            margin-bottom: 4px;
+        }
+        
+        .header-subtitle {
+            font-size: 14px;
+            color: #718096;
+        }
+        
+        .header-actions {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        
+        .date-picker {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 16px;
+            background: #f7fafc;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .date-nav-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border: 1px solid #e2e8f0;
+            background: white;
+            transition: all 0.2s ease;
+            color: #4a5568;
+        }
+        
+        .date-nav-btn:hover {
+            background: #edf2f7;
+            border-color: #cbd5e0;
+        }
+        
+        .current-week {
+            font-weight: 600;
+            color: #2d3748;
+            min-width: 180px;
+            text-align: center;
+            font-size: 14px;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 6px rgba(102, 126, 234, 0.3);
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-secondary {
+            background: white;
+            color: #4a5568;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .btn-secondary:hover {
+            background: #f7fafc;
+            border-color: #cbd5e0;
+        }
+        
+        .view-switcher {
+            display: flex;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .view-option {
+            padding: 8px 16px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            color: #718096;
+            background: white;
+            border: none;
+            transition: all 0.2s ease;
+        }
+        
+        .view-option:hover {
+            background: #f7fafc;
+        }
+        
+        .view-option.active {
+            background: #4c51bf;
+            color: white;
+        }
+        
+        .schedule-controls {
+            background: white;
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .filter-group {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        
+        .filter-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #4a5568;
+        }
+        
+        .filter-select {
+            padding: 8px 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #2d3748;
+            background: white;
+            cursor: pointer;
+        }
+        
+        .schedule-stats {
+            display: flex;
+            gap: 24px;
+            font-size: 13px;
+        }
+        
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        
+        .stat-label {
+            color: #718096;
+            font-weight: 500;
+        }
+        
+        .stat-value {
+            color: #2d3748;
+            font-weight: 700;
+            font-size: 18px;
+        }
+        
+        .schedule-grid-container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+        }
+        
+        .schedule-grid {
+            display: grid;
+            grid-template-columns: 200px repeat(7, 1fr);
+            border-top: 1px solid #e2e8f0;
+        }
+        
+        .grid-header {
+            padding: 16px 12px;
+            border-bottom: 2px solid #e2e8f0;
+            border-right: 1px solid #e2e8f0;
+            background: #f7fafc;
+            font-weight: 600;
+            font-size: 13px;
+            color: #2d3748;
+            text-align: center;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        .grid-header.employee-col {
+            text-align: left;
+            background: white;
+            position: sticky;
+            left: 0;
+            z-index: 11;
+        }
+        
+        .day-header {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .day-name {
+            font-size: 12px;
+            text-transform: uppercase;
+            color: #718096;
+            font-weight: 600;
+        }
+        
+        .day-date {
+            font-size: 20px;
+            font-weight: 700;
+            color: #2d3748;
+        }
+        
+        .day-header.today .day-name {
+            color: #4c51bf;
+        }
+        
+        .day-header.today .day-date {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .employee-row {
+            display: contents;
+        }
+        
+        .employee-cell {
+            padding: 20px 12px;
+            border-bottom: 1px solid #e2e8f0;
+            border-right: 1px solid #e2e8f0;
+            background: white;
+            position: sticky;
+            left: 0;
+            z-index: 5;
+        }
+        
+        .employee-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .employee-avatar-small {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+        
+        .employee-details {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .employee-name {
+            font-weight: 600;
+            font-size: 14px;
+            color: #2d3748;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .employee-role {
+            font-size: 12px;
+            color: #718096;
+        }
+        
+        .shift-cell {
+            padding: 12px;
+            border-bottom: 1px solid #e2e8f0;
+            border-right: 1px solid #e2e8f0;
+            background: #fafafa;
+            min-height: 80px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+        
+        .shift-cell:hover {
+            background: #f7fafc;
+        }
+        
+        .shift-cell.has-shift {
+            background: white;
+        }
+        
+        .shift-block {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 8px;
+            padding: 12px;
+            color: white;
+            cursor: move;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 4px rgba(102, 126, 234, 0.2);
+            margin-bottom: 8px;
+        }
+        
+        .shift-block:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+        }
+        
+        .shift-block.dragging {
+            opacity: 0.5;
+        }
+        
+        .shift-time {
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+        
+        .shift-duration {
+            font-size: 11px;
+            opacity: 0.9;
+        }
+        
+        .shift-block.morning {
+            background: linear-gradient(135deg, #f6ad55 0%, #ed8936 100%);
+        }
+        
+        .shift-block.afternoon {
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+        }
+        
+        .shift-block.evening {
+            background: linear-gradient(135deg, #9f7aea 0%, #805ad5 100%);
+        }
+        
+        .shift-block.night {
+            background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
+        }
+        
+        .add-shift-btn {
+            width: 100%;
+            height: 100%;
+            min-height: 60px;
+            border: 2px dashed #cbd5e0;
+            border-radius: 8px;
+            background: transparent;
+            color: #a0aec0;
+            cursor: pointer;
+            font-size: 24px;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .add-shift-btn:hover {
+            border-color: #4c51bf;
+            color: #4c51bf;
+            background: #f7fafc;
+        }
+        
+        .total-hours {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px;
+            border-bottom: 1px solid #e2e8f0;
+            border-right: 1px solid #e2e8f0;
+            background: #f7fafc;
+            font-weight: 700;
+            color: #2d3748;
+            font-size: 14px;
+        }
+        
+        .employee-sidebar {
+            position: fixed;
+            right: 0;
+            top: 64px;
+            width: 320px;
+            height: calc(100vh - 64px);
+            background: white;
+            border-left: 1px solid #e2e8f0;
+            padding: 24px;
+            overflow-y: auto;
+            box-shadow: -2px 0 8px rgba(0, 0, 0, 0.05);
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+        }
+        
+        .employee-sidebar.open {
+            transform: translateX(0);
+        }
+        
+        .sidebar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+        
+        .sidebar-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1a202c;
+        }
+        
+        .close-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            border: none;
+            background: #f7fafc;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #4a5568;
+        }
+        
+        .employee-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .employee-card {
+            padding: 16px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            cursor: grab;
+            transition: all 0.2s ease;
+            background: white;
+        }
+        
+        .employee-card:hover {
+            border-color: #4c51bf;
+            box-shadow: 0 2px 8px rgba(76, 81, 191, 0.1);
+        }
+        
+        .employee-card.dragging {
+            opacity: 0.5;
+            cursor: grabbing;
+        }
+        
+        .employee-card-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        
+        .employee-status {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 12px;
+        }
+        
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+        
+        .status-badge.available {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+        
+        .status-badge.scheduled {
+            background: #bee3f8;
+            color: #2c5282;
+        }
+        
+        .hours-badge {
+            background: #feebc8;
+            color: #7c2d12;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+        
+        .notification {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 16px 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+            display: none;
+            z-index: 1000;
+            animation: slideUp 0.3s ease;
+            max-width: 360px;
+        }
+        
+        .notification.active {
+            display: block;
+        }
+        
+        .notification.success {
+            border-left: 4px solid #48bb78;
+        }
+        
+        .notification-content {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .notification-icon {
+            font-size: 24px;
+        }
+        
+        .notification-text {
+            flex: 1;
+        }
+        
+        .notification-title {
+            font-weight: 600;
+            color: #1a202c;
+            margin-bottom: 4px;
+        }
+        
+        .notification-message {
+            font-size: 13px;
+            color: #718096;
+        }
+        
+        @keyframes slideUp {
+            from {
+                transform: translateY(100px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        .legend {
+            display: flex;
+            gap: 20px;
+            padding: 16px 20px;
+            background: #f7fafc;
+            border-top: 1px solid #e2e8f0;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: #4a5568;
+        }
+        
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="top-nav">
+        <div class="nav-left">
+            <div class="logo">
+                <div class="logo-icon">WF</div>
+                <span>WorkForceOS</span>
+            </div>
+            <div class="nav-tabs">
+                <button class="nav-tab active">Schedule</button>
+                <button class="nav-tab" onclick="showNotification('Time Clock', 'Opening time clock module...')">Time Clock</button>
+                <button class="nav-tab" onclick="showNotification('Messaging', 'Opening team messaging...')">Messages</button>
+                <button class="nav-tab" onclick="showNotification('Tasks', 'Loading task manager...')">Tasks</button>
+                <button class="nav-tab" onclick="showNotification('Reports', 'Generating reports...')">Reports</button>
+            </div>
+        </div>
+        <div class="nav-right">
+            <button class="icon-btn" onclick="showNotification('Search', 'Search functionality opened')">🔍</button>
+            <button class="icon-btn" onclick="showNotification('Notifications', 'You have 3 new notifications')">🔔</button>
+            <button class="icon-btn" onclick="toggleSidebar()">👥</button>
+            <div class="user-menu" onclick="showNotification('Profile', 'User menu opened')">
+                <div class="user-avatar">JD</div>
+                <span style="font-weight: 500; font-size: 14px;">John Doe</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="main-container">
+        <div class="schedule-header">
+            <div class="header-left">
+                <h1>Schedule Manager</h1>
+                <div class="header-subtitle">Drag and drop employees to create shifts</div>
+            </div>
+            <div class="header-actions">
+                <div class="date-picker">
+                    <button class="date-nav-btn" onclick="navigateWeek(-1)">◀</button>
+                    <span class="current-week" id="weekDisplay">Dec 10 - Dec 16, 2024</span>
+                    <button class="date-nav-btn" onclick="navigateWeek(1)">▶</button>
+                </div>
+                <div class="view-switcher">
+                    <button class="view-option active" onclick="changeView('week')">Week</button>
+                    <button class="view-option" onclick="changeView('day')">Day</button>
+                    <button class="view-option" onclick="changeView('month')">Month</button>
+                </div>
+                <button class="btn btn-secondary" onclick="showNotification('Export', 'Exporting schedule to PDF...')">
+                    📥 Export
+                </button>
+                <button class="btn btn-primary" onclick="showNotification('Publish', 'Publishing schedule to all employees...')">
+                    📤 Publish Schedule
+                </button>
+            </div>
+        </div>
+        
+        <div class="schedule-controls">
+            <div class="filter-group">
+                <span class="filter-label">Filter by:</span>
+                <select class="filter-select" onchange="showNotification('Filter', 'Filtering by ' + this.value)">
+                    <option>All Departments</option>
+                    <option>Sales</option>
+                    <option>Operations</option>
+                    <option>Support</option>
+                </select>
+                <select class="filter-select" onchange="showNotification('Filter', 'Filtering by ' + this.value)">
+                    <option>All Positions</option>
+                    <option>Manager</option>
+                    <option>Team Lead</option>
+                    <option>Staff</option>
+                </select>
+            </div>
+            <div class="schedule-stats">
+                <div class="stat-item">
+                    <span class="stat-label">Total Hours</span>
+                    <span class="stat-value">326</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Labor Cost</span>
+                    <span class="stat-value">$8,150</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Open Shifts</span>
+                    <span class="stat-value">7</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="schedule-grid-container">
+            <div class="schedule-grid">
+                <div class="grid-header employee-col">Employees</div>
+                <div class="grid-header">
+                    <div class="day-header today">
+                        <span class="day-name">MON</span>
+                        <span class="day-date">10</span>
+                    </div>
+                </div>
+                <div class="grid-header">
+                    <div class="day-header">
+                        <span class="day-name">TUE</span>
+                        <span class="day-date">11</span>
+                    </div>
+                </div>
+                <div class="grid-header">
+                    <div class="day-header">
+                        <span class="day-name">WED</span>
+                        <span class="day-date">12</span>
+                    </div>
+                </div>
+                <div class="grid-header">
+                    <div class="day-header">
+                        <span class="day-name">THU</span>
+                        <span class="day-date">13</span>
+                    </div>
+                </div>
+                <div class="grid-header">
+                    <div class="day-header">
+                        <span class="day-name">FRI</span>
+                        <span class="day-date">14</span>
+                    </div>
+                </div>
+                <div class="grid-header">
+                    <div class="day-header">
+                        <span class="day-name">SAT</span>
+                        <span class="day-date">15</span>
+                    </div>
+                </div>
+                <div class="grid-header">
+                    <div class="day-header">
+                        <span class="day-name">SUN</span>
+                        <span class="day-date">16</span>
+                    </div>
+                </div>
+                
+                <div class="employee-row">
+                    <div class="employee-cell">
+                        <div class="employee-info">
+                            <div class="employee-avatar-small">SJ</div>
+                            <div class="employee-details">
+                                <div class="employee-name">Sarah Johnson</div>
+                                <div class="employee-role">Team Lead</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="shift-cell has-shift" ondrop="drop(event)" ondragover="allowDrop(event)">
+                        <div class="shift-block morning" draggable="true" ondragstart="drag(event)" onclick="editShift(this)">
+                            <div class="shift-time">9:00 AM - 5:00 PM</div>
+                            <div class="shift-duration">8 hrs</div>
+                        </div>
+                    </div>
+                    <div class="shift-cell has-shift" ondrop="drop(event)" ondragover="allowDrop(event)">
+                        <div class="shift-block morning" draggable="true" ondragstart="drag(event)" onclick="editShift(this)">
+                            <div class="shift-time">9:00 AM - 5:00 PM</div>
+                            <div class="shift-duration">8 hrs</div>
+                        </div>
+                    </div>
+                    <div class="shift-cell" ondrop="drop(event)" ondragover="allowDrop(event)">
+                        <button class="add-shift-btn" onclick="addShift(this)">+</button>
+                    </div>
+                    <div class="shift-cell has-shift" ondrop="drop(event)" ondragover="allowDrop(event)">
+                        <div class="shift-block morning" draggable="true" ondragstart="drag(event)" onclick="editShift(this)">
+                            <div class="shift-time">9:00 AM - 5:00 PM</div>
+                            <div class="shift-duration">8 hrs</div>
+                        </div>
+                    </div>
+                    <div class="shift-cell has-shift" ondrop="drop(event)" ondragover="allowDrop(event)">
+                        <div class="shift-block morning" draggable="true" ondragstart="drag(event)" onclick="editShift(this)">
+                            <div class="shift-time">9:00 AM - 5:00 PM</div>
+                            <div class="shift-duration">8 hrs</div>
+                        </div>
+                    </div>
+                    <div class="shift-cell" ondrop="drop(event)" ondragover="allowDrop(event)">
+                        <button class="add-shift-btn" onclick="addShift(this)">+</button>
+                    </div>
+                    <div class="shift-cell" ondrop="drop(event)" ondragover="allowDrop(event)">
+                        <button class="add-shift-btn" onclick="addShift

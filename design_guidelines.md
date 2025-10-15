@@ -1,187 +1,448 @@
-# Design Guidelines: Multi-Tenant SaaS Scheduling Portal
+# WorkforceOS Design System
+## Fortune 500 Professional Dashboard Design - ASMR Interactive Experience
 
-## Design Approach: Design System with Linear & Material Design Inspiration
+### Company Brand Colors (Indigo/Purple Gradient Theme)
 
-**Selected Approach**: Hybrid Design System combining Linear's modern SaaS aesthetic with Material Design's enterprise-grade components
+#### Primary Indigo Gradient
+- **Primary**: `#6366f1` (Indigo 500) - Main brand color
+- **Primary Dark**: `#4f46e5` (Indigo 600) - Hover states, emphasis
+- **Primary Light**: `#a5b4fc` (Indigo 300) - Text accents, highlights
+- **Primary Muted**: `#c7d2fe` (Indigo 200) - Subtle accents
 
-**Justification**: This is a utility-focused productivity tool requiring information density, clear hierarchy, and efficient workflows. The scheduling interface demands precision, clarity, and reliability over visual experimentation. Linear's clean, purposeful design paired with Material Design's robust patterns creates professional credibility essential for B2B SaaS.
+#### Background Layers
+- **Base Background**: `linear-gradient(135deg, #0f172a 0%, #1e293b 100%)` (Slate 900→800)
+- **Card Background**: `rgba(15, 23, 42, 0.8)` (Semi-transparent slate)
+- **Sidebar**: `rgba(15, 23, 42, 0.95)` (Darker, semi-transparent)
+- **Elevated**: `rgba(99, 102, 241, 0.15)` (Indigo overlay)
 
-**Key Design Principles**:
-- Clarity over decoration: Every element serves a functional purpose
-- Consistent information hierarchy across all views
-- Efficient workflows with minimal clicks to core actions
-- Professional, trustworthy aesthetic that businesses rely on daily
+#### Text Hierarchy
+- **Primary Text**: `#e2e8f0` (Slate 200) - Main content
+- **Accent Text**: `#a5b4fc` (Indigo 300) - Headings, emphasis
+- **Secondary Text**: `#94a3b8` (Slate 400) - Descriptions
+- **Muted Text**: `#cbd5e1` (Slate 300) - Less important
 
----
+#### Status Colors
+- **Success**: `#10b981` (Emerald 500) - Active, completed
+- **Warning**: `#f59e0b` (Amber 500) - Pending, caution
+- **Error**: `#ef4444` (Red 500) - Critical, failed
+- **Info**: `#6366f1` (Indigo 500) - Information
 
-## Core Design Elements
+### **Component Design Patterns**
 
-### A. Color Palette
+#### Stat Cards (Gradient Text Effect)
+```css
+.stat-value {
+  font-size: 36px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #a5b4fc, #6366f1);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+```
 
-**Dark Mode (Primary)**:
-- Background Base: 217 20% 12%
-- Surface Elevated: 217 18% 16%
-- Surface Raised: 217 16% 20%
-- Border Subtle: 217 15% 28%
-- Text Primary: 217 10% 95%
-- Text Secondary: 217 10% 65%
-- Brand Primary: 220 85% 58% (vibrant blue for CTAs, active states)
-- Brand Secondary: 220 75% 48% (hover states, borders)
-- Success: 142 65% 48% (confirmed schedules, active employees)
-- Warning: 38 92% 58% (conflicts, pending approvals)
-- Error: 0 72% 58% (scheduling conflicts, errors)
+#### Interactive Cards
+```css
+background: rgba(15, 23, 42, 0.8);
+border: 1px solid rgba(99, 102, 241, 0.2);
+border-radius: 12px;
+padding: 25px;
+transition: all 0.3s ease;
+```
 
-**Light Mode**:
-- Background Base: 0 0% 100%
-- Surface Elevated: 217 25% 98%
-- Surface Raised: 217 20% 95%
-- Border Subtle: 217 15% 88%
-- Text Primary: 217 25% 15%
-- Text Secondary: 217 15% 45%
-- Brand colors remain consistent with dark mode for recognition
+**Hover State:**
+```css
+transform: translateY(-3px);
+border-color: rgba(99, 102, 241, 0.5);
+box-shadow: 0 10px 30px rgba(99, 102, 241, 0.2);
+```
 
-### B. Typography
+#### Primary Buttons (Gradient)
+```css
+background: linear-gradient(135deg, #6366f1, #4f46e5);
+color: white;
+padding: 12px 24px;
+border-radius: 8px;
+font-weight: 600;
+transition: all 0.3s ease;
+```
 
-**Font Families**:
-- Primary: 'Inter' (via Google Fonts) - body text, UI elements, tables
-- Display: 'Inter' with tighter tracking - headings, dashboard titles
-- Monospace: 'JetBrains Mono' - time displays, numerical data, invoice numbers
+**Hover:** `transform: scale(1.05); box-shadow: 0 5px 15px rgba(99, 102, 241, 0.4);`
 
-**Scale & Hierarchy**:
-- Hero/Dashboard Title: text-4xl font-semibold tracking-tight
-- Section Headers: text-2xl font-semibold
-- Card Titles: text-lg font-medium
-- Body Text: text-sm (14px base) font-normal
-- Captions/Meta: text-xs font-medium text-secondary
-- Button Text: text-sm font-medium
-- Table Headers: text-xs font-semibold uppercase tracking-wide
+#### Secondary Buttons (Outline)
+```css
+background: transparent;
+border: 2px solid #6366f1;
+color: #a5b4fc;
+padding: 10px 22px;
+border-radius: 8px;
+```
 
-### C. Layout System
+### **Feature Gating & Upselling System**
 
-**Spacing Primitives**: Use Tailwind units of 1, 2, 4, 6, 8, 12, 16, 24
-- Micro spacing (form fields, buttons): p-2, gap-1
-- Component internal: p-4, gap-4
-- Section spacing: p-6 to p-8
-- Page margins: p-8 to p-12
-- Large section breaks: mt-16, mb-24
+#### Locked Feature Card
+```css
+.locked-feature {
+  background: rgba(99, 102, 241, 0.08);
+  border: 2px dashed rgba(99, 102, 241, 0.3);
+  border-radius: 12px;
+  padding: 25px;
+  position: relative;
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+```
 
-**Grid System**:
-- Dashboard: 12-column grid with 4-unit gaps
-- Sidebar: Fixed 280px (desktop), collapsible to 64px icon-only
-- Main content: flex-1 with max-w-7xl container
-- Calendar views: CSS Grid with auto-fit columns for time slots
+#### Lock Badge Overlay
+```css
+.lock-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: linear-gradient(135deg, #f59e0b, #ef4444);
+  color: white;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+```
 
-### D. Component Library
+#### Upgrade Prompt (In-Card)
+```tsx
+<div className="locked-feature">
+  <div className="lock-badge">
+     Professional Plan
+  </div>
+  <div className="feature-preview">
+    <h3>Advanced Analytics</h3>
+    <p>Unlock predictive scheduling, labor cost optimization, and forecasting</p>
+  </div>
+  <button className="upgrade-button">
+    Upgrade to Professional - $399/mo
+  </button>
+</div>
+```
 
-**Navigation**:
-- Top Bar: Fixed header (h-16) with workspace switcher, quick actions, user menu
-- Sidebar: Collapsible navigation with icons and labels, grouped by context (Schedule, Employees, Clients, Billing)
-- Breadcrumbs: Below header for deep navigation paths
+### **ASMR Animations & Micro-interactions**
 
-**Calendars & Scheduling**:
-- Week View: Primary scheduling interface with drag-and-drop time blocks
-- Time slots: 30min or 1hr increments with subtle grid lines (border-subtle)
-- Shift blocks: Rounded (rounded-lg), color-coded by employee/status with employee avatar
-- Drop zones: Dashed borders with hover state highlighting
+#### Pulse Animation (Status Dots)
+```css
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.2); }
+}
+.status-dot {
+  animation: pulse 2s infinite;
+}
+```
 
-**Data Display**:
-- Tables: Sticky headers, alternating row backgrounds (surface-elevated), hover states
-- Employee Cards: Grid layout with avatar, name, role, availability status indicator
-- Client Cards: Compact with contact info, recent appointment count, next scheduled
-- Dashboard Widgets: Elevated cards with metric value (text-3xl), label, and trend indicator
+#### Slide In (Notifications)
+```css
+@keyframes slideIn {
+  from { transform: translateX(400px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+```
 
-**Forms & Inputs**:
-- Input Fields: Consistent h-10, rounded-md, border focus states with brand primary
-- Date Pickers: Inline calendar view for scheduling
-- Dropdowns: Searchable with keyboard navigation for employee/client selection
-- Time Pickers: Clock interface with 15min increments
+#### Smooth Transitions (All Interactive Elements)
+```css
+transition: all 0.3s ease;
+```
 
-**Modals & Overlays**:
-- Scheduling Modal: Center-screen (max-w-2xl) for creating/editing shifts
-- Quick Actions: Slide-over panel (w-96) from right for rapid employee/client add
-- Confirmations: Small centered modal (max-w-md) for destructive actions
-- Invoice Preview: Full-screen overlay with print-friendly layout
+### **Role-Specific Dashboard Layouts**
 
-**Buttons & Actions**:
-- Primary: bg-brand-primary with hover lift effect (hover:brightness-110)
-- Secondary: border with subtle background on hover
-- Ghost: Text-only with hover background
-- Icon Buttons: rounded-md p-2 with icon-only actions
+#### Owner Dashboard
+**Access Level**: Full platform (tier-gated)
+**Key Metrics**:
+- Revenue analytics (MRR, ARR)
+- Team productivity
+- Client satisfaction
+- Platform fees collected
 
-**Status Indicators**:
-- Availability: Dot indicator (h-2 w-2) in green/yellow/red
-- Schedule Status: Badge with background tint (Confirmed, Pending, Conflict)
-- Subscription Tier: Pill-shaped badge next to workspace name
+**Locked Features** (show based on tier):
+- Free: Analytics, Automation, Reports
+- Starter: Automation, White-label, API
+- Professional: White-label, API, Multi-location
+- Enterprise: All unlocked
 
-### E. Animations & Interactions
+#### Manager Dashboard
+**Access Level**: Assigned team only
+**Key Metrics**:
+- Team hours worked
+- Shift coverage %
+- Pending approvals
+- Team performance
 
-**Use Sparingly**:
-- Sidebar collapse: transition-width duration-200
-- Calendar drag-and-drop: Smooth transform with shadow lift
-- Modal entry: fade-in with subtle scale (scale-95 to scale-100)
-- Hover states: brightness or background shifts (duration-150)
-- Loading states: Skeleton screens, not spinners, for data-heavy views
+**Locked Features**:
+- Advanced team analytics (Professional+)
+- Automated scheduling (Professional+)
+- Predictive insights (Enterprise)
 
-**Avoid**: Decorative animations, scroll-triggered effects, unnecessary transitions
+#### Employee Dashboard
+**Access Level**: Personal data only
+**Key Metrics**:
+- Hours this week
+- Upcoming shifts
+- Earnings to date
+- Available PTO
 
----
+**Locked Features**:
+- GPS clock-in (Starter+)
+- Shift swap requests (Professional+)
+- Mobile app access (Professional+)
 
-## Page-Specific Treatments
+#### Support Staff Dashboard
+**Access Level**: All customer workspaces (read-only)
+**Key Metrics**:
+- Open tickets
+- SLA compliance
+- Avg response time
+- Customer satisfaction
 
-**Landing/Marketing Page**:
-- Hero: Full-width with calendar preview screenshot, centered headline emphasizing "Multi-tenant scheduling that scales"
-- Features: 3-column grid showcasing drag-and-drop, multi-tenant, billing automation
-- Social Proof: Centered testimonial carousel with company logos
-- Pricing: Tiered cards with feature comparison table
-- Demo CTA: Sticky bottom bar with "Start Free Trial" button
+**All Features Unlocked** (internal use)
 
-**Dashboard (Business Owner)**:
-- Top metrics row: Revenue this month, active employees, scheduled hours, pending invoices
-- Quick actions: Add employee, Create schedule, Generate invoice
-- Calendar preview: Current week with today highlighted
-- Recent activity feed: Latest schedules, time entries, invoice status
+#### Client Dashboard (External)
+**Access Level**: Their invoices & reports only
+**Key Metrics**:
+- Outstanding balance
+- Payment history
+- Service reports
+- Usage statistics
 
-**Schedule View (Drag-and-Drop)**:
-- Left sidebar: Employee list with availability filters and drag sources
-- Main canvas: Week/day grid with time slots and drop zones
-- Right panel: Selected shift details with edit controls
-- Bottom toolbar: View toggles (Day/Week/Month), conflict warnings, publish button
+**Locked Features**:
+- Detailed analytics (if customer has Professional+)
+- Custom reports (if customer has Enterprise)
 
-**Employee/Client Management**:
-- List view with search, filters, and bulk actions in toolbar
-- Card grid for visual browsing with quick actions on hover
-- Detail panels slide from right for editing
+### **Top Bar Design**
+```css
+.top-bar {
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  color: white;
+  height: 70px;
+  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+}
+```
 
-**Billing & Invoicing**:
-- Invoice list with status badges, due dates, amounts
-- Invoice builder: Template-based with company branding customization
-- Payment tracking: Visual timeline showing collection flow
+**Search Bar in Top Bar:**
+```css
+background: rgba(255, 255, 255, 0.2);
+border: 1px solid rgba(255, 255, 255, 0.3);
+border-radius: 8px;
+padding: 10px 20px;
+color: white;
+```
 
-**Onboarding Flow**:
-- Multi-step wizard with progress indicator
-- Company info → Team setup → Payment method → First schedule
-- Encouraging micro-copy and inline help tooltips
+### 🧭 **Sidebar Navigation**
+```css
+.sidebar {
+  width: 280px;
+  background: rgba(15, 23, 42, 0.95);
+  border-right: 1px solid rgba(99, 102, 241, 0.2);
+}
 
----
+.nav-item.active {
+  background: linear-gradient(90deg, rgba(99, 102, 241, 0.2), transparent);
+  color: #a5b4fc;
+  border-left: 3px solid #6366f1;
+  font-weight: 600;
+}
 
-## Images & Visual Assets
+.nav-item:hover {
+  background: rgba(99, 102, 241, 0.1);
+  color: #a5b4fc;
+}
+```
 
-**Hero Image**: Large calendar interface screenshot showing drag-and-drop in action with multiple employees scheduled across a week view (1200x800px, positioned right side of hero with 60/40 text-to-image split)
+### 📈 **Data Tables**
+```css
+.data-table {
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: 15px;
+}
 
-**Feature Illustrations**: 
-- Multi-tenant workspace switcher visual (300x200px cards)
-- Employee scheduling flow diagram (600x400px)
-- Invoice generation mockup (500x600px)
+thead {
+  background: rgba(99, 102, 241, 0.1);
+}
 
-**Avatars**: Use initials-based generated avatars with brand color backgrounds for employees/clients
+th {
+  color: #a5b4fc;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid rgba(99, 102, 241, 0.2);
+}
 
-**Icons**: Heroicons for all UI elements - outline style for navigation, solid for active states
+tbody tr:hover {
+  background: rgba(99, 102, 241, 0.08);
+}
+```
 
----
+###  **Badges (Status Indicators)**
+```css
+.badge.active { 
+  background: rgba(16, 185, 129, 0.2); 
+  color: #10b981; 
+}
+.badge.pending { 
+  background: rgba(245, 158, 11, 0.2); 
+  color: #f59e0b; 
+}
+.badge.critical { 
+  background: rgba(239, 68, 68, 0.2); 
+  color: #ef4444; 
+}
+.badge.resolved { 
+  background: rgba(99, 102, 241, 0.2); 
+  color: #a5b4fc; 
+}
+```
 
-**Accessibility Notes**: 
-- Maintain WCAG AA contrast ratios across dark/light modes
-- Calendar grid keyboard navigable with arrow keys
-- Screen reader labels for all drag-and-drop interactions
-- Focus indicators visible on all interactive elements
-- Time entries and schedules must be perceivable without color alone (use patterns/labels)
+### **Tier-Based Feature Visibility Rules**
+
+#### Implementation Pattern:
+```tsx
+import { hasFeature, getUpgradeMessage } from '@/lib/featureFlags';
+
+function AnalyticsSection({ tier }: { tier: string }) {
+  const canAccess = hasFeature(tier, 'analytics');
+  
+  if (!canAccess) {
+    return (
+      <div className="locked-feature">
+        <div className="lock-badge"> Professional</div>
+        <h3>Advanced Analytics</h3>
+        <p>Predictive scheduling & labor cost optimization</p>
+        <button onClick={() => navigate('/upgrade')}>
+          {getUpgradeMessage(tier, 'analytics')}
+        </button>
+      </div>
+    );
+  }
+  
+  return <AnalyticsComponent />; // Full feature
+}
+```
+
+### **Automatic Feature Unlocking**
+
+When subscription tier upgrades:
+1. **Backend updates** workspace `subscriptionTier` 
+2. **Frontend refetches** workspace data
+3. **Feature flags recompute** automatically
+4. **Locked cards animate** from dashed to solid border
+5. **Content fades in** with smooth transition
+6. **Success notification** shows: " Features Unlocked!"
+
+### **Responsive Grid Systems**
+```css
+/* Stats Grid */
+grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+
+/* Command Grid */
+grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+
+/* Quick Actions */
+grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+```
+
+### **Command/Action Buttons**
+```css
+.quick-action-btn {
+  background: rgba(99, 102, 241, 0.1);
+  border: 2px solid rgba(99, 102, 241, 0.3);
+  border-radius: 12px;
+  padding: 20px;
+  transition: all 0.3s ease;
+}
+
+.quick-action-btn:hover {
+  background: rgba(99, 102, 241, 0.2);
+  border-color: #6366f1;
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3);
+}
+```
+
+### **Notification System**
+```css
+.notification {
+  position: fixed;
+  top: 90px;
+  right: 30px;
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+  padding: 15px 25px;
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(16, 185, 129, 0.4);
+  animation: slideIn 0.3s ease;
+  z-index: 1001;
+}
+```
+
+### **Spacing Standards**
+- **Section Gap**: 30px
+- **Card Padding**: 25px
+- **Button Padding**: 12px 24px (primary), 10px 22px (secondary)
+- **Border Radius**: 8px (buttons), 12px (cards), 15px (sections)
+
+### **Page Title Styling**
+```css
+.page-title {
+  font-size: 32px;
+  font-weight: 700;
+  color: #a5b4fc;
+  margin-bottom: 8px;
+}
+
+.page-subtitle {
+  color: #94a3b8;
+  font-size: 15px;
+}
+```
+
+### **Terminal/Code Sections** (For Admin Tools)
+```css
+.terminal-section {
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: 15px;
+  font-family: 'Courier New', monospace;
+}
+
+.terminal-line.success { color: #10b981; }
+.terminal-line.error { color: #ef4444; }
+.terminal-line.warning { color: #f59e0b; }
+```
+
+### **Implementation Checklist**
+
+#### Every Dashboard Must Have:
+- ✅ Indigo/purple gradient top bar
+- ✅ Dark slate background with gradient
+- ✅ Sidebar with active state indicator
+- ✅ Role-specific metrics in stat cards
+- ✅ Tier-gated features with lock badges
+- ✅ Upgrade CTAs with pricing
+- ✅ Smooth hover animations (0.3s ease)
+- ✅ Gradient text on key numbers
+- ✅ Professional table styling
+- ✅ Status badges with color coding
+
+#### Feature Gating Requirements:
+- ✅ Check `hasFeature(tier, featureName)` before rendering
+- ✅ Show locked UI with dashed border for unavailable features
+- ✅ Display lock badge with required tier
+- ✅ Include upgrade button with exact pricing
+- ✅ Auto-refresh when tier changes
+- ✅ Smooth unlock animation
+
+This design system ensures every user sees a beautiful, cohesive, ASMR-quality interface tailored to their role and subscription tier, with clear upselling opportunities that automatically disappear when they upgrade. 
