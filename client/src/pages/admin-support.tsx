@@ -422,6 +422,13 @@ export default function AdminSupportPage() {
                             {result.subscription?.plan || "free"}
                           </Badge>
                         </div>
+                        {result.workspace.organizationId && (
+                          <div className="flex items-center gap-2">
+                            <Badge className="bg-indigo-500/10 text-indigo-500 border-indigo-500/20 font-mono text-xs">
+                              {result.workspace.organizationId}
+                            </Badge>
+                          </div>
+                        )}
                         <p className="text-sm text-muted-foreground">
                           {result.owner.email}
                         </p>
@@ -466,8 +473,15 @@ export default function AdminSupportPage() {
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>{workspaceDetail.workspace.name}</CardTitle>
+              <div className="space-y-2">
+                <div className="flex items-center gap-3">
+                  <CardTitle>{workspaceDetail.workspace.name}</CardTitle>
+                  {workspaceDetail.workspace.organizationId && (
+                    <Badge className="bg-indigo-500/10 text-indigo-500 border-indigo-500/20 font-mono">
+                      {workspaceDetail.workspace.organizationId}
+                    </Badge>
+                  )}
+                </div>
                 <CardDescription>
                   {workspaceDetail.owner.email}
                 </CardDescription>
