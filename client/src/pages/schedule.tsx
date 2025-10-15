@@ -665,9 +665,6 @@ export default function Schedule() {
                 <div className="h-12 w-12 rounded-lg bg-indigo-500/20 flex items-center justify-center">
                   <Clock className="h-6 w-6 text-indigo-400" />
                 </div>
-                <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-400 border-0">
-                  +8%
-                </Badge>
               </div>
               <div className="text-3xl font-bold gradient-text mb-1">{weekStats.totalHours}</div>
               <div className="text-sm text-slate-400">Hours Scheduled</div>
@@ -678,9 +675,6 @@ export default function Schedule() {
                 <div className="h-12 w-12 rounded-lg bg-emerald-500/20 flex items-center justify-center">
                   <DollarSign className="h-6 w-6 text-emerald-400" />
                 </div>
-                <Badge variant="secondary" className="bg-rose-500/10 text-rose-400 border-0">
-                  +5%
-                </Badge>
               </div>
               <div className="text-3xl font-bold gradient-text mb-1">${weekStats.estimatedCost}</div>
               <div className="text-sm text-slate-400">Labor Cost</div>
@@ -691,9 +685,11 @@ export default function Schedule() {
                 <div className="h-12 w-12 rounded-lg bg-amber-500/20 flex items-center justify-center">
                   <FileText className="h-6 w-6 text-amber-400" />
                 </div>
-                <Badge variant="secondary" className="bg-indigo-500/10 text-indigo-400 border-0">
-                  Active
-                </Badge>
+                {weekStats.clientShifts > 0 && (
+                  <Badge variant="secondary" className="bg-indigo-500/10 text-indigo-400 border-0">
+                    Active
+                  </Badge>
+                )}
               </div>
               <div className="text-3xl font-bold gradient-text mb-1">{weekStats.clientShifts}</div>
               <div className="text-sm text-slate-400">Billable Shifts</div>
@@ -704,9 +700,6 @@ export default function Schedule() {
                 <div className="h-12 w-12 rounded-lg bg-purple-500/20 flex items-center justify-center">
                   <Zap className="h-6 w-6 text-purple-400" />
                 </div>
-                <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-400 border-0">
-                  98.2%
-                </Badge>
               </div>
               <div className="text-3xl font-bold gradient-text mb-1">{weekStats.totalShifts}</div>
               <div className="text-sm text-slate-400">Total Shifts</div>
