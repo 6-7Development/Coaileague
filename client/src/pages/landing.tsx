@@ -28,7 +28,7 @@ export default function Landing() {
     <div className="min-h-screen bg-[hsl(var(--cad-background))] text-[hsl(var(--cad-text-primary))]">
       {/* CAD-Style Top Bar - Desktop */}
       <div className="hidden lg:flex h-12 bg-[hsl(var(--cad-chrome))] border-b border-[hsl(var(--cad-border-strong))] items-center justify-between px-6">
-        <WorkforceOSLogo size="sm" showText={true} />
+        <div className="text-sm font-bold text-[hsl(var(--cad-text-primary))]">WorkforceOS</div>
         <div className="flex items-center gap-4">
           <Button
             variant="ghost"
@@ -52,7 +52,7 @@ export default function Landing() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => window.location.href = "/api/login"}
+            onClick={() => window.location.href = "/login"}
             className="text-xs h-8 text-[hsl(var(--cad-text-secondary))] hover:text-[hsl(var(--cad-text-primary))] hover:bg-[hsl(var(--cad-chrome-hover))]"
             data-testid="button-login"
           >
@@ -60,7 +60,7 @@ export default function Landing() {
           </Button>
           <Button
             size="sm"
-            onClick={() => window.location.href = "/api/login"}
+            onClick={() => window.location.href = "/register"}
             className="h-8 text-xs bg-[hsl(var(--cad-blue))] hover:bg-[hsl(var(--cad-blue))]/90 text-white"
             data-testid="button-get-started"
           >
@@ -71,17 +71,17 @@ export default function Landing() {
 
       {/* Mobile Top Bar - Touch-Optimized */}
       <div className="flex lg:hidden h-16 bg-[hsl(var(--cad-chrome))] border-b border-[hsl(var(--cad-border-strong))] items-center justify-between px-4">
-        <WorkforceOSLogo size="sm" showText={true} />
+        <div className="text-sm font-bold text-[hsl(var(--cad-text-primary))]">WorkforceOS</div>
         <div className="flex items-center gap-2">
           <Button
             variant="ghost"
-            onClick={() => window.location.href = "/api/login"}
+            onClick={() => window.location.href = "/login"}
             className="h-12 text-sm text-[hsl(var(--cad-text-secondary))]"
           >
             Login
           </Button>
           <Button
-            onClick={() => window.location.href = "/api/login"}
+            onClick={() => window.location.href = "/register"}
             className="h-12 text-sm bg-[hsl(var(--cad-blue))] hover:bg-[hsl(var(--cad-blue))]/90 text-white"
             data-testid="button-get-started-mobile"
           >
@@ -97,8 +97,10 @@ export default function Landing() {
             {/* Left: Value Prop */}
             <div className="space-y-4 sm:space-y-6 text-center lg:text-left">
               {/* Large Animated Logo */}
-              <div className="flex justify-center lg:justify-start">
-                <WorkforceOSLogo size="xl" showText={false} />
+              <div className="flex justify-center lg:justify-start mb-6">
+                <div className="w-32 h-32 sm:w-40 sm:h-40 lg:w-48 lg:h-48">
+                  <WorkforceOSLogo size="xl" showText={false} />
+                </div>
               </div>
 
               <div className="flex items-center gap-2 justify-center lg:justify-start">
