@@ -158,6 +158,73 @@ export default function AdminSupportPage() {
     },
   });
 
+  // Account Control Mutations
+  const suspendAccountMutation = useMutation({
+    mutationFn: (data: { workspaceId: string; reason: string }) =>
+      apiRequest("/api/admin/support/suspend-account", "POST", data),
+    onSuccess: () => {
+      toast({ title: "Account Suspended", description: "Account has been suspended successfully" });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/support/workspace", selectedWorkspace] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/support/search"] });
+      setActionDialog(null);
+    },
+  });
+
+  const unsuspendAccountMutation = useMutation({
+    mutationFn: (data: { workspaceId: string }) =>
+      apiRequest("/api/admin/support/unsuspend-account", "POST", data),
+    onSuccess: () => {
+      toast({ title: "Account Unsuspended", description: "Account has been reactivated successfully" });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/support/workspace", selectedWorkspace] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/support/search"] });
+      setActionDialog(null);
+    },
+  });
+
+  const freezeAccountMutation = useMutation({
+    mutationFn: (data: { workspaceId: string; reason: string }) =>
+      apiRequest("/api/admin/support/freeze-account", "POST", data),
+    onSuccess: () => {
+      toast({ title: "Account Frozen", description: "Account has been frozen for non-payment" });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/support/workspace", selectedWorkspace] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/support/search"] });
+      setActionDialog(null);
+    },
+  });
+
+  const unfreezeAccountMutation = useMutation({
+    mutationFn: (data: { workspaceId: string }) =>
+      apiRequest("/api/admin/support/unfreeze-account", "POST", data),
+    onSuccess: () => {
+      toast({ title: "Account Unfrozen", description: "Account has been unfrozen successfully" });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/support/workspace", selectedWorkspace] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/support/search"] });
+      setActionDialog(null);
+    },
+  });
+
+  const lockAccountMutation = useMutation({
+    mutationFn: (data: { workspaceId: string; reason: string }) =>
+      apiRequest("/api/admin/support/lock-account", "POST", data),
+    onSuccess: () => {
+      toast({ title: "Account Locked", description: "Account has been locked for security reasons" });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/support/workspace", selectedWorkspace] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/support/search"] });
+      setActionDialog(null);
+    },
+  });
+
+  const unlockAccountMutation = useMutation({
+    mutationFn: (data: { workspaceId: string }) =>
+      apiRequest("/api/admin/support/unlock-account", "POST", data),
+    onSuccess: () => {
+      toast({ title: "Account Unlocked", description: "Account has been unlocked successfully" });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/support/workspace", selectedWorkspace] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/support/search"] });
+      setActionDialog(null);
+    },
+  });
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       {/* Header */}
@@ -545,43 +612,153 @@ export default function AdminSupportPage() {
               </TabsContent>
 
               {/* Actions Tab */}
-              <TabsContent value="actions" className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <Button
-                    onClick={() => setActionDialog("updateSubscription")}
-                    data-testid="button-update-subscription"
-                  >
-                    <TrendingUp className="mr-2 h-4 w-4" />
-                    Update Subscription
-                  </Button>
+              <TabsContent value="actions" className="space-y-6">
+                {/* Account Control Section */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Shield className="h-5 w-5 text-red-500" />
+                    <h3 className="text-lg font-semibold">Account Control</h3>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    {/* Suspend/Unsuspend */}
+                    {!workspaceDetail.workspace.isSuspended ? (
+                      <Button
+                        variant="destructive"
+                        onClick={() => setActionDialog("suspendAccount")}
+                        data-testid="button-suspend-account"
+                      >
+                        <XCircle className="mr-2 h-4 w-4" />
+                        Suspend Account
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="default"
+                        onClick={() => {
+                          unsuspendAccountMutation.mutate({ workspaceId: selectedWorkspace! });
+                        }}
+                        data-testid="button-unsuspend-account"
+                      >
+                        <CheckCircle className="mr-2 h-4 w-4" />
+                        Unsuspend Account
+                      </Button>
+                    )}
 
-                  <Button
-                    onClick={() => setActionDialog("createTicket")}
-                    data-testid="button-create-ticket"
-                  >
-                    <Ticket className="mr-2 h-4 w-4" />
-                    Create Support Ticket
-                  </Button>
+                    {/* Freeze/Unfreeze */}
+                    {!workspaceDetail.workspace.isFrozen ? (
+                      <Button
+                        variant="destructive"
+                        onClick={() => setActionDialog("freezeAccount")}
+                        data-testid="button-freeze-account"
+                      >
+                        <Clock className="mr-2 h-4 w-4" />
+                        Freeze for Non-Payment
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="default"
+                        onClick={() => {
+                          unfreezeAccountMutation.mutate({ workspaceId: selectedWorkspace! });
+                        }}
+                        data-testid="button-unfreeze-account"
+                      >
+                        <CheckCircle className="mr-2 h-4 w-4" />
+                        Unfreeze Account
+                      </Button>
+                    )}
 
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      toast({ title: "Feature coming soon", description: "Password reset email functionality requires Resend API key activation" });
-                    }}
-                  >
-                    <Mail className="mr-2 h-4 w-4" />
-                    Send Password Reset
-                  </Button>
+                    {/* Lock/Unlock */}
+                    {!workspaceDetail.workspace.isLocked ? (
+                      <Button
+                        variant="destructive"
+                        onClick={() => setActionDialog("lockAccount")}
+                        data-testid="button-lock-account"
+                      >
+                        <Shield className="mr-2 h-4 w-4" />
+                        Emergency Lock
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="default"
+                        onClick={() => {
+                          unlockAccountMutation.mutate({ workspaceId: selectedWorkspace! });
+                        }}
+                        data-testid="button-unlock-account"
+                      >
+                        <CheckCircle className="mr-2 h-4 w-4" />
+                        Unlock Account
+                      </Button>
+                    )}
+                  </div>
 
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      toast({ title: "Stripe diagnostics", description: `Connected: ${workspaceDetail.billing.stripeConnected}` });
-                    }}
-                  >
-                    <CreditCard className="mr-2 h-4 w-4" />
-                    Check Stripe Status
-                  </Button>
+                  {/* Account Status Display */}
+                  {(workspaceDetail.workspace.isSuspended || workspaceDetail.workspace.isFrozen || workspaceDetail.workspace.isLocked) && (
+                    <Card className="border-red-500/50 bg-red-500/5">
+                      <CardContent className="p-4 space-y-2">
+                        <h4 className="font-semibold text-red-500">Account Restrictions Active</h4>
+                        {workspaceDetail.workspace.isSuspended && (
+                          <div className="text-sm">
+                            <Badge variant="destructive" className="mb-2">Suspended</Badge>
+                            <p className="text-muted-foreground">{workspaceDetail.workspace.suspendedReason}</p>
+                          </div>
+                        )}
+                        {workspaceDetail.workspace.isFrozen && (
+                          <div className="text-sm">
+                            <Badge variant="destructive" className="mb-2">Frozen</Badge>
+                            <p className="text-muted-foreground">{workspaceDetail.workspace.frozenReason}</p>
+                          </div>
+                        )}
+                        {workspaceDetail.workspace.isLocked && (
+                          <div className="text-sm">
+                            <Badge variant="destructive" className="mb-2">Locked</Badge>
+                            <p className="text-muted-foreground">{workspaceDetail.workspace.lockedReason}</p>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+
+                {/* Management Actions Section */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Management Actions</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <Button
+                      onClick={() => setActionDialog("updateSubscription")}
+                      data-testid="button-update-subscription"
+                    >
+                      <TrendingUp className="mr-2 h-4 w-4" />
+                      Update Subscription
+                    </Button>
+
+                    <Button
+                      onClick={() => setActionDialog("createTicket")}
+                      data-testid="button-create-ticket"
+                    >
+                      <Ticket className="mr-2 h-4 w-4" />
+                      Create Support Ticket
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        toast({ title: "Feature coming soon", description: "Password reset email functionality requires Resend API key activation" });
+                      }}
+                    >
+                      <Mail className="mr-2 h-4 w-4" />
+                      Send Password Reset
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        toast({ title: "Stripe diagnostics", description: `Connected: ${workspaceDetail.billing.stripeConnected}` });
+                      }}
+                    >
+                      <CreditCard className="mr-2 h-4 w-4" />
+                      Check Stripe Status
+                    </Button>
+                  </div>
                 </div>
               </TabsContent>
             </Tabs>
@@ -769,6 +946,132 @@ export default function AdminSupportPage() {
               data-testid="button-confirm-create-ticket"
             >
               {createTicketMutation.isPending ? "Creating..." : "Create Ticket"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Suspend Account Dialog */}
+      <Dialog open={actionDialog === "suspendAccount"} onOpenChange={() => setActionDialog(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Suspend Account</DialogTitle>
+            <DialogDescription>
+              Suspend this workspace and restrict access
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="suspendReason">Reason for Suspension</Label>
+              <Textarea
+                id="suspendReason"
+                value={actionData.reason || ""}
+                onChange={(e) => setActionData({ ...actionData, reason: e.target.value })}
+                placeholder="Enter reason for suspending this account..."
+                data-testid="textarea-suspend-reason"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setActionDialog(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() =>
+                suspendAccountMutation.mutate({
+                  workspaceId: selectedWorkspace!,
+                  reason: actionData.reason,
+                })
+              }
+              disabled={suspendAccountMutation.isPending}
+              data-testid="button-confirm-suspend"
+            >
+              {suspendAccountMutation.isPending ? "Suspending..." : "Suspend Account"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Freeze Account Dialog */}
+      <Dialog open={actionDialog === "freezeAccount"} onOpenChange={() => setActionDialog(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Freeze Account for Non-Payment</DialogTitle>
+            <DialogDescription>
+              Freeze this workspace due to payment issues
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="freezeReason">Reason for Freeze</Label>
+              <Textarea
+                id="freezeReason"
+                value={actionData.reason || ""}
+                onChange={(e) => setActionData({ ...actionData, reason: e.target.value })}
+                placeholder="e.g., Account frozen for non-payment - 30 days overdue"
+                data-testid="textarea-freeze-reason"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setActionDialog(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() =>
+                freezeAccountMutation.mutate({
+                  workspaceId: selectedWorkspace!,
+                  reason: actionData.reason,
+                })
+              }
+              disabled={freezeAccountMutation.isPending}
+              data-testid="button-confirm-freeze"
+            >
+              {freezeAccountMutation.isPending ? "Freezing..." : "Freeze Account"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Lock Account Dialog */}
+      <Dialog open={actionDialog === "lockAccount"} onOpenChange={() => setActionDialog(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Emergency Lock Account</DialogTitle>
+            <DialogDescription>
+              Immediately lock this workspace for security reasons
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="lockReason">Reason for Lock</Label>
+              <Textarea
+                id="lockReason"
+                value={actionData.reason || ""}
+                onChange={(e) => setActionData({ ...actionData, reason: e.target.value })}
+                placeholder="e.g., Account locked for security violation - suspicious activity detected"
+                data-testid="textarea-lock-reason"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setActionDialog(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() =>
+                lockAccountMutation.mutate({
+                  workspaceId: selectedWorkspace!,
+                  reason: actionData.reason,
+                })
+              }
+              disabled={lockAccountMutation.isPending}
+              data-testid="button-confirm-lock"
+            >
+              {lockAccountMutation.isPending ? "Locking..." : "Lock Account"}
             </Button>
           </DialogFooter>
         </DialogContent>
