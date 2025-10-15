@@ -1,10 +1,11 @@
 import { useState, ReactNode } from "react";
 import { 
   Users, BarChart3, Settings, Calendar, Clock, TrendingUp, 
-  FileText, Target, Zap, Menu, X, LogOut 
+  FileText, Target, Menu, X, LogOut 
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
+import { WorkforceOSLogo } from "@/components/workforceos-logo";
 
 interface ModernLayoutProps {
   children: ReactNode;
@@ -34,21 +35,9 @@ export default function ModernLayout({ children }: ModernLayoutProps) {
       {/* Header */}
       <header className="bg-[hsl(var(--cad-chrome))] border-b border-[hsl(var(--cad-border))] px-4 sm:px-6 py-3 sm:py-4 sticky top-0 z-50 flex-shrink-0">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 sm:gap-3">
-            <div className="bg-gradient-to-br from-[hsl(var(--cad-blue))] to-indigo-600 p-1.5 sm:p-2 rounded-lg">
-              <Zap className="w-4 h-4 sm:w-6 sm:h-6 text-white" />
-            </div>
-            <div>
-              <Link href="/dashboard">
-                <h1 className="text-lg sm:text-2xl font-bold text-[hsl(var(--cad-blue))] cursor-pointer hover:opacity-80" data-testid="text-app-title">
-                  WorkforceOS
-                </h1>
-              </Link>
-              <p className="text-[10px] sm:text-xs text-[hsl(var(--cad-text-secondary))] hidden sm:block">
-                Enterprise Workforce Platform
-              </p>
-            </div>
-          </div>
+          <Link href="/dashboard">
+            <WorkforceOSLogo size="sm" showText={true} className="cursor-pointer hover:opacity-80" />
+          </Link>
           
           <button 
             className="lg:hidden p-2 text-[hsl(var(--cad-text-secondary))] hover:text-[hsl(var(--cad-text-primary))]"
