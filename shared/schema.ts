@@ -1367,6 +1367,45 @@ export const insertPlatformRevenueSchema = createInsertSchema(platformRevenue).o
 export type InsertPlatformRevenue = z.infer<typeof insertPlatformRevenueSchema>;
 export type PlatformRevenue = typeof platformRevenue.$inferSelect;
 
+// AI Usage Tracking - Track AI operations and costs per workspace
+export const workspaceAiUsage = pgTable("workspace_ai_usage", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  // Operation details
+  feature: varchar("feature").notNull(), // 'smart_schedule_ai', 'predictive_analytics', 'auto_optimization'
+  operation: varchar("operation").notNull(), // 'generate_schedule', 'analyze_labor_costs', 'predict_demand'
+  requestId: varchar("request_id").notNull(), // Unique identifier for this AI request
+  
+  // Token usage
+  tokensUsed: integer("tokens_used").notNull(), // Total tokens consumed
+  model: varchar("model").notNull(), // 'gpt-4', 'gpt-3.5-turbo', etc.
+  
+  // Cost tracking
+  providerCostUsd: decimal("provider_cost_usd", { precision: 10, scale: 6 }).notNull(), // What we pay OpenAI
+  markupPercentage: decimal("markup_percentage", { precision: 5, scale: 2 }).default("300.00"), // Default 300% markup
+  clientChargeUsd: decimal("client_charge_usd", { precision: 10, scale: 6 }).notNull(), // What we charge client
+  
+  // Billing status
+  status: varchar("status").default("pending"), // 'pending', 'invoiced', 'paid'
+  invoiceId: varchar("invoice_id").references(() => invoices.id), // Link to monthly AI usage invoice
+  billingPeriod: varchar("billing_period"), // '2024-10', '2024-11' for monthly aggregation
+  
+  // Metadata
+  inputData: jsonb("input_data"), // Request parameters (for debugging/audit)
+  outputData: jsonb("output_data"), // AI response summary
+  
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertWorkspaceAiUsageSchema = createInsertSchema(workspaceAiUsage).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertWorkspaceAiUsage = z.infer<typeof insertWorkspaceAiUsageSchema>;
+export type WorkspaceAiUsage = typeof workspaceAiUsage.$inferSelect;
+
 // ============================================================================
 // REPORT MANAGEMENT SYSTEM (RMS)
 // ============================================================================

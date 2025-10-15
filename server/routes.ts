@@ -1413,34 +1413,305 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============================================================================
-  // STRIPE ROUTES (Ready for when keys are added)
+  // STRIPE PAYMENT PROCESSING (Full implementation ready for key activation)
   // ============================================================================
   
-  // Note: Stripe integration will be activated once STRIPE_SECRET_KEY is provided
-  // This structure is ready for Stripe Connect to:
-  // 1. Create connected accounts for workspaces
-  // 2. Process payments on behalf of businesses
-  // 3. Take platform fee and transfer remainder
-  
+  // Initialize Stripe (will activate when STRIPE_SECRET_KEY is added)
+  let stripe: any = null;
+  if (process.env.STRIPE_SECRET_KEY) {
+    const Stripe = require('stripe');
+    stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+      apiVersion: '2023-10-16',
+    });
+    console.log('✅ Stripe initialized successfully');
+  } else {
+    console.warn('⚠️  STRIPE_SECRET_KEY not found. Payment processing disabled. Add keys to activate.');
+  }
+
+  // Create Stripe Connect account for workspace
   app.post('/api/stripe/connect-account', isAuthenticated, async (req: any, res) => {
     try {
-      res.status(503).json({ 
-        message: "Stripe integration requires STRIPE_SECRET_KEY. Please add your Stripe keys to activate payment processing." 
+      if (!stripe) {
+        return res.status(503).json({ 
+          message: "Stripe integration requires STRIPE_SECRET_KEY. Please add your Stripe keys to activate payment processing." 
+        });
+      }
+
+      const userId = req.user.claims.sub;
+      const workspace = await storage.getWorkspaceByOwnerId(userId);
+      
+      if (!workspace) {
+        return res.status(404).json({ message: "Workspace not found" });
+      }
+
+      // Check if account already exists
+      if (workspace.stripeConnectedAccountId) {
+        const account = await stripe.accounts.retrieve(workspace.stripeConnectedAccountId);
+        return res.json({ 
+          accountId: account.id,
+          chargesEnabled: account.charges_enabled,
+          detailsSubmitted: account.details_submitted,
+        });
+      }
+
+      // Create new Connect account
+      const account = await stripe.accounts.create({
+        type: 'standard', // Standard Connect account (workspace controls their own Stripe)
+        email: req.user.claims.email,
+        business_type: 'company',
+        metadata: {
+          workspaceId: workspace.id,
+          workspaceName: workspace.name,
+        },
       });
-    } catch (error) {
-      console.error("Error creating Stripe account:", error);
-      res.status(500).json({ message: "Failed to create Stripe account" });
+
+      // Save account ID to workspace
+      await storage.updateWorkspace(workspace.id, {
+        stripeConnectedAccountId: account.id,
+      });
+
+      res.json({ 
+        accountId: account.id,
+        chargesEnabled: account.charges_enabled,
+        detailsSubmitted: account.details_submitted,
+      });
+    } catch (error: any) {
+      console.error("Error creating Stripe Connect account:", error);
+      res.status(500).json({ message: error.message || "Failed to create Stripe account" });
     }
   });
 
-  app.post('/api/stripe/create-payment', isAuthenticated, async (req: any, res) => {
+  // Generate Stripe Connect onboarding link
+  app.post('/api/stripe/onboarding-link', isAuthenticated, async (req: any, res) => {
     try {
-      res.status(503).json({ 
-        message: "Stripe integration requires STRIPE_SECRET_KEY. Please add your Stripe keys to activate payment processing." 
+      if (!stripe) {
+        return res.status(503).json({ message: "Stripe keys required" });
+      }
+
+      const userId = req.user.claims.sub;
+      const workspace = await storage.getWorkspaceByOwnerId(userId);
+      
+      if (!workspace || !workspace.stripeConnectedAccountId) {
+        return res.status(400).json({ message: "Connect account must be created first" });
+      }
+
+      const accountLink = await stripe.accountLinks.create({
+        account: workspace.stripeConnectedAccountId,
+        refresh_url: `${req.protocol}://${req.get('host')}/settings`,
+        return_url: `${req.protocol}://${req.get('host')}/settings?stripe_onboarding=success`,
+        type: 'account_onboarding',
       });
-    } catch (error) {
+
+      res.json({ url: accountLink.url });
+    } catch (error: any) {
+      console.error("Error creating onboarding link:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Process invoice payment with platform fee
+  app.post('/api/stripe/pay-invoice', async (req, res) => {
+    try {
+      if (!stripe) {
+        return res.status(503).json({ message: "Stripe keys required" });
+      }
+
+      const { invoiceId, paymentMethodId } = req.body;
+
+      // Get invoice details
+      const invoice = await storage.getInvoice(invoiceId);
+      if (!invoice) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+
+      // Get workspace (for platform fee and Stripe account)
+      const workspace = await storage.getWorkspace(invoice.workspaceId);
+      if (!workspace || !workspace.stripeConnectedAccountId) {
+        return res.status(400).json({ message: "Workspace Stripe account not configured" });
+      }
+
+      // Calculate amounts in cents
+      const totalCents = Math.round(parseFloat(invoice.total as string) * 100);
+      const platformFeeCents = Math.round(parseFloat(invoice.platformFeeAmount as string || "0") * 100);
+
+      // Create payment intent with automatic platform fee
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: totalCents,
+        currency: 'usd',
+        payment_method: paymentMethodId,
+        confirm: true,
+        application_fee_amount: platformFeeCents, // Platform fee automatically split
+        transfer_data: {
+          destination: workspace.stripeConnectedAccountId, // Transfer to workspace
+        },
+        metadata: {
+          invoiceId: invoice.id,
+          workspaceId: workspace.id,
+        },
+      });
+
+      // Update invoice status
+      if (paymentIntent.status === 'succeeded') {
+        await storage.updateInvoice(invoiceId, invoice.workspaceId, {
+          status: 'paid',
+          paidAt: new Date(),
+          paymentIntentId: paymentIntent.id,
+        });
+
+        // Record platform revenue
+        await storage.createPlatformRevenue({
+          workspaceId: workspace.id,
+          revenueType: 'invoice_fee',
+          sourceId: invoice.id,
+          amount: invoice.platformFeeAmount as string,
+          feePercentage: invoice.platformFeePercentage as string,
+          collectedAt: new Date(),
+          status: 'collected',
+        });
+      }
+
+      res.json({ 
+        success: true,
+        paymentIntentId: paymentIntent.id,
+        status: paymentIntent.status,
+      });
+    } catch (error: any) {
       console.error("Error processing payment:", error);
-      res.status(500).json({ message: "Failed to process payment" });
+      res.status(500).json({ message: error.message || "Payment failed" });
+    }
+  });
+
+  // Create subscription for workspace tier upgrade
+  app.post('/api/stripe/create-subscription', isAuthenticated, async (req: any, res) => {
+    try {
+      if (!stripe) {
+        return res.status(503).json({ message: "Stripe keys required" });
+      }
+
+      const { tier, paymentMethodId } = req.body;
+      const userId = req.user.claims.sub;
+      const workspace = await storage.getWorkspaceByOwnerId(userId);
+      
+      if (!workspace) {
+        return res.status(404).json({ message: "Workspace not found" });
+      }
+
+      // Tier pricing (matching your pricing page)
+      const TIER_PRICES: Record<string, { monthly: number, priceId?: string }> = {
+        starter: { monthly: 99 },
+        professional: { monthly: 799 },
+        enterprise: { monthly: 2999 },
+        fortune500: { monthly: 7999 },
+      };
+
+      const tierConfig = TIER_PRICES[tier as keyof typeof TIER_PRICES];
+      if (!tierConfig) {
+        return res.status(400).json({ message: "Invalid tier" });
+      }
+
+      // Create or retrieve Stripe customer
+      let customerId = workspace.stripeCustomerId;
+      if (!customerId) {
+        const customer = await stripe.customers.create({
+          email: req.user.claims.email,
+          metadata: {
+            workspaceId: workspace.id,
+            workspaceName: workspace.name,
+          },
+        });
+        customerId = customer.id;
+        await storage.updateWorkspace(workspace.id, { stripeCustomerId: customerId });
+      }
+
+      // Attach payment method
+      await stripe.paymentMethods.attach(paymentMethodId, { customer: customerId });
+      await stripe.customers.update(customerId, {
+        invoice_settings: { default_payment_method: paymentMethodId },
+      });
+
+      // Create subscription
+      const subscription = await stripe.subscriptions.create({
+        customer: customerId,
+        items: [{
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: `WorkforceOS ${tier.charAt(0).toUpperCase() + tier.slice(1)} Plan`,
+            },
+            recurring: { interval: 'month' },
+            unit_amount: tierConfig.monthly * 100, // Convert to cents
+          },
+        }],
+        metadata: {
+          workspaceId: workspace.id,
+          tier: tier,
+        },
+      });
+
+      // Update workspace tier and subscription ID
+      const platformFeeMap: Record<string, string> = {
+        free: "10",
+        starter: "7",
+        professional: "5",
+        enterprise: "3",
+        fortune500: "2",
+      };
+
+      await storage.updateWorkspace(workspace.id, {
+        subscriptionTier: tier,
+        platformFeePercentage: platformFeeMap[tier as keyof typeof platformFeeMap] || "5",
+      });
+
+      res.json({ 
+        success: true,
+        subscriptionId: subscription.id,
+        tier: tier,
+      });
+    } catch (error: any) {
+      console.error("Error creating subscription:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Webhook handler for Stripe events
+  app.post('/api/stripe/webhook', async (req, res) => {
+    try {
+      if (!stripe) {
+        return res.status(503).send('Stripe not configured');
+      }
+
+      const sig = req.headers['stripe-signature'];
+      const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+      if (!webhookSecret) {
+        console.warn('Stripe webhook secret not configured');
+        return res.status(400).send('Webhook secret required');
+      }
+
+      const event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+
+      // Handle events
+      switch (event.type) {
+        case 'payment_intent.succeeded':
+          console.log('Payment succeeded:', event.data.object.id);
+          break;
+        
+        case 'payment_intent.payment_failed':
+          console.log('Payment failed:', event.data.object.id);
+          break;
+        
+        case 'customer.subscription.updated':
+        case 'customer.subscription.deleted':
+          // Handle subscription changes
+          const subscription = event.data.object;
+          console.log('Subscription event:', subscription.id);
+          break;
+      }
+
+      res.json({ received: true });
+    } catch (error: any) {
+      console.error('Webhook error:', error.message);
+      res.status(400).send(`Webhook Error: ${error.message}`);
     }
   });
 
