@@ -104,19 +104,22 @@ export default function Landing() {
               <div className="flex items-center gap-2 justify-center lg:justify-start">
                 <div className="h-1 w-12 bg-[hsl(var(--cad-blue))]" />
                 <span className="text-xs uppercase tracking-wider text-[hsl(var(--cad-text-tertiary))] font-mono">
-                  Fortune 500 Grade
+                  All Features Live Today
                 </span>
               </div>
               
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1]" data-testid="text-hero-title">
-                Replace Your Entire
-                <br />
-                <span className="text-[hsl(var(--cad-blue))]">HR Department</span>
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-black tracking-tight leading-[1.1]" data-testid="text-hero-title">
+                <span className="text-[hsl(var(--cad-blue))]">Complete Workforce Automation</span>
               </h1>
               
+              <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-[hsl(var(--cad-text-primary))] leading-tight" data-testid="text-hero-subtitle">
+                Replace 5 Full-Time Staff Positions with One Intelligent Platform
+              </p>
+              
               <p className="text-base sm:text-lg text-[hsl(var(--cad-text-secondary))] leading-relaxed" data-testid="text-hero-description">
-                Complete workforce automation with GPS-verified clock-ins, automated payroll, 
-                smart scheduling, auto-billing, RMS reporting, and full compliance. Save $130k-$250k/year.
+                GPS time tracking • Smart scheduling • Auto-payroll • Client invoicing • Benefits management • 
+                Performance reviews • PTO workflows • RMS reporting • Live support • Admin command center • 
+                Multi-portal access • White-label ready. Every feature live and ready today.
               </p>
 
               {/* Key Metrics */}
