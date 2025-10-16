@@ -2361,3 +2361,45 @@ export const insertSupportTicketAccessSchema = createInsertSchema(supportTicketA
 
 export type InsertSupportTicketAccess = z.infer<typeof insertSupportTicketAccessSchema>;
 export type SupportTicketAccess = typeof supportTicketAccess.$inferSelect;
+
+// AI Usage Logs - Track AI assistant costs for subscriber billing (they pay, we don't)
+export const aiUsageLogs = pgTable("ai_usage_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Relationships
+  conversationId: varchar("conversation_id").notNull().references(() => chatConversations.id, { onDelete: 'cascade' }),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  userId: varchar("user_id").references(() => users.id, { onDelete: 'set null' }),
+  
+  // AI request details
+  messageId: varchar("message_id").references(() => chatMessages.id, { onDelete: 'set null' }),
+  requestType: varchar("request_type").notNull(), // 'greeting', 'question', 'followup'
+  model: varchar("model").notNull(), // 'gpt-4o-mini', 'gpt-4o', etc.
+  
+  // Token usage (for cost calculation)
+  promptTokens: integer("prompt_tokens").notNull().default(0),
+  completionTokens: integer("completion_tokens").notNull().default(0),
+  totalTokens: integer("total_tokens").notNull().default(0),
+  
+  // Cost tracking (USD, subscriber pays)
+  promptCost: decimal("prompt_cost", { precision: 10, scale: 6 }).notNull().default("0"), // Cost per prompt token
+  completionCost: decimal("completion_cost", { precision: 10, scale: 6 }).notNull().default("0"), // Cost per completion token
+  totalCost: decimal("total_cost", { precision: 10, scale: 6 }).notNull().default("0"), // Total cost in USD
+  
+  // User tier tracking (for limits)
+  userTier: varchar("user_tier").notNull(), // 'free_guest', 'subscriber'
+  usageCount: integer("usage_count").notNull(), // Response number for this user (1st, 2nd, 3rd, etc.)
+  
+  // Billing period
+  billingMonth: varchar("billing_month").notNull(), // 'YYYY-MM' format for monthly billing
+  
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertAiUsageLogSchema = createInsertSchema(aiUsageLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertAiUsageLog = z.infer<typeof insertAiUsageLogSchema>;
+export type AiUsageLog = typeof aiUsageLogs.$inferSelect;
