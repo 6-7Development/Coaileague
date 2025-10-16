@@ -1,0 +1,320 @@
+/**
+ * PayrollOS™ Automation Engine
+ * 99% Automated Payroll Processing with 1% Human QC
+ * 
+ * Features:
+ * - Auto-detect pay periods (weekly, bi-weekly, monthly)
+ * - Pull time entries from TrackOS™
+ * - Calculate gross pay with overtime (1.5x after 40hrs)
+ * - Federal & state tax withholding
+ * - Social Security (6.2%) & Medicare (1.45%)
+ * - Generate paychecks ready for QC approval
+ */
+
+import { db } from "../db";
+import { timeEntries, employees, payrollRuns, payrollEntries, workspaces, invoiceLineItems, type TimeEntry } from "@shared/schema";
+import { eq, and, gte, lte, isNull, sql, notInArray } from "drizzle-orm";
+import { startOfWeek, endOfWeek, subWeeks, format, startOfMonth, endOfMonth, subMonths } from "date-fns";
+
+interface PayPeriod {
+  start: Date;
+  end: Date;
+  type: 'weekly' | 'bi-weekly' | 'monthly';
+}
+
+interface PayrollCalculation {
+  employeeId: string;
+  employeeName: string;
+  regularHours: number;
+  overtimeHours: number;
+  hourlyRate: number;
+  grossPay: number;
+  federalTax: number;
+  stateTax: number;
+  socialSecurity: number;
+  medicare: number;
+  netPay: number;
+}
+
+export class PayrollAutomationEngine {
+  
+  /**
+   * Auto-detect pay period based on workspace settings
+   * Default: bi-weekly (most common)
+   */
+  static detectPayPeriod(workspacePaySchedule?: string): PayPeriod {
+    const now = new Date();
+    
+    switch (workspacePaySchedule) {
+      case 'weekly':
+        return {
+          start: startOfWeek(subWeeks(now, 1)),
+          end: endOfWeek(subWeeks(now, 1)),
+          type: 'weekly'
+        };
+      
+      case 'monthly':
+        return {
+          start: startOfMonth(subMonths(now, 1)),
+          end: endOfMonth(subMonths(now, 1)),
+          type: 'monthly'
+        };
+      
+      case 'bi-weekly':
+      default:
+        // Bi-weekly: last 14 days
+        const twoWeeksAgo = new Date(now);
+        twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+        return {
+          start: twoWeeksAgo,
+          end: now,
+          type: 'bi-weekly'
+        };
+    }
+  }
+  
+  /**
+   * Calculate federal tax withholding (simplified progressive brackets)
+   * Based on 2024 tax tables for single filers
+   */
+  static calculateFederalTax(grossPay: number, filingStatus: string = 'single'): number {
+    // Simplified federal tax brackets (annual basis, converted to pay period)
+    // Single filer 2024 brackets (simplified)
+    const brackets = [
+      { limit: 11000, rate: 0.10 },
+      { limit: 44725, rate: 0.12 },
+      { limit: 95375, rate: 0.22 },
+      { limit: Infinity, rate: 0.24 }
+    ];
+    
+    // Annualize gross pay (bi-weekly * 26 periods)
+    const annualGross = grossPay * 26;
+    let tax = 0;
+    let previousLimit = 0;
+    
+    for (const bracket of brackets) {
+      if (annualGross > bracket.limit) {
+        tax += (bracket.limit - previousLimit) * bracket.rate;
+        previousLimit = bracket.limit;
+      } else {
+        tax += (annualGross - previousLimit) * bracket.rate;
+        break;
+      }
+    }
+    
+    // Convert back to pay period
+    return parseFloat((tax / 26).toFixed(2));
+  }
+  
+  /**
+   * Calculate state tax (simplified - flat 5% for demo)
+   * In production, this would use state-specific tables
+   */
+  static calculateStateTax(grossPay: number, state: string = 'CA'): number {
+    // Simplified state tax - 5% flat rate
+    // In production, use state-specific tax tables
+    return parseFloat((grossPay * 0.05).toFixed(2));
+  }
+  
+  /**
+   * Calculate Social Security (6.2% up to wage base $168,600)
+   */
+  static calculateSocialSecurity(grossPay: number): number {
+    const SS_RATE = 0.062;
+    const WAGE_BASE = 168600; // 2024 wage base
+    
+    // For simplicity, not tracking YTD - in production track cumulative
+    return parseFloat((grossPay * SS_RATE).toFixed(2));
+  }
+  
+  /**
+   * Calculate Medicare (1.45% no limit)
+   */
+  static calculateMedicare(grossPay: number): number {
+    const MEDICARE_RATE = 0.0145;
+    return parseFloat((grossPay * MEDICARE_RATE).toFixed(2));
+  }
+  
+  /**
+   * Calculate overtime (1.5x after 40 hours per week)
+   */
+  static calculateOvertimeHours(totalHours: number): { regular: number; overtime: number } {
+    const OVERTIME_THRESHOLD = 40;
+    
+    if (totalHours <= OVERTIME_THRESHOLD) {
+      return { regular: totalHours, overtime: 0 };
+    }
+    
+    return {
+      regular: OVERTIME_THRESHOLD,
+      overtime: totalHours - OVERTIME_THRESHOLD
+    };
+  }
+  
+  /**
+   * Process payroll for a workspace - FULLY AUTOMATED
+   */
+  static async processAutomatedPayroll(workspaceId: string, userId: string): Promise<{
+    payrollRunId: string;
+    totalEmployees: number;
+    totalGrossPay: number;
+    totalNetPay: number;
+    calculations: PayrollCalculation[];
+  }> {
+    // Auto-detect pay period (default: bi-weekly)
+    const payPeriod = this.detectPayPeriod('bi-weekly');
+    
+    // Get all active employees
+    const activeEmployees = await db
+      .select()
+      .from(employees)
+      .where(
+        and(
+          eq(employees.workspaceId, workspaceId),
+          eq(employees.isActive, true)
+        )
+      );
+    
+    const calculations: PayrollCalculation[] = [];
+    let totalGrossPay = 0;
+    let totalNetPay = 0;
+    
+    // Calculate payroll for each employee
+    for (const employee of activeEmployees) {
+      // Get time entries for pay period
+      const employeeTimeEntries = await db
+        .select()
+        .from(timeEntries)
+        .where(
+          and(
+            eq(timeEntries.workspaceId, workspaceId),
+            eq(timeEntries.employeeId, employee.id),
+            gte(timeEntries.clockIn, payPeriod.start),
+            lte(timeEntries.clockIn, payPeriod.end)
+          )
+        );
+      
+      // Filter out billed entries (check invoice_line_items)
+      const billedTimeEntryIds = await db
+        .select({ timeEntryId: invoiceLineItems.timeEntryId })
+        .from(invoiceLineItems)
+        .where(isNull(invoiceLineItems.timeEntryId));
+      
+      const billedIds = new Set(billedTimeEntryIds.map(item => item.timeEntryId).filter(Boolean));
+      const unbilledEntries = employeeTimeEntries.filter(entry => !billedIds.has(entry.id));
+      
+      // Sum total hours
+      const totalHours = unbilledEntries.reduce((sum: number, entry: TimeEntry) => {
+        return sum + parseFloat(entry.totalHours?.toString() || '0');
+      }, 0);
+      
+      if (totalHours === 0) continue; // Skip employees with no hours
+      
+      // Calculate regular and overtime hours
+      const { regular, overtime } = this.calculateOvertimeHours(totalHours);
+      
+      const hourlyRate = parseFloat(employee.hourlyRate?.toString() || '0');
+      const overtimeRate = hourlyRate * 1.5;
+      
+      // Calculate gross pay
+      const regularPay = regular * hourlyRate;
+      const overtimePay = overtime * overtimeRate;
+      const grossPay = regularPay + overtimePay;
+      
+      // Calculate taxes and deductions
+      const federalTax = this.calculateFederalTax(grossPay);
+      const stateTax = this.calculateStateTax(grossPay);
+      const socialSecurity = this.calculateSocialSecurity(grossPay);
+      const medicare = this.calculateMedicare(grossPay);
+      
+      // Calculate net pay
+      const totalDeductions = federalTax + stateTax + socialSecurity + medicare;
+      const netPay = grossPay - totalDeductions;
+      
+      calculations.push({
+        employeeId: employee.id,
+        employeeName: `${employee.firstName} ${employee.lastName}`,
+        regularHours: regular,
+        overtimeHours: overtime,
+        hourlyRate,
+        grossPay: parseFloat(grossPay.toFixed(2)),
+        federalTax,
+        stateTax,
+        socialSecurity,
+        medicare,
+        netPay: parseFloat(netPay.toFixed(2))
+      });
+      
+      totalGrossPay += grossPay;
+      totalNetPay += netPay;
+    }
+    
+    // Create payroll run (status: pending for 1% QC)
+    const [payrollRun] = await db
+      .insert(payrollRuns)
+      .values({
+        workspaceId,
+        periodStart: payPeriod.start,
+        periodEnd: payPeriod.end,
+        status: 'pending', // Requires 1% human QC approval
+        totalGrossPay: totalGrossPay.toFixed(2),
+        totalTaxes: (totalGrossPay - totalNetPay).toFixed(2),
+        totalNetPay: totalNetPay.toFixed(2),
+        processedBy: userId,
+        processedAt: new Date()
+      })
+      .returning();
+    
+    // Create payroll entries for each employee
+    for (const calc of calculations) {
+      await db.insert(payrollEntries).values({
+        payrollRunId: payrollRun.id,
+        employeeId: calc.employeeId,
+        workspaceId,
+        regularHours: calc.regularHours.toFixed(2),
+        overtimeHours: calc.overtimeHours.toFixed(2),
+        hourlyRate: calc.hourlyRate.toFixed(2),
+        grossPay: calc.grossPay.toFixed(2),
+        federalTax: calc.federalTax.toFixed(2),
+        stateTax: calc.stateTax.toFixed(2),
+        socialSecurity: calc.socialSecurity.toFixed(2),
+        medicare: calc.medicare.toFixed(2),
+        netPay: calc.netPay.toFixed(2)
+      });
+    }
+    
+    return {
+      payrollRunId: payrollRun.id,
+      totalEmployees: calculations.length,
+      totalGrossPay: parseFloat(totalGrossPay.toFixed(2)),
+      totalNetPay: parseFloat(totalNetPay.toFixed(2)),
+      calculations
+    };
+  }
+  
+  /**
+   * Approve payroll run (1% human QC step)
+   */
+  static async approvePayrollRun(payrollRunId: string, approverId: string): Promise<void> {
+    await db
+      .update(payrollRuns)
+      .set({
+        status: 'approved',
+        processedBy: approverId,
+        processedAt: new Date()
+      })
+      .where(eq(payrollRuns.id, payrollRunId));
+  }
+  
+  /**
+   * Mark payroll as processed/paid (after direct deposit/ACH)
+   */
+  static async markPayrollPaid(payrollRunId: string): Promise<void> {
+    await db
+      .update(payrollRuns)
+      .set({
+        status: 'paid'
+      })
+      .where(eq(payrollRuns.id, payrollRunId));
+  }
+}
