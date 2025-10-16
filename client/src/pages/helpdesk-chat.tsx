@@ -157,13 +157,90 @@ export default function HelpdeskChatPage() {
 
   const selectedConv = conversations.find(c => c.id === selectedConversation);
 
+  // Room List Component (Active Conversations - MSN/IRC Style)
+  const RoomListPanel = () => (
+    <div className="h-full flex flex-col bg-[#1e1e1e]">
+      <div className="px-3 py-3 bg-[#252525] border-b border-[#3a3a3a]">
+        <div className="flex items-center gap-2 text-gray-300">
+          <MessageSquare className="w-4 h-4" />
+          <span className="text-sm font-semibold">Active Rooms ({conversations.length})</span>
+        </div>
+      </div>
+      <ScrollArea className="flex-1">
+        <div className="p-2 space-y-1">
+          {conversationsLoading ? (
+            <div className="text-gray-500 text-center py-4 text-sm">Loading rooms...</div>
+          ) : conversations.length === 0 ? (
+            <div className="text-gray-500 text-center py-8 px-3">
+              <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-50" />
+              <p className="text-xs">No active support rooms</p>
+            </div>
+          ) : (
+            conversations.map((conv) => (
+              <button
+                key={conv.id}
+                onClick={() => setSelectedConversation(conv.id)}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded transition-colors min-h-[48px] ${
+                  selectedConversation === conv.id 
+                    ? 'bg-indigo-600/20 border border-indigo-600/30' 
+                    : 'hover:bg-[#2a2a2a] border border-transparent'
+                }`}
+                data-testid={`room-${conv.id}`}
+              >
+                <div className="relative">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                    conv.status === 'active' 
+                      ? 'bg-gradient-to-br from-green-600 to-emerald-600' 
+                      : conv.status === 'resolved'
+                      ? 'bg-gradient-to-br from-blue-600 to-cyan-600'
+                      : 'bg-gradient-to-br from-gray-600 to-gray-700'
+                  }`}>
+                    <MessageSquare className="w-5 h-5 text-white" />
+                  </div>
+                  <div className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-[#1e1e1e] ${
+                    conv.status === 'active' ? 'bg-green-500' : 
+                    conv.status === 'resolved' ? 'bg-blue-500' : 'bg-gray-500'
+                  }`} />
+                </div>
+                <div className="flex-1 min-w-0 text-left">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <p className="text-sm font-medium text-white truncate">
+                      Room #{conv.id.slice(0, 8)}
+                    </p>
+                    {conv.isSilenced && <MicOff className="w-3 h-3 text-red-400 flex-shrink-0" />}
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Badge className={`text-[10px] h-4 px-1.5 ${
+                      conv.priority === 'urgent' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
+                      conv.priority === 'high' ? 'bg-orange-500/10 text-orange-500 border-orange-500/20' :
+                      'bg-blue-500/10 text-blue-500 border-blue-500/20'
+                    }`}>
+                      {conv.priority}
+                    </Badge>
+                    <Badge className={`text-[10px] h-4 px-1.5 ${
+                      conv.status === 'active' ? 'bg-green-500/10 text-green-500 border-green-500/20' :
+                      conv.status === 'resolved' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
+                      'bg-gray-500/10 text-gray-500 border-gray-500/20'
+                    }`}>
+                      {conv.status}
+                    </Badge>
+                  </div>
+                </div>
+              </button>
+            ))
+          )}
+        </div>
+      </ScrollArea>
+    </div>
+  );
+
   // User List Component
   const UserListPanel = () => (
     <div className="h-full flex flex-col bg-[#1e1e1e]">
       <div className="px-3 py-3 bg-[#252525] border-b border-[#3a3a3a]">
         <div className="flex items-center gap-2 text-gray-300">
           <Users className="w-4 h-4" />
-          <span className="text-sm font-semibold">Online Users ({onlineUsers.length})</span>
+          <span className="text-sm font-semibold">Online Staff ({onlineUsers.length})</span>
         </div>
       </div>
       <ScrollArea className="flex-1">
@@ -322,38 +399,49 @@ export default function HelpdeskChatPage() {
   // Chat Panel Component
   const ChatPanel = () => (
     <div className="h-full flex flex-col bg-[#2b2b2b]">
-      {/* Conversation Selector */}
-      <div className="px-3 py-2 bg-[#252525] border-b border-[#3a3a3a] flex items-center gap-2">
-        <MessageSquare className="w-4 h-4 text-gray-400 flex-shrink-0" />
-        <select
-          value={selectedConversation || ""}
-          onChange={(e) => setSelectedConversation(e.target.value || null)}
-          className="flex-1 bg-[#1e1e1e] text-white text-sm border border-[#3a3a3a] rounded px-2 py-2 min-h-[40px]"
-          data-testid="select-conversation"
-        >
-          <option value="">Select a conversation...</option>
-          {conversations.map((conv) => (
-            <option key={conv.id} value={conv.id}>
-              Conversation #{conv.id.slice(0, 8)} - {conv.status}
-            </option>
-          ))}
-        </select>
+      {/* Current Room Header */}
+      <div className="px-3 py-3 bg-[#252525] border-b border-[#3a3a3a] flex items-center gap-2 min-h-[56px]">
+        {/* Back button for mobile */}
         {selectedConv && (
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className={
-              selectedConv.priority === 'urgent' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
-              selectedConv.priority === 'high' ? 'bg-orange-500/10 text-orange-500 border-orange-500/20' :
-              'bg-blue-500/10 text-blue-500 border-blue-500/20'
-            }>
-              {selectedConv.priority}
-            </Badge>
-            {selectedConv.isSilenced && (
-              <Badge variant="outline" className="bg-red-500/10 text-red-500 border-red-500/20">
-                <MicOff className="w-3 h-3 mr-1" />
-                Silenced
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setSelectedConversation(null)}
+            className="lg:hidden flex-shrink-0 min-h-[40px] min-w-[40px]"
+            data-testid="button-back-to-rooms"
+          >
+            <X className="w-4 h-4 text-white" />
+          </Button>
+        )}
+        <MessageSquare className="w-4 h-4 text-gray-400 flex-shrink-0" />
+        {selectedConv ? (
+          <>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-white font-semibold text-sm truncate">
+                Room #{selectedConv.id.slice(0, 8)}
+              </h3>
+              <p className="text-xs text-gray-400 truncate">
+                Workspace: {selectedConv.workspaceId.slice(0, 8)}
+              </p>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <Badge variant="outline" className={
+                selectedConv.priority === 'urgent' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
+                selectedConv.priority === 'high' ? 'bg-orange-500/10 text-orange-500 border-orange-500/20' :
+                'bg-blue-500/10 text-blue-500 border-blue-500/20'
+              }>
+                {selectedConv.priority}
               </Badge>
-            )}
-          </div>
+              {selectedConv.isSilenced && (
+                <Badge variant="outline" className="bg-red-500/10 text-red-500 border-red-500/20">
+                  <MicOff className="w-3 h-3 mr-1" />
+                  Silenced
+                </Badge>
+              )}
+            </div>
+          </>
+        ) : (
+          <span className="text-gray-500 text-sm">No room selected</span>
         )}
       </div>
 
@@ -485,7 +573,7 @@ export default function HelpdeskChatPage() {
               data-testid="tab-chat"
             >
               <MessageSquare className="w-4 h-4 mr-2" />
-              Chat
+              Rooms ({conversations.length})
             </TabsTrigger>
             <TabsTrigger 
               value="users" 
@@ -493,7 +581,7 @@ export default function HelpdeskChatPage() {
               data-testid="tab-users"
             >
               <Users className="w-4 h-4 mr-2" />
-              Users ({onlineUsers.length})
+              Staff ({onlineUsers.length})
             </TabsTrigger>
             <TabsTrigger 
               value="info" 
@@ -505,7 +593,12 @@ export default function HelpdeskChatPage() {
             </TabsTrigger>
           </TabsList>
           <TabsContent value="chat" className="flex-1 m-0 min-h-0">
-            <ChatPanel />
+            {/* Show room list and selected chat on mobile */}
+            {!selectedConversation ? (
+              <RoomListPanel />
+            ) : (
+              <ChatPanel />
+            )}
           </TabsContent>
           <TabsContent value="users" className="flex-1 m-0 min-h-0">
             <UserListPanel />
@@ -518,19 +611,42 @@ export default function HelpdeskChatPage() {
 
       {/* Desktop 3-Column Layout (hidden on mobile) */}
       <div className="hidden lg:flex flex-1 min-h-0">
-        {/* Left Column: User List */}
+        {/* Left Column: Room List */}
         <div className="w-64 border-r border-[#3a3a3a]">
-          <UserListPanel />
+          <RoomListPanel />
         </div>
 
-        {/* Center Column: Messages */}
+        {/* Center Column: Chat Messages */}
         <div className="flex-1 min-w-0">
           <ChatPanel />
         </div>
 
-        {/* Right Column: Info Panel */}
-        <div className="w-80 border-l border-[#3a3a3a]">
-          <InfoPanel />
+        {/* Right Column: Info Panel with Tabs */}
+        <div className="w-80 border-l border-[#3a3a3a] flex flex-col">
+          <Tabs defaultValue="info" className="flex-1 flex flex-col min-h-0">
+            <TabsList className="w-full rounded-none bg-[#252525] border-b border-[#3a3a3a] p-0 h-auto">
+              <TabsTrigger 
+                value="info" 
+                className="flex-1 rounded-none data-[state=active]:bg-[#1e1e1e] data-[state=active]:text-white py-2 text-xs"
+              >
+                <Info className="w-3 h-3 mr-1" />
+                Room Info
+              </TabsTrigger>
+              <TabsTrigger 
+                value="staff" 
+                className="flex-1 rounded-none data-[state=active]:bg-[#1e1e1e] data-[state=active]:text-white py-2 text-xs"
+              >
+                <Users className="w-3 h-3 mr-1" />
+                Staff ({onlineUsers.length})
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="info" className="flex-1 m-0 min-h-0">
+              <InfoPanel />
+            </TabsContent>
+            <TabsContent value="staff" className="flex-1 m-0 min-h-0">
+              <UserListPanel />
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
 

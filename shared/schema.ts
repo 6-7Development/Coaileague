@@ -2084,6 +2084,7 @@ export const chatMessages = pgTable("chat_messages", {
   // Content
   message: text("message").notNull(),
   messageType: varchar("message_type").default("text"), // 'text', 'file', 'system'
+  isSystemMessage: boolean("is_system_message").default(false), // For breach notifications and system announcements (shown in gray)
   
   // File attachments
   attachmentUrl: varchar("attachment_url"),

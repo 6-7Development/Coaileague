@@ -30,6 +30,7 @@ import {
   featureFlags,
   platformRevenue,
   workspaceAiUsage,
+  platformRoles,
   chatConversations,
   chatMessages,
   customForms,
@@ -99,7 +100,7 @@ import {
   type InsertCustomFormSubmission,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, isNotNull, or, like, sql } from "drizzle-orm";
+import { eq, and, desc, isNotNull, isNull, or, like, sql } from "drizzle-orm";
 
 // Generate unique organization ID: wfosupport-#########
 function generateOrganizationId(): string {
@@ -277,10 +278,14 @@ export interface IStorage {
   updateEmployeeTermination(id: string, workspaceId: string, data: Partial<InsertEmployeeTermination>): Promise<EmployeeTermination | undefined>;
   completeTermination(id: string, workspaceId: string): Promise<EmployeeTermination | undefined>;
   
+  // Platform Role operations
+  getUserPlatformRole(userId: string): Promise<string | null>;
+  
   // Live Chat operations (Support System)
   createChatConversation(conversation: InsertChatConversation): Promise<ChatConversation>;
   getChatConversation(id: string): Promise<ChatConversation | undefined>;
   getChatConversationsByWorkspace(workspaceId: string, filters?: { status?: string }): Promise<ChatConversation[]>;
+  getAllChatConversations(filters?: { status?: string }): Promise<ChatConversation[]>;
   updateChatConversation(id: string, data: Partial<InsertChatConversation>): Promise<ChatConversation | undefined>;
   closeChatConversation(id: string): Promise<ChatConversation | undefined>;
   
@@ -1731,6 +1736,23 @@ export class DatabaseStorage implements IStorage {
   }
 
   // ============================================================================
+  // PLATFORM ROLE OPERATIONS
+  // ============================================================================
+  
+  async getUserPlatformRole(userId: string): Promise<string | null> {
+    const [roleRecord] = await db
+      .select()
+      .from(platformRoles)
+      .where(and(
+        eq(platformRoles.userId, userId),
+        isNull(platformRoles.revokedAt)
+      ))
+      .limit(1);
+    
+    return roleRecord?.role || null;
+  }
+
+  // ============================================================================
   // LIVE CHAT OPERATIONS (Support System)
   // ============================================================================
   
@@ -1764,6 +1786,16 @@ export class DatabaseStorage implements IStorage {
       .from(chatConversations)
       .where(and(...conditions))
       .orderBy(desc(chatConversations.lastMessageAt));
+  }
+  
+  async getAllChatConversations(filters?: { status?: string }): Promise<ChatConversation[]> {
+    let query = db.select().from(chatConversations);
+    
+    if (filters?.status) {
+      query = query.where(eq(chatConversations.status, filters.status as any)) as any;
+    }
+    
+    return await query.orderBy(desc(chatConversations.lastMessageAt));
   }
   
   async updateChatConversation(id: string, data: Partial<InsertChatConversation>): Promise<ChatConversation | undefined> {

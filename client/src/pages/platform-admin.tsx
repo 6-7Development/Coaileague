@@ -1,13 +1,16 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { 
   Activity, 
   Users, 
@@ -73,11 +76,54 @@ interface PlatformStats {
 
 export default function PlatformAdmin() {
   const [showSettings, setShowSettings] = useState(false);
+  const { toast } = useToast();
+  
+  // Platform settings state
+  const [platformSettings, setPlatformSettings] = useState({
+    platformName: "WorkforceOS",
+    maintenanceMode: false,
+    newWorkspaceRegistration: true,
+    emailNotifications: true,
+    supportEmail: "support@workforceos.com",
+    enforceSSO: false,
+    requireMFA: false,
+    passwordExpiry: 90,
+    sessionTimeout: 30
+  });
   const [showSupportQueue, setShowSupportQueue] = useState(false);
   
   const { data: stats, isLoading } = useQuery<PlatformStats>({
     queryKey: ["/api/platform/stats"],
   });
+  
+  const saveSettingsMutation = useMutation({
+    mutationFn: async (settings: typeof platformSettings) => {
+      return await apiRequest("/api/platform/settings", {
+        method: "POST",
+        body: JSON.stringify(settings),
+        headers: { "Content-Type": "application/json" }
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Settings saved",
+        description: "Platform settings have been updated successfully"
+      });
+      setShowSettings(false);
+      queryClient.invalidateQueries({ queryKey: ["/api/platform/stats"] });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to save platform settings",
+        variant: "destructive"
+      });
+    }
+  });
+  
+  const handleSaveSettings = () => {
+    saveSettingsMutation.mutate(platformSettings);
+  };
 
   if (isLoading) {
     return (
@@ -411,7 +457,7 @@ export default function PlatformAdmin() {
 
       {/* Platform Settings Dialog */}
       <Dialog open={showSettings} onOpenChange={setShowSettings}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[85vh]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Settings className="h-5 w-5" />
@@ -421,37 +467,129 @@ export default function PlatformAdmin() {
               Configure platform-wide settings and preferences
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Platform Name</Label>
-              <Input defaultValue="WorkforceOS" data-testid="input-platform-name" />
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label>Maintenance Mode</Label>
-                <p className="text-sm text-muted-foreground">Temporarily disable platform access</p>
+          
+          <ScrollArea className="max-h-[calc(85vh-180px)] pr-4">
+            <div className="space-y-6 py-4">
+              {/* General Settings */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-semibold">General</h3>
+                <div className="space-y-2">
+                  <Label>Platform Name</Label>
+                  <Input 
+                    value={platformSettings.platformName}
+                    onChange={(e) => setPlatformSettings({...platformSettings, platformName: e.target.value})}
+                    data-testid="input-platform-name" 
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Maintenance Mode</Label>
+                    <p className="text-sm text-muted-foreground">Temporarily disable platform access</p>
+                  </div>
+                  <Switch 
+                    checked={platformSettings.maintenanceMode}
+                    onCheckedChange={(checked) => setPlatformSettings({...platformSettings, maintenanceMode: checked})}
+                    data-testid="switch-maintenance-mode" 
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>New Workspace Registration</Label>
+                    <p className="text-sm text-muted-foreground">Allow new workspaces to register</p>
+                  </div>
+                  <Switch 
+                    checked={platformSettings.newWorkspaceRegistration}
+                    onCheckedChange={(checked) => setPlatformSettings({...platformSettings, newWorkspaceRegistration: checked})}
+                    data-testid="switch-new-registration" 
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Email Notifications</Label>
+                    <p className="text-sm text-muted-foreground">Send platform-wide email alerts</p>
+                  </div>
+                  <Switch 
+                    checked={platformSettings.emailNotifications}
+                    onCheckedChange={(checked) => setPlatformSettings({...platformSettings, emailNotifications: checked})}
+                    data-testid="switch-email-notifications" 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Support Email</Label>
+                  <Input 
+                    type="email" 
+                    value={platformSettings.supportEmail}
+                    onChange={(e) => setPlatformSettings({...platformSettings, supportEmail: e.target.value})}
+                    data-testid="input-support-email" 
+                  />
+                </div>
               </div>
-              <Switch data-testid="switch-maintenance-mode" />
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label>New Workspace Registration</Label>
-                <p className="text-sm text-muted-foreground">Allow new workspaces to register</p>
+
+              {/* Security Settings */}
+              <div className="space-y-4 pt-4 border-t">
+                <h3 className="text-sm font-semibold">Security</h3>
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Enforce SSO</Label>
+                    <p className="text-sm text-muted-foreground">Require single sign-on for all workspaces</p>
+                  </div>
+                  <Switch 
+                    checked={platformSettings.enforceSSO}
+                    onCheckedChange={(checked) => setPlatformSettings({...platformSettings, enforceSSO: checked})}
+                    data-testid="switch-enforce-sso" 
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Require MFA</Label>
+                    <p className="text-sm text-muted-foreground">Mandatory multi-factor authentication</p>
+                  </div>
+                  <Switch 
+                    checked={platformSettings.requireMFA}
+                    onCheckedChange={(checked) => setPlatformSettings({...platformSettings, requireMFA: checked})}
+                    data-testid="switch-require-mfa" 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Password Expiry (days)</Label>
+                  <Input 
+                    type="number" 
+                    value={platformSettings.passwordExpiry}
+                    onChange={(e) => setPlatformSettings({...platformSettings, passwordExpiry: parseInt(e.target.value) || 90})}
+                    data-testid="input-password-expiry" 
+                  />
+                  <p className="text-xs text-muted-foreground">Force password change after this many days</p>
+                </div>
+                <div className="space-y-2">
+                  <Label>Session Timeout (minutes)</Label>
+                  <Input 
+                    type="number" 
+                    value={platformSettings.sessionTimeout}
+                    onChange={(e) => setPlatformSettings({...platformSettings, sessionTimeout: parseInt(e.target.value) || 30})}
+                    data-testid="input-session-timeout" 
+                  />
+                  <p className="text-xs text-muted-foreground">Auto-logout after inactivity</p>
+                </div>
               </div>
-              <Switch defaultChecked data-testid="switch-new-registration" />
             </div>
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label>Email Notifications</Label>
-                <p className="text-sm text-muted-foreground">Send platform-wide email alerts</p>
-              </div>
-              <Switch defaultChecked data-testid="switch-email-notifications" />
-            </div>
-            <div className="space-y-2">
-              <Label>Support Email</Label>
-              <Input type="email" defaultValue="support@workforceos.com" data-testid="input-support-email" />
-            </div>
-          </div>
+          </ScrollArea>
+
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setShowSettings(false)}
+              data-testid="button-cancel-settings"
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSaveSettings}
+              disabled={saveSettingsMutation.isPending}
+              data-testid="button-save-settings"
+            >
+              {saveSettingsMutation.isPending ? "Saving..." : "Save Changes"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

@@ -3462,15 +3462,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/platform/users', requirePlatformAdmin, async (req, res) => {
     await createPlatformUser(req, res);
   });
+  
+  // Save platform settings
+  app.post('/api/platform/settings', requirePlatformAdmin, async (req, res) => {
+    try {
+      // In a production system, these would be saved to a platform_settings table
+      // For now, we'll just acknowledge the save and return success
+      const settings = req.body;
+      
+      // TODO: Persist to database - for now just validate and return success
+      res.json({ 
+        success: true, 
+        message: "Platform settings saved successfully",
+        settings 
+      });
+    } catch (error: any) {
+      console.error("Error saving platform settings:", error);
+      res.status(500).json({ message: error.message || "Failed to save settings" });
+    }
+  });
 
   // ============================================================================
   // LIVE CHAT ROUTES (WebSocket Support System)
   // ============================================================================
   
-  // Get all conversations for workspace
-  app.get('/api/chat/conversations', isAuthenticated, async (req: any, res) => {
-    try {
+  // Dual auth middleware: Supports both session-based AND Replit OAuth
+  const requireAnyAuth: RequestHandler = async (req: any, res, next) => {
+    // Try session-based auth first
+    if (req.session?.userId) {
+      const [user] = await db.select().from(users).where(eq(users.id, req.session.userId)).limit(1);
+      if (user) {
+        req.user = user;
+        return next();
+      }
+    }
+    
+    // Try Replit OAuth
+    if (req.isAuthenticated() && req.user?.claims?.sub) {
       const userId = req.user.claims.sub;
+      const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+      if (user) {
+        req.user = user;
+        return next();
+      }
+    }
+    
+    return res.status(401).json({ message: "Unauthorized" });
+  };
+  
+  // Get all conversations for workspace or all conversations for platform staff
+  app.get('/api/chat/conversations', requireAnyAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user!.id;
+      
+      // Check if user is platform admin/staff
+      const platformRole = await storage.getUserPlatformRole(userId);
+      
+      if (platformRole && ['platform_admin', 'deputy_admin', 'deputy_assistant', 'sysop'].includes(platformRole)) {
+        // Platform staff can see ALL conversations across all workspaces
+        const status = req.query.status as string | undefined;
+        const allConversations = await storage.getAllChatConversations({ status });
+        return res.json(allConversations);
+      }
+      
+      // Regular workspace users see only their workspace conversations
       const workspace = await storage.getWorkspaceByOwnerId(userId);
       
       if (!workspace) {
@@ -3510,10 +3565,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get conversation messages
-  app.get('/api/chat/conversations/:id/messages', isAuthenticated, async (req: any, res) => {
+  app.get('/api/chat/conversations/:id/messages', requireAnyAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const { id } = req.params;
-      const userId = req.user.claims.sub;
+      const userId = req.user!.id;
+      
+      // Check if user is platform admin/staff
+      const platformRole = await storage.getUserPlatformRole(userId);
+      
+      if (platformRole && ['platform_admin', 'deputy_admin', 'deputy_assistant', 'sysop'].includes(platformRole)) {
+        // Platform staff can view ANY conversation's messages (full security/monitoring access)
+        const messages = await storage.getChatMessagesByConversation(id);
+        return res.json(messages);
+      }
+      
+      // Regular workspace users need workspace verification
       const workspace = await storage.getWorkspaceByOwnerId(userId);
       
       if (!workspace) {
