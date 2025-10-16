@@ -19,8 +19,12 @@ interface PlatformStats {
   totalWorkspaces: number;
   totalUsers: number;
   activeSubscriptions: number;
+  newSignups: number;
+  invoiceCount: number;
   monthlyRevenue: string;
   platformFees: string;
+  chatUsers: number;
+  chatStaff: number;
   avgRevenue: string;
   churnRate: string;
   systemHealth: {
@@ -145,21 +149,21 @@ export default function RootAdminDashboard() {
         </div>
       </div>
 
-      {/* Platform Metrics Row */}
+      {/* Platform Business Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="border-l-4 border-l-blue-500">
           <CardHeader className="pb-3">
             <CardDescription className="flex items-center gap-2 text-sm font-medium">
               <Building2 className="h-4 w-4 text-blue-500" />
-              Total Workspaces
+              New Customers
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold" data-testid="text-total-workspaces">
-              {stats?.totalWorkspaces || 0}
+            <div className="text-3xl font-bold" data-testid="text-new-signups">
+              {stats?.newSignups || 0}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              Active organizations
+              Signed up this month
             </p>
           </CardContent>
         </Card>
@@ -167,16 +171,16 @@ export default function RootAdminDashboard() {
         <Card className="border-l-4 border-l-emerald-500">
           <CardHeader className="pb-3">
             <CardDescription className="flex items-center gap-2 text-sm font-medium">
-              <Users className="h-4 w-4 text-emerald-500" />
-              Total Users
+              <DollarSign className="h-4 w-4 text-emerald-500" />
+              Monthly Invoices
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold" data-testid="text-total-users">
-              {stats?.totalUsers || 0}
+            <div className="text-3xl font-bold" data-testid="text-invoice-revenue">
+              ${parseFloat(stats?.monthlyRevenue || "0").toLocaleString('en-US', { minimumFractionDigits: 2 })}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              Platform-wide
+              {stats?.invoiceCount || 0} invoices generated
             </p>
           </CardContent>
         </Card>
@@ -184,16 +188,16 @@ export default function RootAdminDashboard() {
         <Card className="border-l-4 border-l-amber-500">
           <CardHeader className="pb-3">
             <CardDescription className="flex items-center gap-2 text-sm font-medium">
-              <DollarSign className="h-4 w-4 text-amber-500" />
-              Platform Revenue
+              <TrendingUp className="h-4 w-4 text-amber-500" />
+              Platform Fees Earned
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold" data-testid="text-platform-revenue">
+            <div className="text-3xl font-bold" data-testid="text-platform-fees">
               ${parseFloat(stats?.platformFees || "0").toLocaleString('en-US', { minimumFractionDigits: 2 })}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              This month (fees)
+              Total earnings this month
             </p>
           </CardContent>
         </Card>
@@ -201,17 +205,111 @@ export default function RootAdminDashboard() {
         <Card className="border-l-4 border-l-violet-500">
           <CardHeader className="pb-3">
             <CardDescription className="flex items-center gap-2 text-sm font-medium">
-              <TrendingUp className="h-4 w-4 text-violet-500" />
-              Active Subscriptions
+              <Ticket className="h-4 w-4 text-violet-500" />
+              Live Support
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold" data-testid="text-active-subs">
-              {stats?.activeSubscriptions || 0}
+            <div className="text-3xl font-bold text-orange-600" data-testid="text-open-tickets">
+              {(supportStats as any)?.openTickets || 0}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              Churn: {stats?.churnRate || "0"}%
+              Open tickets
             </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Live Services & Chat Status */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="border-l-4 border-l-green-500">
+          <CardHeader className="pb-3">
+            <CardDescription className="flex items-center gap-2 text-sm font-medium">
+              <Server className="h-4 w-4 text-green-500" />
+              Services Online
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm">Web Application</span>
+                <Badge variant="secondary" className="bg-green-500/10 text-green-600">
+                  <CheckCircle className="h-3 w-3 mr-1" />
+                  Live
+                </Badge>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm">API Server</span>
+                <Badge variant="secondary" className="bg-green-500/10 text-green-600">
+                  <CheckCircle className="h-3 w-3 mr-1" />
+                  Live
+                </Badge>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm">Database</span>
+                <Badge variant="secondary" className="bg-green-500/10 text-green-600">
+                  <CheckCircle className="h-3 w-3 mr-1" />
+                  {stats?.systemHealth?.database || "healthy"}
+                </Badge>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-purple-500">
+          <CardHeader className="pb-3">
+            <CardDescription className="flex items-center gap-2 text-sm font-medium">
+              <MessageSquare className="h-4 w-4 text-purple-500" />
+              Chat Activity
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm">Users Online</span>
+                <span className="text-2xl font-bold" data-testid="text-chat-users">
+                  {stats?.chatUsers || 0}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm">Support Staff</span>
+                <span className="text-2xl font-bold text-blue-600" data-testid="text-chat-staff">
+                  {stats?.chatStaff || 0}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm">HelpOS™ Bot</span>
+                <Badge variant="secondary" className="bg-purple-500/10 text-purple-600">
+                  <Activity className="h-3 w-3 mr-1 animate-pulse" />
+                  Active
+                </Badge>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-cyan-500">
+          <CardHeader className="pb-3">
+            <CardDescription className="flex items-center gap-2 text-sm font-medium">
+              <Users className="h-4 w-4 text-cyan-500" />
+              Platform Totals
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm">Workspaces</span>
+                <span className="text-2xl font-bold">{stats?.totalWorkspaces || 0}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm">Total Users</span>
+                <span className="text-2xl font-bold">{stats?.totalUsers || 0}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm">Subscriptions</span>
+                <span className="text-2xl font-bold text-violet-600">{stats?.activeSubscriptions || 0}</span>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>

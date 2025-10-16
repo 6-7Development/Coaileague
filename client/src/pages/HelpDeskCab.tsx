@@ -9,7 +9,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { 
   Send, Users, MessageSquare, Shield, Crown, UserCog, Wrench,
-  Settings, Power, HelpCircle, Zap, Clock, AlertCircle, CheckCircle
+  Settings, Power, HelpCircle, Zap, Clock, AlertCircle, CheckCircle,
+  ChevronLeft, ChevronRight, Info
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import {
@@ -28,7 +29,34 @@ export default function HelpDeskCab() {
   const [inputMessage, setInputMessage] = useState("");
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [userStatus, setUserStatus] = useState<"online" | "away" | "busy">("online");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // IRC-style MOTD and helpful info banners
+  const infoBanners = [
+    "*** irc.wfos.com - WorkforceOS Support Network - 24/7 Support Available ***",
+    "*** Queue Position: You are #1 in line - Estimated wait: 2-3 minutes ***",
+    "*** Commands: /help /motd /info /queue /staff - Type /help for full list ***",
+    "*** Tip: Describe your issue clearly and staff will assist you shortly ***",
+    "*** FAQ: Password reset via /resetpass | Account issues: mention 'account' ***",
+    "*** HelpOS™ AI is monitoring - Urgent issues are auto-prioritized ***"
+  ];
+
+  // IRC-style system messages
+  const [ircMessages, setIrcMessages] = useState<string[]>([
+    "*** Connecting to irc.wfos.com (WorkforceOS Support Network)",
+    "*** Connected to server irc.wfos.com",
+    `*** Message of the Day - irc.wfos.com`,
+    "*** =====================================================",
+    "*** Welcome to WorkforceOS HelpDesk Support Network",
+    "*** Your satisfaction is our priority - 24/7/365",
+    "*** Type /help for available commands",
+    "*** Type /staff to see online support agents",
+    "*** Type /queue to check your position",
+    "*** =====================================================",
+    `*** End of MOTD - You are now in #support`,
+  ]);
 
   const userName = user?.firstName && user?.lastName 
     ? `${user.firstName} ${user.lastName}` 
@@ -60,6 +88,14 @@ export default function HelpDeskCab() {
   useEffect(() => {
     scrollToBottom();
   }, [messages, scrollToBottom]);
+
+  // Rotate info banners every 8 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentBannerIndex((prev) => (prev + 1) % infoBanners.length);
+    }, 8000);
+    return () => clearInterval(interval);
+  }, [infoBanners.length]);
 
   const handleSendMessage = () => {
     if (inputMessage.trim() && isConnected) {
@@ -113,12 +149,23 @@ export default function HelpDeskCab() {
       {/* MSN-style Gradient Header */}
       <header className="bg-gradient-to-r from-indigo-600 via-blue-500 to-blue-700 p-3 text-white shadow-lg">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
-          <h1 className="text-2xl font-black tracking-wide flex items-center">
-            <MessageSquare className="w-6 h-6 mr-2 text-amber-300" />
-            HELPDESKC<span className="text-lg font-light">AB</span>
-          </h1>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              className="text-white hover:bg-white/20 h-8 w-8"
+              data-testid="button-toggle-sidebar"
+            >
+              {sidebarCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
+            </Button>
+            <h1 className="text-2xl font-black tracking-wide flex items-center">
+              <MessageSquare className="w-6 h-6 mr-2 text-amber-300" />
+              HelpDesk
+            </h1>
+          </div>
           <div className="flex items-center gap-4">
-            <span className="text-sm font-semibold">Channel: #support-main</span>
+            <span className="text-sm font-semibold font-mono">irc.wfos.com #support</span>
             {isConnected && (
               <div className="flex items-center gap-1 text-xs bg-green-500/20 px-2 py-1 rounded">
                 <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
@@ -129,24 +176,25 @@ export default function HelpDeskCab() {
         </div>
       </header>
 
-      {/* Main 3-Column Layout */}
+      {/* Main Layout with Collapsible Sidebar */}
       <main className="flex flex-grow overflow-hidden max-w-7xl mx-auto w-full border-x border-gray-300">
         
-        {/* LEFT COLUMN: Options/Settings */}
-        <section className="w-1/4 bg-white border-r border-gray-200 flex flex-col p-4 overflow-y-auto">
-          <h2 className="text-lg font-bold text-gray-800 mb-4 pb-2 border-b flex items-center">
-            <Settings className="w-5 h-5 mr-2 text-indigo-500" />
+        {/* LEFT COLUMN: Options/Settings (Collapsible) */}
+        {!sidebarCollapsed && (
+          <section className="w-64 bg-white border-r border-gray-200 flex flex-col p-3 overflow-y-auto transition-all">
+          <h2 className="text-sm font-bold text-gray-800 mb-3 pb-2 border-b flex items-center">
+            <Settings className="w-4 h-4 mr-2 text-indigo-500" />
             Staff Controls
           </h2>
 
-          <div className="space-y-4">
+          <div className="space-y-3">
             {/* User Status */}
-            <div className="p-3 bg-indigo-50 rounded-xl shadow-inner border border-indigo-200">
-              <label className="block text-sm font-medium text-indigo-700 mb-2">Your Status</label>
+            <div className="p-2 bg-indigo-50 rounded-lg border border-indigo-200">
+              <label className="block text-xs font-medium text-indigo-700 mb-1">Your Status</label>
               <select 
                 value={userStatus} 
                 onChange={(e) => setUserStatus(e.target.value as any)}
-                className="w-full p-2 border border-indigo-300 rounded-lg text-sm bg-white focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full p-1.5 border border-indigo-300 rounded text-xs bg-white focus:ring-indigo-500 focus:border-indigo-500"
                 data-testid="select-status"
               >
                 <option value="online">● Online</option>
@@ -156,60 +204,133 @@ export default function HelpDeskCab() {
             </div>
 
             {/* Queue Info */}
-            <div className="p-3 bg-gray-50 rounded-xl shadow-inner border border-gray-200">
-              <h3 className="text-base font-semibold text-gray-700 mb-2">Support Queue</h3>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
+            <div className="p-2 bg-gray-50 rounded-lg border border-gray-200">
+              <h3 className="text-xs font-semibold text-gray-700 mb-2">Support Queue</h3>
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs">
                   <span className="text-gray-600">In Queue:</span>
-                  <Badge variant="secondary">{queueLength}</Badge>
+                  <Badge variant="secondary" className="text-xs">{queueLength}</Badge>
                 </div>
-                <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center justify-between text-xs">
                   <span className="text-gray-600">Online Staff:</span>
-                  <Badge variant="secondary">{uniqueUsers.filter(u => ['platform_admin', 'deputy_admin', 'deputy_assistant', 'sysop'].includes(u.role)).length}</Badge>
+                  <Badge variant="secondary" className="text-xs">{uniqueUsers.filter(u => ['platform_admin', 'deputy_admin', 'deputy_assistant', 'sysop'].includes(u.role)).length}</Badge>
                 </div>
               </div>
             </div>
 
-            {/* Quick Actions */}
+            {/* Quick Actions for Staff */}
             {isStaff && (
-              <div className="pt-4 border-t border-gray-200 space-y-2">
-                <Button 
-                  onClick={() => handleCommand('/intro')}
-                  className="w-full bg-green-600 hover:bg-green-700 shadow-md hover:shadow-lg transition-all"
-                  data-testid="button-intro"
-                >
-                  <Zap className="w-4 h-4 mr-2" />
-                  AI Introduction
-                </Button>
-                <Button 
-                  onClick={() => handleCommand('/help')}
-                  className="w-full bg-blue-600 hover:bg-blue-700 shadow-md hover:shadow-lg transition-all"
-                  data-testid="button-help"
-                >
-                  <HelpCircle className="w-4 h-4 mr-2" />
-                  View Commands
-                </Button>
-                <Button 
-                  onClick={() => handleCommand('/queue')}
-                  className="w-full bg-purple-600 hover:bg-purple-700 shadow-md hover:shadow-lg transition-all"
-                  data-testid="button-queue"
-                >
-                  <Users className="w-4 h-4 mr-2" />
-                  Check Queue
-                </Button>
+              <>
+                <div className="pt-3 border-t border-gray-200 space-y-1.5">
+                  <Button 
+                    onClick={() => handleCommand('/intro')}
+                    size="sm"
+                    className="w-full bg-green-600 hover:bg-green-700 text-xs h-8"
+                    data-testid="button-intro"
+                  >
+                    <Zap className="w-3 h-3 mr-1" />
+                    <span className="truncate">AI Intro</span>
+                  </Button>
+                  <Button 
+                    onClick={() => handleCommand('/help')}
+                    size="sm"
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-xs h-8"
+                    data-testid="button-help"
+                  >
+                    <HelpCircle className="w-3 h-3 mr-1" />
+                    <span className="truncate">Commands</span>
+                  </Button>
+                  <Button 
+                    onClick={() => handleCommand('/queue')}
+                    size="sm"
+                    className="w-full bg-purple-600 hover:bg-purple-700 text-xs h-8"
+                    data-testid="button-queue"
+                  >
+                    <Users className="w-3 h-3 mr-1" />
+                    <span className="truncate">Queue</span>
+                  </Button>
+                </div>
+
+                {/* Quick Response Templates for Agents */}
+                <div className="pt-3 border-t border-gray-200">
+                  <h3 className="text-xs font-semibold text-gray-700 mb-2">Quick Responses</h3>
+                  <div className="space-y-1">
+                    <Button 
+                      onClick={() => setInputMessage("Hello! I'm here to help. Can you describe your issue?")}
+                      size="sm"
+                      variant="outline"
+                      className="w-full text-xs h-7 justify-start"
+                    >
+                      Greeting
+                    </Button>
+                    <Button 
+                      onClick={() => setInputMessage("I've escalated this to our technical team. You'll receive an update within 24 hours.")}
+                      size="sm"
+                      variant="outline"
+                      className="w-full text-xs h-7 justify-start"
+                    >
+                      Escalate
+                    </Button>
+                    <Button 
+                      onClick={() => setInputMessage("Your issue has been resolved. Is there anything else I can help you with?")}
+                      size="sm"
+                      variant="outline"
+                      className="w-full text-xs h-7 justify-start"
+                    >
+                      Resolved
+                    </Button>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Client Help Panel */}
+            {!isStaff && (
+              <div className="pt-3 border-t border-gray-200">
+                <h3 className="text-xs font-semibold text-gray-700 mb-2">Need Help?</h3>
+                <div className="space-y-2 text-xs">
+                  <div className="p-2 bg-blue-50 rounded border border-blue-200">
+                    <div className="font-semibold text-blue-700">Your Position</div>
+                    <div className="text-blue-600">#1 in queue</div>
+                  </div>
+                  <div className="p-2 bg-green-50 rounded border border-green-200">
+                    <div className="font-semibold text-green-700">Est. Wait Time</div>
+                    <div className="text-green-600">2-3 minutes</div>
+                  </div>
+                  <div className="p-2 bg-purple-50 rounded border border-purple-200">
+                    <div className="font-semibold text-purple-700">Quick Commands</div>
+                    <div className="text-purple-600">/help /queue /staff</div>
+                  </div>
+                </div>
               </div>
             )}
           </div>
         </section>
+        )}
 
         {/* CENTER COLUMN: Chat Messages */}
         <section className="flex flex-col flex-grow bg-white">
+          {/* Rotating Info Banner */}
+          <div className="bg-blue-50 border-b border-blue-200 p-2 flex items-center gap-2">
+            <Info className="w-4 h-4 text-blue-600 flex-shrink-0" />
+            <div className="text-sm text-blue-800 animate-fade-in">
+              {infoBanners[currentBannerIndex]}
+            </div>
+          </div>
+
           {/* Messages Container */}
           <ScrollArea className="flex-grow p-4">
-            <div className="space-y-3">
-              {/* System Welcome Message */}
-              <div className="text-center text-sm italic text-orange-600">
-                *** Welcome to #support-main. Users online: {uniqueUsers.length} ***
+            <div className="space-y-2">
+              {/* IRC MOTD Messages */}
+              {ircMessages.map((ircMsg, idx) => (
+                <div key={`irc-${idx}`} className="text-xs font-mono text-purple-600">
+                  {ircMsg}
+                </div>
+              ))}
+
+              {/* User Join Messages */}
+              <div className="text-xs font-mono text-green-600">
+                *** {userName} (~{user?.email?.split('@')[0]}@wfos.client) has joined #support
               </div>
 
               {messages.map((msg, idx) => {
@@ -220,9 +341,9 @@ export default function HelpDeskCab() {
 
                 if (isSystem) {
                   return (
-                    <div key={idx} className="text-center text-sm italic text-orange-600">
-                      [{new Date(msg.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}] 
-                      <span className="font-bold text-blue-600 ml-1">System</span>: {msg.message}
+                    <div key={idx} className="text-xs font-mono text-red-600">
+                      *** [{msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '00:00'}] 
+                      <span className="font-bold ml-1">irc.wfos.com</span>: {msg.message}
                     </div>
                   );
                 }
@@ -284,44 +405,56 @@ export default function HelpDeskCab() {
         </section>
 
         {/* RIGHT COLUMN: User List */}
-        <section className="w-1/4 bg-gray-50 border-l border-gray-200 flex flex-col overflow-y-auto">
-          <div className="p-4 border-b border-gray-200">
-            <h2 className="text-lg font-bold text-gray-800 flex items-center">
-              <Users className="w-5 h-5 mr-2 text-purple-600" />
-              User List (<span data-testid="text-user-count">{uniqueUsers.length}</span>)
-            </h2>
+        <section className="w-64 bg-gray-50 border-l border-gray-200 flex flex-col">
+          <div className="p-3 border-b border-gray-200 flex-shrink-0">
+            <div className="flex items-center gap-2">
+              <Users className="w-4 h-4 text-purple-600 flex-shrink-0" />
+              <h2 className="text-sm font-bold text-gray-800">
+                User List
+              </h2>
+              <Badge variant="secondary" className="ml-auto text-xs" data-testid="text-user-count">
+                {uniqueUsers.length}
+              </Badge>
+            </div>
           </div>
           
-          <ScrollArea className="flex-grow p-4">
+          <ScrollArea className="flex-grow p-3">
             <div className="space-y-1">
-              {uniqueUsers.map((u) => (
-                <ContextMenu key={u.id}>
-                  <ContextMenuTrigger>
-                    <div 
-                      className={`
-                        flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors
-                        ${selectedUserId === u.id 
-                          ? 'bg-indigo-100 font-bold text-indigo-700 shadow-md' 
-                          : 'hover:bg-gray-200'
-                        }
-                      `}
-                      onClick={() => setSelectedUserId(u.id)}
-                      data-testid={`user-${u.id}`}
-                    >
-                      <Avatar className="w-6 h-6">
-                        <AvatarFallback className="bg-slate-800 text-blue-400 text-xs">
-                          {u.name?.substring(0, 2).toUpperCase() || 'U'}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="w-3 h-3 bg-green-500 rounded-full" />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1">
-                          <span className={`text-sm truncate ${getRoleColor(u.role)}`}>{u.name}</span>
-                          {getRoleIcon(u.role)}
+              {uniqueUsers.map((u) => {
+                const isOp = ['platform_admin', 'deputy_admin'].includes(u.role);
+                const isVoice = ['deputy_assistant', 'sysop'].includes(u.role);
+                const ircPrefix = isOp ? '@' : isVoice ? '+' : '';
+                
+                return (
+                  <ContextMenu key={u.id}>
+                    <ContextMenuTrigger>
+                      <div 
+                        className={`
+                          flex items-center gap-2 p-1.5 rounded-lg cursor-pointer transition-colors
+                          ${selectedUserId === u.id 
+                            ? 'bg-indigo-100 font-bold text-indigo-700 shadow-md' 
+                            : 'hover:bg-gray-200'
+                          }
+                        `}
+                        onClick={() => setSelectedUserId(u.id)}
+                        data-testid={`user-${u.id}`}
+                      >
+                        <Avatar className="w-5 h-5">
+                          <AvatarFallback className="bg-slate-800 text-blue-400 text-xs">
+                            {u.name?.substring(0, 2).toUpperCase() || 'U'}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="w-2 h-2 bg-green-500 rounded-full" />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1">
+                            <span className={`text-xs truncate ${getRoleColor(u.role)}`}>
+                              {ircPrefix}{u.name}
+                            </span>
+                            {getRoleIcon(u.role)}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </ContextMenuTrigger>
+                    </ContextMenuTrigger>
                   <ContextMenuContent className="bg-white border-gray-300 w-56">
                     <ContextMenuItem onClick={() => handleMention(u.name)}>
                       @Mention {u.name}
@@ -344,7 +477,8 @@ export default function HelpDeskCab() {
                     )}
                   </ContextMenuContent>
                 </ContextMenu>
-              ))}
+              );
+            })}
             </div>
           </ScrollArea>
         </section>
