@@ -1,448 +1,205 @@
-# WorkforceOS Design System
-## Fortune 500 Professional Dashboard Design - ASMR Interactive Experience
+# WorkforceOS Enterprise Design System
+## Professional Workforce Management Platform
 
-### Company Brand Colors (Indigo/Purple Gradient Theme)
+### Design Approach
+**System**: IBM Carbon Design System + Enterprise SaaS Best Practices (Workday, ADP, BambooHR)
+**Principles**: Data clarity, hierarchical organization, trust through consistency, professional minimalism
 
-#### Primary Indigo Gradient
-- **Primary**: `#6366f1` (Indigo 500) - Main brand color
-- **Primary Dark**: `#4f46e5` (Indigo 600) - Hover states, emphasis
-- **Primary Light**: `#a5b4fc` (Indigo 300) - Text accents, highlights
-- **Primary Muted**: `#c7d2fe` (Indigo 200) - Subtle accents
+### Core Color Palette
 
-#### Background Layers
-- **Base Background**: `linear-gradient(135deg, #0f172a 0%, #1e293b 100%)` (Slate 900→800)
-- **Card Background**: `rgba(15, 23, 42, 0.8)` (Semi-transparent slate)
-- **Sidebar**: `rgba(15, 23, 42, 0.95)` (Darker, semi-transparent)
-- **Elevated**: `rgba(99, 102, 241, 0.15)` (Indigo overlay)
+#### Primary Corporate Navy
+- **Primary Navy**: 217 91% 20% - Main brand, headers, primary actions
+- **Navy Hover**: 217 91% 25% - Interactive states
+- **Navy Light**: 217 91% 92% - Subtle backgrounds, borders
+- **Navy Muted**: 217 91% 85% - Secondary backgrounds
+
+#### Neutral Foundation
+- **Background Base**: 220 13% 18% - Main dark background
+- **Card Background**: 220 13% 21% - Elevated surfaces
+- **Border Subtle**: 217 20% 30% - Dividers, card borders
+- **Border Emphasis**: 217 30% 40% - Active borders, focus states
 
 #### Text Hierarchy
-- **Primary Text**: `#e2e8f0` (Slate 200) - Main content
-- **Accent Text**: `#a5b4fc` (Indigo 300) - Headings, emphasis
-- **Secondary Text**: `#94a3b8` (Slate 400) - Descriptions
-- **Muted Text**: `#cbd5e1` (Slate 300) - Less important
+- **Heading Text**: 210 20% 98% - Page titles, section headers
+- **Body Text**: 214 15% 91% - Primary content
+- **Secondary Text**: 215 15% 70% - Labels, descriptions
+- **Muted Text**: 215 15% 55% - Timestamps, auxiliary info
 
-#### Status Colors
-- **Success**: `#10b981` (Emerald 500) - Active, completed
-- **Warning**: `#f59e0b` (Amber 500) - Pending, caution
-- **Error**: `#ef4444` (Red 500) - Critical, failed
-- **Info**: `#6366f1` (Indigo 500) - Information
+#### System Status Colors
+- **Success Green**: 152 69% 31% - Completed, active
+- **Warning Amber**: 38 92% 50% - Pending, caution
+- **Error Red**: 0 72% 51% - Critical, failed
+- **Info Blue**: 199 89% 48% - Information, neutral
 
-### **Component Design Patterns**
+### Typography System
 
-#### Stat Cards (Gradient Text Effect)
-```css
-.stat-value {
-  font-size: 36px;
-  font-weight: 700;
-  background: linear-gradient(135deg, #a5b4fc, #6366f1);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-```
+#### Font Stack
+- **Primary**: 'Inter', system-ui, -apple-system, sans-serif
+- **Data/Mono**: 'IBM Plex Mono', 'Courier New', monospace
 
-#### Interactive Cards
-```css
-background: rgba(15, 23, 42, 0.8);
-border: 1px solid rgba(99, 102, 241, 0.2);
-border-radius: 12px;
-padding: 25px;
-transition: all 0.3s ease;
-```
+#### Type Scale
+- **Display (Dashboards)**: 32px/700 - Page titles
+- **Heading 1**: 24px/600 - Section headers
+- **Heading 2**: 18px/600 - Card titles, subsections
+- **Body Large**: 15px/500 - Primary content, table data
+- **Body**: 14px/400 - Standard text, descriptions
+- **Caption**: 12px/400 - Labels, metadata
+- **Micro**: 11px/600 uppercase - Badges, status tags
 
-**Hover State:**
-```css
-transform: translateY(-3px);
-border-color: rgba(99, 102, 241, 0.5);
-box-shadow: 0 10px 30px rgba(99, 102, 241, 0.2);
-```
+### Layout System
 
-#### Primary Buttons (Gradient)
-```css
-background: linear-gradient(135deg, #6366f1, #4f46e5);
-color: white;
-padding: 12px 24px;
-border-radius: 8px;
-font-weight: 600;
-transition: all 0.3s ease;
-```
+**Spacing Units**: Use Tailwind multiples of 4 (p-4, p-6, p-8, gap-6, space-y-8)
+**Core Measurements**:
+- Section padding: py-8 (mobile) to py-12 (desktop)
+- Card padding: p-6
+- Component gaps: gap-6 for grids, space-y-4 for stacks
+- Container max-width: max-w-7xl
 
-**Hover:** `transform: scale(1.05); box-shadow: 0 5px 15px rgba(99, 102, 241, 0.4);`
+### Component Library
 
-#### Secondary Buttons (Outline)
-```css
-background: transparent;
-border: 2px solid #6366f1;
-color: #a5b4fc;
-padding: 10px 22px;
-border-radius: 8px;
-```
+#### Dashboard Cards
+- **Base**: Navy-light background (220 13% 21%), 1px border (217 20% 30%)
+- **Elevated**: Subtle shadow, 2px border on hover (217 30% 40%)
+- **Rounding**: 8px standard
+- **Hover**: Translate-y -2px, enhanced border color, shadow
 
-### **Feature Gating & Upselling System**
+#### Stat Cards (Data-Focused)
+- **Number Display**: 36px/700, heading text color
+- **Label**: 12px/600 uppercase, secondary text, letter-spacing 0.5px
+- **Trend Indicator**: Small arrow icon, success/error color
+- **Layout**: Number top, label bottom, minimal decoration
 
-#### Locked Feature Card
-```css
-.locked-feature {
-  background: rgba(99, 102, 241, 0.08);
-  border: 2px dashed rgba(99, 102, 241, 0.3);
-  border-radius: 12px;
-  padding: 25px;
-  position: relative;
-  opacity: 0.7;
-  cursor: not-allowed;
-}
-```
+#### Navigation Sidebar
+- **Width**: 280px (desktop), collapsible to icon-only 80px
+- **Background**: Slightly darker than base (220 13% 16%)
+- **Active State**: Navy primary background with left 4px border accent
+- **Hover**: Subtle background lift (220 13% 20%)
+- **Icons**: Heroicons outline, 20px
 
-#### Lock Badge Overlay
-```css
-.lock-badge {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  background: linear-gradient(135deg, #f59e0b, #ef4444);
-  color: white;
-  padding: 6px 14px;
-  border-radius: 20px;
-  font-size: 11px;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-```
+#### Top Navigation Bar
+- **Height**: 64px
+- **Background**: Card background with bottom border
+- **Search**: Centered, 400px wide, subtle border input
+- **Profile/Actions**: Right-aligned, icon buttons
 
-#### Upgrade Prompt (In-Card)
-```tsx
-<div className="locked-feature">
-  <div className="lock-badge">
-     Professional Plan
-  </div>
-  <div className="feature-preview">
-    <h3>Advanced Analytics</h3>
-    <p>Unlock predictive scheduling, labor cost optimization, and forecasting</p>
-  </div>
-  <button className="upgrade-button">
-    Upgrade to Professional - $399/mo
-  </button>
-</div>
-```
+#### Data Tables
+- **Header**: Navy-light background, uppercase 11px/600 text, 2px bottom border
+- **Rows**: Alternating subtle backgrounds, 1px dividers
+- **Hover**: Row highlight with navy-light tint
+- **Cell Padding**: px-4 py-3
+- **Sticky Headers**: On scroll for long tables
 
-### **ASMR Animations & Micro-interactions**
+#### Buttons
+- **Primary**: Navy primary background, white text, 600 weight, 8px radius, px-6 py-2.5
+- **Secondary**: Transparent with 2px navy border, navy text
+- **Ghost**: No border, navy text, hover background
+- **Destructive**: Error red background, white text
+- **Icon Buttons**: 40px square, icon-only, subtle hover background
 
-#### Pulse Animation (Status Dots)
-```css
-@keyframes pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.5; transform: scale(1.2); }
-}
-.status-dot {
-  animation: pulse 2s infinite;
-}
-```
+#### Form Inputs
+- **Background**: Darker than card (220 13% 18%)
+- **Border**: 1px subtle, 2px on focus with navy primary
+- **Height**: 40px standard
+- **Label**: 12px/600, secondary text, mb-2
+- **Validation**: Inline error/success messages with icon
 
-#### Slide In (Notifications)
-```css
-@keyframes slideIn {
-  from { transform: translateX(400px); opacity: 0; }
-  to { transform: translateX(0); opacity: 1; }
-}
-```
+#### Badges & Status Tags
+- **Pill Shape**: 16px radius, px-3 py-1
+- **Active**: Success green background 20% opacity, full color text
+- **Pending**: Amber background 20% opacity, amber text
+- **Inactive**: Muted background, muted text
+- **Priority/Urgent**: Error red treatment
 
-#### Smooth Transitions (All Interactive Elements)
-```css
-transition: all 0.3s ease;
-```
+### Feature Gating System
 
-### **Role-Specific Dashboard Layouts**
+#### Locked Feature Pattern
+- **Container**: Dashed 2px border (217 30% 40%), reduced opacity 0.6
+- **Lock Badge**: Top-right corner, amber background, white text, "Professional" or tier name
+- **Preview Content**: Visible but muted (grayscale filter 50%)
+- **CTA Button**: "Upgrade to [Tier] - $X/mo", primary navy button
+- **Overlay**: Subtle gradient overlay from bottom
 
-#### Owner Dashboard
-**Access Level**: Full platform (tier-gated)
-**Key Metrics**:
-- Revenue analytics (MRR, ARR)
-- Team productivity
-- Client satisfaction
-- Platform fees collected
+#### Tier Access Levels
+- **Free**: Basic dashboard, limited reports
+- **Starter ($99/mo)**: GPS tracking, advanced scheduling
+- **Professional ($399/mo)**: Analytics, automation, API access
+- **Enterprise ($999/mo)**: White-label, multi-location, predictive AI
 
-**Locked Features** (show based on tier):
-- Free: Analytics, Automation, Reports
-- Starter: Automation, White-label, API
-- Professional: White-label, API, Multi-location
-- Enterprise: All unlocked
+### Role-Specific Dashboards
 
-#### Manager Dashboard
-**Access Level**: Assigned team only
-**Key Metrics**:
-- Team hours worked
-- Shift coverage %
-- Pending approvals
-- Team performance
+#### Executive/Owner View
+**Hero Metrics**: 4-column grid (Revenue, Headcount, Productivity, Compliance)
+**Sections**: Financial overview, workforce analytics, approval queue, system health
+**Locked Features**: Predictive analytics (Enterprise), white-label (Enterprise)
 
-**Locked Features**:
-- Advanced team analytics (Professional+)
-- Automated scheduling (Professional+)
-- Predictive insights (Enterprise)
+#### HR Manager View
+**Hero Metrics**: Open positions, pending approvals, time-off requests, onboarding status
+**Sections**: Employee directory table, compliance alerts, hiring pipeline, performance reviews
+**Locked Features**: Automated workflows (Professional), advanced reporting (Professional)
 
-#### Employee Dashboard
-**Access Level**: Personal data only
-**Key Metrics**:
-- Hours this week
-- Upcoming shifts
-- Earnings to date
-- Available PTO
+#### Team Manager View
+**Hero Metrics**: Team size, hours logged, shift coverage, pending requests
+**Sections**: Team schedule calendar, timesheet approvals, performance dashboard
+**Locked Features**: Team analytics (Professional), automated scheduling (Professional)
 
-**Locked Features**:
-- GPS clock-in (Starter+)
-- Shift swap requests (Professional+)
-- Mobile app access (Professional+)
+#### Employee View
+**Hero Metrics**: Hours this week, upcoming shifts, PTO balance, earnings YTD
+**Sections**: Personal schedule, time clock, requests/approvals, benefits info
+**Locked Features**: Mobile app (Starter), shift swaps (Professional)
 
-#### Support Staff Dashboard
-**Access Level**: All customer workspaces (read-only)
-**Key Metrics**:
-- Open tickets
-- SLA compliance
-- Avg response time
-- Customer satisfaction
+### Micro-Interactions (Minimal & Professional)
 
-**All Features Unlocked** (internal use)
+- **Hover States**: 0.2s ease transitions, subtle elevation/border changes
+- **Loading States**: Navy primary spinner, skeleton screens for data
+- **Success Feedback**: Green checkmark animation (0.3s), brief toast notification
+- **Form Validation**: Instant inline messages, no page shifts
+- **Table Sorting**: Arrow icon rotation, smooth re-ordering
+- **No Gratuitous Animations**: Focus on data clarity over effects
 
-#### Client Dashboard (External)
-**Access Level**: Their invoices & reports only
-**Key Metrics**:
-- Outstanding balance
-- Payment history
-- Service reports
-- Usage statistics
+### Data Visualization
 
-**Locked Features**:
-- Detailed analytics (if customer has Professional+)
-- Custom reports (if customer has Enterprise)
+#### Charts & Graphs
+- **Color Palette**: Navy primary, success green, amber, info blue (4-color max)
+- **Grid Lines**: Subtle gray, 1px
+- **Labels**: 12px, secondary text
+- **Tooltips**: Dark card background, white text, 8px radius
+- **Library**: Recharts with custom theming
 
-### **Top Bar Design**
-```css
-.top-bar {
-  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
-  color: white;
-  height: 70px;
-  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 1000;
-}
-```
+#### Progress Indicators
+- **Linear**: 8px height, rounded ends, navy primary fill
+- **Circular**: 4px stroke, navy primary, percentage centered
+- **Step Indicators**: Numbered circles, connecting lines
 
-**Search Bar in Top Bar:**
-```css
-background: rgba(255, 255, 255, 0.2);
-border: 1px solid rgba(255, 255, 255, 0.3);
-border-radius: 8px;
-padding: 10px 20px;
-color: white;
-```
+### Images
 
-### 🧭 **Sidebar Navigation**
-```css
-.sidebar {
-  width: 280px;
-  background: rgba(15, 23, 42, 0.95);
-  border-right: 1px solid rgba(99, 102, 241, 0.2);
-}
+**Hero Image**: No large hero image. This is a data-first enterprise dashboard - lead immediately with metrics and actionable data.
 
-.nav-item.active {
-  background: linear-gradient(90deg, rgba(99, 102, 241, 0.2), transparent);
-  color: #a5b4fc;
-  border-left: 3px solid #6366f1;
-  font-weight: 600;
-}
+**Supplementary Images**:
+- **Empty States**: Simple illustrations for no-data scenarios (team illustrations, clipboard icons)
+- **Onboarding Flows**: Screenshot mockups showing features (professional, clean captures)
+- **Help/Documentation**: Inline screenshots for complex workflows
+- **Team Directory**: Professional headshot placeholders (circular, 48px)
 
-.nav-item:hover {
-  background: rgba(99, 102, 241, 0.1);
-  color: #a5b4fc;
-}
-```
+**Image Treatment**: All images should have subtle borders, 8px radius, fit within the navy/slate color scheme (no vibrant colors that clash)
 
-### 📈 **Data Tables**
-```css
-.data-table {
-  background: rgba(15, 23, 42, 0.8);
-  border: 1px solid rgba(99, 102, 241, 0.2);
-  border-radius: 15px;
-}
+### Responsive Behavior
 
-thead {
-  background: rgba(99, 102, 241, 0.1);
-}
+- **Desktop (1280px+)**: Full sidebar, 4-column stat grids, expanded tables
+- **Tablet (768-1279px)**: Collapsible sidebar, 2-column grids, horizontal scroll tables
+- **Mobile (<768px)**: Bottom nav, 1-column stacks, card-based table rows
 
-th {
-  color: #a5b4fc;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  border-bottom: 2px solid rgba(99, 102, 241, 0.2);
-}
+### Accessibility Standards
 
-tbody tr:hover {
-  background: rgba(99, 102, 241, 0.08);
-}
-```
+- **Color Contrast**: WCAG AAA (7:1 minimum for text)
+- **Focus Indicators**: 3px navy ring on all interactive elements
+- **Keyboard Navigation**: Full support, logical tab order
+- **Screen Readers**: ARIA labels on all data visualizations, status badges
+- **Dark Mode Only**: Optimized for extended dashboard viewing
 
-###  **Badges (Status Indicators)**
-```css
-.badge.active { 
-  background: rgba(16, 185, 129, 0.2); 
-  color: #10b981; 
-}
-.badge.pending { 
-  background: rgba(245, 158, 11, 0.2); 
-  color: #f59e0b; 
-}
-.badge.critical { 
-  background: rgba(239, 68, 68, 0.2); 
-  color: #ef4444; 
-}
-.badge.resolved { 
-  background: rgba(99, 102, 241, 0.2); 
-  color: #a5b4fc; 
-}
-```
+### Enterprise Trust Signals
 
-### **Tier-Based Feature Visibility Rules**
-
-#### Implementation Pattern:
-```tsx
-import { hasFeature, getUpgradeMessage } from '@/lib/featureFlags';
-
-function AnalyticsSection({ tier }: { tier: string }) {
-  const canAccess = hasFeature(tier, 'analytics');
-  
-  if (!canAccess) {
-    return (
-      <div className="locked-feature">
-        <div className="lock-badge"> Professional</div>
-        <h3>Advanced Analytics</h3>
-        <p>Predictive scheduling & labor cost optimization</p>
-        <button onClick={() => navigate('/upgrade')}>
-          {getUpgradeMessage(tier, 'analytics')}
-        </button>
-      </div>
-    );
-  }
-  
-  return <AnalyticsComponent />; // Full feature
-}
-```
-
-### **Automatic Feature Unlocking**
-
-When subscription tier upgrades:
-1. **Backend updates** workspace `subscriptionTier` 
-2. **Frontend refetches** workspace data
-3. **Feature flags recompute** automatically
-4. **Locked cards animate** from dashed to solid border
-5. **Content fades in** with smooth transition
-6. **Success notification** shows: " Features Unlocked!"
-
-### **Responsive Grid Systems**
-```css
-/* Stats Grid */
-grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-
-/* Command Grid */
-grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
-
-/* Quick Actions */
-grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-```
-
-### **Command/Action Buttons**
-```css
-.quick-action-btn {
-  background: rgba(99, 102, 241, 0.1);
-  border: 2px solid rgba(99, 102, 241, 0.3);
-  border-radius: 12px;
-  padding: 20px;
-  transition: all 0.3s ease;
-}
-
-.quick-action-btn:hover {
-  background: rgba(99, 102, 241, 0.2);
-  border-color: #6366f1;
-  transform: translateY(-3px);
-  box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3);
-}
-```
-
-### **Notification System**
-```css
-.notification {
-  position: fixed;
-  top: 90px;
-  right: 30px;
-  background: linear-gradient(135deg, #10b981, #059669);
-  color: white;
-  padding: 15px 25px;
-  border-radius: 10px;
-  box-shadow: 0 10px 30px rgba(16, 185, 129, 0.4);
-  animation: slideIn 0.3s ease;
-  z-index: 1001;
-}
-```
-
-### **Spacing Standards**
-- **Section Gap**: 30px
-- **Card Padding**: 25px
-- **Button Padding**: 12px 24px (primary), 10px 22px (secondary)
-- **Border Radius**: 8px (buttons), 12px (cards), 15px (sections)
-
-### **Page Title Styling**
-```css
-.page-title {
-  font-size: 32px;
-  font-weight: 700;
-  color: #a5b4fc;
-  margin-bottom: 8px;
-}
-
-.page-subtitle {
-  color: #94a3b8;
-  font-size: 15px;
-}
-```
-
-### **Terminal/Code Sections** (For Admin Tools)
-```css
-.terminal-section {
-  background: rgba(15, 23, 42, 0.95);
-  border: 1px solid rgba(99, 102, 241, 0.3);
-  border-radius: 15px;
-  font-family: 'Courier New', monospace;
-}
-
-.terminal-line.success { color: #10b981; }
-.terminal-line.error { color: #ef4444; }
-.terminal-line.warning { color: #f59e0b; }
-```
-
-### **Implementation Checklist**
-
-#### Every Dashboard Must Have:
-- ✅ Indigo/purple gradient top bar
-- ✅ Dark slate background with gradient
-- ✅ Sidebar with active state indicator
-- ✅ Role-specific metrics in stat cards
-- ✅ Tier-gated features with lock badges
-- ✅ Upgrade CTAs with pricing
-- ✅ Smooth hover animations (0.3s ease)
-- ✅ Gradient text on key numbers
-- ✅ Professional table styling
-- ✅ Status badges with color coding
-
-#### Feature Gating Requirements:
-- ✅ Check `hasFeature(tier, featureName)` before rendering
-- ✅ Show locked UI with dashed border for unavailable features
-- ✅ Display lock badge with required tier
-- ✅ Include upgrade button with exact pricing
-- ✅ Auto-refresh when tier changes
-- ✅ Smooth unlock animation
-
-This design system ensures every user sees a beautiful, cohesive, ASMR-quality interface tailored to their role and subscription tier, with clear upselling opportunities that automatically disappear when they upgrade. 
+- **Security Badges**: SSL, SOC 2, GDPR compliance indicators in footer
+- **Uptime Status**: Real-time system status indicator (green dot "All systems operational")
+- **Support Access**: Prominent help icon with instant search
+- **Data Export**: Download buttons on all tables/reports (CSV, PDF)
+- **Audit Logs**: Visible activity tracking for compliance
