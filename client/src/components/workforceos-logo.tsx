@@ -80,39 +80,31 @@ export function WorkforceOSLogo({
             </filter>
           </defs>
 
-          {/* Bold "W" - Geometric, Modern, Iconic */}
+          {/* Simple "WOS" Monogram - Clean & Professional */}
           <g filter={`url(#glow-${uniqueId})`}>
-            {/* Outer circle/badge background */}
-            <circle 
-              cx="60" 
-              cy="60" 
-              r="54" 
-              fill="none"
-              stroke={`url(#emerald-${uniqueId})`}
-              strokeWidth="4"
-              opacity="0.3"
-            />
-            
-            {/* The "W" - Bold geometric design */}
-            <path
-              d="M 25 35 L 35 75 L 45 50 L 55 75 L 65 50 L 75 75 L 85 35 L 75 35 L 65 65 L 55 40 L 45 65 L 35 35 Z"
+            {/* Rounded square badge */}
+            <rect
+              x="15"
+              y="15"
+              width="90"
+              height="90"
+              rx="18"
               fill={`url(#emerald-${uniqueId})`}
-              stroke={`url(#emerald-${uniqueId})`}
-              strokeWidth="2"
-              strokeLinejoin="round"
             />
             
-            {/* Accent line underneath for depth */}
-            <line
-              x1="25"
-              y1="80"
-              x2="85"
-              y2="80"
-              stroke={`url(#emerald-${uniqueId})`}
-              strokeWidth="3"
-              strokeLinecap="round"
-              opacity="0.5"
-            />
+            {/* "WOS" in white - simple and bold */}
+            <text
+              x="60"
+              y="75"
+              textAnchor="middle"
+              fontFamily="system-ui, -apple-system, sans-serif"
+              fontSize="38"
+              fontWeight="900"
+              fill="white"
+              letterSpacing="1"
+            >
+              WOS
+            </text>
           </g>
         </svg>
       </div>

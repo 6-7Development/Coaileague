@@ -177,6 +177,81 @@ export function setupWebSocket(server: Server) {
               workspaceRole: userInfo.workspaceRole || undefined,
             }) : payload.senderName || 'User';
 
+            // SLASH COMMAND HANDLER: Check if message is a command
+            const parsedCommand = parseSlashCommand(payload.message);
+            if (parsedCommand) {
+              // Validate command
+              const validation = validateCommand(parsedCommand);
+              if (!validation.valid) {
+                ws.send(JSON.stringify({
+                  type: 'error',
+                  message: validation.error,
+                }));
+                return;
+              }
+
+              // Check if user has permission for staff commands
+              const commandDef = COMMAND_REGISTRY[parsedCommand.command];
+              if (commandDef.requiresStaff) {
+                const platformRole = await storage.getUserPlatformRole(ws.userId);
+                const isStaff = platformRole && ['root', 'platform_admin', 'deputy_admin', 'deputy_assistant', 'sysop'].includes(platformRole);
+                if (!isStaff) {
+                  ws.send(JSON.stringify({
+                    type: 'error',
+                    message: 'You do not have permission to use this command.',
+                  }));
+                  return;
+                }
+              }
+
+              // Execute command
+              const clients = conversationClients.get(ws.conversationId);
+              
+              switch (parsedCommand.command) {
+                case 'intro': {
+                  // AI bot introduces staff to customer
+                  const introMessage = await generateStaffIntroduction(displayName, '');
+                  const botMsg = await storage.createChatMessage({
+                    conversationId: ws.conversationId,
+                    senderId: 'ai-bot',
+                    senderName: 'HelpOS™',
+                    senderType: 'bot',
+                    message: introMessage,
+                    messageType: 'text',
+                  });
+                  
+                  if (clients) {
+                    clients.forEach((client) => {
+                      if (client.readyState === WebSocket.OPEN) {
+                        client.send(JSON.stringify({ type: 'new_message', message: botMsg }));
+                      }
+                    });
+                  }
+                  break;
+                }
+                
+                case 'help': {
+                  const platformRole = await storage.getUserPlatformRole(ws.userId);
+                  const isStaff = platformRole && ['root', 'platform_admin', 'deputy_admin', 'deputy_assistant', 'sysop'].includes(platformRole);
+                  const helpText = getHelpText(isStaff);
+                  
+                  ws.send(JSON.stringify({
+                    type: 'system_message',
+                    message: helpText,
+                  }));
+                  break;
+                }
+                
+                default:
+                  ws.send(JSON.stringify({
+                    type: 'error',
+                    message: `Command /${parsedCommand.command} is not yet implemented.`,
+                  }));
+              }
+              
+              return; // Don't save command as regular message
+            }
+
             // Save message to database
             const savedMessage = await storage.createChatMessage({
               conversationId: ws.conversationId, // Use server-bound conversation, not client payload
