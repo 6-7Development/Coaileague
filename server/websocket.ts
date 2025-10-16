@@ -158,54 +158,126 @@ export function setupWebSocket(server: Server) {
                     userType: 'staff'
                   });
                   
-                  // Staff members
+                  // Support Staff Team
                   onlineUsers.push({
                     id: 'sim-staff-1',
-                    name: 'Taylor Swift',
+                    name: 'Sarah Martinez',
                     role: 'deputy_admin',
                     status: 'online',
                     userType: 'staff'
                   });
                   onlineUsers.push({
                     id: 'sim-staff-2',
-                    name: 'Jordan Tech',
+                    name: 'Mike Chen',
+                    role: 'sysop',
+                    status: 'online',
+                    userType: 'staff'
+                  });
+                  onlineUsers.push({
+                    id: 'sim-staff-3',
+                    name: 'Emily Taylor',
+                    role: 'deputy_assistant',
+                    status: 'online',
+                    userType: 'staff'
+                  });
+                  onlineUsers.push({
+                    id: 'sim-staff-4',
+                    name: 'David Kim',
                     role: 'sysop',
                     status: 'busy',
                     userType: 'staff'
                   });
                   
-                  // Subscriber
+                  // 10 Users with Different Issues
+                  
+                  // User 1 - Password Reset Issue
                   onlineUsers.push({
-                    id: 'sim-subscriber-1',
-                    name: 'John Doe',
+                    id: 'sim-user-1',
+                    name: 'Jennifer Lopez',
+                    role: 'guest',
+                    status: 'online',
+                    userType: 'org_user'
+                  });
+                  
+                  // User 2 - Billing Question
+                  onlineUsers.push({
+                    id: 'sim-user-2',
+                    name: 'Robert Johnson',
+                    role: 'guest',
+                    status: 'online',
+                    userType: 'subscriber'
+                  });
+                  
+                  // User 3 - Account Locked
+                  onlineUsers.push({
+                    id: 'sim-user-3',
+                    name: 'Maria Garcia',
+                    role: 'guest',
+                    status: 'online',
+                    userType: 'org_user'
+                  });
+                  
+                  // User 4 - Schedule/Shift Help
+                  onlineUsers.push({
+                    id: 'sim-user-4',
+                    name: 'James Wilson',
+                    role: 'guest',
+                    status: 'online',
+                    userType: 'org_user'
+                  });
+                  
+                  // User 5 - Payroll Question
+                  onlineUsers.push({
+                    id: 'sim-user-5',
+                    name: 'Lisa Anderson',
                     role: 'guest',
                     status: 'away',
                     userType: 'subscriber'
                   });
                   
-                  // Organization Users
+                  // User 6 - Feature Request
                   onlineUsers.push({
-                    id: 'sim-org-user-1',
-                    name: 'Jane Smith',
+                    id: 'sim-user-6',
+                    name: 'Michael Brown',
                     role: 'guest',
-                    status: 'busy',
-                    userType: 'org_user'
+                    status: 'online',
+                    userType: 'subscriber'
                   });
+                  
+                  // User 7 - Bug Report
                   onlineUsers.push({
-                    id: 'sim-org-user-2',
-                    name: 'Alice Brown',
+                    id: 'sim-user-7',
+                    name: 'Patricia Davis',
                     role: 'guest',
-                    status: 'away',
+                    status: 'online',
                     userType: 'org_user'
                   });
                   
-                  // Guest
+                  // User 8 - Invoice Issue
                   onlineUsers.push({
-                    id: 'sim-guest-1',
-                    name: 'Bob Wilson',
+                    id: 'sim-user-8',
+                    name: 'Christopher Lee',
+                    role: 'guest',
+                    status: 'online',
+                    userType: 'subscriber'
+                  });
+                  
+                  // User 9 - Onboarding Help
+                  onlineUsers.push({
+                    id: 'sim-user-9',
+                    name: 'Amanda White',
                     role: 'guest',
                     status: 'online',
                     userType: 'guest'
+                  });
+                  
+                  // User 10 - Time Tracking Question
+                  onlineUsers.push({
+                    id: 'sim-user-10',
+                    name: 'Daniel Martinez',
+                    role: 'guest',
+                    status: 'online',
+                    userType: 'org_user'
                   });
                 }
 

@@ -389,7 +389,7 @@ export default function HelpDeskCab() {
 
           {/* Messages Container */}
           <ScrollArea className="flex-grow p-4">
-            <div className="space-y-2">
+            <div className="space-y-4">
               {/* IRC MOTD Messages */}
               {ircMessages.map((ircMsg, idx) => (
                 <div key={`irc-${idx}`} className="text-xs font-mono text-purple-600">
@@ -417,22 +417,42 @@ export default function HelpDeskCab() {
                   );
                 }
 
-                // IRC/MSN style - ALL messages left-aligned in linear chat log
+                // IRC/MSN 2025 style - ALL messages left-aligned with modern bubbles
                 const displayName = isSelf ? 'You' : (msg.senderName || 'User');
-                const bubbleColor = isSelf ? 'bg-indigo-50 border-indigo-400' : 'bg-blue-50 border-blue-400';
+                const bubbleColor = isSelf 
+                  ? 'bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-200' 
+                  : 'bg-gradient-to-br from-blue-50 to-slate-50 border border-blue-200';
                 const nameColor = isSelf ? 'text-indigo-700' : getRoleColor(role);
 
                 return (
-                  <div key={idx} className={`${bubbleColor} border-l-4 p-2 rounded-lg max-w-[80%]`}>
-                    <div className="flex items-center gap-1.5 mb-1">
-                      {getUserTypeIcon((msg as any).userType || 'guest', role)}
-                      <span className={`font-bold text-sm ${nameColor}`}>{displayName}</span>
-                      {getRoleIcon(role)}
-                      <span className="text-xs text-gray-500 ml-auto">
-                        {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : ''}
-                      </span>
+                  <div key={idx} className={`${bubbleColor} shadow-sm p-3 rounded-2xl max-w-[85%] hover:shadow-md transition-shadow`}>
+                    <div className="flex items-start gap-2">
+                      {/* Avatar Icon */}
+                      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-white border-2 border-blue-300 flex items-center justify-center text-sm shadow-sm">
+                        {getUserTypeIcon((msg as any).userType || 'guest', role)}
+                      </div>
+                      
+                      <div className="flex-1 min-w-0">
+                        {/* Header: Name, Role Badge, Timestamp */}
+                        <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
+                          <span className={`font-bold text-sm ${nameColor}`}>{displayName}</span>
+                          {getRoleIcon(role)}
+                          <span className="text-xs text-gray-500 ml-auto">
+                            {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : ''}
+                          </span>
+                        </div>
+                        
+                        {/* Message Content */}
+                        <p className="text-gray-800 text-sm leading-relaxed">{msg.message}</p>
+                        
+                        {/* Reaction Bar (placeholder for now) */}
+                        <div className="flex items-center gap-1 mt-2 text-xs text-gray-400">
+                          <button className="hover:text-blue-600 transition-colors" title="React">
+                            <span className="opacity-0 group-hover:opacity-100">👍 ❤️ ✅ ⭐</span>
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                    <p className="text-gray-800 text-sm">{msg.message}</p>
                   </div>
                 );
               })}
