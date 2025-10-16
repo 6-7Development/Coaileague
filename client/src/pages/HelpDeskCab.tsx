@@ -55,7 +55,7 @@ export default function HelpDeskCab() {
     "*** Type /staff to see online support agents",
     "*** Type /queue to check your position",
     "*** =====================================================",
-    `*** End of MOTD - You are now in #support`,
+    `*** End of MOTD - You are now in #HelpDesk`,
   ]);
 
   const userName = user?.firstName && user?.lastName 
@@ -165,7 +165,7 @@ export default function HelpDeskCab() {
             </h1>
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-sm font-semibold font-mono">irc.wfos.com #support</span>
+            <span className="text-sm font-semibold font-mono">irc.wfos.com #HelpDesk</span>
             {isConnected && (
               <div className="flex items-center gap-1 text-xs bg-green-500/20 px-2 py-1 rounded">
                 <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
@@ -330,7 +330,7 @@ export default function HelpDeskCab() {
 
               {/* User Join Messages */}
               <div className="text-xs font-mono text-green-600">
-                *** {userName} (~{user?.email?.split('@')[0]}@wfos.client) has joined #support
+                *** {userName} (~{user?.email?.split('@')[0]}@wfos.client) has joined #HelpDesk
               </div>
 
               {messages.map((msg, idx) => {
