@@ -2,7 +2,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { db } from "./db";
-import { users } from "@shared/schema";
+import { users, platformRoles } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import {
   hashPassword,
@@ -150,12 +150,12 @@ router.post("/api/auth/login", async (req, res) => {
     await recordSuccessfulLogin(user.id);
 
     // Check for platform role (root, sysop, auditor)
-    const platformRoles = await db.query.platformRoles.findMany({
-      where: (platformRoles, { eq, isNull }) => 
-        eq(platformRoles.userId, user.id),
-    });
+    const userPlatformRoles = await db
+      .select()
+      .from(platformRoles)
+      .where(eq(platformRoles.userId, user.id));
     
-    const activePlatformRole = platformRoles.find(pr => !pr.revokedAt);
+    const activePlatformRole = userPlatformRoles.find(pr => !pr.revokedAt);
 
     // Create session
     req.session.userId = user.id;
@@ -206,12 +206,12 @@ router.get("/api/auth/me", requireAuth, async (req, res) => {
   const user = req.user!; // requireAuth ensures user exists
   
   // GATEKEEPER: Check for platform role (root, sysop, auditor)
-  const platformRoles = await db.query.platformRoles.findMany({
-    where: (platformRoles, { eq }) => 
-      eq(platformRoles.userId, user.id),
-  });
+  const userPlatformRoles = await db
+    .select()
+    .from(platformRoles)
+    .where(eq(platformRoles.userId, user.id));
   
-  const activePlatformRole = platformRoles.find(pr => !pr.revokedAt);
+  const activePlatformRole = userPlatformRoles.find(pr => !pr.revokedAt);
   
   res.json({
     user: {
