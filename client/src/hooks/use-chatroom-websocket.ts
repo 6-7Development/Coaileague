@@ -29,9 +29,18 @@ export function useChatroomWebSocket(userId: string | undefined, userName: strin
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
   const reconnectAttemptsRef = useRef(0);
+  const isConnectingRef = useRef(false); // Track if connection is in progress
 
   const connect = useCallback(() => {
     if (!userId) return;
+    
+    // Prevent duplicate connections
+    if (isConnectingRef.current || (wsRef.current && wsRef.current.readyState === WebSocket.OPEN)) {
+      console.log('WebSocket already connecting or connected, skipping duplicate connection');
+      return;
+    }
+    
+    isConnectingRef.current = true;
 
     // Clean up existing connection
     if (wsRef.current) {
@@ -49,6 +58,7 @@ export function useChatroomWebSocket(userId: string | undefined, userName: strin
         setIsConnected(true);
         setError(null);
         reconnectAttemptsRef.current = 0;
+        isConnectingRef.current = false; // Connection established
 
         // Join the main chatroom
         ws.send(JSON.stringify({
@@ -106,6 +116,7 @@ export function useChatroomWebSocket(userId: string | undefined, userName: strin
       ws.onclose = () => {
         console.log('WebSocket disconnected');
         setIsConnected(false);
+        isConnectingRef.current = false; // Reset connection flag
         
         // Attempt to reconnect with exponential backoff
         const delay = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current), 30000);
@@ -120,10 +131,12 @@ export function useChatroomWebSocket(userId: string | undefined, userName: strin
       ws.onerror = (error) => {
         console.error('WebSocket error:', error);
         setError('Connection error');
+        isConnectingRef.current = false; // Reset on error
       };
     } catch (err) {
       console.error('Failed to create WebSocket:', err);
       setError('Failed to connect');
+      isConnectingRef.current = false; // Reset on error
     }
   }, [userId]);
 

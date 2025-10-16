@@ -15,6 +15,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { useToast } from "@/hooks/use-toast";
 import { useChatroomWebSocket } from "@/hooks/use-chatroom-websocket";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { WorkforceOSLogo } from "@/components/workforceos-logo";
 import { 
   MessageSquare, Send, Users, Circle, Shield, 
   Headphones, User, Bot, Sparkles, Wifi, WifiOff,
@@ -285,21 +286,30 @@ export default function LiveChatroomPage() {
 
   return (
     <div className="flex flex-col h-screen bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950">
-      {/* Professional Header with Gradient */}
+      {/* Professional Header with WorkforceOS Branding */}
       <header className="border-b border-indigo-500/20 bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 px-4 py-4 flex-shrink-0 shadow-lg shadow-indigo-500/20">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0 flex-1">
-            <div className="p-2 bg-white/10 backdrop-blur-sm rounded-lg">
-              <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6 text-white flex-shrink-0" />
+          <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
+            {/* WorkforceOS Branding */}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <WorkforceOSLogo size="sm" showText={false} className="text-white" />
+              <div className="hidden sm:block h-8 w-px bg-white/30" />
             </div>
-            <div className="min-w-0">
-              <h1 className="text-sm sm:text-lg font-bold truncate text-white">
-                HelpDesk
-              </h1>
-              <p className="text-xs text-indigo-100 hidden sm:block flex items-center gap-2">
-                <span className="inline-flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                {helpDeskRoom?.statusMessage || "Instant Support · IRC-Style Messaging"}
-              </p>
+            
+            {/* HelpDesk Title */}
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+              <div className="p-2 bg-white/10 backdrop-blur-sm rounded-lg flex-shrink-0">
+                <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+              </div>
+              <div className="min-w-0">
+                <h1 className="text-sm sm:text-lg font-bold truncate text-white">
+                  HelpDesk
+                </h1>
+                <p className="text-xs text-indigo-100 hidden sm:block flex items-center gap-2">
+                  <span className="inline-flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                  {helpDeskRoom?.statusMessage || "Instant Support · IRC-Style Messaging"}
+                </p>
+              </div>
             </div>
           </div>
 
@@ -613,70 +623,97 @@ export default function LiveChatroomPage() {
         </div>
       </div>
 
-      {/* Dual Authentication Dialog (Customer or Staff) */}
+      {/* Dual Authentication Dialog (Customer or Staff) - Fortune 500 Professional Style */}
       <Dialog open={showTicketDialog && !isLoadingUser} onOpenChange={setShowTicketDialog}>
-        <DialogContent data-testid="dialog-ticket-verification" className="w-[95vw] max-w-md max-h-[90vh] p-0 flex flex-col">
-          <div className="p-4 sm:p-6 pb-0">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
-                <Lock className="w-4 h-4 sm:w-5 sm:h-5 text-primary flex-shrink-0" />
-                <span className="line-clamp-1">Live Chat Authentication</span>
+        <DialogContent data-testid="dialog-ticket-verification" className="w-[95vw] max-w-md max-h-[90vh] p-0 flex flex-col bg-gradient-to-br from-slate-900 via-slate-900/95 to-indigo-950/40 border-indigo-500/30 shadow-2xl shadow-indigo-500/20">
+          <div className="p-4 sm:p-6 pb-0 relative">
+            {/* Subtle animated gradient overlay */}
+            <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-transparent to-purple-500/5 pointer-events-none rounded-t-lg" />
+            
+            {/* WorkforceOS Branding at top */}
+            <div className="relative z-10 flex justify-center mb-4">
+              <WorkforceOSLogo size="md" showText={true} className="text-indigo-200" />
+            </div>
+            
+            <DialogHeader className="relative z-10">
+              <DialogTitle className="flex items-center justify-center gap-2 text-base sm:text-lg text-indigo-100">
+                <div className="p-2 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 rounded-lg border border-indigo-400/30">
+                  <Lock className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-300 flex-shrink-0" />
+                </div>
+                <span className="line-clamp-1 bg-gradient-to-r from-indigo-200 to-purple-200 bg-clip-text text-transparent font-semibold">
+                  HelpDesk Authentication
+                </span>
               </DialogTitle>
-              <DialogDescription className="text-xs sm:text-sm">
-                Choose your authentication method below
+              <DialogDescription className="text-xs sm:text-sm text-slate-400 text-center">
+                Secure access to live support chat
               </DialogDescription>
             </DialogHeader>
           </div>
           
           <div className="overflow-y-auto flex-1 px-4 sm:px-6">
             <Tabs value={authMode} onValueChange={(v: any) => setAuthMode(v)} className="w-full">
-              <TabsList className="grid w-full grid-cols-2 h-auto sticky top-0 z-10 bg-background">
-                <TabsTrigger value="customer" data-testid="tab-customer" className="text-xs sm:text-sm py-2 sm:py-2.5">
+              <TabsList className="grid w-full grid-cols-2 h-auto sticky top-0 z-10 bg-gradient-to-r from-slate-800/80 to-slate-900/80 backdrop-blur-sm border border-indigo-500/20 p-1">
+                <TabsTrigger 
+                  value="customer" 
+                  data-testid="tab-customer" 
+                  className="text-xs sm:text-sm py-2 sm:py-2.5 data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-600 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-indigo-500/30 transition-all duration-200"
+                >
+                  <User className="w-3 h-3 mr-1.5" />
                   Customer
                 </TabsTrigger>
-                <TabsTrigger value="staff" data-testid="tab-staff" className="text-xs sm:text-sm py-2 sm:py-2.5">
+                <TabsTrigger 
+                  value="staff" 
+                  data-testid="tab-staff" 
+                  className="text-xs sm:text-sm py-2 sm:py-2.5 data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-600 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-indigo-500/30 transition-all duration-200"
+                >
+                  <Shield className="w-3 h-3 mr-1.5" />
                   Staff
                 </TabsTrigger>
               </TabsList>
             
             {/* Customer Ticket Authentication */}
             <TabsContent value="customer" className="space-y-3 sm:space-y-4 mt-3 sm:mt-4">
-              <div className="space-y-1.5 sm:space-y-2">
-                <Label htmlFor="ticket-number" className="text-xs sm:text-sm">Ticket Number</Label>
-                <Input
-                  id="ticket-number"
-                  placeholder="TKT-ABCD1234"
-                  value={ticketNumber}
-                  onChange={(e) => setTicketNumber(e.target.value)}
-                  data-testid="input-ticket-number"
-                  className="text-sm sm:text-base"
-                />
-                <p className="text-[10px] sm:text-xs text-muted-foreground leading-tight">
-                  From your support request confirmation
-                </p>
-              </div>
-              <div className="space-y-1.5 sm:space-y-2">
-                <Label htmlFor="ticket-email" className="text-xs sm:text-sm">Email Address</Label>
-                <Input
-                  id="ticket-email"
-                  type="email"
-                  placeholder="your.email@company.com"
-                  value={ticketEmail}
-                  onChange={(e) => setTicketEmail(e.target.value)}
-                  data-testid="input-ticket-email"
-                  className="text-sm sm:text-base"
-                />
-                <p className="text-[10px] sm:text-xs text-muted-foreground leading-tight">
-                  Email used when creating the ticket
-                </p>
-              </div>
+              <Card className="border-indigo-500/20 bg-gradient-to-br from-indigo-500/5 to-purple-500/5 backdrop-blur-sm">
+                <CardContent className="p-3 sm:p-4 space-y-3 sm:space-y-4">
+                  <div className="space-y-1.5 sm:space-y-2">
+                    <Label htmlFor="ticket-number" className="text-xs sm:text-sm text-indigo-200 font-medium">Ticket Number</Label>
+                    <Input
+                      id="ticket-number"
+                      placeholder="TKT-ABCD1234"
+                      value={ticketNumber}
+                      onChange={(e) => setTicketNumber(e.target.value)}
+                      data-testid="input-ticket-number"
+                      className="text-sm sm:text-base bg-slate-800/50 border-indigo-500/30 focus:border-indigo-400 text-slate-100 placeholder:text-slate-500"
+                    />
+                    <p className="text-[10px] sm:text-xs text-slate-400 leading-tight">
+                      From your support request confirmation
+                    </p>
+                  </div>
+                  <div className="space-y-1.5 sm:space-y-2">
+                    <Label htmlFor="ticket-email" className="text-xs sm:text-sm text-indigo-200 font-medium">Email Address</Label>
+                    <Input
+                      id="ticket-email"
+                      type="email"
+                      placeholder="your.email@company.com"
+                      value={ticketEmail}
+                      onChange={(e) => setTicketEmail(e.target.value)}
+                      data-testid="input-ticket-email"
+                      className="text-sm sm:text-base bg-slate-800/50 border-indigo-500/30 focus:border-indigo-400 text-slate-100 placeholder:text-slate-500"
+                    />
+                    <p className="text-[10px] sm:text-xs text-slate-400 leading-tight">
+                      Email used when creating the ticket
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+              
               <div className="flex flex-col sm:flex-row justify-end gap-2 pt-2">
                 <Button
                   variant="outline"
                   onClick={() => window.location.href = "/contact"}
                   data-testid="button-create-ticket"
                   size="sm"
-                  className="w-full sm:w-auto text-xs sm:text-sm"
+                  className="w-full sm:w-auto text-xs sm:text-sm bg-slate-800/40 border-slate-600/40 text-slate-200 hover:bg-slate-700/40 hover:border-indigo-500/40"
                 >
                   Create Ticket
                 </Button>
@@ -685,7 +722,7 @@ export default function LiveChatroomPage() {
                   disabled={!ticketNumber.trim() || !ticketEmail.trim() || authenticateTicketMutation.isPending}
                   data-testid="button-verify-ticket"
                   size="sm"
-                  className="gap-2 w-full sm:w-auto text-xs sm:text-sm"
+                  className="gap-2 w-full sm:w-auto text-xs sm:text-sm bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 shadow-lg shadow-indigo-500/30 border-none"
                 >
                   {authenticateTicketMutation.isPending ? (
                     <span className="text-xs sm:text-sm">Authenticating...</span>
