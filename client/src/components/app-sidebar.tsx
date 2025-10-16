@@ -161,6 +161,9 @@ export function AppSidebar() {
 
   // Check if user is Root Admin (platform-level access)
   const isRootAdmin = (user as any)?.platformRole === 'root' || (user as any)?.platformRole === 'sysop';
+  
+  // Check if user is Organization Leader (Owner or Manager)
+  const isLeader = (user as any)?.workspaceRole === 'owner' || (user as any)?.workspaceRole === 'manager';
 
   // Root Admin only sees platform-level items, not workspace operations
   const rootAdminItems = [
@@ -212,6 +215,32 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {/* Leaders Hub - Only for Owner/Manager (NOT root admin) */}
+        {!isRootAdmin && isLeader && (
+          <SidebarGroup>
+            <SidebarGroupLabel className="px-3 mb-3 text-xs font-black uppercase tracking-wider text-muted-foreground/70">
+              Leaders Hub
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu className="space-y-1">
+                <SidebarMenuItem>
+                  <SidebarMenuButton 
+                    asChild 
+                    isActive={location === '/leaders-hub'}
+                    data-testid="link-leaders-hub"
+                    className="hover-elevate active-elevate-2 overflow-visible"
+                  >
+                    <Link href="/leaders-hub">
+                      <UserCog className="h-4 w-4" />
+                      <span className="font-semibold">Leaders Hub</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
         {/* HR Management - Only for workspace admin (NOT root admin) */}
         {!isRootAdmin && (

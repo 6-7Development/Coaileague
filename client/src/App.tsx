@@ -12,6 +12,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeProvider as WorkspaceThemeProvider } from "@/contexts/ThemeContext";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { ProtectedRoute } from "@/components/protected-route";
+import { LeaderRoute } from "@/components/leader-route";
 import { DemoBanner } from "@/components/demo-banner";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { CommandPalette } from "@/components/command-palette";
@@ -59,6 +60,7 @@ import DesignComparison from "@/pages/design-comparison";
 import LogoShowcase from "@/pages/logo-showcase";
 import PayrollDashboard from "@/pages/payroll-dashboard";
 import MyPaychecks from "@/pages/my-paychecks";
+import LeadersHub from "@/pages/leaders-hub";
 import { FloatingChatButton } from "@/components/floating-chat-button";
 
 function AppContent() {
@@ -134,6 +136,11 @@ function AppContent() {
                 <Route path="/billing" component={Billing} />
                 <Route path="/payroll" component={PayrollDashboard} />
                 <Route path="/my-paychecks" component={MyPaychecks} />
+                <Route path="/leaders-hub">
+                  <LeaderRoute>
+                    <LeadersHub />
+                  </LeaderRoute>
+                </Route>
                 <Route path="/hr/benefits" component={HRBenefits} />
                 <Route path="/hr/reviews" component={HRReviews} />
                 <Route path="/hr/pto" component={HRPTO} />
