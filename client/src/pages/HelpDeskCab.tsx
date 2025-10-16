@@ -13,6 +13,7 @@ import {
   ChevronLeft, ChevronRight, Info, Coffee, Star, Building2, Bot, Sparkles
 } from "lucide-react";
 import { WFLogoCompact } from "@/components/wf-logo";
+import { SecureRequestDialog } from "@/components/secure-request-dialog";
 import { formatDistanceToNow } from "date-fns";
 import {
   ContextMenu,
@@ -33,6 +34,11 @@ export default function HelpDeskCab() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
   const [showCoffeeCup, setShowCoffeeCup] = useState(false);
+  const [secureRequest, setSecureRequest] = useState<{
+    type: 'authenticate' | 'document' | 'photo' | 'signature' | 'info';
+    requestedBy: string;
+    message?: string;
+  } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // IRC-style MOTD and helpful info banners
@@ -64,7 +70,18 @@ export default function HelpDeskCab() {
     ? `${user.firstName} ${user.lastName}` 
     : user?.email?.split('@')[0] || 'User';
 
-  const { messages, isConnected, sendMessage, sendTyping, sendStatusChange, kickUser, onlineUsers } = useChatroomWebSocket(user?.id, userName);
+  const { messages, isConnected, sendMessage, sendTyping, sendStatusChange, kickUser, sendRawMessage, onlineUsers } = useChatroomWebSocket(
+    user?.id, 
+    userName,
+    (request) => {
+      // When staff requests secure info, open the dialog
+      setSecureRequest({
+        type: request.type as any,
+        requestedBy: request.requestedBy,
+        message: request.message,
+      });
+    }
+  );
 
   const { data: roomData } = useQuery({
     queryKey: ['/api/helpdesk/room/helpdesk'],
@@ -83,13 +100,12 @@ export default function HelpDeskCab() {
     const rolePriority: Record<string, number> = {
       'root': 0,              // Root admin at absolute top (you)
       'bot': 1,               // HelpOS AI bot
-      'platform_admin': 2,    // Platform administrators
-      'deputy_admin': 3,      // Deputy administrators
-      'deputy_assistant': 4,  // Deputy assistants
-      'sysop': 5,             // System operators
-      'subscriber': 6,        // Paid subscribers
-      'org_user': 7,          // Organization users
-      'guest': 8,             // Guest users
+      'deputy_admin': 2,      // Deputy administrators
+      'deputy_assistant': 3,  // Deputy assistants
+      'sysop': 4,             // System operators
+      'subscriber': 5,        // Paid subscribers
+      'org_user': 6,          // Organization users
+      'guest': 7,             // Guest users
     };
     
     const aPriority = rolePriority[a.role] ?? 99;
@@ -184,10 +200,8 @@ export default function HelpDeskCab() {
     }
     
     // Staff gets WF logo with blue gradient
-    if (['platform_admin', 'deputy_admin', 'deputy_assistant', 'sysop'].includes(role)) {
-      const bgColor = role === 'platform_admin' 
-        ? 'from-blue-500 to-indigo-600'
-        : role === 'deputy_admin'
+    if (['deputy_admin', 'deputy_assistant', 'sysop'].includes(role)) {
+      const bgColor = role === 'deputy_admin'
         ? 'from-blue-600 to-slate-700'
         : role === 'deputy_assistant'
         ? 'from-indigo-500 to-blue-600'
@@ -243,7 +257,6 @@ export default function HelpDeskCab() {
     switch (role) {
       case 'root': return <Crown className="w-3.5 h-3.5 text-amber-500" />;
       case 'bot': return <Sparkles className="w-3.5 h-3.5 text-blue-500 animate-pulse" />;
-      case 'platform_admin': return <Crown className="w-3.5 h-3.5 text-blue-500" />;
       case 'deputy_admin': return <Shield className="w-3.5 h-3.5 text-blue-600" />;
       case 'deputy_assistant': return <UserCog className="w-3.5 h-3.5 text-indigo-500" />;
       case 'sysop': return <Wrench className="w-3.5 h-3.5 text-cyan-500" />;
@@ -255,7 +268,6 @@ export default function HelpDeskCab() {
     switch (role) {
       case 'root': return 'text-amber-600 font-black';  // Root admin - bold gold
       case 'bot': return 'text-blue-600 font-bold';
-      case 'platform_admin': return 'text-blue-600 font-bold';
       case 'deputy_admin': return 'text-blue-700 font-bold';
       case 'deputy_assistant': return 'text-indigo-600 font-bold';
       case 'sysop': return 'text-cyan-600 font-bold';
@@ -280,7 +292,7 @@ export default function HelpDeskCab() {
     }
     
     // Staff messages - slate blue
-    if (['platform_admin', 'deputy_admin', 'deputy_assistant', 'sysop'].includes(role)) {
+    if (['deputy_admin', 'deputy_assistant', 'sysop'].includes(role)) {
       return 'bg-gradient-to-br from-slate-50 to-blue-50 border border-slate-300';
     }
     
@@ -326,94 +338,185 @@ export default function HelpDeskCab() {
       {/* Main Layout with Collapsible Sidebar */}
       <main className="flex flex-grow overflow-hidden max-w-7xl mx-auto w-full">
         
-        {/* LEFT COLUMN: Options/Settings (Collapsible) */}
+        {/* LEFT COLUMN: Support Staff Controls (Collapsible with Scrolling) */}
         {!sidebarCollapsed && (
-          <section className="w-48 bg-white/90 backdrop-blur-sm border-r border-slate-300 flex flex-col p-3 overflow-y-auto transition-all">
-          <h2 className="text-sm font-bold text-blue-900 mb-3 pb-2 border-b border-blue-200 flex items-center">
-            <Settings className="w-4 h-4 mr-2 text-blue-600" />
-            Staff Controls
-          </h2>
-
-          <div className="space-y-3">
-            {/* User Status */}
-            <div className="p-2 bg-blue-50 rounded-lg border border-blue-200">
-              <label className="block text-xs font-medium text-blue-800 mb-1 flex items-center gap-1">
-                Your Status
-                {showCoffeeCup && (
-                  <Coffee className="w-3 h-3 text-amber-600 animate-bounce" />
-                )}
-              </label>
-              <select 
-                value={userStatus} 
-                onChange={(e) => handleStatusChange(e.target.value as any)}
-                className="w-full p-1.5 border border-blue-300 rounded text-xs bg-white focus:ring-blue-500 focus:border-blue-500"
-                data-testid="select-status"
-              >
-                <option value="online">● Available</option>
-                <option value="away">● Away</option>
-                <option value="busy">● Busy</option>
-              </select>
+          <section className="w-64 bg-white/90 backdrop-blur-sm border-r border-slate-300 flex flex-col transition-all">
+            <div className="p-3 border-b border-blue-200 flex-shrink-0">
+              <h2 className="text-sm font-bold text-blue-900 flex items-center">
+                <Settings className="w-4 h-4 mr-2 text-blue-600" />
+                Staff Controls
+              </h2>
             </div>
 
-            {/* Queue Info */}
-            <div className="p-2 bg-slate-50 rounded-lg border border-slate-200">
-              <h3 className="text-xs font-semibold text-slate-800 mb-2">Support Queue</h3>
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-600">In Queue:</span>
-                  <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800">{queueLength}</Badge>
+            <ScrollArea className="flex-1 p-3">
+              <div className="space-y-3">
+                {/* User Status */}
+                <div className="p-2 bg-blue-50 rounded-lg border border-blue-200">
+                  <label className="block text-xs font-medium text-blue-800 mb-1 flex items-center gap-1">
+                    Your Status
+                    {showCoffeeCup && (
+                      <Coffee className="w-3 h-3 text-amber-600 animate-bounce" />
+                    )}
+                  </label>
+                  <select 
+                    value={userStatus} 
+                    onChange={(e) => handleStatusChange(e.target.value as any)}
+                    className="w-full p-1.5 border border-blue-300 rounded text-xs bg-white focus:ring-blue-500 focus:border-blue-500"
+                    data-testid="select-status"
+                  >
+                    <option value="online">● Available</option>
+                    <option value="away">● Away</option>
+                    <option value="busy">● Busy</option>
+                  </select>
                 </div>
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-600">Online Staff:</span>
-                  <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800">{uniqueUsers.filter(u => ['root', 'platform_admin', 'deputy_admin', 'deputy_assistant', 'sysop'].includes(u.role)).length}</Badge>
-                </div>
-              </div>
-            </div>
 
-            {/* Quick Actions for Staff */}
-            {isStaff && (
-              <>
-                <div className="pt-3 border-t border-slate-200">
-                  <h3 className="text-xs font-semibold text-slate-800 mb-2">Quick Responses</h3>
-                  <div className="space-y-1">
-                    <Button 
-                      onClick={() => handleQuickResponse("Thank you for contacting WorkforceOS support! How can I help you today?")}
-                      size="sm"
-                      variant="outline"
-                      className="w-full justify-start text-xs h-auto py-1.5 border-blue-300 hover:bg-blue-50"
-                    >
-                      Welcome Message
-                    </Button>
-                    <Button 
-                      onClick={() => handleQuickResponse("Could you provide more details about the issue you're experiencing?")}
-                      size="sm"
-                      variant="outline"
-                      className="w-full justify-start text-xs h-auto py-1.5 border-blue-300 hover:bg-blue-50"
-                    >
-                      Ask for Details
-                    </Button>
-                    <Button 
-                      onClick={() => handleQuickResponse("Can you share a screenshot of what you're seeing? That will help me assist you better.")}
-                      size="sm"
-                      variant="outline"
-                      className="w-full justify-start text-xs h-auto py-1.5 border-blue-300 hover:bg-blue-50"
-                    >
-                      Request Screenshot
-                    </Button>
-                    <Button 
-                      onClick={() => handleQuickResponse("I've resolved your issue. Is there anything else I can help you with?")}
-                      size="sm"
-                      variant="outline"
-                      className="w-full justify-start text-xs h-auto py-1.5 border-blue-300 hover:bg-blue-50"
-                    >
-                      Issue Resolved
-                    </Button>
+                {/* Queue Info */}
+                <div className="p-2 bg-slate-50 rounded-lg border border-slate-200">
+                  <h3 className="text-xs font-semibold text-slate-800 mb-2">Support Queue</h3>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-600">In Queue:</span>
+                      <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800">{queueLength}</Badge>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-600">Online Staff:</span>
+                      <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800">{uniqueUsers.filter(u => ['root', 'deputy_admin', 'deputy_assistant', 'sysop'].includes(u.role)).length}</Badge>
+                    </div>
                   </div>
                 </div>
-              </>
-            )}
-          </div>
-        </section>
+
+                {/* Staff Command Macros */}
+                {isStaff && (
+                  <>
+                    <div className="border-t border-slate-200 pt-3">
+                      <h3 className="text-xs font-semibold text-slate-800 mb-2">AI Intro</h3>
+                      <Button 
+                        onClick={() => handleQuickResponse("/intro")}
+                        className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs h-8"
+                      >
+                        <Zap className="w-3 h-3 mr-1" />
+                        Launch AI Greeting
+                      </Button>
+                    </div>
+
+                    <div className="border-t border-slate-200 pt-3">
+                      <h3 className="text-xs font-semibold text-slate-800 mb-2">Chat Commands</h3>
+                      <div className="space-y-1.5">
+                        <Button 
+                          onClick={() => handleQuickResponse("/help")}
+                          variant="outline"
+                          className="w-full justify-start text-xs h-8 border-blue-300 hover:bg-blue-50"
+                        >
+                          <HelpCircle className="w-3 h-3 mr-2" />
+                          Show Commands
+                        </Button>
+                        <Button 
+                          onClick={() => handleQuickResponse("/queue")}
+                          variant="outline"
+                          className="w-full justify-start text-xs h-8 border-blue-300 hover:bg-blue-50"
+                        >
+                          <Users className="w-3 h-3 mr-2" />
+                          View Queue
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="border-t border-slate-200 pt-3">
+                      <h3 className="text-xs font-semibold text-slate-800 mb-2">Quick Responses</h3>
+                      <div className="space-y-1.5">
+                        <Button 
+                          onClick={() => handleQuickResponse("Thank you for contacting WorkforceOS support! How can I help you today?")}
+                          variant="outline"
+                          className="w-full justify-start text-xs h-auto py-2 px-3 border-blue-300 hover:bg-blue-50 text-left"
+                        >
+                          Welcome
+                        </Button>
+                        <Button 
+                          onClick={() => handleQuickResponse("Could you provide more details about the issue you're experiencing?")}
+                          variant="outline"
+                          className="w-full justify-start text-xs h-auto py-2 px-3 border-blue-300 hover:bg-blue-50 text-left"
+                        >
+                          Request Details
+                        </Button>
+                        <Button 
+                          onClick={() => handleQuickResponse("Can you share a screenshot? That will help me assist you.")}
+                          variant="outline"
+                          className="w-full justify-start text-xs h-auto py-2 px-3 border-blue-300 hover:bg-blue-50 text-left"
+                        >
+                          Request Screenshot
+                        </Button>
+                        <Button 
+                          onClick={() => handleQuickResponse("Let me check your account details...")}
+                          variant="outline"
+                          className="w-full justify-start text-xs h-auto py-2 px-3 border-blue-300 hover:bg-blue-50 text-left"
+                        >
+                          Check Account
+                        </Button>
+                        <Button 
+                          onClick={() => handleQuickResponse("I'm escalating this to senior support...")}
+                          variant="outline"
+                          className="w-full justify-start text-xs h-auto py-2 px-3 border-blue-300 hover:bg-blue-50 text-left"
+                        >
+                          Escalate
+                        </Button>
+                        <Button 
+                          onClick={() => handleQuickResponse("Your issue has been resolved. Is there anything else I can help with?")}
+                          variant="outline"
+                          className="w-full justify-start text-xs h-auto py-2 px-3 border-blue-300 hover:bg-blue-50 text-left"
+                        >
+                          Issue Resolved
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="border-t border-slate-200 pt-3">
+                      <h3 className="text-xs font-semibold text-slate-800 mb-2">Privacy Controls</h3>
+                      <div className="space-y-1.5">
+                        <Button 
+                          onClick={() => handleQuickResponse("/spectate")}
+                          variant="outline"
+                          className="w-full justify-start text-xs h-8 border-amber-300 hover:bg-amber-50"
+                        >
+                          <AlertCircle className="w-3 h-3 mr-2" />
+                          Enable Spectator Mode
+                        </Button>
+                        <Button 
+                          onClick={() => handleQuickResponse("/voice")}
+                          variant="outline"
+                          className="w-full justify-start text-xs h-8 border-emerald-300 hover:bg-emerald-50"
+                        >
+                          <CheckCircle className="w-3 h-3 mr-2" />
+                          Give Voice (Unmute)
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="border-t border-slate-200 pt-3 pb-4">
+                      <h3 className="text-xs font-semibold text-slate-800 mb-2">Room Controls</h3>
+                      <div className="space-y-1.5">
+                        <Button 
+                          onClick={() => handleQuickResponse("/motd [message]")}
+                          variant="outline"
+                          className="w-full justify-start text-xs h-8 border-blue-300 hover:bg-blue-50"
+                        >
+                          <Info className="w-3 h-3 mr-2" />
+                          Update MOTD
+                        </Button>
+                        <Button 
+                          onClick={() => handleQuickResponse("/close")}
+                          variant="outline"
+                          className="w-full justify-start text-xs h-8 border-red-300 hover:bg-red-50 text-red-700"
+                        >
+                          <Power className="w-3 h-3 mr-2" />
+                          Close Ticket
+                        </Button>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            </ScrollArea>
+          </section>
         )}
 
         {/* CENTER COLUMN: Chat Area */}
@@ -583,40 +686,110 @@ export default function HelpDeskCab() {
                       </div>
                     </ContextMenuTrigger>
                     <ContextMenuContent className="bg-white border-blue-300 w-64">
-                      <ContextMenuItem onClick={() => handleMention(u.name)}>
-                        💬 @Mention {u.name}
-                      </ContextMenuItem>
-                      {isStaff && u.role !== 'root' && u.role !== 'bot' && (
+                      {isStaff && u.role !== 'root' && u.role !== 'bot' ? (
                         <>
-                          <ContextMenuItem onClick={() => sendQuickMessage(`@${u.name} Could you provide more details about your issue?`)}>
-                            ❓ Ask for More Details
+                          <div className="px-2 py-1.5 text-xs font-bold text-blue-700 border-b border-blue-200">
+                            Support Actions → {u.name}
+                          </div>
+                          
+                          <ContextMenuItem onClick={() => {
+                            // Release from spectator mode & send welcome
+                            sendRawMessage({ 
+                              type: 'release_spectator', 
+                              targetUserId: u.id 
+                            });
+                            sendQuickMessage(`Hi ${u.name}! 👋 My name is ${user?.name}, I'm here to help you today. What can I assist you with? Please provide your ticket number if you have one.`);
+                          }}>
+                            🎤 Release Hold & Welcome
                           </ContextMenuItem>
-                          <ContextMenuItem onClick={() => sendQuickMessage(`@${u.name} Can you share a screenshot? That will help me assist you.`)}>
-                            📷 Request Screenshot
+                          
+                          <ContextMenuItem onClick={() => {
+                            sendRawMessage({ 
+                              type: 'request_secure', 
+                              targetUserId: u.id,
+                              requestType: 'authenticate',
+                              message: 'Please verify your identity to proceed'
+                            });
+                          }}>
+                            🔐 Request Authentication
                           </ContextMenuItem>
-                          <ContextMenuItem onClick={() => sendQuickMessage(`@${u.name} Let me check your account status...`)}>
-                            🔍 Check Account Status
+                          
+                          <ContextMenuItem onClick={() => {
+                            sendRawMessage({ 
+                              type: 'request_secure', 
+                              targetUserId: u.id,
+                              requestType: 'document',
+                              message: 'Please upload the requested document'
+                            });
+                          }}>
+                            📄 Request Document Upload
                           </ContextMenuItem>
-                          <ContextMenuItem onClick={() => sendQuickMessage(`@${u.name} I'll guide you through the password reset process.`)}>
-                            🔑 Guide Password Reset
+                          
+                          <ContextMenuItem onClick={() => {
+                            sendRawMessage({ 
+                              type: 'request_secure', 
+                              targetUserId: u.id,
+                              requestType: 'photo',
+                              message: 'Please upload a photo of the issue'
+                            });
+                          }}>
+                            📷 Request Photo
                           </ContextMenuItem>
-                          <ContextMenuItem onClick={() => sendQuickMessage(`@${u.name} I'm escalating this to senior support for you.`)}>
-                            ⬆️ Escalate to Senior Staff
+                          
+                          <ContextMenuItem onClick={() => {
+                            sendRawMessage({ 
+                              type: 'request_secure', 
+                              targetUserId: u.id,
+                              requestType: 'signature',
+                              message: 'Please sign the consent form'
+                            });
+                          }}>
+                            ✍️ Request E-Signature
                           </ContextMenuItem>
-                          <ContextMenuItem onClick={() => sendQuickMessage(`@${u.name} Your issue is resolved. Is there anything else I can help with?`)}>
-                            ✅ Mark Issue Resolved
+                          
+                          <ContextMenuItem onClick={() => {
+                            sendRawMessage({ 
+                              type: 'request_secure', 
+                              targetUserId: u.id,
+                              requestType: 'info',
+                              message: 'Please provide more details about your issue'
+                            });
+                          }}>
+                            ❓ Request More Info
                           </ContextMenuItem>
+                          
+                          <div className="border-t border-slate-200 my-1" />
+                          
+                          <ContextMenuItem onClick={() => {
+                            sendRawMessage({ 
+                              type: 'transfer_user', 
+                              targetUserId: u.id 
+                            });
+                          }}>
+                            🔄 Transfer to Another Agent
+                          </ContextMenuItem>
+                          
+                          <ContextMenuItem onClick={() => {
+                            sendQuickMessage(`@${u.name} Your issue has been resolved! Is there anything else I can help you with today?`);
+                          }}>
+                            ✅ Mark Resolved
+                          </ContextMenuItem>
+                          
                           <ContextMenuItem 
                             onClick={() => {
-                              if (confirm(`Remove ${u.name} from chat for abuse/spam?`)) {
-                                kickUser(u.id, 'violation of chat rules');
+                              if (confirm(`Remove ${u.name} from chat for policy violation?`)) {
+                                kickUser(u.id, 'policy violation');
                               }
                             }}
                             className="text-red-600 font-bold"
                           >
-                            🚫 Kick User (Abuse/Spam)
+                            🚫 Kick User
                           </ContextMenuItem>
                         </>
+                      ) : (
+                        <ContextMenuItem onClick={() => handleMention(u.name)}>
+                          💬 Mention {u.name}
+                        </ContextMenuItem>
                       )}
                     </ContextMenuContent>
                   </ContextMenu>
@@ -626,6 +799,25 @@ export default function HelpDeskCab() {
           </ScrollArea>
         </section>
       </main>
+
+      {/* Secure Request Dialog - Opens when staff requests secure info from user */}
+      {secureRequest && (
+        <SecureRequestDialog
+          open={!!secureRequest}
+          onClose={() => setSecureRequest(null)}
+          requestType={secureRequest.type}
+          requestedBy={secureRequest.requestedBy}
+          requestMessage={secureRequest.message}
+          onSubmit={(data) => {
+            // Send secure data back to staff via WebSocket
+            sendRawMessage({
+              type: 'secure_response',
+              data: data
+            });
+            setSecureRequest(null);
+          }}
+        />
+      )}
     </div>
   );
 }

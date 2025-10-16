@@ -12,7 +12,7 @@ interface OnlineUser {
 }
 
 interface WebSocketMessage {
-  type: 'conversation_history' | 'new_message' | 'user_typing' | 'error' | 'system_message' | 'user_list_update' | 'status_change' | 'kicked';
+  type: 'conversation_history' | 'new_message' | 'user_typing' | 'error' | 'system_message' | 'user_list_update' | 'status_change' | 'kicked' | 'secure_request' | 'spectator_released' | 'secure_data_received';
   messages?: ChatMessage[];
   message?: ChatMessage | string;
   userId?: string;
@@ -30,9 +30,26 @@ interface WebSocketMessage {
   userName?: string;
   // Kick
   reason?: string;
+  // Secure request fields
+  requestType?: string;
+  requestedBy?: string;
+  // Spectator/release fields
+  releasedBy?: string;
+  // Secure data fields
+  fromUser?: string;
+  fromUserId?: string;
+  data?: any;
 }
 
-export function useChatroomWebSocket(userId: string | undefined, userName: string = 'User') {
+interface SecureRequestCallback {
+  (request: { type: string; requestedBy: string; message?: string }): void;
+}
+
+export function useChatroomWebSocket(
+  userId: string | undefined, 
+  userName: string = 'User',
+  onSecureRequest?: SecureRequestCallback
+) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -215,6 +232,71 @@ export function useChatroomWebSocket(userId: string | undefined, userName: strin
               }
               alert(`⚠️ Removed from chat\n\nReason: ${data.reason || 'violation of chat rules'}`);
               break;
+
+            case 'secure_request':
+              // Staff requested secure information from this user
+              if (onSecureRequest && (data as any).requestType) {
+                onSecureRequest({
+                  type: (data as any).requestType,
+                  requestedBy: (data as any).requestedBy || 'Support Staff',
+                  message: (data as any).message,
+                });
+              }
+              break;
+
+            case 'spectator_released':
+              // User was released from hold/spectator mode
+              const releaseMsg: ChatMessage = {
+                id: `system-${Date.now()}`,
+                createdAt: new Date(),
+                conversationId: 'main-chatroom-workforceos',
+                senderId: null,
+                senderName: 'System',
+                senderType: 'system',
+                message: `*** ${(data as any).releasedBy} has released you from hold. You can now chat.`,
+                messageType: 'text',
+                isSystemMessage: true,
+                attachmentUrl: null,
+                attachmentName: null,
+                isRead: null,
+                readAt: null,
+              };
+              setMessages((prev) => [...prev, releaseMsg]);
+              break;
+
+            case 'secure_data_received':
+              // Staff received secure data from a user - show in chat as formatted message
+              const secureData = (data as any).data;
+              let secureDataSummary = `🔒 Secure Data from ${(data as any).fromUser}:\n`;
+              
+              // Format the secure data safely for display
+              if (secureData.email) secureDataSummary += `📧 Email: ${secureData.email}\n`;
+              if (secureData.accountId) secureDataSummary += `🆔 Account ID: ${secureData.accountId}\n`;
+              if (secureData.verification) secureDataSummary += `✓ Verification: ${secureData.verification}\n`;
+              if (secureData.fullName) secureDataSummary += `📝 Full Name: ${secureData.fullName}\n`;
+              if (secureData.agreed) secureDataSummary += `✅ Agreed to terms\n`;
+              if (secureData.response) secureDataSummary += `💬 Response: ${secureData.response}\n`;
+              if (secureData.notes) secureDataSummary += `📋 Notes: ${secureData.notes}\n`;
+              if (secureData.description) secureDataSummary += `📝 Description: ${secureData.description}\n`;
+              if (secureData.file) secureDataSummary += `📎 File uploaded: ${secureData.file.name || 'document'}\n`;
+
+              const secureDataMsg: ChatMessage = {
+                id: `system-${Date.now()}`,
+                createdAt: new Date(),
+                conversationId: 'main-chatroom-workforceos',
+                senderId: null,
+                senderName: 'SecureChannel',
+                senderType: 'system',
+                message: secureDataSummary.trim(),
+                messageType: 'text',
+                isSystemMessage: true,
+                attachmentUrl: null,
+                attachmentName: null,
+                isRead: null,
+                readAt: null,
+              };
+              setMessages((prev) => [...prev, secureDataMsg]);
+              break;
           }
         } catch (err) {
           console.error('Failed to parse WebSocket message:', err);
@@ -303,6 +385,15 @@ export function useChatroomWebSocket(userId: string | undefined, userName: strin
     }));
   }, []);
 
+  // Send raw WebSocket message (for custom actions)
+  const sendRawMessage = useCallback((data: any) => {
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+      return;
+    }
+
+    wsRef.current.send(JSON.stringify(data));
+  }, []);
+
   // Connect on mount and when userId changes
   useEffect(() => {
     if (userId) {
@@ -343,6 +434,7 @@ export function useChatroomWebSocket(userId: string | undefined, userName: strin
     sendTyping,
     sendStatusChange,
     kickUser,
+    sendRawMessage,
     typingUsers,
     onlineUsers,
     isConnected,

@@ -1139,9 +1139,9 @@ export function setupWebSocket(server: Server) {
               return;
             }
 
-            // SECURITY: Only platform staff (root, admins) can kick users
+            // SECURITY: Only platform staff (root, deputy admins) can kick users
             const kickerRole = await storage.getUserPlatformRole(ws.userId).catch(() => null);
-            const canKick = kickerRole && ['root', 'platform_admin', 'deputy_admin'].includes(kickerRole);
+            const canKick = kickerRole && ['root', 'deputy_admin'].includes(kickerRole);
             
             if (!canKick) {
               ws.send(JSON.stringify({
@@ -1245,6 +1245,153 @@ export function setupWebSocket(server: Server) {
             });
 
             console.log(`✅ User ${targetUserName} kicked by ${ws.userName} - Reason: ${reason}`);
+            break;
+          }
+
+          case 'request_secure': {
+            // Staff requests secure information from a user
+            if (!ws.conversationId || !ws.userId) {
+              return;
+            }
+
+            // Find target user's connection
+            const clients = conversationClients.get(ws.conversationId);
+            if (!clients) return;
+
+            let targetClient: WebSocketClient | null = null;
+            for (const client of clients) {
+              if (client.userId === payload.targetUserId) {
+                targetClient = client;
+                break;
+              }
+            }
+
+            if (!targetClient || targetClient.readyState !== WebSocket.OPEN) {
+              ws.send(JSON.stringify({
+                type: 'error',
+                message: 'Target user not found or offline',
+              }));
+              return;
+            }
+
+            // Send secure request to target user
+            targetClient.send(JSON.stringify({
+              type: 'secure_request',
+              requestType: payload.requestType,
+              requestedBy: ws.userName || 'Support Staff',
+              message: payload.message || '',
+            }));
+
+            console.log(`🔐 ${ws.userName} requested ${payload.requestType} from user ${payload.targetUserId}`);
+            break;
+          }
+
+          case 'secure_response': {
+            // User responds with secure information
+            if (!ws.conversationId || !ws.userId) {
+              return;
+            }
+
+            // Find staff members in the room to send the response to
+            const clients = conversationClients.get(ws.conversationId);
+            if (!clients) return;
+
+            // Send to all staff members
+            clients.forEach((client) => {
+              if (client.userId !== ws.userId && client.readyState === WebSocket.OPEN) {
+                // Only send to staff (check if they have platform role)
+                client.send(JSON.stringify({
+                  type: 'secure_data_received',
+                  fromUser: ws.userName || 'User',
+                  fromUserId: ws.userId,
+                  data: payload.data,
+                }));
+              }
+            });
+
+            console.log(`📥 Secure data received from ${ws.userName}`);
+            break;
+          }
+
+          case 'release_spectator': {
+            // Release user from spectator/hold mode
+            if (!ws.conversationId || !ws.userId) {
+              return;
+            }
+
+            const clients = conversationClients.get(ws.conversationId);
+            if (!clients) return;
+
+            let targetClient: WebSocketClient | null = null;
+            for (const client of clients) {
+              if (client.userId === payload.targetUserId) {
+                targetClient = client;
+                break;
+              }
+            }
+
+            if (!targetClient || targetClient.readyState !== WebSocket.OPEN) {
+              ws.send(JSON.stringify({
+                type: 'error',
+                message: 'Target user not found',
+              }));
+              return;
+            }
+
+            // Notify target they're released from hold
+            targetClient.send(JSON.stringify({
+              type: 'spectator_released',
+              releasedBy: ws.userName || 'Support Staff',
+            }));
+
+            console.log(`🎤 ${ws.userName} released ${payload.targetUserId} from hold`);
+            break;
+          }
+
+          case 'transfer_user': {
+            // Transfer user to another agent
+            if (!ws.conversationId || !ws.userId) {
+              return;
+            }
+
+            // Create transfer announcement
+            const transferMessage: ChatMessage = {
+              id: Date.now(),
+              conversationId: ws.conversationId,
+              senderId: 'system',
+              message: `*** ${ws.userName} has transferred the customer to the next available agent`,
+              senderType: 'system',
+              createdAt: new Date(),
+              isRead: false,
+              workspaceId: ws.workspaceId || null,
+            };
+
+            // Save and broadcast
+            try {
+              await storage.createChatMessage({
+                conversationId: ws.conversationId,
+                senderId: 'system',
+                message: transferMessage.message,
+                senderType: 'system',
+                workspaceId: ws.workspaceId || null,
+              });
+
+              const clients = conversationClients.get(ws.conversationId);
+              if (clients) {
+                clients.forEach((client) => {
+                  if (client.readyState === WebSocket.OPEN) {
+                    client.send(JSON.stringify({
+                      type: 'new_message',
+                      message: transferMessage,
+                    }));
+                  }
+                });
+              }
+            } catch (err) {
+              console.error('Failed to save transfer message:', err);
+            }
+
+            console.log(`🔄 ${ws.userName} transferred user ${payload.targetUserId}`);
             break;
           }
         }

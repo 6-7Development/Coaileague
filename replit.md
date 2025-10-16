@@ -18,7 +18,7 @@ The platform features a CAD-style professional interface with a dark mode theme,
 - **Database**: PostgreSQL with Drizzle ORM.
 - **Authentication**: Custom session-based authentication with bcrypt, account locking, and password reset.
 - **Multi-Tenancy**: Workspace-based data isolation enforced at API and database levels.
-- **Role-Based Access Control (RBAC)**: Supports Owner, Manager, and Employee roles with hierarchical management and API protection middleware. Includes platform-level roles (platform_admin, deputy_admin, deputy_assistant, sysop) for system administration.
+- **Role-Based Access Control (RBAC)**: Supports Owner, Manager, and Employee roles with hierarchical management and API protection middleware. Includes platform-level roles (root, deputy_admin, deputy_assistant, sysop, bot) for system administration and support operations.
 - **Key Features**:
     - **Time Tracking**: Clock-in/out, real-time timers, automated calculations.
     - **Invoice Generation**: Automated from unbilled time, multi-client, tax/fee calculation.
@@ -49,6 +49,8 @@ The platform features a CAD-style professional interface with a dark mode theme,
         - **Guest Sessions**: Temporary user accounts created on-the-fly for ticket holders, tied to platform-external workspace
         - **Security**: Email validation against ticket owner, rate limiting, session management
         - **Future Scalability Idea**: International Work ID structure for global expansion - `Firstname-##-###-##-####` format where first 2 digits = country code, next 3 digits = state (even=USA, odd=foreign), last 4 = SSN/DL last 4. Organization ID shared across staff (e.g., "DC360Root"). This enables regional tracking, compliance, and human-readable yet structured identification for worldwide operations.
+        - **Smart Context Menu Actions**: Right-click users to access targeted support actions - all actions automatically apply to selected user without typing usernames. Includes "Release Hold & Welcome" (removes spectator mode + personalized greeting), secure information requests, user transfers, and issue resolution.
+        - **Secure Request Dialog System**: Professional modal dialogs for sensitive information collection with 5 request types: Authentication (email/account ID), Document Upload (PDF/DOC/images), Photo Upload (camera/gallery), E-Signature (legal name + agreement), and Info Request (open response). All submissions encrypted and sent via WebSocket to support staff. WorkforceOS blue branding with security indicators.
 - **Admin Dashboards**: Usage, Support, and Command Center for platform monitoring and customer management.
 - **Portals**: Employee, Auditor/Bookkeeper, and Client/Subscriber portals.
 - **Billing & Monetization**: Transaction-based platform fee (3-10%) via Stripe Connect. Tier-based pricing (Professional, Enterprise, Elite) with feature flags. AI features follow a subscriber-pays-all model.
