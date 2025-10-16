@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +32,16 @@ import {
 
 export default function Contact() {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
+  
+  // Check if user is authenticated
+  const { data: currentUser } = useQuery<{ user: { id: string; email: string } }>({
+    queryKey: ["/api/auth/me"],
+    retry: false,
+  });
+  
+  const isAuthenticated = !!currentUser?.user;
+  
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -182,14 +193,34 @@ export default function Contact() {
                 Instant answers from our team
               </p>
               <div className="pt-2">
-                <Button
-                  size="sm"
-                  className="bg-[hsl(var(--cad-purple))] hover:bg-[hsl(var(--cad-purple))]/90 text-white h-9"
-                  data-testid="button-start-chat"
-                >
-                  <MessageSquare className="h-4 w-4 mr-2" />
-                  Start Chat
-                </Button>
+                {isAuthenticated ? (
+                  <Link href="/live-chat">
+                    <Button
+                      size="sm"
+                      className="bg-[hsl(var(--cad-purple))] hover:bg-[hsl(var(--cad-purple))]/90 text-white h-9"
+                      data-testid="button-start-chat"
+                    >
+                      <MessageSquare className="h-4 w-4 mr-2" />
+                      Start Chat
+                    </Button>
+                  </Link>
+                ) : (
+                  <Button
+                    size="sm"
+                    className="bg-[hsl(var(--cad-purple))] hover:bg-[hsl(var(--cad-purple))]/90 text-white h-9"
+                    data-testid="button-start-chat"
+                    onClick={() => {
+                      toast({
+                        title: "Login Required",
+                        description: "Please login to access Live Chat support",
+                      });
+                      setLocation("/login");
+                    }}
+                  >
+                    <MessageSquare className="h-4 w-4 mr-2" />
+                    Start Chat
+                  </Button>
+                )}
                 <p className="text-xs text-[hsl(var(--cad-text-tertiary))] mt-2">
                   Available 24/7 for all tiers
                 </p>
