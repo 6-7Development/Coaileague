@@ -20,6 +20,7 @@ export function useChatroomWebSocket(userId: string | undefined, userName: strin
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set());
   // HelpDesk access control state
   const [requiresTicket, setRequiresTicket] = useState(false);
   const [roomStatus, setRoomStatus] = useState<string | null>(null);
@@ -30,6 +31,7 @@ export function useChatroomWebSocket(userId: string | undefined, userName: strin
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
   const reconnectAttemptsRef = useRef(0);
   const isConnectingRef = useRef(false); // Track if connection is in progress
+  const typingTimeoutRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
   const connect = useCallback(() => {
     if (!userId) return;
@@ -137,7 +139,40 @@ export function useChatroomWebSocket(userId: string | undefined, userName: strin
               break;
 
             case 'user_typing':
-              // Handle typing indicators if needed
+              // Handle typing indicators
+              if (data.userId && data.isTyping !== undefined) {
+                setTypingUsers((prev) => {
+                  const next = new Set(prev);
+                  
+                  if (data.isTyping) {
+                    next.add(data.userId!);
+                    
+                    // Auto-remove after 3 seconds
+                    const existing = typingTimeoutRef.current.get(data.userId!);
+                    if (existing) clearTimeout(existing);
+                    
+                    const timeout = setTimeout(() => {
+                      setTypingUsers((p) => {
+                        const n = new Set(p);
+                        n.delete(data.userId!);
+                        return n;
+                      });
+                      typingTimeoutRef.current.delete(data.userId!);
+                    }, 3000);
+                    
+                    typingTimeoutRef.current.set(data.userId!, timeout);
+                  } else {
+                    next.delete(data.userId!);
+                    const existing = typingTimeoutRef.current.get(data.userId!);
+                    if (existing) {
+                      clearTimeout(existing);
+                      typingTimeoutRef.current.delete(data.userId!);
+                    }
+                  }
+                  
+                  return next;
+                });
+              }
               break;
           }
         } catch (err) {
@@ -187,6 +222,19 @@ export function useChatroomWebSocket(userId: string | undefined, userName: strin
       senderType: senderType,
     }));
   }, []);
+  
+  // Send typing indicator
+  const sendTyping = useCallback((isTyping: boolean) => {
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN || !userId) {
+      return;
+    }
+
+    wsRef.current.send(JSON.stringify({
+      type: 'typing',
+      userId: userId,
+      isTyping: isTyping,
+    }));
+  }, [userId]);
 
   // Connect on mount and when userId changes
   useEffect(() => {
@@ -225,6 +273,8 @@ export function useChatroomWebSocket(userId: string | undefined, userName: strin
   return {
     messages,
     sendMessage,
+    sendTyping,
+    typingUsers,
     isConnected,
     error,
     reconnect: connect,

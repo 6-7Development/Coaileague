@@ -46,9 +46,14 @@ export default function LiveChatroomPage() {
   const [roomStatusControl, setRoomStatusControl] = useState<"open" | "closed" | "maintenance">("open");
   const [roomStatusMessage, setRoomStatusMessage] = useState("");
   const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
+  const [showScrollButton, setShowScrollButton] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
   const previousMessageCountRef = useRef(0);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isAtBottomRef = useRef(true);
   const { toast } = useToast();
   const { playSound } = useChatSounds();
   
@@ -80,7 +85,7 @@ export default function LiveChatroomPage() {
   
   // Use WebSocket for real-time messaging (only if authenticated)
   const { 
-    messages, sendMessage, isConnected, error, reconnect,
+    messages, sendMessage, sendTyping, typingUsers, isConnected, error, reconnect,
     requiresTicket, roomStatus, statusMessage: wsStatusMessage, temporaryError, clearAccessError
   } = useChatroomWebSocket(isAuthenticated ? userId : undefined, userName);
   
@@ -207,6 +212,32 @@ export default function LiveChatroomPage() {
     }
   ]);
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setMessageText(value);
+    
+    // Send typing indicator (debounced)
+    if (value.trim() && isConnected) {
+      sendTyping(true);
+      
+      // Clear existing timeout
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      
+      // Set new timeout to stop typing indicator after 2 seconds of inactivity
+      typingTimeoutRef.current = setTimeout(() => {
+        sendTyping(false);
+      }, 2000);
+    } else if (!value.trim()) {
+      // Stop typing indicator if input is empty
+      sendTyping(false);
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+    }
+  };
+  
   const handleSendMessage = (e?: React.FormEvent, text?: string) => {
     if (e) e.preventDefault();
     const msgToSend = text || messageText;
@@ -219,6 +250,12 @@ export default function LiveChatroomPage() {
       });
       reconnect();
       return;
+    }
+    
+    // Stop typing indicator when sending
+    sendTyping(false);
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
     }
     
     // Play send sound
@@ -645,13 +682,29 @@ export default function LiveChatroomPage() {
             </div>
           </ScrollArea>
 
+          {/* Typing Indicator */}
+          {typingUsers.size > 0 && (
+            <div className="px-4 py-2 border-t border-slate-700/30">
+              <div className="max-w-full md:max-w-5xl mx-auto flex items-center gap-2 text-xs text-slate-400">
+                <div className="flex gap-1">
+                  <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                  <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                  <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                </div>
+                <span className="text-slate-300">
+                  {typingUsers.size === 1 ? 'Someone is typing...' : `${typingUsers.size} people are typing...`}
+                </span>
+              </div>
+            </div>
+          )}
+          
           {/* Professional Message Input */}
           <div className="border-t border-slate-700/50 bg-slate-900/80 backdrop-blur-md p-4 flex-shrink-0 relative z-10">
             <div className="max-w-full md:max-w-5xl mx-auto">
               <form onSubmit={handleSendMessage} className="flex gap-2">
                 <Input
                   value={messageText}
-                  onChange={(e) => setMessageText(e.target.value)}
+                  onChange={handleInputChange}
                   placeholder={isConnected ? "Type your message..." : "Connecting..."}
                   className="flex-1 bg-slate-800/60 border-slate-600/40 text-slate-100 placeholder:text-slate-500 focus:border-blue-500 focus:ring-blue-500/30"
                   data-testid="input-chat-message"
