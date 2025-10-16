@@ -18,6 +18,7 @@ import { useChatSounds } from "@/hooks/use-chat-sounds";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { WorkforceOSLogo } from "@/components/workforceos-logo";
 import { SupportCommandDrawer } from "@/components/support-command-drawer";
+import { SupportMobileMenu } from "@/components/support-mobile-menu";
 import { 
   MessageSquare, Send, Users, Circle, Shield, 
   Headphones, User, Bot, Sparkles, Wifi, WifiOff,
@@ -401,6 +402,9 @@ export default function LiveChatroomPage() {
                 </>
               )}
             </Badge>
+
+            {/* Support Mobile Menu - Staff Queue & Commands (Mobile Only) */}
+            {isStaff && <SupportMobileMenu />}
 
             {/* Support Command Drawer - Mobile Only */}
             <SupportCommandDrawer 

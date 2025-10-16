@@ -86,11 +86,7 @@ export default function PayrollDashboard() {
   // Create payroll run mutation
   const createRunMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest('/api/payroll/create-run', {
-        method: 'POST',
-        body: JSON.stringify({}),
-        headers: { 'Content-Type': 'application/json' }
-      });
+      return await apiRequest('POST', '/api/payroll/create-run', {});
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/payroll/runs'] });
@@ -111,9 +107,7 @@ export default function PayrollDashboard() {
   // Approve payroll run mutation
   const approveRunMutation = useMutation({
     mutationFn: async (runId: string) => {
-      return await apiRequest(`/api/payroll/runs/${runId}/approve`, {
-        method: 'POST',
-      });
+      return await apiRequest('POST', `/api/payroll/runs/${runId}/approve`, {});
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/payroll/runs'] });
@@ -139,9 +133,7 @@ export default function PayrollDashboard() {
   // Process payroll run mutation
   const processRunMutation = useMutation({
     mutationFn: async (runId: string) => {
-      return await apiRequest(`/api/payroll/runs/${runId}/process`, {
-        method: 'POST',
-      });
+      return await apiRequest('POST', `/api/payroll/runs/${runId}/process`, {});
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/payroll/runs'] });
