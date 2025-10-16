@@ -534,9 +534,9 @@ export default function RootAdminDashboard() {
               <div>
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <Activity className="h-5 w-5 text-indigo-500 animate-pulse" />
-                  Live Platform Activity
+                  Live Platform Activity & Metrics
                 </CardTitle>
-                <CardDescription>Real-time events across all workspaces</CardDescription>
+                <CardDescription>Real-time events and comprehensive data analysis</CardDescription>
               </div>
               <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-600">
                 <div className="h-2 w-2 bg-emerald-500 rounded-full animate-pulse mr-2" />
@@ -545,7 +545,81 @@ export default function RootAdminDashboard() {
             </div>
           </CardHeader>
           <CardContent>
-            <ScrollArea className="h-[600px]">
+            {/* Compact Metrics Table */}
+            <div className="mb-4 border rounded-lg overflow-hidden">
+              <div className="grid grid-cols-4 gap-px bg-border">
+                {/* Row 1 */}
+                <div className="bg-card p-3">
+                  <div className="text-xs text-muted-foreground">Workspaces</div>
+                  <div className="text-xl font-bold">{stats?.totalWorkspaces || 0}</div>
+                </div>
+                <div className="bg-card p-3">
+                  <div className="text-xs text-muted-foreground">Users</div>
+                  <div className="text-xl font-bold">{stats?.totalUsers || 0}</div>
+                </div>
+                <div className="bg-card p-3">
+                  <div className="text-xs text-muted-foreground">Subscriptions</div>
+                  <div className="text-xl font-bold text-violet-600">{stats?.activeSubscriptions || 0}</div>
+                </div>
+                <div className="bg-card p-3">
+                  <div className="text-xs text-muted-foreground">New (Month)</div>
+                  <div className="text-xl font-bold text-blue-600">{stats?.newSignups || 0}</div>
+                </div>
+                {/* Row 2 */}
+                <div className="bg-card p-3">
+                  <div className="text-xs text-muted-foreground">Revenue</div>
+                  <div className="text-lg font-bold text-emerald-600">${parseFloat(stats?.monthlyRevenue || "0").toLocaleString()}</div>
+                </div>
+                <div className="bg-card p-3">
+                  <div className="text-xs text-muted-foreground">Platform Fees</div>
+                  <div className="text-lg font-bold text-amber-600">${parseFloat(stats?.platformFees || "0").toLocaleString()}</div>
+                </div>
+                <div className="bg-card p-3">
+                  <div className="text-xs text-muted-foreground">Invoices</div>
+                  <div className="text-xl font-bold">{stats?.invoiceCount || 0}</div>
+                </div>
+                <div className="bg-card p-3">
+                  <div className="text-xs text-muted-foreground">Avg Revenue</div>
+                  <div className="text-lg font-bold">${parseFloat(stats?.avgRevenue || "0").toFixed(0)}</div>
+                </div>
+                {/* Row 3 */}
+                <div className="bg-card p-3">
+                  <div className="text-xs text-muted-foreground">Chat Users</div>
+                  <div className="text-xl font-bold text-purple-600">{stats?.chatUsers || 0}</div>
+                </div>
+                <div className="bg-card p-3">
+                  <div className="text-xs text-muted-foreground">Chat Staff</div>
+                  <div className="text-xl font-bold text-blue-600">{stats?.chatStaff || 0}</div>
+                </div>
+                <div className="bg-card p-3">
+                  <div className="text-xs text-muted-foreground">Open Tickets</div>
+                  <div className="text-xl font-bold text-orange-600">{(supportStats as any)?.openTickets || 0}</div>
+                </div>
+                <div className="bg-card p-3">
+                  <div className="text-xs text-muted-foreground">Churn Rate</div>
+                  <div className="text-xl font-bold text-red-600">{stats?.churnRate || "0"}%</div>
+                </div>
+                {/* Row 4 - System Health */}
+                <div className="bg-card p-3">
+                  <div className="text-xs text-muted-foreground">CPU Usage</div>
+                  <div className="text-xl font-bold">{stats?.systemHealth?.cpu || 0}%</div>
+                </div>
+                <div className="bg-card p-3">
+                  <div className="text-xs text-muted-foreground">Memory</div>
+                  <div className="text-xl font-bold">{stats?.systemHealth?.memory || 0}%</div>
+                </div>
+                <div className="bg-card p-3">
+                  <div className="text-xs text-muted-foreground">Database</div>
+                  <div className="text-sm font-bold text-emerald-600">{stats?.systemHealth?.database || "healthy"}</div>
+                </div>
+                <div className="bg-card p-3">
+                  <div className="text-xs text-muted-foreground">Uptime</div>
+                  <div className="text-sm font-mono font-bold">{stats?.systemHealth?.uptime ? formatUptime(stats.systemHealth.uptime) : "0d 0h"}</div>
+                </div>
+              </div>
+            </div>
+
+            <ScrollArea className="h-[400px]">
               {statsLoading ? (
                 <div className="flex items-center justify-center h-40 text-muted-foreground">
                   <RefreshCw className="h-6 w-6 animate-spin mr-2" />
