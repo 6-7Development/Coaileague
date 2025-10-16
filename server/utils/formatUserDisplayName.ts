@@ -57,10 +57,10 @@ export function formatUserDisplayName(user: UserInfo): string {
  */
 function formatPlatformRole(role: string): string {
   const roleMap: Record<string, string> = {
-    'root': '🔨 Admin',              // Root displays as "Admin" - cleaner for chat
+    'root': '🔨 RAdmin',             // Root Admin (highest authority)
     'platform_admin': '🔨 Admin',    // Platform admin
-    'deputy_admin': '🔨 DA',         // Deputy Admin → DA
-    'deputy_assistant': '🔨 DA',     // Deputy Assistant → DA
+    'deputy_admin': '🔨 DAdmin',     // Deputy Admin
+    'deputy_assistant': '🔨 HDM',    // HelpDesk Manager
     'sysop': '🔨 Sysop',            // System operator
   };
   

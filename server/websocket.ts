@@ -145,38 +145,8 @@ export function setupWebSocket(server: Server) {
                   });
                 }
 
-                // 2. HELPOS™ announcement (AI Bot): Different for staff vs customers
-                if (isStaff) {
-                  // Staff: Show queue status alert
-                  const queueStatus = await queueManager.getQueueStatus();
-                  const staffAlert = await generateStaffQueueAlert(
-                    queueStatus.waitingCount,
-                    queueStatus.beingHelpedCount,
-                    queueStatus.averageWaitMinutes
-                  );
-                  
-                  const botMessage = await storage.createChatMessage({
-                    conversationId: payload.conversationId,
-                    senderId: 'ai-bot',
-                    senderName: 'HelpOS™',
-                    senderType: 'bot',
-                    message: staffAlert,
-                    messageType: 'text',
-                  });
-
-                  // Broadcast HelpOS message
-                  if (clients) {
-                    const botPayload = JSON.stringify({
-                      type: 'new_message',
-                      message: botMessage,
-                    });
-                    clients.forEach((client) => {
-                      if (client.readyState === WebSocket.OPEN) {
-                        client.send(botPayload);
-                      }
-                    });
-                  }
-                } else {
+                // 2. HELPOS™ announcement (AI Bot): Only for customers (not staff)
+                if (!isStaff) {
                   // Customer: Add to queue and send welcome with position
                   // Generate ticket number if needed
                   const ticketNumber = `TKT-${Date.now().toString().slice(-6)}`;
