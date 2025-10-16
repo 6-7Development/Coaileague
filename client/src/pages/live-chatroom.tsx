@@ -332,7 +332,7 @@ export default function LiveChatroomPage() {
             
             {/* WorkforceOS Branding */}
             <div className="flex items-center gap-2 flex-shrink-0">
-              <WorkforceOSLogo size="sm" showText={false} className="text-white" />
+              <WorkforceOSLogo size="md" vertical={true} showText={true} />
               <div className="hidden sm:block h-8 w-px bg-white/30" />
             </div>
             
@@ -672,7 +672,7 @@ export default function LiveChatroomPage() {
             
             {/* WorkforceOS Branding at top */}
             <div className="relative z-10 flex justify-center mb-4">
-              <WorkforceOSLogo size="md" showText={true} className="text-indigo-200" />
+              <WorkforceOSLogo size="lg" vertical={false} showText={true} />
             </div>
             
             <DialogHeader className="relative z-10">

@@ -3,6 +3,7 @@ import { Server } from 'http';
 import { storage } from './storage';
 import { formatUserDisplayName } from './utils/formatUserDisplayName';
 import { generateGreeting, generateStaffIntroduction, getAiResponse, shouldBotRespond } from './services/aiBot';
+import { parseSlashCommand, validateCommand, getHelpText, COMMAND_REGISTRY } from '@shared/commands';
 import type { ChatMessage } from '@shared/schema';
 
 interface WebSocketClient extends WebSocket {

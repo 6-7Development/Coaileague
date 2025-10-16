@@ -1,14 +1,16 @@
 import { cn } from "@/lib/utils";
 
 interface WorkforceOSLogoProps {
-  size?: "sm" | "md" | "lg" | "xl";
+  size?: "sm" | "md" | "lg" | "xl" | "marketing";
   showText?: boolean;
+  vertical?: boolean; // Stack logo on top, text below (for marketing)
   className?: string;
 }
 
 export function WorkforceOSLogo({ 
   size = "md", 
   showText = true,
+  vertical = false,
   className 
 }: WorkforceOSLogoProps) {
   // Generate unique ID for this logo instance to prevent SVG ID conflicts
@@ -30,15 +32,23 @@ export function WorkforceOSLogo({
     xl: {
       container: "w-24 h-24",
       text: "text-4xl"
+    },
+    marketing: {
+      container: "w-32 h-32",
+      text: "text-5xl"
     }
   };
 
   return (
-    <div className={cn("flex items-center gap-3", className)}>
+    <div className={cn(
+      "flex gap-3",
+      vertical ? "flex-col items-center" : "flex-row items-center",
+      className
+    )}>
       {/* Iconic WorkforceOS Logo - Clock with Person (Time + People) */}
       <div 
         className={cn(
-          "relative flex items-center justify-center",
+          "relative flex items-center justify-center flex-shrink-0",
           sizes[size].container
         )}
         data-testid="logo-icon"
@@ -186,11 +196,17 @@ export function WorkforceOSLogo({
             "font-black tracking-tight",
             "bg-gradient-to-br from-emerald-500 to-emerald-400",
             "bg-clip-text text-transparent",
+            vertical ? "text-center" : "",
             sizes[size].text
           )}
           data-testid="logo-text"
         >
           WorkforceOS
+          {vertical && size === "marketing" && (
+            <div className="text-xs font-normal text-slate-400 mt-1 tracking-wide">
+              Elite Workforce Management
+            </div>
+          )}
         </div>
       )}
     </div>
