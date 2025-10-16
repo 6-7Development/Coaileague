@@ -172,9 +172,9 @@ export function setupWebSocket(server: Server) {
                 const systemJoinMessage = await storage.createChatMessage({
                   conversationId: payload.conversationId,
                   senderId: null,
-                  senderName: 'System',
+                  senderName: 'Server',
                   senderType: 'system',
-                  message: `*** ${displayName} has joined the HelpDesk`,
+                  message: `${displayName} has joined the HelpDesk`,
                   messageType: 'text',
                   isSystemMessage: true,
                 });
@@ -452,9 +452,9 @@ export function setupWebSocket(server: Server) {
                   const systemMsg = await storage.createChatMessage({
                     conversationId: ws.conversationId,
                     senderId: null,
-                    senderName: 'System',
+                    senderName: 'Server',
                     senderType: 'system',
-                    message: `*** ${displayName} has closed this ticket. Reason: ${reason}`,
+                    message: `${displayName} closed ticket. Reason: ${reason}`,
                     messageType: 'text',
                     isSystemMessage: true,
                   });
@@ -566,9 +566,9 @@ export function setupWebSocket(server: Server) {
                   const kickMsg = await storage.createChatMessage({
                     conversationId: ws.conversationId,
                     senderId: null,
-                    senderName: 'System',
+                    senderName: 'Server',
                     senderType: 'system',
-                    message: `*** ${targetUsername} has been removed from the chat. Reason: ${reason}`,
+                    message: `${displayName} removed ${targetUsername} from chat. Reason: ${reason}`,
                     messageType: 'text',
                     isSystemMessage: true,
                   });
@@ -638,9 +638,9 @@ export function setupWebSocket(server: Server) {
                   const transferMsg = await storage.createChatMessage({
                     conversationId: ws.conversationId,
                     senderId: null,
-                    senderName: 'System',
+                    senderName: 'Server',
                     senderType: 'system',
-                    message: `*** ${displayName} is transferring this ticket to ${targetStaff}...`,
+                    message: `${displayName} transferred ticket to ${targetStaff}`,
                     messageType: 'text',
                     isSystemMessage: true,
                   });
@@ -815,9 +815,9 @@ export function setupWebSocket(server: Server) {
           const leaveAnnouncement = await storage.createChatMessage({
             conversationId: ws.conversationId,
             senderId: ws.userId,
-            senderName: 'System',
+            senderName: 'Server',
             senderType: 'system',
-            message: `${displayName} has left the chatroom`,
+            message: `${displayName} has left the HelpDesk`,
             messageType: 'text',
             isSystemMessage: true,
           });
