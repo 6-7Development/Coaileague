@@ -274,28 +274,53 @@ export default function LiveChatroomPage() {
   );
 
   return (
-    <div className="flex flex-col h-screen bg-background">
-      {/* Header - Clean and Organized */}
-      <header className="border-b bg-card px-4 py-3 flex-shrink-0">
+    <div className="flex flex-col h-screen bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950">
+      {/* Professional Header with Gradient */}
+      <header className="border-b border-indigo-500/20 bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 px-4 py-4 flex-shrink-0 shadow-lg shadow-indigo-500/20">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0 flex-1">
-            <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6 text-primary flex-shrink-0" />
+            <div className="p-2 bg-white/10 backdrop-blur-sm rounded-lg">
+              <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6 text-white flex-shrink-0" />
+            </div>
             <div className="min-w-0">
-              <h1 className="text-base sm:text-lg font-bold truncate">
-                HelpDesk
+              <h1 className="text-base sm:text-lg font-bold truncate text-white">
+                SupportOS™ Live HelpDesk
               </h1>
-              <p className="text-xs text-muted-foreground hidden sm:block">
-                {helpDeskRoom?.statusMessage || "Live Support"}
+              <p className="text-xs text-indigo-100 hidden sm:block flex items-center gap-2">
+                <span className="inline-flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                {helpDeskRoom?.statusMessage || "Instant Support · IRC-Style Messaging"}
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2 flex-shrink-0">
-            {statusBadge}
+            {/* Professional Status Badge */}
+            <Badge 
+              variant={helpDeskRoom?.status === 'open' ? 'default' : 'secondary'}
+              className="gap-1 flex-shrink-0 bg-white/20 border-white/30 text-white hover-elevate"
+              data-testid="badge-room-status"
+            >
+              {helpDeskRoom?.status === 'open' ? (
+                <>
+                  <Circle className="w-2 h-2 fill-emerald-400 text-emerald-400 animate-pulse" />
+                  <span className="hidden sm:inline">Open</span>
+                </>
+              ) : helpDeskRoom?.status === 'closed' ? (
+                <>
+                  <Circle className="w-2 h-2 fill-red-400 text-red-400" />
+                  <span className="hidden sm:inline">Closed</span>
+                </>
+              ) : (
+                <>
+                  <Circle className="w-2 h-2 fill-amber-400 text-amber-400 animate-pulse" />
+                  <span className="hidden sm:inline">Maintenance</span>
+                </>
+              )}
+            </Badge>
             
             <Badge 
               variant={isConnected ? "default" : "secondary"} 
-              className="gap-1 hidden sm:flex"
+              className="gap-1 hidden sm:flex bg-white/20 border-white/30 text-white"
               data-testid="badge-connection-status"
             >
               {isConnected ? (
@@ -317,10 +342,10 @@ export default function LiveChatroomPage() {
                 size="sm"
                 onClick={() => setShowStaffControls(true)}
                 data-testid="button-staff-controls"
-                className="gap-2 hidden sm:flex"
+                className="gap-2 hidden sm:flex bg-white/10 border-white/30 text-white hover:bg-white/20 hover:border-white/40"
               >
                 <Settings className="w-4 h-4" />
-                <span className="hidden md:inline">Controls</span>
+                <span className="hidden md:inline">Staff Controls</span>
               </Button>
             )}
 
@@ -330,33 +355,42 @@ export default function LiveChatroomPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="md:hidden"
+                  className="md:hidden bg-white/10 border-white/30 text-white hover:bg-white/20"
                   data-testid="button-mobile-users"
                 >
                   <Users className="w-4 h-4" />
                   <span className="ml-1">{onlineUsers.length}</span>
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-72">
-                <SheetHeader>
-                  <SheetTitle className="flex items-center gap-2">
+              <SheetContent side="right" className="w-72 bg-slate-900 border-indigo-500/20">
+                <SheetHeader className="flex flex-row items-center justify-between">
+                  <SheetTitle className="flex items-center gap-2 text-indigo-100">
                     <Users className="w-4 h-4" />
                     Online ({onlineUsers.length})
                   </SheetTitle>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setShowMobileUsers(false)}
+                    className="h-6 w-6 text-slate-400 hover:text-white"
+                    data-testid="button-close-mobile-users"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
                 </SheetHeader>
                 <div className="mt-4 space-y-2">
                   {onlineUsers.map((user) => (
                     <div 
                       key={user.id}
-                      className="flex items-center gap-2 p-2 rounded-lg hover-elevate"
+                      className="flex items-center gap-2 p-2.5 rounded-lg bg-slate-800/40 border border-indigo-500/20 hover-elevate"
                       data-testid={`user-${user.id}`}
                     >
-                      <Circle className="w-2 h-2 fill-green-500 text-green-500 flex-shrink-0" />
+                      <Circle className="w-2 h-2 fill-emerald-400 text-emerald-400 flex-shrink-0 animate-pulse" />
                       <div className="flex items-center gap-2 min-w-0 flex-1">
-                        {user.role === 'admin' && <Shield className="w-3 h-3 text-red-500 flex-shrink-0" />}
-                        {user.role === 'support' && <Headphones className="w-3 h-3 text-blue-500 flex-shrink-0" />}
-                        {user.role === 'bot' && <Bot className="w-3 h-3 text-purple-500 flex-shrink-0" />}
-                        <span className="text-sm font-medium truncate">{user.name}</span>
+                        {user.role === 'admin' && <Shield className="w-3 h-3 text-red-400 flex-shrink-0" />}
+                        {user.role === 'support' && <Headphones className="w-3 h-3 text-indigo-400 flex-shrink-0" />}
+                        {user.role === 'bot' && <Bot className="w-3 h-3 text-purple-400 flex-shrink-0" />}
+                        <span className="text-sm font-medium truncate text-slate-200">{user.name}</span>
                       </div>
                     </div>
                   ))}
@@ -372,33 +406,51 @@ export default function LiveChatroomPage() {
                         setShowStaffControls(true);
                       }}
                       data-testid="button-staff-controls-mobile"
-                      className="w-full gap-2"
+                      className="w-full gap-2 bg-indigo-500/10 border-indigo-500/30 text-indigo-200 hover:bg-indigo-500/20"
                     >
                       <Settings className="w-4 h-4" />
                       Staff Controls
                     </Button>
                   </div>
                 )}
+                
+                {/* Back to Chat Button */}
+                <div className="mt-4 pt-4 border-t border-indigo-500/20">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowMobileUsers(false)}
+                    data-testid="button-back-to-chat"
+                    className="w-full gap-2 bg-slate-800/40 border-slate-600/30 text-slate-200 hover:bg-slate-700/40"
+                  >
+                    Back to Chat
+                  </Button>
+                </div>
               </SheetContent>
             </Sheet>
           </div>
         </div>
       </header>
 
-      {/* Main Content - Artifact Style Layout */}
+      {/* Main Content - Professional Layout */}
       <div className="flex-1 flex overflow-hidden">
         {/* Chat Area */}
-        <div className="flex-1 flex flex-col min-w-0">
+        <div className="flex-1 flex flex-col min-w-0 relative">
+          {/* Subtle animated mesh background */}
+          <div className="absolute inset-0 bg-gradient-to-br from-indigo-950/20 via-slate-900/40 to-purple-950/20 pointer-events-none" />
+          
           {/* Messages */}
-          <ScrollArea className="flex-1 p-4">
+          <ScrollArea className="flex-1 p-4 relative z-10">
             <div className="max-w-4xl mx-auto space-y-4">
               {messages.length === 0 ? (
-                <Card className="border-dashed">
+                <Card className="border-dashed border-indigo-500/30 bg-slate-800/40 backdrop-blur-sm">
                   <CardContent className="p-8 text-center">
-                    <MessageSquare className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
-                    <h3 className="font-semibold mb-2">Welcome to HelpDesk</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Your messages will appear here. Start a conversation with our support team.
+                    <div className="p-4 bg-indigo-500/10 rounded-full w-fit mx-auto mb-4">
+                      <MessageSquare className="w-12 h-12 text-indigo-400" />
+                    </div>
+                    <h3 className="font-semibold mb-2 text-indigo-100">Welcome to SupportOS™ HelpDesk</h3>
+                    <p className="text-sm text-slate-400">
+                      Your messages will appear here. Start a conversation with our Fortune 500 support team.
                     </p>
                   </CardContent>
                 </Card>
@@ -410,36 +462,36 @@ export default function LiveChatroomPage() {
                   return (
                     <div
                       key={message.id || index}
-                      className={`flex ${isSupport || isBot ? 'justify-start' : 'justify-end'}`}
+                      className={`flex ${isSupport || isBot ? 'justify-start' : 'justify-end'} animate-in fade-in slide-in-from-bottom-2 duration-300`}
                       data-testid={`message-${message.id || index}`}
                     >
                       <div className={`max-w-[85%] sm:max-w-[70%]`}>
                         {/* Message Header */}
-                        <div className={`flex items-center gap-2 mb-1 ${isSupport || isBot ? '' : 'justify-end'}`}>
+                        <div className={`flex items-center gap-2 mb-1.5 ${isSupport || isBot ? '' : 'justify-end'}`}>
                           {(isSupport || isBot) && getRoleIcon(message.senderType)}
-                          <span className="text-xs font-medium">{message.senderName || 'User'}</span>
-                          <span className="text-xs text-muted-foreground">
+                          <span className="text-xs font-semibold text-indigo-200">{message.senderName || 'User'}</span>
+                          <span className="text-xs text-slate-500">
                             {formatTime(message.createdAt)}
                           </span>
                         </div>
                         
-                        {/* Message Bubble */}
+                        {/* Professional Message Bubble */}
                         <div 
-                          className={`rounded-lg p-3 ${
+                          className={`rounded-xl p-3.5 backdrop-blur-sm transition-all duration-300 hover-elevate ${
                             isBot 
-                              ? 'bg-purple-500/10 border border-purple-500/20 text-foreground' 
+                              ? 'bg-gradient-to-br from-purple-500/20 to-purple-600/10 border border-purple-400/30 text-indigo-50 shadow-lg shadow-purple-500/10' 
                               : isSupport
-                              ? 'bg-primary/10 border border-primary/20 text-foreground'
-                              : 'bg-secondary text-secondary-foreground'
+                              ? 'bg-gradient-to-br from-indigo-500/20 to-indigo-600/10 border border-indigo-400/30 text-indigo-50 shadow-lg shadow-indigo-500/10'
+                              : 'bg-gradient-to-br from-slate-700/60 to-slate-800/40 border border-slate-600/30 text-slate-100 shadow-lg'
                           }`}
                         >
                           <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
                             {message.message}
                           </p>
                           {isBot && (
-                            <div className="flex items-center gap-1 mt-2 pt-2 border-t border-purple-500/20">
-                              <Sparkles className="w-3 h-3 text-purple-500" />
-                              <span className="text-xs text-muted-foreground">AI Assistant</span>
+                            <div className="flex items-center gap-1.5 mt-2.5 pt-2.5 border-t border-purple-400/20">
+                              <Sparkles className="w-3.5 h-3.5 text-purple-300" />
+                              <span className="text-xs text-purple-200 font-medium">GPT-4 AI Assistant</span>
                             </div>
                           )}
                         </div>
@@ -452,15 +504,15 @@ export default function LiveChatroomPage() {
             </div>
           </ScrollArea>
 
-          {/* Message Input - Fixed Bottom */}
-          <div className="border-t bg-card p-4 flex-shrink-0">
+          {/* Professional Message Input */}
+          <div className="border-t border-indigo-500/20 bg-slate-900/80 backdrop-blur-md p-4 flex-shrink-0 relative z-10">
             <div className="max-w-4xl mx-auto">
               <form onSubmit={handleSendMessage} className="flex gap-2">
                 <Input
                   value={messageText}
                   onChange={(e) => setMessageText(e.target.value)}
                   placeholder={isConnected ? "Type your message..." : "Connecting..."}
-                  className="flex-1"
+                  className="flex-1 bg-slate-800/60 border-indigo-500/30 text-slate-100 placeholder:text-slate-500 focus:border-indigo-400 focus:ring-indigo-400/30"
                   data-testid="input-chat-message"
                   autoFocus
                   disabled={!isConnected}
@@ -469,61 +521,61 @@ export default function LiveChatroomPage() {
                   type="submit" 
                   disabled={!messageText.trim() || !isConnected}
                   data-testid="button-send-message"
-                  className="gap-2 flex-shrink-0"
+                  className="gap-2 flex-shrink-0 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white shadow-lg shadow-indigo-500/30"
                 >
                   <Send className="w-4 h-4" />
                   <span className="hidden sm:inline">Send</span>
                 </Button>
               </form>
-              <p className="text-xs text-muted-foreground text-center mt-2 hidden sm:block">
-                <Wifi className="w-3 h-3 inline mr-1" />
-                Instant delivery via WebSocket
+              <p className="text-xs text-slate-500 text-center mt-2 hidden sm:flex items-center justify-center gap-1">
+                <Wifi className="w-3 h-3 text-emerald-400 inline" />
+                <span>Instant delivery via WebSocket · IRC-Style Messaging</span>
               </p>
             </div>
           </div>
         </div>
 
-        {/* Desktop Online Users Sidebar */}
-        <div className="w-64 border-l bg-card p-4 hidden md:block flex-shrink-0">
+        {/* Desktop Online Users Sidebar - Professional Style */}
+        <div className="w-64 border-l border-indigo-500/20 bg-slate-900/60 backdrop-blur-sm p-4 hidden md:block flex-shrink-0">
           <div className="space-y-4">
             <div>
-              <h3 className="font-semibold mb-3 flex items-center gap-2">
-                <Users className="w-4 h-4" />
+              <h3 className="font-semibold mb-3 flex items-center gap-2 text-indigo-100">
+                <Users className="w-4 h-4 text-indigo-400" />
                 Online ({onlineUsers.length})
               </h3>
               <div className="space-y-2">
                 {onlineUsers.map((user) => (
                   <div 
                     key={user.id}
-                    className="flex items-center gap-2 p-2 rounded-lg hover-elevate"
+                    className="flex items-center gap-2 p-2.5 rounded-lg bg-slate-800/40 border border-indigo-500/20 hover-elevate transition-all duration-200"
                     data-testid={`user-${user.id}`}
                   >
-                    <Circle className="w-2 h-2 fill-green-500 text-green-500 flex-shrink-0" />
+                    <Circle className="w-2 h-2 fill-emerald-400 text-emerald-400 flex-shrink-0 animate-pulse" />
                     <div className="flex items-center gap-2 min-w-0 flex-1">
-                      {user.role === 'admin' && <Shield className="w-3 h-3 text-red-500 flex-shrink-0" />}
-                      {user.role === 'support' && <Headphones className="w-3 h-3 text-blue-500 flex-shrink-0" />}
-                      {user.role === 'bot' && <Bot className="w-3 h-3 text-purple-500 flex-shrink-0" />}
-                      <span className="text-sm font-medium truncate">{user.name}</span>
+                      {user.role === 'admin' && <Shield className="w-3 h-3 text-red-400 flex-shrink-0" />}
+                      {user.role === 'support' && <Headphones className="w-3 h-3 text-indigo-400 flex-shrink-0" />}
+                      {user.role === 'bot' && <Bot className="w-3 h-3 text-purple-400 flex-shrink-0" />}
+                      <span className="text-sm font-medium truncate text-slate-200">{user.name}</span>
                     </div>
                     {user.role === 'bot' && (
-                      <Sparkles className="w-3 h-3 text-purple-500 flex-shrink-0" />
+                      <Sparkles className="w-3 h-3 text-purple-400 flex-shrink-0" />
                     )}
                   </div>
                 ))}
               </div>
             </div>
 
-            <Separator />
+            <Separator className="bg-indigo-500/20" />
 
-            <Card className="border-primary/20 bg-primary/5">
+            <Card className="border-purple-500/30 bg-gradient-to-br from-purple-500/10 to-indigo-500/10 backdrop-blur-sm shadow-lg shadow-purple-500/10">
               <CardHeader className="p-3">
-                <CardTitle className="text-xs flex items-center gap-2">
-                  <Sparkles className="w-3 h-3" />
-                  AI Assistant
+                <CardTitle className="text-xs flex items-center gap-2 text-purple-200">
+                  <Sparkles className="w-3 h-3 text-purple-300" />
+                  GPT-4 AI Assistant
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-3 pt-0">
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-slate-400">
                   help_bot is powered by GPT-4 and can assist with common questions instantly.
                 </p>
               </CardContent>
