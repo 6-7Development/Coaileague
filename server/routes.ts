@@ -1013,9 +1013,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get recent leader actions (audit trail)
   app.get('/api/leaders/recent-actions', isAuthenticated, requireLeader, async (req: any, res) => {
     try {
-      // TODO: Implement query from leader_actions table
-      // For now, return empty array
-      res.json([]);
+      const workspaceId = req.workspaceId;
+      const limit = parseInt(req.query.limit as string) || 50;
+      
+      const actions = await storage.getLeaderActionsByWorkspace(workspaceId, limit);
+      res.json(actions);
     } catch (error) {
       console.error("Error fetching recent actions:", error);
       res.status(500).json({ message: "Failed to fetch recent actions" });
@@ -1052,7 +1054,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .where(eq(users.id, employee.userId));
       }
       
-      // TODO: Log action to leader_actions table
+      // Log action to leader_actions table
+      await storage.createLeaderAction({
+        workspaceId,
+        leaderId,
+        leaderEmail: req.user.email || '',
+        leaderRole: req.workspaceRole,
+        action: 'reset_password',
+        targetEntityType: 'employee',
+        targetEntityId: employeeId,
+        targetEmployeeName: `${employee.firstName} ${employee.lastName}`,
+        changesBefore: null,
+        changesAfter: { passwordReset: true, forcePasswordReset: true },
+        reason,
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent') || '',
+        requiresApproval: false,
+      });
+      
       // TODO: Send email to employee with temporary password
       
       res.json({ 
@@ -1091,7 +1110,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .where(eq(users.id, employee.userId));
       }
       
-      // TODO: Log action to leader_actions table
+      // Log action to leader_actions table
+      await storage.createLeaderAction({
+        workspaceId,
+        leaderId,
+        leaderEmail: req.user.email || '',
+        leaderRole: req.workspaceRole,
+        action: 'unlock_account',
+        targetEntityType: 'employee',
+        targetEntityId: employeeId,
+        targetEmployeeName: `${employee.firstName} ${employee.lastName}`,
+        changesBefore: { accountLocked: true },
+        changesAfter: { accountLocked: false, loginAttempts: 0 },
+        reason,
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent') || '',
+        requiresApproval: false,
+      });
       
       res.json({ 
         success: true, 
@@ -1138,7 +1173,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         address: updated?.address,
       };
       
-      // TODO: Log action to leader_actions table with before/after snapshots
+      // Log action to leader_actions table with before/after snapshots
+      await storage.createLeaderAction({
+        workspaceId,
+        leaderId,
+        leaderEmail: req.user.email || '',
+        leaderRole: req.workspaceRole,
+        action: 'update_contact',
+        targetEntityType: 'employee',
+        targetEntityId: employeeId,
+        targetEmployeeName: `${employee.firstName} ${employee.lastName}`,
+        changesBefore: beforeState,
+        changesAfter: afterState,
+        reason,
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent') || '',
+        requiresApproval: false,
+      });
       
       res.json({ 
         success: true, 
