@@ -44,8 +44,8 @@ export default function Login() {
       const platformRole = data.user?.platformRole;
       
       if (platformRole === 'root' || platformRole === 'sysop') {
-        // Root/System administrators → Admin Command Center
-        setLocation("/admin-command-center");
+        // Root/System administrators → Root Admin Portal (Unified Command Center)
+        setLocation("/root-admin-portal");
       } else if (platformRole === 'auditor') {
         // Auditors → Auditor Portal
         setLocation("/auditor-portal");
