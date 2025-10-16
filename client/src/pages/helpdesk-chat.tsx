@@ -481,7 +481,6 @@ export default function HelpdeskChatPage() {
                 }`}>
                   {msg.senderType === 'support' && <Headphones className="w-3 h-3 inline" />}
                   {msg.senderType === 'bot' && <Bot className="w-3 h-3 inline" />}
-                  {msg.senderType === 'system' && '***'}
                   {msg.senderName}:
                 </span>
                 <span className="text-white break-words flex-1 min-w-0">{msg.message}</span>

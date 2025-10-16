@@ -2170,6 +2170,48 @@ export const insertHelpOsQueueSchema = createInsertSchema(helpOsQueue).omit({
 export type InsertHelpOsQueue = z.infer<typeof insertHelpOsQueueSchema>;
 export type HelpOsQueueEntry = typeof helpOsQueue.$inferSelect;
 
+// Abuse Violations - Track verbal abuse and protect support staff
+export const abuseViolations = pgTable("abuse_violations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // User & conversation tracking
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  conversationId: varchar("conversation_id").notNull().references(() => chatConversations.id, { onDelete: 'cascade' }),
+  messageId: varchar("message_id").references(() => chatMessages.id, { onDelete: 'set null' }),
+  
+  // Violation details
+  violationType: varchar("violation_type").notNull(), // 'profanity', 'threat', 'harassment', 'hate_speech'
+  severity: varchar("severity").notNull(), // 'low', 'medium', 'high'
+  detectedPatterns: text("detected_patterns").array(), // Matched abuse patterns
+  originalMessage: text("original_message").notNull(), // The abusive message
+  
+  // Action taken
+  action: varchar("action").notNull(), // 'warn', 'kick', 'ban'
+  warningMessage: text("warning_message"), // Message shown to user
+  
+  // Staff involvement
+  detectedBy: varchar("detected_by").default("system"), // 'system' or staff user ID
+  actionTakenBy: varchar("action_taken_by").references(() => users.id, { onDelete: 'set null' }),
+  
+  // Violation count for this user (denormalized for quick access)
+  userViolationCount: integer("user_violation_count").default(1).notNull(),
+  
+  // Ban tracking
+  isBanned: boolean("is_banned").default(false),
+  bannedUntil: timestamp("banned_until"), // Temporary ban expiry, null for permanent
+  banReason: text("ban_reason"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertAbuseViolationSchema = createInsertSchema(abuseViolations).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertAbuseViolation = z.infer<typeof insertAbuseViolationSchema>;
+export type AbuseViolation = typeof abuseViolations.$inferSelect;
+
 // ============================================================================
 // SALES & MARKETING AUTOMATION SYSTEM
 // ============================================================================

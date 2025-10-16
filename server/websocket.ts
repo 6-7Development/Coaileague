@@ -677,6 +677,95 @@ export function setupWebSocket(server: Server) {
               return; // Don't save command as regular message
             }
 
+            // ABUSE DETECTION: Check for verbal abuse to protect support staff
+            const { detectAbuse, getWarningMessage, determineAction } = await import('./services/abuseDetection');
+            const abuseResult = detectAbuse(payload.message);
+            
+            if (abuseResult.isAbusive) {
+              // Get current violation count
+              const currentViolationCount = await storage.getUserViolationCount(ws.userId);
+              const newViolationCount = currentViolationCount + 1;
+              
+              // Determine action
+              const action = determineAction(newViolationCount, abuseResult.severity);
+              const warningMsg = getWarningMessage(newViolationCount, abuseResult.severity);
+              
+              // Log violation
+              const violation = await storage.createAbuseViolation({
+                userId: ws.userId,
+                conversationId: ws.conversationId,
+                violationType: abuseResult.severity === 'high' ? 'threat' : 'profanity',
+                severity: abuseResult.severity,
+                detectedPatterns: abuseResult.matchedPatterns,
+                originalMessage: payload.message,
+                action,
+                warningMessage: warningMsg,
+                detectedBy: 'system',
+                userViolationCount: newViolationCount,
+                isBanned: action === 'ban',
+                bannedUntil: action === 'ban' ? null : undefined, // null = permanent ban
+                banReason: action === 'ban' ? `Repeated abusive behavior (${newViolationCount} violations)` : undefined,
+              });
+              
+              // Broadcast Server warning to chatroom
+              const serverWarning = await storage.createChatMessage({
+                conversationId: ws.conversationId,
+                senderId: null,
+                senderName: 'Server',
+                senderType: 'system',
+                message: warningMsg,
+                messageType: 'text',
+                isSystemMessage: true,
+              });
+              
+              const clients = conversationClients.get(ws.conversationId);
+              if (clients) {
+                const warningPayload = JSON.stringify({
+                  type: 'new_message',
+                  message: serverWarning,
+                });
+                clients.forEach((client) => {
+                  if (client.readyState === WebSocket.OPEN) {
+                    client.send(warningPayload);
+                  }
+                });
+              }
+              
+              // Take action
+              if (action === 'kick' || action === 'ban') {
+                // Remove user from chatroom
+                conversationClients.get(ws.conversationId)?.delete(ws);
+                
+                // Send kick notification
+                const kickMessage = await storage.createChatMessage({
+                  conversationId: ws.conversationId,
+                  senderId: null,
+                  senderName: 'Server',
+                  senderType: 'system',
+                  message: `${displayName} has been ${action === 'ban' ? 'banned' : 'removed'} from chat for abusive behavior`,
+                  messageType: 'text',
+                  isSystemMessage: true,
+                });
+                
+                if (clients) {
+                  const kickPayload = JSON.stringify({
+                    type: 'new_message',
+                    message: kickMessage,
+                  });
+                  clients.forEach((client) => {
+                    if (client.readyState === WebSocket.OPEN) {
+                      client.send(kickPayload);
+                    }
+                  });
+                }
+                
+                // Disconnect the abusive user
+                ws.close(1008, action === 'ban' ? 'Banned for abusive behavior' : 'Kicked for abusive behavior');
+              }
+              
+              return; // Don't save the abusive message
+            }
+
             // Save message to database
             const savedMessage = await storage.createChatMessage({
               conversationId: ws.conversationId, // Use server-bound conversation, not client payload

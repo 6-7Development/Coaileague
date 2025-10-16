@@ -40,8 +40,11 @@ import {
   customFormSubmissions,
   payrollRuns,
   payrollEntries,
+  abuseViolations,
   type User,
   type UpsertUser,
+  type AbuseViolation,
+  type InsertAbuseViolation,
   type Workspace,
   type InsertWorkspace,
   type WorkspaceTheme,
@@ -336,6 +339,12 @@ export interface IStorage {
   updatePayrollRunStatus(id: string, status: string, processedBy: string): Promise<PayrollRun | undefined>;
   getPayrollEntriesByRun(payrollRunId: string): Promise<PayrollEntry[]>;
   getPayrollEntriesByEmployee(employeeId: string, workspaceId: string): Promise<PayrollEntry[]>;
+  
+  // Abuse violation operations (Staff Protection)
+  createAbuseViolation(violation: InsertAbuseViolation): Promise<AbuseViolation>;
+  getUserViolationCount(userId: string): Promise<number>;
+  isUserBanned(userId: string): Promise<boolean>;
+  getBanInfo(userId: string): Promise<{ isBanned: boolean; bannedUntil: Date | null; reason: string | null }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2279,6 +2288,78 @@ export class DatabaseStorage implements IStorage {
         )
       )
       .orderBy(desc(payrollEntries.createdAt));
+  }
+  
+  // ============================================================================
+  // ABUSE VIOLATION OPERATIONS (Staff Protection)
+  // ============================================================================
+  
+  async createAbuseViolation(violation: InsertAbuseViolation): Promise<AbuseViolation> {
+    const [created] = await db
+      .insert(abuseViolations)
+      .values(violation)
+      .returning();
+    return created;
+  }
+  
+  async getUserViolationCount(userId: string): Promise<number> {
+    const violations = await db
+      .select()
+      .from(abuseViolations)
+      .where(eq(abuseViolations.userId, userId));
+    return violations.length;
+  }
+  
+  async isUserBanned(userId: string): Promise<boolean> {
+    const [ban] = await db
+      .select()
+      .from(abuseViolations)
+      .where(
+        and(
+          eq(abuseViolations.userId, userId),
+          eq(abuseViolations.isBanned, true)
+        )
+      )
+      .orderBy(desc(abuseViolations.createdAt))
+      .limit(1);
+    
+    if (!ban) return false;
+    
+    // Check if ban is expired (temporary bans)
+    if (ban.bannedUntil && new Date() > ban.bannedUntil) {
+      return false; // Ban expired
+    }
+    
+    return true;
+  }
+  
+  async getBanInfo(userId: string): Promise<{ isBanned: boolean; bannedUntil: Date | null; reason: string | null }> {
+    const [ban] = await db
+      .select()
+      .from(abuseViolations)
+      .where(
+        and(
+          eq(abuseViolations.userId, userId),
+          eq(abuseViolations.isBanned, true)
+        )
+      )
+      .orderBy(desc(abuseViolations.createdAt))
+      .limit(1);
+    
+    if (!ban) {
+      return { isBanned: false, bannedUntil: null, reason: null };
+    }
+    
+    // Check if ban is expired
+    if (ban.bannedUntil && new Date() > ban.bannedUntil) {
+      return { isBanned: false, bannedUntil: null, reason: null };
+    }
+    
+    return {
+      isBanned: true,
+      bannedUntil: ban.bannedUntil,
+      reason: ban.banReason,
+    };
   }
 }
 
