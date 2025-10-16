@@ -11,6 +11,8 @@ import { Separator } from "@/components/ui/separator";
 import { Send, Users, Settings } from "lucide-react";
 import { UserContextMenu } from "./user-context-menu";
 import { WorkforceOSLogo } from "./workforceos-logo";
+import { StaffNameDisplay } from "./staff-name-display";
+import { MessageTextWithIcons } from "./message-text-with-icons";
 import type { ChatMessage } from "@shared/schema";
 
 interface User {
@@ -64,7 +66,7 @@ export function DesktopChatLayout({
     if (isSystem) {
       return (
         <div key={msg.id} className="py-1 px-3 text-xs text-muted-foreground italic text-center">
-          {msg.message}
+          <MessageTextWithIcons text={msg.message} />
         </div>
       );
     }
@@ -76,7 +78,7 @@ export function DesktopChatLayout({
             <div className="w-4 h-4">
               <WorkforceOSLogo />
             </div>
-            <span className="text-xs font-bold text-blue-400">{msg.senderName}</span>
+            <StaffNameDisplay name={msg.senderName || 'HelpOS™'} className="text-xs font-bold text-blue-400" />
             <span className="text-[10px] text-muted-foreground">
               {new Date(msg.createdAt || new Date()).toLocaleTimeString()}
             </span>
@@ -97,12 +99,10 @@ export function DesktopChatLayout({
             isStaff={currentUser.isStaff}
             onCommandExecute={onCommandExecute}
           >
-            <span
+            <StaffNameDisplay
+              name={msg.senderName || 'Unknown'}
               className="text-sm font-semibold cursor-pointer hover:underline"
-              data-testid={`message-sender-${msg.id}`}
-            >
-              {msg.senderName}
-            </span>
+            />
           </UserContextMenu>
           <span className="text-[10px] text-muted-foreground mt-0.5">
             {new Date(msg.createdAt || new Date()).toLocaleTimeString()}

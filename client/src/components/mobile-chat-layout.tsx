@@ -11,6 +11,8 @@ import { Send } from "lucide-react";
 import { SupportCommandDrawer } from "./support-command-drawer";
 import { MobileUserActionSheet } from "./mobile-user-action-sheet";
 import { WorkforceOSLogo } from "./workforceos-logo";
+import { StaffNameDisplay } from "./staff-name-display";
+import { MessageTextWithIcons } from "./message-text-with-icons";
 import type { ChatMessage } from "@shared/schema";
 
 interface User {
@@ -83,7 +85,7 @@ export function MobileChatLayout({
     if (isSystem) {
       return (
         <div key={msg.id} className="py-1.5 px-3 text-xs text-muted-foreground italic text-center">
-          {msg.message}
+          <MessageTextWithIcons text={msg.message} />
         </div>
       );
     }
@@ -95,7 +97,7 @@ export function MobileChatLayout({
             <div className="w-3.5 h-3.5">
               <WorkforceOSLogo />
             </div>
-            <span className="text-xs font-bold text-blue-400">{msg.senderName}</span>
+            <StaffNameDisplay name={msg.senderName || 'HelpOS™'} className="text-xs font-bold text-blue-400" />
           </div>
           <div className="text-sm whitespace-pre-wrap pl-5">{msg.message}</div>
         </div>
@@ -109,7 +111,7 @@ export function MobileChatLayout({
           data-testid={`message-sender-${msg.id}`}
           onClick={() => isClickable && handleUsernameClick(msg)}
         >
-          {msg.senderName}
+          <StaffNameDisplay name={msg.senderName || 'Unknown'} />
           {isClickable && <span className="ml-1 text-[10px] text-muted-foreground">(tap for actions)</span>}
         </div>
         <div className="text-sm whitespace-pre-wrap">{msg.message}</div>

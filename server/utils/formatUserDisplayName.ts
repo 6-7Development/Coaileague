@@ -51,20 +51,20 @@ export function formatUserDisplayName(user: UserInfo): string {
 }
 
 /**
- * Format platform role with icon
- * Root gets judge gavel (⚖️) like MSN chat host icon
- * Sysops get shield (🛡️) as backbone/defense
+ * Format platform role with special marker
+ * Staff roles get 🔨 gavel marker (authority indicator)
+ * Note: Client-side will render actual gavel icon image
  */
 function formatPlatformRole(role: string): string {
   const roleMap: Record<string, string> = {
-    'root': '⚖️ Root',              // Judge gavel - highest authority
-    'platform_admin': 'Admin',       // No icon for admins
-    'deputy_admin': 'Deputy',        // No icon for deputy
-    'deputy_assistant': 'Assistant', // No icon for assistant
-    'sysop': '🛡️ Sysop',            // Shield - backbone of defense
+    'root': '🔨 Admin',              // Root displays as "Admin" - cleaner for chat
+    'platform_admin': '🔨 Admin',    // Platform admin
+    'deputy_admin': '🔨 DA',         // Deputy Admin → DA
+    'deputy_assistant': '🔨 DA',     // Deputy Assistant → DA
+    'sysop': '🔨 Sysop',            // System operator
   };
   
-  return roleMap[role] || 'Staff';
+  return roleMap[role] || '🔨 Staff';
 }
 
 /**
