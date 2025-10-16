@@ -18,6 +18,7 @@ import { useChatSounds } from "@/hooks/use-chat-sounds";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { WorkforceOSLogo } from "@/components/workforceos-logo";
 import { SupportMobileMenu } from "@/components/support-mobile-menu";
+import { SecureRequestDialog } from "@/components/secure-request-dialog";
 import { 
   MessageSquare, Send, Users, Circle, Shield, 
   Headphones, User, Bot, Sparkles, Wifi, WifiOff,
@@ -43,6 +44,13 @@ export default function LiveChatroomPage() {
   const [showTicketDialog, setShowTicketDialog] = useState(false);
   const [showStaffControls, setShowStaffControls] = useState(false);
   const [showMobileUsers, setShowMobileUsers] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [showUserActions, setShowUserActions] = useState(false);
+  const [secureRequest, setSecureRequest] = useState<{
+    type: 'authenticate' | 'document' | 'photo' | 'signature' | 'info';
+    requestedBy: string;
+    message?: string;
+  } | null>(null);
   const [roomStatusControl, setRoomStatusControl] = useState<"open" | "closed" | "maintenance">("open");
   const [roomStatusMessage, setRoomStatusMessage] = useState("");
   const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
@@ -85,9 +93,27 @@ export default function LiveChatroomPage() {
   
   // Use WebSocket for real-time messaging (only if authenticated)
   const { 
-    messages, sendMessage, sendTyping, typingUsers, onlineUsers, isConnected, error, reconnect,
+    messages, sendMessage, sendTyping, sendRawMessage, typingUsers, onlineUsers, isConnected, error, reconnect,
     requiresTicket, roomStatus, statusMessage: wsStatusMessage, temporaryError, clearAccessError
   } = useChatroomWebSocket(isAuthenticated ? userId : undefined, userName);
+  
+  const selectedUser = onlineUsers.find(u => u.id === selectedUserId);
+  
+  // Helper to send quick messages
+  const sendQuickMessage = (message: string) => {
+    if (message.trim() && isConnected) {
+      sendMessage(message, userName, 'support');
+    }
+  };
+  
+  // Mobile detection (touch device check)
+  const isMobileDevice = () => {
+    return (
+      'ontouchstart' in window ||
+      navigator.maxTouchPoints > 0 ||
+      window.matchMedia('(pointer: coarse)').matches
+    );
+  };
   
   // Dynamic banner messages with rotation (properly capitalized and grammatically correct)
   const bannerMessages = [
@@ -536,7 +562,18 @@ export default function LiveChatroomPage() {
                   {onlineUsers.map((user) => (
                     <div 
                       key={user.id}
-                      className="flex items-center gap-2 p-2.5 rounded-lg bg-slate-800/40 border border-indigo-500/20 hover-elevate"
+                      onClick={() => {
+                        // Only trigger mobile actions on actual mobile/touch devices
+                        if (isMobileDevice() && isStaff && user.role !== 'root' && user.role !== 'bot') {
+                          setSelectedUserId(user.id);
+                          setShowUserActions(true);
+                        }
+                      }}
+                      className={`flex items-center gap-2 p-2.5 rounded-lg bg-slate-800/40 border border-indigo-500/20 ${
+                        isMobileDevice() && isStaff && user.role !== 'root' && user.role !== 'bot' 
+                          ? 'hover-elevate active-elevate-2 cursor-pointer' 
+                          : ''
+                      }`}
                       data-testid={`user-${user.id}`}
                     >
                       <Circle className="w-2 h-2 fill-blue-400 text-blue-400 flex-shrink-0 animate-pulse" />
@@ -546,6 +583,9 @@ export default function LiveChatroomPage() {
                         {user.role === 'bot' && <Bot className="w-3 h-3 text-purple-400 flex-shrink-0" />}
                         <span className="text-sm font-medium truncate text-slate-200">{user.name}</span>
                       </div>
+                      {isMobileDevice() && isStaff && user.role !== 'root' && user.role !== 'bot' && (
+                        <MoreVertical className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                      )}
                     </div>
                   ))}
                 </div>
@@ -586,6 +626,193 @@ export default function LiveChatroomPage() {
           </div>
         </div>
       </header>
+
+      {/* Mobile User Actions Sheet - Smart Context Menu */}
+      {selectedUser && (
+        <Sheet open={showUserActions} onOpenChange={setShowUserActions}>
+          <SheetContent side="bottom" className="bg-slate-900 border-indigo-500/20 rounded-t-2xl">
+            <SheetHeader>
+              <SheetTitle className="flex items-center gap-2 text-indigo-100">
+                <User className="w-4 h-4" />
+                Support Actions → {selectedUser.name}
+              </SheetTitle>
+            </SheetHeader>
+            
+            <div className="mt-6 space-y-2">
+              {/* Release Hold & Welcome */}
+              <Button
+                onClick={() => {
+                  sendRawMessage({ 
+                    type: 'release_spectator', 
+                    targetUserId: selectedUser.id 
+                  });
+                  sendQuickMessage(`Welcome ${selectedUser.name}! 👋 Thanks for your patience. How can I help you today?`);
+                  setShowUserActions(false);
+                  toast({ title: `Released ${selectedUser.name} from hold` });
+                }}
+                className="w-full justify-start gap-3 h-12 bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:from-green-500 hover:to-emerald-500"
+                data-testid="button-release-hold"
+              >
+                <Sparkles className="w-4 h-4" />
+                <div className="text-left">
+                  <div className="font-semibold">Release Hold & Welcome</div>
+                  <div className="text-xs opacity-90">Remove spectator + send greeting</div>
+                </div>
+              </Button>
+
+              {/* Secure Requests */}
+              <Button
+                onClick={() => {
+                  setSecureRequest({
+                    type: 'authenticate',
+                    requestedBy: userName,
+                    message: 'Please verify your identity to proceed'
+                  });
+                  setShowUserActions(false);
+                }}
+                variant="outline"
+                className="w-full justify-start gap-3 h-12 bg-indigo-500/10 border-indigo-500/30 text-indigo-200 hover:bg-indigo-500/20"
+                data-testid="button-request-auth"
+              >
+                <Lock className="w-4 h-4" />
+                Request Authentication
+              </Button>
+
+              <Button
+                onClick={() => {
+                  sendRawMessage({ 
+                    type: 'request_secure', 
+                    targetUserId: selectedUser.id,
+                    requestType: 'document',
+                    message: 'Please upload the requested document'
+                  });
+                  setShowUserActions(false);
+                  toast({ title: `Document request sent to ${selectedUser.name}` });
+                }}
+                variant="outline"
+                className="w-full justify-start gap-3 h-auto py-3 bg-slate-800/40 border-slate-600/30 text-slate-200"
+                data-testid="button-request-document"
+              >
+                📄 Request Document Upload
+              </Button>
+
+              <Button
+                onClick={() => {
+                  sendRawMessage({ 
+                    type: 'request_secure', 
+                    targetUserId: selectedUser.id,
+                    requestType: 'photo',
+                    message: 'Please upload a photo of the issue'
+                  });
+                  setShowUserActions(false);
+                  toast({ title: `Photo request sent to ${selectedUser.name}` });
+                }}
+                variant="outline"
+                className="w-full justify-start gap-3 h-auto py-3 bg-slate-800/40 border-slate-600/30 text-slate-200"
+                data-testid="button-request-photo"
+              >
+                📸 Request Photo
+              </Button>
+
+              <Button
+                onClick={() => {
+                  sendRawMessage({ 
+                    type: 'request_secure', 
+                    targetUserId: selectedUser.id,
+                    requestType: 'signature',
+                    message: 'Please sign the consent form'
+                  });
+                  setShowUserActions(false);
+                  toast({ title: `E-Signature request sent to ${selectedUser.name}` });
+                }}
+                variant="outline"
+                className="w-full justify-start gap-3 h-auto py-3 bg-slate-800/40 border-slate-600/30 text-slate-200"
+                data-testid="button-request-signature"
+              >
+                ✍️ Request E-Signature
+              </Button>
+
+              <Button
+                onClick={() => {
+                  sendRawMessage({ 
+                    type: 'request_secure', 
+                    targetUserId: selectedUser.id,
+                    requestType: 'info',
+                    message: 'Please provide more details about your issue'
+                  });
+                  setShowUserActions(false);
+                  toast({ title: `Info request sent to ${selectedUser.name}` });
+                }}
+                variant="outline"
+                className="w-full justify-start gap-3 h-auto py-3 bg-slate-800/40 border-slate-600/30 text-slate-200"
+                data-testid="button-request-info"
+              >
+                ℹ️ Request Additional Info
+              </Button>
+
+              <div className="border-t border-slate-700 my-2" />
+
+              {/* Transfer & Resolve */}
+              <Button
+                onClick={() => {
+                  sendRawMessage({ 
+                    type: 'transfer_user', 
+                    targetUserId: selectedUser.id 
+                  });
+                  setShowUserActions(false);
+                  toast({ title: `Transferred ${selectedUser.name} to senior support` });
+                }}
+                variant="outline"
+                className="w-full justify-start gap-3 h-auto py-3 bg-blue-500/10 border-blue-500/30 text-blue-200"
+                data-testid="button-transfer-user"
+              >
+                🔄 Transfer to Senior Support
+              </Button>
+
+              <Button
+                onClick={() => {
+                  sendQuickMessage(`@${selectedUser.name} Your issue has been resolved! Is there anything else I can help you with today?`);
+                  setShowUserActions(false);
+                }}
+                variant="outline"
+                className="w-full justify-start gap-3 h-auto py-3 bg-green-500/10 border-green-500/30 text-green-200"
+                data-testid="button-mark-resolved"
+              >
+                ✅ Mark Resolved
+              </Button>
+
+              {/* Cancel */}
+              <Button
+                onClick={() => setShowUserActions(false)}
+                variant="ghost"
+                className="w-full mt-4"
+                data-testid="button-cancel-actions"
+              >
+                Cancel
+              </Button>
+            </div>
+          </SheetContent>
+        </Sheet>
+      )}
+
+      {/* Secure Request Dialog - Appears when customer receives request */}
+      {secureRequest && (
+        <SecureRequestDialog
+          type={secureRequest.type}
+          requestedBy={secureRequest.requestedBy}
+          message={secureRequest.message}
+          onSubmit={(data) => {
+            sendRawMessage({
+              type: 'secure_submission',
+              data,
+              submissionType: secureRequest.type
+            });
+            setSecureRequest(null);
+            toast({ title: 'Information submitted securely' });
+          }}
+          onClose={() => setSecureRequest(null)}
+        />
+      )}
 
       {/* Main Content - Professional Layout */}
       <div className="flex-1 flex overflow-hidden">
