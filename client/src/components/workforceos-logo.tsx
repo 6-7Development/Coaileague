@@ -63,65 +63,164 @@ export function WorkforceOSLogo({
           className="w-full h-full"
         >
           <defs>
-            {/* Fortune-500 Corporate Blue Gradient */}
+            {/* Fortune-500 Corporate Blue Gradient - Deep Navy */}
             <linearGradient id={`corp-blue-${uniqueId}`} x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#1e40af" />
-              <stop offset="50%" stopColor="#1e3a8a" />
-              <stop offset="100%" stopColor="#1e293b" />
+              <stop offset="0%" stopColor="#1e3a8a" />
+              <stop offset="50%" stopColor="#1e293b" />
+              <stop offset="100%" stopColor="#0f172a" />
             </linearGradient>
             
-            {/* Secondary blue for "OS" */}
-            <linearGradient id={`light-blue-${uniqueId}`} x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#3b82f6" />
+            {/* Bright Electric Blue for "OS" - Neon Effect */}
+            <linearGradient id={`electric-blue-${uniqueId}`} x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#60a5fa" />
+              <stop offset="50%" stopColor="#3b82f6" />
               <stop offset="100%" stopColor="#2563eb" />
             </linearGradient>
             
-            {/* Glow effect for premium feel */}
-            <filter id={`glow-${uniqueId}`}>
-              <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+            {/* Realistic white glow - like real neon tube */}
+            <filter id={`white-glow-${uniqueId}`}>
+              <feGaussianBlur in="SourceAlpha" stdDeviation="6" result="blur1"/>
+              <feGaussianBlur in="SourceAlpha" stdDeviation="3" result="blur2"/>
+              <feGaussianBlur in="SourceAlpha" stdDeviation="1" result="blur3"/>
               <feMerge>
-                <feMergeNode in="coloredBlur"/>
+                <feMergeNode in="blur1"/>
+                <feMergeNode in="blur2"/>
+                <feMergeNode in="blur3"/>
                 <feMergeNode in="SourceGraphic"/>
               </feMerge>
             </filter>
+            
+            {/* Ultra realistic blue neon glow - multiple layers */}
+            <filter id={`neon-glow-${uniqueId}`}>
+              <feGaussianBlur in="SourceAlpha" stdDeviation="8" result="blur1"/>
+              <feGaussianBlur in="SourceAlpha" stdDeviation="4" result="blur2"/>
+              <feGaussianBlur in="SourceAlpha" stdDeviation="2" result="blur3"/>
+              <feColorMatrix in="blur1" type="matrix" values="
+                0 0 0 0 0.2
+                0 0 0 0 0.5
+                0 0 0 0 1
+                0 0 0 0.8 0"/>
+              <feMerge>
+                <feMergeNode/>
+                <feMergeNode in="blur2"/>
+                <feMergeNode in="blur3"/>
+                <feMergeNode in="SourceGraphic"/>
+              </feMerge>
+            </filter>
+            
+            {/* Drop shadow for depth */}
+            <filter id={`shadow-${uniqueId}`}>
+              <feDropShadow dx="0" dy="4" stdDeviation="8" flood-opacity="0.5"/>
+            </filter>
           </defs>
 
-          {/* Fortune-500 "W" with "OS" trademark - Corporate Blue */}
-          <g filter={`url(#glow-${uniqueId})`}>
-            {/* Rounded square badge - corporate blue */}
+          {/* Fortune-500 "W" with "OS" - REALISTIC Lit Advertisement */}
+          <g>
+            {/* Deep shadow layer for depth */}
             <rect
-              x="15"
-              y="15"
-              width="90"
-              height="90"
-              rx="18"
-              fill={`url(#corp-blue-${uniqueId})`}
+              x="12"
+              y="16"
+              width="96"
+              height="96"
+              rx="20"
+              fill="black"
+              opacity="0.3"
             />
             
-            {/* Big "W" in white - bold and dominant */}
+            {/* Rounded square badge - deep corporate blue with shadow */}
+            <rect
+              x="12"
+              y="12"
+              width="96"
+              height="96"
+              rx="20"
+              fill={`url(#corp-blue-${uniqueId})`}
+              filter={`url(#shadow-${uniqueId})`}
+            />
+            
+            {/* Inner highlight for 3D effect */}
+            <rect
+              x="14"
+              y="14"
+              width="92"
+              height="92"
+              rx="18"
+              fill="none"
+              stroke="rgba(255,255,255,0.1)"
+              strokeWidth="1"
+            />
+            
+            {/* Shadow under W for depth */}
             <text
               x="60"
-              y="75"
+              y="84"
               textAnchor="middle"
               fontFamily="system-ui, -apple-system, sans-serif"
-              fontSize="38"
+              fontSize="58"
               fontWeight="900"
-              fill="white"
-              letterSpacing="1"
+              fill="black"
+              opacity="0.4"
+              letterSpacing="-2"
             >
               W
             </text>
             
-            {/* Small "OS" superscript merged next to W - lighter blue */}
+            {/* MASSIVE "W" - realistic white neon glow */}
             <text
-              x="83"
-              y="52"
+              x="60"
+              y="82"
+              textAnchor="middle"
+              fontFamily="system-ui, -apple-system, sans-serif"
+              fontSize="58"
+              fontWeight="900"
+              fill="white"
+              letterSpacing="-2"
+              filter={`url(#white-glow-${uniqueId})`}
+            >
+              W
+            </text>
+            
+            {/* Shadow under OS */}
+            <text
+              x="88"
+              y="43"
               textAnchor="start"
               fontFamily="system-ui, -apple-system, sans-serif"
-              fontSize="14"
+              fontSize="22"
               fontWeight="900"
-              fill={`url(#light-blue-${uniqueId})`}
-              letterSpacing="0.5"
+              fill="black"
+              opacity="0.3"
+              letterSpacing="1"
+            >
+              OS
+            </text>
+            
+            {/* Glowing "OS" - realistic electric blue neon */}
+            <text
+              x="88"
+              y="42"
+              textAnchor="start"
+              fontFamily="system-ui, -apple-system, sans-serif"
+              fontSize="22"
+              fontWeight="900"
+              fill={`url(#electric-blue-${uniqueId})`}
+              letterSpacing="1"
+              filter={`url(#neon-glow-${uniqueId})`}
+            >
+              OS
+            </text>
+            
+            {/* Bright core of OS for ultra-bright center */}
+            <text
+              x="88"
+              y="42"
+              textAnchor="start"
+              fontFamily="system-ui, -apple-system, sans-serif"
+              fontSize="22"
+              fontWeight="900"
+              fill="#ffffff"
+              opacity="0.6"
+              letterSpacing="1"
             >
               OS
             </text>

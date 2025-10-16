@@ -405,8 +405,8 @@ export default function LiveChatroomPage() {
             {/* Support Command Drawer - Mobile Only */}
             <SupportCommandDrawer 
               onCommandSelect={handleCommandSelect}
-              users={onlineUsers}
-              isStaff={isStaff}
+              users={[]}
+              isStaff={!!isStaff}
             />
 
             {isStaff && (

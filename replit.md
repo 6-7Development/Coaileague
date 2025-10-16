@@ -10,7 +10,7 @@ Do not make changes to the file `Y`.
 
 ## System Architecture
 ### UI/UX Decisions
-The platform features a CAD-style professional interface with a dark mode theme, emphasizing precision and control. It includes an application frame (menu, toolbar, status bar) and real-time indicators. The design is modern, professional, and mobile-first, utilizing indigo/purple gradient accents for brand consistency. Logout functionality is accessible across all layouts.
+The platform features a CAD-style professional interface with a dark mode theme, emphasizing precision and control. It includes an application frame (menu, toolbar, status bar) and real-time indicators. The design is modern, professional, and mobile-first, utilizing **corporate blue** gradient accents (navy blue #1e3a8a to deep slate) for Fortune-500 brand consistency. The official logo is a realistic neon-style **"W"** with glowing **"OS"** superscript - designed like a lit advertisement with multi-layer glows, 3D depth, and electric blue highlights. Logout functionality is accessible across all layouts.
 
 ### Technical Implementations
 - **Frontend**: React, Vite, TypeScript, Wouter, TanStack Query, shadcn/ui, `react-hook-form`, `zod`.
@@ -31,7 +31,7 @@ The platform features a CAD-style professional interface with a dark mode theme,
     - **HR Management Suite**: Employee Benefits, Performance Reviews, PTO Management, Employee Terminations with comprehensive CRUD and workflow management.
     - **Custom Forms System**: Production-ready system for organization-specific forms with e-signature and document upload, including an admin form builder UI.
     - **AI Sales CRM**: AI-powered lead generation (GPT-4), 7-stage sales pipeline tracking, CRM features, email campaigns with AI personalization.
-    - **Live HelpDesk (SupportOS™)**: IRC/MSN-style instant chat with WebSocket messaging, ticket-based authentication for guests, real-time status indicators (open/closed/maintenance), staff toggle controls for room management, platform staff bypass for admin monitoring, audit logging, and graceful degraded mode for reliability.
+    - **Live HelpDesk (SupportOS™)**: IRC/MSN-style instant chat with WebSocket messaging, ticket-based authentication for guests, real-time status indicators (open/closed/maintenance), staff toggle controls for room management, platform staff bypass for admin monitoring, audit logging, graceful degraded mode for reliability, **slash command system** (/intro, /help), **mobile-first support drawer** with macro quick buttons, and chat notification sounds (send/receive/join/leave).
         - **Customer Access**: Submit contact form → Receive unique ticket number (TKT-XXXXXX) → Authenticate with ticket# + email → Access chat as guest
         - **Support Staff Access**: Two methods - (1) Login normally with platform credentials (bypasses all restrictions), or (2) Authenticate as guest using work ID + email
         - **Guest Sessions**: Temporary user accounts created on-the-fly for ticket holders, tied to platform-external workspace
