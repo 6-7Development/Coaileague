@@ -322,33 +322,33 @@ export default function LiveChatroomPage() {
   return (
     <div className="flex flex-col h-screen bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800">
       {/* Professional Header with WorkforceOS Branding */}
-      <header className="border-b border-slate-700/50 bg-slate-800/95 backdrop-blur-sm px-4 py-4 flex-shrink-0 shadow-lg">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
+      <header className="border-b border-slate-700/50 bg-slate-800/95 backdrop-blur-sm px-2 sm:px-4 py-3 sm:py-4 flex-shrink-0 shadow-lg">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-1.5 sm:gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-4 min-w-0 flex-1">
             {/* Mobile Back Button */}
             <Button
               variant="ghost"
               size="icon"
               onClick={() => window.location.href = '/'}
-              className="md:hidden text-white hover:bg-white/20 flex-shrink-0"
+              className="md:hidden text-white hover:bg-white/20 flex-shrink-0 h-8 w-8 sm:h-9 sm:w-9"
               data-testid="button-mobile-back"
             >
-              <ArrowLeft className="w-5 h-5" />
+              <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
             </Button>
             
-            {/* WorkforceOS Branding */}
-            <div className="flex items-center gap-2 flex-shrink-0">
+            {/* WorkforceOS Branding - Hidden on small mobile */}
+            <div className="hidden sm:flex items-center gap-2 flex-shrink-0">
               <WorkforceOSLogo size="sm" showText={false} />
               <div className="hidden sm:block h-8 w-px bg-white/30" />
             </div>
             
             {/* HelpDesk Title */}
-            <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-              <div className="p-2 bg-white/10 backdrop-blur-sm rounded-lg flex-shrink-0">
-                <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+            <div className="flex items-center gap-1.5 sm:gap-3 min-w-0 flex-1">
+              <div className="p-1.5 sm:p-2 bg-white/10 backdrop-blur-sm rounded-lg flex-shrink-0">
+                <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
               </div>
               <div className="min-w-0">
-                <h1 className="text-sm sm:text-lg font-bold truncate text-white">
+                <h1 className="text-xs sm:text-lg font-bold truncate text-white">
                   HelpDesk
                 </h1>
                 <p className="text-xs text-indigo-100 hidden sm:block flex items-center gap-2">
