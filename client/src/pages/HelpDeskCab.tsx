@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { 
   Send, Users, MessageSquare, Shield, Crown, UserCog, Wrench,
   Settings, Power, HelpCircle, Zap, Clock, AlertCircle, CheckCircle,
-  ChevronLeft, ChevronRight, Info, Coffee, Star, Building2
+  ChevronLeft, ChevronRight, Info, Coffee, Star, Building2, Bot, Sparkles
 } from "lucide-react";
 import { WFLogoCompact } from "@/components/wf-logo";
 import { formatDistanceToNow } from "date-fns";
@@ -24,7 +24,7 @@ import type { ChatMessage } from "@shared/schema";
 
 const MAIN_ROOM_ID = 'main-chatroom-workforceos';
 
-// Desktop IRC/MSN-style 3-column chatroom
+// Desktop IRC/MSN-style 3-column chatroom with modern 2025 aesthetic
 export default function HelpDeskCab() {
   const { user, isAuthenticated } = useAuth();
   const [inputMessage, setInputMessage] = useState("");
@@ -156,62 +156,122 @@ export default function HelpDeskCab() {
     setTimeout(() => setShowCoffeeCup(false), 2000);
   };
 
-  // Get user type icon
+  // Get user type icon - PROMINENT and COLOR-CODED
   const getUserTypeIcon = (userType: string, role: string) => {
-    // Staff gets WF logo
-    if (['platform_admin', 'deputy_admin', 'deputy_assistant', 'sysop'].includes(role)) {
-      return <WFLogoCompact size={14} className="flex-shrink-0" />;
+    // Bot gets special animated icon
+    if (role === 'bot') {
+      return (
+        <div className="flex items-center justify-center w-6 h-6 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 animate-pulse">
+          <Bot className="w-4 h-4 text-white" />
+        </div>
+      );
     }
     
-    // Based on user type
+    // Staff gets WF logo with gradient background
+    if (['platform_admin', 'deputy_admin', 'deputy_assistant', 'sysop'].includes(role)) {
+      const bgColor = role === 'platform_admin' 
+        ? 'from-amber-400 to-yellow-500'
+        : role === 'deputy_admin'
+        ? 'from-blue-400 to-indigo-500'
+        : role === 'deputy_assistant'
+        ? 'from-purple-400 to-pink-500'
+        : 'from-cyan-400 to-blue-500';
+        
+      return (
+        <div className={`flex items-center justify-center w-6 h-6 rounded-full bg-gradient-to-br ${bgColor}`}>
+          <WFLogoCompact size={12} className="text-white" />
+        </div>
+      );
+    }
+    
+    // Based on user type with soft colors
     switch (userType) {
-      case 'staff': return <WFLogoCompact size={14} className="flex-shrink-0" />;
-      case 'subscriber': return <Star className="w-3.5 h-3.5 text-amber-500" />;
-      case 'org_user': return <MessageSquare className="w-3.5 h-3.5 text-emerald-500" />;
-      case 'guest': return <HelpCircle className="w-3.5 h-3.5 text-slate-400" />;
-      default: return <HelpCircle className="w-3.5 h-3.5 text-slate-400" />;
+      case 'subscriber': 
+        return (
+          <div className="flex items-center justify-center w-6 h-6 rounded-full bg-gradient-to-br from-amber-300 to-orange-400">
+            <Star className="w-4 h-4 text-white" />
+          </div>
+        );
+      case 'org_user': 
+        return (
+          <div className="flex items-center justify-center w-6 h-6 rounded-full bg-gradient-to-br from-emerald-300 to-green-400">
+            <Building2 className="w-4 h-4 text-white" />
+          </div>
+        );
+      case 'guest': 
+        return (
+          <div className="flex items-center justify-center w-6 h-6 rounded-full bg-gradient-to-br from-slate-300 to-gray-400">
+            <HelpCircle className="w-4 h-4 text-white" />
+          </div>
+        );
+      default: 
+        return (
+          <div className="flex items-center justify-center w-6 h-6 rounded-full bg-gradient-to-br from-slate-300 to-gray-400">
+            <HelpCircle className="w-4 h-4 text-white" />
+          </div>
+        );
     }
   };
 
   // Get status indicator
   const getStatusIndicator = (status: string) => {
     switch (status) {
-      case 'online': return <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />;
-      case 'away': return <div className="w-2 h-2 bg-yellow-500 rounded-full" />;
-      case 'busy': return <div className="w-2 h-2 bg-red-500 rounded-full" />;
-      default: return <div className="w-2 h-2 bg-gray-400 rounded-full" />;
+      case 'online': return <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse shadow-lg shadow-emerald-500/50" />;
+      case 'away': return <div className="w-2.5 h-2.5 bg-amber-500 rounded-full shadow-lg shadow-amber-500/50" />;
+      case 'busy': return <div className="w-2.5 h-2.5 bg-rose-500 rounded-full shadow-lg shadow-rose-500/50" />;
+      default: return <div className="w-2.5 h-2.5 bg-slate-400 rounded-full" />;
     }
   };
 
   const getRoleIcon = (role: string) => {
     switch (role) {
-      case 'bot': return <MessageSquare className="w-3 h-3 text-purple-400 animate-pulse" />;
-      case 'platform_admin': return <Crown className="w-3 h-3 text-yellow-400" />;
-      case 'deputy_admin': return <Shield className="w-3 h-3 text-blue-400" />;
-      case 'deputy_assistant': return <UserCog className="w-3 h-3 text-purple-400" />;
-      case 'sysop': return <Wrench className="w-3 h-3 text-cyan-400" />;
+      case 'bot': return <Sparkles className="w-3.5 h-3.5 text-purple-500 animate-pulse" />;
+      case 'platform_admin': return <Crown className="w-3.5 h-3.5 text-amber-500" />;
+      case 'deputy_admin': return <Shield className="w-3.5 h-3.5 text-blue-500" />;
+      case 'deputy_assistant': return <UserCog className="w-3.5 h-3.5 text-purple-500" />;
+      case 'sysop': return <Wrench className="w-3.5 h-3.5 text-cyan-500" />;
       default: return null;
     }
   };
 
   const getRoleColor = (role: string) => {
     switch (role) {
-      case 'bot': return 'text-purple-400';
-      case 'platform_admin': return 'text-yellow-400';
-      case 'deputy_admin': return 'text-blue-400';
-      case 'deputy_assistant': return 'text-purple-400';
-      case 'sysop': return 'text-cyan-400';
-      default: return 'text-slate-400';
+      case 'bot': return 'text-purple-600 font-bold';
+      case 'platform_admin': return 'text-amber-600 font-bold';
+      case 'deputy_admin': return 'text-blue-600 font-bold';
+      case 'deputy_assistant': return 'text-purple-600 font-bold';
+      case 'sysop': return 'text-cyan-600 font-bold';
+      default: return 'text-slate-700 font-semibold';
     }
+  };
+
+  // Get message bubble color - SOFT PASTELS like reference
+  const getMessageBubbleColor = (senderType: string, role: string, isSelf: boolean) => {
+    if (isSelf) {
+      return 'bg-gradient-to-br from-blue-100 to-indigo-100 border border-blue-200';
+    }
+    
+    // Bot messages - purple/pink pastel
+    if (role === 'bot') {
+      return 'bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-200';
+    }
+    
+    // Staff messages - soft blue/cyan
+    if (['platform_admin', 'deputy_admin', 'deputy_assistant', 'sysop'].includes(role)) {
+      return 'bg-gradient-to-br from-cyan-50 to-blue-50 border border-cyan-200';
+    }
+    
+    // Customer messages - soft pink/lavender
+    return 'bg-gradient-to-br from-pink-50 to-purple-50 border border-pink-200';
   };
 
   const isStaff = user && ['root', 'deputy_admin', 'deputy_assistant', 'sysop'].includes((user as any).platformRole);
   const queueLength = queueData?.length || 0;
 
   return (
-    <div className="flex flex-col h-screen bg-gray-100">
-      {/* MSN-style Gradient Header */}
-      <header className="bg-gradient-to-r from-indigo-600 via-blue-500 to-blue-700 p-3 text-white shadow-lg">
+    <div className="flex flex-col h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50">
+      {/* Modern Gradient Header */}
+      <header className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 p-3 text-white shadow-lg">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div className="flex items-center gap-3">
             <Button
@@ -224,15 +284,15 @@ export default function HelpDeskCab() {
               {sidebarCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
             </Button>
             <h1 className="text-2xl font-black tracking-wide flex items-center">
-              <MessageSquare className="w-6 h-6 mr-2 text-amber-300" />
+              <MessageSquare className="w-6 h-6 mr-2 text-pink-200" />
               HelpDesk
             </h1>
           </div>
           <div className="flex items-center gap-4">
             <span className="text-sm font-semibold font-mono">irc.wfos.com #HelpDesk</span>
             {isConnected && (
-              <div className="flex items-center gap-1 text-xs bg-green-500/20 px-2 py-1 rounded">
-                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+              <div className="flex items-center gap-1 text-xs bg-emerald-500/30 px-3 py-1 rounded-full backdrop-blur-sm">
+                <div className="w-2 h-2 bg-emerald-300 rounded-full animate-pulse" />
                 Connected
               </div>
             )}
@@ -241,20 +301,20 @@ export default function HelpDeskCab() {
       </header>
 
       {/* Main Layout with Collapsible Sidebar */}
-      <main className="flex flex-grow overflow-hidden max-w-7xl mx-auto w-full border-x border-gray-300">
+      <main className="flex flex-grow overflow-hidden max-w-7xl mx-auto w-full">
         
         {/* LEFT COLUMN: Options/Settings (Collapsible) */}
         {!sidebarCollapsed && (
-          <section className="w-48 bg-white border-r border-gray-200 flex flex-col p-3 overflow-y-auto transition-all">
-          <h2 className="text-sm font-bold text-gray-800 mb-3 pb-2 border-b flex items-center">
-            <Settings className="w-4 h-4 mr-2 text-indigo-500" />
+          <section className="w-48 bg-white/80 backdrop-blur-sm border-r border-purple-200 flex flex-col p-3 overflow-y-auto transition-all">
+          <h2 className="text-sm font-bold text-purple-800 mb-3 pb-2 border-b border-purple-200 flex items-center">
+            <Settings className="w-4 h-4 mr-2 text-purple-500" />
             Staff Controls
           </h2>
 
           <div className="space-y-3">
             {/* User Status */}
-            <div className="p-2 bg-indigo-50 rounded-lg border border-indigo-200">
-              <label className="block text-xs font-medium text-indigo-700 mb-1 flex items-center gap-1">
+            <div className="p-2 bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg border border-purple-200">
+              <label className="block text-xs font-medium text-purple-700 mb-1 flex items-center gap-1">
                 Your Status
                 {showCoffeeCup && (
                   <Coffee className="w-3 h-3 text-amber-600 animate-bounce" />
@@ -263,7 +323,7 @@ export default function HelpDeskCab() {
               <select 
                 value={userStatus} 
                 onChange={(e) => handleStatusChange(e.target.value as any)}
-                className="w-full p-1.5 border border-indigo-300 rounded text-xs bg-white focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full p-1.5 border border-purple-300 rounded text-xs bg-white focus:ring-purple-500 focus:border-purple-500"
                 data-testid="select-status"
               >
                 <option value="online">● Available</option>
@@ -273,16 +333,16 @@ export default function HelpDeskCab() {
             </div>
 
             {/* Queue Info */}
-            <div className="p-2 bg-gray-50 rounded-lg border border-gray-200">
-              <h3 className="text-xs font-semibold text-gray-700 mb-2">Support Queue</h3>
+            <div className="p-2 bg-gradient-to-br from-blue-50 to-cyan-50 rounded-lg border border-blue-200">
+              <h3 className="text-xs font-semibold text-blue-700 mb-2">Support Queue</h3>
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-gray-600">In Queue:</span>
-                  <Badge variant="secondary" className="text-xs">{queueLength}</Badge>
+                  <span className="text-blue-600">In Queue:</span>
+                  <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">{queueLength}</Badge>
                 </div>
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-gray-600">Online Staff:</span>
-                  <Badge variant="secondary" className="text-xs">{uniqueUsers.filter(u => ['platform_admin', 'deputy_admin', 'deputy_assistant', 'sysop'].includes(u.role)).length}</Badge>
+                  <span className="text-blue-600">Online Staff:</span>
+                  <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">{uniqueUsers.filter(u => ['platform_admin', 'deputy_admin', 'deputy_assistant', 'sysop'].includes(u.role)).length}</Badge>
                 </div>
               </div>
             </div>
@@ -290,11 +350,11 @@ export default function HelpDeskCab() {
             {/* Quick Actions for Staff */}
             {isStaff && (
               <>
-                <div className="pt-3 border-t border-gray-200 space-y-1.5">
+                <div className="pt-3 border-t border-purple-200 space-y-1.5">
                   <Button 
                     onClick={() => handleCommand('/intro')}
                     size="sm"
-                    className="w-full bg-green-600 hover:bg-green-700 text-xs h-8"
+                    className="w-full bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 text-white text-xs h-8 shadow-md"
                     data-testid="button-intro"
                   >
                     <Zap className="w-3 h-3 mr-1" />
@@ -303,7 +363,7 @@ export default function HelpDeskCab() {
                   <Button 
                     onClick={() => handleCommand('/help')}
                     size="sm"
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-xs h-8"
+                    className="w-full bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white text-xs h-8 shadow-md"
                     data-testid="button-help"
                   >
                     <HelpCircle className="w-3 h-3 mr-1" />
@@ -312,7 +372,7 @@ export default function HelpDeskCab() {
                   <Button 
                     onClick={() => handleCommand('/queue')}
                     size="sm"
-                    className="w-full bg-purple-600 hover:bg-purple-700 text-xs h-8"
+                    className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white text-xs h-8 shadow-md"
                     data-testid="button-queue"
                   >
                     <Users className="w-3 h-3 mr-1" />
@@ -321,134 +381,106 @@ export default function HelpDeskCab() {
                 </div>
 
                 {/* Quick Response Templates for Agents */}
-                <div className="pt-3 border-t border-gray-200">
-                  <h3 className="text-xs font-semibold text-gray-700 mb-2">Quick Responses</h3>
+                <div className="pt-3 border-t border-purple-200">
+                  <h3 className="text-xs font-semibold text-purple-700 mb-2">Quick Responses</h3>
                   <div className="space-y-1">
                     <Button 
-                      onClick={() => setInputMessage("Hello! I'm here to help. Can you describe your issue?")}
+                      onClick={() => setInputMessage("Thank you for contacting WorkforceOS support! How can I help you today?")}
                       size="sm"
                       variant="outline"
-                      className="w-full text-xs h-7 justify-start"
+                      className="w-full justify-start text-xs h-auto py-1.5 border-purple-300 hover:bg-purple-50"
                     >
-                      Greeting
+                      Welcome Message
                     </Button>
                     <Button 
-                      onClick={() => setInputMessage("I've escalated this to our technical team. You'll receive an update within 24 hours.")}
+                      onClick={() => setInputMessage("I've resolved your issue. Is there anything else I can help you with?")}
                       size="sm"
                       variant="outline"
-                      className="w-full text-xs h-7 justify-start"
+                      className="w-full justify-start text-xs h-auto py-1.5 border-purple-300 hover:bg-purple-50"
                     >
-                      Escalate
-                    </Button>
-                    <Button 
-                      onClick={() => setInputMessage("Your issue has been resolved. Is there anything else I can help you with?")}
-                      size="sm"
-                      variant="outline"
-                      className="w-full text-xs h-7 justify-start"
-                    >
-                      Resolved
+                      Issue Resolved
                     </Button>
                   </div>
                 </div>
               </>
             )}
-
-            {/* Client Help Panel */}
-            {!isStaff && (
-              <div className="pt-3 border-t border-gray-200">
-                <h3 className="text-xs font-semibold text-gray-700 mb-2">Need Help?</h3>
-                <div className="space-y-2 text-xs">
-                  <div className="p-2 bg-blue-50 rounded border border-blue-200">
-                    <div className="font-semibold text-blue-700">Your Position</div>
-                    <div className="text-blue-600">#1 in queue</div>
-                  </div>
-                  <div className="p-2 bg-green-50 rounded border border-green-200">
-                    <div className="font-semibold text-green-700">Est. Wait Time</div>
-                    <div className="text-green-600">2-3 minutes</div>
-                  </div>
-                  <div className="p-2 bg-purple-50 rounded border border-purple-200">
-                    <div className="font-semibold text-purple-700">Quick Commands</div>
-                    <div className="text-purple-600">/help /queue /staff</div>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         </section>
         )}
 
-        {/* CENTER COLUMN: Chat Messages */}
-        <section className="flex flex-col flex-grow bg-white">
-          {/* Rotating Info Banner */}
-          <div className="bg-blue-50 border-b border-blue-200 p-2 flex items-center gap-2">
-            <Info className="w-4 h-4 text-blue-600 flex-shrink-0" />
-            <div className="text-sm text-blue-800 animate-fade-in">
-              {infoBanners[currentBannerIndex]}
-            </div>
+        {/* CENTER COLUMN: Chat Area */}
+        <section className="flex-grow flex flex-col bg-white/50 backdrop-blur-sm">
+          {/* Info Banner */}
+          <div className="bg-gradient-to-r from-purple-100 via-pink-100 to-blue-100 px-4 py-2 text-sm text-purple-800 border-b border-purple-200 text-center font-mono">
+            <Info className="w-3 h-3 inline mr-2" />
+            {infoBanners[currentBannerIndex]}
           </div>
 
-          {/* Messages Container */}
+          {/* Messages Area */}
           <ScrollArea className="flex-grow p-4">
             <div className="space-y-4">
-              {/* IRC MOTD Messages */}
-              {ircMessages.map((ircMsg, idx) => (
-                <div key={`irc-${idx}`} className="text-xs font-mono text-purple-600">
-                  {ircMsg}
+              {/* IRC-style MOTD */}
+              {ircMessages.map((msg, idx) => (
+                <div key={`irc-${idx}`} className="text-xs font-mono text-purple-600 italic">
+                  {msg}
                 </div>
               ))}
 
-              {/* User Join Messages */}
-              <div className="text-xs font-mono text-green-600">
-                *** {userName} (~{user?.email?.split('@')[0]}@wfos.client) has joined #HelpDesk
-              </div>
-
+              {/* Chat Messages - Modern Pastel Bubbles */}
               {messages.map((msg, idx) => {
-                const isSystem = msg.senderType === 'system';
-                const isBot = msg.senderType === 'bot';
                 const isSelf = msg.senderId === user?.id;
-                const role = (msg as any).userRole || 'user';
-
-                if (isSystem) {
+                const role = (msg as any).role || 'guest';
+                
+                // System messages
+                if (msg.senderType === 'system' || msg.isSystemMessage) {
                   return (
-                    <div key={idx} className="text-xs font-mono text-red-600">
-                      *** [{msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '00:00'}] 
-                      <span className="font-bold ml-1">irc.wfos.com</span>: {msg.message}
+                    <div key={idx} className="flex justify-center my-2">
+                      <span className="text-xs font-mono text-purple-600 italic bg-purple-50 px-3 py-1 rounded-full border border-purple-200">
+                        *** {msg.message}
+                      </span>
                     </div>
                   );
                 }
 
-                // IRC/MSN 2025 style - ALL messages left-aligned with modern bubbles
+                // Regular messages - ALL left-aligned with modern pastel bubbles
                 const displayName = isSelf ? 'You' : (msg.senderName || 'User');
-                const bubbleColor = isSelf 
-                  ? 'bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-200' 
-                  : 'bg-gradient-to-br from-blue-50 to-slate-50 border border-blue-200';
-                const nameColor = isSelf ? 'text-indigo-700' : getRoleColor(role);
+                const bubbleColor = getMessageBubbleColor(msg.senderType || 'customer', role, isSelf);
+                const nameColor = getRoleColor(role);
 
                 return (
-                  <div key={idx} className={`${bubbleColor} shadow-sm p-3 rounded-2xl max-w-[85%] hover:shadow-md transition-shadow`}>
-                    <div className="flex items-start gap-2">
-                      {/* Avatar Icon */}
-                      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-white border-2 border-blue-300 flex items-center justify-center text-sm shadow-sm">
+                  <div key={idx} className={`${bubbleColor} shadow-md p-4 rounded-3xl max-w-[85%] hover:shadow-lg transition-all`}>
+                    <div className="flex items-start gap-3">
+                      {/* Avatar Icon - PROMINENT */}
+                      <div className="flex-shrink-0">
                         {getUserTypeIcon((msg as any).userType || 'guest', role)}
                       </div>
                       
                       <div className="flex-1 min-w-0">
                         {/* Header: Name, Role Badge, Timestamp */}
-                        <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
-                          <span className={`font-bold text-sm ${nameColor}`}>{displayName}</span>
+                        <div className="flex items-center gap-2 mb-2 flex-wrap">
+                          <span className={`text-sm ${nameColor}`}>{displayName}</span>
                           {getRoleIcon(role)}
-                          <span className="text-xs text-gray-500 ml-auto">
+                          <span className="text-xs text-slate-500 ml-auto">
                             {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : ''}
                           </span>
                         </div>
                         
                         {/* Message Content */}
-                        <p className="text-gray-800 text-sm leading-relaxed">{msg.message}</p>
+                        <p className="text-slate-800 text-sm leading-relaxed">{msg.message}</p>
                         
                         {/* Reaction Bar (placeholder for now) */}
-                        <div className="flex items-center gap-1 mt-2 text-xs text-gray-400">
-                          <button className="hover:text-blue-600 transition-colors" title="React">
-                            <span className="opacity-0 group-hover:opacity-100">👍 ❤️ ✅ ⭐</span>
+                        <div className="flex items-center gap-2 mt-3 text-xs">
+                          <button className="hover:scale-110 transition-transform opacity-50 hover:opacity-100" title="Like">
+                            👍
+                          </button>
+                          <button className="hover:scale-110 transition-transform opacity-50 hover:opacity-100" title="Love">
+                            ❤️
+                          </button>
+                          <button className="hover:scale-110 transition-transform opacity-50 hover:opacity-100" title="Verified">
+                            ✅
+                          </button>
+                          <button className="hover:scale-110 transition-transform opacity-50 hover:opacity-100" title="Star">
+                            ⭐
                           </button>
                         </div>
                       </div>
@@ -461,7 +493,7 @@ export default function HelpDeskCab() {
           </ScrollArea>
 
           {/* Input Area */}
-          <div className="border-t-2 border-gray-200 bg-gray-50 p-4">
+          <div className="border-t-2 border-purple-200 bg-white/80 backdrop-blur-sm p-4">
             <div className="flex items-end gap-2">
               <Input
                 value={inputMessage}
@@ -469,41 +501,41 @@ export default function HelpDeskCab() {
                 onKeyPress={handleKeyPress}
                 placeholder="Type your message here..."
                 disabled={!isConnected}
-                className="flex-grow p-3 border border-gray-300 rounded-lg resize-none focus:ring-indigo-500 focus:border-indigo-500"
+                className="flex-grow p-3 border-2 border-purple-300 rounded-2xl resize-none focus:ring-purple-500 focus:border-purple-500 bg-white"
                 data-testid="input-message"
               />
               <Button
                 onClick={handleSendMessage}
                 disabled={!isConnected || !inputMessage.trim()}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-bold shadow-md hover:shadow-lg transition-all h-full"
+                className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white px-6 py-3 rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all h-full"
                 data-testid="button-send"
               >
                 Send <Send className="w-4 h-4 ml-1" />
               </Button>
             </div>
-            <div className="flex justify-between items-center mt-2 text-xs text-gray-500">
+            <div className="flex justify-between items-center mt-2 text-xs text-purple-600">
               <span><Clock className="w-3 h-3 inline mr-1" />Enter to send</span>
-              <span>{isConnected ? <CheckCircle className="w-3 h-3 inline mr-1 text-green-500" /> : <AlertCircle className="w-3 h-3 inline mr-1 text-red-500" />}{isConnected ? 'Connected' : 'Disconnected'}</span>
+              <span>{isConnected ? <CheckCircle className="w-3 h-3 inline mr-1 text-emerald-500" /> : <AlertCircle className="w-3 h-3 inline mr-1 text-rose-500" />}{isConnected ? 'Connected' : 'Disconnected'}</span>
             </div>
           </div>
         </section>
 
-        {/* RIGHT COLUMN: User List */}
-        <section className="w-64 bg-gray-50 border-l border-gray-200 flex flex-col">
-          <div className="p-3 border-b border-gray-200 flex-shrink-0">
+        {/* RIGHT COLUMN: User List with PROMINENT ICONS */}
+        <section className="w-72 bg-white/80 backdrop-blur-sm border-l border-purple-200 flex flex-col">
+          <div className="p-4 border-b border-purple-200 flex-shrink-0 bg-gradient-to-r from-purple-50 to-pink-50">
             <div className="flex items-center gap-2">
-              <Users className="w-4 h-4 text-purple-600 flex-shrink-0" />
-              <h2 className="text-sm font-bold text-gray-800">
-                User List
+              <Users className="w-5 h-5 text-purple-600 flex-shrink-0" />
+              <h2 className="text-sm font-bold text-purple-800">
+                Online Users
               </h2>
-              <Badge variant="secondary" className="ml-auto text-xs" data-testid="text-user-count">
+              <Badge variant="secondary" className="ml-auto text-xs bg-purple-100 text-purple-700" data-testid="text-user-count">
                 {uniqueUsers.length}
               </Badge>
             </div>
           </div>
           
           <ScrollArea className="flex-grow p-3">
-            <div className="space-y-1">
+            <div className="space-y-2">
               {uniqueUsers.map((u) => {
                 const isOp = ['platform_admin', 'deputy_admin'].includes(u.role);
                 const isVoice = ['deputy_assistant', 'sysop'].includes(u.role);
@@ -514,25 +546,29 @@ export default function HelpDeskCab() {
                     <ContextMenuTrigger>
                       <div 
                         className={`
-                          flex items-center gap-2 p-1.5 rounded-lg cursor-pointer transition-colors
+                          flex items-center gap-3 p-2.5 rounded-xl cursor-pointer transition-all
                           ${selectedUserId === u.id 
-                            ? 'bg-indigo-100 font-bold text-indigo-700 shadow-md' 
-                            : 'hover:bg-gray-200'
+                            ? 'bg-gradient-to-r from-purple-100 to-pink-100 shadow-md scale-105' 
+                            : 'hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 hover:shadow-sm'
                           }
                         `}
                         onClick={() => setSelectedUserId(u.id)}
                         data-testid={`user-${u.id}`}
                       >
                         {/* Status Indicator */}
-                        {getStatusIndicator(u.status || 'online')}
+                        <div className="flex-shrink-0">
+                          {getStatusIndicator(u.status || 'online')}
+                        </div>
                         
-                        {/* User Type Icon */}
-                        {getUserTypeIcon(u.userType || 'guest', u.role)}
+                        {/* User Type Icon - PROMINENT */}
+                        <div className="flex-shrink-0">
+                          {getUserTypeIcon(u.userType || 'guest', u.role)}
+                        </div>
                         
-                        {/* User Name */}
+                        {/* User Name and Role */}
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1">
-                            <span className={`text-xs ${getRoleColor(u.role)}`} title={u.name}>
+                          <div className="flex items-center gap-1.5">
+                            <span className={`text-sm font-semibold truncate ${getRoleColor(u.role)}`} title={u.name}>
                               {ircPrefix}{u.name}
                             </span>
                             {getRoleIcon(u.role)}
@@ -540,30 +576,30 @@ export default function HelpDeskCab() {
                         </div>
                       </div>
                     </ContextMenuTrigger>
-                  <ContextMenuContent className="bg-white border-gray-300 w-56">
-                    <ContextMenuItem onClick={() => handleMention(u.name)}>
-                      @Mention {u.name}
-                    </ContextMenuItem>
-                    {isStaff && (
-                      <>
-                        <ContextMenuItem onClick={() => handleCommand(`/intro`)}>
-                          /intro - AI Introduction
-                        </ContextMenuItem>
-                        <ContextMenuItem onClick={() => handleCommand(`/auth ${u.name}`)}>
-                          /auth - Request Auth
-                        </ContextMenuItem>
-                        <ContextMenuItem onClick={() => handleCommand(`/verify ${u.name}`)}>
-                          /verify - Verify User
-                        </ContextMenuItem>
-                        <ContextMenuItem onClick={() => handleCommand(`/kick ${u.name}`)}>
-                          /kick - Remove User
-                        </ContextMenuItem>
-                      </>
-                    )}
-                  </ContextMenuContent>
-                </ContextMenu>
-              );
-            })}
+                    <ContextMenuContent className="bg-white border-purple-300 w-56">
+                      <ContextMenuItem onClick={() => handleMention(u.name)}>
+                        @Mention {u.name}
+                      </ContextMenuItem>
+                      {isStaff && (
+                        <>
+                          <ContextMenuItem onClick={() => handleCommand(`/intro`)}>
+                            /intro - AI Introduction
+                          </ContextMenuItem>
+                          <ContextMenuItem onClick={() => handleCommand(`/auth ${u.name}`)}>
+                            /auth - Request Auth
+                          </ContextMenuItem>
+                          <ContextMenuItem onClick={() => handleCommand(`/verify ${u.name}`)}>
+                            /verify - Verify User
+                          </ContextMenuItem>
+                          <ContextMenuItem onClick={() => handleCommand(`/kick ${u.name}`)}>
+                            /kick - Remove User
+                          </ContextMenuItem>
+                        </>
+                      )}
+                    </ContextMenuContent>
+                  </ContextMenu>
+                );
+              })}
             </div>
           </ScrollArea>
         </section>
