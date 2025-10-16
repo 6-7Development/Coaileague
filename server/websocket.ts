@@ -351,26 +351,8 @@ export function setupWebSocket(server: Server) {
                 }
                 
                 case 'verify': {
-                  // Verify organization/user credentials
-                  const username = parsedCommand.args[0];
-                  if (!username) {
-                    ws.send(JSON.stringify({
-                      type: 'error',
-                      message: 'Usage: /verify <username>',
-                    }));
-                    break;
-                  }
-                  
-                  // Check if user exists in database
-                  const user = await storage.getUserByUsername(username);
-                  let verifyMsg: string;
-                  
-                  if (user) {
-                    const workspace = await storage.getWorkspaceByOwnerId(user.id);
-                    verifyMsg = `✅ **Verification Complete**\n\n**User:** ${user.username}\n**Name:** ${user.fullName || 'Not provided'}\n**Email:** ${user.email}\n**Organization:** ${workspace?.name || 'No workspace'}\n**Status:** Active\n\nUser credentials verified successfully.`;
-                  } else {
-                    verifyMsg = `❌ **Verification Failed**\n\nUser **${username}** not found in system.\n\nPossible reasons:\n• Username misspelled\n• Account not yet created\n• Account deleted\n\nPlease ask the user to provide correct credentials or create an account.`;
-                  }
+                  // TODO: Implement user verification when storage methods are available
+                  const verifyMsg = `⚠️ **Command Not Yet Implemented**\n\nThe /verify command is currently under development. Please use alternative verification methods or contact a system administrator.`;
                   
                   const botMsg = await storage.createChatMessage({
                     conversationId: ws.conversationId,
@@ -392,53 +374,24 @@ export function setupWebSocket(server: Server) {
                 }
                 
                 case 'resetpass': {
-                  // Send password reset link
-                  const email = parsedCommand.args[0];
-                  if (!email) {
-                    ws.send(JSON.stringify({
-                      type: 'error',
-                      message: 'Usage: /resetpass <email>',
-                    }));
-                    break;
-                  }
+                  // TODO: Implement password reset when storage methods are available
+                  const resetMsg = `⚠️ **Command Not Yet Implemented**\n\nThe /resetpass command is currently under development. Please use the standard password reset flow on the login page.`;
                   
-                  // Trigger password reset (creates reset token)
-                  try {
-                    await storage.createPasswordResetToken(email);
-                    
-                    const resetMsg = await storage.createChatMessage({
-                      conversationId: ws.conversationId,
-                      senderId: 'ai-bot',
-                      senderName: 'HelpOS™',
-                      senderType: 'bot',
-                      message: `📧 **Password Reset Initiated**\n\nA password reset link has been sent to:\n**${email}**\n\nThe user should:\n1. Check their email inbox (and spam folder)\n2. Click the reset link within 1 hour\n3. Create a new password\n\nIf they don't receive the email within 5 minutes, they can request another reset.`,
-                      messageType: 'text',
+                  const botMsg = await storage.createChatMessage({
+                    conversationId: ws.conversationId,
+                    senderId: 'ai-bot',
+                    senderName: 'HelpOS™',
+                    senderType: 'bot',
+                    message: resetMsg,
+                    messageType: 'text',
+                  });
+                  
+                  if (clients) {
+                    clients.forEach((client) => {
+                      if (client.readyState === WebSocket.OPEN) {
+                        client.send(JSON.stringify({ type: 'new_message', message: botMsg }));
+                      }
                     });
-                    
-                    if (clients) {
-                      clients.forEach((client) => {
-                        if (client.readyState === WebSocket.OPEN) {
-                          client.send(JSON.stringify({ type: 'new_message', message: resetMsg }));
-                        }
-                      });
-                    }
-                  } catch (error: any) {
-                    const errorMsg = await storage.createChatMessage({
-                      conversationId: ws.conversationId,
-                      senderId: 'ai-bot',
-                      senderName: 'HelpOS™',
-                      senderType: 'bot',
-                      message: `❌ **Password Reset Failed**\n\nUnable to send reset link to: **${email}**\n\nError: ${error.message || 'Email not found in system'}\n\nPlease verify the email address and try again.`,
-                      messageType: 'text',
-                    });
-                    
-                    if (clients) {
-                      clients.forEach((client) => {
-                        if (client.readyState === WebSocket.OPEN) {
-                          client.send(JSON.stringify({ type: 'new_message', message: errorMsg }));
-                        }
-                      });
-                    }
                   }
                   break;
                 }

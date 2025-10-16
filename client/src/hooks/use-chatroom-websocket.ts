@@ -85,8 +85,8 @@ export function useChatroomWebSocket(userId: string | undefined, userName: strin
               break;
 
             case 'new_message':
-              if (data.message) {
-                setMessages((prev) => [...prev, data.message!]);
+              if (data.message && typeof data.message !== 'string') {
+                setMessages((prev) => [...prev, data.message as ChatMessage]);
               }
               break;
 
