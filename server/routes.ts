@@ -102,9 +102,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // SECURITY: Apply rate limiting BEFORE auth routes to prevent brute-force attacks
-  // ⚠️ TEMPORARILY DISABLED FOR TESTING - RE-ENABLE AFTER CHAT TESTING! ⚠️
-  // app.use('/api', apiLimiter);
-  // app.use('/api/auth', authLimiter); // Extra strict for auth endpoints
+  app.use('/api', apiLimiter);
+  
+  // Apply strict rate limiting ONLY to sensitive auth endpoints (not /api/auth/me)
+  app.use('/api/auth/login', authLimiter);
+  app.use('/api/auth/register', authLimiter);
+  app.use('/api/auth/request-password-reset', authLimiter);
+  app.use('/api/helpdesk/authenticate-ticket', authLimiter);
+  app.use('/api/helpdesk/authenticate-workid', authLimiter);
   
   // Register custom auth routes (AFTER rate limiters for security)
   app.use(authRoutes);

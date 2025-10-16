@@ -36,6 +36,7 @@ The platform features a CAD-style professional interface with a dark mode theme,
         - **Support Staff Access**: Two methods - (1) Login normally with platform credentials (bypasses all restrictions), or (2) Authenticate as guest using work ID + email
         - **Guest Sessions**: Temporary user accounts created on-the-fly for ticket holders, tied to platform-external workspace
         - **Security**: Email validation against ticket owner, rate limiting, session management
+        - **Future Scalability Idea**: International Work ID structure for global expansion - `Firstname-##-###-##-####` format where first 2 digits = country code, next 3 digits = state (even=USA, odd=foreign), last 4 = SSN/DL last 4. Organization ID shared across staff (e.g., "DC360Root"). This enables regional tracking, compliance, and human-readable yet structured identification for worldwide operations.
 - **Admin Dashboards**: Usage, Support, and Command Center for platform monitoring and customer management.
 - **Portals**: Employee, Auditor/Bookkeeper, and Client/Subscriber portals.
 - **Billing & Monetization**: Transaction-based platform fee (3-10%) via Stripe Connect. Tier-based pricing (Professional, Enterprise, Elite) with feature flags. AI features follow a subscriber-pays-all model.
