@@ -57,11 +57,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create HTTP server
   const server = createServer(app);
   
-  // SECURITY: WebSocket disabled until authentication is implemented
-  // WebSocket currently lacks proper auth and violates multi-tenant isolation
-  // Use REST API endpoints instead - they are fully secured
-  // TODO: Implement WebSocket authentication before enabling
-  // setupWebSocket(server);
+  // ✅ SECURITY: WebSocket authentication implemented for Live HelpDesk
+  // - Dual authentication paths: Ticket + email OR Work ID + email
+  // - Session-based validation for all WebSocket connections
+  // - Platform staff role verification for administrative controls
+  setupWebSocket(server);
   
   // Setup custom auth (portable, session-based)
   setupCustomAuth(app);
