@@ -303,7 +303,7 @@ export default function LiveChatroomPage() {
               </div>
               <div className="min-w-0">
                 <h1 className="text-sm sm:text-lg font-bold truncate text-white">
-                  HelpOS™
+                  HelpDesk
                 </h1>
                 <p className="text-xs text-indigo-100 hidden sm:block flex items-center gap-2">
                   <span className="inline-flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
@@ -470,9 +470,9 @@ export default function LiveChatroomPage() {
                     <div className="p-4 bg-indigo-500/10 rounded-full w-fit mx-auto mb-4">
                       <MessageSquare className="w-12 h-12 text-indigo-400" />
                     </div>
-                    <h3 className="font-semibold mb-2 text-indigo-100">Welcome to HelpOS™</h3>
+                    <h3 className="font-semibold mb-2 text-indigo-100">Welcome to HelpDesk</h3>
                     <p className="text-sm text-slate-400">
-                      Your messages will appear here. Start a conversation with our support team.
+                      Your messages will appear here. Start a conversation with our support team or chat with HelpOS™, our AI assistant.
                     </p>
                   </CardContent>
                 </Card>
@@ -641,7 +641,7 @@ export default function LiveChatroomPage() {
                   <Lock className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-300 flex-shrink-0" />
                 </div>
                 <span className="line-clamp-1 bg-gradient-to-r from-indigo-200 to-purple-200 bg-clip-text text-transparent font-semibold">
-                  HelpOS™ Authentication
+                  HelpDesk Authentication
                 </span>
               </DialogTitle>
               <DialogDescription className="text-xs sm:text-sm text-slate-400 text-center">
@@ -836,7 +836,7 @@ export default function LiveChatroomPage() {
               Staff Controls
             </DialogTitle>
             <DialogDescription className="text-xs sm:text-sm">
-              Manage HelpOS™ room status. Changes apply immediately.
+              Manage HelpDesk room status. Changes apply immediately.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 overflow-y-auto flex-1 py-1">
