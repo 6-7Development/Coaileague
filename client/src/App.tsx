@@ -13,9 +13,6 @@ import { ThemeProvider as WorkspaceThemeProvider } from "@/contexts/ThemeContext
 import { ThemeToggle } from "@/components/theme-toggle";
 import { ProtectedRoute } from "@/components/protected-route";
 import { DemoBanner } from "@/components/demo-banner";
-import { CADMenuBar } from "@/components/cad-menu-bar";
-import { CADToolbar } from "@/components/cad-toolbar";
-import { CADStatusBar } from "@/components/cad-status-bar";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { CommandPalette } from "@/components/command-palette";
 import { useAuth } from "@/hooks/useAuth";
@@ -95,15 +92,10 @@ function AppContent() {
     <ProtectedRoute>
       <SidebarProvider style={style as React.CSSProperties}>
         <CommandPalette />
-        <div className="flex flex-col h-screen w-full bg-[hsl(var(--cad-background))] relative">
-          {/* Animated Background Mesh */}
-          <div className="bg-mesh" aria-hidden="true" />
-          
+        <div className="flex flex-col h-screen w-full relative">
           <DemoBanner />
-          <CADMenuBar />
-          <CADToolbar />
           
-          <div className="flex flex-1 min-h-0 relative z-10">
+          <div className="flex flex-1 min-h-0">
             <AppSidebar />
             <main className="flex-1 overflow-hidden bg-transparent">
               <Switch>
@@ -143,8 +135,6 @@ function AppContent() {
               </Switch>
             </main>
           </div>
-          
-          <CADStatusBar />
         </div>
       </SidebarProvider>
     </ProtectedRoute>
