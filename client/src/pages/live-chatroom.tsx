@@ -1,16 +1,22 @@
 import { useState, useEffect, useRef } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useChatroomWebSocket } from "@/hooks/use-chatroom-websocket";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { 
   MessageSquare, Send, Users, Circle, Shield, 
-  Headphones, User, Bot, Sparkles, Wifi, WifiOff
+  Headphones, User, Bot, Sparkles, Wifi, WifiOff,
+  Lock, Unlock, Settings, AlertCircle, CheckCircle
 } from "lucide-react";
 import type { ChatMessage } from "@shared/schema";
 
@@ -23,22 +29,99 @@ interface OnlineUser {
 
 export default function LiveChatroomPage() {
   const [messageText, setMessageText] = useState("");
+  const [ticketNumber, setTicketNumber] = useState("");
+  const [showTicketDialog, setShowTicketDialog] = useState(false);
+  const [showStaffControls, setShowStaffControls] = useState(false);
+  const [roomStatusControl, setRoomStatusControl] = useState<"open" | "closed" | "maintenance">("open");
+  const [roomStatusMessage, setRoomStatusMessage] = useState("");
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   
   // Get current user data
-  const { data: currentUser } = useQuery<{ user: { id: string; email: string } }>({
+  const { data: currentUser } = useQuery<{ user: { id: string; email: string; platformRole?: string } }>({
     queryKey: ["/api/auth/me"],
   });
   
   const userId = currentUser?.user?.id;
   const userName = currentUser?.user?.email || 'User';
+  const isStaff = currentUser?.user?.platformRole && 
+    ['platform_admin', 'deputy_admin', 'deputy_assistant', 'sysop'].includes(currentUser.user.platformRole);
+  
+  // Fetch HelpDesk room info
+  const { data: helpDeskRoom } = useQuery({
+    queryKey: ['/api/helpdesk/room/helpdesk'],
+    enabled: !!userId,
+  });
   
   // Use WebSocket for real-time messaging
-  const { messages, sendMessage, isConnected, error, reconnect } = useChatroomWebSocket(
-    userId,
-    userName
-  );
+  const { 
+    messages, sendMessage, isConnected, error, reconnect,
+    requiresTicket, roomStatus, statusMessage: wsStatusMessage, temporaryError, clearAccessError
+  } = useChatroomWebSocket(userId, userName);
+
+  // Ticket verification mutation
+  const verifyTicketMutation = useMutation({
+    mutationFn: async (ticketNum: string) => {
+      const result = await apiRequest('/api/helpdesk/verify-ticket', {
+        method: 'POST',
+        body: JSON.stringify({
+          ticketNumber: ticketNum,
+          roomSlug: 'helpdesk',
+        }),
+      });
+      return result;
+    },
+    onSuccess: () => {
+      // Invalidate room data to refresh status
+      queryClient.invalidateQueries({ queryKey: ['/api/helpdesk/room/helpdesk'] });
+      clearAccessError();
+      setShowTicketDialog(false);
+      setTicketNumber("");
+      toast({
+        title: "Access Granted",
+        description: "You can now join the HelpDesk chatroom",
+      });
+      reconnect(); // Reconnect to apply new access
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Verification Failed",
+        description: error.message || "Invalid ticket number",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Room status toggle mutation (staff only)
+  const toggleRoomStatusMutation = useMutation({
+    mutationFn: async ({ status, message }: { status: string; message: string }) => {
+      const result = await apiRequest(`/api/helpdesk/room/helpdesk/status`, {
+        method: 'POST',
+        body: JSON.stringify({
+          status,
+          statusMessage: message || null,
+        }),
+      });
+      return result;
+    },
+    onSuccess: () => {
+      // Invalidate room data to refresh status indicators
+      queryClient.invalidateQueries({ queryKey: ['/api/helpdesk/room/helpdesk'] });
+      setShowStaffControls(false);
+      toast({
+        title: "Room Status Updated",
+        description: "HelpDesk room status has been changed",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Update Failed",
+        description: error.message || "Failed to update room status",
+        variant: "destructive",
+      });
+    },
+  });
 
   // Static online users (would be WebSocket-based in production)
   const [onlineUsers] = useState<OnlineUser[]>([
@@ -65,16 +148,31 @@ export default function LiveChatroomPage() {
     setMessageText("");
   };
 
-  // Show error toast when connection issues occur
+  // Sync staff controls state with server data when room data loads
   useEffect(() => {
-    if (error) {
+    if (helpDeskRoom) {
+      setRoomStatusControl(helpDeskRoom.status as "open" | "closed" | "maintenance");
+      setRoomStatusMessage(helpDeskRoom.statusMessage || "");
+    }
+  }, [helpDeskRoom]);
+
+  // Show ticket verification dialog when access is denied
+  useEffect(() => {
+    if (requiresTicket && !isStaff) {
+      setShowTicketDialog(true);
+    }
+  }, [requiresTicket, isStaff]);
+
+  // Show error toast when connection issues occur (but not for access errors - those use dialog)
+  useEffect(() => {
+    if (error && !requiresTicket) {
       toast({
-        title: "Connection Error",
+        title: temporaryError ? "Temporary Error" : "Connection Error",
         description: error,
         variant: "destructive",
       });
     }
-  }, [error, toast]);
+  }, [error, requiresTicket, temporaryError, toast]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -108,13 +206,41 @@ export default function LiveChatroomPage() {
       <div className="flex-1 flex flex-col">
         {/* Header */}
         <div className="border-b p-4 bg-card">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-3">
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2">
                 <MessageSquare className="w-6 h-6 text-primary" />
                 <div>
-                  <h1 className="text-xl font-bold">WorkforceOS Support Chat</h1>
-                  <p className="text-sm text-muted-foreground">Live Support Helpdesk • AI-Powered</p>
+                  <div className="flex items-center gap-2">
+                    <h1 className="text-xl font-bold">WorkforceOS HelpDesk</h1>
+                    {helpDeskRoom && (
+                      <Badge 
+                        variant={helpDeskRoom.status === 'open' ? 'default' : 'destructive'}
+                        className="gap-1"
+                        data-testid="badge-room-status"
+                      >
+                        {helpDeskRoom.status === 'open' ? (
+                          <>
+                            <Circle className="w-2 h-2 fill-green-500 text-green-500" />
+                            Open
+                          </>
+                        ) : helpDeskRoom.status === 'closed' ? (
+                          <>
+                            <Circle className="w-2 h-2 fill-red-500 text-red-500" />
+                            Closed
+                          </>
+                        ) : (
+                          <>
+                            <Circle className="w-2 h-2 fill-yellow-500 text-yellow-500" />
+                            Maintenance
+                          </>
+                        )}
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {helpDeskRoom?.statusMessage || "Live Support • IRC/MSN-style instant messaging"}
+                  </p>
                 </div>
               </div>
             </div>
@@ -123,6 +249,18 @@ export default function LiveChatroomPage() {
                 <Circle className="w-2 h-2 fill-green-500 text-green-500" />
                 <span className="text-sm font-medium">{onlineUsers.length} Online</span>
               </div>
+              {isStaff && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowStaffControls(true)}
+                  data-testid="button-staff-controls"
+                  className="gap-2"
+                >
+                  <Settings className="w-4 h-4" />
+                  Staff Controls
+                </Button>
+              )}
               <Badge 
                 variant={isConnected ? "default" : "destructive"} 
                 className="gap-1"
@@ -288,6 +426,172 @@ export default function LiveChatroomPage() {
           </Card>
         </div>
       </div>
+
+      {/* Ticket Verification Dialog */}
+      <Dialog open={showTicketDialog} onOpenChange={setShowTicketDialog}>
+        <DialogContent data-testid="dialog-ticket-verification">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Lock className="w-5 h-5 text-primary" />
+              HelpDesk Access Required
+            </DialogTitle>
+            <DialogDescription>
+              This HelpDesk room requires a verified support ticket. Please enter your ticket number to gain access.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="ticket-number">Support Ticket Number</Label>
+              <Input
+                id="ticket-number"
+                placeholder="e.g., TKT-123456"
+                value={ticketNumber}
+                onChange={(e) => setTicketNumber(e.target.value)}
+                data-testid="input-ticket-number"
+              />
+              <p className="text-xs text-muted-foreground">
+                Your support ticket must be verified by staff before you can join.
+              </p>
+            </div>
+            {wsStatusMessage && (
+              <Card className="border-destructive/50 bg-destructive/10">
+                <CardContent className="p-3">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 text-destructive mt-0.5" />
+                    <p className="text-sm text-destructive">{wsStatusMessage}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setShowTicketDialog(false)}
+                data-testid="button-cancel-ticket"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => verifyTicketMutation.mutate(ticketNumber)}
+                disabled={!ticketNumber.trim() || verifyTicketMutation.isPending}
+                data-testid="button-verify-ticket"
+                className="gap-2"
+              >
+                {verifyTicketMutation.isPending ? (
+                  <>Verifying...</>
+                ) : (
+                  <>
+                    <CheckCircle className="w-4 h-4" />
+                    Verify & Join
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Staff Controls Dialog */}
+      <Dialog open={showStaffControls} onOpenChange={setShowStaffControls}>
+        <DialogContent data-testid="dialog-staff-controls">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Settings className="w-5 h-5 text-primary" />
+              HelpDesk Staff Controls
+            </DialogTitle>
+            <DialogDescription>
+              Manage HelpDesk room status and access control. Changes apply immediately to all users.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="room-status">Room Status</Label>
+              <Select
+                value={roomStatusControl}
+                onValueChange={(value: any) => setRoomStatusControl(value)}
+              >
+                <SelectTrigger id="room-status" data-testid="select-room-status">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="open">
+                    <div className="flex items-center gap-2">
+                      <Circle className="w-2 h-2 fill-green-500 text-green-500" />
+                      Open - Everyone can join
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="closed">
+                    <div className="flex items-center gap-2">
+                      <Circle className="w-2 h-2 fill-red-500 text-red-500" />
+                      Closed - No new access
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="maintenance">
+                    <div className="flex items-center gap-2">
+                      <Circle className="w-2 h-2 fill-yellow-500 text-yellow-500" />
+                      Maintenance - Staff only
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="status-message">Status Message (Optional)</Label>
+              <Textarea
+                id="status-message"
+                placeholder="e.g., 'Closed for the weekend' or 'System maintenance in progress'"
+                value={roomStatusMessage}
+                onChange={(e) => setRoomStatusMessage(e.target.value)}
+                rows={3}
+                data-testid="textarea-status-message"
+              />
+              <p className="text-xs text-muted-foreground">
+                This message will be shown to users trying to access the room.
+              </p>
+            </div>
+            <Card className="border-blue-500/30 bg-blue-500/5">
+              <CardContent className="p-3">
+                <div className="flex items-start gap-2">
+                  <Shield className="w-4 h-4 text-blue-500 mt-0.5" />
+                  <div className="text-xs space-y-1">
+                    <p className="font-semibold">Staff Bypass</p>
+                    <p className="text-muted-foreground">
+                      Platform staff can always access the room, even when closed or under maintenance.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setShowStaffControls(false)}
+                data-testid="button-cancel-controls"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => toggleRoomStatusMutation.mutate({ 
+                  status: roomStatusControl, 
+                  message: roomStatusMessage 
+                })}
+                disabled={toggleRoomStatusMutation.isPending}
+                data-testid="button-apply-controls"
+                className="gap-2"
+              >
+                {toggleRoomStatusMutation.isPending ? (
+                  <>Applying...</>
+                ) : (
+                  <>
+                    <CheckCircle className="w-4 h-4" />
+                    Apply Changes
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -6,16 +6,26 @@ const MAIN_ROOM_ID = 'main-chatroom-workforceos';
 interface WebSocketMessage {
   type: 'conversation_history' | 'new_message' | 'user_typing' | 'error';
   messages?: ChatMessage[];
-  message?: ChatMessage;
+  message?: ChatMessage | string;
   userId?: string;
   isTyping?: boolean;
-  error?: string;
+  // HelpDesk error fields
+  requiresTicket?: boolean;
+  roomStatus?: string;
+  statusMessage?: string;
+  temporaryError?: boolean;
 }
 
 export function useChatroomWebSocket(userId: string | undefined, userName: string = 'User') {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // HelpDesk access control state
+  const [requiresTicket, setRequiresTicket] = useState(false);
+  const [roomStatus, setRoomStatus] = useState<string | null>(null);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [temporaryError, setTemporaryError] = useState(false);
+  
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
   const reconnectAttemptsRef = useRef(0);
@@ -66,8 +76,23 @@ export function useChatroomWebSocket(userId: string | undefined, userName: strin
               break;
 
             case 'error':
-              console.error('WebSocket error:', data.error);
-              setError(data.error || 'An error occurred');
+              const errorMessage = typeof data.message === 'string' ? data.message : 'An error occurred';
+              console.error('WebSocket error:', errorMessage);
+              setError(errorMessage);
+              
+              // Extract HelpDesk access control fields
+              if (data.requiresTicket) {
+                setRequiresTicket(true);
+              }
+              if (data.roomStatus) {
+                setRoomStatus(data.roomStatus);
+              }
+              if (data.statusMessage) {
+                setStatusMessage(data.statusMessage);
+              }
+              if (data.temporaryError) {
+                setTemporaryError(true);
+              }
               break;
 
             case 'user_typing':
@@ -136,11 +161,26 @@ export function useChatroomWebSocket(userId: string | undefined, userName: strin
     };
   }, [connect, userId]);
 
+  // Clear access error state (call after successful ticket verification)
+  const clearAccessError = useCallback(() => {
+    setError(null);
+    setRequiresTicket(false);
+    setRoomStatus(null);
+    setStatusMessage(null);
+    setTemporaryError(false);
+  }, []);
+
   return {
     messages,
     sendMessage,
     isConnected,
     error,
     reconnect: connect,
+    // HelpDesk access control
+    requiresTicket,
+    roomStatus,
+    statusMessage,
+    temporaryError,
+    clearAccessError,
   };
 }

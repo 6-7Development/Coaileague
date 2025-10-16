@@ -60,6 +60,11 @@ const menuItems = [
     icon: BarChart3,
   },
   {
+    title: "Live HelpDesk",
+    url: "/live-chat",
+    icon: MessageSquare,
+  },
+  {
     title: "Billing",
     url: "/billing",
     icon: CreditCard,
