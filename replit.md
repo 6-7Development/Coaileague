@@ -31,10 +31,11 @@ The platform features a CAD-style professional interface with a dark mode theme,
     - **HR Management Suite**: Employee Benefits, Performance Reviews, PTO Management, Employee Terminations with comprehensive CRUD and workflow management.
     - **Custom Forms System**: Production-ready system for organization-specific forms with e-signature and document upload, including an admin form builder UI.
     - **AI Sales CRM**: AI-powered lead generation (GPT-4), 7-stage sales pipeline tracking, CRM features, email campaigns with AI personalization.
+    - **Live HelpDesk (SupportOS™)**: IRC/MSN-style instant chat with WebSocket messaging, ticket-based access control with 48-hour expiration, real-time status indicators (open/closed/maintenance), staff toggle controls for room management, platform staff bypass for admin monitoring, audit logging, and graceful degraded mode for reliability.
 - **Admin Dashboards**: Usage, Support, and Command Center for platform monitoring and customer management.
 - **Portals**: Employee, Auditor/Bookkeeper, and Client/Subscriber portals.
 - **Billing & Monetization**: Transaction-based platform fee (3-10%) via Stripe Connect. Tier-based pricing (Professional, Enterprise, Elite) with feature flags. AI features follow a subscriber-pays-all model.
-- **Support & Communication**: Live Chat System (REST API) with conversation management, MSN/IRC style helpdesk chat for staff, and email notifications via Resend.
+- **Support & Communication**: Live HelpDesk chatroom with instant WebSocket messaging (IRC/MSN style), ticket verification system, staff controls for room status management, and email notifications via Resend.
 - **Security & Reliability**: Enterprise audit logging, IP-based rate limiting, global React error boundary, health monitoring, platform RBAC, workspace isolation, and field whitelisting.
 
 ## External Dependencies
