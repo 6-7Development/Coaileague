@@ -17,6 +17,7 @@ import { useChatroomWebSocket } from "@/hooks/use-chatroom-websocket";
 import { useChatSounds } from "@/hooks/use-chat-sounds";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { WorkforceOSLogo } from "@/components/workforceos-logo";
+import { SupportCommandDrawer } from "@/components/support-command-drawer";
 import { 
   MessageSquare, Send, Users, Circle, Shield, 
   Headphones, User, Bot, Sparkles, Wifi, WifiOff,
@@ -180,9 +181,10 @@ export default function LiveChatroomPage() {
   // Online users - removed fake users, will implement real user tracking later
   const [onlineUsers] = useState<OnlineUser[]>([]);
 
-  const handleSendMessage = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!messageText.trim()) return;
+  const handleSendMessage = (e?: React.FormEvent, text?: string) => {
+    if (e) e.preventDefault();
+    const msgToSend = text || messageText;
+    if (!msgToSend.trim()) return;
     if (!isConnected) {
       toast({
         title: "Connection Error",
@@ -198,8 +200,12 @@ export default function LiveChatroomPage() {
 
     // Send as support if staff, otherwise as customer
     const senderRole = isStaff ? 'support' : 'customer';
-    sendMessage(messageText.trim(), userName, senderRole);
+    sendMessage(msgToSend.trim(), userName, senderRole);
     setMessageText("");
+  };
+
+  const handleCommandSelect = (command: string) => {
+    handleSendMessage(undefined, command);
   };
 
   // Sync staff controls state with server data
@@ -395,6 +401,13 @@ export default function LiveChatroomPage() {
                 </>
               )}
             </Badge>
+
+            {/* Support Command Drawer - Mobile Only */}
+            <SupportCommandDrawer 
+              onCommandSelect={handleCommandSelect}
+              users={onlineUsers}
+              isStaff={isStaff}
+            />
 
             {isStaff && (
               <Button

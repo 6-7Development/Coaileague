@@ -63,16 +63,22 @@ export function WorkforceOSLogo({
           className="w-full h-full"
         >
           <defs>
-            {/* Premium emerald gradient */}
-            <linearGradient id={`emerald-${uniqueId}`} x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#10b981" />
-              <stop offset="50%" stopColor="#059669" />
-              <stop offset="100%" stopColor="#047857" />
+            {/* Fortune-500 Corporate Blue Gradient */}
+            <linearGradient id={`corp-blue-${uniqueId}`} x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#1e40af" />
+              <stop offset="50%" stopColor="#1e3a8a" />
+              <stop offset="100%" stopColor="#1e293b" />
+            </linearGradient>
+            
+            {/* Secondary blue for "OS" */}
+            <linearGradient id={`light-blue-${uniqueId}`} x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#3b82f6" />
+              <stop offset="100%" stopColor="#2563eb" />
             </linearGradient>
             
             {/* Glow effect for premium feel */}
             <filter id={`glow-${uniqueId}`}>
-              <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+              <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
               <feMerge>
                 <feMergeNode in="coloredBlur"/>
                 <feMergeNode in="SourceGraphic"/>
@@ -80,19 +86,19 @@ export function WorkforceOSLogo({
             </filter>
           </defs>
 
-          {/* Simple "WOS" Monogram - Clean & Professional */}
+          {/* Fortune-500 "W" with "OS" trademark - Corporate Blue */}
           <g filter={`url(#glow-${uniqueId})`}>
-            {/* Rounded square badge */}
+            {/* Rounded square badge - corporate blue */}
             <rect
               x="15"
               y="15"
               width="90"
               height="90"
               rx="18"
-              fill={`url(#emerald-${uniqueId})`}
+              fill={`url(#corp-blue-${uniqueId})`}
             />
             
-            {/* "WOS" in white - simple and bold */}
+            {/* Big "W" in white - bold and dominant */}
             <text
               x="60"
               y="75"
@@ -103,7 +109,21 @@ export function WorkforceOSLogo({
               fill="white"
               letterSpacing="1"
             >
-              WOS
+              W
+            </text>
+            
+            {/* Small "OS" superscript merged next to W - lighter blue */}
+            <text
+              x="83"
+              y="52"
+              textAnchor="start"
+              fontFamily="system-ui, -apple-system, sans-serif"
+              fontSize="14"
+              fontWeight="900"
+              fill={`url(#light-blue-${uniqueId})`}
+              letterSpacing="0.5"
+            >
+              OS
             </text>
           </g>
         </svg>
@@ -115,7 +135,7 @@ export function WorkforceOSLogo({
           <div 
             className={cn(
               "font-black tracking-tight text-center leading-none",
-              "bg-gradient-to-br from-emerald-500 to-emerald-600",
+              "bg-gradient-to-br from-blue-600 to-blue-800",
               "bg-clip-text text-transparent",
               sizes[size].text
             )}
