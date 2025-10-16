@@ -22,6 +22,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import ModernLayout from "@/components/ModernLayout";
+import { ScheduleOSPanel } from "@/components/scheduleos-panel";
 import {
   Dialog,
   DialogContent,
@@ -657,6 +658,18 @@ export default function Schedule() {
               </Dialog>
             </div>
           </div>
+
+          {/* ScheduleOS™ AI Panel - Optional Power Feature */}
+          <ScheduleOSPanel 
+            weekStartDate={weekStart} 
+            onScheduleGenerated={() => {
+              queryClient.invalidateQueries({ queryKey: ['/api/shifts'] });
+              toast({
+                title: "ScheduleOS™ Complete!",
+                description: "AI-generated schedule is ready. Review and publish below.",
+              });
+            }}
+          />
 
           {/* Modern Stats Cards - Indigo/Purple Gradient Theme */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

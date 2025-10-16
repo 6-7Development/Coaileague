@@ -253,55 +253,55 @@ export default function Landing() {
             {[
               {
                 icon: CreditCard,
-                title: "Auto-Billing",
-                description: "Automatically generate invoices from completed shifts",
-                features: ["Smart invoice generation", "Multi-client billing", "Tax calculation", "Payment tracking"],
+                title: "BillOS™",
+                description: "AI-powered automated invoice generation",
+                features: ["Smart invoice generation", "Multi-client billing", "Tax calculation", "Stripe payments"],
                 color: "green",
                 badge: "LIVE"
               },
               {
                 icon: DollarSign,
-                title: "Auto-Payment Collection",
-                description: "Stripe-powered automated payment processing",
-                features: ["Secure payments", "Auto-retry failed payments", "Payment reminders", "Revenue tracking"],
+                title: "PayrollOS™",
+                description: "Intelligent automated payroll processing",
+                features: ["Tax withholding", "Direct deposit", "Federal & state compliance", "Payroll reports"],
                 color: "cyan",
                 badge: "LIVE"
               },
               {
-                icon: CalendarClock,
-                title: "Smart Schedule",
-                description: "Sling-beating schedule with AI conflict detection",
-                features: ["Drag-and-drop shifts", "Bulk operations", "Conflict warnings", "Labor cost tracking"],
+                icon: Sparkles,
+                title: "ScheduleOS™",
+                description: "AI auto-scheduling in 30 seconds with GPT-4",
+                features: ["AI employee matching", "Conflict detection", "Performance-based", "Smart alerts"],
                 color: "purple",
-                badge: "LIVE"
+                badge: "AI POWERED"
               },
               {
-                icon: Zap,
-                title: "Auto-Payroll",
-                description: "Fully automated payroll processing engine",
-                features: ["Tax withholding", "Direct deposit", "Federal & state compliance", "Payroll reports"],
+                icon: UserPlus,
+                title: "HireOS™",
+                description: "Smart hiring & digital onboarding automation",
+                features: ["AI screening", "E-signatures", "Compliance tracking", "Document upload"],
                 color: "orange",
                 badge: "LIVE"
               },
               {
                 icon: FileText,
-                title: "RMS Reporting",
-                description: "Internal Report Management System",
-                features: ["Custom templates", "Approval workflows", "Customer portal", "Photo attachments"],
+                title: "ReportOS™",
+                description: "Compliance report management system",
+                features: ["Industry templates", "Photo requirements", "Supervisor approval", "Client delivery"],
                 color: "blue",
                 badge: "LIVE"
               },
               {
-                icon: UserPlus,
-                title: "Onboarding",
-                description: "Complete digital employee onboarding",
-                features: ["Email invitations", "E-signatures", "Tax classification", "Document upload"],
+                icon: TrendingUp,
+                title: "AnalyticsOS™",
+                description: "Real-time business intelligence dashboard",
+                features: ["Revenue tracking", "Labor cost analysis", "Forecasting", "ROI metrics"],
                 color: "pink",
                 badge: "LIVE"
               },
               {
                 icon: MapPin,
-                title: "GPS Tracking",
+                title: "TrackOS™",
                 description: "Location-verified clock-ins with photo proof",
                 features: ["GPS coordinates", "Timestamp photos", "Geofence alerts", "Anti-fraud protection"],
                 color: "green",
