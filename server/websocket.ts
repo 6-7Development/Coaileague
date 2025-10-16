@@ -503,10 +503,27 @@ export function setupWebSocket(server: Server) {
               // Execute command
               const clients = conversationClients.get(ws.conversationId);
               
+              // Get staff member info for command execution
+              const staffInfo = await storage.getUserDisplayInfo(ws.userId);
+              const staffDisplayName = staffInfo ? formatUserDisplayName({
+                firstName: staffInfo.firstName,
+                lastName: staffInfo.lastName,
+                email: staffInfo.email || undefined,
+                platformRole: staffInfo.platformRole || undefined,
+                workspaceRole: staffInfo.workspaceRole || undefined,
+              }) : ws.userName || 'Support Staff';
+              
+              const staffRole = staffInfo?.platformRole || 'support';
+              const staffRoleName = staffRole === 'root' ? 'Senior Support Administrator' :
+                                  staffRole === 'deputy_admin' ? 'Support Manager' :
+                                  staffRole === 'deputy_assistant' ? 'Senior Support Agent' :
+                                  staffRole === 'sysop' ? 'Support Agent' : 'Support Team Member';
+              
               switch (parsedCommand.command) {
                 case 'intro': {
-                  // AI bot introduces staff to customer
-                  const introMessage = await generateStaffIntroduction(displayName, '');
+                  // AI bot introduces staff to customer with role and identity
+                  const introMessage = `📢 **${staffDisplayName}** (${staffRoleName}) is now ready to assist you!\n\nℹ️ To help you better, please share:\n• Your full name\n• Organization/Company name\n• Brief description of how we can help\n\n💬 Our support team is here to help with any questions about WorkforceOS!`;
+                  
                   const botMsg = await storage.createChatMessage({
                     conversationId: ws.conversationId,
                     senderId: 'ai-bot',
@@ -762,8 +779,8 @@ export function setupWebSocket(server: Server) {
                     senderName: 'Server',
                     senderType: 'system',
                     message: wasConnected 
-                      ? `✅ ${displayName} removed ${targetUsername} from chat. Reason: ${reason}`
-                      : `⚠️ Command executed: ${displayName} attempted to kick ${targetUsername} (user not currently connected or is simulated/test user). Reason: ${reason}`,
+                      ? `✅ ${staffDisplayName} (${staffRoleName}) removed ${targetUsername} from chat. Reason: ${reason}`
+                      : `⚠️ Command executed: ${staffDisplayName} (${staffRoleName}) attempted to kick ${targetUsername} (user not currently connected or is simulated/test user). Reason: ${reason}`,
                     messageType: 'text',
                     isSystemMessage: true,
                   });
@@ -860,8 +877,8 @@ export function setupWebSocket(server: Server) {
                     senderName: 'Server',
                     senderType: 'system',
                     message: staffConnected
-                      ? `✅ ${displayName} transferred ticket to ${targetStaff}`
-                      : `⚠️ ${displayName} attempted transfer to ${targetStaff} (staff member not currently online or is simulated/test user)`,
+                      ? `✅ ${staffDisplayName} (${staffRoleName}) transferred ticket to ${targetStaff}`
+                      : `⚠️ ${staffDisplayName} (${staffRoleName}) attempted transfer to ${targetStaff} (staff member not currently online or is simulated/test user)`,
                     messageType: 'text',
                     isSystemMessage: true,
                   });
