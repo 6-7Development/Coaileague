@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -32,6 +33,9 @@ export default function LiveChatroomPage() {
   const [messageText, setMessageText] = useState("");
   const [ticketNumber, setTicketNumber] = useState("");
   const [ticketEmail, setTicketEmail] = useState("");
+  const [workId, setWorkId] = useState("");
+  const [workEmail, setWorkEmail] = useState("");
+  const [authMode, setAuthMode] = useState<"customer" | "staff">("customer");
   const [showTicketDialog, setShowTicketDialog] = useState(false);
   const [showStaffControls, setShowStaffControls] = useState(false);
   const [showMobileUsers, setShowMobileUsers] = useState(false);
@@ -84,7 +88,7 @@ export default function LiveChatroomPage() {
     }
   }, [isLoadingUser, isAuthenticated]);
 
-  // Ticket authentication mutation (for guests)
+  // Ticket authentication mutation (for customer guests)
   const authenticateTicketMutation = useMutation({
     mutationFn: async ({ ticketNumber, email }: { ticketNumber: string; email: string }) => {
       const result = await apiRequest('POST', '/api/helpdesk/authenticate-ticket', {
@@ -108,6 +112,35 @@ export default function LiveChatroomPage() {
       toast({
         title: "Authentication Failed",
         description: error.message || "Invalid ticket number or email",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Staff work ID authentication mutation (for staff guests)
+  const authenticateWorkIdMutation = useMutation({
+    mutationFn: async ({ workId, email }: { workId: string; email: string }) => {
+      const result = await apiRequest('POST', '/api/helpdesk/authenticate-workid', {
+        workId,
+        email,
+      });
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/me'] });
+      setShowTicketDialog(false);
+      setWorkId("");
+      setWorkEmail("");
+      toast({
+        title: "Staff Authentication Successful",
+        description: "Welcome! You now have staff access to Live Chat.",
+      });
+      window.location.reload(); // Reload to get new session
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Authentication Failed",
+        description: error.message || "Invalid work ID or email",
         variant: "destructive",
       });
     },
@@ -499,81 +532,173 @@ export default function LiveChatroomPage() {
         </div>
       </div>
 
-      {/* Ticket Authentication Dialog */}
+      {/* Dual Authentication Dialog (Customer or Staff) */}
       <Dialog open={showTicketDialog && !isLoadingUser} onOpenChange={setShowTicketDialog}>
-        <DialogContent data-testid="dialog-ticket-verification">
+        <DialogContent data-testid="dialog-ticket-verification" className="w-[95vw] max-w-md p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Lock className="w-5 h-5 text-primary" />
-              Live Chat Authentication
+            <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <Lock className="w-4 h-4 sm:w-5 sm:h-5 text-primary flex-shrink-0" />
+              <span className="line-clamp-1">Live Chat Authentication</span>
             </DialogTitle>
-            <DialogDescription>
-              Enter your support ticket number and email to access Live Chat. Don't have a ticket? <a href="/contact" className="underline text-primary">Create one here</a>.
+            <DialogDescription className="text-xs sm:text-sm">
+              Choose your authentication method below
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="ticket-number">Support Ticket Number</Label>
-              <Input
-                id="ticket-number"
-                placeholder="e.g., TKT-ABCD1234"
-                value={ticketNumber}
-                onChange={(e) => setTicketNumber(e.target.value)}
-                data-testid="input-ticket-number"
-              />
-              <p className="text-xs text-muted-foreground">
-                The ticket number you received after submitting a support request
-              </p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="ticket-email">Email Address</Label>
-              <Input
-                id="ticket-email"
-                type="email"
-                placeholder="your.email@company.com"
-                value={ticketEmail}
-                onChange={(e) => setTicketEmail(e.target.value)}
-                data-testid="input-ticket-email"
-              />
-              <p className="text-xs text-muted-foreground">
-                The email you used when creating the support ticket
-              </p>
-            </div>
-            {wsStatusMessage && (
-              <Card className="border-destructive/50 bg-destructive/10">
-                <CardContent className="p-3">
+          
+          <Tabs value={authMode} onValueChange={(v: any) => setAuthMode(v)} className="w-full">
+            <TabsList className="grid w-full grid-cols-2 h-auto">
+              <TabsTrigger value="customer" data-testid="tab-customer" className="text-xs sm:text-sm py-2 sm:py-2.5">
+                Customer
+              </TabsTrigger>
+              <TabsTrigger value="staff" data-testid="tab-staff" className="text-xs sm:text-sm py-2 sm:py-2.5">
+                Staff
+              </TabsTrigger>
+            </TabsList>
+            
+            {/* Customer Ticket Authentication */}
+            <TabsContent value="customer" className="space-y-3 sm:space-y-4 mt-3 sm:mt-4">
+              <div className="space-y-1.5 sm:space-y-2">
+                <Label htmlFor="ticket-number" className="text-xs sm:text-sm">Ticket Number</Label>
+                <Input
+                  id="ticket-number"
+                  placeholder="TKT-ABCD1234"
+                  value={ticketNumber}
+                  onChange={(e) => setTicketNumber(e.target.value)}
+                  data-testid="input-ticket-number"
+                  className="text-sm sm:text-base"
+                />
+                <p className="text-[10px] sm:text-xs text-muted-foreground leading-tight">
+                  From your support request confirmation
+                </p>
+              </div>
+              <div className="space-y-1.5 sm:space-y-2">
+                <Label htmlFor="ticket-email" className="text-xs sm:text-sm">Email Address</Label>
+                <Input
+                  id="ticket-email"
+                  type="email"
+                  placeholder="your.email@company.com"
+                  value={ticketEmail}
+                  onChange={(e) => setTicketEmail(e.target.value)}
+                  data-testid="input-ticket-email"
+                  className="text-sm sm:text-base"
+                />
+                <p className="text-[10px] sm:text-xs text-muted-foreground leading-tight">
+                  Email used when creating the ticket
+                </p>
+              </div>
+              <div className="flex flex-col sm:flex-row justify-end gap-2 pt-2">
+                <Button
+                  variant="outline"
+                  onClick={() => window.location.href = "/contact"}
+                  data-testid="button-create-ticket"
+                  size="sm"
+                  className="w-full sm:w-auto text-xs sm:text-sm"
+                >
+                  Create Ticket
+                </Button>
+                <Button
+                  onClick={() => authenticateTicketMutation.mutate({ ticketNumber, email: ticketEmail })}
+                  disabled={!ticketNumber.trim() || !ticketEmail.trim() || authenticateTicketMutation.isPending}
+                  data-testid="button-verify-ticket"
+                  size="sm"
+                  className="gap-2 w-full sm:w-auto text-xs sm:text-sm"
+                >
+                  {authenticateTicketMutation.isPending ? (
+                    <span className="text-xs sm:text-sm">Authenticating...</span>
+                  ) : (
+                    <>
+                      <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4" />
+                      <span>Authenticate</span>
+                    </>
+                  )}
+                </Button>
+              </div>
+            </TabsContent>
+            
+            {/* Staff Work ID Authentication */}
+            <TabsContent value="staff" className="space-y-3 sm:space-y-4 mt-3 sm:mt-4">
+              <div className="space-y-1.5 sm:space-y-2">
+                <Label htmlFor="work-id" className="text-xs sm:text-sm">Work ID</Label>
+                <Input
+                  id="work-id"
+                  placeholder="root-admin-workfos"
+                  value={workId}
+                  onChange={(e) => setWorkId(e.target.value)}
+                  data-testid="input-work-id"
+                  className="text-sm sm:text-base"
+                />
+                <p className="text-[10px] sm:text-xs text-muted-foreground leading-tight">
+                  Your employee or staff work ID
+                </p>
+              </div>
+              <div className="space-y-1.5 sm:space-y-2">
+                <Label htmlFor="work-email" className="text-xs sm:text-sm">Email Address</Label>
+                <Input
+                  id="work-email"
+                  type="email"
+                  placeholder="staff@workforceos.com"
+                  value={workEmail}
+                  onChange={(e) => setWorkEmail(e.target.value)}
+                  data-testid="input-work-email"
+                  className="text-sm sm:text-base"
+                />
+                <p className="text-[10px] sm:text-xs text-muted-foreground leading-tight">
+                  Your work email address
+                </p>
+              </div>
+              <Card className="border-blue-500/30 bg-blue-500/5">
+                <CardContent className="p-2 sm:p-3">
                   <div className="flex items-start gap-2">
-                    <AlertCircle className="w-4 h-4 text-destructive mt-0.5" />
-                    <p className="text-sm text-destructive">{wsStatusMessage}</p>
+                    <Shield className="w-3 h-3 sm:w-4 sm:h-4 text-blue-500 mt-0.5 flex-shrink-0" />
+                    <div className="text-[10px] sm:text-xs space-y-0.5 sm:space-y-1 min-w-0">
+                      <p className="font-semibold">Staff Access</p>
+                      <p className="text-muted-foreground leading-tight">
+                        For support team members without platform login
+                      </p>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
-            )}
-            <div className="flex justify-end gap-2">
-              <Button
-                variant="outline"
-                onClick={() => window.location.href = "/contact"}
-                data-testid="button-create-ticket"
-              >
-                Create Ticket
-              </Button>
-              <Button
-                onClick={() => authenticateTicketMutation.mutate({ ticketNumber, email: ticketEmail })}
-                disabled={!ticketNumber.trim() || !ticketEmail.trim() || authenticateTicketMutation.isPending}
-                data-testid="button-verify-ticket"
-                className="gap-2"
-              >
-                {authenticateTicketMutation.isPending ? (
-                  <>Authenticating...</>
-                ) : (
-                  <>
-                    <CheckCircle className="w-4 h-4" />
-                    Authenticate
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
+              <div className="flex flex-col sm:flex-row justify-end gap-2 pt-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowTicketDialog(false)}
+                  data-testid="button-cancel-auth"
+                  size="sm"
+                  className="w-full sm:w-auto text-xs sm:text-sm"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => authenticateWorkIdMutation.mutate({ workId, email: workEmail })}
+                  disabled={!workId.trim() || !workEmail.trim() || authenticateWorkIdMutation.isPending}
+                  data-testid="button-verify-workid"
+                  size="sm"
+                  className="gap-2 w-full sm:w-auto text-xs sm:text-sm"
+                >
+                  {authenticateWorkIdMutation.isPending ? (
+                    <span className="text-xs sm:text-sm">Authenticating...</span>
+                  ) : (
+                    <>
+                      <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4" />
+                      <span>Authenticate</span>
+                    </>
+                  )}
+                </Button>
+              </div>
+            </TabsContent>
+          </Tabs>
+          
+          {wsStatusMessage && (
+            <Card className="border-destructive/50 bg-destructive/10 mt-3 sm:mt-4">
+              <CardContent className="p-2 sm:p-3">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="w-3 h-3 sm:w-4 sm:h-4 text-destructive mt-0.5 flex-shrink-0" />
+                  <p className="text-xs sm:text-sm text-destructive leading-tight">{wsStatusMessage}</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </DialogContent>
       </Dialog>
 

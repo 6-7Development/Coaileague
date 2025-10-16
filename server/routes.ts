@@ -4035,6 +4035,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Authenticate support staff with work ID + email (no platform login required)
+  app.post('/api/helpdesk/authenticate-workid', async (req, res) => {
+    try {
+      const { workId, email } = req.body;
+      
+      if (!workId || !email) {
+        return res.status(400).json({ message: "Work ID and email are required" });
+      }
+
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({ message: "Invalid email address" });
+      }
+
+      // Find user by ID and email
+      const [staffUser] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, workId));
+
+      if (!staffUser) {
+        return res.status(404).json({ message: "Work ID not found. Please check your credentials." });
+      }
+
+      // Verify email matches
+      if (!staffUser.email || staffUser.email.toLowerCase() !== email.toLowerCase()) {
+        return res.status(403).json({ message: "Email does not match work ID. Please verify your information." });
+      }
+
+      // Check if user has platform staff role
+      const [roleRecord] = await db
+        .select()
+        .from(platformRoles)
+        .where(eq(platformRoles.userId, staffUser.id));
+
+      const hasStaffRole = roleRecord && ['platform_admin', 'deputy_admin', 'deputy_assistant', 'sysop'].includes(roleRecord.role);
+
+      if (!hasStaffRole) {
+        return res.status(403).json({ message: "Unauthorized - Staff access required" });
+      }
+
+      // Create session for staff user
+      (req.session as any).userId = staffUser.id;
+      await new Promise((resolve, reject) => {
+        req.session.save((err: any) => {
+          if (err) reject(err);
+          else resolve(undefined);
+        });
+      });
+
+      res.json({
+        success: true,
+        message: "Staff authentication successful! You now have access to Live Chat.",
+        user: {
+          id: staffUser.id,
+          username: staffUser.username,
+          email: staffUser.email,
+          role: roleRecord.role,
+        },
+      });
+    } catch (error) {
+      console.error("Error authenticating work ID:", error);
+      res.status(500).json({ message: "Failed to authenticate. Please try again." });
+    }
+  });
+
   // Verify ticket and grant chat access (gatekeeper MOMJJ)
   app.post('/api/helpdesk/verify-ticket', requireAnyAuth, async (req: AuthenticatedRequest, res) => {
     try {
