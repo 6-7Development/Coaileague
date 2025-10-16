@@ -18,14 +18,14 @@ interface AiBotResponse {
 }
 
 /**
- * Generate greeting message when user joins HelpDesk
+ * Generate greeting message when user joins HelpOS
  */
 export async function generateGreeting(userName: string, isGuest: boolean): Promise<string> {
   if (isGuest) {
-    return `👋 Welcome ${userName}! I'm your AI assistant. I can help answer questions while you wait for our team. You have ${FREE_GUEST_LIMIT} free AI responses to try out our service!`;
+    return `👋 Welcome to HelpOS™, ${userName}! I'm your AI assistant. I can help answer questions while you wait for our team. You have ${FREE_GUEST_LIMIT} free AI responses to try out our service!`;
   }
   
-  return `👋 Welcome back ${userName}! I'm your AI assistant, ready to help with any questions about WorkforceOS.`;
+  return `👋 Welcome back to HelpOS™, ${userName}! I'm your AI assistant, ready to help with any questions about WorkforceOS.`;
 }
 
 /**

@@ -80,14 +80,14 @@ export function setupWebSocket(server: Server) {
                 const isStaff = platformRole && ['root', 'platform_admin', 'deputy_admin', 'deputy_assistant', 'sysop'].includes(platformRole);
                 
                 if (isStaff) {
-                  console.log(`${displayName} joined HelpDesk (platform staff - role: ${platformRole})`);
+                  console.log(`${displayName} joined HelpOS (platform staff - role: ${platformRole})`);
                 } else {
-                  console.log(`${displayName} joined HelpDesk (guest/customer)`);
+                  console.log(`${displayName} joined HelpOS (guest/customer)`);
                 }
               } catch (staffCheckError) {
                 // Error checking staff status - allow access anyway (degraded mode)
                 console.error('Failed to verify staff status:', staffCheckError);
-                console.log(`User ${payload.userId} joined HelpDesk (degraded mode)`);
+                console.log(`User ${payload.userId} joined HelpOS (degraded mode)`);
               }
             }
 
