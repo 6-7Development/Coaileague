@@ -83,6 +83,7 @@ function AppContent() {
         <Route path="/pricing" component={Pricing} />
         <Route path="/contact" component={Contact} />
         <Route path="/support" component={Support} />
+        <Route path="/live-chat" component={LiveChatroom} />
         <Route path="/onboarding/:token" component={OnboardingPage} />
         <Route component={Landing} />
       </Switch>
