@@ -520,7 +520,7 @@ export default function LiveChatroomPage() {
           
           {/* Messages */}
           <ScrollArea className="flex-1 p-4 relative z-10">
-            <div className="max-w-4xl mx-auto space-y-4">
+            <div className="max-w-full md:max-w-5xl mx-auto space-y-4">
               {/* Pinned Room Info Banner - Always Visible */}
               <Card className="sticky top-0 z-50 border-blue-500/30 bg-gradient-to-r from-blue-900/40 via-indigo-900/40 to-purple-900/40 backdrop-blur-md shadow-lg">
                 <CardContent className="p-3 sm:p-4">
@@ -645,7 +645,7 @@ export default function LiveChatroomPage() {
 
           {/* Professional Message Input */}
           <div className="border-t border-slate-700/50 bg-slate-900/80 backdrop-blur-md p-4 flex-shrink-0 relative z-10">
-            <div className="max-w-4xl mx-auto">
+            <div className="max-w-full md:max-w-5xl mx-auto">
               <form onSubmit={handleSendMessage} className="flex gap-2">
                 <Input
                   value={messageText}
