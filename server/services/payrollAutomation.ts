@@ -318,3 +318,45 @@ export class PayrollAutomationEngine {
       .where(eq(payrollRuns.id, payrollRunId));
   }
 }
+
+// Export convenience functions for use in routes
+export const detectPayPeriod = async (workspaceId: string) => {
+  const workspace = await db.select().from(workspaces).where(eq(workspaces.id, workspaceId)).limit(1);
+  const paySchedule = workspace[0]?.payrollSchedule || 'bi-weekly';
+  const period = PayrollAutomationEngine.detectPayPeriod(paySchedule);
+  return {
+    periodStart: period.start,
+    periodEnd: period.end,
+    periodType: period.type
+  };
+};
+
+export const calculatePayroll = (params: {
+  timeEntries: TimeEntry[];
+  employeeId: string;
+  employeeName: string;
+  hourlyRate: number;
+  taxState: string;
+}) => {
+  return PayrollAutomationEngine.calculatePayroll(
+    params.timeEntries,
+    params.employeeId,
+    params.employeeName,
+    params.hourlyRate,
+    params.taxState
+  );
+};
+
+export const createAutomatedPayrollRun = (params: {
+  workspaceId: string;
+  periodStart: Date;
+  periodEnd: Date;
+  createdBy: string;
+}) => {
+  return PayrollAutomationEngine.createPayrollRun(
+    params.workspaceId,
+    params.periodStart,
+    params.periodEnd,
+    params.createdBy
+  );
+};

@@ -52,6 +52,11 @@ import crypto from "crypto";
 import { sql, eq } from "drizzle-orm";
 import { z } from "zod";
 import { setupWebSocket } from "./websocket";
+import { 
+  detectPayPeriod, 
+  calculatePayroll, 
+  createAutomatedPayrollRun 
+} from "./services/payrollAutomation";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Create HTTP server
@@ -4941,6 +4946,169 @@ Return ONLY valid JSON array with this exact structure:
       res.json(testimonials);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============================================================================
+  // PAYROLLOS™ ROUTES - Automated Payroll Processing (99% automation + 1% QC)
+  // ============================================================================
+
+  // Create automated payroll run
+  app.post('/api/payroll/create-run', requireAuth, requireOwner, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user!.id;
+      const workspaceId = req.workspace!.id;
+
+      // Validate input
+      const schema = z.object({
+        payPeriodStart: z.string().optional(),
+        payPeriodEnd: z.string().optional(),
+      });
+      
+      const validationResult = schema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          message: "Invalid request",
+          errors: validationResult.error.errors
+        });
+      }
+
+      const { payPeriodStart, payPeriodEnd } = validationResult.data;
+
+      // Auto-detect pay period if not provided
+      let periodStart: Date;
+      let periodEnd: Date;
+      
+      if (payPeriodStart && payPeriodEnd) {
+        periodStart = new Date(payPeriodStart);
+        periodEnd = new Date(payPeriodEnd);
+      } else {
+        const detected = await detectPayPeriod(workspaceId);
+        periodStart = detected.periodStart;
+        periodEnd = detected.periodEnd;
+      }
+
+      // Create automated payroll run
+      const payrollRun = await createAutomatedPayrollRun({
+        workspaceId,
+        periodStart,
+        periodEnd,
+        createdBy: userId
+      });
+
+      res.json(payrollRun);
+    } catch (error: any) {
+      console.error("Error creating payroll run:", error);
+      res.status(500).json({ message: error.message || "Failed to create payroll run" });
+    }
+  });
+
+  // Get payroll runs for workspace
+  app.get('/api/payroll/runs', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspace!.id;
+      const runs = await storage.getPayrollRunsByWorkspace(workspaceId);
+      res.json(runs);
+    } catch (error: any) {
+      console.error("Error fetching payroll runs:", error);
+      res.status(500).json({ message: "Failed to fetch payroll runs" });
+    }
+  });
+
+  // Get single payroll run with details
+  app.get('/api/payroll/runs/:id', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspace!.id;
+      const { id } = req.params;
+
+      const run = await storage.getPayrollRun(id, workspaceId);
+      if (!run) {
+        return res.status(404).json({ message: "Payroll run not found" });
+      }
+
+      const entries = await storage.getPayrollEntriesByRun(id);
+
+      res.json({
+        ...run,
+        entries
+      });
+    } catch (error: any) {
+      console.error("Error fetching payroll run:", error);
+      res.status(500).json({ message: "Failed to fetch payroll run" });
+    }
+  });
+
+  // Approve payroll run (1% human QC)
+  app.post('/api/payroll/runs/:id/approve', requireAuth, requireOwner, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user!.id;
+      const workspaceId = req.workspace!.id;
+      const { id } = req.params;
+
+      // Verify run exists and belongs to workspace
+      const run = await storage.getPayrollRun(id, workspaceId);
+      if (!run) {
+        return res.status(404).json({ message: "Payroll run not found" });
+      }
+
+      if (run.status !== 'pending') {
+        return res.status(400).json({ message: "Only pending payroll runs can be approved" });
+      }
+
+      // Update status to approved
+      const updated = await storage.updatePayrollRunStatus(id, 'approved', userId);
+      
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error approving payroll run:", error);
+      res.status(500).json({ message: "Failed to approve payroll run" });
+    }
+  });
+
+  // Process approved payroll run (trigger payment distribution)
+  app.post('/api/payroll/runs/:id/process', requireAuth, requireOwner, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user!.id;
+      const workspaceId = req.workspace!.id;
+      const { id } = req.params;
+
+      // Verify run exists and belongs to workspace
+      const run = await storage.getPayrollRun(id, workspaceId);
+      if (!run) {
+        return res.status(404).json({ message: "Payroll run not found" });
+      }
+
+      if (run.status !== 'approved') {
+        return res.status(400).json({ message: "Only approved payroll runs can be processed" });
+      }
+
+      // Update status to processed (in real implementation, would trigger payment)
+      const updated = await storage.updatePayrollRunStatus(id, 'processed', userId);
+      
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error processing payroll run:", error);
+      res.status(500).json({ message: "Failed to process payroll run" });
+    }
+  });
+
+  // Get employee paychecks (employee portal)
+  app.get('/api/payroll/my-paychecks', requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user!.id;
+      const workspaceId = req.workspace!.id;
+
+      // Find employee record
+      const employee = await storage.getEmployeeByUserId(userId, workspaceId);
+      if (!employee) {
+        return res.status(404).json({ message: "Employee record not found" });
+      }
+
+      const paychecks = await storage.getPayrollEntriesByEmployee(employee.id, workspaceId);
+      res.json(paychecks);
+    } catch (error: any) {
+      console.error("Error fetching paychecks:", error);
+      res.status(500).json({ message: "Failed to fetch paychecks" });
     }
   });
 
