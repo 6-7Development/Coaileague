@@ -16,6 +16,11 @@ export type SlashCommand =
   | 'resetpass'  // Send password reset
   | 'status'     // Check ticket status (customer)
   | 'queue'      // Check queue position (customer)
+  | 'suspend'    // Suspend staff member (deputy_admin+)
+  | 'reactivate' // Reactivate suspended staff (deputy_admin+)
+  | 'broadcast'  // Send announcement to all (root/deputy_admin)
+  | 'restart'    // Restart chat services (root/deputy_admin)
+  | 'staffstatus'// Check staff member status
   | 'help';      // Show available commands
 
 export interface ParsedCommand {
@@ -29,6 +34,7 @@ export interface CommandDefinition {
   description: string;
   usage: string;
   requiresStaff: boolean;
+  requiresEmergencyPrivileges?: boolean; // root/deputy_admin only
   minArgs?: number;
   maxArgs?: number;
 }
@@ -140,6 +146,50 @@ export const COMMAND_REGISTRY: Record<SlashCommand, CommandDefinition> = {
     requiresStaff: false,
     minArgs: 0,
     maxArgs: 0,
+  },
+  suspend: {
+    command: 'suspend',
+    description: 'Suspend a staff member (deputy_admin+ only)',
+    usage: '/suspend <staff_username> [reason]',
+    requiresStaff: true,
+    requiresEmergencyPrivileges: true,
+    minArgs: 1,
+    maxArgs: 10,
+  },
+  reactivate: {
+    command: 'reactivate',
+    description: 'Reactivate a suspended staff member (deputy_admin+ only)',
+    usage: '/reactivate <staff_username>',
+    requiresStaff: true,
+    requiresEmergencyPrivileges: true,
+    minArgs: 1,
+    maxArgs: 1,
+  },
+  broadcast: {
+    command: 'broadcast',
+    description: 'Send announcement to all users (root/deputy_admin)',
+    usage: '/broadcast <message>',
+    requiresStaff: true,
+    requiresEmergencyPrivileges: true,
+    minArgs: 1,
+    maxArgs: 50,
+  },
+  restart: {
+    command: 'restart',
+    description: 'Restart chat services (root/deputy_admin emergency)',
+    usage: '/restart',
+    requiresStaff: true,
+    requiresEmergencyPrivileges: true,
+    minArgs: 0,
+    maxArgs: 0,
+  },
+  staffstatus: {
+    command: 'staffstatus',
+    description: 'Check staff member status and privileges',
+    usage: '/staffstatus [staff_username]',
+    requiresStaff: true,
+    minArgs: 0,
+    maxArgs: 5,
   },
 };
 

@@ -45,6 +45,7 @@ export default function LiveChatroomPage() {
   const [showMobileUsers, setShowMobileUsers] = useState(false);
   const [roomStatusControl, setRoomStatusControl] = useState<"open" | "closed" | "maintenance">("open");
   const [roomStatusMessage, setRoomStatusMessage] = useState("");
+  const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const previousMessageCountRef = useRef(0);
@@ -82,6 +83,24 @@ export default function LiveChatroomPage() {
     messages, sendMessage, isConnected, error, reconnect,
     requiresTicket, roomStatus, statusMessage: wsStatusMessage, temporaryError, clearAccessError
   } = useChatroomWebSocket(isAuthenticated ? userId : undefined, userName);
+  
+  // Dynamic banner messages with rotation (properly capitalized and grammatically correct)
+  const bannerMessages = [
+    "Live Support Chat - Get instant help from our support team and AI assistant",
+    "Support staff are online and ready to assist you",
+    "💡 Tip: Visit our FAQ section while you wait for faster answers",
+    "Average wait time: 2-5 minutes - We appreciate your patience",
+    "✨ Powered by HelpOS™ AI - Smart support queue management",
+    "📋 All conversations are logged for quality assurance and training",
+  ];
+  
+  // Rotate banner messages every 4 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentBannerIndex((prev) => (prev + 1) % bannerMessages.length);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Show ticket dialog if not authenticated (after loading completes)
   useEffect(() => {
@@ -520,14 +539,19 @@ export default function LiveChatroomPage() {
           {/* Messages */}
           <ScrollArea className="flex-1 p-4 relative z-10">
             <div className="max-w-full md:max-w-5xl mx-auto space-y-4">
-              {/* Pinned Room Info Banner - Mobile Optimized */}
+              {/* Dynamic Status Banner - Rotating Messages */}
               <Card className="sticky top-0 z-50 border-blue-500/30 bg-gradient-to-r from-blue-900/40 via-indigo-900/40 to-purple-900/40 backdrop-blur-md shadow-lg">
                 <CardContent className="p-2">
                   <div className="flex items-center gap-1.5 sm:gap-2">
-                    <MessageSquare className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-blue-300 flex-shrink-0" />
-                    <p className="text-[9px] sm:text-[10px] text-slate-300/80 leading-tight flex-1">
-                      live support chat - get instant help from our support team and ai assistant
-                    </p>
+                    <MessageSquare className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-blue-300 flex-shrink-0 animate-pulse" />
+                    <div className="flex-1 min-w-0 overflow-hidden">
+                      <p 
+                        key={currentBannerIndex}
+                        className="text-[9px] sm:text-[10px] text-slate-300/90 leading-tight animate-in fade-in slide-in-from-bottom-2 duration-500"
+                      >
+                        {bannerMessages[currentBannerIndex]}
+                      </p>
+                    </div>
                     <Badge 
                       variant={helpDeskRoom?.status === 'open' ? 'default' : 'secondary'}
                       className="gap-0.5 sm:gap-1 flex-shrink-0 bg-white/20 border-white/30 text-white text-[9px] sm:text-[10px] px-1 sm:px-1.5 py-0"

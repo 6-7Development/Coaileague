@@ -550,7 +550,9 @@ export function setupWebSocket(server: Server) {
                 }
                 
                 case 'kick': {
-                  // Staff kicks a user from chat
+                  // Staff kicks a user from chat (with hierarchy protection)
+                  const { checkStaffActionAuthorization } = await import('./services/staffHierarchy');
+                  
                   const targetUsername = parsedCommand.args[0];
                   const reason = parsedCommand.args.slice(1).join(' ') || 'No reason provided';
                   
@@ -558,6 +560,20 @@ export function setupWebSocket(server: Server) {
                     ws.send(JSON.stringify({
                       type: 'error',
                       message: 'Usage: /kick <username> [reason]',
+                    }));
+                    break;
+                  }
+                  
+                  // Find target user role
+                  const targetRole = await storage.getUserPlatformRole(targetUsername);
+                  const actorRole = await storage.getUserPlatformRole(ws.userId);
+                  
+                  // Check hierarchy authorization
+                  const authCheck = checkStaffActionAuthorization(actorRole, targetRole, 'kick');
+                  if (!authCheck.authorized) {
+                    ws.send(JSON.stringify({
+                      type: 'error',
+                      message: authCheck.reason || 'You cannot kick this user.',
                     }));
                     break;
                   }
