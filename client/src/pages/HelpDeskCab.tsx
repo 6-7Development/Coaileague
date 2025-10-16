@@ -389,19 +389,16 @@ export default function HelpDeskCab() {
                 {isStaff && (
                   <>
                     <div className="border-t border-slate-200 pt-3">
-                      <h3 className="text-xs font-semibold text-slate-800 mb-2">AI Intro</h3>
-                      <Button 
-                        onClick={() => handleQuickResponse("/intro")}
-                        className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs h-8"
-                      >
-                        <Zap className="w-3 h-3 mr-1" />
-                        Launch AI Greeting
-                      </Button>
-                    </div>
-
-                    <div className="border-t border-slate-200 pt-3">
                       <h3 className="text-xs font-semibold text-slate-800 mb-2">Chat Commands</h3>
                       <div className="space-y-1.5">
+                        <Button 
+                          onClick={() => handleQuickResponse("/intro")}
+                          variant="outline"
+                          className="w-full justify-start text-xs h-8 border-blue-300 hover:bg-blue-50"
+                        >
+                          <Zap className="w-3 h-3 mr-2" />
+                          AI Greeting
+                        </Button>
                         <Button 
                           onClick={() => handleQuickResponse("/help")}
                           variant="outline"
@@ -698,7 +695,7 @@ export default function HelpDeskCab() {
                               type: 'release_spectator', 
                               targetUserId: u.id 
                             });
-                            sendQuickMessage(`Hi ${u.name}! 👋 My name is ${user?.name}, I'm here to help you today. What can I assist you with? Please provide your ticket number if you have one.`);
+                            sendQuickMessage(`Hi ${u.name}! 👋 My name is ${userName}, I'm here to help you today. What can I assist you with? Please provide your ticket number if you have one.`);
                           }}>
                             🎤 Release Hold & Welcome
                           </ContextMenuItem>
