@@ -158,23 +158,35 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
   }
 
   const now = Math.floor(Date.now() / 1000);
-  if (now <= user.expires_at) {
-    return next();
+  if (now > user.expires_at) {
+    const refreshToken = user.refresh_token;
+    if (!refreshToken) {
+      res.status(401).json({ message: "Unauthorized" });
+      return;
+    }
+
+    try {
+      const config = await getOidcConfig();
+      const tokenResponse = await client.refreshTokenGrant(config, refreshToken);
+      updateUserSession(user, tokenResponse);
+    } catch (error) {
+      res.status(401).json({ message: "Unauthorized" });
+      return;
+    }
   }
 
-  const refreshToken = user.refresh_token;
-  if (!refreshToken) {
-    res.status(401).json({ message: "Unauthorized" });
-    return;
-  }
+  // Load platform role from database
+  const { db } = await import('./db');
+  const { platformRoles } = await import('../shared/schema');
+  const { eq } = await import('drizzle-orm');
+  
+  const userPlatformRoles = await db
+    .select()
+    .from(platformRoles)
+    .where(eq(platformRoles.userId, user.claims.sub));
+  
+  const activePlatformRole = userPlatformRoles.find((pr: any) => !pr.revokedAt);
+  user.platformRole = activePlatformRole?.role || null;
 
-  try {
-    const config = await getOidcConfig();
-    const tokenResponse = await client.refreshTokenGrant(config, refreshToken);
-    updateUserSession(user, tokenResponse);
-    return next();
-  } catch (error) {
-    res.status(401).json({ message: "Unauthorized" });
-    return;
-  }
+  return next();
 };

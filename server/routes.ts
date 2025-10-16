@@ -43,6 +43,9 @@ import {
   reportAttachments,
   shifts,
   smartScheduleUsage,
+  users,
+  platformRoles,
+  workspaces,
 } from "@shared/schema";
 import crypto from "crypto";
 import { sql, eq } from "drizzle-orm";
@@ -370,9 +373,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // EMPLOYEE ROUTES (Multi-tenant isolated)
   // ============================================================================
   
-  app.get('/api/employees', isAuthenticated, async (req: any, res) => {
+  app.get('/api/employees', async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      //  Support both Replit OAuth and session-based auth
+      let userId: string;
+      let user: any;
+      
+      if (req.isAuthenticated && req.isAuthenticated() && req.user?.claims) {
+        // Replit OAuth
+        userId = req.user.claims.sub;
+        user = req.user;
+      } else if (req.session?.userId) {
+        // Session-based auth
+        userId = req.session.userId;
+        const [dbUser] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+        if (!dbUser) {
+          return res.status(401).json({ message: "Unauthorized" });
+        }
+        user = dbUser;
+        // Load platform role
+        const userPlatformRoles = await db.select().from(platformRoles).where(eq(platformRoles.userId, userId));
+        const activePlatformRole = userPlatformRoles.find(pr => !pr.revokedAt);
+        user.platformRole = activePlatformRole?.role || null;
+      } else {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      // Platform admins can see all employees or get demo workspace
+      if (user.platformRole === 'root' || user.platformRole === 'sysop') {
+        const allWorkspaces = await db.select().from(workspaces).limit(1);
+        if (allWorkspaces.length > 0) {
+          const employees = await storage.getEmployeesByWorkspace(allWorkspaces[0].id);
+          return res.json(employees);
+        }
+        return res.json([]);
+      }
+      
       const workspace = await storage.getWorkspaceByOwnerId(userId);
       
       if (!workspace) {
@@ -908,9 +944,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // CLIENT ROUTES (Multi-tenant isolated)
   // ============================================================================
   
-  app.get('/api/clients', isAuthenticated, async (req: any, res) => {
+  app.get('/api/clients', async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      let userId: string;
+      let user: any;
+      
+      if (req.isAuthenticated && req.isAuthenticated() && req.user?.claims) {
+        userId = req.user.claims.sub;
+        user = req.user;
+      } else if (req.session?.userId) {
+        userId = req.session.userId;
+        const [dbUser] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+        if (!dbUser) {
+          return res.status(401).json({ message: "Unauthorized" });
+        }
+        user = dbUser;
+        const userPlatformRoles = await db.select().from(platformRoles).where(eq(platformRoles.userId, userId));
+        const activePlatformRole = userPlatformRoles.find(pr => !pr.revokedAt);
+        user.platformRole = activePlatformRole?.role || null;
+      } else {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      if (user.platformRole === 'root' || user.platformRole === 'sysop') {
+        const allWorkspaces = await db.select().from(workspaces).limit(1);
+        if (allWorkspaces.length > 0) {
+          const clients = await storage.getClientsByWorkspace(allWorkspaces[0].id);
+          return res.json(clients);
+        }
+        return res.json([]);
+      }
+      
       const workspace = await storage.getWorkspaceByOwnerId(userId);
       
       if (!workspace) {
@@ -998,9 +1062,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // SHIFT ROUTES (Multi-tenant isolated)
   // ============================================================================
   
-  app.get('/api/shifts', isAuthenticated, async (req: any, res) => {
+  app.get('/api/shifts', async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      let userId: string;
+      let user: any;
+      
+      if (req.isAuthenticated && req.isAuthenticated() && req.user?.claims) {
+        userId = req.user.claims.sub;
+        user = req.user;
+      } else if (req.session?.userId) {
+        userId = req.session.userId;
+        const [dbUser] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+        if (!dbUser) {
+          return res.status(401).json({ message: "Unauthorized" });
+        }
+        user = dbUser;
+        const userPlatformRoles = await db.select().from(platformRoles).where(eq(platformRoles.userId, userId));
+        const activePlatformRole = userPlatformRoles.find(pr => !pr.revokedAt);
+        user.platformRole = activePlatformRole?.role || null;
+      } else {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      if (user.platformRole === 'root' || user.platformRole === 'sysop') {
+        const allWorkspaces = await db.select().from(workspaces).limit(1);
+        if (allWorkspaces.length > 0) {
+          const shifts = await storage.getShiftsByWorkspace(allWorkspaces[0].id);
+          return res.json(shifts);
+        }
+        return res.json([]);
+      }
+      
       const workspace = await storage.getWorkspaceByOwnerId(userId);
       
       if (!workspace) {
@@ -1263,9 +1355,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Check ScheduleOS™ status (trial/activated)
-  app.get('/api/scheduleos/status', isAuthenticated, async (req: any, res) => {
+  app.get('/api/scheduleos/status', async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      let userId: string;
+      let user: any;
+      
+      if (req.isAuthenticated && req.isAuthenticated() && req.user?.claims) {
+        userId = req.user.claims.sub;
+        user = req.user;
+      } else if (req.session?.userId) {
+        userId = req.session.userId;
+        const [dbUser] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+        if (!dbUser) {
+          return res.status(401).json({ message: "Unauthorized" });
+        }
+        user = dbUser;
+        const userPlatformRoles = await db.select().from(platformRoles).where(eq(platformRoles.userId, userId));
+        const activePlatformRole = userPlatformRoles.find(pr => !pr.revokedAt);
+        user.platformRole = activePlatformRole?.role || null;
+      } else {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      if (user.platformRole === 'root' || user.platformRole === 'sysop') {
+        const allWorkspaces = await db.select().from(workspaces).limit(1);
+        if (allWorkspaces.length > 0) {
+          const workspace = allWorkspaces[0];
+          const response: any = {
+            isActivated: !!workspace.scheduleosActivatedAt,
+            activatedAt: workspace.scheduleosActivatedAt,
+            activatedBy: workspace.scheduleosActivatedBy,
+            paymentMethod: workspace.scheduleosPaymentMethod,
+            trialStartedAt: workspace.scheduleosTrialStartedAt,
+          };
+          if (workspace.scheduleosTrialStartedAt && !workspace.scheduleosActivatedAt) {
+            const trialStart = new Date(workspace.scheduleosTrialStartedAt);
+            const trialEnd = new Date(trialStart.getTime() + 7 * 24 * 60 * 60 * 1000);
+            const now = new Date();
+            const daysLeft = Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+            response.isTrialActive = daysLeft > 0;
+            response.trialEndsAt = trialEnd;
+            response.daysLeft = Math.max(0, daysLeft);
+            response.trialExpired = daysLeft <= 0;
+          }
+          return res.json(response);
+        }
+        return res.json({ isActivated: false });
+      }
+      
       const workspace = await storage.getWorkspaceByOwnerId(userId);
       
       if (!workspace) {
@@ -1280,7 +1417,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         trialStartedAt: workspace.scheduleosTrialStartedAt,
       };
 
-      // Calculate trial status
       if (workspace.scheduleosTrialStartedAt && !workspace.scheduleosActivatedAt) {
         const trialStart = new Date(workspace.scheduleosTrialStartedAt);
         const trialEnd = new Date(trialStart.getTime() + 7 * 24 * 60 * 60 * 1000);

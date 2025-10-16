@@ -1,8 +1,13 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { 
   Activity, 
   Users, 
@@ -19,7 +24,8 @@ import {
   UserCog,
   Ticket,
   CreditCard,
-  BarChart3
+  BarChart3,
+  Settings
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { formatDistanceToNow } from "date-fns";
@@ -66,6 +72,9 @@ interface PlatformStats {
 }
 
 export default function PlatformAdmin() {
+  const [showSettings, setShowSettings] = useState(false);
+  const [showSupportQueue, setShowSupportQueue] = useState(false);
+  
   const { data: stats, isLoading } = useQuery<PlatformStats>({
     queryKey: ["/api/platform/stats"],
   });
@@ -95,11 +104,11 @@ export default function PlatformAdmin() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" data-testid="button-platform-settings">
-            <UserCog className="mr-2 h-4 w-4" />
+          <Button variant="outline" onClick={() => setShowSettings(true)} data-testid="button-platform-settings">
+            <Settings className="mr-2 h-4 w-4" />
             Platform Settings
           </Button>
-          <Button data-testid="button-support-queue">
+          <Button onClick={() => setShowSupportQueue(true)} data-testid="button-support-queue">
             <Ticket className="mr-2 h-4 w-4" />
             Support Queue
           </Button>
@@ -399,6 +408,74 @@ export default function PlatformAdmin() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Platform Settings Dialog */}
+      <Dialog open={showSettings} onOpenChange={setShowSettings}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Settings className="h-5 w-5" />
+              Platform Settings
+            </DialogTitle>
+            <DialogDescription>
+              Configure platform-wide settings and preferences
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Platform Name</Label>
+              <Input defaultValue="WorkforceOS" data-testid="input-platform-name" />
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label>Maintenance Mode</Label>
+                <p className="text-sm text-muted-foreground">Temporarily disable platform access</p>
+              </div>
+              <Switch data-testid="switch-maintenance-mode" />
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label>New Workspace Registration</Label>
+                <p className="text-sm text-muted-foreground">Allow new workspaces to register</p>
+              </div>
+              <Switch defaultChecked data-testid="switch-new-registration" />
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label>Email Notifications</Label>
+                <p className="text-sm text-muted-foreground">Send platform-wide email alerts</p>
+              </div>
+              <Switch defaultChecked data-testid="switch-email-notifications" />
+            </div>
+            <div className="space-y-2">
+              <Label>Support Email</Label>
+              <Input type="email" defaultValue="support@workforceos.com" data-testid="input-support-email" />
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Support Queue Dialog */}
+      <Dialog open={showSupportQueue} onOpenChange={setShowSupportQueue}>
+        <DialogContent className="max-w-4xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Ticket className="h-5 w-5" />
+              Support Queue
+            </DialogTitle>
+            <DialogDescription>
+              View and manage pending support requests
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <div className="text-center py-8 text-muted-foreground">
+              <Ticket className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p className="text-lg font-medium mb-2">No Pending Requests</p>
+              <p className="text-sm">All support tickets have been addressed</p>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

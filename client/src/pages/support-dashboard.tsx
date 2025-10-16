@@ -92,19 +92,20 @@ export default function SupportDashboard() {
   };
 
   return (
-    <div className="flex flex-col gap-6 p-4 md:p-6 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="flex flex-col gap-2">
-        <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-3">
-          <div className="bg-gradient-to-br from-indigo-600 to-purple-600 p-2 rounded-lg">
-            <Headphones className="w-6 h-6 text-white" />
-          </div>
-          Support Dashboard
-        </h1>
-        <p className="text-muted-foreground">
-          Manage support conversations and help users in real-time
-        </p>
-      </div>
+    <ScrollArea className="h-full w-full">
+      <div className="flex flex-col gap-6 p-4 md:p-6 max-w-7xl mx-auto pb-8">
+        {/* Header */}
+        <div className="flex flex-col gap-2">
+          <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-3">
+            <div className="bg-gradient-to-br from-indigo-600 to-purple-600 p-2 rounded-lg">
+              <Headphones className="w-6 h-6 text-white" />
+            </div>
+            Support Dashboard
+          </h1>
+          <p className="text-muted-foreground">
+            Manage support conversations and help users in real-time
+          </p>
+        </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -330,6 +331,7 @@ export default function SupportDashboard() {
           </div>
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </ScrollArea>
   );
 }

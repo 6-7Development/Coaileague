@@ -323,6 +323,34 @@ export default function RootAdminPortal() {
     },
   });
 
+  const createConversation = useMutation({
+    mutationFn: async (data: any) => {
+      const response = await apiRequest("/api/chat/conversations", "POST", data);
+      return response;
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/chat/conversations"] });
+      setSelectedConversation(data.id);
+      
+      // Send helpbot welcome message
+      setTimeout(() => {
+        apiRequest(`/api/chat/conversations/${data.id}/messages`, "POST", {
+          message: `Welcome to WorkforceOS Live Support! ${data.isSilenced ? "You're in the waiting queue. A support agent will grant you voice shortly." : "You have full access to chat. How can we help you today?"}`,
+          messageType: "system",
+          senderType: "bot",
+          senderName: "HelpBot",
+        }).then(() => {
+          queryClient.invalidateQueries({ queryKey: ["/api/chat/conversations", data.id, "messages"] });
+        });
+      }, 500);
+      
+      toast({ 
+        title: "Entered Chat Room", 
+        description: data.isSilenced ? "You're in the queue. Please wait for voice grant." : "You're now in the live chat room!"
+      });
+    },
+  });
+
   // Helper functions
   const getActivityIcon = (type: LiveActivity["type"]) => {
     switch (type) {
@@ -847,6 +875,42 @@ export default function RootAdminPortal() {
 
           {/* LIVE CHAT TAB */}
           <TabsContent value="chat" className="space-y-6">
+            {/* Enter Chat Room Banner */}
+            <Card className="border-primary/50 bg-gradient-to-r from-primary/10 to-violet-500/10">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <MessageSquare className="h-5 w-5" />
+                      Live Support Chat Room
+                    </CardTitle>
+                    <CardDescription className="mt-1">
+                      MSN/IRC style helpdesk - Enter to provide live support or monitor conversations
+                    </CardDescription>
+                  </div>
+                  <Button 
+                    size="lg" 
+                    onClick={() => {
+                      // Create or join conversation for this support staff member
+                      createConversation.mutate({
+                        workspaceId: "platform-support",
+                        userName: `${user?.firstName || ""} ${user?.lastName || ""}`.trim() || user?.email || "Support Staff",
+                        userEmail: user?.email || "",
+                        subject: "Support Staff - Live Chat",
+                        priority: "normal",
+                        isSilenced: false, // Support staff not silenced
+                      });
+                    }}
+                    data-testid="button-enter-chat-room"
+                    className="gap-2"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                    Enter Chat Room
+                  </Button>
+                </div>
+              </CardHeader>
+            </Card>
+
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
