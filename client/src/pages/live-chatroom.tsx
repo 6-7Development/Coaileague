@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
 import { useChatroomWebSocket } from "@/hooks/use-chatroom-websocket";
+import { useChatSounds } from "@/hooks/use-chat-sounds";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { WorkforceOSLogo } from "@/components/workforceos-logo";
 import { 
@@ -45,7 +46,9 @@ export default function LiveChatroomPage() {
   const [roomStatusMessage, setRoomStatusMessage] = useState("");
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const previousMessageCountRef = useRef(0);
   const { toast } = useToast();
+  const { playSound } = useChatSounds();
   
   // Get current user data
   const { data: currentUser, isLoading: isLoadingUser } = useQuery<{ user: { id: string; email: string; platformRole?: string } }>({
@@ -189,6 +192,9 @@ export default function LiveChatroomPage() {
       reconnect();
       return;
     }
+    
+    // Play send sound
+    playSound('send');
 
     // Send as support if staff, otherwise as customer
     const senderRole = isStaff ? 'support' : 'customer';
@@ -222,10 +228,32 @@ export default function LiveChatroomPage() {
     }
   }, [error, requiresTicket, temporaryError, toast]);
 
-  // Auto-scroll to bottom when new messages arrive
+  // Auto-scroll to bottom when new messages arrive + play receive sound
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    
+    // Play receive sound when new messages arrive (but not on initial load)
+    if (messages.length > previousMessageCountRef.current && previousMessageCountRef.current > 0) {
+      const latestMessage = messages[messages.length - 1];
+      
+      // Only play sound for messages not sent by current user
+      if (latestMessage && !latestMessage.message?.includes(userName)) {
+        // Check if it's a join/leave message
+        if (latestMessage.isSystemMessage) {
+          if (latestMessage.message?.includes('joined')) {
+            playSound('join');
+          } else if (latestMessage.message?.includes('left')) {
+            playSound('leave');
+          }
+        } else {
+          // Regular message received
+          playSound('receive');
+        }
+      }
+    }
+    
+    previousMessageCountRef.current = messages.length;
+  }, [messages, userName, playSound]);
 
   const getRoleIcon = (senderName: string, senderType: string) => {
     // Special icons for specific roles
