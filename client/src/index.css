@@ -149,42 +149,42 @@
   --opaque-button-border-intensity: 9;  /* In terms of percentages */
 
   /* Backgrounds applied on top of other backgrounds when hovered/active */
-  --elevate-1: rgba(99, 102, 241, 0.04);
-  --elevate-2: rgba(99, 102, 241, 0.12);
+  --elevate-1: rgba(5, 150, 105, 0.04);
+  --elevate-2: rgba(5, 150, 105, 0.12);
 
-  /* Indigo/Purple Gradient Theme - ASMR Fortune 500 Design */
-  --cad-background: 222 47% 11%;        /* #0f172a - Deep slate */
-  --cad-surface: 215 25% 17%;           /* #1e293b - Slate 800 */
-  --cad-surface-elevated: 217 19% 20%;  /* Elevated cards with subtle lift */
-  --cad-chrome: 222 47% 11%;            /* Deep slate for header */
-  --cad-chrome-hover: 215 25% 17%;      /* Hover states */
-  --cad-chrome-active: 217 19% 20%;     /* Active states */
+  /* Emerald/Charcoal Modern Tech Theme - Professional SaaS Design */
+  --cad-background: 220 13% 18%;        /* #1e293b - Dark charcoal */
+  --cad-surface: 220 13% 21%;           /* #27303f - Card surfaces */
+  --cad-surface-elevated: 220 13% 23%;  /* Elevated cards with subtle lift */
+  --cad-chrome: 220 13% 16%;            /* Slightly darker for header */
+  --cad-chrome-hover: 220 13% 20%;      /* Hover states */
+  --cad-chrome-active: 220 13% 23%;     /* Active states */
   
-  /* Indigo gradient borders */
-  --cad-border: 239 31% 25%;            /* rgba(99, 102, 241, 0.2) equivalent */
-  --cad-border-strong: 239 45% 35%;     /* Stronger indigo dividers */
+  /* Emerald gradient borders */
+  --cad-border: 152 30% 30%;            /* Emerald-tinted borders */
+  --cad-border-strong: 152 40% 40%;     /* Stronger emerald dividers */
   
-  /* Text hierarchy - Indigo accents */
-  --cad-text-primary: 210 40% 92%;      /* #e2e8f0 - Slate 200 */
-  --cad-text-secondary: 215 14% 64%;    /* #94a3b8 - Slate 400 */
-  --cad-text-tertiary: 216 12% 80%;     /* #cbd5e1 - Slate 300 */
-  --cad-text-accent: 239 84% 80%;       /* #a5b4fc - Indigo 300 */
-  --cad-text-inverted: 222 47% 11%;     /* On bright backgrounds */
+  /* Text hierarchy - Clean professional */
+  --cad-text-primary: 214 15% 91%;      /* #e8edf3 - Light text */
+  --cad-text-secondary: 215 15% 70%;    /* #a8b5c7 - Secondary text */
+  --cad-text-tertiary: 215 15% 55%;     /* #7d8a9d - Tertiary text */
+  --cad-text-accent: 152 69% 75%;       /* #6ee7b7 - Emerald light accents */
+  --cad-text-inverted: 220 13% 18%;     /* On bright backgrounds */
   
-  /* Primary Indigo Colors */
-  --cad-indigo-500: 239 84% 67%;        /* #6366f1 - Primary brand */
-  --cad-indigo-600: 243 75% 59%;        /* #4f46e5 - Darker indigo */
-  --cad-indigo-300: 239 84% 80%;        /* #a5b4fc - Light accents */
-  --cad-indigo-200: 239 90% 87%;        /* #c7d2fe - Muted accents */
+  /* Primary Emerald Colors */
+  --cad-emerald-500: 152 69% 31%;       /* #059669 - Primary brand */
+  --cad-emerald-600: 152 76% 26%;       /* #047857 - Darker emerald */
+  --cad-emerald-400: 152 69% 42%;       /* #10b981 - Lighter emerald */
+  --cad-emerald-300: 152 69% 75%;       /* #6ee7b7 - Light accents */
   
   /* Accent Colors */
-  --cad-green: 142 76% 59%;             /* #10b981 - Success/Emerald */
+  --cad-green: 142 76% 59%;             /* #10b981 - Success */
   --cad-orange: 38 92% 58%;             /* #f59e0b - Warning/Amber */
   --cad-red: 0 72% 58%;                 /* #ef4444 - Error/Red */
-  --cad-purple: 271 76% 60%;            /* Info purple */
+  --cad-blue: 199 89% 48%;              /* Info blue */
   --cad-cyan: 188 94% 54%;              /* Active timers */
 
-  /* Map to Shadcn tokens with Indigo theme */
+  /* Map to Shadcn tokens with Emerald theme */
   --background: var(--cad-background);
   --foreground: var(--cad-text-primary);
   --border: var(--cad-border);
@@ -194,37 +194,37 @@
   --sidebar: var(--cad-chrome);
   --sidebar-foreground: var(--cad-text-primary);
   --sidebar-border: var(--cad-border-strong);
-  --sidebar-primary: var(--cad-indigo-500);
+  --sidebar-primary: var(--cad-emerald-500);
   --sidebar-primary-foreground: 220 10% 98%;
-  --sidebar-accent: 217 14% 24%;
+  --sidebar-accent: 220 13% 24%;
   --sidebar-accent-foreground: var(--cad-text-primary);
-  --sidebar-ring: var(--cad-indigo-500);
+  --sidebar-ring: var(--cad-emerald-500);
   --popover: var(--cad-surface-elevated);
   --popover-foreground: var(--cad-text-primary);
   --popover-border: var(--cad-border-strong);
-  --primary: var(--cad-indigo-500);
+  --primary: var(--cad-emerald-500);
   --primary-foreground: 220 10% 98%;
-  --secondary: 217 15% 26%;
+  --secondary: 220 13% 26%;
   --secondary-foreground: var(--cad-text-primary);
 
-  --muted: 217 14% 24%;
+  --muted: 220 13% 24%;
 
-  --muted-foreground: 217 10% 65%;
+  --muted-foreground: 215 10% 65%;
 
-  --accent: 239 40% 30%;
+  --accent: 152 40% 30%;
 
-  --accent-foreground: var(--cad-indigo-300);
+  --accent-foreground: var(--cad-emerald-300);
 
   --destructive: 0 72% 58%;
 
   --destructive-foreground: 0 10% 98%;
 
-  --input: 217 18% 42%;
-  --ring: var(--cad-indigo-500);
-  --chart-1: var(--cad-indigo-500);
+  --input: 220 13% 42%;
+  --ring: var(--cad-emerald-500);
+  --chart-1: var(--cad-emerald-500);
   --chart-2: 142 65% 58%;
   --chart-3: 38 92% 62%;
-  --chart-4: 271 70% 68%;
+  --chart-4: 199 89% 58%;
   --chart-5: 0 72% 65%;
 
   --shadow-2xs: 0px 1px 2px 0px hsl(217 20% 5% / 0.30);

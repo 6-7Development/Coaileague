@@ -11,9 +11,6 @@ export function WorkforceOSLogo({
   showText = true,
   className 
 }: WorkforceOSLogoProps) {
-  // Generate unique ID for this logo instance to prevent SVG ID conflicts
-  const uniqueId = Math.random().toString(36).substr(2, 9);
-  
   const sizes = {
     sm: {
       container: "w-8 h-8",
@@ -35,7 +32,7 @@ export function WorkforceOSLogo({
 
   return (
     <div className={cn("flex items-center gap-3", className)}>
-      {/* Modern Workforce Logo - Represents people, time, and growth */}
+      {/* Modern Workforce Logo - 3 People Circles Representing Teams */}
       <div 
         className={cn(
           "relative flex items-center justify-center",
@@ -50,15 +47,15 @@ export function WorkforceOSLogo({
           className="w-full h-full"
         >
           <defs>
-            {/* Brand gradient - white/light for visibility on dark/purple backgrounds */}
-            <linearGradient id={`brandGradient-${uniqueId}`} x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#ffffff" />
-              <stop offset="100%" stopColor="#e0e7ff" />
+            {/* Emerald gradient for workforce theme */}
+            <linearGradient id="emeraldGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#059669" />
+              <stop offset="100%" stopColor="#10b981" />
             </linearGradient>
             
-            {/* Glow effect - unique per instance */}
-            <filter id={`glow-${uniqueId}`}>
-              <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+            {/* Subtle glow effect */}
+            <filter id="glow">
+              <feGaussianBlur stdDeviation="1.5" result="coloredBlur"/>
               <feMerge>
                 <feMergeNode in="coloredBlur"/>
                 <feMergeNode in="SourceGraphic"/>
@@ -66,165 +63,95 @@ export function WorkforceOSLogo({
             </filter>
           </defs>
 
-          {/* Outer ring - represents system/platform */}
-          <circle 
-            cx="50" 
-            cy="50" 
-            r="42" 
-            stroke={`url(#brandGradient-${uniqueId})`}
-            strokeWidth="4" 
-            fill="none"
-            opacity="0.5"
-          >
-            <animate
-              attributeName="stroke-dasharray"
-              from="0,264"
-              to="264,0"
-              dur="3s"
-              repeatCount="indefinite"
+          {/* Three interconnected circles representing team/workforce */}
+          <g filter="url(#glow)">
+            {/* Left person circle */}
+            <circle 
+              cx="30" 
+              cy="50" 
+              r="18" 
+              stroke="url(#emeraldGradient)"
+              strokeWidth="3.5" 
+              fill="none"
+              opacity="0.9"
             />
-          </circle>
-
-          {/* People icons - workforce */}
-          <g filter={`url(#glow-${uniqueId})`}>
-            {/* Person 1 */}
-            <circle cx="35" cy="38" r="5" fill={`url(#brandGradient-${uniqueId})`}>
-              <animate
-                attributeName="opacity"
-                values="0.7;1;0.7"
-                dur="2s"
-                repeatCount="indefinite"
-              />
-            </circle>
-            <path 
-              d="M 35 45 Q 29 47, 29 52 L 41 52 Q 41 47, 35 45" 
-              fill={`url(#brandGradient-${uniqueId})`}
-            >
-              <animate
-                attributeName="opacity"
-                values="0.7;1;0.7"
-                dur="2s"
-                repeatCount="indefinite"
-              />
-            </path>
-
-            {/* Person 2 - Center */}
-            <circle cx="50" cy="34" r="6" fill={`url(#brandGradient-${uniqueId})`}>
-              <animate
-                attributeName="opacity"
-                values="1;0.7;1"
-                dur="2s"
-                repeatCount="indefinite"
-              />
-            </circle>
-            <path 
-              d="M 50 42 Q 43 44, 43 50 L 57 50 Q 57 44, 50 42" 
-              fill={`url(#brandGradient-${uniqueId})`}
-            >
-              <animate
-                attributeName="opacity"
-                values="1;0.7;1"
-                dur="2s"
-                repeatCount="indefinite"
-              />
-            </path>
-
-            {/* Person 3 */}
-            <circle cx="65" cy="38" r="5" fill={`url(#brandGradient-${uniqueId})`}>
-              <animate
-                attributeName="opacity"
-                values="0.7;1;0.7"
-                dur="2s"
-                begin="0.5s"
-                repeatCount="indefinite"
-              />
-            </circle>
-            <path 
-              d="M 65 45 Q 59 47, 59 52 L 71 52 Q 71 47, 65 45" 
-              fill={`url(#brandGradient-${uniqueId})`}
-            >
-              <animate
-                attributeName="opacity"
-                values="0.7;1;0.7"
-                dur="2s"
-                begin="0.5s"
-                repeatCount="indefinite"
-              />
-            </path>
+            
+            {/* Center person circle (slightly larger - leader/manager) */}
+            <circle 
+              cx="50" 
+              cy="35" 
+              r="20" 
+              stroke="url(#emeraldGradient)"
+              strokeWidth="4" 
+              fill="none"
+            />
+            
+            {/* Right person circle */}
+            <circle 
+              cx="70" 
+              cy="50" 
+              r="18" 
+              stroke="url(#emeraldGradient)"
+              strokeWidth="3.5" 
+              fill="none"
+              opacity="0.9"
+            />
+            
+            {/* Connection lines showing teamwork */}
+            <line 
+              x1="30" 
+              y1="50" 
+              x2="50" 
+              y2="35" 
+              stroke="url(#emeraldGradient)"
+              strokeWidth="2" 
+              opacity="0.5"
+            />
+            <line 
+              x1="50" 
+              y1="35" 
+              x2="70" 
+              y2="50" 
+              stroke="url(#emeraldGradient)"
+              strokeWidth="2" 
+              opacity="0.5"
+            />
+            
+            {/* Small dots in center of circles representing people */}
+            <circle cx="30" cy="50" r="4" fill="url(#emeraldGradient)" />
+            <circle cx="50" cy="35" r="5" fill="url(#emeraldGradient)" />
+            <circle cx="70" cy="50" r="4" fill="url(#emeraldGradient)" />
           </g>
 
-          {/* Clock element - time tracking */}
-          <circle 
-            cx="50" 
-            cy="70" 
-            r="11" 
-            stroke={`url(#brandGradient-${uniqueId})`}
-            strokeWidth="2.5" 
-            fill="none"
-          />
-          <line 
-            x1="50" 
-            y1="70" 
-            x2="50" 
-            y2="64" 
-            stroke={`url(#brandGradient-${uniqueId})`}
-            strokeWidth="2.5" 
-            strokeLinecap="round"
-          >
-            <animateTransform
-              attributeName="transform"
-              attributeType="XML"
-              type="rotate"
-              from="0 50 70"
-              to="360 50 70"
-              dur="4s"
-              repeatCount="indefinite"
+          {/* Time/productivity accent - small clock icon at bottom */}
+          <g opacity="0.7">
+            <circle 
+              cx="50" 
+              cy="75" 
+              r="8" 
+              stroke="url(#emeraldGradient)"
+              strokeWidth="2" 
+              fill="none"
             />
-          </line>
-          <line 
-            x1="50" 
-            y1="70" 
-            x2="55" 
-            y2="70" 
-            stroke={`url(#brandGradient-${uniqueId})`}
-            strokeWidth="2" 
-            strokeLinecap="round"
-          >
-            <animateTransform
-              attributeName="transform"
-              attributeType="XML"
-              type="rotate"
-              from="0 50 70"
-              to="360 50 70"
-              dur="48s"
-              repeatCount="indefinite"
+            <line 
+              x1="50" 
+              y1="75" 
+              x2="50" 
+              y2="70" 
+              stroke="url(#emeraldGradient)"
+              strokeWidth="1.5" 
+              strokeLinecap="round"
             />
-          </line>
-
-          {/* Growth arrow - analytics/progress */}
-          <path 
-            d="M 78 82 L 84 76 L 90 82" 
-            stroke={`url(#brandGradient-${uniqueId})`}
-            strokeWidth="3" 
-            fill="none" 
-            strokeLinecap="round" 
-            strokeLinejoin="round"
-          >
-            <animate
-              attributeName="opacity"
-              values="0.5;1;0.5"
-              dur="1.5s"
-              repeatCount="indefinite"
+            <line 
+              x1="50" 
+              y1="75" 
+              x2="53" 
+              y2="75" 
+              stroke="url(#emeraldGradient)"
+              strokeWidth="1.5" 
+              strokeLinecap="round"
             />
-            <animateTransform
-              attributeName="transform"
-              attributeType="XML"
-              type="translate"
-              values="0,2; 0,0; 0,2"
-              dur="1.5s"
-              repeatCount="indefinite"
-            />
-          </path>
+          </g>
         </svg>
       </div>
 
@@ -233,7 +160,7 @@ export function WorkforceOSLogo({
         <div 
           className={cn(
             "font-black tracking-tight",
-            "bg-gradient-to-br from-white to-white/80",
+            "bg-gradient-to-br from-emerald-500 to-emerald-400",
             "bg-clip-text text-transparent",
             sizes[size].text
           )}
