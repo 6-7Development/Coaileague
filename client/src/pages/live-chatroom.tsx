@@ -523,24 +523,18 @@ export default function LiveChatroomPage() {
               {/* Pinned Room Info Banner - Mobile Optimized */}
               <Card className="sticky top-0 z-50 border-blue-500/30 bg-gradient-to-r from-blue-900/40 via-indigo-900/40 to-purple-900/40 backdrop-blur-md shadow-lg">
                 <CardContent className="p-2">
-                  <div className="flex flex-col gap-0.5">
-                    {/* Title Row */}
-                    <div className="flex items-center gap-1.5 sm:gap-2">
-                      <MessageSquare className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-blue-300 flex-shrink-0" />
-                      <h2 className="text-[11px] sm:text-xs font-semibold text-white flex-shrink-0">HelpDesk</h2>
-                      <Badge 
-                        variant={helpDeskRoom?.status === 'open' ? 'default' : 'secondary'}
-                        className="gap-0.5 sm:gap-1 flex-shrink-0 bg-white/20 border-white/30 text-white text-[9px] sm:text-[10px] px-1 sm:px-1.5 py-0"
-                      >
-                        <Circle className="w-1 h-1 fill-green-400 text-green-400 animate-pulse" />
-                        {helpDeskRoom?.status === 'open' ? 'Open' : helpDeskRoom?.status === 'closed' ? 'Closed' : 'Maint'}
-                      </Badge>
-                    </div>
-                    
-                    {/* Description Row - small, wrapped text */}
-                    <p className="text-[9px] sm:text-[10px] text-slate-300/70 leading-tight pl-0 sm:pl-5">
+                  <div className="flex items-center gap-1.5 sm:gap-2">
+                    <MessageSquare className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-blue-300 flex-shrink-0" />
+                    <p className="text-[9px] sm:text-[10px] text-slate-300/80 leading-tight flex-1">
                       live support chat - get instant help from our support team and ai assistant
                     </p>
+                    <Badge 
+                      variant={helpDeskRoom?.status === 'open' ? 'default' : 'secondary'}
+                      className="gap-0.5 sm:gap-1 flex-shrink-0 bg-white/20 border-white/30 text-white text-[9px] sm:text-[10px] px-1 sm:px-1.5 py-0"
+                    >
+                      <Circle className="w-1 h-1 fill-green-400 text-green-400 animate-pulse" />
+                      {helpDeskRoom?.status === 'open' ? 'Open' : helpDeskRoom?.status === 'closed' ? 'Closed' : 'Maint'}
+                    </Badge>
                   </div>
                 </CardContent>
               </Card>
