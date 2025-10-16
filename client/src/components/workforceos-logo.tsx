@@ -152,7 +152,7 @@ export function WorkforceOSLogo({
             
             {/* W - Shadow */}
             <text
-              x="45"
+              x="50"
               y="84"
               textAnchor="middle"
               fontFamily="system-ui, -apple-system, sans-serif"
@@ -160,29 +160,29 @@ export function WorkforceOSLogo({
               fontWeight="900"
               fill="black"
               opacity="0.4"
-              letterSpacing="-2"
+              letterSpacing="-6"
             >
               W
             </text>
             
             {/* W - White with realistic neon glow */}
             <text
-              x="45"
+              x="50"
               y="82"
               textAnchor="middle"
               fontFamily="system-ui, -apple-system, sans-serif"
               fontSize="58"
               fontWeight="900"
               fill="white"
-              letterSpacing="-2"
+              letterSpacing="-6"
               filter={`url(#white-glow-${uniqueId})`}
             >
               W
             </text>
             
-            {/* F - Shadow */}
+            {/* F - Shadow (closer to W) */}
             <text
-              x="105"
+              x="95"
               y="84"
               textAnchor="middle"
               fontFamily="system-ui, -apple-system, sans-serif"
@@ -190,21 +190,21 @@ export function WorkforceOSLogo({
               fontWeight="900"
               fill="black"
               opacity="0.4"
-              letterSpacing="-2"
+              letterSpacing="-6"
             >
               F
             </text>
             
-            {/* F - White with realistic neon glow */}
+            {/* F - White with realistic neon glow (closer to W) */}
             <text
-              x="105"
+              x="95"
               y="82"
               textAnchor="middle"
               fontFamily="system-ui, -apple-system, sans-serif"
               fontSize="58"
               fontWeight="900"
               fill="white"
-              letterSpacing="-2"
+              letterSpacing="-6"
               filter={`url(#white-glow-${uniqueId})`}
             >
               F
@@ -212,7 +212,7 @@ export function WorkforceOSLogo({
             
             {/* OS Superscript - Shadow */}
             <text
-              x="128"
+              x="113"
               y="43"
               textAnchor="start"
               fontFamily="system-ui, -apple-system, sans-serif"
@@ -220,21 +220,21 @@ export function WorkforceOSLogo({
               fontWeight="900"
               fill="black"
               opacity="0.3"
-              letterSpacing="1"
+              letterSpacing="0"
             >
               OS
             </text>
             
             {/* OS Superscript - Electric blue neon */}
             <text
-              x="128"
+              x="113"
               y="42"
               textAnchor="start"
               fontFamily="system-ui, -apple-system, sans-serif"
               fontSize="22"
               fontWeight="900"
               fill={`url(#electric-blue-${uniqueId})`}
-              letterSpacing="1"
+              letterSpacing="0"
               filter={`url(#neon-glow-${uniqueId})`}
             >
               OS
@@ -242,7 +242,7 @@ export function WorkforceOSLogo({
             
             {/* Bright core of OS for ultra-bright center */}
             <text
-              x="128"
+              x="113"
               y="42"
               textAnchor="start"
               fontFamily="system-ui, -apple-system, sans-serif"
@@ -250,7 +250,7 @@ export function WorkforceOSLogo({
               fontWeight="900"
               fill="#ffffff"
               opacity="0.6"
-              letterSpacing="1"
+              letterSpacing="0"
             >
               OS
             </text>

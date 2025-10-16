@@ -200,3 +200,71 @@ export function shouldBotRespond(message: string): boolean {
   
   return triggers.some(trigger => lowerMessage.includes(trigger));
 }
+
+/**
+ * Generate queue welcome message with position and instructions
+ * HelpOS™ announces queue position when user joins
+ */
+export async function generateQueueWelcome(
+  userName: string,
+  ticketNumber: string,
+  queuePosition: number,
+  estimatedWaitMinutes: number,
+  waitingCount: number
+): Promise<string> {
+  if (queuePosition === 1) {
+    return `👋 Welcome ${userName}! I'm HelpOS™, your AI support assistant.
+
+🎯 **You're next in line!** A support agent will assist you momentarily.
+
+While you wait, feel free to ask me any questions about WorkforceOS. Stay in the chat to keep your position!`;
+  }
+
+  return `👋 Welcome ${userName}! I'm HelpOS™, your AI support assistant. (Ticket: ${ticketNumber})
+
+📊 **Queue Status:**
+• You are #${queuePosition} in line
+• ${waitingCount} customer${waitingCount === 1 ? '' : 's'} currently waiting
+• Estimated wait: ~${estimatedWaitMinutes} minutes
+
+While you wait, ask me anything about WorkforceOS! Stay in the chat to keep your position.`;
+}
+
+/**
+ * Generate periodic queue reminder (every 5 minutes)
+ * HelpOS™ sends these automatically
+ */
+export async function generateQueueReminder(
+  userName: string,
+  queuePosition: number,
+  estimatedWaitMinutes: number
+): Promise<string> {
+  if (queuePosition === 1) {
+    return `⏰ HelpOS™ Update: ${userName}, you're still next in line! A support agent will be with you very soon. 🙏`;
+  }
+
+  return `⏰ HelpOS™ Queue Update: ${userName}, you are #${queuePosition} in line (Est. wait: ~${estimatedWaitMinutes} min). Thank you for your patience! 🙏`;
+}
+
+/**
+ * Generate staff alert message about queue status
+ * Shown to support staff when they join
+ */
+export async function generateStaffQueueAlert(
+  waitingCount: number,
+  beingHelpedCount: number,
+  averageWaitMinutes: number
+): Promise<string> {
+  if (waitingCount === 0) {
+    return `✅ Queue is empty - no customers waiting. ${beingHelpedCount > 0 ? `${beingHelpedCount} currently being helped.` : ''}`;
+  }
+
+  const urgency = waitingCount > 5 ? '🔴 HIGH VOLUME' : waitingCount > 2 ? '🟡 MODERATE' : '🟢 LOW';
+  
+  return `${urgency} **Queue Status:**
+• ${waitingCount} customer${waitingCount === 1 ? '' : 's'} waiting for help
+• ${beingHelpedCount} currently being assisted
+• Average wait time: ~${averageWaitMinutes} minutes
+
+Use /intro to announce yourself to the next customer in line!`;
+}
