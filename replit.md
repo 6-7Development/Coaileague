@@ -20,8 +20,17 @@ The platform features a CAD-style professional interface with a dark mode theme,
 - **Multi-Tenancy**: Workspace-based data isolation enforced at API and database levels.
 - **Role-Based Access Control (RBAC)**: Supports Owner, Manager, and Employee roles with hierarchical management and API protection middleware. Includes platform-level roles (root, deputy_admin, deputy_assistant, sysop, bot) for system administration and support operations.
     - **Granular Leader Capabilities**: Capability-based permissions for organization leaders (Owner/Manager) including: view_reports, manage_employees_basic (reset passwords, unlock accounts), manage_schedules (approve swaps, adjust time entries), escalate_support (create platform support tickets), view_audit_logs, and manage_security_flags.
-    - **Leader Action Tracking**: Specialized audit logging for self-service admin actions with before/after snapshots, IP tracking, and optional approval workflows.
-    - **Escalation System**: Structured ticket system (ESC-XXXXXX format) for leaders to escalate issues to platform support with category classification (billing, compliance, technical, security, etc.).
+    - **Leader Action Tracking**: Specialized audit logging for self-service admin actions with before/after snapshots, IP tracking, and optional approval workflows. All leader actions (password resets, account unlocks, contact updates, escalations) are logged to the leader_actions table with full compliance tracking.
+    - **Escalation System**: Production-ready structured ticket system (ESC-XXXXXX format) for leaders to escalate issues to platform support. Features include:
+        - **Race-Safe Ticket Generation**: Unique ticket numbers with retry logic on database constraint violations (max 10 attempts)
+        - **State Transition Enforcement**: Strict workflow - open → [in_progress, resolved], in_progress → [resolved, open], resolved → [] (terminal)
+        - **Mandatory Resolution**: Resolution field required when closing tickets for compliance documentation
+        - **Category Classification**: Billing, compliance, technical, security, employee_issue, system_error, feature_request, other
+        - **Priority Levels**: Low, normal, high, urgent with intelligent routing
+        - **Platform Staff Authorization**: Only platform roles (root, deputy_admin, deputy_assistant, sysop) can update ticket status
+        - **Comprehensive Audit Trail**: All status updates logged to leader_actions with before/after snapshots, IP tracking, user agent capture
+        - **Workspace Isolation**: All queries enforce workspace boundaries for multi-tenant security
+        - **API Endpoints**: POST /api/leaders/escalate (create), GET /api/leaders/escalations (list), PATCH /api/leaders/escalations/:id/status (update - staff only)
 - **Key Features**:
     - **Time Tracking**: Clock-in/out, real-time timers, automated calculations.
     - **Invoice Generation**: Automated from unbilled time, multi-client, tax/fee calculation.
