@@ -932,6 +932,36 @@ export function setupWebSocket(server: Server) {
                   break;
                 }
                 
+                case 'banner': {
+                  // Update announcement banner message
+                  const bannerMessage = parsedCommand.args.join(' ');
+                  
+                  // Broadcast banner update to all users in conversation
+                  const bannerUpdateMsg = await storage.createChatMessage({
+                    conversationId: ws.conversationId,
+                    senderId: null,
+                    senderName: 'System',
+                    senderType: 'system',
+                    message: `📢 Banner updated by ${displayName}`,
+                    messageType: 'text',
+                    isSystemMessage: true,
+                  });
+                  
+                  if (clients) {
+                    clients.forEach((client) => {
+                      if (client.readyState === WebSocket.OPEN) {
+                        client.send(JSON.stringify({ 
+                          type: 'banner_update',
+                          bannerMessage,
+                          staffName: displayName,
+                          message: bannerUpdateMsg 
+                        }));
+                      }
+                    });
+                  }
+                  break;
+                }
+                
                 default:
                   ws.send(JSON.stringify({
                     type: 'error',

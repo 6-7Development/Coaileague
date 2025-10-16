@@ -12,7 +12,7 @@ interface OnlineUser {
 }
 
 interface WebSocketMessage {
-  type: 'conversation_history' | 'new_message' | 'private_message' | 'user_typing' | 'error' | 'system_message' | 'user_list_update' | 'status_change' | 'kicked' | 'secure_request' | 'spectator_released' | 'secure_data_received';
+  type: 'conversation_history' | 'new_message' | 'private_message' | 'user_typing' | 'error' | 'system_message' | 'user_list_update' | 'status_change' | 'kicked' | 'secure_request' | 'spectator_released' | 'secure_data_received' | 'banner_update';
   messages?: ChatMessage[];
   message?: ChatMessage | string;
   userId?: string;
@@ -39,6 +39,9 @@ interface WebSocketMessage {
   fromUser?: string;
   fromUserId?: string;
   data?: any;
+  // Banner update fields
+  bannerMessage?: string;
+  staffName?: string;
 }
 
 interface SecureRequestCallback {
@@ -55,6 +58,7 @@ export function useChatroomWebSocket(
   const [error, setError] = useState<string | null>(null);
   const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set());
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
+  const [customBannerMessage, setCustomBannerMessage] = useState<string | null>(null);
   // HelpDesk access control state
   const [requiresTicket, setRequiresTicket] = useState(false);
   const [roomStatus, setRoomStatus] = useState<string | null>(null);
@@ -305,6 +309,17 @@ export function useChatroomWebSocket(
               };
               setMessages((prev) => [...prev, secureDataMsg]);
               break;
+
+            case 'banner_update':
+              // Staff updated the announcement banner
+              if (data.bannerMessage) {
+                setCustomBannerMessage(data.bannerMessage);
+              }
+              // Also add the update notification to chat
+              if (data.message && typeof data.message !== 'string') {
+                setMessages((prev) => [...prev, data.message as ChatMessage]);
+              }
+              break;
           }
         } catch (err) {
           console.error('Failed to parse WebSocket message:', err);
@@ -454,5 +469,7 @@ export function useChatroomWebSocket(
     statusMessage,
     temporaryError,
     clearAccessError,
+    // Banner updates
+    customBannerMessage,
   };
 }

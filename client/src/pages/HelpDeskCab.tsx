@@ -73,7 +73,7 @@ export default function HelpDeskCab() {
     ? `${user.firstName} ${user.lastName}` 
     : user?.email?.split('@')[0] || 'User';
 
-  const { messages, isConnected, sendMessage, sendTyping, sendStatusChange, kickUser, sendRawMessage, onlineUsers } = useChatroomWebSocket(
+  const { messages, isConnected, sendMessage, sendTyping, sendStatusChange, kickUser, sendRawMessage, onlineUsers, customBannerMessage } = useChatroomWebSocket(
     user?.id, 
     userName,
     (request) => {
@@ -362,9 +362,15 @@ export default function HelpDeskCab() {
         <section className="flex-grow flex flex-col bg-white/70 backdrop-blur-sm">
           {/* Animated Seasonal Banner */}
           <ChatAnnouncementBanner
-            queuePosition={1}
+            queuePosition={queueLength || 1}
             queueWaitTime="2-3 minutes"
             onlineStaff={uniqueUsers.filter(u => ['root', 'deputy_admin', 'deputy_assistant', 'sysop'].includes(u.role)).length}
+            customMessages={customBannerMessage ? [{
+              id: 'custom-1',
+              text: customBannerMessage,
+              type: 'promo' as const,
+              icon: 'zap'
+            }] : []}
           />
 
           {/* Messages Area */}

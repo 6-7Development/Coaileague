@@ -22,6 +22,7 @@ export type SlashCommand =
   | 'restart'    // Restart chat services (root/deputy_admin)
   | 'staffstatus'// Check staff member status
   | 'motd'       // Set Message of the Day (staff only)
+  | 'banner'     // Update announcement banner (staff only)
   | 'help';      // Show available commands
 
 export interface ParsedCommand {
@@ -196,6 +197,14 @@ export const COMMAND_REGISTRY: Record<SlashCommand, CommandDefinition> = {
     command: 'motd',
     description: 'Set the Message of the Day shown to all users',
     usage: '/motd <message>',
+    requiresStaff: true,
+    minArgs: 1,
+    maxArgs: 100,
+  },
+  banner: {
+    command: 'banner',
+    description: 'Update the announcement banner message visible to all users',
+    usage: '/banner <message>',
     requiresStaff: true,
     minArgs: 1,
     maxArgs: 100,
