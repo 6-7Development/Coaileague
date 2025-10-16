@@ -110,7 +110,7 @@ export function WorkforceOSLogo({
             
             {/* Drop shadow for depth */}
             <filter id={`shadow-${uniqueId}`}>
-              <feDropShadow dx="0" dy="4" stdDeviation="8" flood-opacity="0.5"/>
+              <feDropShadow dx="0" dy="4" stdDeviation="8" floodOpacity="0.5"/>
             </filter>
           </defs>
 

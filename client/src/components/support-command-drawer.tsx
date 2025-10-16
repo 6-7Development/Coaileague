@@ -11,11 +11,10 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import {
-  MessageSquare,
+  Menu,
   UserPlus,
   HelpCircle,
   Users,
-  PhoneOff,
   Shield,
   Crown,
   User,
@@ -87,43 +86,44 @@ export function SupportCommandDrawer({
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
         <Button 
-          variant="outline" 
+          variant="ghost" 
           size="icon"
-          className="md:hidden"
+          className="flex-shrink-0 text-white hover:bg-white/20"
           data-testid="button-support-drawer"
+          title="Quick Commands & Users"
         >
-          <MessageSquare className="w-4 h-4" />
+          <Menu className="w-5 h-5" />
         </Button>
       </SheetTrigger>
-      <SheetContent side="left" className="w-[280px] sm:w-[320px]">
-        <SheetHeader>
-          <SheetTitle>Support Tools</SheetTitle>
-          <SheetDescription>
-            Quick commands and user list
+      <SheetContent side="left" className="w-[85vw] max-w-[320px] p-4">
+        <SheetHeader className="pb-4">
+          <SheetTitle className="text-lg">Support Menu</SheetTitle>
+          <SheetDescription className="text-xs">
+            Commands · Users · Tools
           </SheetDescription>
         </SheetHeader>
 
-        <div className="mt-6 space-y-4">
+        <div className="space-y-4 overflow-y-auto max-h-[calc(100vh-120px)]">
           {/* Quick Command Macros */}
           <div>
-            <h3 className="text-sm font-semibold mb-3 text-slate-300">
+            <h3 className="text-xs font-bold mb-2 text-slate-400 uppercase tracking-wider">
               Quick Commands
             </h3>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {macros.map((macro) => {
                 const Icon = macro.icon;
                 return (
                   <Button
                     key={macro.id}
-                    variant="outline"
-                    className="w-full justify-start gap-2 h-auto py-3"
+                    variant="ghost"
+                    className="w-full justify-start gap-2.5 h-auto py-2.5 px-3 hover-elevate"
                     onClick={() => handleMacroClick(macro.command)}
                     data-testid={`button-macro-${macro.id}`}
                   >
-                    <Icon className="w-4 h-4 flex-shrink-0" />
-                    <div className="flex-1 text-left">
-                      <div className="text-sm font-medium">{macro.label}</div>
-                      <div className="text-xs text-muted-foreground">
+                    <Icon className="w-4 h-4 flex-shrink-0 text-blue-400" />
+                    <div className="flex-1 text-left min-w-0">
+                      <div className="text-sm font-medium truncate">{macro.label}</div>
+                      <div className="text-xs text-muted-foreground truncate">
                         {macro.description}
                       </div>
                     </div>
@@ -137,35 +137,33 @@ export function SupportCommandDrawer({
 
           {/* Active Users List */}
           <div>
-            <h3 className="text-sm font-semibold mb-3 text-slate-300 flex items-center gap-2">
-              <Users className="w-4 h-4" />
+            <h3 className="text-xs font-bold mb-2 text-slate-400 uppercase tracking-wider flex items-center gap-2">
+              <Users className="w-3.5 h-3.5" />
               Active Users ({users.length})
             </h3>
-            <ScrollArea className="h-[300px]">
-              <div className="space-y-1">
-                {users.length === 0 ? (
-                  <p className="text-xs text-muted-foreground py-4 text-center">
-                    No users online
-                  </p>
-                ) : (
-                  users.map((user) => (
-                    <div
-                      key={user.id}
-                      className="flex items-center gap-2 px-3 py-2 rounded-md hover-elevate"
-                      data-testid={`user-item-${user.id}`}
-                    >
-                      {getRoleIcon(user.role, user.platformRole)}
-                      <span className="text-sm flex-1 truncate">{user.name}</span>
-                      {user.role === 'staff' && (
-                        <span className="text-xs text-blue-500 bg-blue-500/10 px-2 py-0.5 rounded-full">
-                          Staff
-                        </span>
-                      )}
-                    </div>
-                  ))
-                )}
-              </div>
-            </ScrollArea>
+            <div className="space-y-1 max-h-[200px] overflow-y-auto">
+              {users.length === 0 ? (
+                <p className="text-xs text-muted-foreground py-3 text-center">
+                  No users online
+                </p>
+              ) : (
+                users.map((user) => (
+                  <div
+                    key={user.id}
+                    className="flex items-center gap-2 px-2.5 py-2 rounded-md hover-elevate"
+                    data-testid={`user-item-${user.id}`}
+                  >
+                    {getRoleIcon(user.role, user.platformRole)}
+                    <span className="text-sm flex-1 truncate">{user.name}</span>
+                    {user.role === 'staff' && (
+                      <span className="text-[10px] text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded-full">
+                        Staff
+                      </span>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </div>
       </SheetContent>
