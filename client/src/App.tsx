@@ -24,6 +24,7 @@ import Pricing from "@/pages/pricing";
 import Contact from "@/pages/contact";
 import Support from "@/pages/support";
 import Dashboard from "@/pages/dashboard";
+import { Redirect } from "wouter";
 import Schedule from "@/pages/schedule";
 import TimeTracking from "@/pages/time-tracking";
 import Employees from "@/pages/employees";
@@ -61,7 +62,7 @@ import MyPaychecks from "@/pages/my-paychecks";
 import { FloatingChatButton } from "@/components/floating-chat-button";
 
 function AppContent() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
   
   // Custom sidebar width for better workspace layout
   const style = {
@@ -95,6 +96,9 @@ function AppContent() {
     );
   }
 
+  // Check if user is Root Admin (platform-level access)
+  const isRootAdmin = (user as any)?.platformRole === 'root' || (user as any)?.platformRole === 'sysop';
+
   return (
     <ProtectedRoute>
       <SidebarProvider style={style as React.CSSProperties}>
@@ -106,7 +110,9 @@ function AppContent() {
             <AppSidebar />
             <main className="flex-1 overflow-hidden bg-transparent">
               <Switch>
-                <Route path="/" component={Dashboard} />
+                <Route path="/">
+                  {isRootAdmin ? <RootAdminDashboard /> : <Dashboard />}
+                </Route>
                 <Route path="/dashboard" component={Dashboard} />
                 <Route path="/schedule" component={Schedule} />
                 <Route path="/time-tracking" component={TimeTracking} />
