@@ -38,7 +38,12 @@ export default function Contact() {
   const { data: currentUser, isLoading: isLoadingAuth } = useQuery<{ user: { id: string; email: string } }>({
     queryKey: ["/api/auth/me"],
     retry: false,
-    staleTime: 30000, // Cache for 30 seconds
+    retryOnMount: false,
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
+    refetchInterval: false,
   });
   
   const isAuthenticated = !!currentUser?.user;

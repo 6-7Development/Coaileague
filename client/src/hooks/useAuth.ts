@@ -10,7 +10,12 @@ export function useAuth() {
   const { data, isLoading } = useQuery<AuthResponse>({
     queryKey: ["/api/auth/me"],
     retry: false,
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    retryOnMount: false,
+    staleTime: Infinity, // Never auto-refetch
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
+    refetchInterval: false,
   });
 
   return {

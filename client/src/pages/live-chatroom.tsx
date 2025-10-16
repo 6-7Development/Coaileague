@@ -45,9 +45,12 @@ export default function LiveChatroomPage() {
   const { data: currentUser, isLoading: isLoadingUser } = useQuery<{ user: { id: string; email: string; platformRole?: string } }>({
     queryKey: ["/api/auth/me"],
     retry: false,
-    staleTime: 60000, // Cache for 60 seconds to prevent spam
-    refetchOnWindowFocus: false, // Don't refetch on window focus
-    refetchOnMount: false, // Don't refetch on mount if data exists
+    retryOnMount: false,
+    staleTime: Infinity, // Never refetch automatically
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
+    refetchInterval: false,
   });
   
   const userId = currentUser?.user?.id;
