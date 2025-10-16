@@ -225,8 +225,65 @@ export function setupWebSocket(server: Server) {
               });
             }
 
-            // AI BOT Q&A: DISABLED FOR NOW (just greeting on join)
-            // User requested to only show greeting, no question answering yet
+            // AI BOT Q&A: ENABLED with cost tracking (subscriber pays model)
+            const MAIN_ROOM_ID = 'main-chatroom-workforceos';
+            if (ws.conversationId === MAIN_ROOM_ID && shouldBotRespond(payload.message)) {
+              try {
+                // Determine if user is subscriber or free guest
+                const platformRole = await storage.getUserPlatformRole(ws.userId);
+                const isSubscriber = platformRole && ['root', 'platform_admin', 'deputy_admin', 'deputy_assistant', 'sysop'].includes(platformRole);
+                
+                // Get conversation history (last 5 messages for context)
+                const recentMessages = await storage.getChatMessagesByConversation(ws.conversationId);
+                const conversationHistory = recentMessages
+                  .slice(-5)
+                  .filter(m => m.senderType !== 'system')
+                  .map(m => ({
+                    role: m.senderType === 'bot' ? 'assistant' as const : 'user' as const,
+                    content: m.message
+                  }));
+
+                // Get AI response with cost tracking
+                const aiResponse = await getAiResponse(
+                  ws.userId,
+                  ws.workspaceId || 'platform-external',
+                  ws.conversationId,
+                  payload.message,
+                  conversationHistory,
+                  isSubscriber
+                );
+
+                // Save AI response to database
+                const aiMessage = await storage.createChatMessage({
+                  conversationId: ws.conversationId,
+                  senderId: 'ai-bot',
+                  senderName: 'HelpOS™',
+                  senderType: 'bot',
+                  message: aiResponse.message,
+                  messageType: 'text',
+                });
+
+                // Log cost for debugging (subscriber pays)
+                if (aiResponse.tokenUsage) {
+                  console.log(`AI Response Cost: $${aiResponse.tokenUsage.totalCost.toFixed(6)} (${aiResponse.tokenUsage.totalTokens} tokens)`);
+                }
+
+                // Broadcast AI response to all clients
+                if (clients) {
+                  const aiPayload = JSON.stringify({
+                    type: 'new_message',
+                    message: aiMessage,
+                  });
+                  clients.forEach((client) => {
+                    if (client.readyState === WebSocket.OPEN) {
+                      client.send(aiPayload);
+                    }
+                  });
+                }
+              } catch (aiError) {
+                console.error('AI Bot Q&A error:', aiError);
+              }
+            }
             break;
           }
 
