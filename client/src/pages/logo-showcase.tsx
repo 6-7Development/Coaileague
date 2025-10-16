@@ -20,8 +20,7 @@ export default function LogoShowcase() {
             <CardContent className="p-12 flex flex-col items-center">
               <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-12 border border-emerald-500/20">
                 <WorkforceOSLogo 
-                  size="marketing" 
-                  vertical={true}
+                  size="hero" 
                   showText={true}
                 />
               </div>
@@ -45,7 +44,6 @@ export default function LogoShowcase() {
               <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-8 border border-emerald-500/20 flex justify-center">
                 <WorkforceOSLogo 
                   size="xl" 
-                  vertical={false}
                   showText={true}
                 />
               </div>
@@ -63,28 +61,28 @@ export default function LogoShowcase() {
             
             <Card className="bg-slate-800/50 border-slate-700">
               <CardContent className="p-8 flex flex-col items-center gap-4">
-                <WorkforceOSLogo size="sm" vertical={true} />
+                <WorkforceOSLogo size="sm" />
                 <span className="text-xs text-slate-400">Small</span>
               </CardContent>
             </Card>
 
             <Card className="bg-slate-800/50 border-slate-700">
               <CardContent className="p-8 flex flex-col items-center gap-4">
-                <WorkforceOSLogo size="md" vertical={true} />
+                <WorkforceOSLogo size="md" />
                 <span className="text-xs text-slate-400">Medium</span>
               </CardContent>
             </Card>
 
             <Card className="bg-slate-800/50 border-slate-700">
               <CardContent className="p-8 flex flex-col items-center gap-4">
-                <WorkforceOSLogo size="lg" vertical={true} />
+                <WorkforceOSLogo size="lg" />
                 <span className="text-xs text-slate-400">Large</span>
               </CardContent>
             </Card>
 
             <Card className="bg-slate-800/50 border-slate-700">
               <CardContent className="p-8 flex flex-col items-center gap-4">
-                <WorkforceOSLogo size="xl" vertical={true} />
+                <WorkforceOSLogo size="xl" />
                 <span className="text-xs text-slate-400">Extra Large</span>
               </CardContent>
             </Card>
@@ -98,21 +96,21 @@ export default function LogoShowcase() {
             
             <Card className="bg-slate-950 border-slate-800">
               <CardContent className="p-8 flex flex-col items-center">
-                <WorkforceOSLogo size="lg" vertical={true} />
+                <WorkforceOSLogo size="lg" />
                 <span className="text-xs text-slate-500 mt-4">Dark Background</span>
               </CardContent>
             </Card>
 
             <Card className="bg-white border-slate-200">
               <CardContent className="p-8 flex flex-col items-center">
-                <WorkforceOSLogo size="lg" vertical={true} />
+                <WorkforceOSLogo size="lg" />
                 <span className="text-xs text-slate-500 mt-4">Light Background</span>
               </CardContent>
             </Card>
 
             <Card className="bg-gradient-to-br from-emerald-950 to-emerald-900 border-emerald-800">
               <CardContent className="p-8 flex flex-col items-center">
-                <WorkforceOSLogo size="lg" vertical={true} />
+                <WorkforceOSLogo size="lg" />
                 <span className="text-xs text-emerald-300 mt-4">Emerald Background</span>
               </CardContent>
             </Card>

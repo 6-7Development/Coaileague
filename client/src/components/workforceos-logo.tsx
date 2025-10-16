@@ -1,16 +1,22 @@
 import { cn } from "@/lib/utils";
 
 interface WorkforceOSLogoProps {
-  size?: "sm" | "md" | "lg" | "xl" | "marketing";
+  size?: "sm" | "md" | "lg" | "xl" | "hero";
   showText?: boolean;
-  vertical?: boolean; // Stack logo on top, text below (for marketing)
   className?: string;
 }
 
+/**
+ * Fortune 500-Grade WorkforceOS Logo
+ * Concept: Interlocking hexagons representing unified workforce management
+ * - Central hexagon = The organization/platform
+ * - Surrounding hexagons = Different workforce functions (scheduling, payroll, tracking, HR)
+ * - Geometric precision = Professional enterprise software
+ * - Emerald green = Growth, efficiency, automation
+ */
 export function WorkforceOSLogo({ 
   size = "md", 
   showText = true,
-  vertical = false,
   className 
 }: WorkforceOSLogoProps) {
   // Generate unique ID for this logo instance to prevent SVG ID conflicts
@@ -18,46 +24,47 @@ export function WorkforceOSLogo({
   
   const sizes = {
     sm: {
-      container: "w-8 h-8",
-      text: "text-lg"
+      container: "w-10 h-10",
+      text: "text-sm",
+      tagline: "text-[8px]"
     },
     md: {
-      container: "w-12 h-12",
-      text: "text-2xl"
+      container: "w-16 h-16",
+      text: "text-lg",
+      tagline: "text-[10px]"
     },
     lg: {
-      container: "w-16 h-16",
-      text: "text-3xl"
+      container: "w-24 h-24",
+      text: "text-2xl",
+      tagline: "text-xs"
     },
     xl: {
-      container: "w-24 h-24",
-      text: "text-4xl"
-    },
-    marketing: {
       container: "w-32 h-32",
-      text: "text-5xl"
+      text: "text-3xl",
+      tagline: "text-sm"
+    },
+    hero: {
+      container: "w-48 h-48",
+      text: "text-5xl",
+      tagline: "text-base"
     }
   };
 
   return (
-    <div className={cn(
-      "flex gap-3",
-      vertical ? "flex-col items-center" : "flex-row items-center",
-      className
-    )}>
-      {/* Iconic WorkforceOS Logo - Clock with Person (Time + People) */}
+    <div className={cn("flex flex-col items-center gap-2", className)}>
+      {/* Fortune 500-Grade Logo: Interlocking Hexagons */}
       <div 
         className={cn(
-          "relative flex items-center justify-center flex-shrink-0",
+          "relative flex items-center justify-center",
           sizes[size].container
         )}
         data-testid="logo-icon"
       >
         <svg
-          viewBox="0 0 100 100"
+          viewBox="0 0 200 200"
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
-          className="w-full h-full"
+          className="w-full h-full drop-shadow-2xl"
         >
           <defs>
             {/* Emerald gradient - brand color */}
@@ -193,17 +200,16 @@ export function WorkforceOSLogo({
       {showText && (
         <div 
           className={cn(
-            "font-black tracking-tight",
+            "font-black tracking-tight text-center",
             "bg-gradient-to-br from-emerald-500 to-emerald-400",
             "bg-clip-text text-transparent",
-            vertical ? "text-center" : "",
             sizes[size].text
           )}
           data-testid="logo-text"
         >
           WorkforceOS
-          {vertical && size === "marketing" && (
-            <div className="text-xs font-normal text-slate-400 mt-1 tracking-wide">
+          {size === "hero" && (
+            <div className={cn("font-normal text-slate-400 mt-1 tracking-wide", sizes[size].tagline)}>
               Elite Workforce Management
             </div>
           )}
