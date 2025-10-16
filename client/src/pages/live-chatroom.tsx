@@ -579,7 +579,7 @@ export default function LiveChatroomPage() {
                   const isSupport = message.senderType === 'support';
                   const isSystemMsg = message.isSystemMessage || message.senderType === 'system';
                   
-                  // System announcements (join/leave) centered
+                  // System announcements (join/leave) centered - Orange for server messages
                   if (isSystemMsg) {
                     return (
                       <div
@@ -587,8 +587,8 @@ export default function LiveChatroomPage() {
                         className="flex justify-center animate-in fade-in duration-300"
                         data-testid={`message-${message.id || index}`}
                       >
-                        <div className="bg-slate-800/40 border border-slate-600/30 rounded-full px-4 py-1.5 text-xs text-slate-400">
-                          <Bot className="w-3 h-3 inline mr-1.5 text-slate-500" />
+                        <div className="bg-orange-900/30 border border-orange-600/40 rounded-full px-4 py-1.5 text-xs text-orange-300">
+                          <Bot className="w-3 h-3 inline mr-1.5 text-orange-400" />
                           {message.message}
                         </div>
                       </div>
