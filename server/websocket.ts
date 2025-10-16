@@ -12,6 +12,8 @@ interface WebSocketClient extends WebSocket {
   userName?: string;
   workspaceId?: string;
   conversationId?: string;
+  userStatus?: 'online' | 'away' | 'busy';
+  userType?: 'staff' | 'subscriber' | 'org_user' | 'guest';
 }
 
 interface ChatMessagePayload {
@@ -34,7 +36,13 @@ interface TypingPayload {
   isTyping: boolean;
 }
 
-type WebSocketMessage = ChatMessagePayload | JoinConversationPayload | TypingPayload;
+interface StatusChangePayload {
+  type: 'status_change';
+  userId: string;
+  status: 'online' | 'away' | 'busy';
+}
+
+type WebSocketMessage = ChatMessagePayload | JoinConversationPayload | TypingPayload | StatusChangePayload;
 
 // In-memory MOTD storage (staff can update)
 let currentMOTD = "Welcome to WorkforceOS HelpDesk Support Network - Your satisfaction is our priority - 24/7/365";
@@ -98,11 +106,25 @@ export function setupWebSocket(server: Server) {
               }
             }
 
+            // Determine user type and set initial status
+            const platformRole = await storage.getUserPlatformRole(payload.userId).catch(() => null);
+            const isStaff = platformRole && ['root', 'deputy_admin', 'deputy_assistant', 'sysop'].includes(platformRole);
+            
+            let userType: 'staff' | 'subscriber' | 'org_user' | 'guest' = 'guest';
+            if (isStaff) {
+              userType = 'staff';
+            } else if (conversation.workspaceId) {
+              // Users in a workspace are organization users
+              userType = 'org_user';
+            }
+
             // Associate this client with the conversation
             ws.userId = payload.userId;
             ws.userName = displayName;
             ws.workspaceId = conversation.workspaceId;
             ws.conversationId = payload.conversationId;
+            ws.userStatus = 'online'; // Default status
+            ws.userType = userType;
 
             if (!conversationClients.has(payload.conversationId)) {
               conversationClients.set(payload.conversationId, new Set());
@@ -130,8 +152,48 @@ export function setupWebSocket(server: Server) {
                   id: 'ai-bot',
                   name: 'HelpOS™',
                   role: 'bot',
-                  status: 'online'
+                  status: 'online',
+                  userType: 'staff'
                 });
+
+                // Add simulation/test users (for testing features)
+                if (payload.conversationId === MAIN_ROOM_ID) {
+                  onlineUsers.push({
+                    id: 'sim-staff-1',
+                    name: 'Alex Support',
+                    role: 'deputy_admin',
+                    status: 'online',
+                    userType: 'staff'
+                  });
+                  onlineUsers.push({
+                    id: 'sim-staff-2',
+                    name: 'Jordan Tech',
+                    role: 'sysop',
+                    status: 'busy',
+                    userType: 'staff'
+                  });
+                  onlineUsers.push({
+                    id: 'sim-subscriber-1',
+                    name: 'Taylor Business',
+                    role: 'guest',
+                    status: 'online',
+                    userType: 'subscriber'
+                  });
+                  onlineUsers.push({
+                    id: 'sim-org-user-1',
+                    name: 'Sam Employee',
+                    role: 'guest',
+                    status: 'away',
+                    userType: 'org_user'
+                  });
+                  onlineUsers.push({
+                    id: 'sim-guest-1',
+                    name: 'Casey Guest',
+                    role: 'guest',
+                    status: 'online',
+                    userType: 'guest'
+                  });
+                }
 
                 // Add real users
                 const clientArray = Array.from(clients);
@@ -143,8 +205,9 @@ export function setupWebSocket(server: Server) {
                     onlineUsers.push({
                       id: client.userId,
                       name: client.userName || 'User',
-                      role: isStaff ? 'support' : 'customer',
-                      status: 'online'
+                      role: userRole || 'guest',
+                      status: client.userStatus || 'online',
+                      userType: client.userType || 'guest'
                     });
                   }
                 }
@@ -919,6 +982,82 @@ export function setupWebSocket(server: Server) {
               clients.forEach((client) => {
                 if (client !== ws && client.readyState === WebSocket.OPEN) {
                   client.send(typingPayload);
+                }
+              });
+            }
+            break;
+          }
+
+          case 'status_change': {
+            if (!ws.conversationId || !ws.userId || !ws.userName) {
+              return;
+            }
+
+            // Update user's status
+            ws.userStatus = payload.status;
+
+            // Create system message for status change
+            const statusMessage: ChatMessage = {
+              id: Date.now(),
+              conversationId: ws.conversationId,
+              senderId: 'system',
+              message: `*** ${ws.userName} is now ${payload.status === 'online' ? 'Available' : payload.status === 'away' ? 'Away' : 'Busy'}`,
+              senderType: 'system',
+              createdAt: new Date(),
+              isRead: false,
+              workspaceId: ws.workspaceId || null,
+            };
+
+            // Save status change message
+            try {
+              await storage.createChatMessage({
+                conversationId: ws.conversationId,
+                senderId: 'system',
+                message: statusMessage.message,
+                senderType: 'system',
+                workspaceId: ws.workspaceId || null,
+              });
+            } catch (err) {
+              console.error('Failed to save status change message:', err);
+            }
+
+            // Broadcast status change to all clients in conversation
+            const clients = conversationClients.get(ws.conversationId);
+            if (clients) {
+              const statusPayload = JSON.stringify({
+                type: 'status_change',
+                userId: ws.userId,
+                status: payload.status,
+                userName: ws.userName,
+                message: statusMessage,
+              });
+
+              clients.forEach((client) => {
+                if (client.readyState === WebSocket.OPEN) {
+                  client.send(statusPayload);
+                }
+              });
+
+              // Update user list
+              const users = Array.from(clients)
+                .filter(c => c.userId && c.userName)
+                .map(c => ({
+                  id: c.userId!,
+                  name: c.userName!,
+                  role: c.workspaceId || 'guest',
+                  status: c.userStatus || 'online',
+                  userType: c.userType || 'guest',
+                }));
+
+              const userListPayload = JSON.stringify({
+                type: 'user_list_update',
+                users: users,
+                count: users.length,
+              });
+
+              clients.forEach((client) => {
+                if (client.readyState === WebSocket.OPEN) {
+                  client.send(userListPayload);
                 }
               });
             }

@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
+import { SidebarTrigger } from "@/components/ui/sidebar";
+import { ThemeToggle } from "@/components/theme-toggle";
 import {
   Activity, Users, Building2, DollarSign, Server, Database, Cpu, HardDrive,
   AlertTriangle, CheckCircle, TrendingUp, Shield, RefreshCw, Settings,
@@ -115,15 +117,28 @@ export default function RootAdminDashboard() {
   };
 
   return (
-    <div className="p-6 max-w-[1800px] mx-auto space-y-6">
-      {/* Command Center Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shadow-lg">
-            <Shield className="h-6 w-6 text-white" />
+    <div className="flex flex-col h-screen">
+      {/* Header with Sidebar Toggle */}
+      <header className="flex items-center justify-between p-4 border-b bg-card">
+        <div className="flex items-center gap-2">
+          <SidebarTrigger data-testid="button-sidebar-toggle" />
+          <div className="flex items-center gap-2">
+            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center">
+              <Shield className="h-4 w-4 text-white" />
+            </div>
+            <h1 className="text-xl font-bold">Platform Command Center</h1>
           </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <div className="flex-1 overflow-auto p-6 max-w-[1800px] mx-auto w-full space-y-6">
+        {/* Stats Header */}
+        <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold">Platform Command Center</h1>
             <p className="text-sm text-muted-foreground">
               Real-time monitoring · System administration · Platform control
             </p>
@@ -147,7 +162,6 @@ export default function RootAdminDashboard() {
             <RefreshCw className="h-4 w-4" />
           </Button>
         </div>
-      </div>
 
       {/* Platform Business Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -659,6 +673,7 @@ export default function RootAdminDashboard() {
           </CardContent>
         </Card>
       </div>
+    </div>
     </div>
   );
 }
