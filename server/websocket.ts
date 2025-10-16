@@ -59,78 +59,23 @@ export function setupWebSocket(server: Server) {
               return;
             }
 
-            // HELPDESK ACCESS CONTROL: Check if this is a HelpDesk room
-            try {
-              const supportRoom = await storage.getSupportRoomByConversationId(payload.conversationId);
-              
-              if (supportRoom) {
-                // This is a HelpDesk room - enforce ticket-based access control
-                
-                // SECURITY: Check if user is platform staff FIRST (staff bypass status restrictions)
-                const platformRole = await storage.getUserPlatformRole(payload.userId);
-                const isStaff = platformRole && ['platform_admin', 'deputy_admin', 'deputy_assistant', 'sysop'].includes(platformRole);
-
-                if (isStaff) {
-                  // Staff always allowed, even when room is closed (for monitoring/administration)
-                  console.log(`User ${payload.userId} granted HelpDesk access (staff bypass - room status: ${supportRoom.status})`);
-                } else {
-                  // Non-staff clients: enforce room status and ticket access
-                  
-                  // Check room status - clients can only join when room is open
-                  if (supportRoom.status !== 'open') {
-                    ws.send(JSON.stringify({
-                      type: 'error',
-                      message: `HelpDesk is currently ${supportRoom.status}`,
-                      statusMessage: supportRoom.statusMessage || undefined,
-                      roomStatus: supportRoom.status,
-                    }));
-                    return;
-                  }
-
-                  // Check ticket-based access
-                  const hasAccess = await storage.checkTicketAccess(payload.userId, supportRoom.id);
-                  
-                  if (!hasAccess) {
-                    ws.send(JSON.stringify({
-                      type: 'error',
-                      message: 'Access denied. Please verify your support ticket first.',
-                      requiresTicket: true,
-                    }));
-                    return;
-                  }
-                  
-                  console.log(`User ${payload.userId} granted HelpDesk access (ticket-based)`);
-                }
-              }
-            } catch (helpdeskError) {
-              // ERROR HANDLING: HelpDesk metadata lookup failed (database issue, etc.)
-              console.error('HelpDesk access control error:', helpdeskError);
-              
-              // Allow staff to proceed in degraded mode, block others
+            // HELPDESK ACCESS CONTROL: For the main HelpDesk room (public IRC-style chatroom)
+            const MAIN_ROOM_ID = 'main-chatroom-workforceos';
+            if (payload.conversationId === MAIN_ROOM_ID) {
+              // This is the main HelpDesk public chatroom - all authenticated users allowed
               try {
                 const platformRole = await storage.getUserPlatformRole(payload.userId);
-                const isStaff = platformRole && ['platform_admin', 'deputy_admin', 'deputy_assistant', 'sysop'].includes(platformRole);
+                const isStaff = platformRole && ['root', 'platform_admin', 'deputy_admin', 'deputy_assistant', 'sysop'].includes(platformRole);
                 
                 if (isStaff) {
-                  console.warn(`Staff user ${payload.userId} allowed despite HelpDesk metadata failure (degraded mode)`);
+                  console.log(`Staff user ${payload.userId} joined HelpDesk (platform staff - role: ${platformRole})`);
                 } else {
-                  // Non-staff users cannot be verified - reject for safety
-                  ws.send(JSON.stringify({
-                    type: 'error',
-                    message: 'Unable to verify HelpDesk access. Please try again later.',
-                    temporaryError: true,
-                  }));
-                  return;
+                  console.log(`User ${payload.userId} joined HelpDesk (guest/customer)`);
                 }
-              } catch (roleError) {
-                // Cannot determine role - fail closed for security
-                console.error('Unable to determine user role during HelpDesk error:', roleError);
-                ws.send(JSON.stringify({
-                  type: 'error',
-                  message: 'Access verification unavailable. Please try again later.',
-                  temporaryError: true,
-                }));
-                return;
+              } catch (staffCheckError) {
+                // Error checking staff status - allow access anyway (degraded mode)
+                console.error('Failed to verify staff status:', staffCheckError);
+                console.log(`User ${payload.userId} joined HelpDesk (degraded mode)`);
               }
             }
 
