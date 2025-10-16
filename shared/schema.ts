@@ -136,6 +136,18 @@ export const workspaces = pgTable("workspaces", {
   lockedAt: timestamp("locked_at"),
   lockedBy: varchar("locked_by"),
   
+  // AI Feature Trials & Activation (Subscriber Pays All Model)
+  // ScheduleOS™ AI Auto-Scheduling
+  scheduleosTrialStartedAt: timestamp("scheduleos_trial_started_at"), // 7-day free trial
+  scheduleosActivatedAt: timestamp("scheduleos_activated_at"), // Payment confirmed, feature unlocked
+  scheduleosActivatedBy: varchar("scheduleos_activated_by"), // User ID who activated (Owner/Manager only)
+  scheduleosPaymentMethod: varchar("scheduleos_payment_method"), // 'stripe_subscription' | 'stripe_card'
+  
+  // Future AI Features (following same pattern)
+  hireos_trial_started_at: timestamp("hireos_trial_started_at"),
+  hireos_activated_at: timestamp("hireos_activated_at"),
+  hireos_activated_by: varchar("hireos_activated_by"),
+  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

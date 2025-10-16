@@ -1169,7 +1169,139 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============================================================================
-  // SCHEDULEOS™ AI - Intelligent Auto-Scheduling (Enterprise+ Feature)
+  // SCHEDULEOS™ AI - Trial & Activation (Subscriber Pays All Model)
+  // ============================================================================
+  
+  // Start 7-day free trial (any user can start)
+  app.post('/api/scheduleos/start-trial', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const workspace = await storage.getWorkspaceByOwnerId(userId);
+      
+      if (!workspace) {
+        return res.status(404).json({ message: "Workspace not found" });
+      }
+
+      // Check if trial already started
+      if (workspace.scheduleosTrialStartedAt) {
+        const trialStart = new Date(workspace.scheduleosTrialStartedAt);
+        const trialEnd = new Date(trialStart.getTime() + 7 * 24 * 60 * 60 * 1000);
+        const now = new Date();
+        const daysLeft = Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        
+        return res.json({
+          alreadyStarted: true,
+          trialStartedAt: workspace.scheduleosTrialStartedAt,
+          trialEndsAt: trialEnd,
+          daysLeft: Math.max(0, daysLeft),
+          isActive: workspace.scheduleosActivatedAt ? true : (daysLeft > 0),
+        });
+      }
+
+      // Start trial
+      await storage.updateWorkspace(workspace.id, {
+        scheduleosTrialStartedAt: new Date(),
+      });
+
+      res.json({
+        success: true,
+        message: "ScheduleOS™ 7-day free trial activated!",
+        trialStartedAt: new Date(),
+        trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        daysLeft: 7,
+      });
+    } catch (error: any) {
+      console.error("Error starting ScheduleOS™ trial:", error);
+      res.status(500).json({ message: "Failed to start trial" });
+    }
+  });
+
+  // Activate ScheduleOS™ with payment (Owner/Manager only)
+  app.post('/api/scheduleos/activate', isAuthenticated, requireManager, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const workspace = await storage.getWorkspaceByOwnerId(userId);
+      
+      if (!workspace) {
+        return res.status(404).json({ message: "Workspace not found" });
+      }
+
+      const { paymentMethod } = req.body; // 'stripe_subscription' | 'stripe_card'
+
+      if (!paymentMethod) {
+        return res.status(400).json({ message: "Payment method required" });
+      }
+
+      // Check if already activated
+      if (workspace.scheduleosActivatedAt) {
+        return res.json({
+          alreadyActivated: true,
+          activatedAt: workspace.scheduleosActivatedAt,
+          activatedBy: workspace.scheduleosActivatedBy,
+        });
+      }
+
+      // TODO: Verify Stripe payment here when test keys are provided
+      // For now, activate immediately (will be payment-gated in production)
+
+      await storage.updateWorkspace(workspace.id, {
+        scheduleosActivatedAt: new Date(),
+        scheduleosActivatedBy: userId,
+        scheduleosPaymentMethod: paymentMethod,
+      });
+
+      res.json({
+        success: true,
+        message: "ScheduleOS™ activated successfully!",
+        activatedAt: new Date(),
+        activatedBy: userId,
+      });
+    } catch (error: any) {
+      console.error("Error activating ScheduleOS™:", error);
+      res.status(500).json({ message: "Failed to activate ScheduleOS™" });
+    }
+  });
+
+  // Check ScheduleOS™ status (trial/activated)
+  app.get('/api/scheduleos/status', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const workspace = await storage.getWorkspaceByOwnerId(userId);
+      
+      if (!workspace) {
+        return res.status(404).json({ message: "Workspace not found" });
+      }
+
+      const response: any = {
+        isActivated: !!workspace.scheduleosActivatedAt,
+        activatedAt: workspace.scheduleosActivatedAt,
+        activatedBy: workspace.scheduleosActivatedBy,
+        paymentMethod: workspace.scheduleosPaymentMethod,
+        trialStartedAt: workspace.scheduleosTrialStartedAt,
+      };
+
+      // Calculate trial status
+      if (workspace.scheduleosTrialStartedAt && !workspace.scheduleosActivatedAt) {
+        const trialStart = new Date(workspace.scheduleosTrialStartedAt);
+        const trialEnd = new Date(trialStart.getTime() + 7 * 24 * 60 * 60 * 1000);
+        const now = new Date();
+        const daysLeft = Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        
+        response.isTrialActive = daysLeft > 0;
+        response.trialEndsAt = trialEnd;
+        response.daysLeft = Math.max(0, daysLeft);
+        response.trialExpired = daysLeft <= 0;
+      }
+
+      res.json(response);
+    } catch (error: any) {
+      console.error("Error checking ScheduleOS™ status:", error);
+      res.status(500).json({ message: "Failed to check status" });
+    }
+  });
+
+  // ============================================================================
+  // SCHEDULEOS™ AI - Intelligent Auto-Scheduling (Trial or Activated Required)
   // ============================================================================
   
   app.post('/api/scheduleos/generate', isAuthenticated, async (req: any, res) => {
@@ -1181,12 +1313,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Workspace not found" });
       }
 
-      // Feature flag check - ScheduleOS™ requires Enterprise+ tier
-      const tier = workspace.subscriptionTier?.toLowerCase() || 'free';
-      if (!['enterprise', 'elite'].includes(tier)) {
+      // Check if activated (paid) OR in trial period
+      const isActivated = !!workspace.scheduleosActivatedAt;
+      let isInTrial = false;
+      
+      if (workspace.scheduleosTrialStartedAt && !isActivated) {
+        const trialStart = new Date(workspace.scheduleosTrialStartedAt);
+        const trialEnd = new Date(trialStart.getTime() + 7 * 24 * 60 * 60 * 1000);
+        const now = new Date();
+        const daysLeft = Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        isInTrial = daysLeft > 0;
+      }
+
+      // Require activation or active trial
+      if (!isActivated && !isInTrial) {
         return res.status(403).json({
-          message: "ScheduleOS™ requires Enterprise or Elite tier",
-          upgrade: "Upgrade to Enterprise ($7,999/mo) or Elite ($19,999/mo) to unlock AI-powered scheduling",
+          message: "ScheduleOS™ requires payment activation or active trial",
+          trialExpired: workspace.scheduleosTrialStartedAt ? true : false,
+          requiresPayment: true,
           feature: "scheduleOS"
         });
       }

@@ -488,11 +488,14 @@ export default function Landing() {
       {/* Footer - Mobile Optimized */}
       <footer className="border-t border-[hsl(var(--cad-border))] bg-[hsl(var(--cad-background))]">
         <div className="container mx-auto px-4 sm:px-6 py-8">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2 text-sm text-[hsl(var(--cad-text-tertiary))] text-center sm:text-left">
+          <div className="flex flex-col items-center gap-4">
+            <div className="flex items-center gap-2 text-sm text-[hsl(var(--cad-text-tertiary))] text-center">
               <WorkforceOSLogo size="sm" showText={false} />
-              <span className="hidden sm:inline">© 2025 WorkforceOS. Elite-grade workforce automation.</span>
-              <span className="sm:hidden">© 2025 WorkforceOS</span>
+              <div className="flex flex-col items-center">
+                <span className="hidden sm:inline">© 2025 WorkforceOS. Elite-grade workforce automation.</span>
+                <span className="sm:hidden">© 2025 WorkforceOS</span>
+                <span className="text-xs mt-1">A subsidiary of <span className="text-[hsl(var(--cad-blue))]">Drill Consulting 360 LLC</span> - Automated Development System</span>
+              </div>
             </div>
             <div className="flex flex-wrap justify-center gap-4 sm:gap-6 text-xs text-[hsl(var(--cad-text-tertiary))]">
               <a href="/support" className="hover:text-[hsl(var(--cad-text-primary))]" data-testid="link-support">Support Center</a>
