@@ -38,6 +38,8 @@ import {
   aiUsageLogs,
   customForms,
   customFormSubmissions,
+  payrollRuns,
+  payrollEntries,
   type User,
   type UpsertUser,
   type Workspace,
@@ -105,6 +107,8 @@ import {
   type InsertCustomForm,
   type CustomFormSubmission,
   type InsertCustomFormSubmission,
+  type PayrollRun,
+  type PayrollEntry,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, isNotNull, isNull, or, like, sql } from "drizzle-orm";
@@ -325,6 +329,13 @@ export interface IStorage {
   getCustomFormSubmissionsByOrganization(organizationId: string): Promise<CustomFormSubmission[]>;
   getCustomFormSubmissionsByForm(formId: string): Promise<CustomFormSubmission[]>;
   updateCustomFormSubmission(id: string, data: Partial<InsertCustomFormSubmission>): Promise<CustomFormSubmission | undefined>;
+  
+  // PayrollOS™ operations (Automated Payroll Processing)
+  getPayrollRunsByWorkspace(workspaceId: string): Promise<PayrollRun[]>;
+  getPayrollRun(id: string, workspaceId: string): Promise<PayrollRun | undefined>;
+  updatePayrollRunStatus(id: string, status: string, processedBy: string): Promise<PayrollRun | undefined>;
+  getPayrollEntriesByRun(payrollRunId: string): Promise<PayrollEntry[]>;
+  getPayrollEntriesByEmployee(employeeId: string, workspaceId: string): Promise<PayrollEntry[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2209,6 +2220,65 @@ export class DatabaseStorage implements IStorage {
     billingMonth: string;
   }): Promise<void> {
     await db.insert(aiUsageLogs).values(data);
+  }
+
+  // ============================================================================
+  // PAYROLLOS™ OPERATIONS (Automated Payroll Processing)
+  // ============================================================================
+  
+  async getPayrollRunsByWorkspace(workspaceId: string): Promise<PayrollRun[]> {
+    return await db
+      .select()
+      .from(payrollRuns)
+      .where(eq(payrollRuns.workspaceId, workspaceId))
+      .orderBy(desc(payrollRuns.createdAt));
+  }
+  
+  async getPayrollRun(id: string, workspaceId: string): Promise<PayrollRun | undefined> {
+    const [run] = await db
+      .select()
+      .from(payrollRuns)
+      .where(
+        and(
+          eq(payrollRuns.id, id),
+          eq(payrollRuns.workspaceId, workspaceId)
+        )
+      );
+    return run;
+  }
+  
+  async updatePayrollRunStatus(id: string, status: string, processedBy: string): Promise<PayrollRun | undefined> {
+    const [updated] = await db
+      .update(payrollRuns)
+      .set({
+        status: status as any,
+        processedBy,
+        processedAt: new Date(),
+        updatedAt: new Date()
+      })
+      .where(eq(payrollRuns.id, id))
+      .returning();
+    return updated;
+  }
+  
+  async getPayrollEntriesByRun(payrollRunId: string): Promise<PayrollEntry[]> {
+    return await db
+      .select()
+      .from(payrollEntries)
+      .where(eq(payrollEntries.payrollRunId, payrollRunId));
+  }
+  
+  async getPayrollEntriesByEmployee(employeeId: string, workspaceId: string): Promise<PayrollEntry[]> {
+    return await db
+      .select()
+      .from(payrollEntries)
+      .where(
+        and(
+          eq(payrollEntries.employeeId, employeeId),
+          eq(payrollEntries.workspaceId, workspaceId)
+        )
+      )
+      .orderBy(desc(payrollEntries.createdAt));
   }
 }
 
