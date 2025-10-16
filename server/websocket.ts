@@ -9,6 +9,7 @@ import type { ChatMessage } from '@shared/schema';
 
 interface WebSocketClient extends WebSocket {
   userId?: string;
+  userName?: string;
   workspaceId?: string;
   conversationId?: string;
 }
@@ -96,6 +97,7 @@ export function setupWebSocket(server: Server) {
 
             // Associate this client with the conversation
             ws.userId = payload.userId;
+            ws.userName = displayName;
             ws.workspaceId = conversation.workspaceId;
             ws.conversationId = payload.conversationId;
 
@@ -113,6 +115,52 @@ export function setupWebSocket(server: Server) {
 
             // Mark messages as read
             await storage.markMessagesAsRead(payload.conversationId, payload.userId);
+
+            // Broadcast updated user list to all clients in this conversation
+            const broadcastUserList = async () => {
+              const clients = conversationClients.get(payload.conversationId);
+              if (clients) {
+                const onlineUsers = [];
+                
+                // Add HelpOS bot (always online)
+                onlineUsers.push({
+                  id: 'ai-bot',
+                  name: 'HelpOS™',
+                  role: 'bot',
+                  status: 'online'
+                });
+
+                // Add real users
+                const clientArray = Array.from(clients);
+                for (const client of clientArray) {
+                  if (client.userId && client.readyState === WebSocket.OPEN) {
+                    const userRole = await storage.getUserPlatformRole(client.userId);
+                    const isStaff = userRole && ['root', 'deputy_admin', 'deputy_assistant', 'sysop'].includes(userRole);
+                    
+                    onlineUsers.push({
+                      id: client.userId,
+                      name: client.userName || 'User',
+                      role: isStaff ? 'support' : 'customer',
+                      status: 'online'
+                    });
+                  }
+                }
+
+                const userListPayload = JSON.stringify({
+                  type: 'user_list_update',
+                  users: onlineUsers,
+                  count: onlineUsers.length
+                });
+
+                clients.forEach((client) => {
+                  if (client.readyState === WebSocket.OPEN) {
+                    client.send(userListPayload);
+                  }
+                });
+              }
+            };
+
+            await broadcastUserList();
 
             // HELPDESK ANNOUNCEMENTS: System + HelpOS™
             if (payload.conversationId === MAIN_ROOM_ID) {

@@ -201,7 +201,8 @@ export function useChatroomWebSocket(userId: string | undefined, userName: strin
         wsRef.current.close();
       }
     };
-  }, [userId, connect]); // Include connect to satisfy exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]); // Only userId - connect is stable enough via refs
 
   // Clear access error state (call after successful ticket verification)
   const clearAccessError = useCallback(() => {

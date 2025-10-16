@@ -17,7 +17,6 @@ import { useChatroomWebSocket } from "@/hooks/use-chatroom-websocket";
 import { useChatSounds } from "@/hooks/use-chat-sounds";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { WorkforceOSLogo } from "@/components/workforceos-logo";
-import { SupportCommandDrawer } from "@/components/support-command-drawer";
 import { SupportMobileMenu } from "@/components/support-mobile-menu";
 import { 
   MessageSquare, Send, Users, Circle, Shield, 
@@ -410,15 +409,8 @@ export default function LiveChatroomPage() {
               )}
             </Badge>
 
-            {/* Support Mobile Menu - Staff Queue & Commands (Mobile Only) */}
+            {/* Universal Support Menu - Staff Queue & Commands (Mobile Only) */}
             {isStaff && <SupportMobileMenu />}
-
-            {/* Support Command Drawer - Mobile Only */}
-            <SupportCommandDrawer 
-              onCommandSelect={handleCommandSelect}
-              users={[]}
-              isStaff={!!isStaff}
-            />
 
             {isStaff && (
               <Button
@@ -531,9 +523,9 @@ export default function LiveChatroomPage() {
               {/* Pinned Room Info Banner - Compact */}
               <Card className="sticky top-0 z-50 border-blue-500/30 bg-gradient-to-r from-blue-900/40 via-indigo-900/40 to-purple-900/40 backdrop-blur-md shadow-lg">
                 <CardContent className="p-2">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 overflow-hidden">
                     <MessageSquare className="w-3.5 h-3.5 text-blue-300 flex-shrink-0" />
-                    <h2 className="text-xs font-semibold text-white">HelpDesk</h2>
+                    <h2 className="text-xs font-semibold text-white flex-shrink-0">HelpDesk</h2>
                     <Badge 
                       variant={helpDeskRoom?.status === 'open' ? 'default' : 'secondary'}
                       className="gap-1 flex-shrink-0 bg-white/20 border-white/30 text-white text-[10px] px-1.5 py-0"
@@ -541,7 +533,7 @@ export default function LiveChatroomPage() {
                       <Circle className="w-1 h-1 fill-green-400 text-green-400 animate-pulse" />
                       {helpDeskRoom?.status === 'open' ? 'Open' : helpDeskRoom?.status === 'closed' ? 'Closed' : 'Maintenance'}
                     </Badge>
-                    <span className="text-[10px] text-blue-200 truncate flex-1 min-w-0">
+                    <span className="text-[9px] text-blue-200 truncate flex-1 min-w-0">
                       {helpDeskRoom?.statusMessage || "Live Support with HelpOS™ AI"}
                     </span>
                   </div>

@@ -51,9 +51,8 @@ export function formatUserDisplayName(user: UserInfo): string {
 }
 
 /**
- * Format platform role with special marker
- * Staff roles get 🔨 gavel marker (authority indicator)
- * Note: Client-side will render actual gavel icon image
+ * Format platform role
+ * Note: Client-side will render WorkforceOS logo icon for staff
  * 
  * Hierarchy:
  * 1. root → Root Admin (highest authority)
@@ -63,13 +62,13 @@ export function formatUserDisplayName(user: UserInfo): string {
  */
 function formatPlatformRole(role: string): string {
   const roleMap: Record<string, string> = {
-    'root': '🔨 RAdmin',             // Root Admin (you - highest authority)
-    'deputy_admin': '🔨 DAdmin',     // Deputy Admin (your deputy)
-    'deputy_assistant': '🔨 Assistant', // Assistant (deputy's assistant)
-    'sysop': '🔨 Sysop',            // System Operator (backbone support)
+    'root': 'RAdmin',             // Root Admin (you - highest authority)
+    'deputy_admin': 'DAdmin',     // Deputy Admin (your deputy)
+    'deputy_assistant': 'Assistant', // Assistant (deputy's assistant)
+    'sysop': 'Sysop',            // System Operator (backbone support)
   };
   
-  return roleMap[role] || '🔨 Staff';
+  return roleMap[role] || 'Staff';
 }
 
 /**
