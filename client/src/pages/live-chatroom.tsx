@@ -528,42 +528,22 @@ export default function LiveChatroomPage() {
           {/* Messages */}
           <ScrollArea className="flex-1 p-4 relative z-10">
             <div className="max-w-full md:max-w-5xl mx-auto space-y-4">
-              {/* Pinned Room Info Banner - Always Visible */}
+              {/* Pinned Room Info Banner - Compact */}
               <Card className="sticky top-0 z-50 border-blue-500/30 bg-gradient-to-r from-blue-900/40 via-indigo-900/40 to-purple-900/40 backdrop-blur-md shadow-lg">
-                <CardContent className="p-3 sm:p-4">
-                  <div className="flex items-start gap-3">
-                    <div className="p-2 bg-blue-500/20 rounded-lg flex-shrink-0">
-                      <MessageSquare className="w-5 h-5 text-blue-300" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h2 className="text-base sm:text-lg font-bold text-white">HelpDesk</h2>
-                        <Badge 
-                          variant={helpDeskRoom?.status === 'open' ? 'default' : 'secondary'}
-                          className="gap-1 flex-shrink-0 bg-white/20 border-white/30 text-white text-xs"
-                        >
-                          {helpDeskRoom?.status === 'open' ? (
-                            <>
-                              <Circle className="w-1.5 h-1.5 fill-green-400 text-green-400 animate-pulse" />
-                              Open
-                            </>
-                          ) : helpDeskRoom?.status === 'closed' ? (
-                            <>
-                              <Circle className="w-1.5 h-1.5 fill-red-400 text-red-400" />
-                              Closed
-                            </>
-                          ) : (
-                            <>
-                              <Circle className="w-1.5 h-1.5 fill-amber-400 text-amber-400 animate-pulse" />
-                              Maintenance
-                            </>
-                          )}
-                        </Badge>
-                      </div>
-                      <p className="text-xs sm:text-sm text-blue-100 leading-relaxed">
-                        {helpDeskRoom?.statusMessage || "Live Support · Ask questions, get help from our team, or chat with HelpOS™ AI assistant"}
-                      </p>
-                    </div>
+                <CardContent className="p-2">
+                  <div className="flex items-center gap-2">
+                    <MessageSquare className="w-3.5 h-3.5 text-blue-300 flex-shrink-0" />
+                    <h2 className="text-xs font-semibold text-white">HelpDesk</h2>
+                    <Badge 
+                      variant={helpDeskRoom?.status === 'open' ? 'default' : 'secondary'}
+                      className="gap-1 flex-shrink-0 bg-white/20 border-white/30 text-white text-[10px] px-1.5 py-0"
+                    >
+                      <Circle className="w-1 h-1 fill-green-400 text-green-400 animate-pulse" />
+                      {helpDeskRoom?.status === 'open' ? 'Open' : helpDeskRoom?.status === 'closed' ? 'Closed' : 'Maintenance'}
+                    </Badge>
+                    <span className="text-[10px] text-blue-200 truncate flex-1 min-w-0">
+                      {helpDeskRoom?.statusMessage || "Live Support with HelpOS™ AI"}
+                    </span>
                   </div>
                 </CardContent>
               </Card>
