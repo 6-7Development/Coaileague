@@ -19,7 +19,8 @@ import { WorkforceOSLogo } from "@/components/workforceos-logo";
 import { 
   MessageSquare, Send, Users, Circle, Shield, 
   Headphones, User, Bot, Sparkles, Wifi, WifiOff,
-  Lock, Settings, AlertCircle, CheckCircle, Menu, X
+  Lock, Settings, AlertCircle, CheckCircle, Menu, X,
+  ArrowLeft, MoreVertical
 } from "lucide-react";
 import type { ChatMessage } from "@shared/schema";
 
@@ -285,11 +286,22 @@ export default function LiveChatroomPage() {
   );
 
   return (
-    <div className="flex flex-col h-screen bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950">
+    <div className="flex flex-col h-screen bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800">
       {/* Professional Header with WorkforceOS Branding */}
-      <header className="border-b border-indigo-500/20 bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 px-4 py-4 flex-shrink-0 shadow-lg shadow-indigo-500/20">
+      <header className="border-b border-emerald-500/20 bg-gradient-to-r from-emerald-600 via-emerald-500 to-emerald-700 px-4 py-4 flex-shrink-0 shadow-lg shadow-emerald-500/20">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
+            {/* Mobile Back Button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => window.location.href = '/'}
+              className="md:hidden text-white hover:bg-white/20 flex-shrink-0"
+              data-testid="button-mobile-back"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+            
             {/* WorkforceOS Branding */}
             <div className="flex items-center gap-2 flex-shrink-0">
               <WorkforceOSLogo size="sm" showText={false} className="text-white" />
@@ -459,18 +471,18 @@ export default function LiveChatroomPage() {
         {/* Chat Area */}
         <div className="flex-1 flex flex-col min-w-0 relative">
           {/* Subtle animated mesh background */}
-          <div className="absolute inset-0 bg-gradient-to-br from-indigo-950/20 via-slate-900/40 to-purple-950/20 pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-br from-emerald-950/10 via-slate-900/60 to-slate-800/40 pointer-events-none" />
           
           {/* Messages */}
           <ScrollArea className="flex-1 p-4 relative z-10">
             <div className="max-w-4xl mx-auto space-y-4">
               {messages.length === 0 ? (
-                <Card className="border-dashed border-indigo-500/30 bg-slate-800/40 backdrop-blur-sm">
+                <Card className="border-dashed border-emerald-500/30 bg-slate-800/40 backdrop-blur-sm">
                   <CardContent className="p-8 text-center">
-                    <div className="p-4 bg-indigo-500/10 rounded-full w-fit mx-auto mb-4">
-                      <MessageSquare className="w-12 h-12 text-indigo-400" />
+                    <div className="p-4 bg-emerald-500/10 rounded-full w-fit mx-auto mb-4">
+                      <MessageSquare className="w-12 h-12 text-emerald-400" />
                     </div>
-                    <h3 className="font-semibold mb-2 text-indigo-100">Welcome to HelpDesk</h3>
+                    <h3 className="font-semibold mb-2 text-emerald-100">Welcome to HelpDesk</h3>
                     <p className="text-sm text-slate-400">
                       Your messages will appear here. Start a conversation with our support team or chat with HelpOS™, our AI assistant.
                     </p>
@@ -508,7 +520,7 @@ export default function LiveChatroomPage() {
                         {/* Message Header with Role Icon */}
                         <div className={`flex items-center gap-2 mb-1.5 ${isSupport || isBot ? '' : 'justify-end'}`}>
                           {(isSupport || isBot) && getRoleIcon(message.senderName || '', message.senderType)}
-                          <span className="text-xs font-semibold text-indigo-200">{message.senderName || 'User'}</span>
+                          <span className="text-xs font-semibold text-emerald-200">{message.senderName || 'User'}</span>
                           <span className="text-xs text-slate-500">
                             {formatTime(message.createdAt)}
                           </span>
@@ -518,9 +530,9 @@ export default function LiveChatroomPage() {
                         <div 
                           className={`rounded-xl p-3.5 backdrop-blur-sm transition-all duration-300 hover-elevate ${
                             isBot 
-                              ? 'bg-gradient-to-br from-purple-500/20 to-purple-600/10 border border-purple-400/30 text-indigo-50 shadow-lg shadow-purple-500/10' 
+                              ? 'bg-gradient-to-br from-emerald-500/20 to-emerald-600/10 border border-emerald-400/30 text-slate-50 shadow-lg shadow-emerald-500/10' 
                               : isSupport
-                              ? 'bg-gradient-to-br from-indigo-500/20 to-indigo-600/10 border border-indigo-400/30 text-indigo-50 shadow-lg shadow-indigo-500/10'
+                              ? 'bg-gradient-to-br from-emerald-500/15 to-emerald-600/10 border border-emerald-400/25 text-slate-50 shadow-lg shadow-emerald-500/5'
                               : 'bg-gradient-to-br from-slate-700/60 to-slate-800/40 border border-slate-600/30 text-slate-100 shadow-lg'
                           }`}
                         >
@@ -528,9 +540,9 @@ export default function LiveChatroomPage() {
                             {message.message}
                           </p>
                           {isBot && !isSystemMsg && (
-                            <div className="flex items-center gap-1.5 mt-2.5 pt-2.5 border-t border-purple-400/20">
-                              <Sparkles className="w-3.5 h-3.5 text-purple-300" />
-                              <span className="text-xs text-purple-200 font-medium">GPT-4 AI Assistant</span>
+                            <div className="flex items-center gap-1.5 mt-2.5 pt-2.5 border-t border-emerald-400/20">
+                              <Sparkles className="w-3.5 h-3.5 text-emerald-300" />
+                              <span className="text-xs text-emerald-200 font-medium">HelpOS™ AI Assistant</span>
                             </div>
                           )}
                         </div>
@@ -544,14 +556,14 @@ export default function LiveChatroomPage() {
           </ScrollArea>
 
           {/* Professional Message Input */}
-          <div className="border-t border-indigo-500/20 bg-slate-900/80 backdrop-blur-md p-4 flex-shrink-0 relative z-10">
+          <div className="border-t border-emerald-500/20 bg-slate-900/80 backdrop-blur-md p-4 flex-shrink-0 relative z-10">
             <div className="max-w-4xl mx-auto">
               <form onSubmit={handleSendMessage} className="flex gap-2">
                 <Input
                   value={messageText}
                   onChange={(e) => setMessageText(e.target.value)}
                   placeholder={isConnected ? "Type your message..." : "Connecting..."}
-                  className="flex-1 bg-slate-800/60 border-indigo-500/30 text-slate-100 placeholder:text-slate-500 focus:border-indigo-400 focus:ring-indigo-400/30"
+                  className="flex-1 bg-slate-800/60 border-emerald-500/30 text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 focus:ring-emerald-400/30"
                   data-testid="input-chat-message"
                   autoFocus
                   disabled={!isConnected}
@@ -560,7 +572,7 @@ export default function LiveChatroomPage() {
                   type="submit" 
                   disabled={!messageText.trim() || !isConnected}
                   data-testid="button-send-message"
-                  className="gap-2 flex-shrink-0 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white shadow-lg shadow-indigo-500/30"
+                  className="gap-2 flex-shrink-0 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white shadow-lg shadow-emerald-500/30"
                 >
                   <Send className="w-4 h-4" />
                   <span className="hidden sm:inline">Send</span>

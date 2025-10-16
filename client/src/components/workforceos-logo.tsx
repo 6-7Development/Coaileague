@@ -11,6 +11,9 @@ export function WorkforceOSLogo({
   showText = true,
   className 
 }: WorkforceOSLogoProps) {
+  // Generate unique ID for this logo instance to prevent SVG ID conflicts
+  const uniqueId = Math.random().toString(36).substr(2, 9);
+  
   const sizes = {
     sm: {
       container: "w-8 h-8",
@@ -32,7 +35,7 @@ export function WorkforceOSLogo({
 
   return (
     <div className={cn("flex items-center gap-3", className)}>
-      {/* Modern Workforce Logo - 3 People Circles Representing Teams */}
+      {/* Iconic WorkforceOS Logo - Clock with Person (Time + People) */}
       <div 
         className={cn(
           "relative flex items-center justify-center",
@@ -47,111 +50,132 @@ export function WorkforceOSLogo({
           className="w-full h-full"
         >
           <defs>
-            {/* Emerald gradient for workforce theme */}
-            <linearGradient id="emeraldGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            {/* Emerald gradient - brand color */}
+            <linearGradient id={`emeraldGradient-${uniqueId}`} x1="0%" y1="0%" x2="100%" y2="100%">
               <stop offset="0%" stopColor="#059669" />
               <stop offset="100%" stopColor="#10b981" />
             </linearGradient>
             
-            {/* Subtle glow effect */}
-            <filter id="glow">
-              <feGaussianBlur stdDeviation="1.5" result="coloredBlur"/>
+            {/* Pulsing glow effect - makes it feel alive */}
+            <filter id={`glow-${uniqueId}`}>
+              <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
               <feMerge>
                 <feMergeNode in="coloredBlur"/>
                 <feMergeNode in="SourceGraphic"/>
               </feMerge>
             </filter>
+            
+            {/* Radial gradient for depth */}
+            <radialGradient id={`radial-${uniqueId}`}>
+              <stop offset="0%" stopColor="#10b981" stopOpacity="0.3"/>
+              <stop offset="100%" stopColor="#059669" stopOpacity="0"/>
+            </radialGradient>
           </defs>
 
-          {/* Three interconnected circles representing team/workforce */}
-          <g filter="url(#glow)">
-            {/* Left person circle */}
-            <circle 
-              cx="30" 
-              cy="50" 
-              r="18" 
-              stroke="url(#emeraldGradient)"
-              strokeWidth="3.5" 
-              fill="none"
-              opacity="0.9"
+          {/* Pulsing background circle - "heartbeat" of the system */}
+          <circle 
+            cx="50" 
+            cy="50" 
+            r="45" 
+            fill={`url(#radial-${uniqueId})`}
+            opacity="0.6"
+          >
+            <animate
+              attributeName="r"
+              values="42;48;42"
+              dur="2s"
+              repeatCount="indefinite"
             />
-            
-            {/* Center person circle (slightly larger - leader/manager) */}
-            <circle 
-              cx="50" 
-              cy="35" 
-              r="20" 
-              stroke="url(#emeraldGradient)"
-              strokeWidth="4" 
-              fill="none"
+            <animate
+              attributeName="opacity"
+              values="0.3;0.6;0.3"
+              dur="2s"
+              repeatCount="indefinite"
             />
-            
-            {/* Right person circle */}
-            <circle 
-              cx="70" 
-              cy="50" 
-              r="18" 
-              stroke="url(#emeraldGradient)"
-              strokeWidth="3.5" 
-              fill="none"
-              opacity="0.9"
-            />
-            
-            {/* Connection lines showing teamwork */}
-            <line 
-              x1="30" 
-              y1="50" 
-              x2="50" 
-              y2="35" 
-              stroke="url(#emeraldGradient)"
-              strokeWidth="2" 
-              opacity="0.5"
-            />
-            <line 
-              x1="50" 
-              y1="35" 
-              x2="70" 
-              y2="50" 
-              stroke="url(#emeraldGradient)"
-              strokeWidth="2" 
-              opacity="0.5"
-            />
-            
-            {/* Small dots in center of circles representing people */}
-            <circle cx="30" cy="50" r="4" fill="url(#emeraldGradient)" />
-            <circle cx="50" cy="35" r="5" fill="url(#emeraldGradient)" />
-            <circle cx="70" cy="50" r="4" fill="url(#emeraldGradient)" />
+          </circle>
+
+          {/* Main clock circle - represents time tracking */}
+          <circle 
+            cx="50" 
+            cy="50" 
+            r="38" 
+            stroke={`url(#emeraldGradient-${uniqueId})`}
+            strokeWidth="4" 
+            fill="none"
+            filter={`url(#glow-${uniqueId})`}
+          />
+
+          {/* Clock hour markers - 12, 3, 6, 9 positions */}
+          <g opacity="0.8">
+            <circle cx="50" cy="16" r="2.5" fill={`url(#emeraldGradient-${uniqueId})`} /> {/* 12 */}
+            <circle cx="84" cy="50" r="2.5" fill={`url(#emeraldGradient-${uniqueId})`} /> {/* 3 */}
+            <circle cx="50" cy="84" r="2.5" fill={`url(#emeraldGradient-${uniqueId})`} /> {/* 6 */}
+            <circle cx="16" cy="50" r="2.5" fill={`url(#emeraldGradient-${uniqueId})`} /> {/* 9 */}
           </g>
 
-          {/* Time/productivity accent - small clock icon at bottom */}
-          <g opacity="0.7">
+          {/* Person silhouette as clock hand - THE ICONIC ELEMENT */}
+          {/* This is what makes it memorable: workforce = people on the clock */}
+          <g 
+            filter={`url(#glow-${uniqueId})`}
+            transform-origin="50 50"
+          >
+            {/* Person head */}
             <circle 
               cx="50" 
-              cy="75" 
-              r="8" 
-              stroke="url(#emeraldGradient)"
-              strokeWidth="2" 
-              fill="none"
+              cy="38" 
+              r="5" 
+              fill={`url(#emeraldGradient-${uniqueId})`}
             />
-            <line 
-              x1="50" 
-              y1="75" 
-              x2="50" 
-              y2="70" 
-              stroke="url(#emeraldGradient)"
-              strokeWidth="1.5" 
+            
+            {/* Person body/arms - pointing like clock hand */}
+            <path 
+              d="M 50 44 L 48 52 L 52 52 Z M 50 52 L 48 65 L 50 66 L 52 65 Z M 48 52 L 43 56 M 52 52 L 57 56" 
+              stroke={`url(#emeraldGradient-${uniqueId})`}
+              strokeWidth="2.5"
               strokeLinecap="round"
+              strokeLinejoin="round"
+              fill={`url(#emeraldGradient-${uniqueId})`}
             />
-            <line 
-              x1="50" 
-              y1="75" 
-              x2="53" 
-              y2="75" 
-              stroke="url(#emeraldGradient)"
-              strokeWidth="1.5" 
-              strokeLinecap="round"
+            
+            {/* Rotation animation - person "works around the clock" */}
+            <animateTransform
+              attributeName="transform"
+              attributeType="XML"
+              type="rotate"
+              from="0 50 50"
+              to="360 50 50"
+              dur="8s"
+              repeatCount="indefinite"
             />
           </g>
+
+          {/* Center dot - pivot point */}
+          <circle 
+            cx="50" 
+            cy="50" 
+            r="3" 
+            fill={`url(#emeraldGradient-${uniqueId})`}
+          >
+            <animate
+              attributeName="r"
+              values="3;4;3"
+              dur="2s"
+              repeatCount="indefinite"
+            />
+          </circle>
+
+          {/* Subtle "W" watermark in background for brand recognition */}
+          <text
+            x="50"
+            y="55"
+            textAnchor="middle"
+            fontSize="24"
+            fontWeight="900"
+            fill={`url(#emeraldGradient-${uniqueId})`}
+            opacity="0.15"
+          >
+            W
+          </text>
         </svg>
       </div>
 
