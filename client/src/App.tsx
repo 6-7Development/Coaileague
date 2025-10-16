@@ -103,7 +103,7 @@ function AppContent() {
 
   return (
     <ProtectedRoute>
-      <SidebarProvider style={style as React.CSSProperties}>
+      <SidebarProvider defaultOpen={false} style={style as React.CSSProperties}>
         <CommandPalette />
         <div className="flex h-screen w-full">
           <AppSidebar />

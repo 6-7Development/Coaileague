@@ -389,17 +389,14 @@ export function setupWebSocket(server: Server) {
 
                     await queueManager.markWelcomeSent(queueEntry.id);
 
-                    // Broadcast HelpOS welcome
-                    if (clients) {
-                      const botPayload = JSON.stringify({
-                        type: 'new_message',
-                        message: botMessage,
-                      });
-                      clients.forEach((client) => {
-                        if (client.readyState === WebSocket.OPEN) {
-                          client.send(botPayload);
-                        }
-                      });
+                    // Send PRIVATE HelpOS welcome DM (only to this user)
+                    const privateWelcome = JSON.stringify({
+                      type: 'private_message',
+                      message: botMessage,
+                      from: 'HelpOS™',
+                    });
+                    if (ws.readyState === WebSocket.OPEN) {
+                      ws.send(privateWelcome);
                     }
                   }
                 }
@@ -1157,7 +1154,7 @@ export function setupWebSocket(server: Server) {
               id: Date.now(),
               conversationId: ws.conversationId,
               senderId: 'system',
-              message: `*** ${ws.userName} is now ${payload.status === 'online' ? 'Available' : payload.status === 'away' ? 'Away' : 'Busy'}`,
+              message: `${ws.userName} is now ${payload.status === 'online' ? 'Available' : payload.status === 'away' ? 'Away' : 'Busy'}`,
               senderType: 'system',
               createdAt: new Date(),
               isRead: false,
@@ -1244,7 +1241,7 @@ export function setupWebSocket(server: Server) {
               id: Date.now(),
               conversationId: ws.conversationId,
               senderId: 'system',
-              message: `*** ${targetUserName} has been removed from the chat (Reason: ${reason})`,
+              message: `${targetUserName} has been removed from the chat (Reason: ${reason})`,
               senderType: 'system',
               createdAt: new Date(),
               isRead: false,
@@ -1423,7 +1420,7 @@ export function setupWebSocket(server: Server) {
               id: Date.now(),
               conversationId: ws.conversationId,
               senderId: 'system',
-              message: `*** ${ws.userName} has transferred the customer to the next available agent`,
+              message: `${ws.userName} has transferred the customer to the next available agent`,
               senderType: 'system',
               createdAt: new Date(),
               isRead: false,
@@ -1669,12 +1666,13 @@ export function setupWebSocket(server: Server) {
   }
 
   // Start simulation when first user joins the main room
-  setInterval(() => {
-    const clients = conversationClients.get(MAIN_ROOM_ID);
-    if (clients && clients.size > 0 && !simulationRunning) {
-      startChatSimulation();
-    }
-  }, 10000); // Check every 10 seconds
+  // DISABLED: Simulation was causing FK constraint violations with non-existent users
+  // setInterval(() => {
+  //   const clients = conversationClients.get(MAIN_ROOM_ID);
+  //   if (clients && clients.size > 0 && !simulationRunning) {
+  //     startChatSimulation();
+  //   }
+  // }, 10000); // Check every 10 seconds
 
   console.log('WebSocket server initialized on /ws/chat');
   return wss;

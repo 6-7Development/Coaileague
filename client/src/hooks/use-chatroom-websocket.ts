@@ -12,7 +12,7 @@ interface OnlineUser {
 }
 
 interface WebSocketMessage {
-  type: 'conversation_history' | 'new_message' | 'user_typing' | 'error' | 'system_message' | 'user_list_update' | 'status_change' | 'kicked' | 'secure_request' | 'spectator_released' | 'secure_data_received';
+  type: 'conversation_history' | 'new_message' | 'private_message' | 'user_typing' | 'error' | 'system_message' | 'user_list_update' | 'status_change' | 'kicked' | 'secure_request' | 'spectator_released' | 'secure_data_received';
   messages?: ChatMessage[];
   message?: ChatMessage | string;
   userId?: string;
@@ -130,6 +130,13 @@ export function useChatroomWebSocket(
               }
               break;
 
+            case 'private_message':
+              // Handle private DMs (e.g., HelpOS welcome messages)
+              if (data.message && typeof data.message !== 'string') {
+                setMessages((prev) => [...prev, data.message as ChatMessage]);
+              }
+              break;
+
             case 'error':
               const errorMessage = typeof data.message === 'string' ? data.message : 'An error occurred';
               console.error('WebSocket error:', errorMessage);
@@ -225,7 +232,8 @@ export function useChatroomWebSocket(
 
             case 'kicked':
               // User has been kicked from chat
-              setError(data.message || 'You have been removed from the chat');
+              const kickMessage = typeof data.message === 'string' ? data.message : 'You have been removed from the chat';
+              setError(kickMessage);
               setIsConnected(false);
               if (wsRef.current) {
                 wsRef.current.close();
@@ -253,7 +261,7 @@ export function useChatroomWebSocket(
                 senderId: null,
                 senderName: 'System',
                 senderType: 'system',
-                message: `*** ${(data as any).releasedBy} has released you from hold. You can now chat.`,
+                message: `${(data as any).releasedBy} has released you from hold. You can now chat.`,
                 messageType: 'text',
                 isSystemMessage: true,
                 attachmentUrl: null,

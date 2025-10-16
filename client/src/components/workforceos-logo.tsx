@@ -63,11 +63,11 @@ export function WorkforceOSLogo({
           className="w-full h-full"
         >
           <defs>
-            {/* Fortune-500 Corporate Blue Gradient - Deep Navy */}
+            {/* Light/White Background - Visible on any color */}
             <linearGradient id={`corp-blue-${uniqueId}`} x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#1e3a8a" />
-              <stop offset="50%" stopColor="#1e293b" />
-              <stop offset="100%" stopColor="#0f172a" />
+              <stop offset="0%" stopColor="#f8fafc" />
+              <stop offset="50%" stopColor="#e2e8f0" />
+              <stop offset="100%" stopColor="#cbd5e1" />
             </linearGradient>
             
             {/* Bright Electric Blue for "OS" - Neon Effect */}
@@ -165,7 +165,7 @@ export function WorkforceOSLogo({
               W
             </text>
             
-            {/* W - White with realistic neon glow */}
+            {/* W - Dark navy blue for visibility */}
             <text
               x="50"
               y="82"
@@ -173,9 +173,8 @@ export function WorkforceOSLogo({
               fontFamily="system-ui, -apple-system, sans-serif"
               fontSize="58"
               fontWeight="900"
-              fill="white"
+              fill="#1e293b"
               letterSpacing="-6"
-              filter={`url(#white-glow-${uniqueId})`}
             >
               W
             </text>
@@ -189,13 +188,13 @@ export function WorkforceOSLogo({
               fontSize="58"
               fontWeight="900"
               fill="black"
-              opacity="0.4"
+              opacity="0.2"
               letterSpacing="-6"
             >
               F
             </text>
             
-            {/* F - White with realistic neon glow (closer to W) */}
+            {/* F - Dark navy blue for visibility (closer to W) */}
             <text
               x="95"
               y="82"
@@ -203,9 +202,8 @@ export function WorkforceOSLogo({
               fontFamily="system-ui, -apple-system, sans-serif"
               fontSize="58"
               fontWeight="900"
-              fill="white"
+              fill="#1e293b"
               letterSpacing="-6"
-              filter={`url(#white-glow-${uniqueId})`}
             >
               F
             </text>

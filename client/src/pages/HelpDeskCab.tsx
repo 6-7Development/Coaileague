@@ -43,27 +43,27 @@ export default function HelpDeskCab() {
 
   // IRC-style MOTD and helpful info banners
   const infoBanners = [
-    "*** irc.wfos.com - WorkforceOS Support Network - 24/7 Support Available ***",
-    "*** Queue Position: You are #1 in line - Estimated wait: 2-3 minutes ***",
-    "*** Commands: /help /motd /info /queue /staff - Type /help for full list ***",
-    "*** Tip: Describe your issue clearly and staff will assist you shortly ***",
-    "*** FAQ: Password reset via /resetpass | Account issues: mention 'account' ***",
-    "*** HelpOS™ AI is monitoring - Urgent issues are auto-prioritized ***"
+    "irc.wfos.com - WorkforceOS Support Network - 24/7 Support Available",
+    "Queue Position: You are #1 in line - Estimated wait: 2-3 minutes",
+    "Commands: /help /motd /info /queue /staff - Type /help for full list",
+    "Tip: Describe your issue clearly and staff will assist you shortly",
+    "FAQ: Password reset via /resetpass | Account issues: mention 'account'",
+    "HelpOS™ AI is monitoring - Urgent issues are auto-prioritized"
   ];
 
   // IRC-style system messages
   const [ircMessages, setIrcMessages] = useState<string[]>([
-    "*** Connecting to irc.wfos.com (WorkforceOS Support Network)",
-    "*** Connected to server irc.wfos.com",
-    `*** Message of the Day - irc.wfos.com`,
-    "*** =====================================================",
-    "*** Welcome to WorkforceOS HelpDesk Support Network",
-    "*** Your satisfaction is our priority - 24/7/365",
-    "*** Type /help for available commands",
-    "*** Type /staff to see online support agents",
-    "*** Type /queue to check your position",
-    "*** =====================================================",
-    `*** End of MOTD - You are now in #HelpDesk`,
+    "Connecting to irc.wfos.com (WorkforceOS Support Network)",
+    "Connected to server irc.wfos.com",
+    `Message of the Day - irc.wfos.com`,
+    "=====================================================",
+    "Welcome to WorkforceOS HelpDesk Support Network",
+    "Your satisfaction is our priority - 24/7/365",
+    "Type /help for available commands",
+    "Type /staff to see online support agents",
+    "Type /queue to check your position",
+    "=====================================================",
+    `End of MOTD - You are now in #HelpDesk`,
   ]);
 
   const userName = user?.firstName && user?.lastName 
@@ -547,7 +547,7 @@ export default function HelpDeskCab() {
                   return (
                     <div key={idx} className="flex justify-center my-2">
                       <span className="text-xs font-mono text-blue-700 italic bg-blue-50 px-3 py-1 rounded-full border border-blue-200">
-                        *** {msg.message}
+                        {msg.message}
                       </span>
                     </div>
                   );

@@ -19,6 +19,10 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { WorkforceOSLogo } from "@/components/workforceos-logo";
 import { SupportMobileMenu } from "@/components/support-mobile-menu";
 import { SecureRequestDialog } from "@/components/secure-request-dialog";
+import { ChatAnnouncementBanner } from "@/components/chat-announcement-banner";
+import { BannerEditorDialog } from "@/components/banner-editor-dialog";
+import { ChatTutorialSlides } from "@/components/chat-tutorial-slides";
+import { QueueViewerDialog } from "@/components/queue-viewer-dialog";
 import { 
   MessageSquare, Send, Users, Circle, Shield, 
   Headphones, User, Bot, Sparkles, Wifi, WifiOff,
@@ -56,6 +60,10 @@ export default function LiveChatroomPage() {
   const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [showBannerEditor, setShowBannerEditor] = useState(false);
+  const [customBannerMessages, setCustomBannerMessages] = useState<any[]>([]);
+  const [showTutorial, setShowTutorial] = useState(false);
+  const [showQueueDialog, setShowQueueDialog] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -89,6 +97,13 @@ export default function LiveChatroomPage() {
     enabled: !!userId && isAuthenticated,
     retry: false,
     staleTime: 30000,
+  });
+
+  // Fetch queue data for visual dialog
+  const { data: queueData } = useQuery<any[]>({
+    queryKey: ['/api/helpdesk/queue'],
+    enabled: showQueueDialog,
+    refetchInterval: showQueueDialog ? 5000 : false, // Refresh every 5s when dialog is open
   });
   
   // Use WebSocket for real-time messaging (only if authenticated)
@@ -260,6 +275,14 @@ export default function LiveChatroomPage() {
     if (e) e.preventDefault();
     const msgToSend = text || messageText;
     if (!msgToSend.trim()) return;
+    
+    // INTERCEPT /queue command to show visual dialog
+    if (msgToSend.trim() === '/queue') {
+      setShowQueueDialog(true);
+      setMessageText("");
+      return;
+    }
+    
     if (!isConnected) {
       toast({
         title: "Connection Error",
@@ -314,6 +337,18 @@ export default function LiveChatroomPage() {
       });
     }
   }, [error, requiresTicket, temporaryError, toast]);
+
+  // Show tutorial to new non-staff users
+  useEffect(() => {
+    const hasSeenTutorial = localStorage.getItem('helpdesk-tutorial-seen');
+    if (isAuthenticated && isConnected && !isStaff && !hasSeenTutorial) {
+      // Small delay to let chat load first
+      setTimeout(() => {
+        setShowTutorial(true);
+        localStorage.setItem('helpdesk-tutorial-seen', 'true');
+      }, 1000);
+    }
+  }, [isAuthenticated, isConnected, isStaff]);
 
   // Handle scroll position and unread count
   const handleScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
@@ -815,6 +850,17 @@ export default function LiveChatroomPage() {
         />
       )}
 
+      {/* Banner Editor Dialog - Staff only */}
+      <BannerEditorDialog
+        open={showBannerEditor}
+        onOpenChange={setShowBannerEditor}
+        currentMessages={customBannerMessages}
+        onSave={(messages) => {
+          setCustomBannerMessages(messages);
+          // TODO: Broadcast to all users via WebSocket
+        }}
+      />
+
       {/* Main Content - Professional Layout */}
       <div className="flex-1 flex overflow-hidden">
         {/* Chat Area */}
@@ -842,29 +888,15 @@ export default function LiveChatroomPage() {
           {/* Messages */}
           <ScrollArea className="flex-1 p-4 relative z-10" onScroll={handleScroll as any}>
             <div className="max-w-full md:max-w-5xl mx-auto space-y-4">
-              {/* Dynamic Status Banner - Rotating Messages */}
-              <Card className="sticky top-0 z-50 border-blue-500/30 bg-gradient-to-r from-blue-900/40 via-indigo-900/40 to-purple-900/40 backdrop-blur-md shadow-lg">
-                <CardContent className="p-2">
-                  <div className="flex items-center gap-1.5 sm:gap-2">
-                    <MessageSquare className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-blue-300 flex-shrink-0 animate-pulse" />
-                    <div className="flex-1 min-w-0 overflow-hidden">
-                      <p 
-                        key={currentBannerIndex}
-                        className="text-[9px] sm:text-[10px] text-slate-300/90 leading-tight animate-in fade-in slide-in-from-bottom-2 duration-500"
-                      >
-                        {bannerMessages[currentBannerIndex]}
-                      </p>
-                    </div>
-                    <Badge 
-                      variant={helpDeskRoom?.status === 'open' ? 'default' : 'secondary'}
-                      className="gap-0.5 sm:gap-1 flex-shrink-0 bg-white/20 border-white/30 text-white text-[9px] sm:text-[10px] px-1 sm:px-1.5 py-0"
-                    >
-                      <Circle className="w-1 h-1 fill-green-400 text-green-400 animate-pulse" />
-                      {helpDeskRoom?.status === 'open' ? 'Open' : helpDeskRoom?.status === 'closed' ? 'Closed' : 'Maint'}
-                    </Badge>
-                  </div>
-                </CardContent>
-              </Card>
+              {/* Interactive Announcement Banner - Full Width */}
+              <div className="sticky top-0 z-50 -mx-4">
+                <ChatAnnouncementBanner 
+                  queuePosition={queuePosition}
+                  queueWaitTime="2-3 minutes"
+                  onlineStaff={onlineUsers.filter(u => u.role === 'support' || u.role === 'admin').length}
+                  customMessages={customBannerMessages.length > 0 ? customBannerMessages : undefined}
+                />
+              </div>
               
               {messages.length === 0 ? (
                 <Card className="border-dashed border-slate-600/30 bg-slate-800/40 backdrop-blur-sm">
@@ -919,23 +951,23 @@ export default function LiveChatroomPage() {
                           </span>
                         </div>
                         
-                        {/* Professional Message Bubble */}
+                        {/* Professional Message Bubble - Compact with Light/Dark Contrast */}
                         <div 
-                          className={`rounded-xl p-3.5 backdrop-blur-sm transition-all duration-300 hover-elevate ${
+                          className={`rounded-xl p-2 backdrop-blur-sm transition-all duration-300 hover-elevate ${
                             isBot 
-                              ? 'bg-gradient-to-br from-blue-500/20 to-blue-600/10 border border-blue-400/30 text-slate-50 shadow-lg shadow-blue-500/10' 
+                              ? 'bg-gradient-to-br from-slate-100 to-slate-200 border border-slate-300 text-slate-900 shadow-lg' 
                               : isSupport
-                              ? 'bg-gradient-to-br from-blue-500/15 to-blue-600/10 border border-blue-400/25 text-slate-50 shadow-lg shadow-blue-500/5'
+                              ? 'bg-gradient-to-br from-white to-slate-100 border border-slate-300 text-slate-900 shadow-lg'
                               : 'bg-gradient-to-br from-slate-700/60 to-slate-800/40 border border-slate-600/30 text-slate-100 shadow-lg'
                           }`}
                         >
                           <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
-                            {message.message}
+                            {message.message.replace(/\*/g, '')}
                           </p>
                           {isBot && !isSystemMsg && (
-                            <div className="flex items-center gap-1.5 mt-2.5 pt-2.5 border-t border-blue-400/20">
-                              <Sparkles className="w-3.5 h-3.5 text-blue-300" />
-                              <span className="text-xs text-blue-300 font-medium">HelpOS™ AI Assistant</span>
+                            <div className="flex items-center gap-1.5 mt-2.5 pt-2.5 border-t border-slate-300">
+                              <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+                              <span className="text-xs text-blue-600 font-medium">HelpOS™ AI Assistant</span>
                             </div>
                           )}
                         </div>
@@ -1285,8 +1317,24 @@ export default function LiveChatroomPage() {
             {/* Content */}
             <div className="p-4 space-y-4 overflow-y-auto h-[calc(100%-140px)]">
               <p className="text-sm text-slate-600 dark:text-slate-400">
-                Manage HelpDesk room status. Changes apply immediately.
+                Manage HelpDesk room status and announcements. Changes apply immediately.
               </p>
+
+              {/* Banner Editor Button */}
+              <Button
+                onClick={() => {
+                  setShowBannerEditor(true);
+                  setShowStaffControls(false);
+                }}
+                className="w-full gap-2"
+                variant="outline"
+                data-testid="button-edit-banners"
+              >
+                <Sparkles className="w-4 h-4" />
+                Edit Chat Banners
+              </Button>
+
+              <Separator />
 
               <div className="space-y-2">
                 <Label htmlFor="room-status" className="text-sm font-medium">Room Status</Label>
@@ -1379,6 +1427,26 @@ export default function LiveChatroomPage() {
           </div>
         </>
       )}
+
+      {/* Tutorial Slides */}
+      <ChatTutorialSlides
+        open={showTutorial}
+        onComplete={() => setShowTutorial(false)}
+      />
+
+      {/* Queue Viewer Dialog */}
+      <QueueViewerDialog
+        open={showQueueDialog}
+        onClose={() => setShowQueueDialog(false)}
+        queueEntries={(queueData || []).map((entry: any, index: number) => ({
+          id: entry.id || `queue-${index}`,
+          userName: entry.userName || 'User',
+          position: entry.position || (index + 1),
+          waitTime: entry.estimatedWaitMinutes || 5,
+          priority: entry.priority || 'normal',
+          userType: entry.userType || 'guest'
+        }))}
+      />
     </div>
   );
 }

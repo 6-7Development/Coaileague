@@ -344,6 +344,11 @@ export function AppSidebar() {
             <span className="text-xs text-muted-foreground truncate" data-testid="text-user-email">
               {user?.email || ""}
             </span>
+            {(user as any)?.workId && (
+              <span className="text-[10px] font-mono text-primary/80 truncate mt-0.5" data-testid="text-work-id">
+                ID: {(user as any).workId}
+              </span>
+            )}
           </div>
         </div>
         <Button 

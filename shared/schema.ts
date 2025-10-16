@@ -54,6 +54,9 @@ export const users = pgTable("users", {
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
   
+  // Unique Work ID for action tracking (format: Firstname-##-###-##-####)
+  workId: varchar("work_id").unique(),
+  
   // Multi-tenant
   currentWorkspaceId: varchar("current_workspace_id"),
   
