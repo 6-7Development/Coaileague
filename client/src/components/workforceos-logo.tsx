@@ -50,10 +50,10 @@ export function WorkforceOSLogo({
           className="w-full h-full"
         >
           <defs>
-            {/* Brand gradient - unique per instance */}
+            {/* Brand gradient - white/light for visibility on dark/purple backgrounds */}
             <linearGradient id={`brandGradient-${uniqueId}`} x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#6366f1" />
-              <stop offset="100%" stopColor="#a855f7" />
+              <stop offset="0%" stopColor="#ffffff" />
+              <stop offset="100%" stopColor="#e0e7ff" />
             </linearGradient>
             
             {/* Glow effect - unique per instance */}
