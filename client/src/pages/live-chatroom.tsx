@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { WorkforceOSLogo } from "@/components/workforceos-logo";
+import { MobileLoadingTransition } from "@/components/mobile-loading-transition";
 import HelpDeskCab from "./HelpDeskCab";
 import HelpDesk5 from "./HelpDesk5";
 

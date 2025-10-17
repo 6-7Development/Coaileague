@@ -8,6 +8,7 @@ import { useChatroomWebSocket } from "@/hooks/use-chatroom-websocket";
 import { useChatSounds } from "@/hooks/use-chat-sounds";
 import { WorkforceOSLogo } from "@/components/workforceos-logo";
 import { ChatAgreementModal } from "@/components/chat-agreement-modal";
+import { MobileLoadingTransition } from "@/components/mobile-loading-transition";
 import { apiRequest } from "@/lib/queryClient";
 import { 
   Send, Menu, X, Settings, Users, Circle, Shield, 
@@ -25,6 +26,7 @@ interface OnlineUser {
 }
 
 export default function ModernMobileChat() {
+  const [showLoading, setShowLoading] = useState(true);
   const [messageText, setMessageText] = useState("");
   const [showCommandMenu, setShowCommandMenu] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -330,6 +332,22 @@ export default function ModernMobileChat() {
     setShowCommandMenu(false);
     setSelectedUser(null);
   };
+
+  // Show loading transition first
+  if (showLoading) {
+    return (
+      <MobileLoadingTransition 
+        onComplete={() => {
+          setShowLoading(false);
+          // Show agreement if not accepted
+          if (!hasAcceptedAgreement) {
+            setShowAgreement(true);
+          }
+        }}
+        loadingDuration={8000}
+      />
+    );
+  }
 
   return (
     <div className="h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 flex flex-col max-w-md mx-auto relative overflow-hidden">
