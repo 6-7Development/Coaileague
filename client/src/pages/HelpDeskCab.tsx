@@ -509,7 +509,7 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-black tracking-wide flex items-center">
               <MessageSquare className="w-6 h-6 mr-2 text-blue-300" />
-              HelpDesk
+              DC360
             </h1>
           </div>
           <div className="flex items-center gap-4">

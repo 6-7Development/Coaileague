@@ -64,7 +64,7 @@ export default function LiveChatroom() {
             </div>
             <CardTitle className="text-2xl text-emerald-400">📱 Mobile Device Detected</CardTitle>
             <CardDescription className="text-slate-300">
-              You're trying to access the desktop version (Help360) on a mobile device. 
+              You're trying to access the desktop version (DC360) on a mobile device. 
               Let me redirect you to our mobile-optimized version!
             </CardDescription>
           </CardHeader>
@@ -72,14 +72,14 @@ export default function LiveChatroom() {
             <div className="bg-slate-950/50 rounded-lg p-4 space-y-2">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-slate-400">Current:</span>
-                <span className="text-emerald-400 font-medium">Help360 (Desktop)</span>
+                <span className="text-emerald-400 font-medium">DC360 (Desktop)</span>
               </div>
               <div className="flex items-center justify-center">
                 <ArrowRight className="w-4 h-4 text-slate-600" />
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-slate-400">Redirecting to:</span>
-                <span className="text-emerald-400 font-medium">Help360.5 (Mobile)</span>
+                <span className="text-emerald-400 font-medium">DC360.5 (Mobile)</span>
               </div>
             </div>
             
