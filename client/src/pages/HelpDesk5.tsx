@@ -902,7 +902,7 @@ export default function LiveChatroomPage() {
               {/* Interactive Announcement Banner - Full Width */}
               <div className="sticky top-0 z-50 -mx-4">
                 <ChatAnnouncementBanner 
-                  queuePosition={queuePosition}
+                  queuePosition={queuePosition ?? undefined}
                   queueWaitTime="2-3 minutes"
                   onlineStaff={onlineUsers.filter(u => u.role === 'support' || u.role === 'admin').length}
                   customMessages={customBannerMessages.length > 0 ? customBannerMessages : undefined}
