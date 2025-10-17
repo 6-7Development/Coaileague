@@ -14,6 +14,8 @@ import {
 } from "@/components/ui/sidebar";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
+import { useTransition } from "@/contexts/transition-context";
+import { showLogoutTransition } from "@/lib/transition-utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { WorkforceOSLogo } from "@/components/workforceos-logo";
@@ -153,10 +155,19 @@ const platformAdminMenuItems = [
 export function AppSidebar() {
   const [location] = useLocation();
   const { user } = useAuth();
+  const transition = useTransition();
 
   const getInitials = (firstName?: string | null, lastName?: string | null) => {
     if (!firstName && !lastName) return "U";
     return `${firstName?.[0] || ""}${lastName?.[0] || ""}`.toUpperCase();
+  };
+
+  const handleLogout = () => {
+    showLogoutTransition(transition);
+    // The transition utility will handle the redirect to /api/logout
+    setTimeout(() => {
+      window.location.href = "/api/logout";
+    }, 800);
   };
 
   // Check if user is Root Admin (platform-level access)
@@ -355,7 +366,7 @@ export function AppSidebar() {
           variant="outline" 
           className="w-full" 
           size="sm"
-          onClick={() => window.location.href = "/api/logout"}
+          onClick={handleLogout}
           data-testid="button-logout"
         >
           <LogOut className="mr-2 h-4 w-4" />
