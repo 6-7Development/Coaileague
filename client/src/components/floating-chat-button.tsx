@@ -6,8 +6,8 @@ export function FloatingChatButton() {
   const [location, setLocation] = useLocation();
   const [isHovered, setIsHovered] = useState(false);
   
-  // Don't show on the live chat page itself
-  if (location === "/live-chat") {
+  // Don't show on chat pages - user is already in the chat!
+  if (location === "/live-chat" || location === "/mobile-chat") {
     return null;
   }
 
