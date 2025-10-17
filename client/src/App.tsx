@@ -171,6 +171,7 @@ function AppContent() {
                 <Route path="/contact" component={Contact} />
                 <Route path="/support/tickets" component={CustomerSupport} />
                 <Route path="/support/chat" component={HelpdeskChat} />
+                <Route path="/live-chat" component={LiveChatroom} />
                 <Route path="/mobilechat" component={MobileChatPage} />
                 <Route path="/mobile-chat" component={MobileChatPage} />
                 <Route path="/design-comparison" component={DesignComparison} />
