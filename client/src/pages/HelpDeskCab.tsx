@@ -110,13 +110,13 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
     "Connected to server irc.wfos.com",
     `Message of the Day - irc.wfos.com`,
     "=====================================================",
-    "Welcome to WorkforceOS Help360 Support Network",
+    "Welcome to WorkforceOS HelpDesk Support Network",
     "Your satisfaction is our priority - 24/7/365",
     "Use command buttons: Help, Queue, Tutorial, Priority, Account",
     "Right-click any user for quick support actions (staff only)",
     "Click your username to view your queue position and info",
     "=====================================================",
-    `End of MOTD - You are now in #Help360`,
+    `End of MOTD - You are now in #HelpDesk`,
   ]);
 
   const userName = user?.firstName && user?.lastName 
@@ -175,10 +175,8 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
   // MOTD acknowledgment mutation
   const acknowledgeMOTD = useMutation({
     mutationFn: async (motdId: string) => {
-      return await apiRequest('/api/helpdesk/motd/acknowledge', {
-        method: 'POST',
-        body: JSON.stringify({ motdId }),
-        headers: { 'Content-Type': 'application/json' },
+      return await apiRequest('POST', '/api/helpdesk/motd/acknowledge', {
+        motdId,
       });
     },
     onSuccess: () => {
@@ -511,11 +509,11 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-black tracking-wide flex items-center">
               <MessageSquare className="w-6 h-6 mr-2 text-blue-300" />
-              Help360
+              HelpDesk
             </h1>
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-sm font-semibold font-mono">irc.wfos.com #Help360</span>
+            <span className="text-sm font-semibold font-mono">irc.wfos.com #HelpDesk</span>
             {isStaff && (
               <Button
                 onClick={() => setShowBannerManager(true)}
@@ -913,9 +911,9 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
 
       {/* Help Command Panel */}
       <HelpCommandPanel
-        isOpen={showHelpPanel}
+        open={showHelpPanel}
         onClose={() => setShowHelpPanel(false)}
-        onCommandExecute={(command) => {
+        onCommandExecute={(command: string) => {
           if (isConnected) {
             sendMessage(command, userName, 'support');
           }

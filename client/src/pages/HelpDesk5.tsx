@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import "../styles/chat-animations.css"; // Import animations
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -898,7 +899,7 @@ export default function LiveChatroomPage() {
           
           {/* Messages */}
           <ScrollArea className="flex-1 p-4 relative z-10" onScroll={handleScroll as any}>
-            <div className="max-w-full md:max-w-5xl mx-auto space-y-4">
+            <div className="max-w-full md:max-w-5xl mx-auto space-y-4 pb-24">
               {/* Interactive Announcement Banner - Full Width */}
               <div className="sticky top-0 z-50 -mx-4">
                 <ChatAnnouncementBanner 
