@@ -254,7 +254,7 @@ export function ChatAnnouncementBanner({
 
   const BannerContent = (
     <div className={`
-      w-full min-h-[72px] sm:min-h-[80px] border-b-2 transition-all duration-500 ease-in-out relative overflow-hidden
+      w-full min-h-[40px] sm:min-h-[48px] border-b transition-all duration-500 ease-in-out relative overflow-hidden
       ${colorSchemes[currentMessage.type]}
       animate-in fade-in slide-in-from-top-2
     `}>
@@ -347,21 +347,21 @@ export function ChatAnnouncementBanner({
           })}
         </div>
       )}
-      <div className="max-w-full px-4 sm:px-6 py-5 sm:py-6 flex items-center justify-center gap-2.5 sm:gap-3 relative z-10 min-h-[72px] sm:min-h-[80px]">
+      <div className="max-w-full px-2 sm:px-4 py-2 sm:py-2.5 flex items-center justify-center gap-1.5 sm:gap-2 relative z-10 min-h-[40px] sm:min-h-[48px]">
         {/* Icon */}
         {IconComponent && (
-          <IconComponent className="w-6 h-6 sm:w-5 sm:h-5 flex-shrink-0 animate-pulse" />
+          <IconComponent className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0 animate-pulse" />
         )}
         
         {/* Emoticon */}
         {emoticon && (
-          <span className="text-3xl sm:text-2xl leading-none animate-bounce" style={{ animationDuration: '2s' }}>
+          <span className="text-lg sm:text-xl leading-none animate-bounce" style={{ animationDuration: '2s' }}>
             {emoticon}
           </span>
         )}
         
         {/* Message Text */}
-        <span className="text-sm sm:text-base font-bold text-center tracking-wide leading-relaxed">
+        <span className="text-xs sm:text-sm font-medium text-center tracking-normal leading-snug">
           {currentMessage.text}
         </span>
 
