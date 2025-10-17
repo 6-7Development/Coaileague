@@ -243,18 +243,18 @@ export function ChatAnnouncementBanner({
   const IconComponent = currentMessage.icon ? iconMap[currentMessage.icon] : null;
   const emoticon = currentMessage.emoticon ? emoticons[currentMessage.emoticon] : null;
 
-  // Color schemes based on message type
+  // Color schemes based on message type - vibrant backgrounds with good contrast
   const colorSchemes = {
-    info: 'bg-gradient-to-r from-blue-500/20 to-blue-600/10 border-blue-400/30 text-blue-100',
-    warning: 'bg-gradient-to-r from-amber-500/20 to-amber-600/10 border-amber-400/30 text-amber-100',
-    success: 'bg-gradient-to-r from-emerald-500/20 to-emerald-600/10 border-emerald-400/30 text-emerald-100',
-    promo: 'bg-gradient-to-r from-purple-500/20 to-pink-600/10 border-purple-400/30 text-purple-100',
-    queue: 'bg-gradient-to-r from-cyan-500/20 to-cyan-600/10 border-cyan-400/30 text-cyan-100'
+    info: 'bg-gradient-to-r from-blue-600 to-blue-700 border-blue-400/50 text-white',
+    warning: 'bg-gradient-to-r from-amber-600 to-amber-700 border-amber-400/50 text-white',
+    success: 'bg-gradient-to-r from-emerald-600 to-emerald-700 border-emerald-400/50 text-white',
+    promo: 'bg-gradient-to-r from-purple-600 to-pink-600 border-purple-400/50 text-white',
+    queue: 'bg-gradient-to-r from-cyan-600 to-cyan-700 border-cyan-400/50 text-white'
   };
 
   const BannerContent = (
     <div className={`
-      w-full border-b-2 backdrop-blur-sm transition-all duration-500 ease-in-out relative overflow-hidden
+      w-full border-b-2 transition-all duration-500 ease-in-out relative overflow-hidden
       ${colorSchemes[currentMessage.type]}
       animate-in fade-in slide-in-from-top-2
     `}>
