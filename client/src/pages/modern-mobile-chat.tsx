@@ -8,7 +8,7 @@ import { useChatroomWebSocket } from "@/hooks/use-chatroom-websocket";
 import { useChatSounds } from "@/hooks/use-chat-sounds";
 import { WorkforceOSLogo } from "@/components/workforceos-logo";
 import { ChatAgreementModal } from "@/components/chat-agreement-modal";
-import { MobileLoadingTransition } from "@/components/mobile-loading-transition";
+import { useTransition } from "@/contexts/transition-context";
 import { apiRequest } from "@/lib/queryClient";
 import { 
   Send, Menu, X, Settings, Users, Circle, Shield, 
@@ -26,7 +26,6 @@ interface OnlineUser {
 }
 
 export default function ModernMobileChat() {
-  const [showLoading, setShowLoading] = useState(true);
   const [messageText, setMessageText] = useState("");
   const [showCommandMenu, setShowCommandMenu] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -37,6 +36,7 @@ export default function ModernMobileChat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const { playSound } = useChatSounds();
+  const { showTransition, hideTransition } = useTransition();
   
   // Generate or get session ID for tracking
   const [sessionId] = useState(() => {
@@ -101,13 +101,10 @@ export default function ModernMobileChat() {
   // Agreement acceptance mutation
   const acceptAgreementMutation = useMutation({
     mutationFn: async (fullName: string) => {
-      return apiRequest('/api/helpdesk/agreement/accept', {
-        method: 'POST',
-        body: JSON.stringify({
-          fullName,
-          roomSlug: 'helpdesk',
-          sessionId,
-        }),
+      return apiRequest('/api/helpdesk/agreement/accept', 'POST', {
+        fullName,
+        roomSlug: 'helpdesk',
+        sessionId,
       });
     },
     onSuccess: () => {
@@ -127,7 +124,24 @@ export default function ModernMobileChat() {
     },
   });
 
-  // Show agreement modal if not accepted
+  // Show loading transition on initial load (DC360.5 branded)
+  useEffect(() => {
+    showTransition({
+      status: "loading",
+      message: "Initializing DC360.5 Mobile HelpDesk...",
+      submessage: "Connecting to WorkforceOS Support",
+      duration: 2000,
+      onComplete: () => {
+        hideTransition();
+        // Show agreement if not accepted
+        if (agreementStatus && !agreementStatus.hasAccepted && !hasAcceptedAgreement && isAuthenticated) {
+          setShowAgreement(true);
+        }
+      }
+    });
+  }, []); // Only run once on mount
+
+  // Show agreement modal if not accepted (after loading)
   useEffect(() => {
     if (agreementStatus && !agreementStatus.hasAccepted && !hasAcceptedAgreement && isAuthenticated) {
       setShowAgreement(true);
@@ -333,22 +347,6 @@ export default function ModernMobileChat() {
     setSelectedUser(null);
   };
 
-  // Show loading transition first
-  if (showLoading) {
-    return (
-      <MobileLoadingTransition 
-        onComplete={() => {
-          setShowLoading(false);
-          // Show agreement if not accepted
-          if (!hasAcceptedAgreement) {
-            setShowAgreement(true);
-          }
-        }}
-        loadingDuration={8000}
-      />
-    );
-  }
-
   return (
     <div className="h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 flex flex-col max-w-md mx-auto relative overflow-hidden">
       {/* Animated background effect */}
@@ -546,7 +544,7 @@ export default function ModernMobileChat() {
                 return (
                 <button
                   key={user.id}
-                  onClick={() => handleUserSelect(user)}
+                  onClick={() => handleUserSelect(user as OnlineUser)}
                   className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all border ${
                     selectedUser?.id === user.id
                       ? 'bg-indigo-500/20 border-indigo-500/50'
