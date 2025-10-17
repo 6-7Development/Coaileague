@@ -28,12 +28,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { 
   Send, Users, MessageSquare, Shield, Crown, UserCog, Wrench,
   Settings, Power, HelpCircle, Zap, Clock, AlertCircle, CheckCircle,
-  ChevronLeft, ChevronRight, Info, Coffee, Star, Building2, Bot, Sparkles
+  ChevronLeft, ChevronRight, Info, Coffee, Star, Building2, Bot, Sparkles, Menu, X
 } from "lucide-react";
 import { WFLogoCompact } from "@/components/wf-logo";
 import { SecureRequestDialog } from "@/components/secure-request-dialog";
 import { BrandedConfirmDialog } from "@/components/branded-input-dialog";
 import { HelpDeskCommandBar } from "@/components/helpdesk-command-bar";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { ChatAnnouncementBanner } from "@/components/chat-announcement-banner";
 import { BannerManager } from "@/components/banner-manager";
 import { HelpCommandPanel } from "@/components/help-command-panel";
@@ -80,6 +81,7 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
   const [showRoomStatus, setShowRoomStatus] = useState(false);
   const [roomStatusControl, setRoomStatusControl] = useState<"open" | "closed" | "maintenance">("open");
   const [roomStatusMessage, setRoomStatusMessage] = useState("");
+  const [showControlsMenu, setShowControlsMenu] = useState(false);
   const [showBannerManager, setShowBannerManager] = useState(false);
   const [showHelpPanel, setShowHelpPanel] = useState(false);
   const [showQueuePanel, setShowQueuePanel] = useState(false);
@@ -536,53 +538,18 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
         </div>
       </header>
 
-      {/* Horizontal Command Bar - Role-Based Actions */}
-      <div className="max-w-7xl mx-auto w-full">
-        <HelpDeskCommandBar
-          userRole={
-            isStaff ? 'staff' :
-            (user as any)?.subscriptionTier ? 'subscriber' :
-            (user as any)?.workspaceId ? 'org_user' :
-            'guest'
-          }
-          isStaff={isStaff || false}
-          userStatus={userStatus}
-          onStatusChange={(status) => {
-            setUserStatus(status);
-            handleStatusChange(status);
-          }}
-          queueLength={queueLength}
-          onlineStaffCount={uniqueUsers.filter(u => ['root', 'deputy_admin', 'deputy_assistant', 'sysop'].includes(u.role)).length}
-          showCoffeeCup={showCoffeeCup}
-          onShowHelp={() => setShowHelpPanel(true)}
-          onShowQueue={() => setShowQueuePanel(true)}
-          onShowTutorial={() => setShowTutorial(true)}
-          onShowPriority={() => setShowPriorityPanel(true)}
-          onShowAccount={() => setShowAccountPanel(true)}
-          onToggleRoomStatus={() => setShowRoomStatus(true)}
-          onToggleAI={async () => {
-            const newState = !aiEnabled;
-            setAiEnabled(newState);
-            
-            // Send toggle to server via WebSocket
-            sendRawMessage({
-              type: 'ai_toggle',
-              aiEnabled: newState,
-              userId: user?.id,
-            });
-            
-            toast({
-              title: newState ? "HelpOS™ AI Enabled" : "HelpOS™ AI Disabled",
-              description: newState 
-                ? "AI costs are billed to customer credits" 
-                : "Standard support mode active",
-              variant: newState ? "default" : "destructive",
-            });
-          }}
-          aiEnabled={aiEnabled}
-          onQuickResponse={handleQuickResponse}
-          roomStatus="open"
-        />
+      {/* Hamburger Menu Button - Replaced Horizontal Command Bar */}
+      <div className="max-w-7xl mx-auto w-full px-4 py-2 border-b border-emerald-200 bg-gradient-to-r from-emerald-50 to-green-50">
+        <Button
+          onClick={() => setShowControlsMenu(true)}
+          variant="outline"
+          size="sm"
+          className="gap-2 bg-gradient-to-r from-emerald-500 to-green-600 text-white border-emerald-400 hover:from-emerald-600 hover:to-green-700 shadow-md"
+          data-testid="button-open-controls"
+        >
+          <Menu className="w-4 h-4" />
+          Controls & Actions
+        </Button>
       </div>
 
       {/* Main Layout - Full Width */}
@@ -1098,6 +1065,98 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
         onDecline={handleDeclineTerms}
         userName={userName}
       />
+
+      {/* Controls Menu - Slide-Over Panel (Emerald Color Scheme) */}
+      <Sheet open={showControlsMenu} onOpenChange={setShowControlsMenu}>
+        <SheetContent className="w-full sm:max-w-2xl bg-gradient-to-br from-emerald-50 to-green-50 border-emerald-300">
+          <SheetHeader className="border-b border-emerald-200 pb-4 mb-4">
+            <div className="flex items-center justify-between">
+              <SheetTitle className="text-2xl font-bold text-emerald-900">
+                <div className="flex items-center gap-2">
+                  <Settings className="w-6 h-6 text-emerald-600" />
+                  Controls & Actions
+                </div>
+              </SheetTitle>
+              <Button
+                onClick={() => setShowControlsMenu(false)}
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-emerald-700 hover:bg-emerald-200"
+                data-testid="button-close-controls"
+              >
+                <X className="w-5 h-5" />
+              </Button>
+            </div>
+          </SheetHeader>
+          
+          {/* Full Command Bar Inside Sheet */}
+          <div className="space-y-4">
+            <HelpDeskCommandBar
+              userRole={
+                isStaff ? 'staff' :
+                (user as any)?.subscriptionTier ? 'subscriber' :
+                (user as any)?.workspaceId ? 'org_user' :
+                'guest'
+              }
+              isStaff={isStaff || false}
+              userStatus={userStatus}
+              onStatusChange={(status) => {
+                setUserStatus(status);
+                handleStatusChange(status);
+              }}
+              queueLength={queueLength}
+              onlineStaffCount={uniqueUsers.filter(u => ['root', 'deputy_admin', 'deputy_assistant', 'sysop'].includes(u.role)).length}
+              showCoffeeCup={showCoffeeCup}
+              onShowHelp={() => {
+                setShowHelpPanel(true);
+                setShowControlsMenu(false);
+              }}
+              onShowQueue={() => {
+                setShowQueuePanel(true);
+                setShowControlsMenu(false);
+              }}
+              onShowTutorial={() => {
+                setShowTutorial(true);
+                setShowControlsMenu(false);
+              }}
+              onShowPriority={() => {
+                setShowPriorityPanel(true);
+                setShowControlsMenu(false);
+              }}
+              onShowAccount={() => {
+                setShowAccountPanel(true);
+                setShowControlsMenu(false);
+              }}
+              onToggleRoomStatus={() => {
+                setShowRoomStatus(true);
+                setShowControlsMenu(false);
+              }}
+              onToggleAI={async () => {
+                const newState = !aiEnabled;
+                setAiEnabled(newState);
+                
+                // Send toggle to server via WebSocket
+                sendRawMessage({
+                  type: 'ai_toggle',
+                  aiEnabled: newState,
+                  userId: user?.id,
+                });
+                
+                toast({
+                  title: newState ? "HelpOS™ AI Enabled" : "HelpOS™ AI Disabled",
+                  description: newState 
+                    ? "AI costs are billed to customer credits" 
+                    : "Standard support mode active",
+                  variant: newState ? "default" : "destructive",
+                });
+              }}
+              aiEnabled={aiEnabled}
+              onQuickResponse={handleQuickResponse}
+              roomStatus="open"
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
