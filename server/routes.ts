@@ -50,6 +50,7 @@ import {
   motdMessages,
   motdAcknowledgments,
   termsAcknowledgments,
+  chatAgreementAcceptances,
 } from "@shared/schema";
 import crypto from "crypto";
 import { sql, eq, and, or, isNull, lte, gte, desc } from "drizzle-orm";

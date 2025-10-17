@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -7,6 +7,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useChatroomWebSocket } from "@/hooks/use-chatroom-websocket";
 import { useChatSounds } from "@/hooks/use-chat-sounds";
 import { WorkforceOSLogo } from "@/components/workforceos-logo";
+import { ChatAgreementModal } from "@/components/chat-agreement-modal";
+import { apiRequest } from "@/lib/queryClient";
 import { 
   Send, Menu, X, Settings, Users, Circle, Shield, 
   Headphones, Bot, MessageSquare, Lock, HelpCircle,
@@ -28,9 +30,20 @@ export default function ModernMobileChat() {
   const [showSettings, setShowSettings] = useState(false);
   const [showUserList, setShowUserList] = useState(false);
   const [selectedUser, setSelectedUser] = useState<OnlineUser | null>(null);
+  const [showAgreement, setShowAgreement] = useState(false);
+  const [hasAcceptedAgreement, setHasAcceptedAgreement] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const { playSound } = useChatSounds();
+  
+  // Generate or get session ID for tracking
+  const [sessionId] = useState(() => {
+    const stored = sessionStorage.getItem('chat-session-id');
+    if (stored) return stored;
+    const newId = crypto.randomUUID();
+    sessionStorage.setItem('chat-session-id', newId);
+    return newId;
+  });
 
   // Get current user data
   const { data: currentUser } = useQuery<{ user: { id: string; email: string; platformRole?: string } }>({
@@ -75,6 +88,49 @@ export default function ModernMobileChat() {
   const { 
     messages, sendMessage, sendRawMessage, onlineUsers, isConnected
   } = useChatroomWebSocket(isAuthenticated ? userId : undefined, userName);
+
+  // Check if user has accepted agreement
+  const { data: agreementStatus } = useQuery<{ hasAccepted: boolean; acceptedAt: string | null }>({
+    queryKey: ['/api/helpdesk/agreement/check/helpdesk', sessionId],
+    enabled: isAuthenticated,
+    retry: false,
+  });
+
+  // Agreement acceptance mutation
+  const acceptAgreementMutation = useMutation({
+    mutationFn: async (fullName: string) => {
+      return apiRequest('/api/helpdesk/agreement/accept', {
+        method: 'POST',
+        body: JSON.stringify({
+          fullName,
+          roomSlug: 'helpdesk',
+          sessionId,
+        }),
+      });
+    },
+    onSuccess: () => {
+      setHasAcceptedAgreement(true);
+      setShowAgreement(false);
+      toast({
+        title: "Agreement Accepted",
+        description: "Welcome to WorkforceOS Support Chat",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to submit agreement",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Show agreement modal if not accepted
+  useEffect(() => {
+    if (agreementStatus && !agreementStatus.hasAccepted && !hasAcceptedAgreement && isAuthenticated) {
+      setShowAgreement(true);
+    }
+  }, [agreementStatus, hasAcceptedAgreement, isAuthenticated]);
 
   // Support commands that work on selected user
   const supportCommands = [
@@ -539,6 +595,15 @@ export default function ModernMobileChat() {
           </button>
         </div>
       </div>
+
+      {/* Agreement Modal - Mobile Optimized */}
+      {showAgreement && (
+        <ChatAgreementModal
+          roomName="Mobile Support Chat (DC360.5)"
+          onAccept={(fullName) => acceptAgreementMutation.mutate(fullName)}
+          isSubmitting={acceptAgreementMutation.isPending}
+        />
+      )}
     </div>
   );
 }
