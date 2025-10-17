@@ -435,44 +435,44 @@ export default function ModernMobileChat() {
           
           return (
           <div key={msg.id} className="flex gap-2 items-start animate-in fade-in slide-in-from-bottom-2">
-            {/* WorkforceOS Logo Avatar */}
-            <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center overflow-hidden ${
-              msg.senderType === 'bot' ? 'bg-gradient-to-br from-amber-500 to-yellow-600' :
-              msg.senderType === 'support' ? 'bg-gradient-to-br from-indigo-600 to-blue-600' :
-              'bg-gradient-to-br from-slate-600 to-slate-700'
+            {/* WorkforceOS Logo Avatar - Bigger and Bolder */}
+            <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center overflow-hidden ring-2 ${
+              msg.senderType === 'bot' ? 'bg-gradient-to-br from-amber-500 to-yellow-600 ring-amber-500/50' :
+              msg.senderType === 'support' ? 'bg-gradient-to-br from-indigo-600 to-blue-600 ring-indigo-500/50' :
+              'bg-gradient-to-br from-slate-600 to-slate-700 ring-slate-500/50'
             }`}>
               {msg.senderType === 'bot' ? (
-                <Sparkles size={16} className="text-white" />
+                <Sparkles size={20} className="text-white font-bold" />
               ) : (
-                <WorkforceOSLogo className="h-5 w-5" showText={false} />
+                <WorkforceOSLogo className="h-7 w-7 font-bold" showText={false} />
               )}
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1 flex-wrap">
-                <span className={`font-semibold text-sm ${
+                <span className={`font-bold text-sm ${
                   msg.senderType === 'bot' ? 'text-amber-400' :
                   msg.senderType === 'support' ? 'text-indigo-400' :
                   'text-white'
                 }`}>
                   {msg.senderType === 'bot' ? 'HelpOS' : msg.senderName?.split('(')[0].trim()}
                 </span>
-                {roleDisplay && (
+                {/* Always show role badge for staff/bot */}
+                {(roleDisplay || (msg.senderId === userId && userPlatformRole)) && (
                   <Badge 
                     variant="secondary" 
-                    className={`text-[10px] px-1.5 py-0 border ${
+                    className={`text-[10px] px-1.5 py-0 border font-semibold ${
                       msg.senderType === 'bot' 
                         ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' 
                         : isCurrentUser
-                          ? 'bg-gradient-to-r from-indigo-500/30 to-purple-500/30 text-transparent bg-clip-text animate-pulse border-indigo-500/50'
+                          ? 'bg-gradient-to-r from-indigo-500/30 to-purple-500/30 border-indigo-500/50'
                           : 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30'
                     }`}
                     style={isCurrentUser ? {
                       animation: 'glow 2s ease-in-out infinite',
-                      textShadow: '0 0 10px rgba(99, 102, 241, 0.8)'
                     } : {}}
                   >
                     <span className={isCurrentUser ? 'text-indigo-400 font-bold animate-pulse' : ''}>
-                      {roleDisplay}
+                      {roleDisplay || (msg.senderId === userId ? getRoleDisplay(userPlatformRole) : null)}
                     </span>
                   </Badge>
                 )}

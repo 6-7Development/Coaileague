@@ -45,6 +45,7 @@ import { AccountSupportPanel } from "@/components/account-support-panel";
 import { MotdDialog } from "@/components/motd-dialog";
 import { AnimatedStatusBar } from "@/components/animated-status-bar";
 import { TermsDialog } from "@/components/terms-dialog";
+import { ChatAgreementModal } from "@/components/chat-agreement-modal";
 import { formatDistanceToNow } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -92,7 +93,18 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
   const [motdData, setMotdData] = useState<any>(null);
   const [showTermsDialog, setShowTermsDialog] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [showAgreement, setShowAgreement] = useState(false);
+  const [hasAcceptedAgreement, setHasAcceptedAgreement] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  // Generate or get session ID for tracking
+  const [sessionId] = useState(() => {
+    const stored = sessionStorage.getItem('chat-session-id');
+    if (stored) return stored;
+    const newId = crypto.randomUUID();
+    sessionStorage.setItem('chat-session-id', newId);
+    return newId;
+  });
 
   // IRC-style MOTD and helpful info banners
   const infoBanners = [
@@ -140,6 +152,49 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
     queryKey: ['/api/helpdesk/room/helpdesk'],
     enabled: isAuthenticated,
   });
+
+  // Check if user has accepted agreement
+  const { data: agreementStatus } = useQuery<{ hasAccepted: boolean; acceptedAt: string | null }>({
+    queryKey: ['/api/helpdesk/agreement/check/helpdesk', sessionId],
+    enabled: isAuthenticated,
+    retry: false,
+  });
+
+  // Agreement acceptance mutation
+  const acceptAgreementMutation = useMutation({
+    mutationFn: async (fullName: string) => {
+      return apiRequest('/api/helpdesk/agreement/accept', {
+        method: 'POST',
+        body: JSON.stringify({
+          fullName,
+          roomSlug: 'helpdesk',
+          sessionId,
+        }),
+      });
+    },
+    onSuccess: () => {
+      setHasAcceptedAgreement(true);
+      setShowAgreement(false);
+      toast({
+        title: "Agreement Accepted",
+        description: "Welcome to WorkforceOS Support Chat",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to submit agreement",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Show agreement modal if not accepted
+  useEffect(() => {
+    if (agreementStatus && !agreementStatus.hasAccepted && !hasAcceptedAgreement && isAuthenticated) {
+      setShowAgreement(true);
+    }
+  }, [agreementStatus, hasAcceptedAgreement, isAuthenticated]);
 
   const { data: queueData } = useQuery<any[]>({
     queryKey: ['/api/helpdesk/queue'],

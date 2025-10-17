@@ -68,78 +68,98 @@ export function TermsDialog({ open, onAccept, onDecline, userName }: TermsDialog
           <div className="space-y-4 text-sm text-slate-200 py-2">
             <section className="bg-gradient-to-r from-blue-600 to-slate-700 border-l-4 border-white p-4 rounded shadow-md">
               <p className="font-semibold text-white">
-                By accessing WorkforceOS™ HelpDesk support, you acknowledge and agree to the following terms.
-                This agreement is legally binding and will be saved with your support ticket for compliance purposes.
+                WORKFORCE OS SUPPORT CHAT - TERMS & CONDITIONS<br/>
+                OPERATOR: Drill Consulting 360 (DC360)<br/><br/>
+                BY ACCEPTING, YOU AGREE TO THE FOLLOWING LEGALLY BINDING TERMS
               </p>
             </section>
 
             <section>
-              <h3 className="font-bold text-base text-white mb-2">1. Service Agreement</h3>
-              <p>
-                This support service is provided "as is" for assistance with platform-related inquiries and technical support.
-                WorkforceOS™ provides best-effort support but makes no guarantees regarding response time or issue resolution.
+              <h3 className="font-bold text-base text-white mb-2">1. SERVICE DESCRIPTION & LIMITATIONS</h3>
+              <p className="mb-2">
+                This WorkforceOS Support Chat provides real-time customer support, technical assistance, and general inquiries. 
+                This is a professional business communication channel operated by Drill Consulting 360.
               </p>
-            </section>
-
-            <section>
-              <h3 className="font-bold text-base text-white mb-2">2. Privacy & Data Collection</h3>
-              <p className="mb-2">We collect and process the following information during your support session:</p>
+              <p className="font-semibold text-amber-400 mb-2">IMPORTANT:</p>
               <ul className="list-disc list-inside space-y-1 ml-2">
-                <li>Chat messages and conversation history</li>
-                <li>Email address and ticket information</li>
-                <li>Account details you voluntarily provide</li>
-                <li>Technical diagnostics (IP address, browser info, user agent)</li>
-                <li>Support session metadata (timestamps, queue position)</li>
-                <li>Your e-signature (initials) and acceptance timestamp</li>
+                <li>We do NOT guarantee every issue will be resolved immediately or at all</li>
+                <li>Some issues may require platform upgrades, updates, or extended development time</li>
+                <li>Resolution may require third-party service changes or system downtime for maintenance</li>
+                <li>Technical resources may be beyond current capabilities</li>
+                <li>Resolution timeframes and outcomes are NOT guaranteed</li>
+              </ul>
+            </section>
+
+            <section>
+              <h3 className="font-bold text-base text-white mb-2">2. USER CONDUCT</h3>
+              <p className="mb-2">You agree to:</p>
+              <ul className="list-disc list-inside space-y-1 ml-2">
+                <li>Communicate professionally and respectfully at all times</li>
+                <li>NOT make false claims of discrimination, harassment, or misconduct</li>
+                <li>Respect support staff, visitors, volunteers, and other users</li>
+                <li>Accept that staff behavior is professional - perceived rudeness may be due to communication style or urgent priorities</li>
+                <li>NOT share sensitive passwords or payment details in chat</li>
+              </ul>
+            </section>
+
+            <section>
+              <h3 className="font-bold text-base text-white mb-2">3. COMPLETE DISCLAIMER OF WARRANTIES</h3>
+              <p className="mb-2">
+                THE SERVICE IS PROVIDED "AS IS" WITHOUT WARRANTIES. WORKFORCEOS, DRILL CONSULTING 360, AND ALL AFFILIATED PARTIES MAKE NO GUARANTEES REGARDING:
+              </p>
+              <ul className="list-disc list-inside space-y-1 ml-2">
+                <li>Chat availability, uptime, or accessibility</li>
+                <li>Response times or issue resolution</li>
+                <li>Data transmission security over WebSocket connections</li>
+                <li>Platform stability during updates or maintenance</li>
+                <li>Compatibility with external services or hosting providers</li>
+              </ul>
+            </section>
+
+            <section>
+              <h3 className="font-bold text-base text-white mb-2">4. COMPREHENSIVE LIMITATION OF LIABILITY</h3>
+              <p className="mb-2 font-semibold">
+                TO THE MAXIMUM EXTENT PERMITTED BY LAW, YOU AGREE THAT WORKFORCEOS, DRILL CONSULTING 360, AND ALL OF OUR:
+              </p>
+              <ul className="list-disc list-inside space-y-1 ml-2 mb-2">
+                <li>Staff members and support representatives</li>
+                <li>Ownership, officers, directors, and managers</li>
+                <li>Agents, contractors, and representatives</li>
+                <li>Volunteers, visitors, and affiliates</li>
+              </ul>
+              <p className="mb-2 font-semibold">SHALL NOT BE LIABLE FOR:</p>
+              <ul className="list-disc list-inside space-y-1 ml-2">
+                <li>Any direct, indirect, incidental, or consequential damages</li>
+                <li>Claims of discrimination, rudeness, or unprofessional conduct</li>
+                <li>Service interruptions, downtime, or technical failures</li>
+                <li>Issues from platform updates, upgrades, or maintenance</li>
+                <li>WebSocket connection failures or hosting provider issues</li>
+                <li>Any damages exceeding $100 USD in total</li>
+              </ul>
+              <p className="mt-2 font-bold text-red-400">
+                YOU EXPRESSLY WAIVE ALL RIGHTS TO SUE OR BRING LEGAL ACTION against any of the above parties.
+              </p>
+            </section>
+
+            <section>
+              <h3 className="font-bold text-base text-white mb-2">5. DATA COLLECTION & PRIVACY</h3>
+              <p className="mb-2">We collect and store for 7 years minimum:</p>
+              <ul className="list-disc list-inside space-y-1 ml-2">
+                <li>Chat messages, timestamps, and conversation history</li>
+                <li>User identification (email, ticket, session ID)</li>
+                <li>IP address, browser information, device data</li>
+                <li>Agreement acceptance signature and timestamp</li>
               </ul>
               <p className="mt-2">
-                All data is encrypted in transit and stored securely according to industry best practices and GDPR compliance.
+                This data is stored in our compliance vault for legal evidence, dispute resolution, quality assurance, and regulatory compliance.
               </p>
             </section>
 
             <section>
-              <h3 className="font-bold text-base text-white mb-2">3. Acceptable Use</h3>
-              <p className="mb-2">You agree NOT to:</p>
-              <ul className="list-disc list-inside space-y-1 ml-2">
-                <li>Use abusive, threatening, or inappropriate language</li>
-                <li>Share sensitive credentials or payment information in chat</li>
-                <li>Spam or flood the support system</li>
-                <li>Impersonate others or provide false information</li>
-                <li>Attempt to exploit or hack the platform</li>
-              </ul>
-            </section>
-
-            <section>
-              <h3 className="font-bold text-base text-white mb-2">4. Limitation of Liability</h3>
+              <h3 className="font-bold text-base text-white mb-2">6. CONSENT TO MONITORING</h3>
               <p>
-                WorkforceOS™ and its support staff provide assistance on a best-effort basis. We are not liable for any
-                damages, data loss, or business interruption resulting from support interactions or advice provided.
-                All recommendations should be reviewed by your IT team before implementation in production environments.
-              </p>
-            </section>
-
-            <section>
-              <h3 className="font-bold text-base text-white mb-2">5. Recording & Quality Assurance</h3>
-              <p>
-                Support conversations may be recorded, monitored, and reviewed for quality assurance, training purposes,
-                and compliance auditing. By proceeding, you consent to this monitoring. Your acceptance of these terms,
-                including your e-signature, will be saved with your ticket for audit purposes.
-              </p>
-            </section>
-
-            <section>
-              <h3 className="font-bold text-base text-white mb-2">6. AI-Powered Assistance</h3>
-              <p>
-                When HelpOS™ AI is enabled (client-pays-all model), your messages may be processed by third-party AI services.
-                AI responses are supplementary and should not replace professional judgment for critical decisions.
-              </p>
-            </section>
-
-            <section>
-              <h3 className="font-bold text-base text-white mb-2">7. Termination</h3>
-              <p>
-                We reserve the right to terminate support access for violations of these terms, abusive behavior,
-                or suspicious activity. Repeated violations may result in permanent account suspension.
+                You acknowledge and consent to all chat conversations being recorded and monitored. Support staff may review chat history for training. 
+                Platform administrators access chats for compliance audits. Law enforcement access if legally required.
               </p>
             </section>
 
@@ -147,10 +167,10 @@ export function TermsDialog({ open, onAccept, onDecline, userName }: TermsDialog
               <div className="flex gap-2">
                 <AlertCircle className="w-5 h-5 text-white flex-shrink-0 mt-0.5" />
                 <div>
-                  <p className="font-semibold text-white">Important Legal Notice</p>
+                  <p className="font-semibold text-white">BINDING LEGAL AGREEMENT</p>
                   <p className="text-xs text-amber-50 mt-1">
-                    These terms constitute a binding legal agreement. If you do not agree, please decline
-                    and contact us via alternative support channels at support@workforceos.com
+                    By clicking "Accept", you create a legally binding agreement. Your acceptance is recorded with timestamp and IP address.
+                    Your SOLE REMEDY is to DISCONTINUE USE of this service.
                   </p>
                 </div>
               </div>
