@@ -34,6 +34,7 @@ import {
   History, MessageCircle, ArrowUpCircle, Eye, RefreshCw, PackageCheck, FileSearch
 } from "lucide-react";
 import { WFLogoCompact } from "@/components/wf-logo";
+import { WorkforceOSLogo } from "@/components/workforceos-logo";
 import { SecureRequestDialog } from "@/components/secure-request-dialog";
 import { BrandedConfirmDialog } from "@/components/branded-input-dialog";
 import { HelpDeskCommandBar } from "@/components/helpdesk-command-bar";
