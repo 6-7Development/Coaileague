@@ -742,7 +742,11 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
     } else {
       // Mute/Silence
       sendRawMessage({ type: 'silence_user', targetUserId: targetUser.id });
-      setSilencedUsers(prev => new Set([...prev, targetUser.id]));
+      setSilencedUsers(prev => {
+        const next = new Set(prev);
+        next.add(targetUser.id);
+        return next;
+      });
       toast({ title: "User silenced", description: `${targetUser.name} has been muted`, variant: "destructive" });
     }
   };
@@ -761,7 +765,11 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
     } else {
       // Ban
       sendRawMessage({ type: 'ban_user', targetUserId: targetUser.id });
-      setBannedUsers(prev => new Set([...prev, targetUser.id]));
+      setBannedUsers(prev => {
+        const next = new Set(prev);
+        next.add(targetUser.id);
+        return next;
+      });
       toast({ title: "User banned", description: `${targetUser.name} permanently banned`, variant: "destructive" });
     }
   };
@@ -785,8 +793,8 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
       {/* Seasonal Animated Background */}
       <SeasonalBackground enabled={seasonalAnimationsEnabled} />
       {/* WorkforceOS Blue Gradient Header - More Professional */}
-      <header className="bg-gradient-to-r from-slate-800 via-slate-700 to-slate-800 p-3 text-white shadow-lg relative z-10">
-        <div className="flex items-center justify-between max-w-7xl mx-auto">
+      <header className="bg-gradient-to-r from-slate-800 via-slate-700 to-slate-800 text-white shadow-lg relative z-10">
+        <div className="flex items-center justify-between max-w-7xl mx-auto p-3">
           <div className="flex items-center gap-3">
             <MessageSquare className="w-6 h-6 text-slate-300" />
             <div className="bg-white/5 backdrop-blur-sm rounded-lg p-2">
@@ -836,6 +844,21 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
             )}
           </div>
         </div>
+        
+        {/* Announcement Banner integrated into header */}
+        <div className="border-t border-slate-600/50">
+          <ChatAnnouncementBanner
+            queuePosition={queueLength || 1}
+            queueWaitTime="2-3 minutes"
+            onlineStaff={uniqueUsers.filter(u => ['root', 'deputy_admin', 'deputy_assistant', 'sysop'].includes(u.role)).length}
+            customMessages={customBannerMessage ? [{
+              id: 'custom-1',
+              text: customBannerMessage,
+              type: 'promo' as const,
+              icon: 'zap'
+            }] : []}
+          />
+        </div>
       </header>
 
       {/* Hamburger Menu Button - More Professional */}
@@ -856,21 +879,6 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
       <main className="flex flex-grow overflow-hidden max-w-7xl mx-auto w-full relative z-10">
         {/* CENTER COLUMN: Chat Area */}
         <section className="flex-grow flex flex-col bg-white/50 backdrop-blur-md relative">
-          {/* Animated Seasonal Banner - STICKY at top */}
-          <div className="sticky top-0 z-50">
-            <ChatAnnouncementBanner
-              queuePosition={queueLength || 1}
-              queueWaitTime="2-3 minutes"
-              onlineStaff={uniqueUsers.filter(u => ['root', 'deputy_admin', 'deputy_assistant', 'sysop'].includes(u.role)).length}
-              customMessages={customBannerMessage ? [{
-                id: 'custom-1',
-                text: customBannerMessage,
-                type: 'promo' as const,
-                icon: 'zap'
-              }] : []}
-            />
-          </div>
-
           {/* Messages Area */}
           <ScrollArea className="flex-grow p-4">
             <div className="space-y-4">
