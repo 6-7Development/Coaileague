@@ -1,7 +1,7 @@
 // Multi-tenant SaaS Scheduling Platform
 // Reference: javascript_log_in_with_replit blueprint
 
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -103,25 +103,32 @@ function AppContent() {
 
   // Check if user is Root Admin (platform-level access)
   const isRootAdmin = (user as any)?.platformRole === 'root' || (user as any)?.platformRole === 'sysop';
+  
+  // Check if on mobile chat - these routes don't need global sidebar/header
+  const [location] = useLocation();
+  const isMobileChat = location === '/mobile-chat' || location === '/mobilechat';
 
   return (
     <ProtectedRoute>
       <SidebarProvider defaultOpen={false} style={style as React.CSSProperties}>
         <CommandPalette />
         <div className="flex h-screen w-full">
-          <AppSidebar />
+          {/* Hide global sidebar for mobile chat - it has its own support menu */}
+          {!isMobileChat && <AppSidebar />}
           <div className="flex flex-col flex-1 min-h-0">
             <DemoBanner />
             
-            {/* Global Header with Sidebar Toggle */}
-            <header className="flex items-center justify-between px-4 py-2 border-b bg-card shrink-0">
-              <div className="flex items-center gap-2">
-                <SidebarTrigger data-testid="button-sidebar-toggle" />
-              </div>
-              <div className="flex items-center gap-2">
-                <ThemeToggle />
-              </div>
-            </header>
+            {/* Global Header with Sidebar Toggle - Hidden for mobile chat */}
+            {!isMobileChat && (
+              <header className="flex items-center justify-between px-4 py-2 border-b bg-card shrink-0">
+                <div className="flex items-center gap-2">
+                  <SidebarTrigger data-testid="button-sidebar-toggle" />
+                </div>
+                <div className="flex items-center gap-2">
+                  <ThemeToggle />
+                </div>
+              </header>
+            )}
             
             <main className="flex-1 overflow-auto bg-transparent min-h-0">
               <Switch>

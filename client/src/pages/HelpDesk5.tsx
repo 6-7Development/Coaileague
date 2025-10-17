@@ -899,7 +899,7 @@ export default function LiveChatroomPage() {
           
           {/* Messages */}
           <ScrollArea className="flex-1 p-4 relative z-10" onScroll={handleScroll as any}>
-            <div className="max-w-full md:max-w-5xl mx-auto space-y-4 pb-24">
+            <div className="max-w-full md:max-w-5xl mx-auto space-y-4 pb-32">
               {/* Interactive Announcement Banner - Full Width */}
               <div className="sticky top-0 z-50 -mx-4">
                 <ChatAnnouncementBanner 
