@@ -45,10 +45,7 @@ export default function EmployeeFormExample() {
     // Using the utility function for automatic transition handling
     await handleFormSubmissionWithTransition(
       transition,
-      () => apiRequest("/api/employees", {
-        method: "POST",
-        body: JSON.stringify(data),
-      }),
+      () => apiRequest("POST", "/api/employees", data),
       {
         loadingMessage: "Creating employee...",
         successMessage: "Employee added successfully!",
@@ -72,10 +69,7 @@ export default function EmployeeFormExample() {
     });
 
     try {
-      const result = await apiRequest("/api/employees", {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
+      const result = await apiRequest("POST", "/api/employees", data);
 
       // Show success with custom message and redirect
       showSuccessTransition(

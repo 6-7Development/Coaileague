@@ -162,12 +162,19 @@ export function AppSidebar() {
     return `${firstName?.[0] || ""}${lastName?.[0] || ""}`.toUpperCase();
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    // Call logout API while staying in SPA
+    try {
+      await fetch("/api/logout", {
+        method: "POST",
+        credentials: "include"
+      });
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
+    
+    // Show transition with auto-redirect to login
     showLogoutTransition(transition);
-    // The transition utility will handle the redirect to /api/logout
-    setTimeout(() => {
-      window.location.href = "/api/logout";
-    }, 800);
   };
 
   // Check if user is Root Admin (platform-level access)

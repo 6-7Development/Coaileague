@@ -2,13 +2,15 @@ import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
 import { useChatroomWebSocket } from "@/hooks/use-chatroom-websocket";
 import { useChatSounds } from "@/hooks/use-chat-sounds";
 import { 
   Send, Menu, X, Settings, Users, Circle, Shield, 
   Headphones, Bot, MessageSquare, Lock, HelpCircle,
-  XCircle, CheckCircle, Clock, AlertCircle, ChevronDown
+  XCircle, CheckCircle, Clock, AlertCircle, ChevronDown,
+  UserCheck, FileText, Camera, PenTool, Info, ArrowRight
 } from "lucide-react";
 import type { ChatMessage } from "@shared/schema";
 
@@ -23,6 +25,8 @@ export default function ModernMobileChat() {
   const [messageText, setMessageText] = useState("");
   const [showCommandMenu, setShowCommandMenu] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showUserList, setShowUserList] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<OnlineUser | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const { playSound } = useChatSounds();
@@ -51,16 +55,67 @@ export default function ModernMobileChat() {
 
   // Use WebSocket for real-time messaging
   const { 
-    messages, sendMessage, onlineUsers, isConnected
+    messages, sendMessage, sendRawMessage, onlineUsers, isConnected
   } = useChatroomWebSocket(isAuthenticated ? userId : undefined, userName);
 
-  const commands = [
-    { icon: MessageSquare, label: 'Send Welcome', command: '/intro', color: 'text-blue-400' },
-    { icon: Lock, label: 'Request Auth', command: '/auth', color: 'text-indigo-400' },
-    { icon: HelpCircle, label: 'Show Help', command: '/help', color: 'text-cyan-400' },
-    { icon: XCircle, label: 'Close & Feedback', command: '/close', color: 'text-slate-400' },
-    { icon: CheckCircle, label: 'Verify User', command: '/verify', color: 'text-emerald-400' },
-    { icon: Users, label: 'View Queue', command: '/queue', color: 'text-purple-400' },
+  // Support commands that work on selected user
+  const supportCommands = [
+    { 
+      icon: UserCheck, 
+      label: 'Release Hold & Welcome', 
+      action: () => handleReleaseHold(),
+      color: 'text-emerald-400',
+      description: 'Remove spectator mode + send greeting'
+    },
+    { 
+      icon: Lock, 
+      label: 'Request Authentication', 
+      action: () => handleRequestAuth(),
+      color: 'text-indigo-400',
+      description: 'Ask user to verify their identity'
+    },
+    { 
+      icon: FileText, 
+      label: 'Request Document', 
+      action: () => handleRequestDocument(),
+      color: 'text-blue-400',
+      description: 'Request file upload from user'
+    },
+    { 
+      icon: Camera, 
+      label: 'Request Photo', 
+      action: () => handleRequestPhoto(),
+      color: 'text-cyan-400',
+      description: 'Request photo/screenshot'
+    },
+    { 
+      icon: PenTool, 
+      label: 'Request Signature', 
+      action: () => handleRequestSignature(),
+      color: 'text-purple-400',
+      description: 'Request e-signature'
+    },
+    { 
+      icon: Info, 
+      label: 'Request Info', 
+      action: () => handleRequestInfo(),
+      color: 'text-orange-400',
+      description: 'Ask for specific information'
+    },
+    { 
+      icon: ArrowRight, 
+      label: 'Transfer User', 
+      action: () => handleTransfer(),
+      color: 'text-pink-400',
+      description: 'Transfer to another agent'
+    },
+    { 
+      icon: CheckCircle, 
+      label: 'Mark Resolved', 
+      action: () => handleResolve(),
+      color: 'text-green-400',
+      description: 'Close ticket as resolved'
+    },
   ];
 
   useEffect(() => {
@@ -75,15 +130,136 @@ export default function ModernMobileChat() {
     }
   };
 
-  const handleCommandExecute = (command: string) => {
-    sendMessage(command, userName, 'support');
+  const handleUserSelect = (user: OnlineUser) => {
+    setSelectedUser(user);
+    setShowUserList(false);
+    toast({ 
+      title: "User Selected", 
+      description: `${user.name} - All commands will apply to this user`
+    });
+  };
+
+  // Support command handlers with user ID tracking
+  const handleReleaseHold = () => {
+    if (!selectedUser) {
+      toast({ title: "No user selected", description: "Please select a user first", variant: "destructive" });
+      return;
+    }
+    
+    const message = `RELEASE_HOLD:${selectedUser.id}:${selectedUser.name}`;
+    sendRawMessage(message);
+    
+    // Send personalized greeting
+    setTimeout(() => {
+      sendMessage(`Welcome ${selectedUser.name}! I've removed the hold. How can I help you today?`, userName, 'support');
+    }, 500);
+    
+    toast({ title: "Released from hold", description: `${selectedUser.name} can now chat freely` });
     setShowCommandMenu(false);
-    toast({ title: "Command executed", description: `${command} sent` });
+  };
+
+  const handleRequestAuth = () => {
+    if (!selectedUser) {
+      toast({ title: "No user selected", variant: "destructive" });
+      return;
+    }
+    
+    const message = `REQUEST_AUTH:${selectedUser.id}:${selectedUser.name}`;
+    sendRawMessage(message);
+    sendMessage(`@${selectedUser.name} Please verify your identity. I'll send you a secure authentication request.`, userName, 'support');
+    
+    toast({ title: "Auth request sent", description: `Waiting for ${selectedUser.name} to authenticate` });
+    setShowCommandMenu(false);
+  };
+
+  const handleRequestDocument = () => {
+    if (!selectedUser) {
+      toast({ title: "No user selected", variant: "destructive" });
+      return;
+    }
+    
+    const message = `REQUEST_DOCUMENT:${selectedUser.id}:${selectedUser.name}`;
+    sendRawMessage(message);
+    sendMessage(`@${selectedUser.name} Please upload the required document using the secure upload dialog.`, userName, 'support');
+    
+    toast({ title: "Document request sent", description: `${selectedUser.name} will receive upload prompt` });
+    setShowCommandMenu(false);
+  };
+
+  const handleRequestPhoto = () => {
+    if (!selectedUser) {
+      toast({ title: "No user selected", variant: "destructive" });
+      return;
+    }
+    
+    const message = `REQUEST_PHOTO:${selectedUser.id}:${selectedUser.name}`;
+    sendRawMessage(message);
+    sendMessage(`@${selectedUser.name} Please upload a photo/screenshot to help us assist you.`, userName, 'support');
+    
+    toast({ title: "Photo request sent" });
+    setShowCommandMenu(false);
+  };
+
+  const handleRequestSignature = () => {
+    if (!selectedUser) {
+      toast({ title: "No user selected", variant: "destructive" });
+      return;
+    }
+    
+    const message = `REQUEST_SIGNATURE:${selectedUser.id}:${selectedUser.name}`;
+    sendRawMessage(message);
+    sendMessage(`@${selectedUser.name} Please provide your e-signature to proceed.`, userName, 'support');
+    
+    toast({ title: "Signature request sent" });
+    setShowCommandMenu(false);
+  };
+
+  const handleRequestInfo = () => {
+    if (!selectedUser) {
+      toast({ title: "No user selected", variant: "destructive" });
+      return;
+    }
+    
+    const message = `REQUEST_INFO:${selectedUser.id}:${selectedUser.name}`;
+    sendRawMessage(message);
+    sendMessage(`@${selectedUser.name} Please provide additional information about your request.`, userName, 'support');
+    
+    toast({ title: "Info request sent" });
+    setShowCommandMenu(false);
+  };
+
+  const handleTransfer = () => {
+    if (!selectedUser) {
+      toast({ title: "No user selected", variant: "destructive" });
+      return;
+    }
+    
+    const message = `TRANSFER_USER:${selectedUser.id}:${selectedUser.name}`;
+    sendRawMessage(message);
+    sendMessage(`@${selectedUser.name} I'm transferring you to another specialist who can better assist you.`, userName, 'support');
+    
+    toast({ title: "Transfer initiated", description: `${selectedUser.name} will be transferred` });
+    setShowCommandMenu(false);
+  };
+
+  const handleResolve = () => {
+    if (!selectedUser) {
+      toast({ title: "No user selected", variant: "destructive" });
+      return;
+    }
+    
+    const message = `RESOLVE_TICKET:${selectedUser.id}:${selectedUser.name}`;
+    sendRawMessage(message);
+    sendMessage(`@${selectedUser.name} Your issue has been resolved. Is there anything else I can help you with?`, userName, 'support');
+    
+    toast({ title: "Ticket resolved", description: `${selectedUser.name}'s ticket marked as resolved` });
+    setShowCommandMenu(false);
+    setSelectedUser(null);
   };
 
   return (
     <div className="h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 flex flex-col max-w-md mx-auto relative overflow-hidden">
-      {/* Animated background effect - WorkforceOS colors */}
+      {/* Animated background effect */}
       <div className="absolute inset-0 opacity-20">
         <div className="absolute top-0 left-0 w-96 h-96 bg-indigo-500 rounded-full filter blur-3xl animate-pulse"></div>
         <div className="absolute bottom-0 right-0 w-96 h-96 bg-blue-500 rounded-full filter blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
@@ -113,6 +289,11 @@ export default function ModernMobileChat() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {isStaff && selectedUser && (
+              <Badge className="bg-indigo-500/20 text-indigo-400 border-indigo-500/30 text-xs">
+                Selected: {selectedUser.name}
+              </Badge>
+            )}
             {isStaff && (
               <button 
                 onClick={() => setShowCommandMenu(!showCommandMenu)}
@@ -124,24 +305,18 @@ export default function ModernMobileChat() {
                 <Menu size={20} />
               </button>
             )}
-            <button 
-              onClick={() => setShowSettings(!showSettings)}
-              className="text-white/70 hover:text-white hover:bg-white/10 p-2 rounded-full transition-all"
-              data-testid="button-settings"
-            >
-              <Settings size={20} />
-            </button>
           </div>
         </div>
       </div>
 
-      {/* Command Grid Menu */}
+      {/* Command Menu - Hidden by default, shows when hamburger clicked */}
       {showCommandMenu && isStaff && (
-        <div className="absolute top-16 left-4 right-4 z-50 backdrop-blur-xl bg-black/80 rounded-2xl border border-white/10 p-4 shadow-2xl animate-in slide-in-from-top-2 fade-in">
+        <div className="absolute top-16 left-0 right-0 z-50 backdrop-blur-xl bg-black/90 border-b border-white/10 p-4 shadow-2xl animate-in slide-in-from-top-2 fade-in max-h-[70vh] overflow-y-auto">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-white font-semibold flex items-center gap-2">
               <Shield className="w-4 h-4 text-indigo-400" />
               Support Commands
+              {!selectedUser && <span className="text-xs text-orange-400">(Select a user first)</span>}
             </h3>
             <button 
               onClick={() => setShowCommandMenu(false)} 
@@ -151,48 +326,28 @@ export default function ModernMobileChat() {
               <X size={18} />
             </button>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            {commands.map((cmd, idx) => (
+          <div className="space-y-2">
+            {supportCommands.map((cmd, idx) => (
               <button
                 key={idx}
-                onClick={() => handleCommandExecute(cmd.command)}
-                className="flex flex-col items-center gap-2 p-4 bg-white/5 hover:bg-white/10 rounded-xl transition-all active:scale-95 border border-white/5"
-                data-testid={`command-${cmd.command.slice(1)}`}
+                onClick={cmd.action}
+                disabled={!selectedUser}
+                className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all border ${
+                  selectedUser 
+                    ? 'bg-white/5 hover:bg-white/10 border-white/10 active:scale-98' 
+                    : 'bg-white/5 opacity-50 cursor-not-allowed border-white/5'
+                }`}
+                data-testid={`command-${cmd.label.toLowerCase().replace(/\s+/g, '-')}`}
               >
-                <cmd.icon size={24} className={cmd.color} />
-                <span className="text-xs text-slate-300 text-center font-medium">{cmd.label}</span>
+                <cmd.icon size={20} className={selectedUser ? cmd.color : 'text-slate-600'} />
+                <div className="flex-1 text-left">
+                  <div className={`text-sm font-medium ${selectedUser ? 'text-white' : 'text-slate-600'}`}>
+                    {cmd.label}
+                  </div>
+                  <div className="text-xs text-slate-500">{cmd.description}</div>
+                </div>
               </button>
             ))}
-          </div>
-        </div>
-      )}
-
-      {/* Settings Panel */}
-      {showSettings && (
-        <div className="absolute top-16 right-4 z-50 backdrop-blur-xl bg-black/80 rounded-2xl border border-white/10 p-4 w-64 shadow-2xl animate-in slide-in-from-top-2 fade-in">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-white font-semibold">Chat Settings</h3>
-            <button 
-              onClick={() => setShowSettings(false)} 
-              className="text-slate-400 hover:text-white"
-              data-testid="button-close-settings"
-            >
-              <X size={18} />
-            </button>
-          </div>
-          <div className="space-y-3">
-            <label className="flex items-center justify-between text-sm">
-              <span className="text-slate-300">Sound alerts</span>
-              <input type="checkbox" defaultChecked className="rounded" />
-            </label>
-            <label className="flex items-center justify-between text-sm">
-              <span className="text-slate-300">Timestamps</span>
-              <input type="checkbox" defaultChecked className="rounded" />
-            </label>
-            <label className="flex items-center justify-between text-sm">
-              <span className="text-slate-300">Notifications</span>
-              <input type="checkbox" className="rounded" />
-            </label>
           </div>
         </div>
       )}
@@ -238,44 +393,65 @@ export default function ModernMobileChat() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Quick Actions Bar (Staff Only) */}
+      {/* Floating User List Button (Bottom Right) - Staff Only */}
       {isStaff && (
-        <div className="relative z-10 backdrop-blur-xl bg-black/30 border-t border-white/10 px-4 py-2">
-          <div className="flex items-center justify-around">
+        <Sheet open={showUserList} onOpenChange={setShowUserList}>
+          <SheetTrigger asChild>
             <button
-              onClick={() => handleCommandExecute('/intro')}
-              className="flex flex-col items-center gap-1 p-2 hover:bg-white/5 rounded-lg transition-all active:scale-95"
-              data-testid="quick-intro"
+              className="fixed bottom-20 right-4 z-50 p-4 bg-gradient-to-r from-indigo-500 to-blue-500 rounded-full text-white shadow-2xl shadow-indigo-500/50 hover:shadow-indigo-500/70 transition-all active:scale-95"
+              data-testid="button-user-list"
             >
-              <MessageSquare size={20} className="text-blue-400" />
-              <span className="text-[10px] text-slate-400">Welcome</span>
+              <Users size={24} />
+              <div className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-xs font-bold">
+                {onlineUsers.length}
+              </div>
             </button>
-            <button
-              onClick={() => handleCommandExecute('/auth')}
-              className="flex flex-col items-center gap-1 p-2 hover:bg-white/5 rounded-lg transition-all active:scale-95"
-              data-testid="quick-auth"
-            >
-              <Lock size={20} className="text-indigo-400" />
-              <span className="text-[10px] text-slate-400">Auth</span>
-            </button>
-            <button
-              onClick={() => handleCommandExecute('/help')}
-              className="flex flex-col items-center gap-1 p-2 hover:bg-white/5 rounded-lg transition-all active:scale-95"
-              data-testid="quick-help"
-            >
-              <HelpCircle size={20} className="text-cyan-400" />
-              <span className="text-[10px] text-slate-400">Help</span>
-            </button>
-            <button
-              onClick={() => handleCommandExecute('/close')}
-              className="flex flex-col items-center gap-1 p-2 hover:bg-white/5 rounded-lg transition-all active:scale-95"
-              data-testid="quick-close"
-            >
-              <XCircle size={20} className="text-slate-400" />
-              <span className="text-[10px] text-slate-400">Close</span>
-            </button>
-          </div>
-        </div>
+          </SheetTrigger>
+          <SheetContent side="bottom" className="bg-slate-900/95 backdrop-blur-xl border-white/10 max-h-[80vh]">
+            <SheetHeader>
+              <SheetTitle className="text-white flex items-center gap-2">
+                <Users className="w-5 h-5 text-indigo-400" />
+                Online Users ({onlineUsers.length})
+              </SheetTitle>
+            </SheetHeader>
+            <div className="mt-4 space-y-2 overflow-y-auto max-h-[60vh]">
+              {onlineUsers.map((user) => (
+                <button
+                  key={user.id}
+                  onClick={() => handleUserSelect(user)}
+                  className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all border ${
+                    selectedUser?.id === user.id
+                      ? 'bg-indigo-500/20 border-indigo-500/50'
+                      : 'bg-white/5 hover:bg-white/10 border-white/10'
+                  }`}
+                  data-testid={`user-${user.id}`}
+                >
+                  <div className={`w-10 h-10 rounded-full bg-gradient-to-br flex items-center justify-center text-white font-bold ${
+                    user.role === 'bot' ? 'from-purple-500 to-pink-500' :
+                    user.role === 'support' || user.role === 'admin' ? 'from-indigo-500 to-blue-500' :
+                    'from-slate-600 to-slate-700'
+                  }`}>
+                    {user.role === 'bot' ? <Bot size={20} /> : user.name[0]}
+                  </div>
+                  <div className="flex-1 text-left">
+                    <div className="text-white font-medium text-sm">{user.name}</div>
+                    <div className="text-slate-400 text-xs">ID: {user.id}</div>
+                  </div>
+                  <Badge className={`text-xs ${
+                    user.role === 'bot' ? 'bg-purple-500/20 text-purple-400 border-purple-500/30' :
+                    user.role === 'support' || user.role === 'admin' ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' :
+                    'bg-slate-500/20 text-slate-400 border-slate-500/30'
+                  }`}>
+                    {user.role === 'admin' ? 'ADMIN' : user.role.toUpperCase()}
+                  </Badge>
+                  {selectedUser?.id === user.id && (
+                    <CheckCircle className="w-5 h-5 text-emerald-400" />
+                  )}
+                </button>
+              ))}
+            </div>
+          </SheetContent>
+        </Sheet>
       )}
 
       {/* Input Area */}
@@ -287,7 +463,7 @@ export default function ModernMobileChat() {
               value={messageText}
               onChange={(e) => setMessageText(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-              placeholder="Type a message..."
+              placeholder={selectedUser ? `Message to ${selectedUser.name}...` : "Type a message..."}
               className="w-full bg-white/10 backdrop-blur-sm text-white placeholder-slate-400 px-4 py-3 rounded-full border border-white/10 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all"
               data-testid="input-message"
             />
