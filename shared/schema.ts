@@ -2763,3 +2763,41 @@ export const insertMotdAcknowledgmentSchema = createInsertSchema(motdAcknowledgm
 
 export type InsertMotdAcknowledgment = z.infer<typeof insertMotdAcknowledgmentSchema>;
 export type MotdAcknowledgment = typeof motdAcknowledgments.$inferSelect;
+
+// ============================================================================
+// CHAT AGREEMENT ACCEPTANCES - Terms & Conditions for HelpDesk Access
+// ============================================================================
+
+export const chatAgreementAcceptances = pgTable("chat_agreement_acceptances", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // User/Ticket tracking
+  userId: varchar("user_id").references(() => users.id, { onDelete: 'cascade' }),
+  ticketId: varchar("ticket_id").references(() => supportTickets.id, { onDelete: 'cascade' }),
+  sessionId: varchar("session_id"), // Browser session tracking
+  
+  // Agreement details
+  agreementVersion: varchar("agreement_version").notNull().default("1.0"), // Track version changes
+  fullName: varchar("full_name"), // Typed signature name (optional)
+  agreedToTerms: boolean("agreed_to_terms").notNull().default(false),
+  
+  // Evidence tracking (compliance vault)
+  ipAddress: varchar("ip_address"), // User's IP at time of acceptance
+  userAgent: text("user_agent"), // Browser/device info
+  acceptedAt: timestamp("accepted_at").defaultNow(),
+  
+  // Chat context
+  roomSlug: varchar("room_slug").notNull(), // 'helpdesk', 'emergency', etc.
+  platformRole: varchar("platform_role"), // User's role at time of acceptance
+  
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertChatAgreementAcceptanceSchema = createInsertSchema(chatAgreementAcceptances).omit({
+  id: true,
+  acceptedAt: true,
+  createdAt: true,
+});
+
+export type InsertChatAgreementAcceptance = z.infer<typeof insertChatAgreementAcceptanceSchema>;
+export type ChatAgreementAcceptance = typeof chatAgreementAcceptances.$inferSelect;
