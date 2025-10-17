@@ -128,6 +128,26 @@ function generateOrganizationId(): string {
   return `wfosupport-${randomNum}`;
 }
 
+// Generate organization serial number: ORG-XXXX-XXXX
+// Format: ORG-<sequential>-<random>
+// - First segment: Sequential counter (0001-9999, never 0000)
+// - Second segment: Random verification code (0000-9999)
+async function generateOrganizationSerial(): Promise<string> {
+  // Get count of existing workspaces for sequential number
+  const [result] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(workspaces);
+  
+  // Sequential counter: cycles 1-9999 (never 0)
+  const sequential = ((result?.count || 0) % 9999) + 1;
+  const random = Math.floor(Math.random() * 10000); // 0000-9999
+  
+  const sequentialStr = sequential.toString().padStart(4, '0');
+  const randomStr = random.toString().padStart(4, '0');
+  
+  return `ORG-${sequentialStr}-${randomStr}`;
+}
+
 // Storage Interface with Multi-Tenant Methods
 export interface IStorage {
   // User operations (required for Replit Auth)
@@ -383,15 +403,16 @@ export class DatabaseStorage implements IStorage {
   // ============================================================================
   
   async createWorkspace(workspaceData: InsertWorkspace): Promise<Workspace> {
-    // Auto-generate unique organization ID if not provided
-    const dataWithOrgId = {
+    // Auto-generate unique organization ID and serial if not provided
+    const dataWithOrgInfo = {
       ...workspaceData,
       organizationId: workspaceData.organizationId || generateOrganizationId(),
+      organizationSerial: workspaceData.organizationSerial || await generateOrganizationSerial(),
     };
     
     const [workspace] = await db
       .insert(workspaces)
-      .values(dataWithOrgId)
+      .values(dataWithOrgInfo)
       .returning();
     return workspace;
   }

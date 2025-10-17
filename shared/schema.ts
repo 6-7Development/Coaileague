@@ -97,8 +97,9 @@ export const workspaces = pgTable("workspaces", {
   name: varchar("name").notNull(),
   ownerId: varchar("owner_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
   
-  // Unique organization identifier for support tracking
+  // Unique organization identifiers for support tracking
   organizationId: varchar("organization_id").unique(), // Format: wfosupport-#########
+  organizationSerial: varchar("organization_serial").unique(), // Format: ORG-XXXX-XXXX (Enterprise license key)
   
   // Business information
   companyName: varchar("company_name"),
