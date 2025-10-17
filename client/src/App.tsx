@@ -67,6 +67,10 @@ import { FloatingChatButton } from "@/components/floating-chat-button";
 function AppContent() {
   const { isAuthenticated, isLoading, user } = useAuth();
   
+  // Check if on mobile chat - use window.location instead of useLocation() hook
+  // to avoid React Hooks issues with conditional rendering
+  const isMobileChat = window.location.pathname === '/mobile-chat' || window.location.pathname === '/mobilechat';
+  
   // Custom sidebar width for better workspace layout
   const style = {
     "--sidebar-width": "16rem",
@@ -103,10 +107,6 @@ function AppContent() {
 
   // Check if user is Root Admin (platform-level access)
   const isRootAdmin = (user as any)?.platformRole === 'root' || (user as any)?.platformRole === 'sysop';
-  
-  // Check if on mobile chat - these routes don't need global sidebar/header
-  const [location] = useLocation();
-  const isMobileChat = location === '/mobile-chat' || location === '/mobilechat';
 
   return (
     <ProtectedRoute>
