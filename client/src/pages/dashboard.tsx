@@ -7,10 +7,12 @@ import {
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { WorkforceOSLogo } from "@/components/workforceos-logo";
+import { useTransition } from "@/contexts/transition-context";
 
 export default function Dashboard() {
   const [, setLocation] = useLocation();
   const { isAuthenticated, isLoading, user } = useAuth();
+  const { showTransition, hideTransition } = useTransition();
 
   // Fetch workspace stats
   const { data: stats } = useQuery({
@@ -27,6 +29,17 @@ export default function Dashboard() {
   // Determine current user's workspace role
   const currentEmployee = allEmployees?.find((emp: any) => emp.userId === user?.id);
   const workspaceRole = currentEmployee?.workspaceRole || 'employee';
+
+  // Show loading transition on mount
+  useEffect(() => {
+    showTransition({
+      status: "loading",
+      message: "Loading Dashboard...",
+      submessage: "Preparing your workspace",
+      duration: 1500,
+      onComplete: hideTransition
+    });
+  }, []);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -65,7 +78,7 @@ export default function Dashboard() {
                 <WorkforceOSLogo size="lg" showText={false} />
               </div>
               <div className="flex-1">
-                <h2 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-white via-blue-100 to-indigo-200 bg-clip-text text-transparent mb-1" data-testid="text-welcome">
+                <h2 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-white via-blue-100 to-indigo-200 bg-clip-text text-transparent mb-1 break-words" data-testid="text-welcome">
                   Welcome back, {firstName}
                 </h2>
                 <p className="text-slate-300 text-sm sm:text-base">
