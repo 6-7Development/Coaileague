@@ -603,35 +603,37 @@ export default function LiveChatroomPage() {
                   </Button>
                 </SheetHeader>
                 <div className="mt-4 space-y-2">
-                  {onlineUsers.map((user) => (
-                    <div 
-                      key={user.id}
-                      onClick={() => {
-                        // Only trigger mobile actions on actual mobile/touch devices
-                        if (isMobileDevice() && isStaff && user.role !== 'root' && user.role !== 'bot') {
-                          setSelectedUserId(user.id);
-                          setShowUserActions(true);
-                        }
-                      }}
-                      className={`flex items-center gap-2 p-2.5 rounded-lg bg-slate-800/40 border border-indigo-500/20 ${
-                        isMobileDevice() && isStaff && user.role !== 'root' && user.role !== 'bot' 
-                          ? 'hover-elevate active-elevate-2 cursor-pointer' 
-                          : ''
-                      }`}
-                      data-testid={`user-${user.id}`}
-                    >
-                      <Circle className="w-2 h-2 fill-blue-400 text-blue-400 flex-shrink-0 animate-pulse" />
-                      <div className="flex items-center gap-2 min-w-0 flex-1">
-                        {user.role === 'admin' && <Shield className="w-3 h-3 text-red-400 flex-shrink-0" />}
-                        {user.role === 'support' && <Headphones className="w-3 h-3 text-indigo-400 flex-shrink-0" />}
-                        {user.role === 'bot' && <Bot className="w-3 h-3 text-purple-400 flex-shrink-0" />}
-                        <span className="text-sm font-medium break-words text-slate-200">{user.name}</span>
+                  {onlineUsers.map((user) => {
+                    const isActionable = isStaff && user.role !== 'root' && user.role !== 'bot';
+                    return (
+                      <div 
+                        key={user.id}
+                        onClick={() => {
+                          if (isActionable) {
+                            setSelectedUserId(user.id);
+                            setShowUserActions(true);
+                          }
+                        }}
+                        className={`flex items-center gap-2 p-2.5 rounded-lg bg-slate-800/40 border border-indigo-500/20 ${
+                          isActionable
+                            ? 'hover-elevate active-elevate-2 cursor-pointer' 
+                            : ''
+                        }`}
+                        data-testid={`user-${user.id}`}
+                      >
+                        <Circle className="w-2 h-2 fill-blue-400 text-blue-400 flex-shrink-0 animate-pulse" />
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          {user.role === 'admin' && <Shield className="w-3 h-3 text-red-400 flex-shrink-0" />}
+                          {user.role === 'support' && <Headphones className="w-3 h-3 text-indigo-400 flex-shrink-0" />}
+                          {user.role === 'bot' && <Bot className="w-3 h-3 text-purple-400 flex-shrink-0" />}
+                          <span className="text-sm font-medium break-words text-slate-200">{user.name}</span>
+                        </div>
+                        {isActionable && (
+                          <MoreVertical className="w-4 h-4 text-emerald-400 flex-shrink-0 animate-pulse" />
+                        )}
                       </div>
-                      {isMobileDevice() && isStaff && user.role !== 'root' && user.role !== 'bot' && (
-                        <MoreVertical className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 {isStaff && (
