@@ -61,9 +61,10 @@ export async function getPlatformStats(req: Request, res: Response) {
         )
       );
 
-    // Chat activity (mock - in real scenario, would query WebSocket connection tracking)
-    const chatUsers = Math.floor(Math.random() * 15) + 5; // 5-20 users
-    const chatStaff = Math.floor(Math.random() * 5) + 2; // 2-7 staff
+    // Chat activity - Real data would require WebSocket connection tracking
+    // For now, return 0 to indicate feature not yet implemented
+    const chatUsers = 0;
+    const chatStaff = 0;
 
     // Calculate average revenue per workspace
     const avgRevenue = workspaceCount?.count > 0
@@ -80,10 +81,10 @@ export async function getPlatformStats(req: Request, res: Response) {
       ? ((cancelledSubs?.count || 0) / workspaceCount.count * 100).toFixed(1)
       : "0";
 
-    // System health (simplified metrics)
+    // System health - Real metrics (uptime is real, database assumed healthy)
     const systemHealth = {
-      cpu: Math.floor(Math.random() * 30) + 10, // 10-40% usage (mock)
-      memory: Math.floor(Math.random() * 40) + 30, // 30-70% usage (mock)
+      cpu: 0, // TODO: Implement real CPU monitoring
+      memory: 0, // TODO: Implement real memory monitoring  
       database: "healthy",
       uptime: process.uptime()
     };

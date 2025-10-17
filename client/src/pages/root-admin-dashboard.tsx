@@ -80,6 +80,16 @@ export default function RootAdminDashboard() {
     refetchInterval: 5000,
   });
 
+  // Fetch personal staff data for welcome message
+  const { data: personalData } = useQuery<{
+    userName: string;
+    assignedTickets: number;
+    newSupportTickets: number;
+  }>({
+    queryKey: ["/api/platform/personal-data", refreshKey],
+    refetchInterval: 10000,
+  });
+
   // Search organizations
   const { data: organizations, isLoading: orgsLoading } = useQuery<any[]>({
     queryKey: ["/api/admin/support/search", searchQuery],
@@ -115,6 +125,25 @@ export default function RootAdminDashboard() {
     return `${Math.floor(hours / 24)}d ago`;
   };
 
+  // Get role-based title
+  const getRoleTitle = () => {
+    const platformRole = (user as any)?.platformRole;
+    switch (platformRole) {
+      case 'root':
+        return 'System Platform Administrator';
+      case 'sysop':
+        return 'System Operations';
+      case 'deputy_admin':
+        return 'Deputy Administrator';
+      case 'deputy_assistant':
+        return 'Deputy Assistant';
+      case 'bot':
+        return 'Bot Operations';
+      default:
+        return 'Platform Control';
+    }
+  };
+
   return (
     <div className="flex flex-col h-screen bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-900">
       {/* Animated background gradient orbs */}
@@ -143,8 +172,14 @@ export default function RootAdminDashboard() {
                   Platform Command Center
                 </h1>
                 <p className="text-slate-300 text-sm sm:text-base">
-                  Real-time monitoring · System administration · Platform control
+                  {getRoleTitle()}
                 </p>
+                {/* Personalized Welcome Message */}
+                {personalData && (
+                  <p className="text-indigo-300 text-xs sm:text-sm mt-1 font-medium">
+                    Welcome {personalData.userName} · {personalData.assignedTickets} assigned ticket{personalData.assignedTickets !== 1 ? 's' : ''} · {personalData.newSupportTickets} new support request{personalData.newSupportTickets !== 1 ? 's' : ''}
+                  </p>
+                )}
               </div>
               
               {/* Clock and Refresh Button */}
@@ -242,13 +277,13 @@ export default function RootAdminDashboard() {
         </Card>
       </div>
 
-      {/* Live Services & Chat Status - COMPACT */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      {/* Platform Metrics - Real Data Only */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <Card className="border-l-4 border-l-green-500">
           <CardHeader className="pb-1.5 pt-3 px-4">
             <CardDescription className="flex items-center gap-1.5 text-xs font-medium">
               <Server className="h-3.5 w-3.5 text-green-500" />
-              Services Online
+              Services Status
             </CardDescription>
           </CardHeader>
           <CardContent className="pb-3 pt-1 px-4">
@@ -272,38 +307,6 @@ export default function RootAdminDashboard() {
                 <Badge variant="secondary" className="bg-green-500/10 text-green-600 text-[10px] py-0 h-5">
                   <CheckCircle className="h-2.5 w-2.5 mr-1" />
                   {stats?.systemHealth?.database || "healthy"}
-                </Badge>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-l-4 border-l-purple-500">
-          <CardHeader className="pb-1.5 pt-3 px-4">
-            <CardDescription className="flex items-center gap-1.5 text-xs font-medium">
-              <MessageSquare className="h-3.5 w-3.5 text-purple-500" />
-              Chat Activity
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pb-3 pt-1 px-4">
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <span className="text-xs">Users Online</span>
-                <span className="text-lg font-bold" data-testid="text-chat-users">
-                  {stats?.chatUsers || 0}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs">Support Staff</span>
-                <span className="text-lg font-bold text-blue-600" data-testid="text-chat-staff">
-                  {stats?.chatStaff || 0}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs">HelpOS™ Bot</span>
-                <Badge variant="secondary" className="bg-purple-500/10 text-purple-600 text-[10px] py-0 h-5">
-                  <Activity className="h-2.5 w-2.5 mr-1 animate-pulse" />
-                  Active
                 </Badge>
               </div>
             </div>

@@ -47,6 +47,7 @@ import {
   platformRoles,
   workspaces,
   supportTickets,
+  escalationTickets,
   motdMessages,
   motdAcknowledgments,
   termsAcknowledgments,
@@ -3929,6 +3930,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Platform dashboard statistics
   app.get('/api/platform/stats', requirePlatformStaff, async (req, res) => {
     await getPlatformStats(req, res);
+  });
+
+  // Personal staff data (assigned tickets, etc.)
+  app.get('/api/platform/personal-data', requirePlatformStaff, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user!.id;
+      const userName = (req.user as any)?.fullName || (req.user as any)?.email || 'Admin';
+
+      // Count open escalation tickets assigned to this staff member
+      const [openTicketsCount] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(escalationTickets)
+        .where(
+          and(
+            eq(escalationTickets.assignedTo, userId),
+            or(
+              eq(escalationTickets.status, 'open'),
+              eq(escalationTickets.status, 'in_progress')
+            )
+          )
+        );
+
+      // Count unread support tickets (recent tickets not yet reviewed)
+      const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const [newTicketsCount] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(supportTickets)
+        .where(
+          and(
+            eq(supportTickets.status, 'open'),
+            gte(supportTickets.createdAt, oneDayAgo)
+          )
+        );
+
+      res.json({
+        userName,
+        assignedTickets: openTicketsCount?.count || 0,
+        newSupportTickets: newTicketsCount?.count || 0
+      });
+    } catch (error) {
+      console.error("Error fetching personal staff data:", error);
+      res.status(500).json({ error: "Failed to fetch personal data" });
+    }
   });
 
   // Search workspaces (cross-tenant admin search)
