@@ -1007,234 +1007,213 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
                         </div>
                       </div>
                     </ContextMenuTrigger>
-                    <ContextMenuContent className="bg-white border-slate-300 w-72 max-h-[600px] overflow-y-auto">
+                    <ContextMenuContent className="bg-white border-slate-300 w-64">
                       {isStaff && u.role !== 'bot' && (userPlatformRole === 'root' || u.role !== 'root') ? (
                         <>
                           <div className="px-2 py-1.5 text-xs font-bold text-slate-700 border-b border-slate-200">
-                            Support Actions → {u.name}
+                            {u.name}
                           </div>
                           
-                          {/* TIER 1 - Basic Support (All Staff) */}
+                          {/* Quick Actions - Top Level */}
                           {hasContextPermission(ALL_STAFF) && (
                             <>
                               <ContextMenuItem onClick={() => {
-                                sendRawMessage({ 
-                                  type: 'release_spectator', 
-                                  targetUserId: u.id 
-                                });
-                                sendQuickMessage(`Hi ${u.name}! 👋 My name is ${userName}, I'm here to help you today. What can I assist you with? Please provide your ticket number if you have one.`);
+                                sendRawMessage({ type: 'release_spectator', targetUserId: u.id });
+                                sendQuickMessage(`Hi ${u.name}! 👋 My name is ${userName}, I'm here to help you today. What can I assist you with?`);
                               }}>
-                                🎤 Release Hold & Welcome
+                                🎤 Welcome
                               </ContextMenuItem>
                               
                               <ContextMenuItem onClick={() => handleQuickReply(u)}>
-                                💬 Send Quick Reply
-                              </ContextMenuItem>
-                              
-                              <ContextMenuItem onClick={() => {
-                                sendRawMessage({ 
-                                  type: 'request_secure', 
-                                  targetUserId: u.id,
-                                  requestType: 'info',
-                                  message: 'Please provide more details about your issue'
-                                });
-                              }}>
-                                ❓ Request More Info
-                              </ContextMenuItem>
-                              
-                              <ContextMenuItem onClick={() => handleInternalNote(u)}>
-                                📝 Add Internal Note
+                                💬 Quick Reply
                               </ContextMenuItem>
                             </>
                           )}
                           
-                          {/* TIER 2 - Authentication */}
-                          {hasContextPermission(DEPUTY_ASSISTANT_PLUS) && (
-                            <>
-                              <div className="border-t border-slate-200 my-1" />
-                              
-                              <ContextMenuItem onClick={() => {
-                                sendRawMessage({ 
-                                  type: 'request_secure', 
-                                  targetUserId: u.id,
-                                  requestType: 'authenticate',
-                                  message: 'Please verify your identity to proceed'
-                                });
-                              }}>
-                                🔐 Request Authentication
-                              </ContextMenuItem>
-                            </>
-                          )}
-                          
-                          {hasContextPermission(DEPUTY_ADMIN_PLUS) && (
-                            <>
-                              <ContextMenuItem onClick={() => handleResetPassword(u)}>
-                                🔑 Reset Password
-                              </ContextMenuItem>
-                              
-                              <ContextMenuItem onClick={() => handleUnlockAccount(u)}>
-                                🔓 Unlock Account
-                              </ContextMenuItem>
-                            </>
-                          )}
-                          
-                          {/* TIER 3 - Documents */}
+                          {/* Chat Commands Submenu */}
                           {hasContextPermission(ALL_STAFF) && (
-                            <>
-                              <div className="border-t border-slate-200 my-1" />
-                              
-                              <ContextMenuItem onClick={() => {
-                                sendRawMessage({ 
-                                  type: 'request_secure', 
-                                  targetUserId: u.id,
-                                  requestType: 'document',
-                                  message: 'Please upload the requested document'
-                                });
-                              }}>
-                                📄 Request Document
-                              </ContextMenuItem>
-                              
-                              <ContextMenuItem onClick={() => {
-                                sendRawMessage({ 
-                                  type: 'request_secure', 
-                                  targetUserId: u.id,
-                                  requestType: 'photo',
-                                  message: 'Please upload a photo of the issue'
-                                });
-                              }}>
-                                📷 Request Photo
-                              </ContextMenuItem>
-                            </>
+                            <ContextMenuSub>
+                              <ContextMenuSubTrigger>
+                                💭 Chat Commands
+                              </ContextMenuSubTrigger>
+                              <ContextMenuSubContent>
+                                <ContextMenuItem onClick={() => {
+                                  sendRawMessage({ type: 'request_secure', targetUserId: u.id, requestType: 'info', message: 'Please provide more details' });
+                                }}>
+                                  ❓ Request Info
+                                </ContextMenuItem>
+                                <ContextMenuItem onClick={() => handleInternalNote(u)}>
+                                  📝 Internal Note
+                                </ContextMenuItem>
+                                <ContextMenuItem onClick={() => toggleSilence(u)}>
+                                  {silencedUsers.has(u.id) ? '🔊 Unmute User' : '🔇 Silence User'}
+                                </ContextMenuItem>
+                              </ContextMenuSubContent>
+                            </ContextMenuSub>
                           )}
                           
+                          {/* Account Actions Submenu */}
                           {hasContextPermission(DEPUTY_ASSISTANT_PLUS) && (
-                            <>
-                              <ContextMenuItem onClick={() => {
-                                sendRawMessage({ 
-                                  type: 'request_secure', 
-                                  targetUserId: u.id,
-                                  requestType: 'signature',
-                                  message: 'Please sign the consent form'
-                                });
-                              }}>
-                                ✍️ Request E-Signature
-                              </ContextMenuItem>
-                              
-                              <ContextMenuItem onClick={() => handleViewDocuments(u)}>
-                                📁 View Uploaded Documents
-                              </ContextMenuItem>
-                            </>
+                            <ContextMenuSub>
+                              <ContextMenuSubTrigger>
+                                👤 Account Actions
+                              </ContextMenuSubTrigger>
+                              <ContextMenuSubContent>
+                                <ContextMenuItem onClick={() => {
+                                  sendRawMessage({ type: 'request_secure', targetUserId: u.id, requestType: 'authenticate', message: 'Please verify your identity' });
+                                }}>
+                                  🔐 Request Auth
+                                </ContextMenuItem>
+                                {hasContextPermission(DEPUTY_ADMIN_PLUS) && (
+                                  <>
+                                    <ContextMenuItem onClick={() => handleResetPassword(u)}>
+                                      🔑 Reset Password
+                                    </ContextMenuItem>
+                                    <ContextMenuItem onClick={() => handleUnlockAccount(u)}>
+                                      🔓 Unlock Account
+                                    </ContextMenuItem>
+                                  </>
+                                )}
+                              </ContextMenuSubContent>
+                            </ContextMenuSub>
                           )}
                           
-                          {/* TIER 4 - Ticket Management */}
+                          {/* Documents Submenu */}
                           {hasContextPermission(ALL_STAFF) && (
-                            <>
-                              <div className="border-t border-slate-200 my-1" />
-                              
-                              <ContextMenuItem onClick={() => {
-                                sendQuickMessage(`@${u.name} Your issue has been resolved! Is there anything else I can help you with today?`);
-                              }}>
-                                ✅ Mark Resolved
-                              </ContextMenuItem>
-                              
-                              <ContextMenuItem onClick={() => handleEscalate(u)}>
-                                ⬆️ Escalate to Senior
-                              </ContextMenuItem>
-                            </>
+                            <ContextMenuSub>
+                              <ContextMenuSubTrigger>
+                                📁 Documents
+                              </ContextMenuSubTrigger>
+                              <ContextMenuSubContent>
+                                <ContextMenuItem onClick={() => {
+                                  sendRawMessage({ type: 'request_secure', targetUserId: u.id, requestType: 'document', message: 'Please upload the document' });
+                                  trackDocumentRequest(u.id, 'document');
+                                }}>
+                                  {hasRequestedDocument(u.id, 'document') ? '✅ Already Asked: Document' : '📄 Request Document'}
+                                </ContextMenuItem>
+                                <ContextMenuItem onClick={() => {
+                                  sendRawMessage({ type: 'request_secure', targetUserId: u.id, requestType: 'photo', message: 'Please upload a photo' });
+                                  trackDocumentRequest(u.id, 'photo');
+                                }}>
+                                  {hasRequestedDocument(u.id, 'photo') ? '✅ Already Asked: Photo' : '📷 Request Photo'}
+                                </ContextMenuItem>
+                                {hasContextPermission(DEPUTY_ASSISTANT_PLUS) && (
+                                  <>
+                                    <ContextMenuItem onClick={() => {
+                                      sendRawMessage({ type: 'request_secure', targetUserId: u.id, requestType: 'signature', message: 'Please sign the form' });
+                                      trackDocumentRequest(u.id, 'signature');
+                                    }}>
+                                      {hasRequestedDocument(u.id, 'signature') ? '✅ Already Asked: Signature' : '✍️ Request E-Signature'}
+                                    </ContextMenuItem>
+                                    <ContextMenuItem onClick={() => handleViewDocuments(u)}>
+                                      📂 View Uploads
+                                    </ContextMenuItem>
+                                  </>
+                                )}
+                              </ContextMenuSubContent>
+                            </ContextMenuSub>
                           )}
                           
-                          {hasContextPermission(DEPUTY_ASSISTANT_PLUS) && (
-                            <>
-                              <ContextMenuItem onClick={() => {
-                                sendRawMessage({ 
-                                  type: 'transfer_user', 
-                                  targetUserId: u.id 
-                                });
-                              }}>
-                                🔄 Transfer User
-                              </ContextMenuItem>
-                              
-                              <ContextMenuItem onClick={() => handleFollowUp(u)}>
-                                ⏰ Schedule Follow-up
-                              </ContextMenuItem>
-                            </>
+                          {/* Case Management Submenu */}
+                          {hasContextPermission(ALL_STAFF) && (
+                            <ContextMenuSub>
+                              <ContextMenuSubTrigger>
+                                📋 Case Management
+                              </ContextMenuSubTrigger>
+                              <ContextMenuSubContent>
+                                <ContextMenuItem onClick={() => {
+                                  sendQuickMessage(`@${u.name} Your issue has been resolved! Anything else I can help with?`);
+                                }}>
+                                  ✅ Mark Resolved
+                                </ContextMenuItem>
+                                <ContextMenuItem onClick={() => handleEscalate(u)}>
+                                  ⬆️ Escalate
+                                </ContextMenuItem>
+                                {hasContextPermission(DEPUTY_ASSISTANT_PLUS) && (
+                                  <>
+                                    <ContextMenuItem onClick={() => {
+                                      sendRawMessage({ type: 'transfer_user', targetUserId: u.id });
+                                    }}>
+                                      🔄 Transfer
+                                    </ContextMenuItem>
+                                    <ContextMenuItem onClick={() => handleFollowUp(u)}>
+                                      ⏰ Follow-up
+                                    </ContextMenuItem>
+                                  </>
+                                )}
+                                {hasContextPermission(DEPUTY_ADMIN_PLUS) && (
+                                  <ContextMenuItem onClick={() => handlePriorityTag(u)}>
+                                    🏷️ Priority Tag
+                                  </ContextMenuItem>
+                                )}
+                              </ContextMenuSubContent>
+                            </ContextMenuSub>
                           )}
                           
+                          {/* Advanced Tools Submenu */}
                           {hasContextPermission(DEPUTY_ADMIN_PLUS) && (
-                            <ContextMenuItem onClick={() => handlePriorityTag(u)}>
-                              🏷️ Add Priority Tag
-                            </ContextMenuItem>
+                            <ContextMenuSub>
+                              <ContextMenuSubTrigger>
+                                ⚙️ Advanced Tools
+                              </ContextMenuSubTrigger>
+                              <ContextMenuSubContent>
+                                <ContextMenuItem onClick={() => handleEmailSummary(u)}>
+                                  📧 Email Summary
+                                </ContextMenuItem>
+                                <ContextMenuItem onClick={() => handleMarkVIP(u)}>
+                                  ⭐ Mark VIP
+                                </ContextMenuItem>
+                                <ContextMenuItem onClick={() => handleUserHistory(u)}>
+                                  📜 User History
+                                </ContextMenuItem>
+                              </ContextMenuSubContent>
+                            </ContextMenuSub>
                           )}
                           
-                          {/* TIER 5 - Advanced (Deputy Admin+) */}
-                          {hasContextPermission(DEPUTY_ADMIN_PLUS) && (
-                            <>
-                              <div className="border-t border-slate-200 my-1" />
-                              
-                              <ContextMenuItem onClick={() => handleEmailSummary(u)}>
-                                📧 Email Summary
-                              </ContextMenuItem>
-                              
-                              <ContextMenuItem onClick={() => handleMarkVIP(u)}>
-                                ⭐ Mark VIP Customer
-                              </ContextMenuItem>
-                              
-                              <ContextMenuItem onClick={() => handleUserHistory(u)}>
-                                📜 View User History
-                              </ContextMenuItem>
-                            </>
-                          )}
-                          
-                          {/* TIER 6 - Moderation (Admin Only) */}
+                          {/* Moderation Submenu */}
                           {hasContextPermission(ADMIN_ONLY) && (
-                            <>
-                              <div className="border-t border-slate-200 my-1" />
-                              
-                              <ContextMenuItem onClick={() => handleIssueWarning(u)}>
-                                ⚠️ Issue Warning
-                              </ContextMenuItem>
-                              
-                              <ContextMenuItem onClick={() => handleTempMute(u)}>
-                                ⏱️ Temp Mute 5min
-                              </ContextMenuItem>
-                              
-                              <ContextMenuItem 
-                                onClick={() => setConfirmKick({ userId: u.id, userName: u.name })}
-                                className="text-red-600 font-bold"
-                              >
-                                🚫 Kick from Room
-                              </ContextMenuItem>
-                              
-                              <ContextMenuItem 
-                                onClick={() => handleBan(u)}
-                                className="text-red-700 font-bold"
-                              >
-                                🔨 Ban User Permanently
-                              </ContextMenuItem>
-                            </>
+                            <ContextMenuSub>
+                              <ContextMenuSubTrigger className="text-red-600">
+                                ⚠️ Moderation
+                              </ContextMenuSubTrigger>
+                              <ContextMenuSubContent>
+                                <ContextMenuItem onClick={() => handleIssueWarning(u)}>
+                                  ⚠️ Issue Warning
+                                </ContextMenuItem>
+                                <ContextMenuItem onClick={() => handleTempMute(u)}>
+                                  ⏱️ Mute 5min
+                                </ContextMenuItem>
+                                <ContextMenuItem onClick={() => setConfirmKick({ userId: u.id, userName: u.name })} className="text-red-600">
+                                  🚫 Kick
+                                </ContextMenuItem>
+                                <ContextMenuItem onClick={() => toggleBan(u)} className="text-red-700 font-bold">
+                                  {bannedUsers.has(u.id) ? '✅ Unban User' : '🔨 Ban User'}
+                                </ContextMenuItem>
+                              </ContextMenuSubContent>
+                            </ContextMenuSub>
                           )}
                           
-                          {/* TIER 7 - System Tools (Root + SysOp) */}
+                          {/* System Tools Submenu */}
                           {hasContextPermission(SYSTEM_ONLY) && (
-                            <>
-                              <div className="border-t border-slate-200 my-1" />
-                              
-                              <ContextMenuItem onClick={() => handleAnalytics()}>
-                                📊 View Analytics
-                              </ContextMenuItem>
-                              
-                              <ContextMenuItem onClick={() => handleForceReconnect(u)}>
-                                🔄 Force Reconnect
-                              </ContextMenuItem>
-                              
-                              <ContextMenuItem onClick={() => handleTestMessage()}>
-                                🧪 Send Test Message
-                              </ContextMenuItem>
-                              
-                              <ContextMenuItem onClick={() => handleClearCache(u)}>
-                                ⚡ Clear User Cache
-                              </ContextMenuItem>
-                            </>
+                            <ContextMenuSub>
+                              <ContextMenuSubTrigger>
+                                🛠️ System Tools
+                              </ContextMenuSubTrigger>
+                              <ContextMenuSubContent>
+                                <ContextMenuItem onClick={() => handleAnalytics()}>
+                                  📊 Analytics
+                                </ContextMenuItem>
+                                <ContextMenuItem onClick={() => handleForceReconnect(u)}>
+                                  🔄 Reconnect
+                                </ContextMenuItem>
+                                <ContextMenuItem onClick={() => handleTestMessage()}>
+                                  🧪 Test Message
+                                </ContextMenuItem>
+                                <ContextMenuItem onClick={() => handleClearCache(u)}>
+                                  ⚡ Clear Cache
+                                </ContextMenuItem>
+                              </ContextMenuSubContent>
+                            </ContextMenuSub>
                           )}
                         </>
                       ) : (
