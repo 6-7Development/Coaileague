@@ -10,5 +10,6 @@
 import HelpDesk5 from "./HelpDesk5";
 
 export default function MobileChatPage() {
+  console.log("✅ MobileChatPage component is rendering");
   return <HelpDesk5 />;
 }
