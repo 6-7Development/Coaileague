@@ -63,18 +63,18 @@ export function WorkforceOSLogo({
           className="w-full h-full"
         >
           <defs>
-            {/* WF Letters Gradient - Navy to Indigo */}
+            {/* WF Letters Gradient - Vibrant Corporate Blue */}
             <linearGradient id={`wf-gradient-${uniqueId}`} x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#1e3a8a" />
-              <stop offset="50%" stopColor="#3730a3" />
-              <stop offset="100%" stopColor="#4f46e5" />
+              <stop offset="0%" stopColor="#3b82f6" />
+              <stop offset="50%" stopColor="#2563eb" />
+              <stop offset="100%" stopColor="#1d4ed8" />
             </linearGradient>
             
-            {/* Electric Blue for OS - Bright Neon */}
+            {/* Electric Blue for OS - Ultra Bright Neon */}
             <linearGradient id={`os-gradient-${uniqueId}`} x1="0%" y1="0%" x2="100%" y2="100%">
               <stop offset="0%" stopColor="#60a5fa" />
-              <stop offset="50%" stopColor="#3b82f6" />
-              <stop offset="100%" stopColor="#2563eb" />
+              <stop offset="50%" stopColor="#38bdf8" />
+              <stop offset="100%" stopColor="#0ea5e9" />
             </linearGradient>
             
             {/* Animated Glow Filter - Pulses */}
@@ -239,7 +239,7 @@ export function WorkforceOSLogo({
           <div 
             className={cn(
               "font-black tracking-tight text-center leading-none whitespace-nowrap",
-              "bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-800",
+              "bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700",
               "bg-clip-text text-transparent",
               "animate-pulse",
               sizes[size].text

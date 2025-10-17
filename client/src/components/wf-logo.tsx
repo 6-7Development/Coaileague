@@ -31,8 +31,8 @@ export function WFLogo({ className = "", size = 24 }: WFLogoProps) {
         </filter>
         <linearGradient id="blue-gradient-full" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#60a5fa" />
-          <stop offset="50%" stopColor="#3b82f6" />
-          <stop offset="100%" stopColor="#2563eb" />
+          <stop offset="50%" stopColor="#38bdf8" />
+          <stop offset="100%" stopColor="#0ea5e9" />
         </linearGradient>
       </defs>
       
@@ -102,11 +102,11 @@ export function WFLogoCompact({ className = "", size = 20 }: WFLogoProps) {
           </feMerge>
         </filter>
         
-        {/* Gradient for professional look */}
+        {/* Gradient for professional look - Vibrant Corporate Blue */}
         <linearGradient id={`compact-gradient-${uniqueId}`} x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#60a5fa" />
-          <stop offset="50%" stopColor="#3b82f6" />
-          <stop offset="100%" stopColor="#2563eb" />
+          <stop offset="50%" stopColor="#38bdf8" />
+          <stop offset="100%" stopColor="#0ea5e9" />
         </linearGradient>
         
         {/* White core gradient for brightness */}
