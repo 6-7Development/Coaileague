@@ -246,8 +246,14 @@ export function useChatroomWebSocket(
             case 'user_list_update':
               // Handle real-time user presence updates
               if (data.users && Array.isArray(data.users)) {
-                console.log('👥 User list updated:', data.users.length, 'online');
-                setOnlineUsers(data.users);
+                // Deduplicate users by ID - keep only the last occurrence of each user
+                const uniqueUsersMap = new Map<string, OnlineUser>();
+                data.users.forEach(user => {
+                  uniqueUsersMap.set(user.id, user);
+                });
+                const deduplicatedUsers = Array.from(uniqueUsersMap.values());
+                console.log('👥 User list updated:', deduplicatedUsers.length, 'online');
+                setOnlineUsers(deduplicatedUsers);
               }
               break;
 

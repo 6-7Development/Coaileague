@@ -108,8 +108,12 @@ export default function LiveChatroomPage() {
     refetchInterval: 5000, // Refresh every 5s
   });
   
-  // Calculate queue position
-  const queuePosition = queueData ? (queueData.findIndex(entry => entry.userId === userId) + 1 || queueData.length || 1) : 1;
+  // Calculate queue position - return actual position or null if not in queue
+  const queuePosition = (() => {
+    if (!queueData || !userId) return null;
+    const index = queueData.findIndex(entry => entry.userId === userId);
+    return index >= 0 ? index + 1 : null;
+  })();
   
   // Use WebSocket for real-time messaging (only if authenticated)
   const { 
