@@ -63,6 +63,7 @@ import {
   ContextMenuSeparator,
   ContextMenuLabel,
 } from "@/components/ui/context-menu";
+import { SeasonalBackground } from "@/components/seasonal-background";
 import type { ChatMessage } from "@shared/schema";
 
 const MAIN_ROOM_ID = 'main-chatroom-workforceos';
@@ -110,6 +111,12 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
   const [bannedUsers, setBannedUsers] = useState<Set<string>>(new Set());
   const [documentRequests, setDocumentRequests] = useState<Map<string, Set<string>>>(new Map());
   // Map structure: userId => Set of request types ('authenticate', 'document', 'photo', 'signature', 'info')
+  
+  // Seasonal animations toggle (staff only)
+  const [seasonalAnimationsEnabled, setSeasonalAnimationsEnabled] = useState(() => {
+    const stored = localStorage.getItem('seasonal-animations-enabled');
+    return stored !== null ? stored === 'true' : true; // Default enabled
+  });
   
   // Generate or get session ID for tracking
   const [sessionId] = useState(() => {
@@ -503,49 +510,49 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
 
   const getRoleIcon = (role: string) => {
     switch (role) {
-      case 'root': return <Crown className="w-3.5 h-3.5 text-amber-500" />;
-      case 'bot': return <Sparkles className="w-3.5 h-3.5 text-blue-500 animate-pulse" />;
-      case 'deputy_admin': return <Shield className="w-3.5 h-3.5 text-blue-600" />;
-      case 'deputy_assistant': return <UserCog className="w-3.5 h-3.5 text-indigo-500" />;
-      case 'sysop': return <Wrench className="w-3.5 h-3.5 text-cyan-500" />;
+      case 'root': return <Crown className="w-3.5 h-3.5 text-slate-600" />;
+      case 'bot': return <Sparkles className="w-3.5 h-3.5 text-slate-500" />;
+      case 'deputy_admin': return <Shield className="w-3.5 h-3.5 text-slate-600" />;
+      case 'deputy_assistant': return <UserCog className="w-3.5 h-3.5 text-slate-500" />;
+      case 'sysop': return <Wrench className="w-3.5 h-3.5 text-slate-500" />;
       default: return null;
     }
   };
 
   const getRoleColor = (role: string) => {
     switch (role) {
-      case 'root': return 'text-amber-600 font-black';  // Root admin - bold gold
-      case 'bot': return 'text-blue-600 font-bold';
-      case 'deputy_admin': return 'text-blue-700 font-bold';
-      case 'deputy_assistant': return 'text-indigo-600 font-bold';
-      case 'sysop': return 'text-cyan-600 font-bold';
+      case 'root': return 'text-slate-700 font-black';  // Root admin
+      case 'bot': return 'text-slate-600 font-bold';
+      case 'deputy_admin': return 'text-slate-700 font-bold';
+      case 'deputy_assistant': return 'text-slate-600 font-bold';
+      case 'sysop': return 'text-slate-600 font-bold';
       default: return 'text-slate-700 font-semibold';
     }
   };
 
-  // Get message bubble color - WorkforceOS blue branding
+  // Get message bubble color - Professional styling
   const getMessageBubbleColor = (senderType: string, role: string, isSelf: boolean) => {
     if (isSelf) {
-      return 'bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-300';
+      return 'bg-slate-100 border border-slate-300';
     }
     
-    // Root admin messages - golden
+    // Root admin messages
     if (role === 'root') {
-      return 'bg-gradient-to-br from-amber-50 to-yellow-50 border border-amber-300';
+      return 'bg-slate-200 border border-slate-300';
     }
     
-    // Bot messages - blue
+    // Bot messages
     if (role === 'bot') {
-      return 'bg-gradient-to-br from-blue-50 to-slate-50 border border-blue-200';
+      return 'bg-white border border-slate-200';
     }
     
-    // Staff messages - slate blue
+    // Staff messages
     if (['deputy_admin', 'deputy_assistant', 'sysop'].includes(role)) {
-      return 'bg-gradient-to-br from-slate-50 to-blue-50 border border-slate-300';
+      return 'bg-slate-50 border border-slate-200';
     }
     
-    // Customer messages - light gray
-    return 'bg-gradient-to-br from-gray-50 to-slate-50 border border-gray-300';
+    // Customer messages
+    return 'bg-white border border-slate-200';
   };
 
   const isStaff = user && ['root', 'deputy_admin', 'deputy_assistant', 'sysop'].includes((user as any).platformRole);
@@ -774,33 +781,56 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gradient-to-br from-slate-100 via-gray-100 to-blue-100">
-      {/* WorkforceOS Blue Gradient Header */}
-      <header className="bg-gradient-to-r from-blue-900 via-indigo-800 to-slate-800 p-3 text-white shadow-lg">
+    <div className="flex flex-col h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100 relative">
+      {/* Seasonal Animated Background */}
+      <SeasonalBackground enabled={seasonalAnimationsEnabled} />
+      {/* WorkforceOS Blue Gradient Header - More Professional */}
+      <header className="bg-gradient-to-r from-slate-800 via-slate-700 to-slate-800 p-3 text-white shadow-lg relative z-10">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div className="flex items-center gap-3">
-            <MessageSquare className="w-6 h-6 text-blue-300" />
-            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-2">
+            <MessageSquare className="w-6 h-6 text-slate-300" />
+            <div className="bg-white/5 backdrop-blur-sm rounded-lg p-2">
               <WorkforceOSLogo size="sm" showText={false} />
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-sm font-semibold bg-gradient-to-r from-blue-400 via-cyan-400 to-blue-500 bg-clip-text text-transparent">WorkforceOS Support</span>
+            <span className="text-sm font-semibold text-slate-100">WorkforceOS Support</span>
             {isStaff && (
-              <Button
-                onClick={() => setShowBannerManager(true)}
-                size="sm"
-                variant="outline"
-                className="h-8 text-xs gap-2 bg-purple-500/20 border-purple-300/50 hover:bg-purple-500/30 text-white"
-                data-testid="button-open-banner-manager"
-              >
-                <Sparkles className="w-3 h-3" />
-                Banner Manager
-              </Button>
+              <>
+                <Button
+                  onClick={() => {
+                    setSeasonalAnimationsEnabled(prev => {
+                      const newValue = !prev;
+                      localStorage.setItem('seasonal-animations-enabled', String(newValue));
+                      return newValue;
+                    });
+                    toast({ 
+                      title: seasonalAnimationsEnabled ? "Seasonal animations disabled" : "Seasonal animations enabled",
+                      description: seasonalAnimationsEnabled ? "Background effects turned off" : "Background effects turned on"
+                    });
+                  }}
+                  size="sm"
+                  variant="outline"
+                  className="h-8 text-xs gap-2 bg-blue-500/10 border-blue-300/30 hover:bg-blue-500/20 text-white"
+                  data-testid="button-toggle-seasonal"
+                >
+                  {seasonalAnimationsEnabled ? '❄️ Seasonal: ON' : '🚫 Seasonal: OFF'}
+                </Button>
+                <Button
+                  onClick={() => setShowBannerManager(true)}
+                  size="sm"
+                  variant="outline"
+                  className="h-8 text-xs gap-2 bg-purple-500/10 border-purple-300/30 hover:bg-purple-500/20 text-white"
+                  data-testid="button-open-banner-manager"
+                >
+                  <Sparkles className="w-3 h-3" />
+                  Banner
+                </Button>
+              </>
             )}
             {isConnected && (
-              <div className="flex items-center gap-1 text-xs bg-emerald-500/30 px-3 py-1 rounded-full backdrop-blur-sm">
-                <div className="w-2 h-2 bg-emerald-300 rounded-full animate-pulse" />
+              <div className="flex items-center gap-1 text-xs bg-emerald-500/20 px-3 py-1 rounded-full backdrop-blur-sm border border-emerald-400/30">
+                <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
                 Connected
               </div>
             )}
@@ -808,13 +838,13 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
         </div>
       </header>
 
-      {/* Hamburger Menu Button - Replaced Horizontal Command Bar */}
-      <div className="max-w-7xl mx-auto w-full px-4 py-2 border-b border-emerald-200 bg-gradient-to-r from-emerald-50 to-green-50">
+      {/* Hamburger Menu Button - More Professional */}
+      <div className="max-w-7xl mx-auto w-full px-4 py-2 border-b border-slate-200 bg-white/80 backdrop-blur-sm relative z-10">
         <Button
           onClick={() => setShowControlsMenu(true)}
           variant="outline"
           size="sm"
-          className="gap-2 bg-gradient-to-r from-emerald-500 to-green-600 text-white border-emerald-400 hover:from-emerald-600 hover:to-green-700 shadow-md"
+          className="gap-2 bg-slate-700 text-white border-slate-600 hover:bg-slate-600"
           data-testid="button-open-controls"
         >
           <Menu className="w-4 h-4" />
@@ -823,9 +853,9 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
       </div>
 
       {/* Main Layout - Full Width */}
-      <main className="flex flex-grow overflow-hidden max-w-7xl mx-auto w-full">
+      <main className="flex flex-grow overflow-hidden max-w-7xl mx-auto w-full relative z-10">
         {/* CENTER COLUMN: Chat Area */}
-        <section className="flex-grow flex flex-col bg-white/70 backdrop-blur-sm relative">
+        <section className="flex-grow flex flex-col bg-white/50 backdrop-blur-md relative">
           {/* Animated Seasonal Banner - STICKY at top */}
           <div className="sticky top-0 z-50">
             <ChatAnnouncementBanner
@@ -928,13 +958,13 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
                 onKeyPress={handleKeyPress}
                 placeholder="Type your message here..."
                 disabled={!isConnected}
-                className="flex-grow p-3 border-2 border-blue-300 rounded-2xl resize-none focus:ring-blue-500 focus:border-blue-500 bg-white text-slate-900 placeholder:text-slate-400"
+                className="flex-grow p-3 border-2 border-slate-300 rounded-2xl resize-none focus:ring-slate-500 focus:border-slate-500 bg-white text-slate-900 placeholder:text-slate-400"
                 data-testid="input-message"
               />
               <Button
                 onClick={handleSendMessage}
                 disabled={!isConnected || !inputMessage.trim()}
-                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-6 py-3 rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all h-full"
+                className="bg-slate-700 hover:bg-slate-600 text-white px-6 py-3 rounded-2xl font-semibold shadow-sm transition-all h-full"
                 data-testid="button-send"
               >
                 Send <Send className="w-4 h-4 ml-1" />
@@ -951,15 +981,15 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
           </div>
         </section>
 
-        {/* RIGHT COLUMN: User List with PROMINENT ICONS - Dynamic width based on content */}
-        <section className="min-w-[200px] max-w-[320px] w-auto bg-white/90 backdrop-blur-sm border-l border-slate-300 flex flex-col flex-shrink-0">
-          <div className="p-4 border-b border-blue-200 flex-shrink-0 bg-gradient-to-r from-blue-50 to-slate-50">
+        {/* RIGHT COLUMN: User List - Professional Styling */}
+        <section className="min-w-[200px] max-w-[320px] w-auto bg-white/90 backdrop-blur-sm border-l border-slate-200 flex flex-col flex-shrink-0">
+          <div className="p-4 border-b border-slate-200 flex-shrink-0 bg-slate-50/80">
             <div className="flex items-center gap-2">
-              <Users className="w-5 h-5 text-blue-700 flex-shrink-0" />
-              <h2 className="text-sm font-bold text-blue-900">
+              <Users className="w-5 h-5 text-slate-600 flex-shrink-0" />
+              <h2 className="text-sm font-bold text-slate-700">
                 Online Users
               </h2>
-              <Badge variant="secondary" className="ml-auto text-xs bg-blue-100 text-blue-800" data-testid="text-user-count">
+              <Badge variant="secondary" className="ml-auto text-xs bg-slate-200 text-slate-700" data-testid="text-user-count">
                 {uniqueUsers.length}
               </Badge>
             </div>
@@ -975,10 +1005,10 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
                     <ContextMenuTrigger>
                       <div 
                         className={`
-                          flex items-center gap-3 p-2.5 rounded-xl cursor-pointer transition-all
+                          flex items-center gap-3 p-2.5 rounded-lg cursor-pointer transition-all
                           ${selectedUserId === u.id 
-                            ? 'bg-gradient-to-r from-blue-100 to-indigo-100 shadow-md scale-105' 
-                            : 'hover:bg-gradient-to-r hover:from-slate-50 hover:to-blue-50 hover:shadow-sm'
+                            ? 'bg-slate-200/70 shadow-sm' 
+                            : 'hover:bg-slate-100/50'
                           }
                         `}
                         onClick={() => setSelectedUserId(u.id)}
@@ -1005,10 +1035,10 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
                         </div>
                       </div>
                     </ContextMenuTrigger>
-                    <ContextMenuContent className="bg-white border-blue-300 w-72 max-h-[600px] overflow-y-auto">
+                    <ContextMenuContent className="bg-white border-slate-300 w-72 max-h-[600px] overflow-y-auto">
                       {isStaff && u.role !== 'bot' && (userPlatformRole === 'root' || u.role !== 'root') ? (
                         <>
-                          <div className="px-2 py-1.5 text-xs font-bold text-blue-700 border-b border-blue-200">
+                          <div className="px-2 py-1.5 text-xs font-bold text-slate-700 border-b border-slate-200">
                             Support Actions → {u.name}
                           </div>
                           
