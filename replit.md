@@ -11,7 +11,14 @@ Do not make changes to the file `Y`.
 ## Chat System Routes
 ### Desktop vs Mobile Chat Separation  
 - **Desktop Chat (DC360)**: `/live-chat` - Full IRC/MSN-style interface with 3-column layout, right-click context menus, and rich command toolbar. Branded as **DC360**. Auto-detects mobile devices and redirects to DC360.5 with animated transition screen.
-- **Mobile Chat (DC360.5)**: `/mobile-chat` - Dedicated mobile-optimized route with touch-first UX, hamburger menu, and simplified controls. Branded as **DC360.5**.
+- **Mobile Chat (DC360.5)**: `/mobile-chat` - Modern glassmorphic mobile chat with livestream-style UI. Features:
+    - **Hidden Menus by Default**: Clean interface, command menu only shows when staff taps hamburger icon
+    - **Floating User List (FAB)**: Bottom-right floating button with user count badge, opens user selection sheet
+    - **User Selection System**: Tap any user to select them, all commands then apply to that specific user with full ID tracking
+    - **8 Support Commands**: Release Hold & Welcome, Request Authentication, Request Document, Request Photo, Request Signature, Request Info, Transfer User, Mark Resolved
+    - **Command Tracking**: All actions send `ACTION:userId:userName` format for complete audit trail
+    - **Touch-First UX**: Optimized for mobile support staff with thumb-friendly controls
+    - **WorkforceOS Design**: Slate/indigo/blue gradient background, glassmorphic panels with backdrop blur
 - **Version Naming**: DC360 (desktop) and DC360.5 (mobile) clearly distinguish the platform versions.
 - **Route Organization**: Only two main routes for clean codebase - `/live-chat` (desktop) and `/mobile-chat` (mobile). All duplicate routes removed for better organization and reduced code waste.
 
@@ -75,6 +82,7 @@ The platform features a CAD-style professional interface with a dark mode theme,
 - **Portals**: Employee, Auditor/Bookkeeper, and Client/Subscriber portals.
 - **Billing & Monetization**: Transaction-based platform fee (3-10%) via Stripe Connect. Tier-based pricing (Professional, Enterprise, Elite) with feature flags. AI features follow a subscriber-pays-all model.
 - **Support & Communication**: Live HelpDesk chatroom with instant WebSocket messaging (IRC/MSN style), ticket verification system, staff controls for room status management, and email notifications via Resend.
+- **Universal Transition System**: Branded overlay system with animated WorkforceOS logo for smooth transitions during page changes, authentication (login/logout), form submissions, and all major actions. Features 4 status states (loading, success, error, info), auto-redirect capability, glassmorphic design with WorkforceOS colors, and mobile-optimized for APK conversion. Provides professional visual feedback across all user interactions.
 - **Security & Reliability**: Enterprise audit logging, IP-based rate limiting, global React error boundary, health monitoring, platform RBAC, workspace isolation, and field whitelisting.
 
 ## External Dependencies
