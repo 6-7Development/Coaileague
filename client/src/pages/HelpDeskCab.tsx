@@ -57,6 +57,11 @@ import {
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuTrigger,
+  ContextMenuSub,
+  ContextMenuSubTrigger,
+  ContextMenuSubContent,
+  ContextMenuSeparator,
+  ContextMenuLabel,
 } from "@/components/ui/context-menu";
 import type { ChatMessage } from "@shared/schema";
 
@@ -99,6 +104,12 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
   const [showAgreement, setShowAgreement] = useState(false);
   const [hasAcceptedAgreement, setHasAcceptedAgreement] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  // User state tracking for contextual menus
+  const [silencedUsers, setSilencedUsers] = useState<Set<string>>(new Set());
+  const [bannedUsers, setBannedUsers] = useState<Set<string>>(new Set());
+  const [documentRequests, setDocumentRequests] = useState<Map<string, Set<string>>>(new Map());
+  // Map structure: userId => Set of request types ('authenticate', 'document', 'photo', 'signature', 'info')
   
   // Generate or get session ID for tracking
   const [sessionId] = useState(() => {
@@ -707,6 +718,59 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
       targetUserId: targetUser.id 
     });
     toast({ title: "Cache cleared", description: `${targetUser.name}'s session cache cleared` });
+  };
+
+  // Stateful menu helpers - for context menu toggles
+  const toggleSilence = (targetUser: any) => {
+    const isSilencedNow = silencedUsers.has(targetUser.id);
+    if (isSilencedNow) {
+      // Unmute
+      sendRawMessage({ type: 'give_voice', targetUserId: targetUser.id });
+      setSilencedUsers(prev => {
+        const next = new Set(prev);
+        next.delete(targetUser.id);
+        return next;
+      });
+      toast({ title: "User unmuted", description: `${targetUser.name} can now speak` });
+    } else {
+      // Mute/Silence
+      sendRawMessage({ type: 'silence_user', targetUserId: targetUser.id });
+      setSilencedUsers(prev => new Set([...prev, targetUser.id]));
+      toast({ title: "User silenced", description: `${targetUser.name} has been muted`, variant: "destructive" });
+    }
+  };
+
+  const toggleBan = (targetUser: any) => {
+    const isBannedNow = bannedUsers.has(targetUser.id);
+    if (isBannedNow) {
+      // Unban
+      sendRawMessage({ type: 'unban_user', targetUserId: targetUser.id });
+      setBannedUsers(prev => {
+        const next = new Set(prev);
+        next.delete(targetUser.id);
+        return next;
+      });
+      toast({ title: "User unbanned", description: `${targetUser.name} has been unbanned` });
+    } else {
+      // Ban
+      sendRawMessage({ type: 'ban_user', targetUserId: targetUser.id });
+      setBannedUsers(prev => new Set([...prev, targetUser.id]));
+      toast({ title: "User banned", description: `${targetUser.name} permanently banned`, variant: "destructive" });
+    }
+  };
+
+  const trackDocumentRequest = (targetUserId: string, requestType: string) => {
+    setDocumentRequests(prev => {
+      const next = new Map(prev);
+      const userRequests = next.get(targetUserId) || new Set();
+      userRequests.add(requestType);
+      next.set(targetUserId, userRequests);
+      return next;
+    });
+  };
+
+  const hasRequestedDocument = (targetUserId: string, requestType: string): boolean => {
+    return documentRequests.get(targetUserId)?.has(requestType) || false;
   };
 
   return (
