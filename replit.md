@@ -9,10 +9,11 @@ Do not make changes to the folder `Z`.
 Do not make changes to the file `Y`.
 
 ## Chat System Routes
-### Desktop vs Mobile Chat Separation
-- **Desktop Chat**: `/helpdesk-cab` or `/live-chat` - Full IRC/MSN-style interface with 3-column layout, right-click context menus, and rich command toolbar
-- **Mobile Chat**: `/mobilechat` - Dedicated mobile-optimized route (currently placeholder, directs to desktop)
-- **Route Distinction**: Both routes are clearly separated for analytics and future mobile-specific features. Desktop chat is the primary interface, mobile chat route reserved for future touch-optimized implementation.
+### Desktop vs Mobile Chat Separation  
+- **Desktop Chat (Help360)**: `/helpdesk-cab` or `/live-chat` - Full IRC/MSN-style interface with 3-column layout, right-click context menus, and rich command toolbar. Branded as **Help360**.
+- **Mobile Chat (Help360.5)**: `/mobilechat` or `/mobile-chat` - Dedicated mobile-optimized route with touch-first UX, hamburger menu, and simplified controls. Branded as **Help360.5**.
+- **Version Naming**: Help360 (desktop) and Help360.5 (mobile) clearly distinguish the platform versions, loading automatically based on how users access the site.
+- **Route Distinction**: Both routes are clearly separated for analytics and version-specific features. Help360 is the primary desktop interface, Help360.5 is the mobile-optimized version.
 
 ## System Architecture
 ### UI/UX Decisions

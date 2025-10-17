@@ -1,10 +1,10 @@
 /**
- * MOBILE CHAT PAGE - /mobilechat
- * Dedicated mobile-optimized chat experience
+ * MOBILE CHAT PAGE (Help360.5) - /mobilechat or /mobile-chat
+ * Dedicated mobile-optimized chat experience with touch-first UX
  * Separate from desktop /live-chat route
  * 
- * This route forces mobile layout regardless of device size
- * Desktop chat is at /helpdesk-cab or /live-chat
+ * Version: Help360.5 (Mobile Edition)
+ * Desktop version: Help360 at /helpdesk-cab or /live-chat
  */
 
 import HelpDesk5 from "./HelpDesk5";

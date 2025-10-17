@@ -503,7 +503,7 @@ export default function LiveChatroomPage() {
               </div>
               <div className="min-w-0">
                 <h1 className="text-xs sm:text-lg font-bold truncate text-white">
-                  HelpDesk
+                  Help360.5
                 </h1>
                 <p className="text-xs text-indigo-100 hidden sm:block flex items-center gap-2">
                   <span className="inline-flex h-2 w-2 rounded-full bg-blue-400 animate-pulse"></span>

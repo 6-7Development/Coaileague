@@ -110,13 +110,13 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
     "Connected to server irc.wfos.com",
     `Message of the Day - irc.wfos.com`,
     "=====================================================",
-    "Welcome to WorkforceOS HelpDesk Support Network",
+    "Welcome to WorkforceOS Help360 Support Network",
     "Your satisfaction is our priority - 24/7/365",
     "Use command buttons: Help, Queue, Tutorial, Priority, Account",
     "Right-click any user for quick support actions (staff only)",
     "Click your username to view your queue position and info",
     "=====================================================",
-    `End of MOTD - You are now in #HelpDesk`,
+    `End of MOTD - You are now in #Help360`,
   ]);
 
   const userName = user?.firstName && user?.lastName 
@@ -511,11 +511,11 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-black tracking-wide flex items-center">
               <MessageSquare className="w-6 h-6 mr-2 text-blue-300" />
-              HelpDesk
+              Help360
             </h1>
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-sm font-semibold font-mono">irc.wfos.com #HelpDesk</span>
+            <span className="text-sm font-semibold font-mono">irc.wfos.com #Help360</span>
             {isStaff && (
               <Button
                 onClick={() => setShowBannerManager(true)}
