@@ -254,7 +254,7 @@ export function ChatAnnouncementBanner({
 
   const BannerContent = (
     <div className={`
-      w-full border-b-2 transition-all duration-500 ease-in-out relative overflow-hidden
+      w-full h-14 border-b-2 transition-all duration-500 ease-in-out relative overflow-hidden
       ${colorSchemes[currentMessage.type]}
       animate-in fade-in slide-in-from-top-2
     `}>

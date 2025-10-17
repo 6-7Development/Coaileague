@@ -15,6 +15,8 @@ import {
   Coffee,
   CheckCircle,
   Power,
+  Bot,
+  BotOff,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -37,6 +39,8 @@ interface HelpDeskCommandBarProps {
   onShowPriority?: () => void;
   onShowAccount?: () => void;
   onToggleRoomStatus?: () => void;
+  onToggleAI?: () => void;
+  aiEnabled?: boolean;
   onQuickResponse?: (command: string) => void;
   
   // Data
@@ -57,6 +61,8 @@ export function HelpDeskCommandBar({
   onShowPriority,
   onShowAccount,
   onToggleRoomStatus,
+  onToggleAI,
+  aiEnabled = false,
   onQuickResponse,
   roomStatus = 'open',
 }: HelpDeskCommandBarProps) {
@@ -183,18 +189,34 @@ export function HelpDeskCommandBar({
                 </div>
               </div>
 
-              {/* Chat Commands */}
+              {/* HelpOS™ AI Toggle */}
               <div className="flex items-center gap-2 pr-4 border-r-2 border-slate-300">
-                <span className="text-xs text-slate-900 font-bold">AI:</span>
+                <span className="text-xs text-slate-900 font-bold">HelpOS™ AI:</span>
                 <Button
-                  onClick={() => onQuickResponse?.('/intro')}
+                  onClick={onToggleAI}
                   variant="outline"
                   size="sm"
-                  className="h-9 text-xs gap-2 bg-violet-50 border-violet-600 text-violet-900 font-semibold hover:bg-violet-100"
-                  data-testid="button-intro-macro"
+                  className={`h-9 text-xs gap-2 font-semibold transition-all ${
+                    aiEnabled 
+                      ? 'bg-gradient-to-r from-violet-500 to-purple-600 border-violet-400 text-white hover:from-violet-600 hover:to-purple-700' 
+                      : 'bg-slate-50 border-slate-400 text-slate-600 hover:bg-slate-100'
+                  }`}
+                  data-testid="button-toggle-ai"
                 >
-                  <Zap className="w-4 h-4" />
-                  <span>AI Greeting</span>
+                  {aiEnabled ? (
+                    <>
+                      <Bot className="w-4 h-4 animate-pulse" />
+                      <span>AI ON</span>
+                      <Badge variant="secondary" className="h-5 px-2 text-xs bg-white/20 text-white font-bold">
+                        Client-Pays
+                      </Badge>
+                    </>
+                  ) : (
+                    <>
+                      <BotOff className="w-4 h-4" />
+                      <span>AI OFF</span>
+                    </>
+                  )}
                 </Button>
               </div>
 
