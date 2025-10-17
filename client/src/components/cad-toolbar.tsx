@@ -159,7 +159,7 @@ export function CADToolbar() {
   const buttons = getToolbarButtons();
 
   return (
-    <div className="h-12 bg-[hsl(var(--cad-chrome))] border-b border-[hsl(var(--cad-border))] flex items-center px-3 gap-1">
+    <div className="min-h-12 bg-[hsl(var(--cad-chrome))] border-b border-[hsl(var(--cad-border))] flex items-center px-3 gap-1 flex-wrap">
       {buttons.map((button, index) =>
         button.separator ? (
           <Separator

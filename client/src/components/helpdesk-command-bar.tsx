@@ -74,7 +74,7 @@ export function HelpDeskCommandBar({
   return (
     <div className="border-b-2 border-slate-300 bg-slate-100 shadow-sm" data-testid="helpdesk-command-bar">
       <ScrollArea className="w-full">
-        <div className="flex items-center gap-2 px-4 py-3 min-w-max">
+        <div className="flex items-center gap-2 px-4 py-3 flex-wrap">
           {/* Guest/All Users: Basic Commands */}
           <div className="flex items-center gap-2 pr-4 border-r-2 border-slate-300">
             <Button

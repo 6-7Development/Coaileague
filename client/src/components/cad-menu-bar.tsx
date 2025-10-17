@@ -133,7 +133,7 @@ export function CADMenuBar() {
   ];
 
   return (
-    <div className="h-10 bg-[hsl(var(--cad-chrome))] border-b border-[hsl(var(--cad-border))] flex items-center px-2 gap-1">
+    <div className="min-h-10 bg-[hsl(var(--cad-chrome))] border-b border-[hsl(var(--cad-border))] flex items-center px-2 gap-1 flex-wrap">
       {menus.map((menu) => (
         <DropdownMenu
           key={menu.label}
