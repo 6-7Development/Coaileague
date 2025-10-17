@@ -17,8 +17,16 @@ import {
   Power,
   Bot,
   BotOff,
+  ChevronDown,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 
 interface HelpDeskCommandBarProps {
   // User info
@@ -220,108 +228,86 @@ export function HelpDeskCommandBar({
                 </Button>
               </div>
 
-              {/* Quick Responses - Using original slash commands */}
+              {/* Quick Actions - Dropdown Menu */}
               <div className="flex items-center gap-2 pr-4 border-r-2 border-slate-300">
-                <span className="text-xs text-slate-900 font-bold">Quick:</span>
-                <Button
-                  onClick={() => onQuickResponse?.('/welcome')}
-                  variant="outline"
-                  size="sm"
-                  className="h-9 text-xs bg-white border-slate-400 text-slate-900 font-semibold hover:bg-slate-50"
-                  data-testid="button-welcome"
-                >
-                  Welcome
-                </Button>
-                <Button
-                  onClick={() => onQuickResponse?.('/details')}
-                  variant="outline"
-                  size="sm"
-                  className="h-9 text-xs bg-white border-slate-400 text-slate-900 font-semibold hover:bg-slate-50"
-                  data-testid="button-request-details"
-                >
-                  Details
-                </Button>
-                <Button
-                  onClick={() => onQuickResponse?.('/screenshot')}
-                  variant="outline"
-                  size="sm"
-                  className="h-9 text-xs bg-white border-slate-400 text-slate-900 font-semibold hover:bg-slate-50"
-                  data-testid="button-screenshot"
-                >
-                  Screenshot
-                </Button>
-                <Button
-                  onClick={() => onQuickResponse?.('/checkaccount')}
-                  variant="outline"
-                  size="sm"
-                  className="h-9 text-xs bg-white border-slate-400 text-slate-900 font-semibold hover:bg-slate-50"
-                  data-testid="button-check-account"
-                >
-                  Account
-                </Button>
-                <Button
-                  onClick={() => onQuickResponse?.('/escalate')}
-                  variant="outline"
-                  size="sm"
-                  className="h-9 text-xs bg-orange-50 border-orange-500 text-orange-900 font-semibold hover:bg-orange-100"
-                  data-testid="button-escalate"
-                >
-                  Escalate
-                </Button>
-                <Button
-                  onClick={() => onQuickResponse?.('/resolved')}
-                  variant="outline"
-                  size="sm"
-                  className="h-9 text-xs bg-green-50 border-green-600 text-green-900 font-semibold hover:bg-green-100"
-                  data-testid="button-resolved"
-                >
-                  Resolved
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-9 text-xs gap-2 bg-white border-slate-400 text-slate-900 font-semibold hover:bg-slate-50"
+                      data-testid="button-quick-actions"
+                    >
+                      <Zap className="w-4 h-4" />
+                      <span>Quick Actions</span>
+                      <ChevronDown className="w-3 h-3" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-48">
+                    <DropdownMenuItem onClick={() => onQuickResponse?.('/welcome')} data-testid="menu-welcome">
+                      <MessageSquare className="w-4 h-4 mr-2" />
+                      Welcome
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onQuickResponse?.('/details')} data-testid="menu-details">
+                      <HelpCircle className="w-4 h-4 mr-2" />
+                      Request Details
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onQuickResponse?.('/screenshot')} data-testid="menu-screenshot">
+                      <Settings className="w-4 h-4 mr-2" />
+                      Request Screenshot
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onQuickResponse?.('/checkaccount')} data-testid="menu-account">
+                      <UserCog className="w-4 h-4 mr-2" />
+                      Check Account
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => onQuickResponse?.('/escalate')} className="text-orange-700" data-testid="menu-escalate">
+                      <AlertCircle className="w-4 h-4 mr-2" />
+                      Escalate Issue
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onQuickResponse?.('/resolved')} className="text-green-700" data-testid="menu-resolved">
+                      <CheckCircle className="w-4 h-4 mr-2" />
+                      Mark Resolved
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
 
-              {/* Privacy & Room Controls */}
+              {/* Controls - Dropdown Menu */}
               <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-900 font-bold">Controls:</span>
-                <Button
-                  onClick={() => onQuickResponse?.('/spectate')}
-                  variant="outline"
-                  size="sm"
-                  className="h-9 text-xs gap-2 bg-white border-slate-400 text-slate-900 font-semibold hover:bg-slate-50"
-                  data-testid="button-spectate"
-                >
-                  <AlertCircle className="w-4 h-4 text-amber-600" />
-                  <span>Spectate</span>
-                </Button>
-                <Button
-                  onClick={() => onQuickResponse?.('/voice')}
-                  variant="outline"
-                  size="sm"
-                  className="h-9 text-xs gap-2 bg-white border-slate-400 text-slate-900 font-semibold hover:bg-slate-50"
-                  data-testid="button-voice"
-                >
-                  <CheckCircle className="w-4 h-4 text-green-600" />
-                  <span className="font-semibold">Voice</span>
-                </Button>
-                <Button
-                  onClick={onToggleRoomStatus}
-                  variant="outline"
-                  size="sm"
-                  className="h-9 text-xs gap-2 bg-blue-50 border-blue-600 text-blue-900 font-semibold hover:bg-blue-100"
-                  data-testid="button-room-status"
-                >
-                  <Settings className="w-4 h-4" />
-                  <span>Room</span>
-                </Button>
-                <Button
-                  onClick={() => onQuickResponse?.('/close')}
-                  variant="outline"
-                  size="sm"
-                  className="h-9 text-xs gap-2 bg-red-50 border-red-600 text-red-900 font-bold hover:bg-red-100"
-                  data-testid="button-close-ticket"
-                >
-                  <Power className="w-4 h-4" />
-                  <span>Close</span>
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-9 text-xs gap-2 bg-white border-slate-400 text-slate-900 font-semibold hover:bg-slate-50"
+                      data-testid="button-controls"
+                    >
+                      <Settings className="w-4 h-4" />
+                      <span>Controls</span>
+                      <ChevronDown className="w-3 h-3" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-48">
+                    <DropdownMenuItem onClick={() => onQuickResponse?.('/spectate')} data-testid="menu-spectate">
+                      <AlertCircle className="w-4 h-4 mr-2 text-amber-600" />
+                      Silence User
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onQuickResponse?.('/voice')} data-testid="menu-voice">
+                      <CheckCircle className="w-4 h-4 mr-2 text-green-600" />
+                      Grant Voice
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={onToggleRoomStatus} data-testid="menu-room">
+                      <Settings className="w-4 h-4 mr-2 text-blue-600" />
+                      Room Status
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => onQuickResponse?.('/close')} className="text-red-700 font-semibold" data-testid="menu-close">
+                      <Power className="w-4 h-4 mr-2" />
+                      Close Ticket
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </>
           )}

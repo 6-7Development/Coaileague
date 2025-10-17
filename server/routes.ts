@@ -49,6 +49,7 @@ import {
   supportTickets,
   motdMessages,
   motdAcknowledgments,
+  termsAcknowledgments,
 } from "@shared/schema";
 import crypto from "crypto";
 import { sql, eq, and, or, isNull, lte, gte, desc } from "drizzle-orm";
@@ -4624,6 +4625,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error verifying ticket:", error);
       res.status(500).json({ message: "Failed to verify ticket" });
+    }
+  });
+
+  // Accept terms and save acknowledgment for audit compliance
+  app.post('/api/helpdesk/terms/accept', requireAnyAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { initialsProvided, userName, userEmail, workspaceId, ticketNumber } = req.body;
+      const userId = req.user!.id;
+      
+      if (!initialsProvided || initialsProvided.trim().length < 2) {
+        return res.status(400).json({ message: "Valid initials are required for e-signature" });
+      }
+      
+      // Get IP address for audit trail
+      const ipAddress = req.ip || req.socket.remoteAddress || 'unknown';
+      const userAgent = req.headers['user-agent'] || 'unknown';
+      
+      // Save terms acknowledgment to database
+      const [acknowledgment] = await db.insert(termsAcknowledgments).values({
+        userId,
+        userName: userName || 'Unknown',
+        userEmail: userEmail || req.user!.email || 'unknown@email.com',
+        workspaceId: workspaceId || null,
+        ticketNumber: ticketNumber || null,
+        initialsProvided: initialsProvided.toUpperCase(),
+        acceptedTermsVersion: '1.0',
+        ipAddress,
+        userAgent,
+      }).returning();
+      
+      res.json({ 
+        success: true,
+        message: "Terms accepted and recorded for compliance",
+        acknowledgmentId: acknowledgment.id
+      });
+    } catch (error) {
+      console.error("Error saving terms acknowledgment:", error);
+      res.status(500).json({ message: "Failed to save terms acceptance" });
     }
   });
 

@@ -285,15 +285,34 @@ export default function HelpDeskCab() {
     setTimeout(() => setShowCoffeeCup(false), 2000);
   };
 
-  // Handle terms acceptance
-  const handleAcceptTerms = () => {
-    localStorage.setItem('helpdesk_terms_accepted', 'true');
-    setTermsAccepted(true);
-    setShowTermsDialog(false);
-    toast({
-      title: "Terms Accepted",
-      description: "Welcome to WorkforceOS HelpDesk Support",
-    });
+  // Handle terms acceptance with initials
+  const handleAcceptTerms = async (initials: string) => {
+    try {
+      // Save to database for audit compliance
+      await apiRequest('POST', '/api/helpdesk/terms/accept', {
+        initialsProvided: initials,
+        userName: userName,
+        userEmail: user?.email,
+        workspaceId: (user as any)?.currentWorkspaceId,
+        ticketNumber: (user as any)?.ticketNumber || null,
+      });
+
+      localStorage.setItem('helpdesk_terms_accepted', 'true');
+      setTermsAccepted(true);
+      setShowTermsDialog(false);
+      
+      toast({
+        title: "Terms Accepted",
+        description: "Your agreement has been recorded. Welcome to HelpDesk Support!",
+      });
+    } catch (error) {
+      console.error('Failed to save terms acceptance:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save your acceptance. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleDeclineTerms = () => {
@@ -965,6 +984,7 @@ export default function HelpDeskCab() {
         open={showTermsDialog}
         onAccept={handleAcceptTerms}
         onDecline={handleDeclineTerms}
+        userName={userName}
       />
     </div>
   );

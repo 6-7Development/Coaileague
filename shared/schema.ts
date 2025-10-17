@@ -2281,6 +2281,47 @@ export type ChatConversation = typeof chatConversations.$inferSelect;
 export type InsertChatMessage = z.infer<typeof insertChatMessageSchema>;
 export type ChatMessage = typeof chatMessages.$inferSelect;
 
+// Terms Acknowledgments - Legal compliance tracking for support chat access
+export const termsAcknowledgments = pgTable("terms_acknowledgments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Link to conversation/ticket
+  conversationId: varchar("conversation_id").references(() => chatConversations.id, { onDelete: 'cascade' }),
+  ticketNumber: varchar("ticket_number"), // Associated ticket if any
+  
+  // User identification
+  userId: varchar("user_id").references(() => users.id, { onDelete: 'set null' }),
+  userName: varchar("user_name").notNull(),
+  userEmail: varchar("user_email").notNull(),
+  workspaceId: varchar("workspace_id").references(() => workspaces.id, { onDelete: 'set null' }),
+  
+  // E-Signature (initials)
+  initialsProvided: varchar("initials_provided").notNull(), // User's initials as e-signature
+  
+  // Acceptance details
+  acceptedTermsVersion: varchar("accepted_terms_version").default("1.0"), // Track version of terms
+  acceptedAt: timestamp("accepted_at").defaultNow().notNull(),
+  
+  // Audit trail
+  ipAddress: varchar("ip_address"), // IP at time of acceptance
+  userAgent: varchar("user_agent"), // Browser info
+  
+  // Linked to ticket lifecycle
+  ticketClosedAt: timestamp("ticket_closed_at"), // When associated ticket was closed
+  isArchived: boolean("is_archived").default(false), // For long-term storage
+  
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertTermsAcknowledgmentSchema = createInsertSchema(termsAcknowledgments).omit({
+  id: true,
+  createdAt: true,
+  acceptedAt: true,
+});
+
+export type InsertTermsAcknowledgment = z.infer<typeof insertTermsAcknowledgmentSchema>;
+export type TermsAcknowledgment = typeof termsAcknowledgments.$inferSelect;
+
 // HelpOS Queue Management - AI-powered support queue
 export const helpOsQueue = pgTable("help_os_queue", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
