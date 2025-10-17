@@ -101,12 +101,15 @@ export default function LiveChatroomPage() {
     staleTime: 30000,
   });
 
-  // Fetch queue data for visual dialog
+  // Fetch queue data for visual dialog and banner
   const { data: queueData } = useQuery<any[]>({
     queryKey: ['/api/helpdesk/queue'],
-    enabled: showQueueDialog,
-    refetchInterval: showQueueDialog ? 5000 : false, // Refresh every 5s when dialog is open
+    enabled: isAuthenticated,
+    refetchInterval: 5000, // Refresh every 5s
   });
+  
+  // Calculate queue position
+  const queuePosition = queueData ? (queueData.findIndex(entry => entry.userId === userId) + 1 || queueData.length || 1) : 1;
   
   // Use WebSocket for real-time messaging (only if authenticated)
   const { 
