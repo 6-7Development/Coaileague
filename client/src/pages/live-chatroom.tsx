@@ -94,13 +94,13 @@ export default function LiveChatroom() {
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-cyan-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
         </div>
 
-        {/* WorkforceOS Neon Logo with Glow Animation */}
+        {/* WorkForceOS™ Neon Logo with Glow Animation */}
         <div className={`mb-8 transition-all duration-1000 ${stage >= 1 ? 'scale-110' : 'scale-100'}`}>
-          <div className="relative">
-            <WorkforceOSLogo className="w-32 h-32 relative z-10" />
+          <div className="relative px-4">
+            <WorkforceOSLogo className="relative z-10" size="lg" showText={true} />
             {/* Pulsing glow ring */}
             <div className="absolute inset-0 animate-ping opacity-20">
-              <div className="w-32 h-32 rounded-full bg-blue-500 blur-xl" />
+              <div className="w-full h-full rounded-full bg-blue-500 blur-xl" />
             </div>
           </div>
         </div>

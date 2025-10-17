@@ -261,14 +261,14 @@ export function WorkforceOSLogo({
         <div className="flex flex-col items-center gap-1">
           <div 
             className={cn(
-              "font-black tracking-tight text-center leading-none",
+              "font-black tracking-tight text-center leading-none whitespace-nowrap",
               "bg-gradient-to-br from-blue-600 to-blue-800",
               "bg-clip-text text-transparent",
               sizes[size].text
             )}
             data-testid="logo-text"
           >
-            WorkforceOS
+            WorkForceOS™
           </div>
           {size === "hero" && (
             <div className={cn("font-medium text-slate-400 tracking-wide text-center", sizes[size].tagline)}>
