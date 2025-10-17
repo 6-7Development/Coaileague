@@ -2662,3 +2662,63 @@ export const insertAiUsageLogSchema = createInsertSchema(aiUsageLogs).omit({
 
 export type InsertAiUsageLog = z.infer<typeof insertAiUsageLogSchema>;
 export type AiUsageLog = typeof aiUsageLogs.$inferSelect;
+
+// ============================================================================
+// HELPDESK - Message of the Day (MOTD)
+// ============================================================================
+
+export const motdMessages = pgTable("motd_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Content
+  title: varchar("title", { length: 255 }).notNull(),
+  content: text("content").notNull(),
+  
+  // Display settings
+  isActive: boolean("is_active").default(true),
+  requiresAcknowledgment: boolean("requires_acknowledgment").default(true),
+  displayOrder: integer("display_order").default(0), // For multiple MOTD priority
+  
+  // Styling
+  backgroundColor: varchar("background_color").default("#1e3a8a"), // Navy blue default
+  textColor: varchar("text_color").default("#ffffff"), // White text default
+  iconName: varchar("icon_name").default("bell"), // Lucide icon name
+  
+  // Scheduling (optional)
+  startsAt: timestamp("starts_at"),
+  endsAt: timestamp("ends_at"),
+  
+  // Staff info
+  createdBy: varchar("created_by").references(() => users.id),
+  updatedBy: varchar("updated_by").references(() => users.id),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertMotdMessageSchema = createInsertSchema(motdMessages).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertMotdMessage = z.infer<typeof insertMotdMessageSchema>;
+export type MotdMessage = typeof motdMessages.$inferSelect;
+
+// Track user acknowledgments
+export const motdAcknowledgments = pgTable("motd_acknowledgments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  motdId: varchar("motd_id").notNull().references(() => motdMessages.id, { onDelete: 'cascade' }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  
+  acknowledgedAt: timestamp("acknowledged_at").defaultNow(),
+});
+
+export const insertMotdAcknowledgmentSchema = createInsertSchema(motdAcknowledgments).omit({
+  id: true,
+  acknowledgedAt: true,
+});
+
+export type InsertMotdAcknowledgment = z.infer<typeof insertMotdAcknowledgmentSchema>;
+export type MotdAcknowledgment = typeof motdAcknowledgments.$inferSelect;

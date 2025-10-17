@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useChatroomWebSocket } from "@/hooks/use-chatroom-websocket";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -23,6 +24,7 @@ import { QueueManagerPanel } from "@/components/queue-manager-panel";
 import { TutorialManagerPanel } from "@/components/tutorial-manager-panel";
 import { PriorityManagerPanel } from "@/components/priority-manager-panel";
 import { AccountSupportPanel } from "@/components/account-support-panel";
+import { MotdDialog } from "@/components/motd-dialog";
 import { formatDistanceToNow } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -57,6 +59,9 @@ export default function HelpDeskCab() {
   const [showQueuePanel, setShowQueuePanel] = useState(false);
   const [showPriorityPanel, setShowPriorityPanel] = useState(false);
   const [showAccountPanel, setShowAccountPanel] = useState(false);
+  const [aiEnabled, setAiEnabled] = useState(false);
+  const [showMotd, setShowMotd] = useState(false);
+  const [motdData, setMotdData] = useState<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // IRC-style MOTD and helpful info banners
@@ -110,6 +115,39 @@ export default function HelpDeskCab() {
     queryKey: ['/api/helpdesk/queue'],
     enabled: isAuthenticated,
     refetchInterval: 5000,
+  });
+
+  // Fetch MOTD
+  const { data: motdResponse } = useQuery<{ motd: any, acknowledged: boolean }>({
+    queryKey: ['/api/helpdesk/motd'],
+    enabled: isAuthenticated,
+  });
+
+  // Show MOTD dialog if there's an active MOTD that hasn't been acknowledged
+  useEffect(() => {
+    if (motdResponse && motdResponse.motd && !motdResponse.acknowledged) {
+      setMotdData(motdResponse.motd);
+      setShowMotd(true);
+    }
+  }, [motdResponse]);
+
+  // MOTD acknowledgment mutation
+  const acknowledgeMOTD = useMutation({
+    mutationFn: async (motdId: string) => {
+      return await apiRequest('/api/helpdesk/motd/acknowledge', {
+        method: 'POST',
+        body: JSON.stringify({ motdId }),
+        headers: { 'Content-Type': 'application/json' },
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/helpdesk/motd'] });
+      setShowMotd(false);
+      toast({
+        title: "Welcome to HelpDesk!",
+        description: "You can now access the support chat",
+      });
+    },
   });
 
   // Sort users: Root admin at top, then bot, then staff (by role hierarchy), then subscribers, org users, guests
@@ -398,6 +436,26 @@ export default function HelpDeskCab() {
           onShowPriority={() => setShowPriorityPanel(true)}
           onShowAccount={() => setShowAccountPanel(true)}
           onToggleRoomStatus={() => setShowRoomStatus(true)}
+          onToggleAI={async () => {
+            const newState = !aiEnabled;
+            setAiEnabled(newState);
+            
+            // Send toggle to server via WebSocket
+            sendRawMessage({
+              type: 'ai_toggle',
+              aiEnabled: newState,
+              userId: user?.id,
+            });
+            
+            toast({
+              title: newState ? "HelpOS™ AI Enabled" : "HelpOS™ AI Disabled",
+              description: newState 
+                ? "AI costs are billed to customer credits" 
+                : "Standard support mode active",
+              variant: newState ? "default" : "destructive",
+            });
+          }}
+          aiEnabled={aiEnabled}
           onQuickResponse={handleQuickResponse}
           roomStatus="open"
         />
@@ -830,6 +888,22 @@ export default function HelpDeskCab() {
             title: "Account Action",
             description: `${action} executed successfully`,
           });
+        }}
+      />
+
+      {/* MOTD (Message of the Day) Dialog */}
+      <MotdDialog
+        open={showMotd}
+        message={motdData}
+        onAcknowledge={() => {
+          if (motdData) {
+            acknowledgeMOTD.mutate(motdData.id);
+          }
+        }}
+        onClose={() => {
+          if (!motdData?.requiresAcknowledgment) {
+            setShowMotd(false);
+          }
         }}
       />
     </div>

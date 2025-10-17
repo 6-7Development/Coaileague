@@ -1,77 +1,64 @@
 /**
- * Help Command Panel - Animated support command directory
- * All platform and chatroom commands organized by category
+ * Help Command Panel - Grid-based command center with WorkforceOS branding
+ * Each command is a visual box with logo, controls, and actions
  */
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { WFLogoCompact } from "@/components/wf-logo";
 import {
   MessageSquare, Users, Shield, Zap, Settings, AlertCircle, 
   UserPlus, Lock, Unlock, UserX, RefreshCw, Bell, Flag,
   Eye, EyeOff, Volume2, VolumeX, UserCog, FileText,
-  CheckCircle, XCircle, ArrowRight, Sparkles, Copy
+  CheckCircle, XCircle, ArrowRight, Sparkles, X, Save, Play
 } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 
 interface CommandItem {
-  command: string;
+  id: string;
+  name: string;
   description: string;
-  usage: string;
   icon: any;
-  category: string;
+  color: string;
+  action: string;
   staffOnly?: boolean;
   requiresAdmin?: boolean;
 }
 
-const COMMANDS: CommandItem[] = [
-  // Chat Commands
-  { command: '/intro', description: 'AI introduces you to customer', usage: '/intro', icon: Sparkles, category: 'chat', staffOnly: true },
-  { command: '/welcome', description: 'Send welcome message', usage: '/welcome [name]', icon: MessageSquare, category: 'chat', staffOnly: true },
-  { command: '/details', description: 'Request more details', usage: '/details', icon: FileText, category: 'chat', staffOnly: true },
-  { command: '/screenshot', description: 'Request screenshot', usage: '/screenshot', icon: Eye, category: 'chat', staffOnly: true },
+const COMMAND_BOXES: CommandItem[] = [
+  // Chat & Support
+  { id: 'welcome', name: 'Welcome', description: 'Greet new users', icon: MessageSquare, color: 'from-blue-500 to-blue-600', action: '/welcome', staffOnly: true },
+  { id: 'ai-intro', name: 'AI Intro', description: 'HelpOS™ greeting', icon: Sparkles, color: 'from-violet-500 to-purple-600', action: '/intro', staffOnly: true },
+  { id: 'details', name: 'Request Details', description: 'Ask for more info', icon: FileText, color: 'from-cyan-500 to-cyan-600', action: '/details', staffOnly: true },
+  { id: 'screenshot', name: 'Screenshot', description: 'Request screenshot', icon: Eye, color: 'from-emerald-500 to-emerald-600', action: '/screenshot', staffOnly: true },
   
   // User Management
-  { command: '/spectate', description: 'Put user on hold (silence)', usage: '/spectate <user>', icon: EyeOff, category: 'user', staffOnly: true },
-  { command: '/release', description: 'Release user from hold', usage: '/release <user>', icon: Eye, category: 'user', staffOnly: true },
-  { command: '/mute', description: 'Mute user temporarily', usage: '/mute <user>', icon: VolumeX, category: 'user', staffOnly: true },
-  { command: '/unmute', description: 'Unmute user', usage: '/unmute <user>', icon: Volume2, category: 'user', staffOnly: true },
-  { command: '/kick', description: 'Remove user from chat', usage: '/kick <user> [reason]', icon: UserX, category: 'user', staffOnly: true },
+  { id: 'spectate', name: 'Hold User', description: 'Put on hold (silence)', icon: EyeOff, color: 'from-amber-500 to-amber-600', action: '/spectate', staffOnly: true },
+  { id: 'release', name: 'Release Hold', description: 'Release from hold', icon: Eye, color: 'from-green-500 to-green-600', action: '/release', staffOnly: true },
+  { id: 'mute', name: 'Mute', description: 'Mute user', icon: VolumeX, color: 'from-red-500 to-red-600', action: '/mute', staffOnly: true },
+  { id: 'kick', name: 'Kick User', description: 'Remove from chat', icon: UserX, color: 'from-rose-500 to-rose-600', action: '/kick', staffOnly: true },
   
   // Account Support
-  { command: '/auth', description: 'Request user authentication', usage: '/auth', icon: Lock, category: 'account', staffOnly: true },
-  { command: '/verify', description: 'Verify user identity', usage: '/verify <user>', icon: CheckCircle, category: 'account', staffOnly: true },
-  { command: '/resetpass', description: 'Send password reset', usage: '/resetpass <email>', icon: RefreshCw, category: 'account', staffOnly: true },
-  { command: '/checkaccount', description: 'Check account status', usage: '/checkaccount <user>', icon: UserCog, category: 'account', staffOnly: true },
+  { id: 'auth', name: 'Authenticate', description: 'Verify identity', icon: Lock, color: 'from-indigo-500 to-indigo-600', action: '/auth', staffOnly: true },
+  { id: 'resetpass', name: 'Reset Password', description: 'Send reset link', icon: RefreshCw, color: 'from-orange-500 to-orange-600', action: '/resetpass', staffOnly: true },
+  { id: 'checkaccount', name: 'Check Account', description: 'View account status', icon: UserCog, color: 'from-teal-500 to-teal-600', action: '/checkaccount', staffOnly: true },
   
   // Ticket Management
-  { command: '/escalate', description: 'Escalate to higher support', usage: '/escalate [reason]', icon: ArrowRight, category: 'ticket', staffOnly: true },
-  { command: '/resolved', description: 'Mark ticket resolved', usage: '/resolved', icon: CheckCircle, category: 'ticket', staffOnly: true },
-  { command: '/close', description: 'Close conversation/ticket', usage: '/close [reason]', icon: XCircle, category: 'ticket', staffOnly: true },
-  { command: '/assign', description: 'Assign to staff member', usage: '/assign <staff>', icon: UserPlus, category: 'ticket', staffOnly: true },
-  { command: '/transfer', description: 'Transfer to another agent', usage: '/transfer <staff>', icon: ArrowRight, category: 'ticket', staffOnly: true },
+  { id: 'escalate', name: 'Escalate', description: 'Higher support tier', icon: ArrowRight, color: 'from-pink-500 to-pink-600', action: '/escalate', staffOnly: true },
+  { id: 'resolved', name: 'Resolved', description: 'Mark as resolved', icon: CheckCircle, color: 'from-lime-500 to-lime-600', action: '/resolved', staffOnly: true },
+  { id: 'close', name: 'Close Ticket', description: 'Close conversation', icon: XCircle, color: 'from-slate-500 to-slate-600', action: '/close', staffOnly: true },
   
-  // System Commands
-  { command: '/room', description: 'Change room status', usage: '/room <open|closed|maintenance>', icon: Settings, category: 'system', staffOnly: true, requiresAdmin: true },
-  { command: '/banner', description: 'Manage announcement banners', usage: '/banner <add|remove|list>', icon: Bell, category: 'system', staffOnly: true },
-  { command: '/broadcast', description: 'Send system announcement', usage: '/broadcast <message>', icon: Bell, category: 'system', staffOnly: true, requiresAdmin: true },
+  // System (Admin)
+  { id: 'room', name: 'Room Status', description: 'Change room status', icon: Settings, color: 'from-purple-600 to-purple-700', action: '/room', staffOnly: true, requiresAdmin: true },
+  { id: 'banner', name: 'Manage Banner', description: 'Edit announcements', icon: Bell, color: 'from-fuchsia-500 to-fuchsia-600', action: '/banner', staffOnly: true },
   
   // User Commands
-  { command: '/help', description: 'Show available commands', usage: '/help', icon: AlertCircle, category: 'info' },
-  { command: '/queue', description: 'Check your queue position', usage: '/queue', icon: Users, category: 'info' },
-  { command: '/info', description: 'View account information', usage: '/info', icon: FileText, category: 'info' },
-];
-
-const CATEGORIES = [
-  { id: 'chat', name: 'Chat Commands', icon: MessageSquare, color: 'blue' },
-  { id: 'user', name: 'User Management', icon: Users, color: 'purple' },
-  { id: 'account', name: 'Account Support', icon: UserCog, color: 'green' },
-  { id: 'ticket', name: 'Ticket Management', icon: Flag, color: 'orange' },
-  { id: 'system', name: 'System Commands', icon: Settings, color: 'red' },
-  { id: 'info', name: 'User Commands', icon: AlertCircle, color: 'slate' },
+  { id: 'help', name: 'Help', description: 'Show this panel', icon: AlertCircle, color: 'from-gray-500 to-gray-600', action: '/help' },
+  { id: 'queue', name: 'Queue Position', description: 'Check your position', icon: Users, color: 'from-sky-500 to-sky-600', action: '/queue' },
+  { id: 'info', name: 'My Account', description: 'View account info', icon: FileText, color: 'from-blue-400 to-blue-500', action: '/info' },
 ];
 
 interface HelpCommandPanelProps {
@@ -89,153 +76,155 @@ export function HelpCommandPanel({
   isAdmin = false,
   onExecuteCommand 
 }: HelpCommandPanelProps) {
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const filteredCommands = COMMANDS.filter(cmd => {
-    // Filter by permissions
+  const filteredCommands = COMMAND_BOXES.filter(cmd => {
     if (cmd.staffOnly && !isStaff) return false;
     if (cmd.requiresAdmin && !isAdmin) return false;
-    // Filter by category if selected
-    if (selectedCategory && cmd.category !== selectedCategory) return false;
     return true;
   });
 
-  const handleCopyCommand = (command: string) => {
-    navigator.clipboard.writeText(command);
-    toast({
-      title: "Copied!",
-      description: `${command} copied to clipboard`,
-    });
-  };
-
-  const handleExecute = (command: string) => {
+  const handleExecute = (cmd: CommandItem) => {
     if (onExecuteCommand) {
-      onExecuteCommand(command);
+      onExecuteCommand(cmd.action);
+      toast({
+        title: "Command Executed",
+        description: `${cmd.name} command sent`,
+      });
       onClose();
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-5xl max-h-[85vh] p-0 animate-in fade-in-0 zoom-in-95">
-        <DialogHeader className="p-6 pb-4 bg-gradient-to-r from-blue-600 to-indigo-700 text-white">
-          <DialogTitle className="flex items-center gap-3 text-2xl">
-            <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm animate-pulse">
-              <AlertCircle className="w-6 h-6" />
+      <DialogContent className="max-w-6xl max-h-[90vh] p-0 bg-gradient-to-br from-slate-900 to-slate-800 border-2 border-blue-500/30">
+        {/* Header with Logo and Close */}
+        <DialogHeader className="relative p-6 pb-4 bg-gradient-to-r from-blue-600 to-indigo-700 border-b-2 border-blue-400/50">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            className="absolute top-4 right-4 h-8 w-8 rounded-full bg-white/10 hover:bg-white/20 text-white"
+            data-testid="button-close-help"
+          >
+            <X className="w-4 h-4" />
+          </Button>
+          
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-white/20 rounded-lg backdrop-blur-sm">
+              <WFLogoCompact size={28} />
             </div>
-            Command Center
-          </DialogTitle>
-          <p className="text-sm text-blue-100 mt-2">
-            All platform and chatroom commands organized for quick access
-          </p>
+            <div>
+              <DialogTitle className="text-2xl font-bold text-white flex items-center gap-2">
+                Command Center
+                <Badge className="bg-white/20 text-white border-white/30">
+                  WorkforceOS
+                </Badge>
+              </DialogTitle>
+              <p className="text-sm text-blue-100 mt-1">
+                Click any command box to execute - Quick access to all support tools
+              </p>
+            </div>
+          </div>
         </DialogHeader>
 
-        <div className="flex gap-4 p-6 pt-4">
-          {/* Category Filters */}
-          <div className="w-48 space-y-2">
-            <p className="text-xs font-bold text-slate-500 uppercase mb-3">Categories</p>
-            <Button
-              variant={selectedCategory === null ? "default" : "ghost"}
-              className="w-full justify-start gap-2"
-              onClick={() => setSelectedCategory(null)}
-              data-testid="category-all"
-            >
-              <Zap className="w-4 h-4" />
-              All Commands
-            </Button>
-            {CATEGORIES.map((cat) => {
-              const count = COMMANDS.filter(cmd => {
-                if (cmd.category !== cat.id) return false;
-                if (cmd.staffOnly && !isStaff) return false;
-                if (cmd.requiresAdmin && !isAdmin) return false;
-                return true;
-              }).length;
-              
-              if (count === 0) return null;
-              
-              return (
-                <Button
-                  key={cat.id}
-                  variant={selectedCategory === cat.id ? "default" : "ghost"}
-                  className="w-full justify-start gap-2"
-                  onClick={() => setSelectedCategory(cat.id)}
-                  data-testid={`category-${cat.id}`}
-                >
-                  <cat.icon className="w-4 h-4" />
-                  {cat.name}
-                  <Badge variant="secondary" className="ml-auto">
-                    {count}
-                  </Badge>
-                </Button>
-              );
-            })}
-          </div>
+        {/* Command Grid */}
+        <ScrollArea className="h-[600px] p-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {filteredCommands.map((cmd) => (
+              <div
+                key={cmd.id}
+                className="relative group"
+              >
+                {/* Command Box Card */}
+                <div className="relative overflow-hidden rounded-xl border-2 border-slate-600/50 bg-slate-800/50 backdrop-blur-sm transition-all hover:border-blue-500/50 hover:shadow-xl hover:shadow-blue-500/20 hover:-translate-y-1">
+                  {/* Logo Badge */}
+                  <div className="absolute top-2 left-2 z-10">
+                    <WFLogoCompact size={16} className="opacity-50" />
+                  </div>
+                  
+                  {/* Close X (decorative) */}
+                  <div className="absolute top-2 right-2 z-10 opacity-30 group-hover:opacity-50 transition-opacity">
+                    <div className="w-4 h-4 rounded-full border border-slate-400 flex items-center justify-center">
+                      <X className="w-2.5 h-2.5 text-slate-400" />
+                    </div>
+                  </div>
 
-          {/* Commands Grid */}
-          <ScrollArea className="flex-1 h-[500px]">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pr-4">
-              {filteredCommands.map((cmd) => (
-                <Card key={cmd.command} className="overflow-hidden hover-elevate transition-all">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center gap-2 text-base">
-                      <cmd.icon className="w-4 h-4 text-blue-600" />
-                      <code className="text-sm font-mono">{cmd.command}</code>
-                      {cmd.staffOnly && (
-                        <Badge variant="secondary" className="text-xs ml-auto">
-                          Staff
-                        </Badge>
-                      )}
-                      {cmd.requiresAdmin && (
-                        <Badge variant="destructive" className="text-xs ml-auto">
-                          Admin
-                        </Badge>
-                      )}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <p className="text-sm text-slate-600 dark:text-slate-300">
+                  {/* Gradient Header */}
+                  <div className={`h-20 bg-gradient-to-br ${cmd.color} flex items-center justify-center relative`}>
+                    <cmd.icon className="w-10 h-10 text-white drop-shadow-lg" />
+                    {cmd.staffOnly && (
+                      <Badge className="absolute top-2 left-1/2 -translate-x-1/2 text-xs bg-black/30 text-white border-white/30">
+                        Staff
+                      </Badge>
+                    )}
+                  </div>
+
+                  {/* Content */}
+                  <div className="p-3 space-y-2">
+                    <h3 className="font-bold text-white text-sm truncate">
+                      {cmd.name}
+                    </h3>
+                    <p className="text-xs text-slate-400 line-clamp-2 min-h-[2rem]">
                       {cmd.description}
                     </p>
-                    <div className="flex items-center gap-2 text-xs text-slate-500 bg-slate-100 dark:bg-slate-800 p-2 rounded font-mono">
-                      {cmd.usage}
-                    </div>
-                    <div className="flex gap-2">
+
+                    {/* Action Buttons */}
+                    <div className="grid grid-cols-2 gap-1.5 pt-2">
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => handleCopyCommand(cmd.usage)}
-                        className="flex-1"
-                        data-testid={`copy-${cmd.command}`}
+                        className="h-7 text-xs bg-slate-700/50 border-slate-600 text-slate-300 hover:bg-slate-600 hover:text-white"
+                        onClick={() => handleExecute(cmd)}
+                        data-testid={`execute-${cmd.id}`}
                       >
-                        <Copy className="w-3 h-3 mr-1" />
+                        <Play className="w-3 h-3 mr-1" />
+                        Run
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs bg-blue-900/30 border-blue-700/50 text-blue-300 hover:bg-blue-800/50 hover:text-white"
+                        onClick={() => {
+                          navigator.clipboard.writeText(cmd.action);
+                          toast({ title: "Copied!", description: `${cmd.action} copied` });
+                        }}
+                        data-testid={`copy-${cmd.id}`}
+                      >
+                        <Save className="w-3 h-3 mr-1" />
                         Copy
                       </Button>
-                      {isStaff && (
-                        <Button
-                          size="sm"
-                          onClick={() => handleExecute(cmd.command)}
-                          className="flex-1"
-                          data-testid={`execute-${cmd.command}`}
-                        >
-                          <Zap className="w-3 h-3 mr-1" />
-                          Execute
-                        </Button>
-                      )}
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </ScrollArea>
-        </div>
 
-        <div className="p-4 border-t bg-slate-50 dark:bg-slate-900 flex justify-between items-center">
-          <p className="text-xs text-slate-500">
-            💡 Click Execute to use a command instantly, or Copy to paste it manually
-          </p>
-          <Button variant="outline" onClick={onClose} data-testid="button-close-help">
-            Close
+                    {/* Command Code */}
+                    <div className="bg-black/30 rounded px-2 py-1 mt-2">
+                      <code className="text-xs text-green-400 font-mono">
+                        {cmd.action}
+                      </code>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </ScrollArea>
+
+        {/* Footer */}
+        <div className="p-4 border-t-2 border-slate-700 bg-slate-900/80 flex justify-between items-center">
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="bg-blue-500/20 text-blue-300 border-blue-500/50">
+              {filteredCommands.length} Commands
+            </Badge>
+            <p className="text-xs text-slate-400">
+              💡 Click "Run" to execute instantly or "Copy" to use manually
+            </p>
+          </div>
+          <Button 
+            variant="outline" 
+            onClick={onClose}
+            className="bg-slate-700 border-slate-600 text-white hover:bg-slate-600"
+          >
+            Exit Panel
           </Button>
         </div>
       </DialogContent>

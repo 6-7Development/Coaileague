@@ -47,9 +47,11 @@ import {
   platformRoles,
   workspaces,
   supportTickets,
+  motdMessages,
+  motdAcknowledgments,
 } from "@shared/schema";
 import crypto from "crypto";
-import { sql, eq } from "drizzle-orm";
+import { sql, eq, and, or, isNull, lte, gte, desc } from "drizzle-orm";
 import { z } from "zod";
 import { setupWebSocket } from "./websocket";
 import { 
@@ -5397,6 +5399,160 @@ Return ONLY valid JSON array with this exact structure:
       const testimonials = await storage.getPositiveTestimonials();
       res.json(testimonials);
     } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============================================================================
+  // MOTD (Message of the Day) ROUTES
+  // ============================================================================
+
+  // Get active MOTD for HelpDesk
+  app.get("/api/helpdesk/motd", requireAnyAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user!.id;
+      
+      // Get active MOTD
+      const [motd] = await db
+        .select()
+        .from(motdMessages)
+        .where(
+          and(
+            eq(motdMessages.isActive, true),
+            or(
+              isNull(motdMessages.startsAt),
+              lte(motdMessages.startsAt, new Date())
+            ),
+            or(
+              isNull(motdMessages.endsAt),
+              gte(motdMessages.endsAt, new Date())
+            )
+          )
+        )
+        .orderBy(desc(motdMessages.displayOrder))
+        .limit(1);
+
+      if (!motd) {
+        return res.json({ motd: null, acknowledged: true });
+      }
+
+      // Check if user has acknowledged this MOTD
+      const [acknowledgment] = await db
+        .select()
+        .from(motdAcknowledgments)
+        .where(
+          and(
+            eq(motdAcknowledgments.motdId, motd.id),
+            eq(motdAcknowledgments.userId, userId)
+          )
+        )
+        .limit(1);
+
+      res.json({
+        motd,
+        acknowledged: !!acknowledgment
+      });
+    } catch (error: any) {
+      console.error("Error fetching MOTD:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Create or update MOTD (staff only)
+  app.post("/api/helpdesk/motd", requireAnyAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user!.id;
+      
+      // Check if user is staff
+      const platformRole = await storage.getUserPlatformRole(userId);
+      if (!platformRole || !['root', 'deputy_admin', 'deputy_assistant', 'sysop'].includes(platformRole)) {
+        return res.status(403).json({ error: "Staff access required" });
+      }
+
+      const schema = z.object({
+        title: z.string(),
+        content: z.string(),
+        isActive: z.boolean().optional().default(true),
+        requiresAcknowledgment: z.boolean().optional().default(true),
+        backgroundColor: z.string().optional(),
+        textColor: z.string().optional(),
+        iconName: z.string().optional(),
+        startsAt: z.string().optional(),
+        endsAt: z.string().optional(),
+      });
+
+      const validationResult = schema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          error: "Invalid request",
+          details: validationResult.error.errors
+        });
+      }
+
+      const data = validationResult.data;
+
+      // Deactivate all existing MOTDs
+      await db
+        .update(motdMessages)
+        .set({ isActive: false })
+        .where(eq(motdMessages.isActive, true));
+
+      // Create new MOTD
+      const [newMotd] = await db
+        .insert(motdMessages)
+        .values({
+          ...data,
+          startsAt: data.startsAt ? new Date(data.startsAt) : null,
+          endsAt: data.endsAt ? new Date(data.endsAt) : null,
+          createdBy: userId,
+          updatedBy: userId,
+        })
+        .returning();
+
+      res.json(newMotd);
+    } catch (error: any) {
+      console.error("Error creating MOTD:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Acknowledge MOTD
+  app.post("/api/helpdesk/motd/acknowledge", requireAnyAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user!.id;
+      const { motdId } = req.body;
+
+      if (!motdId) {
+        return res.status(400).json({ error: "MOTD ID required" });
+      }
+
+      // Check if already acknowledged
+      const [existing] = await db
+        .select()
+        .from(motdAcknowledgments)
+        .where(
+          and(
+            eq(motdAcknowledgments.motdId, motdId),
+            eq(motdAcknowledgments.userId, userId)
+          )
+        )
+        .limit(1);
+
+      if (existing) {
+        return res.json({ success: true, alreadyAcknowledged: true });
+      }
+
+      // Create acknowledgment
+      await db
+        .insert(motdAcknowledgments)
+        .values({
+          motdId,
+          userId,
+        });
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error acknowledging MOTD:", error);
       res.status(500).json({ error: error.message });
     }
   });
