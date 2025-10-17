@@ -95,9 +95,16 @@ export default function ModernMobileChat() {
     messages, sendMessage, sendRawMessage, onlineUsers, isConnected
   } = useChatroomWebSocket(isAuthenticated ? userId : undefined, userName);
 
-  // Check if user has accepted agreement
+  // Check if user has accepted agreement - FIXED: Custom queryFn to pass sessionId properly  
   const { data: agreementStatus } = useQuery<{ hasAccepted: boolean; acceptedAt: string | null }>({
     queryKey: ['/api/helpdesk/agreement/check/helpdesk', sessionId],
+    queryFn: async () => {
+      const res = await fetch(`/api/helpdesk/agreement/check/helpdesk?sessionId=${sessionId}`, {
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Failed to check agreement');
+      return res.json();
+    },
     enabled: isAuthenticated,
     retry: false,
   });
