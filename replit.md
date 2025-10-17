@@ -8,6 +8,12 @@ I prefer detailed explanations.
 Do not make changes to the folder `Z`.
 Do not make changes to the file `Y`.
 
+## Chat System Routes
+### Desktop vs Mobile Chat Separation
+- **Desktop Chat**: `/helpdesk-cab` or `/live-chat` - Full IRC/MSN-style interface with 3-column layout, right-click context menus, and rich command toolbar
+- **Mobile Chat**: `/mobilechat` - Dedicated mobile-optimized route (currently placeholder, directs to desktop)
+- **Route Distinction**: Both routes are clearly separated for analytics and future mobile-specific features. Desktop chat is the primary interface, mobile chat route reserved for future touch-optimized implementation.
+
 ## System Architecture
 ### UI/UX Decisions
 The platform features a CAD-style professional interface with a dark mode theme, emphasizing precision and control. It includes an application frame (menu, toolbar, status bar) and real-time indicators. The design is modern, professional, and mobile-first, utilizing **corporate blue** gradient accents (navy blue #1e3a8a to deep slate) for Fortune-500 brand consistency. The official logo is a realistic neon-style **"W"** with glowing **"OS"** superscript - designed like a lit advertisement with multi-layer glows, 3D depth, and electric blue highlights. Logout functionality is accessible across all layouts.

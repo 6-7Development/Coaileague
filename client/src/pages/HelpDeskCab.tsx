@@ -39,8 +39,13 @@ import type { ChatMessage } from "@shared/schema";
 
 const MAIN_ROOM_ID = 'main-chatroom-workforceos';
 
+interface HelpDeskCabProps {
+  forceMobileLayout?: boolean; // Force mobile layout regardless of screen size
+}
+
 // Desktop IRC/MSN-style 3-column chatroom with WorkforceOS blue branding
-export default function HelpDeskCab() {
+// Can also be forced to mobile layout for /mobilechat route
+export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}) {
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const [inputMessage, setInputMessage] = useState("");
@@ -996,3 +1001,6 @@ export default function HelpDeskCab() {
     </div>
   );
 }
+
+// Default export for backward compatibility
+export default HelpDeskCab;

@@ -61,6 +61,7 @@ import LogoShowcase from "@/pages/logo-showcase";
 import PayrollDashboard from "@/pages/payroll-dashboard";
 import MyPaychecks from "@/pages/my-paychecks";
 import LeadersHub from "@/pages/leaders-hub";
+import MobileChatPage from "@/pages/mobile-chat";
 import { FloatingChatButton } from "@/components/floating-chat-button";
 
 function AppContent() {
@@ -90,6 +91,7 @@ function AppContent() {
         <Route path="/contact" component={Contact} />
         <Route path="/support" component={Support} />
         <Route path="/live-chat" component={LiveChatroom} />
+        <Route path="/mobilechat" component={MobileChatPage} />
         <Route path="/design-comparison" component={DesignComparison} />
         <Route path="/logo-showcase" component={LogoShowcase} />
         <Route path="/onboarding/:token" component={OnboardingPage} />
@@ -162,6 +164,7 @@ function AppContent() {
                 <Route path="/support/tickets" component={CustomerSupport} />
                 <Route path="/support/chat" component={HelpdeskChat} />
                 <Route path="/live-chat" component={LiveChatroom} />
+                <Route path="/mobilechat" component={MobileChatPage} />
                 <Route path="/design-comparison" component={DesignComparison} />
                 <Route path="/logo-showcase" component={LogoShowcase} />
                 <Route path="/support" component={Support} />

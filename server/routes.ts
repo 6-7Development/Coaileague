@@ -4629,10 +4629,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Accept terms and save acknowledgment for audit compliance
-  app.post('/api/helpdesk/terms/accept', requireAnyAuth, async (req: AuthenticatedRequest, res) => {
+  // This endpoint allows BOTH authenticated users AND guests (ticket holders)
+  app.post('/api/helpdesk/terms/accept', async (req: any, res) => {
     try {
       const { initialsProvided, userName, userEmail, workspaceId, ticketNumber } = req.body;
-      const userId = req.user!.id;
+      
+      // Support both authenticated users and guests
+      let userId: string | null;
+      let finalUserName: string;
+      let finalUserEmail: string;
+      
+      if (req.user || req.session?.userId) {
+        // Authenticated user
+        const user = req.user || (req.session?.userId ? await db.select().from(users).where(eq(users.id, req.session.userId)).limit(1).then(r => r[0]) : null);
+        userId = user?.id || null;
+        finalUserName = userName || (user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : 'Unknown');
+        finalUserEmail = userEmail || user?.email || 'unknown@email.com';
+      } else {
+        // Guest user - no userId (track via ticket/email instead)
+        userId = null;
+        finalUserName = userName || 'Guest';
+        finalUserEmail = userEmail || 'guest@email.com';
+      }
       
       if (!initialsProvided || initialsProvided.trim().length < 2) {
         return res.status(400).json({ message: "Valid initials are required for e-signature" });
@@ -4645,8 +4663,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Save terms acknowledgment to database
       const [acknowledgment] = await db.insert(termsAcknowledgments).values({
         userId,
-        userName: userName || 'Unknown',
-        userEmail: userEmail || req.user!.email || 'unknown@email.com',
+        userName: finalUserName,
+        userEmail: finalUserEmail,
         workspaceId: workspaceId || null,
         ticketNumber: ticketNumber || null,
         initialsProvided: initialsProvided.toUpperCase(),
