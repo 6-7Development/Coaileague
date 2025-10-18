@@ -2273,6 +2273,128 @@ export const insertReportSubmissionSchema = createInsertSchema(reportSubmissions
 export type InsertReportSubmission = z.infer<typeof insertReportSubmissionSchema>;
 export type ReportSubmission = typeof reportSubmissions.$inferSelect;
 
+// ============================================================================
+// MONOPOLISTIC REPORT WORKFLOW ENGINE
+// ============================================================================
+
+// Approval Workflow Configuration - Define multi-step approval chains per template
+export const reportWorkflowConfigs = pgTable("report_workflow_configs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  templateId: varchar("template_id").notNull().references(() => reportTemplates.id, { onDelete: 'cascade' }),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  // Workflow steps (array of approval stages)
+  // Example: [{ step: 1, roleRequired: 'manager', approverUserId: null }, { step: 2, roleRequired: 'owner', approverUserId: 'user123' }]
+  approvalSteps: jsonb("approval_steps").notNull(), // Array of {step, roleRequired, approverUserId?, minRole}
+  
+  // Final destination after all approvals
+  finalDestination: varchar("final_destination").notNull(), // 'audit_database', 'email_client', 'return_to_submitter'
+  
+  // Email settings for client delivery
+  emailTemplate: text("email_template"), // Custom email body template
+  emailSubject: varchar("email_subject"), // Subject line
+  includeAttachments: boolean("include_attachments").default(true),
+  
+  // Rejection handling
+  requireRejectionNotes: boolean("require_rejection_notes").default(true),
+  allowResubmit: boolean("allow_resubmit").default(true),
+  
+  // Automation
+  autoLockOnApproval: boolean("auto_lock_on_approval").default(true), // Prevent editing after approval
+  autoGeneratePdf: boolean("auto_generate_pdf").default(true),
+  
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertReportWorkflowConfigSchema = createInsertSchema(reportWorkflowConfigs).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertReportWorkflowConfig = z.infer<typeof insertReportWorkflowConfigSchema>;
+export type ReportWorkflowConfig = typeof reportWorkflowConfigs.$inferSelect;
+
+// Approval Step Tracking - Track each approval step for a submission
+export const reportApprovalSteps = pgTable("report_approval_steps", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  submissionId: varchar("submission_id").notNull().references(() => reportSubmissions.id, { onDelete: 'cascade' }),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  // Step details
+  stepNumber: integer("step_number").notNull(), // 1, 2, 3...
+  stepName: varchar("step_name"), // "Manager Review", "Supervisor Final Approval"
+  requiredRole: varchar("required_role"), // 'manager', 'owner', 'supervisor'
+  
+  // Approver assignment
+  assignedTo: varchar("assigned_to").references(() => users.id), // Specific user if assigned
+  
+  // Step status
+  status: varchar("status").default("pending"), // 'pending', 'approved', 'rejected', 'skipped'
+  
+  // Approval/Rejection details
+  reviewedBy: varchar("reviewed_by").references(() => users.id),
+  reviewedAt: timestamp("reviewed_at"),
+  reviewNotes: text("review_notes"),
+  rejectionReason: text("rejection_reason"),
+  
+  // Audit trail
+  notificationSentAt: timestamp("notification_sent_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertReportApprovalStepSchema = createInsertSchema(reportApprovalSteps).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertReportApprovalStep = z.infer<typeof insertReportApprovalStepSchema>;
+export type ReportApprovalStep = typeof reportApprovalSteps.$inferSelect;
+
+// Locked Report Records - Immutable audit trail after approval
+export const lockedReportRecords = pgTable("locked_report_records", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  submissionId: varchar("submission_id").notNull().references(() => reportSubmissions.id, { onDelete: 'restrict' }),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  // Immutable snapshot
+  snapshotData: jsonb("snapshot_data").notNull(), // Full report data + metadata frozen at approval
+  pdfUrl: text("pdf_url"), // Generated PDF stored in object storage
+  pdfGeneratedAt: timestamp("pdf_generated_at"),
+  
+  // Lock metadata
+  lockedBy: varchar("locked_by").notNull().references(() => users.id),
+  lockedAt: timestamp("locked_at").notNull().defaultNow(),
+  lockReason: varchar("lock_reason").default('approved'), // 'approved', 'compliance', 'audit'
+  
+  // Cryptographic integrity (future enhancement)
+  contentHash: varchar("content_hash"), // SHA-256 hash for tamper detection
+  digitalSignature: text("digital_signature"), // Optional: cryptographic signature
+  
+  // Cross-references for analytics
+  employeeId: varchar("employee_id").references(() => employees.id),
+  shiftId: varchar("shift_id"), // References shift if applicable
+  clientId: varchar("client_id").references(() => clients.id),
+  
+  // Retention policy
+  retentionYears: integer("retention_years").default(7), // IRS/DOL compliance
+  expiresAt: timestamp("expires_at"), // Auto-calculated: lockedAt + retentionYears
+  
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertLockedReportRecordSchema = createInsertSchema(lockedReportRecords).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertLockedReportRecord = z.infer<typeof insertLockedReportRecordSchema>;
+export type LockedReportRecord = typeof lockedReportRecords.$inferSelect;
+
 // Report Attachments - Photos, documents, etc.
 export const reportAttachments = pgTable("report_attachments", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

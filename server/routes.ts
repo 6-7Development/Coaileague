@@ -3874,6 +3874,238 @@ Keep it professional, actionable, and under 250 words.`;
     }
   });
 
+  // ============================================================================
+  // MONOPOLISTIC REPORT WORKFLOW ENGINE
+  // ============================================================================
+  
+  // WORKFLOW CONFIGURATIONS
+  app.get('/api/workflow-configs', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user?.currentWorkspaceId) {
+        return res.status(403).json({ message: "No workspace selected" });
+      }
+
+      const configs = await storage.getWorkflowConfigs(user.currentWorkspaceId);
+      res.json(configs);
+    } catch (error) {
+      console.error("Error fetching workflow configs:", error);
+      res.status(500).json({ message: "Failed to fetch workflow configs" });
+    }
+  });
+
+  app.post('/api/workflow-configs', isAuthenticated, requireOwner, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user?.currentWorkspaceId) {
+        return res.status(403).json({ message: "No workspace selected" });
+      }
+
+      const config = await storage.createWorkflowConfig({
+        ...req.body,
+        workspaceId: user.currentWorkspaceId,
+      });
+
+      res.json(config);
+    } catch (error) {
+      console.error("Error creating workflow config:", error);
+      res.status(500).json({ message: "Failed to create workflow config" });
+    }
+  });
+
+  app.patch('/api/workflow-configs/:id', isAuthenticated, requireOwner, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user?.currentWorkspaceId) {
+        return res.status(403).json({ message: "No workspace selected" });
+      }
+
+      const { id } = req.params;
+      const config = await storage.updateWorkflowConfig(id, user.currentWorkspaceId, req.body);
+      res.json(config);
+    } catch (error) {
+      console.error("Error updating workflow config:", error);
+      res.status(500).json({ message: "Failed to update workflow config" });
+    }
+  });
+
+  app.delete('/api/workflow-configs/:id', isAuthenticated, requireOwner, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user?.currentWorkspaceId) {
+        return res.status(403).json({ message: "No workspace selected" });
+      }
+
+      const { id } = req.params;
+      const deleted = await storage.deleteWorkflowConfig(id, user.currentWorkspaceId);
+      if (!deleted) {
+        return res.status(404).json({ message: "Workflow config not found" });
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting workflow config:", error);
+      res.status(500).json({ message: "Failed to delete workflow config" });
+    }
+  });
+
+  // APPROVAL QUEUE & PROCESSING
+  app.get('/api/approvals/pending', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user?.currentWorkspaceId) {
+        return res.status(403).json({ message: "No workspace selected" });
+      }
+
+      const pendingApprovals = await storage.getPendingApprovalsByUser(userId, user.currentWorkspaceId);
+      res.json(pendingApprovals);
+    } catch (error) {
+      console.error("Error fetching pending approvals:", error);
+      res.status(500).json({ message: "Failed to fetch pending approvals" });
+    }
+  });
+
+  app.post('/api/approvals/:stepId/process', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { stepId } = req.params;
+      const { action, notes, rejectionReason } = req.body;
+
+      if (!['approve', 'reject'].includes(action)) {
+        return res.status(400).json({ message: "Invalid action. Must be 'approve' or 'reject'" });
+      }
+
+      const { processApproval } = await import('./services/reportWorkflowEngine');
+      const result = await processApproval(
+        req.body.submissionId || '',
+        stepId,
+        userId,
+        action,
+        notes,
+        rejectionReason
+      );
+
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error processing approval:", error);
+      res.status(500).json({ message: error.message || "Failed to process approval" });
+    }
+  });
+
+  app.get('/api/report-submissions/:id/approval-status', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      
+      const steps = await storage.getApprovalStepsBySubmission(id);
+      const locked = await storage.getLockedReportBySubmission(id);
+
+      res.json({
+        steps,
+        isLocked: !!locked,
+        lockedRecord: locked,
+      });
+    } catch (error) {
+      console.error("Error fetching approval status:", error);
+      res.status(500).json({ message: "Failed to fetch approval status" });
+    }
+  });
+
+  // LOCKED REPORT RECORDS (Audit Trail)
+  app.get('/api/locked-reports', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user?.currentWorkspaceId) {
+        return res.status(403).json({ message: "No workspace selected" });
+      }
+
+      const { employeeId, clientId, startDate, endDate } = req.query;
+      
+      const filters: any = {};
+      if (employeeId) filters.employeeId = employeeId;
+      if (clientId) filters.clientId = clientId;
+      if (startDate) filters.startDate = new Date(startDate as string);
+      if (endDate) filters.endDate = new Date(endDate as string);
+
+      const lockedReports = await storage.getLockedReportRecords(user.currentWorkspaceId, filters);
+      res.json(lockedReports);
+    } catch (error) {
+      console.error("Error fetching locked reports:", error);
+      res.status(500).json({ message: "Failed to fetch locked reports" });
+    }
+  });
+
+  app.get('/api/locked-reports/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      
+      const lockedReport = await storage.getLockedReportBySubmission(id);
+      if (!lockedReport) {
+        return res.status(404).json({ message: "Locked report not found" });
+      }
+
+      res.json(lockedReport);
+    } catch (error) {
+      console.error("Error fetching locked report:", error);
+      res.status(500).json({ message: "Failed to fetch locked report" });
+    }
+  });
+
+  // REPORT ANALYTICS (Cross-Referenced Data)
+  app.get('/api/report-analytics', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user?.currentWorkspaceId) {
+        return res.status(403).json({ message: "No workspace selected" });
+      }
+
+      const { employeeId, clientId, startDate, endDate, templateId } = req.query;
+      
+      const filters: any = {};
+      if (employeeId) filters.employeeId = employeeId;
+      if (clientId) filters.clientId = clientId;
+      if (templateId) filters.templateId = templateId;
+      if (startDate) filters.startDate = new Date(startDate as string);
+      if (endDate) filters.endDate = new Date(endDate as string);
+
+      const { getReportAnalytics } = await import('./services/reportWorkflowEngine');
+      const analytics = await getReportAnalytics(user.currentWorkspaceId, filters);
+
+      res.json(analytics);
+    } catch (error) {
+      console.error("Error generating report analytics:", error);
+      res.status(500).json({ message: "Failed to generate report analytics" });
+    }
+  });
+
+  // INDUSTRY TEMPLATES - Seed workspace with pre-built templates
+  app.post('/api/report-templates/seed-industry', isAuthenticated, requireOwner, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user?.currentWorkspaceId) {
+        return res.status(403).json({ message: "No workspace selected" });
+      }
+
+      const { seedIndustryTemplates } = await import('./services/industryTemplates');
+      const seeded = await seedIndustryTemplates(user.currentWorkspaceId, userId);
+
+      res.json({
+        message: `Successfully seeded ${seeded.length} industry templates`,
+        templates: seeded,
+      });
+    } catch (error) {
+      console.error("Error seeding industry templates:", error);
+      res.status(500).json({ message: "Failed to seed industry templates" });
+    }
+  });
+
   // Support Tickets - Create ticket (requires authentication to get workspaceId)
   app.post('/api/support/tickets', isAuthenticated, async (req: any, res) => {
     try {

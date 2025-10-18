@@ -2692,6 +2692,175 @@ export class DatabaseStorage implements IStorage {
       .where(and(...conditions))
       .orderBy(desc(benchmarkMetrics.createdAt));
   }
+  
+  // ============================================================================
+  // MONOPOLISTIC REPORT WORKFLOW ENGINE
+  // ============================================================================
+  
+  // Workflow Configurations
+  async createWorkflowConfig(config: any): Promise<any> {
+    const { reportWorkflowConfigs } = await import("@shared/schema");
+    const [created] = await db.insert(reportWorkflowConfigs).values(config).returning();
+    return created;
+  }
+  
+  async getWorkflowConfigByTemplate(templateId: string, workspaceId: string): Promise<any> {
+    const { reportWorkflowConfigs } = await import("@shared/schema");
+    const [config] = await db
+      .select()
+      .from(reportWorkflowConfigs)
+      .where(and(
+        eq(reportWorkflowConfigs.templateId, templateId),
+        eq(reportWorkflowConfigs.workspaceId, workspaceId),
+        eq(reportWorkflowConfigs.isActive, true)
+      ))
+      .limit(1);
+    return config;
+  }
+  
+  async getWorkflowConfigs(workspaceId: string): Promise<any[]> {
+    const { reportWorkflowConfigs } = await import("@shared/schema");
+    return await db
+      .select()
+      .from(reportWorkflowConfigs)
+      .where(eq(reportWorkflowConfigs.workspaceId, workspaceId))
+      .orderBy(desc(reportWorkflowConfigs.createdAt));
+  }
+  
+  async updateWorkflowConfig(id: string, workspaceId: string, data: any): Promise<any> {
+    const { reportWorkflowConfigs } = await import("@shared/schema");
+    const [updated] = await db
+      .update(reportWorkflowConfigs)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(
+        eq(reportWorkflowConfigs.id, id),
+        eq(reportWorkflowConfigs.workspaceId, workspaceId)
+      ))
+      .returning();
+    return updated;
+  }
+  
+  async deleteWorkflowConfig(id: string, workspaceId: string): Promise<boolean> {
+    const { reportWorkflowConfigs } = await import("@shared/schema");
+    const result = await db
+      .delete(reportWorkflowConfigs)
+      .where(and(
+        eq(reportWorkflowConfigs.id, id),
+        eq(reportWorkflowConfigs.workspaceId, workspaceId)
+      ));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+  
+  // Approval Steps
+  async createApprovalStep(step: any): Promise<any> {
+    const { reportApprovalSteps } = await import("@shared/schema");
+    const [created] = await db.insert(reportApprovalSteps).values(step).returning();
+    return created;
+  }
+  
+  async getApprovalStepById(id: string): Promise<any> {
+    const { reportApprovalSteps } = await import("@shared/schema");
+    const [step] = await db
+      .select()
+      .from(reportApprovalSteps)
+      .where(eq(reportApprovalSteps.id, id))
+      .limit(1);
+    return step;
+  }
+  
+  async getApprovalStepsBySubmission(submissionId: string): Promise<any[]> {
+    const { reportApprovalSteps } = await import("@shared/schema");
+    return await db
+      .select()
+      .from(reportApprovalSteps)
+      .where(eq(reportApprovalSteps.submissionId, submissionId))
+      .orderBy(reportApprovalSteps.stepNumber);
+  }
+  
+  async getPendingApprovalsByUser(userId: string, workspaceId: string): Promise<any[]> {
+    const { reportApprovalSteps, reportSubmissions, reportTemplates } = await import("@shared/schema");
+    
+    return await db
+      .select({
+        step: reportApprovalSteps,
+        submission: reportSubmissions,
+        template: reportTemplates,
+      })
+      .from(reportApprovalSteps)
+      .innerJoin(reportSubmissions, eq(reportApprovalSteps.submissionId, reportSubmissions.id))
+      .innerJoin(reportTemplates, eq(reportSubmissions.templateId, reportTemplates.id))
+      .where(and(
+        eq(reportApprovalSteps.workspaceId, workspaceId),
+        eq(reportApprovalSteps.status, 'pending'),
+        or(
+          eq(reportApprovalSteps.assignedTo, userId),
+          isNull(reportApprovalSteps.assignedTo) // Available to anyone with required role
+        )
+      ))
+      .orderBy(reportApprovalSteps.createdAt);
+  }
+  
+  async updateApprovalStep(id: string, data: any): Promise<any> {
+    const { reportApprovalSteps } = await import("@shared/schema");
+    const [updated] = await db
+      .update(reportApprovalSteps)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(reportApprovalSteps.id, id))
+      .returning();
+    return updated;
+  }
+  
+  // Locked Report Records
+  async createLockedReportRecord(record: any): Promise<any> {
+    const { lockedReportRecords } = await import("@shared/schema");
+    const [created] = await db.insert(lockedReportRecords).values(record).returning();
+    return created;
+  }
+  
+  async getLockedReportRecords(workspaceId: string, filters?: any): Promise<any[]> {
+    const { lockedReportRecords } = await import("@shared/schema");
+    const conditions = [eq(lockedReportRecords.workspaceId, workspaceId)];
+    
+    if (filters?.employeeId) {
+      conditions.push(eq(lockedReportRecords.employeeId, filters.employeeId));
+    }
+    if (filters?.clientId) {
+      conditions.push(eq(lockedReportRecords.clientId, filters.clientId));
+    }
+    if (filters?.startDate) {
+      conditions.push(sql`${lockedReportRecords.lockedAt} >= ${filters.startDate}`);
+    }
+    if (filters?.endDate) {
+      conditions.push(sql`${lockedReportRecords.lockedAt} <= ${filters.endDate}`);
+    }
+    
+    return await db
+      .select()
+      .from(lockedReportRecords)
+      .where(and(...conditions))
+      .orderBy(desc(lockedReportRecords.lockedAt));
+  }
+  
+  async getLockedReportBySubmission(submissionId: string): Promise<any> {
+    const { lockedReportRecords } = await import("@shared/schema");
+    const [record] = await db
+      .select()
+      .from(lockedReportRecords)
+      .where(eq(lockedReportRecords.submissionId, submissionId))
+      .limit(1);
+    return record;
+  }
+  
+  // Report Template helpers
+  async getReportTemplateById(id: string): Promise<any> {
+    const { reportTemplates } = await import("@shared/schema");
+    const [template] = await db
+      .select()
+      .from(reportTemplates)
+      .where(eq(reportTemplates.id, id))
+      .limit(1);
+    return template;
+  }
 }
 
 export const storage = new DatabaseStorage();
