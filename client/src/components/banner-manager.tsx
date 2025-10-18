@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import {
   AlertCircle, Clock, Users, Zap, TrendingUp, Award, Bell, 
   MessageCircle, Star, Heart, Gift, Sparkles, PartyPopper,
@@ -34,6 +35,7 @@ interface BannerMessage {
   link?: string;
   icon?: string;
   emoticon?: string;
+  enabled?: boolean;
 }
 
 interface HolidayTemplate {
@@ -231,6 +233,13 @@ export function BannerManager({
     }
   };
 
+  const handleToggleBanner = (bannerId: string, enabled: boolean) => {
+    const command = `/banner toggle ${bannerId} ${enabled ? 'on' : 'off'}`;
+    if (onSendCommand) {
+      onSendCommand(command);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] p-0">
@@ -418,7 +427,7 @@ export function BannerManager({
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1">
                             <p className="text-sm font-medium mb-1">{banner.text}</p>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
                               <Badge variant="secondary" className="text-xs">
                                 {banner.type}
                               </Badge>
@@ -427,6 +436,17 @@ export function BannerManager({
                                   {banner.icon} icon
                                 </Badge>
                               )}
+                              <div className="flex items-center gap-2 ml-2">
+                                <Label htmlFor={`toggle-${banner.id}`} className="text-xs text-slate-600 dark:text-slate-400">
+                                  {banner.enabled !== false ? 'ON' : 'OFF'}
+                                </Label>
+                                <Switch
+                                  id={`toggle-${banner.id}`}
+                                  checked={banner.enabled !== false}
+                                  onCheckedChange={(checked) => handleToggleBanner(banner.id, checked)}
+                                  data-testid={`toggle-${banner.id}`}
+                                />
+                              </div>
                             </div>
                           </div>
                           <div className="flex gap-2">
