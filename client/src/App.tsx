@@ -76,6 +76,7 @@ function AppContent() {
   // Check if on mobile chat - use window.location instead of useLocation() hook
   // to avoid React Hooks issues with conditional rendering
   const isMobileChat = window.location.pathname === '/mobile-chat';
+  const isHelpDesk = window.location.pathname === '/live-chat';
   
   // Custom sidebar width for better workspace layout
   const style = {
@@ -123,8 +124,8 @@ function AppContent() {
           <div className="flex flex-col flex-1 min-h-0">
             <DemoBanner />
             
-            {/* Global Header with Sidebar Toggle - Hidden for mobile chat */}
-            {!isMobileChat && (
+            {/* Global Header with Sidebar Toggle - Hidden for mobile chat AND HelpDesk */}
+            {!isMobileChat && !isHelpDesk && (
               <header className="flex items-center justify-end px-3 py-1 border-b bg-card shrink-0">
                 <div className="flex items-center gap-2">
                   <SidebarTrigger data-testid="button-sidebar-toggle" />

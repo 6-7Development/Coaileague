@@ -51,6 +51,8 @@ import { MotdDialog } from "@/components/motd-dialog";
 import { AnimatedStatusBar } from "@/components/animated-status-bar";
 import { TermsDialog } from "@/components/terms-dialog";
 import { ChatAgreementModal } from "@/components/chat-agreement-modal";
+import { SidebarTrigger } from "@/components/ui/sidebar";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { formatDistanceToNow } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -910,6 +912,12 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
           
           {/* Floating Controls - Overlaid on banner - Far Right Only */}
           <div className="absolute top-1 right-2 flex items-center gap-1.5">
+            {/* Hamburger Menu and Theme Toggle - Transparent until needed */}
+            <div className="flex items-center gap-1">
+              <SidebarTrigger data-testid="button-sidebar-toggle" className="bg-white/30 hover:bg-white/50 border-white/50 backdrop-blur-md h-6 w-6 p-1" />
+              <ThemeToggle className="bg-white/30 hover:bg-white/50 border-white/50 backdrop-blur-md h-6 w-6" />
+            </div>
+            
             {/* Connection Status */}
             {connectionStatus === 'connected' && (
               <div 
