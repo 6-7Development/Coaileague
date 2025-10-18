@@ -243,13 +243,13 @@ export function ChatAnnouncementBanner({
   const IconComponent = currentMessage.icon ? iconMap[currentMessage.icon] : null;
   const emoticon = currentMessage.emoticon ? emoticons[currentMessage.emoticon] : null;
 
-  // Color schemes - seamless blend with header
+  // Color schemes - match header gradient exactly
   const colorSchemes = {
-    info: 'bg-slate-700/90 text-white',
-    warning: 'bg-slate-700/90 text-amber-200',
-    success: 'bg-slate-700/90 text-emerald-200',
-    promo: 'bg-slate-700/90 text-white',
-    queue: 'bg-slate-700/90 text-cyan-200'
+    info: 'bg-slate-800 text-white',
+    warning: 'bg-slate-800 text-amber-200',
+    success: 'bg-slate-800 text-emerald-200',
+    promo: 'bg-slate-800 text-white',
+    queue: 'bg-slate-800 text-cyan-200'
   };
 
   const BannerContent = (
