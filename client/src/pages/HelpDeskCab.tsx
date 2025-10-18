@@ -80,6 +80,7 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
   const { toast } = useToast();
   const [inputMessage, setInputMessage] = useState("");
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [showUserProfile, setShowUserProfile] = useState(false);
   const [userStatus, setUserStatus] = useState<"online" | "away" | "busy">("online");
   const [showCoffeeCup, setShowCoffeeCup] = useState(false);
   const [secureRequest, setSecureRequest] = useState<{
@@ -216,6 +217,20 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
   const { data: motdResponse, error: motdError } = useQuery<{ motd: any, acknowledged: boolean }>({
     queryKey: ['/api/helpdesk/motd'],
     enabled: isAuthenticated,
+    retry: 1,
+  });
+
+  // Fetch selected user context for profile/diagnostics
+  const { data: userContext } = useQuery<any>({
+    queryKey: ['/api/helpdesk/user-context', selectedUserId],
+    queryFn: async () => {
+      const res = await fetch(`/api/helpdesk/user-context?userId=${selectedUserId}`, {
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Failed to fetch user context');
+      return res.json();
+    },
+    enabled: !!selectedUserId && isAuthenticated,
     retry: 1,
   });
 
@@ -1120,6 +1135,15 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
                             {u.name}
                           </div>
                           
+                          {/* View Profile - Available to Everyone */}
+                          <ContextMenuItem onClick={() => {
+                            setSelectedUserId(u.id);
+                            setShowUserProfile(true);
+                          }}>
+                            <Info className="w-4 h-4 mr-2" />
+                            View Profile
+                          </ContextMenuItem>
+                          
                           {/* Quick Actions - Top Level */}
                           {hasContextPermission(ALL_STAFF) && (
                             <>
@@ -1323,9 +1347,18 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
                           )}
                         </>
                       ) : (
-                        <ContextMenuItem onClick={() => handleMention(u.name)}>
-                          💬 Mention {u.name}
-                        </ContextMenuItem>
+                        <>
+                          <ContextMenuItem onClick={() => {
+                            setSelectedUserId(u.id);
+                            setShowUserProfile(true);
+                          }}>
+                            <Info className="w-4 h-4 mr-2" />
+                            View Profile
+                          </ContextMenuItem>
+                          <ContextMenuItem onClick={() => handleMention(u.name)}>
+                            💬 Mention {u.name}
+                          </ContextMenuItem>
+                        </>
                       )}
                     </ContextMenuContent>
                   </ContextMenu>
@@ -1673,6 +1706,176 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* User Profile/Diagnostics Dialog */}
+      <Dialog open={showUserProfile} onOpenChange={(open) => {
+        setShowUserProfile(open);
+        if (!open) setSelectedUserId(null); // Reset selection when dialog closes
+      }}>
+        <DialogContent className="sm:max-w-[600px] bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 border border-white/10 text-white">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl text-white">
+              <Info className="w-5 h-5 text-cyan-400" />
+              User Profile & Diagnostics
+            </DialogTitle>
+            <DialogDescription className="text-slate-300">
+              {isStaff ? 'Complete user information and diagnostics' : 'Basic user information'}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="max-h-[70vh] overflow-y-auto pr-2">
+            {selectedUserId && userContext ? (
+              <div className="space-y-4">
+                {userContext.isBotUser ? (
+                  /* Bot user information */
+                  <div className="space-y-4">
+                    <div className="bg-gradient-to-r from-amber-500/20 to-yellow-500/20 border border-amber-500/30 rounded-lg p-4">
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-500 to-yellow-600 flex items-center justify-center ring-2 ring-amber-500/50">
+                          <Sparkles size={24} className="text-white" />
+                        </div>
+                        <div>
+                          <h3 className="text-white font-bold text-lg">HelpOS</h3>
+                          <Badge variant="secondary" className="bg-amber-500/20 text-amber-300 border-amber-500/30 mt-1">
+                            Platform-Generated Assistant
+                          </Badge>
+                        </div>
+                      </div>
+                      <p className="text-amber-200 text-sm">{userContext.description}</p>
+                    </div>
+
+                    <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+                      <h4 className="text-white font-semibold text-sm mb-3 flex items-center gap-2">
+                        <Zap className="w-4 h-4 text-cyan-400" />
+                        Capabilities
+                      </h4>
+                      <ul className="space-y-2">
+                        {userContext.capabilities?.map((cap: string, i: number) => (
+                          <li key={i} className="flex items-start gap-2">
+                            <CheckCircle className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+                            <span className="text-slate-300 text-xs">{cap}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3">
+                      <div className="flex items-start gap-2">
+                        <AlertCircle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+                        <span className="text-amber-300 text-xs">{userContext.restrictions}</span>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  /* Real user information */
+                  <div className="space-y-3">
+                    {isStaff ? (
+                      /* Full information for support staff */
+                      <>
+                        <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+                          <h4 className="text-white font-semibold text-sm mb-3 flex items-center gap-2">
+                            <Info className="w-4 h-4 text-cyan-400" />
+                            User Details
+                          </h4>
+                          <div className="space-y-3">
+                            <div>
+                              <span className="text-slate-400 text-xs block mb-1">Full Name</span>
+                              <span className="text-white text-sm font-medium">{userContext.name}</span>
+                            </div>
+                            <div>
+                              <span className="text-slate-400 text-xs block mb-1">User ID</span>
+                              <span className="text-white font-mono text-xs">{selectedUserId}</span>
+                            </div>
+                            <div>
+                              <span className="text-slate-400 text-xs block mb-1">Email</span>
+                              <span className="text-white text-sm">{userContext.email || 'Not Available'}</span>
+                            </div>
+                            <div>
+                              <span className="text-slate-400 text-xs block mb-1">Platform Role</span>
+                              <Badge variant="secondary" className="text-xs">
+                                {userContext.platformRole || 'User'}
+                              </Badge>
+                            </div>
+                            <div>
+                              <span className="text-slate-400 text-xs block mb-1">Status</span>
+                              <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                <span className="text-emerald-400 text-sm">Active</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+                          <h4 className="text-white font-semibold text-sm mb-3">Workspace Info</h4>
+                          <div className="space-y-3">
+                            <div>
+                              <span className="text-slate-400 text-xs block mb-1">Workspace</span>
+                              <span className="text-white text-sm">{userContext.workspace?.name || 'Not Available'}</span>
+                            </div>
+                            <div>
+                              <span className="text-slate-400 text-xs block mb-1">Serial Number</span>
+                              <span className="text-white font-mono text-xs">{userContext.workspace?.serialNumber || 'N/A'}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <Button
+                          onClick={() => {
+                            toast({ title: "Success", description: `Viewing history for ${userContext.name}` });
+                            setShowUserProfile(false);
+                          }}
+                          className="w-full bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/30 text-white"
+                          data-testid="button-user-history"
+                        >
+                          <History className="w-4 h-4 mr-2" />
+                          View Full History
+                        </Button>
+                      </>
+                    ) : (
+                      /* Limited information for regular users */
+                      <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+                        <h4 className="text-white font-semibold text-sm mb-3">Basic Info</h4>
+                        <div className="space-y-3">
+                          <div>
+                            <span className="text-slate-400 text-xs block mb-1">Name</span>
+                            <span className="text-white text-sm">{userContext.name}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400 text-xs block mb-1">Status</span>
+                            <div className="flex items-center gap-2">
+                              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                              <span className="text-emerald-400 text-sm">Online</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                          <p className="text-blue-300 text-xs">
+                            <Info className="w-3 h-3 inline mr-1" />
+                            Full user details are only visible to support staff
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* Loading state */
+              <div className="text-center py-8">
+                <div className="w-12 h-12 mx-auto mb-4 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin"></div>
+                <p className="text-slate-400 text-sm">Loading user information...</p>
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <Button onClick={() => setShowUserProfile(false)} variant="outline" className="bg-white/10 text-white border-white/20 hover:bg-white/20" data-testid="button-close-profile">
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
