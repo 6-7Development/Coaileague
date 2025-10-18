@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { ScheduleOSPanel } from "@/components/scheduleos-panel";
 import { 
   Plus,
   Copy,
@@ -518,6 +519,20 @@ export default function SmartScheduleOS() {
             </Badge>
           </div>
         </div>
+      </div>
+
+      {/* ScheduleOS™ AI Auto-Scheduling Panel - Optional Premium Feature */}
+      <div className="px-3 sm:px-6 py-3 sm:py-4 border-b">
+        <ScheduleOSPanel 
+          weekStartDate={moment(currentDate).startOf('week').toDate()}
+          onScheduleGenerated={() => {
+            queryClient.invalidateQueries({ queryKey: ['/api/shifts'] });
+            toast({
+              title: "ScheduleOS™ Complete!",
+              description: "AI-generated schedule is ready. Review and publish below.",
+            });
+          }}
+        />
       </div>
 
       {/* Calendar View - Mobile Responsive Container */}
