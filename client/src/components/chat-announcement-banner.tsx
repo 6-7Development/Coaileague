@@ -365,16 +365,20 @@ export function ChatAnnouncementBanner({
           {currentMessage.text}
         </span>
 
-        {/* Progress Dots */}
+        {/* Animated Bouncing Dots - Makes it feel ALIVE */}
         <div className="hidden sm:flex items-center gap-1 ml-auto">
           {messages.map((_, index) => (
             <button
               key={index}
               onClick={() => setCurrentIndex(index)}
               className={`
-                w-1.5 h-1.5 rounded-full transition-all duration-300
-                ${index === currentIndex ? 'bg-current w-4' : 'bg-current/40'}
+                w-2 h-2 rounded-full transition-all duration-300
+                ${index === currentIndex ? 'bg-current w-5 animate-bounce' : 'bg-current/40'}
               `}
+              style={{
+                animationDelay: `${index * 0.1}s`,
+                animationDuration: '1s'
+              }}
               data-testid={`banner-dot-${index}`}
             />
           ))}

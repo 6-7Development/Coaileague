@@ -434,73 +434,68 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
     }, 1500);
   };
 
-  // Get user type icon - LARGER & CLEARER for better readability
+  // Get user type icon - COMPACT with detailed WorkforceOS logo
   const getUserTypeIcon = (userType: string, role: string) => {
-    // ROOT ADMIN - Slate ring with WF logo (LARGER)
+    // ROOT ADMIN - Detailed WorkforceOS logo
     if (role === 'root') {
       return (
-        <div className="relative flex items-center justify-center w-8 h-8">
-          <div className="absolute inset-0 rounded-full border-2 border-slate-600 shadow-md"></div>
-          <WFLogoCompact size={20} />
+        <div className="flex items-center justify-center">
+          <WorkforceOSLogo size="xs" showText={false} />
         </div>
       );
     }
     
-    // Bot gets special animated icon (LARGER)
+    // Bot gets special animated icon
     if (role === 'bot') {
       return (
-        <div className="relative flex items-center justify-center w-8 h-8">
-          <div className="absolute inset-0 rounded-full border-2 border-blue-500 animate-pulse shadow-md"></div>
-          <Bot className="w-5 h-5 text-blue-600" />
+        <div className="relative flex items-center justify-center w-5 h-5">
+          <div className="absolute inset-0 rounded-full border border-blue-400 animate-pulse"></div>
+          <Bot className="w-3 h-3 text-blue-600" />
         </div>
       );
     }
     
-    // Staff gets WF logo with subtle ring (LARGER)
+    // Staff gets detailed WorkforceOS logo
     if (['deputy_admin', 'deputy_assistant', 'sysop'].includes(role)) {
       return (
-        <div className="relative flex items-center justify-center w-8 h-8">
-          <div className="absolute inset-0 rounded-full border-2 border-slate-500 shadow-md"></div>
-          <WFLogoCompact size={18} />
+        <div className="flex items-center justify-center">
+          <WorkforceOSLogo size="xs" showText={false} />
         </div>
       );
     }
     
-    // Authenticated users - WF logo with subtle ring (LARGER)
+    // Authenticated users - detailed WorkforceOS logo
     if (userType === 'subscriber') {
       return (
-        <div className="relative flex items-center justify-center w-8 h-8">
-          <div className="absolute inset-0 rounded-full border-2 border-blue-400 shadow-md"></div>
-          <WFLogoCompact size={18} />
+        <div className="flex items-center justify-center">
+          <WorkforceOSLogo size="xs" showText={false} />
         </div>
       );
     }
     
     if (userType === 'org_user') {
       return (
-        <div className="relative flex items-center justify-center w-8 h-8">
-          <div className="absolute inset-0 rounded-full border-2 border-slate-400 shadow-md"></div>
-          <WFLogoCompact size={18} />
+        <div className="flex items-center justify-center">
+          <WorkforceOSLogo size="xs" showText={false} />
         </div>
       );
     }
     
-    // Guests get question mark with gray ring (LARGER)
+    // Guests get question mark
     return (
-      <div className="relative flex items-center justify-center w-8 h-8">
-        <div className="absolute inset-0 rounded-full border-2 border-slate-300 shadow-md"></div>
-        <HelpCircle className="w-5 h-5 text-slate-500" />
+      <div className="relative flex items-center justify-center w-5 h-5">
+        <HelpCircle className="w-3.5 h-3.5 text-slate-500" />
       </div>
     );
   };
 
-  // Get status indicator - LARGER for better visibility
+  // Get status indicator - Compact
   const getStatusIndicator = (status: string) => {
     switch (status) {
-      case 'online': return <div className="w-3.5 h-3.5 bg-emerald-500 rounded-full animate-pulse shadow-lg shadow-emerald-500/50 border-2 border-white" />;
-      case 'away': return <div className="w-3.5 h-3.5 bg-amber-500 rounded-full shadow-lg shadow-amber-500/50 border-2 border-white" />;
-      case 'busy': return <div className="w-3.5 h-3.5 bg-rose-500 rounded-full shadow-lg shadow-rose-500/50 border-2 border-white" />;
-      default: return <div className="w-3.5 h-3.5 bg-slate-400 rounded-full border-2 border-white" />;
+      case 'online': return <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-sm" />;
+      case 'away': return <div className="w-2 h-2 bg-amber-500 rounded-full shadow-sm" />;
+      case 'busy': return <div className="w-2 h-2 bg-rose-500 rounded-full shadow-sm" />;
+      default: return <div className="w-2 h-2 bg-slate-400 rounded-full" />;
     }
   };
 
@@ -782,14 +777,15 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
     <div className="flex flex-col h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100 relative">
       {/* Seasonal Animated Background */}
       <SeasonalBackground enabled={seasonalAnimationsEnabled} />
-      {/* WorkforceOS Header + Banner - UNIFIED AD SPACE - Animations flow through entire block */}
+      {/* UNIFIED ADVERTISEMENT BLOCK - One continuous dark space for animations/ads */}
       <header className="bg-gradient-to-r from-slate-800 via-slate-700 to-slate-800 text-white shadow-2xl relative z-10 border-b-4 border-blue-600">
-        <div className="flex items-center justify-between max-w-7xl mx-auto p-3 relative">
-          {/* Left: Logo and Controls */}
+        {/* Top Controls Bar - Embedded in ad space */}
+        <div className="flex items-center justify-between max-w-7xl mx-auto px-3 py-2 relative">
+          {/* Left: Logo and Staff Controls */}
           <div className="flex items-center gap-2">
-            <MessageSquare className="w-5 h-5 text-slate-300" />
-            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-1.5 shadow-lg">
-              <WorkforceOSLogo size="sm" showText={false} />
+            <MessageSquare className="w-4 h-4 text-slate-300" />
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-1 shadow-lg">
+              <WorkforceOSLogo size="xs" showText={false} />
             </div>
             {isStaff && (
               <div className="flex items-center gap-1.5 ml-2">
@@ -807,7 +803,7 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
                   }}
                   size="sm"
                   variant="outline"
-                  className="h-6 text-[10px] px-2 gap-1 bg-slate-600/40 border-slate-500/40 hover:bg-slate-600/60 text-white shadow-md"
+                  className="h-5 text-[9px] px-1.5 gap-1 bg-slate-600/40 border-slate-500/40 hover:bg-slate-600/60 text-white shadow-md"
                   data-testid="button-toggle-seasonal"
                 >
                   ❄️ {seasonalAnimationsEnabled ? 'ON' : 'OFF'}
@@ -816,7 +812,7 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
                   onClick={() => setShowBannerManager(true)}
                   size="sm"
                   variant="outline"
-                  className="h-6 text-[10px] px-2 gap-1 bg-slate-600/40 border-slate-500/40 hover:bg-slate-600/60 text-white shadow-md"
+                  className="h-5 text-[9px] px-1.5 gap-1 bg-slate-600/40 border-slate-500/40 hover:bg-slate-600/60 text-white shadow-md"
                   data-testid="button-open-banner-manager"
                 >
                   <Sparkles className="w-2.5 h-2.5" />
@@ -826,15 +822,10 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
             )}
           </div>
           
-          {/* Center: Title (allows animations to flow through) */}
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
-            <span className="text-sm font-bold text-white/95 backdrop-blur-[2px] drop-shadow-lg">WorkforceOS Support</span>
-          </div>
-          
           {/* Right: Connection Status */}
           <div className="flex items-center gap-2">
             {isConnected && (
-              <div className="flex items-center gap-1 text-[10px] bg-emerald-500/30 px-2 py-1 rounded-full backdrop-blur-sm border border-emerald-400/40 shadow-lg">
+              <div className="flex items-center gap-1 text-[9px] bg-emerald-500/30 px-2 py-0.5 rounded-full backdrop-blur-sm border border-emerald-400/40 shadow-lg">
                 <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
                 Connected
               </div>
@@ -842,8 +833,8 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
           </div>
         </div>
         
-        {/* Announcement Banner - NO SEPARATE BACKGROUND - Seamless blend with header */}
-        <div className="border-t border-slate-600/30">
+        {/* Announcement Banner - Embedded in same dark block - NO separation */}
+        <div>
           <ChatAnnouncementBanner
             queuePosition={queueLength || 1}
             queueWaitTime="2-3 minutes"
@@ -949,22 +940,22 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
           </div>
         </section>
 
-        {/* RIGHT COLUMN: User List - MSN-style with gradient background */}
-        <section className="min-w-[240px] max-w-[340px] w-auto bg-gradient-to-b from-slate-100 via-blue-50 to-slate-100 backdrop-blur-sm flex flex-col flex-shrink-0 shadow-[-4px_0_12px_rgba(0,0,0,0.1)]">
-          <div className="p-4 border-b-2 border-blue-300/50 flex-shrink-0 bg-gradient-to-r from-blue-100/80 to-slate-100/80 shadow-sm">
-            <div className="flex items-center gap-2">
-              <Users className="w-6 h-6 text-blue-600 flex-shrink-0 drop-shadow-sm" />
-              <h2 className="text-sm font-bold text-slate-800 drop-shadow-sm">
+        {/* RIGHT COLUMN: User List - COMPACT for less scrolling */}
+        <section className="min-w-[200px] max-w-[260px] w-auto bg-gradient-to-b from-slate-100 via-blue-50 to-slate-100 backdrop-blur-sm flex flex-col flex-shrink-0 shadow-[-4px_0_12px_rgba(0,0,0,0.1)]">
+          <div className="px-3 py-2 border-b border-blue-300/50 flex-shrink-0 bg-gradient-to-r from-blue-100/80 to-slate-100/80">
+            <div className="flex items-center gap-1.5">
+              <Users className="w-4 h-4 text-blue-600 flex-shrink-0" />
+              <h2 className="text-xs font-bold text-slate-800">
                 Online Users
               </h2>
-              <Badge variant="default" className="ml-auto text-xs bg-blue-600 text-white shadow-md" data-testid="text-user-count">
+              <Badge variant="default" className="ml-auto text-[10px] px-1.5 py-0 bg-blue-600 text-white" data-testid="text-user-count">
                 {uniqueUsers.length}
               </Badge>
             </div>
           </div>
           
-          <ScrollArea className="flex-grow p-4">
-            <div className="space-y-3">
+          <ScrollArea className="flex-grow p-2">
+            <div className="space-y-1.5">
               {uniqueUsers.map((u) => {
                 // No IRC prefix - WF logo icon shows authority
                 
@@ -973,29 +964,29 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
                     <ContextMenuTrigger>
                       <div 
                         className={`
-                          flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all border-2
+                          flex items-center gap-2 p-1.5 rounded-lg cursor-pointer transition-all border
                           ${selectedUserId === u.id 
-                            ? 'bg-blue-100/90 shadow-lg border-blue-400/70 scale-[1.02]' 
-                            : 'bg-white/80 hover:bg-white/95 border-slate-200/50 hover:border-blue-300/50 hover:shadow-md'
+                            ? 'bg-blue-100/90 shadow-sm border-blue-400/70' 
+                            : 'bg-white/80 hover:bg-white/95 border-slate-200/50 hover:border-blue-300/50'
                           }
                         `}
                         onClick={() => setSelectedUserId(u.id)}
                         data-testid={`user-${u.id}`}
                       >
-                        {/* Status Indicator - LARGER */}
+                        {/* Status Indicator - Compact */}
                         <div className="flex-shrink-0">
                           {getStatusIndicator(u.status || 'online')}
                         </div>
                         
-                        {/* User Type Icon - MUCH LARGER & CLEARER */}
-                        <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center bg-slate-100/70 rounded-lg border border-slate-300/50 shadow-sm">
+                        {/* User Type Icon - Detailed WorkforceOS Logo */}
+                        <div className="flex-shrink-0">
                           {getUserTypeIcon(u.userType || 'guest', u.role)}
                         </div>
                         
-                        {/* User Name and Role */}
+                        {/* User Name and Role - Smaller text */}
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className={`text-sm font-bold break-words ${getRoleColor(u.role)} drop-shadow-sm`}>
+                          <div className="flex items-center gap-1 flex-wrap">
+                            <span className={`text-xs font-semibold break-words ${getRoleColor(u.role)}`}>
                               {u.name}
                             </span>
                             {getRoleIcon(u.role)}
