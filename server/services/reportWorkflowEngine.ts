@@ -186,32 +186,42 @@ async function finalizeWorkflow(
     throw new Error('Workflow configuration not found');
   }
 
-  // Update submission status
-  await storage.updateReportSubmission(submissionId, workspaceId, {
-    status: 'approved',
-  });
-
-  // Auto-lock if configured
-  if (workflow.autoLockOnApproval) {
-    await lockReportRecord(submissionId, workspaceId, submission);
-  }
-
-  // Handle final destination
+  // Handle final destination and set appropriate status
   switch (workflow.finalDestination) {
     case 'audit_database':
-      // Already locked above - nothing more needed
-      // Notify submitter of final approval
+      // Set to approved and lock
+      await storage.updateReportSubmission(submissionId, workspaceId, {
+        status: 'approved',
+      });
+      
+      if (workflow.autoLockOnApproval) {
+        await lockReportRecord(submissionId, workspaceId, submission);
+      }
+      
       await notifySubmitter(submissionId, 'approved');
       break;
 
     case 'email_client':
+      // First approve
+      await storage.updateReportSubmission(submissionId, workspaceId, {
+        status: 'approved',
+      });
+      
+      if (workflow.autoLockOnApproval) {
+        await lockReportRecord(submissionId, workspaceId, submission);
+      }
+      
+      // Then send to client (updates status to 'sent_to_customer')
       await sendReportToClient(submissionId, workspaceId, workflow);
-      // Notify submitter that report was sent to client
       await notifySubmitter(submissionId, 'approved');
       break;
 
     case 'return_to_submitter':
-      // Mark as complete and notify submitter
+      // Just mark as approved and return
+      await storage.updateReportSubmission(submissionId, workspaceId, {
+        status: 'approved',
+      });
+      
       await notifySubmitter(submissionId, 'approved');
       break;
   }
