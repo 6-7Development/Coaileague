@@ -259,7 +259,7 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
       // Connected but no users (possible server issue)
       setConnectionStatus('error');
       setApiErrors(['No users detected']);
-    } else if (roomData && roomData.status === 'closed') {
+    } else if (roomData && (roomData as any).status === 'closed') {
       setConnectionStatus('denied');
       setApiErrors(['Chat room is closed']);
     } else {
@@ -471,12 +471,12 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
     }, 1500);
   };
 
-  // Get user type icon - COMPACT with detailed WorkforceOS logo
-  const getUserTypeIcon = (userType: string, role: string) => {
-    // ROOT ADMIN - Detailed WorkforceOS logo (SMALL SIZE)
+  // Get user type icon - WorkforceOS logo ONLY for staff, avatars for users
+  const getUserTypeIcon = (userType: string, role: string, userName: string = 'User') => {
+    // ROOT ADMIN - Detailed WorkforceOS logo (SMALL SIZE, clearer/bigger)
     if (role === 'root') {
       return (
-        <div className="flex items-center justify-center scale-75">
+        <div className="flex items-center justify-center scale-90">
           <WorkforceOSLogo size="sm" showText={false} />
         </div>
       );
@@ -485,44 +485,53 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
     // Bot gets special animated icon
     if (role === 'bot') {
       return (
-        <div className="relative flex items-center justify-center w-5 h-5">
-          <div className="absolute inset-0 rounded-full border border-blue-400 animate-pulse"></div>
-          <Bot className="w-3 h-3 text-blue-600" />
+        <div className="relative flex items-center justify-center w-6 h-6">
+          <div className="absolute inset-0 rounded-full border-2 border-blue-400 animate-pulse"></div>
+          <Bot className="w-4 h-4 text-blue-600" />
         </div>
       );
     }
     
-    // Staff gets detailed WorkforceOS logo (SMALL SIZE)
+    // Staff gets detailed WorkforceOS logo (SMALL SIZE, clearer/bigger)
     if (['deputy_admin', 'deputy_assistant', 'sysop'].includes(role)) {
       return (
-        <div className="flex items-center justify-center scale-75">
+        <div className="flex items-center justify-center scale-90">
           <WorkforceOSLogo size="sm" showText={false} />
         </div>
       );
     }
     
-    // Authenticated users - detailed WorkforceOS logo (SMALL SIZE)
+    // Subscribers - Professional avatar with initials
     if (userType === 'subscriber') {
+      const initials = userName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
       return (
-        <div className="flex items-center justify-center scale-75">
-          <WorkforceOSLogo size="sm" showText={false} />
-        </div>
+        <Avatar className="w-6 h-6 border-2 border-blue-400">
+          <AvatarFallback className="bg-blue-100 text-blue-700 text-[10px] font-bold">
+            {initials}
+          </AvatarFallback>
+        </Avatar>
       );
     }
     
+    // Organization users - Professional avatar with initials
     if (userType === 'org_user') {
+      const initials = userName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
       return (
-        <div className="flex items-center justify-center scale-75">
-          <WorkforceOSLogo size="sm" showText={false} />
-        </div>
+        <Avatar className="w-6 h-6 border-2 border-slate-400">
+          <AvatarFallback className="bg-slate-100 text-slate-700 text-[10px] font-bold">
+            {initials}
+          </AvatarFallback>
+        </Avatar>
       );
     }
     
-    // Guests get question mark
+    // Guests - Simple avatar with question mark
     return (
-      <div className="relative flex items-center justify-center w-5 h-5">
-        <HelpCircle className="w-3.5 h-3.5 text-slate-500" />
-      </div>
+      <Avatar className="w-6 h-6 border-2 border-slate-300">
+        <AvatarFallback className="bg-slate-50 text-slate-500 text-[10px]">
+          <HelpCircle className="w-3.5 h-3.5" />
+        </AvatarFallback>
+      </Avatar>
     );
   };
 
@@ -814,81 +823,99 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
     <div className="flex flex-col h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100 relative">
       {/* Seasonal Animated Background */}
       <SeasonalBackground enabled={seasonalAnimationsEnabled} />
-      {/* Minimal floating controls - NO blocking header */}
-      <div className="absolute top-2 right-2 z-50 flex items-center gap-2">
-        {/* Connection Status */}
-        {connectionStatus === 'connected' && (
-          <div 
-            className="flex items-center gap-1 text-[9px] bg-emerald-500/80 px-2 py-0.5 rounded-full backdrop-blur-md border border-emerald-400/60 shadow-lg"
-            data-testid="status-connected"
-          >
-            <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
-            Connected
+      {/* ADVERTISEMENT / ANNOUNCEMENT BANNER - Thick, customizable, seasonal */}
+      <div className="relative z-20 bg-transparent">
+        <div className="relative">
+          {/* Main Banner Content */}
+          <ChatAnnouncementBanner
+            queuePosition={queueLength || 1}
+            queueWaitTime="2-3 minutes"
+            onlineStaff={uniqueUsers.filter(u => ['root', 'deputy_admin', 'deputy_assistant', 'sysop'].includes(u.role)).length}
+            customMessages={customBannerMessage ? [{
+              id: 'custom-1',
+              text: customBannerMessage,
+              type: 'promo' as const,
+              icon: 'zap'
+            }] : []}
+          />
+          
+          {/* Floating Controls - Overlaid on banner */}
+          <div className="absolute top-2 right-2 flex items-center gap-2">
+            {/* Connection Status */}
+            {connectionStatus === 'connected' && (
+              <div 
+                className="flex items-center gap-1 text-[9px] bg-emerald-500/90 px-2 py-0.5 rounded-full backdrop-blur-md border border-emerald-400/80 shadow-lg text-white"
+                data-testid="status-connected"
+              >
+                <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
+                Connected
+              </div>
+            )}
+            {connectionStatus === 'disconnected' && (
+              <div 
+                className="flex items-center gap-1 text-[9px] bg-slate-600/90 px-2 py-0.5 rounded-full backdrop-blur-md border border-slate-500/80 shadow-lg text-white"
+                data-testid="status-disconnected"
+              >
+                <div className="w-1.5 h-1.5 bg-white rounded-full" />
+                Disconnected
+              </div>
+            )}
+            {connectionStatus === 'error' && (
+              <div 
+                className="flex items-center gap-1 text-[9px] bg-red-500/90 px-2 py-0.5 rounded-full backdrop-blur-md border border-red-400/80 shadow-lg cursor-pointer text-white"
+                data-testid="status-error"
+                title={apiErrors.join(', ')}
+              >
+                <AlertTriangle className="w-2.5 h-2.5" />
+                Error
+              </div>
+            )}
+            {connectionStatus === 'denied' && (
+              <div 
+                className="flex items-center gap-1 text-[9px] bg-amber-500/90 px-2 py-0.5 rounded-full backdrop-blur-md border border-amber-400/80 shadow-lg text-white"
+                data-testid="status-denied"
+              >
+                <Ban className="w-2.5 h-2.5" />
+                Denied
+              </div>
+            )}
+            
+            {/* Staff Controls */}
+            {isStaff && (
+              <>
+                <Button
+                  onClick={() => {
+                    setSeasonalAnimationsEnabled(prev => {
+                      const newValue = !prev;
+                      localStorage.setItem('seasonal-animations-enabled', String(newValue));
+                      return newValue;
+                    });
+                    toast({ 
+                      title: seasonalAnimationsEnabled ? "Seasonal animations disabled" : "Seasonal animations enabled",
+                      description: seasonalAnimationsEnabled ? "Background effects turned off" : "Background effects turned on"
+                    });
+                  }}
+                  size="sm"
+                  variant="outline"
+                  className="h-6 text-[9px] px-2 gap-1 bg-slate-800/90 border-slate-700/80 hover:bg-slate-800 text-white shadow-lg backdrop-blur-md"
+                  data-testid="button-toggle-seasonal"
+                >
+                  ❄️ {seasonalAnimationsEnabled ? 'ON' : 'OFF'}
+                </Button>
+                <Button
+                  onClick={() => setShowBannerManager(true)}
+                  size="sm"
+                  variant="outline"
+                  className="h-6 text-[9px] px-2 gap-1 bg-slate-800/90 border-slate-700/80 hover:bg-slate-800 text-white shadow-lg backdrop-blur-md"
+                  data-testid="button-open-banner-manager"
+                >
+                  <Sparkles className="w-2.5 h-2.5" />
+                  Banner
+                </Button>
+              </>
+            )}
           </div>
-        )}
-        {connectionStatus === 'disconnected' && (
-          <div 
-            className="flex items-center gap-1 text-[9px] bg-slate-500/80 px-2 py-0.5 rounded-full backdrop-blur-md border border-slate-400/60 shadow-lg text-white"
-            data-testid="status-disconnected"
-          >
-            <div className="w-1.5 h-1.5 bg-white rounded-full" />
-            Disconnected
-          </div>
-        )}
-        {connectionStatus === 'error' && (
-          <div 
-            className="flex items-center gap-1 text-[9px] bg-red-500/80 px-2 py-0.5 rounded-full backdrop-blur-md border border-red-400/60 shadow-lg cursor-pointer text-white"
-            data-testid="status-error"
-            title={apiErrors.join(', ')}
-          >
-            <AlertTriangle className="w-2.5 h-2.5" />
-            Error
-          </div>
-        )}
-        {connectionStatus === 'denied' && (
-          <div 
-            className="flex items-center gap-1 text-[9px] bg-amber-500/80 px-2 py-0.5 rounded-full backdrop-blur-md border border-amber-400/60 shadow-lg text-white"
-            data-testid="status-denied"
-          >
-            <Ban className="w-2.5 h-2.5" />
-            Denied
-          </div>
-        )}
-        
-        {/* Staff Controls */}
-        {isStaff && (
-          <>
-            <Button
-              onClick={() => {
-                setSeasonalAnimationsEnabled(prev => {
-                  const newValue = !prev;
-                  localStorage.setItem('seasonal-animations-enabled', String(newValue));
-                  return newValue;
-                });
-                toast({ 
-                  title: seasonalAnimationsEnabled ? "Seasonal animations disabled" : "Seasonal animations enabled",
-                  description: seasonalAnimationsEnabled ? "Background effects turned off" : "Background effects turned on"
-                });
-              }}
-              size="sm"
-              variant="outline"
-              className="h-6 text-[9px] px-2 gap-1 bg-slate-700/80 border-slate-600/60 hover:bg-slate-700 text-white shadow-lg backdrop-blur-md"
-              data-testid="button-toggle-seasonal"
-            >
-              ❄️ {seasonalAnimationsEnabled ? 'ON' : 'OFF'}
-            </Button>
-            <Button
-              onClick={() => setShowBannerManager(true)}
-              size="sm"
-              variant="outline"
-              className="h-6 text-[9px] px-2 gap-1 bg-slate-700/80 border-slate-600/60 hover:bg-slate-700 text-white shadow-lg backdrop-blur-md"
-              data-testid="button-open-banner-manager"
-            >
-              <Sparkles className="w-2.5 h-2.5" />
-              Banner
-            </Button>
-          </>
-        )}
+        </div>
       </div>
 
       {/* Main Layout - Full Width with MSN-style separation */}
@@ -926,7 +953,7 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
                     <div className="flex items-start gap-2">
                       {/* Avatar Icon - Compact */}
                       <div className="flex-shrink-0 mt-0.5">
-                        {getUserTypeIcon((msg as any).userType || 'guest', role)}
+                        {getUserTypeIcon((msg as any).userType || 'guest', role, displayName)}
                       </div>
                       
                       <div className="flex-1 min-w-0">
@@ -1020,9 +1047,9 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
                           {getStatusIndicator(u.status || 'online')}
                         </div>
                         
-                        {/* User Type Icon - Detailed WorkforceOS Logo */}
+                        {/* User Type Icon - WorkforceOS Logo for staff, Avatar for users */}
                         <div className="flex-shrink-0">
-                          {getUserTypeIcon(u.userType || 'guest', u.role)}
+                          {getUserTypeIcon(u.userType || 'guest', u.role, u.name)}
                         </div>
                         
                         {/* User Name and Role - Smaller text */}
