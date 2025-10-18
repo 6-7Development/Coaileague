@@ -953,6 +953,313 @@ export type InsertInvoiceLineItem = z.infer<typeof insertInvoiceLineItemSchema>;
 export type InvoiceLineItem = typeof invoiceLineItems.$inferSelect;
 
 // ============================================================================
+// BILLOS™ - FULL FINANCIAL AUTOMATION SYSTEM
+// ============================================================================
+
+// Client Billable Rates (for zero-touch invoice generation)
+export const clientRates = pgTable("client_rates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  clientId: varchar("client_id").notNull().references(() => clients.id, { onDelete: 'cascade' }),
+  
+  // Billing configuration
+  billableRate: decimal("billable_rate", { precision: 10, scale: 2 }).notNull(), // Hourly rate for this client
+  description: text("description"), // e.g., "Standard hourly rate", "Premium weekend rate"
+  isActive: boolean("is_active").default(true),
+  
+  // Subscription billing (hybrid model)
+  hasSubscription: boolean("has_subscription").default(false),
+  subscriptionAmount: decimal("subscription_amount", { precision: 10, scale: 2 }),
+  subscriptionFrequency: varchar("subscription_frequency"), // 'monthly', 'quarterly', 'annual'
+  subscriptionStartDate: timestamp("subscription_start_date"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertClientRateSchema = createInsertSchema(clientRates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertClientRate = z.infer<typeof insertClientRateSchema>;
+export type ClientRate = typeof clientRates.$inferSelect;
+
+// Payment Records (for invoice payment tracking)
+export const paymentRecords = pgTable("payment_records", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  invoiceId: varchar("invoice_id").notNull().references(() => invoices.id, { onDelete: 'cascade' }),
+  
+  // Payment details
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  paymentMethod: varchar("payment_method").notNull(), // 'stripe_card', 'stripe_ach', 'stripe_transfer', 'manual'
+  paymentIntentId: varchar("payment_intent_id"), // Stripe Payment Intent ID
+  transactionId: varchar("transaction_id"), // External transaction reference
+  
+  // Stripe Connect platform fee tracking
+  platformFeeAmount: decimal("platform_fee_amount", { precision: 10, scale: 2 }),
+  businessAmount: decimal("business_amount", { precision: 10, scale: 2 }),
+  
+  // Status
+  status: varchar("status").default('pending'), // 'pending', 'completed', 'failed', 'refunded'
+  paidAt: timestamp("paid_at"),
+  failureReason: text("failure_reason"),
+  
+  // Metadata
+  notes: text("notes"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertPaymentRecordSchema = createInsertSchema(paymentRecords).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertPaymentRecord = z.infer<typeof insertPaymentRecordSchema>;
+export type PaymentRecord = typeof paymentRecords.$inferSelect;
+
+// Invoice Reminders (for delinquency automation)
+export const reminderTypeEnum = pgEnum('reminder_type', ['7_day', '14_day', '30_day', 'custom']);
+
+export const invoiceReminders = pgTable("invoice_reminders", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  invoiceId: varchar("invoice_id").notNull().references(() => invoices.id, { onDelete: 'cascade' }),
+  
+  // Reminder details
+  reminderType: reminderTypeEnum("reminder_type").notNull(),
+  daysOverdue: integer("days_overdue").notNull(),
+  
+  // Email delivery
+  sentAt: timestamp("sent_at"),
+  emailTo: varchar("email_to").notNull(),
+  emailSubject: text("email_subject"),
+  emailBody: text("email_body"),
+  
+  // Status
+  status: varchar("status").default('pending'), // 'pending', 'sent', 'failed'
+  failureReason: text("failure_reason"),
+  
+  // Escalation flag
+  needsHumanIntervention: boolean("needs_human_intervention").default(false), // True after 30 days
+  
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertInvoiceReminderSchema = createInsertSchema(invoiceReminders).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertInvoiceReminder = z.infer<typeof insertInvoiceReminderSchema>;
+export type InvoiceReminder = typeof invoiceReminders.$inferSelect;
+
+// Client Portal Access (for branded self-service portal)
+export const clientPortalAccess = pgTable("client_portal_access", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  clientId: varchar("client_id").notNull().references(() => clients.id, { onDelete: 'cascade' }),
+  
+  // Secure access
+  accessToken: varchar("access_token").unique().notNull(), // Secure token for portal link
+  email: varchar("email").notNull(), // Client contact email
+  
+  // Portal customization (white-label)
+  portalName: varchar("portal_name"), // e.g., "ACME Corp Billing Portal"
+  logoUrl: varchar("logo_url"),
+  primaryColor: varchar("primary_color"),
+  
+  // Access control
+  isActive: boolean("is_active").default(true),
+  lastAccessedAt: timestamp("last_accessed_at"),
+  expiresAt: timestamp("expires_at"), // Optional expiration
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertClientPortalAccessSchema = createInsertSchema(clientPortalAccess).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertClientPortalAccess = z.infer<typeof insertClientPortalAccessSchema>;
+export type ClientPortalAccess = typeof clientPortalAccess.$inferSelect;
+
+// ExpenseOS™ - Employee Expense Management
+export const expenseStatusEnum = pgEnum('expense_status', ['pending', 'approved', 'rejected', 'reimbursed']);
+
+export const expenseReports = pgTable("expense_reports", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
+  
+  // Expense details
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  category: varchar("category").notNull(), // 'mileage', 'meals', 'supplies', 'travel', 'other'
+  description: text("description").notNull(),
+  expenseDate: timestamp("expense_date").notNull(),
+  
+  // Receipt
+  receiptImageUrl: varchar("receipt_image_url"), // Cloud storage URL
+  receiptUploadedAt: timestamp("receipt_uploaded_at"),
+  
+  // Job/Client association
+  clientId: varchar("client_id").references(() => clients.id, { onDelete: 'set null' }),
+  shiftId: varchar("shift_id").references(() => shifts.id, { onDelete: 'set null' }),
+  
+  // Approval workflow
+  status: expenseStatusEnum("status").default('pending'),
+  approvedBy: varchar("approved_by").references(() => employees.id, { onDelete: 'set null' }),
+  approvedAt: timestamp("approved_at"),
+  rejectionReason: text("rejection_reason"),
+  
+  // Reimbursement (auto-included in next payroll run)
+  reimbursedInPayrollId: varchar("reimbursed_in_payroll_id"), // Link to payroll run
+  reimbursedAt: timestamp("reimbursed_at"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertExpenseReportSchema = createInsertSchema(expenseReports).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertExpenseReport = z.infer<typeof insertExpenseReportSchema>;
+export type ExpenseReport = typeof expenseReports.$inferSelect;
+
+// Employee Tax Forms (W-4, W-2, 1099 for ESS)
+export const taxFormTypeEnum = pgEnum('tax_form_type', ['w4', 'w2', '1099']);
+
+export const employeeTaxForms = pgTable("employee_tax_forms", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
+  
+  // Form details
+  formType: taxFormTypeEnum("form_type").notNull(),
+  taxYear: integer("tax_year").notNull(),
+  
+  // W-4 Information
+  filingStatus: varchar("filing_status"), // 'single', 'married_filing_jointly', 'married_filing_separately', 'head_of_household'
+  allowances: integer("allowances"),
+  additionalWithholding: decimal("additional_withholding", { precision: 10, scale: 2 }),
+  
+  // W-2 / 1099 Information (generated annually)
+  wages: decimal("wages", { precision: 10, scale: 2 }),
+  federalTaxWithheld: decimal("federal_tax_withheld", { precision: 10, scale: 2 }),
+  socialSecurityWages: decimal("social_security_wages", { precision: 10, scale: 2 }),
+  socialSecurityTaxWithheld: decimal("social_security_tax_withheld", { precision: 10, scale: 2 }),
+  medicareWages: decimal("medicare_wages", { precision: 10, scale: 2 }),
+  medicareTaxWithheld: decimal("medicare_tax_withheld", { precision: 10, scale: 2 }),
+  stateTaxWithheld: decimal("state_tax_withheld", { precision: 10, scale: 2 }),
+  
+  // Document storage
+  pdfUrl: varchar("pdf_url"), // Cloud storage URL for generated PDF
+  generatedAt: timestamp("generated_at"),
+  
+  // Status
+  isActive: boolean("is_active").default(true), // Latest W-4 is active
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertEmployeeTaxFormSchema = createInsertSchema(employeeTaxForms).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertEmployeeTaxForm = z.infer<typeof insertEmployeeTaxFormSchema>;
+export type EmployeeTaxForm = typeof employeeTaxForms.$inferSelect;
+
+// Employee Bank Accounts (Direct Deposit for ESS)
+export const employeeBankAccounts = pgTable("employee_bank_accounts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
+  
+  // Bank account details (encrypted in production)
+  accountHolderName: varchar("account_holder_name").notNull(),
+  bankName: varchar("bank_name").notNull(),
+  routingNumber: varchar("routing_number").notNull(),
+  accountNumber: varchar("account_number").notNull(), // Last 4 digits visible only
+  accountType: varchar("account_type").notNull(), // 'checking', 'savings'
+  
+  // Stripe Connect bank account token (for secure processing)
+  stripeBankAccountToken: varchar("stripe_bank_account_token"),
+  
+  // Status
+  isActive: boolean("is_active").default(true), // Primary account for direct deposit
+  isVerified: boolean("is_verified").default(false), // Micro-deposit verification
+  verifiedAt: timestamp("verified_at"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertEmployeeBankAccountSchema = createInsertSchema(employeeBankAccounts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertEmployeeBankAccount = z.infer<typeof insertEmployeeBankAccountSchema>;
+export type EmployeeBankAccount = typeof employeeBankAccounts.$inferSelect;
+
+// Off-Cycle Payroll Runs (Bonus/Instant Pay)
+export const offCyclePayrollRuns = pgTable("off_cycle_payroll_runs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
+  
+  // Payroll details
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  payType: varchar("pay_type").notNull(), // 'bonus', 'commission', 'advance', 'correction', 'other'
+  description: text("description").notNull(),
+  payDate: timestamp("pay_date").notNull(),
+  
+  // Tax withholding
+  federalTaxWithheld: decimal("federal_tax_withheld", { precision: 10, scale: 2 }),
+  stateTaxWithheld: decimal("state_tax_withheld", { precision: 10, scale: 2 }),
+  socialSecurityWithheld: decimal("social_security_withheld", { precision: 10, scale: 2 }),
+  medicareWithheld: decimal("medicare_withheld", { precision: 10, scale: 2 }),
+  netAmount: decimal("net_amount", { precision: 10, scale: 2 }).notNull(),
+  
+  // Processing
+  status: varchar("status").default('pending'), // 'pending', 'processing', 'completed', 'failed'
+  processedAt: timestamp("processed_at"),
+  stripeTransferId: varchar("stripe_transfer_id"), // Stripe transfer ID for direct deposit
+  
+  // Approval
+  approvedBy: varchar("approved_by").references(() => employees.id, { onDelete: 'set null' }),
+  approvedAt: timestamp("approved_at"),
+  
+  // Metadata
+  notes: text("notes"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertOffCyclePayrollRunSchema = createInsertSchema(offCyclePayrollRuns).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertOffCyclePayrollRun = z.infer<typeof insertOffCyclePayrollRunSchema>;
+export type OffCyclePayrollRun = typeof offCyclePayrollRuns.$inferSelect;
+
+// ============================================================================
 // ROLE-BASED ACCESS CONTROL
 // ============================================================================
 
