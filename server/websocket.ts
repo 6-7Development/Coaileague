@@ -49,6 +49,7 @@ interface KickUserPayload {
   conversationId?: string;
   targetUserId: string;
   reason?: string;
+  commandId?: string; // IRC-style command tracking for acknowledgments
 }
 
 interface RequestSecurePayload {
@@ -1544,8 +1545,13 @@ export function setupWebSocket(server: Server) {
             const canKick = kickerRole && ['root', 'deputy_admin'].includes(kickerRole);
             
             if (!canKick) {
+              // IRC-style command acknowledgment for permission denied
               ws.send(JSON.stringify({
-                type: 'error',
+                type: 'command_ack',
+                commandId: payload.commandId,
+                action: 'kick_user',
+                success: false,
+                error: 'PERMISSION_DENIED',
                 message: 'You do not have permission to kick users',
               }));
               return;
@@ -1605,6 +1611,16 @@ export function setupWebSocket(server: Server) {
               } catch (err) {
                 console.error('Failed to save error message:', err);
               }
+              
+              // IRC-style command acknowledgment for root protection
+              ws.send(JSON.stringify({
+                type: 'command_ack',
+                commandId: payload.commandId,
+                action: 'kick_user',
+                success: false,
+                error: 'TARGET_PROTECTED',
+                message: `Cannot remove ${targetDisplayName}. Root administrators cannot be removed by non-root users.`,
+              }));
               return;
             }
             
@@ -1652,6 +1668,16 @@ export function setupWebSocket(server: Server) {
               } catch (err) {
                 console.error('Failed to save error message:', err);
               }
+              
+              // IRC-style command acknowledgment for staff protection
+              ws.send(JSON.stringify({
+                type: 'command_ack',
+                commandId: payload.commandId,
+                action: 'kick_user',
+                success: false,
+                error: 'TARGET_PROTECTED',
+                message: `Cannot remove ${targetDisplayName}. Staff members cannot remove other staff members.`,
+              }));
               return;
             }
 
@@ -1673,8 +1699,13 @@ export function setupWebSocket(server: Server) {
 
             // If not found as a connected client but is a simulated user, handle removal
             if (!targetClient && !isSimulatedUser) {
+              // IRC-style command acknowledgment for user not found
               ws.send(JSON.stringify({
-                type: 'error',
+                type: 'command_ack',
+                commandId: payload.commandId,
+                action: 'kick_user',
+                success: false,
+                error: 'USER_NOT_FOUND',
                 message: 'User not found in this room',
               }));
               return;
@@ -1826,6 +1857,65 @@ export function setupWebSocket(server: Server) {
                 }));
               }
             });
+
+            // ===================================================================
+            // AUDITOS™ - Log the moderation action for compliance tracking
+            // ===================================================================
+            try {
+              const kickerInfo = await storage.getUserDisplayInfo(ws.userId);
+              const kickerDisplayName = kickerInfo ? formatUserDisplayName({
+                firstName: kickerInfo.firstName,
+                lastName: kickerInfo.lastName,
+                email: kickerInfo.email || undefined,
+                platformRole: kickerInfo.platformRole || undefined,
+                workspaceRole: kickerInfo.workspaceRole || undefined,
+              }) : ws.userName || 'Unknown';
+
+              await storage.createAuditLog({
+                commandId: payload.commandId || null, // IRC-style command tracking
+                userId: ws.userId,
+                userEmail: kickerInfo?.email || ws.userName || 'unknown',
+                userRole: kickerRole || 'unknown',
+                action: 'kick_user',
+                actionDescription: `${kickerDisplayName} removed ${targetUserName} from chat`,
+                entityType: 'user',
+                entityId: payload.targetUserId,
+                targetId: payload.targetUserId,
+                targetName: targetUserName,
+                targetType: 'user',
+                conversationId: ws.conversationId,
+                reason: reason,
+                metadata: {
+                  commandPayload: {
+                    type: 'kick_user',
+                    targetUserId: payload.targetUserId,
+                    reason: reason,
+                  },
+                  isSimulatedUser: isSimulatedUser,
+                },
+                ipAddress: null, // TODO: Extract from request headers
+                userAgent: null, // TODO: Extract from connection
+                success: true,
+                errorMessage: null,
+              });
+            } catch (auditErr) {
+              console.error('AuditOS™ failed to log kick action:', auditErr);
+            }
+
+            // ===================================================================
+            // IRC-STYLE COMMAND ACKNOWLEDGMENT - Send success response to originating client
+            // ===================================================================
+            if (ws.readyState === WebSocket.OPEN) {
+              ws.send(JSON.stringify({
+                type: 'command_ack',
+                commandId: payload.commandId,
+                action: 'kick_user',
+                success: true,
+                message: `✓ ${targetUserName} removed from chat`,
+                targetUserId: payload.targetUserId,
+                targetName: targetUserName,
+              }));
+            }
 
             break;
           }
