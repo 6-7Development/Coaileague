@@ -1691,6 +1691,148 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============================================================================
+  // SCHEDULEOS™ SHIFT MANAGEMENT - Denial, Acknowledgment, Auto-Replacement
+  // ============================================================================
+
+  // Employee acknowledges AI-generated shift
+  app.post('/api/shifts/:id/acknowledge', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const workspace = await storage.getWorkspaceByOwnerId(userId);
+      
+      if (!workspace) {
+        return res.status(404).json({ message: "Workspace not found" });
+      }
+
+      const shift = await storage.getShift(req.params.id, workspace.id);
+      if (!shift) {
+        return res.status(404).json({ message: "Shift not found" });
+      }
+
+      // Update shift with acknowledgment
+      const updated = await storage.updateShift(req.params.id, workspace.id, {
+        acknowledgedAt: new Date().toISOString(),
+        status: 'scheduled',
+      });
+
+      res.json({
+        success: true,
+        shift: updated,
+        message: "Shift acknowledged successfully"
+      });
+    } catch (error: any) {
+      console.error("Error acknowledging shift:", error);
+      res.status(500).json({ message: "Failed to acknowledge shift" });
+    }
+  });
+
+  // Employee denies AI-generated shift (triggers auto-replacement)
+  app.post('/api/shifts/:id/deny', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const workspace = await storage.getWorkspaceByOwnerId(userId);
+      
+      if (!workspace) {
+        return res.status(404).json({ message: "Workspace not found" });
+      }
+
+      const { denialReason } = req.body;
+      const shift = await storage.getShift(req.params.id, workspace.id);
+      
+      if (!shift) {
+        return res.status(404).json({ message: "Shift not found" });
+      }
+
+      // Mark shift as denied
+      await storage.updateShift(req.params.id, workspace.id, {
+        deniedAt: new Date().toISOString(),
+        denialReason: denialReason || 'Employee declined assignment',
+        status: 'cancelled',
+      });
+
+      // AUTO-REPLACEMENT: Find backup employee
+      const { scheduleOSAI } = await import('./ai/scheduleos');
+      
+      console.log(`[ScheduleOS™] Shift ${shift.id} denied by employee ${shift.employeeId}. Starting auto-replacement...`);
+
+      try {
+        // Generate replacement shift for same time slot
+        const replacementResult = await scheduleOSAI.generateSchedule({
+          workspaceId: workspace.id,
+          weekStartDate: new Date(shift.startTime),
+          clientIds: shift.clientId ? [shift.clientId] : [],
+          shiftRequirements: [{
+            title: shift.title || 'Replacement Shift',
+            clientId: shift.clientId || '',
+            startTime: new Date(shift.startTime),
+            endTime: new Date(shift.endTime),
+            requiredEmployees: 1,
+          }],
+        });
+
+        // Create replacement shift if AI found suitable employee
+        if (replacementResult.generatedShifts.length > 0) {
+          const replacement = replacementResult.generatedShifts[0];
+          
+          // Don't assign to same employee who denied
+          if (replacement.employeeId !== shift.employeeId) {
+            const newShift = await storage.createShift({
+              workspaceId: workspace.id,
+              employeeId: replacement.employeeId,
+              clientId: replacement.clientId || null,
+              title: replacement.title || null,
+              description: `Auto-replacement for denied shift ${shift.id}`,
+              startTime: replacement.startTime.toISOString(),
+              endTime: replacement.endTime.toISOString(),
+              aiGenerated: true,
+              requiresAcknowledgment: true,
+              replacementForShiftId: shift.id,
+              autoReplacementAttempts: 1,
+              aiConfidenceScore: replacement.aiConfidenceScore.toString(),
+              riskScore: replacement.riskScore.toString(),
+              riskFactors: replacement.riskFactors,
+              status: 'scheduled',
+            });
+
+            return res.json({
+              success: true,
+              deniedShift: shift,
+              replacementShift: newShift,
+              replacementEmployee: replacement.employeeName,
+              message: `Shift denied. Auto-replacement assigned to ${replacement.employeeName}`,
+              warnings: replacementResult.warnings,
+            });
+          }
+        }
+
+        // No suitable replacement found
+        return res.json({
+          success: true,
+          deniedShift: shift,
+          replacementShift: null,
+          message: "Shift denied. No suitable replacement employee found. Manual scheduling required.",
+          warnings: ["No employees available for this time slot. Consider hiring or adjusting shift requirements."],
+        });
+
+      } catch (replacementError: any) {
+        console.error("[ScheduleOS™] Auto-replacement failed:", replacementError);
+        
+        return res.json({
+          success: true,
+          deniedShift: shift,
+          replacementShift: null,
+          message: "Shift denied. Auto-replacement failed. Manual scheduling required.",
+          error: replacementError.message,
+        });
+      }
+
+    } catch (error: any) {
+      console.error("Error denying shift:", error);
+      res.status(500).json({ message: error.message || "Failed to deny shift" });
+    }
+  });
+
   // Bulk create shifts (recurring)
   app.post('/api/shifts/bulk', isAuthenticated, async (req: any, res) => {
     try {
@@ -1992,9 +2134,97 @@ export async function registerRoutes(app: Express): Promise<Server> {
         processingTimeMs: result.processingTimeMs,
       });
 
+      // BILLOS™ INTEGRATION: Auto-create invoice line items for billable shifts
+      const billableShifts = result.generatedShifts.filter(s => s.clientId);
+      const invoiceLineItems: any[] = [];
+
+      for (const shift of billableShifts) {
+        try {
+          // Group shifts by client for invoice consolidation
+          const client = await storage.getClient(shift.clientId, workspace.id);
+          if (!client) continue;
+
+          // Calculate billing amount
+          const hours = shift.billableHours;
+          const rate = shift.estimatedCost / hours; // Simplified - should use employee rate
+          const amount = hours * rate;
+
+          // Check if invoice exists for this client this month
+          const invoiceMonth = new Date(shift.startTime);
+          invoiceMonth.setDate(1);
+          invoiceMonth.setHours(0, 0, 0, 0);
+
+          const existingInvoices = await storage.getInvoicesByClient(shift.clientId, workspace.id);
+          let invoice = existingInvoices.find((inv: any) => {
+            const invDate = new Date(inv.createdAt);
+            return invDate.getMonth() === invoiceMonth.getMonth() && 
+                   invDate.getFullYear() === invoiceMonth.getFullYear() &&
+                   inv.status === 'draft';
+          });
+
+          // Create invoice if doesn't exist
+          if (!invoice) {
+            invoice = await storage.createInvoice({
+              workspaceId: workspace.id,
+              clientId: shift.clientId,
+              invoiceNumber: `INV-${Date.now()}-${Math.random().toString(36).substring(7).toUpperCase()}`,
+              status: 'draft',
+              dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+              subtotal: '0',
+              taxRate: '0',
+              taxAmount: '0',
+              total: '0',
+              notes: `Auto-generated by ScheduleOS™ for ${invoiceMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`,
+            });
+          }
+
+          // Add line item to invoice
+          const lineItem = await storage.createInvoiceLineItem({
+            invoiceId: invoice.id,
+            description: `${shift.title} - ${shift.employeeName} (${new Date(shift.startTime).toLocaleDateString()})`,
+            quantity: hours.toString(),
+            unitPrice: rate.toFixed(2),
+            amount: amount.toFixed(2),
+            metadata: {
+              shiftId: shift.employeeId,
+              aiGenerated: true,
+              scheduleOSGenerated: true,
+              billableHours: hours,
+            },
+          });
+
+          invoiceLineItems.push(lineItem);
+
+          // Update invoice totals
+          const allLineItems = await storage.getInvoiceLineItems(invoice.id);
+          const newSubtotal = allLineItems.reduce((sum: number, item: any) => sum + parseFloat(item.amount || '0'), 0);
+          const taxRate = parseFloat(invoice.taxRate || '0');
+          const newTaxAmount = newSubtotal * (taxRate / 100);
+          const newTotal = newSubtotal + newTaxAmount;
+
+          await storage.updateInvoice(invoice.id, workspace.id, {
+            subtotal: newSubtotal.toFixed(2),
+            taxAmount: newTaxAmount.toFixed(2),
+            total: newTotal.toFixed(2),
+          });
+
+          console.log(`[BillOS™] Added ${hours}h ($${amount.toFixed(2)}) to invoice ${invoice.invoiceNumber} for client ${client.name}`);
+        } catch (billingError: any) {
+          console.error(`[BillOS™] Failed to create invoice line item for shift:`, billingError);
+        }
+      }
+
       res.json({
         ...result,
-        message: `ScheduleOS™ generated ${result.shiftsGenerated} shifts for ${result.employeesScheduled} employees in ${result.processingTimeMs}ms`
+        message: `ScheduleOS™ generated ${result.shiftsGenerated} shifts for ${result.employeesScheduled} employees in ${result.processingTimeMs}ms`,
+        billosIntegration: {
+          invoiceLineItemsCreated: invoiceLineItems.length,
+          totalBillableHours: billableShifts.reduce((sum, s) => sum + s.billableHours, 0),
+          totalEstimatedRevenue: billableShifts.reduce((sum, s) => sum + s.estimatedCost, 0),
+          message: invoiceLineItems.length > 0 
+            ? `Auto-created ${invoiceLineItems.length} invoice line items for client billing`
+            : 'No billable shifts generated for this schedule',
+        },
       });
     } catch (error: any) {
       console.error("ScheduleOS™ error:", error);
