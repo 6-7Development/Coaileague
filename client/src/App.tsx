@@ -101,7 +101,7 @@ function AppContent() {
         <Route path="/contact" component={Contact} />
         <Route path="/support" component={Support} />
         <Route path="/live-chat" component={LiveChatroom} />
-        <Route path="/mobile-chat" component={MobileChatPage} />
+        {/* Removed /mobile-chat from here - FIXED: Duplicate route was causing double WebSocket connections */}
         <Route path="/design-comparison" component={DesignComparison} />
         <Route path="/logo-showcase" component={LogoShowcase} />
         <Route path="/onboarding/:token" component={OnboardingPage} />

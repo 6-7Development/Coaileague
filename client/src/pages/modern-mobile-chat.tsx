@@ -508,28 +508,46 @@ export default function ModernMobileChat() {
     }
   };
 
-  // Fetch user context when user is selected (staff only)
+  // Check if selected user is a bot/platform-generated user
+  const isBotUser = selectedUser?.role === 'bot' || selectedUser?.id?.includes('helpos') || selectedUser?.id?.includes('-ai-');
+
+  // Fetch user context when user is selected (staff only) - Skip for bot users
   const { data: fetchedUserContext } = useQuery<any>({
     queryKey: ['/api/helpdesk/user-context', selectedUser?.id],
-    enabled: Boolean(selectedUser && isStaff),
+    enabled: Boolean(selectedUser && isStaff && !isBotUser),
     retry: false,
     staleTime: 30000,
   });
 
-  // Update context when fetched
+  // Update context when fetched OR generate bot context
   useEffect(() => {
-    if (fetchedUserContext) {
+    if (isBotUser && selectedUser) {
+      // Set special context for bot/platform-generated users
+      setUserContext({
+        isPlatformGenerated: true,
+        userType: 'Platform AI Bot',
+        userId: selectedUser.id,
+        userName: selectedUser.name,
+        role: selectedUser.role,
+        status: 'Active - Automated System',
+        description: 'This is a platform-generated AI assistant that provides automated support.',
+        capabilities: ['Automated responses', 'Queue management', 'User greeting', 'Basic troubleshooting'],
+        restrictions: 'Cannot be modified or removed by staff members'
+      });
+    } else if (fetchedUserContext) {
       setUserContext(fetchedUserContext);
     }
-  }, [fetchedUserContext]);
+  }, [fetchedUserContext, isBotUser, selectedUser]);
 
   const handleUserSelect = (user: OnlineUser) => {
     setSelectedUser(user);
     setUserContext(null); // Clear old context
     setShowUserList(false);
+    
+    const userTypeLabel = user.role === 'bot' ? '🤖 Platform Bot' : user.name;
     toast({ 
       title: "User Selected", 
-      description: `${user.name} - All commands will apply to this user`
+      description: `Viewing ${userTypeLabel} - All commands will apply to this user`
     });
   };
 
@@ -1094,37 +1112,45 @@ export default function ModernMobileChat() {
                 </SheetTitle>
               </SheetHeader>
               <div className="mt-4 space-y-2">
-                {onlineUsers.map((user) => (
-                  <button
-                    key={user.id}
-                    onClick={() => {
-                      setSelectedUser(user as OnlineUser);
-                      setShowUserList(false);
-                      toast({ title: "User selected", description: `Viewing ${user.name}` });
-                    }}
-                    className={`w-full flex items-center gap-3 p-3 rounded-lg border transition-all ${
-                      selectedUser?.id === user.id
-                        ? 'bg-indigo-500/20 border-indigo-500/50'
-                        : 'bg-white/5 border-white/10 hover-elevate active-elevate-2'
-                    }`}
-                    data-testid={`user-${user.id}`}
-                  >
-                    <div className={`w-3 h-3 rounded-full ${user.status === 'online' ? 'bg-emerald-500' : 'bg-slate-500'}`} />
-                    <div className="flex-1 text-left">
-                      <div className="text-white font-medium text-sm">
-                        {user.name.split('(')[0].trim()}
-                        {user.role && user.role !== 'customer' && (
-                          <sup className="ml-0.5 text-[8px] font-normal text-indigo-400/70">
-                            ({getRoleDisplay(user.role)})
-                          </sup>
-                        )}
+                {onlineUsers.map((user) => {
+                  const isBot = user.role === 'bot' || user.id?.includes('helpos') || user.id?.includes('-ai-');
+                  return (
+                    <button
+                      key={user.id}
+                      onClick={() => {
+                        setSelectedUser(user as OnlineUser);
+                        setShowUserList(false);
+                        toast({ title: "User selected", description: `Viewing ${user.name}` });
+                      }}
+                      className={`w-full flex items-center gap-3 p-3 rounded-lg border transition-all ${
+                        selectedUser?.id === user.id
+                          ? 'bg-indigo-500/20 border-indigo-500/50'
+                          : 'bg-white/5 border-white/10 hover-elevate active-elevate-2'
+                      }`}
+                      data-testid={`user-${user.id}`}
+                    >
+                      {isBot ? (
+                        <Bot className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                      ) : (
+                        <div className={`w-3 h-3 rounded-full ${user.status === 'online' ? 'bg-emerald-500' : 'bg-slate-500'}`} />
+                      )}
+                      <div className="flex-1 text-left">
+                        <div className={`font-medium text-sm ${isBot ? 'text-amber-400' : 'text-white'}`}>
+                          {isBot && '🤖 '}
+                          {user.name.split('(')[0].trim()}
+                          {user.role && user.role !== 'customer' && (
+                            <sup className="ml-0.5 text-[8px] font-normal text-indigo-400/70">
+                              ({getRoleDisplay(user.role)})
+                            </sup>
+                          )}
+                        </div>
+                        <div className="text-slate-400 text-xs">
+                          {isBot ? 'Platform Bot - Automated' : (user.status === 'online' ? 'Active now' : 'Away')}
+                        </div>
                       </div>
-                      <div className="text-slate-400 text-xs">
-                        {user.status === 'online' ? 'Active now' : 'Away'}
-                      </div>
-                    </div>
-                  </button>
-                ))}
+                    </button>
+                  );
+                })}
               </div>
             </SheetContent>
           </Sheet>
@@ -1149,40 +1175,94 @@ export default function ModernMobileChat() {
               <div className="mt-4">
                 {selectedUser && userContext ? (
                   <div className="space-y-3">
+                    {/* Platform Bot Badge */}
+                    {userContext.isPlatformGenerated && (
+                      <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 flex items-center gap-2">
+                        <Bot className="w-5 h-5 text-amber-400 flex-shrink-0" />
+                        <div className="flex-1">
+                          <div className="text-amber-400 font-semibold text-sm">Platform-Generated Bot</div>
+                          <div className="text-amber-300/70 text-xs">Automated support assistant</div>
+                        </div>
+                      </div>
+                    )}
+                    
                     <div className="bg-white/5 border border-white/10 rounded-lg p-4">
                       <div className="flex items-center gap-2 mb-3">
                         <Info className="w-5 h-5 text-cyan-400" />
-                        <h4 className="text-white font-semibold">User Context</h4>
+                        <h4 className="text-white font-semibold">
+                          {userContext.isPlatformGenerated ? 'Bot Information' : 'User Context'}
+                        </h4>
                       </div>
                       <div className="space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-slate-400">Workspace:</span>
-                          <span className="text-white break-all text-right ml-2">{userContext.workspace?.name || 'N/A'}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-slate-400">Serial #:</span>
-                          <span className="text-white font-mono text-xs break-all text-right ml-2">{userContext.workspace?.serialNumber || 'N/A'}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-slate-400">User ID:</span>
-                          <span className="text-white font-mono text-xs break-all text-right ml-2">{selectedUser.id}</span>
-                        </div>
+                        {userContext.isPlatformGenerated ? (
+                          <>
+                            <div className="flex justify-between">
+                              <span className="text-slate-400">Type:</span>
+                              <span className="text-amber-400 break-all text-right ml-2">{userContext.userType}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-slate-400">Status:</span>
+                              <span className="text-emerald-400 break-all text-right ml-2">{userContext.status}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-slate-400">Bot ID:</span>
+                              <span className="text-white font-mono text-xs break-all text-right ml-2">{userContext.userId}</span>
+                            </div>
+                            <div className="border-t border-white/10 pt-2 mt-2">
+                              <span className="text-slate-400 text-xs">Description:</span>
+                              <p className="text-slate-300 text-xs mt-1">{userContext.description}</p>
+                            </div>
+                            <div className="border-t border-white/10 pt-2 mt-2">
+                              <span className="text-slate-400 text-xs">Capabilities:</span>
+                              <ul className="text-slate-300 text-xs mt-1 space-y-1">
+                                {userContext.capabilities?.map((cap: string, i: number) => (
+                                  <li key={i} className="flex items-center gap-1">
+                                    <CheckCircle className="w-3 h-3 text-emerald-400" />
+                                    {cap}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                            <div className="border-t border-white/10 pt-2 mt-2">
+                              <span className="text-amber-400 text-xs">⚠️ {userContext.restrictions}</span>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="flex justify-between">
+                              <span className="text-slate-400">Workspace:</span>
+                              <span className="text-white break-all text-right ml-2">{userContext.workspace?.name || 'N/A'}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-slate-400">Serial #:</span>
+                              <span className="text-white font-mono text-xs break-all text-right ml-2">{userContext.workspace?.serialNumber || 'N/A'}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-slate-400">User ID:</span>
+                              <span className="text-white font-mono text-xs break-all text-right ml-2">{selectedUser.id}</span>
+                            </div>
+                          </>
+                        )}
                       </div>
                     </div>
-                    <button
-                      onClick={() => {
-                        toast({ title: "Success", description: `Viewing history for ${selectedUser.name}` });
-                        setShowDiagnostics(false);
-                      }}
-                      className="w-full flex items-center gap-3 p-3 rounded-lg bg-white/5 hover-elevate active-elevate-2 border border-white/10"
-                      data-testid="diagnostic-user-history"
-                    >
-                      <History className="w-5 h-5 text-violet-400" />
-                      <div className="flex-1 text-left">
-                        <div className="text-white font-medium text-sm">View User History</div>
-                        <div className="text-slate-400 text-xs">Complete interaction timeline</div>
-                      </div>
-                    </button>
+                    
+                    {/* Hide user history for bots */}
+                    {!userContext.isPlatformGenerated && (
+                      <button
+                        onClick={() => {
+                          toast({ title: "Success", description: `Viewing history for ${selectedUser.name}` });
+                          setShowDiagnostics(false);
+                        }}
+                        className="w-full flex items-center gap-3 p-3 rounded-lg bg-white/5 hover-elevate active-elevate-2 border border-white/10"
+                        data-testid="diagnostic-user-history"
+                      >
+                        <History className="w-5 h-5 text-violet-400" />
+                        <div className="flex-1 text-left">
+                          <div className="text-white font-medium text-sm">View User History</div>
+                          <div className="text-slate-400 text-xs">Complete interaction timeline</div>
+                        </div>
+                      </button>
+                    )}
                   </div>
                 ) : (
                   <div className="text-center py-8">
