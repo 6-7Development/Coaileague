@@ -93,6 +93,8 @@ import {
   integrationApiKeys,
   webhookSubscriptions,
   webhookDeliveries,
+  // Promotional Banners
+  promotionalBanners,
 } from "@shared/schema";
 import crypto from "crypto";
 import { sql, eq, and, or, isNull, lte, gte, desc, inArray, ne } from "drizzle-orm";
@@ -7768,6 +7770,161 @@ Return ONLY valid JSON array with this exact structure:
       });
     } catch (error: any) {
       console.error("Error fetching user context:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============================================================================
+  // PROMOTIONAL BANNERS - Dashboard-manageable promotional banners for landing page
+  // ============================================================================
+
+  // Get active promotional banner (public - no auth required)
+  app.get('/api/promotional-banners/active', async (req, res) => {
+    try {
+      const [activeBanner] = await db
+        .select()
+        .from(promotionalBanners)
+        .where(eq(promotionalBanners.isActive, true))
+        .orderBy(desc(promotionalBanners.priority))
+        .limit(1);
+
+      res.json(activeBanner || null);
+    } catch (error: any) {
+      console.error("Error fetching active banner:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get all promotional banners (staff only)
+  app.get('/api/promotional-banners', requirePlatformStaff, async (req: AuthenticatedRequest, res) => {
+    try {
+      const banners = await db
+        .select()
+        .from(promotionalBanners)
+        .orderBy(desc(promotionalBanners.createdAt));
+
+      res.json(banners);
+    } catch (error: any) {
+      console.error("Error fetching banners:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Create promotional banner (staff only)
+  app.post('/api/promotional-banners', requirePlatformStaff, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user!.id;
+      
+      const schema = z.object({
+        message: z.string().min(1, "Message is required"),
+        ctaText: z.string().optional(),
+        ctaLink: z.string().optional(),
+        isActive: z.boolean().default(false),
+        priority: z.number().default(0),
+      });
+
+      const validationResult = schema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          message: "Invalid request",
+          errors: validationResult.error.errors
+        });
+      }
+
+      const { message, ctaText, ctaLink, isActive, priority } = validationResult.data;
+
+      // If setting this banner as active, deactivate all others
+      if (isActive) {
+        await db
+          .update(promotionalBanners)
+          .set({ isActive: false })
+          .where(eq(promotionalBanners.isActive, true));
+      }
+
+      const [banner] = await db
+        .insert(promotionalBanners)
+        .values({
+          message,
+          ctaText,
+          ctaLink,
+          isActive,
+          priority,
+          createdBy: userId,
+        })
+        .returning();
+
+      res.json(banner);
+    } catch (error: any) {
+      console.error("Error creating banner:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Update promotional banner (staff only)
+  app.patch('/api/promotional-banners/:id', requirePlatformStaff, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { id } = req.params;
+      
+      const schema = z.object({
+        message: z.string().optional(),
+        ctaText: z.string().optional(),
+        ctaLink: z.string().optional(),
+        isActive: z.boolean().optional(),
+        priority: z.number().optional(),
+      });
+
+      const validationResult = schema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          message: "Invalid request",
+          errors: validationResult.error.errors
+        });
+      }
+
+      const updates = validationResult.data;
+
+      // If setting this banner as active, deactivate all others
+      if (updates.isActive === true) {
+        await db
+          .update(promotionalBanners)
+          .set({ isActive: false })
+          .where(eq(promotionalBanners.isActive, true));
+      }
+
+      const [updatedBanner] = await db
+        .update(promotionalBanners)
+        .set({ ...updates, updatedAt: new Date() })
+        .where(eq(promotionalBanners.id, id))
+        .returning();
+
+      if (!updatedBanner) {
+        return res.status(404).json({ error: "Banner not found" });
+      }
+
+      res.json(updatedBanner);
+    } catch (error: any) {
+      console.error("Error updating banner:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Delete promotional banner (staff only)
+  app.delete('/api/promotional-banners/:id', requirePlatformStaff, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { id } = req.params;
+
+      const [deletedBanner] = await db
+        .delete(promotionalBanners)
+        .where(eq(promotionalBanners.id, id))
+        .returning();
+
+      if (!deletedBanner) {
+        return res.status(404).json({ error: "Banner not found" });
+      }
+
+      res.json({ message: "Banner deleted successfully" });
+    } catch (error: any) {
+      console.error("Error deleting banner:", error);
       res.status(500).json({ error: error.message });
     }
   });

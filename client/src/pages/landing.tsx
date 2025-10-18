@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useQuery } from "@tanstack/react-query";
 import { WorkforceOSLogo } from "@/components/workforceos-logo";
 import { PromoBanner } from "@/components/promo-banner";
 import { useLocation } from "wouter";
@@ -29,6 +30,18 @@ import {
 export default function Landing() {
   const [, setLocation] = useLocation();
   
+  // Fetch active promotional banner from database
+  const { data: activeBanner } = useQuery<{
+    id: string;
+    message: string;
+    ctaText: string | null;
+    ctaLink: string | null;
+    isActive: boolean;
+  } | null>({
+    queryKey: ['/api/promotional-banners/active'],
+    staleTime: 60000, // Cache for 1 minute
+  });
+  
   // Auto-redirect mobile users to mobile chat (INSTANT)
   useEffect(() => {
     const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -43,12 +56,14 @@ export default function Landing() {
   
   return (
     <div className="min-h-screen bg-[hsl(var(--cad-background))] text-[hsl(var(--cad-text-primary))]">
-      {/* Promotional Banner - Mobile Optimized, Appears at Top */}
-      <PromoBanner
-        message="New Year Special! Get 50% OFF your first 3 months + FREE onboarding worth $2,500!"
-        ctaText="Claim Offer"
-        ctaLink="/register"
-      />
+      {/* Promotional Banner - Dashboard Managed, Mobile Optimized */}
+      {activeBanner && (
+        <PromoBanner
+          message={activeBanner.message}
+          ctaText={activeBanner.ctaText || undefined}
+          ctaLink={activeBanner.ctaLink || undefined}
+        />
+      )}
       {/* CAD-Style Top Bar - Desktop */}
       <div className="hidden lg:flex h-12 bg-[hsl(var(--cad-chrome))] border-b border-[hsl(var(--cad-border-strong))] items-center justify-between px-6">
         <div className="text-sm font-bold text-[hsl(var(--cad-text-primary))]">WorkforceOS</div>
