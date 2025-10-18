@@ -984,17 +984,17 @@ export default function ModernMobileChat() {
                   'text-white'
                 }`}>
                   {msg.senderType === 'bot' ? 'HelpOS' : msg.senderName?.split('(')[0].trim()}
-                  {/* Role badge inline with name in smaller text */}
+                  {/* Role badge as superscript */}
                   {(roleDisplay || (msg.senderId === userId && userPlatformRole)) && (
-                    <span className={`ml-1 text-[10px] font-normal ${
+                    <sup className={`ml-0.5 text-[8px] font-normal ${
                       msg.senderType === 'bot' 
-                        ? 'text-amber-400/80' 
+                        ? 'text-amber-400/70' 
                         : isCurrentUser
                           ? 'text-indigo-400'
-                          : 'text-indigo-400/80'
+                          : 'text-indigo-400/70'
                     }`}>
                       ({roleDisplay || (msg.senderId === userId ? getRoleDisplay(userPlatformRole) : null)})
-                    </span>
+                    </sup>
                   )}
                 </span>
                 <span className="text-[10px] text-slate-500">
@@ -1249,9 +1249,9 @@ export default function ModernMobileChat() {
                       <div className="text-white font-medium text-sm">
                         {user.name.split('(')[0].trim()}
                         {user.role && user.role !== 'customer' && (
-                          <span className="ml-1 text-[10px] font-normal text-indigo-400/80">
+                          <sup className="ml-0.5 text-[8px] font-normal text-indigo-400/70">
                             ({getRoleDisplay(user.role)})
-                          </span>
+                          </sup>
                         )}
                       </div>
                       <div className="text-slate-400 text-xs">
