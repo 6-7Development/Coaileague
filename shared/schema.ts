@@ -4398,3 +4398,363 @@ export const insertAssetUsageLogSchema = createInsertSchema(assetUsageLogs).omit
 
 export type InsertAssetUsageLog = z.infer<typeof insertAssetUsageLogSchema>;
 export type AssetUsageLog = typeof assetUsageLogs.$inferSelect;
+
+// ============================================================================
+// ENGAGEMENT OS™ - BIDIRECTIONAL INTELLIGENCE SYSTEM
+// ============================================================================
+
+// Pulse Survey Templates - Customizable employee engagement surveys
+export const pulseSurveyTemplates = pgTable("pulse_survey_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  title: varchar("title").notNull(),
+  description: text("description"),
+  
+  // Survey configuration
+  questions: jsonb("questions").$type<Array<{
+    id: string;
+    text: string;
+    type: 'rating' | 'multiple_choice' | 'text' | 'yes_no';
+    options?: string[];
+    required: boolean;
+    category: 'workload' | 'management' | 'environment' | 'growth' | 'compensation' | 'culture' | 'safety' | 'resources';
+  }>>().notNull(),
+  
+  // Scheduling
+  frequency: varchar("frequency").default("monthly"), // 'weekly', 'biweekly', 'monthly', 'quarterly', 'annual', 'one_time'
+  isActive: boolean("is_active").default(true),
+  
+  // Anonymity settings
+  isAnonymous: boolean("is_anonymous").default(true),
+  showResultsToEmployees: boolean("show_results_to_employees").default(false),
+  
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  workspaceActiveIndex: index("pulse_survey_templates_workspace_active_idx").on(table.workspaceId, table.isActive),
+}));
+
+export const insertPulseSurveyTemplateSchema = createInsertSchema(pulseSurveyTemplates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertPulseSurveyTemplate = z.infer<typeof insertPulseSurveyTemplateSchema>;
+export type PulseSurveyTemplate = typeof pulseSurveyTemplates.$inferSelect;
+
+// Pulse Survey Responses - Employee feedback submissions
+export const pulseSurveyResponses = pgTable("pulse_survey_responses", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  surveyTemplateId: varchar("survey_template_id").notNull().references(() => pulseSurveyTemplates.id, { onDelete: 'cascade' }),
+  
+  // Respondent (nullable for anonymous surveys)
+  employeeId: varchar("employee_id").references(() => employees.id, { onDelete: 'set null' }),
+  
+  // Response data
+  responses: jsonb("responses").$type<Array<{
+    questionId: string;
+    answer: string | number | string[];
+  }>>().notNull(),
+  
+  // AI Sentiment Analysis
+  sentimentScore: decimal("sentiment_score", { precision: 5, scale: 2 }), // -100 to +100
+  sentimentLabel: varchar("sentiment_label"), // 'positive', 'neutral', 'negative', 'very_negative'
+  emotionalTone: varchar("emotional_tone"), // 'happy', 'frustrated', 'anxious', 'satisfied', 'angry'
+  keyThemes: jsonb("key_themes").$type<string[]>().default(sql`'[]'`), // AI-extracted themes
+  
+  // Engagement score calculation (0-100)
+  engagementScore: decimal("engagement_score", { precision: 5, scale: 2 }),
+  
+  // Metadata
+  submittedAt: timestamp("submitted_at").defaultNow(),
+  ipAddress: varchar("ip_address"), // For duplicate detection (not shown to managers)
+  userAgent: text("user_agent"),
+}, (table) => ({
+  surveyEmployeeIndex: index("pulse_responses_survey_employee_idx").on(table.surveyTemplateId, table.employeeId),
+  sentimentIndex: index("pulse_responses_sentiment_idx").on(table.workspaceId, table.sentimentLabel),
+  engagementIndex: index("pulse_responses_engagement_idx").on(table.workspaceId, table.engagementScore),
+}));
+
+export const insertPulseSurveyResponseSchema = createInsertSchema(pulseSurveyResponses).omit({
+  id: true,
+  submittedAt: true,
+});
+
+export type InsertPulseSurveyResponse = z.infer<typeof insertPulseSurveyResponseSchema>;
+export type PulseSurveyResponse = typeof pulseSurveyResponses.$inferSelect;
+
+// Employer Ratings - Employees rate their organization/departments/managers
+export const employerRatings = pgTable("employer_ratings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  // Rater (anonymous)
+  employeeId: varchar("employee_id").references(() => employees.id, { onDelete: 'set null' }),
+  
+  // Rating target
+  ratingType: varchar("rating_type").notNull(), // 'organization', 'department', 'manager', 'location'
+  targetId: varchar("target_id"), // departmentId, managerId, locationId (null for organization-wide)
+  targetName: varchar("target_name"), // Display name for reporting
+  
+  // Ratings (1-5 scale)
+  managementQuality: integer("management_quality"), // Leadership effectiveness
+  workEnvironment: integer("work_environment"), // Safety, cleanliness, resources
+  compensationFairness: integer("compensation_fairness"), // Pay vs. industry
+  growthOpportunities: integer("growth_opportunities"), // Training, advancement
+  workLifeBalance: integer("work_life_balance"), // Schedule flexibility
+  equipmentResources: integer("equipment_resources"), // Tools, technology
+  communicationClarity: integer("communication_clarity"), // Clear expectations
+  recognitionAppreciation: integer("recognition_appreciation"), // Feeling valued
+  
+  // Overall score (calculated average)
+  overallScore: decimal("overall_score", { precision: 3, scale: 1 }), // 1.0 - 5.0
+  
+  // Feedback
+  positiveComments: text("positive_comments"),
+  improvementSuggestions: text("improvement_suggestions"),
+  
+  // AI Analysis
+  sentimentScore: decimal("sentiment_score", { precision: 5, scale: 2 }),
+  sentimentLabel: varchar("sentiment_label"),
+  riskFlags: jsonb("risk_flags").$type<string[]>().default(sql`'[]'`), // ['high_turnover_risk', 'safety_concern', 'harassment_mention']
+  
+  // Anonymous protection
+  isAnonymous: boolean("is_anonymous").default(true),
+  ipAddress: varchar("ip_address"), // For duplicate detection only
+  
+  submittedAt: timestamp("submitted_at").defaultNow(),
+}, (table) => ({
+  workspaceTypeIndex: index("employer_ratings_workspace_type_idx").on(table.workspaceId, table.ratingType),
+  targetIndex: index("employer_ratings_target_idx").on(table.targetId, table.submittedAt),
+  scoreIndex: index("employer_ratings_score_idx").on(table.workspaceId, table.overallScore),
+}));
+
+export const insertEmployerRatingSchema = createInsertSchema(employerRatings).omit({
+  id: true,
+  submittedAt: true,
+});
+
+export type InsertEmployerRating = z.infer<typeof insertEmployerRatingSchema>;
+export type EmployerRating = typeof employerRatings.$inferSelect;
+
+// Anonymous Suggestions - Employee suggestion box with ticket tracking
+export const anonymousSuggestions = pgTable("anonymous_suggestions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  // Submitter (anonymous)
+  employeeId: varchar("employee_id").references(() => employees.id, { onDelete: 'set null' }),
+  
+  // Suggestion content
+  title: varchar("title").notNull(),
+  description: text("description").notNull(),
+  category: varchar("category"), // 'safety', 'process', 'equipment', 'culture', 'compensation', 'benefits', 'other'
+  
+  // AI Sentiment Analysis
+  sentimentScore: decimal("sentiment_score", { precision: 5, scale: 2 }),
+  sentimentLabel: varchar("sentiment_label"),
+  urgencyLevel: varchar("urgency_level"), // 'low', 'medium', 'high', 'critical' (AI-determined)
+  
+  // Ticket tracking (SupportOS™ integration)
+  ticketId: varchar("ticket_id").references(() => supportTickets.id),
+  status: varchar("status").default("submitted"), // 'submitted', 'under_review', 'in_progress', 'implemented', 'declined', 'duplicate'
+  statusUpdatedAt: timestamp("status_updated_at"),
+  
+  // Management response
+  responseToEmployee: text("response_to_employee"), // Public response visible to submitter
+  internalNotes: text("internal_notes"), // Private manager notes
+  implementationDate: timestamp("implementation_date"),
+  declineReason: text("decline_reason"),
+  
+  // Visibility
+  isAnonymous: boolean("is_anonymous").default(true),
+  visibleToAllEmployees: boolean("visible_to_all_employees").default(false), // Suggestion board feature
+  
+  // Engagement metrics
+  upvotes: integer("upvotes").default(0), // Other employees can upvote
+  viewCount: integer("view_count").default(0),
+  
+  submittedAt: timestamp("submitted_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  workspaceStatusIndex: index("suggestions_workspace_status_idx").on(table.workspaceId, table.status),
+  categoryUrgencyIndex: index("suggestions_category_urgency_idx").on(table.category, table.urgencyLevel),
+}));
+
+export const insertAnonymousSuggestionSchema = createInsertSchema(anonymousSuggestions).omit({
+  id: true,
+  submittedAt: true,
+  updatedAt: true,
+});
+
+export type InsertAnonymousSuggestion = z.infer<typeof insertAnonymousSuggestionSchema>;
+export type AnonymousSuggestion = typeof anonymousSuggestions.$inferSelect;
+
+// Employee Recognition - Peer-to-peer kudos and rewards
+export const employeeRecognition = pgTable("employee_recognition", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  // Recognition details
+  recognizedEmployeeId: varchar("recognized_employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
+  recognizedByEmployeeId: varchar("recognized_by_employee_id").references(() => employees.id, { onDelete: 'set null' }),
+  recognizedByManagerId: varchar("recognized_by_manager_id").references(() => employees.id, { onDelete: 'set null' }),
+  
+  // Kudos content
+  reason: text("reason").notNull(),
+  category: varchar("category"), // 'safety', 'customer_service', 'teamwork', 'innovation', 'quality', 'leadership'
+  
+  // Context (ties to work done)
+  relatedShiftId: varchar("related_shift_id").references(() => shifts.id),
+  relatedClientId: varchar("related_client_id").references(() => clients.id),
+  relatedReportId: varchar("related_report_id"), // Links to report submissions
+  
+  // Visibility
+  isPublic: boolean("is_public").default(true), // Visible on company feed
+  
+  // Monetary reward (BillOS™ integration)
+  hasMonetaryReward: boolean("has_monetary_reward").default(false),
+  rewardAmount: decimal("reward_amount", { precision: 10, scale: 2 }),
+  rewardType: varchar("reward_type"), // 'bonus', 'gift_card', 'pto_hours', 'points'
+  rewardPaid: boolean("reward_paid").default(false),
+  rewardPaidAt: timestamp("reward_paid_at"),
+  rewardTransactionId: varchar("reward_transaction_id"),
+  
+  // Engagement metrics
+  likes: integer("likes").default(0), // Other employees can like
+  comments: integer("comments").default(0),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  recognizedEmployeeIndex: index("recognition_employee_idx").on(table.recognizedEmployeeId, table.createdAt),
+  workspacePublicIndex: index("recognition_workspace_public_idx").on(table.workspaceId, table.isPublic),
+  rewardPendingIndex: index("recognition_reward_pending_idx").on(table.hasMonetaryReward, table.rewardPaid),
+}));
+
+export const insertEmployeeRecognitionSchema = createInsertSchema(employeeRecognition).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertEmployeeRecognition = z.infer<typeof insertEmployeeRecognitionSchema>;
+export type EmployeeRecognition = typeof employeeRecognition.$inferSelect;
+
+// Employee Health Scores - Aggregated engagement metrics
+export const employeeHealthScores = pgTable("employee_health_scores", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
+  
+  // Calculated period
+  periodStart: timestamp("period_start").notNull(),
+  periodEnd: timestamp("period_end").notNull(),
+  
+  // Engagement metrics (0-100 scale)
+  overallEngagementScore: decimal("overall_engagement_score", { precision: 5, scale: 2 }),
+  surveyParticipationRate: decimal("survey_participation_rate", { precision: 5, scale: 2 }),
+  averageSentimentScore: decimal("average_sentiment_score", { precision: 5, scale: 2 }),
+  
+  // Component scores
+  workloadSatisfaction: decimal("workload_satisfaction", { precision: 5, scale: 2 }),
+  managementSatisfaction: decimal("management_satisfaction", { precision: 5, scale: 2 }),
+  growthSatisfaction: decimal("growth_satisfaction", { precision: 5, scale: 2 }),
+  compensationSatisfaction: decimal("compensation_satisfaction", { precision: 5, scale: 2 }),
+  cultureSatisfaction: decimal("culture_satisfaction", { precision: 5, scale: 2 }),
+  
+  // Risk indicators
+  turnoverRiskScore: decimal("turnover_risk_score", { precision: 5, scale: 2 }), // PredictionOS™ integration
+  riskLevel: varchar("risk_level"), // 'low', 'medium', 'high', 'critical'
+  riskFactors: jsonb("risk_factors").$type<string[]>().default(sql`'[]'`), // ['low_engagement', 'compensation_concern', 'manager_conflict']
+  
+  // Manager action queue
+  requiresManagerAction: boolean("requires_manager_action").default(false),
+  actionPriority: varchar("action_priority"), // 'low', 'medium', 'high', 'urgent'
+  suggestedActions: jsonb("suggested_actions").$type<Array<{
+    action: string;
+    conversationStarter: string; // AI-generated
+    expectedImpact: string;
+  }>>().default(sql`'[]'`),
+  
+  // Action tracking
+  managerNotified: boolean("manager_notified").default(false),
+  managerNotifiedAt: timestamp("manager_notified_at"),
+  actionTaken: boolean("action_taken").default(false),
+  actionTakenAt: timestamp("action_taken_at"),
+  actionNotes: text("action_notes"),
+  
+  calculatedAt: timestamp("calculated_at").defaultNow(),
+}, (table) => ({
+  employeePeriodIndex: index("health_scores_employee_period_idx").on(table.employeeId, table.periodEnd),
+  riskLevelIndex: index("health_scores_risk_level_idx").on(table.workspaceId, table.riskLevel, table.requiresManagerAction),
+  actionQueueIndex: index("health_scores_action_queue_idx").on(table.requiresManagerAction, table.managerNotified),
+}));
+
+export const insertEmployeeHealthScoreSchema = createInsertSchema(employeeHealthScores).omit({
+  id: true,
+  calculatedAt: true,
+});
+
+export type InsertEmployeeHealthScore = z.infer<typeof insertEmployeeHealthScoreSchema>;
+export type EmployeeHealthScore = typeof employeeHealthScores.$inferSelect;
+
+// Employer Benchmark Scores - Aggregated org/department ratings vs. industry
+export const employerBenchmarkScores = pgTable("employer_benchmark_scores", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  // Benchmark target
+  benchmarkType: varchar("benchmark_type").notNull(), // 'organization', 'department', 'manager', 'location'
+  targetId: varchar("target_id"), // null for organization-wide
+  targetName: varchar("target_name"),
+  
+  // Calculated period
+  periodStart: timestamp("period_start").notNull(),
+  periodEnd: timestamp("period_end").notNull(),
+  
+  // Aggregated ratings (1-5 scale)
+  managementQualityAvg: decimal("management_quality_avg", { precision: 3, scale: 2 }),
+  workEnvironmentAvg: decimal("work_environment_avg", { precision: 3, scale: 2 }),
+  compensationFairnessAvg: decimal("compensation_fairness_avg", { precision: 3, scale: 2 }),
+  growthOpportunitiesAvg: decimal("growth_opportunities_avg", { precision: 3, scale: 2 }),
+  workLifeBalanceAvg: decimal("work_life_balance_avg", { precision: 3, scale: 2 }),
+  equipmentResourcesAvg: decimal("equipment_resources_avg", { precision: 3, scale: 2 }),
+  communicationClarityAvg: decimal("communication_clarity_avg", { precision: 3, scale: 2 }),
+  recognitionAppreciationAvg: decimal("recognition_appreciation_avg", { precision: 3, scale: 2 }),
+  
+  // Overall employer score
+  overallScore: decimal("overall_score", { precision: 3, scale: 2 }),
+  
+  // Industry benchmarking (anonymized cross-platform data)
+  industryAverageScore: decimal("industry_average_score", { precision: 3, scale: 2 }),
+  percentileRank: integer("percentile_rank"), // 0-100 (how you rank vs. similar companies)
+  
+  // Trend analysis
+  scoreTrend: varchar("score_trend"), // 'improving', 'stable', 'declining'
+  monthOverMonthChange: decimal("month_over_month_change", { precision: 4, scale: 2 }),
+  
+  // Response metrics
+  totalResponses: integer("total_responses").default(0),
+  responseRate: decimal("response_rate", { precision: 5, scale: 2 }),
+  
+  // Risk indicators
+  criticalIssuesCount: integer("critical_issues_count").default(0),
+  highRiskFlags: jsonb("high_risk_flags").$type<string[]>().default(sql`'[]'`),
+  
+  calculatedAt: timestamp("calculated_at").defaultNow(),
+}, (table) => ({
+  workspaceTypeIndex: index("employer_benchmarks_workspace_type_idx").on(table.workspaceId, table.benchmarkType),
+  targetPeriodIndex: index("employer_benchmarks_target_period_idx").on(table.targetId, table.periodEnd),
+  scoreRankIndex: index("employer_benchmarks_score_rank_idx").on(table.overallScore, table.percentileRank),
+}));
+
+export const insertEmployerBenchmarkScoreSchema = createInsertSchema(employerBenchmarkScores).omit({
+  id: true,
+  calculatedAt: true,
+});
+
+export type InsertEmployerBenchmarkScore = z.infer<typeof insertEmployerBenchmarkScoreSchema>;
+export type EmployerBenchmarkScore = typeof employerBenchmarkScores.$inferSelect;
