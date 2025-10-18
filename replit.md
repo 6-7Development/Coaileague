@@ -3,6 +3,39 @@
 ## Overview
 WorkforceOS is a comprehensive workforce management operating system designed to automate HR functions for businesses. It offers features such as time tracking, automated invoice generation, smart hiring, compliance audit trails, and real-time analytics. The platform aims to provide significant cost savings by integrating various HR functions into a single system, envisioning branded features like BillOS™, PayrollOS™, ScheduleOS™, HireOS™, TrackOS™, ReportOS™, and AnalyticsOS™ for a unified product identity.
 
+## Recent Changes
+
+### October 18, 2025 - HireOS™ Monopolistic Features Complete (Tasks 6-8)
+**Full Workforce Lifecycle Management - Employee Self-Service, HR Access Control & Platform Support**
+
+**Task 6: Employee Self-Service Portal with Permission System**
+- Extended employees table with editable contact fields (address, city, state, zipCode, emergency contact info)
+- Built employee profile page with locked identity fields (name, employee number, role) and editable contact section
+- Implemented field-level permissions via API whitelist (prevents editing employment details)
+- Fixed infinite render loop via useEffect for contact info state initialization
+- Endpoints: GET /api/employees/me, PATCH /api/employees/me/contact-info
+- Monopolistic Value: Employees update contact info without HR intervention, legal documents permanently locked for compliance
+
+**Task 7: Designated HR Manager Role with Granular Document Access**
+- Added 'hr_manager' to workspaceRoleEnum in database schema
+- Created requireHRManager RBAC middleware for HR-specific endpoints
+- Updated HireOS™ document routes to allow HR managers (approve/reject documents, view audit logs, generate PDF packets)
+- Role assignment via owner-only PATCH /api/employees/:id endpoint
+- Monopolistic Value: Designated HR staff can manage onboarding without full manager privileges, scalable role hierarchy
+
+**Task 8: SupportOS™ Read-Only Master View for Platform Staff**
+- Converted admin-support.tsx from read-write to pure read-only (removed ALL 16 mutations)
+- File reduced from 1,192 → 528 lines (55.7% reduction)
+- Preserved read-only queries: customer search, workspace detail, platform statistics
+- Backend: searchCustomers(), getWorkspaceDetail(), getPlatformStats() protected by requirePlatformStaff
+- Monopolistic Value: Platform staff troubleshoot across ALL organizations without database/shell access, maintains compliance boundary
+
+**Combined Monopolistic Advantage**:
+- Complete employee lifecycle management from hire to retire
+- Granular role-based access control (owner → manager → hr_manager → supervisor → employee)
+- Platform-level troubleshooting without technical access
+- Justifies $500/month pricing through vendor lock-in and compliance automation
+
 ## User Preferences
 I prefer detailed explanations.
 Do not make changes to the folder `Z`.
