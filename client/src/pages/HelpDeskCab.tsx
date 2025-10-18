@@ -634,33 +634,34 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
 
   const getRoleColor = (role: string) => {
     switch (role) {
-      case 'root': return 'text-indigo-400 font-bold';  // Root admin - matching mobile chat
-      case 'bot': return 'text-amber-400 font-bold';  // Bot - amber color matching mobile chat
-      case 'deputy_admin': return 'text-indigo-400 font-bold';
-      case 'deputy_assistant': return 'text-indigo-400 font-bold';
-      case 'sysop': return 'text-indigo-400 font-bold';
-      default: return 'text-white font-semibold';
+      case 'root': return 'text-indigo-600 font-bold';  // Root admin
+      case 'bot': return 'text-amber-600 font-bold';  // Bot
+      case 'deputy_admin': return 'text-indigo-600 font-bold';
+      case 'deputy_assistant': return 'text-blue-600 font-bold';
+      case 'sysop': return 'text-purple-600 font-bold';
+      default: return 'text-slate-700 font-semibold';  // Regular users
     }
   };
 
-  // Get message bubble color - Professional styling matching mobile chat
+  // Get message bubble color - Unified, aesthetically pleasing design with good contrast
   const getMessageBubbleColor = (senderType: string, role: string, isSelf: boolean) => {
     if (isSelf) {
-      return 'bg-slate-700/90 border border-slate-600';
+      // Support staff own messages - soft indigo (not too dark)
+      return 'bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-200 shadow-sm';
     }
     
-    // Bot messages - amber background matching mobile chat
+    // Bot messages - warm amber/cream background
     if (role === 'bot' || senderType === 'bot') {
-      return 'bg-gradient-to-br from-amber-500/20 to-yellow-600/20 border border-amber-500/30';
+      return 'bg-gradient-to-br from-amber-50 to-yellow-50 border border-amber-200 shadow-sm';
     }
     
-    // Staff messages - indigo/blue background matching mobile chat
+    // Staff messages - soft indigo/blue background (lighter than own messages)
     if (role === 'root' || role === 'deputy_admin' || role === 'deputy_assistant' || role === 'sysop') {
-      return 'bg-gradient-to-br from-indigo-600/20 to-blue-600/20 border border-indigo-500/30';
+      return 'bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 shadow-sm';
     }
     
-    // Customer/regular messages
-    return 'bg-slate-100/80 border border-slate-200';
+    // Customer/regular messages - neutral warm gray
+    return 'bg-gradient-to-br from-slate-50 to-gray-50 border border-slate-200 shadow-sm';
   };
 
   const isStaff = user && ['root', 'deputy_admin', 'deputy_assistant', 'sysop'].includes((user as any).platformRole);
@@ -1731,9 +1732,12 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
       }}>
         <DialogContent className="sm:max-w-[600px] bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 border border-white/10 text-white">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-xl text-white">
-              <Info className="w-5 h-5 text-cyan-400" />
-              User Profile & Diagnostics
+            <DialogTitle className="flex items-center gap-3 text-xl text-white">
+              <WorkforceOSLogo size="sm" showText={false} />
+              <div className="flex items-center gap-2">
+                <Info className="w-5 h-5 text-cyan-400" />
+                User Profile & Diagnostics
+              </div>
             </DialogTitle>
             <DialogDescription className="text-slate-300">
               {isStaff ? 'Complete user information and diagnostics' : 'Basic user information'}
@@ -1946,10 +1950,14 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
                 )}
               </div>
             ) : (
-              /* Loading state */
+              /* Loading state with WorkforceOS branding */
               <div className="text-center py-8">
+                <div className="mb-4 flex justify-center">
+                  <WorkforceOSLogo size="lg" showText={false} className="opacity-75" />
+                </div>
                 <div className="w-12 h-12 mx-auto mb-4 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin"></div>
-                <p className="text-slate-400 text-sm">Loading user information...</p>
+                <p className="text-slate-400 text-sm font-medium">Loading user information...</p>
+                <p className="text-slate-500 text-xs mt-1">Powered by WorkforceOS™</p>
               </div>
             )}
           </div>

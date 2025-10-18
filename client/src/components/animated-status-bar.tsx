@@ -141,21 +141,9 @@ export function AnimatedStatusBar({
   }
 
   return (
-    <div className="flex items-center gap-2 text-sm text-muted-foreground" data-testid="default-status">
+    <div className="flex items-center gap-2 text-sm text-slate-500" data-testid="default-status">
       <Clock className="w-4 h-4" />
       <span>Enter to send</span>
-      <motion.div
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        className="ml-auto flex items-center gap-1.5 text-green-600"
-      >
-        <motion.div
-          className="w-2 h-2 rounded-full bg-green-500"
-          animate={{ opacity: [1, 0.5, 1] }}
-          transition={{ duration: 2, repeat: Infinity }}
-        />
-        <span className="text-xs font-medium">Connected</span>
-      </motion.div>
     </div>
   );
 }
