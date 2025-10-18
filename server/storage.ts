@@ -55,6 +55,7 @@ import {
   employeeDocuments,
   documentAccessLogs,
   onboardingChecklists,
+  disputes,
   type User,
   type UpsertUser,
   type AbuseViolation,
@@ -138,6 +139,8 @@ import {
   type InsertDocumentAccessLog,
   type OnboardingChecklist,
   type InsertOnboardingChecklist,
+  type Dispute,
+  type InsertDispute,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, isNotNull, isNull, or, like, sql } from "drizzle-orm";
@@ -323,6 +326,17 @@ export interface IStorage {
   getPerformanceReviewsByWorkspace(workspaceId: string): Promise<PerformanceReview[]>;
   updatePerformanceReview(id: string, workspaceId: string, data: Partial<InsertPerformanceReview>): Promise<PerformanceReview | undefined>;
   deletePerformanceReview(id: string, workspaceId: string): Promise<boolean>;
+  
+  // Dispute operations (Fair Employee/Employer Transparency)
+  createDispute(dispute: InsertDispute): Promise<Dispute>;
+  getDispute(id: string, workspaceId: string): Promise<Dispute | undefined>;
+  getDisputesByFiledBy(filedBy: string, workspaceId: string): Promise<Dispute[]>;
+  getDisputesByWorkspace(workspaceId: string, filters?: { status?: string; disputeType?: string; assignedTo?: string }): Promise<Dispute[]>;
+  getDisputesByTarget(targetType: string, targetId: string, workspaceId: string): Promise<Dispute[]>;
+  updateDispute(id: string, workspaceId: string, data: Partial<InsertDispute>): Promise<Dispute | undefined>;
+  assignDispute(id: string, workspaceId: string, assignedTo: string): Promise<Dispute | undefined>;
+  resolveDispute(id: string, workspaceId: string, resolvedBy: string, resolution: string, resolutionAction: string): Promise<Dispute | undefined>;
+  applyDisputeChanges(id: string, workspaceId: string): Promise<Dispute | undefined>;
   
   // PTO Request operations (HR)
   createPtoRequest(request: InsertPtoRequest): Promise<PtoRequest>;
@@ -1788,6 +1802,146 @@ export class DatabaseStorage implements IStorage {
       .returning();
     
     return result.length > 0;
+  }
+
+  // ============================================================================
+  // DISPUTE OPERATIONS (Fair Employee/Employer Transparency)
+  // ============================================================================
+  
+  async createDispute(dispute: InsertDispute): Promise<Dispute> {
+    const [newDispute] = await db
+      .insert(disputes)
+      .values(dispute)
+      .returning();
+    
+    return newDispute;
+  }
+  
+  async getDispute(id: string, workspaceId: string): Promise<Dispute | undefined> {
+    const [dispute] = await db
+      .select()
+      .from(disputes)
+      .where(and(eq(disputes.id, id), eq(disputes.workspaceId, workspaceId)));
+    
+    return dispute;
+  }
+  
+  async getDisputesByFiledBy(filedBy: string, workspaceId: string): Promise<Dispute[]> {
+    return await db
+      .select()
+      .from(disputes)
+      .where(
+        and(
+          eq(disputes.filedBy, filedBy),
+          eq(disputes.workspaceId, workspaceId)
+        )
+      )
+      .orderBy(desc(disputes.filedAt));
+  }
+  
+  async getDisputesByWorkspace(
+    workspaceId: string,
+    filters?: { status?: string; disputeType?: string; assignedTo?: string }
+  ): Promise<Dispute[]> {
+    const conditions = [eq(disputes.workspaceId, workspaceId)];
+    
+    if (filters?.status) {
+      conditions.push(eq(disputes.status, filters.status));
+    }
+    
+    if (filters?.disputeType) {
+      conditions.push(eq(disputes.disputeType, filters.disputeType));
+    }
+    
+    if (filters?.assignedTo) {
+      conditions.push(eq(disputes.assignedTo, filters.assignedTo));
+    }
+    
+    return await db
+      .select()
+      .from(disputes)
+      .where(and(...conditions))
+      .orderBy(desc(disputes.filedAt));
+  }
+  
+  async getDisputesByTarget(targetType: string, targetId: string, workspaceId: string): Promise<Dispute[]> {
+    return await db
+      .select()
+      .from(disputes)
+      .where(
+        and(
+          eq(disputes.targetType, targetType),
+          eq(disputes.targetId, targetId),
+          eq(disputes.workspaceId, workspaceId)
+        )
+      )
+      .orderBy(desc(disputes.filedAt));
+  }
+  
+  async updateDispute(
+    id: string,
+    workspaceId: string,
+    data: Partial<InsertDispute>
+  ): Promise<Dispute | undefined> {
+    const [updated] = await db
+      .update(disputes)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(disputes.id, id), eq(disputes.workspaceId, workspaceId)))
+      .returning();
+    
+    return updated;
+  }
+  
+  async assignDispute(id: string, workspaceId: string, assignedTo: string): Promise<Dispute | undefined> {
+    const [updated] = await db
+      .update(disputes)
+      .set({ 
+        assignedTo, 
+        assignedAt: new Date(),
+        status: 'under_review',
+        updatedAt: new Date() 
+      })
+      .where(and(eq(disputes.id, id), eq(disputes.workspaceId, workspaceId)))
+      .returning();
+    
+    return updated;
+  }
+  
+  async resolveDispute(
+    id: string,
+    workspaceId: string,
+    resolvedBy: string,
+    resolution: string,
+    resolutionAction: string
+  ): Promise<Dispute | undefined> {
+    const [updated] = await db
+      .update(disputes)
+      .set({ 
+        resolvedBy,
+        resolution,
+        resolutionAction,
+        status: 'resolved',
+        resolvedAt: new Date(),
+        updatedAt: new Date() 
+      })
+      .where(and(eq(disputes.id, id), eq(disputes.workspaceId, workspaceId)))
+      .returning();
+    
+    return updated;
+  }
+  
+  async applyDisputeChanges(id: string, workspaceId: string): Promise<Dispute | undefined> {
+    const [updated] = await db
+      .update(disputes)
+      .set({ 
+        changesApplied: true,
+        changesAppliedAt: new Date(),
+        updatedAt: new Date() 
+      })
+      .where(and(eq(disputes.id, id), eq(disputes.workspaceId, workspaceId)))
+      .returning();
+    
+    return updated;
   }
 
   // ============================================================================
