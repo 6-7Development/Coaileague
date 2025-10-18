@@ -23,7 +23,7 @@ The platform features a CAD-style professional interface with a dark mode theme,
     - **Time Tracking**: Clock-in/out, real-time timers, automated calculations.
     - **Invoice Generation**: Automated from unbilled time, multi-client, tax/fee calculation.
     - **Analytics Dashboard**: Tracks revenue, hours, active users, invoice statistics.
-    - **Advanced Scheduling System (ScheduleOS™)**: Professional grid interface, drag-and-drop, real-time statistics, conflict detection, and optional AI auto-scheduling (GPT-4 powered).
+    - **Advanced Scheduling System (SmartScheduleOS™)**: Professional Sling-style calendar interface with react-big-calendar, drag-and-drop (with touch support via react-dnd-multi-backend), real-time conflict detection, mobile-responsive design, and optional AI auto-scheduling (GPT-4 powered). Fully unified system combining modern calendar UX with AI scheduling capabilities.
     - **Employee Onboarding (HireOS™)**: Multi-step process including personal info, tax, availability, documents, and e-signature.
     - **Report Management System (ReportOS™)**: Template management, dynamic submissions, supervisor approval, and automated email delivery.
     - **HR Management Suite**: Employee Benefits, Performance Reviews, PTO Management, and Employee Terminations.
