@@ -32,10 +32,11 @@ interface OnlineUser {
 
 export default function ModernMobileChat() {
   const [messageText, setMessageText] = useState("");
-  const [activeTab, setActiveTab] = useState<'chat' | 'diagnostics' | 'tools'>('chat');
   const [showQuickResponses, setShowQuickResponses] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showUserList, setShowUserList] = useState(false);
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
+  const [showTools, setShowTools] = useState(false);
   const [selectedUser, setSelectedUser] = useState<OnlineUser | null>(null);
   const [userContext, setUserContext] = useState<any>(null);
   const [showAgreement, setShowAgreement] = useState(false);
@@ -976,59 +977,7 @@ export default function ModernMobileChat() {
         )}
       </div>
 
-      {/* Tab Navigation */}
-      <div className="relative z-10 backdrop-blur-xl bg-black/20 border-b border-white/10">
-        <div className="flex items-center">
-          <button
-            onClick={() => setActiveTab('chat')}
-            className={`flex-1 py-3 text-sm font-semibold transition-all ${
-              activeTab === 'chat'
-                ? 'text-white border-b-2 border-indigo-500'
-                : 'text-slate-400 hover:text-white'
-            }`}
-            data-testid="tab-chat"
-          >
-            Chat
-          </button>
-          {isStaff && (
-            <>
-              <button
-                onClick={() => setActiveTab('diagnostics')}
-                className={`flex-1 py-3 text-sm font-semibold transition-all ${
-                  activeTab === 'diagnostics'
-                    ? 'text-white border-b-2 border-indigo-500'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-                data-testid="tab-diagnostics"
-              >
-                Diagnostics
-              </button>
-              <button
-                onClick={() => setActiveTab('tools')}
-                className={`flex-1 py-3 text-sm font-semibold transition-all ${
-                  activeTab === 'tools'
-                    ? 'text-white border-b-2 border-indigo-500'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-                data-testid="tab-tools"
-              >
-                Tools
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-
-
-      {/* Tab Content */}
-      {activeTab === 'chat' && (
-        <>
-          {/* Mini Advertisement Banner */}
-          <div className="relative z-10">
-            <MiniAdBanner />
-          </div>
-
-          {/* Messages Container */}
+      {/* Messages Container (always visible) */}
           <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 relative z-10">
         {messages.map((msg) => {
           const msgRole = (msg as any).platformRole || msg.senderType;
@@ -1294,11 +1243,9 @@ export default function ModernMobileChat() {
           )}
         </div>
       )}
-        </>
-      )}
 
-      {/* Diagnostics Tab Content */}
-      {activeTab === 'diagnostics' && isStaff && (
+      {/* Floating Action Buttons - Bottom Right */}
+      {isStaff && (
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 relative z-10">
           <div className="text-center py-8">
             <Eye className="w-12 h-12 text-indigo-400 mx-auto mb-4" />
