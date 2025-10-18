@@ -500,8 +500,9 @@ export default function ModernMobileChat() {
   }, [messages]);
 
   const handleSend = () => {
-    if (messageText.trim()) {
-      sendMessage(messageText, userName, isStaff ? 'support' : 'customer');
+    const trimmedMessage = messageText.trim();
+    if (trimmedMessage) {
+      sendMessage(trimmedMessage, userName, isStaff ? 'support' : 'customer');
       setMessageText('');
       playSound('send');
     }
@@ -1260,7 +1261,12 @@ export default function ModernMobileChat() {
               type="text"
               value={messageText}
               onChange={(e) => setMessageText(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSend();
+                }
+              }}
               placeholder={selectedUser ? `Message to ${selectedUser.name}...` : "Type a message..."}
               className="w-full bg-white/10 backdrop-blur-sm text-white placeholder-slate-400 px-4 py-3 rounded-full border border-white/10 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all"
               data-testid="input-message"

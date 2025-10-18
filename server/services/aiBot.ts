@@ -33,7 +33,7 @@ interface AiBotResponse {
   };
 }
 
-/
+/**
  * Generate greeting message when user joins HelpDesk
  */
 export async function generateGreeting(userName: string, isGuest: boolean): Promise<string> {
@@ -44,7 +44,7 @@ export async function generateGreeting(userName: string, isGuest: boolean): Prom
   return `👋 Welcome back to HelpDesk, ${userName}! I'm HelpOS™, your AI assistant, ready to help with any questions about WorkforceOS.`;
 }
 
-/
+/**
  * Generate staff introduction announcement (MACRO)
  * When support staff initiates help with a user, bot announces their arrival
  * This gives staff time to prepare while bot handles the initial greeting
@@ -53,7 +53,7 @@ export async function generateStaffIntroduction(staffName: string, customerName:
   return `📢 Support staff ${staffName} is now ready to help you${customerName ? `, ${customerName}` : ''}! Please provide your full name and organization ID so we can assist you better. 🙌`;
 }
 
-/
+/**
  * Calculate cost in USD based on token usage
  */
 function calculateCost(promptTokens: number, completionTokens: number): number {
@@ -63,7 +63,7 @@ function calculateCost(promptTokens: number, completionTokens: number): number {
   return promptCost + completionCost;
 }
 
-/
+/**
  * Get AI response to user question with tier-based limits and cost tracking
  */
 export async function getAiResponse(
@@ -202,7 +202,7 @@ If unsure, direct to human support team.`
   }
 }
 
-/
+/**
  * Detect if message is asking for AI help or should trigger bot response
  */
 export function shouldBotRespond(message: string): boolean {
@@ -218,7 +218,7 @@ export function shouldBotRespond(message: string): boolean {
   return triggers.some(trigger => lowerMessage.includes(trigger));
 }
 
-/
+/**
  * Generate queue welcome message with position and instructions
  * HelpOS™ announces queue position when user joins
  */
@@ -247,7 +247,7 @@ While you wait, feel free to ask me any questions about WorkforceOS. Stay in the
 While you wait, ask me anything about WorkforceOS! Stay in the chat to keep your position.`;
 }
 
-/
+/**
  * Generate periodic queue reminder (every 5 minutes)
  * HelpOS™ sends these automatically
  */
@@ -263,7 +263,7 @@ export async function generateQueueReminder(
   return `⏰ HelpOS™ Queue Update: ${userName}, you are #${queuePosition} in line (Est. wait: ~${estimatedWaitMinutes} min). Thank you for your patience! 🙏`;
 }
 
-/
+/**
  * Generate staff alert message about queue status
  * Shown to support staff when they join
  */
