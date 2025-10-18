@@ -914,44 +914,7 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
           
           {/* Floating Controls - Overlaid on banner - Far Right Only */}
           <div className="absolute top-1 right-2 flex items-center gap-1.5">
-            {/* Connection Status - Always visible */}
-            {connectionStatus === 'connected' && (
-              <div 
-                className="flex items-center gap-1 text-[9px] bg-emerald-500/90 px-2 py-0.5 rounded-full backdrop-blur-md border border-emerald-400/80 shadow-lg text-white"
-                data-testid="status-connected"
-              >
-                <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
-                Connected
-              </div>
-            )}
-            {connectionStatus === 'disconnected' && (
-              <div 
-                className="flex items-center gap-1 text-[9px] bg-slate-600/90 px-2 py-0.5 rounded-full backdrop-blur-md border border-slate-500/80 shadow-lg text-white"
-                data-testid="status-disconnected"
-              >
-                <div className="w-1.5 h-1.5 bg-white rounded-full" />
-                Disconnected
-              </div>
-            )}
-            {connectionStatus === 'error' && (
-              <div 
-                className="flex items-center gap-1 text-[9px] bg-red-500/90 px-2 py-0.5 rounded-full backdrop-blur-md border border-red-400/80 shadow-lg cursor-pointer text-white"
-                data-testid="status-error"
-                title={apiErrors.join(', ')}
-              >
-                <AlertTriangle className="w-2.5 h-2.5" />
-                Error
-              </div>
-            )}
-            {connectionStatus === 'denied' && (
-              <div 
-                className="flex items-center gap-1 text-[9px] bg-amber-500/90 px-2 py-0.5 rounded-full backdrop-blur-md border border-amber-400/80 shadow-lg text-white"
-                data-testid="status-denied"
-              >
-                <Ban className="w-2.5 h-2.5" />
-                Denied
-              </div>
-            )}
+            {/* Connection Status indicators removed - only show by send button */}
             
             {/* Hamburger Menu and Theme Toggle - Transparent and only visible on hover (desktop) */}
             <div className="hidden md:flex items-center gap-1 opacity-0 hover:opacity-100 transition-opacity">

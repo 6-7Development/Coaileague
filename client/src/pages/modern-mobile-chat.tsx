@@ -988,7 +988,7 @@ export default function ModernMobileChat() {
       </div>
 
       {/* Header with User Profile Card */}
-      <div className="relative z-10 backdrop-blur-xl bg-black/30 border-b border-white/10 px-4 py-3">
+      <div className="relative z-10 backdrop-blur-xl bg-transparent border-b border-white/10 px-4 py-3">
         {selectedUser && isStaff ? (
           <div className="space-y-2">
             <div className="flex items-center gap-3">

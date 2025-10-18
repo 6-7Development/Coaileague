@@ -35,6 +35,8 @@ interface BannerMessage {
   link?: string;
   icon?: string;
   emoticon?: string;
+  imageUrl?: string;
+  sparkleEffect?: boolean;
   enabled?: boolean;
 }
 
@@ -187,6 +189,12 @@ const ICON_OPTIONS = [
   { value: 'heart', label: 'Heart', icon: Heart },
 ];
 
+const EMOJI_OPTIONS = [
+  '🎉', '🎊', '✨', '⭐', '💫', '🌟', '💝', '❤️', '💕', '🎁',
+  '🔥', '⚡', '💎', '🏆', '👑', '🎯', '🚀', '💰', '📢', '⚠️',
+  '✅', '❌', '📊', '📈', '💡', '🎨', '🎭', '🎪', '🎆', '🎇'
+];
+
 interface BannerManagerProps {
   open: boolean;
   onClose: () => void;
@@ -207,7 +215,12 @@ export function BannerManager({
   const [customType, setCustomType] = useState<'info' | 'warning' | 'success' | 'promo'>('info');
   const [customIcon, setCustomIcon] = useState('star');
   const [customLink, setCustomLink] = useState('');
+  const [customEmoji, setCustomEmoji] = useState('');
+  const [customImageUrl, setCustomImageUrl] = useState('');
+  const [enableSparkles, setEnableSparkles] = useState(true);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [previewBanner, setPreviewBanner] = useState<HolidayTemplate | null>(null);
+  const [livePreview, setLivePreview] = useState(false);
 
   const handleUseTemplate = (template: HolidayTemplate) => {
     const command = `/banner add "${template.defaultText}" ${template.type} ${template.bannerIcon}`;
