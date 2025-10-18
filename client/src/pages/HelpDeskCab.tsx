@@ -846,8 +846,8 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
           </div>
         </div>
         
-        {/* Announcement Banner integrated into header */}
-        <div className="border-t border-slate-600/50">
+        {/* Announcement Banner - Seamless integration */}
+        <div>
           <ChatAnnouncementBanner
             queuePosition={queueLength || 1}
             queueWaitTime="2-3 minutes"

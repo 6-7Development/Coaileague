@@ -243,18 +243,18 @@ export function ChatAnnouncementBanner({
   const IconComponent = currentMessage.icon ? iconMap[currentMessage.icon] : null;
   const emoticon = currentMessage.emoticon ? emoticons[currentMessage.emoticon] : null;
 
-  // Color schemes - professional slate tones for header integration
+  // Color schemes - seamless blend with header
   const colorSchemes = {
-    info: 'bg-slate-600/80 border-slate-500/50 text-white',
-    warning: 'bg-slate-600/80 border-slate-500/50 text-amber-200',
-    success: 'bg-slate-600/80 border-slate-500/50 text-emerald-200',
-    promo: 'bg-slate-600/80 border-slate-500/50 text-white',
-    queue: 'bg-slate-600/80 border-slate-500/50 text-cyan-200'
+    info: 'bg-slate-700/90 text-white',
+    warning: 'bg-slate-700/90 text-amber-200',
+    success: 'bg-slate-700/90 text-emerald-200',
+    promo: 'bg-slate-700/90 text-white',
+    queue: 'bg-slate-700/90 text-cyan-200'
   };
 
   const BannerContent = (
     <div className={`
-      w-full min-h-[32px] border-b transition-all duration-500 ease-in-out relative overflow-hidden
+      w-full min-h-[32px] transition-all duration-500 ease-in-out relative overflow-hidden
       ${colorSchemes[currentMessage.type]}
       animate-in fade-in slide-in-from-top-2
     `}>
