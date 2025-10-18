@@ -476,7 +476,7 @@ export function setupWebSocket(server: Server) {
               }
             }
 
-            // IRC-STYLE PUBLIC ANNOUNCEMENT: HelpOS greets everyone who joins
+            // HelpOS greets everyone who joins
             if (payload.conversationId === MAIN_ROOM_ID) {
               try {
                 const clients = conversationClients.get(payload.conversationId);
@@ -484,9 +484,9 @@ export function setupWebSocket(server: Server) {
                 // Determine greeting based on user type
                 let greeting = '';
                 if (isStaff) {
-                  greeting = `👋 Welcome back, ${displayName}! Support chat is active. Right-click users for quick actions.`;
+                  greeting = `Welcome back, ${displayName}! Support chat is active. Right-click users for quick actions.`;
                 } else {
-                  greeting = `👋 Hello ${displayName}! Welcome to WorkforceOS Support. A staff member will be with you shortly. Use the command buttons above for quick access to tools.`;
+                  greeting = `Hello ${displayName}! Welcome to WorkforceOS Support. A staff member will be with you shortly. Use the command buttons above for quick access to tools.`;
                 }
 
                 // Create HelpOS public announcement message
@@ -499,7 +499,7 @@ export function setupWebSocket(server: Server) {
                   messageType: 'text',
                 });
 
-                // Broadcast to ALL users in the chat (IRC-style)
+                // Broadcast to ALL users in the chat
                 if (clients) {
                   const publicPayload = JSON.stringify({
                     type: 'new_message',
