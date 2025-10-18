@@ -425,43 +425,43 @@ export default function SmartScheduleOS() {
   return (
     <DndProvider backend={HTML5Backend}>
       <div className="h-screen flex flex-col bg-background" data-testid="page-smart-schedule">
-      {/* Header Bar */}
-      <div className="border-b bg-card px-6 py-4">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-3xl font-bold flex items-center gap-2" data-testid="text-schedule-title">
-              <Sparkles className="h-7 w-7 text-primary" />
-              SmartScheduleOS™
+      {/* Header Bar - Mobile Responsive */}
+      <div className="border-b bg-card px-3 sm:px-6 py-3 sm:py-4">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 sm:gap-4 mb-3 sm:mb-4">
+          <div className="flex-shrink-0">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold flex items-center gap-1.5 sm:gap-2" data-testid="text-schedule-title">
+              <Sparkles className="h-5 w-5 sm:h-6 sm:w-6 lg:h-7 lg:w-7 text-primary flex-shrink-0" />
+              <span className="break-words">SmartScheduleOS™</span>
             </h1>
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 sm:mt-1 break-words">
               Drag-and-drop scheduling with real-time conflict detection
             </p>
           </div>
 
-          {/* Week Stats */}
-          <div className="flex items-center gap-4">
-            <div className="text-center px-4 py-2 bg-muted rounded-lg">
-              <div className="text-2xl font-bold text-foreground">{weekStats.totalShifts}</div>
-              <div className="text-xs text-muted-foreground">Shifts</div>
+          {/* Week Stats - Mobile Responsive Grid */}
+          <div className="flex items-center gap-2 sm:gap-3 lg:gap-4 overflow-x-auto flex-wrap sm:flex-nowrap">
+            <div className="text-center px-3 sm:px-4 py-1.5 sm:py-2 bg-muted rounded-lg flex-shrink-0">
+              <div className="text-lg sm:text-xl lg:text-2xl font-bold text-foreground whitespace-nowrap">{weekStats.totalShifts}</div>
+              <div className="text-xs text-muted-foreground whitespace-nowrap">Shifts</div>
             </div>
-            <div className="text-center px-4 py-2 bg-muted rounded-lg">
-              <div className="text-2xl font-bold text-foreground">{weekStats.totalHours}</div>
-              <div className="text-xs text-muted-foreground">Hours</div>
+            <div className="text-center px-3 sm:px-4 py-1.5 sm:py-2 bg-muted rounded-lg flex-shrink-0">
+              <div className="text-lg sm:text-xl lg:text-2xl font-bold text-foreground whitespace-nowrap">{weekStats.totalHours}</div>
+              <div className="text-xs text-muted-foreground whitespace-nowrap">Hours</div>
             </div>
             {weekStats.conflicts > 0 && (
-              <div className="text-center px-4 py-2 bg-red-500/10 border border-red-500/20 rounded-lg">
-                <div className="text-2xl font-bold text-red-600 flex items-center gap-1">
-                  <AlertTriangle className="h-5 w-5" />
-                  {weekStats.conflicts}
+              <div className="text-center px-3 sm:px-4 py-1.5 sm:py-2 bg-red-500/10 border border-red-500/20 rounded-lg flex-shrink-0">
+                <div className="text-lg sm:text-xl lg:text-2xl font-bold text-red-600 flex items-center justify-center gap-1">
+                  <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+                  <span className="whitespace-nowrap">{weekStats.conflicts}</span>
                 </div>
-                <div className="text-xs text-red-600">Conflicts</div>
+                <div className="text-xs text-red-600 whitespace-nowrap">Conflicts</div>
               </div>
             )}
           </div>
         </div>
 
-        {/* Quick Actions Bar */}
-        <div className="flex items-center gap-3">
+        {/* Quick Actions Bar - Mobile Responsive with Touch-Friendly Buttons */}
+        <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto pb-1 -mx-1 px-1">
           <Button 
             onClick={() => {
               setNewShiftSlot({
@@ -470,39 +470,58 @@ export default function SmartScheduleOS() {
               });
               setIsAddShiftOpen(true);
             }}
+            size="sm"
+            className="whitespace-nowrap flex-shrink-0 touch-manipulation min-h-9"
             data-testid="button-create-shift"
           >
-            <Plus className="mr-2 h-4 w-4" />
-            New Shift
+            <Plus className="mr-1 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span className="text-xs sm:text-sm">New Shift</span>
           </Button>
           
-          <Button variant="outline" onClick={copyWeekForward} data-testid="button-copy-week">
-            <Copy className="mr-2 h-4 w-4" />
-            Copy Week
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={copyWeekForward} 
+            className="whitespace-nowrap flex-shrink-0 touch-manipulation min-h-9"
+            data-testid="button-copy-week"
+          >
+            <Copy className="mr-1 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span className="text-xs sm:text-sm">Copy Week</span>
           </Button>
 
-          <Button variant="outline" data-testid="button-templates">
-            <FileText className="mr-2 h-4 w-4" />
-            Templates
+          <Button 
+            variant="outline" 
+            size="sm"
+            className="whitespace-nowrap flex-shrink-0 touch-manipulation min-h-9 hidden md:flex"
+            data-testid="button-templates"
+          >
+            <FileText className="mr-1 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span className="text-xs sm:text-sm">Templates</span>
           </Button>
 
-          <Button variant="outline" data-testid="button-find-coverage">
-            <Users className="mr-2 h-4 w-4" />
-            Find Coverage
+          <Button 
+            variant="outline" 
+            size="sm"
+            className="whitespace-nowrap flex-shrink-0 touch-manipulation min-h-9 hidden md:flex"
+            data-testid="button-find-coverage"
+          >
+            <Users className="mr-1 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span className="text-xs sm:text-sm">Find Coverage</span>
           </Button>
 
-          <div className="ml-auto">
-            <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
+          <div className="ml-auto flex-shrink-0">
+            <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-xs whitespace-nowrap">
               <Zap className="mr-1 h-3 w-3" />
-              AI-Powered
+              <span className="hidden sm:inline">AI-Powered</span>
+              <span className="sm:hidden">AI</span>
             </Badge>
           </div>
         </div>
       </div>
 
-      {/* Calendar View */}
-      <div className="flex-1 overflow-hidden p-6">
-        <div className="h-full bg-card rounded-lg border shadow-sm overflow-hidden">
+      {/* Calendar View - Mobile Responsive Container */}
+      <div className="flex-1 overflow-hidden p-2 sm:p-4 lg:p-6">
+        <div className="h-full bg-card rounded-md sm:rounded-lg border shadow-sm overflow-hidden">
           <DnDCalendar
             localizer={localizer}
             events={calendarEvents}
