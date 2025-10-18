@@ -287,14 +287,22 @@ export default function EmployeeFileCabinet() {
   // Generate PDF packet
   const generatePDFMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest('/api/hireos/generate-onboarding-packet-pdf', 'POST', { employeeId });
+      // Open PDF in new window (downloads automatically due to Content-Disposition header)
+      window.open(`/api/hireos/documents/${employeeId}/packet`, '_blank');
+      return { success: true };
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       toast({
         title: "PDF Generated",
-        description: "Onboarding packet PDF is ready for download",
+        description: "Complete onboarding packet with audit trail is downloading",
       });
-      // TODO: Trigger PDF download
+    },
+    onError: () => {
+      toast({
+        variant: "destructive",
+        title: "PDF Generation Failed",
+        description: "Unable to generate PDF packet. Please try again.",
+      });
     },
   });
 
