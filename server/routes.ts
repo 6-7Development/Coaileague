@@ -193,10 +193,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Update user profile
-  app.patch('/api/auth/profile', isAuthenticated, async (req: any, res) => {
+  // Update user profile - supports both Replit Auth and custom session auth
+  app.patch('/api/auth/profile', async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      // Support both Replit Auth (req.user.claims.sub) and custom auth (req.session.userId)
+      let userId: string | null = null;
+      
+      if (req.user?.claims?.sub) {
+        // Replit Auth
+        userId = req.user.claims.sub;
+      } else if (req.session?.userId) {
+        // Custom session auth
+        userId = req.session.userId;
+      }
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
       const { firstName, lastName } = req.body;
 
       // Validation
