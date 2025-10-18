@@ -39,15 +39,15 @@ export function QueueViewerDialog({ open, onClose, queueEntries }: QueueViewerDi
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Users className="w-5 h-5" />
             Support Queue ({queueEntries.length} waiting)
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-4 flex-1 overflow-y-auto">
           {/* Queue Stats */}
           <div className="grid grid-cols-3 gap-3">
             <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
@@ -84,7 +84,7 @@ export function QueueViewerDialog({ open, onClose, queueEntries }: QueueViewerDi
           </div>
 
           {/* Queue List */}
-          <ScrollArea className="h-[400px] rounded-lg border">
+          <ScrollArea className="max-h-[50vh] rounded-lg border">
             <div className="p-4 space-y-2">
               {queueEntries.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground">

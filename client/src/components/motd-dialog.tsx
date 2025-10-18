@@ -7,7 +7,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { WFLogoCompact } from "@/components/wf-logo";
+import { WorkforceOSLogo } from "@/components/workforceos-logo";
 import {
   Bell, AlertCircle, Info, Sparkles, Zap, Heart, Star, CheckCircle, X
 } from "lucide-react";
@@ -101,8 +101,8 @@ export function MotdDialog({
           <div className="flex items-start gap-4">
             {/* Logo and Icon */}
             <div className="flex items-center gap-3">
-              <div className="p-3 bg-white/20 rounded-lg backdrop-blur-sm">
-                <WFLogoCompact size={28} />
+              <div className="flex items-center justify-center">
+                <WorkforceOSLogo size="sm" showText={false} />
               </div>
               <div 
                 className="p-3 rounded-lg backdrop-blur-sm animate-pulse"

@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { WFLogoCompact } from "@/components/wf-logo";
+import { WorkforceOSLogo } from "@/components/workforceos-logo";
 import { AlertTriangle, UserX, Clock, MessageSquareOff } from "lucide-react";
 
 interface KickDialogProps {
@@ -65,8 +65,8 @@ export function KickDialog({ open, userName, onConfirm, onCancel }: KickDialogPr
       <DialogContent className="sm:max-w-md bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 border-slate-300 dark:border-slate-700">
         <DialogHeader>
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-slate-700 to-slate-900 flex items-center justify-center shadow-lg">
-              <WFLogoCompact size={24} />
+            <div className="flex items-center justify-center">
+              <WorkforceOSLogo size="sm" showText={false} />
             </div>
             <div className="flex-1">
               <DialogTitle className="text-xl font-bold text-slate-900 dark:text-slate-100">
@@ -246,8 +246,8 @@ export function SilenceDialog({ open, userName, onConfirm, onCancel }: SilenceDi
       <DialogContent className="sm:max-w-md bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 border-slate-300 dark:border-slate-700">
         <DialogHeader>
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-slate-700 to-slate-900 flex items-center justify-center shadow-lg">
-              <WFLogoCompact size={24} />
+            <div className="flex items-center justify-center">
+              <WorkforceOSLogo size="sm" showText={false} />
             </div>
             <div className="flex-1">
               <DialogTitle className="text-xl font-bold text-slate-900 dark:text-slate-100">

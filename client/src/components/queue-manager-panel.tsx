@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { WFLogoCompact } from "@/components/wf-logo";
+import { WorkforceOSLogo } from "@/components/workforceos-logo";
 import {
   Users, MessageSquare, Ticket, Clock, AlertCircle, 
   CheckCircle, UserX, Volume2, VolumeX, Star,
@@ -139,10 +139,10 @@ export function QueueManagerPanel({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden">
-          <DialogHeader>
+        <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col">
+          <DialogHeader className="flex-shrink-0">
             <div className="flex items-center gap-3 mb-2">
-              <WFLogoCompact className="h-8 w-auto" />
+              <WorkforceOSLogo size="sm" showText={false} />
               <div>
                 <DialogTitle className="flex items-center gap-2">
                   <Users className="w-5 h-5 text-blue-600" />
@@ -155,7 +155,7 @@ export function QueueManagerPanel({
             </div>
           </DialogHeader>
 
-          <div className="grid grid-cols-12 gap-4 h-[600px]">
+          <div className="grid grid-cols-12 gap-4 flex-1 overflow-hidden">
             {/* Queue List */}
             <div className="col-span-7">
               <Card className="h-full">
@@ -169,7 +169,7 @@ export function QueueManagerPanel({
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
-                  <ScrollArea className="h-[500px]">
+                  <ScrollArea className="flex-1">
                     <div className="space-y-2 p-4">
                       {mockQueue.map((user) => (
                         <button
@@ -324,7 +324,7 @@ export function QueueManagerPanel({
                       </div>
                     </div>
                   ) : (
-                    <div className="h-[400px] flex items-center justify-center">
+                    <div className="flex-1 flex items-center justify-center min-h-[300px]">
                       <div className="text-center text-muted-foreground">
                         <Users className="w-12 h-12 mx-auto mb-3 opacity-30" />
                         <p className="text-sm">Select a user to view actions</p>

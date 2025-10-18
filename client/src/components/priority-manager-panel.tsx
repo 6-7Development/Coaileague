@@ -140,8 +140,8 @@ export function PriorityManagerPanel({ isOpen, onClose }: PriorityManagerPanelPr
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden">
-        <DialogHeader>
+      <DialogContent className="max-w-6xl max-h-[90vh] flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Crown className="w-5 h-5 text-amber-500" />
             Priority Queue Manager
@@ -151,7 +151,7 @@ export function PriorityManagerPanel({ isOpen, onClose }: PriorityManagerPanelPr
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-12 gap-4">
+        <div className="grid grid-cols-12 gap-4 flex-1 overflow-y-auto">
           {/* Priority Tiers Legend */}
           <div className="col-span-12">
             <div className="grid grid-cols-4 gap-3">
@@ -199,7 +199,7 @@ export function PriorityManagerPanel({ isOpen, onClose }: PriorityManagerPanelPr
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <ScrollArea className="h-[400px]">
+                <ScrollArea className="max-h-[50vh]">
                   <div className="space-y-2">
                     {mockPriorityUsers.map((user, index) => {
                       const tierInfo = getTierInfo(user.tier);

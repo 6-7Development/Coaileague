@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { AlertCircle } from "lucide-react";
-import { WFLogoCompact } from "@/components/wf-logo";
+import { WorkforceOSLogo } from "@/components/workforceos-logo";
 
 interface TermsDialogProps {
   open: boolean;
@@ -49,8 +49,8 @@ export function TermsDialog({ open, onAccept, onDecline, userName }: TermsDialog
         <DialogHeader className="border-b border-slate-600 pb-4">
           <div className="flex items-center gap-4">
             {/* WorkforceOS Logo */}
-            <div className="flex items-center justify-center w-16 h-16 rounded-lg bg-gradient-to-br from-blue-600 to-slate-700 shadow-lg">
-              <WFLogoCompact size={32} className="text-white" />
+            <div className="flex items-center justify-center">
+              <WorkforceOSLogo size="md" showText={false} />
             </div>
             <div className="flex-1">
               <DialogTitle className="text-2xl font-black text-white">

@@ -242,8 +242,8 @@ export function BannerManager({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] p-0">
-        <DialogHeader className="p-6 pb-4">
+      <DialogContent className="max-w-4xl max-h-[90vh] p-0 flex flex-col">
+        <DialogHeader className="p-6 pb-4 flex-shrink-0">
           <DialogTitle className="flex items-center gap-2 text-2xl">
             <Sparkles className="w-6 h-6 text-blue-600" />
             Banner Manager
@@ -253,8 +253,8 @@ export function BannerManager({
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="flex-1">
-          <TabsList className="grid w-full grid-cols-3 mx-6">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="flex-1 flex flex-col overflow-hidden">
+          <TabsList className="grid w-full grid-cols-3 mx-6 flex-shrink-0">
             <TabsTrigger value="templates" data-testid="tab-templates">
               <Gift className="w-4 h-4 mr-2" />
               Holiday Templates
@@ -269,7 +269,7 @@ export function BannerManager({
             </TabsTrigger>
           </TabsList>
 
-          <ScrollArea className="h-[500px] px-6 pb-6">
+          <ScrollArea className="flex-1 px-6 pb-6">
             <TabsContent value="templates" className="mt-4 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {HOLIDAY_TEMPLATES.map((template) => (
@@ -483,7 +483,7 @@ export function BannerManager({
           </ScrollArea>
         </Tabs>
 
-        <div className="p-4 border-t bg-slate-50 dark:bg-slate-900">
+        <div className="p-4 border-t bg-slate-50 dark:bg-slate-900 flex-shrink-0">
           <div className="flex items-center justify-between">
             <p className="text-xs text-slate-500">
               💡 Tip: Banners update instantly for all users via WebSocket

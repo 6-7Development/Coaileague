@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { WFLogoCompact } from "@/components/wf-logo";
+import { WorkforceOSLogo } from "@/components/workforceos-logo";
 import {
   MessageSquare, Users, Shield, Zap, Settings, AlertCircle, 
   UserPlus, Lock, Unlock, UserX, RefreshCw, Bell, Flag,
@@ -97,9 +97,9 @@ export function HelpCommandPanel({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-6xl max-h-[90vh] p-0 bg-gradient-to-br from-slate-900 to-slate-800 border-2 border-blue-500/30">
+      <DialogContent className="max-w-6xl max-h-[90vh] p-0 flex flex-col bg-gradient-to-br from-slate-900 to-slate-800 border-2 border-blue-500/30">
         {/* Header with Logo and Close */}
-        <DialogHeader className="relative p-6 pb-4 bg-gradient-to-r from-blue-600 to-indigo-700 border-b-2 border-blue-400/50">
+        <DialogHeader className="relative p-6 pb-4 flex-shrink-0 bg-gradient-to-r from-blue-600 to-indigo-700 border-b-2 border-blue-400/50">
           <Button
             variant="ghost"
             size="icon"
@@ -111,8 +111,8 @@ export function HelpCommandPanel({
           </Button>
           
           <div className="flex items-center gap-3">
-            <div className="p-3 bg-white/20 rounded-lg backdrop-blur-sm">
-              <WFLogoCompact size={28} />
+            <div className="flex items-center justify-center">
+              <WorkforceOSLogo size="sm" showText={false} />
             </div>
             <div>
               <DialogTitle className="text-2xl font-bold text-white flex items-center gap-2">
@@ -129,7 +129,7 @@ export function HelpCommandPanel({
         </DialogHeader>
 
         {/* Command Grid */}
-        <ScrollArea className="h-[600px] p-6">
+        <ScrollArea className="flex-1 p-6">
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {filteredCommands.map((cmd) => (
               <div
@@ -139,8 +139,8 @@ export function HelpCommandPanel({
                 {/* Command Box Card */}
                 <div className="relative overflow-hidden rounded-xl border-2 border-slate-600/50 bg-slate-800/50 backdrop-blur-sm transition-all hover:border-blue-500/50 hover:shadow-xl hover:shadow-blue-500/20 hover:-translate-y-1">
                   {/* Logo Badge */}
-                  <div className="absolute top-2 left-2 z-10">
-                    <WFLogoCompact size={16} className="opacity-50" />
+                  <div className="absolute top-2 left-2 z-10 scale-50">
+                    <WorkforceOSLogo size="sm" showText={false} className="opacity-50" />
                   </div>
                   
                   {/* Close X (decorative) */}
