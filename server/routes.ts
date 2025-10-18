@@ -10328,6 +10328,621 @@ Return ONLY valid JSON array with this exact structure:
     }
   });
 
+  // ============================================================================
+  // CROSS-ORGANIZATIONAL EMPLOYEE REPUTATION API (for hiring managers)
+  // ============================================================================
+  
+  // Get dispute investigation context (for support staff)
+  app.get('/api/disputes/:id/investigation-context', isAuthenticated, requirePlatformStaff, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Get the dispute
+      const dispute = await db.query.disputes.findFirst({
+        where: (disputes, { eq }) => eq(disputes.id, id),
+      });
+
+      if (!dispute) {
+        return res.status(404).json({ message: "Dispute not found" });
+      }
+
+      // Get employee who filed the dispute
+      const employee = await db.select().from(employees).where(eq(employees.id, dispute.filedBy)).limit(1);
+      if (!employee.length) {
+        return res.status(404).json({ message: "Employee not found" });
+      }
+
+      const employeeData = employee[0];
+
+      // Get TrackOS context - Time entries and attendance data
+      const timeEntriesData = await db.select({
+        totalEntries: sql<number>`count(*)`,
+        lateClockIns: sql<number>`count(*) filter (where clock_in > (select start_time from ${shifts} where ${shifts.id} = ${timeEntriesTable.shiftId}))`,
+        totalHours: sql<number>`sum(total_hours)`,
+        avgHoursPerWeek: sql<number>`avg(total_hours)`,
+        entriesLast30Days: sql<number>`count(*) filter (where clock_in >= now() - interval '30 days')`,
+        lateClockInsLast30Days: sql<number>`count(*) filter (where clock_in > (select start_time from ${shifts} where ${shifts.id} = ${timeEntriesTable.shiftId}) and clock_in >= now() - interval '30 days')`,
+      })
+        .from(timeEntriesTable)
+        .where(eq(timeEntriesTable.employeeId, employeeData.id));
+
+      // Get write-ups (RMS disciplinary actions)
+      const writeUpsData = await db.select({
+        count: sql<number>`count(*)`,
+        last30Days: sql<number>`count(*) filter (where submitted_at >= now() - interval '30 days')`,
+        last90Days: sql<number>`count(*) filter (where submitted_at >= now() - interval '90 days')`,
+      })
+        .from(reportTemplates)
+        .innerJoin(
+          reportSubmissions,
+          eq(reportSubmissions.templateId, reportTemplates.id)
+        )
+        .where(
+          and(
+            eq(reportSubmissions.employeeId, employeeData.id),
+            eq(reportTemplates.isDisciplinary, true)
+          )
+        );
+
+      // Get AuditOS context - Recent audit trail entries for this employee
+      const auditEntries = await db.select()
+        .from(auditTrail)
+        .where(
+          and(
+            eq(auditTrail.workspaceId, dispute.workspaceId),
+            or(
+              eq(auditTrail.userId, dispute.filedBy),
+              eq(auditTrail.entityId, employeeData.id)
+            )
+          )
+        )
+        .orderBy(desc(auditTrail.createdAt))
+        .limit(50);
+
+      // Get organization-wide metrics for comparison
+      const orgWideMetrics = await db.select({
+        totalEmployees: sql<number>`count(distinct employee_id)`,
+        avgLateClockInRate: sql<number>`avg(case when clock_in > (select start_time from ${shifts} where ${shifts.id} = ${timeEntriesTable.shiftId}) then 1.0 else 0.0 end)`,
+        avgHoursPerWeek: sql<number>`avg(total_hours)`,
+      })
+        .from(timeEntriesTable)
+        .where(eq(timeEntriesTable.workspaceId, dispute.workspaceId));
+
+      // Get performance reviews for context
+      const performanceReviews = await db.query.performanceReviews.findMany({
+        where: (reviews, { eq }) => eq(reviews.employeeId, employeeData.id),
+        orderBy: (reviews, { desc }) => [desc(reviews.completedAt)],
+        limit: 5,
+      });
+
+      // Get employer ratings submitted by this employee
+      const employerRatings = await db.query.employerRatings.findMany({
+        where: (ratings, { eq }) => eq(ratings.employeeId, employeeData.id),
+        orderBy: (ratings, { desc }) => [desc(ratings.submittedAt)],
+        limit: 5,
+      });
+
+      // Calculate metrics
+      const trackOSMetrics = timeEntriesData[0] || {};
+      const lateClockInRate = trackOSMetrics.totalEntries > 0
+        ? (trackOSMetrics.lateClockIns / trackOSMetrics.totalEntries) * 100
+        : 0;
+      const lateClockInRateLast30 = trackOSMetrics.entriesLast30Days > 0
+        ? (trackOSMetrics.lateClockInsLast30Days / trackOSMetrics.entriesLast30Days) * 100
+        : 0;
+
+      const writeUps = writeUpsData[0] || { count: 0, last30Days: 0, last90Days: 0 };
+      const orgMetrics = orgWideMetrics[0] || {};
+
+      // Compile investigation context
+      const investigationContext = {
+        dispute: {
+          id: dispute.id,
+          type: dispute.disputeType,
+          targetId: dispute.targetId,
+          title: dispute.title,
+          reason: dispute.reason,
+          filedAt: dispute.filedAt,
+          status: dispute.status,
+        },
+        employee: {
+          id: employeeData.id,
+          name: `${employeeData.firstName} ${employeeData.lastName}`,
+          role: employeeData.role,
+          email: employeeData.email,
+          hireDate: employeeData.hireDate,
+        },
+        trackOSMetrics: {
+          totalTimeEntries: trackOSMetrics.totalEntries || 0,
+          totalHoursWorked: Math.round(Number(trackOSMetrics.totalHours) * 10) / 10,
+          avgHoursPerWeek: Math.round(Number(trackOSMetrics.avgHoursPerWeek) * 10) / 10,
+          lateClockIns: trackOSMetrics.lateClockIns || 0,
+          lateClockInRate: Math.round(lateClockInRate * 10) / 10,
+          lateClockInsLast30Days: trackOSMetrics.lateClockInsLast30Days || 0,
+          lateClockInRateLast30Days: Math.round(lateClockInRateLast30 * 10) / 10,
+        },
+        disciplinaryRecord: {
+          totalWriteUps: writeUps.count || 0,
+          writeUpsLast30Days: writeUps.last30Days || 0,
+          writeUpsLast90Days: writeUps.last90Days || 0,
+        },
+        auditOSContext: {
+          recentAuditEntries: auditEntries.slice(0, 20).map(entry => ({
+            id: entry.id,
+            action: entry.action,
+            entityType: entry.entityType,
+            timestamp: entry.createdAt,
+            ipAddress: entry.ipAddress,
+            success: entry.success,
+          })),
+          totalAuditEntries: auditEntries.length,
+        },
+        organizationWideComparison: {
+          totalEmployees: orgMetrics.totalEmployees || 0,
+          avgLateClockInRate: Math.round((Number(orgMetrics.avgLateClockInRate) || 0) * 1000) / 10,
+          avgHoursPerWeek: Math.round(Number(orgMetrics.avgHoursPerWeek) * 10) / 10,
+          employeeVsAvgLateRate: Math.round((lateClockInRate - (Number(orgMetrics.avgLateClockInRate) || 0) * 100) * 10) / 10,
+        },
+        performanceHistory: performanceReviews.map(review => ({
+          id: review.id,
+          overallRating: review.overallRating,
+          attendanceRating: review.attendanceRating,
+          completedAt: review.completedAt,
+          reviewerComments: review.reviewerComments,
+        })),
+        employerRatingsHistory: employerRatings.map(rating => ({
+          id: rating.id,
+          overallScore: rating.overallScore,
+          submittedAt: rating.submittedAt,
+          positiveComments: rating.positiveComments,
+          improvementSuggestions: rating.improvementSuggestions,
+        })),
+      };
+
+      res.json(investigationContext);
+    } catch (error) {
+      console.error("Error fetching investigation context:", error);
+      res.status(500).json({ message: "Failed to fetch investigation context" });
+    }
+  });
+
+  // AI-powered dispute analysis (for support staff)
+  app.post('/api/disputes/:id/ai-analysis', isAuthenticated, requirePlatformStaff, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Get investigation context first
+      const contextResponse = await fetch(`http://localhost:5000/api/disputes/${id}/investigation-context`, {
+        headers: {
+          'Authorization': req.headers.authorization || '',
+        },
+      });
+
+      if (!contextResponse.ok) {
+        return res.status(404).json({ message: "Failed to fetch investigation context" });
+      }
+
+      const context = await contextResponse.json();
+
+      // Prepare AI analysis prompt
+      const prompt = `You are an AI assistant helping support staff investigate employee disputes. Analyze the following dispute and provide objective insights.
+
+**Dispute Details:**
+- Type: ${context.dispute.type}
+- Title: ${context.dispute.title}
+- Reason: ${context.dispute.reason}
+- Filed: ${context.dispute.filedAt}
+
+**Employee Profile:**
+- Name: ${context.employee.name}
+- Role: ${context.employee.role}
+- Hire Date: ${context.employee.hireDate}
+
+**TrackOS Metrics (Attendance Data):**
+- Total Time Entries: ${context.trackOSMetrics.totalTimeEntries}
+- Late Clock-Ins: ${context.trackOSMetrics.lateClockIns} (${context.trackOSMetrics.lateClockInRate}% rate)
+- Late Clock-Ins (Last 30 Days): ${context.trackOSMetrics.lateClockInsLast30Days} (${context.trackOSMetrics.lateClockInRateLast30Days}% rate)
+- Avg Hours/Week: ${context.trackOSMetrics.avgHoursPerWeek}
+
+**Disciplinary Record:**
+- Total Write-Ups: ${context.disciplinaryRecord.totalWriteUps}
+- Write-Ups (Last 30 Days): ${context.disciplinaryRecord.writeUpsLast30Days}
+- Write-Ups (Last 90 Days): ${context.disciplinaryRecord.writeUpsLast90Days}
+
+**Organization-Wide Comparison:**
+- Org Avg Late Clock-In Rate: ${context.organizationWideComparison.avgLateClockInRate}%
+- Employee vs Org Avg: ${context.organizationWideComparison.employeeVsAvgLateRate}% ${context.organizationWideComparison.employeeVsAvgLateRate > 0 ? 'HIGHER' : 'LOWER'} than average
+- Total Employees: ${context.organizationWideComparison.totalEmployees}
+
+**Performance History:**
+${context.performanceHistory.map((review: any) => `- Overall Rating: ${review.overallRating}/5, Attendance Rating: ${review.attendanceRating}/5`).join('\n')}
+
+**Task:**
+1. **Pattern Detection**: Identify any patterns in the data that support or contradict the dispute claim
+2. **Risk Flags**: Flag any concerning patterns (e.g., "Employee late clock-in rate is 3x higher than org average")
+3. **Context Assessment**: Does the data support the employee's claim or suggest the original decision was justified?
+4. **Recommended Actions**: Suggest 2-3 specific next steps for support staff
+
+**Output Format (JSON):**
+{
+  "patternDetection": "...",
+  "riskFlags": ["flag1", "flag2"],
+  "contextAssessment": "...",
+  "recommendedActions": ["action1", "action2", "action3"],
+  "supportingEvidence": ["evidence1", "evidence2"],
+  "contradictingEvidence": ["evidence1", "evidence2"]
+}`;
+
+      // Call OpenAI API
+      const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: 'gpt-4',
+          messages: [
+            { role: 'system', content: 'You are an objective AI analyst helping support staff investigate employee disputes. Provide balanced, data-driven insights.' },
+            { role: 'user', content: prompt }
+          ],
+          temperature: 0.3,
+          response_format: { type: 'json_object' },
+        }),
+      });
+
+      if (!openaiResponse.ok) {
+        console.error("OpenAI API error:", await openaiResponse.text());
+        return res.status(500).json({ message: "Failed to generate AI analysis" });
+      }
+
+      const aiResult = await openaiResponse.json();
+      const analysis = JSON.parse(aiResult.choices[0].message.content);
+
+      res.json({
+        ...analysis,
+        generatedAt: new Date().toISOString(),
+        model: 'gpt-4',
+      });
+    } catch (error) {
+      console.error("Error generating AI analysis:", error);
+      res.status(500).json({ message: "Failed to generate AI analysis" });
+    }
+  });
+
+  // ============================================================================
+  // SUPPORT RESOLUTION ACTIONS API (for platform staff)
+  // ============================================================================
+
+  // Delete a performance review (with explanation)
+  app.delete('/api/support/performance-reviews/:id', isAuthenticated, requirePlatformStaff, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { explanation, notifyUserId } = req.body;
+
+      if (!explanation) {
+        return res.status(400).json({ message: "explanation is required" });
+      }
+
+      // Get the review first
+      const review = await db.query.performanceReviews.findFirst({
+        where: (reviews, { eq }) => eq(reviews.id, id),
+      });
+
+      if (!review) {
+        return res.status(404).json({ message: "Performance review not found" });
+      }
+
+      // Delete the review
+      await db.delete(performanceReviews).where(eq(performanceReviews.id, id));
+
+      // Send notification with explanation (if notifyUserId provided)
+      if (notifyUserId) {
+        // TODO: Integrate with notification system
+        console.log(`Notification sent to ${notifyUserId}: Review deleted - ${explanation}`);
+      }
+
+      res.json({ 
+        success: true, 
+        message: "Performance review deleted successfully",
+        explanation 
+      });
+    } catch (error) {
+      console.error("Error deleting performance review:", error);
+      res.status(500).json({ message: "Failed to delete performance review" });
+    }
+  });
+
+  // Edit a performance review (with explanation)
+  app.patch('/api/support/performance-reviews/:id', isAuthenticated, requirePlatformStaff, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { updates, explanation, notifyUserId } = req.body;
+
+      if (!explanation) {
+        return res.status(400).json({ message: "explanation is required" });
+      }
+
+      if (!updates) {
+        return res.status(400).json({ message: "updates object is required" });
+      }
+
+      // Update the review
+      const updatedReview = await db.update(performanceReviews)
+        .set(updates)
+        .where(eq(performanceReviews.id, id))
+        .returning();
+
+      if (!updatedReview.length) {
+        return res.status(404).json({ message: "Performance review not found" });
+      }
+
+      // Send notification with explanation (if notifyUserId provided)
+      if (notifyUserId) {
+        console.log(`Notification sent to ${notifyUserId}: Review updated - ${explanation}`);
+      }
+
+      res.json({
+        success: true,
+        message: "Performance review updated successfully",
+        review: updatedReview[0],
+        explanation
+      });
+    } catch (error) {
+      console.error("Error updating performance review:", error);
+      res.status(500).json({ message: "Failed to update performance review" });
+    }
+  });
+
+  // Delete an employer rating (with explanation)
+  app.delete('/api/support/employer-ratings/:id', isAuthenticated, requirePlatformStaff, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { explanation, notifyWorkspaceId } = req.body;
+
+      if (!explanation) {
+        return res.status(400).json({ message: "explanation is required" });
+      }
+
+      // Get the rating first
+      const rating = await db.query.employerRatings.findFirst({
+        where: (ratings, { eq }) => eq(ratings.id, id),
+      });
+
+      if (!rating) {
+        return res.status(404).json({ message: "Employer rating not found" });
+      }
+
+      // Delete the rating
+      await db.delete(employerRatings).where(eq(employerRatings.id, id));
+
+      // Send notification with explanation (if notifyWorkspaceId provided)
+      if (notifyWorkspaceId) {
+        console.log(`Notification sent to workspace ${notifyWorkspaceId}: Rating deleted - ${explanation}`);
+      }
+
+      res.json({
+        success: true,
+        message: "Employer rating deleted successfully",
+        explanation
+      });
+    } catch (error) {
+      console.error("Error deleting employer rating:", error);
+      res.status(500).json({ message: "Failed to delete employer rating" });
+    }
+  });
+
+  // Edit an employer rating (with explanation)
+  app.patch('/api/support/employer-ratings/:id', isAuthenticated, requirePlatformStaff, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { updates, explanation, notifyWorkspaceId } = req.body;
+
+      if (!explanation) {
+        return res.status(400).json({ message: "explanation is required" });
+      }
+
+      if (!updates) {
+        return res.status(400).json({ message: "updates object is required" });
+      }
+
+      // Update the rating
+      const updatedRating = await db.update(employerRatings)
+        .set(updates)
+        .where(eq(employerRatings.id, id))
+        .returning();
+
+      if (!updatedRating.length) {
+        return res.status(404).json({ message: "Employer rating not found" });
+      }
+
+      // Send notification with explanation (if notifyWorkspaceId provided)
+      if (notifyWorkspaceId) {
+        console.log(`Notification sent to workspace ${notifyWorkspaceId}: Rating updated - ${explanation}`);
+      }
+
+      res.json({
+        success: true,
+        message: "Employer rating updated successfully",
+        rating: updatedRating[0],
+        explanation
+      });
+    } catch (error) {
+      console.error("Error updating employer rating:", error);
+      res.status(500).json({ message: "Failed to update employer rating" });
+    }
+  });
+
+  // Delete a report submission (write-up) (with explanation)
+  app.delete('/api/support/report-submissions/:id', isAuthenticated, requirePlatformStaff, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { explanation, notifyUserId } = req.body;
+
+      if (!explanation) {
+        return res.status(400).json({ message: "explanation is required" });
+      }
+
+      // Get the report first
+      const report = await db.query.reportSubmissions.findFirst({
+        where: (reports, { eq }) => eq(reports.id, id),
+      });
+
+      if (!report) {
+        return res.status(404).json({ message: "Report submission not found" });
+      }
+
+      // Delete the report
+      await db.delete(reportSubmissions).where(eq(reportSubmissions.id, id));
+
+      // Send notification with explanation (if notifyUserId provided)
+      if (notifyUserId) {
+        console.log(`Notification sent to ${notifyUserId}: Write-up deleted - ${explanation}`);
+      }
+
+      res.json({
+        success: true,
+        message: "Report submission deleted successfully",
+        explanation
+      });
+    } catch (error) {
+      console.error("Error deleting report submission:", error);
+      res.status(500).json({ message: "Failed to delete report submission" });
+    }
+  });
+
+  // Get employee reputation data (visible to hiring managers platform-wide)
+  app.get('/api/employee-reputation/:employeeId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { employeeId } = req.params;
+      
+      // Check if user is authorized (HR/Manager/Owner can view reputation data)
+      const employee = await storage.getEmployeeByUserId(userId);
+      const isAuthorized = employee && ['owner', 'manager', 'hr_manager'].includes(employee.role || '');
+      
+      if (!isAuthorized) {
+        return res.status(403).json({ message: "Only HR/Managers can view employee reputation data" });
+      }
+
+      // Get employee basic info
+      const targetEmployee = await db.select().from(employees).where(eq(employees.id, employeeId)).limit(1);
+      if (!targetEmployee.length) {
+        return res.status(404).json({ message: "Employee not found" });
+      }
+
+      // Aggregate performance reviews (cross-organizational)
+      const performanceReviews = await db.query.performanceReviews.findMany({
+        where: (performanceReviews, { eq }) => eq(performanceReviews.employeeId, employeeId),
+        columns: {
+          overallRating: true,
+          attendanceRating: true,
+          attendanceRate: true,
+          complianceViolations: true,
+          reportsSubmitted: true,
+          reportsApproved: true,
+          reportsRejected: true,
+          completedAt: true,
+        }
+      });
+
+      // Count write-ups (from reportSubmissions)
+      const writeUps = await db.select({ count: sql<number>`count(*)` })
+        .from(reportTemplates)
+        .innerJoin(
+          reportSubmissions,
+          eq(reportSubmissions.templateId, reportTemplates.id)
+        )
+        .where(
+          and(
+            eq(reportSubmissions.employeeId, employeeId),
+            eq(reportTemplates.isDisciplinary, true)
+          )
+        );
+
+      // Get attendance metrics from time entries
+      const attendanceData = await db.select({
+        totalEntries: sql<number>`count(*)`,
+        lateClockIns: sql<number>`count(*) filter (where clock_in > (select start_time from ${shifts} where ${shifts.id} = ${timeEntriesTable.shiftId}))`,
+        avgHoursPerWeek: sql<number>`avg(total_hours)`
+      })
+        .from(timeEntriesTable)
+        .where(eq(timeEntriesTable.employeeId, employeeId));
+
+      // Get employer ratings (employee's ratings of organizations - shows reliability)
+      const employerRatingsCount = await db.select({ count: sql<number>`count(*)` })
+        .from(employerRatings)
+        .where(eq(employerRatings.employeeId, employeeId));
+
+      // Calculate overall reputation score
+      const avgPerformanceRating = performanceReviews.length > 0
+        ? performanceReviews.reduce((sum, r) => sum + (r.overallRating || 0), 0) / performanceReviews.length
+        : 0;
+
+      const avgAttendanceRating = performanceReviews.length > 0
+        ? performanceReviews.reduce((sum, r) => sum + (r.attendanceRating || 0), 0) / performanceReviews.length
+        : 0;
+
+      const writeUpCount = writeUps[0]?.count || 0;
+      const attendanceMetrics = attendanceData[0] || { totalEntries: 0, lateClockIns: 0, avgHoursPerWeek: 0 };
+
+      // Privacy-safe aggregated data (no sensitive info)
+      const reputationData = {
+        employeeId,
+        // Redacted employee info (no full names, only initials for privacy)
+        employeeInitials: `${targetEmployee[0].firstName?.charAt(0) || ''}${targetEmployee[0].lastName?.charAt(0) || ''}`,
+        role: targetEmployee[0].role,
+        
+        // Performance metrics (aggregated, no sensitive comments)
+        performanceMetrics: {
+          avgOverallRating: Math.round(avgPerformanceRating * 10) / 10,
+          avgAttendanceRating: Math.round(avgAttendanceRating * 10) / 10,
+          totalReviewsCompleted: performanceReviews.length,
+          avgAttendanceRate: performanceReviews.length > 0
+            ? performanceReviews.reduce((sum, r) => sum + (Number(r.attendanceRate) || 0), 0) / performanceReviews.length
+            : 0,
+        },
+        
+        // Disciplinary record (count only, no details)
+        disciplinaryRecord: {
+          totalWriteUps: writeUpCount,
+          complianceViolations: performanceReviews.reduce((sum, r) => sum + (r.complianceViolations || 0), 0),
+        },
+        
+        // Attendance metrics (aggregated)
+        attendanceMetrics: {
+          totalTimeEntries: attendanceMetrics.totalEntries,
+          lateClockIns: attendanceMetrics.lateClockIns,
+          lateClockInRate: attendanceMetrics.totalEntries > 0
+            ? Math.round((attendanceMetrics.lateClockIns / attendanceMetrics.totalEntries) * 1000) / 10
+            : 0,
+          avgHoursPerWeek: Math.round(Number(attendanceMetrics.avgHoursPerWeek) * 10) / 10,
+        },
+        
+        // Engagement metrics
+        engagementMetrics: {
+          employerRatingsSubmitted: employerRatingsCount[0]?.count || 0,
+        },
+        
+        // Overall reputation score (1-100)
+        overallReputationScore: Math.min(100, Math.max(0, Math.round(
+          (avgPerformanceRating * 15) + // Max 75 points from performance
+          (avgAttendanceRating * 10) + // Max 50 points from attendance
+          (attendanceMetrics.totalEntries > 0 ? ((attendanceMetrics.totalEntries - attendanceMetrics.lateClockIns) / attendanceMetrics.totalEntries) * 20 : 0) - // Max 20 points from punctuality
+          (writeUpCount * 5) // Deduct 5 points per write-up
+        ))),
+        
+        // Privacy notice
+        privacyNotice: "Sensitive information (names, comments, specific details) has been redacted for privacy. This data is aggregated for hiring decisions only."
+      };
+
+      res.json(reputationData);
+    } catch (error) {
+      console.error("Error fetching employee reputation:", error);
+      res.status(500).json({ message: "Failed to fetch employee reputation data" });
+    }
+  });
+
   // Return the server we created at the top with WebSocket
   return server;
 }
