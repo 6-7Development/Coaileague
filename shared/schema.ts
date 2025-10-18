@@ -1790,6 +1790,240 @@ export type InsertEmployeeCertification = z.infer<typeof insertEmployeeCertifica
 export type EmployeeCertification = typeof employeeCertifications.$inferSelect;
 
 // ============================================================================
+// HIREOS™ - Digital File Cabinet & Compliance Workflow (Monopolistic Feature)
+// ============================================================================
+
+// Onboarding Workflow Templates (No-Code Builder)
+export const onboardingWorkflowTemplates = pgTable("onboarding_workflow_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  // Template metadata
+  name: varchar("name").notNull(), // e.g., "Security Guard Onboarding", "Office Manager Onboarding"
+  description: text("description"),
+  industry: varchar("industry"), // 'security', 'construction', 'healthcare', 'office', 'general'
+  roleType: varchar("role_type"), // 'employee', 'contractor', 'temporary'
+  
+  // Workflow steps configuration
+  steps: jsonb("steps").notNull().$type<Array<{
+    stepId: string;
+    stepName: string;
+    stepOrder: number;
+    stepType: 'personal_info' | 'tax_forms' | 'documents' | 'certifications' | 'signatures' | 'custom_form';
+    isRequired: boolean;
+    requiredDocuments?: string[]; // ['government_id', 'ssn_card', 'i9', 'w4', 'direct_deposit']
+    requiredCertifications?: string[]; // ['guard_card', 'cpr', 'first_aid']
+    requiredSignatures?: string[]; // ['employee_handbook', 'confidentiality', 'code_of_conduct']
+    approvalRequired?: boolean;
+    approverRole?: 'owner' | 'manager' | 'hr'; 
+    customFields?: Array<{
+      fieldName: string;
+      fieldType: 'text' | 'number' | 'date' | 'file' | 'signature';
+      isRequired: boolean;
+      options?: string[];
+    }>;
+  }>>(),
+  
+  // Compliance tracking
+  complianceRequirements: jsonb("compliance_requirements").$type<{
+    i9Required: boolean;
+    i9VerificationDeadline: number; // Days from hire date
+    backgroundCheckRequired: boolean;
+    drugTestRequired: boolean;
+    minimumDocuments: number;
+    retentionPeriodYears: number; // Default: 7
+  }>(),
+  
+  // Usage stats
+  isActive: boolean("is_active").default(true),
+  isDefault: boolean("is_default").default(false), // Default for new employees
+  usageCount: integer("usage_count").default(0),
+  
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertOnboardingWorkflowTemplateSchema = createInsertSchema(onboardingWorkflowTemplates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertOnboardingWorkflowTemplate = z.infer<typeof insertOnboardingWorkflowTemplateSchema>;
+export type OnboardingWorkflowTemplate = typeof onboardingWorkflowTemplates.$inferSelect;
+
+// Employee Documents (Permanent Digital File Cabinet)
+export const employeeDocumentTypeEnum = pgEnum('employee_document_type', [
+  'government_id', 'passport', 'ssn_card', 'birth_certificate',
+  'i9_form', 'w4_form', 'w9_form', 'direct_deposit_form',
+  'employee_handbook_signed', 'confidentiality_agreement', 'code_of_conduct',
+  'certification', 'license', 'training_certificate',
+  'background_check', 'drug_test', 'physical_exam',
+  'emergency_contact_form', 'uniform_agreement', 'vehicle_insurance',
+  'custom_document'
+]);
+
+export const employeeDocumentStatusEnum = pgEnum('employee_document_status', [
+  'pending_upload', 'uploaded', 'pending_review', 'approved', 'rejected', 'expired', 'archived'
+]);
+
+export const employeeDocuments = pgTable("employee_documents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
+  applicationId: varchar("application_id").references(() => onboardingApplications.id),
+  
+  // Document classification
+  documentType: employeeDocumentTypeEnum("document_type").notNull(),
+  documentName: varchar("document_name").notNull(),
+  documentDescription: text("document_description"),
+  
+  // File storage (Object Storage)
+  fileUrl: varchar("file_url").notNull(), // Permanent storage URL
+  fileSize: integer("file_size"), // Bytes
+  fileType: varchar("file_type"), // 'application/pdf', 'image/jpeg'
+  originalFileName: varchar("original_file_name"),
+  
+  // Audit trail - WHO uploaded
+  uploadedBy: varchar("uploaded_by").references(() => users.id),
+  uploadedByEmail: varchar("uploaded_by_email"), // Denormalized for audit persistence
+  uploadedByRole: varchar("uploaded_by_role"), // Role at time of upload
+  
+  // Audit trail - WHEN uploaded
+  uploadedAt: timestamp("uploaded_at").notNull().defaultNow(),
+  
+  // Audit trail - WHERE uploaded from
+  uploadIpAddress: varchar("upload_ip_address").notNull(),
+  uploadUserAgent: text("upload_user_agent"),
+  uploadGeoLocation: varchar("upload_geo_location"), // City, State, Country
+  
+  // Document lifecycle
+  status: employeeDocumentStatusEnum("status").default('uploaded'),
+  expirationDate: timestamp("expiration_date"), // For licenses, certifications
+  
+  // Approval workflow
+  requiresApproval: boolean("requires_approval").default(false),
+  approvedBy: varchar("approved_by").references(() => users.id),
+  approvedAt: timestamp("approved_at"),
+  approvalNotes: text("approval_notes"),
+  
+  rejectedBy: varchar("rejected_by").references(() => users.id),
+  rejectedAt: timestamp("rejected_at"),
+  rejectionReason: text("rejection_reason"),
+  
+  // Compliance & retention
+  isComplianceDocument: boolean("is_compliance_document").default(false), // I-9, W-4, etc.
+  retentionPeriodYears: integer("retention_period_years").default(7), // Default: 7 years for audit defense
+  deleteAfter: timestamp("delete_after"), // Auto-calculated: uploadedAt + retentionPeriodYears
+  
+  // Document verification
+  isVerified: boolean("is_verified").default(false),
+  verifiedBy: varchar("verified_by").references(() => users.id),
+  verifiedAt: timestamp("verified_at"),
+  
+  // Immutability flag (for signed documents)
+  isImmutable: boolean("is_immutable").default(false), // Once signed, cannot be modified
+  digitalSignatureHash: varchar("digital_signature_hash"), // SHA-256 hash for tamper detection
+  
+  // Metadata
+  metadata: jsonb("metadata"), // Custom fields, OCR data, etc.
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_employee_documents_employee").on(table.employeeId),
+  index("idx_employee_documents_type").on(table.documentType),
+  index("idx_employee_documents_status").on(table.status),
+  index("idx_employee_documents_expiration").on(table.expirationDate),
+]);
+
+export const insertEmployeeDocumentSchema = createInsertSchema(employeeDocuments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertEmployeeDocument = z.infer<typeof insertEmployeeDocumentSchema>;
+export type EmployeeDocument = typeof employeeDocuments.$inferSelect;
+
+// Document Access Log (Who viewed what, when)
+export const documentAccessLogs = pgTable("document_access_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  documentId: varchar("document_id").notNull().references(() => employeeDocuments.id, { onDelete: 'cascade' }),
+  
+  // Access details
+  accessedBy: varchar("accessed_by").notNull().references(() => users.id),
+  accessedByEmail: varchar("accessed_by_email").notNull(),
+  accessedByRole: varchar("accessed_by_role").notNull(),
+  
+  accessType: varchar("access_type").notNull(), // 'view', 'download', 'print', 'share'
+  
+  // Context
+  ipAddress: varchar("ip_address").notNull(),
+  userAgent: text("user_agent"),
+  
+  // Audit compliance
+  accessedAt: timestamp("accessed_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_document_access_document").on(table.documentId),
+  index("idx_document_access_user").on(table.accessedBy),
+  index("idx_document_access_time").on(table.accessedAt),
+]);
+
+export const insertDocumentAccessLogSchema = createInsertSchema(documentAccessLogs).omit({
+  id: true,
+  accessedAt: true,
+});
+
+export type InsertDocumentAccessLog = z.infer<typeof insertDocumentAccessLogSchema>;
+export type DocumentAccessLog = typeof documentAccessLogs.$inferSelect;
+
+// Onboarding Checklist (Track completion per employee)
+export const onboardingChecklists = pgTable("onboarding_checklists", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  applicationId: varchar("application_id").notNull().references(() => onboardingApplications.id, { onDelete: 'cascade' }),
+  employeeId: varchar("employee_id").references(() => employees.id),
+  templateId: varchar("template_id").references(() => onboardingWorkflowTemplates.id),
+  
+  // Progress tracking
+  checklistItems: jsonb("checklist_items").notNull().$type<Array<{
+    itemId: string;
+    itemName: string;
+    itemType: 'document' | 'signature' | 'certification' | 'form' | 'task';
+    isRequired: boolean;
+    isCompleted: boolean;
+    completedAt?: Date;
+    completedBy?: string;
+    documentId?: string; // Link to employeeDocuments
+    notes?: string;
+  }>>(),
+  
+  overallProgress: integer("overall_progress").default(0), // 0-100%
+  
+  // Compliance deadlines
+  i9DeadlineDate: timestamp("i9_deadline_date"), // 3 business days from hire
+  onboardingCompletedAt: timestamp("onboarding_completed_at"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_onboarding_checklist_employee").on(table.employeeId),
+  index("idx_onboarding_checklist_application").on(table.applicationId),
+]);
+
+export const insertOnboardingChecklistSchema = createInsertSchema(onboardingChecklists).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertOnboardingChecklist = z.infer<typeof insertOnboardingChecklistSchema>;
+export type OnboardingChecklist = typeof onboardingChecklists.$inferSelect;
+
+// ============================================================================
 // ENTERPRISE FEATURES - Audit Trail System
 // ============================================================================
 
