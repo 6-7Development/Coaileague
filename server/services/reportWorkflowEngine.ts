@@ -54,7 +54,7 @@ export async function initializeWorkflow(
       stepName: step.stepName || `Step ${step.step} - ${step.roleRequired} Review`,
       requiredRole: step.roleRequired,
       assignedTo: step.approverUserId || null,
-      status: step.step === 1 ? 'pending' : 'pending', // First step is active
+      status: step.step === 1 ? 'pending' : 'waiting', // Only first step is active, others wait
     });
   }
 
@@ -92,8 +92,13 @@ export async function processApproval(
     throw new Error('Approval step not found');
   }
 
+  // CRITICAL: Verify step belongs to the submission (prevent ID mismatch attacks)
+  if (step.submissionId !== submissionId) {
+    throw new Error('Step does not belong to this submission - potential ID mismatch');
+  }
+
   if (step.status !== 'pending') {
-    throw new Error('This step has already been processed');
+    throw new Error('This step has already been processed or is waiting for prior approvals');
   }
 
   // Verify reviewer has permission
@@ -134,7 +139,12 @@ export async function processApproval(
   const nextStep = allSteps.find(s => s.stepNumber === currentStepNumber + 1);
 
   if (nextStep) {
-    // More steps remaining - notify next approver
+    // Promote next step from 'waiting' to 'pending' (sequential gating)
+    await storage.updateApprovalStep(nextStep.id, {
+      status: 'pending',
+    });
+
+    // Notify next approver
     await notifyNextApprover(submissionId, step.workspaceId);
     
     return {
