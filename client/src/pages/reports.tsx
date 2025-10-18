@@ -12,11 +12,21 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { FileText, ClipboardCheck, Clock, AlertCircle, CheckCircle2, XCircle, Play, Pause, Plus } from "lucide-react";
+import { FileText, ClipboardCheck, Clock, AlertCircle, CheckCircle2, XCircle, Play, Pause, Plus, AlertTriangle } from "lucide-react";
 import type { ReportTemplate, ReportSubmission } from "@shared/schema";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { format } from "date-fns";
+
+const disputeSchema = z.object({
+  title: z.string().min(5, "Title must be at least 5 characters").max(200, "Title too long"),
+  reason: z.string().min(20, "Reason must be at least 20 characters").max(5000, "Reason too long"),
+  requestedOutcome: z.string().max(1000, "Requested outcome too long").optional(),
+  priority: z.enum(['low', 'normal', 'high', 'urgent']),
+});
+
+type DisputeFormData = z.infer<typeof disputeSchema>;
 
 interface TemplateField {
   name: string;
@@ -200,6 +210,8 @@ export default function ReportsPage() {
   const [selectedTemplate, setSelectedTemplate] = useState<ReportTemplate | null>(null);
   const [reviewSubmission, setReviewSubmission] = useState<ReportSubmission | null>(null);
   const [reviewNotes, setReviewNotes] = useState("");
+  const [disputeDialogOpen, setDisputeDialogOpen] = useState(false);
+  const [selectedSubmission, setSelectedSubmission] = useState<ReportSubmission | null>(null);
   const { toast} = useToast();
 
   const { data: templates = [], isLoading: templatesLoading, error: templatesError } = useQuery<ReportTemplate[]>({
@@ -321,6 +333,56 @@ export default function ReportsPage() {
       });
     },
   });
+
+  // Dispute filing mutation
+  const fileDisputeMutation = useMutation({
+    mutationFn: async (data: DisputeFormData) => {
+      if (!selectedSubmission) throw new Error("No submission selected");
+      return apiRequest('POST', '/api/disputes', {
+        ...data,
+        disputeType: 'report_write_up',
+        targetType: 'report_submissions',
+        targetId: selectedSubmission.id.toString(),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/disputes'] });
+      setDisputeDialogOpen(false);
+      disputeForm.reset();
+      setSelectedSubmission(null);
+      toast({
+        title: "Success",
+        description: "Dispute filed successfully. Support will review your case.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const disputeForm = useForm<DisputeFormData>({
+    resolver: zodResolver(disputeSchema),
+    defaultValues: {
+      title: "",
+      reason: "",
+      requestedOutcome: "",
+      priority: "normal",
+    },
+  });
+
+  const onDisputeSubmit = (data: DisputeFormData) => {
+    fileDisputeMutation.mutate(data);
+  };
+
+  const handleOpenDisputeDialog = (submission: ReportSubmission) => {
+    setSelectedSubmission(submission);
+    disputeForm.setValue('title', `Dispute: Report ${submission.reportNumber}`);
+    setDisputeDialogOpen(true);
+  };
 
   const activeTemplates = templates.filter(t => t.isActive);
   const inactiveTemplates = templates.filter(t => !t.isActive);
@@ -656,6 +718,15 @@ export default function ReportsPage() {
                               {sendToClient.isPending ? "Sending..." : "Send to Client"}
                             </Button>
                           )}
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleOpenDisputeDialog(submission)}
+                            data-testid={`button-dispute-${submission.id}`}
+                          >
+                            <AlertTriangle className="h-4 w-4 mr-2" />
+                            Dispute
+                          </Button>
                           <Button variant="outline" size="sm" data-testid={`button-view-${submission.id}`}>
                             View Details
                           </Button>
@@ -828,6 +899,120 @@ export default function ReportsPage() {
                 </div>
               </div>
             )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Dispute Filing Dialog */}
+        <Dialog open={disputeDialogOpen} onOpenChange={setDisputeDialogOpen}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>File Dispute - Report Submission</DialogTitle>
+              <DialogDescription>
+                Explain why you believe this write-up/report is inaccurate or unfair. Support will investigate and respond.
+              </DialogDescription>
+            </DialogHeader>
+            <Form {...disputeForm}>
+              <form onSubmit={disputeForm.handleSubmit(onDisputeSubmit)} className="space-y-4">
+                {selectedSubmission && (
+                  <div className="bg-muted p-4 rounded-lg">
+                    <p className="text-sm font-medium">Disputing report: {selectedSubmission.reportNumber}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Submitted: {selectedSubmission.submittedAt ? format(new Date(selectedSubmission.submittedAt), 'MMM d, yyyy') : 'N/A'}
+                      {' '} • Status: {selectedSubmission.status}
+                    </p>
+                  </div>
+                )}
+
+                <FormField
+                  control={disputeForm.control}
+                  name="title"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Dispute Title</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="Brief summary of your dispute" data-testid="input-dispute-title" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={disputeForm.control}
+                  name="reason"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Detailed Reason (minimum 20 characters)</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          {...field} 
+                          rows={6} 
+                          placeholder="Explain in detail why this write-up/report is inaccurate or unfair. Include specific examples and data if available."
+                          data-testid="input-dispute-reason"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={disputeForm.control}
+                  name="requestedOutcome"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Requested Outcome (Optional)</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          {...field} 
+                          rows={3} 
+                          placeholder="What resolution would you like? (e.g., 'Remove this write-up from my record', 'Correct the facts')"
+                          data-testid="input-dispute-outcome"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={disputeForm.control}
+                  name="priority"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Priority</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-dispute-priority">
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="low">Low</SelectItem>
+                          <SelectItem value="normal">Normal</SelectItem>
+                          <SelectItem value="high">High</SelectItem>
+                          <SelectItem value="urgent">Urgent</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="flex justify-end gap-3 pt-4">
+                  <Button type="button" variant="outline" onClick={() => {
+                    setDisputeDialogOpen(false);
+                    setSelectedSubmission(null);
+                    disputeForm.reset();
+                  }}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={fileDisputeMutation.isPending} data-testid="button-submit-dispute">
+                    {fileDisputeMutation.isPending ? "Filing..." : "File Dispute"}
+                  </Button>
+                </div>
+              </form>
+            </Form>
           </DialogContent>
         </Dialog>
         </div>
