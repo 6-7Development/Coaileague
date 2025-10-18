@@ -54,8 +54,8 @@ export const users = pgTable("users", {
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
   
-  // Unique Work ID for action tracking (format: Firstname-##-###-##-####)
-  workId: varchar("work_id").unique(),
+  // Work ID for action tracking (format: Firstname-##-###-##-####)
+  workId: varchar("work_id"),
   
   // Multi-tenant
   currentWorkspaceId: varchar("current_workspace_id"),
@@ -509,7 +509,7 @@ export const performanceReviews = pgTable("performance_reviews", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
   employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
-  reviewerId: varchar("reviewer_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
+  reviewerId: varchar("reviewer_id").references(() => employees.id, { onDelete: 'cascade' }),
   
   // Review details
   reviewType: reviewTypeEnum("review_type").notNull(),
@@ -538,6 +538,54 @@ export const performanceReviews = pgTable("performance_reviews", {
   // Salary/promotion decisions
   salaryAdjustment: decimal("salary_adjustment", { precision: 10, scale: 2 }),
   promotionRecommended: boolean("promotion_recommended").default(false),
+  
+  // ========================================================================
+  // TALENTOS™ EXTENDED FIELDS - Performance-to-Pay Loop & Analytics
+  // ========================================================================
+  
+  // Auto-calculated performance metrics (from Unified Data Nexus)
+  shiftsCompletedOnTime: integer("shifts_completed_on_time"),
+  totalShiftsAssigned: integer("total_shifts_assigned"),
+  attendanceRate: decimal("attendance_rate", { precision: 5, scale: 2 }),
+  averageHoursWorkedPerWeek: decimal("average_hours_worked_per_week", { precision: 5, scale: 2 }),
+  overtimeHours: decimal("overtime_hours", { precision: 10, scale: 2 }),
+  
+  // Report quality metrics (ReportOS™ integration)
+  reportsSubmitted: integer("reports_submitted"),
+  reportsApproved: integer("reports_approved"),
+  reportsRejected: integer("reports_rejected"),
+  reportQualityScore: decimal("report_quality_score", { precision: 5, scale: 2 }),
+  
+  // Compliance & safety
+  complianceViolations: integer("compliance_violations"),
+  safetyIncidents: integer("safety_incidents"),
+  trainingCompletionRate: decimal("training_completion_rate", { precision: 5, scale: 2 }),
+  
+  // Additional subjective ratings (TalentOS™)
+  qualityOfWorkRating: integer("quality_of_work_rating"), // 1-5
+  initiativeRating: integer("initiative_rating"), // 1-5
+  
+  // Overall composite score (auto-calculated from weighted metrics)
+  compositeScore: decimal("composite_score", { precision: 5, scale: 2 }),
+  performanceTier: varchar("performance_tier"), // 'exceptional', 'exceeds', 'meets', 'needs_improvement', 'unsatisfactory'
+  
+  // Auto-generated pay increase recommendation
+  currentHourlyRate: decimal("current_hourly_rate", { precision: 10, scale: 2 }),
+  suggestedPayIncrease: decimal("suggested_pay_increase", { precision: 10, scale: 2 }),
+  suggestedPayIncreasePercentage: decimal("suggested_pay_increase_percentage", { precision: 5, scale: 2 }),
+  payIncreaseFormula: text("pay_increase_formula"),
+  payIncreaseJustification: text("pay_increase_justification"),
+  
+  // Manager override
+  managerApprovedIncrease: decimal("manager_approved_increase", { precision: 10, scale: 2 }),
+  managerOverrideReason: text("manager_override_reason"),
+  employeeAcknowledgedAt: timestamp("employee_acknowledged_at"),
+  
+  // Goals & development (Career Pathing)
+  goalsMet: jsonb("goals_met").$type<string[]>(),
+  goalsNotMet: jsonb("goals_not_met").$type<string[]>(),
+  nextQuarterGoals: jsonb("next_quarter_goals").$type<string[]>(),
+  developmentNeeds: jsonb("development_needs").$type<string[]>(),
   
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -3776,86 +3824,6 @@ export const insertBidApplicationSchema = createInsertSchema(bidApplications).om
 
 export type InsertBidApplication = z.infer<typeof insertBidApplicationSchema>;
 export type BidApplication = typeof bidApplications.$inferSelect;
-
-// Performance Reviews - Data-driven compensation recommendations
-export const performanceReviews = pgTable("performance_reviews", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
-  employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
-  
-  // Review period
-  reviewPeriodStart: timestamp("review_period_start").notNull(),
-  reviewPeriodEnd: timestamp("review_period_end").notNull(),
-  reviewType: varchar("review_type").notNull(), // 'annual', 'quarterly', 'probation', 'promotion'
-  
-  // Auto-calculated performance metrics (from Unified Data Nexus)
-  shiftsCompletedOnTime: integer("shifts_completed_on_time").default(0),
-  totalShiftsAssigned: integer("total_shifts_assigned").default(0),
-  attendanceRate: decimal("attendance_rate", { precision: 5, scale: 2 }), // Percentage
-  averageHoursWorkedPerWeek: decimal("average_hours_worked_per_week", { precision: 5, scale: 2 }),
-  overtimeHours: decimal("overtime_hours", { precision: 10, scale: 2 }),
-  
-  // Report quality metrics (ReportOS™ integration)
-  reportsSubmitted: integer("reports_submitted").default(0),
-  reportsApproved: integer("reports_approved").default(0),
-  reportsRejected: integer("reports_rejected").default(0),
-  reportQualityScore: decimal("report_quality_score", { precision: 5, scale: 2 }), // 0-100%
-  
-  // Compliance & safety
-  complianceViolations: integer("compliance_violations").default(0),
-  safetyIncidents: integer("safety_incidents").default(0),
-  trainingCompletionRate: decimal("training_completion_rate", { precision: 5, scale: 2 }),
-  
-  // Subjective ratings (manager input)
-  qualityOfWorkRating: integer("quality_of_work_rating"), // 1-5
-  teamworkRating: integer("teamwork_rating"), // 1-5
-  communicationRating: integer("communication_rating"), // 1-5
-  initiativeRating: integer("initiative_rating"), // 1-5
-  
-  // Overall composite score (auto-calculated from weighted metrics)
-  compositeScore: decimal("composite_score", { precision: 5, scale: 2 }), // 0-100%
-  performanceTier: varchar("performance_tier"), // 'exceptional', 'exceeds', 'meets', 'needs_improvement', 'unsatisfactory'
-  
-  // Auto-generated pay increase recommendation
-  currentHourlyRate: decimal("current_hourly_rate", { precision: 10, scale: 2 }),
-  suggestedPayIncrease: decimal("suggested_pay_increase", { precision: 10, scale: 2 }), // Dollar amount
-  suggestedPayIncreasePercentage: decimal("suggested_pay_increase_percentage", { precision: 5, scale: 2 }),
-  payIncreaseFormula: text("pay_increase_formula"), // "Base 3% + 0.5% per attendance point + 1% for quality > 90%"
-  payIncreaseJustification: text("pay_increase_justification"),
-  
-  // Manager override
-  managerApprovedIncrease: decimal("manager_approved_increase", { precision: 10, scale: 2 }),
-  managerOverrideReason: text("manager_override_reason"),
-  
-  // Review lifecycle
-  status: varchar("status").default("draft"), // 'draft', 'pending_manager', 'completed', 'archived'
-  reviewedBy: varchar("reviewed_by").references(() => users.id),
-  reviewedAt: timestamp("reviewed_at"),
-  managerComments: text("manager_comments"),
-  employeeComments: text("employee_comments"), // Self-reflection
-  employeeAcknowledgedAt: timestamp("employee_acknowledged_at"),
-  
-  // Goals & development (feeds into Career Pathing)
-  goalsMet: jsonb("goals_met").$type<string[]>().default(sql`'[]'`),
-  goalsNotMet: jsonb("goals_not_met").$type<string[]>().default(sql`'[]'`),
-  nextQuarterGoals: jsonb("next_quarter_goals").$type<string[]>().default(sql`'[]'`),
-  developmentNeeds: jsonb("development_needs").$type<string[]>().default(sql`'[]'`), // Links to LearnOS™
-  
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-}, (table) => ({
-  employeeIndex: index("performance_reviews_employee_idx").on(table.employeeId, table.reviewPeriodEnd),
-  workspaceStatusIndex: index("performance_reviews_workspace_status_idx").on(table.workspaceId, table.status),
-}));
-
-export const insertPerformanceReviewSchema = createInsertSchema(performanceReviews).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-export type InsertPerformanceReview = z.infer<typeof insertPerformanceReviewSchema>;
-export type PerformanceReview = typeof performanceReviews.$inferSelect;
 
 // Role Templates - Career progression paths
 export const roleTemplates = pgTable("role_templates", {
