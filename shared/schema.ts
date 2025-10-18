@@ -739,6 +739,15 @@ export const shifts = pgTable("shifts", {
   aiGenerated: boolean("ai_generated").default(false),
   requiresAcknowledgment: boolean("requires_acknowledgment").default(false),
   acknowledgedAt: timestamp("acknowledged_at"),
+  deniedAt: timestamp("denied_at"),
+  denialReason: text("denial_reason"),
+  replacementForShiftId: varchar("replacement_for_shift_id"), // If this shift replaces a denied one
+  autoReplacementAttempts: integer("auto_replacement_attempts").default(0), // Track replacement tries
+  
+  // AI confidence & risk scoring
+  aiConfidenceScore: decimal("ai_confidence_score", { precision: 3, scale: 2 }), // 0.00-1.00
+  riskScore: decimal("risk_score", { precision: 3, scale: 2 }), // 0.00-1.00 (higher = riskier)
+  riskFactors: jsonb("risk_factors").$type<string[]>(), // ['high_tardiness', 'location_far', 'low_performance']
   
   // Status and tracking
   status: shiftStatusEnum("status").default('scheduled'),
