@@ -378,6 +378,20 @@ export interface IStorage {
   // Expense management
   getExpenseReports(workspaceId: string, filters?: { status?: string; employeeId?: string }): Promise<any[]>;
   approveExpense(expenseId: string, workspaceId: string, approverId: string): Promise<any>;
+  
+  // ReportOS™ Monopolistic Features
+  // KPI Alerts
+  createKpiAlert(alert: any): Promise<any>;
+  getKpiAlerts(workspaceId: string): Promise<any[]>;
+  updateKpiAlert(id: string, workspaceId: string, data: any): Promise<any>;
+  deleteKpiAlert(id: string, workspaceId: string): Promise<boolean>;
+  triggerKpiAlert(alertId: string, metricValue: number, entityData: any): Promise<any>;
+  getKpiAlertTriggers(workspaceId: string, alertId?: string): Promise<any[]>;
+  acknowledgeAlert(triggerId: string, userId: string): Promise<any>;
+  
+  // Benchmark Metrics
+  createBenchmarkMetric(metric: any): Promise<any>;
+  getBenchmarkMetrics(workspaceId: string, periodType?: string): Promise<any[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2542,6 +2556,141 @@ export class DatabaseStorage implements IStorage {
       ))
       .returning();
     return expense;
+  }
+  
+  // ============================================================================
+  // REPORTOS™ MONOPOLISTIC FEATURES
+  // ============================================================================
+  
+  // KPI Alerts
+  async createKpiAlert(alert: any): Promise<any> {
+    const { kpiAlerts } = await import("@shared/schema");
+    const [created] = await db.insert(kpiAlerts).values(alert).returning();
+    return created;
+  }
+  
+  async getKpiAlerts(workspaceId: string): Promise<any[]> {
+    const { kpiAlerts } = await import("@shared/schema");
+    return await db
+      .select()
+      .from(kpiAlerts)
+      .where(eq(kpiAlerts.workspaceId, workspaceId))
+      .orderBy(desc(kpiAlerts.createdAt));
+  }
+  
+  async updateKpiAlert(id: string, workspaceId: string, data: any): Promise<any> {
+    const { kpiAlerts } = await import("@shared/schema");
+    const [updated] = await db
+      .update(kpiAlerts)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(
+        eq(kpiAlerts.id, id),
+        eq(kpiAlerts.workspaceId, workspaceId)
+      ))
+      .returning();
+    return updated;
+  }
+  
+  async deleteKpiAlert(id: string, workspaceId: string): Promise<boolean> {
+    const { kpiAlerts } = await import("@shared/schema");
+    const result = await db
+      .delete(kpiAlerts)
+      .where(and(
+        eq(kpiAlerts.id, id),
+        eq(kpiAlerts.workspaceId, workspaceId)
+      ));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+  
+  async triggerKpiAlert(alertId: string, metricValue: number, entityData: any): Promise<any> {
+    const { kpiAlerts, kpiAlertTriggers } = await import("@shared/schema");
+    
+    // Get the alert
+    const [alert] = await db
+      .select()
+      .from(kpiAlerts)
+      .where(eq(kpiAlerts.id, alertId));
+    
+    if (!alert) {
+      throw new Error('Alert not found');
+    }
+    
+    // Create trigger record
+    const [trigger] = await db
+      .insert(kpiAlertTriggers)
+      .values({
+        alertId: alert.id,
+        workspaceId: alert.workspaceId,
+        metricValue: metricValue.toString(),
+        thresholdValue: alert.thresholdValue,
+        entityType: entityData.entityType,
+        entityId: entityData.entityId,
+        entityData: entityData,
+        notifiedUsers: alert.notifyUsers || [],
+      })
+      .returning();
+    
+    // Update alert trigger count
+    await db
+      .update(kpiAlerts)
+      .set({
+        lastTriggeredAt: new Date(),
+        triggerCount: sql`${kpiAlerts.triggerCount} + 1`,
+      })
+      .where(eq(kpiAlerts.id, alertId));
+    
+    return trigger;
+  }
+  
+  async getKpiAlertTriggers(workspaceId: string, alertId?: string): Promise<any[]> {
+    const { kpiAlertTriggers } = await import("@shared/schema");
+    const conditions = [eq(kpiAlertTriggers.workspaceId, workspaceId)];
+    
+    if (alertId) {
+      conditions.push(eq(kpiAlertTriggers.alertId, alertId));
+    }
+    
+    return await db
+      .select()
+      .from(kpiAlertTriggers)
+      .where(and(...conditions))
+      .orderBy(desc(kpiAlertTriggers.createdAt));
+  }
+  
+  async acknowledgeAlert(triggerId: string, userId: string): Promise<any> {
+    const { kpiAlertTriggers } = await import("@shared/schema");
+    const [updated] = await db
+      .update(kpiAlertTriggers)
+      .set({
+        acknowledged: true,
+        acknowledgedBy: userId,
+        acknowledgedAt: new Date(),
+      })
+      .where(eq(kpiAlertTriggers.id, triggerId))
+      .returning();
+    return updated;
+  }
+  
+  // Benchmark Metrics
+  async createBenchmarkMetric(metric: any): Promise<any> {
+    const { benchmarkMetrics } = await import("@shared/schema");
+    const [created] = await db.insert(benchmarkMetrics).values(metric).returning();
+    return created;
+  }
+  
+  async getBenchmarkMetrics(workspaceId: string, periodType?: string): Promise<any[]> {
+    const { benchmarkMetrics } = await import("@shared/schema");
+    const conditions = [eq(benchmarkMetrics.workspaceId, workspaceId)];
+    
+    if (periodType) {
+      conditions.push(eq(benchmarkMetrics.periodType, periodType));
+    }
+    
+    return await db
+      .select()
+      .from(benchmarkMetrics)
+      .where(and(...conditions))
+      .orderBy(desc(benchmarkMetrics.createdAt));
   }
 }
 
