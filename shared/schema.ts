@@ -5110,3 +5110,166 @@ export const insertPromotionalBannerSchema = createInsertSchema(promotionalBanne
 
 export type InsertPromotionalBanner = z.infer<typeof insertPromotionalBannerSchema>;
 export type PromotionalBanner = typeof promotionalBanners.$inferSelect;
+
+// ============================================================================
+// INTELLIGENT KNOWLEDGE BASE - AI-Powered Document Search & Policy Retrieval
+// ============================================================================
+
+export const knowledgeArticles = pgTable("knowledge_articles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  // Article content
+  title: varchar("title", { length: 500 }).notNull(),
+  content: text("content").notNull(),
+  summary: text("summary"), // AI-generated summary
+  category: varchar("category", { length: 100 }), // 'policy', 'procedure', 'faq', 'guide'
+  tags: text("tags").array(), // Searchable tags
+  
+  // Access control
+  isPublic: boolean("is_public").default(false), // Public to all or workspace-specific
+  requiredRole: varchar("required_role"), // Minimum role to view
+  
+  // Metadata
+  lastUpdatedBy: varchar("last_updated_by").references(() => users.id),
+  viewCount: integer("view_count").default(0),
+  helpfulCount: integer("helpful_count").default(0), // User feedback
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  categoryIdx: index("knowledge_articles_category_idx").on(table.category),
+  workspaceIdx: index("knowledge_articles_workspace_idx").on(table.workspaceId),
+}));
+
+export const insertKnowledgeArticleSchema = createInsertSchema(knowledgeArticles).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertKnowledgeArticle = z.infer<typeof insertKnowledgeArticleSchema>;
+export type KnowledgeArticle = typeof knowledgeArticles.$inferSelect;
+
+// Track AI knowledge queries for learning and improving responses
+export const knowledgeQueries = pgTable("knowledge_queries", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  // Query details
+  userId: varchar("user_id").references(() => users.id, { onDelete: 'set null' }),
+  query: text("query").notNull(), // What the user asked
+  response: text("response"), // AI-generated answer
+  
+  // Metadata
+  responseTime: integer("response_time"), // Milliseconds
+  articlesRetrieved: text("articles_retrieved").array(), // IDs of articles used
+  wasHelpful: boolean("was_helpful"), // User feedback
+  followUpQueries: integer("follow_up_queries").default(0), // Did they ask again?
+  
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  userIdx: index("knowledge_queries_user_idx").on(table.userId),
+  createdIdx: index("knowledge_queries_created_idx").on(table.createdAt),
+}));
+
+export const insertKnowledgeQuerySchema = createInsertSchema(knowledgeQueries).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertKnowledgeQuery = z.infer<typeof insertKnowledgeQuerySchema>;
+export type KnowledgeQuery = typeof knowledgeQueries.$inferSelect;
+
+// ============================================================================
+// PREDICTIVE SCHEDULING - Capacity Alerts Before Over-Allocation
+// ============================================================================
+
+export const capacityAlerts = pgTable("capacity_alerts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  // Alert details
+  employeeId: varchar("employee_id").references(() => employees.id, { onDelete: 'cascade' }),
+  managerId: varchar("manager_id").references(() => users.id),
+  
+  alertType: varchar("alert_type").notNull(), // 'over_allocated', 'under_utilized', 'conflict', 'approaching_limit'
+  severity: varchar("severity").default('medium'), // 'low', 'medium', 'high', 'critical'
+  
+  // Capacity data
+  weekStartDate: timestamp("week_start_date").notNull(),
+  scheduledHours: decimal("scheduled_hours", { precision: 5, scale: 2 }),
+  availableHours: decimal("available_hours", { precision: 5, scale: 2 }),
+  overageHours: decimal("overage_hours", { precision: 5, scale: 2 }), // Hours over limit
+  
+  // Alert message
+  message: text("message").notNull(),
+  suggestedAction: text("suggested_action"), // AI-suggested fix
+  
+  // Status
+  status: varchar("status").default('active'), // 'active', 'acknowledged', 'resolved', 'dismissed'
+  acknowledgedBy: varchar("acknowledged_by").references(() => users.id),
+  acknowledgedAt: timestamp("acknowledged_at"),
+  resolvedAt: timestamp("resolved_at"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  employeeIdx: index("capacity_alerts_employee_idx").on(table.employeeId),
+  statusIdx: index("capacity_alerts_status_idx").on(table.status),
+  weekIdx: index("capacity_alerts_week_idx").on(table.weekStartDate),
+}));
+
+export const insertCapacityAlertSchema = createInsertSchema(capacityAlerts).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertCapacityAlert = z.infer<typeof insertCapacityAlertSchema>;
+export type CapacityAlert = typeof capacityAlerts.$inferSelect;
+
+// ============================================================================
+// AUTOMATED STATUS REPORTS - Auto-Generated Weekly Summaries
+// ============================================================================
+
+export const autoReports = pgTable("auto_reports", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  // Report details
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  reportType: varchar("report_type").notNull(), // 'weekly_status', 'timesheet_summary', 'accomplishments'
+  period: varchar("period").notNull(), // 'week_2025_01', 'month_2025_01', etc.
+  
+  // Generated content
+  summary: text("summary").notNull(), // AI-generated summary
+  accomplishments: text("accomplishments").array(), // Key wins
+  blockers: text("blockers").array(), // Issues encountered
+  nextSteps: text("next_steps").array(), // Planned activities
+  
+  // Metrics
+  hoursWorked: decimal("hours_worked", { precision: 5, scale: 2 }),
+  tasksCompleted: integer("tasks_completed"),
+  meetingsAttended: integer("meetings_attended"),
+  
+  // Status
+  status: varchar("status").default('draft'), // 'draft', 'reviewed', 'sent'
+  reviewedBy: varchar("reviewed_by").references(() => users.id),
+  sentAt: timestamp("sent_at"),
+  sentTo: text("sent_to").array(), // Email addresses or user IDs
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  userIdx: index("auto_reports_user_idx").on(table.userId),
+  periodIdx: index("auto_reports_period_idx").on(table.period),
+  statusIdx: index("auto_reports_status_idx").on(table.status),
+}));
+
+export const insertAutoReportSchema = createInsertSchema(autoReports).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertAutoReport = z.infer<typeof insertAutoReportSchema>;
+export type AutoReport = typeof autoReports.$inferSelect;
