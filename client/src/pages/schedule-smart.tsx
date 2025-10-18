@@ -2,7 +2,8 @@ import { useState, useMemo, useCallback, useEffect } from "react";
 import { Calendar, momentLocalizer, View, Event as BigCalendarEvent } from "react-big-calendar";
 import withDragAndDrop from "react-big-calendar/lib/addons/dragAndDrop";
 import { DndProvider } from "react-dnd";
-import { HTML5Backend } from "react-dnd-html5-backend";
+import { MultiBackend } from "react-dnd-multi-backend";
+import { HTML5toTouch } from "rdndmb-html5-to-touch";
 import moment from "moment";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import "react-big-calendar/lib/addons/dragAndDrop/styles.css";
@@ -423,7 +424,7 @@ export default function SmartScheduleOS() {
   }, [shifts, currentDate, detectConflict]);
 
   return (
-    <DndProvider backend={HTML5Backend}>
+    <DndProvider backend={MultiBackend} options={HTML5toTouch}>
       <div className="h-screen flex flex-col bg-background" data-testid="page-smart-schedule">
       {/* Header Bar - Mobile Responsive */}
       <div className="border-b bg-card px-3 sm:px-6 py-3 sm:py-4">
@@ -550,17 +551,17 @@ export default function SmartScheduleOS() {
         </div>
       </div>
 
-      {/* Create Shift Dialog */}
+      {/* Create Shift Dialog - Mobile Responsive (Full-Screen on Small Screens) */}
       <Dialog open={isAddShiftOpen} onOpenChange={setIsAddShiftOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="w-[95vw] max-w-full sm:max-w-2xl h-[90vh] sm:h-auto overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle>Create New Shift</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-lg sm:text-xl">Create New Shift</DialogTitle>
+            <DialogDescription className="text-sm">
               Assign an employee and optionally link to a client job
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-3 sm:space-y-4 py-3 sm:py-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div className="space-y-2">
                 <Label htmlFor="employee">Employee *</Label>
                 <Select 
@@ -600,24 +601,26 @@ export default function SmartScheduleOS() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div className="space-y-2">
-                <Label htmlFor="startTime">Start Time *</Label>
+                <Label htmlFor="startTime" className="text-sm">Start Time *</Label>
                 <Input 
                   id="startTime" 
                   type="time" 
                   value={formData.startTime}
                   onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+                  className="text-base"
                   data-testid="input-shift-start" 
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="endTime">End Time *</Label>
+                <Label htmlFor="endTime" className="text-sm">End Time *</Label>
                 <Input 
                   id="endTime" 
                   type="time" 
                   value={formData.endTime}
                   onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
+                  className="text-base"
                   data-testid="input-shift-end" 
                 />
               </div>
@@ -634,13 +637,18 @@ export default function SmartScheduleOS() {
               />
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAddShiftOpen(false)}>
+          <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:gap-0">
+            <Button 
+              variant="outline" 
+              onClick={() => setIsAddShiftOpen(false)}
+              className="w-full sm:w-auto"
+            >
               Cancel
             </Button>
             <Button 
               onClick={handleSubmit} 
               disabled={createShiftMutation.isPending}
+              className="w-full sm:w-auto"
               data-testid="button-submit-shift"
             >
               {createShiftMutation.isPending ? "Creating..." : "Create Shift"}
@@ -649,12 +657,12 @@ export default function SmartScheduleOS() {
         </DialogContent>
       </Dialog>
 
-      {/* Shift Details Popover */}
+      {/* Shift Details Popover - Mobile Responsive (Full-Screen on Small Screens) */}
       {selectedShift && (
         <Dialog open={isShiftPopoverOpen} onOpenChange={setIsShiftPopoverOpen}>
-          <DialogContent className="max-w-md">
+          <DialogContent className="w-[95vw] max-w-full sm:max-w-md h-[90vh] sm:h-auto overflow-y-auto p-4 sm:p-6">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
+              <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
                 <Avatar className="h-10 w-10">
                   <AvatarFallback className={`${getRoleColor(selectedShift.employeeId)} text-white`}>
                     {getEmployeeName(selectedShift.employeeId).substring(0, 2).toUpperCase()}
