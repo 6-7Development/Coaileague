@@ -1924,25 +1924,79 @@ export function setupWebSocket(server: Server) {
           }
 
           case 'silence_user': {
-            // Mute/silence a user temporarily
+            // Mute/silence a user temporarily with IRC-style acknowledgments
             if (!ws.conversationId || !ws.userId) {
               return;
             }
 
             // SECURITY: Only platform staff can silence users
-            const staffRole = await storage.getUserPlatformRole(ws.userId).catch(() => null);
-            const canSilence = staffRole && ['root', 'deputy_admin', 'deputy_assistant', 'sysop'].includes(staffRole);
+            const silencerRole = await storage.getUserPlatformRole(ws.userId).catch(() => null);
+            const canSilence = silencerRole && ['root', 'deputy_admin', 'deputy_assistant', 'sysop'].includes(silencerRole);
             
             if (!canSilence) {
-              ws.send(JSON.stringify({
-                type: 'error',
-                message: 'You do not have permission to silence users',
-              }));
+              // IRC-STYLE COMMAND ACKNOWLEDGMENT - Permission denied
+              if (ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                  type: 'command_ack',
+                  commandId: payload.commandId,
+                  action: 'silence_user',
+                  success: false,
+                  message: '✗ Permission denied - Staff role required',
+                  errorType: 'PERMISSION_DENIED',
+                }));
+              }
+
+              // Log failed attempt to AuditOS™
+              try {
+                const silencerInfo = await storage.getUserDisplayInfo(ws.userId);
+                await storage.createAuditLog({
+                  commandId: payload.commandId || null,
+                  userId: ws.userId,
+                  userEmail: silencerInfo?.email || ws.userName || 'unknown',
+                  userRole: silencerRole || 'unknown',
+                  action: 'silence_user',
+                  actionDescription: `Permission denied: ${ws.userName} attempted to silence user`,
+                  entityType: 'user',
+                  entityId: payload.targetUserId || 'unknown',
+                  targetId: payload.targetUserId || null,
+                  targetName: null,
+                  targetType: 'user',
+                  conversationId: ws.conversationId,
+                  reason: payload.reason || null,
+                  metadata: {
+                    commandPayload: {
+                      type: 'silence_user',
+                      targetUserId: payload.targetUserId,
+                      duration: payload.duration,
+                      reason: payload.reason,
+                    },
+                  },
+                  ipAddress: null,
+                  userAgent: null,
+                  success: false,
+                  errorMessage: 'Permission denied - Staff role required',
+                });
+              } catch (auditErr) {
+                console.error('AuditOS™ failed to log silence attempt:', auditErr);
+              }
               return;
             }
 
             const clients = conversationClients.get(ws.conversationId);
-            if (!clients) return;
+            if (!clients) {
+              // IRC acknowledgment - Conversation not found
+              if (ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                  type: 'command_ack',
+                  commandId: payload.commandId,
+                  action: 'silence_user',
+                  success: false,
+                  message: '✗ Conversation not found',
+                  errorType: 'NOT_FOUND',
+                }));
+              }
+              return;
+            }
 
             // Find target user
             let targetUserName = 'User';
@@ -1972,7 +2026,7 @@ export function setupWebSocket(server: Server) {
               readAt: null,
             };
 
-            // Save and broadcast the silence message
+            // Save and broadcast the silence message FIRST
             try {
               await storage.createChatMessage({
                 conversationId: ws.conversationId,
@@ -1981,26 +2035,88 @@ export function setupWebSocket(server: Server) {
                 message: silenceMessage.message,
                 senderType: 'system',
               });
-
-              clients.forEach((client) => {
-                if (client.readyState === WebSocket.OPEN) {
-                  client.send(JSON.stringify({
-                    type: 'new_message',
-                    message: silenceMessage,
-                  }));
-                }
-              });
-
-              console.log(`🔇 ${targetUserName} silenced by ${ws.userName} for ${duration} minutes - Reason: ${reason}`);
             } catch (err) {
               console.error('Failed to save silence message:', err);
+            }
+
+            // Broadcast to all clients
+            clients.forEach((client) => {
+              if (client.readyState === WebSocket.OPEN) {
+                client.send(JSON.stringify({
+                  type: 'new_message',
+                  message: silenceMessage,
+                }));
+              }
+            });
+
+            console.log(`🔇 ${targetUserName} silenced by ${ws.userName} for ${duration} minutes - Reason: ${reason}`);
+
+            // ===================================================================
+            // AUDITOS™ - Log the moderation action for compliance tracking
+            // ===================================================================
+            try {
+              const silencerInfo = await storage.getUserDisplayInfo(ws.userId);
+              const silencerDisplayName = silencerInfo ? formatUserDisplayName({
+                firstName: silencerInfo.firstName,
+                lastName: silencerInfo.lastName,
+                email: silencerInfo.email || undefined,
+                platformRole: silencerInfo.platformRole || undefined,
+                workspaceRole: silencerInfo.workspaceRole || undefined,
+              }) : ws.userName || 'Unknown';
+
+              await storage.createAuditLog({
+                commandId: payload.commandId || null, // IRC-style command tracking
+                userId: ws.userId,
+                userEmail: silencerInfo?.email || ws.userName || 'unknown',
+                userRole: silencerRole || 'unknown',
+                action: 'silence_user',
+                actionDescription: `${silencerDisplayName} silenced ${targetUserName} for ${duration} minutes`,
+                entityType: 'user',
+                entityId: payload.targetUserId,
+                targetId: payload.targetUserId,
+                targetName: targetUserName,
+                targetType: 'user',
+                conversationId: ws.conversationId,
+                reason: reason,
+                metadata: {
+                  commandPayload: {
+                    type: 'silence_user',
+                    targetUserId: payload.targetUserId,
+                    duration: duration,
+                    reason: reason,
+                  },
+                  durationMinutes: duration,
+                },
+                ipAddress: null, // TODO: Extract from request headers
+                userAgent: null, // TODO: Extract from connection
+                success: true,
+                errorMessage: null,
+              });
+            } catch (auditErr) {
+              console.error('AuditOS™ failed to log silence action:', auditErr);
+            }
+
+            // ===================================================================
+            // IRC-STYLE COMMAND ACKNOWLEDGMENT - Send success response to originating client
+            // ===================================================================
+            if (ws.readyState === WebSocket.OPEN) {
+              ws.send(JSON.stringify({
+                type: 'command_ack',
+                commandId: payload.commandId,
+                action: 'silence_user',
+                success: true,
+                message: `✓ ${targetUserName} silenced for ${duration} minutes`,
+                targetUserId: payload.targetUserId,
+                targetName: targetUserName,
+                duration: duration,
+              }));
             }
 
             break;
           }
 
           case 'give_voice': {
-            // Unmute a user (give them voice back)
+            // Unmute a user (give them voice back) with IRC-style acknowledgments
             if (!ws.conversationId || !ws.userId) {
               return;
             }
@@ -2010,15 +2126,67 @@ export function setupWebSocket(server: Server) {
             const canGiveVoice = staffRole && ['root', 'deputy_admin', 'deputy_assistant', 'sysop'].includes(staffRole);
             
             if (!canGiveVoice) {
-              ws.send(JSON.stringify({
-                type: 'error',
-                message: 'You do not have permission to unmute users',
-              }));
+              // IRC-STYLE COMMAND ACKNOWLEDGMENT - Permission denied
+              if (ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                  type: 'command_ack',
+                  commandId: payload.commandId,
+                  action: 'give_voice',
+                  success: false,
+                  message: '✗ Permission denied - Staff role required',
+                  errorType: 'PERMISSION_DENIED',
+                }));
+              }
+
+              // Log failed attempt to AuditOS™
+              try {
+                const staffInfo = await storage.getUserDisplayInfo(ws.userId);
+                await storage.createAuditLog({
+                  commandId: payload.commandId || null,
+                  userId: ws.userId,
+                  userEmail: staffInfo?.email || ws.userName || 'unknown',
+                  userRole: staffRole || 'unknown',
+                  action: 'give_voice',
+                  actionDescription: `Permission denied: ${ws.userName} attempted to unmute user`,
+                  entityType: 'user',
+                  entityId: payload.targetUserId || 'unknown',
+                  targetId: payload.targetUserId || null,
+                  targetName: null,
+                  targetType: 'user',
+                  conversationId: ws.conversationId,
+                  reason: null,
+                  metadata: {
+                    commandPayload: {
+                      type: 'give_voice',
+                      targetUserId: payload.targetUserId,
+                    },
+                  },
+                  ipAddress: null,
+                  userAgent: null,
+                  success: false,
+                  errorMessage: 'Permission denied - Staff role required',
+                });
+              } catch (auditErr) {
+                console.error('AuditOS™ failed to log give_voice attempt:', auditErr);
+              }
               return;
             }
 
             const clients = conversationClients.get(ws.conversationId);
-            if (!clients) return;
+            if (!clients) {
+              // IRC acknowledgment - Conversation not found
+              if (ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                  type: 'command_ack',
+                  commandId: payload.commandId,
+                  action: 'give_voice',
+                  success: false,
+                  message: '✗ Conversation not found',
+                  errorType: 'NOT_FOUND',
+                }));
+              }
+              return;
+            }
 
             // Find target user
             let targetUserName = 'User';
@@ -2046,7 +2214,7 @@ export function setupWebSocket(server: Server) {
               readAt: null,
             };
 
-            // Save and broadcast the unmute message
+            // Save and broadcast the unmute message FIRST
             try {
               await storage.createChatMessage({
                 conversationId: ws.conversationId,
@@ -2055,19 +2223,81 @@ export function setupWebSocket(server: Server) {
                 message: unmuteMessage.message,
                 senderType: 'system',
               });
-
-              clients.forEach((client) => {
-                if (client.readyState === WebSocket.OPEN) {
-                  client.send(JSON.stringify({
-                    type: 'new_message',
-                    message: unmuteMessage,
-                  }));
-                }
-              });
-
-              console.log(`🔊 ${targetUserName} unmuted by ${ws.userName}`);
             } catch (err) {
               console.error('Failed to save unmute message:', err);
+            }
+
+            // Broadcast to all clients
+            clients.forEach((client) => {
+              if (client.readyState === WebSocket.OPEN) {
+                client.send(JSON.stringify({
+                  type: 'new_message',
+                  message: unmuteMessage,
+                }));
+              }
+            });
+
+            console.log(`🔊 ${targetUserName} unmuted by ${ws.userName}`);
+
+            // ===================================================================
+            // AUDITOS™ - Log the moderation action for compliance tracking
+            // ===================================================================
+            try {
+              const staffInfo = await storage.getUserDisplayInfo(ws.userId);
+              const staffDisplayName = staffInfo ? formatUserDisplayName({
+                firstName: staffInfo.firstName,
+                lastName: staffInfo.lastName,
+                email: staffInfo.email || undefined,
+                platformRole: staffInfo.platformRole || undefined,
+                workspaceRole: staffInfo.workspaceRole || undefined,
+              }) : ws.userName || 'Unknown';
+
+              await storage.createAuditLog({
+                commandId: payload.commandId || null, // IRC-style command tracking
+                userId: ws.userId,
+                userEmail: staffInfo?.email || ws.userName || 'unknown',
+                userRole: staffRole || 'unknown',
+                action: 'give_voice',
+                actionDescription: `${staffDisplayName} unmuted ${targetUserName}`,
+                entityType: 'user',
+                entityId: payload.targetUserId,
+                targetId: payload.targetUserId,
+                targetName: targetUserName,
+                targetType: 'user',
+                conversationId: ws.conversationId,
+                reason: null,
+                metadata: {
+                  commandPayload: {
+                    type: 'give_voice',
+                    targetUserId: payload.targetUserId,
+                  },
+                },
+                ipAddress: null, // TODO: Extract from request headers
+                userAgent: null, // TODO: Extract from connection
+                success: true,
+                errorMessage: null,
+              });
+            } catch (auditErr) {
+              console.error('AuditOS™ failed to log give_voice action:', auditErr);
+            }
+
+            // ===================================================================
+            // IRC-STYLE COMMAND ACKNOWLEDGMENT - Send success response to originating client
+            // ===================================================================
+            if (ws.readyState === WebSocket.OPEN) {
+              ws.send(JSON.stringify({
+                type: 'command_ack',
+                commandId: payload.commandId,
+                action: 'give_voice',
+                success: true,
+                message: `✓ ${targetUserName} can now speak`,
+                targetUserId: payload.targetUserId,
+                targetName: targetUserName,
+              }));
+            }
+
+            break;
+          }
             }
 
             break;
