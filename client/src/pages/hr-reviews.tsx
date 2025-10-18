@@ -1,11 +1,11 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Star, TrendingUp, Users, Plus, XCircle } from "lucide-react";
+import { Star, TrendingUp, Users, Plus, XCircle, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -35,6 +35,15 @@ const reviewSchema = z.object({
 
 type ReviewFormData = z.infer<typeof reviewSchema>;
 
+const disputeSchema = z.object({
+  title: z.string().min(5, "Title must be at least 5 characters").max(200, "Title too long"),
+  reason: z.string().min(20, "Reason must be at least 20 characters").max(5000, "Reason too long"),
+  requestedOutcome: z.string().max(1000, "Requested outcome too long").optional(),
+  priority: z.enum(['low', 'normal', 'high', 'urgent']),
+});
+
+type DisputeFormData = z.infer<typeof disputeSchema>;
+
 interface Review {
   id: number;
   employeeId: string;
@@ -59,6 +68,8 @@ interface Employee {
 export default function HRReviews() {
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [disputeDialogOpen, setDisputeDialogOpen] = useState(false);
+  const [selectedReview, setSelectedReview] = useState<Review | null>(null);
 
   const { data: reviews, isLoading } = useQuery<Review[]>({
     queryKey: ['/api/hr/reviews'],
@@ -120,6 +131,56 @@ export default function HRReviews() {
 
   const onSubmit = (data: ReviewFormData) => {
     createMutation.mutate(data);
+  };
+
+  // Dispute filing mutation
+  const fileDisputeMutation = useMutation({
+    mutationFn: async (data: DisputeFormData) => {
+      if (!selectedReview) throw new Error("No review selected");
+      return apiRequest('POST', '/api/disputes', {
+        ...data,
+        disputeType: 'performance_review',
+        targetType: 'performance_reviews',
+        targetId: selectedReview.id.toString(),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/disputes'] });
+      setDisputeDialogOpen(false);
+      disputeForm.reset();
+      setSelectedReview(null);
+      toast({
+        title: "Success",
+        description: "Dispute filed successfully. Support will review your case.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const disputeForm = useForm<DisputeFormData>({
+    resolver: zodResolver(disputeSchema),
+    defaultValues: {
+      title: "",
+      reason: "",
+      requestedOutcome: "",
+      priority: "normal",
+    },
+  });
+
+  const onDisputeSubmit = (data: DisputeFormData) => {
+    fileDisputeMutation.mutate(data);
+  };
+
+  const handleOpenDisputeDialog = (review: Review) => {
+    setSelectedReview(review);
+    disputeForm.setValue('title', `Dispute: ${review.reviewType} review for ${review.employeeName}`);
+    setDisputeDialogOpen(true);
   };
 
   if (isLoading) {
@@ -359,6 +420,119 @@ export default function HRReviews() {
                 </Form>
               </DialogContent>
             </Dialog>
+
+            {/* Dispute Filing Dialog */}
+            <Dialog open={disputeDialogOpen} onOpenChange={setDisputeDialogOpen}>
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>File Dispute - Performance Review</DialogTitle>
+                  <DialogDescription>
+                    Explain why you believe this review is inaccurate or unfair. Support will investigate and respond.
+                  </DialogDescription>
+                </DialogHeader>
+                <Form {...disputeForm}>
+                  <form onSubmit={disputeForm.handleSubmit(onDisputeSubmit)} className="space-y-4">
+                    {selectedReview && (
+                      <div className="bg-muted p-4 rounded-lg">
+                        <p className="text-sm font-medium">Disputing review for: {selectedReview.employeeName}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {selectedReview.reviewType} review from {format(new Date(selectedReview.reviewDate), 'MMM d, yyyy')}
+                        </p>
+                      </div>
+                    )}
+
+                    <FormField
+                      control={disputeForm.control}
+                      name="title"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Dispute Title</FormLabel>
+                          <FormControl>
+                            <Input {...field} placeholder="Brief summary of your dispute" data-testid="input-dispute-title" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={disputeForm.control}
+                      name="reason"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Detailed Reason (minimum 20 characters)</FormLabel>
+                          <FormControl>
+                            <Textarea 
+                              {...field} 
+                              rows={6} 
+                              placeholder="Explain in detail why this review is inaccurate or unfair. Include specific examples and data if available."
+                              data-testid="input-dispute-reason"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={disputeForm.control}
+                      name="requestedOutcome"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Requested Outcome (Optional)</FormLabel>
+                          <FormControl>
+                            <Textarea 
+                              {...field} 
+                              rows={3} 
+                              placeholder="What resolution would you like? (e.g., 'Change rating from 2 to 4', 'Remove this review')"
+                              data-testid="input-dispute-outcome"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={disputeForm.control}
+                      name="priority"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Priority</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger data-testid="select-dispute-priority">
+                                <SelectValue />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="low">Low</SelectItem>
+                              <SelectItem value="normal">Normal</SelectItem>
+                              <SelectItem value="high">High</SelectItem>
+                              <SelectItem value="urgent">Urgent</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <div className="flex justify-end gap-3 pt-4">
+                      <Button type="button" variant="outline" onClick={() => {
+                        setDisputeDialogOpen(false);
+                        setSelectedReview(null);
+                        disputeForm.reset();
+                      }}>
+                        Cancel
+                      </Button>
+                      <Button type="submit" disabled={fileDisputeMutation.isPending} data-testid="button-submit-dispute">
+                        {fileDisputeMutation.isPending ? "Filing..." : "File Dispute"}
+                      </Button>
+                    </div>
+                  </form>
+                </Form>
+              </DialogContent>
+            </Dialog>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -431,6 +605,15 @@ export default function HRReviews() {
                           {getRatingStars(review.overallRating)}
                         </div>
                         {getReviewTypeBadge(review.reviewType)}
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => handleOpenDisputeDialog(review)}
+                          data-testid={`button-dispute-review-${review.id}`}
+                        >
+                          <AlertTriangle className="h-4 w-4 mr-2" />
+                          Dispute
+                        </Button>
                       </div>
                     </div>
                   ))}
