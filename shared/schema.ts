@@ -643,6 +643,10 @@ export const clients = pgTable("clients", {
   phone: varchar("phone"),
   address: text("address"),
   
+  // Job site location (for geo-compliance)
+  latitude: decimal("latitude", { precision: 10, scale: 7 }), // Job site GPS latitude
+  longitude: decimal("longitude", { precision: 10, scale: 7 }), // Job site GPS longitude
+  
   // Billing
   billingEmail: varchar("billing_email"),
   taxId: varchar("tax_id"),
@@ -780,6 +784,22 @@ export const timeEntries = pgTable("time_entries", {
   // Billing
   hourlyRate: decimal("hourly_rate", { precision: 10, scale: 2 }),
   totalAmount: decimal("total_amount", { precision: 10, scale: 2 }),
+  
+  // GEO-COMPLIANCE: GPS & IP Tracking (Monopolistic Feature #3)
+  clockInLatitude: decimal("clock_in_latitude", { precision: 10, scale: 7 }), // GPS lat at clock-in
+  clockInLongitude: decimal("clock_in_longitude", { precision: 10, scale: 7 }), // GPS lng at clock-in
+  clockInAccuracy: decimal("clock_in_accuracy", { precision: 8, scale: 2 }), // GPS accuracy in meters
+  clockInIpAddress: varchar("clock_in_ip_address"), // IP address at clock-in
+  
+  clockOutLatitude: decimal("clock_out_latitude", { precision: 10, scale: 7 }), // GPS lat at clock-out
+  clockOutLongitude: decimal("clock_out_longitude", { precision: 10, scale: 7 }), // GPS lng at clock-out
+  clockOutAccuracy: decimal("clock_out_accuracy", { precision: 8, scale: 2 }), // GPS accuracy in meters
+  clockOutIpAddress: varchar("clock_out_ip_address"), // IP address at clock-out
+  
+  // Job site location (for discrepancy detection)
+  jobSiteLatitude: decimal("job_site_latitude", { precision: 10, scale: 7 }),
+  jobSiteLongitude: decimal("job_site_longitude", { precision: 10, scale: 7 }),
+  jobSiteAddress: text("job_site_address"),
   
   notes: text("notes"),
   
@@ -2802,3 +2822,274 @@ export const insertChatAgreementAcceptanceSchema = createInsertSchema(chatAgreem
 
 export type InsertChatAgreementAcceptance = z.infer<typeof insertChatAgreementAcceptanceSchema>;
 export type ChatAgreementAcceptance = typeof chatAgreementAcceptances.$inferSelect;
+
+// ============================================================================
+// PREDICTIONOS™ - AI-Powered Predictive Analytics (Monopolistic Feature #1)
+// ============================================================================
+
+// Employee turnover risk scores (90-day flight risk predictions)
+export const turnoverRiskScores = pgTable("turnover_risk_scores", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
+  
+  // Risk scoring
+  riskScore: decimal("risk_score", { precision: 5, scale: 2 }).notNull(), // 0-100% probability
+  riskLevel: varchar("risk_level").notNull(), // 'low', 'medium', 'high', 'critical'
+  confidenceScore: decimal("confidence_score", { precision: 5, scale: 2 }), // ML model confidence
+  
+  // Prediction details
+  predictionPeriod: integer("prediction_period").default(90), // Days (default: 90-day window)
+  predictedTurnoverDate: timestamp("predicted_turnover_date"),
+  
+  // Cost impact
+  replacementCost: decimal("replacement_cost", { precision: 10, scale: 2 }), // Estimated cost to replace
+  trainingCost: decimal("training_cost", { precision: 10, scale: 2 }),
+  lostProductivityCost: decimal("lost_productivity_cost", { precision: 10, scale: 2 }),
+  totalTurnoverCost: decimal("total_turnover_cost", { precision: 10, scale: 2 }),
+  
+  // Risk factors (AI-identified)
+  riskFactors: jsonb("risk_factors"), // { low_hours: 0.3, supervisor_rejections: 0.4, tardiness: 0.3 }
+  recommendations: text("recommendations"), // AI-generated retention strategies
+  
+  // Model metadata
+  aiModel: varchar("ai_model").default("gpt-4"), // Model used for prediction
+  dataPointsUsed: integer("data_points_used"), // Number of historical records analyzed
+  analysisDate: timestamp("analysis_date").defaultNow(),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  uniqueEmployeeAnalysis: uniqueIndex("unique_employee_current_prediction").on(table.employeeId, table.analysisDate),
+}));
+
+export const insertTurnoverRiskScoreSchema = createInsertSchema(turnoverRiskScores).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertTurnoverRiskScore = z.infer<typeof insertTurnoverRiskScoreSchema>;
+export type TurnoverRiskScore = typeof turnoverRiskScores.$inferSelect;
+
+// Schedule cost variance predictions (labor cost overrun detection)
+export const costVariancePredictions = pgTable("cost_variance_predictions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  shiftId: varchar("shift_id").references(() => shifts.id, { onDelete: 'cascade' }),
+  
+  // Schedule details
+  scheduleDate: timestamp("schedule_date").notNull(),
+  schedulePeriod: varchar("schedule_period"), // 'week', 'day', 'month'
+  
+  // Cost predictions
+  budgetedCost: decimal("budgeted_cost", { precision: 10, scale: 2 }).notNull(),
+  predictedCost: decimal("predicted_cost", { precision: 10, scale: 2 }).notNull(),
+  varianceAmount: decimal("variance_amount", { precision: 10, scale: 2 }).notNull(), // Predicted - Budgeted
+  variancePercentage: decimal("variance_percentage", { precision: 5, scale: 2 }).notNull(),
+  
+  // Risk classification
+  exceeds10Percent: boolean("exceeds_10_percent").default(false), // Red flag threshold
+  riskLevel: varchar("risk_level").notNull(), // 'acceptable', 'warning', 'critical'
+  
+  // Contributing factors (AI-identified)
+  riskFactors: jsonb("risk_factors"), // { overtime: 0.6, premium_rates: 0.3, understaffing: 0.1 }
+  problematicShifts: jsonb("problematic_shifts"), // Array of shift IDs causing cost spike
+  recommendations: text("recommendations"), // AI-generated cost optimization strategies
+  
+  // Model metadata
+  aiModel: varchar("ai_model").default("gpt-4"),
+  confidenceScore: decimal("confidence_score", { precision: 5, scale: 2 }),
+  analysisDate: timestamp("analysis_date").defaultNow(),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertCostVariancePredictionSchema = createInsertSchema(costVariancePredictions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertCostVariancePrediction = z.infer<typeof insertCostVariancePredictionSchema>;
+export type CostVariancePrediction = typeof costVariancePredictions.$inferSelect;
+
+// ============================================================================
+// CUSTOM WORKFLOW RULES - Visual Rule Builder (Monopolistic Feature #2)
+// ============================================================================
+
+export const ruleTypeEnum = pgEnum('rule_type', ['payroll', 'scheduling', 'time_tracking', 'billing']);
+export const ruleStatusEnum = pgEnum('rule_status', ['active', 'inactive', 'testing']);
+
+export const customRules = pgTable("custom_rules", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  // Rule identification
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  ruleType: ruleTypeEnum("rule_type").notNull(),
+  priority: integer("priority").default(0), // Execution order (higher = runs first)
+  
+  // Rule definition (IF/THEN logic as JSON)
+  trigger: varchar("trigger").notNull(), // 'time_clock_out', 'payroll_calculate', 'schedule_create', etc.
+  conditions: jsonb("conditions").notNull(), // { field: 'hours', operator: '>', value: 10 }
+  actions: jsonb("actions").notNull(), // { action: 'send_alert', params: { ... } }
+  conditionLogic: varchar("condition_logic", { length: 3 }).default("AND"), // "AND" or "OR" for combining conditions
+  
+  // Example: Overtime rule
+  // {
+  //   trigger: 'payroll_calculate',
+  //   conditions: { state: 'TX', classification: 'Rigger', hours: { $gt: 40 } },
+  //   actions: { rateMultiplier: 1.5 }
+  // }
+  
+  // Status & control
+  status: ruleStatusEnum("status").default("active"),
+  isLocked: boolean("is_locked").default(false), // Prevent accidental editing
+  
+  // Execution tracking
+  executionCount: integer("execution_count").default(0),
+  lastExecutedAt: timestamp("last_executed_at"),
+  errorCount: integer("error_count").default(0),
+  lastError: text("last_error"),
+  
+  // Audit trail
+  createdBy: varchar("created_by").references(() => users.id),
+  updatedBy: varchar("updated_by").references(() => users.id),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertCustomRuleSchema = createInsertSchema(customRules).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertCustomRule = z.infer<typeof insertCustomRuleSchema>;
+export type CustomRule = typeof customRules.$inferSelect;
+
+// Rule execution logs (for debugging and compliance)
+export const ruleExecutionLogs = pgTable("rule_execution_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ruleId: varchar("rule_id").notNull().references(() => customRules.id, { onDelete: 'cascade' }),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  // Execution context
+  triggerEvent: varchar("trigger_event").notNull(),
+  entityType: varchar("entity_type"), // 'payroll_entry', 'shift', 'time_entry'
+  entityId: varchar("entity_id"),
+  
+  // Execution results
+  conditionsMet: boolean("conditions_met").notNull(),
+  actionsExecuted: jsonb("actions_executed"), // What actions were taken
+  executionTimeMs: integer("execution_time_ms"),
+  
+  // Error handling
+  success: boolean("success").default(true),
+  errorMessage: text("error_message"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type RuleExecutionLog = typeof ruleExecutionLogs.$inferSelect;
+
+// ============================================================================
+// GEO-COMPLIANCE & AUDIT TRAIL (Monopolistic Feature #3)
+// ============================================================================
+
+// Comprehensive audit trail for all critical changes (PayrollOS™ & TimeOS™)
+export const auditTrail = pgTable("audit_trail", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  // Actor information
+  userId: varchar("user_id").references(() => users.id),
+  userName: varchar("user_name").notNull(),
+  userRole: varchar("user_role").notNull(), // workspace role at time of action
+  
+  // Action details
+  action: varchar("action").notNull(), // 'create', 'update', 'delete', 'approve', 'reject'
+  entityType: varchar("entity_type").notNull(), // 'time_entry', 'payroll_run', 'employee', etc.
+  entityId: varchar("entity_id").notNull(),
+  entityDescription: text("entity_description"), // Human-readable description
+  
+  // Data snapshots (for compliance & rollback)
+  changesBefore: jsonb("changes_before"), // Complete state before change
+  changesAfter: jsonb("changes_after"), // Complete state after change
+  fieldChanges: jsonb("field_changes"), // Detailed field-by-field diff
+  
+  // Context & metadata
+  reason: text("reason"), // Why the change was made
+  ipAddress: varchar("ip_address"),
+  userAgent: text("user_agent"),
+  geoLocation: jsonb("geo_location"), // { lat, lng, accuracy }
+  
+  // Compliance flags
+  requiresApproval: boolean("requires_approval").default(false),
+  approvedBy: varchar("approved_by").references(() => users.id),
+  approvedAt: timestamp("approved_at"),
+  
+  // Retention policy (non-editable, kept for 7 years for IRS/DOL compliance)
+  retentionUntil: timestamp("retention_until"), // Auto-set to 7 years from creation
+  isLocked: boolean("is_locked").default(true), // Cannot be deleted or modified
+  
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  entityIndex: index("audit_trail_entity_idx").on(table.entityType, table.entityId),
+  workspaceIndex: index("audit_trail_workspace_idx").on(table.workspaceId, table.createdAt),
+}));
+
+export const insertAuditTrailSchema = createInsertSchema(auditTrail).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertAuditTrail = z.infer<typeof insertAuditTrailSchema>;
+export type AuditTrail = typeof auditTrail.$inferSelect;
+
+// Time entry discrepancy flags (geo-compliance violations)
+export const timeEntryDiscrepancies = pgTable("time_entry_discrepancies", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  timeEntryId: varchar("time_entry_id").notNull().references(() => timeEntries.id, { onDelete: 'cascade' }),
+  employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
+  
+  // Discrepancy details
+  discrepancyType: varchar("discrepancy_type").notNull(), // 'location_mismatch', 'ip_anomaly', 'impossible_travel'
+  severity: varchar("severity").notNull(), // 'low', 'medium', 'high', 'critical'
+  
+  // Location analysis
+  expectedLocation: jsonb("expected_location"), // Job site coordinates
+  actualLocation: jsonb("actual_location"), // Clock-in coordinates
+  distanceMeters: decimal("distance_meters", { precision: 10, scale: 2 }), // Distance from job site
+  
+  // Detection details
+  detectedAt: timestamp("detected_at").defaultNow(),
+  autoFlagged: boolean("auto_flagged").default(true), // Auto-detected vs manual
+  
+  // Resolution
+  status: varchar("status").default("open"), // 'open', 'investigating', 'resolved', 'dismissed'
+  reviewedBy: varchar("reviewed_by").references(() => users.id),
+  reviewedAt: timestamp("reviewed_at"),
+  resolution: text("resolution"),
+  resolutionNotes: text("resolution_notes"),
+  
+  // Evidence preservation
+  evidenceSnapshot: jsonb("evidence_snapshot"), // Complete time entry data at time of flag
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertTimeEntryDiscrepancySchema = createInsertSchema(timeEntryDiscrepancies).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertTimeEntryDiscrepancy = z.infer<typeof insertTimeEntryDiscrepancySchema>;
+export type TimeEntryDiscrepancy = typeof timeEntryDiscrepancies.$inferSelect;

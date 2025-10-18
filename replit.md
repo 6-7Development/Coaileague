@@ -42,6 +42,10 @@ The platform features a CAD-style professional interface with a dark mode theme,
 - **Support & Communication**: Live HelpDesk chatroom with instant WebSocket messaging, ticket verification, staff controls, and email notifications.
 - **Security & Reliability**: Enterprise audit logging, IP-based rate limiting, global React error boundary, health monitoring, platform RBAC, workspace isolation, and field whitelisting.
 - **Escalation System**: Production-ready structured ticket system for leaders to escalate issues, featuring race-safe ticket generation, state transition enforcement, mandatory resolution, category classification, priority levels, platform staff authorization, comprehensive audit trails, and workspace isolation.
+- **Monopolistic Premium Features ($500/month tier)**:
+    - **PredictionOS™ (AI Workforce Analytics)**: GPT-4 powered turnover risk prediction and cost variance analysis. Analyzes 12 months of employee data (hours, tardiness, completion rates) to calculate turnover risk scores (0-100%), identify top 3 risk factors, estimate replacement costs, and provide actionable retention recommendations. Includes robust error handling with heuristic fallbacks, API key validation, and token limits for cost control.
+    - **Custom Logic Workflow Builder**: Visual drag-and-drop rule engine for automating payroll, scheduling, time tracking, and billing workflows. Supports complex IF/THEN logic with AND/OR condition operators, priority-based execution, action chaining (alerts, rate modifications, blocking), and comprehensive execution logging. Rules stored as JSONB with full audit trails.
+    - **Real-Time Geo-Compliance & Audit Trail**: GPS/IP tracking for time entries with mandatory 7-year retention (IRS/DOL compliance). Enforces ≤50m GPS accuracy requirement, flags clock-in/out >250m from job site, detects IP anomalies between clock events, and creates discrepancy records for manager review. Job site locations stored as decimal lat/lng on client records.
 
 ## External Dependencies
 - **Database**: Neon (PostgreSQL)

@@ -3,7 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { 
   Users, Activity, DollarSign, 
-  FileText, Calendar, Clock, TrendingUp, Briefcase 
+  FileText, Calendar, Clock, TrendingUp, Briefcase, AlertTriangle, Brain 
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
@@ -28,6 +28,12 @@ export default function DashboardCompact() {
 
   const currentEmployee = allEmployees?.find((emp: any) => emp.userId === user?.id);
   const workspaceRole = currentEmployee?.workspaceRole || 'employee';
+
+  // PredictionOS™ - Fetch turnover predictions for Owner/Manager
+  const { data: turnoverData } = useQuery({
+    queryKey: ['/api/predict/turnover/workspace'],
+    enabled: isAuthenticated && (workspaceRole === 'owner' || workspaceRole === 'manager'),
+  });
 
   useEffect(() => {
     showTransition({
@@ -58,6 +64,10 @@ export default function DashboardCompact() {
   const activeToday = (stats as any)?.activeToday || 0;
   const totalRevenue = (stats as any)?.totalRevenue || 0;
   const totalShifts = (stats as any)?.upcomingShifts || 0;
+  
+  // PredictionOS™ metrics
+  const totalTurnoverCost = (turnoverData as any)?.totalTurnoverCost || 0;
+  const highRiskCount = (turnoverData as any)?.highRiskCount || 0;
 
   return (
     <div className="p-3 max-w-[1920px] mx-auto">
@@ -113,13 +123,23 @@ export default function DashboardCompact() {
         </div>
       </div>
 
-      {/* COMPACT STATS - Single row */}
+      {/* COMPACT STATS - Dynamic row based on role */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
         {[
           { icon: Users, label: "Total Employees", value: totalEmployees, color: "text-indigo-600", testid: "stat-employees" },
           { icon: Activity, label: "Active Today", value: activeToday, color: "text-purple-600", testid: "stat-active" },
           { icon: DollarSign, label: "Total Revenue", value: `$${totalRevenue.toFixed(2)}`, color: "text-emerald-600", testid: "stat-revenue" },
-          { icon: Calendar, label: "Upcoming Shifts", value: totalShifts, color: "text-blue-600", testid: "stat-shifts" },
+          ...(workspaceRole === 'owner' && totalTurnoverCost > 0
+            ? [{ 
+                icon: Brain, 
+                label: "PredictionOS™ Risk", 
+                value: `$${totalTurnoverCost.toFixed(0)}`, 
+                color: "text-red-600", 
+                testid: "stat-turnover-cost",
+                badge: highRiskCount > 0 ? `${highRiskCount} high risk` : null
+              }]
+            : [{ icon: Calendar, label: "Upcoming Shifts", value: totalShifts, color: "text-blue-600", testid: "stat-shifts" }]
+          ),
         ].map((stat, i) => (
           <Card key={i} className="hover-elevate">
             <CardContent className="p-3">
@@ -128,6 +148,12 @@ export default function DashboardCompact() {
                 <div className="flex-1 min-w-0">
                   <div className="text-[10px] text-muted-foreground truncate">{stat.label}</div>
                   <div className="text-base font-bold" data-testid={stat.testid}>{stat.value}</div>
+                  {(stat as any).badge && (
+                    <Badge variant="destructive" className="text-[8px] h-4 px-1 mt-0.5">
+                      <AlertTriangle className="h-2 w-2 mr-0.5" />
+                      {(stat as any).badge}
+                    </Badge>
+                  )}
                 </div>
               </div>
             </CardContent>

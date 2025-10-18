@@ -53,6 +53,14 @@ import {
   termsAcknowledgments,
   chatAgreementAcceptances,
   chatMessages,
+  turnoverRiskScores,
+  costVariancePredictions,
+  customRules,
+  ruleExecutionLogs,
+  auditTrail,
+  timeEntryDiscrepancies,
+  insertCustomRuleSchema,
+  timeEntries as timeEntriesTable,
 } from "@shared/schema";
 import crypto from "crypto";
 import { sql, eq, and, or, isNull, lte, gte, desc, inArray } from "drizzle-orm";
@@ -63,6 +71,7 @@ import {
   calculatePayroll, 
   createAutomatedPayrollRun 
 } from "./services/payrollAutomation";
+import { GeoComplianceService } from "./services/geoCompliance";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Create HTTP server
@@ -2311,10 +2320,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Workspace not found" });
       }
 
+      // GEO-COMPLIANCE: Capture IP address from request
+      const ipAddress = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.ip || req.connection.remoteAddress;
+      
+      // GEO-COMPLIANCE: Extract GPS coordinates from request
+      const { gpsLatitude, gpsLongitude, gpsAccuracy } = req.body;
+      
+      // Validate GPS accuracy (must be <= 50m for compliance)
+      if (gpsAccuracy && parseFloat(gpsAccuracy) > 50) {
+        return res.status(400).json({ 
+          message: "GPS accuracy too low. Please ensure location services are enabled and try again in an area with better signal.",
+          requiredAccuracy: 50,
+          currentAccuracy: gpsAccuracy
+        });
+      }
+
       const validated = insertTimeEntrySchema.parse({
         ...req.body,
         workspaceId: workspace.id,
         clockIn: new Date().toISOString(),
+        clockInIpAddress: ipAddress,
+        clockInGpsLatitude: gpsLatitude,
+        clockInGpsLongitude: gpsLongitude,
+        clockInGpsAccuracy: gpsAccuracy,
       });
 
       const timeEntry = await storage.createTimeEntry(validated);
@@ -2339,6 +2367,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Time entry not found" });
       }
 
+      // GEO-COMPLIANCE: Capture IP address from request
+      const ipAddress = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.ip || req.connection.remoteAddress;
+      
+      // GEO-COMPLIANCE: Extract GPS coordinates from request
+      const { gpsLatitude, gpsLongitude, gpsAccuracy } = req.body;
+      
+      // Validate GPS accuracy (must be <= 50m for compliance)
+      if (gpsAccuracy && parseFloat(gpsAccuracy) > 50) {
+        return res.status(400).json({ 
+          message: "GPS accuracy too low. Please ensure location services are enabled and try again in an area with better signal.",
+          requiredAccuracy: 50,
+          currentAccuracy: gpsAccuracy
+        });
+      }
+
       const clockOut = new Date();
       const clockIn = new Date(timeEntry.clockIn);
       const totalHours = ((clockOut.getTime() - clockIn.getTime()) / (1000 * 60 * 60)).toFixed(2);
@@ -2350,7 +2393,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         clockOut: clockOut.toISOString(),
         totalHours,
         totalAmount,
+        clockOutIpAddress: ipAddress,
+        clockOutGpsLatitude: gpsLatitude,
+        clockOutGpsLongitude: gpsLongitude,
+        clockOutGpsAccuracy: gpsAccuracy,
       });
+
+      // GEO-COMPLIANCE: Detect IP anomaly (different IP between clock-in and clock-out)
+      if (timeEntry.clockInIpAddress && ipAddress) {
+        await GeoComplianceService.detectIPAnomaly(
+          req.params.id,
+          workspace.id,
+          timeEntry.employeeId,
+          timeEntry.clockInIpAddress,
+          ipAddress
+        );
+      }
 
       res.json(updated);
     } catch (error: any) {
@@ -6053,6 +6111,338 @@ Return ONLY valid JSON array with this exact structure:
     } catch (error: any) {
       console.error("Error fetching paychecks:", error);
       res.status(500).json({ message: "Failed to fetch paychecks" });
+    }
+  });
+
+  // ============================================================================
+  // PREDICTIONOS™ - AI-Powered Predictive Analytics (Monopolistic Feature #1)
+  // ============================================================================
+  
+  // Predict employee turnover risk (90-day flight risk)
+  app.post('/api/predict/turnover', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspace!.id;
+      const { employeeId } = req.body;
+      
+      if (!employeeId) {
+        return res.status(400).json({ message: "employeeId is required" });
+      }
+      
+      // Verify employee belongs to workspace
+      const employee = await storage.getEmployee(employeeId, workspaceId);
+      if (!employee) {
+        return res.status(404).json({ message: "Employee not found in your workspace" });
+      }
+      
+      // Run AI analysis
+      const { PredictionOSEngine } = await import('./services/predictionos');
+      const analysis = await PredictionOSEngine.analyzeTurnoverRisk(employeeId, workspaceId);
+      
+      // Save prediction to database
+      const predictionId = await PredictionOSEngine.saveTurnoverPrediction(employeeId, workspaceId, analysis);
+      
+      res.json({
+        predictionId,
+        employee: {
+          id: employee.id,
+          name: `${employee.firstName} ${employee.lastName}`,
+          role: employee.role
+        },
+        ...analysis
+      });
+    } catch (error: any) {
+      console.error("PredictionOS™ turnover analysis failed:", error);
+      res.status(500).json({ message: error.message || "Failed to analyze turnover risk" });
+    }
+  });
+  
+  // Get turnover predictions for all employees
+  app.get('/api/predict/turnover/workspace', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspace!.id;
+      
+      const predictions = await db
+        .select()
+        .from(turnoverRiskScores)
+        .where(eq(turnoverRiskScores.workspaceId, workspaceId))
+        .orderBy(desc(turnoverRiskScores.analysisDate));
+      
+      // Calculate total predicted turnover cost for dashboard
+      const totalTurnoverCost = predictions.reduce((sum, pred) => {
+        return sum + parseFloat(pred.totalTurnoverCost?.toString() || '0');
+      }, 0);
+      
+      res.json({
+        predictions,
+        totalTurnoverCost,
+        highRiskCount: predictions.filter(p => p.riskLevel === 'high' || p.riskLevel === 'critical').length
+      });
+    } catch (error: any) {
+      console.error("Error fetching turnover predictions:", error);
+      res.status(500).json({ message: "Failed to fetch predictions" });
+    }
+  });
+  
+  // Predict schedule cost overrun
+  app.post('/api/predict/cost-overrun', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspace!.id;
+      const { scheduleDate, proposedShifts } = req.body;
+      
+      if (!scheduleDate || !proposedShifts || !Array.isArray(proposedShifts)) {
+        return res.status(400).json({ message: "scheduleDate and proposedShifts array are required" });
+      }
+      
+      // Run AI cost variance analysis
+      const { PredictionOSEngine } = await import('./services/predictionos');
+      const analysis = await PredictionOSEngine.analyzeCostVariance(
+        workspaceId,
+        new Date(scheduleDate),
+        proposedShifts
+      );
+      
+      // Save prediction to database
+      const predictionId = await PredictionOSEngine.saveCostVariancePrediction(
+        workspaceId,
+        new Date(scheduleDate),
+        analysis
+      );
+      
+      res.json({
+        predictionId,
+        ...analysis
+      });
+    } catch (error: any) {
+      console.error("PredictionOS™ cost variance analysis failed:", error);
+      res.status(500).json({ message: error.message || "Failed to analyze cost variance" });
+    }
+  });
+
+  // ============================================================================
+  // CUSTOM WORKFLOW RULES - Visual Rule Builder (Monopolistic Feature #2)
+  // ============================================================================
+  
+  // Create custom automation rule
+  app.post('/api/custom-rules', requireAuth, requireOwner, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspace!.id;
+      const userId = req.user!.id;
+      
+      const validated = insertCustomRuleSchema.parse({
+        ...req.body,
+        workspaceId,
+        createdBy: userId,
+      });
+      
+      const rule = await db.insert(customRules).values(validated).returning();
+      res.json(rule[0]);
+    } catch (error: any) {
+      console.error("Error creating custom rule:", error);
+      res.status(400).json({ message: error.message || "Failed to create rule" });
+    }
+  });
+  
+  // Get all custom rules for workspace
+  app.get('/api/custom-rules', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspace!.id;
+      
+      const rules = await db
+        .select()
+        .from(customRules)
+        .where(eq(customRules.workspaceId, workspaceId))
+        .orderBy(desc(customRules.priority));
+      
+      res.json(rules);
+    } catch (error: any) {
+      console.error("Error fetching custom rules:", error);
+      res.status(500).json({ message: "Failed to fetch rules" });
+    }
+  });
+  
+  // Update custom rule
+  app.patch('/api/custom-rules/:id', requireAuth, requireOwner, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspace!.id;
+      const userId = req.user!.id;
+      const { id } = req.params;
+      
+      // Verify rule belongs to workspace
+      const existing = await db
+        .select()
+        .from(customRules)
+        .where(and(eq(customRules.id, id), eq(customRules.workspaceId, workspaceId)))
+        .limit(1);
+      
+      if (!existing[0]) {
+        return res.status(404).json({ message: "Rule not found" });
+      }
+      
+      if (existing[0].isLocked) {
+        return res.status(403).json({ message: "Cannot edit locked rule" });
+      }
+      
+      const updated = await db
+        .update(customRules)
+        .set({ ...req.body, updatedBy: userId, updatedAt: new Date() })
+        .where(eq(customRules.id, id))
+        .returning();
+      
+      res.json(updated[0]);
+    } catch (error: any) {
+      console.error("Error updating custom rule:", error);
+      res.status(400).json({ message: error.message || "Failed to update rule" });
+    }
+  });
+  
+  // Delete custom rule
+  app.delete('/api/custom-rules/:id', requireAuth, requireOwner, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspace!.id;
+      const { id } = req.params;
+      
+      // Verify rule belongs to workspace and not locked
+      const existing = await db
+        .select()
+        .from(customRules)
+        .where(and(eq(customRules.id, id), eq(customRules.workspaceId, workspaceId)))
+        .limit(1);
+      
+      if (!existing[0]) {
+        return res.status(404).json({ message: "Rule not found" });
+      }
+      
+      if (existing[0].isLocked) {
+        return res.status(403).json({ message: "Cannot delete locked rule" });
+      }
+      
+      await db.delete(customRules).where(eq(customRules.id, id));
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error deleting custom rule:", error);
+      res.status(500).json({ message: "Failed to delete rule" });
+    }
+  });
+  
+  // Get rule execution logs
+  app.get('/api/custom-rules/:id/executions', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspace!.id;
+      const { id } = req.params;
+      
+      const executions = await db
+        .select()
+        .from(ruleExecutionLogs)
+        .where(and(
+          eq(ruleExecutionLogs.ruleId, id),
+          eq(ruleExecutionLogs.workspaceId, workspaceId)
+        ))
+        .orderBy(desc(ruleExecutionLogs.createdAt))
+        .limit(100);
+      
+      res.json(executions);
+    } catch (error: any) {
+      console.error("Error fetching rule executions:", error);
+      res.status(500).json({ message: "Failed to fetch executions" });
+    }
+  });
+
+  // ============================================================================
+  // GEO-COMPLIANCE & AUDIT TRAIL (Monopolistic Feature #3)
+  // ============================================================================
+  
+  // Get audit trail for workspace
+  app.get('/api/audit-trail', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspace!.id;
+      const { entityType, entityId, limit = 100 } = req.query;
+      
+      let query = db
+        .select()
+        .from(auditTrail)
+        .where(eq(auditTrail.workspaceId, workspaceId))
+        .orderBy(desc(auditTrail.createdAt))
+        .limit(parseInt(limit as string));
+      
+      if (entityType) {
+        query = query.where(and(
+          eq(auditTrail.workspaceId, workspaceId),
+          eq(auditTrail.entityType, entityType as string)
+        ));
+      }
+      
+      if (entityId) {
+        query = query.where(and(
+          eq(auditTrail.workspaceId, workspaceId),
+          eq(auditTrail.entityId, entityId as string)
+        ));
+      }
+      
+      const logs = await query;
+      res.json(logs);
+    } catch (error: any) {
+      console.error("Error fetching audit trail:", error);
+      res.status(500).json({ message: "Failed to fetch audit trail" });
+    }
+  });
+  
+  // Get time entry discrepancies (geo-compliance violations)
+  app.get('/api/compliance/discrepancies', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspace!.id;
+      const { status = 'open' } = req.query;
+      
+      const discrepancies = await db
+        .select()
+        .from(timeEntryDiscrepancies)
+        .where(and(
+          eq(timeEntryDiscrepancies.workspaceId, workspaceId),
+          status ? eq(timeEntryDiscrepancies.status, status as string) : sql`true`
+        ))
+        .orderBy(desc(timeEntryDiscrepancies.detectedAt));
+      
+      res.json(discrepancies);
+    } catch (error: any) {
+      console.error("Error fetching discrepancies:", error);
+      res.status(500).json({ message: "Failed to fetch discrepancies" });
+    }
+  });
+  
+  // Resolve time entry discrepancy
+  app.patch('/api/compliance/discrepancies/:id/resolve', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspace!.id;
+      const userId = req.user!.id;
+      const { id } = req.params;
+      const { status, resolutionNotes } = req.body;
+      
+      // Verify discrepancy belongs to workspace
+      const existing = await db
+        .select()
+        .from(timeEntryDiscrepancies)
+        .where(and(eq(timeEntryDiscrepancies.id, id), eq(timeEntryDiscrepancies.workspaceId, workspaceId)))
+        .limit(1);
+      
+      if (!existing[0]) {
+        return res.status(404).json({ message: "Discrepancy not found" });
+      }
+      
+      const updated = await db
+        .update(timeEntryDiscrepancies)
+        .set({
+          status: status || 'resolved',
+          resolutionNotes,
+          reviewedBy: userId,
+          reviewedAt: new Date(),
+          updatedAt: new Date()
+        })
+        .where(eq(timeEntryDiscrepancies.id, id))
+        .returning();
+      
+      res.json(updated[0]);
+    } catch (error: any) {
+      console.error("Error resolving discrepancy:", error);
+      res.status(500).json({ message: "Failed to resolve discrepancy" });
     }
   });
 
