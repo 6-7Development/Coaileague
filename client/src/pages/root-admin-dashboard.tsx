@@ -570,76 +570,85 @@ export default function RootAdminDashboard() {
             </div>
           </CardHeader>
           <CardContent>
-            {/* Compact Metrics Table */}
-            <div className="mb-4 border rounded-lg overflow-hidden">
-              <div className="grid grid-cols-4 gap-px bg-border">
-                {/* Row 1 */}
-                <div className="bg-card p-3">
-                  <div className="text-xs text-muted-foreground">Workspaces</div>
-                  <div className="text-xl font-bold">{stats?.totalWorkspaces || 0}</div>
+            {/* Metrics Grid - Mobile-Optimized */}
+            <div className="mb-6 space-y-4">
+              {/* Business Metrics */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="bg-gradient-to-br from-blue-500/10 to-indigo-500/10 border border-blue-500/20 rounded-xl p-4">
+                  <div className="text-xs font-medium text-blue-400 mb-2">Workspaces</div>
+                  <div className="text-2xl font-bold text-white">{stats?.totalWorkspaces || 0}</div>
                 </div>
-                <div className="bg-card p-3">
-                  <div className="text-xs text-muted-foreground">Users</div>
-                  <div className="text-xl font-bold">{stats?.totalUsers || 0}</div>
+                <div className="bg-gradient-to-br from-cyan-500/10 to-blue-500/10 border border-cyan-500/20 rounded-xl p-4">
+                  <div className="text-xs font-medium text-cyan-400 mb-2">Users</div>
+                  <div className="text-2xl font-bold text-white">{stats?.totalUsers || 0}</div>
                 </div>
-                <div className="bg-card p-3">
-                  <div className="text-xs text-muted-foreground">Subscriptions</div>
-                  <div className="text-xl font-bold text-violet-600">{stats?.activeSubscriptions || 0}</div>
+                <div className="bg-gradient-to-br from-violet-500/10 to-purple-500/10 border border-violet-500/20 rounded-xl p-4">
+                  <div className="text-xs font-medium text-violet-400 mb-2">Subscriptions</div>
+                  <div className="text-2xl font-bold text-violet-400">{stats?.activeSubscriptions || 0}</div>
                 </div>
-                <div className="bg-card p-3">
-                  <div className="text-xs text-muted-foreground">New (Month)</div>
-                  <div className="text-xl font-bold text-blue-600">{stats?.newSignups || 0}</div>
+                <div className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border border-blue-500/20 rounded-xl p-4">
+                  <div className="text-xs font-medium text-blue-400 mb-2">New (Month)</div>
+                  <div className="text-2xl font-bold text-blue-400">{stats?.newSignups || 0}</div>
                 </div>
-                {/* Row 2 */}
-                <div className="bg-card p-3">
-                  <div className="text-xs text-muted-foreground">Revenue</div>
-                  <div className="text-lg font-bold text-emerald-600">${parseFloat(stats?.monthlyRevenue || "0").toLocaleString()}</div>
+              </div>
+
+              {/* Revenue Metrics */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="bg-gradient-to-br from-emerald-500/10 to-green-500/10 border border-emerald-500/20 rounded-xl p-4">
+                  <div className="text-xs font-medium text-emerald-400 mb-2">Revenue</div>
+                  <div className="text-lg font-bold text-emerald-400">${parseFloat(stats?.monthlyRevenue || "0").toLocaleString()}</div>
                 </div>
-                <div className="bg-card p-3">
-                  <div className="text-xs text-muted-foreground">Platform Fees</div>
-                  <div className="text-lg font-bold text-amber-600">${parseFloat(stats?.platformFees || "0").toLocaleString()}</div>
+                <div className="bg-gradient-to-br from-amber-500/10 to-yellow-500/10 border border-amber-500/20 rounded-xl p-4">
+                  <div className="text-xs font-medium text-amber-400 mb-2">Platform Fees</div>
+                  <div className="text-lg font-bold text-amber-400">${parseFloat(stats?.platformFees || "0").toLocaleString()}</div>
                 </div>
-                <div className="bg-card p-3">
-                  <div className="text-xs text-muted-foreground">Invoices</div>
-                  <div className="text-xl font-bold">{stats?.invoiceCount || 0}</div>
+                <div className="bg-gradient-to-br from-indigo-500/10 to-blue-500/10 border border-indigo-500/20 rounded-xl p-4">
+                  <div className="text-xs font-medium text-indigo-400 mb-2">Invoices</div>
+                  <div className="text-2xl font-bold text-white">{stats?.invoiceCount || 0}</div>
                 </div>
-                <div className="bg-card p-3">
-                  <div className="text-xs text-muted-foreground">Avg Revenue</div>
-                  <div className="text-lg font-bold">${parseFloat(stats?.avgRevenue || "0").toFixed(0)}</div>
+                <div className="bg-gradient-to-br from-teal-500/10 to-cyan-500/10 border border-teal-500/20 rounded-xl p-4">
+                  <div className="text-xs font-medium text-teal-400 mb-2">Avg Revenue</div>
+                  <div className="text-lg font-bold text-white">${parseFloat(stats?.avgRevenue || "0").toFixed(0)}</div>
                 </div>
-                {/* Row 3 */}
-                <div className="bg-card p-3">
-                  <div className="text-xs text-muted-foreground">Chat Users</div>
-                  <div className="text-xl font-bold text-purple-600">{stats?.chatUsers || 0}</div>
+              </div>
+
+              {/* Support Metrics */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/20 rounded-xl p-4">
+                  <div className="text-xs font-medium text-purple-400 mb-2">Chat Users</div>
+                  <div className="text-2xl font-bold text-purple-400">{stats?.chatUsers || 0}</div>
                 </div>
-                <div className="bg-card p-3">
-                  <div className="text-xs text-muted-foreground">Chat Staff</div>
-                  <div className="text-xl font-bold text-blue-600">{stats?.chatStaff || 0}</div>
+                <div className="bg-gradient-to-br from-blue-500/10 to-indigo-500/10 border border-blue-500/20 rounded-xl p-4">
+                  <div className="text-xs font-medium text-blue-400 mb-2">Chat Staff</div>
+                  <div className="text-2xl font-bold text-blue-400">{stats?.chatStaff || 0}</div>
                 </div>
-                <div className="bg-card p-3">
-                  <div className="text-xs text-muted-foreground">Open Tickets</div>
-                  <div className="text-xl font-bold text-orange-600">{(supportStats as any)?.openTickets || 0}</div>
+                <div className="bg-gradient-to-br from-orange-500/10 to-red-500/10 border border-orange-500/20 rounded-xl p-4">
+                  <div className="text-xs font-medium text-orange-400 mb-2">Open Tickets</div>
+                  <div className="text-2xl font-bold text-orange-400">{(supportStats as any)?.openTickets || 0}</div>
                 </div>
-                <div className="bg-card p-3">
-                  <div className="text-xs text-muted-foreground">Churn Rate</div>
-                  <div className="text-xl font-bold text-red-600">{stats?.churnRate || "0"}%</div>
+                <div className="bg-gradient-to-br from-red-500/10 to-rose-500/10 border border-red-500/20 rounded-xl p-4">
+                  <div className="text-xs font-medium text-red-400 mb-2">Churn Rate</div>
+                  <div className="text-2xl font-bold text-red-400">{stats?.churnRate || "0"}%</div>
                 </div>
-                {/* Row 4 - System Health */}
-                <div className="bg-card p-3">
-                  <div className="text-xs text-muted-foreground">CPU Usage</div>
-                  <div className="text-xl font-bold">{stats?.systemHealth?.cpu || 0}%</div>
+              </div>
+
+              {/* System Health */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="bg-gradient-to-br from-slate-500/10 to-gray-500/10 border border-slate-500/20 rounded-xl p-4">
+                  <div className="text-xs font-medium text-slate-400 mb-2">CPU Usage</div>
+                  <div className="text-2xl font-bold text-white">{stats?.systemHealth?.cpu || 0}%</div>
                 </div>
-                <div className="bg-card p-3">
-                  <div className="text-xs text-muted-foreground">Memory</div>
-                  <div className="text-xl font-bold">{stats?.systemHealth?.memory || 0}%</div>
+                <div className="bg-gradient-to-br from-sky-500/10 to-blue-500/10 border border-sky-500/20 rounded-xl p-4">
+                  <div className="text-xs font-medium text-sky-400 mb-2">Memory</div>
+                  <div className="text-2xl font-bold text-white">{stats?.systemHealth?.memory || 0}%</div>
                 </div>
-                <div className="bg-card p-3">
-                  <div className="text-xs text-muted-foreground">Database</div>
-                  <div className="text-sm font-bold text-emerald-600">{stats?.systemHealth?.database || "healthy"}</div>
+                <div className="bg-gradient-to-br from-emerald-500/10 to-green-500/10 border border-emerald-500/20 rounded-xl p-4">
+                  <div className="text-xs font-medium text-emerald-400 mb-2">Database</div>
+                  <div className="text-base font-bold text-emerald-400 capitalize">{stats?.systemHealth?.database || "healthy"}</div>
                 </div>
-                <div className="bg-card p-3">
-                  <div className="text-xs text-muted-foreground">Uptime</div>
-                  <div className="text-sm font-mono font-bold">{stats?.systemHealth?.uptime ? formatUptime(stats.systemHealth.uptime) : "0d 0h"}</div>
+                <div className="bg-gradient-to-br from-cyan-500/10 to-teal-500/10 border border-cyan-500/20 rounded-xl p-4">
+                  <div className="text-xs font-medium text-cyan-400 mb-2">Uptime</div>
+                  <div className="text-base font-mono font-bold text-white">{stats?.systemHealth?.uptime ? formatUptime(stats.systemHealth.uptime) : "0d 0h"}</div>
                 </div>
               </div>
             </div>
