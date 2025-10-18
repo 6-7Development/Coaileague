@@ -814,8 +814,8 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
     <div className="flex flex-col h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100 relative">
       {/* Seasonal Animated Background */}
       <SeasonalBackground enabled={seasonalAnimationsEnabled} />
-      {/* UNIFIED ADVERTISEMENT BLOCK - One continuous dark space for animations/ads */}
-      <header className="bg-gradient-to-r from-slate-800 via-slate-700 to-slate-800 text-white shadow-2xl relative z-10 border-b-4 border-blue-600">
+      {/* UNIFIED ADVERTISEMENT BLOCK - Transparent overlay for animations */}
+      <header className="bg-gradient-to-r from-slate-800/40 via-slate-700/40 to-slate-800/40 text-white shadow-lg relative z-10 border-b-2 border-blue-600/30 backdrop-blur-sm">
         {/* Top Controls Bar - Embedded in ad space */}
         <div className="flex items-center justify-between max-w-7xl mx-auto px-3 py-2 relative">
           {/* Left: Logo and Staff Controls */}
