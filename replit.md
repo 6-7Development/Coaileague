@@ -36,6 +36,61 @@ WorkforceOS is a comprehensive workforce management operating system designed to
 - Platform-level troubleshooting without technical access
 - Justifies $500/month pricing through vendor lock-in and compliance automation
 
+### October 18, 2025 - EngagementOS™ Bidirectional Intelligence System Complete
+**Full Employee-Employer Feedback Loop with Proprietary Analytics & Turnover Risk Prediction**
+
+**Database Schema** (7 new tables via SQL):
+- pulse_survey_templates: Manager-created quarterly pulse surveys
+- pulse_survey_responses: Employee responses with calculated engagement/sentiment scores
+- employer_ratings: Employee ratings of employer (compensation, culture, leadership, work-life balance)
+- anonymous_suggestions: Employee suggestion box with conversion to SupportOS™ tickets
+- employee_recognition: Peer-to-peer and manager recognition system
+- employee_health_scores: Calculated turnover risk with manager action queue
+- employer_benchmark_scores: Industry comparison with competitive positioning
+
+**Backend APIs** (520+ lines in server/routes.ts):
+- Pulse Survey Templates: POST/GET/PUT/DELETE (manager-only CRUD)
+- Pulse Survey Responses: POST (employee submission), GET (manager viewing)
+- Employer Ratings: POST (employee), GET (manager viewing with aggregates)
+- Anonymous Suggestions: POST (employee), GET/PATCH (manager management)
+- Employee Recognition: POST/GET (all employees), manager can view all
+- Employee Health Scores: GET with action queue, POST /calculate (manual trigger)
+- Employer Benchmarks: GET aggregated industry comparisons, POST /calculate
+- Full RBAC enforcement: managers view analytics, employees submit feedback
+
+**Calculation Engine** (460+ lines in server/services/engagementCalculations.ts):
+- calculateEmployeeHealthScore(): Computes 0-100 health score from pulse surveys, employer ratings, suggestion patterns
+- Engagement score: Average of 1-5 rating responses scaled to 0-100%
+- Sentiment score: Keyword analysis with word-boundary regex, positive/negative ratio (0-100%)
+- Risk levels: Critical (<50), At Risk (50-69), Moderate (70-84), Healthy (85+)
+- Automated manager action queue with suggested interventions
+- calculateEmployerBenchmark(): Cross-workspace industry comparison with percentile ranking
+- Batch processing support for organization-wide calculations
+
+**Frontend UI** (1,110+ lines total):
+- engagement-dashboard.tsx (480 lines): Manager dashboard with health overview cards, employee action queue, employer benchmarks, recognition feed
+- engagement-employee.tsx (630 lines): Employee portal with pulse survey forms, employer rating submission, anonymous suggestion box, peer recognition
+
+**Production-Ready Features**:
+- Server-side score calculation from actual survey responses (not random data)
+- Scores bounded to [0-100] range with neutral defaults
+- Word-boundary regex for improved sentiment analysis
+- Multi-tenant workspace isolation with cascade deletes
+- Strategic indexing on workspace_id, employee_id, timestamp
+- Audit trail with IP address and user agent tracking
+
+**Monopolistic Lock-In Value**:
+- Proprietary employer reputation data trapped in platform (employees can't export ratings history)
+- Network effects: more employees = better industry benchmarks = higher switching costs
+- ESG/compliance positioning: mandatory pulse surveys for workforce health reporting
+- Turnover risk prediction creates dependency on historical analytics
+- BillOS™ integration: tie recognition rewards to billable revenue
+- Justifies $500/month pricing through bidirectional accountability and competitive intelligence
+
+**Routes**:
+- Manager Dashboard: /engagement/dashboard
+- Employee Portal: /engagement/employee
+
 ## User Preferences
 I prefer detailed explanations.
 Do not make changes to the folder `Z`.
@@ -82,6 +137,7 @@ The platform features a CAD-style professional interface with a dark mode theme,
         - **Real-Time Geo-Compliance & Audit Trail**: GPS/IP tracking for time entries with mandatory 7-year retention.
         - **TalentOS™ (Internal Talent Marketplace & Performance-to-Pay)**: Internal marketplace for roles, performance-to-pay loop, career pathing, and unified data nexus integration.
         - **AssetOS™ (Physical Resource Allocation & Billing)**: Dual-layer resource scheduling (employees + assets), operator certification verification, asset-time reporting, BillOS™ integration, maintenance scheduling, and utilization analytics.
+        - **EngagementOS™ (Bidirectional Employee-Employer Intelligence)**: Pulse surveys, employer ratings, anonymous suggestions, peer recognition, employee health scores with turnover risk prediction, employer benchmarks with industry comparison, and automated manager action queues.
 
 ## External Dependencies
 - **Database**: Neon (PostgreSQL)

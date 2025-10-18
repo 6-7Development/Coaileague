@@ -66,6 +66,8 @@ import PayrollDashboard from "@/pages/payroll-dashboard";
 import MyPaychecks from "@/pages/my-paychecks";
 import LeadersHub from "@/pages/leaders-hub";
 import MobileChatPage from "@/pages/mobile-chat";
+import EngagementDashboard from "@/pages/engagement-dashboard";
+import EmployeeEngagement from "@/pages/engagement-employee";
 import { FloatingChatButton } from "@/components/floating-chat-button";
 
 function AppContent() {
@@ -142,6 +144,8 @@ function AppContent() {
                 <Route path="/schedule" component={SmartScheduleOS} />
                 <Route path="/time-tracking" component={TimeTracking} />
                 <Route path="/employees" component={Employees} />
+                <Route path="/engagement/dashboard" component={EngagementDashboard} />
+                <Route path="/engagement/employee" component={EmployeeEngagement} />
                 <Route path="/clients" component={Clients} />
                 <Route path="/invoices" component={Invoices} />
                 <Route path="/reports" component={Reports} />

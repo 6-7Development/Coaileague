@@ -98,6 +98,11 @@ import {
   createAutomatedPayrollRun 
 } from "./services/payrollAutomation";
 import { GeoComplianceService } from "./services/geoCompliance";
+import { 
+  calculateEmployeeHealthScore, 
+  calculateEmployerBenchmark, 
+  batchCalculateHealthScores 
+} from "./services/engagementCalculations";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Create HTTP server
@@ -8396,12 +8401,63 @@ Return ONLY valid JSON array with this exact structure:
         return res.status(403).json({ message: "Employee not found" });
       }
       
+      // Calculate engagement and sentiment scores from actual responses
+      const { responses } = req.body;
+      let engagementScore = 50; // Default neutral
+      let sentimentScore = 50; // Default neutral
+      
+      if (responses && typeof responses === 'object') {
+        // Calculate engagement score based on rating questions (1-5 scale)
+        const ratingResponses = Object.values(responses).filter((r: any) => typeof r === 'number' && r >= 1 && r <= 5);
+        if (ratingResponses.length > 0) {
+          const avgRating = ratingResponses.reduce((sum: number, r: any) => sum + r, 0) / ratingResponses.length;
+          engagementScore = (avgRating / 5) * 100; // Convert 1-5 scale to 0-100
+        }
+        
+        // Calculate sentiment score from text responses (simplified - in production would use AI)
+        const textResponses = Object.values(responses).filter((r: any) => typeof r === 'string' && r.length > 0);
+        if (textResponses.length > 0) {
+          // Improved sentiment: count word occurrences (not just presence)
+          const combinedText = textResponses.join(' ').toLowerCase();
+          const positiveWords = ['good', 'great', 'excellent', 'happy', 'satisfied', 'love', 'amazing', 'wonderful', 'fantastic', 'positive'];
+          const negativeWords = ['bad', 'poor', 'terrible', 'unhappy', 'frustrated', 'hate', 'awful', 'disappointed', 'horrible', 'negative'];
+          
+          // Count occurrences of each word (not just presence)
+          let positiveCount = 0;
+          let negativeCount = 0;
+          
+          positiveWords.forEach(word => {
+            const regex = new RegExp('\\b' + word + '\\b', 'g');
+            const matches = combinedText.match(regex);
+            if (matches) positiveCount += matches.length;
+          });
+          
+          negativeWords.forEach(word => {
+            const regex = new RegExp('\\b' + word + '\\b', 'g');
+            const matches = combinedText.match(regex);
+            if (matches) negativeCount += matches.length;
+          });
+          
+          if (positiveCount + negativeCount > 0) {
+            // Score from 0-100: 0 = all negative, 50 = neutral, 100 = all positive
+            const ratio = positiveCount / (positiveCount + negativeCount);
+            sentimentScore = ratio * 100;
+          }
+        }
+      }
+      
+      // Clamp scores to 0-100 range
+      engagementScore = Math.min(Math.max(engagementScore, 0), 100);
+      sentimentScore = Math.min(Math.max(sentimentScore, 0), 100);
+      
       const validatedData = insertPulseSurveyResponseSchema.parse({
         ...req.body,
         workspaceId,
         employeeId: employee[0].id,
         ipAddress: req.ip,
-        userAgent: req.get('User-Agent')
+        userAgent: req.get('User-Agent'),
+        engagementScore: engagementScore.toFixed(2),
+        sentimentScore: sentimentScore.toFixed(2)
       });
       
       const [response] = await db
@@ -8409,7 +8465,7 @@ Return ONLY valid JSON array with this exact structure:
         .values(validatedData)
         .returning();
       
-      // TODO: Trigger AI sentiment analysis via PredictionOS™
+      // TODO: Trigger AI sentiment analysis via PredictionOS™ for more sophisticated scoring
       
       res.json(response);
     } catch (error: any) {
@@ -8841,6 +8897,88 @@ Return ONLY valid JSON array with this exact structure:
     } catch (error: any) {
       console.error("Error fetching employer benchmarks:", error);
       res.status(500).json({ message: "Failed to fetch employer benchmarks" });
+    }
+  });
+  
+  // [8] CALCULATION TRIGGERS (Manager/Owner Only)
+  
+  // Manually trigger health score calculation for a single employee
+  app.post('/api/engagement/health-scores/calculate', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspace!.id;
+      const { employeeId, periodStart, periodEnd } = req.body;
+      
+      if (!employeeId || !periodStart || !periodEnd) {
+        return res.status(400).json({ message: "employeeId, periodStart, and periodEnd are required" });
+      }
+      
+      const healthScore = await calculateEmployeeHealthScore({
+        workspaceId,
+        employeeId,
+        periodStart: new Date(periodStart),
+        periodEnd: new Date(periodEnd)
+      });
+      
+      res.json(healthScore);
+    } catch (error: any) {
+      console.error("Error calculating health score:", error);
+      res.status(500).json({ message: "Failed to calculate health score" });
+    }
+  });
+  
+  // Batch calculate health scores for all employees
+  app.post('/api/engagement/health-scores/calculate-batch', requireAuth, requireOwner, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspace!.id;
+      const { periodStart, periodEnd } = req.body;
+      
+      if (!periodStart || !periodEnd) {
+        return res.status(400).json({ message: "periodStart and periodEnd are required" });
+      }
+      
+      const healthScores = await batchCalculateHealthScores(
+        workspaceId,
+        new Date(periodStart),
+        new Date(periodEnd)
+      );
+      
+      res.json({ 
+        message: `Calculated ${healthScores.length} health scores`,
+        healthScores 
+      });
+    } catch (error: any) {
+      console.error("Error batch calculating health scores:", error);
+      res.status(500).json({ message: "Failed to batch calculate health scores" });
+    }
+  });
+  
+  // Manually trigger employer benchmark calculation
+  app.post('/api/engagement/benchmarks/calculate', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspace!.id;
+      const { benchmarkType, targetId, targetName, periodStart, periodEnd } = req.body;
+      
+      if (!benchmarkType || !periodStart || !periodEnd) {
+        return res.status(400).json({ message: "benchmarkType, periodStart, and periodEnd are required" });
+      }
+      
+      const benchmark = await calculateEmployerBenchmark({
+        workspaceId,
+        benchmarkType,
+        targetId,
+        targetName,
+        periodStart: new Date(periodStart),
+        periodEnd: new Date(periodEnd)
+      });
+      
+      if (!benchmark) {
+        return res.status(404).json({ message: "No ratings found for the specified period" });
+      }
+      
+      res.json(benchmark);
+    } catch (error: any) {
+      console.error("Error calculating employer benchmark:", error);
+      res.status(500).json({ message: "Failed to calculate employer benchmark" });
     }
   });
 
