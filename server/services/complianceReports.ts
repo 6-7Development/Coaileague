@@ -182,7 +182,7 @@ interface TaxRemittanceRecord {
   totalGrossPay: string;
   totalTaxes: string;
   totalNetPay: string;
-  remittanceStatus: 'pending' | 'processed' | 'approved';
+  remittanceStatus: 'pending' | 'draft' | 'approved' | 'paid' | 'processed';
   processedAt?: Date;
   confirmationNumber?: string;
 }
