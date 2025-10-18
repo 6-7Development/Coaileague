@@ -586,6 +586,49 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
     );
   };
 
+  // Parse system messages to render names with superscript role badges
+  const parseSystemMessage = (message: string) => {
+    // Match pattern like "Name (Role)" and convert to Name with superscript role
+    // Updated regex to capture full names including spaces, hyphens, apostrophes
+    const rolePattern = /([\w\s'-]+?)\s*\((Admin|Deputy|Assistant|Sysop|Auditor|BOT AI)\)/g;
+    const parts: (string | JSX.Element)[] = [];
+    let lastIndex = 0;
+    let match;
+    let key = 0;
+
+    while ((match = rolePattern.exec(message)) !== null) {
+      // Add text before the match
+      if (match.index > lastIndex) {
+        parts.push(message.substring(lastIndex, match.index));
+      }
+
+      const userName = match[1].trim(); // Trim whitespace from captured name
+      const roleText = match[2];
+      
+      // Determine if it's a bot for styling
+      const isBot = roleText === 'BOT AI';
+      
+      // Add the username with superscript role
+      parts.push(
+        <span key={key++} className="font-semibold">
+          {userName}
+          <sup className={`text-[8px] font-normal ${isBot ? 'text-amber-500' : 'text-indigo-500'}`}>
+            ({roleText})
+          </sup>
+        </span>
+      );
+
+      lastIndex = match.index + match[0].length;
+    }
+
+    // Add remaining text
+    if (lastIndex < message.length) {
+      parts.push(message.substring(lastIndex));
+    }
+
+    return parts.length > 0 ? parts : message;
+  };
+
   const getRoleColor = (role: string) => {
     switch (role) {
       case 'root': return 'text-indigo-400 font-bold';  // Root admin - matching mobile chat
@@ -998,7 +1041,7 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
                     <div key={idx} className="flex justify-center my-1">
                       <span className="text-[10px] font-mono text-slate-600 italic bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200 flex items-center gap-1.5">
                         <WFLogoCompact size={10} />
-                        {msg.message}
+                        {parseSystemMessage(msg.message)}
                       </span>
                     </div>
                   );

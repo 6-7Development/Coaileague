@@ -84,6 +84,49 @@ export default function ModernMobileChat() {
       default: return null;
     }
   };
+
+  // Parse system messages to render names with superscript role badges
+  const parseSystemMessage = (message: string) => {
+    // Match pattern like "Name (Role)" and convert to Name with superscript role
+    // Updated regex to capture full names including spaces, hyphens, apostrophes
+    const rolePattern = /([\w\s'-]+?)\s*\((Admin|Deputy|Assistant|Sysop|Auditor|BOT AI)\)/g;
+    const parts: (string | JSX.Element)[] = [];
+    let lastIndex = 0;
+    let match;
+    let key = 0;
+
+    while ((match = rolePattern.exec(message)) !== null) {
+      // Add text before the match
+      if (match.index > lastIndex) {
+        parts.push(message.substring(lastIndex, match.index));
+      }
+
+      const userName = match[1].trim(); // Trim whitespace from captured name
+      const roleText = match[2];
+      
+      // Determine if it's a bot for styling
+      const isBot = roleText === 'BOT AI';
+      
+      // Add the username with superscript role
+      parts.push(
+        <span key={key++} className="font-semibold">
+          {userName}
+          <sup className={`text-[8px] font-normal ${isBot ? 'text-amber-400' : 'text-indigo-400'}`}>
+            ({roleText})
+          </sup>
+        </span>
+      );
+
+      lastIndex = match.index + match[0].length;
+    }
+
+    // Add remaining text
+    if (lastIndex < message.length) {
+      parts.push(message.substring(lastIndex));
+    }
+
+    return parts.length > 0 ? parts : message;
+  };
   
   // Check if message is from current user for animated badge
   const isOwnMessage = (senderId: string) => senderId === userId;
@@ -1056,7 +1099,7 @@ export default function ModernMobileChat() {
               {msg.senderId === 'system' ? (
                 <span className="text-sm text-slate-200 leading-relaxed break-words whitespace-pre-wrap flex items-center gap-2">
                   <WFLogoCompact size={14} />
-                  {msg.message}
+                  {parseSystemMessage(msg.message)}
                 </span>
               ) : (
                 <p className="text-sm text-slate-200 leading-relaxed break-words whitespace-pre-wrap">{msg.message}</p>
