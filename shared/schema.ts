@@ -5347,7 +5347,7 @@ export const onboardingTemplates = pgTable("onboarding_templates", {
   // Template details
   name: varchar("name").notNull(),
   description: text("description"),
-  departmentId: varchar("department_id").references(() => departments.id),
+  departmentName: varchar("department_name"), // Department name (no FK)
   roleTemplateId: varchar("role_template_id").references(() => roleTemplates.id),
   
   // Timeline
@@ -5669,7 +5669,7 @@ export const budgets = pgTable("budgets", {
   committed: decimal("committed", { precision: 12, scale: 2 }).default('0.00'), // Encumbered funds
   
   // Department/category
-  departmentId: varchar("department_id").references(() => departments.id),
+  departmentName: varchar("department_name"), // Department name (no FK)
   categoryCode: varchar("category_code"),
   
   // Ownership
@@ -5689,7 +5689,6 @@ export const budgets = pgTable("budgets", {
 }, (table) => ({
   fiscalYearIdx: index("budgets_fiscal_year_idx").on(table.fiscalYear),
   statusIdx: index("budgets_status_idx").on(table.status),
-  departmentIdx: index("budgets_department_idx").on(table.departmentId),
 }));
 
 // Budget line items (detailed breakdown)
