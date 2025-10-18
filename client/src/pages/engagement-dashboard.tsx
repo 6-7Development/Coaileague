@@ -109,6 +109,11 @@ export default function EngagementDashboard() {
     queryKey: ['/api/engagement/recognition'],
   });
 
+  // Fetch employer ratings (for dispute purposes)
+  const { data: employerRatings, isLoading: loadingRatings } = useQuery<EmployerRating[]>({
+    queryKey: ['/api/engagement/employer-ratings'],
+  });
+
   // Take action on health score
   const takeActionMutation = useMutation({
     mutationFn: async ({ id, actionNotes }: { id: string; actionNotes: string }) => {
@@ -121,6 +126,56 @@ export default function EngagementDashboard() {
 
   const handleTakeAction = (scoreId: string, notes: string) => {
     takeActionMutation.mutate({ id: scoreId, actionNotes: notes });
+  };
+
+  // Dispute filing mutation
+  const fileDisputeMutation = useMutation({
+    mutationFn: async (data: DisputeFormData) => {
+      if (!selectedRating) throw new Error("No rating selected");
+      return apiRequest('POST', '/api/disputes', {
+        ...data,
+        disputeType: 'employer_rating',
+        targetType: 'employer_ratings',
+        targetId: selectedRating.id.toString(),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/disputes'] });
+      setDisputeDialogOpen(false);
+      disputeForm.reset();
+      setSelectedRating(null);
+      toast({
+        title: "Success",
+        description: "Dispute filed successfully. Support will review your case.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const disputeForm = useForm<DisputeFormData>({
+    resolver: zodResolver(disputeSchema),
+    defaultValues: {
+      title: "",
+      reason: "",
+      requestedOutcome: "",
+      priority: "normal",
+    },
+  });
+
+  const onDisputeSubmit = (data: DisputeFormData) => {
+    fileDisputeMutation.mutate(data);
+  };
+
+  const handleOpenDisputeDialog = (rating: EmployerRating) => {
+    setSelectedRating(rating);
+    disputeForm.setValue('title', `Dispute: Employer rating from ${format(new Date(rating.submittedAt), 'MMM d, yyyy')}`);
+    setDisputeDialogOpen(true);
   };
 
   // Calculate summary statistics
@@ -228,6 +283,10 @@ export default function EngagementDashboard() {
             )}
           </TabsTrigger>
           <TabsTrigger value="benchmarks" data-testid="tab-benchmarks">Benchmarks</TabsTrigger>
+          <TabsTrigger value="ratings" data-testid="tab-ratings">
+            <Star className="h-4 w-4 mr-2" />
+            Employer Ratings
+          </TabsTrigger>
           <TabsTrigger value="recognition" data-testid="tab-recognition">Recognition</TabsTrigger>
         </TabsList>
 
@@ -425,6 +484,98 @@ export default function EngagementDashboard() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="ratings" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Individual Employer Ratings</CardTitle>
+              <CardDescription>Employee feedback ratings - organizations can dispute inaccurate ones</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {employerRatings && employerRatings.length > 0 ? (
+                  employerRatings.map((rating) => (
+                    <div 
+                      key={rating.id} 
+                      className="border rounded-lg p-4 hover-elevate"
+                      data-testid={`rating-${rating.id}`}
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 space-y-3">
+                          <div className="flex items-center gap-3">
+                            <div className="flex gap-0.5">
+                              {Array.from({ length: 5 }, (_, i) => (
+                                <Star 
+                                  key={i} 
+                                  className={`h-4 w-4 ${i < Math.round(rating.overallScore) ? 'fill-yellow-500 text-yellow-500' : 'text-gray-300'}`}
+                                />
+                              ))}
+                            </div>
+                            <span className="font-semibold text-lg">{rating.overallScore.toFixed(1)}/5.0</span>
+                            {rating.isAnonymous && (
+                              <Badge variant="outline">Anonymous</Badge>
+                            )}
+                          </div>
+
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                            <div>
+                              <span className="text-muted-foreground">Management:</span>{' '}
+                              <span className="font-medium">{rating.managementQuality}/5</span>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">Environment:</span>{' '}
+                              <span className="font-medium">{rating.workEnvironment}/5</span>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">Compensation:</span>{' '}
+                              <span className="font-medium">{rating.compensationFairness}/5</span>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">Growth:</span>{' '}
+                              <span className="font-medium">{rating.growthOpportunities}/5</span>
+                            </div>
+                          </div>
+
+                          {rating.positiveComments && (
+                            <div className="bg-muted/50 p-3 rounded text-sm">
+                              <div className="font-medium text-green-600 dark:text-green-400 mb-1">Positive:</div>
+                              <p className="text-muted-foreground">{rating.positiveComments}</p>
+                            </div>
+                          )}
+
+                          {rating.improvementSuggestions && (
+                            <div className="bg-muted/50 p-3 rounded text-sm">
+                              <div className="font-medium text-orange-600 dark:text-orange-400 mb-1">Suggestions:</div>
+                              <p className="text-muted-foreground">{rating.improvementSuggestions}</p>
+                            </div>
+                          )}
+
+                          <div className="text-xs text-muted-foreground">
+                            Submitted: {format(new Date(rating.submittedAt), 'MMM d, yyyy h:mm a')}
+                          </div>
+                        </div>
+
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => handleOpenDisputeDialog(rating)}
+                          data-testid={`button-dispute-rating-${rating.id}`}
+                        >
+                          <AlertTriangle className="h-4 w-4 mr-2" />
+                          Dispute
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No employer ratings yet. Employees can submit ratings through the Employee Engagement page.
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="recognition" className="space-y-4">
           <Card>
             <CardHeader>
@@ -466,6 +617,120 @@ export default function EngagementDashboard() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Dispute Filing Dialog */}
+      <Dialog open={disputeDialogOpen} onOpenChange={setDisputeDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>File Dispute - Employer Rating</DialogTitle>
+            <DialogDescription>
+              Explain why you believe this rating is inaccurate or unfair. Support will investigate and respond.
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...disputeForm}>
+            <form onSubmit={disputeForm.handleSubmit(onDisputeSubmit)} className="space-y-4">
+              {selectedRating && (
+                <div className="bg-muted p-4 rounded-lg">
+                  <p className="text-sm font-medium">Disputing rating with overall score: {selectedRating.overallScore.toFixed(1)}/5.0</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Submitted: {format(new Date(selectedRating.submittedAt), 'MMM d, yyyy h:mm a')}
+                    {selectedRating.isAnonymous && " • Anonymous"}
+                  </p>
+                </div>
+              )}
+
+              <FormField
+                control={disputeForm.control}
+                name="title"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Dispute Title</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="Brief summary of your dispute" data-testid="input-dispute-title" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={disputeForm.control}
+                name="reason"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Detailed Reason (minimum 20 characters)</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        {...field} 
+                        rows={6} 
+                        placeholder="Explain in detail why this rating is inaccurate or unfair. Include specific examples and data if available."
+                        data-testid="input-dispute-reason"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={disputeForm.control}
+                name="requestedOutcome"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Requested Outcome (Optional)</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        {...field} 
+                        rows={3} 
+                        placeholder="What resolution would you like? (e.g., 'Remove this rating', 'Investigate source of rating')"
+                        data-testid="input-dispute-outcome"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={disputeForm.control}
+                name="priority"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Priority</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-dispute-priority">
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="low">Low</SelectItem>
+                        <SelectItem value="normal">Normal</SelectItem>
+                        <SelectItem value="high">High</SelectItem>
+                        <SelectItem value="urgent">Urgent</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="flex justify-end gap-3 pt-4">
+                <Button type="button" variant="outline" onClick={() => {
+                  setDisputeDialogOpen(false);
+                  setSelectedRating(null);
+                  disputeForm.reset();
+                }}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={fileDisputeMutation.isPending} data-testid="button-submit-dispute">
+                  {fileDisputeMutation.isPending ? "Filing..." : "File Dispute"}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
