@@ -5896,3 +5896,158 @@ export type InsertTrainingEnrollment = z.infer<typeof insertTrainingEnrollmentSc
 export type TrainingEnrollment = typeof trainingEnrollments.$inferSelect;
 export type InsertTrainingCertification = z.infer<typeof insertTrainingCertificationSchema>;
 export type TrainingCertification = typeof trainingCertifications.$inferSelect;
+
+// ============================================================================
+// WRITE-UPS & DISCIPLINARY ACTIONS - Employee Performance Impact
+// ============================================================================
+
+export const writeUps = pgTable("write_ups", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  // Employee being disciplined
+  employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
+  
+  // Incident details
+  incidentDate: timestamp("incident_date").notNull(),
+  title: varchar("title").notNull(), // Brief summary
+  description: text("description").notNull(), // Detailed description of what happened
+  category: varchar("category").notNull(), // 'attendance', 'performance', 'conduct', 'safety', 'policy_violation', 'other'
+  
+  // Severity & consequences
+  severity: varchar("severity").notNull(), // 'verbal_warning', 'written_warning', 'final_warning', 'suspension', 'termination'
+  severityLevel: integer("severity_level").notNull(), // 1-5 (for score calculation: 1=verbal, 5=termination)
+  
+  // Issued by
+  issuedBy: varchar("issued_by").notNull().references(() => users.id),
+  issuedAt: timestamp("issued_at").notNull().defaultNow(),
+  
+  // Documentation
+  evidenceUrls: text("evidence_urls").array(), // Links to supporting documents/evidence
+  witnessIds: text("witness_ids").array(), // Employee IDs who witnessed the incident
+  
+  // Corrective action plan
+  correctiveActions: text("corrective_actions").array(), // Required steps to improve
+  followUpDate: timestamp("follow_up_date"), // When to review progress
+  
+  // Impact on employee
+  impactsCompositeScore: boolean("impacts_composite_score").default(true),
+  scoreDeduction: integer("score_deduction"), // Points deducted from composite score
+  
+  // Employee acknowledgment
+  employeeAcknowledged: boolean("employee_acknowledged").default(false),
+  employeeAcknowledgedAt: timestamp("employee_acknowledged_at"),
+  employeeResponse: text("employee_response"), // Employee's written response
+  
+  // Appeal/Dispute
+  canBeDisputed: boolean("can_be_disputed").default(true),
+  disputeDeadline: timestamp("dispute_deadline"), // Last day to file dispute
+  
+  // Status
+  status: varchar("status").default('active'), // 'active', 'appealed', 'overturned', 'expired', 'completed'
+  expiresAt: timestamp("expires_at"), // When write-up expires (e.g., 1 year)
+  
+  // Resolution
+  resolvedAt: timestamp("resolved_at"),
+  resolutionNotes: text("resolution_notes"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  employeeIdx: index("write_ups_employee_idx").on(table.employeeId),
+  statusIdx: index("write_ups_status_idx").on(table.status),
+  severityIdx: index("write_ups_severity_idx").on(table.severity),
+  incidentDateIdx: index("write_ups_incident_date_idx").on(table.incidentDate),
+}));
+
+// ============================================================================
+// DISPUTES - Challenge Performance Reviews, Employer Ratings, & Write-Ups
+// ============================================================================
+
+export const disputes = pgTable("disputes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  // Who filed the dispute
+  filedBy: varchar("filed_by").notNull().references(() => users.id),
+  filedByRole: varchar("filed_by_role").notNull(), // 'employee', 'manager', 'hr'
+  
+  // What's being disputed
+  disputeType: varchar("dispute_type").notNull(), // 'performance_review', 'employer_rating', 'write_up', 'composite_score'
+  targetId: varchar("target_id").notNull(), // ID of the review/rating/write-up being disputed
+  targetType: varchar("target_type").notNull(), // Table name for reference
+  
+  // Dispute details
+  title: varchar("title").notNull(),
+  reason: text("reason").notNull(), // Why the dispute is being filed
+  evidence: text("evidence").array(), // URLs to supporting documents
+  requestedOutcome: text("requested_outcome"), // What the employee wants (e.g., "Remove write-up", "Change rating to 4")
+  
+  // Priority & urgency
+  priority: varchar("priority").default('normal'), // 'low', 'normal', 'high', 'urgent'
+  
+  // Assignment
+  assignedTo: varchar("assigned_to").references(() => users.id), // HR/Manager reviewing the dispute
+  assignedAt: timestamp("assigned_at"),
+  
+  // Timeline
+  filedAt: timestamp("filed_at").notNull().defaultNow(),
+  reviewDeadline: timestamp("review_deadline"), // Must be reviewed by this date
+  
+  // Status tracking
+  status: varchar("status").default('pending'), // 'pending', 'under_review', 'approved', 'rejected', 'partially_approved', 'withdrawn'
+  
+  // Review process
+  reviewStartedAt: timestamp("review_started_at"),
+  reviewerNotes: text("reviewer_notes"),
+  reviewerRecommendation: varchar("reviewer_recommendation"), // 'approve', 'reject', 'partial', 'escalate'
+  
+  // Resolution
+  resolvedAt: timestamp("resolved_at"),
+  resolvedBy: varchar("resolved_by").references(() => users.id),
+  resolution: text("resolution"), // Final decision explanation
+  resolutionAction: text("resolution_action"), // What was changed (e.g., "Rating changed from 2 to 3")
+  
+  // Changes made (if approved)
+  changesApplied: boolean("changes_applied").default(false),
+  changesAppliedAt: timestamp("changes_applied_at"),
+  
+  // Appeals (if dispute is rejected)
+  canBeAppealed: boolean("can_be_appealed").default(true),
+  appealDeadline: timestamp("appeal_deadline"),
+  appealedToUpperManagement: boolean("appealed_to_upper_management").default(false),
+  
+  // Audit trail
+  statusHistory: text("status_history").array(), // JSON strings of status changes
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  filedByIdx: index("disputes_filed_by_idx").on(table.filedBy),
+  statusIdx: index("disputes_status_idx").on(table.status),
+  typeIdx: index("disputes_type_idx").on(table.disputeType),
+  targetIdx: index("disputes_target_idx").on(table.targetType, table.targetId),
+  assignedToIdx: index("disputes_assigned_to_idx").on(table.assignedTo),
+  workspaceStatusIdx: index("disputes_workspace_status_idx").on(table.workspaceId, table.status),
+}));
+
+// ============================================================================
+// SCHEMA EXPORTS - Write-Ups & Disputes
+// ============================================================================
+
+export const insertWriteUpSchema = createInsertSchema(writeUps).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertDisputeSchema = createInsertSchema(disputes).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertWriteUp = z.infer<typeof insertWriteUpSchema>;
+export type WriteUp = typeof writeUps.$inferSelect;
+export type InsertDispute = z.infer<typeof insertDisputeSchema>;
+export type Dispute = typeof disputes.$inferSelect;
