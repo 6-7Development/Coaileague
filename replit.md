@@ -9,6 +9,12 @@ Do not make changes to the folder `Z`.
 Do not make changes to the file `Y`.
 
 ## System Architecture
+### Organization Principles
+- **Modular OS Design**: Features organized into branded "OS" modules (BillOS™, PayrollOS™, ScheduleOS™, etc.)
+- **Extend, Don't Rebuild**: Always build on existing systems rather than creating duplicates
+- **Clean Code**: Organized by category/version for independent upgrades
+- **Single Source of Truth**: One system per feature domain
+
 ### UI/UX Decisions
 The platform features a CAD-style professional interface with a dark mode theme, emphasizing precision. It includes an application frame with a menu, toolbar, and status bar, along with real-time indicators. The design is modern, professional, and mobile-first, utilizing corporate blue gradient accents (navy blue #1e3a8a to deep slate). The official logo is a realistic neon-style "W" with glowing "OS" superscript, designed with multi-layer glows, 3D depth, and electric blue highlights. A universal transition system with a branded overlay and animated WorkforceOS logo provides smooth visual feedback during all major actions and navigations.
 
@@ -30,6 +36,15 @@ The platform features a CAD-style professional interface with a dark mode theme,
     - **Custom Forms System**: Production-ready system for organization-specific forms with e-signature and document upload, including an admin form builder UI.
     - **AI Sales CRM**: AI-powered lead generation (GPT-4), 7-stage sales pipeline tracking, and email campaigns.
     - **PayrollOS™**: Automated payroll processing with intelligent tax calculations (Federal, State, Social Security, Medicare), overtime logic, and data integration from time entries. Includes a QC workflow and employee/manager portals.
+    - **BillOS™ (Financial Automation Suite)**: Unified invoicing (AR) and payroll (HR) automation that eliminates manual financial work:
+        - **Client Billing Rates**: Flexible rate structures (flat, hourly, per-employee, tiered) with effective date tracking
+        - **Zero-Touch Usage-Based Invoicing**: Automatic invoice generation from approved time entries with client billing rates
+        - **Delinquency Automation**: Smart reminder system (3-day, 7-day, 14-day) with auto-escalation
+        - **ExpenseOS™**: Employee expense submission, approval workflow, and auto-integration with payroll
+        - **Employee Self-Service (ESS)**: W-4 submission, bank account management, and paystub access
+        - **Off-Cycle Payroll**: Bonus, commission, and reimbursement processing outside regular pay cycles
+        - Database: `client_rates`, `payment_records`, `invoice_reminders`, `client_portal_access`, `expense_reports`, `employee_tax_forms`, `employee_bank_accounts`, `off_cycle_payroll_runs`
+        - Routes: Extends existing `/api/invoices/*` and `/api/payroll/*` routes with new BillOS™ endpoints
     - **Live HelpDesk (SupportOS™)**: IRC/MSN-style instant chat with WebSocket messaging, ticket-based authentication for guests, real-time status indicators, staff toggle controls, audit logging, and a comprehensive slash command system. Features include a mobile-first support drawer, chat notification sounds, and a realistic neon logo.
         - **HelpOS™ AI Queue Management**: Smart support queue with priority-based positioning, automated announcements, and intelligent prioritization based on wait time, subscription tier, and special needs.
         - **Mobile Support Staff Menu**: Hamburger-style mobile command center with live user queue, chat commands, and system dashboard.

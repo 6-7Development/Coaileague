@@ -2337,16 +2337,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Workspace not found" });
       }
 
-      const rates = await db
-        .select()
-        .from(clientRates)
-        .where(
-          and(
-            eq(clientRates.workspaceId, workspace.id),
-            eq(clientRates.clientId, req.params.clientId)
-          )
-        );
-      
+      const rates = await storage.getClientRates(workspace.id, req.params.clientId);
       res.json(rates);
     } catch (error: any) {
       console.error("Error fetching client rates:", error);
@@ -2418,11 +2409,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Workspace not found" });
       }
 
-      const expenses = await db
-        .select()
-        .from(expenseReports)
-        .where(eq(expenseReports.workspaceId, workspace.id));
-      
+      const expenses = await storage.getExpenseReports(workspace.id);
       res.json(expenses);
     } catch (error: any) {
       console.error("Error fetching expenses:", error);
@@ -2440,30 +2427,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Workspace not found" });
       }
 
-      const { status, rejectionReason } = req.body;
+      const { status } = req.body;
       
-      if (!['approved', 'rejected'].includes(status)) {
-        return res.status(400).json({ message: "Invalid status" });
+      if (status !== 'approved') {
+        return res.status(400).json({ message: "Use storage.approveExpense for approval" });
       }
 
-      const updateData = {
-        status: status as any,
-        approvedBy: userId,
-        approvedAt: new Date(),
-        ...(status === 'rejected' && { rejectionReason }),
-      };
-
-      const [expense] = await db
-        .update(expenseReports)
-        .set(updateData)
-        .where(
-          and(
-            eq(expenseReports.id, req.params.id),
-            eq(expenseReports.workspaceId, workspace.id)
-          )
-        )
-        .returning();
-      
+      const expense = await storage.approveExpense(req.params.id, workspace.id, userId);
       res.json(expense);
     } catch (error: any) {
       console.error("Error approving expense:", error);

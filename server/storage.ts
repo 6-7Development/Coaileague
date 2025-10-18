@@ -371,6 +371,13 @@ export interface IStorage {
   getUserViolationCount(userId: string): Promise<number>;
   isUserBanned(userId: string): Promise<boolean>;
   getBanInfo(userId: string): Promise<{ isBanned: boolean; bannedUntil: Date | null; reason: string | null }>;
+  
+  // BillOS™ operations (Financial Automation - extends existing invoice/payroll)
+  // Client billing rates
+  getClientRates(workspaceId: string, clientId: string): Promise<any[]>;
+  // Expense management
+  getExpenseReports(workspaceId: string, filters?: { status?: string; employeeId?: string }): Promise<any[]>;
+  approveExpense(expenseId: string, workspaceId: string, approverId: string): Promise<any>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2485,6 +2492,56 @@ export class DatabaseStorage implements IStorage {
       .where(eq(escalationTickets.id, id))
       .returning();
     return updated;
+  }
+  
+  // ============================================================================
+  // BILLOS™ OPERATIONS - EXTENDS EXISTING INVOICE/PAYROLL SYSTEMS
+  // ============================================================================
+  
+  async getClientRates(workspaceId: string, clientId: string): Promise<any[]> {
+    const { clientRates } = await import("@shared/schema");
+    return await db
+      .select()
+      .from(clientRates)
+      .where(and(
+        eq(clientRates.workspaceId, workspaceId),
+        eq(clientRates.clientId, clientId)
+      ));
+  }
+  
+  async getExpenseReports(workspaceId: string, filters?: { status?: string; employeeId?: string }): Promise<any[]> {
+    const { expenseReports } = await import("@shared/schema");
+    const conditions = [eq(expenseReports.workspaceId, workspaceId)];
+    
+    if (filters?.status) {
+      conditions.push(eq(expenseReports.status, filters.status as any));
+    }
+    if (filters?.employeeId) {
+      conditions.push(eq(expenseReports.employeeId, filters.employeeId));
+    }
+    
+    return await db
+      .select()
+      .from(expenseReports)
+      .where(and(...conditions))
+      .orderBy(desc(expenseReports.createdAt));
+  }
+  
+  async approveExpense(expenseId: string, workspaceId: string, approverId: string): Promise<any> {
+    const { expenseReports } = await import("@shared/schema");
+    const [expense] = await db
+      .update(expenseReports)
+      .set({
+        status: 'approved',
+        approvedBy: approverId,
+        approvedAt: new Date(),
+      })
+      .where(and(
+        eq(expenseReports.id, expenseId),
+        eq(expenseReports.workspaceId, workspaceId)
+      ))
+      .returning();
+    return expense;
   }
 }
 
