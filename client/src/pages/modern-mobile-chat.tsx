@@ -1297,6 +1297,145 @@ export default function ModernMobileChat() {
         </>
       )}
 
+      {/* Diagnostics Tab Content */}
+      {activeTab === 'diagnostics' && isStaff && (
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 relative z-10">
+          <div className="text-center py-8">
+            <Eye className="w-12 h-12 text-indigo-400 mx-auto mb-4" />
+            <h3 className="text-white font-bold text-lg mb-2">Diagnostics Panel</h3>
+            <p className="text-slate-400 text-sm mb-6">
+              {selectedUser 
+                ? `Viewing diagnostics for ${selectedUser.name}` 
+                : 'Select a user to view their diagnostics'
+              }
+            </p>
+          </div>
+
+          {selectedUser && userContext && (
+            <div className="space-y-3">
+              {/* User Context Card */}
+              <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Info className="w-5 h-5 text-cyan-400" />
+                  <h4 className="text-white font-semibold">User Context</h4>
+                </div>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Workspace:</span>
+                    <span className="text-white">{userContext.workspace?.name || 'N/A'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Serial #:</span>
+                    <span className="text-white font-mono text-xs">{userContext.workspace?.serialNumber || 'N/A'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">User ID:</span>
+                    <span className="text-white font-mono text-xs">{selectedUser.id}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Session Info Card */}
+              <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Clock className="w-5 h-5 text-amber-400" />
+                  <h4 className="text-white font-semibold">Session Info</h4>
+                </div>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Status:</span>
+                    <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">
+                      Online
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Connection:</span>
+                    <span className="text-white">WebSocket Active</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Diagnostic Actions */}
+              <div className="space-y-2">
+                <button
+                  onClick={() => {
+                    toast({ title: "Viewing user history", description: `Loading history for ${selectedUser.name}` });
+                    setActiveTab("chat");
+                  }}
+                  className="w-full flex items-center gap-3 p-3 rounded-lg bg-white/5 hover-elevate active-elevate-2 border border-white/10"
+                  data-testid="diagnostic-user-history"
+                >
+                  <History className="w-5 h-5 text-violet-400" />
+                  <div className="flex-1 text-left">
+                    <div className="text-white font-medium text-sm">View User History</div>
+                    <div className="text-slate-400 text-xs">Complete interaction timeline</div>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => {
+                    toast({ title: "Analytics opened", description: "Viewing system analytics" });
+                    setActiveTab("chat");
+                  }}
+                  className="w-full flex items-center gap-3 p-3 rounded-lg bg-white/5 hover-elevate active-elevate-2 border border-white/10"
+                  data-testid="diagnostic-analytics"
+                >
+                  <TrendingUp className="w-5 h-5 text-emerald-400" />
+                  <div className="flex-1 text-left">
+                    <div className="text-white font-medium text-sm">System Analytics</div>
+                    <div className="text-slate-400 text-xs">View dashboard metrics</div>
+                  </div>
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tools Tab Content */}
+      {activeTab === 'tools' && isStaff && (
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 relative z-10">
+          <div className="text-center py-6">
+            <Settings className="w-12 h-12 text-purple-400 mx-auto mb-4" />
+            <h3 className="text-white font-bold text-lg mb-2">Support Tools</h3>
+            <p className="text-slate-400 text-sm mb-6">
+              {selectedUser 
+                ? `Tools for ${selectedUser.name}` 
+                : 'Select a user to access support tools'
+              }
+            </p>
+          </div>
+
+          {selectedUser ? (
+            <div className="space-y-2">
+              {supportCommands.map((cmd, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => {
+                    cmd.action();
+                    setActiveTab("chat");
+                  }}
+                  className="w-full flex items-center gap-3 p-3 rounded-lg bg-white/5 hover-elevate active-elevate-2 border border-white/10 transition-all"
+                  data-testid={`tool-${cmd.label.toLowerCase().replace(/\s+/g, '-')}`}
+                >
+                  <cmd.icon className={`w-5 h-5 flex-shrink-0 ${cmd.color}`} />
+                  <div className="flex-1 text-left min-w-0">
+                    <div className="text-white font-medium text-sm">{cmd.label}</div>
+                    <div className="text-slate-400 text-xs truncate">{cmd.description}</div>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-500 flex-shrink-0" />
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <Users className="w-16 h-16 text-slate-600 mx-auto mb-4" />
+              <p className="text-slate-500 text-sm">Select a user from the list to access tools</p>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Input Area */}
       <div className="relative z-10 backdrop-blur-xl bg-black/40 border-t border-white/10 px-4 py-3">
         {/* Connection Status Indicator */}
