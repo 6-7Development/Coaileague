@@ -51,6 +51,10 @@ import {
   assetSchedules,
   assetUsageLogs,
   timeEntryDiscrepancies,
+  onboardingWorkflowTemplates,
+  employeeDocuments,
+  documentAccessLogs,
+  onboardingChecklists,
   type User,
   type UpsertUser,
   type AbuseViolation,
@@ -126,6 +130,14 @@ import {
   type InsertLeaderAction,
   type EscalationTicket,
   type InsertEscalationTicket,
+  type OnboardingWorkflowTemplate,
+  type InsertOnboardingWorkflowTemplate,
+  type EmployeeDocument,
+  type InsertEmployeeDocument,
+  type DocumentAccessLog,
+  type InsertDocumentAccessLog,
+  type OnboardingChecklist,
+  type InsertOnboardingChecklist,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, isNotNull, isNull, or, like, sql } from "drizzle-orm";
@@ -452,6 +464,30 @@ export interface IStorage {
   getAssetUsageLogsByClient(workspaceId: string, clientId: string, startDate: Date, endDate: Date, status?: string): Promise<any[]>;
   getAssetUsageLogsByDateRange(workspaceId: string, startDate: Date, endDate: Date): Promise<any[]>;
   updateAssetUsageLog(id: string, workspaceId: string, data: any): Promise<any | undefined>;
+  
+  // ========================================================================
+  // HIREOS™ - DIGITAL FILE CABINET & COMPLIANCE WORKFLOW
+  // ========================================================================
+  createEmployeeDocument(document: InsertEmployeeDocument): Promise<EmployeeDocument>;
+  getEmployeeDocument(id: string): Promise<EmployeeDocument | undefined>;
+  getEmployeeDocuments(workspaceId: string, employeeId: string, documentType?: string, status?: string): Promise<EmployeeDocument[]>;
+  approveEmployeeDocument(id: string, approvedBy: string, notes?: string): Promise<EmployeeDocument | undefined>;
+  rejectEmployeeDocument(id: string, rejectedBy: string, reason: string): Promise<EmployeeDocument | undefined>;
+  
+  logDocumentAccess(log: InsertDocumentAccessLog): Promise<DocumentAccessLog>;
+  getDocumentAccessLogs(documentId: string): Promise<DocumentAccessLog[]>;
+  
+  createOnboardingWorkflowTemplate(template: InsertOnboardingWorkflowTemplate): Promise<OnboardingWorkflowTemplate>;
+  getOnboardingWorkflowTemplate(id: string): Promise<OnboardingWorkflowTemplate | undefined>;
+  getOnboardingWorkflowTemplates(workspaceId: string): Promise<OnboardingWorkflowTemplate[]>;
+  updateOnboardingWorkflowTemplate(id: string, data: Partial<InsertOnboardingWorkflowTemplate>): Promise<OnboardingWorkflowTemplate | undefined>;
+  
+  createOnboardingChecklist(checklist: InsertOnboardingChecklist): Promise<OnboardingChecklist>;
+  getOnboardingChecklist(id: string): Promise<OnboardingChecklist | undefined>;
+  getOnboardingChecklistByApplication(applicationId: string): Promise<OnboardingChecklist | undefined>;
+  updateOnboardingChecklist(id: string, data: Partial<InsertOnboardingChecklist>): Promise<OnboardingChecklist | undefined>;
+  
+  getHireOSComplianceReport(workspaceId: string): Promise<any>;
   
   // ========================================================================
   // HELPER METHODS FOR UNIFIED DATA NEXUS
@@ -3344,6 +3380,222 @@ export class DatabaseStorage implements IStorage {
       .from(invoices)
       .where(eq(invoices.workspaceId, workspaceId))
       .orderBy(desc(invoices.createdAt));
+  }
+  
+  // ============================================================================
+  // HIREOS™ - DIGITAL FILE CABINET & COMPLIANCE WORKFLOW
+  // ============================================================================
+  
+  async createEmployeeDocument(documentData: InsertEmployeeDocument): Promise<EmployeeDocument> {
+    const [document] = await db
+      .insert(employeeDocuments)
+      .values(documentData)
+      .returning();
+    return document;
+  }
+  
+  async getEmployeeDocument(id: string): Promise<EmployeeDocument | undefined> {
+    const [document] = await db
+      .select()
+      .from(employeeDocuments)
+      .where(eq(employeeDocuments.id, id));
+    return document;
+  }
+  
+  async getEmployeeDocuments(workspaceId: string, employeeId: string, documentType?: string, status?: string): Promise<EmployeeDocument[]> {
+    const conditions = [
+      eq(employeeDocuments.workspaceId, workspaceId), // SECURITY: Workspace filter
+      eq(employeeDocuments.employeeId, employeeId)
+    ];
+    
+    if (documentType) {
+      conditions.push(eq(employeeDocuments.documentType, documentType as any));
+    }
+    
+    if (status) {
+      conditions.push(eq(employeeDocuments.status, status as any));
+    }
+    
+    return await db
+      .select()
+      .from(employeeDocuments)
+      .where(and(...conditions))
+      .orderBy(desc(employeeDocuments.uploadedAt));
+  }
+  
+  async approveEmployeeDocument(id: string, approvedBy: string, notes?: string): Promise<EmployeeDocument | undefined> {
+    const [document] = await db
+      .update(employeeDocuments)
+      .set({
+        status: 'approved',
+        approvedBy,
+        approvedAt: new Date(),
+        approvalNotes: notes,
+      })
+      .where(eq(employeeDocuments.id, id))
+      .returning();
+    return document;
+  }
+  
+  async rejectEmployeeDocument(id: string, rejectedBy: string, reason: string): Promise<EmployeeDocument | undefined> {
+    const [document] = await db
+      .update(employeeDocuments)
+      .set({
+        status: 'rejected',
+        rejectedBy,
+        rejectedAt: new Date(),
+        rejectionReason: reason,
+      })
+      .where(eq(employeeDocuments.id, id))
+      .returning();
+    return document;
+  }
+  
+  async logDocumentAccess(logData: InsertDocumentAccessLog): Promise<DocumentAccessLog> {
+    const [log] = await db
+      .insert(documentAccessLogs)
+      .values(logData)
+      .returning();
+    return log;
+  }
+  
+  async getDocumentAccessLogs(documentId: string): Promise<DocumentAccessLog[]> {
+    return await db
+      .select()
+      .from(documentAccessLogs)
+      .where(eq(documentAccessLogs.documentId, documentId))
+      .orderBy(desc(documentAccessLogs.accessedAt));
+  }
+  
+  async createOnboardingWorkflowTemplate(templateData: InsertOnboardingWorkflowTemplate): Promise<OnboardingWorkflowTemplate> {
+    const [template] = await db
+      .insert(onboardingWorkflowTemplates)
+      .values(templateData)
+      .returning();
+    return template;
+  }
+  
+  async getOnboardingWorkflowTemplate(id: string): Promise<OnboardingWorkflowTemplate | undefined> {
+    const [template] = await db
+      .select()
+      .from(onboardingWorkflowTemplates)
+      .where(eq(onboardingWorkflowTemplates.id, id));
+    return template;
+  }
+  
+  async getOnboardingWorkflowTemplates(workspaceId: string): Promise<OnboardingWorkflowTemplate[]> {
+    return await db
+      .select()
+      .from(onboardingWorkflowTemplates)
+      .where(eq(onboardingWorkflowTemplates.workspaceId, workspaceId))
+      .orderBy(desc(onboardingWorkflowTemplates.isDefault), desc(onboardingWorkflowTemplates.usageCount));
+  }
+  
+  async updateOnboardingWorkflowTemplate(id: string, data: Partial<InsertOnboardingWorkflowTemplate>): Promise<OnboardingWorkflowTemplate | undefined> {
+    const [template] = await db
+      .update(onboardingWorkflowTemplates)
+      .set(data)
+      .where(eq(onboardingWorkflowTemplates.id, id))
+      .returning();
+    return template;
+  }
+  
+  async createOnboardingChecklist(checklistData: InsertOnboardingChecklist): Promise<OnboardingChecklist> {
+    const [checklist] = await db
+      .insert(onboardingChecklists)
+      .values(checklistData)
+      .returning();
+    return checklist;
+  }
+  
+  async getOnboardingChecklist(id: string): Promise<OnboardingChecklist | undefined> {
+    const [checklist] = await db
+      .select()
+      .from(onboardingChecklists)
+      .where(eq(onboardingChecklists.id, id));
+    return checklist;
+  }
+  
+  async getOnboardingChecklistByApplication(applicationId: string): Promise<OnboardingChecklist | undefined> {
+    const [checklist] = await db
+      .select()
+      .from(onboardingChecklists)
+      .where(eq(onboardingChecklists.applicationId, applicationId));
+    return checklist;
+  }
+  
+  async updateOnboardingChecklist(id: string, data: Partial<InsertOnboardingChecklist>): Promise<OnboardingChecklist | undefined> {
+    const [checklist] = await db
+      .update(onboardingChecklists)
+      .set(data)
+      .where(eq(onboardingChecklists.id, id))
+      .returning();
+    return checklist;
+  }
+  
+  async getHireOSComplianceReport(workspaceId: string): Promise<any> {
+    // Get all employees
+    const allEmployees = await this.getEmployeesByWorkspace(workspaceId);
+    
+    // Get all onboarding checklists
+    const checklists = await db
+      .select()
+      .from(onboardingChecklists)
+      .where(eq(onboardingChecklists.workspaceId, workspaceId));
+    
+    // Get all employee documents
+    const documents = await db
+      .select()
+      .from(employeeDocuments)
+      .where(eq(employeeDocuments.workspaceId, workspaceId));
+    
+    // Calculate compliance metrics
+    const now = new Date();
+    const i9Expired = checklists.filter(c => 
+      c.i9DeadlineDate && c.i9DeadlineDate < now && !c.onboardingCompletedAt
+    );
+    
+    const expiringCertifications = documents.filter(d => 
+      d.expirationDate && 
+      d.expirationDate < new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000) && // 30 days
+      d.status === 'approved'
+    );
+    
+    const missingDocuments = allEmployees.filter(emp => {
+      const empDocs = documents.filter(d => d.employeeId === emp.id);
+      return empDocs.length === 0;
+    });
+    
+    const pendingApprovals = documents.filter(d => d.status === 'pending_review');
+    
+    return {
+      totalEmployees: allEmployees.length,
+      totalDocuments: documents.length,
+      i9Compliance: {
+        total: checklists.length,
+        expired: i9Expired.length,
+        expiredList: i9Expired,
+      },
+      documentStatus: {
+        pendingReview: pendingApprovals.length,
+        approved: documents.filter(d => d.status === 'approved').length,
+        rejected: documents.filter(d => d.status === 'rejected').length,
+        expired: documents.filter(d => d.status === 'expired').length,
+      },
+      expiringCertifications: {
+        total: expiringCertifications.length,
+        list: expiringCertifications,
+      },
+      missingDocuments: {
+        total: missingDocuments.length,
+        employees: missingDocuments.map(e => ({
+          id: e.id,
+          name: `${e.firstName} ${e.lastName}`,
+          email: e.email,
+        })),
+      },
+      generatedAt: new Date(),
+    };
   }
 }
 

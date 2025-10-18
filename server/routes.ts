@@ -3308,6 +3308,410 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============================================================================
+  // HIREOS™ - Digital File Cabinet & Compliance Workflow
+  // ============================================================================
+
+  // Upload employee document (with full audit trail)
+  app.post('/api/hireos/documents', isAuthenticated, async (req: AuthenticatedRequest, res) => {
+    try {
+      const crypto = require('crypto');
+      const userId = req.user.claims.sub;
+      const userEmail = req.user.claims.email;
+      const userRole = req.user.role || 'employee';
+      const ipAddress = req.ip || req.socket.remoteAddress || 'unknown';
+      const userAgent = req.get('user-agent') || 'unknown';
+      
+      // SECURITY: Resolve workspace from authenticated user
+      const workspace = await storage.getWorkspaceByOwnerId(userId) || 
+                        await storage.getWorkspaceByMembership(userId);
+      
+      if (!workspace) {
+        return res.status(404).json({ message: "Workspace not found" });
+      }
+      
+      const documentData = req.body;
+      
+      // SECURITY: Verify employee belongs to user's workspace
+      const employee = await storage.getEmployee(documentData.employeeId, workspace.id);
+      if (!employee) {
+        return res.status(403).json({ message: "Employee not found or access denied" });
+      }
+
+      // Calculate SHA-256 hash for immutable documents (signatures, I-9, etc)
+      let digitalSignatureHash = null;
+      if (documentData.isImmutable && documentData.fileUrl) {
+        digitalSignatureHash = crypto.createHash('sha256').update(documentData.fileUrl).digest('hex');
+      }
+
+      // Auto-calculate delete-after date based on retention period
+      const retentionYears = documentData.retentionPeriodYears || 7;
+      const deleteAfter = new Date();
+      deleteAfter.setFullYear(deleteAfter.getFullYear() + retentionYears);
+
+      const document = await storage.createEmployeeDocument({
+        ...documentData,
+        workspaceId: workspace.id, // SECURITY: Force workspace from auth context
+        uploadedBy: userId,
+        uploadedByEmail: userEmail,
+        uploadedByRole: userRole,
+        uploadIpAddress: ipAddress,
+        uploadUserAgent: userAgent,
+        digitalSignatureHash,
+        deleteAfter,
+      });
+
+      res.json(document);
+    } catch (error: any) {
+      console.error("Error uploading document:", error);
+      res.status(400).json({ message: error.message || "Failed to upload document" });
+    }
+  });
+
+  // Get employee documents (with filters)
+  app.get('/api/hireos/documents/:employeeId', isAuthenticated, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { employeeId } = req.params;
+      const { documentType, status } = req.query;
+      const userId = req.user.claims.sub;
+      
+      // SECURITY: Resolve workspace from authenticated user
+      const workspace = await storage.getWorkspaceByOwnerId(userId) || 
+                        await storage.getWorkspaceByMembership(userId);
+      
+      if (!workspace) {
+        return res.status(404).json({ message: "Workspace not found" });
+      }
+      
+      // SECURITY: Verify employee belongs to user's workspace
+      const employee = await storage.getEmployee(employeeId, workspace.id);
+      if (!employee) {
+        return res.status(403).json({ message: "Employee not found or access denied" });
+      }
+      
+      const documents = await storage.getEmployeeDocuments(
+        workspace.id,
+        employeeId,
+        documentType as string,
+        status as string
+      );
+      
+      res.json(documents);
+    } catch (error) {
+      console.error("Error fetching documents:", error);
+      res.status(500).json({ message: "Failed to fetch documents" });
+    }
+  });
+
+  // Approve document (manager/owner only)
+  app.post('/api/hireos/documents/:documentId/approve', isAuthenticated, requireManager, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { documentId } = req.params;
+      const { approvalNotes } = req.body;
+      const userId = req.user.claims.sub;
+
+      // SECURITY: Resolve workspace from authenticated user
+      const workspace = await storage.getWorkspaceByOwnerId(userId) || 
+                        await storage.getWorkspaceByMembership(userId);
+      
+      if (!workspace) {
+        return res.status(404).json({ message: "Workspace not found" });
+      }
+      
+      // SECURITY: Verify document belongs to user's workspace
+      const existingDoc = await storage.getEmployeeDocument(documentId);
+      if (!existingDoc || existingDoc.workspaceId !== workspace.id) {
+        return res.status(403).json({ message: "Document not found or access denied" });
+      }
+
+      const document = await storage.approveEmployeeDocument(documentId, userId, approvalNotes);
+      res.json(document);
+    } catch (error: any) {
+      console.error("Error approving document:", error);
+      res.status(400).json({ message: error.message || "Failed to approve document" });
+    }
+  });
+
+  // Reject document (manager/owner only)
+  app.post('/api/hireos/documents/:documentId/reject', isAuthenticated, requireManager, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { documentId } = req.params;
+      const { rejectionReason } = req.body;
+      const userId = req.user.claims.sub;
+
+      if (!rejectionReason) {
+        return res.status(400).json({ message: "Rejection reason is required" });
+      }
+
+      // SECURITY: Resolve workspace from authenticated user
+      const workspace = await storage.getWorkspaceByOwnerId(userId) || 
+                        await storage.getWorkspaceByMembership(userId);
+      
+      if (!workspace) {
+        return res.status(404).json({ message: "Workspace not found" });
+      }
+      
+      // SECURITY: Verify document belongs to user's workspace
+      const existingDoc = await storage.getEmployeeDocument(documentId);
+      if (!existingDoc || existingDoc.workspaceId !== workspace.id) {
+        return res.status(403).json({ message: "Document not found or access denied" });
+      }
+
+      const document = await storage.rejectEmployeeDocument(documentId, userId, rejectionReason);
+      res.json(document);
+    } catch (error: any) {
+      console.error("Error rejecting document:", error);
+      res.status(400).json({ message: error.message || "Failed to reject document" });
+    }
+  });
+
+  // Log document access (for compliance audit trail)
+  app.post('/api/hireos/documents/:documentId/access', isAuthenticated, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { documentId } = req.params;
+      const { accessType } = req.body; // 'view', 'download', 'print', 'share'
+      const userId = req.user.claims.sub;
+      const userEmail = req.user.claims.email;
+      const userRole = req.user.role || 'employee';
+      const ipAddress = req.ip || req.socket.remoteAddress || 'unknown';
+      const userAgent = req.get('user-agent') || 'unknown';
+
+      // SECURITY: Resolve workspace from authenticated user
+      const workspace = await storage.getWorkspaceByOwnerId(userId) || 
+                        await storage.getWorkspaceByMembership(userId);
+      
+      if (!workspace) {
+        return res.status(404).json({ message: "Workspace not found" });
+      }
+
+      const document = await storage.getEmployeeDocument(documentId);
+      if (!document) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+      
+      // SECURITY: Verify document belongs to user's workspace
+      if (document.workspaceId !== workspace.id) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const accessLog = await storage.logDocumentAccess({
+        workspaceId: document.workspaceId,
+        documentId,
+        accessedBy: userId,
+        accessedByEmail: userEmail,
+        accessedByRole: userRole,
+        accessType,
+        ipAddress,
+        userAgent,
+      });
+
+      res.json(accessLog);
+    } catch (error: any) {
+      console.error("Error logging document access:", error);
+      res.status(400).json({ message: error.message || "Failed to log access" });
+    }
+  });
+
+  // Get document access logs (for compliance audit)
+  app.get('/api/hireos/documents/:documentId/access-logs', isAuthenticated, requireManager, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { documentId } = req.params;
+      const userId = req.user.claims.sub;
+      
+      // SECURITY: Resolve workspace from authenticated user
+      const workspace = await storage.getWorkspaceByOwnerId(userId) || 
+                        await storage.getWorkspaceByMembership(userId);
+      
+      if (!workspace) {
+        return res.status(404).json({ message: "Workspace not found" });
+      }
+      
+      // SECURITY: Verify document belongs to user's workspace
+      const document = await storage.getEmployeeDocument(documentId);
+      if (!document || document.workspaceId !== workspace.id) {
+        return res.status(403).json({ message: "Document not found or access denied" });
+      }
+      
+      const logs = await storage.getDocumentAccessLogs(documentId);
+      res.json(logs);
+    } catch (error) {
+      console.error("Error fetching access logs:", error);
+      res.status(500).json({ message: "Failed to fetch access logs" });
+    }
+  });
+
+  // Create/update onboarding workflow template (owner only)
+  app.post('/api/hireos/workflow-templates', isAuthenticated, requireOwner, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const workspace = await storage.getWorkspaceByOwnerId(userId);
+      
+      if (!workspace) {
+        return res.status(404).json({ message: "Workspace not found" });
+      }
+
+      const templateData = req.body;
+      const template = await storage.createOnboardingWorkflowTemplate({
+        ...templateData,
+        workspaceId: workspace.id,
+        createdBy: userId,
+      });
+
+      res.json(template);
+    } catch (error: any) {
+      console.error("Error creating workflow template:", error);
+      res.status(400).json({ message: error.message || "Failed to create template" });
+    }
+  });
+
+  // Get workflow templates
+  app.get('/api/hireos/workflow-templates', isAuthenticated, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const workspace = await storage.getWorkspaceByOwnerId(userId) || 
+                        await storage.getWorkspaceByMembership(userId);
+      
+      if (!workspace) {
+        return res.status(404).json({ message: "Workspace not found" });
+      }
+
+      const templates = await storage.getOnboardingWorkflowTemplates(workspace.id);
+      res.json(templates);
+    } catch (error) {
+      console.error("Error fetching workflow templates:", error);
+      res.status(500).json({ message: "Failed to fetch templates" });
+    }
+  });
+
+  // Create onboarding checklist from template
+  app.post('/api/hireos/checklists', isAuthenticated, requireManager, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { applicationId, templateId } = req.body;
+      const userId = req.user.claims.sub;
+      
+      // SECURITY: Resolve workspace from authenticated user
+      const workspace = await storage.getWorkspaceByOwnerId(userId) || 
+                        await storage.getWorkspaceByMembership(userId);
+      
+      if (!workspace) {
+        return res.status(404).json({ message: "Workspace not found" });
+      }
+      
+      const application = await storage.getOnboardingApplication(applicationId);
+      if (!application) {
+        return res.status(404).json({ message: "Application not found" });
+      }
+      
+      // SECURITY: Verify application belongs to user's workspace
+      if (application.workspaceId !== workspace.id) {
+        return res.status(403).json({ message: "Application not found or access denied" });
+      }
+
+      const template = templateId ? await storage.getOnboardingWorkflowTemplate(templateId) : null;
+      
+      // SECURITY: Verify template belongs to user's workspace if provided
+      if (template && template.workspaceId !== workspace.id) {
+        return res.status(403).json({ message: "Template not found or access denied" });
+      }
+      
+      // Generate checklist items from template
+      let checklistItems: any[] = [];
+      if (template) {
+        checklistItems = template.steps.map((step: any) => ({
+          itemId: step.stepId,
+          itemName: step.stepName,
+          itemType: step.stepType,
+          isRequired: step.isRequired,
+          isCompleted: false,
+        }));
+      }
+
+      // Calculate I-9 deadline (3 business days from hire date)
+      const i9DeadlineDate = new Date();
+      i9DeadlineDate.setDate(i9DeadlineDate.getDate() + 3);
+
+      const checklist = await storage.createOnboardingChecklist({
+        workspaceId: application.workspaceId,
+        applicationId,
+        employeeId: application.employeeId,
+        templateId,
+        checklistItems,
+        overallProgress: 0,
+        i9DeadlineDate,
+      });
+
+      res.json(checklist);
+    } catch (error: any) {
+      console.error("Error creating checklist:", error);
+      res.status(400).json({ message: error.message || "Failed to create checklist" });
+    }
+  });
+
+  // Update checklist progress
+  app.patch('/api/hireos/checklists/:checklistId', isAuthenticated, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { checklistId } = req.params;
+      const { checklistItems } = req.body;
+      const userId = req.user.claims.sub;
+
+      // SECURITY: Resolve workspace from authenticated user
+      const workspace = await storage.getWorkspaceByOwnerId(userId) || 
+                        await storage.getWorkspaceByMembership(userId);
+      
+      if (!workspace) {
+        return res.status(404).json({ message: "Workspace not found" });
+      }
+      
+      // SECURITY: Verify checklist belongs to user's workspace
+      const existingChecklist = await storage.getOnboardingChecklist(checklistId);
+      if (!existingChecklist || existingChecklist.workspaceId !== workspace.id) {
+        return res.status(403).json({ message: "Checklist not found or access denied" });
+      }
+
+      // Calculate overall progress
+      const totalItems = checklistItems.length;
+      const completedItems = checklistItems.filter((item: any) => item.isCompleted).length;
+      const overallProgress = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
+
+      // Check if all required items are completed
+      const allRequiredCompleted = checklistItems
+        .filter((item: any) => item.isRequired)
+        .every((item: any) => item.isCompleted);
+
+      const onboardingCompletedAt = allRequiredCompleted ? new Date() : null;
+
+      const checklist = await storage.updateOnboardingChecklist(checklistId, {
+        checklistItems,
+        overallProgress,
+        onboardingCompletedAt,
+      });
+
+      res.json(checklist);
+    } catch (error: any) {
+      console.error("Error updating checklist:", error);
+      res.status(400).json({ message: error.message || "Failed to update checklist" });
+    }
+  });
+
+  // Get compliance report (I-9 expiry, missing docs, etc) - MANAGER/OWNER ONLY
+  app.get('/api/hireos/compliance-report', isAuthenticated, requireManager, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const workspace = await storage.getWorkspaceByOwnerId(userId) || 
+                        await storage.getWorkspaceByMembership(userId);
+      
+      if (!workspace) {
+        return res.status(404).json({ message: "Workspace not found" });
+      }
+
+      const report = await storage.getHireOSComplianceReport(workspace.id);
+      res.json(report);
+    } catch (error) {
+      console.error("Error generating compliance report:", error);
+      res.status(500).json({ message: "Failed to generate report" });
+    }
+  });
+
+  // ============================================================================
   // STRIPE PAYMENT PROCESSING (Full implementation ready for key activation)
   // ============================================================================
   
