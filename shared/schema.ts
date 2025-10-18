@@ -5076,3 +5076,37 @@ export const insertWebhookDeliverySchema = createInsertSchema(webhookDeliveries)
 
 export type InsertWebhookDelivery = z.infer<typeof insertWebhookDeliverySchema>;
 export type WebhookDelivery = typeof webhookDeliveries.$inferSelect;
+
+// ============================================================================
+// PROMOTIONAL BANNERS - Dashboard-manageable promotional banners for landing page
+// ============================================================================
+
+export const promotionalBanners = pgTable("promotional_banners", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Banner content
+  message: text("message").notNull(), // Main promotional message
+  ctaText: varchar("cta_text", { length: 100 }), // Call-to-action button text (optional)
+  ctaLink: varchar("cta_link", { length: 500 }), // CTA button link (optional)
+  
+  // Display settings
+  isActive: boolean("is_active").default(false), // Only one banner can be active at a time
+  priority: integer("priority").default(0), // Higher priority shown first if multiple active
+  
+  // Tracking
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  activeIndex: index("promotional_banners_active_idx").on(table.isActive, table.priority),
+}));
+
+export const insertPromotionalBannerSchema = createInsertSchema(promotionalBanners).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertPromotionalBanner = z.infer<typeof insertPromotionalBannerSchema>;
+export type PromotionalBanner = typeof promotionalBanners.$inferSelect;

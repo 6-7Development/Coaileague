@@ -62,9 +62,9 @@ export function formatUserDisplayName(user: UserInfo): string {
  */
 function formatPlatformRole(role: string): string {
   const roleMap: Record<string, string> = {
-    'root': 'RAdmin',             // Root Admin (you - highest authority)
-    'deputy_admin': 'DAdmin',     // Deputy Admin (your deputy)
-    'deputy_assistant': 'Assistant', // Assistant (deputy's assistant)
+    'root': 'Admin',             // Root Admin (highest authority)
+    'deputy_admin': 'Deputy',     // Deputy Admin
+    'deputy_assistant': 'Assistant', // Assistant
     'sysop': 'Sysop',            // System Operator (backbone support)
   };
   

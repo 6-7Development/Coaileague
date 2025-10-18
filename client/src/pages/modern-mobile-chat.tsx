@@ -32,7 +32,6 @@ interface OnlineUser {
 export default function ModernMobileChat() {
   const [messageText, setMessageText] = useState("");
   const [showQuickResponses, setShowQuickResponses] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
   const [showUserList, setShowUserList] = useState(false);
   const [showDiagnostics, setShowDiagnostics] = useState(false);
   const [showTools, setShowTools] = useState(false);
@@ -73,10 +72,11 @@ export default function ModernMobileChat() {
   const getRoleDisplay = (role?: string) => {
     if (!role) return null;
     switch(role) {
-      case 'root': return 'ADMIN';
-      case 'deputy_admin': return 'DEPUTY';
-      case 'deputy_assistant': return 'ASSISTANT';
-      case 'sysop': return 'SYSOP';
+      case 'root': return 'Admin';
+      case 'deputy_admin': return 'Deputy';
+      case 'deputy_assistant': return 'Assistant';
+      case 'sysop': return 'Sysop';
+      case 'auditor': return 'Auditor';
       case 'bot': return 'BOT AI';
       default: return null;
     }
