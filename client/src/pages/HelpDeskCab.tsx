@@ -577,7 +577,14 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
   };
 
   const getRoleIcon = (role: string) => {
-    // Inline superscript role badge (like Brigido^(Admin)) - matching mobile chat
+    // Inline superscript role badge - ONLY for staff and bot roles
+    // Regular users and subscribers should NOT show role badges
+    const staffRoles = ['root', 'deputy_admin', 'deputy_assistant', 'sysop', 'auditor', 'bot'];
+    
+    if (!staffRoles.includes(role)) {
+      return null; // No badge for regular users/subscribers
+    }
+    
     const roleText = getRoleDisplay(role);
     if (!roleText) return null;
     
@@ -919,7 +926,9 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
             {/* Hamburger Menu and Theme Toggle - Transparent and only visible on hover (desktop) */}
             <div className="hidden md:flex items-center gap-1 opacity-0 hover:opacity-100 transition-opacity">
               <SidebarTrigger data-testid="button-sidebar-toggle" className="bg-white/20 hover:bg-white/40 border-white/30 backdrop-blur-md h-6 w-6 p-1" />
-              <ThemeToggle className="bg-white/20 hover:bg-white/40 border-white/30 backdrop-blur-md h-6 w-6" />
+              <div className="bg-white/20 hover:bg-white/40 border border-white/30 backdrop-blur-md h-6 w-6 rounded-md flex items-center justify-center">
+                <ThemeToggle />
+              </div>
             </div>
             
             {/* Staff Controls - Transparent and only visible on hover (desktop) */}

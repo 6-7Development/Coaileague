@@ -1158,12 +1158,20 @@ export function setupWebSocket(server: Server) {
               messageType: 'text',
             });
 
+            // Enrich message with user's platform role for frontend display
+            const userPlatformRole = await storage.getUserPlatformRole(ws.userId).catch(() => null);
+            const enrichedMessage = {
+              ...savedMessage,
+              role: userPlatformRole || 'guest', // Add role for frontend superscript badges
+              userType: ws.userType || 'guest', // Add userType for avatar display
+            };
+
             // Broadcast to all clients in this conversation
             const clients = conversationClients.get(ws.conversationId);
             if (clients) {
               const messagePayload = JSON.stringify({
                 type: 'new_message',
-                message: savedMessage,
+                message: enrichedMessage, // Send enriched message with role and userType
               });
 
               clients.forEach((client) => {

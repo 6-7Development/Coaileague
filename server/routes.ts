@@ -5990,7 +5990,22 @@ Keep it professional, actionable, and under 250 words.`;
       if (platformRole && ['root', 'deputy_admin', 'deputy_assistant', 'sysop'].includes(platformRole)) {
         // Platform staff can view ANY conversation's messages (full security/monitoring access)
         const messages = await storage.getChatMessagesByConversation(id);
-        return res.json(messages);
+        
+        // Enrich messages with sender's platform role for frontend display
+        const enrichedMessages = await Promise.all(messages.map(async (msg) => {
+          if (!msg.senderId || msg.senderId === 'system' || msg.senderId === 'ai-bot') {
+            return { ...msg, role: msg.senderId === 'ai-bot' ? 'bot' : 'system', userType: 'system' };
+          }
+          const senderRole = await storage.getUserPlatformRole(msg.senderId).catch(() => null);
+          const userInfo = await storage.getUserDisplayInfo(msg.senderId).catch(() => null);
+          return { 
+            ...msg, 
+            role: senderRole || 'guest',
+            userType: userInfo?.userType || 'guest'
+          };
+        }));
+        
+        return res.json(enrichedMessages);
       }
       
       // Regular workspace users need workspace verification
@@ -6007,7 +6022,22 @@ Keep it professional, actionable, and under 250 words.`;
       }
 
       const messages = await storage.getChatMessagesByConversation(id);
-      res.json(messages);
+      
+      // Enrich messages with sender's platform role for frontend display
+      const enrichedMessages = await Promise.all(messages.map(async (msg) => {
+        if (!msg.senderId || msg.senderId === 'system' || msg.senderId === 'ai-bot') {
+          return { ...msg, role: msg.senderId === 'ai-bot' ? 'bot' : 'system', userType: 'system' };
+        }
+        const senderRole = await storage.getUserPlatformRole(msg.senderId).catch(() => null);
+        const userInfo = await storage.getUserDisplayInfo(msg.senderId).catch(() => null);
+        return { 
+          ...msg, 
+          role: senderRole || 'guest',
+          userType: userInfo?.userType || 'guest'
+        };
+      }));
+      
+      res.json(enrichedMessages);
     } catch (error) {
       console.error("Error fetching messages:", error);
       res.status(500).json({ message: "Failed to fetch messages" });
