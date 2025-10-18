@@ -2298,10 +2298,6 @@ export function setupWebSocket(server: Server) {
 
             break;
           }
-            }
-
-            break;
-          }
 
           case 'request_secure': {
             // Staff requests secure information from a user
