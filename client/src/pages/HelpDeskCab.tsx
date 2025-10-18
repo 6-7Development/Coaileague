@@ -1796,7 +1796,7 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
                     <div className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-500/30 rounded-lg p-4">
                       <div className="flex items-center gap-3 mb-3">
                         <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center ring-2 ring-blue-500/50">
-                          <User size={24} className="text-white" />
+                          <Users size={24} className="text-white" />
                         </div>
                         <div>
                           <h3 className="text-white font-bold text-lg">
