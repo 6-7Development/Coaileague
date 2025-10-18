@@ -4758,3 +4758,321 @@ export const insertEmployerBenchmarkScoreSchema = createInsertSchema(employerBen
 
 export type InsertEmployerBenchmarkScore = z.infer<typeof insertEmployerBenchmarkScoreSchema>;
 export type EmployerBenchmarkScore = typeof employerBenchmarkScores.$inferSelect;
+
+// ============================================================================
+// INTEGRATIONOS™ - EXTERNAL ECOSYSTEM LAYER (MONOPOLISTIC LOCK-IN)
+// ============================================================================
+
+// Integration categories enum
+export const integrationCategoryEnum = pgEnum('integration_category', [
+  'accounting', // QuickBooks, Xero, NetSuite
+  'erp', // SAP, Oracle, Microsoft Dynamics
+  'crm', // Salesforce, HubSpot, Pipedrive
+  'hris', // ADP, Workday, BambooHR
+  'communication', // Slack, Microsoft Teams, Discord
+  'productivity', // Google Workspace, Microsoft 365
+  'analytics', // Tableau, Power BI, Looker
+  'storage', // Dropbox, Box, OneDrive
+  'custom' // Third-party developer integrations
+]);
+
+// Integration marketplace - Certified integration catalog
+export const integrationMarketplace = pgTable("integration_marketplace", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Integration identity
+  name: varchar("name").notNull(), // "QuickBooks Online", "Salesforce CRM"
+  slug: varchar("slug").unique().notNull(), // "quickbooks-online", "salesforce"
+  category: integrationCategoryEnum("category").notNull(),
+  provider: varchar("provider").notNull(), // "Intuit", "Salesforce Inc."
+  logoUrl: varchar("logo_url"),
+  
+  // Integration details
+  description: text("description"),
+  longDescription: text("long_description"),
+  websiteUrl: varchar("website_url"),
+  documentationUrl: varchar("documentation_url"),
+  
+  // Technical specifications
+  authType: varchar("auth_type").notNull(), // 'oauth2', 'api_key', 'basic', 'custom'
+  authConfig: jsonb("auth_config").$type<{
+    authorizationUrl?: string;
+    tokenUrl?: string;
+    scopes?: string[];
+    apiKeyName?: string;
+    customInstructions?: string;
+  }>(),
+  
+  // Supported features
+  supportedFeatures: jsonb("supported_features").$type<string[]>().default(sql`'[]'`), // ['sync_employees', 'sync_invoices', 'webhooks']
+  webhookSupport: boolean("webhook_support").default(false),
+  bidirectionalSync: boolean("bidirectional_sync").default(false),
+  
+  // Marketplace metadata
+  isCertified: boolean("is_certified").default(false), // Official WorkforceOS certification
+  isDeveloperSubmitted: boolean("is_developer_submitted").default(false),
+  installCount: integer("install_count").default(0),
+  rating: decimal("rating", { precision: 3, scale: 2 }), // 0.00 - 5.00
+  reviewCount: integer("review_count").default(0),
+  
+  // Developer information (for third-party integrations)
+  developerId: varchar("developer_id"),
+  developerEmail: varchar("developer_email"),
+  developerWebhookUrl: varchar("developer_webhook_url"),
+  
+  // Status
+  isActive: boolean("is_active").default(true),
+  isPublished: boolean("is_published").default(false),
+  publishedAt: timestamp("published_at"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  categorySlugIndex: index("integration_marketplace_category_slug_idx").on(table.category, table.slug),
+  certifiedActiveIndex: index("integration_marketplace_certified_active_idx").on(table.isCertified, table.isActive),
+  installCountIndex: index("integration_marketplace_install_count_idx").on(table.installCount),
+}));
+
+export const insertIntegrationMarketplaceSchema = createInsertSchema(integrationMarketplace).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertIntegrationMarketplace = z.infer<typeof insertIntegrationMarketplaceSchema>;
+export type IntegrationMarketplace = typeof integrationMarketplace.$inferSelect;
+
+// Integration connections - Active workspace connections to external services
+export const integrationConnections = pgTable("integration_connections", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  integrationId: varchar("integration_id").notNull().references(() => integrationMarketplace.id, { onDelete: 'cascade' }),
+  
+  // Connection identity
+  connectionName: varchar("connection_name"), // User-friendly name "Production QuickBooks"
+  externalAccountId: varchar("external_account_id"), // External system's account identifier
+  externalAccountName: varchar("external_account_name"), // "Acme Corp - QuickBooks"
+  
+  // Authentication
+  authType: varchar("auth_type").notNull(), // 'oauth2', 'api_key', 'basic'
+  accessToken: text("access_token"), // Encrypted OAuth access token
+  refreshToken: text("refresh_token"), // Encrypted OAuth refresh token
+  tokenExpiry: timestamp("token_expiry"),
+  apiKey: text("api_key"), // Encrypted API key (for API key auth)
+  apiSecret: text("api_secret"), // Encrypted API secret
+  
+  // Configuration
+  syncConfig: jsonb("sync_config").$type<{
+    syncDirection?: 'pull' | 'push' | 'bidirectional';
+    syncFrequency?: 'realtime' | 'hourly' | 'daily' | 'manual';
+    enabledFeatures?: string[];
+    fieldMappings?: Record<string, string>;
+  }>(),
+  
+  // Sync status
+  lastSyncAt: timestamp("last_sync_at"),
+  lastSyncStatus: varchar("last_sync_status"), // 'success', 'failed', 'partial'
+  lastSyncError: text("last_sync_error"),
+  nextSyncAt: timestamp("next_sync_at"),
+  totalSyncCount: integer("total_sync_count").default(0),
+  failedSyncCount: integer("failed_sync_count").default(0),
+  
+  // Health monitoring
+  isHealthy: boolean("is_healthy").default(true),
+  healthCheckAt: timestamp("health_check_at"),
+  healthCheckError: text("health_check_error"),
+  
+  // Connection status
+  isActive: boolean("is_active").default(true),
+  connectedAt: timestamp("connected_at").defaultNow(),
+  disconnectedAt: timestamp("disconnected_at"),
+  
+  // Audit
+  connectedByUserId: varchar("connected_by_user_id").references(() => users.id),
+  ipAddress: varchar("ip_address"),
+  userAgent: text("user_agent"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  workspaceIntegrationIndex: index("integration_connections_workspace_integration_idx").on(table.workspaceId, table.integrationId),
+  activeHealthIndex: index("integration_connections_active_health_idx").on(table.isActive, table.isHealthy),
+  nextSyncIndex: index("integration_connections_next_sync_idx").on(table.nextSyncAt, table.isActive),
+}));
+
+export const insertIntegrationConnectionSchema = createInsertSchema(integrationConnections).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertIntegrationConnection = z.infer<typeof insertIntegrationConnectionSchema>;
+export type IntegrationConnection = typeof integrationConnections.$inferSelect;
+
+// Integration API keys - Public API keys for developer access
+export const integrationApiKeys = pgTable("integration_api_keys", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  // Key identity
+  name: varchar("name").notNull(), // "Production API Key", "Mobile App Key"
+  description: text("description"),
+  keyPrefix: varchar("key_prefix").notNull(), // "wfos_prod_" for display
+  keyHash: text("key_hash").notNull(), // Hashed full key for verification
+  
+  // Permissions
+  scopes: jsonb("scopes").$type<string[]>().default(sql`'[]'`), // ['read:employees', 'write:timesheets', 'webhooks:manage']
+  ipWhitelist: jsonb("ip_whitelist").$type<string[]>().default(sql`'[]'`),
+  
+  // Rate limiting
+  rateLimit: integer("rate_limit").default(1000), // Requests per hour
+  rateLimitWindow: varchar("rate_limit_window").default('hour'), // 'minute', 'hour', 'day'
+  
+  // Usage tracking
+  lastUsedAt: timestamp("last_used_at"),
+  totalRequests: integer("total_requests").default(0),
+  totalErrors: integer("total_errors").default(0),
+  
+  // Status
+  isActive: boolean("is_active").default(true),
+  expiresAt: timestamp("expires_at"),
+  
+  // Audit
+  createdByUserId: varchar("created_by_user_id").references(() => users.id),
+  ipAddress: varchar("ip_address"),
+  userAgent: text("user_agent"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  workspaceActiveIndex: index("integration_api_keys_workspace_active_idx").on(table.workspaceId, table.isActive),
+  keyHashIndex: uniqueIndex("integration_api_keys_key_hash_idx").on(table.keyHash),
+}));
+
+export const insertIntegrationApiKeySchema = createInsertSchema(integrationApiKeys).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertIntegrationApiKey = z.infer<typeof insertIntegrationApiKeySchema>;
+export type IntegrationApiKey = typeof integrationApiKeys.$inferSelect;
+
+// Webhook subscriptions - User-configured event listeners
+export const webhookSubscriptions = pgTable("webhook_subscriptions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  // Subscription identity
+  name: varchar("name").notNull(), // "Slack Shift Notifications"
+  description: text("description"),
+  targetUrl: varchar("target_url").notNull(), // External endpoint to call
+  
+  // Event configuration
+  events: jsonb("events").$type<string[]>().notNull(), // ['shift.created', 'invoice.paid', 'employee.hired']
+  filters: jsonb("filters").$type<Record<string, any>>(), // Filter conditions: {department: 'sales', status: 'active'}
+  
+  // Authentication for outgoing webhooks
+  authType: varchar("auth_type"), // 'none', 'basic', 'bearer', 'custom_header'
+  authConfig: jsonb("auth_config").$type<{
+    username?: string;
+    password?: string;
+    token?: string;
+    customHeaders?: Record<string, string>;
+  }>(),
+  
+  // Delivery settings
+  retryPolicy: varchar("retry_policy").default('exponential'), // 'none', 'linear', 'exponential'
+  maxRetries: integer("max_retries").default(3),
+  timeoutSeconds: integer("timeout_seconds").default(30),
+  
+  // Health monitoring
+  isHealthy: boolean("is_healthy").default(true),
+  lastSuccessAt: timestamp("last_success_at"),
+  lastFailureAt: timestamp("last_failure_at"),
+  consecutiveFailures: integer("consecutive_failures").default(0),
+  
+  // Statistics
+  totalDeliveries: integer("total_deliveries").default(0),
+  successfulDeliveries: integer("successful_deliveries").default(0),
+  failedDeliveries: integer("failed_deliveries").default(0),
+  
+  // Status
+  isActive: boolean("is_active").default(true),
+  pausedReason: text("paused_reason"),
+  
+  // Audit
+  createdByUserId: varchar("created_by_user_id").references(() => users.id),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  workspaceActiveIndex: index("webhook_subscriptions_workspace_active_idx").on(table.workspaceId, table.isActive),
+  eventIndex: index("webhook_subscriptions_event_idx").on(table.events),
+  healthIndex: index("webhook_subscriptions_health_idx").on(table.isHealthy, table.consecutiveFailures),
+}));
+
+export const insertWebhookSubscriptionSchema = createInsertSchema(webhookSubscriptions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertWebhookSubscription = z.infer<typeof insertWebhookSubscriptionSchema>;
+export type WebhookSubscription = typeof webhookSubscriptions.$inferSelect;
+
+// Webhook deliveries - Delivery tracking and retry history
+export const webhookDeliveries = pgTable("webhook_deliveries", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  subscriptionId: varchar("subscription_id").notNull().references(() => webhookSubscriptions.id, { onDelete: 'cascade' }),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  // Event details
+  eventType: varchar("event_type").notNull(), // 'shift.created', 'invoice.paid'
+  eventId: varchar("event_id"), // ID of the triggering resource
+  payload: jsonb("payload").notNull(), // Full event payload sent to webhook
+  
+  // Delivery attempt
+  attemptNumber: integer("attempt_number").default(1),
+  targetUrl: varchar("target_url").notNull(),
+  httpMethod: varchar("http_method").default('POST'),
+  
+  // Request details
+  requestHeaders: jsonb("request_headers"),
+  requestBody: jsonb("request_body"),
+  
+  // Response details
+  statusCode: integer("status_code"),
+  responseHeaders: jsonb("response_headers"),
+  responseBody: text("response_body"),
+  durationMs: integer("duration_ms"),
+  
+  // Delivery status
+  status: varchar("status").notNull(), // 'pending', 'success', 'failed', 'retrying'
+  errorMessage: text("error_message"),
+  errorStack: text("error_stack"),
+  
+  // Retry scheduling
+  nextRetryAt: timestamp("next_retry_at"),
+  maxRetries: integer("max_retries"),
+  
+  // Timestamps
+  scheduledAt: timestamp("scheduled_at").defaultNow(),
+  sentAt: timestamp("sent_at"),
+  completedAt: timestamp("completed_at"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  subscriptionStatusIndex: index("webhook_deliveries_subscription_status_idx").on(table.subscriptionId, table.status),
+  eventTypeIndex: index("webhook_deliveries_event_type_idx").on(table.eventType, table.eventId),
+  retryQueueIndex: index("webhook_deliveries_retry_queue_idx").on(table.status, table.nextRetryAt),
+  workspaceIndex: index("webhook_deliveries_workspace_idx").on(table.workspaceId, table.createdAt),
+}));
+
+export const insertWebhookDeliverySchema = createInsertSchema(webhookDeliveries).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertWebhookDelivery = z.infer<typeof insertWebhookDeliverySchema>;
+export type WebhookDelivery = typeof webhookDeliveries.$inferSelect;

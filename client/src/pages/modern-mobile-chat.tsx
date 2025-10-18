@@ -15,7 +15,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { 
   Send, Menu, X, Settings, Users, Circle, Shield, 
   Headphones, Bot, MessageSquare, Lock, HelpCircle,
-  XCircle, CheckCircle, Clock, AlertCircle, ChevronDown,
+  XCircle, CheckCircle, Clock, AlertCircle, ChevronDown, ChevronRight,
   UserCheck, FileText, Camera, PenTool, Info, ArrowRight, Sparkles,
   Ban, AlertTriangle, Timer, UserX, TrendingUp, Key, Mail, ListChecks,
   Tag, ClipboardList, History, Zap, MessageCircle, ArrowUpCircle, Star,

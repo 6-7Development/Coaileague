@@ -87,6 +87,12 @@ import {
   insertEmployeeRecognitionSchema,
   insertEmployeeHealthScoreSchema,
   insertEmployerBenchmarkScoreSchema,
+  // IntegrationOS™ Tables
+  integrationMarketplace,
+  integrationConnections,
+  integrationApiKeys,
+  webhookSubscriptions,
+  webhookDeliveries,
 } from "@shared/schema";
 import crypto from "crypto";
 import { sql, eq, and, or, isNull, lte, gte, desc, inArray, ne } from "drizzle-orm";
@@ -8979,6 +8985,365 @@ Return ONLY valid JSON array with this exact structure:
     } catch (error: any) {
       console.error("Error calculating employer benchmark:", error);
       res.status(500).json({ message: "Failed to calculate employer benchmark" });
+    }
+  });
+
+  // ============================================================================
+  // INTEGRATIONOS™ - EXTERNAL ECOSYSTEM LAYER (MONOPOLISTIC LOCK-IN)
+  // ============================================================================
+  
+  // [1] MARKETPLACE - Browse available integrations (All authenticated users)
+  app.get('/api/integrations/marketplace', requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { category, certified } = req.query;
+      
+      let query = db
+        .select()
+        .from(integrationMarketplace)
+        .where(and(
+          eq(integrationMarketplace.isActive, true),
+          eq(integrationMarketplace.isPublished, true)
+        ))
+        .orderBy(desc(integrationMarketplace.installCount));
+      
+      const integrations = await query;
+      
+      const filtered = integrations.filter(integration => {
+        if (category && integration.category !== category) return false;
+        if (certified === 'true' && !integration.isCertified) return false;
+        return true;
+      });
+      
+      res.json(filtered);
+    } catch (error: any) {
+      console.error("Error fetching integrations:", error);
+      res.status(500).json({ message: "Failed to fetch integrations" });
+    }
+  });
+  
+  // [2] CONNECTIONS - Manage workspace integrations (Manager/Owner)
+  app.get('/api/integrations/connections', requireAuth, readLimiter, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspace!.id;
+      
+      const connections = await db
+        .select()
+        .from(integrationConnections)
+        .where(eq(integrationConnections.workspaceId, workspaceId))
+        .orderBy(desc(integrationConnections.connectedAt));
+      
+      res.json(connections);
+    } catch (error: any) {
+      console.error("Error fetching connections:", error);
+      res.status(500).json({ message: "Failed to fetch connections" });
+    }
+  });
+  
+  // Connect to an integration
+  app.post('/api/integrations/connections', requireAuth, requireManager, mutationLimiter, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspace!.id;
+      const userId = req.user!.id;
+      const { integrationId, connectionName, authType, apiKey, apiSecret } = req.body;
+      
+      if (!integrationId) {
+        return res.status(400).json({ message: "integrationId is required" });
+      }
+      
+      // Check if integration exists
+      const [integration] = await db
+        .select()
+        .from(integrationMarketplace)
+        .where(eq(integrationMarketplace.id, integrationId))
+        .limit(1);
+      
+      if (!integration) {
+        return res.status(404).json({ message: "Integration not found" });
+      }
+      
+      // Create connection
+      const [connection] = await db
+        .insert(integrationConnections)
+        .values({
+          workspaceId,
+          integrationId,
+          connectionName: connectionName || `${integration.name} Connection`,
+          authType: authType || integration.authType,
+          apiKey: apiKey || null,
+          apiSecret: apiSecret || null,
+          connectedByUserId: userId,
+          ipAddress: req.ip || null,
+          userAgent: req.get('User-Agent') || null,
+        })
+        .returning();
+      
+      // Increment install count
+      await db
+        .update(integrationMarketplace)
+        .set({ 
+          installCount: sql`${integrationMarketplace.installCount} + 1`,
+          updatedAt: new Date(),
+        })
+        .where(eq(integrationMarketplace.id, integrationId));
+      
+      res.json(connection);
+    } catch (error: any) {
+      console.error("Error creating connection:", error);
+      res.status(500).json({ message: "Failed to create connection" });
+    }
+  });
+  
+  // Disconnect an integration
+  app.delete('/api/integrations/connections/:id', requireAuth, requireManager, mutationLimiter, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspace!.id;
+      const { id } = req.params;
+      
+      await db
+        .update(integrationConnections)
+        .set({ 
+          isActive: false,
+          disconnectedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(and(
+          eq(integrationConnections.id, id),
+          eq(integrationConnections.workspaceId, workspaceId)
+        ));
+      
+      res.json({ message: "Connection disconnected" });
+    } catch (error: any) {
+      console.error("Error disconnecting integration:", error);
+      res.status(500).json({ message: "Failed to disconnect integration" });
+    }
+  });
+  
+  // [3] API KEYS - Developer access management (Owner only)
+  app.get('/api/integrations/api-keys', requireAuth, requireOwner, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspace!.id;
+      
+      const apiKeys = await db
+        .select({
+          id: integrationApiKeys.id,
+          name: integrationApiKeys.name,
+          description: integrationApiKeys.description,
+          keyPrefix: integrationApiKeys.keyPrefix,
+          scopes: integrationApiKeys.scopes,
+          ipWhitelist: integrationApiKeys.ipWhitelist,
+          rateLimit: integrationApiKeys.rateLimit,
+          rateLimitWindow: integrationApiKeys.rateLimitWindow,
+          lastUsedAt: integrationApiKeys.lastUsedAt,
+          totalRequests: integrationApiKeys.totalRequests,
+          totalErrors: integrationApiKeys.totalErrors,
+          isActive: integrationApiKeys.isActive,
+          expiresAt: integrationApiKeys.expiresAt,
+          createdAt: integrationApiKeys.createdAt,
+        })
+        .from(integrationApiKeys)
+        .where(eq(integrationApiKeys.workspaceId, workspaceId))
+        .orderBy(desc(integrationApiKeys.createdAt));
+      
+      res.json(apiKeys);
+    } catch (error: any) {
+      console.error("Error fetching API keys:", error);
+      res.status(500).json({ message: "Failed to fetch API keys" });
+    }
+  });
+  
+  // Create API key
+  app.post('/api/integrations/api-keys', requireAuth, requireOwner, mutationLimiter, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspace!.id;
+      const userId = req.user!.id;
+      const { name, description, scopes, rateLimit, expiresAt } = req.body;
+      
+      if (!name) {
+        return res.status(400).json({ message: "name is required" });
+      }
+      
+      // Generate API key
+      const crypto = await import('crypto');
+      const apiKeyValue = `wfos_${crypto.randomBytes(32).toString('hex')}`;
+      const keyHash = crypto.createHash('sha256').update(apiKeyValue).digest('hex');
+      const keyPrefix = apiKeyValue.substring(0, 12);
+      
+      const [apiKey] = await db
+        .insert(integrationApiKeys)
+        .values({
+          workspaceId,
+          name,
+          description: description || null,
+          keyPrefix,
+          keyHash,
+          scopes: scopes || [],
+          rateLimit: rateLimit || 1000,
+          rateLimitWindow: 'hour',
+          expiresAt: expiresAt ? new Date(expiresAt) : null,
+          createdByUserId: userId,
+          ipAddress: req.ip || null,
+          userAgent: req.get('User-Agent') || null,
+        })
+        .returning();
+      
+      // Return full API key ONLY on creation
+      res.json({ ...apiKey, apiKey: apiKeyValue });
+    } catch (error: any) {
+      console.error("Error creating API key:", error);
+      res.status(500).json({ message: "Failed to create API key" });
+    }
+  });
+  
+  // Revoke API key
+  app.delete('/api/integrations/api-keys/:id', requireAuth, requireOwner, mutationLimiter, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspace!.id;
+      const { id } = req.params;
+      
+      await db
+        .update(integrationApiKeys)
+        .set({ 
+          isActive: false,
+          updatedAt: new Date(),
+        })
+        .where(and(
+          eq(integrationApiKeys.id, id),
+          eq(integrationApiKeys.workspaceId, workspaceId)
+        ));
+      
+      res.json({ message: "API key revoked" });
+    } catch (error: any) {
+      console.error("Error revoking API key:", error);
+      res.status(500).json({ message: "Failed to revoke API key" });
+    }
+  });
+  
+  // [4] WEBHOOKS - Event subscriptions (Manager/Owner)
+  app.get('/api/integrations/webhooks', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspace!.id;
+      
+      const webhooks = await db
+        .select()
+        .from(webhookSubscriptions)
+        .where(eq(webhookSubscriptions.workspaceId, workspaceId))
+        .orderBy(desc(webhookSubscriptions.createdAt));
+      
+      res.json(webhooks);
+    } catch (error: any) {
+      console.error("Error fetching webhooks:", error);
+      res.status(500).json({ message: "Failed to fetch webhooks" });
+    }
+  });
+  
+  // Create webhook subscription
+  app.post('/api/integrations/webhooks', requireAuth, requireManager, mutationLimiter, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspace!.id;
+      const userId = req.user!.id;
+      const { name, targetUrl, events, filters, authType, authConfig, maxRetries } = req.body;
+      
+      if (!name || !targetUrl || !events || events.length === 0) {
+        return res.status(400).json({ message: "name, targetUrl, and events are required" });
+      }
+      
+      const [webhook] = await db
+        .insert(webhookSubscriptions)
+        .values({
+          workspaceId,
+          name,
+          targetUrl,
+          events,
+          filters: filters || null,
+          authType: authType || 'none',
+          authConfig: authConfig || null,
+          maxRetries: maxRetries || 3,
+          createdByUserId: userId,
+        })
+        .returning();
+      
+      res.json(webhook);
+    } catch (error: any) {
+      console.error("Error creating webhook:", error);
+      res.status(500).json({ message: "Failed to create webhook" });
+    }
+  });
+  
+  // Toggle webhook active status
+  app.patch('/api/integrations/webhooks/:id/toggle', requireAuth, requireManager, mutationLimiter, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspace!.id;
+      const { id } = req.params;
+      
+      const [webhook] = await db
+        .select()
+        .from(webhookSubscriptions)
+        .where(and(
+          eq(webhookSubscriptions.id, id),
+          eq(webhookSubscriptions.workspaceId, workspaceId)
+        ))
+        .limit(1);
+      
+      if (!webhook) {
+        return res.status(404).json({ message: "Webhook not found" });
+      }
+      
+      const [updated] = await db
+        .update(webhookSubscriptions)
+        .set({ 
+          isActive: !webhook.isActive,
+          updatedAt: new Date(),
+        })
+        .where(eq(webhookSubscriptions.id, id))
+        .returning();
+      
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error toggling webhook:", error);
+      res.status(500).json({ message: "Failed to toggle webhook" });
+    }
+  });
+  
+  // Delete webhook
+  app.delete('/api/integrations/webhooks/:id', requireAuth, requireManager, mutationLimiter, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspace!.id;
+      const { id } = req.params;
+      
+      await db
+        .delete(webhookSubscriptions)
+        .where(and(
+          eq(webhookSubscriptions.id, id),
+          eq(webhookSubscriptions.workspaceId, workspaceId)
+        ));
+      
+      res.json({ message: "Webhook deleted" });
+    } catch (error: any) {
+      console.error("Error deleting webhook:", error);
+      res.status(500).json({ message: "Failed to delete webhook" });
+    }
+  });
+  
+  // Get webhook delivery history
+  app.get('/api/integrations/webhooks/:id/deliveries', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspace!.id;
+      const { id } = req.params;
+      
+      const deliveries = await db
+        .select()
+        .from(webhookDeliveries)
+        .where(and(
+          eq(webhookDeliveries.subscriptionId, id),
+          eq(webhookDeliveries.workspaceId, workspaceId)
+        ))
+        .orderBy(desc(webhookDeliveries.createdAt))
+        .limit(100);
+      
+      res.json(deliveries);
+    } catch (error: any) {
+      console.error("Error fetching webhook deliveries:", error);
+      res.status(500).json({ message: "Failed to fetch webhook deliveries" });
     }
   });
 
