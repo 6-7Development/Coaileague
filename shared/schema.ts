@@ -2040,16 +2040,61 @@ export type OnboardingChecklist = typeof onboardingChecklists.$inferSelect;
 // ============================================================================
 
 export const auditActionEnum = pgEnum('audit_action', [
+  // Legacy workspace actions
   'create', 'update', 'delete', 
   'login', 'logout', 
   'clock_in', 'clock_out',
   'generate_invoice', 'payment_received',
-  'assign_manager', 'remove_manager'
+  'assign_manager', 'remove_manager',
+  
+  // AuditOS™ Chat moderation actions
+  'kick_user',
+  'silence_user',
+  'give_voice',
+  'remove_voice',
+  'ban_user',
+  'unban_user',
+  
+  // AuditOS™ Account management actions
+  'reset_password',
+  'unlock_account',
+  'lock_account',
+  'change_role',
+  'change_permissions',
+  
+  // AuditOS™ Workspace actions
+  'transfer_ownership',
+  'impersonate_user',
+  
+  // AuditOS™ Data actions
+  'export_data',
+  'import_data',
+  'delete_data',
+  'restore_data',
+  
+  // AuditOS™ System actions
+  'update_motd',
+  'update_banner',
+  'change_settings',
+  'view_audit_logs',
+  
+  // AuditOS™ Support actions
+  'escalate_ticket',
+  'transfer_ticket',
+  'view_documents',
+  'request_secure_info',
+  'release_spectator',
+  
+  // Other
+  'other'
 ]);
 
 export const auditLogs = pgTable("audit_logs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  workspaceId: varchar("workspace_id").references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  // AuditOS™ Command tracking (IRC-style)
+  commandId: varchar("command_id"), // Unique ID for command/response matching
   
   // Actor information
   userId: varchar("user_id").notNull().references(() => users.id),
@@ -2058,17 +2103,31 @@ export const auditLogs = pgTable("audit_logs", {
   
   // Action details
   action: auditActionEnum("action").notNull(),
-  entityType: varchar("entity_type").notNull(), // 'employee', 'shift', 'invoice', etc.
-  entityId: varchar("entity_id").notNull(),
+  actionDescription: text("action_description"), // Human-readable description for AuditOS™
+  entityType: varchar("entity_type"), // 'employee', 'shift', 'invoice', 'user', 'message', etc.
+  entityId: varchar("entity_id"),
+  
+  // AuditOS™ Target tracking
+  targetId: varchar("target_id"), // User, workspace, or resource affected by action
+  targetName: varchar("target_name"), // Cached for historical accuracy
+  targetType: varchar("target_type"), // 'user', 'workspace', 'message', 'document', etc.
+  
+  // AuditOS™ Context
+  conversationId: varchar("conversation_id"), // If chat-related
+  reason: text("reason"), // Reason for action (e.g., kick/silence reason)
   
   // Change tracking
   changes: jsonb("changes"), // { before: {...}, after: {...} }
-  metadata: jsonb("metadata"), // Additional context (API endpoint, feature flag, etc.)
+  metadata: jsonb("metadata"), // Additional context (API endpoint, feature flag, command payload, etc.)
   
   // Request context
-  ipAddress: varchar("ip_address").notNull(),
-  userAgent: text("user_agent").notNull(), // Required for SOC2/GDPR traceability
+  ipAddress: varchar("ip_address"),
+  userAgent: text("user_agent"), // Required for SOC2/GDPR traceability
   requestId: varchar("request_id"), // For correlating related actions
+  
+  // AuditOS™ Result tracking
+  success: boolean("success").default(true),
+  errorMessage: text("error_message"), // If action failed
   
   // Compliance flags
   isSensitiveData: boolean("is_sensitive_data").default(false), // PII, financial data, etc.
@@ -2081,6 +2140,8 @@ export const auditLogs = pgTable("audit_logs", {
   index("idx_audit_user_created").on(table.userId, table.createdAt),
   index("idx_audit_entity").on(table.entityType, table.entityId),
   index("idx_audit_action_created").on(table.action, table.createdAt),
+  index("idx_audit_command_id").on(table.commandId),
+  index("idx_audit_target").on(table.targetId),
 ]);
 
 export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({
