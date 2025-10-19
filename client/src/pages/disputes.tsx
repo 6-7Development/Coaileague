@@ -493,7 +493,8 @@ function DisputeDetailDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl max-h-[90vh]">
+      <DialogContent className="w-full h-full sm:h-auto sm:w-auto sm:max-w-3xl p-0 sm:p-6">
+        <div className="h-full overflow-y-auto p-4 sm:p-0">
         <DialogHeader>
           <DialogTitle>Dispute Details</DialogTitle>
         </DialogHeader>
@@ -593,6 +594,7 @@ function DisputeDetailDialog({
             )}
           </div>
         </ScrollArea>
+        </div>
       </DialogContent>
     </Dialog>
   );

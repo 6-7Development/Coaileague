@@ -620,7 +620,8 @@ export default function EngagementDashboard() {
 
       {/* Dispute Filing Dialog */}
       <Dialog open={disputeDialogOpen} onOpenChange={setDisputeDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-full h-full sm:h-auto sm:w-auto sm:max-w-2xl p-0 sm:p-6">
+          <div className="h-full overflow-y-auto p-4 sm:p-0">
           <DialogHeader>
             <DialogTitle>File Dispute - Employer Rating</DialogTitle>
             <DialogDescription>
@@ -729,6 +730,7 @@ export default function EngagementDashboard() {
               </div>
             </form>
           </Form>
+          </div>
         </DialogContent>
       </Dialog>
       </div>
