@@ -10,6 +10,7 @@ import { setupAuth as setupCustomAuth, requireAuth } from "./auth"; // Custom au
 import authRoutes from "./authRoutes"; // Custom auth routes
 import { auditContextMiddleware } from "./middleware/audit";
 import { apiLimiter, authLimiter, mutationLimiter, readLimiter } from "./middleware/rateLimiter";
+import Stripe from 'stripe';
 import { 
   sendShiftAssignmentEmail, 
   sendInvoiceGeneratedEmail, 
@@ -4194,13 +4195,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================================================
   
   // Initialize Stripe (will activate when STRIPE_SECRET_KEY is added)
-  let stripe: any = null;
+  let stripe: Stripe | null = null;
   if (process.env.STRIPE_SECRET_KEY) {
-    const Stripe = require('stripe');
     stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
       apiVersion: '2023-10-16',
     });
-    console.log('✅ Stripe initialized successfully');
+    console.log('✅ Stripe initialized successfully with live keys');
   } else {
     console.warn('⚠️  STRIPE_SECRET_KEY not found. Payment processing disabled. Add keys to activate.');
   }
