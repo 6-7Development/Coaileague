@@ -176,6 +176,12 @@ export function setupWebSocket(server: Server) {
             ws.userStatus = 'online'; // Default status
             ws.userType = userType;
 
+            // Check if user already has an active connection in this room
+            const existingClients = conversationClients.get(payload.conversationId);
+            const userAlreadyInRoom = existingClients ? Array.from(existingClients).some(
+              client => client.userId === payload.userId && client.readyState === WebSocket.OPEN
+            ) : false;
+
             if (!conversationClients.has(payload.conversationId)) {
               conversationClients.set(payload.conversationId, new Set());
             }
@@ -397,8 +403,8 @@ export function setupWebSocket(server: Server) {
 
             await broadcastUserList();
 
-            // HELPDESK ANNOUNCEMENTS: System + HelpOS™
-            if (payload.conversationId === MAIN_ROOM_ID) {
+            // HELPDESK ANNOUNCEMENTS: System + HelpOS™ (only if user is joining for the first time)
+            if (payload.conversationId === MAIN_ROOM_ID && !userAlreadyInRoom) {
               try {
                 const platformRole = await storage.getUserPlatformRole(payload.userId);
                 const isStaff = platformRole && ['root', 'deputy_admin', 'deputy_assistant', 'sysop'].includes(platformRole);
@@ -534,8 +540,8 @@ export function setupWebSocket(server: Server) {
               }
             }
 
-            // HelpOS greets everyone who joins (only send to the joining user, not the entire room)
-            if (payload.conversationId === MAIN_ROOM_ID) {
+            // HelpOS greets everyone who joins (only send to the joining user, not the entire room, and only if first time joining)
+            if (payload.conversationId === MAIN_ROOM_ID && !userAlreadyInRoom) {
               try {
                 // Format role display for welcome message
                 const getRoleDisplayText = (role: string) => {
@@ -583,11 +589,13 @@ export function setupWebSocket(server: Server) {
               }
             }
 
-            // Single consolidated log message
-            if (payload.conversationId === MAIN_ROOM_ID) {
-              console.log(`✅ ${displayName} joined HelpDesk (${userRoleInfo})`);
-            } else {
-              console.log(`${displayName} joined conversation ${payload.conversationId}`);
+            // Single consolidated log message (only for NEW joins, not reconnections)
+            if (!userAlreadyInRoom) {
+              if (payload.conversationId === MAIN_ROOM_ID) {
+                console.log(`✅ ${displayName} joined HelpDesk (${userRoleInfo})`);
+              } else {
+                console.log(`${displayName} joined conversation ${payload.conversationId}`);
+              }
             }
             break;
           }
