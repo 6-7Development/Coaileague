@@ -22,6 +22,7 @@ import {
   Clock,
   AlertCircle,
 } from "lucide-react";
+import { MobileLoading } from "@/components/mobile-loading";
 import {
   Dialog,
   DialogContent,
@@ -112,11 +113,7 @@ export default function Employees() {
   }, [isAuthenticated, authLoading, toast]);
 
   if (authLoading || !isAuthenticated) {
-    return (
-      <div className="h-screen flex items-center justify-center">
-        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" aria-label="Loading" />
-      </div>
-    );
+    return <MobileLoading fullScreen message="Loading Employees..." />;
   }
 
   const getInitials = (firstName: string, lastName: string) => {

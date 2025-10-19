@@ -8,6 +8,7 @@ import {
 import { Link, useLocation } from "wouter";
 import { WorkforceOSLogo } from "@/components/workforceos-logo";
 import { useTransition } from "@/contexts/transition-context";
+import { MobileLoading } from "@/components/mobile-loading";
 
 export default function Dashboard() {
   const [, setLocation] = useLocation();
@@ -48,11 +49,7 @@ export default function Dashboard() {
   }, [isAuthenticated, isLoading]);
 
   if (isLoading || !isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-950 flex items-center justify-center">
-        <div className="animate-spin w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full" />
-      </div>
-    );
+    return <MobileLoading fullScreen message="Loading Dashboard..." />;
   }
 
   const firstName = user?.firstName || user?.email?.split('@')[0] || 'User';

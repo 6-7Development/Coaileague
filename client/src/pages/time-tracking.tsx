@@ -26,6 +26,7 @@ import { Clock, Play, Square, Calendar, DollarSign, User, Building2 } from "luci
 import { format, formatDistanceToNow, parseISO } from "date-fns";
 import type { Employee, Client, TimeEntry, Shift } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { MobileLoading } from "@/components/mobile-loading";
 
 export default function TimeTracking() {
   const { toast } = useToast();
@@ -151,11 +152,7 @@ export default function TimeTracking() {
   const completedTimeEntries = timeEntries.filter(entry => entry.clockOut);
 
   if (isLoading || !isAuthenticated) {
-    return (
-      <div className="h-screen flex items-center justify-center">
-        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" aria-label="Loading" />
-      </div>
-    );
+    return <MobileLoading fullScreen message="Loading Time Clock..." />;
   }
 
   return (

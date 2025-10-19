@@ -18,6 +18,7 @@ import { DemoBanner } from "@/components/demo-banner";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { CommandPalette } from "@/components/command-palette";
 import { useAuth } from "@/hooks/useAuth";
+import { MobileLoading } from "@/components/mobile-loading";
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
 import CustomLogin from "@/pages/custom-login";
@@ -86,11 +87,7 @@ function AppContent() {
   };
 
   if (isLoading) {
-    return (
-      <div className="h-screen flex items-center justify-center">
-        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" aria-label="Loading authentication" />
-      </div>
-    );
+    return <MobileLoading fullScreen message="Authenticating..." />;
   }
 
   if (!isAuthenticated) {
