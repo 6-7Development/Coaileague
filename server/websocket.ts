@@ -1005,26 +1005,26 @@ export function setupWebSocket(server: Server) {
                 
                 case 'whisper': {
                   // Send private message to specific user (staff only)
-                  const targetUsername = parsedCommand.args[0];
+                  const targetUserId = parsedCommand.args[0];
                   const privateMessage = parsedCommand.args.slice(1).join(' ');
                   
-                  if (!targetUsername || !privateMessage) {
+                  if (!targetUserId || !privateMessage) {
                     ws.send(JSON.stringify({
                       type: 'error',
-                      message: 'Usage: /whisper <username> <message>',
+                      message: 'Usage: /whisper <userId> <message>',
                     }));
                     break;
                   }
                   
-                  // Find target user
+                  // Find target user by userId
                   let targetClient: any = null;
-                  let targetUserId: string | null = null;
+                  let targetUserName: string = targetUserId;
                   
                   if (clients) {
                     clients.forEach((client) => {
-                      if (client.userName === targetUsername || client.userId === targetUsername) {
+                      if (client.userId === targetUserId && client.readyState === WebSocket.OPEN) {
                         targetClient = client;
-                        targetUserId = client.userId;
+                        targetUserName = client.userName || targetUserId;
                       }
                     });
                   }
@@ -1032,7 +1032,7 @@ export function setupWebSocket(server: Server) {
                   if (!targetClient) {
                     ws.send(JSON.stringify({
                       type: 'error',
-                      message: `User "${targetUsername}" not found or not currently online.`,
+                      message: `User "${targetUserId}" not found or not currently online. Use /users to see online users and their IDs.`,
                     }));
                     break;
                   }
@@ -1057,17 +1057,13 @@ export function setupWebSocket(server: Server) {
                     }));
                   }
                   
-                  // Send confirmation back to sender
+                  // Send confirmation back to sender (so they see what they sent)
                   ws.send(JSON.stringify({
                     type: 'new_message',
                     message: whisperMsg,
                   }));
                   
-                  // Send success notification to sender
-                  ws.send(JSON.stringify({
-                    type: 'command_success',
-                    message: `✅ Whisper sent to ${targetUsername}`,
-                  }));
+                  console.log(`✅ Whisper delivered: ${displayName} → ${targetUserName}: "${privateMessage.substring(0, 50)}..."`);
                   break;
                 }
                 

@@ -106,7 +106,7 @@ export const COMMAND_REGISTRY: Record<SlashCommand, CommandDefinition> = {
   whisper: {
     command: 'whisper',
     description: 'Send a private message to a specific user (only they can see it)',
-    usage: '/whisper <username> <message>',
+    usage: '/whisper <userId> <message>',
     requiresStaff: true,
     minArgs: 2,
     maxArgs: 100,
