@@ -3,6 +3,20 @@
 ## Overview
 WorkforceOS is a comprehensive workforce management operating system designed to automate HR functions for businesses. It offers features such as time tracking, automated invoice generation, smart hiring, compliance audit trails, and real-time analytics. The platform aims to provide significant cost savings by integrating various HR functions into a single system, envisioning branded features like BillOS™, PayrollOS™, ScheduleOS™, HireOS™, TrackOS™, ReportOS™, and AnalyticsOS™ for a unified product identity. The project also focuses on monopolistic features to provide complete employee lifecycle management, granular role-based access control, and platform-level troubleshooting, justifying a premium pricing model.
 
+## Recent Changes (October 19, 2025)
+### Fortune 500-Style Homepage Redesign
+- **Complete homepage redesign** for professional enterprise marketing
+- **Key Features**:
+  - Hero section with Fortune 500 trust badges (SOC 2, GDPR, ISO 27001)
+  - Clear CTAs for "Start Free Trial" and "Login" prominently displayed
+  - 8 OS modules showcased (ScheduleOS™, TimeOS™, PayrollOS™, BillOS™, HireOS™, ReportOS™, AnalyticsOS™, SupportOS™)
+  - ROI calculator showing $255k annual savings by replacing 5 full-time positions
+  - Pricing preview section with Starter ($1,499/mo), Professional ($2,999/mo), and Enterprise (custom) tiers
+  - Social proof section with Fortune 500 status
+  - Mobile-first responsive design with proper color scheme throughout
+- **Auto-redirect removed**: Users can now view the homepage instead of being automatically redirected to mobile chat
+- **Navigation**: Sticky header with clear paths to pricing, features, contact, login, and registration
+
 ## User Preferences
 I prefer detailed explanations.
 Do not make changes to the folder `Z`.
