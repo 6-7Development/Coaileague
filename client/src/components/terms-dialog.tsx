@@ -163,6 +163,32 @@ export function TermsDialog({ open, onAccept, onDecline, userName }: TermsDialog
               </p>
             </section>
 
+            <section>
+              <h3 className="font-bold text-base text-white mb-2">7. TAXES & PRICING</h3>
+              <p className="mb-2 font-semibold text-amber-400">
+                ALL PRICES EXCLUDE TAXES. YOU ARE RESPONSIBLE FOR ALL APPLICABLE TAXES.
+              </p>
+              <p className="mb-2">
+                All subscription prices, fees, and charges displayed on WorkforceOS are exclusive of any and all taxes, including but not limited to:
+              </p>
+              <ul className="list-disc list-inside space-y-1 ml-2 mb-2">
+                <li>Sales tax, use tax, value-added tax (VAT), goods and services tax (GST)</li>
+                <li>Withholding tax, excise tax, or any other tax imposed by any governmental authority</li>
+                <li>Federal, state, provincial, local, or municipal taxes</li>
+              </ul>
+              <p className="mb-2 font-semibold">
+                YOU ARE SOLELY RESPONSIBLE FOR:
+              </p>
+              <ul className="list-disc list-inside space-y-1 ml-2 mb-2">
+                <li>Determining whether any taxes apply to your subscription</li>
+                <li>Calculating, collecting, reporting, and remitting any applicable taxes to the appropriate tax authorities</li>
+                <li>Consulting with your own tax professionals regarding your tax obligations</li>
+              </ul>
+              <p className="font-bold text-red-400">
+                WorkforceOS does NOT collect, calculate, report, or remit any taxes on your behalf. We are NOT responsible for your tax compliance in any jurisdiction.
+              </p>
+            </section>
+
             <section className="bg-gradient-to-r from-amber-600 to-orange-600 border-l-4 border-white p-3 rounded shadow-md">
               <div className="flex gap-2">
                 <AlertCircle className="w-5 h-5 text-white flex-shrink-0 mt-0.5" />

@@ -487,6 +487,15 @@ export default function Landing() {
               </Card>
             ))}
           </div>
+          
+          {/* Tax Disclaimer */}
+          <div className="max-w-4xl mx-auto mt-12 text-center">
+            <p className="text-sm text-muted-foreground">
+              <span className="font-semibold">All prices exclude taxes.</span> You are responsible for determining and paying any applicable taxes in your jurisdiction. 
+              WorkforceOS does not collect, calculate, or remit taxes on your behalf. 
+              Please consult your tax professional regarding your tax obligations.
+            </p>
+          </div>
         </div>
       </section>
 
