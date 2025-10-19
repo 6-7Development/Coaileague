@@ -99,7 +99,6 @@ export const workspaces = pgTable("workspaces", {
   
   // Unique organization identifiers for support tracking
   organizationId: varchar("organization_id").unique(), // Format: wfosupport-#########
-  organizationSerial: varchar("organization_serial").unique(), // Format: ORG-XXXX-XXXX (Enterprise license key)
   
   // Business information
   companyName: varchar("company_name"),
