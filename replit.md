@@ -18,16 +18,24 @@ Do not make changes to the file `Y`.
 ### UI/UX Decisions
 The platform features a CAD-style professional interface with a dark mode theme, emphasizing precision. It includes an application frame with a menu, toolbar, and status bar. The design is modern, professional, mobile-first, and utilizes corporate blue gradient accents. The official logo is a realistic neon-style "W" with glowing "OS" superscript. A universal transition system provides smooth visual feedback. Key UI components include tab-based navigation, collapsible sections, and mobile-optimized design elements like touch-optimized buttons and fluid layouts.
 
-**Mobile-First Optimization** (Production-Ready):
-- **Touch Targets**: All interactive controls meet 44px minimum height via `touch-target` class or default Shadcn Button sizing
-- **Responsive Dialogs**: Full-screen mobile dialogs (`w-full h-full sm:h-auto sm:w-auto`) with inner scrollable wrapper (`h-full overflow-y-auto p-4 sm:p-0`)
-- **Safe Area Support**: Pages implement `safe-top` and `safe-bottom` classes to clear device notches/home indicators
-- **Responsive Grids**: Stats cards use `grid-cols-2 md:grid-cols-4` pattern for optimal mobile/desktop layouts
-- **Text Scaling**: Typography scales via `text-xs sm:text-sm`, `text-xl sm:text-2xl md:text-3xl` for readability across devices
-- **Loading States**: Branded `MobileLoading` component with animated WorkforceOS logo for all async operations
-- **Touch Gestures**: Swipe navigation on ScheduleOS via `use-touch-swipe` hook for natural mobile interactions
-- **Mobile Animations**: Custom CSS classes (`mobile-card-enter`, `hover-elevate`, `active-elevate-2`) provide smooth transitions
-- **Optimized Pages**: Disputes, Reports, Engagement Dashboard, and ScheduleOS fully mobile-responsive
+**Mobile-First Optimization** (Production-Ready - See MOBILE_FIRST_DOCUMENTATION.md):
+WorkforceOS follows a **strict mobile-first philosophy**, optimized primarily for 360px-420px screens before scaling to desktop.
+
+- **Viewport Configuration**: Perfect meta tags with `viewport-fit=cover` for safe area support, PWA-ready
+- **Touch Targets**: All interactive controls meet Apple/Google's 44px minimum via `touch-target` class or Shadcn defaults
+- **Collapsible Navigation**: `SidebarTrigger` hamburger menu with `defaultOpen={false}` on mobile (< 768px)
+- **Responsive Dialogs**: Full-screen on mobile (`w-full h-full`), standard modal on desktop (`sm:h-auto sm:w-auto`)
+- **Fluid Layouts**: 100% percentage-based grids, zero horizontal scrolling at any viewport
+- **Safe Area Support**: `safe-top` and `safe-bottom` classes clear device notches/home indicators
+- **Responsive Grids**: `grid-cols-2 md:grid-cols-4` pattern for optimal mobile/tablet/desktop layouts
+- **Text Scaling**: Mobile-first typography (`text-xs sm:text-sm`, `text-xl sm:text-2xl md:text-3xl`)
+- **Loading States**: Branded `MobileLoading` component with animated WorkforceOS logo
+- **Touch Gestures**: Swipe navigation on ScheduleOS via `use-touch-swipe` hook
+- **Touch Optimizations**: Smooth scrolling, momentum, tap highlight removal, font smoothing
+- **Mobile Animations**: `mobile-card-enter`, `hover-elevate`, `active-elevate-2` transitions
+- **Optimized Pages**: Disputes, Reports, Engagement Dashboard, ScheduleOS fully mobile-responsive
+- **Media Queries**: Mobile-first breakpoints at 640px (sm), 768px (md), 1024px (lg)
+- **Tested Viewports**: 360px, 375px, 390px, 414px, 420px, 768px, 1024px
 
 **Role Badge Display** (Desktop Chat Only):
 - HARDCODED superscript role badges displayed inline like mathematical notation (text-[9px] with ml-1 spacing)
