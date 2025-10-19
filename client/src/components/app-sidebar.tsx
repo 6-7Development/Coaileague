@@ -1,5 +1,5 @@
 // Reference: shadcn sidebar documentation
-import { Calendar, Users, UserCircle, FileText, Settings, LayoutDashboard, LogOut, Building2, Clock, BarChart3, ClipboardCheck, Activity, Headphones, CreditCard, Heart, Star, Plane, UserX, MessageSquare, Shield, UserCog, DollarSign, Receipt, Scale } from "lucide-react";
+import { Calendar, Users, UserCircle, FileText, Settings, LayoutDashboard, LogOut, Building2, Clock, BarChart3, ClipboardCheck, Activity, Headphones, CreditCard, Heart, Star, Plane, UserX, MessageSquare, Shield, UserCog, DollarSign, Receipt, Scale, Briefcase, FileCheck, TrendingUp, Zap, Package } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -20,141 +20,76 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { WorkforceOSLogo } from "@/components/workforceos-logo";
 
-const menuItems = [
-  {
-    title: "Dashboard",
-    url: "/dashboard",
-    icon: LayoutDashboard,
-  },
-  {
-    title: "Schedule",
-    url: "/schedule",
-    icon: Calendar,
-  },
-  {
-    title: "Time Tracking",
-    url: "/time-tracking",
-    icon: Clock,
-  },
-  {
-    title: "Employees",
-    url: "/employees",
-    icon: Users,
-  },
-  {
-    title: "Clients",
-    url: "/clients",
-    icon: UserCircle,
-  },
-  {
-    title: "Invoices",
-    url: "/invoices",
-    icon: FileText,
-  },
-  {
-    title: "Reports",
-    url: "/reports",
-    icon: ClipboardCheck,
-  },
-  {
-    title: "Analytics",
-    url: "/analytics",
-    icon: BarChart3,
-  },
-  {
-    title: "Live HelpDesk",
-    url: "/live-chat",
-    icon: MessageSquare,
-  },
-  {
-    title: "Billing",
-    url: "/billing",
-    icon: CreditCard,
-  },
-  {
-    title: "PayrollOS™",
-    url: "/payroll",
-    icon: DollarSign,
-  },
-  {
-    title: "My Paychecks",
-    url: "/my-paychecks",
-    icon: Receipt,
-  },
-  {
-    title: "Settings",
-    url: "/settings",
-    icon: Settings,
-  },
+// Core workspace features
+const coreMenuItems = [
+  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+  { title: "Schedule", url: "/schedule", icon: Calendar },
+  { title: "Time Tracking", url: "/time-tracking", icon: Clock },
+  { title: "Employees", url: "/employees", icon: Users },
+  { title: "Clients", url: "/clients", icon: UserCircle },
+  { title: "Invoices", url: "/invoices", icon: FileText },
+  { title: "Reports", url: "/reports", icon: ClipboardCheck },
+  { title: "Analytics", url: "/analytics", icon: BarChart3 },
 ];
 
+// Financial features
+const financeMenuItems = [
+  { title: "PayrollOS™", url: "/payroll", icon: DollarSign },
+  { title: "My Paychecks", url: "/my-paychecks", icon: Receipt },
+  { title: "Billing", url: "/billing", icon: CreditCard },
+];
+
+// HR & People Management
 const hrMenuItems = [
-  {
-    title: "Benefits",
-    url: "/hr/benefits",
-    icon: Heart,
-  },
-  {
-    title: "Reviews",
-    url: "/hr/reviews",
-    icon: Star,
-  },
-  {
-    title: "PTO",
-    url: "/hr/pto",
-    icon: Plane,
-  },
-  {
-    title: "Terminations",
-    url: "/hr/terminations",
-    icon: UserX,
-  },
-  {
-    title: "Disputes",
-    url: "/disputes",
-    icon: Scale,
-  },
+  { title: "Benefits", url: "/hr/benefits", icon: Heart },
+  { title: "Reviews", url: "/hr/reviews", icon: Star },
+  { title: "PTO", url: "/hr/pto", icon: Plane },
+  { title: "Terminations", url: "/hr/terminations", icon: UserX },
+  { title: "Disputes", url: "/disputes", icon: Scale },
 ];
 
+// Engagement & Intelligence
+const engagementMenuItems = [
+  { title: "EngagementOS™ Dashboard", url: "/engagement/dashboard", icon: TrendingUp },
+  { title: "Employee Engagement", url: "/engagement/employee", icon: Activity },
+  { title: "Leaders Hub", url: "/leaders-hub", icon: UserCog },
+];
+
+// Admin & Workspace Management
 const adminMenuItems = [
-  {
-    title: "Command Center",
-    url: "/admin/command",
-    icon: Activity,
-  },
-  {
-    title: "Usage & Credits",
-    url: "/admin/usage",
-    icon: BarChart3,
-  },
-  {
-    title: "Admin Support",
-    url: "/admin/support",
-    icon: Headphones,
-  },
-  {
-    title: "Support Dashboard",
-    url: "/support/dashboard",
-    icon: MessageSquare,
-  },
-  {
-    title: "Live Chat",
-    url: "/support/chat",
-    icon: MessageSquare,
-  },
+  { title: "Command Center", url: "/admin/command", icon: Activity },
+  { title: "Usage & Credits", url: "/admin/usage", icon: BarChart3 },
+  { title: "Custom Forms", url: "/admin/custom-forms", icon: FileCheck },
+  { title: "HireOS Workflow", url: "/owner/hireos/workflow-builder", icon: Briefcase },
 ];
 
+// Support & Communication
+const supportMenuItems = [
+  { title: "Live HelpDesk", url: "/live-chat", icon: MessageSquare },
+  { title: "Support Dashboard", url: "/support/dashboard", icon: Headphones },
+  { title: "Admin Support", url: "/admin/support", icon: Shield },
+  { title: "Mobile Chat", url: "/mobile-chat", icon: MessageSquare },
+];
+
+// Platform Administration
 const platformAdminMenuItems = [
-  {
-    title: "Platform Admin",
-    url: "/platform/admin",
-    icon: Shield,
-  },
-  {
-    title: "Platform Users",
-    url: "/platform/users",
-    icon: UserCog,
-  },
+  { title: "Platform Dashboard", url: "/root-admin-portal", icon: Shield },
+  { title: "Platform Admin", url: "/platform/admin", icon: Shield },
+  { title: "Platform Users", url: "/platform/users", icon: UserCog },
+  { title: "Sales Portal", url: "/platform/sales", icon: DollarSign },
+];
+
+// Portals
+const portalMenuItems = [
+  { title: "Employee Portal", url: "/employee/portal", icon: Users },
+  { title: "Client Portal", url: "/client/portal", icon: UserCircle },
+  { title: "Auditor Portal", url: "/auditor/portal", icon: Scale },
+];
+
+// System & Settings
+const systemMenuItems = [
+  { title: "Settings", url: "/settings", icon: Settings },
+  { title: "Profile", url: "/employee/profile", icon: UserCircle },
 ];
 
 export function AppSidebar() {
@@ -182,30 +117,32 @@ export function AppSidebar() {
     showLogoutTransition(transition);
   };
 
-  // Check if user is Root Admin (platform-level access)
-  const isRootAdmin = (user as any)?.platformRole === 'root' || (user as any)?.platformRole === 'sysop';
-  
-  // Check if user is Organization Leader (Owner or Manager)
-  const isLeader = (user as any)?.workspaceRole === 'owner' || (user as any)?.workspaceRole === 'manager';
-
-  // Root Admin only sees platform-level items, not workspace operations
-  const rootAdminItems = [
-    {
-      title: "Platform Dashboard",
-      url: "/root-admin-portal",
-      icon: Shield,
-    },
-    {
-      title: "Live HelpDesk",
-      url: "/live-chat",
-      icon: MessageSquare,
-    },
-    {
-      title: "Settings",
-      url: "/settings",
-      icon: Settings,
-    },
-  ];
+  const renderMenuSection = (title: string, items: typeof coreMenuItems) => (
+    <SidebarGroup>
+      <SidebarGroupLabel className="px-3 mb-3 text-xs font-black uppercase tracking-wider text-muted-foreground/70">
+        {title}
+      </SidebarGroupLabel>
+      <SidebarGroupContent>
+        <SidebarMenu className="space-y-1">
+          {items.map((item) => (
+            <SidebarMenuItem key={item.title}>
+              <SidebarMenuButton 
+                asChild 
+                isActive={location === item.url}
+                data-testid={`link-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
+                className="hover-elevate active-elevate-2 overflow-visible"
+              >
+                <Link href={item.url}>
+                  <item.icon className="h-4 w-4" />
+                  <span className="font-semibold">{item.title}</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          ))}
+        </SidebarMenu>
+      </SidebarGroupContent>
+    </SidebarGroup>
+  );
 
   return (
     <Sidebar variant="floating" collapsible="offcanvas" className="sidebar-glass">
@@ -216,140 +153,32 @@ export function AppSidebar() {
       </SidebarHeader>
       
       <SidebarContent className="px-3 py-4">
-        <SidebarGroup>
-          <SidebarGroupLabel className="px-3 mb-3 text-xs font-black uppercase tracking-wider text-muted-foreground/70">
-            {isRootAdmin ? "Platform Admin" : "Navigation"}
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu className="space-y-1">
-              {(isRootAdmin ? rootAdminItems : menuItems).map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton 
-                    asChild 
-                    isActive={location === item.url}
-                    data-testid={`link-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
-                    className="hover-elevate active-elevate-2 overflow-visible"
-                  >
-                    <Link href={item.url}>
-                      <item.icon className="h-4 w-4" />
-                      <span className="font-semibold">{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        {/* Leaders Hub - Only for Owner/Manager (NOT root admin) */}
-        {!isRootAdmin && isLeader && (
-          <SidebarGroup>
-            <SidebarGroupLabel className="px-3 mb-3 text-xs font-black uppercase tracking-wider text-muted-foreground/70">
-              Leaders Hub
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu className="space-y-1">
-                <SidebarMenuItem>
-                  <SidebarMenuButton 
-                    asChild 
-                    isActive={location === '/leaders-hub'}
-                    data-testid="link-leaders-hub"
-                    className="hover-elevate active-elevate-2 overflow-visible"
-                  >
-                    <Link href="/leaders-hub">
-                      <UserCog className="h-4 w-4" />
-                      <span className="font-semibold">Leaders Hub</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
-
-        {/* HR Management - Only for workspace admin (NOT root admin) */}
-        {!isRootAdmin && (
-          <SidebarGroup>
-            <SidebarGroupLabel className="px-3 mb-3 text-xs font-black uppercase tracking-wider text-muted-foreground/70">
-              HR Management
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu className="space-y-1">
-                {hrMenuItems.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton 
-                      asChild 
-                      isActive={location === item.url}
-                      data-testid={`link-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
-                      className="hover-elevate active-elevate-2 overflow-visible"
-                    >
-                      <Link href={item.url}>
-                        <item.icon className="h-4 w-4" />
-                        <span className="font-semibold">{item.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
-
-        {/* Admin Tools - Only for workspace admin (NOT root admin) */}
-        {!isRootAdmin && (
-          <SidebarGroup>
-            <SidebarGroupLabel className="px-3 mb-3 text-xs font-black uppercase tracking-wider text-muted-foreground/70">
-              Admin
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu className="space-y-1">
-                {adminMenuItems.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton 
-                      asChild 
-                      isActive={location === item.url}
-                      data-testid={`link-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
-                      className="hover-elevate active-elevate-2 overflow-visible"
-                    >
-                      <Link href={item.url}>
-                        <item.icon className="h-4 w-4" />
-                        <span className="font-semibold">{item.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
-
-        {/* Platform Admin - Only for workspace admins (NOT root admin) */}
-        {!isRootAdmin && (
-          <SidebarGroup>
-            <SidebarGroupLabel className="px-3 mb-3 text-xs font-black uppercase tracking-wider text-muted-foreground/70">
-              Platform
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu className="space-y-1">
-                {platformAdminMenuItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton 
-                    asChild 
-                    isActive={location === item.url}
-                    data-testid={`link-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
-                    className="hover-elevate active-elevate-2 overflow-visible"
-                  >
-                    <Link href={item.url}>
-                      <item.icon className="h-4 w-4" />
-                      <span className="font-semibold">{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-        )}
+        {/* Core Features - Always visible to ALL users */}
+        {renderMenuSection("Core Features", coreMenuItems)}
+        
+        {/* Financial - Always visible */}
+        {renderMenuSection("Financial", financeMenuItems)}
+        
+        {/* HR Management - Always visible */}
+        {renderMenuSection("HR Management", hrMenuItems)}
+        
+        {/* Engagement & Intelligence - Always visible */}
+        {renderMenuSection("Intelligence", engagementMenuItems)}
+        
+        {/* Admin Tools - Always visible */}
+        {renderMenuSection("Admin", adminMenuItems)}
+        
+        {/* Support & Communication - Always visible */}
+        {renderMenuSection("Support", supportMenuItems)}
+        
+        {/* Platform Administration - Always visible */}
+        {renderMenuSection("Platform", platformAdminMenuItems)}
+        
+        {/* Portals - Always visible */}
+        {renderMenuSection("Portals", portalMenuItems)}
+        
+        {/* System & Settings - Always visible */}
+        {renderMenuSection("System", systemMenuItems)}
       </SidebarContent>
 
       <SidebarFooter className="p-4 border-t border-white/[0.08]">

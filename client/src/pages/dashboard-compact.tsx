@@ -174,125 +174,49 @@ export default function DashboardCompact() {
         </div>
       </div>
 
-      {/* COMPACT STATS - Dynamic row based on role */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
-        {[
-          { icon: Users, label: "Total Employees", value: totalEmployees, color: "text-indigo-600", testid: "stat-employees" },
-          { icon: Activity, label: "Active Today", value: activeToday, color: "text-purple-600", testid: "stat-active" },
-          { icon: DollarSign, label: "Total Revenue", value: `$${totalRevenue.toFixed(2)}`, color: "text-emerald-600", testid: "stat-revenue" },
-          ...(workspaceRole === 'owner' && totalTurnoverCost > 0
-            ? [{ 
-                icon: Brain, 
-                label: "PredictionOS™ Risk", 
-                value: `$${totalTurnoverCost.toFixed(0)}`, 
-                color: "text-red-600", 
-                testid: "stat-turnover-cost",
-                badge: highRiskCount > 0 ? `${highRiskCount} high risk` : null
-              }]
-            : [{ icon: Calendar, label: "Upcoming Shifts", value: totalShifts, color: "text-blue-600", testid: "stat-shifts" }]
-          ),
-        ].map((stat, i) => (
-          <Card key={i} className="hover-elevate">
-            <CardContent className="p-3">
-              <div className="flex items-center gap-2">
-                <stat.icon className={`h-4 w-4 ${stat.color}`} />
-                <div className="flex-1 min-w-0">
-                  <div className="text-[10px] text-muted-foreground truncate">{stat.label}</div>
-                  <div className="text-base font-bold" data-testid={stat.testid}>{stat.value}</div>
-                  {(stat as any).badge && (
-                    <Badge variant="destructive" className="text-[8px] h-4 px-1 mt-0.5">
-                      <AlertTriangle className="h-2 w-2 mr-0.5" />
-                      {(stat as any).badge}
-                    </Badge>
-                  )}
-                </div>
+      {/* SIMPLIFIED STATS - Role-relevant metrics only */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        <Card className="hover-elevate">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
+                <Users className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
               </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-xs text-muted-foreground truncate">Employees</div>
+                <div className="text-2xl font-bold" data-testid="stat-employees">{totalEmployees}</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-      {/* QUICK LINKS SECTION - Compact grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-        <Link href="/employees" className="block">
-          <Card className="hover-elevate active-elevate-2 cursor-pointer h-full">
-            <CardContent className="p-3 text-center">
-              <Users className="h-6 w-6 mx-auto mb-1 text-indigo-500" />
-              <div className="text-xs font-medium">Employees</div>
-              <div className="text-[10px] text-muted-foreground">Manage team</div>
-            </CardContent>
-          </Card>
-        </Link>
-        
-        <Link href="/schedules" className="block">
-          <Card className="hover-elevate active-elevate-2 cursor-pointer h-full">
-            <CardContent className="p-3 text-center">
-              <Calendar className="h-6 w-6 mx-auto mb-1 text-blue-500" />
-              <div className="text-xs font-medium">Scheduling</div>
-              <div className="text-[10px] text-muted-foreground">Plan shifts</div>
-            </CardContent>
-          </Card>
-        </Link>
+        <Card className="hover-elevate">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                <Activity className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-xs text-muted-foreground truncate">Active Today</div>
+                <div className="text-2xl font-bold" data-testid="stat-active">{activeToday}</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-        <Link href="/time-tracking" className="block">
-          <Card className="hover-elevate active-elevate-2 cursor-pointer h-full">
-            <CardContent className="p-3 text-center">
-              <Clock className="h-6 w-6 mx-auto mb-1 text-purple-500" />
-              <div className="text-xs font-medium">Time Tracking</div>
-              <div className="text-[10px] text-muted-foreground">Track hours</div>
-            </CardContent>
-          </Card>
-        </Link>
-
-        <Link href="/invoices" className="block">
-          <Card className="hover-elevate active-elevate-2 cursor-pointer h-full">
-            <CardContent className="p-3 text-center">
-              <FileText className="h-6 w-6 mx-auto mb-1 text-emerald-500" />
-              <div className="text-xs font-medium">Invoices</div>
-              <div className="text-[10px] text-muted-foreground">Billing</div>
-            </CardContent>
-          </Card>
-        </Link>
-
-        <Link href="/clients" className="block">
-          <Card className="hover-elevate active-elevate-2 cursor-pointer h-full">
-            <CardContent className="p-3 text-center">
-              <Briefcase className="h-6 w-6 mx-auto mb-1 text-cyan-500" />
-              <div className="text-xs font-medium">Clients</div>
-              <div className="text-[10px] text-muted-foreground">Manage clients</div>
-            </CardContent>
-          </Card>
-        </Link>
-
-        <Link href="/analytics" className="block">
-          <Card className="hover-elevate active-elevate-2 cursor-pointer h-full">
-            <CardContent className="p-3 text-center">
-              <TrendingUp className="h-6 w-6 mx-auto mb-1 text-amber-500" />
-              <div className="text-xs font-medium">Analytics</div>
-              <div className="text-[10px] text-muted-foreground">Insights</div>
-            </CardContent>
-          </Card>
-        </Link>
-
-        <Link href="/sales-crm" className="block">
-          <Card className="hover-elevate active-elevate-2 cursor-pointer h-full">
-            <CardContent className="p-3 text-center">
-              <TrendingUp className="h-6 w-6 mx-auto mb-1 text-violet-500" />
-              <div className="text-xs font-medium">Sales CRM</div>
-              <div className="text-[10px] text-muted-foreground">AI leads</div>
-            </CardContent>
-          </Card>
-        </Link>
-
-        <Link href="/live-chat" className="block">
-          <Card className="hover-elevate active-elevate-2 cursor-pointer h-full">
-            <CardContent className="p-3 text-center">
-              <Users className="h-6 w-6 mx-auto mb-1 text-blue-500" />
-              <div className="text-xs font-medium">Live Support</div>
-              <div className="text-[10px] text-muted-foreground">Help desk</div>
-            </CardContent>
-          </Card>
-        </Link>
+        <Card className="hover-elevate">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
+                <DollarSign className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-xs text-muted-foreground truncate">Revenue</div>
+                <div className="text-2xl font-bold" data-testid="stat-revenue">${totalRevenue.toFixed(0)}</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
