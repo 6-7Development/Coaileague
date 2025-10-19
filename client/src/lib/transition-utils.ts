@@ -27,7 +27,7 @@ export function showLogoutTransition(helpers: TransitionHelperProps) {
     submessage: "See you soon!",
     duration: 1500,
     onComplete: () => {
-      window.location.href = "/login";
+      window.location.href = "/";
     }
   });
 }
