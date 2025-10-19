@@ -18,6 +18,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
+import { MobileLoading, LoadingCard } from "@/components/mobile-loading";
 
 const disputeSchema = z.object({
   title: z.string().min(5, "Title must be at least 5 characters").max(200, "Title too long"),
@@ -424,28 +425,39 @@ export default function ReportsPage() {
     return <Badge variant={config.variant} data-testid={`badge-status-${status}`}>{config.label}</Badge>;
   };
 
+  // Show loading state
+  if (templatesLoading || submissionsLoading) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <MobileLoading message="Loading reports..." />
+      </div>
+    );
+  }
+
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full h-full overflow-auto">
-      <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
-        <div className="space-y-4 sm:space-y-6">
-        {/* Page Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-[hsl(var(--cad-text-primary))]">
+    <div className="h-full overflow-auto mobile-scroll safe-bottom">
+      <div className="p-3 sm:p-4 md:p-6 lg:p-8 max-w-7xl mx-auto w-full">
+        <div className="space-y-3 sm:space-y-4 md:space-y-6">
+        {/* Mobile-optimized Page Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 safe-top">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold text-[hsl(var(--cad-text-primary))] truncate">
               Report Management System
             </h1>
-            <p className="text-sm text-[hsl(var(--cad-text-secondary))] mt-1">
+            <p className="text-xs sm:text-sm text-[hsl(var(--cad-text-secondary))] mt-0.5">
               Create, review, and manage organizational reports
             </p>
           </div>
           <Dialog open={isNewReportOpen} onOpenChange={setIsNewReportOpen}>
             <DialogTrigger asChild>
-              <Button data-testid="button-new-report">
-                <Plus className="w-4 h-4 mr-2" />
-                New Report
+              <Button className="w-full sm:w-auto touch-target" data-testid="button-new-report">
+                <Plus className="w-4 h-4 mr-2 flex-shrink-0" />
+                <span className="truncate">New Report</span>
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            {/* Mobile: Full-screen dialog, Desktop: Standard modal */}
+            <DialogContent className="w-full h-full sm:h-auto sm:w-auto sm:max-w-2xl p-0 sm:p-6 overflow-hidden bottom-sheet-enter">
+              <div className="h-full overflow-y-auto mobile-scroll p-4 sm:p-0">
               <DialogHeader>
                 <DialogTitle>Create New Report</DialogTitle>
                 <DialogDescription>
@@ -494,58 +506,59 @@ export default function ReportsPage() {
                   isSubmitting={submitReport.isPending}
                 />
               )}
+              </div>
             </DialogContent>
           </Dialog>
         </div>
-        {/* Header Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Active Templates</CardTitle>
-              <FileText className="h-4 w-4 text-muted-foreground" />
+        {/* Mobile-optimized Header Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
+          <Card className="mobile-card-enter">
+            <CardHeader className="flex flex-row items-center justify-between gap-1 sm:gap-2 space-y-0 pb-1.5 sm:pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium truncate">Active Templates</CardTitle>
+              <FileText className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold" data-testid="stat-active-templates">{activeTemplates.length}</div>
-              <p className="text-xs text-muted-foreground">
+            <CardContent className="pb-3 sm:pb-6">
+              <div className="text-xl sm:text-2xl font-bold" data-testid="stat-active-templates">{activeTemplates.length}</div>
+              <p className="text-[10px] sm:text-xs text-muted-foreground">
                 {inactiveTemplates.length} inactive
               </p>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pending Review</CardTitle>
-              <Clock className="h-4 w-4 text-yellow-500" />
+          <Card className="mobile-card-enter">
+            <CardHeader className="flex flex-row items-center justify-between gap-1 sm:gap-2 space-y-0 pb-1.5 sm:pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium truncate">Pending Review</CardTitle>
+              <Clock className="h-3 w-3 sm:h-4 sm:w-4 text-yellow-500 flex-shrink-0" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-yellow-500" data-testid="stat-pending-reports">{pendingReports.length}</div>
-              <p className="text-xs text-muted-foreground">
+            <CardContent className="pb-3 sm:pb-6">
+              <div className="text-xl sm:text-2xl font-bold text-yellow-500" data-testid="stat-pending-reports">{pendingReports.length}</div>
+              <p className="text-[10px] sm:text-xs text-muted-foreground">
                 Awaiting approval
               </p>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Approved</CardTitle>
-              <CheckCircle2 className="h-4 w-4 text-green-500" />
+          <Card className="mobile-card-enter">
+            <CardHeader className="flex flex-row items-center justify-between gap-1 sm:gap-2 space-y-0 pb-1.5 sm:pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium truncate">Approved</CardTitle>
+              <CheckCircle2 className="h-3 w-3 sm:h-4 sm:w-4 text-green-500 flex-shrink-0" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-500" data-testid="stat-approved-reports">{approvedReports.length}</div>
-              <p className="text-xs text-muted-foreground">
+            <CardContent className="pb-3 sm:pb-6">
+              <div className="text-xl sm:text-2xl font-bold text-green-500" data-testid="stat-approved-reports">{approvedReports.length}</div>
+              <p className="text-[10px] sm:text-xs text-muted-foreground">
                 Ready for customers
               </p>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Reports</CardTitle>
-              <ClipboardCheck className="h-4 w-4 text-muted-foreground" />
+          <Card className="mobile-card-enter">
+            <CardHeader className="flex flex-row items-center justify-between gap-1 sm:gap-2 space-y-0 pb-1.5 sm:pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium truncate">Total Reports</CardTitle>
+              <ClipboardCheck className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold" data-testid="stat-total-reports">{submissions.length}</div>
-              <p className="text-xs text-muted-foreground">
+            <CardContent className="pb-3 sm:pb-6">
+              <div className="text-xl sm:text-2xl font-bold" data-testid="stat-total-reports">{submissions.length}</div>
+              <p className="text-[10px] sm:text-xs text-muted-foreground">
                 All time submissions
               </p>
             </CardContent>
