@@ -150,8 +150,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Health check endpoint for uptime monitoring (no auth or rate limit required)
   app.get('/api/health', async (req, res) => {
     try {
-      // Basic health check - verify database connection
-      await db.execute(sql`SELECT 1`);
+      // Basic health check - verify database connection using imported db
+      const { db: database } = await import("./db");
+      await database.execute(sql`SELECT 1`);
       
       res.json({
         status: 'healthy',
