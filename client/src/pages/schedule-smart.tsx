@@ -49,6 +49,11 @@ import {
   AlertTriangle,
   Zap,
   Sparkles,
+  ChevronLeft,
+  ChevronRight,
+  Menu,
+  Bell,
+  CalendarDays,
 } from "lucide-react";
 import type { Shift, Employee, Client } from "@shared/schema";
 
@@ -76,6 +81,10 @@ export default function SmartScheduleOS() {
   const [isAddShiftOpen, setIsAddShiftOpen] = useState(false);
   const [isShiftPopoverOpen, setIsShiftPopoverOpen] = useState(false);
   const [newShiftSlot, setNewShiftSlot] = useState<{start: Date, end: Date, employeeId?: string} | null>(null);
+  
+  // Mobile view state
+  const [mobileTab, setMobileTab] = useState<'my-schedule' | 'full-schedule' | 'pending'>('full-schedule');
+  const [selectedMobileDate, setSelectedMobileDate] = useState(new Date());
   
   // Form state for shift creation
   const [formData, setFormData] = useState({
@@ -426,8 +435,8 @@ export default function SmartScheduleOS() {
   return (
     <DndProvider backend={MultiBackend} options={HTML5toTouch}>
       <div className="h-screen flex flex-col bg-background" data-testid="page-smart-schedule">
-      {/* Header Bar - Mobile Responsive */}
-      <div className="border-b bg-card px-3 sm:px-6 py-3 sm:py-4">
+      {/* Header Bar - Desktop Only */}
+      <div className="hidden md:block border-b bg-card px-3 sm:px-6 py-3 sm:py-4">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 sm:gap-4 mb-3 sm:mb-4">
           <div className="flex-shrink-0">
             <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold flex items-center gap-1.5 sm:gap-2" data-testid="text-schedule-title">
@@ -520,8 +529,8 @@ export default function SmartScheduleOS() {
         </div>
       </div>
 
-      {/* ScheduleOS™ AI Auto-Scheduling Panel - Optional Premium Feature */}
-      <div className="px-3 sm:px-6 py-3 sm:py-4 border-b">
+      {/* ScheduleOS™ AI Auto-Scheduling Panel - Desktop Only */}
+      <div className="hidden md:block px-3 sm:px-6 py-3 sm:py-4 border-b">
         <ScheduleOSPanel 
           weekStartDate={moment(currentDate).startOf('week').toDate()}
           onScheduleGenerated={() => {
@@ -534,9 +543,9 @@ export default function SmartScheduleOS() {
         />
       </div>
 
-      {/* Calendar View - Mobile Responsive Container */}
-      <div className="flex-1 overflow-hidden p-2 sm:p-4 lg:p-6">
-        <div className="h-full bg-card rounded-md sm:rounded-lg border shadow-sm overflow-hidden">
+      {/* Desktop Calendar View */}
+      <div className="hidden md:flex flex-1 overflow-hidden p-2 sm:p-4 lg:p-6">
+        <div className="h-full w-full bg-card rounded-md sm:rounded-lg border shadow-sm overflow-hidden">
           <DnDCalendar
             localizer={localizer}
             events={calendarEvents}
@@ -562,6 +571,197 @@ export default function SmartScheduleOS() {
             className="smart-schedule-calendar"
             data-testid="calendar-view"
           />
+        </div>
+      </div>
+
+      {/* Mobile Schedule View - Sling Style */}
+      <div className="md:hidden flex-1 flex flex-col overflow-hidden">
+        {/* Mobile Header with Tabs */}
+        <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white">
+          {/* Top Bar - Date Selector and Menu */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+            <div className="flex items-center gap-2">
+              <Menu className="h-5 w-5" />
+              <span className="font-semibold">{moment(selectedMobileDate).format('MMMM')}</span>
+              <ChevronLeft className="h-4 w-4" onClick={() => setSelectedMobileDate(moment(selectedMobileDate).subtract(1, 'month').toDate())} />
+              <ChevronRight className="h-4 w-4" onClick={() => setSelectedMobileDate(moment(selectedMobileDate).add(1, 'month').toDate())} />
+            </div>
+            <div className="flex items-center gap-3">
+              <CalendarDays className="h-5 w-5" />
+              <Bell className="h-5 w-5" />
+              <Menu className="h-5 w-5" />
+            </div>
+          </div>
+
+          {/* Tabs */}
+          <div className="flex">
+            <button
+              onClick={() => setMobileTab('my-schedule')}
+              className={`flex-1 py-3 text-sm font-medium transition-colors ${
+                mobileTab === 'my-schedule' 
+                  ? 'text-white border-b-2 border-white' 
+                  : 'text-white/70'
+              }`}
+              data-testid="tab-my-schedule"
+            >
+              My schedule
+            </button>
+            <button
+              onClick={() => setMobileTab('full-schedule')}
+              className={`flex-1 py-3 text-sm font-medium transition-colors ${
+                mobileTab === 'full-schedule' 
+                  ? 'text-white border-b-2 border-white' 
+                  : 'text-white/70'
+              }`}
+              data-testid="tab-full-schedule"
+            >
+              Full schedule
+            </button>
+            <button
+              onClick={() => setMobileTab('pending')}
+              className={`flex-1 py-3 text-sm font-medium transition-colors ${
+                mobileTab === 'pending' 
+                  ? 'text-white border-b-2 border-white' 
+                  : 'text-white/70'
+              }`}
+              data-testid="tab-pending"
+            >
+              Pending
+            </button>
+          </div>
+        </div>
+
+        {/* Week Date Picker */}
+        <div className="flex items-center justify-between bg-white px-4 py-3 border-b overflow-x-auto">
+          <ChevronLeft 
+            className="h-5 w-5 text-gray-600 flex-shrink-0" 
+            onClick={() => setSelectedMobileDate(moment(selectedMobileDate).subtract(7, 'days').toDate())}
+          />
+          <div className="flex gap-4 mx-2">
+            {[0, 1, 2, 3, 4, 5, 6].map((dayOffset) => {
+              const day = moment(selectedMobileDate).startOf('week').add(dayOffset, 'days');
+              const isToday = day.isSame(moment(), 'day');
+              const isSelected = day.isSame(moment(selectedMobileDate), 'day');
+              return (
+                <button
+                  key={dayOffset}
+                  onClick={() => setSelectedMobileDate(day.toDate())}
+                  className="flex flex-col items-center min-w-[32px]"
+                  data-testid={`date-${dayOffset}`}
+                >
+                  <span className="text-xs text-gray-500 mb-1">{day.format('D')}</span>
+                  <div className={`w-2 h-2 rounded-full ${
+                    isSelected ? 'bg-blue-600' : isToday ? 'bg-blue-400' : ''
+                  }`} />
+                </button>
+              );
+            })}
+          </div>
+          <ChevronRight 
+            className="h-5 w-5 text-gray-600 flex-shrink-0" 
+            onClick={() => setSelectedMobileDate(moment(selectedMobileDate).add(7, 'days').toDate())}
+          />
+        </div>
+
+        {/* Week Stats Bar */}
+        <div className="bg-white px-4 py-2 border-b flex items-center justify-between text-xs text-gray-500">
+          <span>{moment(selectedMobileDate).startOf('week').format('D')} - {moment(selectedMobileDate).endOf('week').format('D MMM')}</span>
+          <span>{weekStats.totalHours}h</span>
+        </div>
+
+        {/* Shifts List */}
+        <div className="flex-1 overflow-y-auto bg-gray-50">
+          {(() => {
+            // Filter shifts based on selected date and tab
+            const dayShifts = shifts.filter(shift => {
+              const shiftDate = moment(shift.startTime);
+              const isSameDay = shiftDate.isSame(selectedMobileDate, 'day');
+              
+              if (!isSameDay) return false;
+              
+              // For "My schedule" tab, you would filter by current user
+              // For now, show all shifts in "Full schedule"
+              if (mobileTab === 'my-schedule') {
+                // TODO: Filter by current user's shifts
+                return true;
+              }
+              
+              return true;
+            }).sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+
+            if (dayShifts.length === 0) {
+              return (
+                <div className="flex flex-col items-center justify-center h-full text-gray-400 px-4">
+                  <Clock className="h-12 w-12 mb-2" />
+                  <p className="text-sm">No shifts scheduled</p>
+                  <p className="text-xs mt-1">for {moment(selectedMobileDate).format('MMMM D, YYYY')}</p>
+                </div>
+              );
+            }
+
+            // Group by date
+            const selectedDay = moment(selectedMobileDate).format('D');
+            const selectedDayOfWeek = moment(selectedMobileDate).format('ddd').toUpperCase();
+
+            return (
+              <div className="p-3">
+                {/* Date Header */}
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="bg-blue-600 text-white rounded-lg p-3 text-center min-w-[60px]">
+                    <div className="text-2xl font-bold">{selectedDay}</div>
+                    <div className="text-xs">{selectedDayOfWeek}</div>
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {dayShifts.length} shift{dayShifts.length !== 1 ? 's' : ''}
+                  </div>
+                </div>
+
+                {/* Shift Cards */}
+                <div className="space-y-2">
+                  {dayShifts.map((shift) => {
+                    const employee = employees.find(e => e.id === shift.employeeId);
+                    const client = shift.clientId ? clients.find(c => c.id === shift.clientId) : null;
+                    const duration = moment(shift.endTime).diff(moment(shift.startTime), 'hours', true);
+                    const roleColor = getRoleColor(shift.employeeId);
+                    
+                    return (
+                      <button
+                        key={shift.id}
+                        onClick={() => {
+                          setSelectedShift(shift);
+                          setIsShiftPopoverOpen(true);
+                        }}
+                        className={`w-full text-left p-3 rounded-lg ${roleColor.replace('bg-', 'bg-')} bg-opacity-90 text-white shadow-sm`}
+                        data-testid={`shift-card-${shift.id}`}
+                      >
+                        <div className="flex items-start justify-between mb-1">
+                          <div className="text-sm font-semibold">
+                            {moment(shift.startTime).format('h:mm A')} - {moment(shift.endTime).format('h:mm A')} • {duration.toFixed(1)}h
+                          </div>
+                          {detectConflict(shift, shifts) && (
+                            <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+                          )}
+                        </div>
+                        <div className="text-sm font-medium">
+                          {employee?.firstName} {employee?.lastName}
+                        </div>
+                        {client && (
+                          <div className="text-xs opacity-90 mt-1">
+                            {client.firstName} {client.lastName} • {getEmployeeRole(shift.employeeId)}
+                          </div>
+                        )}
+                        {shift.description && (
+                          <div className="text-xs opacity-75 mt-1 line-clamp-1">
+                            {shift.description}
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
         </div>
       </div>
 
