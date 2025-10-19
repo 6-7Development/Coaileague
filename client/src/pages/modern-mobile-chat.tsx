@@ -1155,14 +1155,14 @@ export default function ModernMobileChat() {
                 <Users size={24} />
               </button>
             </SheetTrigger>
-            <SheetContent side="bottom" className="bg-slate-900/95 backdrop-blur-xl border-t border-white/10 max-h-[80vh]">
-              <SheetHeader>
+            <SheetContent side="bottom" className="bg-slate-900/95 backdrop-blur-xl border-t border-white/10 h-[85vh] flex flex-col">
+              <SheetHeader className="flex-shrink-0">
                 <SheetTitle className="text-white flex items-center gap-2">
                   <Users className="w-5 h-5 text-indigo-400" />
                   Online Users ({onlineUsers.length})
                 </SheetTitle>
               </SheetHeader>
-              <div className="mt-4 space-y-2 max-h-[65vh] overflow-y-auto pr-2">
+              <div className="mt-4 space-y-2 flex-1 overflow-y-auto pr-2">
                 {onlineUsers.map((user) => {
                   const isBot = user.role === 'bot' || user.id?.includes('helpos') || user.id?.includes('-ai-');
                   return (

@@ -81,12 +81,21 @@ export function UserDiagnosticsPanel({
                 </span>
                 
                 <span className="text-muted-foreground">Email:</span>
-                <span className="font-medium" data-testid="text-user-email">
+                <span className="font-medium text-xs break-all" data-testid="text-user-email">
                   {userContext.user?.email}
                 </span>
 
+                {userContext.user?.phone && (
+                  <>
+                    <span className="text-muted-foreground">Phone:</span>
+                    <span className="font-medium text-xs" data-testid="text-user-phone">
+                      {userContext.user.phone}
+                    </span>
+                  </>
+                )}
+
                 <span className="text-muted-foreground">User ID:</span>
-                <span className="text-xs font-mono" data-testid="text-user-id">
+                <span className="text-xs font-mono break-all" data-testid="text-user-id">
                   {userContext.user?.id}
                 </span>
 
@@ -126,15 +135,61 @@ export function UserDiagnosticsPanel({
                     {userContext.workspace.name}
                   </span>
 
+                  {userContext.workspace.companyName && (
+                    <>
+                      <span className="text-muted-foreground">Company:</span>
+                      <span className="font-medium text-xs" data-testid="text-company-name">
+                        {userContext.workspace.companyName}
+                      </span>
+                    </>
+                  )}
+
+                  <span className="text-muted-foreground">Workspace ID:</span>
+                  <span className="text-xs font-mono break-all" data-testid="text-workspace-id">
+                    {userContext.workspace.id}
+                  </span>
+
+                  {userContext.workspace.organizationId && (
+                    <>
+                      <span className="text-muted-foreground">Org ID:</span>
+                      <span className="text-xs font-mono" data-testid="text-org-id">
+                        {userContext.workspace.organizationId}
+                      </span>
+                    </>
+                  )}
+
+                  {userContext.workspace.organizationSerial && (
+                    <>
+                      <span className="text-muted-foreground">Org Serial:</span>
+                      <span className="text-xs font-mono" data-testid="text-org-serial">
+                        {userContext.workspace.organizationSerial}
+                      </span>
+                    </>
+                  )}
+
                   <span className="text-muted-foreground">Role:</span>
                   <Badge variant="secondary" className="w-fit">
-                    {userContext.workspaceRole || 'Member'}
+                    {userContext.workspace.role || 'Member'}
                   </Badge>
 
-                  <span className="text-muted-foreground">Industry:</span>
-                  <span className="text-xs">
-                    {userContext.workspace.industry || 'Not specified'}
-                  </span>
+                  {userContext.workspace.subscriptionTier && (
+                    <>
+                      <span className="text-muted-foreground">Subscription:</span>
+                      <div className="flex gap-1">
+                        <Badge variant="outline" className="w-fit text-xs capitalize">
+                          {userContext.workspace.subscriptionTier}
+                        </Badge>
+                        {userContext.workspace.subscriptionStatus && (
+                          <Badge 
+                            variant={userContext.workspace.subscriptionStatus === 'active' ? 'default' : 'destructive'} 
+                            className="w-fit text-xs capitalize"
+                          >
+                            {userContext.workspace.subscriptionStatus}
+                          </Badge>
+                        )}
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             ) : (
