@@ -331,7 +331,13 @@ export default function RootAdminDashboard() {
             <div className="flex gap-2 pt-2">
               {!editingProfile ? (
                 <Button
-                  onClick={() => setEditingProfile(true)}
+                  onClick={() => {
+                    setProfileForm({
+                      firstName: (user as any)?.firstName || '',
+                      lastName: (user as any)?.lastName || '',
+                    });
+                    setEditingProfile(true);
+                  }}
                   className="bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/30 text-white"
                   data-testid="button-edit-profile"
                 >
