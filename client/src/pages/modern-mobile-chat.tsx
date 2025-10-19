@@ -142,7 +142,7 @@ export default function ModernMobileChat() {
 
   // Use WebSocket for real-time messaging
   const { 
-    messages, sendMessage, sendRawMessage, onlineUsers, isConnected
+    messages, sendMessage, sendRawMessage, kickUser, silenceUser, giveVoice, onlineUsers, isConnected
   } = useChatroomWebSocket(isAuthenticated ? userId : undefined, userName);
 
   // Check if user has accepted agreement - FIXED: Custom queryFn to pass sessionId properly  
@@ -874,10 +874,10 @@ export default function ModernMobileChat() {
       return;
     }
     
-    const message = `TEMP_MUTE:${selectedUser.id}:${selectedUser.name}:300`;
-    sendRawMessage(message);
+    // Use proper silenceUser function (duration in minutes)
+    silenceUser(selectedUser.id, 5, 'Temporary mute');
     
-    toast({ title: "🔇 User Muted", description: `${selectedUser.name} • 5min` });
+    toast({ title: "🔇 Muting User...", description: `${selectedUser.name} • 5min` });
   };
 
   const handleKick = () => {
@@ -886,10 +886,10 @@ export default function ModernMobileChat() {
       return;
     }
     
-    const message = `KICK_USER:${selectedUser.id}:${selectedUser.name}`;
-    sendRawMessage(message);
+    // Use proper kickUser function from WebSocket hook
+    kickUser(selectedUser.id, 'Chat violation');
     
-    toast({ title: "✓ User Removed", description: `${selectedUser.name}` });
+    toast({ title: "✓ Kicking User...", description: `${selectedUser.name}` });
     setSelectedUser(null);
   };
 
@@ -899,11 +899,12 @@ export default function ModernMobileChat() {
       return;
     }
     
-    const message = `BAN_USER:${selectedUser.id}:${selectedUser.name}`;
-    sendRawMessage(message);
+    // TODO: Implement ban_user WebSocket command on server
+    // For now, kick the user as banning is not yet implemented
+    kickUser(selectedUser.id, 'Banned for violations');
     
     toast({ 
-      title: "🚫 User Banned", 
+      title: "🚫 Banning User...", 
       description: `${selectedUser.name}`, 
     });
     setSelectedUser(null);

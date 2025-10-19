@@ -510,12 +510,19 @@ export function useChatroomWebSocket(
   }, []);
 
   // Send raw WebSocket message (for custom actions)
+  // Accepts string commands OR object payloads
   const sendRawMessage = useCallback((data: any) => {
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
       return;
     }
 
-    wsRef.current.send(JSON.stringify(data));
+    // If data is already a string, send as-is (for backward compatibility)
+    // Otherwise, JSON stringify objects
+    if (typeof data === 'string') {
+      wsRef.current.send(data);
+    } else {
+      wsRef.current.send(JSON.stringify(data));
+    }
   }, []);
 
   // Connect on mount and when userId changes
