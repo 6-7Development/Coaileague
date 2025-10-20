@@ -179,7 +179,7 @@ export default function Login() {
               variant="outline"
               onClick={() => window.location.href = "/api/login"}
               data-testid="button-google-login"
-              className="hover-elevate active-elevate-2"
+              aria-label="Sign in with Google"
             >
               <SiGoogle className="h-5 w-5 text-red-500" />
             </Button>
@@ -187,7 +187,7 @@ export default function Login() {
               variant="outline"
               onClick={() => window.location.href = "/api/login"}
               data-testid="button-github-login"
-              className="hover-elevate active-elevate-2"
+              aria-label="Sign in with GitHub"
             >
               <Github className="h-5 w-5" />
             </Button>
@@ -195,7 +195,7 @@ export default function Login() {
               variant="outline"
               onClick={() => window.location.href = "/api/login"}
               data-testid="button-facebook-login"
-              className="hover-elevate active-elevate-2"
+              aria-label="Sign in with Facebook"
             >
               <SiFacebook className="h-5 w-5 text-blue-600" />
             </Button>

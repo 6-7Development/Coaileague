@@ -258,7 +258,7 @@ export default function Register() {
               variant="outline"
               onClick={() => window.location.href = "/api/login"}
               data-testid="button-google-signup"
-              className="hover-elevate active-elevate-2"
+              aria-label="Sign up with Google"
             >
               <SiGoogle className="h-5 w-5 text-red-500" />
             </Button>
@@ -266,7 +266,7 @@ export default function Register() {
               variant="outline"
               onClick={() => window.location.href = "/api/login"}
               data-testid="button-github-signup"
-              className="hover-elevate active-elevate-2"
+              aria-label="Sign up with GitHub"
             >
               <Github className="h-5 w-5" />
             </Button>
@@ -274,7 +274,7 @@ export default function Register() {
               variant="outline"
               onClick={() => window.location.href = "/api/login"}
               data-testid="button-facebook-signup"
-              className="hover-elevate active-elevate-2"
+              aria-label="Sign up with Facebook"
             >
               <SiFacebook className="h-5 w-5 text-blue-600" />
             </Button>
