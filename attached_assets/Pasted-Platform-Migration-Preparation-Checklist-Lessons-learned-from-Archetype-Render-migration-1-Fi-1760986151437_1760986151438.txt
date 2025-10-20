@@ -1,0 +1,226 @@
+Platform Migration Preparation Checklist
+Lessons learned from Archetype → Render migration
+
+1. File Upload System
+// server/routes.ts or upload config
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { 
+    fileSize: 80 * 1024 * 1024,  // ✅ 80MB (up from 50MB)
+    files: 1,
+    fieldSize: 80 * 1024 * 1024
+  },
+});
+// Add file validation
+app.post('/api/upload', upload.single('file'), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'No file uploaded' });
+  }
+  // Process upload...
+});
+Why:
+
+✅ 50MB was too small for full projects
+✅ 80MB handles most realistic codebases
+✅ Prevents silent failures on large uploads
+2. Database Configuration (Critical for Render)
+// server/db.ts - MUST handle both development & production
+import { drizzle } from "drizzle-orm/neon-http";
+import { neon } from "@neondatabase/serverless";
+import * as schema from "@shared/schema";
+const databaseUrl = process.env.DATABASE_URL;
+if (!databaseUrl) {
+  throw new Error('DATABASE_URL environment variable is required');
+}
+// ⚠️ RENDER INTERNAL DATABASE URL CHECK
+const isRenderInternal = databaseUrl.includes('.render.internal');
+if (process.env.NODE_ENV === 'production' && !isRenderInternal) {
+  console.warn('⚠️  Using external database URL on Render');
+  console.warn('    Switch to INTERNAL DATABASE URL for better performance');
+}
+const sql = neon(databaseUrl);
+export const db = drizzle(sql, { schema });
+Render Dashboard Setup:
+
+Create PostgreSQL database FIRST
+Copy Internal Database URL (not external)
+Set as DATABASE_URL environment variable
+Format: postgresql://user:pass@hostname.render.internal:5432/dbname
+3. Environment Variables Template
+Create .env.example with ALL required vars:
+
+# Database (REQUIRED)
+DATABASE_URL=postgresql://user:pass@host:5432/dbname
+# Session Security (REQUIRED)
+SESSION_SECRET=your-super-secret-session-key-min-32-chars
+# AI Services (if used)
+ANTHROPIC_API_KEY=sk-ant-xxxxx
+OPENAI_API_KEY=sk-xxxxx
+# Payments (if used)
+STRIPE_SECRET_KEY=sk_live_xxxxx
+STRIPE_WEBHOOK_SECRET=whsec_xxxxx
+# Optional but recommended
+NODE_ENV=production
+PORT=5000
+Before Migration:
+
+✅ Document EVERY env var your app needs
+✅ Mark which are REQUIRED vs optional
+✅ Add graceful degradation for optional features
+4. Health Check Endpoint
+// server/routes.ts
+app.get('/health', async (_req, res) => {
+  const health = {
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    checks: {
+      database: 'ok',
+      ai: process.env.ANTHROPIC_API_KEY ? 'ok' : 'disabled',
+      stripe: process.env.STRIPE_SECRET_KEY ? 'ok' : 'disabled',
+    }
+  };
+  
+  // Test database connection
+  try {
+    await db.select().from(yourTable).limit(1);
+  } catch (error) {
+    health.status = 'degraded';
+    health.checks.database = 'error';
+    return res.status(503).json(health);
+  }
+  
+  res.json(health);
+});
+Why: Render's health checks prevent deploy failures
+
+5. Graceful Feature Degradation
+// Feature flags based on env vars
+export const FEATURES = {
+  AI_GENERATION: !!process.env.ANTHROPIC_API_KEY,
+  PAYMENTS: !!process.env.STRIPE_SECRET_KEY,
+  UPLOADS: true, // Always available
+};
+// In routes:
+if (!FEATURES.AI_GENERATION) {
+  return res.status(503).json({ 
+    error: "AI features temporarily unavailable",
+    feature: 'AI_GENERATION',
+  });
+}
+Why: Missing API keys shouldn't crash entire app
+
+6. Database Schema Migration Strategy
+# BEFORE migrating:
+# 1. Export production data
+pg_dump $OLD_DATABASE_URL > backup.sql
+# 2. Create NEW database on Render
+# 3. Push schema (don't manually migrate)
+npm run db:push --force
+# 4. Import data if needed
+psql $NEW_DATABASE_URL < backup.sql
+⚠️ CRITICAL RULES:
+
+✅ Never change ID column types (serial ↔ varchar breaks everything)
+✅ Use npm run db:push --force instead of manual migrations
+✅ Match Drizzle schema to existing database structure
+7. File Count Handling (For ZIP Uploads)
+// When importing ZIPs:
+const entries = zip.getEntries();
+const validEntries = entries.filter(entry => 
+  !entry.isDirectory && 
+  !entry.entryName.startsWith('__MACOSX') &&
+  !entry.entryName.startsWith('.git')
+);
+console.log(`📦 Importing ${validEntries.length} files from ZIP`);
+// ⚠️ Store accurate count
+await db.insert(projects).values({
+  name: projectName,
+  fileCount: validEntries.length, // ✅ Not entries.length
+});
+8. WebSocket Configuration
+// server/routes.ts
+const wss = new WebSocketServer({ 
+  server: httpServer, 
+  path: '/ws',
+  // ✅ Add timeout handling
+  clientTracking: true,
+  maxPayload: 10 * 1024 * 1024, // 10MB
+});
+wss.on('connection', (ws, req) => {
+  ws.isAlive = true;
+  
+  ws.on('pong', () => {
+    ws.isAlive = true;
+  });
+  
+  // Heartbeat
+  const interval = setInterval(() => {
+    if (ws.isAlive === false) return ws.terminate();
+    ws.isAlive = false;
+    ws.ping();
+  }, 30000);
+  
+  ws.on('close', () => {
+    clearInterval(interval);
+  });
+});
+9. Pre-Migration Testing Checklist
+Local Testing:
+
+ Test with production-like DATABASE_URL
+ Test with all optional env vars MISSING
+ Upload 50MB+ files
+ Test WebSocket connections
+ Verify health check endpoint responds
+ Check all API routes work without secrets
+Render Deploy:
+
+ Set all environment variables BEFORE first deploy
+ Use INTERNAL database URL
+ Configure health check path: /health
+ Set build command: npm run build
+ Set start command: npm start
+10. Common Migration Failures & Fixes
+Issue	Solution
+Database connection timeout	Use INTERNAL database URL (.render.internal)
+Missing API keys crash app	Add feature flags + graceful degradation
+Upload fails silently	Increase multer limits to 80MB
+File count wrong	Filter directories from ZIP entries
+WebSocket errors	Add heartbeat + proper error handling
+Session issues	Set SESSION_SECRET env var
+📋 Copy-Paste Migration Instructions
+# Pre-Migration Checklist for [PROJECT_NAME]
+## 1. Environment Setup
+- [ ] Create Render PostgreSQL database
+- [ ] Copy INTERNAL database URL (not external)
+- [ ] Set all environment variables in Render dashboard
+- [ ] Test locally with production-like env vars
+## 2. Code Updates
+- [ ] Increase upload limit to 80MB in multer config
+- [ ] Add /health endpoint
+- [ ] Add feature flags for optional services
+- [ ] Add database connection error handling
+- [ ] Filter directories when counting ZIP entries
+## 3. Database
+- [ ] Backup existing data: pg_dump $DATABASE_URL > backup.sql
+- [ ] Don't change ID column types
+- [ ] Use npm run db:push --force (not manual migrations)
+## 4. Deploy Settings
+- [ ] Build Command: npm run build
+- [ ] Start Command: npm start
+- [ ] Health Check Path: /health
+- [ ] Environment: Node 20
+## 5. Post-Deploy Testing
+- [ ] Visit /health endpoint
+- [ ] Test file upload (50MB+ file)
+- [ ] Verify WebSocket connection
+- [ ] Check all features work
+- [ ] Monitor logs for errors
+Bottom Line: The biggest issues we hit were:
+
+✅ Upload size too small (50MB → 80MB)
+✅ External vs internal database URLs (use .render.internal)
+✅ Missing env vars crashing app (add feature flags)
+✅ File count bugs (filter directories properly)
+Copy this checklist for your next migration and you'll save hours of debugging! 

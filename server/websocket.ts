@@ -14,6 +14,8 @@ interface WebSocketClient extends WebSocket {
   conversationId?: string;
   userStatus?: 'online' | 'away' | 'busy';
   userType?: 'staff' | 'subscriber' | 'org_user' | 'guest';
+  isAlive?: boolean;
+  pingInterval?: NodeJS.Timeout;
 }
 
 interface ChatMessagePayload {
@@ -97,7 +99,9 @@ let currentMOTD = "Welcome to WorkforceOS HelpDesk Support Network - Your satisf
 export function setupWebSocket(server: Server) {
   const wss = new WebSocketServer({ 
     server,
-    path: '/ws/chat'
+    path: '/ws/chat',
+    clientTracking: true,
+    maxPayload: 10 * 1024 * 1024, // 10MB max payload
   });
 
   // Track active connections by conversation ID
@@ -108,6 +112,25 @@ export function setupWebSocket(server: Server) {
 
   wss.on('connection', (ws: WebSocketClient) => {
     console.log('New WebSocket connection established');
+    
+    // Initialize heartbeat
+    ws.isAlive = true;
+    
+    // Handle pong responses (heartbeat)
+    ws.on('pong', () => {
+      ws.isAlive = true;
+    });
+    
+    // Start heartbeat interval (30 seconds)
+    ws.pingInterval = setInterval(() => {
+      if (ws.isAlive === false) {
+        console.log('WebSocket connection terminated due to no heartbeat');
+        clearInterval(ws.pingInterval);
+        return ws.terminate();
+      }
+      ws.isAlive = false;
+      ws.ping();
+    }, 30000);
 
     ws.on('message', async (data: string) => {
       try {
@@ -2559,6 +2582,11 @@ export function setupWebSocket(server: Server) {
     });
 
     ws.on('close', async () => {
+      // Clean up heartbeat interval
+      if (ws.pingInterval) {
+        clearInterval(ws.pingInterval);
+      }
+      
       // Send leave announcement for main chatroom
       const MAIN_ROOM_ID = 'main-chatroom-workforceos';
       if (ws.conversationId === MAIN_ROOM_ID && ws.userId) {

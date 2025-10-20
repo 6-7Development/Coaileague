@@ -121,10 +121,40 @@ import {
   calculateEmployerBenchmark, 
   batchCalculateHealthScores 
 } from "./services/engagementCalculations";
+import { FEATURES, getFeatureStatus } from "./featureFlags";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Create HTTP server
   const server = createServer(app);
+  
+  // ============================================================================
+  // HEALTH CHECK ENDPOINT (for Render and monitoring)
+  // ============================================================================
+  app.get('/health', async (_req, res) => {
+    const health = {
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      environment: process.env.NODE_ENV || 'development',
+      features: getFeatureStatus(),
+    };
+
+    // Test database connection
+    try {
+      await db.select().from(users).limit(1);
+    } catch (error) {
+      console.error('Health check database error:', error);
+      health.status = 'degraded';
+      const dbFeature = health.features.find(f => f.feature === 'DATABASE');
+      if (dbFeature) {
+        dbFeature.status = 'error';
+        dbFeature.enabled = false;
+      }
+      return res.status(503).json(health);
+    }
+
+    res.json(health);
+  });
   
   // ✅ SECURITY: WebSocket authentication implemented for Live HelpDesk
   // - Dual authentication paths: Ticket + email OR Work ID + email
