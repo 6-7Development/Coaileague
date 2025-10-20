@@ -6,8 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { WorkforceOSLogo } from "@/components/workforceos-logo";
-import { Loader2, UserPlus, Mail, Lock, User, CheckCircle2, XCircle } from "lucide-react";
+import { Loader2, UserPlus, Mail, Lock, User, CheckCircle2, XCircle, Github } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import { SiGoogle, SiFacebook } from "react-icons/si";
 
 export default function Register() {
   const [, setLocation] = useLocation();
@@ -241,11 +242,47 @@ export default function Register() {
             </Button>
           </form>
         </CardContent>
-        <CardFooter className="flex justify-center">
+        <CardFooter className="flex flex-col space-y-4">
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">
+                Or sign up with
+              </span>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <Button
+              variant="outline"
+              onClick={() => window.location.href = "/api/login"}
+              data-testid="button-google-signup"
+              className="hover-elevate active-elevate-2"
+            >
+              <SiGoogle className="h-5 w-5 text-red-500" />
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => window.location.href = "/api/login"}
+              data-testid="button-github-signup"
+              className="hover-elevate active-elevate-2"
+            >
+              <Github className="h-5 w-5" />
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => window.location.href = "/api/login"}
+              data-testid="button-facebook-signup"
+              className="hover-elevate active-elevate-2"
+            >
+              <SiFacebook className="h-5 w-5 text-blue-600" />
+            </Button>
+          </div>
           <div className="text-sm text-center text-muted-foreground">
             Already have an account?{" "}
             <Button
-              variant="link"
+              variant="ghost"
               className="h-auto p-0"
               onClick={() => setLocation("/login")}
               data-testid="link-login"

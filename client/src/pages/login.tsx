@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { WorkforceOSLogo } from "@/components/workforceos-logo";
-import { Loader2, LogIn, Mail, Lock } from "lucide-react";
+import { Loader2, LogIn, Mail, Lock, Github } from "lucide-react";
+import { SiGoogle, SiFacebook } from "react-icons/si";
 
 export default function Login() {
   const [, setLocation] = useLocation();
@@ -105,7 +106,7 @@ export default function Login() {
                 <Label htmlFor="password">Password</Label>
                 <Button
                   type="button"
-                  variant="link"
+                  variant="ghost"
                   className="h-auto p-0 text-sm"
                   onClick={() => setLocation("/reset-password")}
                   data-testid="link-forgot-password"
@@ -155,7 +156,7 @@ export default function Login() {
           <div className="text-sm text-center text-muted-foreground">
             Don't have an account?{" "}
             <Button
-              variant="link"
+              variant="ghost"
               className="h-auto p-0"
               onClick={() => setLocation("/register")}
               data-testid="link-register"
@@ -172,6 +173,32 @@ export default function Login() {
                 Or continue with
               </span>
             </div>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <Button
+              variant="outline"
+              onClick={() => window.location.href = "/api/login"}
+              data-testid="button-google-login"
+              className="hover-elevate active-elevate-2"
+            >
+              <SiGoogle className="h-5 w-5 text-red-500" />
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => window.location.href = "/api/login"}
+              data-testid="button-github-login"
+              className="hover-elevate active-elevate-2"
+            >
+              <Github className="h-5 w-5" />
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => window.location.href = "/api/login"}
+              data-testid="button-facebook-login"
+              className="hover-elevate active-elevate-2"
+            >
+              <SiFacebook className="h-5 w-5 text-blue-600" />
+            </Button>
           </div>
           <Button
             variant="outline"
