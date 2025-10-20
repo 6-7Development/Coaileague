@@ -14,12 +14,16 @@ if (!databaseUrl) {
   );
 }
 
-// ⚠️ RENDER DEPLOYMENT: Check for internal database URL
-const isRenderInternal = databaseUrl.includes('.render.internal');
-if (process.env.NODE_ENV === 'production' && !isRenderInternal && databaseUrl.includes('render.com')) {
-  console.warn('⚠️  WARNING: Using external database URL on Render');
-  console.warn('    For better performance, switch to INTERNAL DATABASE URL');
-  console.warn('    Format: postgresql://user:pass@hostname.render.internal:5432/dbname');
+// Database driver info
+console.log('📊 Database: Using Neon serverless driver');
+console.log('   Compatible with: Neon databases only');
+console.log('   Deployment: Works on Replit, Render, Vercel, etc.');
+
+// Warn if DATABASE_URL doesn't look like a Neon connection
+if (databaseUrl && !databaseUrl.includes('neon.tech') && !databaseUrl.includes('localhost')) {
+  console.warn('⚠️  DATABASE_URL does not appear to be a Neon database');
+  console.warn('   Neon serverless driver only works with Neon databases');
+  console.warn('   If using Render Postgres, switch to pg + drizzle-orm/node-postgres');
 }
 
 export const pool = new Pool({ connectionString: databaseUrl });

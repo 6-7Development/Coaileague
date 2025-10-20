@@ -153,6 +153,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(503).json(health);
     }
 
+    // Test Stripe connection if enabled
+    if (FEATURES.STRIPE_PAYMENTS) {
+      try {
+        const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+        // Test with a quick API call (2 second timeout)
+        await Promise.race([
+          stripe.prices.list({ limit: 1 }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Stripe timeout')), 2000))
+        ]);
+      } catch (error) {
+        console.error('Health check Stripe error:', error);
+        health.status = 'degraded';
+        const stripeFeature = health.features.find(f => f.feature === 'STRIPE_PAYMENTS');
+        if (stripeFeature) {
+          stripeFeature.status = 'error';
+        }
+      }
+    }
+
     res.json(health);
   });
   

@@ -2647,6 +2647,10 @@ export function setupWebSocket(server: Server) {
 
     ws.on('error', (error) => {
       console.error('WebSocket error:', error);
+      // Clean up heartbeat interval on error
+      if (ws.pingInterval) {
+        clearInterval(ws.pingInterval);
+      }
     });
   });
 
