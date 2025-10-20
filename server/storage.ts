@@ -3263,42 +3263,8 @@ export class DatabaseStorage implements IStorage {
   }
   
   // ============================================================================
-  // TALENTOS™ - PERFORMANCE REVIEWS & CAREER PATHING
+  // TALENTOS™ - ROLE TEMPLATES & CAREER PATHING
   // ============================================================================
-  
-  async createPerformanceReview(review: any): Promise<any> {
-    const [created] = await db.insert(performanceReviews).values(review).returning();
-    return created;
-  }
-  
-  async getPerformanceReview(id: string, workspaceId: string): Promise<any | undefined> {
-    const [review] = await db
-      .select()
-      .from(performanceReviews)
-      .where(and(eq(performanceReviews.id, id), eq(performanceReviews.workspaceId, workspaceId)))
-      .limit(1);
-    return review;
-  }
-  
-  async getPerformanceReviewsByEmployee(employeeId: string, workspaceId: string): Promise<any[]> {
-    return await db
-      .select()
-      .from(performanceReviews)
-      .where(and(
-        eq(performanceReviews.employeeId, employeeId),
-        eq(performanceReviews.workspaceId, workspaceId)
-      ))
-      .orderBy(desc(performanceReviews.reviewPeriodEnd));
-  }
-  
-  async updatePerformanceReview(id: string, workspaceId: string, data: any): Promise<any | undefined> {
-    const [updated] = await db
-      .update(performanceReviews)
-      .set({ ...data, updatedAt: new Date() })
-      .where(and(eq(performanceReviews.id, id), eq(performanceReviews.workspaceId, workspaceId)))
-      .returning();
-    return updated;
-  }
   
   async createRoleTemplate(template: any): Promise<any> {
     const [created] = await db.insert(roleTemplates).values(template).returning();

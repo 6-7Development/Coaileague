@@ -3296,7 +3296,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       // Send invitation email
-      const onboardingUrl = `${process.env.REPL_SLUG ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co` : 'http://localhost:5000'}/onboarding/${inviteToken}`;
+      const protocol = process.env.NODE_ENV === 'production' ? 'https' : req.protocol;
+      const host = process.env.NODE_ENV === 'production' 
+        ? req.get('host') 
+        : (process.env.REPL_SLUG ? `${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co` : req.get('host'));
+      const onboardingUrl = `${protocol}://${host}/onboarding/${inviteToken}`;
       
       await sendOnboardingInviteEmail(email, {
         employeeName: `${firstName} ${lastName}`,
@@ -10641,18 +10645,123 @@ Return ONLY valid JSON array with this exact structure:
     try {
       const { id } = req.params;
       
-      // Get investigation context first
-      const contextResponse = await fetch(`http://localhost:5000/api/disputes/${id}/investigation-context`, {
-        headers: {
-          'Authorization': req.headers.authorization || '',
-        },
-      });
-
-      if (!contextResponse.ok) {
-        return res.status(404).json({ message: "Failed to fetch investigation context" });
+      // Get investigation context directly (internal call - no need for HTTP fetch)
+      const dispute = await storage.getDispute(id);
+      if (!dispute) {
+        return res.status(404).json({ message: "Dispute not found" });
       }
 
-      const context = await contextResponse.json();
+      const employee = await storage.getUserById(dispute.employeeId);
+      if (!employee) {
+        return res.status(404).json({ message: "Employee not found" });
+      }
+
+      const workspace = await storage.getWorkspace(dispute.workspaceId);
+      
+      const timeEntries = await storage.getTimeEntriesByEmployee(dispute.employeeId, dispute.workspaceId);
+      const now = new Date();
+      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      
+      const lateClockIns = timeEntries.filter(entry => 
+        entry.scheduledStart && entry.clockIn && 
+        new Date(entry.clockIn) > new Date(entry.scheduledStart)
+      );
+      const lateClockInsLast30Days = lateClockIns.filter(entry => 
+        new Date(entry.clockIn!) >= thirtyDaysAgo
+      );
+      
+      const totalHours = timeEntries.reduce((sum, entry) => {
+        if (entry.clockIn && entry.clockOut) {
+          const hours = (new Date(entry.clockOut).getTime() - new Date(entry.clockIn).getTime()) / (1000 * 60 * 60);
+          return sum + hours;
+        }
+        return sum;
+      }, 0);
+      
+      const weeksWorked = Math.max(1, timeEntries.length / 5);
+      const avgHoursPerWeek = (totalHours / weeksWorked).toFixed(1);
+      
+      const disciplinaryRecords = await storage.getDisciplinaryActionsByEmployee(dispute.employeeId, dispute.workspaceId);
+      const disciplinaryLast30Days = disciplinaryRecords.filter(record => 
+        new Date(record.incidentDate) >= thirtyDaysAgo
+      );
+      const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+      const disciplinaryLast90Days = disciplinaryRecords.filter(record => 
+        new Date(record.incidentDate) >= ninetyDaysAgo
+      );
+      
+      const allWorkspaceEmployees = await storage.getEmployeesByWorkspace(dispute.workspaceId);
+      const allTimeEntries = await Promise.all(
+        allWorkspaceEmployees.map(emp => storage.getTimeEntriesByEmployee(emp.userId, dispute.workspaceId))
+      );
+      const allLateClockIns = allTimeEntries.flat().filter(entry => 
+        entry.scheduledStart && entry.clockIn && 
+        new Date(entry.clockIn) > new Date(entry.scheduledStart)
+      );
+      const avgLateClockInRate = allTimeEntries.flat().length > 0 
+        ? ((allLateClockIns.length / allTimeEntries.flat().length) * 100).toFixed(2)
+        : '0.00';
+      
+      const employeeLateRate = timeEntries.length > 0 
+        ? ((lateClockIns.length / timeEntries.length) * 100)
+        : 0;
+      const orgAvgLateRate = parseFloat(avgLateClockInRate);
+      
+      const performanceReviews = await storage.getPerformanceReviewsByEmployee(dispute.employeeId, dispute.workspaceId);
+      const employerRatings = []; // Not implemented yet
+      
+      const context = {
+        dispute: {
+          id: dispute.id,
+          type: dispute.type,
+          title: dispute.title,
+          reason: dispute.reason,
+          filedAt: dispute.createdAt,
+          status: dispute.status,
+        },
+        employee: {
+          id: employee.id,
+          name: employee.name,
+          email: employee.email,
+          role: employee.role,
+          hireDate: employee.createdAt,
+        },
+        workspace: {
+          name: workspace?.name || 'Unknown',
+        },
+        trackOSMetrics: {
+          totalTimeEntries: timeEntries.length,
+          lateClockIns: lateClockIns.length,
+          lateClockInRate: ((lateClockIns.length / Math.max(1, timeEntries.length)) * 100).toFixed(2),
+          lateClockInsLast30Days: lateClockInsLast30Days.length,
+          lateClockInRateLast30Days: ((lateClockInsLast30Days.length / Math.max(1, timeEntries.filter(e => new Date(e.clockIn!) >= thirtyDaysAgo).length)) * 100).toFixed(2),
+          avgHoursPerWeek,
+        },
+        disciplinaryRecord: {
+          totalWriteUps: disciplinaryRecords.length,
+          writeUpsLast30Days: disciplinaryLast30Days.length,
+          writeUpsLast90Days: disciplinaryLast90Days.length,
+          records: disciplinaryRecords.map(record => ({
+            id: record.id,
+            type: record.type,
+            severity: record.severity,
+            incidentDate: record.incidentDate,
+            description: record.description,
+          })),
+        },
+        organizationWideComparison: {
+          avgLateClockInRate,
+          employeeVsAvgLateRate: (employeeLateRate - orgAvgLateRate).toFixed(2),
+        },
+        performanceHistory: performanceReviews.map(review => ({
+          id: review.id,
+          overallRating: review.overallRating,
+          attendanceRating: review.attendanceRating,
+          completedAt: review.completedAt,
+          reviewerComments: review.reviewerComments,
+        })),
+        employerRatingsHistory: employerRatings,
+      };
 
       // Prepare AI analysis prompt
       const prompt = `You are an AI assistant helping support staff investigate employee disputes. Analyze the following dispute and provide objective insights.
