@@ -27,10 +27,13 @@ import { format, formatDistanceToNow, parseISO } from "date-fns";
 import type { Employee, Client, TimeEntry, Shift } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { MobileLoading } from "@/components/mobile-loading";
+import { MobilePageWrapper } from "@/components/mobile-page-wrapper";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export default function TimeTracking() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
+  const isMobile = useIsMobile();
   const [clockInDialogOpen, setClockInDialogOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<string>("");
   const [selectedClient, setSelectedClient] = useState<string>("");
@@ -151,11 +154,20 @@ export default function TimeTracking() {
   const activeTimeEntries = timeEntries.filter(entry => !entry.clockOut);
   const completedTimeEntries = timeEntries.filter(entry => entry.clockOut);
 
+  const handleRefresh = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['/api/time-entries'] }),
+      queryClient.invalidateQueries({ queryKey: ['/api/employees'] }),
+      queryClient.invalidateQueries({ queryKey: ['/api/clients'] }),
+      queryClient.invalidateQueries({ queryKey: ['/api/shifts'] }),
+    ]);
+  };
+
   if (isLoading || !isAuthenticated) {
     return <MobileLoading fullScreen message="Loading Time Clock..." />;
   }
 
-  return (
+  const pageContent = (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full h-full overflow-auto">
       <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
         <div className="space-y-4 sm:space-y-6">
@@ -411,4 +423,18 @@ export default function TimeTracking() {
       </div>
     </div>
   );
+
+  if (isMobile) {
+    return (
+      <MobilePageWrapper 
+        onRefresh={handleRefresh}
+        enablePullToRefresh={true}
+        withBottomNav={true}
+      >
+        {pageContent}
+      </MobilePageWrapper>
+    );
+  }
+
+  return pageContent;
 }

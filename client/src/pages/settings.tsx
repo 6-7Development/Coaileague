@@ -26,10 +26,13 @@ import {
   FileText,
 } from "lucide-react";
 import { MobileLoading } from "@/components/mobile-loading";
+import { MobilePageWrapper } from "@/components/mobile-page-wrapper";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export default function Settings() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
+  const isMobile = useIsMobile();
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   
   // Form state for workspace settings
@@ -154,11 +157,18 @@ export default function Settings() {
     });
   };
 
+  const handleRefresh = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['/api/workspace'] }),
+      queryClient.invalidateQueries({ queryKey: ['/api/business-categories'] }),
+    ]);
+  };
+
   if (isLoading || !isAuthenticated) {
     return <MobileLoading fullScreen message="Loading Settings..." />;
   }
 
-  return (
+  const pageContent = (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full h-full overflow-auto">
       <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
         <div className="space-y-4 sm:space-y-6">
@@ -491,4 +501,18 @@ export default function Settings() {
       </div>
     </div>
   );
+
+  if (isMobile) {
+    return (
+      <MobilePageWrapper 
+        onRefresh={handleRefresh}
+        enablePullToRefresh={true}
+        withBottomNav={true}
+      >
+        {pageContent}
+      </MobilePageWrapper>
+    );
+  }
+
+  return pageContent;
 }

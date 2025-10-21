@@ -13,6 +13,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { MobileLoading } from "@/components/mobile-loading";
+import { MobilePageWrapper } from "@/components/mobile-page-wrapper";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   MessageSquare, Send, Search, UserPlus, MoreVertical,
   Eye, Sparkles, CheckCheck, Circle, Lock, Zap
@@ -42,6 +44,7 @@ interface PrivateMessage {
 export default function PrivateMessages() {
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [messageText, setMessageText] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
@@ -179,6 +182,13 @@ export default function PrivateMessages() {
     }
   }, [selectedConversation]);
 
+  const handleRefresh = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['/api/private-messages/conversations'] }),
+      queryClient.invalidateQueries({ queryKey: ['/api/private-messages', selectedConversation] }),
+    ]);
+  };
+
   if (authLoading) {
     return <MobileLoading fullScreen message="Loading Messages..." />;
   }
@@ -189,7 +199,7 @@ export default function PrivateMessages() {
 
   const currentConversation = conversations.find((c) => c.id === selectedConversation);
 
-  return (
+  const pageContent = (
     <div className="flex h-[calc(100vh-4rem)] gap-0">
       {/* Conversations Sidebar */}
       <div className="w-80 border-r flex flex-col bg-card">
@@ -289,7 +299,7 @@ export default function PrivateMessages() {
                             })}
                           </span>
                         )}
-                        {conv.unreadCount > 0 && (
+                        {(conv.unreadCount ?? 0) > 0 && (
                           <Badge variant="default" className="h-5 px-1.5 text-xs bg-purple-600">
                             {conv.unreadCount}
                           </Badge>
@@ -525,4 +535,18 @@ export default function PrivateMessages() {
       </Dialog>
     </div>
   );
+
+  if (isMobile) {
+    return (
+      <MobilePageWrapper 
+        onRefresh={handleRefresh}
+        enablePullToRefresh={true}
+        withBottomNav={true}
+      >
+        {pageContent}
+      </MobilePageWrapper>
+    );
+  }
+
+  return pageContent;
 }
