@@ -108,7 +108,7 @@ export default function Landing() {
             <div className="flex items-center justify-center gap-2">
               <Badge variant="outline" className="text-xs font-normal px-4 py-1">
                 <Building2 className="h-3 w-3 mr-1.5" />
-                Trusted by Fortune 500 Companies
+                Built for Enterprise Scale
               </Badge>
             </div>
 
@@ -119,7 +119,7 @@ export default function Landing() {
                 <span className="block text-primary mt-2">Management Platform</span>
               </h1>
               <p className="text-xl sm:text-2xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-                Replace 5 full-time positions with AI-powered automation. Save $250k+ annually while scaling operations.
+                Designed to replace up to 5 full-time positions with AI-powered automation. Potential to save $250k+ annually while scaling operations.
               </p>
             </div>
 
@@ -127,15 +127,15 @@ export default function Landing() {
             <div className="grid grid-cols-3 gap-6 max-w-2xl mx-auto py-8">
               <div className="space-y-1">
                 <div className="text-3xl sm:text-4xl font-bold text-primary">$250k+</div>
-                <div className="text-xs sm:text-sm text-muted-foreground">Annual Savings</div>
+                <div className="text-xs sm:text-sm text-muted-foreground">Potential Savings</div>
               </div>
               <div className="space-y-1">
                 <div className="text-3xl sm:text-4xl font-bold text-primary">99.9%</div>
-                <div className="text-xs sm:text-sm text-muted-foreground">Uptime SLA</div>
+                <div className="text-xs sm:text-sm text-muted-foreground">Target Uptime</div>
               </div>
               <div className="space-y-1">
-                <div className="text-3xl sm:text-4xl font-bold text-primary">SOC 2</div>
-                <div className="text-xs sm:text-sm text-muted-foreground">Certified</div>
+                <div className="text-3xl sm:text-4xl font-bold text-primary">24/7</div>
+                <div className="text-xs sm:text-sm text-muted-foreground">Platform Access</div>
               </div>
             </div>
 
@@ -165,37 +165,37 @@ export default function Landing() {
             <div className="flex flex-wrap items-center justify-center gap-6 pt-8 text-xs text-muted-foreground">
               <div className="flex items-center gap-1.5">
                 <Shield className="h-4 w-4 text-green-500" />
-                <span>SOC 2 Type II</span>
+                <span>Enterprise Security</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <Lock className="h-4 w-4 text-blue-500" />
-                <span>GDPR Compliant</span>
+                <span>Data Encryption</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <Globe className="h-4 w-4 text-purple-500" />
-                <span>99.9% Uptime</span>
+                <span>High Availability</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <Award className="h-4 w-4 text-amber-500" />
-                <span>ISO 27001</span>
+                <span>Bank-Level Security</span>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Social Proof - Enterprise Logos */}
+      {/* Social Proof - Industries Served */}
       <section className="border-b bg-muted/30">
         <div className="container mx-auto px-4 sm:px-6 py-12">
           <p className="text-center text-sm text-muted-foreground mb-8">
-            Powering workforce operations for industry leaders
+            Industries We Serve
           </p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 items-center opacity-60">
             {[
-              "Fortune 500",
+              "Security",
               "Healthcare",
               "Manufacturing",
-              "Enterprise",
+              "Construction",
             ].map((industry) => (
               <div
                 key={industry}
@@ -229,9 +229,9 @@ export default function Landing() {
               {
                 icon: CalendarClock,
                 title: "ScheduleOS™",
-                description: "AI-powered auto-scheduling with GPT-4. Generate optimal schedules in 30 seconds.",
+                description: "Smart scheduling with shift management. AI auto-scheduling coming soon.",
                 features: ["Smart scheduling", "Conflict detection", "Mobile access", "Shift swaps"],
-                badge: "AI Powered",
+                badge: "Live + AI Soon",
                 color: "text-purple-500",
               },
               {
@@ -245,9 +245,9 @@ export default function Landing() {
               {
                 icon: DollarSign,
                 title: "PayrollOS™",
-                description: "One-click automated payroll processing. Handle taxes, deductions, compliance.",
-                features: ["Tax withholding", "Direct deposit", "Multi-state", "Compliance"],
-                badge: "Automated",
+                description: "Streamlined payroll with automated calculations. Full automation coming soon.",
+                features: ["Payroll tracking", "Wage calculations", "Multi-state ready", "Compliance"],
+                badge: "In Development",
                 color: "text-green-500",
               },
               {
@@ -285,8 +285,8 @@ export default function Landing() {
               {
                 icon: Headphones,
                 title: "SupportOS™",
-                description: "Live help desk with AI knowledge base. Get answers instantly.",
-                features: ["Live chat", "AI assistant", "Knowledge base", "24/7 support"],
+                description: "Live help desk with AI knowledge base. Get answers fast.",
+                features: ["Live chat", "AI assistant", "Knowledge base", "Support available"],
                 badge: "AI Powered",
                 color: "text-emerald-500",
               },
@@ -328,10 +328,10 @@ export default function Landing() {
           <div className="max-w-4xl mx-auto">
             <div className="text-center mb-12">
               <h2 className="text-3xl sm:text-4xl font-bold mb-4">
-                Replace 5 Full-Time Positions
+                Designed to Replace Up to 5 Full-Time Positions
               </h2>
               <p className="text-lg text-muted-foreground">
-                Calculate your annual savings by automating these roles
+                Potential annual savings by automating these roles
               </p>
             </div>
 
@@ -356,10 +356,13 @@ export default function Landing() {
 
             <div className="text-center space-y-4">
               <div className="text-5xl sm:text-6xl font-black text-green-600">
-                $255,000<span className="text-2xl">/year</span>
+                Up to $255,000<span className="text-2xl">/year</span>
               </div>
               <p className="text-muted-foreground">
-                Total annual savings plus benefits, insurance, and overhead costs
+                Potential annual savings including salaries, benefits, and overhead costs*
+              </p>
+              <p className="text-xs text-muted-foreground max-w-2xl mx-auto">
+                * Savings estimates based on average industry salaries. Actual savings will vary based on your organization's specific circumstances, location, and implementation. Not a guarantee of results.
               </p>
               <Button
                 size="lg"
@@ -409,8 +412,8 @@ export default function Landing() {
                 employees: "Up to 100 employees",
                 features: [
                   "Everything in Starter",
-                  "AI-powered scheduling",
-                  "Automated payroll",
+                  "Advanced scheduling",
+                  "Payroll management",
                   "Advanced analytics",
                   "Priority support",
                   "API access",
@@ -427,7 +430,7 @@ export default function Landing() {
                   "White-label platform",
                   "Custom integrations",
                   "Dedicated account manager",
-                  "99.9% SLA",
+                  "High-availability infrastructure",
                   "Custom contracts",
                 ],
               },
@@ -507,7 +510,7 @@ export default function Landing() {
               Ready to Transform Your Workforce Operations?
             </h2>
             <p className="text-lg text-muted-foreground">
-              Join Fortune 500 companies using WorkforceOS. Start your free trial today—no credit card required.
+              Join growing organizations using WorkforceOS. Start your free trial today—no credit card required.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
               <Button
