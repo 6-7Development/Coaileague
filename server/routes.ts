@@ -336,6 +336,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================================================
   // WORKSPACE ROUTES
   // ============================================================================
+
+  // Security helper: Redact sensitive admin fields from workspace for non-root users
+  function redactSensitiveWorkspaceFields(workspace: any, platformRole?: string): any {
+    // ROOT users can see everything
+    if (platformRole === 'root') {
+      return workspace;
+    }
+
+    // For non-root users, remove sensitive admin/billing fields
+    const {
+      admin_notes,
+      admin_flags,
+      billing_override_type,
+      billing_override_discount_percent,
+      billing_override_custom_price,
+      billing_override_reason,
+      billing_override_applied_by,
+      billing_override_applied_at,
+      billing_override_expires_at,
+      last_admin_action,
+      last_admin_action_by,
+      last_admin_action_at,
+      ...safeWorkspace
+    } = workspace;
+
+    return safeWorkspace;
+  }
   
   // Get or create workspace for current user
   app.get('/api/workspace', isAuthenticated, async (req: any, res) => {
@@ -352,7 +379,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      res.json(workspace);
+      // Security: Redact sensitive fields for non-root users
+      const platformRole = (req as any).platformRole;
+      const safeWorkspace = redactSensitiveWorkspaceFields(workspace, platformRole);
+      
+      res.json(safeWorkspace);
     } catch (error) {
       console.error("Error fetching workspace:", error);
       res.status(500).json({ message: "Failed to fetch workspace" });
@@ -385,7 +416,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const validated = insertWorkspaceSchema.partial().parse(filteredData);
       const updated = await storage.updateWorkspace(workspace.id, validated);
-      res.json(updated);
+      
+      // Security: Redact sensitive fields for non-root users
+      const platformRole = (req as any).platformRole;
+      const safeWorkspace = redactSensitiveWorkspaceFields(updated, platformRole);
+      
+      res.json(safeWorkspace);
     } catch (error: any) {
       console.error("Error updating workspace:", error);
       res.status(400).json({ message: error.message || "Failed to update workspace" });
@@ -5979,6 +6015,318 @@ Keep it professional, actionable, and under 250 words.`;
   // Get workspace admin detail
   app.get('/api/platform/workspaces/:workspaceId', requirePlatformStaff, async (req, res) => {
     await getWorkspaceAdminDetail(req, res);
+  });
+
+  // ============================================================================
+  // MASTER KEYS - ROOT-ONLY ORGANIZATION MANAGEMENT
+  // ============================================================================
+
+  // Validation schemas for Master Keys
+  const masterKeysSearchSchema = z.object({
+    q: z.string().optional(),
+    flag: z.string().optional(),
+    status: z.enum(['active', 'suspended', 'cancelled', 'trialing']).optional(),
+    limit: z.coerce.number().min(1).max(100).default(50),
+    offset: z.coerce.number().min(0).default(0),
+  });
+
+  const masterKeysUpdateSchema = z.object({
+    featureToggles: z.object({
+      scheduleos: z.boolean().optional(),
+      timeos: z.boolean().optional(),
+      payrollos: z.boolean().optional(),
+      billos: z.boolean().optional(),
+      hireos: z.boolean().optional(),
+      reportos: z.boolean().optional(),
+      analyticsos: z.boolean().optional(),
+      supportos: z.boolean().optional(),
+      communicationos: z.boolean().optional(),
+    }).optional(),
+    billingOverride: z.object({
+      type: z.enum(['free', 'discount', 'custom']),
+      discountPercent: z.number().min(0).max(100).optional(),
+      customPrice: z.string().regex(/^\d+(\.\d{1,2})?$/).optional(),
+      reason: z.string().min(1).max(500),
+      expiresAt: z.string().datetime().optional(),
+    }).optional(),
+    adminNotes: z.string().max(5000).optional(),
+    adminFlags: z.array(z.string().max(50)).max(20).optional(),
+    actionDescription: z.string().min(1).max(500),
+  });
+
+  const masterKeysResetSchema = z.object({
+    reason: z.string().min(1).max(500),
+  });
+
+  // Search/List all organizations with Master Keys access
+  app.get('/api/platform/master-keys/organizations', requirePlatformAdmin, async (req: AuthenticatedRequest, res) => {
+    try {
+      // Validate query params
+      const params = masterKeysSearchSchema.parse(req.query);
+
+      // Build filters
+      const conditions = [];
+      
+      if (params.q) {
+        conditions.push(
+          or(
+            sql`LOWER(${workspaces.name}) LIKE ${`%${params.q.toLowerCase()}%`}`,
+            sql`LOWER(${workspaces.companyName}) LIKE ${`%${params.q.toLowerCase()}%`}`,
+            sql`LOWER(${workspaces.organizationId}) LIKE ${`%${params.q.toLowerCase()}%`}`,
+            sql`LOWER(${workspaces.organizationSerial}) LIKE ${`%${params.q.toLowerCase()}%`}`
+          )
+        );
+      }
+
+      if (params.status) {
+        conditions.push(eq(workspaces.subscriptionStatus, params.status));
+      }
+
+      // Combine conditions with AND
+      let query = db.select().from(workspaces);
+      if (conditions.length > 0) {
+        query = query.where(and(...conditions));
+      }
+
+      // Add pagination and ordering
+      const organizations = await query
+        .orderBy(desc(workspaces.createdAt))
+        .limit(params.limit)
+        .offset(params.offset);
+
+      // Filter by admin flags if requested (client-side for array filtering)
+      let results = organizations;
+      if (params.flag) {
+        results = organizations.filter(org => 
+          org.admin_flags?.includes(params.flag!)
+        );
+      }
+
+      res.json(results);
+    } catch (error: any) {
+      console.error("Error fetching organizations:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ error: "Invalid query parameters", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to fetch organizations" });
+    }
+  });
+
+  // Get detailed organization info for Master Keys management
+  app.get('/api/platform/master-keys/organizations/:id', requirePlatformAdmin, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { id } = req.params;
+
+      const [org] = await db
+        .select()
+        .from(workspaces)
+        .where(eq(workspaces.id, id))
+        .limit(1);
+
+      if (!org) {
+        return res.status(404).json({ error: "Organization not found" });
+      }
+
+      // Get owner info
+      const [owner] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, org.ownerId))
+        .limit(1);
+
+      // Get employee count
+      const [employeeCount] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(employees)
+        .where(eq(employees.workspaceId, id));
+
+      // Get client count
+      const [clientCount] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(clients)
+        .where(eq(clients.workspaceId, id));
+
+      res.json({
+        organization: org,
+        owner,
+        stats: {
+          employeeCount: employeeCount?.count || 0,
+          clientCount: clientCount?.count || 0
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching organization detail:", error);
+      res.status(500).json({ error: "Failed to fetch organization detail" });
+    }
+  });
+
+  // Update organization features and billing (Master Keys)
+  app.patch('/api/platform/master-keys/organizations/:id', requirePlatformAdmin, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Validate ID format
+      if (!id || typeof id !== 'string') {
+        return res.status(400).json({ error: "Invalid organization ID" });
+      }
+
+      // Validate request body
+      const validated = masterKeysUpdateSchema.parse(req.body);
+      const rootUserId = req.user!.id;
+
+      const updateData: any = {
+        last_admin_action: validated.actionDescription,
+        last_admin_action_by: rootUserId,
+        last_admin_action_at: new Date()
+      };
+
+      // Update feature toggles if provided
+      if (validated.featureToggles) {
+        if (validated.featureToggles.scheduleos !== undefined) updateData.feature_scheduleos_enabled = validated.featureToggles.scheduleos;
+        if (validated.featureToggles.timeos !== undefined) updateData.feature_timeos_enabled = validated.featureToggles.timeos;
+        if (validated.featureToggles.payrollos !== undefined) updateData.feature_payrollos_enabled = validated.featureToggles.payrollos;
+        if (validated.featureToggles.billos !== undefined) updateData.feature_billos_enabled = validated.featureToggles.billos;
+        if (validated.featureToggles.hireos !== undefined) updateData.feature_hireos_enabled = validated.featureToggles.hireos;
+        if (validated.featureToggles.reportos !== undefined) updateData.feature_reportos_enabled = validated.featureToggles.reportos;
+        if (validated.featureToggles.analyticsos !== undefined) updateData.feature_analyticsos_enabled = validated.featureToggles.analyticsos;
+        if (validated.featureToggles.supportos !== undefined) updateData.feature_supportos_enabled = validated.featureToggles.supportos;
+        if (validated.featureToggles.communicationos !== undefined) updateData.feature_communicationos_enabled = validated.featureToggles.communicationos;
+      }
+
+      // Update billing override if provided (with validation)
+      if (validated.billingOverride) {
+        const override = validated.billingOverride;
+        
+        // Validate discount percent is provided when type is discount
+        if (override.type === 'discount' && !override.discountPercent) {
+          return res.status(400).json({ error: "Discount percentage required when type is 'discount'" });
+        }
+        
+        // Validate custom price is provided when type is custom
+        if (override.type === 'custom' && !override.customPrice) {
+          return res.status(400).json({ error: "Custom price required when type is 'custom'" });
+        }
+
+        updateData.billing_override_type = override.type;
+        updateData.billing_override_discount_percent = override.discountPercent || null;
+        updateData.billing_override_custom_price = override.customPrice || null;
+        updateData.billing_override_reason = override.reason;
+        updateData.billing_override_applied_by = rootUserId;
+        updateData.billing_override_applied_at = new Date();
+        updateData.billing_override_expires_at = override.expiresAt || null;
+        
+        // TODO: Trigger live billing update - update Stripe subscription, recalculate invoices
+        // await updateStripeBilling(id, override);
+      }
+
+      // Update admin notes and flags if provided
+      if (validated.adminNotes !== undefined) updateData.admin_notes = validated.adminNotes;
+      if (validated.adminFlags !== undefined) updateData.admin_flags = validated.adminFlags;
+
+      const [updated] = await db
+        .update(workspaces)
+        .set(updateData)
+        .where(eq(workspaces.id, id))
+        .returning();
+
+      if (!updated) {
+        return res.status(404).json({ error: "Organization not found" });
+      }
+
+      res.json({
+        success: true,
+        organization: updated,
+        message: "Organization updated successfully"
+      });
+    } catch (error: any) {
+      console.error("Error updating organization:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ error: "Invalid request data", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to update organization" });
+    }
+  });
+
+  // Reset organization to defaults
+  app.post('/api/platform/master-keys/organizations/:id/reset', requirePlatformAdmin, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Validate ID format
+      if (!id || typeof id !== 'string') {
+        return res.status(400).json({ error: "Invalid organization ID" });
+      }
+
+      // Validate request body
+      const validated = masterKeysResetSchema.parse(req.body);
+      const rootUserId = req.user!.id;
+      const { reason } = validated;
+
+      const [updated] = await db
+        .update(workspaces)
+        .set({
+          // Reset all feature toggles to defaults
+          feature_scheduleos_enabled: true,
+          feature_timeos_enabled: true,
+          feature_payrollos_enabled: false,
+          feature_billos_enabled: true,
+          feature_hireos_enabled: true,
+          feature_reportos_enabled: true,
+          feature_analyticsos_enabled: true,
+          feature_supportos_enabled: true,
+          feature_communicationos_enabled: true,
+          
+          // Clear billing overrides
+          billing_override_type: null,
+          billing_override_discount_percent: null,
+          billing_override_custom_price: null,
+          billing_override_reason: null,
+          billing_override_applied_by: null,
+          billing_override_applied_at: null,
+          billing_override_expires_at: null,
+          
+          // Clear account locks
+          isSuspended: false,
+          suspendedReason: null,
+          suspendedAt: null,
+          suspendedBy: null,
+          
+          isFrozen: false,
+          frozenReason: null,
+          frozenAt: null,
+          frozenBy: null,
+          
+          isLocked: false,
+          lockedReason: null,
+          lockedAt: null,
+          lockedBy: null,
+          
+          subscriptionStatus: 'active',
+          
+          // Log action
+          last_admin_action: `Organization reset: ${reason || 'No reason provided'}`,
+          last_admin_action_by: rootUserId,
+          last_admin_action_at: new Date()
+        })
+        .where(eq(workspaces.id, id))
+        .returning();
+
+      if (!updated) {
+        return res.status(404).json({ error: "Organization not found" });
+      }
+
+      res.json({
+        success: true,
+        organization: updated,
+        message: "Organization reset to defaults successfully"
+      });
+    } catch (error: any) {
+      console.error("Error resetting organization:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ error: "Invalid request data", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to reset organization" });
+    }
   });
 
   // Get all platform users

@@ -27,6 +27,7 @@ import {
   Shield,
 } from "lucide-react";
 import { WorkforceOSLogo } from "@/components/workforceos-logo";
+import { MasterKeysPanel } from "@/components/master-keys-panel";
 
 export default function AdminCommandCenter() {
   const [, setLocation] = useLocation();
@@ -248,6 +249,13 @@ export default function AdminCommandCenter() {
                 Usage
               </Button>
             </div>
+
+            {/* Master Keys - ROOT ONLY */}
+            {(user as any)?.platformRole === 'root' && (
+              <div className="mt-6">
+                <MasterKeysPanel />
+              </div>
+            )}
           </div>
         </div>
       </div>

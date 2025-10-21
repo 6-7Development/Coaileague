@@ -189,6 +189,37 @@ export const workspaces = pgTable("workspaces", {
   hireos_activated_at: timestamp("hireos_activated_at"),
   hireos_activated_by: varchar("hireos_activated_by"),
   
+  // ============================================================================
+  // MASTER KEYS - ROOT-ONLY ORGANIZATION MANAGEMENT
+  // ============================================================================
+  
+  // Feature Toggles (ROOT can enable/disable individual OS modules)
+  feature_scheduleos_enabled: boolean("feature_scheduleos_enabled").default(true),
+  feature_timeos_enabled: boolean("feature_timeos_enabled").default(true),
+  feature_payrollos_enabled: boolean("feature_payrollos_enabled").default(false), // In dev
+  feature_billos_enabled: boolean("feature_billos_enabled").default(true),
+  feature_hireos_enabled: boolean("feature_hireos_enabled").default(true),
+  feature_reportos_enabled: boolean("feature_reportos_enabled").default(true),
+  feature_analyticsos_enabled: boolean("feature_analyticsos_enabled").default(true),
+  feature_supportos_enabled: boolean("feature_supportos_enabled").default(true),
+  feature_communicationos_enabled: boolean("feature_communicationos_enabled").default(true),
+  
+  // Billing Overrides (ROOT can give free/discounted service)
+  billing_override_type: varchar("billing_override_type"), // 'free', 'discount', 'custom', null = normal
+  billing_override_discount_percent: integer("billing_override_discount_percent"), // 0-100
+  billing_override_custom_price: decimal("billing_override_custom_price", { precision: 10, scale: 2 }), // Fixed monthly price
+  billing_override_reason: text("billing_override_reason"), // Why override applied
+  billing_override_applied_by: varchar("billing_override_applied_by"), // ROOT user ID
+  billing_override_applied_at: timestamp("billing_override_applied_at"),
+  billing_override_expires_at: timestamp("billing_override_expires_at"), // Auto-revert date
+  
+  // Manual Adjustments & Notes
+  admin_notes: text("admin_notes"), // ROOT private notes about this org
+  admin_flags: text("admin_flags").array().default(sql`ARRAY[]::text[]`), // Tags: 'vip', 'watchlist', 'partner', 'delinquent'
+  last_admin_action: text("last_admin_action"), // Description of last ROOT action
+  last_admin_action_by: varchar("last_admin_action_by"), // ROOT user ID
+  last_admin_action_at: timestamp("last_admin_action_at"),
+  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
