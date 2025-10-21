@@ -10592,6 +10592,9 @@ Return ONLY valid JSON array with this exact structure:
       }
 
       const data = validationResult.data;
+      
+      // Import AI analysis functions
+      const { analyzeDispute, detectComplianceCategory } = await import('./services/disputeAI');
 
       // Get employee to determine role
       const employee = await storage.getEmployeeByUserId(userId);
