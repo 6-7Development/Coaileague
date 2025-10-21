@@ -2,6 +2,7 @@
 // Reference: javascript_log_in_with_replit blueprint
 
 import { Switch, Route, useLocation } from "wouter";
+import { useState } from "react";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -12,6 +13,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeProvider as WorkspaceThemeProvider } from "@/contexts/ThemeContext";
 import { TransitionProvider } from "@/contexts/transition-context";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { Button } from "@/components/ui/button";
 import { ProtectedRoute } from "@/components/protected-route";
 import { LeaderRoute } from "@/components/leader-route";
 import { DemoBanner } from "@/components/demo-banner";
@@ -81,9 +83,12 @@ import OperationsFamilyPage from "@/pages/os-family-operations";
 import GrowthFamilyPage from "@/pages/os-family-growth";
 import PlatformFamilyPage from "@/pages/os-family-platform";
 import { FloatingChatButton } from "@/components/floating-chat-button";
+import { OnboardingWizard } from "@/components/onboarding-wizard";
+import { Sparkles } from "lucide-react";
 
 function AppContent() {
   const { isAuthenticated, isLoading, user } = useAuth();
+  const [showOnboarding, setShowOnboarding] = useState(false);
   
   // Check if on mobile chat OR desktop live-chat - use window.location instead of useLocation() hook
   // to avoid React Hooks issues with conditional rendering
@@ -137,6 +142,15 @@ function AppContent() {
               <header className="flex items-center justify-end px-3 py-1 border-b bg-card shrink-0">
                 <div className="flex items-center gap-2">
                   <SidebarTrigger data-testid="button-sidebar-toggle" />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setShowOnboarding(true)}
+                    data-testid="button-open-onboarding"
+                    title="Platform Tour"
+                  >
+                    <Sparkles className="h-5 w-5" />
+                  </Button>
                   <ThemeToggle />
                 </div>
               </header>
@@ -218,6 +232,7 @@ function AppContent() {
             </main>
           </div>
         </div>
+        <OnboardingWizard isOpen={showOnboarding} onClose={() => setShowOnboarding(false)} />
       </SidebarProvider>
     </ProtectedRoute>
   );

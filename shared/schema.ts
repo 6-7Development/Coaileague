@@ -74,6 +74,41 @@ export const users = pgTable("users", {
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
 
+// User onboarding progress tracking
+export const userOnboarding = pgTable("user_onboarding", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }).unique(),
+  
+  // Progress tracking
+  completedSteps: text("completed_steps").array().default(sql`ARRAY[]::text[]`), // Array of completed step IDs
+  currentStep: varchar("current_step"), // Current active step ID
+  totalSteps: integer("total_steps").default(20), // Total number of onboarding steps
+  progressPercentage: integer("progress_percentage").default(0), // 0-100%
+  
+  // Status
+  hasSkipped: boolean("has_skipped").default(false), // User clicked "Skip Tour"
+  hasCompleted: boolean("has_completed").default(false), // 100% completion
+  lastViewedAt: timestamp("last_viewed_at"), // Last time onboarding was opened
+  
+  // Module-specific progress (for 4 OS Families)
+  communicationProgress: integer("communication_progress").default(0), // 0-100%
+  operationsProgress: integer("operations_progress").default(0), // 0-100%
+  growthProgress: integer("growth_progress").default(0), // 0-100%
+  platformProgress: integer("platform_progress").default(0), // 0-100%
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertUserOnboardingSchema = createInsertSchema(userOnboarding).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertUserOnboarding = z.infer<typeof insertUserOnboardingSchema>;
+export type UserOnboarding = typeof userOnboarding.$inferSelect;
+
 // ============================================================================
 // MULTI-TENANT CORE TABLES
 // ============================================================================

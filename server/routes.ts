@@ -73,6 +73,7 @@ import {
   invoiceReminders,
   clientPortalAccess,
   expenseReports,
+  userOnboarding,
   insertExpenseReportSchema,
   employeeTaxForms,
   employeeBankAccounts,
@@ -11267,6 +11268,147 @@ ${context.performanceHistory.map((review: any) => `- Overall Rating: ${review.ov
     } catch (error) {
       console.error("Error fetching employee reputation:", error);
       res.status(500).json({ message: "Failed to fetch employee reputation data" });
+    }
+  });
+
+  // ============================================================================
+  // ONBOARDING ROUTES
+  // ============================================================================
+
+  // Get user onboarding progress
+  app.get('/api/onboarding/progress', async (req: any, res) => {
+    try {
+      let userId: string;
+      
+      if (req.isAuthenticated && req.isAuthenticated() && req.user?.claims) {
+        userId = req.user.claims.sub;
+      } else if (req.session?.userId) {
+        userId = req.session.userId;
+      } else {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const progress = await db.select()
+        .from(userOnboarding)
+        .where(eq(userOnboarding.userId, userId))
+        .limit(1);
+
+      if (progress.length === 0) {
+        // Create new onboarding record
+        const newProgress = await db.insert(userOnboarding)
+          .values({ userId })
+          .returning();
+        return res.json(newProgress[0]);
+      }
+
+      res.json(progress[0]);
+    } catch (error) {
+      console.error("Error fetching onboarding progress:", error);
+      res.status(500).json({ message: "Failed to fetch onboarding progress" });
+    }
+  });
+
+  // Mark onboarding as skipped
+  app.post('/api/onboarding/skip', async (req: any, res) => {
+    try {
+      let userId: string;
+      
+      if (req.isAuthenticated && req.isAuthenticated() && req.user?.claims) {
+        userId = req.user.claims.sub;
+      } else if (req.session?.userId) {
+        userId = req.session.userId;
+      } else {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const updated = await db.update(userOnboarding)
+        .set({
+          hasSkipped: true,
+          lastViewedAt: new Date(),
+          updatedAt: new Date()
+        })
+        .where(eq(userOnboarding.userId, userId))
+        .returning();
+
+      if (updated.length === 0) {
+        // Create with skipped status
+        const created = await db.insert(userOnboarding)
+          .values({
+            userId,
+            hasSkipped: true,
+            lastViewedAt: new Date()
+          })
+          .returning();
+        return res.json(created[0]);
+      }
+
+      res.json(updated[0]);
+    } catch (error) {
+      console.error("Error skipping onboarding:", error);
+      res.status(500).json({ message: "Failed to skip onboarding" });
+    }
+  });
+
+  // Mark onboarding as complete
+  app.post('/api/onboarding/complete', async (req: any, res) => {
+    try {
+      let userId: string;
+      
+      if (req.isAuthenticated && req.isAuthenticated() && req.user?.claims) {
+        userId = req.user.claims.sub;
+      } else if (req.session?.userId) {
+        userId = req.session.userId;
+      } else {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const {
+        completedSteps,
+        communicationProgress,
+        operationsProgress,
+        growthProgress,
+        platformProgress
+      } = req.body;
+
+      const progressPercentage = 100;
+
+      const updated = await db.update(userOnboarding)
+        .set({
+          completedSteps: completedSteps || [],
+          hasCompleted: true,
+          progressPercentage,
+          communicationProgress: communicationProgress || 0,
+          operationsProgress: operationsProgress || 0,
+          growthProgress: growthProgress || 0,
+          platformProgress: platformProgress || 0,
+          lastViewedAt: new Date(),
+          updatedAt: new Date()
+        })
+        .where(eq(userOnboarding.userId, userId))
+        .returning();
+
+      if (updated.length === 0) {
+        // Create with completed status
+        const created = await db.insert(userOnboarding)
+          .values({
+            userId,
+            completedSteps: completedSteps || [],
+            hasCompleted: true,
+            progressPercentage,
+            communicationProgress: communicationProgress || 0,
+            operationsProgress: operationsProgress || 0,
+            growthProgress: growthProgress || 0,
+            platformProgress: platformProgress || 0,
+            lastViewedAt: new Date()
+          })
+          .returning();
+        return res.json(created[0]);
+      }
+
+      res.json(updated[0]);
+    } catch (error) {
+      console.error("Error completing onboarding:", error);
+      res.status(500).json({ message: "Failed to complete onboarding" });
     }
   });
 
