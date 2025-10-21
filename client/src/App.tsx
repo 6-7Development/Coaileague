@@ -72,6 +72,9 @@ import MobileChatPage from "@/pages/mobile-chat";
 import EngagementDashboard from "@/pages/engagement-dashboard";
 import EmployeeEngagement from "@/pages/engagement-employee";
 import Disputes from "@/pages/disputes";
+import MyAuditRecord from "@/pages/my-audit-record";
+import FileGrievance from "@/pages/file-grievance";
+import ReviewDisputes from "@/pages/review-disputes";
 import CommunicationOS from "@/pages/communication-os";
 import QueryOS from "@/pages/query-os";
 import PrivateMessages from "@/pages/private-messages";
@@ -190,6 +193,9 @@ function AppContent() {
                 <Route path="/hr/pto" component={HRPTO} />
                 <Route path="/hr/terminations" component={HRTerminations} />
                 <Route path="/disputes" component={Disputes} />
+                <Route path="/my-audit-record" component={MyAuditRecord} />
+                <Route path="/file-grievance" component={FileGrievance} />
+                <Route path="/review-disputes" component={ReviewDisputes} />
                 <Route path="/communication" component={CommunicationOS} />
                 <Route path="/query-os" component={QueryOS} />
                 <Route path="/messages" component={PrivateMessages} />

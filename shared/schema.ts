@@ -5995,6 +5995,22 @@ export const disputes = pgTable("disputes", {
   evidence: text("evidence").array(), // URLs to supporting documents
   requestedOutcome: text("requested_outcome"), // What the employee wants (e.g., "Remove write-up", "Change rating to 4")
   
+  // ========================================================================
+  // AI SUMMARIZATION - AutoScheduler Audit Tracker™
+  // ========================================================================
+  // AI analyzes dispute reason/evidence and provides summary + recommendation
+  // Human managers make final decision (with AI insight)
+  aiSummary: text("ai_summary"), // AI-generated summary of the dispute
+  aiRecommendation: varchar("ai_recommendation"), // 'approve', 'reject', 'needs_review', 'escalate'
+  aiConfidenceScore: decimal("ai_confidence_score", { precision: 3, scale: 2 }), // 0.00-1.00
+  aiAnalysisFactors: text("ai_analysis_factors").array(), // Key factors AI considered
+  aiProcessedAt: timestamp("ai_processed_at"),
+  aiModel: varchar("ai_model"), // e.g., "gpt-4-turbo"
+  
+  // Labor law compliance tags (for audit tracker)
+  complianceCategory: varchar("compliance_category"), // 'labor_law', 'payday_law', 'unemployment', 'flsa', 'osha', null
+  regulatoryReference: varchar("regulatory_reference"), // e.g., "FLSA §207", "State Payday Law"
+  
   // Priority & urgency
   priority: varchar("priority").default('normal'), // 'low', 'normal', 'high', 'urgent'
   

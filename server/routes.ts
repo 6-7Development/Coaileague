@@ -10811,6 +10811,226 @@ Return ONLY valid JSON array with this exact structure:
     }
   });
 
+  // ========================================================================
+  // AUTOSCHEDULER AUDIT TRACKER™ - AI-Powered Grievance Review
+  // ========================================================================
+  
+  // Get pending disputes with AI summaries (Manager view)
+  app.get('/api/disputes/pending-review', isAuthenticated, requireHRManager, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user?.currentWorkspaceId) {
+        return res.status(403).json({ message: "No workspace selected" });
+      }
+
+      const disputes = await storage.getDisputesByWorkspace(
+        user.currentWorkspaceId,
+        { status: 'pending,under_review' }
+      );
+
+      // Trigger AI analysis for any disputes that don't have it yet
+      const { analyzeDispute, detectComplianceCategory } = await import('./services/disputeAI');
+      
+      const disputesWithAI = await Promise.all(disputes.map(async (dispute: any) => {
+        if (!dispute.aiSummary) {
+          try {
+            // Run AI analysis
+            const aiAnalysis = await analyzeDispute(
+              dispute.title,
+              dispute.reason,
+              dispute.disputeType,
+              dispute.requestedOutcome,
+              dispute.evidence
+            );
+            
+            // Detect compliance category if not set
+            const compliance = detectComplianceCategory(dispute.reason, dispute.disputeType);
+            
+            // Update dispute with AI analysis
+            await storage.updateDispute(dispute.id, user.currentWorkspaceId, {
+              aiSummary: aiAnalysis.summary,
+              aiRecommendation: aiAnalysis.recommendation,
+              aiConfidenceScore: aiAnalysis.confidenceScore,
+              aiAnalysisFactors: aiAnalysis.analysisFactors,
+              aiProcessedAt: new Date(),
+              aiModel: aiAnalysis.model,
+              complianceCategory: compliance.category,
+              regulatoryReference: compliance.regulatoryReference,
+            });
+            
+            return { ...dispute, ...aiAnalysis, ...compliance };
+          } catch (error) {
+            console.error('Error analyzing dispute:', error);
+            return dispute;
+          }
+        }
+        return dispute;
+      }));
+
+      res.json(disputesWithAI);
+    } catch (error) {
+      console.error("Error fetching pending disputes:", error);
+      res.status(500).json({ message: "Failed to fetch pending disputes" });
+    }
+  });
+
+  // Manager review and decision on dispute
+  app.post('/api/disputes/:id/review', isAuthenticated, requireHRManager, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user?.currentWorkspaceId) {
+        return res.status(403).json({ message: "No workspace selected" });
+      }
+
+      const { id } = req.params;
+      const { decision, reviewerNotes } = req.body;
+
+      if (!decision || !reviewerNotes) {
+        return res.status(400).json({ message: "decision and reviewerNotes are required" });
+      }
+
+      const validDecisions = ['approve', 'reject', 'escalate'];
+      if (!validDecisions.includes(decision)) {
+        return res.status(400).json({ message: "Invalid decision. Must be: approve, reject, or escalate" });
+      }
+
+      // Update dispute with manager decision
+      const statusMap: { [key: string]: string } = {
+        approve: 'approved',
+        reject: 'rejected',
+        escalate: 'under_review',
+      };
+
+      const dispute = await storage.updateDispute(id, user.currentWorkspaceId, {
+        reviewerRecommendation: decision,
+        reviewerNotes,
+        reviewStartedAt: new Date(),
+        status: statusMap[decision],
+        resolvedAt: decision !== 'escalate' ? new Date() : null,
+        resolvedBy: decision !== 'escalate' ? userId : null,
+        resolution: decision !== 'escalate' ? reviewerNotes : null,
+      });
+
+      if (!dispute) {
+        return res.status(404).json({ message: "Dispute not found" });
+      }
+
+      res.json(dispute);
+    } catch (error) {
+      console.error("Error reviewing dispute:", error);
+      res.status(500).json({ message: "Failed to review dispute" });
+    }
+  });
+
+  // Get employee's complete audit record (read-only view)
+  app.get('/api/employee/audit-record', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user?.currentWorkspaceId) {
+        return res.status(403).json({ message: "No workspace selected" });
+      }
+
+      const employee = await storage.getEmployeeByUserId(userId);
+      if (!employee) {
+        return res.status(403).json({ message: "Employee not found" });
+      }
+
+      // Get all audit data for employee
+      const [
+        shiftsData,
+        reviewsData,
+        writeUpsData,
+        lockedRecordsData,
+      ] = await Promise.all([
+        // Shifts worked (last 90 days)
+        storage.getShiftsByEmployee(employee.id, user.currentWorkspaceId, {
+          startDate: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000),
+        }),
+        
+        // Performance reviews
+        storage.getPerformanceReviewsByEmployee(employee.id, user.currentWorkspaceId),
+        
+        // Write-ups/disciplinary actions (from RMS)
+        storage.getReportSubmissions(user.currentWorkspaceId, {
+          employeeId: employee.id,
+          status: 'approved',
+        }),
+        
+        // Locked compliance records
+        storage.getLockedReportRecordsByEmployee(employee.id, user.currentWorkspaceId),
+      ]);
+
+      // Calculate compliance stats
+      const totalHours = shiftsData.reduce((sum: number, shift: any) => sum + (shift.hoursWorked || 0), 0);
+      const overtimeHours = shiftsData.reduce((sum: number, shift: any) => {
+        const hours = shift.hoursWorked || 0;
+        return sum + (hours > 8 ? hours - 8 : 0);
+      }, 0);
+
+      res.json({
+        shifts: shiftsData,
+        reviews: reviewsData,
+        writeups: writeUpsData.filter((w: any) => w.formData?.isDisciplinary || w.templateId?.includes('disciplinary')),
+        lockedRecords: lockedRecordsData,
+        compliance: {
+          totalHours,
+          overtimeHours,
+          missedBreaks: 0, // TODO: Calculate from time entries
+          violations: 0, // TODO: Calculate from compliance reports
+        },
+      });
+    } catch (error) {
+      console.error("Error fetching audit record:", error);
+      res.status(500).json({ message: "Failed to fetch audit record" });
+    }
+  });
+
+  // Get items that can be disputed (for grievance filing form)
+  app.get('/api/employee/disputeable-items', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user?.currentWorkspaceId) {
+        return res.status(403).json({ message: "No workspace selected" });
+      }
+
+      const employee = await storage.getEmployeeByUserId(userId);
+      if (!employee) {
+        return res.status(403).json({ message: "Employee not found" });
+      }
+
+      // Get reviews and write-ups that can be disputed
+      const [reviews, writeUps] = await Promise.all([
+        storage.getPerformanceReviewsByEmployee(employee.id, user.currentWorkspaceId),
+        storage.getReportSubmissions(user.currentWorkspaceId, {
+          employeeId: employee.id,
+          status: 'approved',
+        }),
+      ]);
+
+      res.json({
+        reviews: reviews.map((r: any) => ({
+          id: r.id,
+          type: 'performance_review',
+          title: `${r.reviewType} Review - ${r.reviewPeriodStart ? new Date(r.reviewPeriodStart).toLocaleDateString() : 'N/A'}`,
+          date: r.completedAt || r.createdAt,
+        })),
+        writeups: writeUps.map((w: any) => ({
+          id: w.id,
+          type: 'report_submission',
+          title: w.reportNumber || 'Incident Report',
+          date: w.submittedAt,
+        })),
+      });
+    } catch (error) {
+      console.error("Error fetching disputeable items:", error);
+      res.status(500).json({ message: "Failed to fetch disputeable items" });
+    }
+  });
+
   // ============================================================================
   // CROSS-ORGANIZATIONAL EMPLOYEE REPUTATION API (for hiring managers)
   // ============================================================================
