@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { storage } from "./storage";
+import * as os from "os";
 import { 
   users, 
   workspaces, 
@@ -15,6 +16,33 @@ import {
 import { eq, sql, and, or, desc, gte } from "drizzle-orm";
 
 const db = (storage as any).db;
+
+/**
+ * Calculate current CPU usage percentage
+ * Returns average CPU load over 1 minute as percentage
+ */
+function getCpuUsagePercent(): number {
+  const cpus = os.cpus();
+  const loadAvg = os.loadavg()[0]; // 1-minute load average
+  
+  // Convert load average to percentage (load / number of cores * 100)
+  const cpuPercent = (loadAvg / cpus.length) * 100;
+  
+  // Cap at 100% and round to 1 decimal place
+  return Math.min(Math.round(cpuPercent * 10) / 10, 100);
+}
+
+/**
+ * Calculate current memory usage percentage
+ */
+function getMemoryUsagePercent(): number {
+  const totalMem = os.totalmem();
+  const freeMem = os.freemem();
+  const usedMem = totalMem - freeMem;
+  
+  // Calculate percentage and round to 1 decimal place
+  return Math.round((usedMem / totalMem) * 1000) / 10;
+}
 
 /**
  * Platform Admin - Root Dashboard Statistics
@@ -81,10 +109,10 @@ export async function getPlatformStats(req: Request, res: Response) {
       ? ((cancelledSubs?.count || 0) / workspaceCount.count * 100).toFixed(1)
       : "0";
 
-    // System health - Real metrics (uptime is real, database assumed healthy)
+    // System health - Real metrics from OS
     const systemHealth = {
-      cpu: 0, // TODO: Implement real CPU monitoring
-      memory: 0, // TODO: Implement real memory monitoring  
+      cpu: getCpuUsagePercent(),
+      memory: getMemoryUsagePercent(),
       database: "healthy",
       uptime: process.uptime()
     };
