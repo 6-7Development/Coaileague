@@ -2425,6 +2425,120 @@ export function setupWebSocket(server: Server) {
             break;
           }
 
+          case 'ban_user': {
+            // Permanently ban a user from chat (platform staff only)
+            if (!ws.conversationId || !ws.userId) {
+              return;
+            }
+
+            // Check if user has staff permissions
+            const staffInfo = await storage.getUserById(ws.userId);
+            const isStaff = staffInfo?.platformRole && ['root', 'admin', 'deputy', 'assistant', 'sysop'].includes(staffInfo.platformRole);
+            
+            if (!isStaff) {
+              ws.send(JSON.stringify({
+                type: 'error',
+                message: '⛔ Permission denied - Staff role required for banning users',
+              }));
+              return;
+            }
+
+            // Get target user info
+            const targetUser = await storage.getUserById(payload.targetUserId);
+            const targetUserName = targetUser ? `${targetUser.firstName || ''} ${targetUser.lastName || ''}`.trim() || targetUser.email || 'Unknown' : 'Unknown';
+            
+            // Get staff display name
+            const staffRole = staffInfo?.platformRole || 'unknown';
+            const staffDisplayName = staffInfo ? formatUserDisplayName({
+              firstName: staffInfo.firstName,
+              lastName: staffInfo.lastName,
+              email: staffInfo.email || undefined,
+              platformRole: staffInfo.platformRole || undefined,
+              workspaceRole: staffInfo.workspaceRole || undefined,
+            }) : ws.userName || 'Unknown';
+
+            // Audit log the ban action
+            try {
+              await storage.createAuditLog({
+                commandId: payload.commandId || null,
+                userId: ws.userId,
+                userEmail: staffInfo?.email || ws.userName || 'unknown',
+                userRole: staffRole || 'unknown',
+                action: 'ban_user',
+                actionDescription: `${staffDisplayName} permanently banned ${targetUserName}`,
+                entityType: 'user',
+                entityId: payload.targetUserId,
+                targetId: payload.targetUserId,
+                targetName: targetUserName,
+                targetType: 'user',
+                conversationId: ws.conversationId,
+                reason: payload.reason || null,
+                metadata: {
+                  commandPayload: {
+                    type: 'ban_user',
+                    targetUserId: payload.targetUserId,
+                    reason: payload.reason,
+                  },
+                },
+                ipAddress: ws.ipAddress || null,
+                userAgent: ws.userAgent || null,
+                success: true,
+                errorMessage: null,
+              });
+            } catch (auditErr) {
+              console.error('AuditOS™ failed to log ban action:', auditErr);
+            }
+
+            // Find and disconnect target user from all conversations
+            const clients = conversationClients.get(ws.conversationId);
+            if (clients) {
+              for (const client of Array.from(clients)) {
+                if (client.userId === payload.targetUserId) {
+                  // Send ban notification to target user
+                  if (client.readyState === WebSocket.OPEN) {
+                    client.send(JSON.stringify({
+                      type: 'banned',
+                      reason: payload.reason || 'Violation of chat policies',
+                      message: '🚫 You have been permanently banned from chat by platform staff',
+                      bannedBy: staffDisplayName,
+                    }));
+                  }
+                  
+                  // Remove from conversation and close connection
+                  clients.delete(client);
+                  client.close();
+                  console.log(`🚫 ${payload.targetUserId} has been permanently banned by ${staffDisplayName}`);
+                }
+              }
+            }
+
+            // Add to permanently banned users list (in-memory tracking)
+            removedSimulatedUsers.add(payload.targetUserId);
+
+            // Broadcast ban announcement to room
+            const reason = payload.reason ? ` (Reason: ${payload.reason})` : '';
+            broadcastToConversation(ws.conversationId, {
+              type: 'system_message',
+              message: `🚫 ${targetUserName} has been permanently banned by ${staffDisplayName}${reason}`,
+              timestamp: new Date().toISOString(),
+            }, ws.userId);
+
+            // Send success acknowledgment
+            if (ws.readyState === WebSocket.OPEN) {
+              ws.send(JSON.stringify({
+                type: 'command_ack',
+                commandId: payload.commandId,
+                action: 'ban_user',
+                success: true,
+                message: `✓ ${targetUserName} has been permanently banned`,
+                targetUserId: payload.targetUserId,
+                targetName: targetUserName,
+              }));
+            }
+
+            break;
+          }
+
           case 'request_secure': {
             // Staff requests secure information from a user
             if (!ws.conversationId || !ws.userId) {
