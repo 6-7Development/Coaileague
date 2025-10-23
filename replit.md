@@ -3,6 +3,26 @@
 ## Overview
 WorkforceOS is a comprehensive workforce management operating system designed to automate HR functions for businesses. It offers features such as time tracking, automated invoice generation, smart hiring, compliance audit trails, and real-time analytics. The platform aims to provide significant cost savings by integrating various HR functions into a single system, envisioning branded features like BillOS™, PayrollOS™, ScheduleOS™, HireOS™, TrackOS™, ReportOS™, and AnalyticsOS™ for a unified product identity. The project also focuses on monopolistic features to provide complete employee lifecycle management, granular role-based access control, and platform-level troubleshooting, justifying a premium pricing model.
 
+## Branding & Visual Identity (Updated October 23, 2025)
+**New Professional Logo Design**: WorkforceOS features a comprehensive brand identity showcasing the platform's core capabilities:
+- **Center**: Professional figure representing the workforce
+- **Top Left**: AI Brain (intelligence and decision-making)
+- **Top Right**: Automation Gear (efficiency and automation)
+- **Bottom Left**: Circuit Intelligence Brain (smart algorithms)
+- **Bottom Right**: Compliance Shield (protection and regulatory compliance)
+- **Color Scheme**: Teal (#0d9488 - #14b8a6) for icons, Navy (#1e3a5f - #2c5282) for the professional figure
+- **Animations**: For loading states, the logo features:
+  - Rotating gear (8s continuous spin)
+  - Pulsing shield with glow effect
+  - Alive brain with circuit pulse animation
+  - Glowing head with drop shadow effects
+  - Floating AI brain icon
+- **Logo Files**: Saved in `attached_assets/workforceos-logo-full.png`
+- **Components**: 
+  - Static version: `<WorkforceOSLogo animated={false} />`
+  - Animated version: `<WorkforceOSLogo animated={true} />` (used in all loading screens)
+- **Usage**: Universal logo component automatically adapts to different sizes (sm, md, lg, xl, hero)
+
 ## Recent Changes (October 21, 2025)
 ### Critical UX Improvements - User Navigation & Accessibility
 
