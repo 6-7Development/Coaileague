@@ -28,11 +28,11 @@ export function UniversalLoading({
         data-testid="universal-loading-fullscreen"
       >
         <div className="flex flex-col items-center gap-6 px-4">
-          <div className="animate-pulse">
-            <WorkforceOSLogo size={logoSize} showText={true} />
-          </div>
+          {/* New Animated Logo */}
+          <WorkforceOSLogo size={logoSize} showText={false} animated={true} />
+          
           <div className={`flex items-center gap-3 ${textSize} text-white/80 font-medium`}>
-            <Loader2 className={`${spinnerSize} animate-spin text-indigo-400`} />
+            <Loader2 className={`${spinnerSize} animate-spin text-teal-400`} />
             <span>{message}</span>
           </div>
           <div className="mt-4 text-xs text-white/40 animate-pulse">
@@ -46,11 +46,11 @@ export function UniversalLoading({
   return (
     <div className="flex flex-col items-center justify-center p-8 min-h-[200px]" data-testid="universal-loading">
       <div className="flex flex-col items-center gap-4">
-        <div className="animate-pulse">
-          <WorkforceOSLogo size={logoSize} showText={false} />
-        </div>
+        {/* New Animated Logo */}
+        <WorkforceOSLogo size={logoSize} showText={false} animated={true} />
+        
         <div className={`flex items-center gap-2 ${textSize} text-muted-foreground`}>
-          <Loader2 className={`${spinnerSize} animate-spin`} />
+          <Loader2 className={`${spinnerSize} animate-spin text-teal-500`} />
           <span>{message}</span>
         </div>
       </div>

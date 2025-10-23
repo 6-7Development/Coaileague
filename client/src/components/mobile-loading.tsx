@@ -14,16 +14,20 @@ export function MobileLoading({ message = "Loading...", fullScreen = false }: Mo
   if (fullScreen) {
     return (
       <div 
-        className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background/95 backdrop-blur-sm"
+        className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900"
         data-testid="mobile-loading-fullscreen"
       >
-        <div className="flex flex-col items-center gap-4 px-4">
-          <div className="animate-pulse">
-            <WorkforceOSLogo size="lg" showText={false} />
-          </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" />
+        <div className="flex flex-col items-center gap-6 px-4">
+          {/* New Animated Logo */}
+          <WorkforceOSLogo size="lg" showText={false} animated={true} />
+          
+          <div className="flex items-center gap-3 text-sm text-white/80 font-medium">
+            <Loader2 className="h-4 w-4 animate-spin text-teal-400" />
             <span>{message}</span>
+          </div>
+          
+          <div className="mt-4 text-xs text-white/40 animate-pulse">
+            Powered by WorkforceOS Platform
           </div>
         </div>
       </div>
@@ -33,11 +37,11 @@ export function MobileLoading({ message = "Loading...", fullScreen = false }: Mo
   return (
     <div className="flex flex-col items-center justify-center p-8 min-h-[200px]" data-testid="mobile-loading">
       <div className="flex flex-col items-center gap-4">
-        <div className="animate-pulse">
-          <WorkforceOSLogo size="md" showText={false} />
-        </div>
+        {/* New Animated Logo */}
+        <WorkforceOSLogo size="md" showText={false} animated={true} />
+        
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" />
+          <Loader2 className="h-4 w-4 animate-spin text-teal-500" />
           <span>{message}</span>
         </div>
       </div>

@@ -1,69 +1,72 @@
 import { cn } from "@/lib/utils";
 import workforceOSLogo from "@assets/workforceos-logo-full.png";
 
-interface WorkforceOSLogoProps {
+interface AnimatedLogoProps {
   size?: "sm" | "md" | "lg" | "xl" | "hero";
-  showText?: boolean;
   animated?: boolean;
   className?: string;
 }
 
 /**
- * WorkforceOS Logo Component - New Professional Design
+ * WorkforceOS Animated Logo - New Brand Design
  * Features: AI Brain, Automation Gear, Compliance Shield, Circuit Intelligence, Professional Workforce
- * Can be static (image) or animated (SVG with animations)
+ * Animations: Rotating gear, pulsing shield, alive brain circuits, glowing head
  */
-export function WorkforceOSLogo({ 
+export function WorkforceOSAnimatedLogo({ 
   size = "md", 
-  showText = true,
-  animated = false,
+  animated = true,
   className 
-}: WorkforceOSLogoProps) {
+}: AnimatedLogoProps) {
   const sizes = {
     sm: {
-      container: "w-24 h-24",
-      image: "w-full h-full object-contain"
+      container: "w-32 h-32",
+      svg: "w-full h-full",
+      text: "text-base"
     },
     md: {
-      container: "w-32 h-32",
-      image: "w-full h-full object-contain"
+      container: "w-48 h-48",
+      svg: "w-full h-full",
+      text: "text-xl"
     },
     lg: {
-      container: "w-48 h-48",
-      image: "w-full h-full object-contain"
+      container: "w-64 h-64",
+      svg: "w-full h-full",
+      text: "text-2xl"
     },
     xl: {
-      container: "w-64 h-64",
-      image: "w-full h-full object-contain"
+      container: "w-80 h-80",
+      svg: "w-full h-full",
+      text: "text-3xl"
     },
     hero: {
-      container: "w-80 h-80",
-      image: "w-full h-full object-contain"
+      container: "w-96 h-96",
+      svg: "w-full h-full",
+      text: "text-4xl"
     }
   };
 
   if (!animated) {
-    // Static version - uses the PNG image
+    // Static version - just show the image
     return (
-      <div className={cn("flex flex-col items-center", className)} data-testid="logo-static">
+      <div className={cn("flex flex-col items-center gap-2", className)}>
         <div className={sizes[size].container}>
           <img 
             src={workforceOSLogo} 
-            alt="WorkforceOS - Complete Workforce Management Platform" 
-            className={sizes[size].image}
+            alt="WorkforceOS" 
+            className="w-full h-full object-contain"
+            data-testid="logo-static"
           />
         </div>
       </div>
     );
   }
 
-  // Animated version - SVG with CSS animations
   return (
-    <div className={cn("flex flex-col items-center", className)} data-testid="logo-animated">
+    <div className={cn("flex flex-col items-center gap-2", className)} data-testid="logo-animated">
       <div className={cn("relative", sizes[size].container)}>
         <svg
           viewBox="0 0 400 400"
-          className="w-full h-full"
+          className={sizes[size].svg}
           xmlns="http://www.w3.org/2000/svg"
         >
           <defs>
@@ -98,12 +101,12 @@ export function WorkforceOSLogo({
           </defs>
 
           {/* Center Professional (Navy Blue - Dark) */}
-          <g transform="translate(200, 230)" className="animate-pulse-slow">
+          <g transform="translate(200, 230)" className={animated ? "animate-pulse-slow" : ""}>
             {/* Body/Suit */}
             <path
               d="M-40,-30 L-50,30 L-30,50 L30,50 L50,30 L40,-30 Z"
               fill="url(#navy-gradient)"
-              filter="url(#head-glow)"
+              filter={animated ? "url(#head-glow)" : undefined}
             />
             {/* Tie */}
             <path
@@ -125,13 +128,13 @@ export function WorkforceOSLogo({
               rx="25"
               ry="30"
               fill="url(#navy-gradient)"
-              filter="url(#head-glow)"
-              className="animate-glow-pulse"
+              filter={animated ? "url(#head-glow)" : undefined}
+              className={animated ? "animate-glow-pulse" : ""}
             />
           </g>
 
           {/* Top Left: AI Brain Head (Teal) */}
-          <g transform="translate(100, 80)" className="animate-float">
+          <g transform="translate(100, 80)" className={animated ? "animate-float" : ""}>
             {/* Head outline */}
             <path
               d="M0,0 L10,-5 L20,0 L25,10 L25,25 L20,35 L10,40 L0,35 L-5,25 L-5,10 Z"
@@ -140,7 +143,7 @@ export function WorkforceOSLogo({
               strokeWidth="2"
             />
             {/* Circuit brain - animated paths */}
-            <g className="animate-circuit-pulse">
+            <g className={animated ? "animate-circuit-pulse" : ""}>
               <circle cx="8" cy="15" r="3" fill="#f0f9ff" opacity="0.8" />
               <circle cx="15" cy="10" r="2" fill="#f0f9ff" opacity="0.6" />
               <circle cx="12" cy="22" r="2.5" fill="#f0f9ff" opacity="0.7" />
@@ -155,10 +158,10 @@ export function WorkforceOSLogo({
               cy="0" 
               r="30" 
               fill="url(#teal-gradient)" 
-              className="animate-spin-slow"
+              className={animated ? "animate-spin-slow" : ""}
             />
             {/* Gear teeth */}
-            <g className="animate-spin-slow">
+            <g className={animated ? "animate-spin-slow" : ""}>
               <rect x="-4" y="-35" width="8" height="10" fill="url(#teal-gradient)" />
               <rect x="-4" y="25" width="8" height="10" fill="url(#teal-gradient)" />
               <rect x="-35" y="-4" width="10" height="8" fill="url(#teal-gradient)" />
@@ -182,10 +185,10 @@ export function WorkforceOSLogo({
               strokeWidth="2"
             />
             {/* Circuit pathways - animated */}
-            <g className="animate-circuit-pulse">
-              <circle cx="-8" cy="10" r="2.5" fill="#f0f9ff" opacity="0.8" className="animate-pulse" />
-              <circle cx="8" cy="10" r="2.5" fill="#f0f9ff" opacity="0.8" className="animate-pulse delay-300" />
-              <circle cx="0" cy="18" r="3" fill="#f0f9ff" opacity="0.9" className="animate-pulse delay-600" />
+            <g className={animated ? "animate-circuit-pulse" : ""}>
+              <circle cx="-8" cy="10" r="2.5" fill="#f0f9ff" opacity="0.8" className={animated ? "animate-pulse" : ""} />
+              <circle cx="8" cy="10" r="2.5" fill="#f0f9ff" opacity="0.8" className={animated ? "animate-pulse" : ""} style={{ animationDelay: "0.3s" } as any} />
+              <circle cx="0" cy="18" r="3" fill="#f0f9ff" opacity="0.9" className={animated ? "animate-pulse" : ""} style={{ animationDelay: "0.6s" } as any} />
               <circle cx="-5" cy="5" r="2" fill="#f0f9ff" opacity="0.7" />
               <circle cx="5" cy="5" r="2" fill="#f0f9ff" opacity="0.7" />
               <path d="M-8,10 L0,18 L8,10" stroke="#f0f9ff" strokeWidth="1.5" opacity="0.5" />
@@ -193,14 +196,14 @@ export function WorkforceOSLogo({
           </g>
 
           {/* Bottom Right: Compliance Shield (Teal) */}
-          <g transform="translate(300, 320)" className="animate-shield-pulse">
+          <g transform="translate(300, 320)" className={animated ? "animate-shield-pulse" : ""}>
             {/* Shield shape */}
             <path
               d="M0,-30 L-25,-20 L-25,10 Q-25,25 0,35 Q25,25 25,10 L25,-20 Z"
               fill="url(#teal-gradient)"
               stroke="#0d9488"
               strokeWidth="2"
-              filter="url(#shield-glow)"
+              filter={animated ? "url(#shield-glow)" : undefined}
             />
             {/* Checkmark */}
             <path
@@ -214,7 +217,7 @@ export function WorkforceOSLogo({
           </g>
 
           {/* Connection Lines */}
-          <g stroke="#0d9488" strokeWidth="2" opacity="0.3" className="animate-pulse-slow">
+          <g stroke="#0d9488" strokeWidth="2" opacity="0.3" className={animated ? "animate-pulse-slow" : ""}>
             <line x1="125" y1="100" x2="175" y2="200" />
             <line x1="275" y1="100" x2="225" y2="200" />
             <line x1="125" y1="300" x2="175" y2="250" />
@@ -286,14 +289,6 @@ export function WorkforceOSLogo({
         
         .animate-shield-pulse {
           animation: shield-pulse 2s ease-in-out infinite;
-        }
-
-        .delay-300 {
-          animation-delay: 0.3s;
-        }
-
-        .delay-600 {
-          animation-delay: 0.6s;
         }
       `}</style>
     </div>
