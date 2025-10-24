@@ -1030,68 +1030,85 @@
   padding-right: max(env(safe-area-inset-right), 0.5rem);
 }
 
-/* WorkforceOS Logo Animations */
+/* WorkforceOS Logo Animations - Professional & Subtle */
 @keyframes float {
   0%, 100% {
     transform: translateY(0px);
   }
   50% {
-    transform: translateY(-8px);
-  }
-}
-
-@keyframes spin-slow {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
+    transform: translateY(-12px);
   }
 }
 
 @keyframes pulse-slow {
   0%, 100% {
     opacity: 1;
+    transform: scale(1);
   }
   50% {
-    opacity: 0.85;
+    opacity: 0.9;
+    transform: scale(1.02);
   }
 }
 
-@keyframes circuit-pulse {
+@keyframes pulse-glow {
   0%, 100% {
+    opacity: 0.4;
+    transform: scale(0.95);
+  }
+  50% {
     opacity: 0.7;
-  }
-  50% {
-    opacity: 1;
+    transform: scale(1.1);
   }
 }
 
-@keyframes shield-pulse {
-  0%, 100% {
-    filter: drop-shadow(0 0 4px rgba(13, 148, 136, 0.3));
+@keyframes orbit-1 {
+  0% {
+    transform: rotate(0deg) translateX(80px) rotate(0deg);
   }
-  50% {
-    filter: drop-shadow(0 0 8px rgba(13, 148, 136, 0.6));
+  100% {
+    transform: rotate(360deg) translateX(80px) rotate(-360deg);
+  }
+}
+
+@keyframes orbit-2 {
+  0% {
+    transform: rotate(120deg) translateX(100px) rotate(-120deg);
+  }
+  100% {
+    transform: rotate(480deg) translateX(100px) rotate(-480deg);
+  }
+}
+
+@keyframes orbit-3 {
+  0% {
+    transform: rotate(240deg) translateX(90px) rotate(-240deg);
+  }
+  100% {
+    transform: rotate(600deg) translateX(90px) rotate(-600deg);
   }
 }
 
 .animate-float {
-  animation: float 3s ease-in-out infinite;
-}
-
-.animate-spin-slow {
-  animation: spin-slow 8s linear infinite;
+  animation: float 4s ease-in-out infinite;
 }
 
 .animate-pulse-slow {
-  animation: pulse-slow 2s ease-in-out infinite;
+  animation: pulse-slow 3s ease-in-out infinite;
 }
 
-.animate-circuit-pulse {
-  animation: circuit-pulse 2s ease-in-out infinite;
+.animate-pulse-glow {
+  animation: pulse-glow 4s ease-in-out infinite;
 }
 
-.animate-shield-pulse {
-  animation: shield-pulse 2s ease-in-out infinite;
+.animate-orbit-1 {
+  animation: orbit-1 15s linear infinite;
+}
+
+.animate-orbit-2 {
+  animation: orbit-2 20s linear infinite;
+}
+
+.animate-orbit-3 {
+  animation: orbit-3 18s linear infinite;
 }

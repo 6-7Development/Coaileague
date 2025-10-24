@@ -36,18 +36,12 @@ export default function Landing() {
       <nav className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto px-4 sm:px-6">
           <div className="flex h-20 items-center justify-between">
-            {/* Logo - Transparent blended without white background */}
+            {/* Professional Navigation Logo */}
             <button 
               onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-              className="relative cursor-pointer group"
+              className="relative cursor-pointer hover-elevate transition-all duration-300"
             >
-              {/* Soft glow on hover */}
-              <div className="absolute inset-0 bg-gradient-to-br from-teal-500/30 via-blue-500/20 to-purple-500/20 blur-xl rounded-full scale-125 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-              
-              {/* Logo without background - fully transparent and blended */}
-              <div className="relative z-10 w-16 h-16 sm:w-20 sm:h-20">
-                <WorkforceOSLogo size="sm" animated={false} className="w-full h-full drop-shadow-lg" />
-              </div>
+              <WorkforceOSLogo variant="nav" animated={false} />
             </button>
 
             {/* Desktop Navigation */}
@@ -110,20 +104,9 @@ export default function Landing() {
       <section className="relative overflow-hidden border-b bg-gradient-to-b from-background via-background to-muted/20">
         <div className="container mx-auto px-4 sm:px-6 py-16 sm:py-24 lg:py-32">
           <div className="max-w-5xl mx-auto text-center space-y-8">
-            {/* Large Prominent Logo - Better integrated */}
+            {/* Fortune 500 Hero Logo with Professional Presentation */}
             <div className="flex items-center justify-center mb-8">
-              <div className="relative group">
-                {/* Multi-layer glow effect */}
-                <div className="absolute inset-0 bg-gradient-to-r from-teal-500/30 via-blue-500/30 to-purple-500/30 blur-3xl rounded-full scale-150 animate-pulse" />
-                <div className="absolute inset-0 bg-gradient-to-br from-teal-400/20 to-blue-600/20 blur-2xl rounded-full scale-125" />
-                
-                {/* Circular container with glass morphism */}
-                <div className="relative z-10 w-48 h-48 sm:w-56 sm:h-56 md:w-72 md:h-72 rounded-full bg-gradient-to-br from-slate-900/30 via-slate-800/20 to-slate-900/30 backdrop-blur-md p-6 sm:p-8 border border-white/10 shadow-2xl">
-                  <div className="w-full h-full rounded-full overflow-hidden">
-                    <WorkforceOSLogo size="md" animated={true} className="w-full h-full opacity-95 mix-blend-screen" />
-                  </div>
-                </div>
-              </div>
+              <WorkforceOSLogo variant="hero" animated={true} />
             </div>
             
             {/* Trust Badge */}
