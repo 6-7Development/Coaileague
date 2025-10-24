@@ -1,5 +1,4 @@
 import { cn } from "@/lib/utils";
-import workforceOSLogo from "@assets/workforceos-logo-full.png";
 
 interface WorkforceOSLogoProps {
   size?: "sm" | "md" | "lg" | "xl" | "hero";
@@ -8,11 +7,6 @@ interface WorkforceOSLogoProps {
   className?: string;
 }
 
-/**
- * WorkforceOS Logo Component - New Professional Design
- * Features: AI Brain, Automation Gear, Compliance Shield, Circuit Intelligence, Professional Workforce
- * Can be static (image) or animated (SVG with animations)
- */
 export function WorkforceOSLogo({ 
   size = "md", 
   showText = true,
@@ -20,371 +14,186 @@ export function WorkforceOSLogo({
   className 
 }: WorkforceOSLogoProps) {
   const sizes = {
-    sm: {
-      container: "w-48 h-48",
-      image: "w-full h-full object-contain"
-    },
-    md: {
-      container: "w-64 h-64",
-      image: "w-full h-full object-contain"
-    },
-    lg: {
-      container: "w-80 h-80",
-      image: "w-full h-full object-contain"
-    },
-    xl: {
-      container: "w-96 h-96",
-      image: "w-full h-full object-contain"
-    },
-    hero: {
-      container: "w-[32rem] h-[32rem]",
-      image: "w-full h-full object-contain"
-    }
+    sm: "w-32 h-32",
+    md: "w-48 h-48",
+    lg: "w-64 h-64",
+    xl: "w-80 h-80",
+    hero: "w-96 h-96"
   };
 
-  // Always use SVG (with or without animations) - NO MORE PNG
-  const animationClass = animated ? '' : 'static-logo';
-  
   return (
-    <div className={cn("flex flex-col items-center", className)} data-testid={animated ? "logo-animated" : "logo-static"}>
-      <div className={cn("relative", sizes[size].container)}>
+    <div className={cn("flex flex-col items-center gap-2", className)} data-testid={animated ? "logo-animated" : "logo-static"}>
+      <div className={cn("relative", sizes[size])}>
         <svg
-          viewBox="0 0 400 400"
+          viewBox="0 0 500 400"
           className="w-full h-full"
           xmlns="http://www.w3.org/2000/svg"
         >
           <defs>
-            {/* Gradients */}
-            <linearGradient id="teal-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#0d9488" />
-              <stop offset="100%" stopColor="#14b8a6" />
+            <linearGradient id="green-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#14785f" />
+              <stop offset="100%" stopColor="#0d9488" />
             </linearGradient>
             
             <linearGradient id="navy-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#1e3a5f" />
-              <stop offset="100%" stopColor="#2c5282" />
+              <stop offset="0%" stopColor="#1a3a52" />
+              <stop offset="100%" stopColor="#2d5a7b" />
             </linearGradient>
-
-            {/* Glowing filter for head */}
-            <filter id="head-glow">
-              <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
-              <feMerge>
-                <feMergeNode in="coloredBlur"/>
-                <feMergeNode in="SourceGraphic"/>
-              </feMerge>
-            </filter>
-
-            {/* Pulsing glow for shield */}
-            <filter id="shield-glow">
-              <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
-              <feMerge>
-                <feMergeNode in="coloredBlur"/>
-                <feMergeNode in="SourceGraphic"/>
-              </feMerge>
-            </filter>
           </defs>
 
-          {/* Center Professional (Navy Blue - Dark with MORE DETAIL) */}
-          <g transform="translate(200, 230)" className={animated ? "animate-pulse-slow" : ""}>
-            {/* Body/Suit - More detailed */}
-            <path
-              d="M-45,-35 L-55,35 L-35,55 L35,55 L55,35 L45,-35 Z"
-              fill="url(#navy-gradient)"
-              stroke="#1e3a5f"
-              strokeWidth="2"
-              filter="url(#head-glow)"
-            />
-            {/* Shoulders detail */}
-            <path
-              d="M-45,-35 L-55,5 L-40,0 L-40,-35 M45,-35 L55,5 L40,0 L40,-35"
-              fill="#2c5282"
-              opacity="0.8"
-            />
-            {/* White shirt collar - V-neck */}
-            <path
-              d="M-20,-35 L-15,-25 L0,-20 L15,-25 L20,-35 L15,-30 L0,-25 L-15,-30 Z"
-              fill="#f0f9ff"
-              stroke="#e0f2fe"
-              strokeWidth="1"
-            />
-            {/* Tie - More detailed */}
-            <path
-              d="M0,-25 L-6,0 L-4,15 L0,35 L4,15 L6,0 Z"
-              fill="#1e293b"
-              stroke="#0f172a"
-              strokeWidth="1"
-            />
-            {/* Tie knot */}
-            <rect
-              x="-5"
-              y="-28"
-              width="10"
-              height="6"
-              fill="#1e293b"
-              stroke="#0f172a"
-              strokeWidth="1"
-            />
-            {/* Head - Better silhouette */}
+          {/* Center Professional Figure */}
+          <g transform="translate(250, 180)">
+            {/* Head */}
             <ellipse
               cx="0"
-              cy="-55"
-              rx="28"
-              ry="35"
+              cy="-45"
+              rx="35"
+              ry="42"
               fill="url(#navy-gradient)"
-              stroke="#1e3a5f"
-              strokeWidth="2"
-              filter="url(#head-glow)"
-              className={animated ? "animate-glow-pulse" : ""}
+              className={animated ? "animate-pulse-slow" : ""}
             />
+            
             {/* Neck */}
             <rect
-              x="-10"
-              y="-25"
-              width="20"
-              height="15"
+              x="-15"
+              y="-10"
+              width="30"
+              height="20"
               fill="url(#navy-gradient)"
-              rx="3"
+              rx="5"
+            />
+            
+            {/* Shoulders and Suit */}
+            <path
+              d="M-60,10 L-70,80 L-40,100 L40,100 L70,80 L60,10 L40,10 L30,0 L-30,0 L-40,10 Z"
+              fill="url(#navy-gradient)"
+            />
+            
+            {/* White Shirt */}
+            <path
+              d="M-25,10 L-15,0 L0,5 L15,0 L25,10"
+              fill="#f0f9ff"
+            />
+            
+            {/* Tie */}
+            <path
+              d="M0,5 L-8,40 L-5,60 L0,75 L5,60 L8,40 Z"
+              fill="#1e293b"
             />
           </g>
 
-          {/* Top Left: AI Brain Head (Teal) - MUCH MORE DETAIL like original */}
-          <g transform="translate(100, 80)" className={animated ? "animate-float" : ""}>
-            {/* Head profile silhouette */}
+          {/* Top Left: AI Brain Head */}
+          <g transform="translate(120, 100)" className={animated ? "animate-float" : ""}>
+            {/* Head silhouette */}
             <path
-              d="M5,-15 Q15,-20 25,-15 Q30,-10 30,0 Q30,8 28,15 Q25,25 20,32 Q15,38 8,40 Q0,42 -5,38 Q-10,30 -8,20 Q-6,10 0,5 Q2,0 5,-8 Z"
-              fill="url(#teal-gradient)"
-              stroke="#0d9488"
-              strokeWidth="2.5"
+              d="M30,-25 Q45,-30 55,-20 Q60,-10 60,5 Q60,20 55,35 Q45,50 30,55 Q15,58 5,50 Q-5,40 -5,25 Q-5,10 0,0 Q5,-15 20,-25 Z"
+              fill="url(#green-gradient)"
             />
-            {/* Ear detail */}
-            <ellipse cx="28" cy="5" rx="4" ry="6" fill="#14b8a6" />
             
-            {/* Circuit brain inside - MORE DETAIL */}
+            {/* Circuit brain elements */}
             <g className={animated ? "animate-circuit-pulse" : ""}>
-              {/* Main circuit nodes */}
-              <circle cx="10" cy="8" r="3.5" fill="#f0f9ff" stroke="#e0f2fe" strokeWidth="1.5" />
-              <circle cx="18" cy="5" r="2.5" fill="#f0f9ff" stroke="#e0f2fe" strokeWidth="1" />
-              <circle cx="15" cy="15" r="3" fill="#f0f9ff" stroke="#e0f2fe" strokeWidth="1.5" />
-              <circle cx="8" cy="18" r="2" fill="#f0f9ff" stroke="#e0f2fe" strokeWidth="1" />
-              <circle cx="12" cy="25" r="2.5" fill="#f0f9ff" stroke="#e0f2fe" strokeWidth="1" />
+              <circle cx="25" cy="10" r="6" fill="#f0f9ff" opacity="0.9" />
+              <circle cx="35" cy="5" r="4" fill="#f0f9ff" opacity="0.8" />
+              <circle cx="30" cy="20" r="5" fill="#f0f9ff" opacity="0.85" />
+              <circle cx="20" cy="25" r="4" fill="#f0f9ff" opacity="0.8" />
               
-              {/* Circuit pathways */}
-              <path d="M10,8 L18,5" stroke="#f0f9ff" strokeWidth="2" opacity="0.8" />
-              <path d="M10,8 L15,15" stroke="#f0f9ff" strokeWidth="2" opacity="0.8" />
-              <path d="M10,8 L8,18" stroke="#f0f9ff" strokeWidth="1.5" opacity="0.7" />
-              <path d="M15,15 L12,25" stroke="#f0f9ff" strokeWidth="1.5" opacity="0.7" />
-              <path d="M8,18 L12,25" stroke="#f0f9ff" strokeWidth="1.5" opacity="0.6" />
+              <path d="M25,10 L35,5 M25,10 L30,20 M30,20 L20,25" 
+                    stroke="#f0f9ff" 
+                    strokeWidth="2" 
+                    opacity="0.6" />
             </g>
           </g>
 
-          {/* Top Right: Automation Gear (Teal) - MORE DETAILED 8-tooth gear */}
-          <g transform="translate(300, 80)" className={animated ? "animate-spin-slow" : ""}>
-            {/* Main gear body */}
-            <circle 
-              cx="0" 
-              cy="0" 
-              r="32" 
-              fill="url(#teal-gradient)"
-              stroke="#0d9488"
-              strokeWidth="2"
-            />
+          {/* Top Right: Gear */}
+          <g transform="translate(380, 100)" className={animated ? "animate-spin-slow" : ""}>
+            <circle cx="0" cy="0" r="35" fill="url(#green-gradient)" />
             
-            {/* 8 precise gear teeth */}
-            {/* Top */}
-            <rect x="-5" y="-40" width="10" height="12" fill="#14b8a6" stroke="#0d9488" strokeWidth="1.5" rx="1" />
-            {/* Bottom */}
-            <rect x="-5" y="28" width="10" height="12" fill="#14b8a6" stroke="#0d9488" strokeWidth="1.5" rx="1" />
-            {/* Left */}
-            <rect x="-40" y="-5" width="12" height="10" fill="#14b8a6" stroke="#0d9488" strokeWidth="1.5" rx="1" />
-            {/* Right */}
-            <rect x="28" y="-5" width="12" height="10" fill="#14b8a6" stroke="#0d9488" strokeWidth="1.5" rx="1" />
-            {/* Top-left diagonal */}
-            <rect x="-32" y="-32" width="10" height="10" fill="#14b8a6" stroke="#0d9488" strokeWidth="1.5" rx="1" transform="rotate(-45 -27 -27)" />
-            {/* Top-right diagonal */}
-            <rect x="22" y="-32" width="10" height="10" fill="#14b8a6" stroke="#0d9488" strokeWidth="1.5" rx="1" transform="rotate(45 27 -27)" />
-            {/* Bottom-left diagonal */}
-            <rect x="-32" y="22" width="10" height="10" fill="#14b8a6" stroke="#0d9488" strokeWidth="1.5" rx="1" transform="rotate(45 -27 27)" />
-            {/* Bottom-right diagonal */}
-            <rect x="22" y="22" width="10" height="10" fill="#14b8a6" stroke="#0d9488" strokeWidth="1.5" rx="1" transform="rotate(-45 27 27)" />
+            {/* Gear teeth - 8 teeth */}
+            <rect x="-6" y="-45" width="12" height="15" fill="url(#green-gradient)" rx="2" />
+            <rect x="-6" y="30" width="12" height="15" fill="url(#green-gradient)" rx="2" />
+            <rect x="-45" y="-6" width="15" height="12" fill="url(#green-gradient)" rx="2" />
+            <rect x="30" y="-6" width="15" height="12" fill="url(#green-gradient)" rx="2" />
             
-            {/* Center hole - larger and detailed */}
-            <circle cx="0" cy="0" r="14" fill="#f0f9ff" stroke="#e0f2fe" strokeWidth="2" />
-            <circle cx="0" cy="0" r="8" fill="none" stroke="#cbd5e1" strokeWidth="1" />
+            <rect x="-35" y="-35" width="12" height="12" fill="url(#green-gradient)" rx="2" transform="rotate(-45 -29 -29)" />
+            <rect x="23" y="-35" width="12" height="12" fill="url(#green-gradient)" rx="2" transform="rotate(45 29 -29)" />
+            <rect x="-35" y="23" width="12" height="12" fill="url(#green-gradient)" rx="2" transform="rotate(45 -29 29)" />
+            <rect x="23" y="23" width="12" height="12" fill="url(#green-gradient)" rx="2" transform="rotate(-45 29 29)" />
+            
+            {/* Center hole */}
+            <circle cx="0" cy="0" r="18" fill="#f0f9ff" />
+            <circle cx="0" cy="0" r="10" fill="none" stroke="#cbd5e1" strokeWidth="2" />
           </g>
 
-          {/* Bottom Left: Circuit Intelligence Brain (Teal) - DETAILED brain lobes */}
-          <g transform="translate(100, 320)">
-            {/* Brain outline - More realistic brain shape with lobes */}
+          {/* Bottom Left: Circuit Brain */}
+          <g transform="translate(120, 280)">
+            {/* Brain shape */}
             <path
-              d="M0,-5 Q-8,-8 -15,-5 Q-20,-2 -22,5 Q-24,12 -22,18 Q-20,25 -15,30 Q-8,34 0,32 Q8,34 15,30 Q20,25 22,18 Q24,12 22,5 Q20,-2 15,-5 Q8,-8 0,-5"
-              fill="url(#teal-gradient)"
-              stroke="#0d9488"
-              strokeWidth="2.5"
-            />
-            {/* Brain folds/lobes detail */}
-            <path
-              d="M-5,0 Q-10,5 -8,12 M5,0 Q10,5 8,12 M0,8 Q-3,15 0,20 M0,8 Q3,15 0,20"
-              stroke="#14b8a6"
-              strokeWidth="2"
-              fill="none"
-              opacity="0.6"
+              d="M30,5 Q45,0 55,10 Q60,20 58,30 Q55,42 45,50 Q30,58 15,52 Q5,45 2,32 Q0,20 5,10 Q15,0 30,5 M20,10 Q15,15 18,25 M35,10 Q40,15 37,25"
+              fill="url(#green-gradient)"
             />
             
-            {/* Circuit pathways - MORE DETAIL */}
+            {/* Circuit nodes */}
             <g className={animated ? "animate-circuit-pulse" : ""}>
-              {/* Left hemisphere nodes */}
-              <circle cx="-12" cy="8" r="3" fill="#f0f9ff" stroke="#e0f2fe" strokeWidth="1.5" className={animated ? "animate-pulse" : ""} />
-              <circle cx="-10" cy="18" r="2.5" fill="#f0f9ff" stroke="#e0f2fe" strokeWidth="1" className={animated ? "animate-pulse delay-300" : ""} />
-              <circle cx="-6" cy="12" r="2" fill="#f0f9ff" stroke="#e0f2fe" strokeWidth="1" />
+              <circle cx="20" cy="15" r="5" fill="#f0f9ff" opacity="0.9" />
+              <circle cx="35" cy="15" r="5" fill="#f0f9ff" opacity="0.9" />
+              <circle cx="28" cy="25" r="5" fill="#f0f9ff" opacity="0.9" />
+              <circle cx="15" cy="28" r="4" fill="#f0f9ff" opacity="0.85" />
+              <circle cx="40" cy="28" r="4" fill="#f0f9ff" opacity="0.85" />
+              <circle cx="28" cy="38" r="5" fill="#f0f9ff" opacity="0.9" />
               
-              {/* Right hemisphere nodes */}
-              <circle cx="12" cy="8" r="3" fill="#f0f9ff" stroke="#e0f2fe" strokeWidth="1.5" className={animated ? "animate-pulse delay-300" : ""} />
-              <circle cx="10" cy="18" r="2.5" fill="#f0f9ff" stroke="#e0f2fe" strokeWidth="1" className={animated ? "animate-pulse delay-600" : ""} />
-              <circle cx="6" cy="12" r="2" fill="#f0f9ff" stroke="#e0f2fe" strokeWidth="1" />
-              
-              {/* Central node */}
-              <circle cx="0" cy="22" r="3.5" fill="#f0f9ff" stroke="#e0f2fe" strokeWidth="1.5" className={animated ? "animate-pulse delay-600" : ""} />
-              
-              {/* Circuit connections */}
-              <path d="M-12,8 L-6,12 L0,22" stroke="#f0f9ff" strokeWidth="2" opacity="0.8" />
-              <path d="M12,8 L6,12 L0,22" stroke="#f0f9ff" strokeWidth="2" opacity="0.8" />
-              <path d="M-10,18 L0,22 L10,18" stroke="#f0f9ff" strokeWidth="2" opacity="0.7" />
-              <path d="M-12,8 L12,8" stroke="#f0f9ff" strokeWidth="1.5" opacity="0.5" strokeDasharray="3,2" />
+              <path d="M20,15 L28,25 M35,15 L28,25 M28,25 L15,28 M28,25 L40,28 M28,25 L28,38" 
+                    stroke="#f0f9ff" 
+                    strokeWidth="2" 
+                    opacity="0.5" />
             </g>
           </g>
 
-          {/* Bottom Right: Compliance Shield (Teal) - MORE DETAILED shield */}
-          <g transform="translate(300, 320)" className={animated ? "animate-shield-pulse" : ""}>
-            {/* Shield shape - Better proportions */}
+          {/* Bottom Right: Shield */}
+          <g transform="translate(380, 280)" className={animated ? "animate-shield-pulse" : ""}>
+            {/* Shield shape */}
             <path
-              d="M0,-32 L-28,-22 L-28,8 Q-28,20 -20,28 Q-10,34 0,38 Q10,34 20,28 Q28,20 28,8 L28,-22 Z"
-              fill="url(#teal-gradient)"
-              stroke="#0d9488"
-              strokeWidth="3"
-              filter="url(#shield-glow)"
-            />
-            {/* Shield border detail */}
-            <path
-              d="M0,-28 L-24,-20 L-24,8 Q-24,18 -17,25 Q-9,30 0,33 Q9,30 17,25 Q24,18 24,8 L24,-20 Z"
-              fill="none"
-              stroke="#14b8a6"
-              strokeWidth="1.5"
-              opacity="0.6"
-            />
-            {/* Center highlight */}
-            <ellipse
-              cx="0"
-              cy="5"
-              rx="18"
-              ry="22"
-              fill="#14b8a6"
-              opacity="0.3"
+              d="M0,-30 L-35,-18 L-35,15 Q-35,30 -20,42 Q-8,50 0,55 Q8,50 20,42 Q35,30 35,15 L35,-18 Z"
+              fill="url(#green-gradient)"
             />
             
-            {/* Large checkmark - MORE VISIBLE */}
+            {/* Checkmark */}
             <path
-              d="M-12,3 L-4,13 L15,-10"
+              d="M-12,8 L-4,18 L18,-10"
               stroke="#f0f9ff"
-              strokeWidth="5"
+              strokeWidth="6"
               strokeLinecap="round"
               strokeLinejoin="round"
               fill="none"
-            />
-            {/* Checkmark shadow for depth */}
-            <path
-              d="M-12,3 L-4,13 L15,-10"
-              stroke="#e0f2fe"
-              strokeWidth="3"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              fill="none"
-              opacity="0.7"
             />
           </g>
 
           {/* Connection Lines */}
-          <g stroke="#0d9488" strokeWidth="2" opacity="0.3" className={animated ? "animate-pulse-slow" : ""}>
-            <line x1="125" y1="100" x2="175" y2="200" />
-            <line x1="275" y1="100" x2="225" y2="200" />
-            <line x1="125" y1="300" x2="175" y2="250" />
-            <line x1="275" y1="300" x2="225" y2="250" />
+          <g stroke="url(#green-gradient)" strokeWidth="3" opacity="0.4">
+            {/* From brain head to center */}
+            <path d="M155,130 L155,150 Q155,160 165,165 L210,180" fill="none" />
+            <circle cx="155" cy="130" r="5" fill="url(#green-gradient)" />
+            
+            {/* From gear to center */}
+            <path d="M345,130 L345,150 Q345,160 335,165 L290,180" fill="none" />
+            <circle cx="345" cy="130" r="5" fill="url(#green-gradient)" />
+            
+            {/* From circuit brain to center */}
+            <path d="M155,250 L155,230 Q155,220 165,215 L210,200" fill="none" />
+            <circle cx="155" cy="250" r="5" fill="url(#green-gradient)" />
+            
+            {/* From shield to center */}
+            <path d="M345,250 L345,230 Q345,220 335,215 L290,200" fill="none" />
+            <circle cx="345" cy="250" r="5" fill="url(#green-gradient)" />
           </g>
         </svg>
       </div>
-
-      <style>{`
-        @keyframes spin-slow {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-        
-        @keyframes pulse-slow {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.6; }
-        }
-        
-        @keyframes float {
-          0%, 100% { transform: translate(100px, 80px) translateY(0px); }
-          50% { transform: translate(100px, 80px) translateY(-5px); }
-        }
-        
-        @keyframes glow-pulse {
-          0%, 100% { 
-            filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.5));
-          }
-          50% { 
-            filter: drop-shadow(0 0 16px rgba(59, 130, 246, 0.8));
-          }
-        }
-        
-        @keyframes circuit-pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.4; }
-        }
-        
-        @keyframes shield-pulse {
-          0%, 100% { 
-            transform: translate(300px, 320px) scale(1);
-            filter: drop-shadow(0 0 4px rgba(13, 148, 136, 0.4));
-          }
-          50% { 
-            transform: translate(300px, 320px) scale(1.05);
-            filter: drop-shadow(0 0 8px rgba(13, 148, 136, 0.7));
-          }
-        }
-        
-        .animate-spin-slow {
-          animation: spin-slow 8s linear infinite;
-        }
-        
-        .animate-pulse-slow {
-          animation: pulse-slow 3s ease-in-out infinite;
-        }
-        
-        .animate-float {
-          animation: float 3s ease-in-out infinite;
-        }
-        
-        .animate-glow-pulse {
-          animation: glow-pulse 2s ease-in-out infinite;
-        }
-        
-        .animate-circuit-pulse {
-          animation: circuit-pulse 2.5s ease-in-out infinite;
-        }
-        
-        .animate-shield-pulse {
-          animation: shield-pulse 2s ease-in-out infinite;
-        }
-
-        .delay-300 {
-          animation-delay: 0.3s;
-        }
-
-        .delay-600 {
-          animation-delay: 0.6s;
-        }
-      `}</style>
+      
+      {showText && (
+        <div className="text-2xl font-bold text-foreground">
+          <span className="text-[#1a3a52]">WorkForce</span>
+          <span className="text-[#0d9488]">OS</span>
+        </div>
+      )}
     </div>
   );
 }
