@@ -18,11 +18,16 @@ export function MobileLoading({ message = "Loading...", fullScreen = false }: Mo
         data-testid="mobile-loading-fullscreen"
       >
         <div className="flex flex-col items-center gap-8 px-4">
-          {/* Large Animated Logo - No text needed */}
+          {/* Large Animated Logo - Better blended */}
           <div className="relative">
-            {/* Soft glow behind logo */}
-            <div className="absolute inset-0 bg-teal-500/20 blur-3xl rounded-full scale-150" />
-            <WorkforceOSLogo size="lg" animated={true} className="relative z-10" />
+            {/* Multi-layer glow */}
+            <div className="absolute inset-0 bg-gradient-to-r from-teal-500/30 via-blue-500/30 to-purple-500/30 blur-3xl rounded-full scale-150" />
+            <div className="absolute inset-0 bg-teal-400/20 blur-2xl rounded-full scale-125" />
+            
+            {/* Circular glass container */}
+            <div className="relative z-10 rounded-full bg-gradient-to-br from-slate-900/20 via-slate-800/10 to-slate-900/20 backdrop-blur-sm p-8 border border-white/5">
+              <WorkforceOSLogo size="lg" animated={true} className="opacity-95 mix-blend-screen" />
+            </div>
           </div>
           
           <div className="flex items-center gap-3 text-base text-white/90 font-medium">
@@ -37,10 +42,14 @@ export function MobileLoading({ message = "Loading...", fullScreen = false }: Mo
   return (
     <div className="flex flex-col items-center justify-center p-8 min-h-[200px]" data-testid="mobile-loading">
       <div className="flex flex-col items-center gap-6">
-        {/* Larger Logo - No text */}
+        {/* Larger Logo - Better integrated */}
         <div className="relative">
-          <div className="absolute inset-0 bg-teal-500/10 blur-2xl rounded-full scale-125" />
-          <WorkforceOSLogo size="md" animated={true} className="relative z-10" />
+          <div className="absolute inset-0 bg-gradient-to-r from-teal-500/20 to-blue-500/20 blur-2xl rounded-full scale-125" />
+          
+          {/* Circular container */}
+          <div className="relative z-10 rounded-full bg-gradient-to-br from-background/40 via-background/20 to-background/40 backdrop-blur-sm p-6 border border-border/30">
+            <WorkforceOSLogo size="md" animated={true} className="opacity-95" />
+          </div>
         </div>
         
         <div className="flex items-center gap-3 text-sm text-muted-foreground">
