@@ -36,17 +36,17 @@ export default function Landing() {
       <nav className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto px-4 sm:px-6">
           <div className="flex h-20 items-center justify-between">
-            {/* Logo - Better blended with circular design */}
+            {/* Logo - Transparent blended without white background */}
             <button 
               onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
               className="relative cursor-pointer group"
             >
-              {/* Soft glow background */}
-              <div className="absolute inset-0 bg-gradient-to-br from-teal-500/20 via-blue-500/20 to-purple-500/20 blur-2xl rounded-full scale-150 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              {/* Soft glow on hover */}
+              <div className="absolute inset-0 bg-gradient-to-br from-teal-500/30 via-blue-500/20 to-purple-500/20 blur-xl rounded-full scale-125 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               
-              {/* Circular container with backdrop */}
-              <div className="relative z-10 w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-slate-900/40 via-slate-800/40 to-slate-900/40 backdrop-blur-sm p-2 border border-white/5 group-hover:border-teal-500/30 transition-all duration-300">
-                <WorkforceOSLogo size="sm" animated={false} className="w-full h-full opacity-90 group-hover:opacity-100 transition-opacity" />
+              {/* Logo without background - fully transparent and blended */}
+              <div className="relative z-10 w-16 h-16 sm:w-20 sm:h-20">
+                <WorkforceOSLogo size="sm" animated={false} className="w-full h-full drop-shadow-lg" />
               </div>
             </button>
 
