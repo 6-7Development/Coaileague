@@ -18,7 +18,7 @@ export function WorkforceOSLogo({
         <img 
           src={logoImage} 
           alt="WorkforceOS" 
-          className="w-full h-full object-contain"
+          className="w-full h-full object-contain rounded-xl"
           style={{
             mixBlendMode: 'normal',
             filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1))'
@@ -41,7 +41,7 @@ export function WorkforceOSLogo({
         <img 
           src={logoImage} 
           alt="" 
-          className="w-full h-full object-contain"
+          className="w-full h-full object-contain rounded-xl"
           style={{
             mixBlendMode: 'normal',
             filter: 'drop-shadow(0 2px 4px rgba(13, 148, 136, 0.2))'
