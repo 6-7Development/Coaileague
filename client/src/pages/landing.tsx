@@ -379,6 +379,82 @@ export default function Landing() {
               </Card>
             ))}
           </div>
+
+          {/* Competitive Comparison - More Sales Focus */}
+          <div className="max-w-6xl mx-auto mt-20">
+            <div className="text-center mb-12">
+              <Badge variant="outline" className="mb-4">
+                <TrendingUp className="h-3 w-3 mr-1" />
+                Competitive Advantage
+              </Badge>
+              <h2 className="text-3xl sm:text-4xl font-bold mb-4">
+                Why Choose Us Over Point Solutions?
+              </h2>
+              <p className="text-lg text-muted-foreground">
+                Stop paying for 5+ separate tools. Get everything in one integrated platform.
+              </p>
+            </div>
+
+            <Card className="overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-muted/50">
+                    <tr>
+                      <th className="text-left p-4 font-semibold">Feature</th>
+                      <th className="text-center p-4 font-semibold">
+                        <div className="flex flex-col items-center gap-1">
+                          <span className="text-primary">Our Platform</span>
+                          <Badge variant="default" className="text-xs">All-in-One</Badge>
+                        </div>
+                      </th>
+                      <th className="text-center p-4 font-semibold text-muted-foreground">
+                        Point Solutions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[
+                      { feature: "Smart Scheduling", us: true, them: "Separate tool" },
+                      { feature: "GPS Time Tracking", us: true, them: "Separate tool" },
+                      { feature: "Payroll Management", us: true, them: "Separate tool" },
+                      { feature: "Automated Billing", us: true, them: "Separate tool" },
+                      { feature: "Digital Onboarding", us: true, them: "Separate tool" },
+                      { feature: "Compliance Reporting", us: true, them: "Separate tool" },
+                      { feature: "Analytics Dashboard", us: true, them: "Separate tool" },
+                      { feature: "AI-Powered Support", us: true, them: "Extra cost" },
+                      { feature: "Data Integration", us: "Built-in", them: "Manual work" },
+                      { feature: "Monthly Cost", us: "$1,499+", them: "$5,000+" },
+                    ].map((row, idx) => (
+                      <tr key={idx} className="border-t">
+                        <td className="p-4 font-medium">{row.feature}</td>
+                        <td className="p-4 text-center">
+                          {row.us === true ? (
+                            <div className="flex justify-center">
+                              <div className="h-6 w-6 rounded-full bg-green-500/20 flex items-center justify-center">
+                                <CheckCircle2 className="h-4 w-4 text-green-600" />
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-sm font-semibold text-primary">{row.us}</span>
+                          )}
+                        </td>
+                        <td className="p-4 text-center text-sm text-muted-foreground">
+                          {row.them}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+
+            <div className="text-center mt-8">
+              <Button size="lg" onClick={() => setLocation("/pricing")}>
+                See Full Feature Comparison
+                <ChevronRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -570,7 +646,7 @@ export default function Landing() {
               Ready to Transform Your Workforce Operations?
             </h2>
             <p className="text-lg text-muted-foreground">
-              Join growing organizations using WorkforceOS. Start your free trial today—no credit card required.
+              Join growing organizations automating workforce management. Start your free trial today—no credit card required.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
               <Button
