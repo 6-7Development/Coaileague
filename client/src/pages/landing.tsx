@@ -113,12 +113,16 @@ export default function Landing() {
                 </Badge>
                 
                 <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight">
-                  Replace 5 Full-Time HR Positions
-                  <span className="block text-primary mt-2">Save $250k+/Year</span>
+                  Automate 5+ HR Functions
+                  <span className="block text-primary mt-2">in One Integrated Platform</span>
                 </h1>
                 
                 <p className="text-lg sm:text-xl text-muted-foreground leading-relaxed">
-                  Complete workforce automation platform combining scheduling, time tracking, payroll, billing, hiring, reporting, analytics, and AI-powered support—all in one integrated system.
+                  Complete workforce automation combining scheduling, time tracking, payroll, billing, hiring, reporting, analytics, and AI-powered support—designed to streamline operations and reduce administrative burden.*
+                </p>
+                
+                <p className="text-xs text-muted-foreground/80 max-w-xl">
+                  *Actual time and cost savings will vary based on your organization's size, current processes, and implementation. Platform features designed to automate manual tasks.
                 </p>
 
                 <div className="flex flex-col sm:flex-row gap-4 pt-4">
@@ -193,33 +197,38 @@ export default function Landing() {
         <div className="container mx-auto px-4 sm:px-6">
           <div className="max-w-4xl mx-auto">
             <div className="text-center mb-8">
-              <h2 className="text-2xl sm:text-3xl font-bold mb-2">Calculate Your Savings</h2>
-              <p className="text-muted-foreground">See how much you could save by automating workforce management</p>
+              <h2 className="text-2xl sm:text-3xl font-bold mb-2">Potential Workforce Optimization</h2>
+              <p className="text-muted-foreground">Estimate how automation could impact your business</p>
             </div>
             
             <Card className="p-8">
               <div className="grid md:grid-cols-3 gap-8">
                 <div className="text-center space-y-2">
-                  <div className="text-5xl font-bold text-destructive">-5</div>
-                  <div className="text-sm font-medium">Full-Time Positions</div>
-                  <div className="text-xs text-muted-foreground">HR, Payroll, Scheduling, Recruiting, Admin</div>
+                  <div className="text-5xl font-bold text-primary">5+</div>
+                  <div className="text-sm font-medium">HR Tasks Automated</div>
+                  <div className="text-xs text-muted-foreground">Scheduling, Payroll, Billing, Tracking, Reporting</div>
                 </div>
                 <div className="flex items-center justify-center">
                   <ArrowRight className="h-8 w-8 text-muted-foreground" />
                 </div>
                 <div className="text-center space-y-2">
-                  <div className="text-5xl font-bold text-green-500">$255k</div>
-                  <div className="text-sm font-medium">Annual Savings</div>
-                  <div className="text-xs text-muted-foreground">Based on avg. $51k/position + benefits</div>
+                  <div className="text-5xl font-bold text-green-500">$100k+*</div>
+                  <div className="text-sm font-medium">Potential Annual Value</div>
+                  <div className="text-xs text-muted-foreground">*Estimated labor cost reduction</div>
                 </div>
               </div>
-              <div className="mt-8 text-center">
+              <div className="mt-6 p-4 bg-muted/50 rounded-lg">
+                <p className="text-xs text-muted-foreground text-center">
+                  *Savings estimates are examples only and will vary based on your organization size, current processes, labor costs, and implementation. Actual results depend on individual circumstances. Not a guarantee of savings.
+                </p>
+              </div>
+              <div className="mt-6 text-center">
                 <Button
                   size="lg"
                   onClick={() => setLocation("/pricing")}
                   data-testid="button-roi-calculator-pricing"
                 >
-                  View Pricing - Starts at $1,499/mo
+                  View Pricing - Starts at $299/mo
                   <ChevronRight className="ml-2 h-5 w-5" />
                 </Button>
               </div>
@@ -228,21 +237,21 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Stats Bar - SOCIAL PROOF */}
+      {/* Stats Bar - PLATFORM CAPABILITIES */}
       <section className="border-b py-12">
         <div className="container mx-auto px-4 sm:px-6">
           <div className="grid grid-cols-3 gap-8 max-w-4xl mx-auto text-center">
             <div className="space-y-2">
-              <div className="text-4xl sm:text-5xl font-bold text-primary">$250k+</div>
-              <div className="text-sm text-muted-foreground">Avg. Annual Savings</div>
+              <div className="text-4xl sm:text-5xl font-bold text-primary">20+</div>
+              <div className="text-sm text-muted-foreground">Integrated Features</div>
             </div>
             <div className="space-y-2">
               <div className="text-4xl sm:text-5xl font-bold text-primary">8</div>
-              <div className="text-sm text-muted-foreground">Integrated OS Modules</div>
+              <div className="text-sm text-muted-foreground">Core OS Modules</div>
             </div>
             <div className="space-y-2">
               <div className="text-4xl sm:text-5xl font-bold text-primary">24/7</div>
-              <div className="text-sm text-muted-foreground">AI-Powered Support</div>
+              <div className="text-sm text-muted-foreground">AI Chat Support</div>
             </div>
           </div>
         </div>
@@ -332,13 +341,13 @@ export default function Landing() {
                   ScheduleOS™
                 </Badge>
                 <h3 className="text-2xl sm:text-3xl font-bold">
-                  Smart Scheduling with AI
+                  Smart Scheduling
                 </h3>
                 <p className="text-muted-foreground text-lg">
-                  Create perfect schedules in minutes. AI suggests optimal shifts based on availability, skills, and labor costs.
+                  Create schedules with drag-and-drop interface. Conflict detection prevents double-booking.
                 </p>
                 <ul className="space-y-2">
-                  {["Drag-and-drop interface", "Conflict detection", "Mobile shift swaps", "AI auto-scheduling (coming soon)"].map((feature) => (
+                  {["Drag-and-drop interface", "Conflict detection", "Mobile shift swaps", "AI optimization (beta)"].map((feature) => (
                     <li key={feature} className="flex items-center gap-2">
                       <CheckCircle2 className="h-5 w-5 text-green-500" />
                       <span>{feature}</span>
@@ -607,7 +616,7 @@ export default function Landing() {
                       { feature: "Analytics Dashboard", us: true, them: "Separate tool" },
                       { feature: "AI-Powered Support", us: true, them: "Extra cost" },
                       { feature: "Data Integration", us: "Built-in", them: "Manual work" },
-                      { feature: "Monthly Cost", us: "$1,499+", them: "$5,000+" },
+                      { feature: "Starting Price", us: "$299/mo", them: "$1,000+/mo" },
                     ].map((row, idx) => (
                       <tr key={idx} className="border-t">
                         <td className="p-4 font-medium">{row.feature}</td>
@@ -718,11 +727,11 @@ export default function Landing() {
             {[
               {
                 tier: "Starter",
-                price: "$1,499",
+                price: "$299",
                 description: "Perfect for small teams",
                 employees: "Up to 25 employees",
                 features: [
-                  "All core OS modules",
+                  "Core scheduling & tracking",
                   "GPS time tracking",
                   "Basic scheduling",
                   "Automated invoicing",
@@ -731,7 +740,7 @@ export default function Landing() {
               },
               {
                 tier: "Professional",
-                price: "$2,999",
+                price: "$999",
                 description: "For growing businesses",
                 employees: "Up to 100 employees",
                 features: [

@@ -28,24 +28,27 @@ export function WorkforceOSLogo({
     );
   }
 
-  // Navigation variant - compact with text
+  // Navigation variant - prominent with text and subtle rounded background
   return (
     <div 
-      className={cn("flex items-center gap-3", className)} 
+      className={cn(
+        "flex items-center gap-4 px-4 py-2 rounded-xl bg-card/30 border border-border/50 backdrop-blur-sm",
+        className
+      )} 
       data-testid="logo-nav"
     >
-      <div className="relative w-10 h-10 flex-shrink-0">
+      <div className="relative w-14 h-14 flex-shrink-0">
         <img 
           src={logoImage} 
           alt="" 
           className="w-full h-full object-contain"
           style={{
             mixBlendMode: 'normal',
-            filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1))'
+            filter: 'drop-shadow(0 2px 4px rgba(13, 148, 136, 0.2))'
           }}
         />
       </div>
-      <div className="text-lg font-bold leading-tight">
+      <div className="text-xl font-bold leading-tight">
         <span className="text-foreground">WorkForce</span>
         <span className="text-[#0d9488]">OS</span>
       </div>
