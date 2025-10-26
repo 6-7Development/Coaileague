@@ -41,7 +41,7 @@ export default function Landing() {
               onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
               className="relative cursor-pointer hover-elevate transition-all duration-300"
             >
-              <WorkforceOSLogo variant="nav" animated={false} />
+              <WorkforceOSLogo variant="nav" />
             </button>
 
             {/* Desktop Navigation */}
@@ -100,90 +100,145 @@ export default function Landing() {
         </div>
       </nav>
 
-      {/* Hero Section - Fortune 500 Style */}
+      {/* Hero Section - SALES FOCUSED */}
       <section className="relative overflow-hidden border-b bg-gradient-to-b from-background via-background to-muted/20">
-        <div className="container mx-auto px-4 sm:px-6 py-16 sm:py-24 lg:py-32">
-          <div className="max-w-5xl mx-auto text-center space-y-8">
-            {/* Fortune 500 Hero Logo with Professional Presentation */}
-            <div className="flex items-center justify-center mb-8">
-              <WorkforceOSLogo variant="hero" animated={true} />
+        <div className="container mx-auto px-4 sm:px-6 py-12 sm:py-16 lg:py-20">
+          <div className="max-w-6xl mx-auto">
+            <div className="grid lg:grid-cols-2 gap-12 items-center">
+              {/* Left: Sales Copy */}
+              <div className="space-y-6">
+                <Badge variant="outline" className="text-xs font-normal px-4 py-1.5">
+                  <Building2 className="h-3 w-3 mr-1.5" />
+                  Enterprise Workforce Management
+                </Badge>
+                
+                <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight">
+                  Replace 5 Full-Time HR Positions
+                  <span className="block text-primary mt-2">Save $250k+/Year</span>
+                </h1>
+                
+                <p className="text-lg sm:text-xl text-muted-foreground leading-relaxed">
+                  Complete workforce automation platform combining scheduling, time tracking, payroll, billing, hiring, reporting, analytics, and AI-powered support—all in one integrated system.
+                </p>
+
+                <div className="flex flex-col sm:flex-row gap-4 pt-4">
+                  <Button
+                    size="lg"
+                    onClick={() => setLocation("/register")}
+                    className="text-base px-8 h-12"
+                    data-testid="button-start-trial"
+                  >
+                    Start Free Trial
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </Button>
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    onClick={() => window.location.href = "/api/demo-login"}
+                    className="text-base px-8 h-12"
+                    data-testid="button-view-demo"
+                  >
+                    View Live Demo
+                  </Button>
+                </div>
+
+                {/* Trust Indicators */}
+                <div className="flex flex-wrap gap-6 pt-4 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-2">
+                    <Shield className="h-4 w-4 text-green-500" />
+                    <span>SOC 2 Compliant</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Lock className="h-4 w-4 text-blue-500" />
+                    <span>256-bit Encryption</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Award className="h-4 w-4 text-amber-500" />
+                    <span>99.9% Uptime</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right: Product Screenshot/Visual */}
+              <div className="relative">
+                <div className="aspect-video rounded-xl border-2 bg-card/50 backdrop-blur-sm overflow-hidden shadow-2xl">
+                  {/* Placeholder for product screenshot - will add real screenshots */}
+                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/5 via-primary/10 to-primary/5 p-8">
+                    <div className="space-y-4 w-full">
+                      <div className="h-12 bg-primary/20 rounded-lg animate-pulse" />
+                      <div className="grid grid-cols-3 gap-4">
+                        <div className="h-24 bg-primary/15 rounded-lg animate-pulse" />
+                        <div className="h-24 bg-primary/15 rounded-lg animate-pulse" style={{ animationDelay: '0.1s' }} />
+                        <div className="h-24 bg-primary/15 rounded-lg animate-pulse" style={{ animationDelay: '0.2s' }} />
+                      </div>
+                      <div className="h-32 bg-primary/10 rounded-lg animate-pulse" style={{ animationDelay: '0.3s' }} />
+                    </div>
+                  </div>
+                </div>
+                {/* Product badge */}
+                <div className="absolute -bottom-4 left-1/2 -translate-x-1/2">
+                  <Badge className="px-4 py-2 text-sm font-semibold shadow-lg">
+                    <Sparkles className="h-4 w-4 mr-1.5" />
+                    8 Integrated Modules
+                  </Badge>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ROI Calculator Section - IMMEDIATE VALUE PROPOSITION */}
+      <section className="border-b bg-muted/30 py-12">
+        <div className="container mx-auto px-4 sm:px-6">
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center mb-8">
+              <h2 className="text-2xl sm:text-3xl font-bold mb-2">Calculate Your Savings</h2>
+              <p className="text-muted-foreground">See how much you could save by automating workforce management</p>
             </div>
             
-            {/* Trust Badge */}
-            <div className="flex items-center justify-center gap-2">
-              <Badge variant="outline" className="text-xs font-normal px-4 py-1">
-                <Building2 className="h-3 w-3 mr-1.5" />
-                Built for Enterprise Scale
-              </Badge>
-            </div>
+            <Card className="p-8">
+              <div className="grid md:grid-cols-3 gap-8">
+                <div className="text-center space-y-2">
+                  <div className="text-5xl font-bold text-destructive">-5</div>
+                  <div className="text-sm font-medium">Full-Time Positions</div>
+                  <div className="text-xs text-muted-foreground">HR, Payroll, Scheduling, Recruiting, Admin</div>
+                </div>
+                <div className="flex items-center justify-center">
+                  <ArrowRight className="h-8 w-8 text-muted-foreground" />
+                </div>
+                <div className="text-center space-y-2">
+                  <div className="text-5xl font-bold text-green-500">$255k</div>
+                  <div className="text-sm font-medium">Annual Savings</div>
+                  <div className="text-xs text-muted-foreground">Based on avg. $51k/position + benefits</div>
+                </div>
+              </div>
+              <div className="mt-8 text-center">
+                <Button size="lg" onClick={() => setLocation("/pricing")}>
+                  View Pricing - Starts at $1,499/mo
+                  <ChevronRight className="ml-2 h-5 w-5" />
+                </Button>
+              </div>
+            </Card>
+          </div>
+        </div>
+      </section>
 
-            {/* Headline */}
-            <div className="space-y-4">
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight">
-                The Complete Workforce
-                <span className="block text-primary mt-2">Management Platform</span>
-              </h1>
-              <p className="text-xl sm:text-2xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-                Designed to replace up to 5 full-time positions with AI-powered automation. Potential to save $250k+ annually while scaling operations.
-              </p>
+      {/* Stats Bar - SOCIAL PROOF */}
+      <section className="border-b py-12">
+        <div className="container mx-auto px-4 sm:px-6">
+          <div className="grid grid-cols-3 gap-8 max-w-4xl mx-auto text-center">
+            <div className="space-y-2">
+              <div className="text-4xl sm:text-5xl font-bold text-primary">$250k+</div>
+              <div className="text-sm text-muted-foreground">Avg. Annual Savings</div>
             </div>
-
-            {/* Stats Bar */}
-            <div className="grid grid-cols-3 gap-6 max-w-2xl mx-auto py-8">
-              <div className="space-y-1">
-                <div className="text-3xl sm:text-4xl font-bold text-primary">$250k+</div>
-                <div className="text-xs sm:text-sm text-muted-foreground">Potential Savings</div>
-              </div>
-              <div className="space-y-1">
-                <div className="text-3xl sm:text-4xl font-bold text-primary">99.9%</div>
-                <div className="text-xs sm:text-sm text-muted-foreground">Target Uptime</div>
-              </div>
-              <div className="space-y-1">
-                <div className="text-3xl sm:text-4xl font-bold text-primary">24/7</div>
-                <div className="text-xs sm:text-sm text-muted-foreground">Platform Access</div>
-              </div>
+            <div className="space-y-2">
+              <div className="text-4xl sm:text-5xl font-bold text-primary">8</div>
+              <div className="text-sm text-muted-foreground">Integrated OS Modules</div>
             </div>
-
-            {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-              <Button
-                size="lg"
-                onClick={() => setLocation("/register")}
-                className="w-full sm:w-auto text-base px-8 h-12"
-                data-testid="button-start-trial"
-              >
-                Start Free Trial
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                onClick={() => window.location.href = "/api/demo-login"}
-                className="w-full sm:w-auto text-base px-8 h-12"
-                data-testid="button-view-demo"
-              >
-                View Live Demo
-              </Button>
-            </div>
-
-            {/* Trust Indicators */}
-            <div className="flex flex-wrap items-center justify-center gap-6 pt-8 text-xs text-muted-foreground">
-              <div className="flex items-center gap-1.5">
-                <Shield className="h-4 w-4 text-green-500" />
-                <span>Enterprise Security</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Lock className="h-4 w-4 text-blue-500" />
-                <span>Data Encryption</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Globe className="h-4 w-4 text-purple-500" />
-                <span>High Availability</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Award className="h-4 w-4 text-amber-500" />
-                <span>Bank-Level Security</span>
-              </div>
+            <div className="space-y-2">
+              <div className="text-4xl sm:text-5xl font-bold text-primary">24/7</div>
+              <div className="text-sm text-muted-foreground">AI-Powered Support</div>
             </div>
           </div>
         </div>
