@@ -51,7 +51,6 @@ import { MotdDialog } from "@/components/motd-dialog";
 import { AnimatedStatusBar } from "@/components/animated-status-bar";
 import { TermsDialog } from "@/components/terms-dialog";
 import { ChatAgreementModal } from "@/components/chat-agreement-modal";
-import { SidebarTrigger } from "@/components/ui/sidebar";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { UserDiagnosticsPanel } from "@/components/user-diagnostics-panel";
 import { formatDistanceToNow } from "date-fns";
@@ -997,9 +996,8 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
           <div className="absolute top-1 right-2 flex items-center gap-1.5">
             {/* Connection Status indicators removed - only show by send button */}
             
-            {/* Hamburger Menu and Theme Toggle - Transparent and only visible on hover (desktop) */}
+            {/* Theme Toggle - Transparent and only visible on hover (desktop) */}
             <div className="hidden md:flex items-center gap-1 opacity-0 hover:opacity-100 transition-opacity">
-              <SidebarTrigger data-testid="button-sidebar-toggle" className="bg-white/20 hover:bg-white/40 border-white/30 backdrop-blur-md h-6 w-6 p-1" />
               <div className="bg-white/20 hover:bg-white/40 border border-white/30 backdrop-blur-md h-6 w-6 rounded-md flex items-center justify-center">
                 <ThemeToggle />
               </div>
