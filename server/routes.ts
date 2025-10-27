@@ -3024,6 +3024,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get line items for a specific invoice (with authorization check)
+  app.get('/api/invoices/:invoiceId/line-items', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { invoiceId } = req.params;
+      
+      // Get the invoice to check ownership
+      const invoice = await storage.getInvoice(invoiceId);
+      if (!invoice) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+
+      // Check if user owns the workspace OR is the client on this invoice
+      const workspace = await storage.getWorkspace(invoice.workspaceId);
+      const clients = await storage.getClientsByWorkspace(invoice.workspaceId);
+      const currentClient = clients.find(c => c.email === req.user.email);
+
+      const isWorkspaceOwner = workspace && workspace.ownerId === userId;
+      const isInvoiceClient = currentClient && invoice.clientId === currentClient.id;
+
+      if (!isWorkspaceOwner && !isInvoiceClient) {
+        return res.status(403).json({ message: "Not authorized to view this invoice" });
+      }
+
+      // Get line items for this specific invoice only
+      const lineItems = await storage.getInvoiceLineItems(invoiceId);
+      res.json(lineItems);
+    } catch (error) {
+      console.error("Error fetching invoice line items:", error);
+      res.status(500).json({ message: "Failed to fetch invoice line items" });
+    }
+  });
+
   app.post('/api/invoices', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
