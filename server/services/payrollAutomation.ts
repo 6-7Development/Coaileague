@@ -214,7 +214,7 @@ export class PayrollAutomationEngine {
       const billedTimeEntryIds = await db
         .select({ timeEntryId: invoiceLineItems.timeEntryId })
         .from(invoiceLineItems)
-        .where(isNull(invoiceLineItems.timeEntryId));
+        .where(isNotNull(invoiceLineItems.timeEntryId));
       
       const billedIds = new Set(billedTimeEntryIds.map(item => item.timeEntryId).filter(Boolean));
       const unbilledEntries = employeeTimeEntries.filter(entry => !billedIds.has(entry.id));
