@@ -93,6 +93,20 @@ import {
   insertEmployeeRecognitionSchema,
   insertEmployeeHealthScoreSchema,
   insertEmployerBenchmarkScoreSchema,
+  // TrainingOS™ Tables
+  trainingCourses,
+  trainingEnrollments,
+  trainingCertifications,
+  insertTrainingCourseSchema,
+  insertTrainingEnrollmentSchema,
+  insertTrainingCertificationSchema,
+  // BudgetOS™ Tables
+  budgets,
+  budgetLineItems,
+  budgetVariances,
+  insertBudgetSchema,
+  insertBudgetLineItemSchema,
+  insertBudgetVarianceSchema,
   // IntegrationOS™ Tables
   integrationMarketplace,
   integrationConnections,
@@ -10442,6 +10456,874 @@ Return ONLY valid JSON array with this exact structure:
     } catch (error: any) {
       console.error("Error calculating employer benchmark:", error);
       res.status(500).json({ message: "Failed to calculate employer benchmark" });
+    }
+  });
+
+  // ============================================================================
+  // TRAININGOS™ - LEARNING MANAGEMENT SYSTEM (LMS)
+  // ============================================================================
+  
+  // [1] TRAINING COURSES - CRUD operations
+  
+  // Get all training courses
+  app.get('/api/training/courses', requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspace!.id;
+      const { category, difficulty, status, isRequired } = req.query;
+      
+      let query = db
+        .select()
+        .from(trainingCourses)
+        .where(eq(trainingCourses.workspaceId, workspaceId))
+        .orderBy(desc(trainingCourses.createdAt));
+      
+      let courses = await query;
+      
+      // Apply filters
+      if (category) {
+        courses = courses.filter(c => c.category === category);
+      }
+      if (difficulty) {
+        courses = courses.filter(c => c.difficulty === difficulty);
+      }
+      if (status) {
+        courses = courses.filter(c => c.status === status);
+      }
+      if (isRequired !== undefined) {
+        courses = courses.filter(c => c.isRequired === (isRequired === 'true'));
+      }
+      
+      res.json(courses);
+    } catch (error: any) {
+      console.error("Error fetching training courses:", error);
+      res.status(500).json({ message: "Failed to fetch training courses" });
+    }
+  });
+  
+  // Get single training course
+  app.get('/api/training/courses/:id', requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspace!.id;
+      const { id } = req.params;
+      
+      const [course] = await db
+        .select()
+        .from(trainingCourses)
+        .where(and(
+          eq(trainingCourses.id, id),
+          eq(trainingCourses.workspaceId, workspaceId)
+        ))
+        .limit(1);
+      
+      if (!course) {
+        return res.status(404).json({ message: "Training course not found" });
+      }
+      
+      res.json(course);
+    } catch (error: any) {
+      console.error("Error fetching training course:", error);
+      res.status(500).json({ message: "Failed to fetch training course" });
+    }
+  });
+  
+  // Create training course (Manager/Owner only)
+  app.post('/api/training/courses', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspace!.id;
+      
+      const validatedData = insertTrainingCourseSchema.parse({
+        ...req.body,
+        workspaceId
+      });
+      
+      const [course] = await db
+        .insert(trainingCourses)
+        .values(validatedData)
+        .returning();
+      
+      res.json(course);
+    } catch (error: any) {
+      console.error("Error creating training course:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create training course" });
+    }
+  });
+  
+  // Update training course (Manager/Owner only)
+  app.patch('/api/training/courses/:id', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspace!.id;
+      const { id } = req.params;
+      
+      const existing = await db
+        .select()
+        .from(trainingCourses)
+        .where(and(
+          eq(trainingCourses.id, id),
+          eq(trainingCourses.workspaceId, workspaceId)
+        ))
+        .limit(1);
+      
+      if (!existing[0]) {
+        return res.status(404).json({ message: "Training course not found" });
+      }
+      
+      // Validate partial update
+      const validatedData = insertTrainingCourseSchema.partial().parse(req.body);
+      
+      const [updated] = await db
+        .update(trainingCourses)
+        .set({
+          ...validatedData,
+          updatedAt: new Date()
+        })
+        .where(eq(trainingCourses.id, id))
+        .returning();
+      
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating training course:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update training course" });
+    }
+  });
+  
+  // Delete training course (Manager/Owner only)
+  app.delete('/api/training/courses/:id', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspace!.id;
+      const { id } = req.params;
+      
+      const existing = await db
+        .select()
+        .from(trainingCourses)
+        .where(and(
+          eq(trainingCourses.id, id),
+          eq(trainingCourses.workspaceId, workspaceId)
+        ))
+        .limit(1);
+      
+      if (!existing[0]) {
+        return res.status(404).json({ message: "Training course not found" });
+      }
+      
+      await db
+        .delete(trainingCourses)
+        .where(eq(trainingCourses.id, id));
+      
+      res.json({ message: "Training course deleted successfully" });
+    } catch (error: any) {
+      console.error("Error deleting training course:", error);
+      res.status(500).json({ message: "Failed to delete training course" });
+    }
+  });
+  
+  // [2] COURSE ENROLLMENTS
+  
+  // Get employee enrollments
+  app.get('/api/training/enrollments', requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspace!.id;
+      const userId = req.user!.id;
+      
+      // Get employee record
+      const employee = await db
+        .select()
+        .from(employees)
+        .where(and(
+          eq(employees.userId, userId),
+          eq(employees.workspaceId, workspaceId)
+        ))
+        .limit(1);
+      
+      if (!employee[0]) {
+        return res.status(403).json({ message: "Employee not found" });
+      }
+      
+      // Get enrollments with course details
+      const enrollments = await db
+        .select({
+          id: trainingEnrollments.id,
+          courseId: trainingEnrollments.courseId,
+          courseTitle: trainingCourses.title,
+          progress: trainingEnrollments.progress,
+          status: trainingEnrollments.status,
+          enrolledAt: trainingEnrollments.enrolledAt,
+          completedAt: trainingEnrollments.completedAt,
+          score: trainingEnrollments.score,
+          certificateId: trainingEnrollments.certificateId
+        })
+        .from(trainingEnrollments)
+        .leftJoin(trainingCourses, eq(trainingEnrollments.courseId, trainingCourses.id))
+        .where(eq(trainingEnrollments.employeeId, employee[0].id))
+        .orderBy(desc(trainingEnrollments.enrolledAt));
+      
+      res.json(enrollments);
+    } catch (error: any) {
+      console.error("Error fetching training enrollments:", error);
+      res.status(500).json({ message: "Failed to fetch training enrollments" });
+    }
+  });
+  
+  // Enroll in a course
+  app.post('/api/training/courses/:id/enroll', requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspace!.id;
+      const userId = req.user!.id;
+      const { id: courseId } = req.params;
+      
+      // Get employee record
+      const employee = await db
+        .select()
+        .from(employees)
+        .where(and(
+          eq(employees.userId, userId),
+          eq(employees.workspaceId, workspaceId)
+        ))
+        .limit(1);
+      
+      if (!employee[0]) {
+        return res.status(403).json({ message: "Employee not found" });
+      }
+      
+      // Check if course exists
+      const course = await db
+        .select()
+        .from(trainingCourses)
+        .where(and(
+          eq(trainingCourses.id, courseId),
+          eq(trainingCourses.workspaceId, workspaceId)
+        ))
+        .limit(1);
+      
+      if (!course[0]) {
+        return res.status(404).json({ message: "Training course not found" });
+      }
+      
+      // Check if already enrolled
+      const existing = await db
+        .select()
+        .from(trainingEnrollments)
+        .where(and(
+          eq(trainingEnrollments.courseId, courseId),
+          eq(trainingEnrollments.employeeId, employee[0].id)
+        ))
+        .limit(1);
+      
+      if (existing[0]) {
+        return res.status(400).json({ message: "Already enrolled in this course" });
+      }
+      
+      // Create enrollment
+      const [enrollment] = await db
+        .insert(trainingEnrollments)
+        .values({
+          courseId,
+          employeeId: employee[0].id,
+          status: 'not_started',
+          progress: 0,
+          dueDate: req.body.dueDate || null
+        })
+        .returning();
+      
+      res.json(enrollment);
+    } catch (error: any) {
+      console.error("Error enrolling in course:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to enroll in course" });
+    }
+  });
+  
+  // Update enrollment progress
+  app.patch('/api/training/enrollments/:id/progress', requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspace!.id;
+      const userId = req.user!.id;
+      const { id } = req.params;
+      const { progress, status, score } = req.body;
+      
+      // Get employee record
+      const employee = await db
+        .select()
+        .from(employees)
+        .where(and(
+          eq(employees.userId, userId),
+          eq(employees.workspaceId, workspaceId)
+        ))
+        .limit(1);
+      
+      if (!employee[0]) {
+        return res.status(403).json({ message: "Employee not found" });
+      }
+      
+      // Verify enrollment belongs to this employee
+      const enrollment = await db
+        .select()
+        .from(trainingEnrollments)
+        .where(and(
+          eq(trainingEnrollments.id, id),
+          eq(trainingEnrollments.employeeId, employee[0].id)
+        ))
+        .limit(1);
+      
+      if (!enrollment[0]) {
+        return res.status(404).json({ message: "Enrollment not found" });
+      }
+      
+      // Update progress
+      const updateData: any = { updatedAt: new Date() };
+      if (progress !== undefined) updateData.progress = progress;
+      if (status !== undefined) updateData.status = status;
+      if (score !== undefined) updateData.score = score;
+      if (status === 'completed') updateData.completedAt = new Date();
+      
+      const [updated] = await db
+        .update(trainingEnrollments)
+        .set(updateData)
+        .where(eq(trainingEnrollments.id, id))
+        .returning();
+      
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating enrollment progress:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update enrollment progress" });
+    }
+  });
+  
+  // [3] CERTIFICATIONS
+  
+  // Get employee certifications
+  app.get('/api/training/certifications', requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspace!.id;
+      const userId = req.user!.id;
+      
+      // Get employee record
+      const employee = await db
+        .select()
+        .from(employees)
+        .where(and(
+          eq(employees.userId, userId),
+          eq(employees.workspaceId, workspaceId)
+        ))
+        .limit(1);
+      
+      if (!employee[0]) {
+        return res.status(403).json({ message: "Employee not found" });
+      }
+      
+      // Get certifications with course details
+      const certifications = await db
+        .select({
+          id: trainingCertifications.id,
+          courseId: trainingCertifications.courseId,
+          courseTitle: trainingCourses.title,
+          issuedAt: trainingCertifications.issuedDate,
+          expiresAt: trainingCertifications.expiryDate,
+          certificateUrl: trainingCertifications.certificateUrl,
+          score: trainingEnrollments.score,
+          status: trainingCertifications.status
+        })
+        .from(trainingCertifications)
+        .leftJoin(trainingCourses, eq(trainingCertifications.courseId, trainingCourses.id))
+        .leftJoin(trainingEnrollments, eq(trainingCertifications.enrollmentId, trainingEnrollments.id))
+        .where(eq(trainingCertifications.employeeId, employee[0].id))
+        .orderBy(desc(trainingCertifications.issuedDate));
+      
+      res.json(certifications);
+    } catch (error: any) {
+      console.error("Error fetching certifications:", error);
+      res.status(500).json({ message: "Failed to fetch certifications" });
+    }
+  });
+  
+  // Issue certification (Manager/Owner only)
+  app.post('/api/training/certifications', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspace!.id;
+      const { employeeId, courseId, enrollmentId } = req.body;
+      
+      // Verify enrollment and course exist
+      const enrollment = await db
+        .select()
+        .from(trainingEnrollments)
+        .where(and(
+          eq(trainingEnrollments.id, enrollmentId),
+          eq(trainingEnrollments.employeeId, employeeId),
+          eq(trainingEnrollments.status, 'completed')
+        ))
+        .limit(1);
+      
+      if (!enrollment[0]) {
+        return res.status(400).json({ message: "Employee must complete the course before certification" });
+      }
+      
+      const course = await db
+        .select()
+        .from(trainingCourses)
+        .where(and(
+          eq(trainingCourses.id, courseId),
+          eq(trainingCourses.workspaceId, workspaceId)
+        ))
+        .limit(1);
+      
+      if (!course[0]) {
+        return res.status(404).json({ message: "Course not found" });
+      }
+      
+      // Create certification
+      const [certification] = await db
+        .insert(trainingCertifications)
+        .values({
+          workspaceId,
+          employeeId,
+          courseId,
+          enrollmentId,
+          certificationName: `${course[0].title} Certification`,
+          issuedDate: new Date(),
+          expiryDate: req.body.expiryDate || null,
+          status: 'active'
+        })
+        .returning();
+      
+      // Link certification to enrollment
+      await db
+        .update(trainingEnrollments)
+        .set({ certificateId: certification.id })
+        .where(eq(trainingEnrollments.id, enrollmentId));
+      
+      res.json(certification);
+    } catch (error: any) {
+      console.error("Error issuing certification:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to issue certification" });
+    }
+  });
+
+  // ============================================================================
+  // BUDGETOS™ - BUDGET PLANNING & FORECASTING
+  // ============================================================================
+  
+  // [1] BUDGETS - CRUD operations
+  
+  // Get all budgets
+  app.get('/api/budgets', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspace!.id;
+      const { fiscalYear, department, status } = req.query;
+      
+      let query = db
+        .select()
+        .from(budgets)
+        .where(eq(budgets.workspaceId, workspaceId))
+        .orderBy(desc(budgets.createdAt));
+      
+      let allBudgets = await query;
+      
+      // Apply filters
+      if (fiscalYear) {
+        allBudgets = allBudgets.filter(b => b.fiscalYear === parseInt(fiscalYear as string));
+      }
+      if (department) {
+        allBudgets = allBudgets.filter(b => b.department === department);
+      }
+      if (status) {
+        allBudgets = allBudgets.filter(b => b.status === status);
+      }
+      
+      res.json(allBudgets);
+    } catch (error: any) {
+      console.error("Error fetching budgets:", error);
+      res.status(500).json({ message: "Failed to fetch budgets" });
+    }
+  });
+  
+  // Get single budget
+  app.get('/api/budgets/:id', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspace!.id;
+      const { id } = req.params;
+      
+      const [budget] = await db
+        .select()
+        .from(budgets)
+        .where(and(
+          eq(budgets.id, id),
+          eq(budgets.workspaceId, workspaceId)
+        ))
+        .limit(1);
+      
+      if (!budget) {
+        return res.status(404).json({ message: "Budget not found" });
+      }
+      
+      res.json(budget);
+    } catch (error: any) {
+      console.error("Error fetching budget:", error);
+      res.status(500).json({ message: "Failed to fetch budget" });
+    }
+  });
+  
+  // Create budget (Manager/Owner only)
+  app.post('/api/budgets', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspace!.id;
+      
+      const validatedData = insertBudgetSchema.parse({
+        ...req.body,
+        workspaceId
+      });
+      
+      const [budget] = await db
+        .insert(budgets)
+        .values(validatedData)
+        .returning();
+      
+      res.json(budget);
+    } catch (error: any) {
+      console.error("Error creating budget:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create budget" });
+    }
+  });
+  
+  // Update budget (Manager/Owner only)
+  app.patch('/api/budgets/:id', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspace!.id;
+      const { id } = req.params;
+      
+      const existing = await db
+        .select()
+        .from(budgets)
+        .where(and(
+          eq(budgets.id, id),
+          eq(budgets.workspaceId, workspaceId)
+        ))
+        .limit(1);
+      
+      if (!existing[0]) {
+        return res.status(404).json({ message: "Budget not found" });
+      }
+      
+      // Validate partial update
+      const validatedData = insertBudgetSchema.partial().parse(req.body);
+      
+      const [updated] = await db
+        .update(budgets)
+        .set({
+          ...validatedData,
+          updatedAt: new Date()
+        })
+        .where(eq(budgets.id, id))
+        .returning();
+      
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating budget:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update budget" });
+    }
+  });
+  
+  // Delete budget (Owner only)
+  app.delete('/api/budgets/:id', requireAuth, requireOwner, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspace!.id;
+      const { id } = req.params;
+      
+      const existing = await db
+        .select()
+        .from(budgets)
+        .where(and(
+          eq(budgets.id, id),
+          eq(budgets.workspaceId, workspaceId)
+        ))
+        .limit(1);
+      
+      if (!existing[0]) {
+        return res.status(404).json({ message: "Budget not found" });
+      }
+      
+      await db
+        .delete(budgets)
+        .where(eq(budgets.id, id));
+      
+      res.json({ message: "Budget deleted successfully" });
+    } catch (error: any) {
+      console.error("Error deleting budget:", error);
+      res.status(500).json({ message: "Failed to delete budget" });
+    }
+  });
+  
+  // [2] BUDGET LINE ITEMS
+  
+  // Get line items for a budget
+  app.get('/api/budgets/:budgetId/line-items', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspace!.id;
+      const { budgetId } = req.params;
+      
+      // Verify budget belongs to workspace
+      const budget = await db
+        .select()
+        .from(budgets)
+        .where(and(
+          eq(budgets.id, budgetId),
+          eq(budgets.workspaceId, workspaceId)
+        ))
+        .limit(1);
+      
+      if (!budget[0]) {
+        return res.status(404).json({ message: "Budget not found" });
+      }
+      
+      const lineItems = await db
+        .select()
+        .from(budgetLineItems)
+        .where(eq(budgetLineItems.budgetId, budgetId))
+        .orderBy(budgetLineItems.name);
+      
+      res.json(lineItems);
+    } catch (error: any) {
+      console.error("Error fetching budget line items:", error);
+      res.status(500).json({ message: "Failed to fetch budget line items" });
+    }
+  });
+  
+  // Create budget line item
+  app.post('/api/budgets/:budgetId/line-items', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspace!.id;
+      const { budgetId } = req.params;
+      
+      // Verify budget belongs to workspace
+      const budget = await db
+        .select()
+        .from(budgets)
+        .where(and(
+          eq(budgets.id, budgetId),
+          eq(budgets.workspaceId, workspaceId)
+        ))
+        .limit(1);
+      
+      if (!budget[0]) {
+        return res.status(404).json({ message: "Budget not found" });
+      }
+      
+      const validatedData = insertBudgetLineItemSchema.parse({
+        ...req.body,
+        budgetId
+      });
+      
+      const [lineItem] = await db
+        .insert(budgetLineItems)
+        .values(validatedData)
+        .returning();
+      
+      res.json(lineItem);
+    } catch (error: any) {
+      console.error("Error creating budget line item:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create budget line item" });
+    }
+  });
+  
+  // Update budget line item
+  app.patch('/api/budgets/:budgetId/line-items/:id', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspace!.id;
+      const { budgetId, id } = req.params;
+      
+      // Verify budget belongs to workspace
+      const budget = await db
+        .select()
+        .from(budgets)
+        .where(and(
+          eq(budgets.id, budgetId),
+          eq(budgets.workspaceId, workspaceId)
+        ))
+        .limit(1);
+      
+      if (!budget[0]) {
+        return res.status(404).json({ message: "Budget not found" });
+      }
+      
+      const existing = await db
+        .select()
+        .from(budgetLineItems)
+        .where(and(
+          eq(budgetLineItems.id, id),
+          eq(budgetLineItems.budgetId, budgetId)
+        ))
+        .limit(1);
+      
+      if (!existing[0]) {
+        return res.status(404).json({ message: "Budget line item not found" });
+      }
+      
+      // Validate partial update
+      const validatedData = insertBudgetLineItemSchema.partial().parse(req.body);
+      
+      const [updated] = await db
+        .update(budgetLineItems)
+        .set(validatedData)
+        .where(eq(budgetLineItems.id, id))
+        .returning();
+      
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating budget line item:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update budget line item" });
+    }
+  });
+  
+  // Delete budget line item
+  app.delete('/api/budgets/:budgetId/line-items/:id', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspace!.id;
+      const { budgetId, id } = req.params;
+      
+      // Verify budget belongs to workspace
+      const budget = await db
+        .select()
+        .from(budgets)
+        .where(and(
+          eq(budgets.id, budgetId),
+          eq(budgets.workspaceId, workspaceId)
+        ))
+        .limit(1);
+      
+      if (!budget[0]) {
+        return res.status(404).json({ message: "Budget not found" });
+      }
+      
+      const existing = await db
+        .select()
+        .from(budgetLineItems)
+        .where(and(
+          eq(budgetLineItems.id, id),
+          eq(budgetLineItems.budgetId, budgetId)
+        ))
+        .limit(1);
+      
+      if (!existing[0]) {
+        return res.status(404).json({ message: "Budget line item not found" });
+      }
+      
+      await db
+        .delete(budgetLineItems)
+        .where(eq(budgetLineItems.id, id));
+      
+      res.json({ message: "Budget line item deleted successfully" });
+    } catch (error: any) {
+      console.error("Error deleting budget line item:", error);
+      res.status(500).json({ message: "Failed to delete budget line item" });
+    }
+  });
+  
+  // [3] BUDGET VARIANCE ANALYSIS
+  
+  // Get variances for a budget
+  app.get('/api/budgets/:budgetId/variances', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspace!.id;
+      const { budgetId } = req.params;
+      const { year, month } = req.query;
+      
+      // Verify budget belongs to workspace
+      const budget = await db
+        .select()
+        .from(budgets)
+        .where(and(
+          eq(budgets.id, budgetId),
+          eq(budgets.workspaceId, workspaceId)
+        ))
+        .limit(1);
+      
+      if (!budget[0]) {
+        return res.status(404).json({ message: "Budget not found" });
+      }
+      
+      let query = db
+        .select()
+        .from(budgetVariances)
+        .where(eq(budgetVariances.budgetId, budgetId))
+        .orderBy(desc(budgetVariances.year), desc(budgetVariances.month));
+      
+      let variances = await query;
+      
+      if (year) {
+        variances = variances.filter(v => v.year === parseInt(year as string));
+      }
+      if (month) {
+        variances = variances.filter(v => v.month === parseInt(month as string));
+      }
+      
+      res.json(variances);
+    } catch (error: any) {
+      console.error("Error fetching budget variances:", error);
+      res.status(500).json({ message: "Failed to fetch budget variances" });
+    }
+  });
+  
+  // Create budget variance snapshot
+  app.post('/api/budgets/:budgetId/variances', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspace!.id;
+      const { budgetId } = req.params;
+      
+      // Verify budget belongs to workspace
+      const budget = await db
+        .select()
+        .from(budgets)
+        .where(and(
+          eq(budgets.id, budgetId),
+          eq(budgets.workspaceId, workspaceId)
+        ))
+        .limit(1);
+      
+      if (!budget[0]) {
+        return res.status(404).json({ message: "Budget not found" });
+      }
+      
+      const validatedData = insertBudgetVarianceSchema.parse({
+        ...req.body,
+        budgetId
+      });
+      
+      const [variance] = await db
+        .insert(budgetVariances)
+        .values(validatedData)
+        .returning();
+      
+      res.json(variance);
+    } catch (error: any) {
+      console.error("Error creating budget variance:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create budget variance" });
     }
   });
 
