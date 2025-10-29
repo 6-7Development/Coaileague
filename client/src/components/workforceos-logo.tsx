@@ -1,56 +1,88 @@
 import { cn } from "@/lib/utils";
-import logoImage from "@assets/ChatGPT Image Oct 23, 2025, 06_25_54 PM_1761270587120.png";
+import logoImage from "@assets/image_1761703297679.png";
 
 interface WorkforceOSLogoProps {
-  variant?: "nav" | "icon";
+  variant?: "nav" | "icon" | "full";
+  size?: "sm" | "md" | "lg" | "xl";
+  animated?: boolean;
   className?: string;
 }
 
 export function WorkforceOSLogo({ 
   variant = "nav",
+  size = "md",
+  animated = false,
   className 
 }: WorkforceOSLogoProps) {
   
-  // Icon only variant - just the image, no text
+  const sizeClasses = {
+    sm: "w-24 h-24",
+    md: "w-32 h-32",
+    lg: "w-48 h-48",
+    xl: "w-64 h-64"
+  };
+  
+  // Full logo variant - complete branded image with text
+  if (variant === "full") {
+    return (
+      <div className={cn("relative flex items-center justify-center", className)} data-testid="logo-full">
+        <img 
+          src={logoImage} 
+          alt="WorkforceOS - Full Workforce Optimization Operating System" 
+          className={cn(
+            "object-contain",
+            sizeClasses[size],
+            animated && "animate-pulse-slow"
+          )}
+          style={{
+            filter: 'drop-shadow(0 4px 12px rgba(13, 148, 136, 0.25))'
+          }}
+        />
+      </div>
+    );
+  }
+  
+  // Icon only variant - just the image, no text wrapper
   if (variant === "icon") {
     return (
       <div className={cn("relative", className)} data-testid="logo-icon">
         <img 
           src={logoImage} 
           alt="WorkforceOS" 
-          className="w-full h-full object-contain rounded-xl"
+          className={cn(
+            "object-contain",
+            sizeClasses[size],
+            animated && "animate-pulse-slow"
+          )}
           style={{
-            mixBlendMode: 'normal',
-            filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1))'
+            filter: 'drop-shadow(0 2px 8px rgba(13, 148, 136, 0.2))'
           }}
         />
       </div>
     );
   }
 
-  // Navigation variant - prominent with text and subtle rounded background
+  // Navigation variant - compact with background
   return (
     <div 
       className={cn(
-        "flex items-center gap-4 px-4 py-2 rounded-xl bg-card/30 border border-border/50 backdrop-blur-sm",
+        "flex items-center gap-3 px-3 py-2 rounded-lg bg-card/30 border border-border/50 backdrop-blur-sm",
         className
       )} 
       data-testid="logo-nav"
     >
-      <div className="relative w-14 h-14 flex-shrink-0">
+      <div className="relative w-12 h-12 flex-shrink-0">
         <img 
           src={logoImage} 
           alt="" 
-          className="w-full h-full object-contain rounded-xl"
+          className={cn(
+            "w-full h-full object-contain",
+            animated && "animate-pulse-slow"
+          )}
           style={{
-            mixBlendMode: 'normal',
-            filter: 'drop-shadow(0 2px 4px rgba(13, 148, 136, 0.2))'
+            filter: 'drop-shadow(0 2px 6px rgba(13, 148, 136, 0.25))'
           }}
         />
-      </div>
-      <div className="text-xl font-bold leading-tight">
-        <span className="text-foreground">WorkForce</span>
-        <span className="text-[#0d9488]">OS</span>
       </div>
     </div>
   );

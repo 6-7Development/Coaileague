@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import workforceOSLogo from "@assets/workforceos-logo-full.png";
+import workforceOSLogo from "@assets/image_1761703297679.png";
 
 interface AnimatedLogoProps {
   size?: "sm" | "md" | "lg" | "xl" | "hero";
@@ -46,14 +46,17 @@ export function WorkforceOSAnimatedLogo({
   };
 
   if (!animated) {
-    // Static version - just show the image
+    // Static version - just show the new professional logo
     return (
       <div className={cn("flex flex-col items-center gap-2", className)}>
         <div className={sizes[size].container}>
           <img 
             src={workforceOSLogo} 
-            alt="WorkforceOS" 
+            alt="WorkforceOS - Full Workforce Optimization Operating System" 
             className="w-full h-full object-contain"
+            style={{
+              filter: 'drop-shadow(0 4px 12px rgba(13, 148, 136, 0.3))'
+            }}
             data-testid="logo-static"
           />
         </div>
@@ -61,12 +64,30 @@ export function WorkforceOSAnimatedLogo({
     );
   }
 
+  // Animated version - use the new logo with animation effects
   return (
     <div className={cn("flex flex-col items-center gap-2", className)} data-testid="logo-animated">
       <div className={cn("relative", sizes[size].container)}>
+        {/* Multi-layer glow effects */}
+        <div className="absolute inset-0 bg-gradient-to-r from-teal-500/20 via-blue-500/20 to-purple-500/20 blur-3xl rounded-full scale-150 animate-pulse-slow" />
+        <div className="absolute inset-0 bg-teal-400/15 blur-2xl rounded-full scale-125 animate-glow-pulse" />
+        
+        {/* Main logo with animations */}
+        <div className="relative z-10 w-full h-full flex items-center justify-center">
+          <img 
+            src={workforceOSLogo} 
+            alt="WorkforceOS" 
+            className="w-full h-full object-contain animate-float"
+            style={{
+              filter: 'drop-shadow(0 8px 24px rgba(13, 148, 136, 0.4))'
+            }}
+          />
+        </div>
+        
+        {/* Hidden SVG for compatibility - keeping old animation structure */}
         <svg
           viewBox="0 0 400 400"
-          className={sizes[size].svg}
+          className="hidden"
           xmlns="http://www.w3.org/2000/svg"
         >
           <defs>
