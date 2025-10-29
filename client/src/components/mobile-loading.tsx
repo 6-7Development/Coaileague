@@ -24,9 +24,9 @@ export function MobileLoading({ message = "Loading...", fullScreen = false }: Mo
             <div className="absolute inset-0 bg-gradient-to-r from-teal-500/30 via-blue-500/30 to-purple-500/30 blur-3xl rounded-full scale-150" />
             <div className="absolute inset-0 bg-teal-400/20 blur-2xl rounded-full scale-125" />
             
-            {/* Circular glass container */}
-            <div className="relative z-10 rounded-full bg-gradient-to-br from-slate-900/20 via-slate-800/10 to-slate-900/20 backdrop-blur-sm p-8 border border-white/5">
-              <WorkforceOSLogo size="lg" animated={true} className="opacity-95 mix-blend-screen" />
+            {/* Glass container with new professional logo */}
+            <div className="relative z-10 rounded-2xl bg-gradient-to-br from-slate-900/10 via-slate-800/5 to-slate-900/10 backdrop-blur-sm p-6 border border-white/5">
+              <WorkforceOSLogo variant="full" size="lg" animated={true} className="opacity-100" />
             </div>
           </div>
           
@@ -46,9 +46,9 @@ export function MobileLoading({ message = "Loading...", fullScreen = false }: Mo
         <div className="relative">
           <div className="absolute inset-0 bg-gradient-to-r from-teal-500/20 to-blue-500/20 blur-2xl rounded-full scale-125" />
           
-          {/* Circular container */}
-          <div className="relative z-10 rounded-full bg-gradient-to-br from-background/40 via-background/20 to-background/40 backdrop-blur-sm p-6 border border-border/30">
-            <WorkforceOSLogo size="md" animated={true} className="opacity-95" />
+          {/* Logo container */}
+          <div className="relative z-10 rounded-2xl bg-gradient-to-br from-background/40 via-background/20 to-background/40 backdrop-blur-sm p-6 border border-border/30">
+            <WorkforceOSLogo variant="full" size="md" animated={true} className="opacity-100" />
           </div>
         </div>
         

@@ -118,7 +118,7 @@ export function UniversalTransitionOverlay({
                   stiffness: 150
                 }}
               >
-                <WorkforceOSLogo className="h-16" />
+                <WorkforceOSLogo variant="full" size="sm" animated={true} />
               </motion.div>
             </div>
 
