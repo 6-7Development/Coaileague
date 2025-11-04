@@ -5,6 +5,19 @@ WorkforceOS is a comprehensive workforce management operating system designed to
 
 ## Recent Changes
 
+### November 4, 2025 - Logo Colors Updated + Universal Dialog Navigation
+**Logo Rebranding - Emerald Theme:**
+- ✅ **Gradient Updated**: Changed from blue/purple/cyan to emerald (#059669, #10b981, #6ee7b7)
+- ✅ **All Components**: Updated AutoForceLogo, UniversalTransitionOverlay to match website theme
+- ✅ **Color Consistency**: Logo now perfectly matches the dark emerald theme across entire platform
+
+**Universal Dialog/Modal Navigation:**
+- ✅ **Escape Key**: All dialogs (Dialog, AlertDialog, Sheet) now navigate to /dashboard when pressing ESC
+- ✅ **Home Button**: Added visible home icon button next to close (X) button in all modals
+- ✅ **Keyboard Tooltip**: Home button shows "Go to Dashboard (Esc)" on hover
+- ✅ **Components Updated**: Dialog, AlertDialog, Sheet base components now include navigation
+- ✅ **Optional Flag**: Can disable with `showHomeButton={false}` if needed
+
 ### November 4, 2025 - Root Credentials Updated
 **Root Admin Access Standardized:**
 - ✅ **Email Changed**: Updated from root@workforceos.com to root@getdc360.com
