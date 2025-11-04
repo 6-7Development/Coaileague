@@ -5,6 +5,13 @@ WorkforceOS is a comprehensive workforce management operating system designed to
 
 ## Recent Changes
 
+### November 4, 2025 - Root Credentials Updated
+**Root Admin Access Standardized:**
+- ✅ **Email Changed**: Updated from root@workforceos.com to root@getdc360.com
+- ✅ **Password Set**: Temporary password admin123@* configured (bcrypt hashed)
+- ✅ **Seed Script Updated**: Future deployments will use new credentials
+- ⚠️ **SECURITY NOTICE**: These are temporary credentials - MUST be changed before production launch!
+
 ### November 4, 2025 - Platform-Wide Fixes Complete
 
 **Critical Settings Page Bug Fixed:**
