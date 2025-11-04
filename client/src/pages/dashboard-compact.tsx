@@ -197,8 +197,8 @@ export default function DashboardCompact() {
 
   const dashboardContent = (
     <div className="min-h-screen bg-background">
-      {/* Quick Access Menu - Compact on mobile, spacious on desktop */}
-      <div className="border-b bg-muted/30 px-4 sm:px-6 py-4 sm:py-5">
+      {/* Quick Access Menu - Desktop only (redundant on mobile with bottom nav) */}
+      <div className="hidden md:block border-b bg-muted/30 px-4 sm:px-6 py-4 sm:py-5">
         <div className="flex items-center gap-2 mb-3 sm:mb-4">
           <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6 text-primary shrink-0" />
           <h2 className="text-sm sm:text-base font-semibold uppercase tracking-wide">Quick Access</h2>

@@ -66,6 +66,13 @@ The platform features a CAD-style professional interface with a dark mode theme,
 
 **Navigation Pattern (2024-11-04)**: All feature pages include Back/Home navigation buttons to prevent users from getting lost. Time Tracking includes Back arrow (ArrowLeft) + Dashboard button with Home icon. Schedule Grid includes Dashboard button in top toolbar. All navigation uses wouter's Link component for client-side routing, with data-testid attributes for testing. Mobile-responsive with proper spacing and tooltips.
 
+**Mobile Dashboard Optimization (2024-11-04)**: Eliminated redundant navigation and excessive scrolling on mobile:
+- **Quick Access Section**: Hidden on mobile (<md breakpoint) as it duplicates bottom navigation functionality
+- **Root Admin Dashboard**: Compact mobile header (single line vs. full logo section), hidden Quick Access, hidden My Profile on mobile (access via Settings)
+- **Regular Dashboard**: Quick Access hidden on mobile, stat cards with rounded corners and visible gaps for better visual hierarchy
+- **Design Philosophy**: Mobile prioritizes content over redundant navigation, desktop shows full feature set with Quick Access shortcuts
+- **Performance**: Animated gradient backgrounds disabled on mobile for better battery life and performance
+
 **Landing Page Navigation & CTA Improvements (2024-11-04)**:
 - **Responsive Logo**: AutoForceLogo component nav variant adapts to screen size - icon-only on mobile (<640px), full logo with text on desktop (≥640px) to prevent cutoff
 - **Mobile Navigation**: Hamburger menu (44px touch target) opens Sheet with navigation links (Features, Pricing, About, Contact); desktop shows full navigation in header
