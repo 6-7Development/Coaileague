@@ -7,18 +7,25 @@ export async function seedRootUser() {
   console.log('Creating root user for Operations organization...');
 
   // Create root user
+  // ⚠️ SECURITY WARNING: Update credentials before going live!
+  // Current temp credentials: root@getdc360.com / admin123@*
   const ROOT_USER_ID = 'root-user-00000000';
   let rootUser = await db.select().from(users).where(eq(users.id, ROOT_USER_ID)).limit(1);
   
   if (!rootUser.length) {
+    const bcrypt = await import('bcryptjs');
+    const hashedPassword = await bcrypt.hash('admin123@*', 10);
+    
     await db.insert(users).values({
       id: ROOT_USER_ID,
-      email: 'root@workforceos.com',
+      email: 'root@getdc360.com',
+      passwordHash: hashedPassword,
       firstName: 'Root',
       lastName: 'Administrator',
       role: 'admin',
     });
-    console.log('✅ Root user created');
+    console.log('✅ Root user created with email: root@getdc360.com');
+    console.log('⚠️  WARNING: Change password before going live!');
   } else {
     console.log('Root user already exists');
   }
@@ -70,7 +77,7 @@ export async function seedRootUser() {
       employeeNumber: 'ROOT-001',
       firstName: 'Root',
       lastName: 'Administrator',
-      email: 'root@workforceos.com',
+      email: 'root@getdc360.com',
       workspaceRole: 'owner',
       hourlyRate: '0.00',
       onboardingStatus: 'completed',
