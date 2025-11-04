@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* LIGHT MODE */
+/* FORTUNE 500 LIGHT MODE - Boardroom Navy + Platinum + Emerald */
 :root {
   --button-outline: rgba(0,0,0, .10);
   --badge-outline: rgba(0,0,0, .05);
@@ -11,70 +11,81 @@
   --opaque-button-border-intensity: -8; /* In terms of percentages */
 
   /* Backgrounds applied on top of other backgrounds when hovered/active */
-  --elevate-1: rgba(0,0,0, .03);
-  --elevate-2: rgba(0,0,0, .08);
+  --elevate-1: rgba(11, 29, 58, .03);  /* Navy tint for elevation */
+  --elevate-2: rgba(11, 29, 58, .08);
 
-  --background: 0 0% 100%;
+  /* Fortune 500 Platinum Foundation */
+  --background: 220 20% 98%;           /* Platinum 50 - Page background */
 
-  --foreground: 217 25% 15%;
+  --foreground: 220 15% 15%;           /* Platinum 900 - Primary text */
 
-  --border: 217 15% 88%;
+  --border: 220 12% 88%;               /* Platinum 200 - Borders */
 
-  --card: 217 25% 98%;
+  --card: 220 15% 95%;                 /* Platinum 100 - Card surfaces */
 
-  --card-foreground: 217 25% 15%;
+  --card-foreground: 220 15% 15%;      /* Platinum 900 - Card text */
 
-  --card-border: 217 20% 92%;
+  --card-border: 220 12% 88%;          /* Platinum 200 - Card borders */
 
-  --sidebar: 217 20% 95%;
+  /* Sidebar - Professional Navy */
+  --sidebar: 218 85% 12%;              /* Navy 950 - Sidebar background */
 
-  --sidebar-foreground: 217 25% 15%;
+  --sidebar-foreground: 220 20% 98%;   /* Platinum 50 - Sidebar text */
 
-  --sidebar-border: 217 18% 88%;
+  --sidebar-border: 218 70% 20%;       /* Navy border */
 
-  --sidebar-primary: 221 83% 53%;
+  --sidebar-primary: 158 64% 35%;      /* Emerald 600 - Active items */
 
-  --sidebar-primary-foreground: 221 10% 98%;
+  --sidebar-primary-foreground: 220 20% 98%;
 
-  --sidebar-accent: 217 18% 90%;
+  --sidebar-accent: 218 80% 18%;       /* Navy 900 - Hover state */
 
-  --sidebar-accent-foreground: 217 25% 20%;
+  --sidebar-accent-foreground: 220 20% 98%;
 
-  --sidebar-ring: 221 83% 53%;
+  --sidebar-ring: 158 64% 35%;         /* Emerald focus ring */
 
-  --popover: 217 22% 93%;
+  /* Popovers */
+  --popover: 220 15% 95%;              /* Platinum 100 */
 
-  --popover-foreground: 217 25% 15%;
+  --popover-foreground: 220 15% 15%;   /* Platinum 900 */
 
-  --popover-border: 217 20% 86%;
+  --popover-border: 220 12% 88%;       /* Platinum 200 */
 
-  --primary: 221 83% 53%;
+  /* Primary - Emerald Authority */
+  --primary: 158 64% 35%;              /* Emerald 600 - CTAs */
 
-  --primary-foreground: 221 10% 98%;
+  --primary-foreground: 0 0% 100%;     /* White text on emerald */
 
-  --secondary: 217 18% 88%;
+  /* Secondary */
+  --secondary: 220 12% 88%;            /* Platinum 200 */
 
-  --secondary-foreground: 217 25% 20%;
+  --secondary-foreground: 220 15% 15%; /* Platinum 900 */
 
-  --muted: 217 16% 90%;
+  /* Muted */
+  --muted: 220 15% 95%;                /* Platinum 100 */
 
-  --muted-foreground: 217 15% 45%;
+  --muted-foreground: 220 10% 40%;     /* Platinum 700 */
 
-  --accent: 220 18% 92%;
+  /* Accent */
+  --accent: 158 60% 96%;               /* Emerald 50 - Light accent */
 
-  --accent-foreground: 220 20% 25%;
+  --accent-foreground: 158 64% 28%;    /* Emerald 700 */
 
-  --destructive: 0 72% 58%;
+  /* Destructive */
+  --destructive: 0 70% 50%;            /* Error red */
 
-  --destructive-foreground: 0 10% 98%;
+  --destructive-foreground: 0 0% 100%;
 
-  --input: 217 20% 75%;
-  --ring: 221 83% 53%;
-  --chart-1: 220 85% 48%;
-  --chart-2: 142 65% 42%;
-  --chart-3: 38 92% 48%;
-  --chart-4: 271 70% 52%;
-  --chart-5: 0 72% 52%;
+  /* Input & Ring */
+  --input: 220 12% 88%;                /* Platinum 200 */
+  --ring: 158 64% 35%;                 /* Emerald 600 focus ring */
+  
+  /* Charts - Professional palette */
+  --chart-1: 218 85% 12%;              /* Navy 950 */
+  --chart-2: 158 64% 35%;              /* Emerald 600 */
+  --chart-3: 38 95% 55%;               /* Warning */
+  --chart-4: 210 85% 50%;              /* Info */
+  --chart-5: 0 70% 50%;                /* Error */
 
   --font-sans: Inter, Open Sans, sans-serif;
   --font-serif: Georgia, serif;
@@ -149,94 +160,75 @@
   --opaque-button-border-intensity: 9;  /* In terms of percentages */
 
   /* Backgrounds applied on top of other backgrounds when hovered/active */
-  --elevate-1: rgba(37, 99, 235, 0.04);
-  --elevate-2: rgba(37, 99, 235, 0.12);
+  --elevate-1: rgba(46, 139, 87, 0.04);  /* Emerald tint for dark mode */
+  --elevate-2: rgba(46, 139, 87, 0.12);
 
-  /* Emerald/Charcoal Modern Tech Theme - Professional SaaS Design */
-  --cad-background: 220 13% 18%;        /* #1e293b - Dark charcoal */
-  --cad-surface: 220 13% 21%;           /* #27303f - Card surfaces */
-  --cad-surface-elevated: 220 13% 23%;  /* Elevated cards with subtle lift */
-  --cad-chrome: 220 13% 16%;            /* Slightly darker for header */
-  --cad-chrome-hover: 220 13% 20%;      /* Hover states */
-  --cad-chrome-active: 220 13% 23%;     /* Active states */
+  /* Fortune 500 Dark Mode - Professional Navy Foundation */
+  --background: 218 85% 8%;            /* Deep navy background */
+  --foreground: 220 20% 98%;           /* Platinum 50 text */
   
-  /* Emerald gradient borders */
-  --cad-border: 152 30% 30%;            /* Emerald-tinted borders */
-  --cad-border-strong: 152 40% 40%;     /* Stronger emerald dividers */
+  --border: 218 70% 18%;               /* Navy borders */
   
-  /* Text hierarchy - Clean professional */
-  --cad-text-primary: 214 15% 91%;      /* #e8edf3 - Light text */
-  --cad-text-secondary: 215 15% 70%;    /* #a8b5c7 - Secondary text */
-  --cad-text-tertiary: 215 15% 55%;     /* #7d8a9d - Tertiary text */
-  --cad-text-accent: 152 69% 75%;       /* #6ee7b7 - Emerald light accents */
-  --cad-text-inverted: 220 13% 18%;     /* On bright backgrounds */
+  --card: 218 80% 12%;                 /* Navy 950 cards */
+  --card-foreground: 220 20% 98%;
+  --card-border: 218 70% 18%;
   
-  /* Primary Emerald Colors */
-  --cad-emerald-500: 152 69% 31%;       /* #059669 - Primary brand */
-  --cad-emerald-600: 152 76% 26%;       /* #047857 - Darker emerald */
-  --cad-emerald-400: 152 69% 42%;       /* #10b981 - Lighter emerald */
-  --cad-emerald-300: 152 69% 75%;       /* #6ee7b7 - Light accents */
+  /* Sidebar - Darker navy */
+  --sidebar: 218 85% 10%;              /* Slightly darker navy */
+  --sidebar-foreground: 220 20% 98%;
+  --sidebar-border: 218 70% 20%;
+  --sidebar-primary: 158 64% 35%;      /* Emerald 600 */
+  --sidebar-primary-foreground: 220 20% 98%;
+  --sidebar-accent: 218 80% 15%;       /* Hover state */
+  --sidebar-accent-foreground: 220 20% 98%;
+  --sidebar-ring: 158 64% 35%;
   
-  /* Accent Colors */
-  --cad-green: 142 76% 59%;             /* #10b981 - Success */
-  --cad-orange: 38 92% 58%;             /* #f59e0b - Warning/Amber */
-  --cad-red: 0 72% 58%;                 /* #ef4444 - Error/Red */
-  --cad-blue: 199 89% 48%;              /* Info blue */
-  --cad-cyan: 188 94% 54%;              /* Active timers */
+  /* Popovers */
+  --popover: 218 80% 12%;
+  --popover-foreground: 220 20% 98%;
+  --popover-border: 218 70% 18%;
+  
+  /* Primary - Emerald (slightly brighter in dark mode) */
+  --primary: 158 64% 42%;              /* Emerald 500 - brighter for dark mode */
+  --primary-foreground: 0 0% 100%;
+  
+  /* Secondary */
+  --secondary: 218 70% 18%;            /* Navy tone */
+  --secondary-foreground: 220 20% 98%;
+  
+  /* Muted */
+  --muted: 218 75% 15%;
+  --muted-foreground: 220 10% 65%;     /* Platinum 600 */
+  
+  /* Accent */
+  --accent: 158 60% 20%;               /* Emerald dark */
+  --accent-foreground: 158 60% 85%;    /* Emerald light */
+  
+  /* Destructive */
+  --destructive: 0 70% 55%;
+  --destructive-foreground: 0 0% 100%;
+  
+  /* Input & Ring */
+  --input: 218 70% 20%;
+  --ring: 158 64% 42%;                 /* Emerald focus ring */
+  
+  /* Charts - Professional dark mode palette */
+  --chart-1: 158 64% 42%;              /* Emerald */
+  --chart-2: 210 85% 55%;              /* Bright blue */
+  --chart-3: 38 95% 60%;               /* Warning */
+  --chart-4: 271 70% 60%;              /* Purple */
+  --chart-5: 0 70% 60%;                /* Error */
 
-  /* Map to Shadcn tokens with Emerald theme */
-  --background: var(--cad-background);
-  --foreground: var(--cad-text-primary);
-  --border: var(--cad-border);
-  --card: var(--cad-surface);
-  --card-foreground: var(--cad-text-primary);
-  --card-border: var(--cad-border);
-  --sidebar: var(--cad-chrome);
-  --sidebar-foreground: var(--cad-text-primary);
-  --sidebar-border: var(--cad-border-strong);
-  --sidebar-primary: var(--cad-emerald-500);
-  --sidebar-primary-foreground: 220 10% 98%;
-  --sidebar-accent: 220 13% 24%;
-  --sidebar-accent-foreground: var(--cad-text-primary);
-  --sidebar-ring: var(--cad-emerald-500);
-  --popover: var(--cad-surface-elevated);
-  --popover-foreground: var(--cad-text-primary);
-  --popover-border: var(--cad-border-strong);
-  --primary: var(--cad-emerald-500);
-  --primary-foreground: 220 10% 98%;
-  --secondary: 220 13% 26%;
-  --secondary-foreground: var(--cad-text-primary);
+  --shadow-2xs: 0px 1px 2px 0px hsl(218 85% 5% / 0.30);
+  --shadow-xs: 0px 1px 3px 0px hsl(218 85% 5% / 0.40);
+  --shadow-sm: 0px 2px 4px 0px hsl(218 85% 5% / 0.35), 0px 1px 2px -1px hsl(218 85% 5% / 0.25);
+  --shadow: 0px 4px 6px 0px hsl(218 85% 5% / 0.35), 0px 2px 4px -1px hsl(218 85% 5% / 0.25);
+  --shadow-md: 0px 6px 12px 0px hsl(218 85% 5% / 0.40), 0px 2px 4px -1px hsl(218 85% 5% / 0.25);
+  --shadow-lg: 0px 12px 24px 0px hsl(218 85% 5% / 0.45), 0px 4px 6px -1px hsl(218 85% 5% / 0.25);
+  --shadow-xl: 0px 20px 40px 0px hsl(218 85% 5% / 0.50), 0px 8px 10px -1px hsl(218 85% 5% / 0.25);
+  --shadow-2xl: 0px 32px 64px 0px hsl(218 85% 5% / 0.60);
 
-  --muted: 220 13% 24%;
-
-  --muted-foreground: 215 10% 65%;
-
-  --accent: 152 40% 30%;
-
-  --accent-foreground: var(--cad-emerald-300);
-
-  --destructive: 0 72% 58%;
-
-  --destructive-foreground: 0 10% 98%;
-
-  --input: 220 13% 42%;
-  --ring: var(--cad-emerald-500);
-  --chart-1: var(--cad-emerald-500);
-  --chart-2: 142 65% 58%;
-  --chart-3: 38 92% 62%;
-  --chart-4: 199 89% 58%;
-  --chart-5: 0 72% 65%;
-
-  --shadow-2xs: 0px 1px 2px 0px hsl(217 20% 5% / 0.30);
-  --shadow-xs: 0px 1px 3px 0px hsl(217 20% 5% / 0.40);
-  --shadow-sm: 0px 2px 4px 0px hsl(217 20% 5% / 0.35), 0px 1px 2px -1px hsl(217 20% 5% / 0.25);
-  --shadow: 0px 4px 6px 0px hsl(217 20% 5% / 0.35), 0px 2px 4px -1px hsl(217 20% 5% / 0.25);
-  --shadow-md: 0px 6px 12px 0px hsl(217 20% 5% / 0.40), 0px 2px 4px -1px hsl(217 20% 5% / 0.25);
-  --shadow-lg: 0px 12px 24px 0px hsl(217 20% 5% / 0.45), 0px 4px 6px -1px hsl(217 20% 5% / 0.25);
-  --shadow-xl: 0px 20px 40px 0px hsl(217 20% 5% / 0.50), 0px 8px 10px -1px hsl(217 20% 5% / 0.25);
-  --shadow-2xl: 0px 32px 64px 0px hsl(217 20% 5% / 0.60);
-
-  /* Automatically computed borders - intensity can be controlled by the user by the --opaque-button-border-intensity setting */
+  /* Automatically computed borders */
   --sidebar-primary-border: hsl(from hsl(var(--sidebar-primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
   --sidebar-accent-border: hsl(from hsl(var(--sidebar-accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
   --primary-border: hsl(from hsl(var(--primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
