@@ -38,35 +38,35 @@ export const sessions = pgTable(
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   email: varchar("email").unique().notNull(),
-  
+
   // Password authentication
   passwordHash: varchar("password_hash"), // Bcrypt hash
   emailVerified: boolean("email_verified").default(false),
   verificationToken: varchar("verification_token"),
   verificationTokenExpiry: timestamp("verification_token_expiry"),
-  
+
   // Password reset
   resetToken: varchar("reset_token"),
   resetTokenExpiry: timestamp("reset_token_expiry"),
-  
+
   // Profile
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
   phone: varchar("phone"),
-  
+
   // Work ID for action tracking (format: Firstname-##-###-##-####)
   workId: varchar("work_id"),
-  
+
   // Multi-tenant
   currentWorkspaceId: varchar("current_workspace_id"),
   role: varchar("role"), // Workspace role (owner, admin, employee, etc.)
-  
+
   // Security
   lastLoginAt: timestamp("last_login_at"),
   loginAttempts: integer("login_attempts").default(0),
   lockedUntil: timestamp("locked_until"),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -78,24 +78,24 @@ export type User = typeof users.$inferSelect;
 export const userOnboarding = pgTable("user_onboarding", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }).unique(),
-  
+
   // Progress tracking
   completedSteps: text("completed_steps").array().default(sql`ARRAY[]::text[]`), // Array of completed step IDs
   currentStep: varchar("current_step"), // Current active step ID
   totalSteps: integer("total_steps").default(20), // Total number of onboarding steps
   progressPercentage: integer("progress_percentage").default(0), // 0-100%
-  
+
   // Status
   hasSkipped: boolean("has_skipped").default(false), // User clicked "Skip Tour"
   hasCompleted: boolean("has_completed").default(false), // 100% completion
   lastViewedAt: timestamp("last_viewed_at"), // Last time onboarding was opened
-  
+
   // Module-specific progress (for 4 OS Families)
   communicationProgress: integer("communication_progress").default(0), // 0-100%
   operationsProgress: integer("operations_progress").default(0), // 0-100%
   growthProgress: integer("growth_progress").default(0), // 0-100%
   platformProgress: integer("platform_progress").default(0), // 0-100%
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -133,11 +133,11 @@ export const workspaces = pgTable("workspaces", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: varchar("name").notNull(),
   ownerId: varchar("owner_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
-  
+
   // Unique organization identifiers for support tracking
   organizationId: varchar("organization_id").unique(), // Format: wfosupport-#########
   organizationSerial: varchar("organization_serial").unique(), // Format: ORG-XXXX-XXXX (Enterprise license key for tier unlocking)
-  
+
   // Business information
   companyName: varchar("company_name"),
   businessCategory: businessCategoryEnum("business_category").default("general"), // Industry type
@@ -146,53 +146,53 @@ export const workspaces = pgTable("workspaces", {
   address: text("address"),
   phone: varchar("phone"),
   website: varchar("website"),
-  
+
   // Subscription & billing
   subscriptionTier: varchar("subscription_tier").default("free"), // 'free', 'starter', 'professional', 'enterprise'
   subscriptionStatus: varchar("subscription_status").default("active"), // 'active', 'suspended', 'cancelled'
   maxEmployees: integer("max_employees").default(5),
   maxClients: integer("max_clients").default(10),
-  
+
   // Stripe Connect for payment processing
   stripeAccountId: varchar("stripe_account_id"), // Connected account ID
   stripeCustomerId: varchar("stripe_customer_id"),
   stripeSubscriptionId: varchar("stripe_subscription_id"),
-  
+
   // Platform fee
   platformFeePercentage: decimal("platform_fee_percentage", { precision: 5, scale: 2 }).default("3.00"),
-  
+
   // Account control & admin actions
   isSuspended: boolean("is_suspended").default(false), // General suspension
   suspendedReason: text("suspended_reason"), // Why suspended
   suspendedAt: timestamp("suspended_at"),
   suspendedBy: varchar("suspended_by"), // Admin user ID who suspended
-  
+
   isFrozen: boolean("is_frozen").default(false), // Freeze for non-payment
   frozenReason: text("frozen_reason"),
   frozenAt: timestamp("frozen_at"),
   frozenBy: varchar("frozen_by"),
-  
+
   isLocked: boolean("is_locked").default(false), // Emergency lock
   lockedReason: text("locked_reason"),
   lockedAt: timestamp("locked_at"),
   lockedBy: varchar("locked_by"),
-  
+
   // AI Feature Trials & Activation (Subscriber Pays All Model)
   // ScheduleOS™ AI Auto-Scheduling
   scheduleosTrialStartedAt: timestamp("scheduleos_trial_started_at"), // 7-day free trial
   scheduleosActivatedAt: timestamp("scheduleos_activated_at"), // Payment confirmed, feature unlocked
   scheduleosActivatedBy: varchar("scheduleos_activated_by"), // User ID who activated (Owner/Manager only)
   scheduleosPaymentMethod: varchar("scheduleos_payment_method"), // 'stripe_subscription' | 'stripe_card'
-  
+
   // Future AI Features (following same pattern)
   hireos_trial_started_at: timestamp("hireos_trial_started_at"),
   hireos_activated_at: timestamp("hireos_activated_at"),
   hireos_activated_by: varchar("hireos_activated_by"),
-  
+
   // ============================================================================
   // MASTER KEYS - ROOT-ONLY ORGANIZATION MANAGEMENT
   // ============================================================================
-  
+
   // Feature Toggles (ROOT can enable/disable individual OS modules)
   feature_scheduleos_enabled: boolean("feature_scheduleos_enabled").default(true),
   feature_timeos_enabled: boolean("feature_timeos_enabled").default(true),
@@ -203,7 +203,7 @@ export const workspaces = pgTable("workspaces", {
   feature_analyticsos_enabled: boolean("feature_analyticsos_enabled").default(true),
   feature_supportos_enabled: boolean("feature_supportos_enabled").default(true),
   feature_communicationos_enabled: boolean("feature_communicationos_enabled").default(true),
-  
+
   // Billing Overrides (ROOT can give free/discounted service)
   billing_override_type: varchar("billing_override_type"), // 'free', 'discount', 'custom', null = normal
   billing_override_discount_percent: integer("billing_override_discount_percent"), // 0-100
@@ -212,14 +212,14 @@ export const workspaces = pgTable("workspaces", {
   billing_override_applied_by: varchar("billing_override_applied_by"), // ROOT user ID
   billing_override_applied_at: timestamp("billing_override_applied_at"),
   billing_override_expires_at: timestamp("billing_override_expires_at"), // Auto-revert date
-  
+
   // Manual Adjustments & Notes
   admin_notes: text("admin_notes"), // ROOT private notes about this org
   admin_flags: text("admin_flags").array().default(sql`ARRAY[]::text[]`), // Tags: 'vip', 'watchlist', 'partner', 'delinquent'
   last_admin_action: text("last_admin_action"), // Description of last ROOT action
   last_admin_action_by: varchar("last_admin_action_by"), // ROOT user ID
   last_admin_action_at: timestamp("last_admin_action_at"),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -237,35 +237,35 @@ export type Workspace = typeof workspaces.$inferSelect;
 export const workspaceThemes = pgTable("workspace_themes", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().unique().references(() => workspaces.id, { onDelete: 'cascade' }),
-  
+
   // Theming tier - determines what can be customized
   tier: varchar("tier").default("standard"), // 'standard', 'professional', 'white_label'
-  
+
   // Color customization (HSL format: "H S% L%")
   primaryColor: varchar("primary_color"), // e.g., "210 100% 58%" for blue
   secondaryColor: varchar("secondary_color"),
   successColor: varchar("success_color"),
   warningColor: varchar("warning_color"),
   errorColor: varchar("error_color"),
-  
+
   // Logo & branding assets
   logoUrl: text("logo_url"), // Sidebar logo (max 180×40px)
   logoUrlInverted: text("logo_url_inverted"), // For light backgrounds
   faviconUrl: text("favicon_url"),
   loginBackgroundUrl: text("login_background_url"), // Hero background
-  
+
   // Typography (must be web-safe or loaded font)
   fontFamily: varchar("font_family"), // e.g., "Inter, sans-serif"
-  
+
   // Domain settings (Enterprise tier only)
   customDomain: varchar("custom_domain"), // e.g., "schedule.acmecorp.com"
   customEmailDomain: varchar("custom_email_domain"), // e.g., "notifications@acmecorp.com"
-  
+
   // Branding removals (Enterprise tier only)
   removePoweredBy: boolean("remove_powered_by").default(false),
   removeClockworkLogo: boolean("remove_clockwork_logo").default(false),
   removeWatermarks: boolean("remove_watermarks").default(false),
-  
+
   // Metadata
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -325,10 +325,10 @@ export const roleCapabilities = pgTable("role_capabilities", {
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
   workspaceRole: workspaceRoleEnum("workspace_role").notNull(),
   capability: leaderCapabilityEnum("capability").notNull(),
-  
+
   // Capability constraints
   constraints: jsonb("constraints"), // e.g., { maxTimeAdjustmentHours: 2, requiresApproval: true }
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
@@ -359,32 +359,32 @@ export const leaderActionEnum = pgEnum('leader_action', [
 export const leaderActions = pgTable("leader_actions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
-  
+
   // Leader information
   leaderId: varchar("leader_id").notNull().references(() => users.id),
   leaderEmail: varchar("leader_email").notNull(),
   leaderRole: workspaceRoleEnum("leader_role").notNull(),
-  
+
   // Action details
   action: leaderActionEnum("action").notNull(),
   targetEntityType: varchar("target_entity_type").notNull(), // 'employee', 'shift', 'time_entry'
   targetEntityId: varchar("target_entity_id").notNull(),
   targetEmployeeName: varchar("target_employee_name"), // Denormalized for audit display
-  
+
   // Change tracking (before/after snapshots)
   changesBefore: jsonb("changes_before"),
   changesAfter: jsonb("changes_after"),
-  
+
   // Context
   reason: text("reason"), // Why was this action taken?
   metadata: jsonb("metadata"), // Additional context (IP, user agent, feature used)
   ipAddress: varchar("ip_address"),
-  
+
   // Approval workflow (if required)
   requiresApproval: boolean("requires_approval").default(false),
   approvedBy: varchar("approved_by").references(() => users.id),
   approvedAt: timestamp("approved_at"),
-  
+
   // Immutability
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => [
@@ -423,32 +423,32 @@ export const escalationTickets = pgTable("escalation_tickets", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   ticketNumber: varchar("ticket_number").unique().notNull(), // ESC-XXXXXX format
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
-  
+
   // Requestor (organization leader)
   requestorId: varchar("requestor_id").notNull().references(() => users.id),
   requestorEmail: varchar("requestor_email").notNull(),
   requestorRole: workspaceRoleEnum("requestor_role").notNull(),
-  
+
   // Ticket details
   category: escalationCategoryEnum("category").notNull(),
   title: varchar("title").notNull(),
   description: text("description").notNull(),
   priority: varchar("priority").default("normal"), // low, normal, high, urgent
-  
+
   // Related entities (optional)
   relatedEntityType: varchar("related_entity_type"), // 'employee', 'payroll_run', 'invoice'
   relatedEntityId: varchar("related_entity_id"),
-  
+
   // Context data (for support staff)
   contextData: jsonb("context_data"), // Workspace info, affected records, error details
   attachments: jsonb("attachments"), // File references
-  
+
   // Assignment & resolution
   assignedTo: varchar("assigned_to").references(() => users.id), // Platform support staff
   status: escalationStatusEnum("status").default("open"),
   resolution: text("resolution"),
   resolvedAt: timestamp("resolved_at"),
-  
+
   // Timestamps
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -475,38 +475,38 @@ export const employees = pgTable("employees", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
   userId: varchar("user_id").references(() => users.id, { onDelete: 'set null' }), // Optional link to user account
-  
+
   // Employee information
   employeeNumber: varchar("employee_number"), // Unique employee ID (generated after onboarding)
   firstName: varchar("first_name").notNull(),
   lastName: varchar("last_name").notNull(),
   email: varchar("email"),
   phone: varchar("phone"),
-  
+
   // Contact information (editable by employee)
   address: text("address"),
   city: varchar("city"),
   state: varchar("state"),
   zipCode: varchar("zip_code"),
-  
+
   // Emergency contact (editable by employee)
   emergencyContactName: varchar("emergency_contact_name"),
   emergencyContactPhone: varchar("emergency_contact_phone"),
   emergencyContactRelation: varchar("emergency_contact_relation"),
-  
+
   // Employment details
   role: varchar("role"), // e.g., "Technician", "Consultant", "Driver" - job title
   workspaceRole: workspaceRoleEnum("workspace_role").default("employee"), // Permission level
   hourlyRate: decimal("hourly_rate", { precision: 10, scale: 2 }),
   color: varchar("color").default("#3b82f6"), // For calendar display
-  
+
   // Onboarding status
   onboardingStatus: varchar("onboarding_status").default("not_started"), // not_started, in_progress, completed
-  
+
   // Availability
   isActive: boolean("is_active").default(true),
   availabilityNotes: text("availability_notes"),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -540,35 +540,35 @@ export const employeeBenefits = pgTable("employee_benefits", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
   employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
-  
+
   // Benefit details
   benefitType: benefitTypeEnum("benefit_type").notNull(),
   benefitName: varchar("benefit_name").notNull(), // e.g., "Blue Cross PPO", "Company 401k Match"
   provider: varchar("provider"), // Insurance company or 401k provider
-  
+
   // Coverage & amounts
   coverageAmount: decimal("coverage_amount", { precision: 12, scale: 2 }), // For insurance policies
   employeeContribution: decimal("employee_contribution", { precision: 10, scale: 2 }), // Monthly deduction
   employerContribution: decimal("employer_contribution", { precision: 10, scale: 2 }), // Monthly company cost
-  
+
   // PTO/Leave specific
   ptoHoursPerYear: decimal("pto_hours_per_year", { precision: 10, scale: 2 }),
   ptoHoursAccrued: decimal("pto_hours_accrued", { precision: 10, scale: 2 }).default("0"),
   ptoHoursUsed: decimal("pto_hours_used", { precision: 10, scale: 2 }).default("0"),
-  
+
   // 401k specific
   contributionPercentage: decimal("contribution_percentage", { precision: 5, scale: 2 }), // % of salary
   matchPercentage: decimal("match_percentage", { precision: 5, scale: 2 }), // Employer match %
-  
+
   // Status & dates
   status: benefitStatusEnum("status").default("active"),
   startDate: timestamp("start_date"),
   endDate: timestamp("end_date"),
-  
+
   // Additional info
   policyNumber: varchar("policy_number"),
   notes: text("notes"),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -591,12 +591,12 @@ export const performanceReviews = pgTable("performance_reviews", {
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
   employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
   reviewerId: varchar("reviewer_id").references(() => employees.id, { onDelete: 'cascade' }),
-  
+
   // Review details
   reviewType: reviewTypeEnum("review_type").notNull(),
   reviewPeriodStart: timestamp("review_period_start"),
   reviewPeriodEnd: timestamp("review_period_end"),
-  
+
   // Ratings (1-5 scale)
   overallRating: integer("overall_rating"), // 1-5
   technicalSkillsRating: integer("technical_skills_rating"),
@@ -604,70 +604,70 @@ export const performanceReviews = pgTable("performance_reviews", {
   teamworkRating: integer("teamwork_rating"),
   leadershipRating: integer("leadership_rating"),
   attendanceRating: integer("attendance_rating"),
-  
+
   // Feedback
   strengths: text("strengths"),
   areasForImprovement: text("areas_for_improvement"),
   goals: text("goals").array(), // Array of goal strings
   reviewerComments: text("reviewer_comments"),
   employeeComments: text("employee_comments"),
-  
+
   // Status & completion
   status: reviewStatusEnum("status").default("draft"),
   completedAt: timestamp("completed_at"),
-  
+
   // Salary/promotion decisions
   salaryAdjustment: decimal("salary_adjustment", { precision: 10, scale: 2 }),
   promotionRecommended: boolean("promotion_recommended").default(false),
-  
+
   // ========================================================================
   // TALENTOS™ EXTENDED FIELDS - Performance-to-Pay Loop & Analytics
   // ========================================================================
-  
+
   // Auto-calculated performance metrics (from Unified Data Nexus)
   shiftsCompletedOnTime: integer("shifts_completed_on_time"),
   totalShiftsAssigned: integer("total_shifts_assigned"),
   attendanceRate: decimal("attendance_rate", { precision: 5, scale: 2 }),
   averageHoursWorkedPerWeek: decimal("average_hours_worked_per_week", { precision: 5, scale: 2 }),
   overtimeHours: decimal("overtime_hours", { precision: 10, scale: 2 }),
-  
+
   // Report quality metrics (ReportOS™ integration)
   reportsSubmitted: integer("reports_submitted"),
   reportsApproved: integer("reports_approved"),
   reportsRejected: integer("reports_rejected"),
   reportQualityScore: decimal("report_quality_score", { precision: 5, scale: 2 }),
-  
+
   // Compliance & safety
   complianceViolations: integer("compliance_violations"),
   safetyIncidents: integer("safety_incidents"),
   trainingCompletionRate: decimal("training_completion_rate", { precision: 5, scale: 2 }),
-  
+
   // Additional subjective ratings (TalentOS™)
   qualityOfWorkRating: integer("quality_of_work_rating"), // 1-5
   initiativeRating: integer("initiative_rating"), // 1-5
-  
+
   // Overall composite score (auto-calculated from weighted metrics)
   compositeScore: decimal("composite_score", { precision: 5, scale: 2 }),
   performanceTier: varchar("performance_tier"), // 'exceptional', 'exceeds', 'meets', 'needs_improvement', 'unsatisfactory'
-  
+
   // Auto-generated pay increase recommendation
   currentHourlyRate: decimal("current_hourly_rate", { precision: 10, scale: 2 }),
   suggestedPayIncrease: decimal("suggested_pay_increase", { precision: 10, scale: 2 }),
   suggestedPayIncreasePercentage: decimal("suggested_pay_increase_percentage", { precision: 5, scale: 2 }),
   payIncreaseFormula: text("pay_increase_formula"),
   payIncreaseJustification: text("pay_increase_justification"),
-  
+
   // Manager override
   managerApprovedIncrease: decimal("manager_approved_increase", { precision: 10, scale: 2 }),
   managerOverrideReason: text("manager_override_reason"),
   employeeAcknowledgedAt: timestamp("employee_acknowledged_at"),
-  
+
   // Goals & development (Career Pathing)
   goalsMet: jsonb("goals_met").$type<string[]>(),
   goalsNotMet: jsonb("goals_not_met").$type<string[]>(),
   nextQuarterGoals: jsonb("next_quarter_goals").$type<string[]>(),
   developmentNeeds: jsonb("development_needs").$type<string[]>(),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -690,19 +690,19 @@ export const ptoRequests = pgTable("pto_requests", {
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
   employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
   approverId: varchar("approver_id").references(() => employees.id, { onDelete: 'set null' }),
-  
+
   // Request details
   ptoType: ptoTypeEnum("pto_type").notNull(),
   startDate: timestamp("start_date").notNull(),
   endDate: timestamp("end_date").notNull(),
   totalHours: decimal("total_hours", { precision: 10, scale: 2 }).notNull(),
-  
+
   // Request & approval
   requestNotes: text("request_notes"),
   status: ptoStatusEnum("status").default("pending"),
   approvedAt: timestamp("approved_at"),
   denialReason: text("denial_reason"),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -725,27 +725,27 @@ export const employeeTerminations = pgTable("employee_terminations", {
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
   employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
   terminatedBy: varchar("terminated_by").notNull().references(() => employees.id, { onDelete: 'cascade' }),
-  
+
   // Termination details
   terminationType: terminationTypeEnum("termination_type").notNull(),
   terminationDate: timestamp("termination_date").notNull(),
   lastWorkingDay: timestamp("last_working_day").notNull(),
-  
+
   // Documentation
   reason: text("reason").notNull(),
   exitInterviewNotes: text("exit_interview_notes"),
   rehireEligible: boolean("rehire_eligible").default(false),
-  
+
   // Offboarding checklist
   equipmentReturned: boolean("equipment_returned").default(false),
   accessRevoked: boolean("access_revoked").default(false),
   finalPaymentProcessed: boolean("final_payment_processed").default(false),
   exitInterviewCompleted: boolean("exit_interview_completed").default(false),
-  
+
   // Status
   status: terminationStatusEnum("status").default("pending"),
   completedAt: timestamp("completed_at"),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -763,7 +763,7 @@ export type EmployeeTermination = typeof employeeTerminations.$inferSelect;
 export const clients = pgTable("clients", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
-  
+
   // Client information
   firstName: varchar("first_name").notNull(),
   lastName: varchar("last_name").notNull(),
@@ -771,19 +771,19 @@ export const clients = pgTable("clients", {
   email: varchar("email"),
   phone: varchar("phone"),
   address: text("address"),
-  
+
   // Job site location (for geo-compliance)
   latitude: decimal("latitude", { precision: 10, scale: 7 }), // Job site GPS latitude
   longitude: decimal("longitude", { precision: 10, scale: 7 }), // Job site GPS longitude
-  
+
   // Billing
   billingEmail: varchar("billing_email"),
   taxId: varchar("tax_id"),
-  
+
   // Status
   isActive: boolean("is_active").default(true),
   notes: text("notes"),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -809,31 +809,31 @@ export const shifts = pgTable("shifts", {
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
   employeeId: varchar("employee_id").references(() => employees.id, { onDelete: 'cascade' }),
   clientId: varchar("client_id").references(() => clients.id, { onDelete: 'set null' }),
-  
+
   // Shift details
   title: varchar("title"),
   description: text("description"),
   startTime: timestamp("start_time").notNull(),
   endTime: timestamp("end_time").notNull(),
-  
+
   // Smart Schedule™ tracking
   aiGenerated: boolean("ai_generated").default(false),
   requiresAcknowledgment: boolean("requires_acknowledgment").default(false),
   replacementForShiftId: varchar("replacement_for_shift_id"), // If this shift replaces a denied one
   autoReplacementAttempts: integer("auto_replacement_attempts").default(0), // Track replacement tries
-  
+
   // AI confidence & risk scoring
   aiConfidenceScore: decimal("ai_confidence_score", { precision: 3, scale: 2 }), // 0.00-1.00
   riskScore: decimal("risk_score", { precision: 3, scale: 2 }), // 0.00-1.00 (higher = riskier)
   riskFactors: jsonb("risk_factors").$type<string[]>(), // ['high_tardiness', 'location_far', 'low_performance']
-  
+
   // Status and tracking
   status: shiftStatusEnum("status").default('draft'),
-  
+
   // Billing
   billableToClient: boolean("billable_to_client").default(true),
   hourlyRateOverride: decimal("hourly_rate_override", { precision: 10, scale: 2 }), // Override employee's default rate
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -858,27 +858,27 @@ export const shiftAcknowledgments = pgTable("shift_acknowledgments", {
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
   shiftId: varchar("shift_id").notNull().references(() => shifts.id, { onDelete: 'cascade' }),
   employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
-  
+
   // Acknowledgment details
   type: shiftAcknowledgmentTypeEnum("type").notNull(),
   title: varchar("title").notNull(),
   content: text("content").notNull(),
   priority: varchar("priority").default('normal'), // 'low', 'normal', 'high', 'urgent'
-  
+
   // File attachments
   attachmentUrls: text("attachment_urls").array(),
-  
+
   // Status tracking
   isRequired: boolean("is_required").default(true), // Must acknowledge before clock-in
   acknowledgedAt: timestamp("acknowledged_at"),
   acknowledgedBy: varchar("acknowledged_by").references(() => employees.id),
   deniedAt: timestamp("denied_at"),
   denialReason: text("denial_reason"),
-  
+
   // Metadata
   createdBy: varchar("created_by").notNull().references(() => employees.id),
   expiresAt: timestamp("expires_at"), // Optional expiration
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -896,13 +896,13 @@ export type ShiftAcknowledgment = typeof shiftAcknowledgments.$inferSelect;
 export const shiftTemplates = pgTable("shift_templates", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
-  
+
   name: varchar("name").notNull(),
   title: varchar("title"),
   description: text("description"),
   durationHours: decimal("duration_hours", { precision: 5, scale: 2 }).notNull(),
   billableToClient: boolean("billable_to_client").default(true),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -920,20 +920,20 @@ export type ShiftTemplate = typeof shiftTemplates.$inferSelect;
 export const smartScheduleUsage = pgTable("smart_schedule_usage", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
-  
+
   // Usage details
   scheduleDate: timestamp("schedule_date").notNull(), // Week start date
   employeesScheduled: integer("employees_scheduled").notNull(),
   shiftsGenerated: integer("shifts_generated").notNull(),
-  
+
   // Billing
   billingModel: varchar("billing_model").notNull(), // 'per_cycle', 'per_employee', 'tier_included'
   chargeAmount: decimal("charge_amount", { precision: 10, scale: 2 }), // Amount charged
-  
+
   // AI metadata
   aiModel: varchar("ai_model").default('gpt-4'),
   processingTimeMs: integer("processing_time_ms"),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -952,39 +952,39 @@ export const timeEntries = pgTable("time_entries", {
   shiftId: varchar("shift_id").references(() => shifts.id, { onDelete: 'cascade' }),
   employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
   clientId: varchar("client_id").references(() => clients.id, { onDelete: 'set null' }),
-  
+
   // Time tracking
   clockIn: timestamp("clock_in").notNull(),
   clockOut: timestamp("clock_out"),
   totalHours: decimal("total_hours", { precision: 10, scale: 2 }),
-  
+
   // Billing
   hourlyRate: decimal("hourly_rate", { precision: 10, scale: 2 }),
   totalAmount: decimal("total_amount", { precision: 10, scale: 2 }),
-  
+
   // GEO-COMPLIANCE: GPS & IP Tracking (Monopolistic Feature #3)
   clockInLatitude: decimal("clock_in_latitude", { precision: 10, scale: 7 }), // GPS lat at clock-in
   clockInLongitude: decimal("clock_in_longitude", { precision: 10, scale: 7 }), // GPS lng at clock-in
   clockInAccuracy: decimal("clock_in_accuracy", { precision: 8, scale: 2 }), // GPS accuracy in meters
   clockInIpAddress: varchar("clock_in_ip_address"), // IP address at clock-in
-  
+
   clockOutLatitude: decimal("clock_out_latitude", { precision: 10, scale: 7 }), // GPS lat at clock-out
   clockOutLongitude: decimal("clock_out_longitude", { precision: 10, scale: 7 }), // GPS lng at clock-out
   clockOutAccuracy: decimal("clock_out_accuracy", { precision: 8, scale: 2 }), // GPS accuracy in meters
   clockOutIpAddress: varchar("clock_out_ip_address"), // IP address at clock-out
-  
+
   // Job site location (for discrepancy detection)
   jobSiteLatitude: decimal("job_site_latitude", { precision: 10, scale: 7 }),
   jobSiteLongitude: decimal("job_site_longitude", { precision: 10, scale: 7 }),
   jobSiteAddress: text("job_site_address"),
-  
+
   // BillOS™ Integration
   status: varchar("status").default('pending'), // 'pending', 'approved', 'rejected', 'billed'
   invoiceId: varchar("invoice_id").references(() => invoices.id, { onDelete: 'set null' }),
   billableToClient: boolean("billable_to_client").default(true),
-  
+
   notes: text("notes"),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -1012,15 +1012,15 @@ export const shiftOrders = pgTable("shift_orders", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
   shiftId: varchar("shift_id").notNull().references(() => shifts.id, { onDelete: 'cascade' }),
-  
+
   // Order details
   title: varchar("title").notNull(),
   description: text("description"),
   priority: shiftOrderPriorityEnum("priority").default('normal'),
-  
+
   // Requirements
   requiresAcknowledgment: boolean("requires_acknowledgment").default(true),
-  
+
   // Metadata
   createdBy: varchar("created_by").notNull().references(() => users.id, { onDelete: 'cascade' }),
   createdAt: timestamp("created_at").defaultNow(),
@@ -1042,7 +1042,7 @@ export const shiftOrderAcknowledgments = pgTable("shift_order_acknowledgments", 
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
   shiftOrderId: varchar("shift_order_id").notNull().references(() => shiftOrders.id, { onDelete: 'cascade' }),
   employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
-  
+
   // Acknowledgment details
   acknowledgedAt: timestamp("acknowledged_at").defaultNow(),
   notes: text("notes"), // Optional employee notes
@@ -1070,31 +1070,31 @@ export const invoices = pgTable("invoices", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
   clientId: varchar("client_id").notNull().references(() => clients.id, { onDelete: 'cascade' }),
-  
+
   // Invoice details
   invoiceNumber: varchar("invoice_number").notNull(),
   issueDate: timestamp("issue_date").defaultNow(),
   dueDate: timestamp("due_date"),
-  
+
   // Amounts
   subtotal: decimal("subtotal", { precision: 10, scale: 2 }).notNull(),
   taxRate: decimal("tax_rate", { precision: 5, scale: 2 }).default("0.00"),
   taxAmount: decimal("tax_amount", { precision: 10, scale: 2 }).default("0.00"),
   total: decimal("total", { precision: 10, scale: 2 }).notNull(),
-  
+
   // Platform fee
   platformFeePercentage: decimal("platform_fee_percentage", { precision: 5, scale: 2 }),
   platformFeeAmount: decimal("platform_fee_amount", { precision: 10, scale: 2 }),
   businessAmount: decimal("business_amount", { precision: 10, scale: 2 }), // Amount after platform fee
-  
+
   // Payment
   status: invoiceStatusEnum("status").default('draft'),
   paidAt: timestamp("paid_at"),
   paymentIntentId: varchar("payment_intent_id"), // Stripe Payment Intent ID
-  
+
   // Additional details
   notes: text("notes"),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -1112,17 +1112,17 @@ export type Invoice = typeof invoices.$inferSelect;
 export const invoiceLineItems = pgTable("invoice_line_items", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   invoiceId: varchar("invoice_id").notNull().references(() => invoices.id, { onDelete: 'cascade' }),
-  
+
   // Line item details
   description: text("description").notNull(),
   quantity: decimal("quantity", { precision: 10, scale: 2 }).notNull(),
   unitPrice: decimal("unit_price", { precision: 10, scale: 2 }).notNull(),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
-  
+
   // Links
   timeEntryId: varchar("time_entry_id").references(() => timeEntries.id, { onDelete: 'set null' }),
   shiftId: varchar("shift_id").references(() => shifts.id, { onDelete: 'set null' }),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -1143,18 +1143,18 @@ export const clientRates = pgTable("client_rates", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
   clientId: varchar("client_id").notNull().references(() => clients.id, { onDelete: 'cascade' }),
-  
+
   // Billing configuration
   billableRate: decimal("billable_rate", { precision: 10, scale: 2 }).notNull(), // Hourly rate for this client
   description: text("description"), // e.g., "Standard hourly rate", "Premium weekend rate"
   isActive: boolean("is_active").default(true),
-  
+
   // Subscription billing (hybrid model)
   hasSubscription: boolean("has_subscription").default(false),
   subscriptionAmount: decimal("subscription_amount", { precision: 10, scale: 2 }),
   subscriptionFrequency: varchar("subscription_frequency"), // 'monthly', 'quarterly', 'annual'
   subscriptionStartDate: timestamp("subscription_start_date"),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -1173,25 +1173,25 @@ export const paymentRecords = pgTable("payment_records", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
   invoiceId: varchar("invoice_id").notNull().references(() => invoices.id, { onDelete: 'cascade' }),
-  
+
   // Payment details
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   paymentMethod: varchar("payment_method").notNull(), // 'stripe_card', 'stripe_ach', 'stripe_transfer', 'manual'
   paymentIntentId: varchar("payment_intent_id"), // Stripe Payment Intent ID
   transactionId: varchar("transaction_id"), // External transaction reference
-  
+
   // Stripe Connect platform fee tracking
   platformFeeAmount: decimal("platform_fee_amount", { precision: 10, scale: 2 }),
   businessAmount: decimal("business_amount", { precision: 10, scale: 2 }),
-  
+
   // Status
   status: varchar("status").default('pending'), // 'pending', 'completed', 'failed', 'refunded'
   paidAt: timestamp("paid_at"),
   failureReason: text("failure_reason"),
-  
+
   // Metadata
   notes: text("notes"),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -1210,24 +1210,24 @@ export const invoiceReminders = pgTable("invoice_reminders", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
   invoiceId: varchar("invoice_id").notNull().references(() => invoices.id, { onDelete: 'cascade' }),
-  
+
   // Reminder details
   reminderType: reminderTypeEnum("reminder_type").notNull(),
   daysOverdue: integer("days_overdue").notNull(),
-  
+
   // Email delivery
   sentAt: timestamp("sent_at"),
   emailTo: varchar("email_to").notNull(),
   emailSubject: text("email_subject"),
   emailBody: text("email_body"),
-  
+
   // Status
   status: varchar("status").default('pending'), // 'pending', 'sent', 'failed'
   failureReason: text("failure_reason"),
-  
+
   // Escalation flag
   needsHumanIntervention: boolean("needs_human_intervention").default(false), // True after 30 days
-  
+
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -1244,21 +1244,21 @@ export const clientPortalAccess = pgTable("client_portal_access", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
   clientId: varchar("client_id").notNull().references(() => clients.id, { onDelete: 'cascade' }),
-  
+
   // Secure access
   accessToken: varchar("access_token").unique().notNull(), // Secure token for portal link
   email: varchar("email").notNull(), // Client contact email
-  
+
   // Portal customization (white-label)
   portalName: varchar("portal_name"), // e.g., "ACME Corp Billing Portal"
   logoUrl: varchar("logo_url"),
   primaryColor: varchar("primary_color"),
-  
+
   // Access control
   isActive: boolean("is_active").default(true),
   lastAccessedAt: timestamp("last_accessed_at"),
   expiresAt: timestamp("expires_at"), // Optional expiration
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -1279,31 +1279,31 @@ export const expenseReports = pgTable("expense_reports", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
   employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
-  
+
   // Expense details
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   category: varchar("category").notNull(), // 'mileage', 'meals', 'supplies', 'travel', 'other'
   description: text("description").notNull(),
   expenseDate: timestamp("expense_date").notNull(),
-  
+
   // Receipt
   receiptImageUrl: varchar("receipt_image_url"), // Cloud storage URL
   receiptUploadedAt: timestamp("receipt_uploaded_at"),
-  
+
   // Job/Client association
   clientId: varchar("client_id").references(() => clients.id, { onDelete: 'set null' }),
   shiftId: varchar("shift_id").references(() => shifts.id, { onDelete: 'set null' }),
-  
+
   // Approval workflow
   status: expenseStatusEnum("status").default('pending'),
   approvedBy: varchar("approved_by").references(() => employees.id, { onDelete: 'set null' }),
   approvedAt: timestamp("approved_at"),
   rejectionReason: text("rejection_reason"),
-  
+
   // Reimbursement (auto-included in next payroll run)
   reimbursedInPayrollId: varchar("reimbursed_in_payroll_id"), // Link to payroll run
   reimbursedAt: timestamp("reimbursed_at"),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -1324,16 +1324,16 @@ export const employeeTaxForms = pgTable("employee_tax_forms", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
   employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
-  
+
   // Form details
   formType: taxFormTypeEnum("form_type").notNull(),
   taxYear: integer("tax_year").notNull(),
-  
+
   // W-4 Information
   filingStatus: varchar("filing_status"), // 'single', 'married_filing_jointly', 'married_filing_separately', 'head_of_household'
   allowances: integer("allowances"),
   additionalWithholding: decimal("additional_withholding", { precision: 10, scale: 2 }),
-  
+
   // W-2 / 1099 Information (generated annually)
   wages: decimal("wages", { precision: 10, scale: 2 }),
   federalTaxWithheld: decimal("federal_tax_withheld", { precision: 10, scale: 2 }),
@@ -1342,14 +1342,14 @@ export const employeeTaxForms = pgTable("employee_tax_forms", {
   medicareWages: decimal("medicare_wages", { precision: 10, scale: 2 }),
   medicareTaxWithheld: decimal("medicare_tax_withheld", { precision: 10, scale: 2 }),
   stateTaxWithheld: decimal("state_tax_withheld", { precision: 10, scale: 2 }),
-  
+
   // Document storage
   pdfUrl: varchar("pdf_url"), // Cloud storage URL for generated PDF
   generatedAt: timestamp("generated_at"),
-  
+
   // Status
   isActive: boolean("is_active").default(true), // Latest W-4 is active
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -1368,22 +1368,22 @@ export const employeeBankAccounts = pgTable("employee_bank_accounts", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
   employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
-  
+
   // Bank account details (encrypted in production)
   accountHolderName: varchar("account_holder_name").notNull(),
   bankName: varchar("bank_name").notNull(),
   routingNumber: varchar("routing_number").notNull(),
   accountNumber: varchar("account_number").notNull(), // Last 4 digits visible only
   accountType: varchar("account_type").notNull(), // 'checking', 'savings'
-  
+
   // Stripe Connect bank account token (for secure processing)
   stripeBankAccountToken: varchar("stripe_bank_account_token"),
-  
+
   // Status
   isActive: boolean("is_active").default(true), // Primary account for direct deposit
   isVerified: boolean("is_verified").default(false), // Micro-deposit verification
   verifiedAt: timestamp("verified_at"),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -1402,32 +1402,32 @@ export const offCyclePayrollRuns = pgTable("off_cycle_payroll_runs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
   employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
-  
+
   // Payroll details
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   payType: varchar("pay_type").notNull(), // 'bonus', 'commission', 'advance', 'correction', 'other'
   description: text("description").notNull(),
   payDate: timestamp("pay_date").notNull(),
-  
+
   // Tax withholding
   federalTaxWithheld: decimal("federal_tax_withheld", { precision: 10, scale: 2 }),
   stateTaxWithheld: decimal("state_tax_withheld", { precision: 10, scale: 2 }),
   socialSecurityWithheld: decimal("social_security_withheld", { precision: 10, scale: 2 }),
   medicareWithheld: decimal("medicare_withheld", { precision: 10, scale: 2 }),
   netAmount: decimal("net_amount", { precision: 10, scale: 2 }).notNull(),
-  
+
   // Processing
   status: varchar("status").default('pending'), // 'pending', 'processing', 'completed', 'failed'
   processedAt: timestamp("processed_at"),
   stripeTransferId: varchar("stripe_transfer_id"), // Stripe transfer ID for direct deposit
-  
+
   // Approval
   approvedBy: varchar("approved_by").references(() => employees.id, { onDelete: 'set null' }),
   approvedAt: timestamp("approved_at"),
-  
+
   // Metadata
   notes: text("notes"),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -1454,7 +1454,7 @@ export const managerAssignments = pgTable("manager_assignments", {
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
   managerId: varchar("manager_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
   employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
@@ -1618,20 +1618,20 @@ export const applicationStatusEnum = pgEnum('application_status', ['pending', 'r
 export const jobPostings = pgTable("job_postings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
-  
+
   title: varchar("title").notNull(),
   department: varchar("department"),
   location: varchar("location"),
   employmentType: varchar("employment_type"), // 'full-time', 'part-time', 'contract'
   description: text("description").notNull(),
   requirements: text("requirements"),
-  
+
   salaryMin: decimal("salary_min", { precision: 10, scale: 2 }),
   salaryMax: decimal("salary_max", { precision: 10, scale: 2 }),
-  
+
   status: jobPostingStatusEnum("status").default("draft"),
   postedBy: varchar("posted_by").references(() => users.id),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
   closedAt: timestamp("closed_at"),
@@ -1650,17 +1650,17 @@ export const jobApplications = pgTable("job_applications", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   jobPostingId: varchar("job_posting_id").notNull().references(() => jobPostings.id, { onDelete: 'cascade' }),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
-  
+
   applicantName: varchar("applicant_name").notNull(),
   applicantEmail: varchar("applicant_email").notNull(),
   applicantPhone: varchar("applicant_phone"),
   resumeUrl: varchar("resume_url"),
   coverLetter: text("cover_letter"),
-  
+
   status: applicationStatusEnum("status").default("pending"),
   reviewedBy: varchar("reviewed_by").references(() => users.id),
   notes: text("notes"),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -1684,19 +1684,19 @@ export const employeeFiles = pgTable("employee_files", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
   employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
-  
+
   fileName: varchar("file_name").notNull(),
   fileUrl: varchar("file_url").notNull(),
   fileSize: integer("file_size"), // bytes
   mimeType: varchar("mime_type"),
-  
+
   documentType: documentTypeEnum("document_type").default("other"),
   title: varchar("title").notNull(),
   description: text("description"),
-  
+
   expirationDate: timestamp("expiration_date"),
   isExpired: boolean("is_expired").default(false),
-  
+
   uploadedBy: varchar("uploaded_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -1727,17 +1727,17 @@ export const onboardingInvites = pgTable("onboarding_invites", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
   employeeId: varchar("employee_id").references(() => employees.id, { onDelete: 'cascade' }),
-  
+
   email: varchar("email").notNull(),
   firstName: varchar("first_name").notNull(),
   lastName: varchar("last_name").notNull(),
-  
+
   inviteToken: varchar("invite_token").notNull().unique(),
   expiresAt: timestamp("expires_at").notNull(),
-  
+
   acceptedAt: timestamp("accepted_at"),
   isUsed: boolean("is_used").default(false),
-  
+
   sentBy: varchar("sent_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -1756,17 +1756,17 @@ export const onboardingApplications = pgTable("onboarding_applications", {
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
   employeeId: varchar("employee_id").references(() => employees.id, { onDelete: 'set null' }),
   inviteId: varchar("invite_id").references(() => onboardingInvites.id),
-  
+
   // Generated employee number
   employeeNumber: varchar("employee_number").unique(),
-  
+
   // Personal Information
   firstName: varchar("first_name").notNull(),
   middleName: varchar("middle_name"),
   lastName: varchar("last_name").notNull(),
   dateOfBirth: timestamp("date_of_birth"),
   ssn: varchar("ssn"), // Encrypted in production
-  
+
   // Contact
   email: varchar("email").notNull(),
   phone: varchar("phone"),
@@ -1774,15 +1774,15 @@ export const onboardingApplications = pgTable("onboarding_applications", {
   city: varchar("city"),
   state: varchar("state"),
   zipCode: varchar("zip_code"),
-  
+
   // Emergency Contact
   emergencyContactName: varchar("emergency_contact_name"),
   emergencyContactPhone: varchar("emergency_contact_phone"),
   emergencyContactRelation: varchar("emergency_contact_relation"),
-  
+
   // Tax Classification
   taxClassification: taxClassificationEnum("tax_classification"),
-  
+
   // Work Availability (for AI scheduling)
   availableMonday: boolean("available_monday").default(true),
   availableTuesday: boolean("available_tuesday").default(true),
@@ -1794,16 +1794,16 @@ export const onboardingApplications = pgTable("onboarding_applications", {
   preferredShiftTime: varchar("preferred_shift_time"), // 'morning', 'afternoon', 'evening', 'night'
   maxHoursPerWeek: integer("max_hours_per_week"),
   availabilityNotes: text("availability_notes"),
-  
+
   // Onboarding Status
   currentStep: onboardingStepEnum("current_step").default("personal_info"),
   status: onboardingStatusEnum("status").default("in_progress"),
   completedAt: timestamp("completed_at"),
-  
+
   // Tracking
   ipAddress: varchar("ip_address"),
   userAgent: varchar("user_agent"),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -1829,14 +1829,14 @@ export const documentSignatures = pgTable("document_signatures", {
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
   applicationId: varchar("application_id").references(() => onboardingApplications.id, { onDelete: 'cascade' }),
   employeeId: varchar("employee_id").references(() => employees.id),
-  
+
   documentType: documentTypeSignatureEnum("document_type").notNull(),
   documentTitle: varchar("document_title").notNull(),
   documentContent: text("document_content"), // Full text for legal record
   documentUrl: varchar("document_url"), // PDF/file URL
-  
+
   status: documentSignatureStatusEnum("status").default("pending"),
-  
+
   // Signature Data (legal defensibility)
   signatureData: text("signature_data"), // Base64 signature image
   signedByName: varchar("signed_by_name"),
@@ -1844,16 +1844,16 @@ export const documentSignatures = pgTable("document_signatures", {
   ipAddress: varchar("ip_address"),
   userAgent: varchar("user_agent"),
   geoLocation: varchar("geo_location"), // Optional: lat,lon
-  
+
   // Witness/Notary (if required)
   witnessName: varchar("witness_name"),
   witnessSignature: text("witness_signature"),
   witnessedAt: timestamp("witnessed_at"),
-  
+
   // Audit Trail
   viewedAt: timestamp("viewed_at"),
   viewCount: integer("view_count").default(0),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -1875,27 +1875,27 @@ export const employeeCertifications = pgTable("employee_certifications", {
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
   employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
   applicationId: varchar("application_id").references(() => onboardingApplications.id),
-  
+
   certificationType: varchar("certification_type").notNull(), // 'driver_license', 'medical_cert', 'professional_license'
   certificationName: varchar("certification_name").notNull(),
   certificationNumber: varchar("certification_number"),
   issuingAuthority: varchar("issuing_authority"),
-  
+
   issuedDate: timestamp("issued_date"),
   expirationDate: timestamp("expiration_date"),
-  
+
   status: certificationStatusEnum("status").default("pending"),
-  
+
   // Document proof
   documentUrl: varchar("document_url"),
   verifiedBy: varchar("verified_by").references(() => users.id),
   verifiedAt: timestamp("verified_at"),
-  
+
   // Required for job
   isRequired: boolean("is_required").default(false),
-  
+
   notes: text("notes"),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -1910,20 +1910,20 @@ export type InsertEmployeeCertification = z.infer<typeof insertEmployeeCertifica
 export type EmployeeCertification = typeof employeeCertifications.$inferSelect;
 
 // ============================================================================
-// HIREOS™ - Digital File Cabinet & Compliance Workflow (Monopolistic Feature)
+// HIREOS™ - DIGITAL FILE CABINET & COMPLIANCE WORKFLOW (MONOPOLISTIC FEATURE)
 // ============================================================================
 
 // Onboarding Workflow Templates (No-Code Builder)
 export const onboardingWorkflowTemplates = pgTable("onboarding_workflow_templates", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
-  
+
   // Template metadata
   name: varchar("name").notNull(), // e.g., "Security Guard Onboarding", "Office Manager Onboarding"
   description: text("description"),
   industry: varchar("industry"), // 'security', 'construction', 'healthcare', 'office', 'general'
   roleType: varchar("role_type"), // 'employee', 'contractor', 'temporary'
-  
+
   // Workflow steps configuration
   steps: jsonb("steps").notNull().$type<Array<{
     stepId: string;
@@ -1943,7 +1943,7 @@ export const onboardingWorkflowTemplates = pgTable("onboarding_workflow_template
       options?: string[];
     }>;
   }>>(),
-  
+
   // Compliance tracking
   complianceRequirements: jsonb("compliance_requirements").$type<{
     i9Required: boolean;
@@ -1953,12 +1953,12 @@ export const onboardingWorkflowTemplates = pgTable("onboarding_workflow_template
     minimumDocuments: number;
     retentionPeriodYears: number; // Default: 7
   }>(),
-  
+
   // Usage stats
   isActive: boolean("is_active").default(true),
   isDefault: boolean("is_default").default(false), // Default for new employees
   usageCount: integer("usage_count").default(0),
-  
+
   createdBy: varchar("created_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -1993,62 +1993,62 @@ export const employeeDocuments = pgTable("employee_documents", {
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
   employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
   applicationId: varchar("application_id").references(() => onboardingApplications.id),
-  
+
   // Document classification
   documentType: employeeDocumentTypeEnum("document_type").notNull(),
   documentName: varchar("document_name").notNull(),
   documentDescription: text("document_description"),
-  
+
   // File storage (Object Storage)
   fileUrl: varchar("file_url").notNull(), // Permanent storage URL
   fileSize: integer("file_size"), // Bytes
   fileType: varchar("file_type"), // 'application/pdf', 'image/jpeg'
   originalFileName: varchar("original_file_name"),
-  
+
   // Audit trail - WHO uploaded
   uploadedBy: varchar("uploaded_by").references(() => users.id),
   uploadedByEmail: varchar("uploaded_by_email"), // Denormalized for audit persistence
   uploadedByRole: varchar("uploaded_by_role"), // Role at time of upload
-  
+
   // Audit trail - WHEN uploaded
   uploadedAt: timestamp("uploaded_at").notNull().defaultNow(),
-  
+
   // Audit trail - WHERE uploaded from
   uploadIpAddress: varchar("upload_ip_address").notNull(),
   uploadUserAgent: text("upload_user_agent"),
   uploadGeoLocation: varchar("upload_geo_location"), // City, State, Country
-  
+
   // Document lifecycle
   status: employeeDocumentStatusEnum("status").default('uploaded'),
   expirationDate: timestamp("expiration_date"), // For licenses, certifications
-  
+
   // Approval workflow
   requiresApproval: boolean("requires_approval").default(false),
   approvedBy: varchar("approved_by").references(() => users.id),
   approvedAt: timestamp("approved_at"),
   approvalNotes: text("approval_notes"),
-  
+
   rejectedBy: varchar("rejected_by").references(() => users.id),
   rejectedAt: timestamp("rejected_at"),
   rejectionReason: text("rejection_reason"),
-  
+
   // Compliance & retention
   isComplianceDocument: boolean("is_compliance_document").default(false), // I-9, W-4, etc.
   retentionPeriodYears: integer("retention_period_years").default(7), // Default: 7 years for audit defense
   deleteAfter: timestamp("delete_after"), // Auto-calculated: uploadedAt + retentionPeriodYears
-  
+
   // Document verification
   isVerified: boolean("is_verified").default(false),
   verifiedBy: varchar("verified_by").references(() => users.id),
   verifiedAt: timestamp("verified_at"),
-  
+
   // Immutability flag (for signed documents)
   isImmutable: boolean("is_immutable").default(false), // Once signed, cannot be modified
   digitalSignatureHash: varchar("digital_signature_hash"), // SHA-256 hash for tamper detection
-  
+
   // Metadata
   metadata: jsonb("metadata"), // Custom fields, OCR data, etc.
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
@@ -2072,18 +2072,18 @@ export const documentAccessLogs = pgTable("document_access_logs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
   documentId: varchar("document_id").notNull().references(() => employeeDocuments.id, { onDelete: 'cascade' }),
-  
+
   // Access details
   accessedBy: varchar("accessed_by").notNull().references(() => users.id),
   accessedByEmail: varchar("accessed_by_email").notNull(),
   accessedByRole: varchar("accessed_by_role").notNull(),
-  
+
   accessType: varchar("access_type").notNull(), // 'view', 'download', 'print', 'share'
-  
+
   // Context
   ipAddress: varchar("ip_address").notNull(),
   userAgent: text("user_agent"),
-  
+
   // Audit compliance
   accessedAt: timestamp("accessed_at").notNull().defaultNow(),
 }, (table) => [
@@ -2107,7 +2107,7 @@ export const onboardingChecklists = pgTable("onboarding_checklists", {
   applicationId: varchar("application_id").notNull().references(() => onboardingApplications.id, { onDelete: 'cascade' }),
   employeeId: varchar("employee_id").references(() => employees.id),
   templateId: varchar("template_id").references(() => onboardingWorkflowTemplates.id),
-  
+
   // Progress tracking
   checklistItems: jsonb("checklist_items").notNull().$type<Array<{
     itemId: string;
@@ -2120,13 +2120,13 @@ export const onboardingChecklists = pgTable("onboarding_checklists", {
     documentId?: string; // Link to employeeDocuments
     notes?: string;
   }>>(),
-  
+
   overallProgress: integer("overall_progress").default(0), // 0-100%
-  
+
   // Compliance deadlines
   i9DeadlineDate: timestamp("i9_deadline_date"), // 3 business days from hire
   onboardingCompletedAt: timestamp("onboarding_completed_at"),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
@@ -2154,7 +2154,7 @@ export const auditActionEnum = pgEnum('audit_action', [
   'clock_in', 'clock_out',
   'generate_invoice', 'payment_received',
   'assign_manager', 'remove_manager',
-  
+
   // AuditOS™ Chat moderation actions
   'kick_user',
   'silence_user',
@@ -2162,37 +2162,37 @@ export const auditActionEnum = pgEnum('audit_action', [
   'remove_voice',
   'ban_user',
   'unban_user',
-  
+
   // AuditOS™ Account management actions
   'reset_password',
   'unlock_account',
   'lock_account',
   'change_role',
   'change_permissions',
-  
+
   // AuditOS™ Workspace actions
   'transfer_ownership',
   'impersonate_user',
-  
+
   // AuditOS™ Data actions
   'export_data',
   'import_data',
   'delete_data',
   'restore_data',
-  
+
   // AuditOS™ System actions
   'update_motd',
   'update_banner',
   'change_settings',
   'view_audit_logs',
-  
+
   // AuditOS™ Support actions
   'escalate_ticket',
   'transfer_ticket',
   'view_documents',
   'request_secure_info',
   'release_spectator',
-  
+
   // Other
   'other'
 ]);
@@ -2200,47 +2200,47 @@ export const auditActionEnum = pgEnum('audit_action', [
 export const auditLogs = pgTable("audit_logs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").references(() => workspaces.id, { onDelete: 'cascade' }),
-  
+
   // AuditOS™ Command tracking (IRC-style)
   commandId: varchar("command_id"), // Unique ID for command/response matching
-  
+
   // Actor information
   userId: varchar("user_id").notNull().references(() => users.id),
   userEmail: varchar("user_email").notNull(), // Denormalized for audit trail persistence
   userRole: varchar("user_role").notNull(), // Role at time of action
-  
+
   // Action details
   action: auditActionEnum("action").notNull(),
   actionDescription: text("action_description"), // Human-readable description for AuditOS™
   entityType: varchar("entity_type"), // 'employee', 'shift', 'invoice', 'user', 'message', etc.
   entityId: varchar("entity_id"),
-  
+
   // AuditOS™ Target tracking
   targetId: varchar("target_id"), // User, workspace, or resource affected by action
   targetName: varchar("target_name"), // Cached for historical accuracy
   targetType: varchar("target_type"), // 'user', 'workspace', 'message', 'document', etc.
-  
+
   // AuditOS™ Context
   conversationId: varchar("conversation_id"), // If chat-related
   reason: text("reason"), // Reason for action (e.g., kick/silence reason)
-  
+
   // Change tracking
   changes: jsonb("changes"), // { before: {...}, after: {...} }
   metadata: jsonb("metadata"), // Additional context (API endpoint, feature flag, command payload, etc.)
-  
+
   // Request context
   ipAddress: varchar("ip_address"),
   userAgent: text("user_agent"), // Required for SOC2/GDPR traceability
   requestId: varchar("request_id"), // For correlating related actions
-  
+
   // AuditOS™ Result tracking
   success: boolean("success").default(true),
   errorMessage: text("error_message"), // If action failed
-  
+
   // Compliance flags
   isSensitiveData: boolean("is_sensitive_data").default(false), // PII, financial data, etc.
   complianceTag: varchar("compliance_tag"), // 'gdpr', 'soc2', 'hipaa', etc.
-  
+
   // Immutability - audit logs should NEVER be deleted
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => [
@@ -2267,17 +2267,17 @@ export type AuditLog = typeof auditLogs.$inferSelect;
 export const apiKeys = pgTable("api_keys", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
-  
+
   name: varchar("name").notNull(),
   keyHash: varchar("key_hash").notNull().unique(), // Hashed API key
   keyPrefix: varchar("key_prefix").notNull(), // First 8 chars for display
-  
+
   scopes: text("scopes").array(), // ['read:employees', 'write:shifts', etc.]
   isActive: boolean("is_active").default(true),
-  
+
   lastUsedAt: timestamp("last_used_at"),
   expiresAt: timestamp("expires_at"),
-  
+
   createdBy: varchar("created_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
   revokedAt: timestamp("revoked_at"),
@@ -2301,15 +2301,15 @@ export const gpsLocations = pgTable("gps_locations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
   timeEntryId: varchar("time_entry_id").references(() => timeEntries.id, { onDelete: 'cascade' }),
-  
+
   latitude: decimal("latitude", { precision: 10, scale: 7 }).notNull(),
   longitude: decimal("longitude", { precision: 10, scale: 7 }).notNull(),
   accuracy: decimal("accuracy", { precision: 6, scale: 2 }), // meters
-  
+
   address: varchar("address"),
   verified: boolean("verified").default(false),
   deviceInfo: jsonb("device_info"),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -2324,19 +2324,19 @@ export const payrollStatusEnum = pgEnum('payroll_status', ['draft', 'pending', '
 export const payrollRuns = pgTable("payroll_runs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
-  
+
   periodStart: timestamp("period_start").notNull(),
   periodEnd: timestamp("period_end").notNull(),
-  
+
   status: payrollStatusEnum("status").default("draft"),
-  
+
   totalGrossPay: decimal("total_gross_pay", { precision: 12, scale: 2 }).default("0.00"),
   totalTaxes: decimal("total_taxes", { precision: 12, scale: 2 }).default("0.00"),
   totalNetPay: decimal("total_net_pay", { precision: 12, scale: 2 }).default("0.00"),
-  
+
   processedBy: varchar("processed_by").references(() => users.id),
   processedAt: timestamp("processed_at"),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -2355,18 +2355,18 @@ export const payrollEntries = pgTable("payroll_entries", {
   payrollRunId: varchar("payroll_run_id").notNull().references(() => payrollRuns.id, { onDelete: 'cascade' }),
   employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
-  
+
   regularHours: decimal("regular_hours", { precision: 8, scale: 2 }).default("0.00"),
   overtimeHours: decimal("overtime_hours", { precision: 8, scale: 2 }).default("0.00"),
   hourlyRate: decimal("hourly_rate", { precision: 10, scale: 2 }).notNull(),
-  
+
   grossPay: decimal("gross_pay", { precision: 10, scale: 2 }).default("0.00"),
   federalTax: decimal("federal_tax", { precision: 10, scale: 2 }).default("0.00"),
   stateTax: decimal("state_tax", { precision: 10, scale: 2 }).default("0.00"),
   socialSecurity: decimal("social_security", { precision: 10, scale: 2 }).default("0.00"),
   medicare: decimal("medicare", { precision: 10, scale: 2 }).default("0.00"),
   netPay: decimal("net_pay", { precision: 10, scale: 2 }).default("0.00"),
-  
+
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -2388,14 +2388,14 @@ export const platformRoles = pgTable("platform_roles", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
   role: platformRoleEnum("role").notNull(),
-  
+
   // Assignment tracking
   grantedBy: varchar("granted_by").references(() => users.id),
   grantedReason: text("granted_reason"),
   revokedAt: timestamp("revoked_at"),
   revokedBy: varchar("revoked_by").references(() => users.id),
   revokedReason: text("revoked_reason"),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
@@ -2416,12 +2416,12 @@ export const systemAuditLogs = pgTable("system_audit_logs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").references(() => users.id),
   platformRole: platformRoleEnum("platform_role"),
-  
+
   action: varchar("action").notNull(), // 'create_workspace', 'delete_user', 'grant_role', etc.
   entityType: varchar("entity_type").notNull(),
   entityId: varchar("entity_id"),
   workspaceId: varchar("workspace_id").references(() => workspaces.id),
-  
+
   changes: jsonb("changes"), // { before: {...}, after: {...} }
   metadata: jsonb("metadata"),
   ipAddress: varchar("ip_address"),
@@ -2429,7 +2429,7 @@ export const systemAuditLogs = pgTable("system_audit_logs", {
   requiresConfirmation: boolean("requires_confirmation").default(false),
   confirmedBy: varchar("confirmed_by").references(() => users.id),
   confirmedAt: timestamp("confirmed_at"),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -2446,33 +2446,33 @@ export const employeeNotices = pgTable("employee_notices", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
   employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
-  
+
   noticeType: noticeTypeEnum("notice_type").notNull(),
   currentRole: varchar("current_role"), // Current workspaceRole
-  
+
   // Notice details
   submittedDate: timestamp("submitted_date").defaultNow(),
   effectiveDate: timestamp("effective_date").notNull(), // Last day or when change takes effect
   reason: text("reason"),
-  
+
   // Status tracking
   status: noticeStatusEnum("status").default("submitted"),
   acknowledgedBy: varchar("acknowledged_by").references(() => users.id),
   acknowledgedAt: timestamp("acknowledged_at"),
-  
+
   // Early release option
   releasedEarly: boolean("released_early").default(false),
   releasedBy: varchar("released_by").references(() => users.id),
   releasedAt: timestamp("released_at"),
   actualEndDate: timestamp("actual_end_date"),
-  
+
   // Rehiring policy compliance
   eligibleForRehire: boolean("eligible_for_rehire").default(true),
   rehireNotes: text("rehire_notes"),
-  
+
   // Audit trail (kept for 2 years)
   retentionUntil: timestamp("retention_until"), // Auto-set to 2 years from completion
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -2497,36 +2497,36 @@ export const subscriptionStatusEnum = pgEnum('subscription_status', ['trial', 'a
 export const subscriptions = pgTable("subscriptions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().unique().references(() => workspaces.id, { onDelete: 'cascade' }),
-  
+
   // Plan details
   plan: subscriptionPlanEnum("plan").default("free"),
   billingCycle: billingCycleEnum("billing_cycle").default("monthly"),
   status: subscriptionStatusEnum("status").default("active"),
-  
+
   // Pricing (in cents)
   basePrice: integer("base_price").default(0), // Monthly base price
   platformFeePercentage: decimal("platform_fee_percentage", { precision: 5, scale: 2 }).default("3.00"), // 3% invoice fee
-  
+
   // Limits
   maxEmployees: integer("max_employees").default(5),
   maxClients: integer("max_clients").default(10),
   currentEmployees: integer("current_employees").default(0),
   currentClients: integer("current_clients").default(0),
-  
+
   // Trial tracking
   trialStartedAt: timestamp("trial_started_at"),
   trialEndsAt: timestamp("trial_ends_at"),
-  
+
   // Billing dates
   currentPeriodStart: timestamp("current_period_start").defaultNow(),
   currentPeriodEnd: timestamp("current_period_end"),
   cancelAt: timestamp("cancel_at"),
   canceledAt: timestamp("canceled_at"),
-  
+
   // Stripe integration
   stripeSubscriptionId: varchar("stripe_subscription_id"),
   stripeCustomerId: varchar("stripe_customer_id"),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -2545,25 +2545,25 @@ export const overageCharges = pgTable("overage_charges", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
   subscriptionId: varchar("subscription_id").notNull().references(() => subscriptions.id, { onDelete: 'cascade' }),
-  
+
   // Period
   periodStart: timestamp("period_start").notNull(),
   periodEnd: timestamp("period_end").notNull(),
-  
+
   // Overage details
   overageType: varchar("overage_type").notNull(), // 'employees', 'clients', 'invoices'
   limit: integer("limit").notNull(),
   actual: integer("actual").notNull(),
   overage: integer("overage").notNull(),
-  
+
   // Pricing
   unitPrice: decimal("unit_price", { precision: 10, scale: 2 }).notNull(), // Price per overage unit
   totalCharge: decimal("total_charge", { precision: 10, scale: 2 }).notNull(),
-  
+
   // Payment
   invoiced: boolean("invoiced").default(false),
   invoiceId: varchar("invoice_id"),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -2579,23 +2579,23 @@ export type OverageCharge = typeof overageCharges.$inferSelect;
 export const platformRevenue = pgTable("platform_revenue", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
-  
+
   // Revenue source
   revenueType: varchar("revenue_type").notNull(), // 'subscription', 'invoice_fee', 'overage', 'setup_fee'
   sourceId: varchar("source_id"), // invoiceId, subscriptionId, etc.
-  
+
   // Amounts (in cents)
   amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
   feePercentage: decimal("fee_percentage", { precision: 5, scale: 2 }),
-  
+
   // Tracking
   collectedAt: timestamp("collected_at"),
   status: varchar("status").default("pending"), // 'pending', 'collected', 'failed'
-  
+
   // Period
   periodStart: timestamp("period_start"),
   periodEnd: timestamp("period_end"),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -2611,30 +2611,30 @@ export type PlatformRevenue = typeof platformRevenue.$inferSelect;
 export const workspaceAiUsage = pgTable("workspace_ai_usage", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
-  
+
   // Operation details
   feature: varchar("feature").notNull(), // 'smart_schedule_ai', 'predictive_analytics', 'auto_optimization'
   operation: varchar("operation").notNull(), // 'generate_schedule', 'analyze_labor_costs', 'predict_demand'
   requestId: varchar("request_id").notNull(), // Unique identifier for this AI request
-  
+
   // Token usage
   tokensUsed: integer("tokens_used").notNull(), // Total tokens consumed
   model: varchar("model").notNull(), // 'gpt-4', 'gpt-3.5-turbo', etc.
-  
+
   // Cost tracking
   providerCostUsd: decimal("provider_cost_usd", { precision: 10, scale: 6 }).notNull(), // What we pay OpenAI
   markupPercentage: decimal("markup_percentage", { precision: 5, scale: 2 }).default("300.00"), // Default 300% markup
   clientChargeUsd: decimal("client_charge_usd", { precision: 10, scale: 6 }).notNull(), // What we charge client
-  
+
   // Billing status
   status: varchar("status").default("pending"), // 'pending', 'invoiced', 'paid'
   invoiceId: varchar("invoice_id").references(() => invoices.id), // Link to monthly AI usage invoice
   billingPeriod: varchar("billing_period"), // '2024-10', '2024-11' for monthly aggregation
-  
+
   // Metadata
   inputData: jsonb("input_data"), // Request parameters (for debugging/audit)
   outputData: jsonb("output_data"), // AI response summary
-  
+
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -2654,37 +2654,37 @@ export type WorkspaceAiUsage = typeof workspaceAiUsage.$inferSelect;
 export const reportTemplates = pgTable("report_templates", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
-  
+
   // Template details
   name: varchar("name").notNull(), // "Daily Activity Report", "Incident Write-up", etc.
   description: text("description"),
   category: varchar("category"), // 'security', 'healthcare', 'retail', 'construction', 'compliance', 'executive', etc.
-  
+
   // Field configuration (JSON array of field definitions)
   // Example: [{ name: "location", label: "Location", type: "text", required: true }, ...]
   fields: jsonb("fields").notNull(),
-  
+
   // Photo requirements for transparency and accountability
   requiresPhotos: boolean("requires_photos").default(false), // Mandatory for DAR, incident, safety reports
   minPhotos: integer("min_photos").default(0), // Minimum photos required (e.g., 1 for incidents)
   maxPhotos: integer("max_photos").default(10), // Maximum allowed photos
   photoInstructions: text("photo_instructions"), // e.g., "Photos must be clear, well-lighted, showing full scene"
-  
+
   // MONOPOLISTIC FEATURES: Compliance & Intelligence
   isComplianceReport: boolean("is_compliance_report").default(false), // Non-editable audit-ready reports
   complianceType: varchar("compliance_type"), // 'labor_law', 'tax_remittance', 'audit_log', 'benchmark'
   autoGeneratePdf: boolean("auto_generate_pdf").default(false), // Auto-generate PDF for compliance
   allowAiSummary: boolean("allow_ai_summary").default(false), // Enable GPT-4 executive summaries
-  
+
   // Dynamic Report Builder
   isDynamicReport: boolean("is_dynamic_report").default(false), // User-created drag-and-drop reports
   dataSourceConfig: jsonb("data_source_config"), // { tables: ['timeEntries', 'invoices'], joins: [...] }
   chartType: varchar("chart_type"), // 'table', 'bar', 'line', 'pie', 'summary'
-  
+
   // Activation status
   isActive: boolean("is_active").default(false), // Whether activated for this workspace
   isSystemTemplate: boolean("is_system_template").default(false), // Built-in vs custom
-  
+
   // Metadata
   createdBy: varchar("created_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
@@ -2705,31 +2705,31 @@ export const reportSubmissions = pgTable("report_submissions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
   templateId: varchar("template_id").notNull().references(() => reportTemplates.id, { onDelete: 'cascade' }),
-  
+
   // Report metadata
   reportNumber: varchar("report_number").notNull(), // Auto-generated unique number (e.g., "RPT-2024-001")
   employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
   clientId: varchar("client_id").references(() => clients.id, { onDelete: 'set null' }), // End customer receiving report
-  
+
   // Form data (JSON object with filled field values)
   formData: jsonb("form_data").notNull(),
-  
+
   // Photo attachments with automatic timestamping
   // Format: [{ url: "...", timestamp: "2024-10-14T21:30:00Z", caption: "...", metadata: {...} }, ...]
   photos: jsonb("photos"), // Array of photo objects with timestamp, URL, metadata
-  
+
   // Workflow status
   status: varchar("status").default("draft"), // 'draft', 'pending_review', 'approved', 'rejected', 'sent_to_customer'
-  
+
   // Review tracking
   reviewedBy: varchar("reviewed_by").references(() => employees.id),
   reviewedAt: timestamp("reviewed_at"),
   reviewNotes: text("review_notes"),
-  
+
   // Customer delivery
   sentToCustomerAt: timestamp("sent_to_customer_at"),
   customerViewedAt: timestamp("customer_viewed_at"),
-  
+
   // Timestamps
   submittedAt: timestamp("submitted_at"),
   createdAt: timestamp("created_at").defaultNow(),
@@ -2754,27 +2754,27 @@ export const reportWorkflowConfigs = pgTable("report_workflow_configs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   templateId: varchar("template_id").notNull().references(() => reportTemplates.id, { onDelete: 'cascade' }),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
-  
+
   // Workflow steps (array of approval stages)
   // Example: [{ step: 1, roleRequired: 'manager', approverUserId: null }, { step: 2, roleRequired: 'owner', approverUserId: 'user123' }]
   approvalSteps: jsonb("approval_steps").notNull(), // Array of {step, roleRequired, approverUserId?, minRole}
-  
+
   // Final destination after all approvals
   finalDestination: varchar("final_destination").notNull(), // 'audit_database', 'email_client', 'return_to_submitter'
-  
+
   // Email settings for client delivery
   emailTemplate: text("email_template"), // Custom email body template
   emailSubject: varchar("email_subject"), // Subject line
   includeAttachments: boolean("include_attachments").default(true),
-  
+
   // Rejection handling
   requireRejectionNotes: boolean("require_rejection_notes").default(true),
   allowResubmit: boolean("allow_resubmit").default(true),
-  
+
   // Automation
   autoLockOnApproval: boolean("auto_lock_on_approval").default(true), // Prevent editing after approval
   autoGeneratePdf: boolean("auto_generate_pdf").default(true),
-  
+
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -2794,24 +2794,24 @@ export const reportApprovalSteps = pgTable("report_approval_steps", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   submissionId: varchar("submission_id").notNull().references(() => reportSubmissions.id, { onDelete: 'cascade' }),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
-  
+
   // Step details
   stepNumber: integer("step_number").notNull(), // 1, 2, 3...
   stepName: varchar("step_name"), // "Manager Review", "Supervisor Final Approval"
   requiredRole: varchar("required_role"), // 'manager', 'owner', 'supervisor'
-  
+
   // Approver assignment
   assignedTo: varchar("assigned_to").references(() => users.id), // Specific user if assigned
-  
+
   // Step status
   status: varchar("status").default("pending"), // 'pending', 'approved', 'rejected', 'skipped'
-  
+
   // Approval/Rejection details
   reviewedBy: varchar("reviewed_by").references(() => users.id),
   reviewedAt: timestamp("reviewed_at"),
   reviewNotes: text("review_notes"),
   rejectionReason: text("rejection_reason"),
-  
+
   // Audit trail
   notificationSentAt: timestamp("notification_sent_at"),
   createdAt: timestamp("created_at").defaultNow(),
@@ -2832,30 +2832,30 @@ export const lockedReportRecords = pgTable("locked_report_records", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   submissionId: varchar("submission_id").notNull().references(() => reportSubmissions.id, { onDelete: 'restrict' }),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
-  
+
   // Immutable snapshot
   snapshotData: jsonb("snapshot_data").notNull(), // Full report data + metadata frozen at approval
   pdfUrl: text("pdf_url"), // Generated PDF stored in object storage
   pdfGeneratedAt: timestamp("pdf_generated_at"),
-  
+
   // Lock metadata
   lockedBy: varchar("locked_by").notNull().references(() => users.id),
   lockedAt: timestamp("locked_at").notNull().defaultNow(),
   lockReason: varchar("lock_reason").default('approved'), // 'approved', 'compliance', 'audit'
-  
+
   // Cryptographic integrity (future enhancement)
   contentHash: varchar("content_hash"), // SHA-256 hash for tamper detection
   digitalSignature: text("digital_signature"), // Optional: cryptographic signature
-  
+
   // Cross-references for analytics
   employeeId: varchar("employee_id").references(() => employees.id),
   shiftId: varchar("shift_id"), // References shift if applicable
   clientId: varchar("client_id").references(() => clients.id),
-  
+
   // Retention policy
   retentionYears: integer("retention_years").default(7), // IRS/DOL compliance
   expiresAt: timestamp("expires_at"), // Auto-calculated: lockedAt + retentionYears
-  
+
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -2871,17 +2871,17 @@ export type LockedReportRecord = typeof lockedReportRecords.$inferSelect;
 export const reportAttachments = pgTable("report_attachments", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   submissionId: varchar("submission_id").notNull().references(() => reportSubmissions.id, { onDelete: 'cascade' }),
-  
+
   // File details
   fileName: varchar("file_name").notNull(),
   fileType: varchar("file_type").notNull(), // 'image/jpeg', 'application/pdf', etc.
   fileSize: integer("file_size"), // In bytes
   fileData: text("file_data"), // Base64 encoded for MVP (will upgrade to object storage)
-  
+
   // Metadata
   uploadedBy: varchar("uploaded_by").references(() => users.id),
   uploadedAt: timestamp("uploaded_at").defaultNow(),
-  
+
   // Optional: Location/timestamp when photo was taken
   capturedAt: timestamp("captured_at"),
   gpsLocation: jsonb("gps_location"), // { lat, lng, accuracy }
@@ -2900,18 +2900,18 @@ export const customerReportAccess = pgTable("customer_report_access", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   submissionId: varchar("submission_id").notNull().references(() => reportSubmissions.id, { onDelete: 'cascade' }),
   clientId: varchar("client_id").notNull().references(() => clients.id, { onDelete: 'cascade' }),
-  
+
   // Access control
   accessToken: varchar("access_token").notNull().unique(), // Unique token for secure access
   expiresAt: timestamp("expires_at").notNull(), // Time-limited access (e.g., 30-60 days)
-  
+
   // Usage tracking
   accessCount: integer("access_count").default(0),
   lastAccessedAt: timestamp("last_accessed_at"),
-  
+
   // Status
   isRevoked: boolean("is_revoked").default(false),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -2931,30 +2931,30 @@ export type CustomerReportAccess = typeof customerReportAccess.$inferSelect;
 export const kpiAlerts = pgTable("kpi_alerts", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
-  
+
   // Alert configuration
   alertName: varchar("alert_name").notNull(), // "Unapproved Overtime Alert", "Turnover Risk Alert"
   description: text("description"),
   alertType: varchar("alert_type").notNull(), // 'overtime', 'turnover_risk', 'cost_variance', 'compliance', 'custom'
-  
+
   // Threshold & Trigger
   metricSource: varchar("metric_source").notNull(), // 'time_entries', 'predictions', 'custom_rules', 'invoices'
   thresholdValue: decimal("threshold_value", { precision: 10, scale: 2 }).notNull(), // e.g., 2.0 for "2 hours"
   thresholdUnit: varchar("threshold_unit"), // 'hours', 'percent', 'score', 'dollars'
   comparisonOperator: varchar("comparison_operator").notNull(), // '>', '<', '>=', '<=', '=='
-  
+
   // Notification settings
   notifyRoles: jsonb("notify_roles").notNull(), // ['owner', 'manager', 'employee'] - who gets notified
   notifyUsers: jsonb("notify_users"), // [userId1, userId2] - specific users
   notificationMethod: varchar("notification_method").default('in_app'), // 'in_app', 'email', 'sms', 'all'
-  
+
   // Status
   isActive: boolean("is_active").default(true),
-  
+
   // Tracking
   lastTriggeredAt: timestamp("last_triggered_at"),
   triggerCount: integer("trigger_count").default(0),
-  
+
   createdBy: varchar("created_by").notNull().references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -2974,22 +2974,22 @@ export const kpiAlertTriggers = pgTable("kpi_alert_triggers", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   alertId: varchar("alert_id").notNull().references(() => kpiAlerts.id, { onDelete: 'cascade' }),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
-  
+
   // Trigger details
   metricValue: decimal("metric_value", { precision: 10, scale: 2 }).notNull(), // Actual value that triggered alert
   thresholdValue: decimal("threshold_value", { precision: 10, scale: 2 }).notNull(), // Threshold at time of trigger
-  
+
   // Context
   entityType: varchar("entity_type"), // 'shift', 'employee', 'invoice', 'prediction'
   entityId: varchar("entity_id"), // ID of entity that triggered alert
   entityData: jsonb("entity_data"), // Snapshot of relevant data
-  
+
   // Notification tracking
   notifiedUsers: jsonb("notified_users"), // [userId1, userId2] who was actually notified
   acknowledged: boolean("acknowledged").default(false),
   acknowledgedBy: varchar("acknowledged_by").references(() => users.id),
   acknowledgedAt: timestamp("acknowledged_at"),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -3005,37 +3005,37 @@ export type KpiAlertTrigger = typeof kpiAlertTriggers.$inferSelect;
 export const benchmarkMetrics = pgTable("benchmark_metrics", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
-  
+
   // Metrics period
   periodType: varchar("period_type").notNull(), // 'weekly', 'monthly', 'quarterly'
   periodStart: timestamp("period_start").notNull(),
   periodEnd: timestamp("period_end").notNull(),
-  
+
   // Efficiency metrics
   avgTimeToInvoicePayment: decimal("avg_time_to_invoice_payment", { precision: 8, scale: 2 }), // Days
   shiftAdherenceRate: decimal("shift_adherence_rate", { precision: 5, scale: 2 }), // Percentage
   employeeTurnoverRate: decimal("employee_turnover_rate", { precision: 5, scale: 2 }), // Percentage
   avgOvertimePercentage: decimal("avg_overtime_percentage", { precision: 5, scale: 2 }), // Percentage
-  
+
   // Financial metrics
   avgRevenuePerEmployee: decimal("avg_revenue_per_employee", { precision: 12, scale: 2 }),
   avgCostVariancePercentage: decimal("avg_cost_variance_percentage", { precision: 5, scale: 2 }),
   platformFeeCollected: decimal("platform_fee_collected", { precision: 12, scale: 2 }),
-  
+
   // Operational metrics
   totalActiveEmployees: integer("total_active_employees"),
   totalActiveClients: integer("total_active_clients"),
   totalShiftsScheduled: integer("total_shifts_scheduled"),
   totalHoursWorked: decimal("total_hours_worked", { precision: 12, scale: 2 }),
-  
+
   // Industry classification (for peer grouping - added later)
   industryCategory: varchar("industry_category"), // 'security', 'healthcare', 'construction', etc.
   companySize: varchar("company_size"), // 'small', 'medium', 'large', 'enterprise'
-  
+
   // Privacy & Anonymization
   isAnonymized: boolean("is_anonymized").default(true), // Always true for peer comparison
   shareWithPeerBenchmarks: boolean("share_with_peer_benchmarks").default(false), // Opt-in for industry averages
-  
+
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -3051,37 +3051,37 @@ export type BenchmarkMetric = typeof benchmarkMetrics.$inferSelect;
 export const supportTickets = pgTable("support_tickets", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
-  
+
   // Ticket details
   ticketNumber: varchar("ticket_number").notNull(), // Auto-generated (e.g., "TKT-2024-001")
   type: varchar("type").notNull(), // 'report_request', 'template_request', 'support', 'other'
   priority: varchar("priority").default("normal"), // 'low', 'normal', 'high', 'urgent'
-  
+
   // Requester (can be client or employee)
   clientId: varchar("client_id").references(() => clients.id),
   employeeId: varchar("employee_id").references(() => employees.id),
   requestedBy: varchar("requested_by"), // Name/email if external
-  
+
   // Ticket content
   subject: varchar("subject").notNull(),
   description: text("description").notNull(),
-  
+
   // For report requests
   reportSubmissionId: varchar("report_submission_id").references(() => reportSubmissions.id),
-  
+
   // Status tracking
   status: varchar("status").default("open"), // 'open', 'in_progress', 'resolved', 'closed'
   assignedTo: varchar("assigned_to").references(() => employees.id),
-  
+
   // Resolution
   resolution: text("resolution"),
   resolvedAt: timestamp("resolved_at"),
   resolvedBy: varchar("resolved_by").references(() => users.id),
-  
+
   // Verification for chatroom access (gatekeeper MOMJJ)
   verifiedAt: timestamp("verified_at"),
   verifiedBy: varchar("verified_by").references(() => users.id), // Support staff who verified
-  
+
   // Timestamps
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -3105,34 +3105,34 @@ export type SupportTicket = typeof supportTickets.$inferSelect;
 export const customForms = pgTable("custom_forms", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
-  
+
   // Form details
   name: varchar("name").notNull(), // "Consent for Sildenafil", "Background Check Authorization", etc.
   description: text("description"),
   category: varchar("category"), // 'onboarding', 'rms', 'compliance', 'custom'
-  
+
   // Form template (JSON structure)
   // Example: { title: "...", sections: [{ heading: "...", fields: [...], consent: {...} }] }
   template: jsonb("template").notNull(),
-  
+
   // E-signature configuration
   requiresSignature: boolean("requires_signature").default(false),
   signatureType: varchar("signature_type").default("typed_name"), // 'typed_name', 'drawn', 'uploaded'
   signatureText: text("signature_text"), // Legal text above signature field
-  
+
   // Document upload configuration
   requiresDocuments: boolean("requires_documents").default(false),
   documentTypes: jsonb("document_types"), // [{ type: 'id', label: 'Government ID', required: true }, ...]
   maxDocuments: integer("max_documents").default(5),
-  
+
   // Access control
   isActive: boolean("is_active").default(true),
   accessibleBy: jsonb("accessible_by"), // ['employee', 'manager', 'admin'] - who can fill out this form
-  
+
   // Metadata
   createdBy: varchar("created_by").references(() => users.id), // Platform admin/support who created it
   createdByRole: varchar("created_by_role"), // 'platform_admin', 'support_manager', 'support_staff'
-  
+
   // Timestamps
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -3152,34 +3152,34 @@ export const customFormSubmissions = pgTable("custom_form_submissions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   formId: varchar("form_id").notNull().references(() => customForms.id, { onDelete: 'cascade' }),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
-  
+
   // Who submitted
   submittedBy: varchar("submitted_by").references(() => users.id),
   submittedByType: varchar("submitted_by_type"), // 'employee', 'client', 'external'
   employeeId: varchar("employee_id").references(() => employees.id),
-  
+
   // Form data (filled values)
   formData: jsonb("form_data").notNull(), // User's responses to all fields
-  
+
   // E-signature data
   signatureData: jsonb("signature_data"), // { name: "...", signedAt: "...", ipAddress: "...", userAgent: "..." }
   hasAccepted: boolean("has_accepted").default(false), // Checkbox acceptance
   acceptedAt: timestamp("accepted_at"),
-  
+
   // Document uploads
   documents: jsonb("documents"), // [{ type: 'id', fileName: '...', fileUrl: '...', uploadedAt: '...' }, ...]
-  
+
   // Metadata
   ipAddress: varchar("ip_address"), // For legal audit trail
   userAgent: text("user_agent"),
-  
+
   // Associated context
   onboardingTokenId: varchar("onboarding_token_id"), // If used during onboarding (token reference)
   reportSubmissionId: varchar("report_submission_id").references(() => reportSubmissions.id), // If used in RMS
-  
+
   // Status
   status: varchar("status").default("completed"), // 'draft', 'completed', 'archived'
-  
+
   // Timestamps
   submittedAt: timestamp("submitted_at").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
@@ -3204,50 +3204,50 @@ export type CustomFormSubmission = typeof customFormSubmissions.$inferSelect;
 export const featureFlags = pgTable("feature_flags", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().unique().references(() => workspaces.id, { onDelete: 'cascade' }),
-  
+
   // Tier-based features (aligned with pricing)
   tier: varchar("tier").notNull().default("basic"), // 'basic', 'professional', 'premium', 'enterprise'
-  
+
   // Core Features (Basic Tier - $49/month)
   hasEmployeeManagement: boolean("has_employee_management").default(true),
   hasClientManagement: boolean("has_client_management").default(true),
   hasBasicScheduling: boolean("has_basic_scheduling").default(true),
   hasTimeTracking: boolean("has_time_tracking").default(true),
-  
+
   // Professional Features (Professional Tier - $149/month)
   hasInvoiceGeneration: boolean("has_invoice_generation").default(false),
   hasAnalyticsDashboard: boolean("has_analytics_dashboard").default(false),
   hasEmployeeOnboarding: boolean("has_employee_onboarding").default(false),
-  
+
   // Premium Features (Premium Tier - $299/month)
   hasReportManagementSystem: boolean("has_report_management_system").default(false),
   hasGpsTracking: boolean("has_gps_tracking").default(false),
   hasAdvancedRbac: boolean("has_advanced_rbac").default(false),
   hasComplianceTools: boolean("has_compliance_tools").default(false),
-  
+
   // Enterprise Features (Enterprise Tier - $599/month)
   hasWhiteLabelRms: boolean("has_white_label_rms").default(false),
   hasCustomBranding: boolean("has_custom_branding").default(false),
   hasApiAccess: boolean("has_api_access").default(false),
   hasSsoIntegration: boolean("has_sso_integration").default(false),
   hasDedicatedSupport: boolean("has_dedicated_support").default(false),
-  
+
   // Add-on Features (Additional cost)
   hasAutomatedPayroll: boolean("has_automated_payroll").default(false), // +$99/month
   hasSmsNotifications: boolean("has_sms_notifications").default(false), // +$29/month
   hasAdvancedAnalytics: boolean("has_advanced_analytics").default(false), // +$79/month
-  
+
   // Usage limits
   maxEmployees: integer("max_employees").default(5),
   maxClients: integer("max_clients").default(10),
   maxReportsPerMonth: integer("max_reports_per_month").default(10),
   maxStorageGb: integer("max_storage_gb").default(5),
-  
+
   // Billing integration
   stripeSubscriptionId: varchar("stripe_subscription_id"),
   billingCycle: varchar("billing_cycle").default("monthly"), // 'monthly', 'annual'
   trialEndsAt: timestamp("trial_ends_at"),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -3269,34 +3269,34 @@ export type FeatureFlag = typeof featureFlags.$inferSelect;
 export const chatConversations = pgTable("chat_conversations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
-  
+
   // Participants
   customerId: varchar("customer_id").references(() => users.id, { onDelete: 'set null' }),
   customerName: varchar("customer_name"),
   customerEmail: varchar("customer_email"),
-  
+
   supportAgentId: varchar("support_agent_id").references(() => users.id, { onDelete: 'set null' }),
   supportAgentName: varchar("support_agent_name"),
-  
+
   // Conversation metadata
   subject: varchar("subject"),
   status: varchar("status").notNull().default("active"), // 'active', 'resolved', 'closed'
   priority: varchar("priority").default("normal"), // 'low', 'normal', 'high', 'urgent'
-  
+
   // Voice/Silence permissions (IRC-style moderation)
   isSilenced: boolean("is_silenced").default(true), // Users start silenced until support grants voice
   voiceGrantedBy: varchar("voice_granted_by").references(() => users.id, { onDelete: 'set null' }),
   voiceGrantedAt: timestamp("voice_granted_at"),
-  
+
   // Ratings (post-conversation)
   rating: integer("rating"), // 1-5 stars
   feedback: text("feedback"),
-  
+
   // Session tracking
   lastMessageAt: timestamp("last_message_at").defaultNow(),
   resolvedAt: timestamp("resolved_at"),
   closedAt: timestamp("closed_at"),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -3305,29 +3305,29 @@ export const chatConversations = pgTable("chat_conversations", {
 export const chatMessages = pgTable("chat_messages", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   conversationId: varchar("conversation_id").notNull().references(() => chatConversations.id, { onDelete: 'cascade' }),
-  
+
   // Message details
   senderId: varchar("sender_id").references(() => users.id, { onDelete: 'set null' }),
   senderName: varchar("sender_name").notNull(),
   senderType: varchar("sender_type").notNull(), // 'customer', 'support', 'system', 'bot'
-  
+
   // Content
   message: text("message").notNull(),
   messageType: varchar("message_type").default("text"), // 'text', 'file', 'system'
   isSystemMessage: boolean("is_system_message").default(false), // For breach notifications and system announcements (shown in gray)
-  
+
   // Private messages (DMs/Whispers)
   isPrivateMessage: boolean("is_private_message").default(false), // True for private/whispered messages
   recipientId: varchar("recipient_id").references(() => users.id, { onDelete: 'set null' }), // For direct messages to specific user
-  
+
   // File attachments
   attachmentUrl: varchar("attachment_url"),
   attachmentName: varchar("attachment_name"),
-  
+
   // Status
   isRead: boolean("is_read").default(false),
   readAt: timestamp("read_at"),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -3350,32 +3350,32 @@ export type ChatMessage = typeof chatMessages.$inferSelect;
 // Terms Acknowledgments - Legal compliance tracking for support chat access
 export const termsAcknowledgments = pgTable("terms_acknowledgments", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  
+
   // Link to conversation/ticket
   conversationId: varchar("conversation_id").references(() => chatConversations.id, { onDelete: 'cascade' }),
   ticketNumber: varchar("ticket_number"), // Associated ticket if any
-  
+
   // User identification
   userId: varchar("user_id").references(() => users.id, { onDelete: 'set null' }),
   userName: varchar("user_name").notNull(),
   userEmail: varchar("user_email").notNull(),
   workspaceId: varchar("workspace_id").references(() => workspaces.id, { onDelete: 'set null' }),
-  
+
   // E-Signature (initials)
   initialsProvided: varchar("initials_provided").notNull(), // User's initials as e-signature
-  
+
   // Acceptance details
   acceptedTermsVersion: varchar("accepted_terms_version").default("1.0"), // Track version of terms
   acceptedAt: timestamp("accepted_at").defaultNow().notNull(),
-  
+
   // Audit trail
   ipAddress: varchar("ip_address"), // IP at time of acceptance
   userAgent: varchar("user_agent"), // Browser info
-  
+
   // Linked to ticket lifecycle
   ticketClosedAt: timestamp("ticket_closed_at"), // When associated ticket was closed
   isArchived: boolean("is_archived").default(false), // For long-term storage
-  
+
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -3391,43 +3391,43 @@ export type TermsAcknowledgment = typeof termsAcknowledgments.$inferSelect;
 // HelpOS Queue Management - AI-powered support queue
 export const helpOsQueue = pgTable("help_os_queue", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  
+
   // User identification
   conversationId: varchar("conversation_id").notNull().references(() => chatConversations.id, { onDelete: 'cascade' }),
   userId: varchar("user_id").references(() => users.id, { onDelete: 'cascade' }),
   ticketNumber: varchar("ticket_number").notNull(), // TKT-XXXXXX
   userName: varchar("user_name").notNull(),
   workspaceId: varchar("workspace_id").references(() => workspaces.id, { onDelete: 'cascade' }),
-  
+
   // Queue position & timing
   queuePosition: integer("queue_position"), // Calculated position in line
   joinedAt: timestamp("joined_at").defaultNow().notNull(),
   estimatedWaitMinutes: integer("estimated_wait_minutes"),
-  
+
   // Priority scoring (0-100)
   priorityScore: integer("priority_score").default(0).notNull(),
   waitTimeScore: integer("wait_time_score").default(0), // Based on how long waiting
   tierScore: integer("tier_score").default(0), // Subscriber tier bonus
   specialNeedsScore: integer("special_needs_score").default(0), // ADA/accessibility
   ownershipScore: integer("ownership_score").default(0), // Organization owner/POC
-  
+
   // User metadata for prioritization
   subscriptionTier: varchar("subscription_tier").default("free"), // from workspace
   hasSpecialNeeds: boolean("has_special_needs").default(false), // ADA claim
   isOwner: boolean("is_owner").default(false), // Workspace owner
   isPOC: boolean("is_poc").default(false), // Point of contact
-  
+
   // Announcement tracking
   lastAnnouncementAt: timestamp("last_announcement_at"),
   announcementCount: integer("announcement_count").default(0),
   hasReceivedWelcome: boolean("has_received_welcome").default(false),
-  
+
   // Status
   status: varchar("status").default("waiting"), // 'waiting', 'being_helped', 'resolved', 'abandoned'
   assignedStaffId: varchar("assigned_staff_id").references(() => users.id, { onDelete: 'set null' }),
   assignedAt: timestamp("assigned_at"),
   resolvedAt: timestamp("resolved_at"),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -3444,34 +3444,34 @@ export type HelpOsQueueEntry = typeof helpOsQueue.$inferSelect;
 // Abuse Violations - Track verbal abuse and protect support staff
 export const abuseViolations = pgTable("abuse_violations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  
+
   // User & conversation tracking
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
   conversationId: varchar("conversation_id").notNull().references(() => chatConversations.id, { onDelete: 'cascade' }),
   messageId: varchar("message_id").references(() => chatMessages.id, { onDelete: 'set null' }),
-  
+
   // Violation details
   violationType: varchar("violation_type").notNull(), // 'profanity', 'threat', 'harassment', 'hate_speech'
   severity: varchar("severity").notNull(), // 'low', 'medium', 'high'
   detectedPatterns: text("detected_patterns").array(), // Matched abuse patterns
   originalMessage: text("original_message").notNull(), // The abusive message
-  
+
   // Action taken
   action: varchar("action").notNull(), // 'warn', 'kick', 'ban'
   warningMessage: text("warning_message"), // Message shown to user
-  
+
   // Staff involvement
   detectedBy: varchar("detected_by").default("system"), // 'system' or staff user ID
   actionTakenBy: varchar("action_taken_by").references(() => users.id, { onDelete: 'set null' }),
-  
+
   // Violation count for this user (denormalized for quick access)
   userViolationCount: integer("user_violation_count").default(1).notNull(),
-  
+
   // Ban tracking
   isBanned: boolean("is_banned").default(false),
   bannedUntil: timestamp("banned_until"), // Temporary ban expiry, null for permanent
   banReason: text("ban_reason"),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -3490,38 +3490,38 @@ export type AbuseViolation = typeof abuseViolations.$inferSelect;
 // Lead Management - Prospect database for sales outreach
 export const leads = pgTable("leads", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  
+
   // Company information
   companyName: varchar("company_name").notNull(),
   industry: varchar("industry"), // 'security', 'healthcare', 'cleaning', 'construction', 'property_management', etc.
   companyWebsite: varchar("company_website"),
   estimatedEmployees: integer("estimated_employees"),
-  
+
   // Contact information
   contactName: varchar("contact_name"),
   contactTitle: varchar("contact_title"),
   contactEmail: varchar("contact_email").notNull(),
   contactPhone: varchar("contact_phone"),
-  
+
   // Lead scoring & qualification
   leadStatus: varchar("lead_status").default("new"), // 'new', 'contacted', 'qualified', 'demo_scheduled', 'proposal_sent', 'won', 'lost'
   leadScore: integer("lead_score").default(0), // 0-100
   estimatedValue: decimal("estimated_value", { precision: 10, scale: 2 }),
-  
+
   // Campaign tracking
   source: varchar("source"), // 'manual', 'linkedin', 'email_campaign', 'web_form', 'referral'
   lastCampaignId: varchar("last_campaign_id"),
   lastContactedAt: timestamp("last_contacted_at"),
-  
+
   // Notes & follow-up
   notes: text("notes"),
   nextFollowUpDate: timestamp("next_follow_up_date"),
   assignedTo: varchar("assigned_to"), // Platform admin user ID
-  
+
   // Conversion tracking
   convertedToWorkspaceId: varchar("converted_to_workspace_id").references(() => workspaces.id, { onDelete: 'set null' }),
   convertedAt: timestamp("converted_at"),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -3529,28 +3529,28 @@ export const leads = pgTable("leads", {
 // Email Templates - Industry-specific templates with AI personalization
 export const emailTemplates = pgTable("email_templates", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  
+
   // Template metadata
   name: varchar("name").notNull(),
   targetIndustry: varchar("target_industry"), // 'security', 'healthcare', 'cleaning', etc. (null = general)
   category: varchar("category").notNull(), // 'cold_outreach', 'follow_up', 'demo_invitation', 'proposal', 'nurture'
-  
+
   // Email content
   subject: varchar("subject").notNull(),
   bodyTemplate: text("body_template").notNull(), // Supports {{variables}} for personalization
-  
+
   // AI personalization
   useAI: boolean("use_ai").default(true), // Use OpenAI to personalize
   aiPrompt: text("ai_prompt"), // Instructions for AI personalization
-  
+
   // Status
   isActive: boolean("is_active").default(true),
-  
+
   // Performance metrics
   timesSent: integer("times_sent").default(0),
   openRate: decimal("open_rate", { precision: 5, scale: 2 }),
   responseRate: decimal("response_rate", { precision: 5, scale: 2 }),
-  
+
   createdBy: varchar("created_by"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -3559,26 +3559,26 @@ export const emailTemplates = pgTable("email_templates", {
 // Email Campaigns - Track bulk email sends
 export const emailCampaigns = pgTable("email_campaigns", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  
+
   // Campaign details
   name: varchar("name").notNull(),
   templateId: varchar("template_id").notNull().references(() => emailTemplates.id, { onDelete: 'restrict' }),
   targetIndustry: varchar("target_industry"), // Filter leads by industry
-  
+
   // Campaign status
   status: varchar("status").default("draft"), // 'draft', 'scheduled', 'sending', 'sent', 'paused'
   scheduledFor: timestamp("scheduled_for"),
-  
+
   // Targeting criteria
   leadFilters: jsonb("lead_filters"), // Store advanced filtering criteria
-  
+
   // Performance metrics
   totalSent: integer("total_sent").default(0),
   totalOpened: integer("total_opened").default(0),
   totalClicked: integer("total_clicked").default(0),
   totalReplied: integer("total_replied").default(0),
   totalBounced: integer("total_bounced").default(0),
-  
+
   createdBy: varchar("created_by"),
   createdAt: timestamp("created_at").defaultNow(),
   completedAt: timestamp("completed_at"),
@@ -3587,32 +3587,32 @@ export const emailCampaigns = pgTable("email_campaigns", {
 // Email Sends - Individual email tracking
 export const emailSends = pgTable("email_sends", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  
+
   // Relationships
   campaignId: varchar("campaign_id").references(() => emailCampaigns.id, { onDelete: 'cascade' }),
   leadId: varchar("lead_id").notNull().references(() => leads.id, { onDelete: 'cascade' }),
   templateId: varchar("template_id").notNull().references(() => emailTemplates.id, { onDelete: 'restrict' }),
-  
+
   // Email details
   toEmail: varchar("to_email").notNull(),
   subject: varchar("subject").notNull(),
   bodyHtml: text("body_html").notNull(),
   bodyText: text("body_text"),
-  
+
   // Delivery status
   status: varchar("status").default("pending"), // 'pending', 'sent', 'delivered', 'opened', 'clicked', 'replied', 'bounced', 'failed'
-  
+
   // Tracking
   sentAt: timestamp("sent_at"),
   deliveredAt: timestamp("delivered_at"),
   openedAt: timestamp("opened_at"),
   clickedAt: timestamp("clicked_at"),
   repliedAt: timestamp("replied_at"),
-  
+
   // External IDs (from email service provider)
   externalId: varchar("external_id"), // Resend message ID
   errorMessage: text("error_message"),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -3655,34 +3655,34 @@ export type EmailSend = typeof emailSends.$inferSelect;
 // Deals/Opportunities - Sales pipeline management
 export const deals = pgTable("deals", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  
+
   // Deal identification
   dealName: varchar("deal_name").notNull(),
   companyName: varchar("company_name").notNull(),
-  
+
   // Relationships
   leadId: varchar("lead_id").references(() => leads.id, { onDelete: 'set null' }),
   rfpId: varchar("rfp_id"),
-  
+
   // Pipeline stage
   stage: varchar("stage").default("prospect").notNull(), // 'prospect', 'qualified', 'rfp_identified', 'proposal_sent', 'negotiation', 'awarded', 'lost'
-  
+
   // Deal value
   estimatedValue: decimal("estimated_value", { precision: 12, scale: 2 }),
   probability: integer("probability").default(50), // 0-100%
   expectedCloseDate: timestamp("expected_close_date"),
   actualCloseDate: timestamp("actual_close_date"),
-  
+
   // Assignment
   ownerId: varchar("owner_id"), // Platform admin/sales rep user ID
-  
+
   // Status
   status: varchar("status").default("active"), // 'active', 'won', 'lost'
   lostReason: text("lost_reason"),
-  
+
   // Notes
   notes: text("notes"),
-  
+
   // Timestamps
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -3691,41 +3691,41 @@ export const deals = pgTable("deals", {
 // RFPs - Request for Proposal database
 export const rfps = pgTable("rfps", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  
+
   // RFP identification
   title: varchar("title").notNull(),
   rfpNumber: varchar("rfp_number"),
   buyer: varchar("buyer").notNull(), // Issuing organization
-  
+
   // Source
   sourceUrl: varchar("source_url"),
   source: varchar("source").default("manual"), // 'sam_gov', 'state_portal', 'manual', etc.
-  
+
   // Dates
   postedDate: timestamp("posted_date"),
   dueDate: timestamp("due_date"),
-  
+
   // Details
   estimatedValue: decimal("estimated_value", { precision: 12, scale: 2 }),
   industry: varchar("industry"), // 'security', 'healthcare', 'cleaning', etc.
   location: varchar("location"),
-  
+
   // AI Analysis
   aiSummary: text("ai_summary"), // AI-generated summary
   scopeOfWork: text("scope_of_work"),
   requirements: jsonb("requirements"), // Parsed requirements
   redFlags: text("red_flags").array().default(sql`ARRAY[]::text[]`), // Issues identified by AI
-  
+
   // Status
   status: varchar("status").default("active"), // 'active', 'pursuing', 'submitted', 'declined', 'expired'
-  
+
   // Deduplication
   contentHash: varchar("content_hash"), // For duplicate detection
-  
+
   // Relationships
   assignedTo: varchar("assigned_to"), // Platform admin/sales rep
   dealId: varchar("deal_id").references(() => deals.id, { onDelete: 'set null' }),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -3733,23 +3733,23 @@ export const rfps = pgTable("rfps", {
 // Proposals - Track proposal documents
 export const proposals = pgTable("proposals", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  
+
   // Relationships
   dealId: varchar("deal_id").notNull().references(() => deals.id, { onDelete: 'cascade' }),
   rfpId: varchar("rfp_id").references(() => rfps.id, { onDelete: 'set null' }),
-  
+
   // Proposal details
   proposalName: varchar("proposal_name").notNull(),
   version: integer("version").default(1),
-  
+
   // Content
   sections: jsonb("sections"), // Proposal sections as JSON
   fileUrl: varchar("file_url"), // PDF/DOCX file location
-  
+
   // Status
   status: varchar("status").default("draft"), // 'draft', 'review', 'submitted', 'won', 'lost'
   submittedAt: timestamp("submitted_at"),
-  
+
   // Metadata
   createdBy: varchar("created_by"),
   createdAt: timestamp("created_at").defaultNow(),
@@ -3759,7 +3759,7 @@ export const proposals = pgTable("proposals", {
 // Contacts - Point of contact database (separate from leads)
 export const contacts = pgTable("contacts", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  
+
   // Contact info
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
@@ -3767,29 +3767,29 @@ export const contacts = pgTable("contacts", {
   email: varchar("email").notNull(),
   phone: varchar("phone"),
   title: varchar("title"),
-  
+
   // Company
   companyName: varchar("company_name").notNull(),
   companyDomain: varchar("company_domain"),
-  
+
   // Source & confidence
   source: varchar("source").default("manual"), // 'manual', 'enrichment', 'linkedin', etc.
   confidenceScore: integer("confidence_score").default(50), // 0-100%
-  
+
   // Consent tracking
   consentGiven: boolean("consent_given").default(false),
   consentSource: varchar("consent_source"),
   consentDate: timestamp("consent_date"),
-  
+
   // Status
   status: varchar("status").default("active"), // 'active', 'bounced', 'unsubscribed', 'invalid'
-  
+
   // Relationships
   leadId: varchar("lead_id").references(() => leads.id, { onDelete: 'set null' }),
-  
+
   // Notes
   notes: text("notes"),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -3797,28 +3797,28 @@ export const contacts = pgTable("contacts", {
 // Email Sequences - Multi-step email campaigns
 export const emailSequences = pgTable("email_sequences", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  
+
   // Sequence details
   name: varchar("name").notNull(),
   description: text("description"),
-  
+
   // Steps configuration
   steps: jsonb("steps").notNull(), // Array of {delay_days, template_id, subject, body}
-  
+
   // Targeting
   targetIndustry: varchar("target_industry"),
-  
+
   // Throttling
   dailySendLimit: integer("daily_send_limit").default(100),
   sendWindow: jsonb("send_window"), // {start_hour: 9, end_hour: 17}
-  
+
   // Status
   status: varchar("status").default("active"), // 'active', 'paused', 'archived'
-  
+
   // Performance
   totalEnrolled: integer("total_enrolled").default(0),
   totalCompleted: integer("total_completed").default(0),
-  
+
   createdBy: varchar("created_by"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -3827,27 +3827,27 @@ export const emailSequences = pgTable("email_sequences", {
 // Sequence Sends - Track individual sequence execution
 export const sequenceSends = pgTable("sequence_sends", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  
+
   // Relationships
   sequenceId: varchar("sequence_id").notNull().references(() => emailSequences.id, { onDelete: 'cascade' }),
   leadId: varchar("lead_id").references(() => leads.id, { onDelete: 'cascade' }),
   dealId: varchar("deal_id").references(() => deals.id, { onDelete: 'cascade' }),
-  
+
   // Step tracking
   currentStep: integer("current_step").default(1),
   totalSteps: integer("total_steps").notNull(),
-  
+
   // Status
   status: varchar("status").default("active"), // 'active', 'completed', 'paused', 'replied', 'unsubscribed'
-  
+
   // Email tracking
   lastSentAt: timestamp("last_sent_at"),
   nextSendAt: timestamp("next_send_at"),
-  
+
   // Engagement
   replied: boolean("replied").default(false),
   repliedAt: timestamp("replied_at"),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -3855,26 +3855,26 @@ export const sequenceSends = pgTable("sequence_sends", {
 // Tasks - Deal-related tasks and reminders
 export const dealTasks = pgTable("deal_tasks", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  
+
   // Task details
   title: varchar("title").notNull(),
   description: text("description"),
-  
+
   // Relationships
   dealId: varchar("deal_id").references(() => deals.id, { onDelete: 'cascade' }),
   rfpId: varchar("rfp_id").references(() => rfps.id, { onDelete: 'cascade' }),
-  
+
   // Assignment
   assignedTo: varchar("assigned_to"),
-  
+
   // Due date & SLA
   dueDate: timestamp("due_date"),
   priority: varchar("priority").default("medium"), // 'low', 'medium', 'high', 'urgent'
-  
+
   // Status
   status: varchar("status").default("pending"), // 'pending', 'in_progress', 'completed', 'cancelled'
   completedAt: timestamp("completed_at"),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -3939,36 +3939,36 @@ export type InsertDealTask = z.infer<typeof insertDealTaskSchema>;
 export type DealTask = typeof dealTasks.$inferSelect;
 
 // ============================================================================
-// HELPDESK SYSTEM - Professional Support Chat Rooms
+// HELPDESK SYSTEM - PROFESSIONAL SUPPORT CHAT ROOMS
 // ============================================================================
 
 // Support Rooms - Persistent chatrooms with status management
 export const supportRooms = pgTable("support_rooms", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  
+
   // Room identification
   slug: varchar("slug").notNull().unique(), // 'helpdesk', 'emergency', etc.
   name: varchar("name").notNull(), // 'HelpDesk', 'Emergency Support'
   description: text("description"), // 'Professional platform support'
-  
+
   // Room status (controls access and visibility)
   status: varchar("status").default("open"), // 'open' (green), 'closed' (red), 'maintenance'
   statusMessage: text("status_message"), // Custom message when closed
-  
+
   // Workspace scope (null = platform-wide room)
   workspaceId: varchar("workspace_id").references(() => workspaces.id, { onDelete: 'cascade' }),
-  
+
   // Associated chat conversation
   conversationId: varchar("conversation_id").references(() => chatConversations.id, { onDelete: 'cascade' }),
-  
+
   // Access control
   requiresTicket: boolean("requires_ticket").default(false), // Clients need verified ticket
   allowedRoles: jsonb("allowed_roles"), // ['platform_admin', 'support_staff', 'deputy_admin']
-  
+
   // Status tracking
   lastStatusChange: timestamp("last_status_change").defaultNow(),
   statusChangedBy: varchar("status_changed_by").references(() => users.id), // Support staff who toggled
-  
+
   // Metadata
   createdBy: varchar("created_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
@@ -3987,26 +3987,26 @@ export type SupportRoom = typeof supportRooms.$inferSelect;
 // Support Ticket Access - Tracks verified ticket holders' chatroom access
 export const supportTicketAccess = pgTable("support_ticket_access", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  
+
   // Relationships
   ticketId: varchar("ticket_id").notNull().references(() => supportTickets.id, { onDelete: 'cascade' }),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
   roomId: varchar("room_id").notNull().references(() => supportRooms.id, { onDelete: 'cascade' }),
-  
+
   // Access control
   grantedBy: varchar("granted_by").notNull().references(() => users.id), // Support staff who verified
   expiresAt: timestamp("expires_at").notNull(), // Time-limited access (e.g., 24-48 hours)
-  
+
   // Usage tracking
   joinCount: integer("join_count").default(0),
   lastJoinedAt: timestamp("last_joined_at"),
-  
+
   // Status
   isRevoked: boolean("is_revoked").default(false),
   revokedAt: timestamp("revoked_at"),
   revokedBy: varchar("revoked_by").references(() => users.id),
   revokedReason: text("revoked_reason"),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -4018,37 +4018,37 @@ export const insertSupportTicketAccessSchema = createInsertSchema(supportTicketA
 export type InsertSupportTicketAccess = z.infer<typeof insertSupportTicketAccessSchema>;
 export type SupportTicketAccess = typeof supportTicketAccess.$inferSelect;
 
-// AI Usage Logs - Track AI assistant costs for subscriber billing (they pay, we don't)
+// AI Usage Logs - Track AI costs for subscriber billing (they pay, we don't)
 export const aiUsageLogs = pgTable("ai_usage_logs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  
+
   // Relationships
   conversationId: varchar("conversation_id").notNull().references(() => chatConversations.id, { onDelete: 'cascade' }),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
   userId: varchar("user_id").references(() => users.id, { onDelete: 'set null' }),
-  
+
   // AI request details
   messageId: varchar("message_id").references(() => chatMessages.id, { onDelete: 'set null' }),
   requestType: varchar("request_type").notNull(), // 'greeting', 'question', 'followup'
   model: varchar("model").notNull(), // 'gpt-4o-mini', 'gpt-4o', etc.
-  
+
   // Token usage (for cost calculation)
   promptTokens: integer("prompt_tokens").notNull().default(0),
   completionTokens: integer("completion_tokens").notNull().default(0),
   totalTokens: integer("total_tokens").notNull().default(0),
-  
+
   // Cost tracking (USD, subscriber pays)
   promptCost: decimal("prompt_cost", { precision: 10, scale: 6 }).notNull().default("0"), // Cost per prompt token
   completionCost: decimal("completion_cost", { precision: 10, scale: 6 }).notNull().default("0"), // Cost per completion token
   totalCost: decimal("total_cost", { precision: 10, scale: 6 }).notNull().default("0"), // Total cost in USD
-  
+
   // User tier tracking (for limits)
   userTier: varchar("user_tier").notNull(), // 'free_guest', 'subscriber'
   usageCount: integer("usage_count").notNull(), // Response number for this user (1st, 2nd, 3rd, etc.)
-  
+
   // Billing period
   billingMonth: varchar("billing_month").notNull(), // 'YYYY-MM' format for monthly billing
-  
+
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -4066,29 +4066,29 @@ export type AiUsageLog = typeof aiUsageLogs.$inferSelect;
 
 export const motdMessages = pgTable("motd_messages", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  
+
   // Content
   title: varchar("title", { length: 255 }).notNull(),
   content: text("content").notNull(),
-  
+
   // Display settings
   isActive: boolean("is_active").default(true),
   requiresAcknowledgment: boolean("requires_acknowledgment").default(true),
   displayOrder: integer("display_order").default(0), // For multiple MOTD priority
-  
+
   // Styling
   backgroundColor: varchar("background_color").default("#1e3a8a"), // Navy blue default
   textColor: varchar("text_color").default("#ffffff"), // White text default
   iconName: varchar("icon_name").default("bell"), // Lucide icon name
-  
+
   // Scheduling (optional)
   startsAt: timestamp("starts_at"),
   endsAt: timestamp("ends_at"),
-  
+
   // Staff info
   createdBy: varchar("created_by").references(() => users.id),
   updatedBy: varchar("updated_by").references(() => users.id),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -4103,22 +4103,22 @@ export type InsertMotdMessage = z.infer<typeof insertMotdMessageSchema>;
 export type MotdMessage = typeof motdMessages.$inferSelect;
 
 // Track user acknowledgments
-export const motdAcknowledgments = pgTable("motd_acknowledgments", {
+export const motdAcknowledgment = pgTable("motd_acknowledgments", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  
+
   motdId: varchar("motd_id").notNull().references(() => motdMessages.id, { onDelete: 'cascade' }),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
-  
+
   acknowledgedAt: timestamp("acknowledged_at").defaultNow(),
 });
 
-export const insertMotdAcknowledgmentSchema = createInsertSchema(motdAcknowledgments).omit({
+export const insertMotdAcknowledgmentSchema = createInsertSchema(motdAcknowledgment).omit({
   id: true,
   acknowledgedAt: true,
 });
 
 export type InsertMotdAcknowledgment = z.infer<typeof insertMotdAcknowledgmentSchema>;
-export type MotdAcknowledgment = typeof motdAcknowledgments.$inferSelect;
+export type MotdAcknowledgment = typeof motdAcknowledgment.$inferSelect;
 
 // ============================================================================
 // CHAT AGREEMENT ACCEPTANCES - Terms & Conditions for HelpDesk Access
@@ -4126,26 +4126,26 @@ export type MotdAcknowledgment = typeof motdAcknowledgments.$inferSelect;
 
 export const chatAgreementAcceptances = pgTable("chat_agreement_acceptances", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  
+
   // User/Ticket tracking
   userId: varchar("user_id").references(() => users.id, { onDelete: 'cascade' }),
   ticketId: varchar("ticket_id").references(() => supportTickets.id, { onDelete: 'cascade' }),
   sessionId: varchar("session_id"), // Browser session tracking
-  
+
   // Agreement details
   agreementVersion: varchar("agreement_version").notNull().default("1.0"), // Track version changes
   fullName: varchar("full_name"), // Typed signature name (optional)
   agreedToTerms: boolean("agreed_to_terms").notNull().default(false),
-  
+
   // Evidence tracking (compliance vault)
   ipAddress: varchar("ip_address"), // User's IP at time of acceptance
   userAgent: text("user_agent"), // Browser/device info
   acceptedAt: timestamp("accepted_at").defaultNow(),
-  
+
   // Chat context
   roomSlug: varchar("room_slug").notNull(), // 'helpdesk', 'emergency', etc.
   platformRole: varchar("platform_role"), // User's role at time of acceptance
-  
+
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -4159,7 +4159,7 @@ export type InsertChatAgreementAcceptance = z.infer<typeof insertChatAgreementAc
 export type ChatAgreementAcceptance = typeof chatAgreementAcceptances.$inferSelect;
 
 // ============================================================================
-// PREDICTIONOS™ - AI-Powered Predictive Analytics (Monopolistic Feature #1)
+// PREDICTIONOS™ - AI-POWERED PREDICTIVE ANALYTICS (MONOPOLISTIC FEATURE #1)
 // ============================================================================
 
 // Employee turnover risk scores (90-day flight risk predictions)
@@ -4167,31 +4167,31 @@ export const turnoverRiskScores = pgTable("turnover_risk_scores", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
   employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
-  
+
   // Risk scoring
   riskScore: decimal("risk_score", { precision: 5, scale: 2 }).notNull(), // 0-100% probability
   riskLevel: varchar("risk_level").notNull(), // 'low', 'medium', 'high', 'critical'
   confidenceScore: decimal("confidence_score", { precision: 5, scale: 2 }), // ML model confidence
-  
+
   // Prediction details
   predictionPeriod: integer("prediction_period").default(90), // Days (default: 90-day window)
   predictedTurnoverDate: timestamp("predicted_turnover_date"),
-  
+
   // Cost impact
   replacementCost: decimal("replacement_cost", { precision: 10, scale: 2 }), // Estimated cost to replace
   trainingCost: decimal("training_cost", { precision: 10, scale: 2 }),
   lostProductivityCost: decimal("lost_productivity_cost", { precision: 10, scale: 2 }),
   totalTurnoverCost: decimal("total_turnover_cost", { precision: 10, scale: 2 }),
-  
+
   // Risk factors (AI-identified)
   riskFactors: jsonb("risk_factors"), // { low_hours: 0.3, supervisor_rejections: 0.4, tardiness: 0.3 }
   recommendations: text("recommendations"), // AI-generated retention strategies
-  
+
   // Model metadata
   aiModel: varchar("ai_model").default("gpt-4"), // Model used for prediction
   dataPointsUsed: integer("data_points_used"), // Number of historical records analyzed
   analysisDate: timestamp("analysis_date").defaultNow(),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
@@ -4212,31 +4212,31 @@ export const costVariancePredictions = pgTable("cost_variance_predictions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
   shiftId: varchar("shift_id").references(() => shifts.id, { onDelete: 'cascade' }),
-  
+
   // Schedule details
   scheduleDate: timestamp("schedule_date").notNull(),
   schedulePeriod: varchar("schedule_period"), // 'week', 'day', 'month'
-  
+
   // Cost predictions
   budgetedCost: decimal("budgeted_cost", { precision: 10, scale: 2 }).notNull(),
   predictedCost: decimal("predicted_cost", { precision: 10, scale: 2 }).notNull(),
   varianceAmount: decimal("variance_amount", { precision: 10, scale: 2 }).notNull(), // Predicted - Budgeted
   variancePercentage: decimal("variance_percentage", { precision: 5, scale: 2 }).notNull(),
-  
+
   // Risk classification
   exceeds10Percent: boolean("exceeds_10_percent").default(false), // Red flag threshold
   riskLevel: varchar("risk_level").notNull(), // 'acceptable', 'warning', 'critical'
-  
+
   // Contributing factors (AI-identified)
   riskFactors: jsonb("risk_factors"), // { overtime: 0.6, premium_rates: 0.3, understaffing: 0.1 }
   problematicShifts: jsonb("problematic_shifts"), // Array of shift IDs causing cost spike
   recommendations: text("recommendations"), // AI-generated cost optimization strategies
-  
+
   // Model metadata
   aiModel: varchar("ai_model").default("gpt-4"),
   confidenceScore: decimal("confidence_score", { precision: 5, scale: 2 }),
   analysisDate: timestamp("analysis_date").defaultNow(),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -4251,7 +4251,7 @@ export type InsertCostVariancePrediction = z.infer<typeof insertCostVariancePred
 export type CostVariancePrediction = typeof costVariancePredictions.$inferSelect;
 
 // ============================================================================
-// CUSTOM WORKFLOW RULES - Visual Rule Builder (Monopolistic Feature #2)
+// CUSTOM WORKFLOW RULES - VISUAL RULE BUILDER (MONOPOLISTIC FEATURE #2)
 // ============================================================================
 
 export const ruleTypeEnum = pgEnum('rule_type', ['payroll', 'scheduling', 'time_tracking', 'billing']);
@@ -4260,40 +4260,40 @@ export const ruleStatusEnum = pgEnum('rule_status', ['active', 'inactive', 'test
 export const customRules = pgTable("custom_rules", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
-  
+
   // Rule identification
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
   ruleType: ruleTypeEnum("rule_type").notNull(),
   priority: integer("priority").default(0), // Execution order (higher = runs first)
-  
+
   // Rule definition (IF/THEN logic as JSON)
   trigger: varchar("trigger").notNull(), // 'time_clock_out', 'payroll_calculate', 'schedule_create', etc.
   conditions: jsonb("conditions").notNull(), // { field: 'hours', operator: '>', value: 10 }
   actions: jsonb("actions").notNull(), // { action: 'send_alert', params: { ... } }
   conditionLogic: varchar("condition_logic", { length: 3 }).default("AND"), // "AND" or "OR" for combining conditions
-  
+
   // Example: Overtime rule
   // {
   //   trigger: 'payroll_calculate',
   //   conditions: { state: 'TX', classification: 'Rigger', hours: { $gt: 40 } },
   //   actions: { rateMultiplier: 1.5 }
   // }
-  
+
   // Status & control
   status: ruleStatusEnum("status").default("active"),
   isLocked: boolean("is_locked").default(false), // Prevent accidental editing
-  
+
   // Execution tracking
   executionCount: integer("execution_count").default(0),
   lastExecutedAt: timestamp("last_executed_at"),
   errorCount: integer("error_count").default(0),
   lastError: text("last_error"),
-  
+
   // Audit trail
   createdBy: varchar("created_by").references(() => users.id),
-  updatedBy: varchar("updated_by").references(() => users.id),
-  
+  updatedBy: timestamp("updated_by").references(() => users.id),
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -4312,21 +4312,21 @@ export const ruleExecutionLogs = pgTable("rule_execution_logs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   ruleId: varchar("rule_id").notNull().references(() => customRules.id, { onDelete: 'cascade' }),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
-  
+
   // Execution context
   triggerEvent: varchar("trigger_event").notNull(),
   entityType: varchar("entity_type"), // 'payroll_entry', 'shift', 'time_entry'
   entityId: varchar("entity_id"),
-  
+
   // Execution results
   conditionsMet: boolean("conditions_met").notNull(),
   actionsExecuted: jsonb("actions_executed"), // What actions were taken
   executionTimeMs: integer("execution_time_ms"),
-  
+
   // Error handling
   success: boolean("success").default(true),
   errorMessage: text("error_message"),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -4340,38 +4340,38 @@ export type RuleExecutionLog = typeof ruleExecutionLogs.$inferSelect;
 export const auditTrail = pgTable("audit_trail", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
-  
+
   // Actor information
   userId: varchar("user_id").references(() => users.id),
   userName: varchar("user_name").notNull(),
   userRole: varchar("user_role").notNull(), // workspace role at time of action
-  
+
   // Action details
   action: varchar("action").notNull(), // 'create', 'update', 'delete', 'approve', 'reject'
   entityType: varchar("entity_type").notNull(), // 'time_entry', 'payroll_run', 'employee', etc.
   entityId: varchar("entity_id").notNull(),
   entityDescription: text("entity_description"), // Human-readable description
-  
+
   // Data snapshots (for compliance & rollback)
   changesBefore: jsonb("changes_before"), // Complete state before change
   changesAfter: jsonb("changes_after"), // Complete state after change
   fieldChanges: jsonb("field_changes"), // Detailed field-by-field diff
-  
+
   // Context & metadata
   reason: text("reason"), // Why the change was made
   ipAddress: varchar("ip_address"),
   userAgent: text("user_agent"),
   geoLocation: jsonb("geo_location"), // { lat, lng, accuracy }
-  
+
   // Compliance flags
   requiresApproval: boolean("requires_approval").default(false),
   approvedBy: varchar("approved_by").references(() => users.id),
   approvedAt: timestamp("approved_at"),
-  
+
   // Retention policy (non-editable, kept for 7 years for IRS/DOL compliance)
   retentionUntil: timestamp("retention_until"), // Auto-set to 7 years from creation
   isLocked: boolean("is_locked").default(true), // Cannot be deleted or modified
-  
+
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
   entityIndex: index("audit_trail_entity_idx").on(table.entityType, table.entityId),
@@ -4392,30 +4392,30 @@ export const timeEntryDiscrepancies = pgTable("time_entry_discrepancies", {
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
   timeEntryId: varchar("time_entry_id").notNull().references(() => timeEntries.id, { onDelete: 'cascade' }),
   employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
-  
+
   // Discrepancy details
   discrepancyType: varchar("discrepancy_type").notNull(), // 'location_mismatch', 'ip_anomaly', 'impossible_travel'
   severity: varchar("severity").notNull(), // 'low', 'medium', 'high', 'critical'
-  
+
   // Location analysis
   expectedLocation: jsonb("expected_location"), // Job site coordinates
   actualLocation: jsonb("actual_location"), // Clock-in coordinates
   distanceMeters: decimal("distance_meters", { precision: 10, scale: 2 }), // Distance from job site
-  
+
   // Detection details
   detectedAt: timestamp("detected_at").defaultNow(),
   autoFlagged: boolean("auto_flagged").default(true), // Auto-detected vs manual
-  
+
   // Resolution
   status: varchar("status").default("open"), // 'open', 'investigating', 'resolved', 'dismissed'
   reviewedBy: varchar("reviewed_by").references(() => users.id),
   reviewedAt: timestamp("reviewed_at"),
   resolution: text("resolution"),
   resolutionNotes: text("resolution_notes"),
-  
+
   // Evidence preservation
   evidenceSnapshot: jsonb("evidence_snapshot"), // Complete time entry data at time of flag
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -4437,45 +4437,45 @@ export type TimeEntryDiscrepancy = typeof timeEntryDiscrepancies.$inferSelect;
 export const internalBids = pgTable("internal_bids", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
-  
+
   // Bid details
   title: varchar("title").notNull(), // "Short-term Project: Install Security System at Site B"
   description: text("description").notNull(),
   bidType: varchar("bid_type").notNull(), // 'project', 'role', 'temporary_assignment'
-  
+
   // Requirements
   requiredSkills: jsonb("required_skills").$type<string[]>().notNull().default(sql`'[]'`), // ['Forklift Certified', 'OSHA 30']
   requiredCertifications: jsonb("required_certifications").$type<string[]>().default(sql`'[]'`), // ['CPR', 'First Aid']
   minimumExperience: integer("minimum_experience"), // Months
   targetRole: varchar("target_role"), // "Senior Rigger", "Lead Technician"
-  
+
   // Compensation & duration
   compensationType: varchar("compensation_type").notNull(), // 'hourly_rate', 'flat_fee', 'promotion'
   compensationAmount: decimal("compensation_amount", { precision: 10, scale: 2 }),
   estimatedDuration: integer("estimated_duration"), // Days
   startDate: timestamp("start_date"),
   endDate: timestamp("end_date"),
-  
+
   // Location & logistics
   locationRequired: varchar("location_required"), // 'on_site', 'remote', 'hybrid'
   siteLocation: text("site_location"),
   clientId: varchar("client_id").references(() => clients.id),
-  
+
   // Posting details
   postedBy: varchar("posted_by").notNull().references(() => users.id),
   status: varchar("status").default("open"), // 'open', 'in_progress', 'filled', 'cancelled'
   maxApplicants: integer("max_applicants").default(10),
   applicationDeadline: timestamp("application_deadline"),
-  
+
   // Selected candidate
   selectedEmployeeId: varchar("selected_employee_id").references(() => employees.id),
   selectedAt: timestamp("selected_at"),
-  
+
   // High-risk employee tracking (PredictionOS™ integration)
   highRiskViewCount: integer("high_risk_view_count").default(0), // Count of high-risk employees viewing
   highRiskViewers: jsonb("high_risk_viewers").$type<string[]>().default(sql`'[]'`), // Employee IDs with turnover score > 70%
   lastHighRiskViewAt: timestamp("last_high_risk_view_at"),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
@@ -4498,33 +4498,33 @@ export const bidApplications = pgTable("bid_applications", {
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
   bidId: varchar("bid_id").notNull().references(() => internalBids.id, { onDelete: 'cascade' }),
   employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
-  
+
   // Application details
   coverLetter: text("cover_letter"),
   whyInterestedText: text("why_interested"), // "I want to grow my skills in X"
   relevantExperience: text("relevant_experience"),
-  
+
   // Skill/cert matching (auto-calculated)
   skillMatchPercentage: decimal("skill_match_percentage", { precision: 5, scale: 2 }), // 0-100%
   missingSkills: jsonb("missing_skills").$type<string[]>().default(sql`'[]'`),
   matchingSkills: jsonb("matching_skills").$type<string[]>().default(sql`'[]'`),
-  
+
   // PredictionOS™ risk score at time of application
   turnoverRiskScore: integer("turnover_risk_score"), // 0-100 from PredictionOS™
   isHighRisk: boolean("is_high_risk").default(false), // Score > 70%
-  
+
   // Application lifecycle
   status: varchar("status").default("pending"), // 'pending', 'reviewed', 'shortlisted', 'accepted', 'rejected'
   reviewedBy: varchar("reviewed_by").references(() => users.id),
   reviewedAt: timestamp("reviewed_at"),
   reviewNotes: text("review_notes"),
-  
+
   // Manager intervention flag (for high-risk employees)
   interventionTriggered: boolean("intervention_triggered").default(false),
   interventionBy: varchar("intervention_by").references(() => users.id),
   interventionAt: timestamp("intervention_at"),
   interventionNotes: text("intervention_notes"),
-  
+
   appliedAt: timestamp("applied_at").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -4547,40 +4547,40 @@ export type BidApplication = typeof bidApplications.$inferSelect;
 export const roleTemplates = pgTable("role_templates", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
-  
+
   // Role definition
   roleName: varchar("role_name").notNull(), // "Senior Rigger", "Lead Security Officer"
   roleLevel: integer("role_level"), // 1 = Entry, 2 = Mid, 3 = Senior, 4 = Lead
   department: varchar("department"), // "Operations", "Security", "Logistics"
-  
+
   // Prerequisites (from current role)
   fromRole: varchar("from_role"), // "Rigger" → "Senior Rigger"
   minimumTimeInCurrentRole: integer("minimum_time_in_current_role"), // Months
   minimumPerformanceScore: decimal("minimum_performance_score", { precision: 5, scale: 2 }), // Min composite score
-  
+
   // Required skills & certifications
   requiredSkills: jsonb("required_skills").$type<string[]>().notNull().default(sql`'[]'`),
   requiredCertifications: jsonb("required_certifications").$type<string[]>().default(sql`'[]'`),
   requiredTrainingCourses: jsonb("required_training_courses").$type<string[]>().default(sql`'[]'`), // Links to LearnOS™
-  
+
   // Desired (optional) qualifications
   desiredSkills: jsonb("desired_skills").$type<string[]>().default(sql`'[]'`),
   desiredCertifications: jsonb("desired_certifications").$type<string[]>().default(sql`'[]'`),
-  
+
   // Compensation range
   minHourlyRate: decimal("min_hourly_rate", { precision: 10, scale: 2 }),
   maxHourlyRate: decimal("max_hourly_rate", { precision: 10, scale: 2 }),
   minSalary: decimal("min_salary", { precision: 12, scale: 2 }),
   maxSalary: decimal("max_salary", { precision: 12, scale: 2 }),
-  
+
   // Responsibilities & expectations
   responsibilities: text("responsibilities"),
   performanceExpectations: text("performance_expectations"),
-  
+
   // Template metadata
   isActive: boolean("is_active").default(true),
   createdBy: varchar("created_by").notNull().references(() => users.id),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
@@ -4603,29 +4603,29 @@ export const skillGapAnalyses = pgTable("skill_gap_analyses", {
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
   employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
   targetRoleId: varchar("target_role_id").notNull().references(() => roleTemplates.id),
-  
+
   // Current state (from employee profile)
   currentRole: varchar("current_role"),
   currentSkills: jsonb("current_skills").$type<string[]>().default(sql`'[]'`),
   currentCertifications: jsonb("current_certifications").$type<string[]>().default(sql`'[]'`),
   currentTrainingCompleted: jsonb("current_training_completed").$type<string[]>().default(sql`'[]'`),
-  
+
   // Gap analysis results
   missingSkills: jsonb("missing_skills").$type<string[]>().default(sql`'[]'`),
   missingCertifications: jsonb("missing_certifications").$type<string[]>().default(sql`'[]'`),
   missingTraining: jsonb("missing_training").$type<string[]>().default(sql`'[]'`),
-  
+
   // Readiness scoring
   readinessScore: decimal("readiness_score", { precision: 5, scale: 2 }), // 0-100% overall readiness
   skillsReadiness: decimal("skills_readiness", { precision: 5, scale: 2 }),
   certificationsReadiness: decimal("certifications_readiness", { precision: 5, scale: 2 }),
   trainingReadiness: decimal("training_readiness", { precision: 5, scale: 2 }),
   experienceReadiness: decimal("experience_readiness", { precision: 5, scale: 2 }),
-  
+
   // Time-to-ready estimate
   estimatedTimeToReady: integer("estimated_time_to_ready"), // Months
   blockers: jsonb("blockers").$type<string[]>().default(sql`'[]'`), // "Needs OSHA 30 certification"
-  
+
   // Recommended next steps (auto-generated action plan)
   recommendedActions: jsonb("recommended_actions").$type<{
     action: string;
@@ -4634,18 +4634,18 @@ export const skillGapAnalyses = pgTable("skill_gap_analyses", {
     estimatedTime: number; // Days to complete
     learnOsLinkId?: string; // Links to LearnOS™ course
   }[]>().default(sql`'[]'`),
-  
+
   // Progress tracking
   actionsCompleted: integer("actions_completed").default(0),
   totalActions: integer("total_actions").default(0),
   lastProgressUpdate: timestamp("last_progress_update"),
-  
+
   // Lifecycle
   status: varchar("status").default("active"), // 'active', 'in_progress', 'ready', 'cancelled'
   employeeInterestedAt: timestamp("employee_interested_at"),
   managerReviewedAt: timestamp("manager_reviewed_at"),
   managerNotes: text("manager_notes"),
-  
+
   generatedAt: timestamp("generated_at").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -4672,13 +4672,13 @@ export type SkillGapAnalysis = typeof skillGapAnalyses.$inferSelect;
 export const assets = pgTable("assets", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
-  
+
   // Asset identification
   assetNumber: varchar("asset_number").notNull(), // "TRUCK-001", "RIG-4"
   assetName: varchar("asset_name").notNull(), // "2020 Ford F-150"
   assetType: varchar("asset_type").notNull(), // 'vehicle', 'equipment', 'tool', 'facility'
   category: varchar("category"), // "Pickup Truck", "Drilling Rig", "Forklift"
-  
+
   // Asset details
   manufacturer: varchar("manufacturer"),
   model: varchar("model"),
@@ -4686,46 +4686,46 @@ export const assets = pgTable("assets", {
   yearManufactured: integer("year_manufactured"),
   purchaseDate: timestamp("purchase_date"),
   purchasePrice: decimal("purchase_price", { precision: 12, scale: 2 }),
-  
+
   // Location & assignment
   currentLocation: text("current_location"),
   homeLocation: text("home_location"), // Default storage location
   assignedToClientId: varchar("assigned_to_client_id").references(() => clients.id),
-  
+
   // Billing configuration
   hourlyRate: decimal("hourly_rate", { precision: 10, scale: 2 }), // $75/hr for Rig usage
   dailyRate: decimal("daily_rate", { precision: 10, scale: 2 }),
   weeklyRate: decimal("weekly_rate", { precision: 10, scale: 2 }),
   billingType: varchar("billing_type").default("hourly"), // 'hourly', 'daily', 'weekly', 'flat_fee'
   isBillable: boolean("is_billable").default(true),
-  
+
   // Maintenance & compliance
   lastMaintenanceDate: timestamp("last_maintenance_date"),
   nextMaintenanceDate: timestamp("next_maintenance_date"),
   maintenanceIntervalDays: integer("maintenance_interval_days"),
   certifications: jsonb("certifications").$type<string[]>().default(sql`'[]'`), // ['DOT Inspection', 'Safety Certified']
   certificationExpiry: timestamp("certification_expiry"),
-  
+
   // Availability & status
   status: varchar("status").default("available"), // 'available', 'in_use', 'maintenance', 'retired'
   isSchedulable: boolean("is_schedulable").default(true),
   requiresOperatorCertification: boolean("requires_operator_certification").default(false),
   requiredCertifications: jsonb("required_certifications").$type<string[]>().default(sql`'[]'`), // Employee must have these
-  
+
   // Documentation
   photos: jsonb("photos").$type<string[]>().default(sql`'[]'`), // URLs to asset photos
   documents: jsonb("documents").$type<string[]>().default(sql`'[]'`), // Manuals, insurance docs
   notes: text("notes"),
-  
+
   // Depreciation (for accounting)
   depreciationMethod: varchar("depreciation_method"), // 'straight_line', 'declining_balance'
   depreciationRate: decimal("depreciation_rate", { precision: 5, scale: 2 }),
   currentValue: decimal("current_value", { precision: 12, scale: 2 }),
-  
+
   // Metadata
   isActive: boolean("is_active").default(true),
   createdBy: varchar("created_by").notNull().references(() => users.id),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
@@ -4748,22 +4748,22 @@ export const assetSchedules = pgTable("asset_schedules", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
   assetId: varchar("asset_id").notNull().references(() => assets.id, { onDelete: 'cascade' }),
-  
+
   // Linked to employee shift (dual-layer scheduling)
   shiftId: varchar("shift_id").references(() => shifts.id, { onDelete: 'set null' }),
   employeeId: varchar("employee_id").references(() => employees.id),
   clientId: varchar("client_id").references(() => clients.id),
-  
+
   // Scheduling details
   startTime: timestamp("start_time").notNull(),
   endTime: timestamp("end_time").notNull(),
   jobDescription: text("job_description"),
   jobLocation: text("job_location"),
-  
+
   // Conflict detection flags
   hasConflict: boolean("has_conflict").default(false),
   conflictWith: jsonb("conflict_with").$type<string[]>().default(sql`'[]'`), // Asset schedule IDs that overlap
-  
+
   // Usage tracking (for billing)
   actualStartTime: timestamp("actual_start_time"),
   actualEndTime: timestamp("actual_end_time"),
@@ -4771,14 +4771,14 @@ export const assetSchedules = pgTable("asset_schedules", {
   odometerStart: decimal("odometer_start", { precision: 10, scale: 2 }),
   odometerEnd: decimal("odometer_end", { precision: 10, scale: 2 }),
   fuelUsed: decimal("fuel_used", { precision: 10, scale: 2 }),
-  
+
   // Billing (auto-calculated for BillOS™)
   billableHours: decimal("billable_hours", { precision: 10, scale: 2 }),
   hourlyRate: decimal("hourly_rate", { precision: 10, scale: 2 }), // Snapshot from asset
   totalCharge: decimal("total_charge", { precision: 10, scale: 2 }),
   invoiced: boolean("invoiced").default(false),
   invoiceId: varchar("invoice_id").references(() => invoices.id),
-  
+
   // Pre/post inspection (safety compliance)
   preInspectionCompleted: boolean("pre_inspection_completed").default(false),
   preInspectionBy: varchar("pre_inspection_by").references(() => users.id),
@@ -4788,13 +4788,13 @@ export const assetSchedules = pgTable("asset_schedules", {
   postInspectionNotes: text("post_inspection_notes"),
   damageReported: boolean("damage_reported").default(false),
   damageDescription: text("damage_description"),
-  
+
   // Status
   status: varchar("status").default("scheduled"), // 'scheduled', 'in_progress', 'completed', 'cancelled'
   cancelledBy: varchar("cancelled_by").references(() => users.id),
   cancelledAt: timestamp("cancelled_at"),
   cancellationReason: text("cancellation_reason"),
-  
+
   createdBy: varchar("created_by").notNull().references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -4819,35 +4819,34 @@ export const assetUsageLogs = pgTable("asset_usage_logs", {
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
   assetId: varchar("asset_id").notNull().references(() => assets.id, { onDelete: 'cascade' }),
   assetScheduleId: varchar("asset_schedule_id").references(() => assetSchedules.id),
-  
+
   // Usage period
   usagePeriodStart: timestamp("usage_period_start").notNull(),
   usagePeriodEnd: timestamp("usage_period_end").notNull(),
   totalHours: decimal("total_hours", { precision: 10, scale: 2 }),
-  
+
   // Operator details
   operatedBy: varchar("operated_by").references(() => employees.id),
   operatorCertificationVerified: boolean("operator_certification_verified").default(false),
-  
+
   // Client billing
   clientId: varchar("client_id").references(() => clients.id),
-  billableAmount: decimal("billable_amount", { precision: 10, scale: 2 }),
   costCenterCode: varchar("cost_center_code"), // For client's internal accounting
-  
+
   // Maintenance tracking
   maintenanceRequired: boolean("maintenance_required").default(false),
   maintenanceNotes: text("maintenance_notes"),
   issuesReported: jsonb("issues_reported").$type<string[]>().default(sql`'[]'`),
-  
+
   // Auto-aggregated metrics
   totalDistance: decimal("total_distance", { precision: 10, scale: 2 }), // Miles/KM
   fuelConsumed: decimal("fuel_consumed", { precision: 10, scale: 2 }),
   idleTime: decimal("idle_time", { precision: 10, scale: 2 }), // Hours
-  
+
   // BillOS™ integration
   invoiceLineItemId: varchar("invoice_line_item_id"),
   billingStatus: varchar("billing_status").default("pending"), // 'pending', 'invoiced', 'paid'
-  
+
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
   assetPeriodIndex: index("asset_usage_logs_asset_period_idx").on(table.assetId, table.usagePeriodStart),
@@ -4870,10 +4869,10 @@ export type AssetUsageLog = typeof assetUsageLogs.$inferSelect;
 export const pulseSurveyTemplates = pgTable("pulse_survey_templates", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
-  
+
   title: varchar("title").notNull(),
   description: text("description"),
-  
+
   // Survey configuration
   questions: jsonb("questions").$type<Array<{
     id: string;
@@ -4883,15 +4882,15 @@ export const pulseSurveyTemplates = pgTable("pulse_survey_templates", {
     required: boolean;
     category: 'workload' | 'management' | 'environment' | 'growth' | 'compensation' | 'culture' | 'safety' | 'resources';
   }>>().notNull(),
-  
+
   // Scheduling
   frequency: varchar("frequency").default("monthly"), // 'weekly', 'biweekly', 'monthly', 'quarterly', 'annual', 'one_time'
   isActive: boolean("is_active").default(true),
-  
+
   // Anonymity settings
   isAnonymous: boolean("is_anonymous").default(true),
   showResultsToEmployees: boolean("show_results_to_employees").default(false),
-  
+
   createdBy: varchar("created_by").notNull().references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -4913,25 +4912,25 @@ export const pulseSurveyResponses = pgTable("pulse_survey_responses", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
   surveyTemplateId: varchar("survey_template_id").notNull().references(() => pulseSurveyTemplates.id, { onDelete: 'cascade' }),
-  
+
   // Respondent (nullable for anonymous surveys)
   employeeId: varchar("employee_id").references(() => employees.id, { onDelete: 'set null' }),
-  
+
   // Response data
   responses: jsonb("responses").$type<Array<{
     questionId: string;
     answer: string | number | string[];
   }>>().notNull(),
-  
+
   // AI Sentiment Analysis
   sentimentScore: decimal("sentiment_score", { precision: 5, scale: 2 }), // -100 to +100
   sentimentLabel: varchar("sentiment_label"), // 'positive', 'neutral', 'negative', 'very_negative'
   emotionalTone: varchar("emotional_tone"), // 'happy', 'frustrated', 'anxious', 'satisfied', 'angry'
   keyThemes: jsonb("key_themes").$type<string[]>().default(sql`'[]'`), // AI-extracted themes
-  
+
   // Engagement score calculation (0-100)
   engagementScore: decimal("engagement_score", { precision: 5, scale: 2 }),
-  
+
   // Metadata
   submittedAt: timestamp("submitted_at").defaultNow(),
   ipAddress: varchar("ip_address"), // For duplicate detection (not shown to managers)
@@ -4954,15 +4953,15 @@ export type PulseSurveyResponse = typeof pulseSurveyResponses.$inferSelect;
 export const employerRatings = pgTable("employer_ratings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
-  
+
   // Rater (anonymous)
   employeeId: varchar("employee_id").references(() => employees.id, { onDelete: 'set null' }),
-  
+
   // Rating target
   ratingType: varchar("rating_type").notNull(), // 'organization', 'department', 'manager', 'location'
   targetId: varchar("target_id"), // departmentId, managerId, locationId (null for organization-wide)
   targetName: varchar("target_name"), // Display name for reporting
-  
+
   // Ratings (1-5 scale)
   managementQuality: integer("management_quality"), // Leadership effectiveness
   workEnvironment: integer("work_environment"), // Safety, cleanliness, resources
@@ -4972,23 +4971,23 @@ export const employerRatings = pgTable("employer_ratings", {
   equipmentResources: integer("equipment_resources"), // Tools, technology
   communicationClarity: integer("communication_clarity"), // Clear expectations
   recognitionAppreciation: integer("recognition_appreciation"), // Feeling valued
-  
+
   // Overall score (calculated average)
   overallScore: decimal("overall_score", { precision: 3, scale: 1 }), // 1.0 - 5.0
-  
+
   // Feedback
   positiveComments: text("positive_comments"),
   improvementSuggestions: text("improvement_suggestions"),
-  
+
   // AI Analysis
   sentimentScore: decimal("sentiment_score", { precision: 5, scale: 2 }),
   sentimentLabel: varchar("sentiment_label"),
   riskFlags: jsonb("risk_flags").$type<string[]>().default(sql`'[]'`), // ['high_turnover_risk', 'safety_concern', 'harassment_mention']
-  
+
   // Anonymous protection
   isAnonymous: boolean("is_anonymous").default(true),
   ipAddress: varchar("ip_address"), // For duplicate detection only
-  
+
   submittedAt: timestamp("submitted_at").defaultNow(),
 }, (table) => ({
   workspaceTypeIndex: index("employer_ratings_workspace_type_idx").on(table.workspaceId, table.ratingType),
@@ -5008,39 +5007,39 @@ export type EmployerRating = typeof employerRatings.$inferSelect;
 export const anonymousSuggestions = pgTable("anonymous_suggestions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
-  
+
   // Submitter (anonymous)
   employeeId: varchar("employee_id").references(() => employees.id, { onDelete: 'set null' }),
-  
+
   // Suggestion content
   title: varchar("title").notNull(),
   description: text("description").notNull(),
   category: varchar("category"), // 'safety', 'process', 'equipment', 'culture', 'compensation', 'benefits', 'other'
-  
+
   // AI Sentiment Analysis
   sentimentScore: decimal("sentiment_score", { precision: 5, scale: 2 }),
   sentimentLabel: varchar("sentiment_label"),
   urgencyLevel: varchar("urgency_level"), // 'low', 'medium', 'high', 'critical' (AI-determined)
-  
+
   // Ticket tracking (SupportOS™ integration)
   ticketId: varchar("ticket_id").references(() => supportTickets.id),
   status: varchar("status").default("submitted"), // 'submitted', 'under_review', 'in_progress', 'implemented', 'declined', 'duplicate'
   statusUpdatedAt: timestamp("status_updated_at"),
-  
+
   // Management response
   responseToEmployee: text("response_to_employee"), // Public response visible to submitter
   internalNotes: text("internal_notes"), // Private manager notes
   implementationDate: timestamp("implementation_date"),
   declineReason: text("decline_reason"),
-  
+
   // Visibility
   isAnonymous: boolean("is_anonymous").default(true),
   visibleToAllEmployees: boolean("visible_to_all_employees").default(false), // Suggestion board feature
-  
+
   // Engagement metrics
   upvotes: integer("upvotes").default(0), // Other employees can upvote
   viewCount: integer("view_count").default(0),
-  
+
   submittedAt: timestamp("submitted_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
@@ -5061,24 +5060,24 @@ export type AnonymousSuggestion = typeof anonymousSuggestions.$inferSelect;
 export const employeeRecognition = pgTable("employee_recognition", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
-  
+
   // Recognition details
   recognizedEmployeeId: varchar("recognized_employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
   recognizedByEmployeeId: varchar("recognized_by_employee_id").references(() => employees.id, { onDelete: 'set null' }),
   recognizedByManagerId: varchar("recognized_by_manager_id").references(() => employees.id, { onDelete: 'set null' }),
-  
+
   // Kudos content
   reason: text("reason").notNull(),
   category: varchar("category"), // 'safety', 'customer_service', 'teamwork', 'innovation', 'quality', 'leadership'
-  
+
   // Context (ties to work done)
   relatedShiftId: varchar("related_shift_id").references(() => shifts.id),
   relatedClientId: varchar("related_client_id").references(() => clients.id),
   relatedReportId: varchar("related_report_id"), // Links to report submissions
-  
+
   // Visibility
   isPublic: boolean("is_public").default(true), // Visible on company feed
-  
+
   // Monetary reward (BillOS™ integration)
   hasMonetaryReward: boolean("has_monetary_reward").default(false),
   rewardAmount: decimal("reward_amount", { precision: 10, scale: 2 }),
@@ -5086,17 +5085,13 @@ export const employeeRecognition = pgTable("employee_recognition", {
   rewardPaid: boolean("reward_paid").default(false),
   rewardPaidAt: timestamp("reward_paid_at"),
   rewardTransactionId: varchar("reward_transaction_id"),
-  
+
   // Engagement metrics
   likes: integer("likes").default(0), // Other employees can like
   comments: integer("comments").default(0),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
-}, (table) => ({
-  recognizedEmployeeIndex: index("recognition_employee_idx").on(table.recognizedEmployeeId, table.createdAt),
-  workspacePublicIndex: index("recognition_workspace_public_idx").on(table.workspaceId, table.isPublic),
-  rewardPendingIndex: index("recognition_reward_pending_idx").on(table.hasMonetaryReward, table.rewardPaid),
-}));
+});
 
 export const insertEmployeeRecognitionSchema = createInsertSchema(employeeRecognition).omit({
   id: true,
@@ -5111,28 +5106,28 @@ export const employeeHealthScores = pgTable("employee_health_scores", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
   employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
-  
+
   // Calculated period
   periodStart: timestamp("period_start").notNull(),
   periodEnd: timestamp("period_end").notNull(),
-  
+
   // Engagement metrics (0-100 scale)
   overallEngagementScore: decimal("overall_engagement_score", { precision: 5, scale: 2 }),
   surveyParticipationRate: decimal("survey_participation_rate", { precision: 5, scale: 2 }),
   averageSentimentScore: decimal("average_sentiment_score", { precision: 5, scale: 2 }),
-  
+
   // Component scores
   workloadSatisfaction: decimal("workload_satisfaction", { precision: 5, scale: 2 }),
   managementSatisfaction: decimal("management_satisfaction", { precision: 5, scale: 2 }),
   growthSatisfaction: decimal("growth_satisfaction", { precision: 5, scale: 2 }),
   compensationSatisfaction: decimal("compensation_satisfaction", { precision: 5, scale: 2 }),
   cultureSatisfaction: decimal("culture_satisfaction", { precision: 5, scale: 2 }),
-  
+
   // Risk indicators
   turnoverRiskScore: decimal("turnover_risk_score", { precision: 5, scale: 2 }), // PredictionOS™ integration
   riskLevel: varchar("risk_level"), // 'low', 'medium', 'high', 'critical'
   riskFactors: jsonb("risk_factors").$type<string[]>().default(sql`'[]'`), // ['low_engagement', 'compensation_concern', 'manager_conflict']
-  
+
   // Manager action queue
   requiresManagerAction: boolean("requires_manager_action").default(false),
   actionPriority: varchar("action_priority"), // 'low', 'medium', 'high', 'urgent'
@@ -5141,14 +5136,14 @@ export const employeeHealthScores = pgTable("employee_health_scores", {
     conversationStarter: string; // AI-generated
     expectedImpact: string;
   }>>().default(sql`'[]'`),
-  
+
   // Action tracking
   managerNotified: boolean("manager_notified").default(false),
   managerNotifiedAt: timestamp("manager_notified_at"),
   actionTaken: boolean("action_taken").default(false),
   actionTakenAt: timestamp("action_taken_at"),
   actionNotes: text("action_notes"),
-  
+
   calculatedAt: timestamp("calculated_at").defaultNow(),
 }, (table) => ({
   employeePeriodIndex: index("health_scores_employee_period_idx").on(table.employeeId, table.periodEnd),
@@ -5168,16 +5163,16 @@ export type EmployeeHealthScore = typeof employeeHealthScores.$inferSelect;
 export const employerBenchmarkScores = pgTable("employer_benchmark_scores", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
-  
+
   // Benchmark target
   benchmarkType: varchar("benchmark_type").notNull(), // 'organization', 'department', 'manager', 'location'
   targetId: varchar("target_id"), // null for organization-wide
   targetName: varchar("target_name"),
-  
+
   // Calculated period
   periodStart: timestamp("period_start").notNull(),
   periodEnd: timestamp("period_end").notNull(),
-  
+
   // Aggregated ratings (1-5 scale)
   managementQualityAvg: decimal("management_quality_avg", { precision: 3, scale: 2 }),
   workEnvironmentAvg: decimal("work_environment_avg", { precision: 3, scale: 2 }),
@@ -5187,26 +5182,26 @@ export const employerBenchmarkScores = pgTable("employer_benchmark_scores", {
   equipmentResourcesAvg: decimal("equipment_resources_avg", { precision: 3, scale: 2 }),
   communicationClarityAvg: decimal("communication_clarity_avg", { precision: 3, scale: 2 }),
   recognitionAppreciationAvg: decimal("recognition_appreciation_avg", { precision: 3, scale: 2 }),
-  
+
   // Overall employer score
   overallScore: decimal("overall_score", { precision: 3, scale: 2 }),
-  
+
   // Industry benchmarking (anonymized cross-platform data)
   industryAverageScore: decimal("industry_average_score", { precision: 3, scale: 2 }),
   percentileRank: integer("percentile_rank"), // 0-100 (how you rank vs. similar companies)
-  
+
   // Trend analysis
   scoreTrend: varchar("score_trend"), // 'improving', 'stable', 'declining'
   monthOverMonthChange: decimal("month_over_month_change", { precision: 4, scale: 2 }),
-  
+
   // Response metrics
   totalResponses: integer("total_responses").default(0),
   responseRate: decimal("response_rate", { precision: 5, scale: 2 }),
-  
+
   // Risk indicators
   criticalIssuesCount: integer("critical_issues_count").default(0),
   highRiskFlags: jsonb("high_risk_flags").$type<string[]>().default(sql`'[]'`),
-  
+
   calculatedAt: timestamp("calculated_at").defaultNow(),
 }, (table) => ({
   workspaceTypeIndex: index("employer_benchmarks_workspace_type_idx").on(table.workspaceId, table.benchmarkType),
@@ -5242,20 +5237,20 @@ export const integrationCategoryEnum = pgEnum('integration_category', [
 // Integration marketplace - Certified integration catalog
 export const integrationMarketplace = pgTable("integration_marketplace", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  
+
   // Integration identity
   name: varchar("name").notNull(), // "QuickBooks Online", "Salesforce CRM"
   slug: varchar("slug").unique().notNull(), // "quickbooks-online", "salesforce"
   category: integrationCategoryEnum("category").notNull(),
   provider: varchar("provider").notNull(), // "Intuit", "Salesforce Inc."
   logoUrl: varchar("logo_url"),
-  
+
   // Integration details
   description: text("description"),
   longDescription: text("long_description"),
   websiteUrl: varchar("website_url"),
   documentationUrl: varchar("documentation_url"),
-  
+
   // Technical specifications
   authType: varchar("auth_type").notNull(), // 'oauth2', 'api_key', 'basic', 'custom'
   authConfig: jsonb("auth_config").$type<{
@@ -5265,29 +5260,29 @@ export const integrationMarketplace = pgTable("integration_marketplace", {
     apiKeyName?: string;
     customInstructions?: string;
   }>(),
-  
+
   // Supported features
   supportedFeatures: jsonb("supported_features").$type<string[]>().default(sql`'[]'`), // ['sync_employees', 'sync_invoices', 'webhooks']
   webhookSupport: boolean("webhook_support").default(false),
   bidirectionalSync: boolean("bidirectional_sync").default(false),
-  
+
   // Marketplace metadata
   isCertified: boolean("is_certified").default(false), // Official WorkforceOS certification
   isDeveloperSubmitted: boolean("is_developer_submitted").default(false),
   installCount: integer("install_count").default(0),
   rating: decimal("rating", { precision: 3, scale: 2 }), // 0.00 - 5.00
   reviewCount: integer("review_count").default(0),
-  
+
   // Developer information (for third-party integrations)
   developerId: varchar("developer_id"),
   developerEmail: varchar("developer_email"),
   developerWebhookUrl: varchar("developer_webhook_url"),
-  
+
   // Status
   isActive: boolean("is_active").default(true),
   isPublished: boolean("is_published").default(false),
   publishedAt: timestamp("published_at"),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
@@ -5310,12 +5305,12 @@ export const integrationConnections = pgTable("integration_connections", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
   integrationId: varchar("integration_id").notNull().references(() => integrationMarketplace.id, { onDelete: 'cascade' }),
-  
+
   // Connection identity
   connectionName: varchar("connection_name"), // User-friendly name "Production QuickBooks"
   externalAccountId: varchar("external_account_id"), // External system's account identifier
   externalAccountName: varchar("external_account_name"), // "Acme Corp - QuickBooks"
-  
+
   // Authentication
   authType: varchar("auth_type").notNull(), // 'oauth2', 'api_key', 'basic'
   accessToken: text("access_token"), // Encrypted OAuth access token
@@ -5323,7 +5318,7 @@ export const integrationConnections = pgTable("integration_connections", {
   tokenExpiry: timestamp("token_expiry"),
   apiKey: text("api_key"), // Encrypted API key (for API key auth)
   apiSecret: text("api_secret"), // Encrypted API secret
-  
+
   // Configuration
   syncConfig: jsonb("sync_config").$type<{
     syncDirection?: 'pull' | 'push' | 'bidirectional';
@@ -5331,7 +5326,7 @@ export const integrationConnections = pgTable("integration_connections", {
     enabledFeatures?: string[];
     fieldMappings?: Record<string, string>;
   }>(),
-  
+
   // Sync status
   lastSyncAt: timestamp("last_sync_at"),
   lastSyncStatus: varchar("last_sync_status"), // 'success', 'failed', 'partial'
@@ -5339,22 +5334,22 @@ export const integrationConnections = pgTable("integration_connections", {
   nextSyncAt: timestamp("next_sync_at"),
   totalSyncCount: integer("total_sync_count").default(0),
   failedSyncCount: integer("failed_sync_count").default(0),
-  
+
   // Health monitoring
   isHealthy: boolean("is_healthy").default(true),
   healthCheckAt: timestamp("health_check_at"),
   healthCheckError: text("health_check_error"),
-  
+
   // Connection status
   isActive: boolean("is_active").default(true),
   connectedAt: timestamp("connected_at").defaultNow(),
   disconnectedAt: timestamp("disconnected_at"),
-  
+
   // Audit
   connectedByUserId: varchar("connected_by_user_id").references(() => users.id),
   ipAddress: varchar("ip_address"),
   userAgent: text("user_agent"),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
@@ -5376,35 +5371,35 @@ export type IntegrationConnection = typeof integrationConnections.$inferSelect;
 export const integrationApiKeys = pgTable("integration_api_keys", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
-  
+
   // Key identity
   name: varchar("name").notNull(), // "Production API Key", "Mobile App Key"
   description: text("description"),
   keyPrefix: varchar("key_prefix").notNull(), // "wfos_prod_" for display
   keyHash: text("key_hash").notNull(), // Hashed full key for verification
-  
+
   // Permissions
-  scopes: jsonb("scopes").$type<string[]>().default(sql`'[]'`), // ['read:employees', 'write:timesheets', 'webhooks:manage']
+  scopes: jsonb("scopes").$type<string[]>().default(sql`'[]'`), // ['read:employees', 'write:shifts', 'webhooks:manage']
   ipWhitelist: jsonb("ip_whitelist").$type<string[]>().default(sql`'[]'`),
-  
+
   // Rate limiting
   rateLimit: integer("rate_limit").default(1000), // Requests per hour
   rateLimitWindow: varchar("rate_limit_window").default('hour'), // 'minute', 'hour', 'day'
-  
+
   // Usage tracking
   lastUsedAt: timestamp("last_used_at"),
   totalRequests: integer("total_requests").default(0),
   totalErrors: integer("total_errors").default(0),
-  
+
   // Status
   isActive: boolean("is_active").default(true),
   expiresAt: timestamp("expires_at"),
-  
+
   // Audit
   createdByUserId: varchar("created_by_user_id").references(() => users.id),
   ipAddress: varchar("ip_address"),
   userAgent: text("user_agent"),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
@@ -5425,16 +5420,16 @@ export type IntegrationApiKey = typeof integrationApiKeys.$inferSelect;
 export const webhookSubscriptions = pgTable("webhook_subscriptions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
-  
+
   // Subscription identity
   name: varchar("name").notNull(), // "Slack Shift Notifications"
   description: text("description"),
   targetUrl: varchar("target_url").notNull(), // External endpoint to call
-  
+
   // Event configuration
   events: jsonb("events").$type<string[]>().notNull(), // ['shift.created', 'invoice.paid', 'employee.hired']
   filters: jsonb("filters").$type<Record<string, any>>(), // Filter conditions: {department: 'sales', status: 'active'}
-  
+
   // Authentication for outgoing webhooks
   authType: varchar("auth_type"), // 'none', 'basic', 'bearer', 'custom_header'
   authConfig: jsonb("auth_config").$type<{
@@ -5443,30 +5438,30 @@ export const webhookSubscriptions = pgTable("webhook_subscriptions", {
     token?: string;
     customHeaders?: Record<string, string>;
   }>(),
-  
+
   // Delivery settings
   retryPolicy: varchar("retry_policy").default('exponential'), // 'none', 'linear', 'exponential'
   maxRetries: integer("max_retries").default(3),
   timeoutSeconds: integer("timeout_seconds").default(30),
-  
+
   // Health monitoring
   isHealthy: boolean("is_healthy").default(true),
   lastSuccessAt: timestamp("last_success_at"),
   lastFailureAt: timestamp("last_failure_at"),
   consecutiveFailures: integer("consecutive_failures").default(0),
-  
+
   // Statistics
   totalDeliveries: integer("total_deliveries").default(0),
   successfulDeliveries: integer("successful_deliveries").default(0),
   failedDeliveries: integer("failed_deliveries").default(0),
-  
+
   // Status
   isActive: boolean("is_active").default(true),
   pausedReason: text("paused_reason"),
-  
+
   // Audit
   createdByUserId: varchar("created_by_user_id").references(() => users.id),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
@@ -5489,41 +5484,41 @@ export const webhookDeliveries = pgTable("webhook_deliveries", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   subscriptionId: varchar("subscription_id").notNull().references(() => webhookSubscriptions.id, { onDelete: 'cascade' }),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
-  
+
   // Event details
   eventType: varchar("event_type").notNull(), // 'shift.created', 'invoice.paid'
   eventId: varchar("event_id"), // ID of the triggering resource
   payload: jsonb("payload").notNull(), // Full event payload sent to webhook
-  
+
   // Delivery attempt
   attemptNumber: integer("attempt_number").default(1),
   targetUrl: varchar("target_url").notNull(),
   httpMethod: varchar("http_method").default('POST'),
-  
+
   // Request details
   requestHeaders: jsonb("request_headers"),
   requestBody: jsonb("request_body"),
-  
+
   // Response details
   statusCode: integer("status_code"),
   responseHeaders: jsonb("response_headers"),
   responseBody: text("response_body"),
   durationMs: integer("duration_ms"),
-  
+
   // Delivery status
   status: varchar("status").notNull(), // 'pending', 'success', 'failed', 'retrying'
   errorMessage: text("error_message"),
   errorStack: text("error_stack"),
-  
+
   // Retry scheduling
   nextRetryAt: timestamp("next_retry_at"),
   maxRetries: integer("max_retries"),
-  
+
   // Timestamps
   scheduledAt: timestamp("scheduled_at").defaultNow(),
   sentAt: timestamp("sent_at"),
   completedAt: timestamp("completed_at"),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
   subscriptionStatusIndex: index("webhook_deliveries_subscription_status_idx").on(table.subscriptionId, table.status),
@@ -5546,19 +5541,19 @@ export type WebhookDelivery = typeof webhookDeliveries.$inferSelect;
 
 export const promotionalBanners = pgTable("promotional_banners", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  
+
   // Banner content
   message: text("message").notNull(), // Main promotional message
   ctaText: varchar("cta_text", { length: 100 }), // Call-to-action button text (optional)
   ctaLink: varchar("cta_link", { length: 500 }), // CTA button link (optional)
-  
+
   // Display settings
   isActive: boolean("is_active").default(false), // Only one banner can be active at a time
   priority: integer("priority").default(0), // Higher priority shown first if multiple active
-  
+
   // Tracking
   createdBy: varchar("created_by").notNull().references(() => users.id),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
@@ -5581,23 +5576,23 @@ export type PromotionalBanner = typeof promotionalBanners.$inferSelect;
 export const knowledgeArticles = pgTable("knowledge_articles", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").references(() => workspaces.id, { onDelete: 'cascade' }),
-  
+
   // Article content
   title: varchar("title", { length: 500 }).notNull(),
   content: text("content").notNull(),
   summary: text("summary"), // AI-generated summary
   category: varchar("category", { length: 100 }), // 'policy', 'procedure', 'faq', 'guide'
   tags: text("tags").array(), // Searchable tags
-  
+
   // Access control
   isPublic: boolean("is_public").default(false), // Public to all or workspace-specific
   requiredRole: varchar("required_role"), // Minimum role to view
-  
+
   // Metadata
   lastUpdatedBy: varchar("last_updated_by").references(() => users.id),
   viewCount: integer("view_count").default(0),
   helpfulCount: integer("helpful_count").default(0), // User feedback
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
@@ -5618,18 +5613,18 @@ export type KnowledgeArticle = typeof knowledgeArticles.$inferSelect;
 export const knowledgeQueries = pgTable("knowledge_queries", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").references(() => workspaces.id, { onDelete: 'cascade' }),
-  
-  // Query details
   userId: varchar("user_id").references(() => users.id, { onDelete: 'set null' }),
+
+  // Query details
   query: text("query").notNull(), // What the user asked
   response: text("response"), // AI-generated answer
-  
+
   // Metadata
   responseTime: integer("response_time"), // Milliseconds
   articlesRetrieved: text("articles_retrieved").array(), // IDs of articles used
   wasHelpful: boolean("was_helpful"), // User feedback
   followUpQueries: integer("follow_up_queries").default(0), // Did they ask again?
-  
+
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
   userIdx: index("knowledge_queries_user_idx").on(table.userId),
@@ -5645,36 +5640,36 @@ export type InsertKnowledgeQuery = z.infer<typeof insertKnowledgeQuerySchema>;
 export type KnowledgeQuery = typeof knowledgeQueries.$inferSelect;
 
 // ============================================================================
-// PREDICTIVE SCHEDULING - Capacity Alerts Before Over-Allocation
+// PREDICTIVE SCHEDULING - CAPACITY ALERTS BEFORE OVER-ALLOCATION
 // ============================================================================
 
 export const capacityAlerts = pgTable("capacity_alerts", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
-  
+
   // Alert details
   employeeId: varchar("employee_id").references(() => employees.id, { onDelete: 'cascade' }),
   managerId: varchar("manager_id").references(() => users.id),
-  
+
   alertType: varchar("alert_type").notNull(), // 'over_allocated', 'under_utilized', 'conflict', 'approaching_limit'
   severity: varchar("severity").default('medium'), // 'low', 'medium', 'high', 'critical'
-  
+
   // Capacity data
   weekStartDate: timestamp("week_start_date").notNull(),
   scheduledHours: decimal("scheduled_hours", { precision: 5, scale: 2 }),
   availableHours: decimal("available_hours", { precision: 5, scale: 2 }),
   overageHours: decimal("overage_hours", { precision: 5, scale: 2 }), // Hours over limit
-  
+
   // Alert message
   message: text("message").notNull(),
   suggestedAction: text("suggested_action"), // AI-suggested fix
-  
+
   // Status
   status: varchar("status").default('active'), // 'active', 'acknowledged', 'resolved', 'dismissed'
   acknowledgedBy: varchar("acknowledged_by").references(() => users.id),
   acknowledgedAt: timestamp("acknowledged_at"),
   resolvedAt: timestamp("resolved_at"),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
   employeeIdx: index("capacity_alerts_employee_idx").on(table.employeeId),
@@ -5697,29 +5692,29 @@ export type CapacityAlert = typeof capacityAlerts.$inferSelect;
 export const autoReports = pgTable("auto_reports", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
-  
+
   // Report details
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
   reportType: varchar("report_type").notNull(), // 'weekly_status', 'timesheet_summary', 'accomplishments'
   period: varchar("period").notNull(), // 'week_2025_01', 'month_2025_01', etc.
-  
+
   // Generated content
   summary: text("summary").notNull(), // AI-generated summary
   accomplishments: text("accomplishments").array(), // Key wins
   blockers: text("blockers").array(), // Issues encountered
   nextSteps: text("next_steps").array(), // Planned activities
-  
+
   // Metrics
   hoursWorked: decimal("hours_worked", { precision: 5, scale: 2 }),
   tasksCompleted: integer("tasks_completed"),
   meetingsAttended: integer("meetings_attended"),
-  
+
   // Status
   status: varchar("status").default('draft'), // 'draft', 'reviewed', 'sent'
   reviewedBy: varchar("reviewed_by").references(() => users.id),
   sentAt: timestamp("sent_at"),
   sentTo: text("sent_to").array(), // Email addresses or user IDs
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
@@ -5745,20 +5740,20 @@ export type AutoReport = typeof autoReports.$inferSelect;
 export const onboardingTemplates = pgTable("onboarding_templates", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
-  
+
   // Template details
   name: varchar("name").notNull(),
   description: text("description"),
   departmentName: varchar("department_name"), // Department name (no FK)
   roleTemplateId: varchar("role_template_id").references(() => roleTemplates.id),
-  
+
   // Timeline
   durationDays: integer("duration_days").default(30), // Typical onboarding length
-  
+
   // Status
   isActive: boolean("is_active").default(true),
   createdBy: varchar("created_by").references(() => users.id),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -5767,24 +5762,24 @@ export const onboardingTemplates = pgTable("onboarding_templates", {
 export const onboardingTasks = pgTable("onboarding_tasks", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   templateId: varchar("template_id").notNull().references(() => onboardingTemplates.id, { onDelete: 'cascade' }),
-  
+
   // Task details
   title: varchar("title").notNull(),
   description: text("description"),
   taskType: varchar("task_type").notNull(), // 'document', 'training', 'meeting', 'equipment', 'access', 'orientation'
-  
+
   // Assignment
   assignedTo: varchar("assigned_to"), // 'new_hire', 'manager', 'hr', 'it', specific_user_id
   dayOffset: integer("day_offset").default(0), // Day # in onboarding (0 = first day)
-  
+
   // Requirements
   isRequired: boolean("is_required").default(true),
   requiresDocument: boolean("requires_document").default(false),
   requiresSignature: boolean("requires_signature").default(false),
-  
+
   // Ordering
   sortOrder: integer("sort_order").default(0),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -5792,24 +5787,24 @@ export const onboardingTasks = pgTable("onboarding_tasks", {
 export const onboardingSessions = pgTable("onboarding_sessions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
-  
+
   // Employee being onboarded
   employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
   templateId: varchar("template_id").notNull().references(() => onboardingTemplates.id),
-  
+
   // Timeline
   startDate: timestamp("start_date").notNull(),
   expectedEndDate: timestamp("expected_end_date"),
   actualEndDate: timestamp("actual_end_date"),
-  
+
   // Progress tracking
   status: varchar("status").default('in_progress'), // 'in_progress', 'completed', 'overdue'
   completionPercentage: integer("completion_percentage").default(0),
-  
+
   // Assignment
   managerId: varchar("manager_id").references(() => users.id),
   hrContactId: varchar("hr_contact_id").references(() => users.id),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -5819,21 +5814,21 @@ export const onboardingTaskCompletions = pgTable("onboarding_task_completions", 
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   sessionId: varchar("session_id").notNull().references(() => onboardingSessions.id, { onDelete: 'cascade' }),
   taskId: varchar("task_id").notNull().references(() => onboardingTasks.id, { onDelete: 'cascade' }),
-  
+
   // Completion details
   status: varchar("status").default('pending'), // 'pending', 'in_progress', 'completed', 'skipped'
   completedAt: timestamp("completed_at"),
   completedBy: varchar("completed_by").references(() => users.id),
-  
+
   // Documents/signatures
   documentUrl: varchar("document_url"),
   signatureUrl: varchar("signature_url"),
   notes: text("notes"),
-  
+
   // Due date tracking
   dueDate: timestamp("due_date"),
   isOverdue: boolean("is_overdue").default(false),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -5878,48 +5873,48 @@ export type OnboardingTaskCompletion = typeof onboardingTaskCompletions.$inferSe
 export const offboardingSessions = pgTable("offboarding_sessions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
-  
+
   // Employee leaving
   employeeId: varchar("employee_id").notNull().references(() => employees.id),
   lastWorkDay: timestamp("last_work_day").notNull(),
-  
+
   // Reason for leaving
   exitReason: varchar("exit_reason"), // 'resignation', 'termination', 'retirement', 'end_of_contract', 'other'
   exitReasonDetails: text("exit_reason_details"),
   isVoluntary: boolean("is_voluntary").default(true),
-  
+
   // Exit interview
   exitInterviewScheduled: timestamp("exit_interview_scheduled"),
   exitInterviewCompleted: timestamp("exit_interview_completed"),
   exitInterviewConductedBy: varchar("exit_interview_conducted_by").references(() => users.id),
   exitInterviewNotes: text("exit_interview_notes"),
-  
+
   // Asset returns
   assetsReturned: boolean("assets_returned").default(false),
   assetReturnNotes: text("asset_return_notes"),
-  
+
   // Access revocation
   accessRevoked: boolean("access_revoked").default(false),
   accessRevokedAt: timestamp("access_revoked_at"),
   accessRevokedBy: varchar("access_revoked_by").references(() => users.id),
-  
+
   // Final paycheck
   finalPayCalculated: boolean("final_pay_calculated").default(false),
   finalPayAmount: decimal("final_pay_amount", { precision: 10, scale: 2 }),
   finalPayDate: timestamp("final_pay_date"),
-  
+
   // Clearance
   clearanceStatus: varchar("clearance_status").default('pending'), // 'pending', 'cleared', 'issues'
   clearanceNotes: text("clearance_notes"),
-  
+
   // Rehire eligibility
   eligibleForRehire: boolean("eligible_for_rehire"),
   rehireNotes: text("rehire_notes"),
-  
+
   // Status
   status: varchar("status").default('in_progress'), // 'in_progress', 'completed'
   completedAt: timestamp("completed_at"),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -5928,15 +5923,15 @@ export const offboardingSessions = pgTable("offboarding_sessions", {
 export const exitInterviewResponses = pgTable("exit_interview_responses", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   sessionId: varchar("session_id").notNull().references(() => offboardingSessions.id, { onDelete: 'cascade' }),
-  
+
   // Question & answer
   question: text("question").notNull(),
   answer: text("answer"),
   rating: integer("rating"), // 1-5 scale for satisfaction questions
-  
+
   // Categorization
   category: varchar("category"), // 'satisfaction', 'management', 'culture', 'compensation', 'growth', 'other'
-  
+
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -5963,50 +5958,50 @@ export type ExitInterviewResponse = typeof exitInterviewResponses.$inferSelect;
 export const expenseCategories = pgTable("expense_categories", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
-  
+
   // Category details
   name: varchar("name").notNull(),
   description: text("description"),
   code: varchar("code"), // Accounting code
-  
+
   // Budget tracking
   budgetId: varchar("budget_id"), // Will reference budgets table
-  
+
   // Limits
   requiresApproval: boolean("requires_approval").default(true),
   approvalThreshold: decimal("approval_threshold", { precision: 10, scale: 2 }), // Auto-approve under this amount
   maxPerTransaction: decimal("max_per_transaction", { precision: 10, scale: 2 }),
-  
+
   // Status
   isActive: boolean("is_active").default(true),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const expenses = pgTable("expenses", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
-  
+
   // Expense details
   employeeId: varchar("employee_id").notNull().references(() => employees.id),
   categoryId: varchar("category_id").notNull().references(() => expenseCategories.id),
-  
+
   // Transaction details
   expenseDate: timestamp("expense_date").notNull(),
   merchant: varchar("merchant"),
   description: text("description").notNull(),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   currency: varchar("currency").default('USD'),
-  
+
   // Receipt
   receiptUrl: varchar("receipt_url"),
   receiptImageUrl: varchar("receipt_image_url"),
-  
+
   // Client/project association
   clientId: varchar("client_id").references(() => clients.id),
   projectCode: varchar("project_code"),
   isBillable: boolean("is_billable").default(false),
-  
+
   // Approval workflow
   status: varchar("status").default('submitted'), // 'draft', 'submitted', 'approved', 'rejected', 'reimbursed'
   submittedAt: timestamp("submitted_at"),
@@ -6015,12 +6010,12 @@ export const expenses = pgTable("expenses", {
   rejectedBy: varchar("rejected_by").references(() => users.id),
   rejectedAt: timestamp("rejected_at"),
   rejectionReason: text("rejection_reason"),
-  
+
   // Reimbursement
   reimbursedAt: timestamp("reimbursed_at"),
   reimbursementMethod: varchar("reimbursement_method"), // 'direct_deposit', 'check', 'payroll'
   reimbursementReference: varchar("reimbursement_reference"),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
@@ -6052,64 +6047,61 @@ export type Expense = typeof expenses.$inferSelect;
 export const budgets = pgTable("budgets", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
-  
+
   // Budget details
   name: varchar("name").notNull(),
   description: text("description"),
   budgetType: varchar("budget_type").notNull(), // 'department', 'project', 'category', 'annual', 'quarterly'
-  
+
   // Period
   fiscalYear: integer("fiscal_year").notNull(),
   fiscalQuarter: integer("fiscal_quarter"), // 1-4, null for annual
   startDate: timestamp("start_date").notNull(),
   endDate: timestamp("end_date").notNull(),
-  
+
   // Amounts
   plannedAmount: decimal("planned_amount", { precision: 12, scale: 2 }).notNull(),
   adjustedAmount: decimal("adjusted_amount", { precision: 12, scale: 2 }), // After revisions
   actualSpent: decimal("actual_spent", { precision: 12, scale: 2 }).default('0.00'),
   committed: decimal("committed", { precision: 12, scale: 2 }).default('0.00'), // Encumbered funds
-  
+
   // Department/category
   departmentName: varchar("department_name"), // Department name (no FK)
   categoryCode: varchar("category_code"),
-  
+
   // Ownership
   ownerId: varchar("owner_id").references(() => users.id),
   approvedBy: varchar("approved_by").references(() => users.id),
   approvedAt: timestamp("approved_at"),
-  
+
   // Status
   status: varchar("status").default('draft'), // 'draft', 'submitted', 'approved', 'active', 'closed'
-  
+
   // Alerts
   alertThreshold: integer("alert_threshold").default(80), // Alert when X% spent
   isOverBudget: boolean("is_over_budget").default(false),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-}, (table) => ({
-  fiscalYearIdx: index("budgets_fiscal_year_idx").on(table.fiscalYear),
-  statusIdx: index("budgets_status_idx").on(table.status),
-}));
+});
 
 // Budget line items (detailed breakdown)
 export const budgetLineItems = pgTable("budget_line_items", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   budgetId: varchar("budget_id").notNull().references(() => budgets.id, { onDelete: 'cascade' }),
-  
+
   // Line item details
   name: varchar("name").notNull(),
   description: text("description"),
   categoryCode: varchar("category_code"),
-  
+
   // Amounts
   plannedAmount: decimal("planned_amount", { precision: 12, scale: 2 }).notNull(),
   actualSpent: decimal("actual_spent", { precision: 12, scale: 2 }).default('0.00'),
-  
+
   // Ordering
   sortOrder: integer("sort_order").default(0),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -6118,21 +6110,21 @@ export const budgetLineItems = pgTable("budget_line_items", {
 export const budgetVariances = pgTable("budget_variances", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   budgetId: varchar("budget_id").notNull().references(() => budgets.id, { onDelete: 'cascade' }),
-  
+
   // Period
   month: integer("month").notNull(), // 1-12
   year: integer("year").notNull(),
-  
+
   // Variance data
   plannedAmount: decimal("planned_amount", { precision: 12, scale: 2 }).notNull(),
   actualSpent: decimal("actual_spent", { precision: 12, scale: 2 }).notNull(),
   variance: decimal("variance", { precision: 12, scale: 2 }).notNull(), // actual - planned
   variancePercentage: decimal("variance_percentage", { precision: 5, scale: 2 }), // (variance / planned) * 100
-  
+
   // Analysis
   analysisNotes: text("analysis_notes"),
   actionItems: text("action_items").array(),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
   budgetMonthIdx: index("budget_variances_month_idx").on(table.budgetId, table.year, table.month),
@@ -6170,35 +6162,35 @@ export type BudgetVariance = typeof budgetVariances.$inferSelect;
 export const trainingCourses = pgTable("training_courses", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
-  
+
   // Course details
   title: varchar("title").notNull(),
   description: text("description"),
   category: varchar("category"), // 'compliance', 'technical', 'leadership', 'soft_skills', 'safety'
-  
+
   // Content
   courseType: varchar("course_type").notNull(), // 'online', 'in_person', 'hybrid', 'self_paced'
   duration: integer("duration"), // Minutes
   contentUrl: varchar("content_url"), // Link to course materials
   videoUrl: varchar("video_url"),
-  
+
   // Requirements
   isRequired: boolean("is_required").default(false),
   expiresAfterDays: integer("expires_after_days"), // Requires renewal (e.g., 365 for annual training)
   passingScore: integer("passing_score"), // Minimum % to pass
-  
+
   // Access
   requiresApproval: boolean("requires_approval").default(false),
   maxEnrollments: integer("max_enrollments"),
-  
+
   // Instructor
   instructorId: varchar("instructor_id").references(() => users.id),
   instructorName: varchar("instructor_name"),
-  
+
   // Status
   isActive: boolean("is_active").default(true),
   publishedAt: timestamp("published_at"),
-  
+
   createdBy: varchar("created_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -6209,30 +6201,30 @@ export const trainingEnrollments = pgTable("training_enrollments", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   courseId: varchar("course_id").notNull().references(() => trainingCourses.id, { onDelete: 'cascade' }),
   employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
-  
+
   // Enrollment details
   enrolledAt: timestamp("enrolled_at").defaultNow(),
   enrolledBy: varchar("enrolled_by").references(() => users.id), // Manager or self
-  
+
   // Progress
   status: varchar("status").default('enrolled'), // 'enrolled', 'in_progress', 'completed', 'failed', 'expired'
   startedAt: timestamp("started_at"),
   completedAt: timestamp("completed_at"),
   expiresAt: timestamp("expires_at"),
-  
+
   // Assessment
   assessmentScore: integer("assessment_score"), // Percentage
   attempts: integer("attempts").default(0),
   maxAttempts: integer("max_attempts").default(3),
-  
+
   // Certification
   certificateUrl: varchar("certificate_url"),
   certificateIssuedAt: timestamp("certificate_issued_at"),
-  
+
   // Feedback
   rating: integer("rating"), // 1-5 stars
   feedback: text("feedback"),
-  
+
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
   employeeIdx: index("training_enrollments_employee_idx").on(table.employeeId),
@@ -6245,27 +6237,27 @@ export const trainingCertifications = pgTable("training_certifications", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
   employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
-  
+
   // Certification details
   name: varchar("name").notNull(),
   issuingOrganization: varchar("issuing_organization"),
   certificationNumber: varchar("certification_number"),
-  
+
   // Dates
   issuedDate: timestamp("issued_date").notNull(),
   expiryDate: timestamp("expiry_date"),
-  
+
   // Documentation
   certificateUrl: varchar("certificate_url"),
   verificationUrl: varchar("verification_url"),
-  
+
   // Status
   status: varchar("status").default('active'), // 'active', 'expired', 'revoked'
-  
+
   // Linked to course (if applicable)
   courseId: varchar("course_id").references(() => trainingCourses.id),
   enrollmentId: varchar("enrollment_id").references(() => trainingEnrollments.id),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
@@ -6300,7 +6292,7 @@ export type InsertTrainingCertification = z.infer<typeof insertTrainingCertifica
 export type TrainingCertification = typeof trainingCertifications.$inferSelect;
 
 // ============================================================================
-// DISPUTES - Challenge Performance Reviews, Employer Ratings, & RMS Forms
+// DISPUTES - CHALLENGE PERFORMANCE REVIEWS, EMPLOYER RATINGS, & RMS FORMS
 // ============================================================================
 // NOTE: Write-ups/disciplinary actions are handled through ReportOS™ (RMS) forms
 // Employees can dispute those RMS forms using this disputes system
@@ -6308,22 +6300,22 @@ export type TrainingCertification = typeof trainingCertifications.$inferSelect;
 export const disputes = pgTable("disputes", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
-  
+
   // Who filed the dispute
   filedBy: varchar("filed_by").notNull().references(() => users.id),
   filedByRole: varchar("filed_by_role").notNull(), // 'employee', 'manager', 'hr'
-  
+
   // What's being disputed
   disputeType: varchar("dispute_type").notNull(), // 'performance_review', 'employer_rating', 'report_submission', 'composite_score'
   targetId: varchar("target_id").notNull(), // ID of the review/rating/report being disputed
   targetType: varchar("target_type").notNull(), // 'performance_reviews', 'employer_ratings', 'report_submissions', etc.
-  
+
   // Dispute details
   title: varchar("title").notNull(),
   reason: text("reason").notNull(), // Why the dispute is being filed
   evidence: text("evidence").array(), // URLs to supporting documents
   requestedOutcome: text("requested_outcome"), // What the employee wants (e.g., "Remove write-up", "Change rating to 4")
-  
+
   // ========================================================================
   // AI SUMMARIZATION - AutoScheduler Audit Tracker™
   // ========================================================================
@@ -6335,48 +6327,48 @@ export const disputes = pgTable("disputes", {
   aiAnalysisFactors: text("ai_analysis_factors").array(), // Key factors AI considered
   aiProcessedAt: timestamp("ai_processed_at"),
   aiModel: varchar("ai_model"), // e.g., "gpt-4-turbo"
-  
+
   // Labor law compliance tags (for audit tracker)
   complianceCategory: varchar("compliance_category"), // 'labor_law', 'payday_law', 'unemployment', 'flsa', 'osha', null
   regulatoryReference: varchar("regulatory_reference"), // e.g., "FLSA §207", "State Payday Law"
-  
+
   // Priority & urgency
   priority: varchar("priority").default('normal'), // 'low', 'normal', 'high', 'urgent'
-  
+
   // Assignment
   assignedTo: varchar("assigned_to").references(() => users.id), // HR/Manager reviewing the dispute
   assignedAt: timestamp("assigned_at"),
-  
+
   // Timeline
   filedAt: timestamp("filed_at").notNull().defaultNow(),
   reviewDeadline: timestamp("review_deadline"), // Must be reviewed by this date
-  
+
   // Status tracking
   status: varchar("status").default('pending'), // 'pending', 'under_review', 'approved', 'rejected', 'partially_approved', 'withdrawn'
-  
+
   // Review process
   reviewStartedAt: timestamp("review_started_at"),
   reviewerNotes: text("reviewer_notes"),
   reviewerRecommendation: varchar("reviewer_recommendation"), // 'approve', 'reject', 'partial', 'escalate'
-  
+
   // Resolution
   resolvedAt: timestamp("resolved_at"),
   resolvedBy: varchar("resolved_by").references(() => users.id),
   resolution: text("resolution"), // Final decision explanation
   resolutionAction: text("resolution_action"), // What was changed (e.g., "Rating changed from 2 to 3")
-  
+
   // Changes made (if approved)
   changesApplied: boolean("changes_applied").default(false),
   changesAppliedAt: timestamp("changes_applied_at"),
-  
+
   // Appeals (if dispute is rejected)
   canBeAppealed: boolean("can_be_appealed").default(true),
   appealDeadline: timestamp("appeal_deadline"),
   appealedToUpperManagement: boolean("appealed_to_upper_management").default(false),
-  
+
   // Audit trail
   statusHistory: text("status_history").array(), // JSON strings of status changes
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
@@ -6444,17 +6436,17 @@ export const searchQueries = pgTable("search_queries", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
-  
+
   // Search details
   query: text("query").notNull(), // Natural language search query
   searchType: varchar("search_type").notNull(), // 'employees', 'invoices', 'time_entries', 'all', etc.
   resultsCount: integer("results_count").default(0),
-  
+
   // AI processing
   aiProcessed: boolean("ai_processed").default(false),
   aiInterpretation: text("ai_interpretation"), // How AI understood the query
   searchFilters: text("search_filters"), // JSON of applied filters
-  
+
   executionTimeMs: integer("execution_time_ms"), // Performance tracking
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
@@ -6478,32 +6470,32 @@ export type SearchQuery = typeof searchQueries.$inferSelect;
 export const aiInsights = pgTable("ai_insights", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
-  
+
   // Insight metadata
   title: varchar("title", { length: 200 }).notNull(),
   category: varchar("category").notNull(), // 'cost_savings', 'productivity', 'anomaly', 'prediction', 'recommendation'
   priority: varchar("priority").default('normal'), // 'low', 'normal', 'high', 'critical'
-  
+
   // Insight content
   summary: text("summary").notNull(), // Short description
   details: text("details"), // Full analysis
   dataPoints: text("data_points"), // JSON array of supporting metrics
-  
+
   // AI generation details
   generatedBy: varchar("generated_by").default('gpt-4'), // AI model used
   confidence: decimal("confidence", { precision: 5, scale: 2 }), // 0-100 confidence score
-  
+
   // Actions & impact
   actionable: boolean("actionable").default(true),
   suggestedActions: text("suggested_actions").array(), // Array of recommended actions
   estimatedImpact: varchar("estimated_impact"), // e.g., "$5K savings", "20% faster"
-  
+
   // Status
   status: varchar("status").default('active'), // 'active', 'dismissed', 'acted_upon'
   dismissedBy: varchar("dismissed_by").references(() => users.id),
   dismissedAt: timestamp("dismissed_at"),
   dismissReason: text("dismiss_reason"),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
@@ -6526,14 +6518,14 @@ export type AiInsight = typeof aiInsights.$inferSelect;
 export const metricsSnapshots = pgTable("metrics_snapshots", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
-  
+
   // Snapshot timing
   snapshotDate: timestamp("snapshot_date").notNull(),
   period: varchar("period").notNull(), // 'daily', 'weekly', 'monthly'
-  
+
   // Core metrics (JSON for flexibility)
   metrics: text("metrics").notNull(), // JSON object with all metrics
-  
+
   // Key performance indicators
   totalRevenue: decimal("total_revenue", { precision: 12, scale: 2 }),
   totalExpenses: decimal("total_expenses", { precision: 12, scale: 2 }),
@@ -6541,7 +6533,7 @@ export const metricsSnapshots = pgTable("metrics_snapshots", {
   employeeCount: integer("employee_count"),
   activeClients: integer("active_clients"),
   hoursTracked: decimal("hours_tracked", { precision: 10, scale: 2 }),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
   workspaceIdx: index("metrics_snapshots_workspace_idx").on(table.workspaceId),
