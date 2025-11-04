@@ -40,7 +40,15 @@ import {
   GripVertical,
   UserPlus,
   Calendar,
+  Printer,
 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { EnhancedEmptyState } from "@/components/enhanced-empty-state";
 import type { Shift, Employee, Client } from "@shared/schema";
 import moment from "moment";
@@ -390,7 +398,7 @@ function OpenShiftsSection({ shifts, weekDays, onShiftClick, clients, onAddAckno
 export default function ScheduleGrid() {
   const { toast } = useToast();
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [viewMode, setViewMode] = useState<'week' | 'bi-week'>('week');
+  const [viewMode, setViewMode] = useState<'week' | 'bi-week' | 'semi-monthly' | 'monthly'>('week');
   const [selectedShift, setSelectedShift] = useState<Shift | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isCreateShiftDialogOpen, setIsCreateShiftDialogOpen] = useState(false);
@@ -422,9 +430,27 @@ export default function ScheduleGrid() {
   });
 
   // Calculate days to display based on view mode
+  const getDaysToShow = (): number => {
+    switch (viewMode) {
+      case 'week': return 7;
+      case 'bi-week': return 14;
+      case 'semi-monthly': return 15;
+      case 'monthly': return 30;
+      default: return 7;
+    }
+  };
+
+  // Calculate days to display based on view mode
   const weekDays = useMemo(() => {
-    const start = moment(currentDate).startOf('week');
-    const daysToShow = viewMode === 'week' ? 7 : 14;
+    // For week and bi-week, start from beginning of week
+    // For semi-monthly and monthly, use currentDate as anchor
+    let start: moment.Moment;
+    if (viewMode === 'week' || viewMode === 'bi-week') {
+      start = moment(currentDate).startOf('week');
+    } else {
+      start = moment(currentDate);
+    }
+    const daysToShow = getDaysToShow();
     return Array.from({ length: daysToShow }, (_, i) => start.clone().add(i, 'days').toDate());
   }, [currentDate, viewMode]);
 
@@ -624,88 +650,116 @@ export default function ScheduleGrid() {
   };
 
   const navigatePeriod = (direction: 'prev' | 'next') => {
-    const daysToMove = viewMode === 'week' ? 7 : 14;
+    const daysToMove = getDaysToShow();
     setCurrentDate(prev =>
       moment(prev).add(direction === 'next' ? daysToMove : -daysToMove, 'days').toDate()
     );
   };
 
   const periodLabel = useMemo(() => {
-    const start = moment(currentDate).startOf('week');
-    const daysToShow = viewMode === 'week' ? 7 : 14;
+    // Use proper start date based on view mode
+    let start: moment.Moment;
+    if (viewMode === 'week' || viewMode === 'bi-week') {
+      start = moment(currentDate).startOf('week');
+    } else {
+      start = moment(currentDate);
+    }
+    const daysToShow = getDaysToShow();
     const end = start.clone().add(daysToShow - 1, 'days');
     return `${start.format('MMM D')} - ${end.format('MMM D, YYYY')}`;
   }, [currentDate, viewMode]);
 
   return (
     <div className="flex flex-col h-screen bg-background">
-      {/* Header */}
-      <div className="border-b p-2 sm:p-4 space-y-2 sm:space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
-              <Sparkles className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
-              ScheduleOS™
-            </h1>
-            <p className="text-xs sm:text-sm text-muted-foreground">
-              Drag-and-drop shift scheduling
-            </p>
-          </div>
-          
-          {/* Quick Stats Dashboard */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 flex-shrink-0">
-            <div className="bg-gradient-to-br from-emerald-500/10 to-primary/10 backdrop-blur-sm border border-emerald-500/20 rounded-lg p-2">
-              <div className="text-[10px] text-muted-foreground font-medium">Employees</div>
-              <div className="text-lg font-bold text-emerald-400" data-testid="stat-total-employees">
-                {employees.length}
-              </div>
-            </div>
-            <div className="bg-gradient-to-br from-blue-500/10 to-primary/10 backdrop-blur-sm border border-blue-500/20 rounded-lg p-2">
-              <div className="text-[10px] text-muted-foreground font-medium">Shifts Today</div>
-              <div className="text-lg font-bold text-blue-400" data-testid="stat-shifts-today">
-                {shifts.filter(s => moment(s.startTime).isSame(moment(), 'day')).length}
-              </div>
-            </div>
-            <div className="bg-gradient-to-br from-purple-500/10 to-primary/10 backdrop-blur-sm border border-purple-500/20 rounded-lg p-2">
-              <div className="text-[10px] text-muted-foreground font-medium">Open Shifts</div>
-              <div className="text-lg font-bold text-purple-400" data-testid="stat-open-shifts">
-                {shifts.filter(s => !s.employeeId).length}
-              </div>
-            </div>
-            <div className="bg-gradient-to-br from-amber-500/10 to-primary/10 backdrop-blur-sm border border-amber-500/20 rounded-lg p-2">
-              <div className="text-[10px] text-muted-foreground font-medium">Draft Shifts</div>
-              <div className="text-lg font-bold text-amber-400" data-testid="stat-draft-shifts">
-                {shifts.filter(s => s.status === 'draft').length}
-              </div>
-            </div>
-          </div>
+      {/* Sling-style: Separate horizontal bars */}
+      
+      {/* Bar 1: Top Navigation Tabs */}
+      <div className="border-b bg-muted/30">
+        <div className="flex items-center gap-1 px-4 py-2 overflow-x-auto">
+          <Button variant="ghost" size="sm" className="text-xs whitespace-nowrap" data-testid="tab-all-schedule">
+            ALL SCHEDULE
+          </Button>
+          <Button variant="ghost" size="sm" className="text-xs whitespace-nowrap" data-testid="tab-my-schedule">
+            MY SCHEDULE
+          </Button>
+          <Button variant="ghost" size="sm" className="text-xs whitespace-nowrap" data-testid="tab-grid-view">
+            GRID VIEW
+          </Button>
+          <Button variant="ghost" size="sm" className="text-xs whitespace-nowrap" data-testid="tab-time-clock">
+            TIME CLOCK
+          </Button>
         </div>
+      </div>
 
-        {/* Period navigation & view selector */}
+      {/* Bar 2: Control Bar - Filters, Date Navigation, Actions */}
+      <div className="border-b bg-background px-4 py-3">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div className="flex items-center gap-2 flex-wrap">
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => navigatePeriod('prev')}
-              data-testid="button-prev-period"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <div className="text-xs sm:text-sm font-semibold flex-1 sm:flex-none sm:min-w-[200px] text-center">
-              {periodLabel}
+          {/* Left: Filters & Date Navigation */}
+          <div className="flex items-center gap-3 flex-wrap">
+            {/* Filter by dropdown */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground whitespace-nowrap">Filter by:</span>
+              <Select defaultValue="employees">
+                <SelectTrigger className="h-8 w-[130px] text-xs" data-testid="select-filter-by">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="employees">Employees</SelectItem>
+                  <SelectItem value="locations">Locations</SelectItem>
+                  <SelectItem value="positions">Positions</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => navigatePeriod('next')}
-              data-testid="button-next-period"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
+
+            {/* Time Frame selector */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground whitespace-nowrap">Time Frame:</span>
+              <Select 
+                value={viewMode} 
+                onValueChange={(value) => setViewMode(value as 'week' | 'bi-week' | 'semi-monthly' | 'monthly')}
+              >
+                <SelectTrigger className="h-8 w-[140px] text-xs" data-testid="select-time-frame">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="week">Week</SelectItem>
+                  <SelectItem value="bi-week">2 Weeks</SelectItem>
+                  <SelectItem value="semi-monthly">Semi-Monthly (15d)</SelectItem>
+                  <SelectItem value="monthly">Monthly (30d)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Date range with arrows */}
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => navigatePeriod('prev')}
+                data-testid="button-prev-period"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <div className="text-xs font-semibold min-w-[140px] text-center px-2">
+                {periodLabel}
+              </div>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => navigatePeriod('next')}
+                data-testid="button-next-period"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {/* Today button */}
             <Button
               variant="outline"
               size="sm"
+              className="h-8 text-xs"
               onClick={() => setCurrentDate(new Date())}
               data-testid="button-today"
             >
@@ -713,49 +767,62 @@ export default function ScheduleGrid() {
             </Button>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
-            {/* View mode selector */}
-            <div className="flex items-center gap-1 border rounded-lg p-1">
-              <Button
-                variant={viewMode === 'week' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setViewMode('week')}
-                data-testid="button-view-week"
-                className="h-7 px-2 text-xs"
-              >
-                <Calendar className="h-3 w-3 mr-1" />
-                Week
-              </Button>
-              <Button
-                variant={viewMode === 'bi-week' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setViewMode('bi-week')}
-                data-testid="button-view-bi-week"
-                className="h-7 px-2 text-xs"
-              >
-                <Calendar className="h-3 w-3 mr-1" />
-                2 Weeks
-              </Button>
-            </div>
-
-            {/* Legend */}
-            <div className="flex items-center gap-2 flex-wrap text-[10px] sm:text-xs">
+          {/* Right: Action Buttons */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Quick Stats - Using lucide icons instead of emoji */}
+            <div className="flex items-center gap-3 text-xs text-muted-foreground">
               <div className="flex items-center gap-1">
-                <div className="w-2 h-2 sm:w-3 sm:h-3 border-2 border-amber-500 rounded animate-pulse"></div>
-                <span className="whitespace-nowrap">Draft</span>
+                <Users className="h-3 w-3" />
+                <span data-testid="stat-total-employees">{employees.length}</span>
               </div>
               <div className="flex items-center gap-1">
-                <div className="w-2 h-2 sm:w-3 sm:h-3 border-2 border-blue-500 rounded"></div>
-                <span className="whitespace-nowrap">Published</span>
+                <div className="h-2 w-2 rounded-full bg-purple-500"></div>
+                <span data-testid="stat-open-shifts">{shifts.filter(s => !s.employeeId).length}</span>
               </div>
               <div className="flex items-center gap-1">
-                <div className="w-2 h-2 sm:w-3 sm:h-3 border-2 border-purple-500 border-dashed rounded"></div>
-                <span className="whitespace-nowrap">Open</span>
+                <div className="h-2 w-2 rounded-full bg-amber-500"></div>
+                <span data-testid="stat-draft-shifts">{shifts.filter(s => s.status === 'draft').length}</span>
               </div>
             </div>
+            
+            <Button variant="outline" size="sm" className="h-8 text-xs" data-testid="button-export">
+              Export
+            </Button>
+            <Button variant="outline" size="sm" className="h-8 text-xs" data-testid="button-print">
+              <Printer className="h-3 w-3 mr-1" />
+              Print
+            </Button>
+            <Button 
+              size="sm" 
+              className="h-8 text-xs bg-emerald-600 hover:bg-emerald-700" 
+              onClick={() => handleCreateShift('open', new Date())}
+              data-testid="button-add-shift"
+            >
+              <Plus className="h-3 w-3 mr-1" />
+              Add shift
+            </Button>
           </div>
         </div>
       </div>
+
+      {/* Bar 3: Legend */}
+      <div className="border-b bg-muted/20 px-4 py-2">
+        <div className="flex items-center gap-4 text-xs flex-wrap">
+          <div className="flex items-center gap-1.5">
+            <div className="h-3 w-3 rounded bg-gradient-to-br from-blue-500 to-blue-600"></div>
+            <span className="text-muted-foreground">Published</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="h-3 w-3 rounded bg-gradient-to-br from-amber-500 to-amber-600"></div>
+            <span className="text-muted-foreground">Draft</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="h-3 w-3 rounded border-2 border-dashed border-purple-500 bg-gradient-to-br from-purple-500/50 to-purple-600/50"></div>
+            <span className="text-muted-foreground">Open/Unassigned</span>
+          </div>
+        </div>
+      </div>
+
 
       {/* Schedule grid */}
       <DndContext
