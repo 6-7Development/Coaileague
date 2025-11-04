@@ -64,7 +64,7 @@ export default function AuditorPortalCompact() {
       </div>
 
       {/* COMPACT STATS */}
-      <div className="grid grid-cols-4 gap-2 mb-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
         {[
           { icon: DollarSign, label: "Total Revenue", value: `$${totalRevenue.toFixed(2)}`, color: "text-emerald-600", testid: "stat-revenue" },
           { icon: FileText, label: "Total Invoices", value: invoices.length, color: "text-blue-600", testid: "stat-invoices" },
@@ -86,7 +86,7 @@ export default function AuditorPortalCompact() {
       </div>
 
       {/* CONTENT GRID */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {/* Recent Invoices */}
         <Card>
           <CardContent className="p-3">

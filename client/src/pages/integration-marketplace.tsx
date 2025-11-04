@@ -285,7 +285,7 @@ export default function IntegrationMarketplace() {
 
       {/* Main content */}
       <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
-        <TabsList className="grid w-full grid-cols-6 gap-4">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 sm:gap-4">
           {categories.map(cat => {
             const Icon = cat.icon;
             return (

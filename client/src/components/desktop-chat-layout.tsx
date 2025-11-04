@@ -201,11 +201,11 @@ export function DesktopChatLayout({
         </div>
       </div>
 
-      {/* User List Sidebar (IRC-style) */}
+      {/* User List Sidebar (IRC-style) - Hidden on mobile */}
       {showUserList && (
         <>
-          <Separator orientation="vertical" />
-          <div className="w-64 flex flex-col bg-card border-l">
+          <Separator orientation="vertical" className="hidden md:block" />
+          <div className="hidden md:flex w-64 flex-col bg-card border-l">
             <div className="p-3 border-b">
               <h3 className="text-sm font-bold flex items-center gap-2">
                 <Users className="w-4 h-4" />

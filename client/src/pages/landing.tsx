@@ -206,7 +206,7 @@ export default function Landing() {
       {/* Stats Bar - PLATFORM CAPABILITIES */}
       <section className="border-b py-8 sm:py-12">
         <div className="responsive-container">
-          <div className="grid grid-cols-3 gap-4 sm:gap-8 max-w-4xl mx-auto text-center">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-8 max-w-4xl mx-auto text-center">
             <div className="space-y-1 sm:space-y-2">
               <div className="responsive-h2 text-primary">8</div>
               <div className="responsive-small text-muted-foreground text-wrap-auto">Core OS Modules</div>
