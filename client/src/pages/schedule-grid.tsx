@@ -197,7 +197,7 @@ function EmployeeColumn({ employee, shifts, date, onShiftClick, employees, clien
   clients: Client[];
 }) {
   return (
-    <div className="flex-1 min-w-[180px]">
+    <div className="flex-1 min-w-[150px] sm:min-w-[180px]">
       {/* Employee header */}
       <div className="sticky top-0 z-10 bg-card border-b p-3 space-y-2">
         <div className="flex items-center gap-2">
@@ -251,7 +251,7 @@ function OpenShiftsColumn({ shifts, date, onShiftClick, clients }: {
   }, [shifts, date]);
 
   return (
-    <div className="flex-1 min-w-[180px]">
+    <div className="flex-1 min-w-[150px] sm:min-w-[180px]">
       <div className="sticky top-0 z-10 bg-purple-500/20 border-b border-purple-500/30 p-3">
         <div className="flex items-center gap-2">
           <div className="p-2 rounded-lg bg-purple-500/20">
@@ -463,22 +463,22 @@ export default function ScheduleGrid() {
   return (
     <div className="flex flex-col h-screen bg-background">
       {/* Header */}
-      <div className="border-b p-4 space-y-4">
-        <div className="flex items-center justify-between">
+      <div className="border-b p-2 sm:p-4 space-y-2 sm:space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <div>
-            <h1 className="text-2xl font-bold flex items-center gap-2">
-              <Sparkles className="h-6 w-6 text-primary" />
+            <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
+              <Sparkles className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
               ScheduleOS™
             </h1>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs sm:text-sm text-muted-foreground">
               Drag-and-drop shift scheduling
             </p>
           </div>
         </div>
 
         {/* Week navigation */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex items-center gap-2 flex-wrap">
             <Button
               variant="outline"
               size="icon"
@@ -487,7 +487,7 @@ export default function ScheduleGrid() {
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <div className="text-sm font-semibold min-w-[200px] text-center">
+            <div className="text-xs sm:text-sm font-semibold flex-1 sm:flex-none sm:min-w-[200px] text-center">
               {weekLabel}
             </div>
             <Button
@@ -500,6 +500,7 @@ export default function ScheduleGrid() {
             </Button>
             <Button
               variant="outline"
+              size="sm"
               onClick={() => setCurrentDate(new Date())}
               data-testid="button-today"
             >
@@ -507,19 +508,19 @@ export default function ScheduleGrid() {
             </Button>
           </div>
 
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 text-xs">
+          <div className="flex items-center gap-2 sm:gap-4">
+            <div className="flex items-center gap-2 flex-wrap text-[10px] sm:text-xs">
               <div className="flex items-center gap-1">
-                <div className="w-3 h-3 border-2 border-amber-500 rounded animate-pulse"></div>
-                <span>Draft</span>
+                <div className="w-2 h-2 sm:w-3 sm:h-3 border-2 border-amber-500 rounded animate-pulse"></div>
+                <span className="whitespace-nowrap">Draft</span>
               </div>
               <div className="flex items-center gap-1">
-                <div className="w-3 h-3 border-2 border-blue-500 rounded"></div>
-                <span>Published</span>
+                <div className="w-2 h-2 sm:w-3 sm:h-3 border-2 border-blue-500 rounded"></div>
+                <span className="whitespace-nowrap">Published</span>
               </div>
               <div className="flex items-center gap-1">
-                <div className="w-3 h-3 border-2 border-purple-500 border-dashed rounded"></div>
-                <span>Open</span>
+                <div className="w-2 h-2 sm:w-3 sm:h-3 border-2 border-purple-500 border-dashed rounded"></div>
+                <span className="whitespace-nowrap">Open</span>
               </div>
             </div>
           </div>
@@ -533,8 +534,8 @@ export default function ScheduleGrid() {
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <ScrollArea className="flex-1">
-          <div className="flex">
+        <div className="flex-1 overflow-x-auto overflow-y-auto">
+          <div className="flex min-w-fit">
             {/* Time column */}
             <div className="sticky left-0 z-20 bg-background border-r">
               <div className="h-[72px] border-b bg-muted/20"></div>
@@ -575,7 +576,7 @@ export default function ScheduleGrid() {
               />
             </div>
           </div>
-        </ScrollArea>
+        </div>
 
         <DragOverlay>
           {activeShift && (

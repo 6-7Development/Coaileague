@@ -107,9 +107,9 @@ function AppContent() {
     window.location.pathname.startsWith(route)
   );
   
-  // Custom sidebar width for better workspace layout
+  // Custom sidebar width for better workspace layout (increased for longer menu text)
   const style = {
-    "--sidebar-width": "16rem",
+    "--sidebar-width": "20rem",  // 320px - prevents text truncation
     "--sidebar-width-icon": "4rem",
   };
 
@@ -151,8 +151,8 @@ function AppContent() {
             
             {/* Global Header with Sidebar Toggle - Hidden for mobile chat AND HelpDesk */}
             {!isMobileChat && !isHelpDesk && (
-              <header className="flex items-center justify-end px-3 py-1 border-b bg-card shrink-0">
-                <div className="flex items-center gap-2">
+              <header className="flex items-center justify-end px-2 sm:px-3 py-1 border-b bg-card shrink-0">
+                <div className="flex items-center gap-1 sm:gap-2">
                   <SidebarTrigger data-testid="button-sidebar-toggle" />
                   <Button
                     variant="ghost"
@@ -160,8 +160,9 @@ function AppContent() {
                     onClick={() => setShowOnboarding(true)}
                     data-testid="button-open-onboarding"
                     title="Platform Tour"
+                    className="h-8 w-8 sm:h-9 sm:w-9"
                   >
-                    <Sparkles className="h-5 w-5" />
+                    <Sparkles className="h-4 w-4 sm:h-5 sm:w-5" />
                   </Button>
                   <ThemeToggle />
                 </div>

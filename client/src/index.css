@@ -549,6 +549,16 @@
     animation: shimmer 4s infinite;
   }
 
+  /* Hide scrollbars while maintaining scroll functionality */
+  .scrollbar-hide {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;  /* Chrome, Safari, Opera */
+  }
+
   /* Animated Background Mesh - WorkforceOS Style */
   @keyframes mesh-flow {
     0%, 100% { opacity: 0.3; }
