@@ -130,9 +130,9 @@ export function UniversalTransitionOverlay({
                     >
                       <defs>
                         <linearGradient id="autoforce-gradient-overlay" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <stop offset="0%" stopColor="#3B82F6" />
-                          <stop offset="50%" stopColor="#8B5CF6" />
-                          <stop offset="100%" stopColor="#06B6D4" />
+                          <stop offset="0%" stopColor="#059669" />
+                          <stop offset="50%" stopColor="#10b981" />
+                          <stop offset="100%" stopColor="#6ee7b7" />
                         </linearGradient>
                         <filter id="glow-overlay">
                           <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
@@ -163,10 +163,10 @@ export function UniversalTransitionOverlay({
                   {/* Brand Name */}
                   <div className="flex flex-col items-center gap-1 w-full">
                     <div className="flex items-baseline gap-1 justify-center">
-                      <span className="text-2xl sm:text-3xl font-black bg-gradient-to-r from-blue-500 via-purple-500 to-cyan-400 bg-clip-text text-transparent">
+                      <span className="text-2xl sm:text-3xl font-black bg-gradient-to-r from-emerald-600 via-emerald-500 to-emerald-300 bg-clip-text text-transparent">
                         AutoForce
                       </span>
-                      <span className="text-[10px] font-black text-blue-500 align-super">™</span>
+                      <span className="text-[10px] font-black text-emerald-500 align-super">™</span>
                     </div>
                     <span className="text-[10px] sm:text-xs font-semibold text-slate-300 text-center leading-tight px-2 break-words">
                       Autonomous Workforce<br className="sm:hidden" /> Management Solutions
