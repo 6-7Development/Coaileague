@@ -138,7 +138,7 @@ function DraggableShiftCard({ shift, employee, client }: {
 }
 
 // Droppable time slot
-function DroppableTimeSlot({ employeeId, hour, date, shifts, employees, clients, onShiftClick }: {
+function DroppableTimeSlot({ employeeId, hour, date, shifts, employees, clients, onShiftClick, onCreateShift }: {
   employeeId: string;
   hour: number;
   date: Date;
@@ -146,6 +146,7 @@ function DroppableTimeSlot({ employeeId, hour, date, shifts, employees, clients,
   employees: Employee[];
   clients: Client[];
   onShiftClick: (shift: Shift) => void;
+  onCreateShift?: (employeeId: string, hour: number, date: Date) => void;
 }) {
   const dropId = `${employeeId}-${hour}`;
   const { setNodeRef, isOver } = useDroppable({
@@ -161,20 +162,31 @@ function DroppableTimeSlot({ employeeId, hour, date, shifts, employees, clients,
     });
   }, [shifts, employeeId, date, hour]);
 
+  const handleCellClick = () => {
+    if (shiftsInSlot.length === 0 && onCreateShift) {
+      onCreateShift(employeeId, hour, date);
+    }
+  };
+
   return (
     <div
       ref={setNodeRef}
+      onClick={handleCellClick}
       className={`
-        min-h-[80px] border-b border-r p-2 space-y-1
+        min-h-[80px] border-b border-r p-2 space-y-1 relative group cursor-pointer
         ${isOver ? 'bg-primary/10 ring-2 ring-primary' : 'bg-background'}
         ${hour % 2 === 0 ? 'bg-muted/5' : ''}
+        hover-elevate transition-all
       `}
       data-testid={`drop-zone-${dropId}`}
     >
       {shiftsInSlot.map(shift => (
         <div
           key={shift.id}
-          onClick={() => onShiftClick(shift)}
+          onClick={(e) => {
+            e.stopPropagation();
+            onShiftClick(shift);
+          }}
         >
           <DraggableShiftCard
             shift={shift}
@@ -183,18 +195,29 @@ function DroppableTimeSlot({ employeeId, hour, date, shifts, employees, clients,
           />
         </div>
       ))}
+      
+      {/* Add Shift Hint - shows on hover for empty cells */}
+      {shiftsInSlot.length === 0 && (
+        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="bg-primary/20 backdrop-blur-sm border border-primary/30 rounded-lg px-3 py-2 flex items-center gap-2">
+            <Plus className="h-4 w-4 text-primary" />
+            <span className="text-xs font-medium text-primary">Add Shift</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 // Employee column with droppable time slots
-function EmployeeColumn({ employee, shifts, date, onShiftClick, employees, clients }: {
+function EmployeeColumn({ employee, shifts, date, onShiftClick, employees, clients, onCreateShift }: {
   employee: Employee;
   shifts: Shift[];
   date: Date;
   onShiftClick: (shift: Shift) => void;
   employees: Employee[];
   clients: Client[];
+  onCreateShift?: (employeeId: string, hour: number, date: Date) => void;
 }) {
   return (
     <div className="flex-1 min-w-[150px] sm:min-w-[180px]">
@@ -229,7 +252,64 @@ function EmployeeColumn({ employee, shifts, date, onShiftClick, employees, clien
             employees={employees}
             clients={clients}
             onShiftClick={onShiftClick}
+            onCreateShift={onCreateShift}
           />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Placeholder column when no employees exist
+function PlaceholderEmployeeColumn({ onCreateShift, onAddEmployee }: {
+  onCreateShift?: (employeeId: string, hour: number, date: Date) => void;
+  onAddEmployee?: () => void;
+}) {
+  return (
+    <div className="flex-1 min-w-[200px] sm:min-w-[250px]">
+      {/* Placeholder header */}
+      <div className="sticky top-0 z-10 bg-muted/20 border-b p-3 space-y-2">
+        <div className="flex flex-col items-center gap-2 text-center">
+          <div className="p-2 rounded-lg bg-primary/10">
+            <Users className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <div className="text-sm font-semibold">No Employees Yet</div>
+            <div className="text-xs text-muted-foreground mb-2">
+              Add employees to schedule shifts
+            </div>
+            <Button 
+              size="sm" 
+              onClick={onAddEmployee}
+              data-testid="button-add-first-employee"
+            >
+              <Plus className="h-3 w-3 mr-1" />
+              Add Employee
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Clickable time grid */}
+      <div className="relative">
+        {TIME_SLOTS.map((slot) => (
+          <div
+            key={`placeholder-${slot.hour}`}
+            onClick={() => onCreateShift && onCreateShift('open', slot.hour, new Date())}
+            className={`
+              min-h-[80px] border-b border-r p-2 relative group cursor-pointer
+              ${slot.hour % 2 === 0 ? 'bg-muted/5' : 'bg-background'}
+              hover-elevate transition-all
+            `}
+            data-testid={`placeholder-slot-${slot.hour}`}
+          >
+            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="bg-primary/20 backdrop-blur-sm border border-primary/30 rounded-lg px-3 py-2 flex items-center gap-2">
+                <Plus className="h-4 w-4 text-primary" />
+                <span className="text-xs font-medium text-primary">Create Open Shift</span>
+              </div>
+            </div>
+          </div>
         ))}
       </div>
     </div>
@@ -296,6 +376,12 @@ export default function ScheduleGrid() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedShift, setSelectedShift] = useState<Shift | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isCreateShiftDialogOpen, setIsCreateShiftDialogOpen] = useState(false);
+  const [createShiftContext, setCreateShiftContext] = useState<{
+    employeeId: string;
+    hour: number;
+    date: Date;
+  } | null>(null);
 
   // Fetch data
   const { data: shifts = [], isLoading: shiftsLoading } = useQuery<Shift[]>({
@@ -436,6 +522,16 @@ export default function ScheduleGrid() {
     setIsEditDialogOpen(true);
   };
 
+  const handleCreateShift = (employeeId: string, hour: number, date: Date) => {
+    setCreateShiftContext({ employeeId, hour, date });
+    setIsCreateShiftDialogOpen(true);
+  };
+
+  const handleAddEmployee = () => {
+    // Navigate to employee creation page
+    window.location.href = '/employees';
+  };
+
   const handlePublishShift = () => {
     if (selectedShift) {
       publishShiftMutation.mutate(selectedShift.id);
@@ -555,17 +651,25 @@ export default function ScheduleGrid() {
 
             {/* Employee columns */}
             <div className="flex">
-              {employees.map(employee => (
-                <EmployeeColumn
-                  key={employee.id}
-                  employee={employee}
-                  shifts={shifts}
-                  date={currentDate}
-                  onShiftClick={handleShiftClick}
-                  employees={employees}
-                  clients={clients}
+              {employees.length === 0 ? (
+                <PlaceholderEmployeeColumn 
+                  onCreateShift={handleCreateShift}
+                  onAddEmployee={handleAddEmployee}
                 />
-              ))}
+              ) : (
+                employees.map(employee => (
+                  <EmployeeColumn
+                    key={employee.id}
+                    employee={employee}
+                    shifts={shifts}
+                    date={currentDate}
+                    onShiftClick={handleShiftClick}
+                    employees={employees}
+                    clients={clients}
+                    onCreateShift={handleCreateShift}
+                  />
+                ))
+              )}
 
               {/* Open shifts column */}
               <OpenShiftsColumn
@@ -588,6 +692,63 @@ export default function ScheduleGrid() {
           )}
         </DragOverlay>
       </DndContext>
+
+      {/* Create Shift Dialog */}
+      {createShiftContext && (
+        <Dialog open={isCreateShiftDialogOpen} onOpenChange={setIsCreateShiftDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Create New Shift</DialogTitle>
+              <DialogDescription>
+                {moment(createShiftContext.date).format('MMMM D, YYYY')} at {moment().hour(createShiftContext.hour).minute(0).format('h:mm A')}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-4">
+              <div className="text-center">
+                <div className="inline-flex items-center gap-2 bg-primary/10 px-4 py-3 rounded-lg">
+                  <Clock className="h-5 w-5 text-primary" />
+                  <div className="text-left">
+                    <div className="text-sm font-semibold">
+                      {createShiftContext.employeeId === 'open' ? 'Open Shift' : 'Employee Shift'}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Use the shift builder below to configure this shift
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="text-center text-sm text-muted-foreground">
+                <p>Quick shift creation coming soon!</p>
+                <p className="mt-2">For now, use the "Create Shift" button in the header to add detailed shifts.</p>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setIsCreateShiftDialogOpen(false)}
+                data-testid="button-cancel-create-shift"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  toast({
+                    title: "Coming Soon",
+                    description: "Quick shift creation is in development. Please use the main shift builder.",
+                  });
+                  setIsCreateShiftDialogOpen(false);
+                }}
+                data-testid="button-confirm-create-shift"
+              >
+                Continue to Shift Builder
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Edit Shift Dialog */}
       {selectedShift && (
