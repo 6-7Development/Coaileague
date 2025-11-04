@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WorkForceOS Wordmark Concepts</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --color-bg: #0C101C; /* Very dark blue/black */
+            --color-green: #34D399; /* Emerald Green */
+            --color-blue: #3B82F6; /* Bright Blue */
+            --color-gray: #E2E8F0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--color-bg);
+            color: var(--color-gray);
+            padding: 40px;
+        }
+
+        .logo-card {
+            background-color: #1E293B;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
+            border: 1px solid #334155;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* Concept 1: The Stability Mark */
+        .stability-mark {
+            font-size: 56px;
+            font-weight: 800; /* Extra Bold */
+            letter-spacing: -2px;
+        }
+
+        /* Concept 2: The Integrated Mark */
+        .integrated-mark {
+            font-size: 52px;
+            font-weight: 900; /* Black */
+            letter-spacing: -1px;
+        }
+        .os-box {
+            background-color: var(--color-blue);
+            color: white;
+            padding: 2px 8px;
+            font-size: 0.5em; /* OS smaller than the main word */
+            font-weight: 900;
+            border-radius: 4px;
+            margin-left: 6px;
+            display: inline-block;
+            transform: translateY(-8px); /* Lift the OS box */
+        }
+        
+        /* Concept 3: The Efficiency Mark */
+        .efficiency-mark {
+            font-size: 60px;
+            font-weight: 200; /* Extra Light */
+            letter-spacing: 5px; /* Wide spacing */
+            text-transform: uppercase;
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <div class="max-w-4xl mx-auto w-full">
+        <h1 class="text-3xl font-bold mb-10 text-center text-white">WorkForceOS Wordmark Concepts</h1>
+
+        <!-- Concept 1: The Stability Mark -->
+        <div class="logo-card">
+            <h3 class="text-xl font-semibold mb-6 text-green-400">Concept 1: The Stability Mark (Corporate & Reliable)</h3>
+            <div class="stability-mark">
+                <span class="text-white">WorkForce</span><span class="text-green-400">OS</span>
+            </div>
+            <p class="mt-4 text-sm text-gray-400 text-center">
+                **Style:** Bold, heavy, and authoritative. Uses strong separation between 'WorkForce' and 'OS' to denote two distinct, powerful systems joining.
+            </p>
+        </div>
+
+        <!-- Concept 2: The Integrated Mark -->
+        <div class="logo-card">
+            <h3 class="text-xl font-semibold mb-6 text-blue-400">Concept 2: The Integrated Mark (High-Tech & Seamless)</h3>
+            <div class="integrated-mark">
+                <span class="text-white">WORKFORCE</span><span class="os-box">OS</span>
+            </div>
+            <p class="mt-4 text-sm text-gray-400 text-center">
+                **Style:** Monolithic and sleek. The "OS" is treated like a small, high-tech stamp or badge, emphasizing that it's a **defined system** integrated with the workforce.
+            </p>
+        </div>
+
+        <!-- Concept 3: The Efficiency Mark -->
+        <div class="logo-card">
+            <h3 class="text-xl font-semibold mb-6 text-gray-300">Concept 3: The Efficiency Mark (Modern & Modular)</h3>
+            <div class="efficiency-mark">
+                <span class="text-white">WORKFORCE</span><span class="text-blue-400">OS</span>
+            </div>
+            <p class="mt-4 text-sm text-gray-400 text-center">
+                **Style:** Light, wide, and airy, suggesting efficiency, data flow, and minimal friction. The **blue 'OS'** creates a visual anchor, like a central node in a network.
+            </p>
+        </div>
+    </div>
+</body>
+</html>

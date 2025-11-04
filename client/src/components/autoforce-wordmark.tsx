@@ -1,0 +1,52 @@
+import { cn } from "@/lib/utils";
+
+interface AutoForceWordmarkProps {
+  variant?: "stability" | "integrated" | "efficiency";
+  className?: string;
+}
+
+export function AutoForceWordmark({ variant = "stability", className }: AutoForceWordmarkProps) {
+  if (variant === "stability") {
+    return (
+      <div className={cn("flex items-baseline font-inter", className)}>
+        <span className="text-white font-extrabold tracking-tight" style={{ fontSize: '1em', letterSpacing: '-0.03em' }}>
+          AutoForce
+        </span>
+        <span className="text-primary font-extrabold tracking-tight" style={{ fontSize: '1em', letterSpacing: '-0.03em' }}>
+          ™
+        </span>
+      </div>
+    );
+  }
+
+  if (variant === "integrated") {
+    return (
+      <div className={cn("flex items-center font-inter", className)}>
+        <span className="text-white font-black tracking-tight uppercase" style={{ fontSize: '1em', letterSpacing: '-0.02em' }}>
+          AUTOFORCE
+        </span>
+        <span 
+          className="bg-primary text-white font-black rounded px-1.5 py-0.5 ml-1.5 inline-block"
+          style={{ 
+            fontSize: '0.4em',
+            transform: 'translateY(-0.3em)'
+          }}
+        >
+          ™
+        </span>
+      </div>
+    );
+  }
+
+  // efficiency variant
+  return (
+    <div className={cn("flex items-baseline font-inter", className)}>
+      <span className="text-white font-extralight tracking-widest uppercase" style={{ fontSize: '1em', letterSpacing: '0.08em' }}>
+        AUTOFORCE
+      </span>
+      <span className="text-primary font-extralight tracking-widest uppercase" style={{ fontSize: '1em', letterSpacing: '0.08em' }}>
+        ™
+      </span>
+    </div>
+  );
+}

@@ -57,7 +57,7 @@ import {
   supportTickets,
   escalationTickets,
   motdMessages,
-  motdAcknowledgments,
+  motdAcknowledgment,
   termsAcknowledgments,
   chatAgreementAcceptances,
   chatMessages,
@@ -9013,11 +9013,11 @@ Return ONLY valid JSON array with this exact structure:
       // Check if user has acknowledged this MOTD
       const [acknowledgment] = await db
         .select()
-        .from(motdAcknowledgments)
+        .from(motdAcknowledgment)
         .where(
           and(
-            eq(motdAcknowledgments.motdId, motd.id),
-            eq(motdAcknowledgments.userId, userId)
+            eq(motdAcknowledgment.motdId, motd.id),
+            eq(motdAcknowledgment.userId, userId)
           )
         )
         .limit(1);
@@ -9103,11 +9103,11 @@ Return ONLY valid JSON array with this exact structure:
       // Check if already acknowledged
       const [existing] = await db
         .select()
-        .from(motdAcknowledgments)
+        .from(motdAcknowledgment)
         .where(
           and(
-            eq(motdAcknowledgments.motdId, motdId),
-            eq(motdAcknowledgments.userId, userId)
+            eq(motdAcknowledgment.motdId, motdId),
+            eq(motdAcknowledgment.userId, userId)
           )
         )
         .limit(1);
@@ -9118,7 +9118,7 @@ Return ONLY valid JSON array with this exact structure:
 
       // Create acknowledgment
       await db
-        .insert(motdAcknowledgments)
+        .insert(motdAcknowledgment)
         .values({
           motdId,
           userId,
