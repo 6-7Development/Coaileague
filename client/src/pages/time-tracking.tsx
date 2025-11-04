@@ -30,6 +30,7 @@ import { MobileLoading } from "@/components/mobile-loading";
 import { MobilePageWrapper } from "@/components/mobile-page-wrapper";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Link } from "wouter";
+import { PageHeader } from "@/components/page-header";
 
 export default function TimeTracking() {
   const { toast } = useToast();
@@ -311,32 +312,16 @@ export default function TimeTracking() {
 
   const pageContent = (
     <div className="min-h-screen w-full bg-background">
-      <div className="mobile-container p-3 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full space-y-4 sm:space-y-6">
-        {/* Header with Navigation */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-          <div className="flex items-center gap-2 sm:gap-3">
-            <Link href="/dashboard">
-              <Button variant="outline" size="icon" className="min-h-[44px] min-w-[44px] shrink-0" data-testid="button-back-dashboard" aria-label="Back to Dashboard">
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-            </Link>
-            <div className="min-w-0 flex-1">
-              <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-0.5 sm:mb-1 break-anywhere" data-testid="text-timetracking-title">
-                Time Clock
-              </h2>
-              <p className="text-xs sm:text-sm text-muted-foreground break-anywhere" data-testid="text-timetracking-subtitle">
-                Manage employee clock-ins and timesheet reports
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <Link href="/dashboard" className="flex-1 sm:flex-initial">
-              <Button variant="outline" size="sm" className="w-full sm:w-auto min-h-[44px]" data-testid="button-home">
-                <Home className="mr-2 h-4 w-4" />
-                <span className="whitespace-nowrap">Dashboard</span>
-              </Button>
-            </Link>
-            {(workspaceRole === 'owner' || workspaceRole === 'manager') && (
+      <PageHeader
+        title="Time Clock"
+        description="Manage employee clock-ins and timesheet reports"
+        breadcrumbs={[
+          { label: "Time Tracking" }
+        ]}
+        showBackButton={true}
+        backHref="/dashboard"
+      >
+        {(workspaceRole === 'owner' || workspaceRole === 'manager') && (
               <Dialog open={clockInDialogOpen} onOpenChange={setClockInDialogOpen}>
                 <DialogTrigger asChild>
                   <Button className="min-h-[44px]" data-testid="button-clock-in">
@@ -432,10 +417,10 @@ export default function TimeTracking() {
                 </div>
               </DialogContent>
             </Dialog>
-            )}
-          </div>
-        </div>
+        )}
+      </PageHeader>
 
+      <div className="mobile-container p-3 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full space-y-4 sm:space-y-6">
         {/* Sling-style Filters */}
       <Card>
         <CardContent className="p-3 sm:p-4">
