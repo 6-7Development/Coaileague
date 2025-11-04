@@ -335,7 +335,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         demoUser = await storage.getUser(DEMO_USER_ID);
       }
 
-      // Create session manually (bypass OIDC)
+      // Support BOTH auth systems (custom auth + Replit Auth)
+      // Custom auth format (requireAuth middleware expects this)
+      req.session.userId = DEMO_USER_ID;
+      
+      // Replit Auth format (isAuthenticated middleware expects this)
+      // Include OIDC fields that isAuthenticated checks for
       req.session.passport = {
         user: {
           claims: {
@@ -343,7 +348,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             email: "demo@shiftsync.app",
             first_name: "Demo",
             last_name: "User"
-          }
+          },
+          // OIDC token fields required by isAuthenticated middleware
+          expires_at: Math.floor(Date.now() / 1000) + (24 * 60 * 60), // 24 hours from now
+          refresh_token: "demo-refresh-token", // Dummy token for demo
         }
       };
 
