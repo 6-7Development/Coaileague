@@ -95,8 +95,8 @@ export default function RootAdminPortalCompact() {
         </div>
       </div>
 
-      {/* LIVE METRICS - Single row, ultra compact */}
-      <div className="grid grid-cols-6 gap-2 mb-3">
+      {/* LIVE METRICS - Responsive grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 mb-3">
         {[
           { icon: Building2, label: "Workspaces", value: (supportStats as any)?.totalWorkspaces || 0, color: "text-blue-600", testid: "stat-workspaces" },
           { icon: DollarSign, label: "Revenue", value: `$${(supportStats as any)?.totalRevenue || "0"}`, color: "text-emerald-600", testid: "stat-revenue" },
@@ -138,7 +138,7 @@ export default function RootAdminPortalCompact() {
 
         {/* OVERVIEW TAB - Ultra compact tables */}
         <TabsContent value="overview" className="space-y-3 mt-0">
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {/* System Health - Compact inline */}
             <Card>
               <CardContent className="p-3">
@@ -171,7 +171,7 @@ export default function RootAdminPortalCompact() {
             </Card>
 
             {/* Recent Activity - Compact list */}
-            <Card className="col-span-2">
+            <Card className="sm:col-span-2 lg:col-span-2">
               <CardContent className="p-3">
                 <h3 className="text-xs font-semibold mb-2 flex items-center gap-1">
                   <Activity className="h-3 w-3" />

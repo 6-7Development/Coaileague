@@ -107,7 +107,7 @@ export default function EmployeePortalCompact() {
       </div>
 
       {/* COMPACT STATS */}
-      <div className="grid grid-cols-4 gap-2 mb-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
         {[
           { icon: Clock, label: "Hours This Week", value: `${totalHoursThisWeek.toFixed(1)}h`, color: "text-indigo-600", testid: "stat-hours" },
           { icon: DollarSign, label: "Total Earnings", value: `$${totalEarnings.toFixed(2)}`, color: "text-emerald-600", testid: "stat-earnings" },
@@ -129,7 +129,7 @@ export default function EmployeePortalCompact() {
       </div>
 
       {/* CONTENT GRID */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {/* This Week's Schedule */}
         <Card>
           <CardContent className="p-3">
