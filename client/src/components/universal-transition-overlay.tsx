@@ -104,10 +104,10 @@ export function UniversalTransitionOverlay({
               stiffness: 150,
               duration: 0.8
             }}
-            className={`relative backdrop-blur-xl bg-gradient-to-br ${config.color} border ${config.borderColor} rounded-3xl p-8 max-w-md mx-4 shadow-2xl`}
+            className={`relative backdrop-blur-xl bg-gradient-to-br ${config.color} border ${config.borderColor} rounded-2xl sm:rounded-3xl p-6 sm:p-8 max-w-sm sm:max-w-md mx-4 shadow-2xl`}
           >
-            {/* Logo with animation - slower entrance */}
-            <div className="flex justify-center mb-6">
+            {/* Logo with animation - responsive sizing */}
+            <div className="flex justify-center mb-4 sm:mb-6">
               <motion.div
                 initial={{ scale: 0.5, opacity: 0, rotate: -10 }}
                 animate={{ scale: 1, opacity: 1, rotate: 0 }}
@@ -117,13 +117,14 @@ export function UniversalTransitionOverlay({
                   damping: 20,
                   stiffness: 150
                 }}
+                className="scale-90 sm:scale-100"
               >
                 <AutoForceLogo variant="full" size="sm" animated={true} />
               </motion.div>
             </div>
 
-            {/* Status icon - more dramatic entrance */}
-            <div className="flex justify-center mb-4">
+            {/* Status icon - responsive sizing */}
+            <div className="flex justify-center mb-3 sm:mb-4">
               <motion.div
                 initial={{ scale: 0, rotate: -360 }}
                 animate={{ scale: 1, rotate: 0 }}
@@ -133,12 +134,13 @@ export function UniversalTransitionOverlay({
                   damping: 15,
                   duration: 0.8
                 }}
+                className="[&>svg]:w-10 [&>svg]:h-10 sm:[&>svg]:w-12 sm:[&>svg]:h-12"
               >
                 {config.icon}
               </motion.div>
             </div>
 
-            {/* Message - slower fade in */}
+            {/* Message - responsive text sizing */}
             {message && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -150,12 +152,12 @@ export function UniversalTransitionOverlay({
                 }}
                 className="text-center"
               >
-                <h3 className="text-white font-semibold text-lg mb-2">
+                <h3 className="text-white font-semibold text-base sm:text-lg mb-2">
                   {message}
                 </h3>
                 {submessage && (
                   <motion.p 
-                    className="text-slate-300 text-sm"
+                    className="text-slate-300 text-xs sm:text-sm"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 1.1, duration: 0.5 }}

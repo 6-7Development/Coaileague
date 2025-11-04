@@ -3610,6 +3610,296 @@ export type InsertEmailSend = z.infer<typeof insertEmailSendSchema>;
 export type EmailSend = typeof emailSends.$inferSelect;
 
 // ============================================================================
+// SALES MVP: DEALOS™ + BIDOS™ - CRM & PROCUREMENT SYSTEM
+// ============================================================================
+
+// Deals/Opportunities - Sales pipeline management
+export const deals = pgTable("deals", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Deal identification
+  dealName: varchar("deal_name").notNull(),
+  companyName: varchar("company_name").notNull(),
+  
+  // Relationships
+  leadId: varchar("lead_id").references(() => leads.id, { onDelete: 'set null' }),
+  rfpId: varchar("rfp_id"),
+  
+  // Pipeline stage
+  stage: varchar("stage").default("prospect").notNull(), // 'prospect', 'qualified', 'rfp_identified', 'proposal_sent', 'negotiation', 'awarded', 'lost'
+  
+  // Deal value
+  estimatedValue: decimal("estimated_value", { precision: 12, scale: 2 }),
+  probability: integer("probability").default(50), // 0-100%
+  expectedCloseDate: timestamp("expected_close_date"),
+  actualCloseDate: timestamp("actual_close_date"),
+  
+  // Assignment
+  ownerId: varchar("owner_id"), // Platform admin/sales rep user ID
+  
+  // Status
+  status: varchar("status").default("active"), // 'active', 'won', 'lost'
+  lostReason: text("lost_reason"),
+  
+  // Notes
+  notes: text("notes"),
+  
+  // Timestamps
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// RFPs - Request for Proposal database
+export const rfps = pgTable("rfps", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // RFP identification
+  title: varchar("title").notNull(),
+  rfpNumber: varchar("rfp_number"),
+  buyer: varchar("buyer").notNull(), // Issuing organization
+  
+  // Source
+  sourceUrl: varchar("source_url"),
+  source: varchar("source").default("manual"), // 'sam_gov', 'state_portal', 'manual', etc.
+  
+  // Dates
+  postedDate: timestamp("posted_date"),
+  dueDate: timestamp("due_date"),
+  
+  // Details
+  estimatedValue: decimal("estimated_value", { precision: 12, scale: 2 }),
+  industry: varchar("industry"), // 'security', 'healthcare', 'cleaning', etc.
+  location: varchar("location"),
+  
+  // AI Analysis
+  aiSummary: text("ai_summary"), // AI-generated summary
+  scopeOfWork: text("scope_of_work"),
+  requirements: jsonb("requirements"), // Parsed requirements
+  redFlags: text("red_flags").array().default(sql`ARRAY[]::text[]`), // Issues identified by AI
+  
+  // Status
+  status: varchar("status").default("active"), // 'active', 'pursuing', 'submitted', 'declined', 'expired'
+  
+  // Deduplication
+  contentHash: varchar("content_hash"), // For duplicate detection
+  
+  // Relationships
+  assignedTo: varchar("assigned_to"), // Platform admin/sales rep
+  dealId: varchar("deal_id").references(() => deals.id, { onDelete: 'set null' }),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Proposals - Track proposal documents
+export const proposals = pgTable("proposals", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Relationships
+  dealId: varchar("deal_id").notNull().references(() => deals.id, { onDelete: 'cascade' }),
+  rfpId: varchar("rfp_id").references(() => rfps.id, { onDelete: 'set null' }),
+  
+  // Proposal details
+  proposalName: varchar("proposal_name").notNull(),
+  version: integer("version").default(1),
+  
+  // Content
+  sections: jsonb("sections"), // Proposal sections as JSON
+  fileUrl: varchar("file_url"), // PDF/DOCX file location
+  
+  // Status
+  status: varchar("status").default("draft"), // 'draft', 'review', 'submitted', 'won', 'lost'
+  submittedAt: timestamp("submitted_at"),
+  
+  // Metadata
+  createdBy: varchar("created_by"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Contacts - Point of contact database (separate from leads)
+export const contacts = pgTable("contacts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Contact info
+  firstName: varchar("first_name"),
+  lastName: varchar("last_name"),
+  fullName: varchar("full_name").notNull(),
+  email: varchar("email").notNull(),
+  phone: varchar("phone"),
+  title: varchar("title"),
+  
+  // Company
+  companyName: varchar("company_name").notNull(),
+  companyDomain: varchar("company_domain"),
+  
+  // Source & confidence
+  source: varchar("source").default("manual"), // 'manual', 'enrichment', 'linkedin', etc.
+  confidenceScore: integer("confidence_score").default(50), // 0-100%
+  
+  // Consent tracking
+  consentGiven: boolean("consent_given").default(false),
+  consentSource: varchar("consent_source"),
+  consentDate: timestamp("consent_date"),
+  
+  // Status
+  status: varchar("status").default("active"), // 'active', 'bounced', 'unsubscribed', 'invalid'
+  
+  // Relationships
+  leadId: varchar("lead_id").references(() => leads.id, { onDelete: 'set null' }),
+  
+  // Notes
+  notes: text("notes"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Email Sequences - Multi-step email campaigns
+export const emailSequences = pgTable("email_sequences", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Sequence details
+  name: varchar("name").notNull(),
+  description: text("description"),
+  
+  // Steps configuration
+  steps: jsonb("steps").notNull(), // Array of {delay_days, template_id, subject, body}
+  
+  // Targeting
+  targetIndustry: varchar("target_industry"),
+  
+  // Throttling
+  dailySendLimit: integer("daily_send_limit").default(100),
+  sendWindow: jsonb("send_window"), // {start_hour: 9, end_hour: 17}
+  
+  // Status
+  status: varchar("status").default("active"), // 'active', 'paused', 'archived'
+  
+  // Performance
+  totalEnrolled: integer("total_enrolled").default(0),
+  totalCompleted: integer("total_completed").default(0),
+  
+  createdBy: varchar("created_by"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Sequence Sends - Track individual sequence execution
+export const sequenceSends = pgTable("sequence_sends", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Relationships
+  sequenceId: varchar("sequence_id").notNull().references(() => emailSequences.id, { onDelete: 'cascade' }),
+  leadId: varchar("lead_id").references(() => leads.id, { onDelete: 'cascade' }),
+  dealId: varchar("deal_id").references(() => deals.id, { onDelete: 'cascade' }),
+  
+  // Step tracking
+  currentStep: integer("current_step").default(1),
+  totalSteps: integer("total_steps").notNull(),
+  
+  // Status
+  status: varchar("status").default("active"), // 'active', 'completed', 'paused', 'replied', 'unsubscribed'
+  
+  // Email tracking
+  lastSentAt: timestamp("last_sent_at"),
+  nextSendAt: timestamp("next_send_at"),
+  
+  // Engagement
+  replied: boolean("replied").default(false),
+  repliedAt: timestamp("replied_at"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Tasks - Deal-related tasks and reminders
+export const dealTasks = pgTable("deal_tasks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Task details
+  title: varchar("title").notNull(),
+  description: text("description"),
+  
+  // Relationships
+  dealId: varchar("deal_id").references(() => deals.id, { onDelete: 'cascade' }),
+  rfpId: varchar("rfp_id").references(() => rfps.id, { onDelete: 'cascade' }),
+  
+  // Assignment
+  assignedTo: varchar("assigned_to"),
+  
+  // Due date & SLA
+  dueDate: timestamp("due_date"),
+  priority: varchar("priority").default("medium"), // 'low', 'medium', 'high', 'urgent'
+  
+  // Status
+  status: varchar("status").default("pending"), // 'pending', 'in_progress', 'completed', 'cancelled'
+  completedAt: timestamp("completed_at"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Insert schemas
+export const insertDealSchema = createInsertSchema(deals).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertRfpSchema = createInsertSchema(rfps).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertProposalSchema = createInsertSchema(proposals).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertContactSchema = createInsertSchema(contacts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertEmailSequenceSchema = createInsertSchema(emailSequences).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertSequenceSendSchema = createInsertSchema(sequenceSends).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertDealTaskSchema = createInsertSchema(dealTasks).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Types
+export type InsertDeal = z.infer<typeof insertDealSchema>;
+export type Deal = typeof deals.$inferSelect;
+export type InsertRfp = z.infer<typeof insertRfpSchema>;
+export type Rfp = typeof rfps.$inferSelect;
+export type InsertProposal = z.infer<typeof insertProposalSchema>;
+export type Proposal = typeof proposals.$inferSelect;
+export type InsertContact = z.infer<typeof insertContactSchema>;
+export type Contact = typeof contacts.$inferSelect;
+export type InsertEmailSequence = z.infer<typeof insertEmailSequenceSchema>;
+export type EmailSequence = typeof emailSequences.$inferSelect;
+export type InsertSequenceSend = z.infer<typeof insertSequenceSendSchema>;
+export type SequenceSend = typeof sequenceSends.$inferSelect;
+export type InsertDealTask = z.infer<typeof insertDealTaskSchema>;
+export type DealTask = typeof dealTasks.$inferSelect;
+
+// ============================================================================
 // HELPDESK SYSTEM - Professional Support Chat Rooms
 // ============================================================================
 
