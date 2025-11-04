@@ -1,205 +1,217 @@
-# WorkforceOS Enterprise Design System
-## Professional Workforce Management Platform
+# AutoForce™ Enterprise Design System
+## Fortune 500 Workforce Management Platform
 
 ### Design Approach
-**System**: IBM Carbon Design System + Enterprise SaaS Best Practices (Workday, ADP, BambooHR)
-**Principles**: Data clarity, hierarchical organization, trust through consistency, professional minimalism
+**System**: IBM Carbon Design + Enterprise SaaS (Salesforce, Workday, SAP SuccessFactors)
+**Principles**: Executive-grade polish, data authority, premium minimalism, strategic motion
+**Visual Reference**: Bloomberg Terminal clarity + Salesforce's refined professionalism
 
-### Core Color Palette
+---
 
-#### Primary Corporate Navy
-- **Primary Navy**: 217 91% 20% - Main brand, headers, primary actions
-- **Navy Hover**: 217 91% 25% - Interactive states
-- **Navy Light**: 217 91% 92% - Subtle backgrounds, borders
-- **Navy Muted**: 217 91% 85% - Secondary backgrounds
+## Core Color Palette
 
-#### Neutral Foundation
-- **Background Base**: 220 13% 18% - Main dark background
-- **Card Background**: 220 13% 21% - Elevated surfaces
-- **Border Subtle**: 217 20% 30% - Dividers, card borders
-- **Border Emphasis**: 217 30% 40% - Active borders, focus states
+### Primary - Boardroom Navy
+- **Navy 950**: hsl(218, 85%, 12%) - Primary brand, headers, premium buttons
+- **Navy 900**: hsl(218, 80%, 18%) - Hover states, active elements
+- **Navy 100**: hsl(218, 70%, 96%) - Subtle backgrounds
+- **Navy 50**: hsl(218, 60%, 98%) - Card backgrounds on light themes
 
-#### Text Hierarchy
-- **Heading Text**: 210 20% 98% - Page titles, section headers
-- **Body Text**: 214 15% 91% - Primary content
-- **Secondary Text**: 215 15% 70% - Labels, descriptions
-- **Muted Text**: 215 15% 55% - Timestamps, auxiliary info
+### Neutral - Platinum Foundation
+- **Platinum 50**: hsl(220, 20%, 98%) - Page backgrounds
+- **Platinum 100**: hsl(220, 15%, 95%) - Card surfaces
+- **Platinum 200**: hsl(220, 12%, 88%) - Borders, dividers
+- **Platinum 700**: hsl(220, 10%, 40%) - Secondary text
+- **Platinum 900**: hsl(220, 15%, 15%) - Headings, primary text
 
-#### System Status Colors
-- **Success Green**: 152 69% 31% - Completed, active
-- **Warning Amber**: 38 92% 50% - Pending, caution
-- **Error Red**: 0 72% 51% - Critical, failed
-- **Info Blue**: 199 89% 48% - Information, neutral
+### Accent - Emerald Authority
+- **Emerald 600**: hsl(158, 64%, 35%) - Primary CTAs, success states
+- **Emerald 700**: hsl(158, 64%, 28%) - CTA hover
+- **Emerald 50**: hsl(158, 60%, 96%) - Success backgrounds
 
-### Typography System
+### System Status
+- **Warning**: hsl(38, 95%, 55%) - Pending, caution
+- **Error**: hsl(0, 70%, 50%) - Critical alerts
+- **Info**: hsl(210, 85%, 50%) - Informational
 
-#### Font Stack
-- **Primary**: 'Inter', system-ui, -apple-system, sans-serif
-- **Data/Mono**: 'IBM Plex Mono', 'Courier New', monospace
+---
 
-#### Type Scale
-- **Display (Dashboards)**: 32px/700 - Page titles
-- **Heading 1**: 24px/600 - Section headers
-- **Heading 2**: 18px/600 - Card titles, subsections
-- **Body Large**: 15px/500 - Primary content, table data
-- **Body**: 14px/400 - Standard text, descriptions
-- **Caption**: 12px/400 - Labels, metadata
-- **Micro**: 11px/600 uppercase - Badges, status tags
+## Typography System
 
-### Layout System
+### Font Stack
+**Primary**: 'Inter', -apple-system, system-ui, sans-serif (400, 500, 600, 700)
+**Data/Mono**: 'IBM Plex Mono', monospace
 
-**Spacing Units**: Use Tailwind multiples of 4 (p-4, p-6, p-8, gap-6, space-y-8)
-**Core Measurements**:
-- Section padding: py-8 (mobile) to py-12 (desktop)
-- Card padding: p-6
-- Component gaps: gap-6 for grids, space-y-4 for stacks
-- Container max-width: max-w-7xl
+### Type Scale
+- **Hero Display**: 56px/700, -0.02em tracking - Marketing headlines
+- **Display**: 40px/700 - Dashboard page titles
+- **H1**: 32px/600 - Section headers
+- **H2**: 24px/600 - Card titles
+- **H3**: 18px/600 - Subsections
+- **Body Large**: 17px/500 - Marketing copy, key descriptions
+- **Body**: 15px/400 - Standard text, table data
+- **Small**: 13px/500 - Labels, captions
+- **Micro**: 11px/700 uppercase, 0.5px tracking - Badges, tags
 
-### Component Library
+---
 
-#### Dashboard Cards
-- **Base**: Navy-light background (220 13% 21%), 1px border (217 20% 30%)
-- **Elevated**: Subtle shadow, 2px border on hover (217 30% 40%)
-- **Rounding**: 8px standard
-- **Hover**: Translate-y -2px, enhanced border color, shadow
+## Layout System
 
-#### Stat Cards (Data-Focused)
-- **Number Display**: 36px/700, heading text color
-- **Label**: 12px/600 uppercase, secondary text, letter-spacing 0.5px
-- **Trend Indicator**: Small arrow icon, success/error color
-- **Layout**: Number top, label bottom, minimal decoration
+**Spacing Scale**: Tailwind units of 4, 6, 8, 12, 16, 24
+- Section padding: py-16 (desktop), py-12 (tablet), py-8 (mobile)
+- Card padding: p-8 (desktop), p-6 (mobile)
+- Grid gaps: gap-8 (desktop), gap-6 (mobile)
+- Container: max-w-7xl with px-6
 
-#### Navigation Sidebar
-- **Width**: 280px (desktop), collapsible to icon-only 80px
-- **Background**: Slightly darker than base (220 13% 16%)
-- **Active State**: Navy primary background with left 4px border accent
-- **Hover**: Subtle background lift (220 13% 20%)
-- **Icons**: Heroicons outline, 20px
+**Grid Patterns**:
+- Hero sections: Single column, centered, max-w-5xl
+- Feature grids: 3 columns (desktop), 2 (tablet), 1 (mobile)
+- Dashboard stats: 4 columns → 2 → 1
+- Testimonials: 2 columns staggered
 
-#### Top Navigation Bar
-- **Height**: 64px
-- **Background**: Card background with bottom border
-- **Search**: Centered, 400px wide, subtle border input
-- **Profile/Actions**: Right-aligned, icon buttons
+---
 
-#### Data Tables
-- **Header**: Navy-light background, uppercase 11px/600 text, 2px bottom border
-- **Rows**: Alternating subtle backgrounds, 1px dividers
-- **Hover**: Row highlight with navy-light tint
-- **Cell Padding**: px-4 py-3
-- **Sticky Headers**: On scroll for long tables
+## Component Library
 
-#### Buttons
-- **Primary**: Navy primary background, white text, 600 weight, 8px radius, px-6 py-2.5
-- **Secondary**: Transparent with 2px navy border, navy text
-- **Ghost**: No border, navy text, hover background
-- **Destructive**: Error red background, white text
-- **Icon Buttons**: 40px square, icon-only, subtle hover background
+### Marketing Hero Section
+**Height**: 90vh with content centered
+**Background**: Gradient from Platinum-50 to white, or professional photography (executive team, modern office, data visualization screens)
+**Content Layout**: Centered text block (max-w-3xl), headline + subheadline + dual CTAs
+**Image Treatment**: If using photo - subtle overlay (Navy-950 at 15% opacity), high-quality corporate imagery
+**CTA Buttons**: Primary (Emerald-600, backdrop-blur-md bg-opacity-95), Secondary (Navy-950, backdrop-blur-md bg-opacity-90) - both white text, no hover opacity changes
 
-#### Form Inputs
-- **Background**: Darker than card (220 13% 18%)
-- **Border**: 1px subtle, 2px on focus with navy primary
-- **Height**: 40px standard
-- **Label**: 12px/600, secondary text, mb-2
-- **Validation**: Inline error/success messages with icon
+### Premium Stat Cards
+**Base**: White background, 1px Platinum-200 border, 12px radius
+**Hover**: Lift -4px with subtle shadow (0 8px 24px rgba(0,0,0,0.08))
+**Number**: 44px/700 Navy-950, tabular-nums
+**Label**: 13px/600 uppercase Platinum-700, 0.5px tracking
+**Trend**: Emerald/Error color with arrow icon, 15px/600
+**Layout**: Number dominant, label below, trend indicator top-right
 
-#### Badges & Status Tags
-- **Pill Shape**: 16px radius, px-3 py-1
-- **Active**: Success green background 20% opacity, full color text
-- **Pending**: Amber background 20% opacity, amber text
-- **Inactive**: Muted background, muted text
-- **Priority/Urgent**: Error red treatment
+### Executive Dashboard Cards
+**Container**: White bg, 2px radius 16px, p-8, border Platinum-200
+**Header**: H2 title + action button aligned
+**Content**: Generous whitespace, clear hierarchy
+**Charts**: 4-color max (Navy-900, Emerald-600, Warning, Info)
 
-### Feature Gating System
+### Navigation System
+**Top Bar**: 
+- Height 72px, white bg, 1px bottom border Platinum-200
+- Logo left, primary nav center (18px/500), CTA + user right
+- Sticky with blur backdrop on scroll
 
-#### Locked Feature Pattern
-- **Container**: Dashed 2px border (217 30% 40%), reduced opacity 0.6
-- **Lock Badge**: Top-right corner, amber background, white text, "Professional" or tier name
-- **Preview Content**: Visible but muted (grayscale filter 50%)
-- **CTA Button**: "Upgrade to [Tier] - $X/mo", primary navy button
-- **Overlay**: Subtle gradient overlay from bottom
+**Sidebar** (Dashboard):
+- Width 280px, Platinum-50 bg, collapsible to 72px
+- Active: Navy-950 bg, white text, 4px left Emerald-600 accent
+- Hover: Platinum-100 bg with smooth transition
 
-#### Tier Access Levels
-- **Free**: Basic dashboard, limited reports
-- **Starter ($99/mo)**: GPS tracking, advanced scheduling
-- **Professional ($399/mo)**: Analytics, automation, API access
-- **Enterprise ($999/mo)**: White-label, multi-location, predictive AI
+### Data Tables (Dashboard)
+**Header**: Platinum-100 bg, 13px/700 uppercase Navy-950, sticky top
+**Rows**: White bg, 1px bottom Platinum-200 border, hover Platinum-50
+**Cell Padding**: px-6 py-4
+**Sorting**: Arrow icons with smooth rotation
+**Actions**: Icon buttons right-aligned per row
 
-### Role-Specific Dashboards
+### Button System
+**Primary CTA**: Emerald-600 bg, white text, 600 weight, px-8 py-3.5, 8px radius, shadow-sm
+**Secondary**: Navy-950 bg, white text, same padding
+**Outline**: 2px Navy-950 border, Navy-950 text, transparent bg
+**Ghost**: No border, Navy-900 text, hover Platinum-100 bg
+**Icon**: 44px square, icon centered, hover Platinum-100
 
-#### Executive/Owner View
-**Hero Metrics**: 4-column grid (Revenue, Headcount, Productivity, Compliance)
-**Sections**: Financial overview, workforce analytics, approval queue, system health
-**Locked Features**: Predictive analytics (Enterprise), white-label (Enterprise)
+### Form Inputs
+**Base**: White bg, 1px Platinum-200 border, 8px radius, 44px height
+**Focus**: 2px Navy-950 border, no ring
+**Label**: 13px/600 Navy-900, mb-2
+**Error**: 1px Error border, error message below with icon
 
-#### HR Manager View
-**Hero Metrics**: Open positions, pending approvals, time-off requests, onboarding status
-**Sections**: Employee directory table, compliance alerts, hiring pipeline, performance reviews
-**Locked Features**: Automated workflows (Professional), advanced reporting (Professional)
+### Badges & Tags
+**Shape**: 20px radius (pill), px-4 py-1.5, 13px/600 text
+**Success**: Emerald-50 bg, Emerald-700 text
+**Warning**: Warning at 15% opacity bg, Warning text
+**Inactive**: Platinum-200 bg, Platinum-700 text
 
-#### Team Manager View
-**Hero Metrics**: Team size, hours logged, shift coverage, pending requests
-**Sections**: Team schedule calendar, timesheet approvals, performance dashboard
-**Locked Features**: Team analytics (Professional), automated scheduling (Professional)
+---
 
-#### Employee View
-**Hero Metrics**: Hours this week, upcoming shifts, PTO balance, earnings YTD
-**Sections**: Personal schedule, time clock, requests/approvals, benefits info
-**Locked Features**: Mobile app (Starter), shift swaps (Professional)
+## Marketing Page Sections
 
-### Micro-Interactions (Minimal & Professional)
+### 1. Hero Section
+Full viewport (90vh), centered content, professional photography or gradient background, large headline (Hero Display), compelling subheadline (Body Large), dual CTAs (Request Demo + Watch Overview), subtle floating animation on scroll
 
-- **Hover States**: 0.2s ease transitions, subtle elevation/border changes
-- **Loading States**: Navy primary spinner, skeleton screens for data
-- **Success Feedback**: Green checkmark animation (0.3s), brief toast notification
-- **Form Validation**: Instant inline messages, no page shifts
-- **Table Sorting**: Arrow icon rotation, smooth re-ordering
-- **No Gratuitous Animations**: Focus on data clarity over effects
+### 2. Social Proof Bar
+Logo grid of Fortune 500 clients, Platinum-50 bg, "Trusted by industry leaders" headline, 6 logos in grayscale with hover color reveal
 
-### Data Visualization
+### 3. Feature Showcase
+3-column grid, icon + headline + description cards, white bg with border, hover lift effect, alternating image-left/image-right on desktop, screenshots of dashboard features
 
-#### Charts & Graphs
-- **Color Palette**: Navy primary, success green, amber, info blue (4-color max)
-- **Grid Lines**: Subtle gray, 1px
-- **Labels**: 12px, secondary text
-- **Tooltips**: Dark card background, white text, 8px radius
-- **Library**: Recharts with custom theming
+### 4. ROI Calculator / Interactive Demo
+2-column split: Left - input form (team size, hourly rate), Right - live calculation display, Emerald highlights for savings numbers, "See Your Savings" CTA
 
-#### Progress Indicators
-- **Linear**: 8px height, rounded ends, navy primary fill
-- **Circular**: 4px stroke, navy primary, percentage centered
-- **Step Indicators**: Numbered circles, connecting lines
+### 5. Platform Capabilities
+4-column icon grid, Navy-100 bg section, each capability: icon (32px), title (H3), 2-line description, "Learn More" links
 
-### Images
+### 6. Testimonial Carousel
+2-column staggered cards, executive headshots (80px circular), quote in large text (24px/500), company logo, role/name, Navy-50 card backgrounds
 
-**Hero Image**: No large hero image. This is a data-first enterprise dashboard - lead immediately with metrics and actionable data.
+### 7. Security & Compliance
+Trust badges grid (SOC 2, ISO 27001, GDPR), centered layout, Platinum-100 bg, "Enterprise-grade security" headline
 
-**Supplementary Images**:
-- **Empty States**: Simple illustrations for no-data scenarios (team illustrations, clipboard icons)
-- **Onboarding Flows**: Screenshot mockups showing features (professional, clean captures)
-- **Help/Documentation**: Inline screenshots for complex workflows
-- **Team Directory**: Professional headshot placeholders (circular, 48px)
+### 8. Pricing Tiers
+3-column cards (Starter, Professional, Enterprise), white cards with Navy-950 border on "Popular" tier, feature checkmarks (Emerald), "Contact Sales" for Enterprise, annual/monthly toggle
 
-**Image Treatment**: All images should have subtle borders, 8px radius, fit within the navy/slate color scheme (no vibrant colors that clash)
+### 9. CTA Section
+Navy-950 bg with subtle gradient, white text, centered headline + CTA, pattern background (subtle grid or dots)
 
-### Responsive Behavior
+### 10. Footer
+Navy-950 bg, 4-column layout (Product, Company, Resources, Legal), newsletter signup, social links, copyright
 
-- **Desktop (1280px+)**: Full sidebar, 4-column stat grids, expanded tables
-- **Tablet (768-1279px)**: Collapsible sidebar, 2-column grids, horizontal scroll tables
-- **Mobile (<768px)**: Bottom nav, 1-column stacks, card-based table rows
+---
 
-### Accessibility Standards
+## Animations & Micro-Interactions
 
-- **Color Contrast**: WCAG AAA (7:1 minimum for text)
-- **Focus Indicators**: 3px navy ring on all interactive elements
-- **Keyboard Navigation**: Full support, logical tab order
-- **Screen Readers**: ARIA labels on all data visualizations, status badges
-- **Dark Mode Only**: Optimized for extended dashboard viewing
+**Philosophy**: Refined, purposeful motion that conveys premium quality
 
-### Enterprise Trust Signals
+- **Page Transitions**: Fade + slight Y-axis shift (20px), 0.4s ease-out
+- **Hover States**: 0.25s ease transforms, lift -2px to -4px with shadow
+- **Card Reveals**: Stagger fade-in on scroll (0.1s intervals), intersection observer
+- **Number Counters**: Animate stat numbers on viewport entry, 1.5s duration
+- **Chart Animations**: Smooth draw-in (0.8s), delay sequential bars
+- **Button Interactions**: Scale 0.98 on press, 0.2s spring
+- **Loading States**: Navy-950 spinner (40px), skeleton screens in Platinum-100
+- **Success Feedback**: Emerald checkmark scale-in (0.3s), brief toast notification
+- **Form Validation**: Instant inline, smooth height transitions for error messages
 
-- **Security Badges**: SSL, SOC 2, GDPR compliance indicators in footer
-- **Uptime Status**: Real-time system status indicator (green dot "All systems operational")
-- **Support Access**: Prominent help icon with instant search
-- **Data Export**: Download buttons on all tables/reports (CSV, PDF)
-- **Audit Logs**: Visible activity tracking for compliance
+---
+
+## Images
+
+**Hero Image**: YES - Executive-grade professional photography
+- Options: Modern office spaces, diverse professional team collaborating, sleek data visualization screens, boardroom settings
+- Treatment: 60% opacity Navy-950 overlay for text contrast, high resolution (1920px+ width)
+- Placement: Full-width background, content overlay centered
+
+**Feature Screenshots**:
+- Dashboard views, analytics reports, mobile app interface
+- Subtle shadow, 8px radius, Platinum-200 border
+- Placement: Alternating left/right in feature sections
+
+**Team/Testimonial Photos**: Professional headshots, 80px circular, grayscale with color on hover
+
+**Trust & Security**: Logo badges for certifications, client company logos (grayscale treatment)
+
+---
+
+## Responsive Breakpoints
+
+- **Desktop (1280px+)**: Full layouts, 3-4 column grids, sidebar visible
+- **Tablet (768-1279px)**: 2 columns, collapsible sidebar, adjusted spacing
+- **Mobile (<768px)**: Single column, bottom nav, stacked cards, reduced padding
+
+---
+
+## Accessibility
+
+- **Contrast**: WCAG AAA compliance (Navy-950 on white: 14:1)
+- **Focus Indicators**: 3px Navy-900 ring, 2px offset
+- **Keyboard Nav**: Full support, logical tab order, skip links
+- **ARIA**: Comprehensive labels on interactive elements, live regions for dynamic content
+- **Motion**: Respect prefers-reduced-motion, remove animations when set
