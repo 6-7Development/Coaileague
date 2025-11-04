@@ -1,5 +1,5 @@
 // Reference: shadcn sidebar documentation
-import { Calendar, Users, UserCircle, FileText, Settings, LayoutDashboard, LogOut, Clock, BarChart3, Activity, Headphones, CreditCard, MessageSquare, Shield, UserCog, DollarSign, Receipt, Briefcase, TrendingUp, Zap, Package, Lock, Sparkles, Brain, Target, Layers } from "lucide-react";
+import { Calendar, Users, UserCircle, FileText, Settings, LayoutDashboard, LogOut, Clock, BarChart3, Activity, Headphones, CreditCard, MessageSquare, Shield, UserCog, DollarSign, Receipt, Briefcase, TrendingUp, Zap, Package, Lock, Sparkles, Brain, Target, Layers, ChevronUp, Building2, Bell, HelpCircle, Download } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -20,6 +20,14 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { AutoForceLogo } from "@/components/autoforce-logo";
 import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 // FAMILY 1: Communication & Collaboration OS
 const communicationFamilyItems = [
@@ -147,39 +155,108 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="p-4 border-t border-white/[0.08]">
-        <div className="flex flex-wrap items-center gap-3 mb-4 p-3 rounded-xl bg-white/[0.03]">
-          <Avatar className="h-10 w-10 rounded-xl bg-gradient-to-br from-red-500 to-red-700 dark:from-red-600 dark:to-red-800">
-            <AvatarImage src={user?.profileImageUrl || undefined} className="object-cover rounded-xl" />
-            <AvatarFallback className="text-sm font-black rounded-xl bg-gradient-to-br from-red-500 to-red-700 dark:from-red-600 dark:to-red-800 text-white dark:text-white">
-              {getInitials(user?.firstName, user?.lastName)}
-            </AvatarFallback>
-          </Avatar>
-          <div className="flex flex-col overflow-hidden">
-            <span className="text-sm font-bold truncate" data-testid="text-user-name">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button 
+              variant="ghost" 
+              className="w-full justify-start p-3 h-auto hover-elevate active-elevate-2"
+              data-testid="button-profile-menu"
+            >
+              <div className="flex items-center gap-3 w-full">
+                <Avatar className="h-10 w-10 rounded-xl bg-gradient-to-br from-red-500 to-red-700 dark:from-red-600 dark:to-red-800">
+                  <AvatarImage src={user?.profileImageUrl || undefined} className="object-cover rounded-xl" />
+                  <AvatarFallback className="text-sm font-black rounded-xl bg-gradient-to-br from-red-500 to-red-700 dark:from-red-600 dark:to-red-800 text-white dark:text-white">
+                    {getInitials(user?.firstName, user?.lastName)}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex flex-col overflow-hidden flex-1 text-left">
+                  <span className="text-sm font-bold truncate" data-testid="text-user-name">
+                    {user?.firstName || user?.lastName 
+                      ? `${user?.firstName || ""} ${user?.lastName || ""}`.trim()
+                      : "User"}
+                  </span>
+                  <span className="text-xs text-muted-foreground truncate" data-testid="text-user-email">
+                    {user?.email || ""}
+                  </span>
+                </div>
+                <ChevronUp className="h-4 w-4 ml-auto flex-shrink-0 opacity-60" />
+              </div>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent side="top" align="end" className="w-64">
+            <DropdownMenuLabel className="font-semibold">
               {user?.firstName || user?.lastName 
                 ? `${user?.firstName || ""} ${user?.lastName || ""}`.trim()
-                : "User"}
-            </span>
-            <span className="text-xs text-muted-foreground truncate" data-testid="text-user-email">
-              {user?.email || ""}
-            </span>
-            {(user as any)?.workId && (
-              <span className="text-[10px] font-mono text-primary/80 truncate mt-0.5" data-testid="text-work-id">
-                ID: {(user as any).workId}
-              </span>
-            )}
-          </div>
-        </div>
-        <Button 
-          variant="outline" 
-          className="w-full" 
-          size="sm"
-          onClick={handleLogout}
-          data-testid="button-logout"
-        >
-          <LogOut className="mr-2 h-4 w-4" />
-          Log Out
-        </Button>
+                : "Account"}
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link href="/profile" className="flex items-center cursor-pointer" data-testid="link-profile">
+                <UserCircle className="mr-2 h-4 w-4" />
+                <span>Profile</span>
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/unavailability" className="flex items-center cursor-pointer" data-testid="link-unavailability">
+                <Calendar className="mr-2 h-4 w-4" />
+                <span>Unavailability</span>
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/employees" className="flex items-center cursor-pointer" data-testid="link-employees">
+                <Users className="mr-2 h-4 w-4" />
+                <span>Employees</span>
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/settings" className="flex items-center cursor-pointer" data-testid="link-account-settings">
+                <Settings className="mr-2 h-4 w-4" />
+                <span>Account</span>
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/settings" className="flex items-center cursor-pointer" data-testid="link-settings">
+                <Shield className="mr-2 h-4 w-4" />
+                <span>Settings</span>
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link href="/create-org" className="flex items-center cursor-pointer" data-testid="link-create-org">
+                <Building2 className="mr-2 h-4 w-4" />
+                <span>Create new org</span>
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link href="/updates" className="flex items-center cursor-pointer" data-testid="link-updates">
+                <Bell className="mr-2 h-4 w-4" />
+                <span>Product updates</span>
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <a href="https://getsling.com/app" target="_blank" rel="noopener noreferrer" className="flex items-center cursor-pointer" data-testid="link-get-app">
+                <Download className="mr-2 h-4 w-4" />
+                <span>Get the Sling app</span>
+              </a>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/help" className="flex items-center cursor-pointer" data-testid="link-help">
+                <HelpCircle className="mr-2 h-4 w-4" />
+                <span>Help Center</span>
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem 
+              onClick={handleLogout}
+              className="text-red-600 dark:text-red-400 cursor-pointer"
+              data-testid="button-logout"
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              <span>Log out</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </SidebarFooter>
     </Sidebar>
   );
