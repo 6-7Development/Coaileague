@@ -31,3 +31,13 @@ AutoForce™ features a modular "OS" design (e.g., BillOS™, PayrollOS™, Trac
 - **Payment Processing**: Stripe Connect
 - **Email**: Resend
 - **AI**: OpenAI GPT-4 (`gpt-4o-mini`)
+
+## Recent Changes (November 2025)
+### Mobile Responsive Updates
+- **Grid Layouts**: Implemented mobile-first responsive grids across all major pages using pattern `grid-cols-2 sm:grid-cols-3 md:grid-cols-6`
+  - Root Admin Portal: Stats grid responsive
+  - Employee/Auditor Portals: Grid layouts optimized for mobile
+  - Integration Marketplace: Tabs and cards responsive
+- **Navigation**: Desktop chat sidebar (w-64) hidden on mobile with `hidden md:flex`
+- **Pricing Page**: AI token usage pricing detailed with customer-pays model, fully responsive with no overflow
+- **Known Issue**: Landing page hero section has horizontal overflow on small mobile viewports (scrollWidth ~536px on 375px viewport) - requires deeper investigation into responsive CSS utilities. All other pages display correctly.
