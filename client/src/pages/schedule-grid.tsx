@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import {
   DndContext,
   DragOverlay,
@@ -41,6 +42,11 @@ import {
   UserPlus,
   Calendar,
   Printer,
+  Bug,
+  HelpCircle,
+  LayoutGrid,
+  User,
+  ListChecks,
 } from "lucide-react";
 import {
   Select,
@@ -49,6 +55,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { EnhancedEmptyState } from "@/components/enhanced-empty-state";
 import type { Shift, Employee, Client } from "@shared/schema";
 import moment from "moment";
@@ -397,6 +408,7 @@ function OpenShiftsSection({ shifts, weekDays, onShiftClick, clients, onAddAckno
 
 export default function ScheduleGrid() {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'week' | 'bi-week' | 'semi-monthly' | 'monthly'>('week');
   const [selectedShift, setSelectedShift] = useState<Shift | null>(null);
@@ -721,25 +733,127 @@ export default function ScheduleGrid() {
     });
   };
 
+  // Reset to current week
+  const handleTodayClick = () => {
+    setCurrentDate(new Date());
+    // If in week/bi-week mode, this will snap to current week's start
+    // For semi-monthly/monthly, it uses today as anchor
+    toast({
+      title: "View Reset",
+      description: "Schedule reset to current period",
+    });
+  };
+
   return (
     <div className="flex flex-col h-screen bg-background">
       {/* Sling-style: Separate horizontal bars */}
       
       {/* Bar 1: Top Navigation Tabs */}
       <div className="border-b bg-muted/30">
-        <div className="flex items-center gap-1 px-4 py-2 overflow-x-auto">
-          <Button variant="ghost" size="sm" className="text-xs whitespace-nowrap" data-testid="tab-all-schedule">
-            ALL SCHEDULE
-          </Button>
-          <Button variant="ghost" size="sm" className="text-xs whitespace-nowrap" data-testid="tab-my-schedule">
-            MY SCHEDULE
-          </Button>
-          <Button variant="ghost" size="sm" className="text-xs whitespace-nowrap" data-testid="tab-grid-view">
-            GRID VIEW
-          </Button>
-          <Button variant="ghost" size="sm" className="text-xs whitespace-nowrap" data-testid="tab-time-clock">
-            TIME CLOCK
-          </Button>
+        <div className="flex items-center justify-between px-4 py-2 overflow-x-auto">
+          <div className="flex items-center gap-1">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="text-xs whitespace-nowrap bg-muted" 
+                  data-testid="tab-all-schedule"
+                >
+                  <LayoutGrid className="h-3 w-3 mr-1" />
+                  ALL SCHEDULE
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>View all employee schedules</TooltipContent>
+            </Tooltip>
+            
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="text-xs whitespace-nowrap" 
+                  onClick={() => toast({ title: "Coming Soon", description: "My Schedule view is under development" })}
+                  data-testid="tab-my-schedule"
+                >
+                  <User className="h-3 w-3 mr-1" />
+                  MY SCHEDULE
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>View only your shifts</TooltipContent>
+            </Tooltip>
+            
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="text-xs whitespace-nowrap" 
+                  onClick={() => setLocation("/schedule")}
+                  data-testid="tab-grid-view"
+                >
+                  <ListChecks className="h-3 w-3 mr-1" />
+                  GRID VIEW
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Switch to grid view</TooltipContent>
+            </Tooltip>
+            
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="text-xs whitespace-nowrap" 
+                  onClick={() => setLocation("/time-tracking")}
+                  data-testid="tab-time-clock"
+                >
+                  <Clock className="h-3 w-3 mr-1" />
+                  TIME CLOCK
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Track employee time & generate payroll reports</TooltipContent>
+            </Tooltip>
+          </div>
+
+          {/* Help & Bug Report */}
+          <div className="flex items-center gap-1">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-7 w-7" 
+                  onClick={() => setLocation("/support")}
+                  data-testid="button-help"
+                >
+                  <HelpCircle className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Get help with ScheduleOS™</TooltipContent>
+            </Tooltip>
+            
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-7 w-7 text-amber-500" 
+                  onClick={() => {
+                    toast({
+                      title: "Report a Bug",
+                      description: "Redirecting to support portal...",
+                    });
+                    setTimeout(() => setLocation("/support"), 500);
+                  }}
+                  data-testid="button-report-bug"
+                >
+                  <Bug className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Report a broken link or bug</TooltipContent>
+            </Tooltip>
+          </div>
         </div>
       </div>
 
@@ -808,15 +922,21 @@ export default function ScheduleGrid() {
             </div>
 
             {/* Today button */}
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8 text-xs"
-              onClick={() => setCurrentDate(new Date())}
-              data-testid="button-today"
-            >
-              Today
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs"
+                  onClick={handleTodayClick}
+                  data-testid="button-today"
+                >
+                  <Calendar className="h-3 w-3 mr-1" />
+                  Today
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Reset to current week</TooltipContent>
+            </Tooltip>
           </div>
 
           {/* Right: Action Buttons */}
@@ -837,35 +957,51 @@ export default function ScheduleGrid() {
               </div>
             </div>
             
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="h-8 text-xs" 
-              onClick={handleExportSchedule}
-              data-testid="button-export"
-            >
-              <Send className="h-3 w-3 mr-1" />
-              Export
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="h-8 text-xs" 
-              onClick={handlePrintSchedule}
-              data-testid="button-print"
-            >
-              <Printer className="h-3 w-3 mr-1" />
-              Print
-            </Button>
-            <Button 
-              size="sm" 
-              className="h-8 text-xs bg-emerald-600 hover:bg-emerald-700" 
-              onClick={() => handleCreateShift('open', new Date())}
-              data-testid="button-add-shift"
-            >
-              <Plus className="h-3 w-3 mr-1" />
-              Add shift
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="h-8 text-xs" 
+                  onClick={handleExportSchedule}
+                  data-testid="button-export"
+                >
+                  <Send className="h-3 w-3 mr-1" />
+                  Export
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Export schedule to CSV file</TooltipContent>
+            </Tooltip>
+            
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="h-8 text-xs" 
+                  onClick={handlePrintSchedule}
+                  data-testid="button-print"
+                >
+                  <Printer className="h-3 w-3 mr-1" />
+                  Print
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Print schedule for posting</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  size="sm" 
+                  className="h-8 text-xs bg-emerald-600 hover:bg-emerald-700" 
+                  onClick={() => handleCreateShift('open', new Date())}
+                  data-testid="button-add-shift"
+                >
+                  <Plus className="h-3 w-3 mr-1" />
+                  Add shift
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Create a new shift</TooltipContent>
+            </Tooltip>
           </div>
         </div>
       </div>
