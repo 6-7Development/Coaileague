@@ -65,12 +65,15 @@ function DraggableShiftCard({ shift, employee, client, onAddAcknowledgment }: {
     transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
   } : undefined;
 
+  const duration = moment.duration(moment(shift.endTime).diff(moment(shift.startTime)));
+  const hours = duration.asHours().toFixed(1);
+
   return (
     <Card
       ref={setNodeRef}
       style={style}
       className={`
-        p-2 rounded-lg border-2 transition-all cursor-grab active:cursor-grabbing mb-1 relative group
+        p-3 rounded-lg border-2 transition-all cursor-grab active:cursor-grabbing mb-2 relative group min-h-[90px]
         ${isDraft ? 'border-amber-500/50 bg-amber-500/10 shadow-amber-500/20 shadow-lg animate-pulse' : ''}
         ${isPublished ? 'border-blue-500 bg-blue-500/20' : ''}
         ${isOpen ? 'border-purple-500/50 bg-purple-500/10 border-dashed' : ''}
@@ -80,37 +83,41 @@ function DraggableShiftCard({ shift, employee, client, onAddAcknowledgment }: {
       {...listeners}
       {...attributes}
     >
-      <div className="space-y-1">
-        <div className="flex items-center justify-between gap-1">
-          <div className="flex items-center gap-1">
-            <GripVertical className="h-3 w-3 text-muted-foreground" />
-            <Clock className="h-3 w-3 text-muted-foreground" />
-            <span className="text-xs font-medium">
-              {moment(shift.startTime).format('h:mm A')} - {moment(shift.endTime).format('h:mm A')}
-            </span>
+      <div className="space-y-2">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex-1 space-y-1">
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4 text-primary flex-shrink-0" />
+              <span className="font-bold text-sm">
+                {moment(shift.startTime).format('h:mm A')} - {moment(shift.endTime).format('h:mm A')}
+              </span>
+            </div>
+            <div className="text-xs text-muted-foreground ml-6">
+              {hours} hours
+            </div>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 flex-shrink-0">
             {onAddAcknowledgment && (
               <Button
                 size="icon"
                 variant="ghost"
-                className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity"
+                className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
                 onClick={(e) => {
                   e.stopPropagation();
                   onAddAcknowledgment(shift);
                 }}
                 data-testid={`button-add-acknowledgment-${shift.id}`}
               >
-                <Plus className="h-3 w-3 text-emerald-400" />
+                <Plus className="h-4 w-4 text-emerald-400" />
               </Button>
             )}
             {isDraft && (
-              <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4">
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5">
                 Draft
               </Badge>
             )}
             {isOpen && (
-              <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4 bg-purple-500/20">
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5 bg-purple-500/20">
                 Open
               </Badge>
             )}
@@ -118,27 +125,27 @@ function DraggableShiftCard({ shift, employee, client, onAddAcknowledgment }: {
         </div>
 
         {!isOpen && employee && (
-          <div className="text-xs font-semibold truncate">
+          <div className="text-sm font-semibold">
             {employee.firstName} {employee.lastName}
           </div>
         )}
 
         {isOpen && (
-          <div className="text-xs font-semibold text-purple-400">
-            <Users className="h-3 w-3 inline mr-1" />
+          <div className="text-sm font-semibold text-purple-400 flex items-center gap-1">
+            <Users className="h-4 w-4" />
             Unassigned
           </div>
         )}
 
         {client && (
-          <div className="flex items-center gap-1 text-xs text-muted-foreground truncate">
-            <MapPin className="h-3 w-3" />
-            {client.firstName} {client.lastName}
+          <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+            <MapPin className="h-4 w-4 flex-shrink-0" />
+            <span className="truncate">{client.firstName} {client.lastName}</span>
           </div>
         )}
 
         {shift.description && (
-          <div className="text-xs text-muted-foreground truncate">
+          <div className="text-xs text-muted-foreground line-clamp-2">
             {shift.description}
           </div>
         )}
@@ -184,7 +191,7 @@ function DroppableDayCell({ employeeId, date, shifts, employees, clients, onShif
       ref={setNodeRef}
       onClick={handleCellClick}
       className={`
-        min-h-[60px] border-r border-b p-1.5 relative group cursor-pointer transition-all
+        min-h-[120px] min-w-[180px] sm:min-w-[220px] border-r border-b p-2 relative group cursor-pointer transition-all
         ${isOver ? 'bg-primary/10 ring-2 ring-primary' : 'bg-background'}
         ${isToday ? 'bg-emerald-500/5 border-l-2 border-l-emerald-500' : ''}
         hover-elevate
@@ -198,6 +205,7 @@ function DroppableDayCell({ employeeId, date, shifts, employees, clients, onShif
             e.stopPropagation();
             onShiftClick(shift);
           }}
+          className="mb-2 last:mb-0"
         >
           <DraggableShiftCard
             shift={shift}
@@ -235,7 +243,7 @@ function EmployeeRow({ employee, weekDays, shifts, employees, clients, onShiftCl
   return (
     <div className="flex">
       {/* Employee name cell */}
-      <div className="sticky left-0 z-10 w-[140px] sm:w-[160px] border-r border-b bg-card p-2 flex items-center gap-2 min-h-[60px]">
+      <div className="sticky left-0 z-10 w-[140px] sm:w-[160px] border-r border-b bg-card p-2 flex items-center gap-2 min-h-[120px]">
         <Avatar className="h-7 w-7">
           <AvatarFallback className="text-xs bg-primary/20">
             {employee.firstName[0]}{employee.lastName[0]}
@@ -278,7 +286,7 @@ function PlaceholderEmployeeRow({ weekDays, onCreateShift, onAddEmployee }: {
   return (
     <div className="flex">
       {/* Empty state cell */}
-      <div className="sticky left-0 z-10 w-[140px] sm:w-[160px] border-r border-b bg-gradient-to-b from-background via-muted/10 to-transparent p-2 min-h-[60px] flex items-center justify-center">
+      <div className="sticky left-0 z-10 w-[140px] sm:w-[160px] border-r border-b bg-gradient-to-b from-background via-muted/10 to-transparent p-2 min-h-[120px] flex items-center justify-center">
         <Button
           onClick={onAddEmployee}
           size="sm"
@@ -296,7 +304,7 @@ function PlaceholderEmployeeRow({ weekDays, onCreateShift, onAddEmployee }: {
         <div
           key={moment(day).format('YYYY-MM-DD')}
           onClick={() => onCreateShift && onCreateShift('open', day)}
-          className="min-h-[60px] border-r border-b p-1.5 relative group cursor-pointer transition-all hover:bg-emerald-500/5 hover:border-emerald-500/30"
+          className="min-h-[120px] min-w-[180px] sm:min-w-[220px] border-r border-b p-2 relative group cursor-pointer transition-all hover:bg-emerald-500/5 hover:border-emerald-500/30"
           data-testid={`placeholder-slot-${moment(day).format('YYYY-MM-DD')}`}
         >
           <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300">
@@ -339,7 +347,7 @@ function OpenShiftsSection({ shifts, weekDays, onShiftClick, clients, onAddAckno
   return (
     <div className="flex border-t-2 border-purple-500/30">
       {/* Open shifts label */}
-      <div className="sticky left-0 z-10 w-[140px] sm:w-[160px] border-r bg-purple-500/20 p-2 min-h-[60px] flex items-center">
+      <div className="sticky left-0 z-10 w-[140px] sm:w-[160px] border-r bg-purple-500/20 p-2 min-h-[120px] flex items-center">
         <div className="flex items-center gap-2">
           <div className="p-1.5 rounded-lg bg-purple-500/20">
             <Users className="h-3 w-3 text-purple-400" />
@@ -363,7 +371,7 @@ function OpenShiftsSection({ shifts, weekDays, onShiftClick, clients, onAddAckno
         return (
           <div
             key={dayKey}
-            className="min-h-[60px] border-r border-b bg-purple-500/5 p-1.5"
+            className="min-h-[120px] min-w-[180px] sm:min-w-[220px] border-r border-b bg-purple-500/5 p-2"
           >
             {dayOpenShifts.map(shift => (
               <div
@@ -644,7 +652,7 @@ export default function ScheduleGrid() {
     <div className="flex flex-col h-screen bg-background">
       {/* Header */}
       <div className="border-b p-2 sm:p-4 space-y-2 sm:space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
             <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
               <Sparkles className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
@@ -653,6 +661,34 @@ export default function ScheduleGrid() {
             <p className="text-xs sm:text-sm text-muted-foreground">
               Drag-and-drop shift scheduling
             </p>
+          </div>
+          
+          {/* Quick Stats Dashboard */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 flex-shrink-0">
+            <div className="bg-gradient-to-br from-emerald-500/10 to-primary/10 backdrop-blur-sm border border-emerald-500/20 rounded-lg p-2">
+              <div className="text-[10px] text-muted-foreground font-medium">Employees</div>
+              <div className="text-lg font-bold text-emerald-400" data-testid="stat-total-employees">
+                {employees.length}
+              </div>
+            </div>
+            <div className="bg-gradient-to-br from-blue-500/10 to-primary/10 backdrop-blur-sm border border-blue-500/20 rounded-lg p-2">
+              <div className="text-[10px] text-muted-foreground font-medium">Shifts Today</div>
+              <div className="text-lg font-bold text-blue-400" data-testid="stat-shifts-today">
+                {shifts.filter(s => moment(s.startTime).isSame(moment(), 'day')).length}
+              </div>
+            </div>
+            <div className="bg-gradient-to-br from-purple-500/10 to-primary/10 backdrop-blur-sm border border-purple-500/20 rounded-lg p-2">
+              <div className="text-[10px] text-muted-foreground font-medium">Open Shifts</div>
+              <div className="text-lg font-bold text-purple-400" data-testid="stat-open-shifts">
+                {shifts.filter(s => !s.employeeId).length}
+              </div>
+            </div>
+            <div className="bg-gradient-to-br from-amber-500/10 to-primary/10 backdrop-blur-sm border border-amber-500/20 rounded-lg p-2">
+              <div className="text-[10px] text-muted-foreground font-medium">Draft Shifts</div>
+              <div className="text-lg font-bold text-amber-400" data-testid="stat-draft-shifts">
+                {shifts.filter(s => s.status === 'draft').length}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -753,7 +789,7 @@ export default function ScheduleGrid() {
                   <div
                     key={moment(day).format('YYYY-MM-DD')}
                     className={`
-                      min-w-[100px] sm:min-w-[120px] border-r p-2 text-center flex flex-col justify-center h-[60px]
+                      min-w-[180px] sm:min-w-[220px] border-r p-3 text-center flex flex-col justify-center h-[60px]
                       ${isToday ? 'bg-emerald-500/10 border-l-2 border-l-emerald-500' : 'bg-muted/10'}
                     `}
                   >
