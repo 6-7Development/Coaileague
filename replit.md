@@ -39,6 +39,13 @@ AutoForce™ features a modular "OS" design (e.g., BillOS™, PayrollOS™, Trac
   - Central white human silhouette with 8 orbiting AI automation icons (calendar, chart, bot, document, money, clock, email, team)
   - 20-second smooth rotation animation showing AI agents replacing human tasks
   - Adaptive color switching for light/dark backgrounds
+- **Wordmark Branding**: Created AutoForce™ wordmark component with 3 style variations
+  - Stability Mark: Bold, authoritative (used on auth pages, sidebar)
+  - Integrated Mark: High-tech badge style with "™" in blue box
+  - Efficiency Mark: Light, modern, wide spacing
+  - Theme-aware: Uses `text-foreground` with dark variants for light/dark compatibility
+  - Deployed across: App sidebar (clickable to dashboard), login page, register page
+  - All branding updated to "AutoForce™" with tagline "Autonomous Workforce Management Solutions"
 - **RecordOS™ - Natural Language Search** (`/search`):
   - AI-powered search across employees, clients, invoices, time entries, shifts
   - Natural language queries: "Show me employees hired this month" or "Find invoices over $5000"
