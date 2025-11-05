@@ -4155,23 +4155,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Process delinquent invoices and send reminders
-  app.post('/api/invoices/process-reminders', isAuthenticated, async (req: any, res) => {
+  // Process delinquent invoices and send reminders (Manager/Owner only)
+  app.post('/api/invoices/process-reminders', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const workspace = await storage.getWorkspaceByOwnerId(userId);
-      
-      if (!workspace) {
-        return res.status(404).json({ message: "Workspace not found" });
-      }
+      const workspaceId = req.user!.workspaceId;
 
       const { processDelinquentInvoices } = await import('./services/billos');
-      await processDelinquentInvoices(workspace.id);
+      await processDelinquentInvoices(workspaceId);
       
       res.json({ message: "Delinquency reminders processed successfully" });
     } catch (error: any) {
       console.error("Error processing reminders:", error);
       res.status(500).json({ message: error.message || "Failed to process reminders" });
+    }
+  });
+
+  // Get reminder history for an invoice (Manager/Owner only)
+  app.get('/api/invoices/:invoiceId/reminders', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.user!.workspaceId;
+      const { invoiceId } = req.params;
+
+      const reminders = await db
+        .select()
+        .from(invoiceReminders)
+        .where(
+          and(
+            eq(invoiceReminders.workspaceId, workspaceId),
+            eq(invoiceReminders.invoiceId, invoiceId)
+          )
+        )
+        .orderBy(desc(invoiceReminders.createdAt));
+      
+      res.json(reminders);
+    } catch (error: any) {
+      console.error("Error fetching invoice reminders:", error);
+      res.status(500).json({ message: "Failed to fetch invoice reminders" });
+    }
+  });
+
+  // Get all reminders needing attention (Manager/Owner only)
+  app.get('/api/invoices/reminders/needs-attention', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.user!.workspaceId;
+
+      const urgentReminders = await db
+        .select({
+          reminder: invoiceReminders,
+          invoice: invoices,
+          client: clients,
+        })
+        .from(invoiceReminders)
+        .innerJoin(invoices, eq(invoiceReminders.invoiceId, invoices.id))
+        .innerJoin(clients, eq(invoices.clientId, clients.id))
+        .where(
+          and(
+            eq(invoiceReminders.workspaceId, workspaceId),
+            eq(invoiceReminders.needsHumanIntervention, true)
+          )
+        )
+        .orderBy(desc(invoiceReminders.daysOverdue));
+      
+      res.json(urgentReminders);
+    } catch (error: any) {
+      console.error("Error fetching urgent reminders:", error);
+      res.status(500).json({ message: "Failed to fetch urgent reminders" });
     }
   });
 

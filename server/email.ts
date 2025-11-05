@@ -115,7 +115,49 @@ export const emailTemplates = {
         </div>
         <p>Please review the invoice in your dashboard.</p>
         <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">
-          This is an automated message from ShiftSync.
+          This is an automated message from AutoForce™.
+        </p>
+      </div>
+    `
+  }),
+
+  invoiceOverdueReminder: (data: {
+    clientName: string;
+    invoiceNumber: string;
+    total: string;
+    dueDate: string;
+    daysOverdue: number;
+    paymentUrl: string;
+  }) => ({
+    subject: `Payment Reminder: Invoice ${data.invoiceNumber} is ${data.daysOverdue} Days Overdue`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #dc2626;">Payment Reminder</h2>
+        <p>Dear ${data.clientName},</p>
+        <p>This is a reminder that your invoice is now <strong style="color: #dc2626;">${data.daysOverdue} days overdue</strong>.</p>
+        <div style="background-color: #fef2f2; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #dc2626;">
+          <p style="margin: 5px 0;"><strong>Invoice Number:</strong> ${data.invoiceNumber}</p>
+          <p style="margin: 5px 0;"><strong>Amount Due:</strong> <span style="color: #dc2626; font-size: 18px; font-weight: bold;">$${data.total}</span></p>
+          <p style="margin: 5px 0;"><strong>Original Due Date:</strong> ${data.dueDate}</p>
+          <p style="margin: 5px 0;"><strong>Days Overdue:</strong> ${data.daysOverdue}</p>
+        </div>
+        ${data.daysOverdue >= 30 ? `
+          <div style="background-color: #fef2f2; padding: 15px; border-radius: 8px; margin: 20px 0; border: 2px solid #dc2626;">
+            <p style="margin: 0; color: #dc2626; font-weight: bold;">URGENT: This account requires immediate attention</p>
+          </div>
+        ` : ''}
+        <p><strong>Please remit payment as soon as possible to avoid service interruption.</strong></p>
+        <div style="margin: 30px 0;">
+          <a href="${data.paymentUrl}" 
+             style="display: inline-block; background-color: #dc2626; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+            Pay Invoice Now
+          </a>
+        </div>
+        <p style="font-size: 14px; color: #6b7280;">
+          If you have already submitted payment, please disregard this notice. If you have questions about this invoice, please contact us immediately.
+        </p>
+        <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">
+          This is an automated reminder from AutoForce™ BillOS.
         </p>
       </div>
     `
@@ -644,6 +686,28 @@ export async function sendInvoiceGeneratedEmail(
     return { success: true, data: result };
   } catch (error) {
     console.error('Error sending invoice email:', error);
+    return { success: false, error };
+  }
+}
+
+export async function sendInvoiceOverdueReminderEmail(
+  to: string,
+  data: Parameters<typeof emailTemplates.invoiceOverdueReminder>[0]
+) {
+  try {
+    const { client, fromEmail } = await getUncachableResendClient();
+    const template = emailTemplates.invoiceOverdueReminder(data);
+    
+    const result = await client.emails.send({
+      from: fromEmail,
+      to: [to],
+      subject: template.subject,
+      html: template.html,
+    });
+
+    return { success: true, data: result };
+  } catch (error) {
+    console.error('Error sending overdue invoice reminder:', error);
     return { success: false, error };
   }
 }
