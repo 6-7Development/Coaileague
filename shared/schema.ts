@@ -6743,14 +6743,16 @@ export const timeOffRequests = pgTable("time_off_requests", {
   // Request details
   startDate: timestamp("start_date").notNull(),
   endDate: timestamp("end_date").notNull(),
-  timeOffType: varchar("time_off_type").notNull(), // 'vacation', 'sick', 'personal', 'unpaid'
+  requestType: varchar("request_type").notNull(), // 'vacation', 'sick', 'personal', 'unpaid'
+  totalDays: integer("total_days"),
   reason: text("reason"),
+  notes: text("notes"),
   
   // Approval workflow
   status: varchar("status").default('pending'), // 'pending', 'approved', 'denied'
-  approvedBy: varchar("approved_by").references(() => users.id),
-  approvedAt: timestamp("approved_at"),
-  denialReason: text("denial_reason"),
+  reviewedBy: varchar("reviewed_by").references(() => users.id),
+  reviewedAt: timestamp("reviewed_at"),
+  reviewNotes: text("review_notes"),
   
   // AI scheduling impact
   affectsScheduling: boolean("affects_scheduling").default(true),
