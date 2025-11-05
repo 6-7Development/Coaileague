@@ -6777,6 +6777,147 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============================================================================
+  // ORGANIZATION ONBOARDING & MANAGEMENT
+  // ============================================================================
+
+  // Start organization onboarding
+  app.post('/api/organization-onboarding/start', requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspaceId!;
+      const userId = req.user?.id;
+      const {
+        organizationName,
+        industry,
+        employeeCount,
+        subscriptionTier,
+        billingEmail,
+        adminEmail,
+      } = req.body;
+      const { organizationOnboarding } = await import("@shared/schema");
+
+      const [onboarding] = await db
+        .insert(organizationOnboarding)
+        .values({
+          workspaceId,
+          userId: userId!,
+          organizationName,
+          industry,
+          employeeCount,
+          subscriptionTier,
+          billingEmail,
+          adminEmail,
+          status: 'in_progress',
+          currentStep: 'profile_setup',
+        })
+        .returning();
+
+      res.json(onboarding);
+    } catch (error: any) {
+      console.error('Error starting onboarding:', error);
+      res.status(500).json({ message: error.message || 'Failed to start onboarding' });
+    }
+  });
+
+  // Update onboarding progress
+  app.put('/api/organization-onboarding/:id', requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspaceId!;
+      const { id } = req.params;
+      const {
+        currentStep,
+        completedSteps,
+        setupData,
+        status,
+      } = req.body;
+      const { organizationOnboarding } = await import("@shared/schema");
+
+      const [updated] = await db
+        .update(organizationOnboarding)
+        .set({
+          currentStep,
+          completedSteps,
+          setupData,
+          status,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(organizationOnboarding.id, id),
+            eq(organizationOnboarding.workspaceId, workspaceId)
+          )
+        )
+        .returning();
+
+      if (!updated) {
+        return res.status(404).json({ message: 'Onboarding record not found' });
+      }
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error('Error updating onboarding:', error);
+      res.status(500).json({ message: error.message || 'Failed to update onboarding' });
+    }
+  });
+
+  // Complete onboarding
+  app.post('/api/organization-onboarding/:id/complete', requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspaceId!;
+      const { id } = req.params;
+      const { organizationOnboarding } = await import("@shared/schema");
+
+      const [completed] = await db
+        .update(organizationOnboarding)
+        .set({
+          status: 'completed',
+          completedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(organizationOnboarding.id, id),
+            eq(organizationOnboarding.workspaceId, workspaceId)
+          )
+        )
+        .returning();
+
+      if (!completed) {
+        return res.status(404).json({ message: 'Onboarding record not found' });
+      }
+
+      res.json(completed);
+    } catch (error: any) {
+      console.error('Error completing onboarding:', error);
+      res.status(500).json({ message: error.message || 'Failed to complete onboarding' });
+    }
+  });
+
+  // Get onboarding status
+  app.get('/api/organization-onboarding/status', requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspaceId!;
+      const { organizationOnboarding } = await import("@shared/schema");
+
+      const onboarding = await db
+        .select()
+        .from(organizationOnboarding)
+        .where(eq(organizationOnboarding.workspaceId, workspaceId))
+        .orderBy(desc(organizationOnboarding.createdAt))
+        .limit(1)
+        .then(rows => rows[0]);
+
+      if (!onboarding) {
+        return res.json({ status: 'not_started' });
+      }
+
+      res.json(onboarding);
+    } catch (error: any) {
+      console.error('Error getting onboarding status:', error);
+      res.status(500).json({ message: error.message || 'Failed to get onboarding status' });
+    }
+  });
+
+  // ============================================================================
   // SUPPORT & CONTACT ROUTES
   // ============================================================================
   
