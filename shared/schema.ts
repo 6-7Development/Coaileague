@@ -6548,3 +6548,505 @@ export const insertMetricsSnapshotSchema = createInsertSchema(metricsSnapshots).
 
 export type InsertMetricsSnapshot = z.infer<typeof insertMetricsSnapshotSchema>;
 export type MetricsSnapshot = typeof metricsSnapshots.$inferSelect;
+
+// ============================================================================
+// ONLINE PAYMENTS - STRIPE INTEGRATION FOR INVOICE PAYMENTS
+// ============================================================================
+
+export const paymentStatusEnum = pgEnum('payment_status', [
+  'pending',
+  'processing',
+  'succeeded',
+  'failed',
+  'canceled',
+  'refunded',
+  'partially_refunded'
+]);
+
+export const invoicePayments = pgTable("invoice_payments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  invoiceId: varchar("invoice_id").notNull().references(() => invoices.id, { onDelete: 'cascade' }),
+  
+  // Stripe details
+  stripePaymentIntentId: varchar("stripe_payment_intent_id").unique(),
+  stripeCustomerId: varchar("stripe_customer_id"),
+  stripeChargeId: varchar("stripe_charge_id"),
+  
+  // Payment details
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  currency: varchar("currency").default('usd'),
+  status: paymentStatusEnum("status").default('pending'),
+  
+  // Customer info (for end customers paying invoices)
+  payerEmail: varchar("payer_email"),
+  payerName: varchar("payer_name"),
+  
+  // Metadata
+  paymentMethod: varchar("payment_method"), // 'card', 'bank_transfer', 'ach', etc.
+  last4: varchar("last4"), // Last 4 digits of card
+  receiptUrl: varchar("receipt_url"),
+  
+  // Refund tracking
+  refundedAmount: decimal("refunded_amount", { precision: 10, scale: 2 }).default("0.00"),
+  refundReason: text("refund_reason"),
+  refundedAt: timestamp("refunded_at"),
+  
+  // Error handling
+  failureCode: varchar("failure_code"),
+  failureMessage: text("failure_message"),
+  
+  paidAt: timestamp("paid_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  workspaceIdx: index("invoice_payments_workspace_idx").on(table.workspaceId),
+  invoiceIdx: index("invoice_payments_invoice_idx").on(table.invoiceId),
+  statusIdx: index("invoice_payments_status_idx").on(table.status),
+  stripeIntentIdx: index("invoice_payments_stripe_intent_idx").on(table.stripePaymentIntentId),
+}));
+
+export const insertInvoicePaymentSchema = createInsertSchema(invoicePayments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertInvoicePayment = z.infer<typeof insertInvoicePaymentSchema>;
+export type InvoicePayment = typeof invoicePayments.$inferSelect;
+
+// ============================================================================
+// EMPLOYEE PAYROLL INFORMATION - TAX FORMS & DIRECT DEPOSIT
+// ============================================================================
+
+// Employee Payroll Information
+export const employeePayrollInfo = pgTable("employee_payroll_info", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  employeeId: varchar("employee_id").notNull().unique().references(() => employees.id, { onDelete: 'cascade' }),
+  
+  // Tax information
+  ssn: varchar("ssn"), // Encrypted in production
+  taxFilingStatus: varchar("tax_filing_status"), // Single, Married, Head of Household
+  federalAllowances: integer("federal_allowances").default(0),
+  stateAllowances: integer("state_allowances").default(0),
+  additionalWithholding: decimal("additional_withholding", { precision: 10, scale: 2 }).default("0.00"),
+  
+  // W4 form data
+  w4Completed: boolean("w4_completed").default(false),
+  w4CompletedAt: timestamp("w4_completed_at"),
+  w4DocumentId: varchar("w4_document_id").references(() => employeeFiles.id),
+  
+  // I9 form data
+  i9Completed: boolean("i9_completed").default(false),
+  i9CompletedAt: timestamp("i9_completed_at"),
+  i9DocumentId: varchar("i9_document_id").references(() => employeeFiles.id),
+  i9ExpirationDate: timestamp("i9_expiration_date"),
+  
+  // Direct deposit
+  bankName: varchar("bank_name"),
+  bankAccountType: varchar("bank_account_type"), // 'checking', 'savings'
+  bankRoutingNumber: varchar("bank_routing_number"), // Encrypted
+  bankAccountNumber: varchar("bank_account_number"), // Encrypted
+  directDepositEnabled: boolean("direct_deposit_enabled").default(false),
+  
+  // Emergency tax info
+  stateOfResidence: varchar("state_of_residence"),
+  localTaxJurisdiction: varchar("local_tax_jurisdiction"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  workspaceIdx: index("employee_payroll_info_workspace_idx").on(table.workspaceId),
+  employeeIdx: index("employee_payroll_info_employee_idx").on(table.employeeId),
+}));
+
+export const insertEmployeePayrollInfoSchema = createInsertSchema(employeePayrollInfo).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertEmployeePayrollInfo = z.infer<typeof insertEmployeePayrollInfoSchema>;
+export type EmployeePayrollInfo = typeof employeePayrollInfo.$inferSelect;
+
+// ============================================================================
+// EMPLOYEE AVAILABILITY - SCHEDULEOS™ INTEGRATION
+// ============================================================================
+
+export const availabilityStatusEnum = pgEnum('availability_status', [
+  'available',
+  'unavailable',
+  'preferred',
+  'limited'
+]);
+
+export const employeeAvailability = pgTable("employee_availability", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
+  
+  // Recurring weekly availability
+  dayOfWeek: integer("day_of_week").notNull(), // 0-6 (Sunday-Saturday)
+  startTime: varchar("start_time").notNull(), // "09:00" format
+  endTime: varchar("end_time").notNull(), // "17:00" format
+  
+  status: availabilityStatusEnum("status").default('available'),
+  
+  // Metadata
+  notes: text("notes"),
+  effectiveFrom: timestamp("effective_from").defaultNow(),
+  effectiveUntil: timestamp("effective_until"), // Optional end date
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  workspaceIdx: index("employee_availability_workspace_idx").on(table.workspaceId),
+  employeeIdx: index("employee_availability_employee_idx").on(table.employeeId),
+  dayIdx: index("employee_availability_day_idx").on(table.dayOfWeek),
+}));
+
+export const insertEmployeeAvailabilitySchema = createInsertSchema(employeeAvailability).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertEmployeeAvailability = z.infer<typeof insertEmployeeAvailabilitySchema>;
+export type EmployeeAvailability = typeof employeeAvailability.$inferSelect;
+
+// Time-off requests (unavailability)
+export const timeOffRequests = pgTable("time_off_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
+  
+  // Request details
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date").notNull(),
+  timeOffType: varchar("time_off_type").notNull(), // 'vacation', 'sick', 'personal', 'unpaid'
+  reason: text("reason"),
+  
+  // Approval workflow
+  status: varchar("status").default('pending'), // 'pending', 'approved', 'denied'
+  approvedBy: varchar("approved_by").references(() => users.id),
+  approvedAt: timestamp("approved_at"),
+  denialReason: text("denial_reason"),
+  
+  // AI scheduling impact
+  affectsScheduling: boolean("affects_scheduling").default(true),
+  aiNotified: boolean("ai_notified").default(false), // Has ScheduleOS been notified?
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  workspaceIdx: index("time_off_requests_workspace_idx").on(table.workspaceId),
+  employeeIdx: index("time_off_requests_employee_idx").on(table.employeeId),
+  statusIdx: index("time_off_requests_status_idx").on(table.status),
+  dateRangeIdx: index("time_off_requests_date_range_idx").on(table.startDate, table.endDate),
+}));
+
+export const insertTimeOffRequestSchema = createInsertSchema(timeOffRequests).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertTimeOffRequest = z.infer<typeof insertTimeOffRequestSchema>;
+export type TimeOffRequest = typeof timeOffRequests.$inferSelect;
+
+// ============================================================================
+// SHIFT MANAGEMENT - ACCEPT/DENY/SWITCH WITH APPROVAL
+// ============================================================================
+
+export const shiftActionTypeEnum = pgEnum('shift_action_type', [
+  'accept',
+  'deny',
+  'switch_request',
+  'cover_request'
+]);
+
+export const shiftActionStatusEnum = pgEnum('shift_action_status', [
+  'pending',
+  'approved',
+  'denied',
+  'completed',
+  'canceled'
+]);
+
+export const shiftActions = pgTable("shift_actions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  shiftId: varchar("shift_id").notNull().references(() => shifts.id, { onDelete: 'cascade' }),
+  
+  // Action details
+  actionType: shiftActionTypeEnum("action_type").notNull(),
+  requestedBy: varchar("requested_by").notNull().references(() => employees.id, { onDelete: 'cascade' }),
+  
+  // For switch/cover requests
+  targetEmployeeId: varchar("target_employee_id").references(() => employees.id), // Who should take the shift
+  reason: text("reason"),
+  
+  // Approval workflow
+  status: shiftActionStatusEnum("status").default('pending'),
+  requiresApproval: boolean("requires_approval").default(true),
+  approvedBy: varchar("approved_by").references(() => users.id),
+  approvedAt: timestamp("approved_at"),
+  denialReason: text("denial_reason"),
+  
+  // AI scheduling impact
+  aiScheduleUpdated: boolean("ai_schedule_updated").default(false),
+  replacementShiftId: varchar("replacement_shift_id").references(() => shifts.id), // New shift created
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  workspaceIdx: index("shift_actions_workspace_idx").on(table.workspaceId),
+  shiftIdx: index("shift_actions_shift_idx").on(table.shiftId),
+  requestedByIdx: index("shift_actions_requested_by_idx").on(table.requestedBy),
+  statusIdx: index("shift_actions_status_idx").on(table.status),
+  actionTypeIdx: index("shift_actions_action_type_idx").on(table.actionType),
+}));
+
+export const insertShiftActionSchema = createInsertSchema(shiftActions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertShiftAction = z.infer<typeof insertShiftActionSchema>;
+export type ShiftAction = typeof shiftActions.$inferSelect;
+
+// ============================================================================
+// TIMESHEET EDIT PERMISSIONS - EMPLOYEE REQUESTS ONLY
+// ============================================================================
+
+export const timesheetEditRequestStatusEnum = pgEnum('timesheet_edit_request_status', [
+  'pending',
+  'approved',
+  'denied',
+  'applied'
+]);
+
+export const timesheetEditRequests = pgTable("timesheet_edit_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  timeEntryId: varchar("time_entry_id").notNull().references(() => timeEntries.id, { onDelete: 'cascade' }),
+  
+  // Request details
+  requestedBy: varchar("requested_by").notNull().references(() => employees.id, { onDelete: 'cascade' }),
+  reason: text("reason").notNull(),
+  
+  // Proposed changes
+  proposedClockIn: timestamp("proposed_clock_in"),
+  proposedClockOut: timestamp("proposed_clock_out"),
+  proposedNotes: text("proposed_notes"),
+  
+  // Current values (for comparison)
+  originalClockIn: timestamp("original_clock_in"),
+  originalClockOut: timestamp("original_clock_out"),
+  originalNotes: text("original_notes"),
+  
+  // Approval workflow
+  status: timesheetEditRequestStatusEnum("status").default('pending'),
+  reviewedBy: varchar("reviewed_by").references(() => users.id),
+  reviewedAt: timestamp("reviewed_at"),
+  reviewNotes: text("review_notes"),
+  
+  // Applied changes
+  appliedBy: varchar("applied_by").references(() => users.id),
+  appliedAt: timestamp("applied_at"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  workspaceIdx: index("timesheet_edit_requests_workspace_idx").on(table.workspaceId),
+  timeEntryIdx: index("timesheet_edit_requests_time_entry_idx").on(table.timeEntryId),
+  requestedByIdx: index("timesheet_edit_requests_requested_by_idx").on(table.requestedBy),
+  statusIdx: index("timesheet_edit_requests_status_idx").on(table.status),
+}));
+
+export const insertTimesheetEditRequestSchema = createInsertSchema(timesheetEditRequests).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertTimesheetEditRequest = z.infer<typeof insertTimesheetEditRequestSchema>;
+export type TimesheetEditRequest = typeof timesheetEditRequests.$inferSelect;
+
+// ============================================================================
+// CONTRACT DOCUMENTS - I9, W9, W4 ONBOARDING
+// ============================================================================
+
+export const contractDocumentTypeEnum = pgEnum('contract_document_type', [
+  'i9', // Employment Eligibility Verification
+  'w4', // Employee's Withholding Certificate
+  'w9', // Contractor Tax Information
+  'nda', // Non-Disclosure Agreement
+  'employment_agreement',
+  'contractor_agreement',
+  'handbook_acknowledgment',
+  'policy_acknowledgment',
+  'direct_deposit_authorization',
+  'background_check_consent',
+  'drug_test_consent',
+  'other'
+]);
+
+export const contractDocuments = pgTable("contract_documents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
+  
+  // Document details
+  documentType: contractDocumentTypeEnum("document_type").notNull(),
+  documentName: varchar("document_name").notNull(),
+  
+  // Template source
+  templateId: varchar("template_id"), // Reference to document template
+  
+  // File storage
+  fileUrl: varchar("file_url").notNull(),
+  signedFileUrl: varchar("signed_file_url"),
+  
+  // Signature tracking
+  requiresSignature: boolean("requires_signature").default(true),
+  signedBy: varchar("signed_by").references(() => users.id),
+  signedAt: timestamp("signed_at"),
+  ipAddress: varchar("ip_address"), // IP when signed
+  
+  // Employer signature (if needed)
+  requiresEmployerSignature: boolean("requires_employer_signature").default(false),
+  employerSignedBy: varchar("employer_signed_by").references(() => users.id),
+  employerSignedAt: timestamp("employer_signed_at"),
+  
+  // Completion & compliance
+  isCompleted: boolean("is_completed").default(false),
+  completedAt: timestamp("completed_at"),
+  isRequired: boolean("is_required").default(true),
+  mustCompleteBeforeWork: boolean("must_complete_before_work").default(true),
+  
+  // Expiration
+  expirationDate: timestamp("expiration_date"),
+  
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  workspaceIdx: index("contract_documents_workspace_idx").on(table.workspaceId),
+  employeeIdx: index("contract_documents_employee_idx").on(table.employeeId),
+  typeIdx: index("contract_documents_type_idx").on(table.documentType),
+  completedIdx: index("contract_documents_completed_idx").on(table.isCompleted),
+  requiredIdx: index("contract_documents_required_idx").on(table.isRequired, table.mustCompleteBeforeWork),
+}));
+
+export const insertContractDocumentSchema = createInsertSchema(contractDocuments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertContractDocument = z.infer<typeof insertContractDocumentSchema>;
+export type ContractDocument = typeof contractDocuments.$inferSelect;
+
+// ============================================================================
+// ORGANIZATION ONBOARDING - COMPLETE SETUP WORKFLOW
+// ============================================================================
+
+export const organizationOnboarding = pgTable("organization_onboarding", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().unique().references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  // Setup progress
+  currentStep: integer("current_step").default(1),
+  totalSteps: integer("total_steps").default(8),
+  isCompleted: boolean("is_completed").default(false),
+  
+  // Step completion tracking
+  step1CompanyInfo: boolean("step1_company_info").default(false),
+  step2BillingInfo: boolean("step2_billing_info").default(false),
+  step3RolesPermissions: boolean("step3_roles_permissions").default(false),
+  step4InviteEmployees: boolean("step4_invite_employees").default(false),
+  step5AddCustomers: boolean("step5_add_customers").default(false),
+  step6ConfigurePayroll: boolean("step6_configure_payroll").default(false),
+  step7SetupIntegrations: boolean("step7_setup_integrations").default(false),
+  step8ReviewLaunch: boolean("step8_review_launch").default(false),
+  
+  // Completion tracking
+  completedAt: timestamp("completed_at"),
+  completedBy: varchar("completed_by").references(() => users.id),
+  
+  // Skip tracking
+  skippedSteps: text("skipped_steps").array().default(sql`ARRAY[]::text[]`),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  workspaceIdx: index("organization_onboarding_workspace_idx").on(table.workspaceId),
+  completedIdx: index("organization_onboarding_completed_idx").on(table.isCompleted),
+}));
+
+export const insertOrganizationOnboardingSchema = createInsertSchema(organizationOnboarding).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertOrganizationOnboarding = z.infer<typeof insertOrganizationOnboardingSchema>;
+export type OrganizationOnboarding = typeof organizationOnboarding.$inferSelect;
+
+// ============================================================================
+// CUSTOMER PAYMENT INFORMATION - END CUSTOMER BILLING
+// ============================================================================
+
+export const clientPaymentInfo = pgTable("client_payment_info", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  clientId: varchar("client_id").notNull().unique().references(() => clients.id, { onDelete: 'cascade' }),
+  
+  // Stripe customer
+  stripeCustomerId: varchar("stripe_customer_id").unique(),
+  
+  // Payment terms
+  paymentTermsDays: integer("payment_terms_days").default(30), // Net 30, etc.
+  autoChargeEnabled: boolean("auto_charge_enabled").default(false),
+  
+  // Billing contact
+  billingEmail: varchar("billing_email"),
+  billingPhone: varchar("billing_phone"),
+  billingContactName: varchar("billing_contact_name"),
+  
+  // Billing address
+  billingAddress: text("billing_address"),
+  billingCity: varchar("billing_city"),
+  billingState: varchar("billing_state"),
+  billingZip: varchar("billing_zip"),
+  billingCountry: varchar("billing_country").default('US'),
+  
+  // Payment method on file
+  hasPaymentMethod: boolean("has_payment_method").default(false),
+  paymentMethodLast4: varchar("payment_method_last4"),
+  paymentMethodType: varchar("payment_method_type"), // 'card', 'ach', etc.
+  paymentMethodExpiry: varchar("payment_method_expiry"),
+  
+  // Credit limit
+  creditLimit: decimal("credit_limit", { precision: 10, scale: 2 }),
+  currentBalance: decimal("current_balance", { precision: 10, scale: 2 }).default("0.00"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  workspaceIdx: index("client_payment_info_workspace_idx").on(table.workspaceId),
+  clientIdx: index("client_payment_info_client_idx").on(table.clientId),
+  stripeIdx: index("client_payment_info_stripe_idx").on(table.stripeCustomerId),
+}));
+
+export const insertClientPaymentInfoSchema = createInsertSchema(clientPaymentInfo).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertClientPaymentInfo = z.infer<typeof insertClientPaymentInfoSchema>;
+export type ClientPaymentInfo = typeof clientPaymentInfo.$inferSelect;
