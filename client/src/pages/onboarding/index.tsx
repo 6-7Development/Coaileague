@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { CheckCircle2, Circle, Loader2, AlertCircle } from "lucide-react";
 import { PersonalInfoStep } from "./personal-info-step";
 import { TaxSelectionStep } from "./tax-selection-step";
+import { PayrollInfoStep } from "./payroll-info-step";
 import { WorkAvailabilityStep } from "./work-availability-step";
 import { DocumentUploadStep } from "./document-upload-step";
 import { SignatureStep } from "./signature-step";
@@ -16,7 +17,8 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 
 type OnboardingStep = 
   | 'personal_info' 
-  | 'tax_selection' 
+  | 'tax_selection'
+  | 'payroll_info'
   | 'tax_forms' 
   | 'contract_signature' 
   | 'document_upload' 
@@ -37,9 +39,10 @@ interface OnboardingApplication {
   taxClassification?: 'w4_employee' | 'w9_contractor';
 }
 
-const steps: { id: OnboardingStep; label: string; description: string }[] = [
+const allSteps: { id: OnboardingStep; label: string; description: string; requiresW4?: boolean }[] = [
   { id: 'personal_info', label: 'Personal Info', description: 'Basic information' },
   { id: 'tax_selection', label: 'Tax Classification', description: 'W-4 or W-9' },
+  { id: 'payroll_info', label: 'Payroll Setup', description: 'Direct deposit & W-4', requiresW4: true },
   { id: 'work_availability', label: 'Availability', description: 'Work schedule' },
   { id: 'document_upload', label: 'Documents', description: 'ID & certifications' },
   { id: 'contract_signature', label: 'Agreements', description: 'Sign contracts' },
@@ -67,8 +70,8 @@ export default function OnboardingPage() {
   // Create application mutation
   const createApplicationMutation = useMutation({
     mutationFn: async (data: any) => {
-      const response = await apiRequest('/api/onboarding/application', 'POST', data);
-      return response;
+      const response = await apiRequest('POST', '/api/onboarding/application', data);
+      return response.json();
     },
     onSuccess: (data: OnboardingApplication) => {
       setApplicationId(data.id);
@@ -84,15 +87,25 @@ export default function OnboardingPage() {
     }
   }, [invite, applicationId, token]);
 
+  const isW4Employee = application?.taxClassification === 'w4_employee';
+  
+  const steps = allSteps.filter(step => {
+    if (step.requiresW4) {
+      return isW4Employee;
+    }
+    return true;
+  });
+
   const currentStepIndex = steps.findIndex(s => s.id === application?.currentStep) || 0;
   const progress = ((currentStepIndex + 1) / steps.length) * 100;
 
   const updateStepMutation = useMutation({
     mutationFn: async (data: Partial<OnboardingApplication>) => {
-      return await apiRequest(`/api/onboarding/application/${applicationId}`, 'PATCH', {
+      const response = await apiRequest('PATCH', `/api/onboarding/application/${applicationId}`, {
         workspaceId,
         ...data,
       });
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/onboarding/application', applicationId] });
@@ -230,6 +243,9 @@ export default function OnboardingPage() {
               )}
               {application?.currentStep === 'tax_selection' && (
                 <TaxSelectionStep application={application} onNext={nextStep} />
+              )}
+              {application?.currentStep === 'payroll_info' && isW4Employee && (
+                <PayrollInfoStep application={application} onNext={nextStep} />
               )}
               {application?.currentStep === 'work_availability' && (
                 <WorkAvailabilityStep application={application} onNext={nextStep} />
