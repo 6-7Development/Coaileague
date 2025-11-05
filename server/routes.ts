@@ -21,7 +21,13 @@ import {
   sendReviewDeletedEmail,
   sendReviewEditedEmail,
   sendRatingDeletedEmail,
-  sendWriteUpDeletedEmail
+  sendWriteUpDeletedEmail,
+  sendPTOApprovedEmail,
+  sendPTODeniedEmail,
+  sendShiftActionApprovedEmail,
+  sendShiftActionDeniedEmail,
+  sendTimesheetEditApprovedEmail,
+  sendTimesheetEditDeniedEmail
 } from "./email";
 import { calculatePtoAccrual, getAllPtoBalances, runWeeklyPtoAccrual, deductPtoHours } from './services/ptoAccrual';
 import { getReviewReminderSummary, getOverdueReviews, getUpcomingReviews } from './services/performanceReviewReminders';
@@ -6440,7 +6446,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const { status, reviewNotes } = req.body;
       const userId = req.user?.id;
-      const { timeOffRequests } = await import("@shared/schema");
+      const { timeOffRequests, employees } = await import("@shared/schema");
 
       if (!['approved', 'denied'].includes(status)) {
         return res.status(400).json({ message: 'Invalid status. Must be approved or denied.' });
@@ -6465,6 +6471,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (!updated) {
         return res.status(404).json({ message: 'Time off request not found' });
+      }
+
+      // Send notification email to employee
+      try {
+        const [employee] = await db
+          .select()
+          .from(employees)
+          .where(eq(employees.id, updated.employeeId))
+          .limit(1);
+
+        if (employee?.email) {
+          const emailData = {
+            employeeName: `${employee.firstName} ${employee.lastName}`,
+            startDate: new Date(updated.startDate).toLocaleDateString('en-US', { dateStyle: 'full' }),
+            endDate: new Date(updated.endDate).toLocaleDateString('en-US', { dateStyle: 'full' }),
+            ptoType: updated.requestType,
+            days: updated.totalDays,
+            denialReason: reviewNotes
+          };
+
+          if (status === 'approved') {
+            sendPTOApprovedEmail(employee.email, emailData).catch(err =>
+              console.error('Failed to send PTO approved email:', err)
+            );
+          } else {
+            sendPTODeniedEmail(employee.email, emailData).catch(err =>
+              console.error('Failed to send PTO denied email:', err)
+            );
+          }
+        }
+      } catch (emailError) {
+        console.error('Error sending time-off notification:', emailError);
+        // Don't fail the request if email fails
       }
 
       res.json(updated);
@@ -6676,7 +6715,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const { approved, managerNotes } = req.body;
       const managerId = req.user?.id;
-      const { shiftActions } = await import("@shared/schema");
+      const { shiftActions, employees, shifts } = await import("@shared/schema");
 
       const [updated] = await db
         .update(shiftActions)
@@ -6698,6 +6737,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (!updated) {
         return res.status(404).json({ message: 'Shift action not found' });
+      }
+
+      // Send notification email to employee
+      try {
+        const [employee] = await db
+          .select()
+          .from(employees)
+          .where(eq(employees.id, updated.employeeId))
+          .limit(1);
+
+        const [shift] = await db
+          .select()
+          .from(shifts)
+          .where(eq(shifts.id, updated.shiftId))
+          .limit(1);
+
+        if (employee?.email && shift) {
+          const emailData = {
+            employeeName: `${employee.firstName} ${employee.lastName}`,
+            actionType: updated.actionType,
+            shiftTitle: shift.title || 'Shift',
+            shiftDate: new Date(shift.startTime).toLocaleDateString('en-US', {
+              dateStyle: 'full'
+            }),
+            denialReason: managerNotes
+          };
+
+          if (approved) {
+            sendShiftActionApprovedEmail(employee.email, emailData).catch(err =>
+              console.error('Failed to send shift action approved email:', err)
+            );
+          } else {
+            sendShiftActionDeniedEmail(employee.email, emailData).catch(err =>
+              console.error('Failed to send shift action denied email:', err)
+            );
+          }
+        }
+      } catch (emailError) {
+        console.error('Error sending shift action notification:', emailError);
+        // Don't fail the request if email fails
       }
 
       res.json(updated);
@@ -6783,7 +6862,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const { approved, reviewNotes } = req.body;
       const reviewerId = req.user?.id;
-      const { timesheetEditRequests } = await import("@shared/schema");
+      const { timesheetEditRequests, employees } = await import("@shared/schema");
 
       const [updated] = await db
         .update(timesheetEditRequests)
@@ -6823,6 +6902,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } catch (error) {
           console.error('Error applying timesheet changes:', error);
         }
+      }
+
+      // Send notification email to employee
+      try {
+        const [employee] = await db
+          .select()
+          .from(employees)
+          .where(eq(employees.id, updated.employeeId))
+          .limit(1);
+
+        if (employee?.email) {
+          const emailData = {
+            employeeName: `${employee.firstName} ${employee.lastName}`,
+            requestDate: new Date(updated.createdAt).toLocaleDateString('en-US', { dateStyle: 'full' }),
+            requestedChanges: typeof updated.requestedChanges === 'string'
+              ? JSON.parse(updated.requestedChanges)
+              : updated.requestedChanges,
+            denialReason: reviewNotes
+          };
+
+          if (approved) {
+            sendTimesheetEditApprovedEmail(employee.email, emailData).catch(err =>
+              console.error('Failed to send timesheet edit approved email:', err)
+            );
+          } else {
+            sendTimesheetEditDeniedEmail(employee.email, emailData).catch(err =>
+              console.error('Failed to send timesheet edit denied email:', err)
+            );
+          }
+        }
+      } catch (emailError) {
+        console.error('Error sending timesheet edit notification:', emailError);
+        // Don't fail the request if email fails
       }
 
       res.json(updated);

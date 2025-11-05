@@ -227,7 +227,107 @@ export const emailTemplates = {
         </div>
         <p>Please contact your manager if you have questions about this decision.</p>
         <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">
-          This is an automated message from WorkforceOS.
+          This is an automated message from AutoForce™.
+        </p>
+      </div>
+    `
+  }),
+
+  shiftActionApproved: (data: {
+    employeeName: string;
+    actionType: string;
+    shiftTitle: string;
+    shiftDate: string;
+  }) => ({
+    subject: `Shift ${data.actionType} Request Approved`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #16a34a;">Shift Request Approved</h2>
+        <p>Hello ${data.employeeName},</p>
+        <p>Your shift ${data.actionType.toLowerCase()} request has been approved!</p>
+        <div style="background-color: #f0fdf4; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #16a34a;">
+          <p style="margin: 5px 0;"><strong>Action:</strong> ${data.actionType}</p>
+          <p style="margin: 5px 0;"><strong>Shift:</strong> ${data.shiftTitle}</p>
+          <p style="margin: 5px 0;"><strong>Date:</strong> ${data.shiftDate}</p>
+        </div>
+        <p>The schedule has been updated accordingly.</p>
+        <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">
+          This is an automated message from AutoForce™.
+        </p>
+      </div>
+    `
+  }),
+
+  shiftActionDenied: (data: {
+    employeeName: string;
+    actionType: string;
+    shiftTitle: string;
+    shiftDate: string;
+    denialReason?: string;
+  }) => ({
+    subject: `Shift ${data.actionType} Request Denied`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #dc2626;">Shift Request Denied</h2>
+        <p>Hello ${data.employeeName},</p>
+        <p>Your shift ${data.actionType.toLowerCase()} request has been denied.</p>
+        <div style="background-color: #fef2f2; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #dc2626;">
+          <p style="margin: 5px 0;"><strong>Action:</strong> ${data.actionType}</p>
+          <p style="margin: 5px 0;"><strong>Shift:</strong> ${data.shiftTitle}</p>
+          <p style="margin: 5px 0;"><strong>Date:</strong> ${data.shiftDate}</p>
+          ${data.denialReason ? `<p style="margin: 5px 0;"><strong>Reason:</strong> ${data.denialReason}</p>` : ''}
+        </div>
+        <p>Please contact your manager if you have questions about this decision.</p>
+        <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">
+          This is an automated message from AutoForce™.
+        </p>
+      </div>
+    `
+  }),
+
+  timesheetEditApproved: (data: {
+    employeeName: string;
+    timeEntryDate: string;
+    changes: string;
+  }) => ({
+    subject: `Timesheet Edit Request Approved`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #16a34a;">Timesheet Edit Approved</h2>
+        <p>Hello ${data.employeeName},</p>
+        <p>Your timesheet edit request has been approved and applied.</p>
+        <div style="background-color: #f0fdf4; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #16a34a;">
+          <p style="margin: 5px 0;"><strong>Date:</strong> ${data.timeEntryDate}</p>
+          <p style="margin: 5px 0;"><strong>Changes:</strong> ${data.changes}</p>
+        </div>
+        <p>Your timesheet has been updated with the approved changes.</p>
+        <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">
+          This is an automated message from AutoForce™.
+        </p>
+      </div>
+    `
+  }),
+
+  timesheetEditDenied: (data: {
+    employeeName: string;
+    timeEntryDate: string;
+    changes: string;
+    denialReason?: string;
+  }) => ({
+    subject: `Timesheet Edit Request Denied`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #dc2626;">Timesheet Edit Denied</h2>
+        <p>Hello ${data.employeeName},</p>
+        <p>Your timesheet edit request has been denied.</p>
+        <div style="background-color: #fef2f2; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #dc2626;">
+          <p style="margin: 5px 0;"><strong>Date:</strong> ${data.timeEntryDate}</p>
+          <p style="margin: 5px 0;"><strong>Requested Changes:</strong> ${data.changes}</p>
+          ${data.denialReason ? `<p style="margin: 5px 0;"><strong>Reason:</strong> ${data.denialReason}</p>` : ''}
+        </div>
+        <p>Please contact your manager if you have questions about this decision.</p>
+        <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">
+          This is an automated message from AutoForce™.
         </p>
       </div>
     `
@@ -809,6 +909,96 @@ export async function sendWriteUpDeletedEmail(
     return { success: true, data: result };
   } catch (error) {
     console.error('Error sending write-up deleted email:', error);
+    return { success: false, error };
+  }
+}
+
+// Shift Action Notification Emails
+export async function sendShiftActionApprovedEmail(
+  to: string,
+  data: Parameters<typeof emailTemplates.shiftActionApproved>[0]
+) {
+  try {
+    const { client, fromEmail } = await getUncachableResendClient();
+    const template = emailTemplates.shiftActionApproved(data);
+    
+    const result = await client.emails.send({
+      from: fromEmail,
+      to: [to],
+      subject: template.subject,
+      html: template.html,
+    });
+
+    return { success: true, data: result };
+  } catch (error) {
+    console.error('Error sending shift action approved email:', error);
+    return { success: false, error };
+  }
+}
+
+export async function sendShiftActionDeniedEmail(
+  to: string,
+  data: Parameters<typeof emailTemplates.shiftActionDenied>[0]
+) {
+  try {
+    const { client, fromEmail } = await getUncachableResendClient();
+    const template = emailTemplates.shiftActionDenied(data);
+    
+    const result = await client.emails.send({
+      from: fromEmail,
+      to: [to],
+      subject: template.subject,
+      html: template.html,
+    });
+
+    return { success: true, data: result };
+  } catch (error) {
+    console.error('Error sending shift action denied email:', error);
+    return { success: false, error };
+  }
+}
+
+// Timesheet Edit Request Notification Emails
+export async function sendTimesheetEditApprovedEmail(
+  to: string,
+  data: Parameters<typeof emailTemplates.timesheetEditApproved>[0]
+) {
+  try {
+    const { client, fromEmail } = await getUncachableResendClient();
+    const template = emailTemplates.timesheetEditApproved(data);
+    
+    const result = await client.emails.send({
+      from: fromEmail,
+      to: [to],
+      subject: template.subject,
+      html: template.html,
+    });
+
+    return { success: true, data: result };
+  } catch (error) {
+    console.error('Error sending timesheet edit approved email:', error);
+    return { success: false, error };
+  }
+}
+
+export async function sendTimesheetEditDeniedEmail(
+  to: string,
+  data: Parameters<typeof emailTemplates.timesheetEditDenied>[0]
+) {
+  try {
+    const { client, fromEmail } = await getUncachableResendClient();
+    const template = emailTemplates.timesheetEditDenied(data);
+    
+    const result = await client.emails.send({
+      from: fromEmail,
+      to: [to],
+      subject: template.subject,
+      html: template.html,
+    });
+
+    return { success: true, data: result };
+  } catch (error) {
+    console.error('Error sending timesheet edit denied email:', error);
     return { success: false, error };
   }
 }

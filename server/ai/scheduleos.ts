@@ -18,7 +18,7 @@ import OpenAI from 'openai';
 import { db } from "../db";
 import { 
   employees, shifts, timeEntries, clients, performanceReviews,
-  timeEntryDiscrepancies, onboardingApplications
+  timeEntryDiscrepancies, onboardingApplications, employeeAvailability
 } from "@shared/schema";
 import { eq, and, gte, lte, sql, desc, count } from "drizzle-orm";
 
@@ -64,15 +64,15 @@ interface EmployeeIntelligence {
   complianceViolations: number; // From performance reviews
   safetyIncidents: number; // From performance reviews
   
-  // Availability & Preferences
+  // Availability & Preferences (NEW: from employeeAvailability table with time windows)
   availability: {
-    monday: boolean;
-    tuesday: boolean;
-    wednesday: boolean;
-    thursday: boolean;
-    friday: boolean;
-    saturday: boolean;
-    sunday: boolean;
+    monday: { available: boolean; startTime?: string; endTime?: string };
+    tuesday: { available: boolean; startTime?: string; endTime?: string };
+    wednesday: { available: boolean; startTime?: string; endTime?: string };
+    thursday: { available: boolean; startTime?: string; endTime?: string };
+    friday: { available: boolean; startTime?: string; endTime?: string };
+    saturday: { available: boolean; startTime?: string; endTime?: string };
+    sunday: { available: boolean; startTime?: string; endTime?: string };
   };
   preferredShiftTime: string; // 'morning', 'afternoon', 'evening', 'night'
   maxHoursPerWeek: number;
@@ -89,7 +89,7 @@ interface EmployeeIntelligence {
   
   // Assignment History (for penalty queue)
   deniedShiftsLast30Days: number;
-  lastDenialDate?: Date;
+  lastDenialDate?: Date | null;
   penaltyQueuePosition: number; // Higher = back of queue
   
   // Calculated Scores
@@ -214,7 +214,7 @@ CRITICAL RULES:
     const aiSchedule = JSON.parse(aiResponse.choices[0].message.content || '{}');
 
     // 7. Transform AI suggestions into shift objects with full metadata
-    const generatedShifts = (aiSchedule.shifts || []).map((shift: any) => {
+    const generatedShifts = (aiSchedule.shifts || []).map((shift: any): any => {
       const emp = employeeIntelligence.find(e => e.employeeId === shift.employeeId);
       const shiftHours = (new Date(shift.endTime).getTime() - new Date(shift.startTime).getTime()) / (1000 * 60 * 60);
       
@@ -244,7 +244,7 @@ CRITICAL RULES:
       success: true,
       scheduleDate: request.weekStartDate,
       shiftsGenerated: generatedShifts.length,
-      employeesScheduled: new Set(generatedShifts.map(s => s.employeeId)).size,
+      employeesScheduled: new Set(generatedShifts.map((s: any) => s.employeeId)).size,
       conflicts: aiSchedule.conflicts || [],
       warnings: aiSchedule.warnings || [], // NEW: Risk warnings
       recommendations: aiSchedule.recommendations || [],
@@ -378,7 +378,7 @@ CRITICAL RULES:
         const safetyIncidents = latestReview?.safetyIncidents || 0;
 
         // ==================================================================
-        // AVAILABILITY & PREFERENCES (from onboarding)
+        // AVAILABILITY & PREFERENCES (NEW: from employeeAvailability table)
         // ==================================================================
         const [onboardingData] = await db
           .select()
@@ -386,15 +386,46 @@ CRITICAL RULES:
           .where(eq(onboardingApplications.email, emp.email || ''))
           .limit(1);
 
-        const availability = {
-          monday: onboardingData?.availableMonday ?? true,
-          tuesday: onboardingData?.availableTuesday ?? true,
-          wednesday: onboardingData?.availableWednesday ?? true,
-          thursday: onboardingData?.availableThursday ?? true,
-          friday: onboardingData?.availableFriday ?? true,
-          saturday: onboardingData?.availableSaturday ?? false,
-          sunday: onboardingData?.availableSunday ?? false,
+        // Pull detailed availability from employeeAvailability table
+        const availabilityRecords = await db
+          .select()
+          .from(employeeAvailability)
+          .where(eq(employeeAvailability.employeeId, emp.id));
+
+        // Build availability map with time windows
+        const availabilityMap: any = {
+          monday: { available: false },
+          tuesday: { available: false },
+          wednesday: { available: false },
+          thursday: { available: false },
+          friday: { available: false },
+          saturday: { available: false },
+          sunday: { available: false },
         };
+
+        const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+        
+        for (const record of availabilityRecords) {
+          const dayName = dayNames[record.dayOfWeek];
+          availabilityMap[dayName] = {
+            available: true,
+            startTime: record.startTime,
+            endTime: record.endTime,
+          };
+        }
+
+        // Fallback to onboarding data if no detailed availability exists
+        if (availabilityRecords.length === 0) {
+          availabilityMap.monday = { available: onboardingData?.availableMonday ?? true };
+          availabilityMap.tuesday = { available: onboardingData?.availableTuesday ?? true };
+          availabilityMap.wednesday = { available: onboardingData?.availableWednesday ?? true };
+          availabilityMap.thursday = { available: onboardingData?.availableThursday ?? true };
+          availabilityMap.friday = { available: onboardingData?.availableFriday ?? true };
+          availabilityMap.saturday = { available: onboardingData?.availableSaturday ?? false };
+          availabilityMap.sunday = { available: onboardingData?.availableSunday ?? false };
+        }
+
+        const availability = availabilityMap;
 
         // ==================================================================
         // YEARS OF SERVICE & SENIORITY
@@ -504,7 +535,7 @@ CRITICAL RULES:
     );
 
     // Sort by reliability (best first) and penalty queue (recent denials last)
-    return employeeIntelligence.sort((a, b) => {
+    return employeeIntelligence.sort((a: EmployeeIntelligence, b: EmployeeIntelligence) => {
       // First sort by penalty queue (fewer denials = higher priority)
       if (a.penaltyQueuePosition !== b.penaltyQueuePosition) {
         return a.penaltyQueuePosition - b.penaltyQueuePosition;
@@ -606,7 +637,13 @@ ${idx + 1}. ${emp.employeeName} (ID: ${emp.employeeId})
    ├─ Violations: ${emp.gpsViolations} GPS, ${emp.complianceViolations} compliance, ${emp.safetyIncidents} safety
    ├─ Years of Service: ${emp.yearsOfService.toFixed(1)} years (joined ${emp.employmentStartDate.toLocaleDateString()})
    ├─ Location: ${emp.homeCity}, ${emp.homeState} ${emp.homeZipCode}
-   ├─ Availability: ${Object.entries(emp.availability).filter(([_, v]) => v).map(([k]) => k.substring(0, 3).toUpperCase()).join(', ')}
+   ├─ Availability: ${Object.entries(emp.availability)
+     .filter(([_, v]: any) => v.available)
+     .map(([k, v]: any) => {
+       const day = k.substring(0, 3).toUpperCase();
+       return v.startTime && v.endTime ? `${day} (${v.startTime}-${v.endTime})` : day;
+     })
+     .join(', ')}
    ├─ Preferred Shift: ${emp.preferredShiftTime} | Max Hours/Week: ${emp.maxHoursPerWeek}
    ├─ Total Hours (90d): ${emp.totalHoursWorked.toFixed(1)}
    └─ ${emp.deniedShiftsLast30Days > 0 ? `⚠️ PENALTY QUEUE: Denied ${emp.deniedShiftsLast30Days} shifts (last: ${emp.lastDenialDate?.toLocaleDateString()})` : '✓ No recent denials'}
