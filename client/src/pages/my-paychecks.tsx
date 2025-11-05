@@ -18,8 +18,8 @@ interface Paycheck {
   employeeName: string;
   periodStart: string;
   periodEnd: string;
-  regularHours: number;
-  overtimeHours: number;
+  regularHours: string; // Database returns as decimal/string
+  overtimeHours: string; // Database returns as decimal/string
   hourlyRate: string;
   grossPay: string;
   federalTax: string;
@@ -35,8 +35,12 @@ export default function MyPaychecks() {
     queryKey: ['/api/payroll/my-paychecks'],
   });
 
-  const totalEarnings = paychecks.reduce((sum, p) => sum + parseFloat(p.netPay), 0);
-  const totalHours = paychecks.reduce((sum, p) => sum + p.regularHours + p.overtimeHours, 0);
+  const totalEarnings = paychecks.reduce((sum, p) => sum + parseFloat(p.netPay || '0'), 0);
+  const totalHours = paychecks.reduce((sum, p) => {
+    const regular = parseFloat(p.regularHours || '0');
+    const overtime = parseFloat(p.overtimeHours || '0');
+    return sum + regular + overtime;
+  }, 0);
 
   return (
     <div className="container mx-auto p-4 space-y-6">
