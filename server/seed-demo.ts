@@ -2,7 +2,7 @@
 // Creates a pre-populated demo workspace with realistic sample data
 
 import { db } from "./db";
-import { users, workspaces, employees, clients, shifts, timeEntries, invoices, invoiceLineItems } from "@shared/schema";
+import { users, workspaces, employees, clients, shifts, timeEntries, invoices, invoiceLineItems, payrollRuns, payrollEntries } from "@shared/schema";
 import { eq } from "drizzle-orm";
 
 const DEMO_USER_ID = "demo-user-00000000";
@@ -49,16 +49,32 @@ export async function seedDemoWorkspace() {
 
   console.log("✅ Created demo workspace");
 
-  // 3. Create sample employees
+  // 3. Create employee record for the demo user (so they can see their own paychecks)
+  const [demoUserEmployee] = await db.insert(employees).values({
+    workspaceId: DEMO_WORKSPACE_ID,
+    userId: DEMO_USER_ID, // CRITICAL: Link employee to user for paycheck access
+    firstName: "Demo",
+    lastName: "User",
+    email: "demo@shiftsync.app",
+    role: "Platform Administrator",
+    hourlyRate: "50.00",
+    workspaceRole: "owner",
+    isActive: true,
+    color: "#6366f1",
+  }).returning();
+
+  console.log("✅ Created demo user employee record");
+
+  // 4. Create sample employees (team members)
   const employeeData = [
-    { firstName: "Sarah", lastName: "Johnson", email: "sarah.j@demo.com", role: "Lead Technician", hourlyRate: "75.00", color: "#3b82f6" },
-    { firstName: "Michael", lastName: "Chen", email: "michael.c@demo.com", role: "Senior Consultant", hourlyRate: "85.00", color: "#8b5cf6" },
-    { firstName: "Emma", lastName: "Williams", email: "emma.w@demo.com", role: "Field Specialist", hourlyRate: "65.00", color: "#ec4899" },
-    { firstName: "James", lastName: "Davis", email: "james.d@demo.com", role: "Technician", hourlyRate: "60.00", color: "#10b981" },
-    { firstName: "Lisa", lastName: "Martinez", email: "lisa.m@demo.com", role: "Consultant", hourlyRate: "70.00", color: "#f59e0b" },
+    { firstName: "Sarah", lastName: "Johnson", email: "sarah.j@demo.com", role: "Lead Technician", hourlyRate: "75.00", color: "#3b82f6", workspaceRole: "manager" },
+    { firstName: "Michael", lastName: "Chen", email: "michael.c@demo.com", role: "Senior Consultant", hourlyRate: "85.00", color: "#8b5cf6", workspaceRole: "manager" },
+    { firstName: "Emma", lastName: "Williams", email: "emma.w@demo.com", role: "Field Specialist", hourlyRate: "65.00", color: "#ec4899", workspaceRole: "employee" },
+    { firstName: "James", lastName: "Davis", email: "james.d@demo.com", role: "Technician", hourlyRate: "60.00", color: "#10b981", workspaceRole: "employee" },
+    { firstName: "Lisa", lastName: "Martinez", email: "lisa.m@demo.com", role: "Consultant", hourlyRate: "70.00", color: "#f59e0b", workspaceRole: "employee" },
   ];
 
-  const createdEmployees = [];
+  const createdEmployees = [demoUserEmployee]; // Include demo user in employees list
   for (const emp of employeeData) {
     const [employee] = await db.insert(employees).values({
       workspaceId: DEMO_WORKSPACE_ID,
@@ -68,7 +84,7 @@ export async function seedDemoWorkspace() {
     createdEmployees.push(employee);
   }
 
-  console.log(`✅ Created ${createdEmployees.length} employees`);
+  console.log(`✅ Created ${createdEmployees.length} employees (including demo user)`);
 
   // 4. Create sample clients
   const clientData = [
@@ -89,7 +105,43 @@ export async function seedDemoWorkspace() {
 
   console.log(`✅ Created ${createdClients.length} clients`);
 
-  // 5. Create sample shifts (10 total - mix of past and future)
+  // 5. Create sample payroll run and paycheck for demo user
+  const lastWeek = new Date();
+  lastWeek.setDate(lastWeek.getDate() - 7);
+  const payPeriodStart = new Date(lastWeek.getFullYear(), lastWeek.getMonth(), 1);
+  const payPeriodEnd = new Date(lastWeek.getFullYear(), lastWeek.getMonth() + 1, 0);
+  
+  // Create payroll run first
+  const [payrollRun] = await db.insert(payrollRuns).values({
+    workspaceId: DEMO_WORKSPACE_ID,
+    periodStart: payPeriodStart,
+    periodEnd: payPeriodEnd,
+    totalGrossPay: "4375.00",
+    totalNetPay: "3165.31",
+    status: "processed",
+    processedBy: DEMO_USER_ID,
+    processedAt: lastWeek,
+  }).returning();
+  
+  // Create paycheck entry
+  await db.insert(payrollEntries).values({
+    payrollRunId: payrollRun.id,
+    workspaceId: DEMO_WORKSPACE_ID,
+    employeeId: demoUserEmployee.id,
+    regularHours: "80.00",
+    overtimeHours: "5.00",
+    hourlyRate: "50.00",
+    grossPay: "4375.00", // (80 * 50) + (5 * 50 * 1.5)
+    federalTax: "656.25",
+    stateTax: "218.75",
+    socialSecurity: "271.25",
+    medicare: "63.44",
+    netPay: "3165.31",
+  });
+
+  console.log("✅ Created sample paycheck for demo user");
+
+  // 6. Create sample shifts (10 total - mix of past and future)
   const now = new Date();
   const shiftsData = [
     // Past shifts (for completed work)
