@@ -6839,6 +6839,43 @@ ${application.email}`,
     }
   });
 
+  // Get pending time-off requests for managers (with employee details)
+  app.get('/api/time-off-requests/pending', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspaceId!;
+      const { timeOffRequests, employees } = await import("@shared/schema");
+
+      const requests = await db
+        .select({
+          id: timeOffRequests.id,
+          employeeId: timeOffRequests.employeeId,
+          employeeName: sql<string>`${employees.firstName} || ' ' || ${employees.lastName}`,
+          startDate: timeOffRequests.startDate,
+          endDate: timeOffRequests.endDate,
+          requestType: timeOffRequests.requestType,
+          totalDays: timeOffRequests.totalDays,
+          reason: timeOffRequests.reason,
+          notes: timeOffRequests.notes,
+          status: timeOffRequests.status,
+          createdAt: timeOffRequests.createdAt,
+        })
+        .from(timeOffRequests)
+        .innerJoin(employees, eq(timeOffRequests.employeeId, employees.id))
+        .where(
+          and(
+            eq(timeOffRequests.workspaceId, workspaceId),
+            eq(timeOffRequests.status, 'pending')
+          )
+        )
+        .orderBy(timeOffRequests.createdAt);
+
+      res.json(requests);
+    } catch (error: any) {
+      console.error('Error fetching pending time-off requests:', error);
+      res.status(500).json({ message: error.message || 'Failed to fetch pending time-off requests' });
+    }
+  });
+
   // Get time off requests for employee
   app.get('/api/employees/:employeeId/time-off', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
@@ -6919,8 +6956,8 @@ ${application.email}`,
     }
   });
 
-  // Approve/deny time off request
-  app.put('/api/time-off-requests/:id/status', requireAuth, async (req: AuthenticatedRequest, res) => {
+  // Approve/deny time off request (manager only)
+  app.put('/api/time-off-requests/:id/status', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
     try {
       const workspaceId = req.workspaceId!;
       const { id } = req.params;
@@ -6966,8 +7003,8 @@ ${application.email}`,
             employeeName: `${employee.firstName} ${employee.lastName}`,
             startDate: new Date(updated.startDate).toLocaleDateString('en-US', { dateStyle: 'full' }),
             endDate: new Date(updated.endDate).toLocaleDateString('en-US', { dateStyle: 'full' }),
-            ptoType: updated.requestType,
-            days: updated.totalDays,
+            ptoType: updated.requestType || 'time off',
+            days: updated.totalDays || 0,
             denialReason: reviewNotes
           };
 
