@@ -4094,6 +4094,102 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============================================================================
+  // TIME ENTRY APPROVAL (Multi-Level Approval Workflow)
+  // ============================================================================
+  
+  // Approve time entry (Manager/Admin only)
+  app.patch('/api/time-entries/:id/approve', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspaceId!;
+      const userId = req.user!.id;
+      
+      const timeEntry = await storage.getTimeEntry(req.params.id, workspaceId);
+      if (!timeEntry) {
+        return res.status(404).json({ message: "Time entry not found" });
+      }
+
+      // Prevent self-approval
+      const employee = await db.select().from(employees).where(
+        and(
+          eq(employees.id, timeEntry.employeeId),
+          eq(employees.workspaceId, workspaceId)
+        )
+      ).limit(1);
+
+      if (employee.length > 0 && employee[0].userId === userId) {
+        return res.status(403).json({ message: "Cannot approve your own time entries" });
+      }
+
+      // Update status to approved
+      const [updated] = await db
+        .update(timeEntries)
+        .set({
+          status: 'approved',
+          updatedAt: new Date()
+        })
+        .where(
+          and(
+            eq(timeEntries.id, req.params.id),
+            eq(timeEntries.workspaceId, workspaceId)
+          )
+        )
+        .returning();
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error approving time entry:", error);
+      res.status(500).json({ message: error.message || "Failed to approve time entry" });
+    }
+  });
+
+  // Reject time entry (Manager/Admin only)
+  app.patch('/api/time-entries/:id/reject', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspaceId!;
+      const userId = req.user!.id;
+      const { reason } = req.body;
+      
+      const timeEntry = await storage.getTimeEntry(req.params.id, workspaceId);
+      if (!timeEntry) {
+        return res.status(404).json({ message: "Time entry not found" });
+      }
+
+      // Prevent self-rejection
+      const employee = await db.select().from(employees).where(
+        and(
+          eq(employees.id, timeEntry.employeeId),
+          eq(employees.workspaceId, workspaceId)
+        )
+      ).limit(1);
+
+      if (employee.length > 0 && employee[0].userId === userId) {
+        return res.status(403).json({ message: "Cannot reject your own time entries" });
+      }
+
+      // Update status to rejected
+      const [updated] = await db
+        .update(timeEntries)
+        .set({
+          status: 'rejected',
+          notes: reason ? `Rejected: ${reason}` : timeEntry.notes,
+          updatedAt: new Date()
+        })
+        .where(
+          and(
+            eq(timeEntries.id, req.params.id),
+            eq(timeEntries.workspaceId, workspaceId)
+          )
+        )
+        .returning();
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error rejecting time entry:", error);
+      res.status(500).json({ message: error.message || "Failed to reject time entry" });
+    }
+  });
+
+  // ============================================================================
   // TIME TRACKING ROUTES
   // ============================================================================
   

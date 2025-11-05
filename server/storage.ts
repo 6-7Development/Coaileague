@@ -863,7 +863,24 @@ export class DatabaseStorage implements IStorage {
 
   async getTimeEntriesByWorkspace(workspaceId: string): Promise<TimeEntry[]> {
     return await db
-      .select()
+      .select({
+        id: timeEntries.id,
+        workspaceId: timeEntries.workspaceId,
+        shiftId: timeEntries.shiftId,
+        employeeId: timeEntries.employeeId,
+        clientId: timeEntries.clientId,
+        clockIn: timeEntries.clockIn,
+        clockOut: timeEntries.clockOut,
+        totalHours: timeEntries.totalHours,
+        hourlyRate: timeEntries.hourlyRate,
+        totalAmount: timeEntries.totalAmount,
+        status: timeEntries.status,
+        invoiceId: timeEntries.invoiceId,
+        billableToClient: timeEntries.billableToClient,
+        notes: timeEntries.notes,
+        createdAt: timeEntries.createdAt,
+        updatedAt: timeEntries.updatedAt,
+      })
       .from(timeEntries)
       .where(eq(timeEntries.workspaceId, workspaceId))
       .orderBy(desc(timeEntries.clockIn));
