@@ -143,6 +143,12 @@ import {
   type InsertOnboardingChecklist,
   type Dispute,
   type InsertDispute,
+  type ExpenseCategory,
+  type InsertExpenseCategory,
+  type Expense,
+  type InsertExpense,
+  type ExpenseReceipt,
+  type InsertExpenseReceipt,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, isNotNull, isNull, or, like, sql } from "drizzle-orm";
@@ -418,9 +424,50 @@ export interface IStorage {
   // BillOS™ operations (Financial Automation - extends existing invoice/payroll)
   // Client billing rates
   getClientRates(workspaceId: string, clientId: string): Promise<any[]>;
-  // Expense management
-  getExpenseReports(workspaceId: string, filters?: { status?: string; employeeId?: string }): Promise<any[]>;
-  approveExpense(expenseId: string, workspaceId: string, approverId: string): Promise<any>;
+  
+  // ========================================================================
+  // EXPENSEOS™ - EXPENSE MANAGEMENT
+  // ========================================================================
+  // Expense Categories
+  createExpenseCategory(category: InsertExpenseCategory): Promise<typeof expenseCategories.$inferSelect>;
+  getExpenseCategory(id: string, workspaceId: string): Promise<typeof expenseCategories.$inferSelect | undefined>;
+  getExpenseCategoriesByWorkspace(workspaceId: string): Promise<(typeof expenseCategories.$inferSelect)[]>;
+  updateExpenseCategory(id: string, workspaceId: string, data: Partial<InsertExpenseCategory>): Promise<typeof expenseCategories.$inferSelect | undefined>;
+  deleteExpenseCategory(id: string, workspaceId: string): Promise<boolean>;
+  
+  // Expenses
+  createExpense(expense: InsertExpense): Promise<typeof expenses.$inferSelect>;
+  getExpense(id: string, workspaceId: string): Promise<typeof expenses.$inferSelect | undefined>;
+  getExpensesByWorkspace(workspaceId: string, filters?: { status?: string; employeeId?: string; categoryId?: string }): Promise<(typeof expenses.$inferSelect)[]>;
+  updateExpense(id: string, workspaceId: string, data: Partial<InsertExpense>): Promise<typeof expenses.$inferSelect | undefined>;
+  approveExpense(expenseId: string, workspaceId: string, approverId: string, reviewNotes?: string): Promise<typeof expenses.$inferSelect | undefined>;
+  rejectExpense(expenseId: string, workspaceId: string, reviewerId: string, reviewNotes: string): Promise<typeof expenses.$inferSelect | undefined>;
+  markExpensePaid(expenseId: string, workspaceId: string, paidById: string, paymentMethod?: string): Promise<typeof expenses.$inferSelect | undefined>;
+  deleteExpense(id: string, workspaceId: string): Promise<boolean>;
+  
+  // Expense Receipts
+  createExpenseReceipt(receipt: InsertExpenseReceipt): Promise<typeof expenseReceipts.$inferSelect>;
+  getExpenseReceipt(id: string, workspaceId: string): Promise<typeof expenseReceipts.$inferSelect | undefined>;
+  getExpenseReceiptsByExpense(expenseId: string): Promise<(typeof expenseReceipts.$inferSelect)[]>;
+  deleteExpenseReceipt(id: string, workspaceId: string): Promise<boolean>;
+  
+  // ========================================================================
+  // I-9 RE-VERIFICATION & COMPLIANCE
+  // ========================================================================
+  getI9RecordsByWorkspace(workspaceId: string): Promise<any[]>;
+  getI9RecordByEmployee(employeeId: string, workspaceId: string): Promise<any | undefined>;
+  getExpiringI9Authorizations(workspaceId: string, daysAhead: number): Promise<any[]>;
+  
+  // ========================================================================
+  // POLICIOS™ - POLICY & HANDBOOK MANAGEMENT
+  // ========================================================================
+  createCompanyPolicy(policy: any): Promise<any>;
+  getCompanyPolicy(id: string, workspaceId: string): Promise<any | undefined>;
+  getCompanyPolicies(workspaceId: string): Promise<any[]>;
+  updateCompanyPolicy(id: string, workspaceId: string, data: any): Promise<any | undefined>;
+  publishPolicy(id: string, workspaceId: string, publishedBy: string): Promise<any | undefined>;
+  getPolicyAcknowledgments(policyId: string): Promise<any[]>;
+  createPolicyAcknowledgment(ack: any): Promise<any>;
   
   // ReportOS™ Monopolistic Features
   // KPI Alerts
@@ -2893,39 +2940,352 @@ export class DatabaseStorage implements IStorage {
       ));
   }
   
-  async getExpenseReports(workspaceId: string, filters?: { status?: string; employeeId?: string }): Promise<any[]> {
-    const { expenseReports } = await import("@shared/schema");
-    const conditions = [eq(expenseReports.workspaceId, workspaceId)];
+  // ============================================================================
+  // EXPENSEOS™ - EXPENSE MANAGEMENT
+  // ============================================================================
+  
+  // Expense Categories
+  async createExpenseCategory(category: InsertExpenseCategory) {
+    const { expenseCategories } = await import("@shared/schema");
+    const [created] = await db.insert(expenseCategories).values(category).returning();
+    return created;
+  }
+  
+  async getExpenseCategory(id: string, workspaceId: string) {
+    const { expenseCategories } = await import("@shared/schema");
+    const [category] = await db
+      .select()
+      .from(expenseCategories)
+      .where(and(
+        eq(expenseCategories.id, id),
+        eq(expenseCategories.workspaceId, workspaceId)
+      ))
+      .limit(1);
+    return category;
+  }
+  
+  async getExpenseCategoriesByWorkspace(workspaceId: string) {
+    const { expenseCategories } = await import("@shared/schema");
+    return await db
+      .select()
+      .from(expenseCategories)
+      .where(and(
+        eq(expenseCategories.workspaceId, workspaceId),
+        eq(expenseCategories.isActive, true)
+      ))
+      .orderBy(expenseCategories.name);
+  }
+  
+  async updateExpenseCategory(id: string, workspaceId: string, data: Partial<InsertExpenseCategory>) {
+    const { expenseCategories } = await import("@shared/schema");
+    const [updated] = await db
+      .update(expenseCategories)
+      .set({ ...data, createdAt: undefined })
+      .where(and(
+        eq(expenseCategories.id, id),
+        eq(expenseCategories.workspaceId, workspaceId)
+      ))
+      .returning();
+    return updated;
+  }
+  
+  async deleteExpenseCategory(id: string, workspaceId: string): Promise<boolean> {
+    const { expenseCategories } = await import("@shared/schema");
+    const result = await db
+      .delete(expenseCategories)
+      .where(and(
+        eq(expenseCategories.id, id),
+        eq(expenseCategories.workspaceId, workspaceId)
+      ));
+    return true;
+  }
+  
+  // Expenses
+  async createExpense(expense: InsertExpense) {
+    const { expenses } = await import("@shared/schema");
+    const [created] = await db.insert(expenses).values(expense).returning();
+    return created;
+  }
+  
+  async getExpense(id: string, workspaceId: string) {
+    const { expenses } = await import("@shared/schema");
+    const [expense] = await db
+      .select()
+      .from(expenses)
+      .where(and(
+        eq(expenses.id, id),
+        eq(expenses.workspaceId, workspaceId)
+      ))
+      .limit(1);
+    return expense;
+  }
+  
+  async getExpensesByWorkspace(workspaceId: string, filters?: { status?: string; employeeId?: string; categoryId?: string }) {
+    const { expenses } = await import("@shared/schema");
+    const conditions = [eq(expenses.workspaceId, workspaceId)];
     
     if (filters?.status) {
-      conditions.push(eq(expenseReports.status, filters.status as any));
+      conditions.push(eq(expenses.status, filters.status as any));
     }
     if (filters?.employeeId) {
-      conditions.push(eq(expenseReports.employeeId, filters.employeeId));
+      conditions.push(eq(expenses.employeeId, filters.employeeId));
+    }
+    if (filters?.categoryId) {
+      conditions.push(eq(expenses.categoryId, filters.categoryId));
     }
     
     return await db
       .select()
-      .from(expenseReports)
+      .from(expenses)
       .where(and(...conditions))
-      .orderBy(desc(expenseReports.createdAt));
+      .orderBy(desc(expenses.expenseDate));
   }
   
-  async approveExpense(expenseId: string, workspaceId: string, approverId: string): Promise<any> {
-    const { expenseReports } = await import("@shared/schema");
-    const [expense] = await db
-      .update(expenseReports)
-      .set({
-        status: 'approved',
-        approvedBy: approverId,
-        approvedAt: new Date(),
+  async updateExpense(id: string, workspaceId: string, data: Partial<InsertExpense>) {
+    const { expenses } = await import("@shared/schema");
+    const [updated] = await db
+      .update(expenses)
+      .set({ 
+        ...data, 
+        id: undefined, 
+        workspaceId: undefined, 
+        createdAt: undefined,
+        updatedAt: new Date() 
       })
       .where(and(
-        eq(expenseReports.id, expenseId),
-        eq(expenseReports.workspaceId, workspaceId)
+        eq(expenses.id, id),
+        eq(expenses.workspaceId, workspaceId)
+      ))
+      .returning();
+    return updated;
+  }
+  
+  async approveExpense(expenseId: string, workspaceId: string, approverId: string, reviewNotes?: string) {
+    const { expenses } = await import("@shared/schema");
+    const [expense] = await db
+      .update(expenses)
+      .set({
+        status: 'approved',
+        reviewedBy: approverId,
+        reviewedAt: new Date(),
+        reviewNotes: reviewNotes || null,
+        updatedAt: new Date()
+      })
+      .where(and(
+        eq(expenses.id, expenseId),
+        eq(expenses.workspaceId, workspaceId)
       ))
       .returning();
     return expense;
+  }
+  
+  async rejectExpense(expenseId: string, workspaceId: string, reviewerId: string, reviewNotes: string) {
+    const { expenses } = await import("@shared/schema");
+    const [expense] = await db
+      .update(expenses)
+      .set({
+        status: 'rejected',
+        reviewedBy: reviewerId,
+        reviewedAt: new Date(),
+        reviewNotes,
+        updatedAt: new Date()
+      })
+      .where(and(
+        eq(expenses.id, expenseId),
+        eq(expenses.workspaceId, workspaceId)
+      ))
+      .returning();
+    return expense;
+  }
+  
+  async markExpensePaid(expenseId: string, workspaceId: string, paidById: string, paymentMethod?: string) {
+    const { expenses } = await import("@shared/schema");
+    const [expense] = await db
+      .update(expenses)
+      .set({
+        status: 'reimbursed',
+        paidAt: new Date(),
+        paymentMethod: paymentMethod || null,
+        updatedAt: new Date()
+      })
+      .where(and(
+        eq(expenses.id, expenseId),
+        eq(expenses.workspaceId, workspaceId),
+        eq(expenses.status, 'approved')
+      ))
+      .returning();
+    return expense;
+  }
+  
+  async deleteExpense(id: string, workspaceId: string): Promise<boolean> {
+    const { expenses } = await import("@shared/schema");
+    await db
+      .delete(expenses)
+      .where(and(
+        eq(expenses.id, id),
+        eq(expenses.workspaceId, workspaceId)
+      ));
+    return true;
+  }
+  
+  // Expense Receipts
+  async createExpenseReceipt(receipt: InsertExpenseReceipt) {
+    const { expenseReceipts } = await import("@shared/schema");
+    const [created] = await db.insert(expenseReceipts).values(receipt).returning();
+    return created;
+  }
+  
+  async getExpenseReceipt(id: string, workspaceId: string) {
+    const { expenseReceipts } = await import("@shared/schema");
+    const [receipt] = await db
+      .select()
+      .from(expenseReceipts)
+      .where(and(
+        eq(expenseReceipts.id, id),
+        eq(expenseReceipts.workspaceId, workspaceId)
+      ))
+      .limit(1);
+    return receipt;
+  }
+  
+  async getExpenseReceiptsByExpense(expenseId: string) {
+    const { expenseReceipts } = await import("@shared/schema");
+    return await db
+      .select()
+      .from(expenseReceipts)
+      .where(eq(expenseReceipts.expenseId, expenseId))
+      .orderBy(expenseReceipts.uploadedAt);
+  }
+  
+  async deleteExpenseReceipt(id: string, workspaceId: string): Promise<boolean> {
+    const { expenseReceipts } = await import("@shared/schema");
+    await db
+      .delete(expenseReceipts)
+      .where(and(
+        eq(expenseReceipts.id, id),
+        eq(expenseReceipts.workspaceId, workspaceId)
+      ));
+    return true;
+  }
+  
+  // ============================================================================
+  // I-9 RE-VERIFICATION & COMPLIANCE
+  // ============================================================================
+  
+  async getI9RecordsByWorkspace(workspaceId: string) {
+    const { employeeI9Records } = await import("@shared/schema");
+    return await db
+      .select()
+      .from(employeeI9Records)
+      .where(eq(employeeI9Records.workspaceId, workspaceId))
+      .orderBy(desc(employeeI9Records.createdAt));
+  }
+  
+  async getI9RecordByEmployee(employeeId: string, workspaceId: string) {
+    const { employeeI9Records } = await import("@shared/schema");
+    const [record] = await db
+      .select()
+      .from(employeeI9Records)
+      .where(and(
+        eq(employeeI9Records.employeeId, employeeId),
+        eq(employeeI9Records.workspaceId, workspaceId)
+      ))
+      .limit(1);
+    return record;
+  }
+  
+  async getExpiringI9Authorizations(workspaceId: string, daysAhead: number) {
+    const { employeeI9Records } = await import("@shared/schema");
+    const futureDate = new Date();
+    futureDate.setDate(futureDate.getDate() + daysAhead);
+    
+    return await db
+      .select()
+      .from(employeeI9Records)
+      .where(and(
+        eq(employeeI9Records.workspaceId, workspaceId),
+        lte(employeeI9Records.expirationDate, futureDate),
+        eq(employeeI9Records.reverificationCompleted, false)
+      ))
+      .orderBy(employeeI9Records.expirationDate);
+  }
+  
+  // ============================================================================
+  // POLICIOS™ - POLICY & HANDBOOK MANAGEMENT
+  // ============================================================================
+  
+  async createCompanyPolicy(policy: any) {
+    const { companyPolicies } = await import("@shared/schema");
+    const [created] = await db.insert(companyPolicies).values(policy).returning();
+    return created;
+  }
+  
+  async getCompanyPolicy(id: string, workspaceId: string) {
+    const { companyPolicies } = await import("@shared/schema");
+    const [policy] = await db
+      .select()
+      .from(companyPolicies)
+      .where(and(
+        eq(companyPolicies.id, id),
+        eq(companyPolicies.workspaceId, workspaceId)
+      ))
+      .limit(1);
+    return policy;
+  }
+  
+  async getCompanyPolicies(workspaceId: string) {
+    const { companyPolicies } = await import("@shared/schema");
+    return await db
+      .select()
+      .from(companyPolicies)
+      .where(eq(companyPolicies.workspaceId, workspaceId))
+      .orderBy(desc(companyPolicies.createdAt));
+  }
+  
+  async updateCompanyPolicy(id: string, workspaceId: string, data: any) {
+    const { companyPolicies } = await import("@shared/schema");
+    const [updated] = await db
+      .update(companyPolicies)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(
+        eq(companyPolicies.id, id),
+        eq(companyPolicies.workspaceId, workspaceId)
+      ))
+      .returning();
+    return updated;
+  }
+  
+  async publishPolicy(id: string, workspaceId: string, publishedBy: string) {
+    const { companyPolicies } = await import("@shared/schema");
+    const [published] = await db
+      .update(companyPolicies)
+      .set({
+        status: 'published',
+        publishedAt: new Date(),
+        publishedBy,
+        updatedAt: new Date()
+      })
+      .where(and(
+        eq(companyPolicies.id, id),
+        eq(companyPolicies.workspaceId, workspaceId)
+      ))
+      .returning();
+    return published;
+  }
+  
+  async getPolicyAcknowledgments(policyId: string) {
+    const { policyAcknowledgments } = await import("@shared/schema");
+    return await db
+      .select()
+      .from(policyAcknowledgments)
+      .where(eq(policyAcknowledgments.policyId, policyId))
+      .orderBy(desc(policyAcknowledgments.acknowledgedAt));
+  }
+  
+  async createPolicyAcknowledgment(ack: any) {
+    const { policyAcknowledgments } = await import("@shared/schema");
+    const [created] = await db.insert(policyAcknowledgments).values(ack).returning();
+    return created;
   }
   
   // ============================================================================

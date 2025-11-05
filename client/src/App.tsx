@@ -98,6 +98,8 @@ import Updates from "@/pages/updates";
 import Help from "@/pages/help";
 import CompanyReports from "./pages/company-reports";
 import PayInvoice from "@/pages/pay-invoice";
+import Expenses from "@/pages/expenses";
+import ExpenseApprovals from "@/pages/expense-approvals";
 import { FloatingChatButton } from "@/components/floating-chat-button";
 import { OnboardingWizard } from "@/components/onboarding-wizard";
 import { Sparkles, Search } from "lucide-react";
@@ -289,6 +291,8 @@ function AppContent() {
                 <Route path="/reports" component={Reports} />
                 <Route path="/analytics" component={Analytics} />
                 <Route path="/billing" component={Billing} />
+                <Route path="/expenses" component={Expenses} />
+                <Route path="/expense-approvals" component={ExpenseApprovals} />
                 <Route path="/payroll" component={PayrollDashboard} />
                 <Route path="/my-paychecks" component={MyPaychecks} />
                 <Route path="/leaders-hub">

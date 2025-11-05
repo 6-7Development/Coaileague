@@ -150,6 +150,13 @@ import {
   metricsSnapshots,
   insertAiInsightSchema,
   insertMetricsSnapshotSchema,
+  // ExpenseOS™ - Expense Management
+  expenses,
+  expenseCategories,
+  expenseReceipts,
+  insertExpenseSchema,
+  insertExpenseCategorySchema,
+  insertExpenseReceiptSchema,
 } from "@shared/schema";
 import crypto from "crypto";
 import { sql, eq, and, or, isNull, lte, gte, desc, inArray, ne } from "drizzle-orm";
@@ -4222,52 +4229,89 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============================================================================
-  // EXPENSEOS™ - EMPLOYEE EXPENSE MANAGEMENT (TODO: Reimplement with new schema)
+  // EXPENSEOS™ - EMPLOYEE EXPENSE MANAGEMENT
   // ============================================================================
   
-  // TODO: Reimplement expense submission with new expenses/expenseReceipts schema
-  /*
-  // Submit expense report
-  app.post('/api/expenses', isAuthenticated, async (req: any, res) => {
+  // Get expense categories
+  app.get('/api/expense-categories', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const workspace = await storage.getWorkspaceByOwnerId(userId);
-      
-      if (!workspace) {
-        return res.status(404).json({ message: "Workspace not found" });
-      }
-
-      // Find employee record for user
-      const employee = await storage.getEmployeeByUserId(userId, workspace.id);
-      if (!employee) {
-        return res.status(404).json({ message: "Employee record not found" });
-      }
-
-      const validated = insertExpenseReportSchema.parse({
-        ...req.body,
-        workspaceId: workspace.id,
-        employeeId: employee.id,
-      });
-
-      const [expense] = await db.insert(expenseReports).values(validated).returning();
-      res.json(expense);
+      const workspaceId = req.workspaceId!;
+      const categories = await storage.getExpenseCategoriesByWorkspace(workspaceId);
+      res.json(categories);
     } catch (error: any) {
-      console.error("Error creating expense report:", error);
-      res.status(400).json({ message: error.message || "Failed to create expense report" });
+      console.error("Error fetching expense categories:", error);
+      res.status(500).json({ message: "Failed to fetch expense categories" });
     }
   });
 
-  // Get expense reports
-  app.get('/api/expenses', isAuthenticated, async (req: any, res) => {
+  // Create expense category (Manager/Admin only)
+  app.post('/api/expense-categories', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const workspace = await storage.getWorkspaceByOwnerId(userId);
-      
-      if (!workspace) {
-        return res.status(404).json({ message: "Workspace not found" });
+      const workspaceId = req.workspaceId!;
+      const validated = insertExpenseCategorySchema.parse({
+        ...req.body,
+        workspaceId
+      });
+      const category = await storage.createExpenseCategory(validated);
+      res.json(category);
+    } catch (error: any) {
+      console.error("Error creating expense category:", error);
+      res.status(400).json({ message: error.message || "Failed to create expense category" });
+    }
+  });
+
+  // Submit expense
+  app.post('/api/expenses', requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspaceId!;
+      const userId = req.user!.id;
+
+      // Find employee record for user
+      const employee = await storage.getEmployeeByUserId(userId);
+      if (!employee || employee.workspaceId !== workspaceId) {
+        return res.status(404).json({ message: "Employee record not found" });
       }
 
-      const expenses = await storage.getExpenseReports(workspace.id);
+      const validated = insertExpenseSchema.parse({
+        ...req.body,
+        workspaceId,
+        employeeId: employee.id,
+        status: 'submitted',
+        submittedAt: new Date()
+      });
+
+      const expense = await storage.createExpense(validated);
+      res.json(expense);
+    } catch (error: any) {
+      console.error("Error creating expense:", error);
+      res.status(400).json({ message: error.message || "Failed to create expense" });
+    }
+  });
+
+  // Get expenses (employees see their own, managers see all)
+  app.get('/api/expenses', requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspaceId!;
+      const userId = req.user!.id;
+      const user = await storage.getUser(userId);
+      
+      let filters: { status?: string; employeeId?: string; categoryId?: string } = {};
+      
+      // Employees only see their own expenses
+      if (user?.role !== 'manager' && user?.role !== 'owner' && user?.role !== 'admin') {
+        const employee = await storage.getEmployeeByUserId(userId);
+        if (!employee) {
+          return res.json([]);
+        }
+        filters.employeeId = employee.id;
+      }
+      
+      // Apply query filters
+      if (req.query.status) filters.status = req.query.status as string;
+      if (req.query.employeeId) filters.employeeId = req.query.employeeId as string;
+      if (req.query.categoryId) filters.categoryId = req.query.categoryId as string;
+
+      const expenses = await storage.getExpensesByWorkspace(workspaceId, filters);
       res.json(expenses);
     } catch (error: any) {
       console.error("Error fetching expenses:", error);
@@ -4275,30 +4319,111 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Approve/reject expense
-  app.patch('/api/expenses/:id/approve', isAuthenticated, async (req: any, res) => {
+  // Get single expense with receipts
+  app.get('/api/expenses/:id', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const workspace = await storage.getWorkspaceByOwnerId(userId);
+      const workspaceId = req.workspaceId!;
+      const expense = await storage.getExpense(req.params.id, workspaceId);
       
-      if (!workspace) {
-        return res.status(404).json({ message: "Workspace not found" });
+      if (!expense) {
+        return res.status(404).json({ message: "Expense not found" });
+      }
+      
+      const receipts = await storage.getExpenseReceiptsByExpense(expense.id);
+      res.json({ ...expense, receipts });
+    } catch (error: any) {
+      console.error("Error fetching expense:", error);
+      res.status(500).json({ message: "Failed to fetch expense" });
+    }
+  });
+
+  // Upload expense receipt
+  app.post('/api/expenses/:id/receipts', requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspaceId!;
+      const expense = await storage.getExpense(req.params.id, workspaceId);
+      
+      if (!expense) {
+        return res.status(404).json({ message: "Expense not found" });
       }
 
-      const { status } = req.body;
+      const validated = insertExpenseReceiptSchema.parse({
+        ...req.body,
+        workspaceId,
+        expenseId: expense.id
+      });
+
+      const receipt = await storage.createExpenseReceipt(validated);
+      res.json(receipt);
+    } catch (error: any) {
+      console.error("Error uploading receipt:", error);
+      res.status(400).json({ message: error.message || "Failed to upload receipt" });
+    }
+  });
+
+  // Approve expense (Manager/Admin only)
+  app.patch('/api/expenses/:id/approve', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspaceId!;
+      const userId = req.user!.id;
+      const { reviewNotes } = req.body;
+
+      const expense = await storage.approveExpense(req.params.id, workspaceId, userId, reviewNotes);
       
-      if (status !== 'approved') {
-        return res.status(400).json({ message: "Use storage.approveExpense for approval" });
+      if (!expense) {
+        return res.status(404).json({ message: "Expense not found" });
       }
 
-      const expense = await storage.approveExpense(req.params.id, workspace.id, userId);
       res.json(expense);
     } catch (error: any) {
       console.error("Error approving expense:", error);
       res.status(500).json({ message: error.message || "Failed to approve expense" });
     }
   });
-  */
+
+  // Reject expense (Manager/Admin only)
+  app.patch('/api/expenses/:id/reject', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspaceId!;
+      const userId = req.user!.id;
+      const { reviewNotes } = req.body;
+
+      if (!reviewNotes) {
+        return res.status(400).json({ message: "Review notes are required when rejecting an expense" });
+      }
+
+      const expense = await storage.rejectExpense(req.params.id, workspaceId, userId, reviewNotes);
+      
+      if (!expense) {
+        return res.status(404).json({ message: "Expense not found" });
+      }
+
+      res.json(expense);
+    } catch (error: any) {
+      console.error("Error rejecting expense:", error);
+      res.status(500).json({ message: error.message || "Failed to reject expense" });
+    }
+  });
+
+  // Mark expense as paid (Manager/Admin only)
+  app.patch('/api/expenses/:id/mark-paid', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspaceId!;
+      const userId = req.user!.id;
+      const { paymentMethod } = req.body;
+
+      const expense = await storage.markExpensePaid(req.params.id, workspaceId, userId, paymentMethod);
+      
+      if (!expense) {
+        return res.status(404).json({ message: "Expense not found or not approved" });
+      }
+
+      res.json(expense);
+    } catch (error: any) {
+      console.error("Error marking expense as paid:", error);
+      res.status(500).json({ message: error.message || "Failed to mark expense as paid" });
+    }
+  });
 
   // ============================================================================
   // TIME ENTRY APPROVAL (Multi-Level Approval Workflow)
