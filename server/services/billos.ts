@@ -390,34 +390,43 @@ export async function processDelinquentInvoices(workspaceId: string) {
       .where(eq(clients.id, invoice.clientId))
       .limit(1);
     
-    const emailSubject = `Reminder: Invoice ${invoice.invoiceNumber} is ${daysOverdue} days overdue`;
-    const emailBody = `
-      Your invoice ${invoice.invoiceNumber} for $${invoice.total} is now ${daysOverdue} days overdue.
-      Please remit payment as soon as possible.
-      
-      ${daysOverdue >= 30 ? 'URGENT: This account requires immediate attention.' : ''}
-    `;
+    if (!client?.email) {
+      console.error(`No email found for client ${invoice.clientId}`);
+      continue;
+    }
+
+    // Generate payment URL from configured base or Replit domains
+    const baseUrl = process.env.APP_BASE_URL || process.env.REPLIT_DOMAINS?.split(',')[0];
+    if (!baseUrl) {
+      console.error('Cannot generate payment URL: APP_BASE_URL or REPLIT_DOMAINS not configured');
+      continue;
+    }
+    const paymentUrl = `${baseUrl.startsWith('http') ? baseUrl : `https://${baseUrl}`}/pay-invoice/${invoice.id}`;
     
-    // Create reminder record
+    // Create reminder record first (for tracking)
     await db.insert(invoiceReminders).values({
       workspaceId,
       invoiceId: invoice.id,
       reminderType,
       daysOverdue,
-      emailTo: client.email || '',
-      emailSubject,
-      emailBody,
+      emailTo: client.email,
+      emailSubject: `Payment Reminder: Invoice ${invoice.invoiceNumber} is ${daysOverdue} Days Overdue`,
+      emailBody: 'Sent via standardized template',
       status: 'pending',
       needsHumanIntervention: daysOverdue >= 30,
     });
     
-    // Send reminder email
+    // Send reminder email using standardized template
     try {
-      await resend.emails.send({
-        from: 'billing@workforceos.com',
-        to: client.email || '',
-        subject: emailSubject,
-        html: emailBody,
+      const { sendInvoiceOverdueReminderEmail } = await import('../email');
+      
+      await sendInvoiceOverdueReminderEmail(client.email, {
+        clientName: client.companyName || `${client.firstName || ''} ${client.lastName || ''}`.trim() || 'Valued Customer',
+        invoiceNumber: invoice.invoiceNumber,
+        total: invoice.total,
+        dueDate: invoice.dueDate?.toLocaleDateString('en-US', { dateStyle: 'medium' }) || 'N/A',
+        daysOverdue,
+        paymentUrl,
       });
       
       // Mark as sent
