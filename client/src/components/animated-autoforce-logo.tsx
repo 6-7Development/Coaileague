@@ -168,7 +168,7 @@ export function AnimatedAutoForceLogo({
         <div className="flex flex-col items-center gap-1">
           <div className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight">
             <span className="text-foreground">AUTO</span>
-            <span className="text-primary">FORCE</span>
+            <span className="bg-gradient-to-r from-cyan-400 to-purple-500 bg-clip-text text-transparent">FORCE</span>
             <span className="text-foreground">™</span>
           </div>
           <div className="text-xs sm:text-sm text-muted-foreground font-medium tracking-wide">
