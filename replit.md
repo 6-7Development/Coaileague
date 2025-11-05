@@ -17,10 +17,11 @@ AutoForce™ features a modular "OS" design (e.g., BillOS™, PayrollOS™, Trac
 **Logo Implementation:**
 - **Component**: `AnimatedAutoForceLogo` with three variants (gear, wordmark, full)
 - **Asset Location**: `client/src/assets/autoforce-logo-full.png`
-- **Animations**: 12s rotation (spin-slow) + 2s intensity pulse (glow-pulse)
+- **Color Scheme**: Cyan-to-purple gradient (rgb(34,211,238) → rgb(168,85,247)) for "FORCE" text, cyan gear with glow effects
+- **Animations**: 12s rotation (spin-slow) + 2s intensity pulse (glow-pulse) + floating motion
 - **Sizing**: Responsive sizes (sm, md, lg, xl, hero) for different contexts
-- **Integration**: Loading screens, sidebar header, landing page
-- **Technical Approach**: Single sprite image with CSS background-position for variant extraction
+- **Integration**: Landing page, login/register pages, sidebar header, loading screens
+- **Technical Approach**: PNG sprite image with CSS background-position extraction + gradient text overlay
 
 **Technical Implementations:**
 - **Frontend**: React, Vite, TypeScript, Wouter, TanStack Query, shadcn/ui, `react-hook-form`, `zod`.
