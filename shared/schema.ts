@@ -827,6 +827,11 @@ export const shifts = pgTable("shifts", {
   riskScore: decimal("risk_score", { precision: 3, scale: 2 }), // 0.00-1.00 (higher = riskier)
   riskFactors: jsonb("risk_factors").$type<string[]>(), // ['high_tardiness', 'location_far', 'low_performance']
 
+  // Acknowledgment & Denial tracking
+  acknowledgedAt: timestamp("acknowledged_at"),
+  deniedAt: timestamp("denied_at"),
+  denialReason: text("denial_reason"),
+
   // Status and tracking
   status: shiftStatusEnum("status").default('draft'),
 
