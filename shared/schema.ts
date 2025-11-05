@@ -1277,51 +1277,6 @@ export const insertClientPortalAccessSchema = createInsertSchema(clientPortalAcc
 export type InsertClientPortalAccess = z.infer<typeof insertClientPortalAccessSchema>;
 export type ClientPortalAccess = typeof clientPortalAccess.$inferSelect;
 
-// ExpenseOS™ - Employee Expense Management
-export const expenseStatusEnum = pgEnum('expense_status', ['pending', 'approved', 'rejected', 'reimbursed']);
-
-export const expenseReports = pgTable("expense_reports", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
-  employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
-
-  // Expense details
-  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
-  category: varchar("category").notNull(), // 'mileage', 'meals', 'supplies', 'travel', 'other'
-  description: text("description").notNull(),
-  expenseDate: timestamp("expense_date").notNull(),
-
-  // Receipt
-  receiptImageUrl: varchar("receipt_image_url"), // Cloud storage URL
-  receiptUploadedAt: timestamp("receipt_uploaded_at"),
-
-  // Job/Client association
-  clientId: varchar("client_id").references(() => clients.id, { onDelete: 'set null' }),
-  shiftId: varchar("shift_id").references(() => shifts.id, { onDelete: 'set null' }),
-
-  // Approval workflow
-  status: expenseStatusEnum("status").default('pending'),
-  approvedBy: varchar("approved_by").references(() => employees.id, { onDelete: 'set null' }),
-  approvedAt: timestamp("approved_at"),
-  rejectionReason: text("rejection_reason"),
-
-  // Reimbursement (auto-included in next payroll run)
-  reimbursedInPayrollId: varchar("reimbursed_in_payroll_id"), // Link to payroll run
-  reimbursedAt: timestamp("reimbursed_at"),
-
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-export const insertExpenseReportSchema = createInsertSchema(expenseReports).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-export type InsertExpenseReport = z.infer<typeof insertExpenseReportSchema>;
-export type ExpenseReport = typeof expenseReports.$inferSelect;
-
 // Employee Tax Forms (W-4, W-2, 1099 for ESS)
 export const taxFormTypeEnum = pgEnum('tax_form_type', ['w4', 'w2', '1099']);
 
@@ -1927,6 +1882,152 @@ export const insertEmployeeCertificationSchema = createInsertSchema(employeeCert
 
 export type InsertEmployeeCertification = z.infer<typeof insertEmployeeCertificationSchema>;
 export type EmployeeCertification = typeof employeeCertifications.$inferSelect;
+
+// ============================================================================
+// COMPLIANCEOS™ - I-9 WORK AUTHORIZATION & RE-VERIFICATION
+// ============================================================================
+
+export const i9StatusEnum = pgEnum('i9_status', ['pending', 'verified', 'reverification_required', 'expired', 'invalid']);
+
+export const employeeI9Records = pgTable("employee_i9_records", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
+
+  // I-9 Form details
+  status: i9StatusEnum("status").default("pending"),
+  verifiedAt: timestamp("verified_at"),
+  verifiedBy: varchar("verified_by").references(() => users.id),
+
+  // Work authorization
+  workAuthorizationType: varchar("work_authorization_type"), // 'citizen', 'permanent_resident', 'work_visa', 'other'
+  expirationDate: timestamp("expiration_date"), // For work visas/EADs
+  
+  // Re-verification tracking
+  reverificationRequired: boolean("reverification_required").default(false),
+  reverificationDate: timestamp("reverification_date"), // When re-verification is due
+  reverificationCompleted: boolean("reverification_completed").default(false),
+  reverificationCompletedAt: timestamp("reverification_completed_at"),
+
+  // Document List A (Identity + Work Authorization)
+  listADocument: varchar("list_a_document"), // 'us_passport', 'permanent_resident_card', 'ead_card'
+  listADocumentNumber: varchar("list_a_document_number"),
+  listAExpirationDate: timestamp("list_a_expiration_date"),
+  listADocumentUrl: varchar("list_a_document_url"),
+
+  // Document List B (Identity only)
+  listBDocument: varchar("list_b_document"), // 'drivers_license', 'state_id', 'school_id'
+  listBDocumentNumber: varchar("list_b_document_number"),
+  listBExpirationDate: timestamp("list_b_expiration_date"),
+  listBDocumentUrl: varchar("list_b_document_url"),
+
+  // Document List C (Work Authorization only)
+  listCDocument: varchar("list_c_document"), // 'social_security_card', 'birth_certificate'
+  listCDocumentNumber: varchar("list_c_document_number"),
+  listCExpirationDate: timestamp("list_c_expiration_date"),
+  listCDocumentUrl: varchar("list_c_document_url"),
+
+  // Alerts sent
+  alertSent30Days: boolean("alert_sent_30_days").default(false),
+  alertSent7Days: boolean("alert_sent_7_days").default(false),
+
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  employeeIdx: index("i9_records_employee_idx").on(table.employeeId),
+  expirationIdx: index("i9_records_expiration_idx").on(table.expirationDate),
+  statusIdx: index("i9_records_status_idx").on(table.status),
+}));
+
+export const insertEmployeeI9RecordSchema = createInsertSchema(employeeI9Records).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertEmployeeI9Record = z.infer<typeof insertEmployeeI9RecordSchema>;
+export type EmployeeI9Record = typeof employeeI9Records.$inferSelect;
+
+// ============================================================================
+// POLICIOS™ - HANDBOOK & POLICY ACKNOWLEDGMENT
+// ============================================================================
+
+export const policyStatusEnum = pgEnum('policy_status', ['draft', 'published', 'archived']);
+
+// Company Policies & Handbooks
+export const companyPolicies = pgTable("company_policies", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+
+  // Policy details
+  title: varchar("title").notNull(),
+  description: text("description"),
+  category: varchar("category"), // 'handbook', 'code_of_conduct', 'safety', 'pto', 'benefits', 'it_security', 'other'
+  
+  // Content
+  contentMarkdown: text("content_markdown"), // Policy text in Markdown
+  pdfUrl: varchar("pdf_url"), // Optional PDF version
+  
+  // Versioning
+  version: varchar("version").notNull(), // '1.0', '1.1', '2.0'
+  previousVersionId: varchar("previous_version_id").references((): any => companyPolicies.id),
+  
+  // Status
+  status: policyStatusEnum("status").default("draft"),
+  publishedAt: timestamp("published_at"),
+  publishedBy: varchar("published_by").references(() => users.id),
+  
+  // Acknowledgment requirements
+  requiresAcknowledgment: boolean("requires_acknowledgment").default(true),
+  acknowledgmentDeadlineDays: integer("acknowledgment_deadline_days").default(30), // Days to acknowledge from publish date
+  
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  workspaceIdx: index("policies_workspace_idx").on(table.workspaceId),
+  statusIdx: index("policies_status_idx").on(table.status),
+}));
+
+// Policy Acknowledgments (Employee signatures)
+export const policyAcknowledgments = pgTable("policy_acknowledgments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  policyId: varchar("policy_id").notNull().references(() => companyPolicies.id, { onDelete: 'cascade' }),
+  employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
+
+  // Acknowledgment
+  acknowledgedAt: timestamp("acknowledged_at").defaultNow(),
+  signatureUrl: varchar("signature_url"), // E-signature image
+  ipAddress: varchar("ip_address"),
+  userAgent: text("user_agent"),
+  
+  // Policy version at time of acknowledgment (for audit trail)
+  policyVersion: varchar("policy_version").notNull(),
+  policyTitle: varchar("policy_title").notNull(),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  policyEmployeeIdx: index("policy_acks_policy_employee_idx").on(table.policyId, table.employeeId),
+  employeeIdx: index("policy_acks_employee_idx").on(table.employeeId),
+}));
+
+export const insertCompanyPolicySchema = createInsertSchema(companyPolicies).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertPolicyAcknowledgmentSchema = createInsertSchema(policyAcknowledgments).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertCompanyPolicy = z.infer<typeof insertCompanyPolicySchema>;
+export type CompanyPolicy = typeof companyPolicies.$inferSelect;
+export type InsertPolicyAcknowledgment = z.infer<typeof insertPolicyAcknowledgmentSchema>;
+export type PolicyAcknowledgment = typeof policyAcknowledgments.$inferSelect;
 
 // ============================================================================
 // HIREOS™ - DIGITAL FILE CABINET & COMPLIANCE WORKFLOW (MONOPOLISTIC FEATURE)
@@ -5974,6 +6075,15 @@ export type ExitInterviewResponse = typeof exitInterviewResponses.$inferSelect;
 // EXPENSEOS™ - EXPENSE TRACKING & REIMBURSEMENTS
 // ============================================================================
 
+export const expenseStatusEnum = pgEnum('expense_status', [
+  'draft',
+  'submitted',
+  'approved',
+  'rejected',
+  'reimbursed',
+  'cancelled'
+]);
+
 export const expenseCategories = pgTable("expense_categories", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
@@ -6021,17 +6131,25 @@ export const expenses = pgTable("expenses", {
   projectCode: varchar("project_code"),
   isBillable: boolean("is_billable").default(false),
 
+  // Mileage-specific fields (for mileage reimbursement)
+  mileageDistance: decimal("mileage_distance", { precision: 10, scale: 2 }), // Miles driven
+  mileageRate: decimal("mileage_rate", { precision: 5, scale: 3 }), // IRS rate (e.g., $0.67/mile)
+  mileageStartLocation: text("mileage_start_location"),
+  mileageEndLocation: text("mileage_end_location"),
+
   // Approval workflow
-  status: varchar("status").default('submitted'), // 'draft', 'submitted', 'approved', 'rejected', 'reimbursed'
+  status: expenseStatusEnum("status").default('submitted'),
   submittedAt: timestamp("submitted_at"),
   approvedBy: varchar("approved_by").references(() => users.id),
   approvedAt: timestamp("approved_at"),
   rejectedBy: varchar("rejected_by").references(() => users.id),
   rejectedAt: timestamp("rejected_at"),
   rejectionReason: text("rejection_reason"),
+  reviewNotes: text("review_notes"),
 
   // Reimbursement
   reimbursedAt: timestamp("reimbursed_at"),
+  reimbursedBy: varchar("reimbursed_by").references(() => users.id),
   reimbursementMethod: varchar("reimbursement_method"), // 'direct_deposit', 'check', 'payroll'
   reimbursementReference: varchar("reimbursement_reference"),
 
@@ -6058,6 +6176,37 @@ export type InsertExpenseCategory = z.infer<typeof insertExpenseCategorySchema>;
 export type ExpenseCategory = typeof expenseCategories.$inferSelect;
 export type InsertExpense = z.infer<typeof insertExpenseSchema>;
 export type Expense = typeof expenses.$inferSelect;
+
+// Expense Receipts (Multiple receipts per expense)
+export const expenseReceipts = pgTable("expense_receipts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  expenseId: varchar("expense_id").notNull().references(() => expenses.id, { onDelete: 'cascade' }),
+
+  // Receipt file
+  fileName: varchar("file_name").notNull(),
+  fileUrl: varchar("file_url").notNull(), // Object storage URL
+  fileType: varchar("file_type").notNull(), // 'image/jpeg', 'image/png', 'application/pdf'
+  fileSize: integer("file_size"), // Bytes
+
+  // OCR/AI extraction (future feature)
+  extractedAmount: decimal("extracted_amount", { precision: 10, scale: 2 }),
+  extractedDate: timestamp("extracted_date"),
+  extractedVendor: varchar("extracted_vendor"),
+  ocrConfidence: decimal("ocr_confidence", { precision: 5, scale: 2 }), // 0-100%
+
+  uploadedAt: timestamp("uploaded_at").defaultNow(),
+}, (table) => ({
+  expenseIdx: index("expense_receipts_expense_idx").on(table.expenseId),
+}));
+
+export const insertExpenseReceiptSchema = createInsertSchema(expenseReceipts).omit({
+  id: true,
+  uploadedAt: true,
+});
+
+export type InsertExpenseReceipt = z.infer<typeof insertExpenseReceiptSchema>;
+export type ExpenseReceipt = typeof expenseReceipts.$inferSelect;
 
 // ============================================================================
 // BUDGETOS™ - BUDGET PLANNING & FORECASTING

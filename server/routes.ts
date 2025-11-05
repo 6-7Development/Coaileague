@@ -82,9 +82,7 @@ import {
   paymentRecords,
   invoiceReminders,
   clientPortalAccess,
-  expenseReports,
   userOnboarding,
-  insertExpenseReportSchema,
   employeeTaxForms,
   employeeBankAccounts,
   offCyclePayrollRuns,
@@ -4224,9 +4222,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============================================================================
-  // EXPENSEOS™ - EMPLOYEE EXPENSE MANAGEMENT
+  // EXPENSEOS™ - EMPLOYEE EXPENSE MANAGEMENT (TODO: Reimplement with new schema)
   // ============================================================================
   
+  // TODO: Reimplement expense submission with new expenses/expenseReceipts schema
+  /*
   // Submit expense report
   app.post('/api/expenses', isAuthenticated, async (req: any, res) => {
     try {
@@ -4298,6 +4298,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: error.message || "Failed to approve expense" });
     }
   });
+  */
 
   // ============================================================================
   // TIME ENTRY APPROVAL (Multi-Level Approval Workflow)
