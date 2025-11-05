@@ -160,22 +160,24 @@ function AppContent() {
             
             {/* Global Header with Sidebar Toggle - Hidden for mobile chat AND HelpDesk */}
             {!isMobileChat && !isHelpDesk && (
-              <header className="flex items-center justify-end px-2 sm:px-3 py-1 border-b bg-card shrink-0">
-                <div className="flex items-center gap-1 sm:gap-2">
+              <header className="flex items-center justify-between px-3 sm:px-4 py-2 border-b bg-card shrink-0 h-14">
+                <div className="flex items-center gap-2">
                   {/* Menu Toggle with label */}
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <div className="flex items-center gap-1.5">
-                        <SidebarTrigger data-testid="button-sidebar-toggle" />
-                        <span className="hidden md:inline text-xs text-muted-foreground font-medium">Menu</span>
+                      <div className="flex items-center gap-2">
+                        <SidebarTrigger data-testid="button-sidebar-toggle" className="shrink-0" />
+                        <span className="hidden lg:inline text-xs text-muted-foreground font-medium">Menu</span>
                       </div>
                     </TooltipTrigger>
                     <TooltipContent>
                       <p>Toggle sidebar menu</p>
                     </TooltipContent>
                   </Tooltip>
+                </div>
 
-                  {/* Tutorial/Tour Button - Better icon and tooltip */}
+                <div className="flex items-center gap-2 sm:gap-3">
+                  {/* Tutorial/Tour Button */}
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
@@ -183,10 +185,10 @@ function AppContent() {
                         size="sm"
                         onClick={() => setShowOnboarding(true)}
                         data-testid="button-open-onboarding"
-                        className="gap-1.5 h-8 sm:h-9"
+                        className="gap-1.5 h-9 shrink-0"
                       >
-                        <GraduationCap className="h-4 w-4 sm:h-5 sm:w-5" />
-                        <span className="hidden md:inline text-xs font-medium">Tutorial</span>
+                        <GraduationCap className="h-4 w-4" />
+                        <span className="hidden lg:inline text-xs font-medium">Tutorial</span>
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
@@ -194,7 +196,7 @@ function AppContent() {
                     </TooltipContent>
                   </Tooltip>
 
-                  {/* Theme Toggle with label */}
+                  {/* Theme Toggle - Always visible */}
                   <ThemeToggle />
                 </div>
               </header>
