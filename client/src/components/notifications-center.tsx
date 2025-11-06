@@ -1,7 +1,8 @@
 
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useNotificationWebSocket } from "@/hooks/use-notification-websocket";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -27,23 +28,55 @@ interface Notification {
 export function NotificationsCenter() {
   const [open, setOpen] = useState(false);
 
+  // Get current user info
+  const { data: currentUser } = useQuery({ queryKey: ['/api/auth/me'] });
+  const userId = currentUser?.id;
+  
+  // Get workspace info (owner or member)
+  const { data: workspace } = useQuery({ queryKey: ['/api/workspaces'] });
+  const workspaceId = workspace?.id;
+
+  // Connect to notification WebSocket
+  const { unreadCount: wsUnreadCount, isConnected } = useNotificationWebSocket(userId, workspaceId);
+
   const { data: notifications = [], isLoading } = useQuery({
     queryKey: ['/api/notifications'],
     enabled: open,
   });
 
-  const unreadCount = notifications.filter((n: Notification) => !n.isRead).length;
+  // Use WebSocket unread count if available, otherwise calculate from notifications
+  const unreadCount = isConnected && wsUnreadCount !== undefined 
+    ? wsUnreadCount 
+    : notifications.filter((n: Notification) => !n.isRead).length;
 
-  const markAsRead = async (id: string) => {
-    await apiRequest(`/api/notifications/${id}/read`, {
-      method: 'PATCH',
-    });
+  const markAsReadMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest(`/api/notifications/${id}/read`, {
+        method: 'PATCH',
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
+    },
+  });
+
+  const markAllAsReadMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest('/api/notifications/mark-all-read', {
+        method: 'POST',
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
+    },
+  });
+
+  const markAsRead = (id: string) => {
+    markAsReadMutation.mutate(id);
   };
 
-  const markAllAsRead = async () => {
-    await apiRequest('/api/notifications/mark-all-read', {
-      method: 'POST',
-    });
+  const markAllAsRead = () => {
+    markAllAsReadMutation.mutate();
   };
 
   const getNotificationIcon = (type: string) => {
