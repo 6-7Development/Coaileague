@@ -23,7 +23,6 @@ import { CommandPalette } from "@/components/command-palette";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MobileLoading } from "@/components/mobile-loading";
-import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
 import CustomLogin from "@/pages/custom-login";
@@ -112,7 +111,6 @@ import { FloatingChatButton } from "@/components/floating-chat-button";
 import { OnboardingWizard } from "@/components/onboarding-wizard";
 import { Sparkles, Search } from "lucide-react";
 import { NotificationsCenter } from "@/components/notifications-center";
-import { QuickActionsMenu } from "@/components/quick-actions-menu";
 import { WorkspaceSwitcher } from "@/components/workspace-switcher";
 import { WhatsNewBadge } from "@/components/whats-new-badge";
 import { HelpDropdown } from "@/components/help-dropdown";
@@ -123,18 +121,11 @@ import { FeedbackWidget } from "@/components/feedback-widget";
 function AppContent() {
   const { isAuthenticated, isLoading, user } = useAuth();
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const isMobile = useIsMobile();
 
   // Check if on mobile chat OR desktop live-chat - use window.location instead of useLocation() hook
   // to avoid React Hooks issues with conditional rendering
   const isMobileChat = window.location.pathname === '/mobile-chat';
   const isHelpDesk = window.location.pathname === '/live-chat' || window.location.pathname.startsWith('/live-chat');
-
-  // Routes that should NOT show bottom nav (full-screen experiences)
-  const hideBottomNavRoutes = ['/mobile-chat', '/live-chat', '/login', '/register', '/onboarding'];
-  const shouldShowBottomNav = isMobile && isAuthenticated && !hideBottomNavRoutes.some(route => 
-    window.location.pathname.startsWith(route)
-  );
 
   // Custom sidebar width for better workspace layout (increased for longer menu text)
   const style = {
@@ -238,9 +229,6 @@ function AppContent() {
                     </TooltipContent>
                   </Tooltip>
 
-                  {/* Quick Actions */}
-                  <QuickActionsMenu />
-
                   {/* What's New Badge */}
                   <WhatsNewBadge />
 
@@ -277,7 +265,7 @@ function AppContent() {
               </header>
             )}
 
-            <main className={`flex-1 overflow-auto scrollbar-hide bg-transparent min-h-0 ${shouldShowBottomNav ? 'pb-16' : ''}`}>
+            <main className="flex-1 overflow-auto scrollbar-hide bg-transparent min-h-0">
               <Switch>
                 <Route path="/">
                   {isRootAdmin ? <RootAdminDashboard /> : <Dashboard />}
@@ -375,9 +363,6 @@ function AppContent() {
                 <Route component={NotFound} />
               </Switch>
             </main>
-
-            {/* Mobile Bottom Navigation */}
-            {shouldShowBottomNav && <MobileBottomNav />}
           </div>
         </div>
         <OnboardingWizard isOpen={showOnboarding} onClose={() => setShowOnboarding(false)} />
