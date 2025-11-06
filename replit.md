@@ -87,15 +87,19 @@ AutoForce™ features a modular "OS" design (e.g., BillOS™, PayrollOS™, Trac
       - ✅ File sharing: Upload/download files with 10MB limit, image preview, document downloads
       - Features: 1-on-1 messaging, read receipts, unread indicators, workspace-scoped user search, end-to-end encryption with audit trail
       - **Differential Monitoring**: CommOS (open chat) always monitored for safety; Private Messages encrypted and only accessible with approved investigation request for legal compliance
-    - **Shift Chatrooms - TimeOS Integration (Implementation Status: 100% COMPLETE)**:
-      - ✅ Schema: shiftId and timeEntryId fields in chatConversations table with conversationType='shift_chat'
-      - ✅ Storage methods: createShiftChatroom, getShiftChatroom, closeShiftChatroom, getActiveShiftChatrooms
-      - ✅ Auto-creation: Chatroom automatically created when employee clocks in (integrated with TimeOS)
-      - ✅ Auto-closure: Chatroom automatically closed when employee clocks out with archival message
-      - ✅ API routes: GET /api/shift-chatrooms/active, GET /api/shift-chatrooms/:shiftId/:timeEntryId, POST /api/shift-chatrooms/:conversationId/messages
-      - ✅ System messages: Welcome message on clock-in, closure message on clock-out
-      - Features: Team communication during shifts, auto-managed lifecycle, archived for compliance, workspace-scoped access control
-      - **Use Case**: Emergency services teams can communicate during active shifts without separate chat app
+    - **Manual Chat Creation System (Implementation Status: BACKEND 100% COMPLETE)**:
+      - ✅ Schema: chatParticipants table for group chat membership, chatGuestTokens table for customer invitations
+      - ✅ API: POST /api/chats/create - Manual chatroom creation with participant selection and guest tokens
+      - ✅ API: GET /api/shifts/:id/audit - Comprehensive shift audit data aggregation
+      - ✅ Auto-create logic removed: Chatrooms no longer auto-create on clock-in (manual creation only)
+      - Features: 
+        - Employee-to-employee, manager-to-employee, group chats
+        - Customer guest invitations via email/SMS tokens (7-30 day expiration)
+        - Role-based access control (owner, admin, member, guest)
+        - Shift-linked chats for transparency
+        - Participant permissions (send messages, view history, invite others)
+      - **Audit Data**: Shift creator, employee, clock times, GPS, breaks, notes, tasks, timesheet edits, discrepancies
+      - **Use Case**: Emergency services can create secure chats with customers for transparency (photos, reports, evidence)
     - **AssetOS™ (EXISTING - Verified)**:
       - Vehicle and equipment tracking
       - Billing rates and maintenance schedules
