@@ -848,8 +848,8 @@ export const insertShiftSchema = createInsertSchema(shifts).omit({
   createdAt: true,
   updatedAt: true,
 }).extend({
-  startTime: z.string().or(z.date()),
-  endTime: z.string().or(z.date()),
+  startTime: z.string().or(z.date()).transform(val => typeof val === 'string' ? new Date(val) : val),
+  endTime: z.string().or(z.date()).transform(val => typeof val === 'string' ? new Date(val) : val),
 });
 
 export type InsertShift = z.infer<typeof insertShiftSchema>;
