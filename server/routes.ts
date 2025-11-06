@@ -246,7 +246,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // - Dual authentication paths: Ticket + email OR Work ID + email
   // - Session-based validation for all WebSocket connections
   // - Platform staff role verification for administrative controls
-  setupWebSocket(server);
+  const { broadcastShiftUpdate } = setupWebSocket(server);
   
   // Setup custom auth (portable, session-based)
   setupCustomAuth(app);
@@ -2655,6 +2655,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
+      // 📡 REAL-TIME: Broadcast shift creation ONLY after successful DB operation
+      broadcastShiftUpdate(workspace.id, 'shift_created', shift);
+      
       res.json(shift);
     } catch (error: any) {
       console.error("Error creating shift:", error);
@@ -2680,6 +2683,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Shift not found" });
       }
       
+      // 📡 REAL-TIME: Broadcast shift update ONLY after successful DB operation
+      broadcastShiftUpdate(workspace.id, 'shift_updated', shift);
+      
       res.json(shift);
     } catch (error: any) {
       console.error("Error updating shift:", error);
@@ -2700,6 +2706,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!deleted) {
         return res.status(404).json({ message: "Shift not found" });
       }
+      
+      // 📡 REAL-TIME: Broadcast shift deletion ONLY after successful DB operation
+      broadcastShiftUpdate(workspace.id, 'shift_deleted', undefined, req.params.id);
       
       res.json({ success: true });
     } catch (error) {

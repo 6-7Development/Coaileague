@@ -93,7 +93,19 @@ interface GiveVoicePayload {
   commandId?: string; // IRC-style command tracking
 }
 
-type WebSocketMessage = ChatMessagePayload | JoinConversationPayload | TypingPayload | StatusChangePayload | KickUserPayload | RequestSecurePayload | SecureResponsePayload | ReleaseSpectatorPayload | TransferUserPayload | SilenceUserPayload | GiveVoicePayload;
+interface JoinShiftUpdatesPayload {
+  type: 'join_shift_updates';
+  userId: string;
+  workspaceId: string;
+}
+
+interface ShiftUpdatePayload {
+  type: 'shift_created' | 'shift_updated' | 'shift_deleted';
+  shift?: any;
+  shiftId?: string;
+}
+
+type WebSocketMessage = ChatMessagePayload | JoinConversationPayload | TypingPayload | StatusChangePayload | KickUserPayload | RequestSecurePayload | SecureResponsePayload | ReleaseSpectatorPayload | TransferUserPayload | SilenceUserPayload | GiveVoicePayload | JoinShiftUpdatesPayload | ShiftUpdatePayload;
 
 // In-memory MOTD storage (staff can update)
 let currentMOTD = "Welcome to WorkforceOS HelpDesk Support Network - Your satisfaction is our priority - 24/7/365";
@@ -126,6 +138,9 @@ export function setupWebSocket(server: Server) {
 
   // Track active connections by conversation ID
   const conversationClients = new Map<string, Set<WebSocketClient>>();
+  
+  // Track connections subscribed to shift updates by workspace ID
+  const shiftUpdateClients = new Map<string, Set<WebSocketClient>>();
   
   // Track removed simulated users (so they don't re-appear on reconnect)
   const removedSimulatedUsers = new Set<string>();
@@ -2453,6 +2468,60 @@ export function setupWebSocket(server: Server) {
             break;
           }
 
+          case 'join_shift_updates': {
+            // Subscribe to real-time shift updates for a workspace
+            if (!payload.userId || !payload.workspaceId) {
+              ws.send(JSON.stringify({
+                type: 'error',
+                message: 'User ID and Workspace ID are required',
+              }));
+              return;
+            }
+
+            // SECURITY: Verify user belongs to the workspace they're trying to subscribe to
+            try {
+              const userWorkspace = await storage.getWorkspaceByOwnerId(payload.userId);
+              const workspaceMember = await storage.getWorkspaceMemberByUserId(payload.userId, payload.workspaceId);
+              
+              // User must either own the workspace or be a member
+              const hasAccess = (userWorkspace && userWorkspace.id === payload.workspaceId) || workspaceMember;
+              
+              if (!hasAccess) {
+                ws.send(JSON.stringify({
+                  type: 'error',
+                  message: 'Access denied: You do not have permission to view this workspace',
+                }));
+                console.warn(`⚠️ User ${payload.userId} attempted unauthorized shift subscription to workspace ${payload.workspaceId}`);
+                return;
+              }
+            } catch (authError) {
+              console.error('Shift WebSocket authorization error:', authError);
+              ws.send(JSON.stringify({
+                type: 'error',
+                message: 'Authorization failed',
+              }));
+              return;
+            }
+
+            ws.userId = payload.userId;
+            ws.workspaceId = payload.workspaceId;
+
+            // Add to shift update clients for this workspace
+            if (!shiftUpdateClients.has(payload.workspaceId)) {
+              shiftUpdateClients.set(payload.workspaceId, new Set());
+            }
+            shiftUpdateClients.get(payload.workspaceId)!.add(ws);
+
+            console.log(`✅ User ${payload.userId} subscribed to shift updates for workspace ${payload.workspaceId}`);
+
+            // Send confirmation
+            ws.send(JSON.stringify({
+              type: 'shift_updates_subscribed',
+              workspaceId: payload.workspaceId,
+            }));
+            break;
+          }
+
           case 'ban_user': {
             // Permanently ban a user from chat (platform staff only)
             if (!ws.conversationId || !ws.userId) {
@@ -2749,6 +2818,17 @@ export function setupWebSocket(server: Server) {
         globalConnections.subscriberUsers.delete(ws.userId);
       }
       
+      // SHIFT UPDATES CLEANUP: Remove from shift update clients
+      if (ws.workspaceId && shiftUpdateClients.has(ws.workspaceId)) {
+        const clients = shiftUpdateClients.get(ws.workspaceId)!;
+        clients.delete(ws);
+        // Clean up empty workspace sets
+        if (clients.size === 0) {
+          shiftUpdateClients.delete(ws.workspaceId);
+        }
+        console.log(`🔌 Removed client from shift updates for workspace ${ws.workspaceId}`);
+      }
+      
       // Send leave announcement for main chatroom
       const MAIN_ROOM_ID = 'main-chatroom-workforceos';
       if (ws.conversationId === MAIN_ROOM_ID && ws.userId) {
@@ -2961,6 +3041,54 @@ export function setupWebSocket(server: Server) {
   //   }
   // }, 10000); // Check every 10 seconds
 
+  // Add handler for shift updates subscription (before closing the listener)
+  // This is already handled in the ws.on('message') switch statement above
+
   console.log('WebSocket server initialized on /ws/chat');
-  return wss;
+  
+  // Export broadcast function for shift updates
+  return {
+    wss,
+    broadcastShiftUpdate: (workspaceId: string, updateType: 'shift_created' | 'shift_updated' | 'shift_deleted', shift?: any, shiftId?: string) => {
+      const clients = shiftUpdateClients.get(workspaceId);
+      if (!clients || clients.size === 0) {
+        console.log(`No clients subscribed to shift updates for workspace ${workspaceId}`);
+        return;
+      }
+
+      // SECURITY: Sanitize shift payload - remove sensitive fields
+      let sanitizedShift = undefined;
+      if (shift) {
+        sanitizedShift = {
+          id: shift.id,
+          title: shift.title,
+          startTime: shift.startTime,
+          endTime: shift.endTime,
+          employeeId: shift.employeeId,
+          clientId: shift.clientId,
+          status: shift.status,
+          workspaceId: shift.workspaceId,
+          // Explicitly exclude: cost, hourlyRate, notes, internalNotes, paymentDetails
+        };
+      }
+
+      const payload = JSON.stringify({
+        type: updateType,
+        shift: sanitizedShift,
+        shiftId,
+        timestamp: new Date().toISOString(),
+      });
+
+      console.log(`📡 Broadcasting ${updateType} to ${clients.size} clients in workspace ${workspaceId}`);
+
+      clients.forEach((client) => {
+        if (client.readyState === WebSocket.OPEN) {
+          client.send(payload);
+        } else {
+          // Clean up dead connections
+          clients.delete(client);
+        }
+      });
+    },
+  };
 }

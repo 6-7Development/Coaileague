@@ -11,6 +11,26 @@ All branding must be 100% AutoForce™ (not WorkforceOS).
 FTC COMPLIANCE: All marketing claims must be factual and verifiable. Avoid monopolistic language.
 
 ## Recent Changes (Nov 6, 2025)
+### Real-Time Shift Synchronization - Live Updates Across All Devices ✅
+**WebSocket-Based Live Sync** for instantaneous schedule updates:
+- **Backend WebSocket Infrastructure**: Extended `/ws/chat` endpoint with shift-specific message types (`shift_created`, `shift_updated`, `shift_deleted`)
+  - Workspace-scoped broadcast channels for data isolation
+  - Automatic subscription management with reconnection logic
+  - Client cleanup on disconnection
+- **Frontend Real-Time Hook**: `useShiftWebSocket` hook with intelligent reconnection
+  - Exponential backoff reconnection strategy (max 30s)
+  - Connection rate limiting to prevent excessive reconnects
+  - Automatic cache invalidation on shift updates via TanStack Query
+  - Color-coded toast notifications for all shift events (info variant)
+- **Universal Integration**: Both mobile and desktop interfaces connected
+  - Mobile Shift Calendar: Live updates without manual refresh
+  - Desktop Schedule Grid: Instant synchronization with mobile changes
+  - **Real-Time Workflow**: Desktop creates shift → Mobile sees it immediately (like MSN chatrooms with separate live-updating frames)
+- **Backend Broadcasting**: All shift mutations trigger WebSocket broadcasts
+  - `POST /api/shifts` → broadcasts `shift_created`
+  - `PATCH /api/shifts/:id` → broadcasts `shift_updated`
+  - `DELETE /api/shifts/:id` → broadcasts `shift_deleted`
+
 ### Mobile UX Enhancement - Native App Experience ✅
 **Polished Mobile Interface** with APK-style user experience:
 - **Enhanced Toast Notifications**: Color-coded success (Emergency Green), warning (Amber), error (Red), and info (Blue) toasts with icons

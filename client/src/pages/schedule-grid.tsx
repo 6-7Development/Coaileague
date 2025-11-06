@@ -16,6 +16,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useShiftWebSocket } from "@/hooks/use-shift-websocket";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -403,6 +404,10 @@ export default function ScheduleGrid() {
   const { toast } = useToast();
   const { user } = useAuth();
   const [, setLocation] = useLocation();
+  
+  // 🔴 REAL-TIME: Connect to shift updates WebSocket
+  // This enables live sync: mobile changes → desktop updates, desktop → mobile
+  useShiftWebSocket(user?.id, user?.workspaceId);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'week' | 'bi-week' | 'semi-monthly' | 'monthly'>('week');
   const [selectedShift, setSelectedShift] = useState<Shift | null>(null);

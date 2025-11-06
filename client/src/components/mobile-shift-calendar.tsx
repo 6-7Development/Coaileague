@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { useShiftWebSocket } from "@/hooks/use-shift-websocket";
 import type { Shift, Employee, Client, ShiftAcknowledgment } from "@shared/schema";
 import { ShiftActionsMenu } from "@/components/shift-actions-menu";
 
@@ -72,6 +73,13 @@ export function MobileShiftCalendar({ onCreateShift }: MobileShiftCalendarProps)
   const { data: currentUser } = useQuery<any>({
     queryKey: ["/api/auth/me"],
   });
+
+  // 🔴 REAL-TIME: Connect to shift updates WebSocket
+  // This enables live sync: desktop changes → mobile updates, mobile → desktop
+  const { isConnected: wsConnected } = useShiftWebSocket(
+    currentUser?.id,
+    currentUser?.workspaceId
+  );
 
   // Fetch data
   const { data: shifts = [] } = useQuery<Shift[]>({
