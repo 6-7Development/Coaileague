@@ -259,11 +259,11 @@ export default function CustomRegister() {
             </Form>
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
-            <div className="text-sm text-center text-muted-foreground w-full">
+            <div className="text-sm text-center text-gray-600 dark:text-gray-400 w-full">
               Already have an account?{" "}
               <button
                 onClick={() => setLocation("/login")}
-                className="text-[hsl(var(--cad-blue))] hover:underline font-medium"
+                className="text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 hover:underline font-medium"
                 data-testid="link-login"
               >
                 Sign in
