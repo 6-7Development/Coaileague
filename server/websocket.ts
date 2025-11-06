@@ -105,7 +105,19 @@ interface ShiftUpdatePayload {
   shiftId?: string;
 }
 
-type WebSocketMessage = ChatMessagePayload | JoinConversationPayload | TypingPayload | StatusChangePayload | KickUserPayload | RequestSecurePayload | SecureResponsePayload | ReleaseSpectatorPayload | TransferUserPayload | SilenceUserPayload | GiveVoicePayload | JoinShiftUpdatesPayload | ShiftUpdatePayload;
+interface JoinNotificationsPayload {
+  type: 'join_notifications';
+  userId: string;
+  workspaceId: string;
+}
+
+interface NotificationUpdatePayload {
+  type: 'notification_new' | 'notification_read' | 'notification_count_updated';
+  notification?: any;
+  unreadCount?: number;
+}
+
+type WebSocketMessage = ChatMessagePayload | JoinConversationPayload | TypingPayload | StatusChangePayload | KickUserPayload | RequestSecurePayload | SecureResponsePayload | ReleaseSpectatorPayload | TransferUserPayload | SilenceUserPayload | GiveVoicePayload | JoinShiftUpdatesPayload | ShiftUpdatePayload | JoinNotificationsPayload | NotificationUpdatePayload;
 
 // In-memory MOTD storage (staff can update)
 let currentMOTD = "Welcome to WorkforceOS HelpDesk Support Network - Your satisfaction is our priority - 24/7/365";
@@ -141,6 +153,9 @@ export function setupWebSocket(server: Server) {
   
   // Track connections subscribed to shift updates by workspace ID
   const shiftUpdateClients = new Map<string, Set<WebSocketClient>>();
+  
+  // Track notification clients (workspaceId -> Set of WebSocket clients)
+  const notificationClients = new Map<string, Map<string, WebSocketClient>>();
   
   // Track removed simulated users (so they don't re-appear on reconnect)
   const removedSimulatedUsers = new Set<string>();
@@ -2522,6 +2537,64 @@ export function setupWebSocket(server: Server) {
             break;
           }
 
+          case 'join_notifications': {
+            // Subscribe to real-time notifications for a user
+            if (!payload.userId || !payload.workspaceId) {
+              ws.send(JSON.stringify({
+                type: 'error',
+                message: 'User ID and Workspace ID are required',
+              }));
+              return;
+            }
+
+            // SECURITY: Verify user belongs to the workspace they're trying to subscribe to
+            try {
+              const userWorkspace = await storage.getWorkspaceByOwnerId(payload.userId);
+              const workspaceMember = await storage.getWorkspaceMemberByUserId(payload.userId, payload.workspaceId);
+              
+              // User must either own the workspace or be a member
+              const hasAccess = (userWorkspace && userWorkspace.id === payload.workspaceId) || workspaceMember;
+              
+              if (!hasAccess) {
+                ws.send(JSON.stringify({
+                  type: 'error',
+                  message: 'Access denied: You do not have permission to view this workspace',
+                }));
+                console.warn(`⚠️ User ${payload.userId} attempted unauthorized notification subscription to workspace ${payload.workspaceId}`);
+                return;
+              }
+            } catch (authError) {
+              console.error('Notification WebSocket authorization error:', authError);
+              ws.send(JSON.stringify({
+                type: 'error',
+                message: 'Authorization failed',
+              }));
+              return;
+            }
+
+            ws.userId = payload.userId;
+            ws.workspaceId = payload.workspaceId;
+
+            // Add to notification clients for this workspace/user combination
+            if (!notificationClients.has(payload.workspaceId)) {
+              notificationClients.set(payload.workspaceId, new Map());
+            }
+            notificationClients.get(payload.workspaceId)!.set(payload.userId, ws);
+
+            // Get initial unread count
+            const unreadCount = await storage.getUnreadNotificationCount(payload.userId, payload.workspaceId);
+
+            console.log(`✅ User ${payload.userId} subscribed to notifications for workspace ${payload.workspaceId} (${unreadCount} unread)`);
+
+            // Send confirmation with current unread count
+            ws.send(JSON.stringify({
+              type: 'notifications_subscribed',
+              workspaceId: payload.workspaceId,
+              unreadCount,
+            }));
+            break;
+          }
+
           case 'ban_user': {
             // Permanently ban a user from chat (platform staff only)
             if (!ws.conversationId || !ws.userId) {
@@ -2829,6 +2902,17 @@ export function setupWebSocket(server: Server) {
         console.log(`🔌 Removed client from shift updates for workspace ${ws.workspaceId}`);
       }
       
+      // NOTIFICATIONS CLEANUP: Remove from notification clients
+      if (ws.workspaceId && ws.userId && notificationClients.has(ws.workspaceId)) {
+        const userClients = notificationClients.get(ws.workspaceId)!;
+        userClients.delete(ws.userId);
+        // Clean up empty workspace maps
+        if (userClients.size === 0) {
+          notificationClients.delete(ws.workspaceId);
+        }
+        console.log(`🔌 Removed client from notifications for user ${ws.userId} in workspace ${ws.workspaceId}`);
+      }
+      
       // Send leave announcement for main chatroom
       const MAIN_ROOM_ID = 'main-chatroom-workforceos';
       if (ws.conversationId === MAIN_ROOM_ID && ws.userId) {
@@ -3089,6 +3173,45 @@ export function setupWebSocket(server: Server) {
           clients.delete(client);
         }
       });
+    },
+    broadcastNotification: (workspaceId: string, userId: string, updateType: 'notification_new' | 'notification_read' | 'notification_count_updated', notification?: any, unreadCount?: number) => {
+      const workspaceClients = notificationClients.get(workspaceId);
+      if (!workspaceClients) {
+        console.log(`No notification clients for workspace ${workspaceId}`);
+        return;
+      }
+
+      const userClient = workspaceClients.get(userId);
+      if (!userClient || userClient.readyState !== WebSocket.OPEN) {
+        console.log(`User ${userId} not subscribed to notifications or connection not open`);
+        return;
+      }
+
+      // Sanitize notification payload if present
+      let sanitizedNotification = undefined;
+      if (notification) {
+        sanitizedNotification = {
+          id: notification.id,
+          type: notification.type,
+          title: notification.title,
+          message: notification.message,
+          isRead: notification.isRead,
+          actionUrl: notification.actionUrl,
+          createdAt: notification.createdAt,
+          // Explicitly exclude: metadata, relatedEntityId, createdBy
+        };
+      }
+
+      const payload = JSON.stringify({
+        type: updateType,
+        notification: sanitizedNotification,
+        unreadCount,
+        timestamp: new Date().toISOString(),
+      });
+
+      console.log(`🔔 Broadcasting ${updateType} to user ${userId} in workspace ${workspaceId}`);
+
+      userClient.send(payload);
     },
   };
 }
