@@ -14,11 +14,18 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import {
   Activity, Users, Building2, DollarSign, Server, Database, Cpu, HardDrive,
   AlertTriangle, CheckCircle, TrendingUp, Shield, RefreshCw, Settings,
-  Zap, Clock, UserCheck, Ticket, MessageSquare, BarChart3, Search, ExternalLink,
+  Zap, Bell, Clock, UserCheck, Ticket, MessageSquare, BarChart3, Search, ExternalLink,
   MapPin, Calendar, Mail, Phone, User, Save, Receipt, UserPlus, GraduationCap, Grid3x3,
   Lock, Unlock, Ban, XCircle, ShieldAlert, UserCog
 } from "lucide-react";
 import { AutoForceLogo } from "@/components/autoforce-logo";
+import { TimeGreeting } from "@/components/time-greeting";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface PlatformStats {
   totalWorkspaces: number;
@@ -49,7 +56,6 @@ interface PlatformStats {
 export default function RootAdminDashboard() {
   const [, setLocation] = useLocation();
   const { user, isLoading} = useAuth();
-  const [currentTime, setCurrentTime] = useState(new Date());
   const [refreshKey, setRefreshKey] = useState(0);
   const [editingProfile, setEditingProfile] = useState(false);
   const [profileForm, setProfileForm] = useState({
@@ -88,12 +94,6 @@ export default function RootAdminDashboard() {
       });
     }
   }, [user]);
-
-  // Real-time clock
-  useEffect(() => {
-    const interval = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(interval);
-  }, []);
 
   // Profile update mutation
   const updateProfileMutation = useMutation({
@@ -308,42 +308,73 @@ export default function RootAdminDashboard() {
             </div>
           </div>
 
-          {/* Desktop Header - Full featured */}
-          <div className="hidden sm:block relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 p-6 sm:p-8 border border-indigo-500/20 backdrop-blur-xl bg-white/5">
-            {/* Local animated gradient orbs */}
-            <div className="absolute top-0 left-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl animate-pulse" />
-            <div className="absolute bottom-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
-            
+          {/* Desktop Header - Reduced Padding */}
+          <div className="hidden sm:block relative overflow-hidden rounded-xl bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 p-3 sm:p-4 border border-indigo-500/20 backdrop-blur-xl bg-white/5">
             {/* Logo and Title */}
-            <div className="relative z-10 flex flex-col sm:flex-row items-center gap-6 mb-6">
-              <div className="transform hover:scale-105 transition-transform duration-300 drop-shadow-2xl">
-                <AutoForceLogo size="lg" variant="full" />
-              </div>
-              <div className="text-center sm:text-left flex-1">
-                <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-white via-blue-100 to-indigo-200 bg-clip-text text-transparent mb-2">
-                  Platform Command Center
-                </h1>
-                <p className="text-slate-300 text-sm sm:text-base">
-                  {getRoleTitle()}
-                </p>
-                {/* Personalized Welcome Message */}
-                {personalData && (
-                  <p className="text-indigo-300 text-xs sm:text-sm mt-1 font-medium">
-                    Welcome {personalData.userName} · {personalData.assignedTickets} assigned ticket{personalData.assignedTickets !== 1 ? 's' : ''} · {personalData.newSupportTickets} new support request{personalData.newSupportTickets !== 1 ? 's' : ''}
+            <div className="relative z-10 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="transform hover:scale-105 transition-transform duration-300">
+                  <AutoForceLogo size="lg" variant="icon" lightMode={true} />
+                </div>
+                <div>
+                  <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-white via-blue-100 to-indigo-200 bg-clip-text text-transparent">
+                    Platform Command Center
+                  </h1>
+                  <p className="text-slate-400 text-xs sm:text-sm">
+                    {getRoleTitle()}
                   </p>
-                )}
+                  <TimeGreeting 
+                    userName={personalData?.userName}
+                    role=""
+                    className="text-indigo-300 text-xs mt-0.5"
+                  />
+                </div>
               </div>
               
-              {/* Clock and Refresh Button */}
-              <div className="flex items-center gap-4">
-                <div className="text-right">
-                  <div className="text-2xl font-bold font-mono text-white">
-                    {currentTime.toLocaleTimeString()}
-                  </div>
-                  <div className="text-xs text-slate-400">
-                    {currentTime.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
-                  </div>
-                </div>
+              {/* Actions */}
+              <div className="flex items-center gap-2">
+                {/* Notifications Dropdown */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="relative text-white hover:bg-white/10"
+                      data-testid="button-notifications-desktop"
+                    >
+                      <Bell className="h-5 w-5" />
+                      {personalData && (personalData.assignedTickets + personalData.newSupportTickets) > 0 && (
+                        <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 text-[10px] font-bold flex items-center justify-center">
+                          {personalData.assignedTickets + personalData.newSupportTickets}
+                        </span>
+                      )}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-80">
+                    {personalData && personalData.assignedTickets > 0 && (
+                      <DropdownMenuItem>
+                        <div className="flex flex-col gap-1">
+                          <p className="font-medium">{personalData.assignedTickets} Assigned Tickets</p>
+                          <p className="text-xs text-muted-foreground">View your assigned support tickets</p>
+                        </div>
+                      </DropdownMenuItem>
+                    )}
+                    {personalData && personalData.newSupportTickets > 0 && (
+                      <DropdownMenuItem>
+                        <div className="flex flex-col gap-1">
+                          <p className="font-medium">{personalData.newSupportTickets} New Support Requests</p>
+                          <p className="text-xs text-muted-foreground">New tickets require attention</p>
+                        </div>
+                      </DropdownMenuItem>
+                    )}
+                    {(!personalData || (personalData.assignedTickets === 0 && personalData.newSupportTickets === 0)) && (
+                      <DropdownMenuItem>
+                        <p className="text-sm text-muted-foreground">No new notifications</p>
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                
                 <Button
                   variant="outline"
                   size="icon"
