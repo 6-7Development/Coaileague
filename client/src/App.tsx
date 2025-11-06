@@ -107,6 +107,7 @@ import I9Compliance from "@/pages/i9-compliance";
 import Policies from "@/pages/policies";
 import RoleManagement from "@/pages/role-management";
 import ManagerDashboard from "@/pages/manager-dashboard";
+import ChatExport from "@/pages/chat-export";
 import { FloatingChatButton } from "@/components/floating-chat-button";
 import { OnboardingWizard } from "@/components/onboarding-wizard";
 import { Sparkles, Search } from "lucide-react";
@@ -325,6 +326,7 @@ function AppContent() {
                 <Route path="/comm-os/onboarding" component={CommOSOnboarding} />
                 <Route path="/query-os" component={QueryOS} />
                 <Route path="/messages" component={PrivateMessages} />
+                <Route path="/chat-export" component={ChatExport} />
                 <Route path="/training" component={TrainingOS} />
                 <Route path="/budget" component={BudgetOS} />
                 <Route path="/integrations" component={IntegrationOS} />
