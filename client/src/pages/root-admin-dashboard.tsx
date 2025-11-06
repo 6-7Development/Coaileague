@@ -15,7 +15,8 @@ import {
   Activity, Users, Building2, DollarSign, Server, Database, Cpu, HardDrive,
   AlertTriangle, CheckCircle, TrendingUp, Shield, RefreshCw, Settings,
   Zap, Clock, UserCheck, Ticket, MessageSquare, BarChart3, Search, ExternalLink,
-  MapPin, Calendar, Mail, Phone, User, Save, Receipt, UserPlus, GraduationCap, Grid3x3
+  MapPin, Calendar, Mail, Phone, User, Save, Receipt, UserPlus, GraduationCap, Grid3x3,
+  Lock, Unlock, Ban, XCircle, ShieldAlert, UserCog
 } from "lucide-react";
 import { AutoForceLogo } from "@/components/autoforce-logo";
 
@@ -56,6 +57,13 @@ export default function RootAdminDashboard() {
     firstName: '',
     lastName: '',
   });
+  
+  // Admin Controls State
+  const [userSearchQuery, setUserSearchQuery] = useState("");
+  const [workspaceSearchQuery, setWorkspaceSearchQuery] = useState("");
+  const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [selectedWorkspace, setSelectedWorkspace] = useState<any>(null);
+  
   const { toast } = useToast();
 
   // GATEKEEPER: Block unauthorized users
@@ -120,6 +128,89 @@ export default function RootAdminDashboard() {
   const { data: supportStats } = useQuery({
     queryKey: ["/api/admin/support/stats", refreshKey],
     refetchInterval: 5000,
+  });
+
+  // User search query
+  const { data: userSearchResults, refetch: refetchUsers} = useQuery({
+    queryKey: ['/api/platform/users/search', userSearchQuery],
+    queryFn: async () => {
+      const res = await fetch(`/api/platform/users/search?q=${encodeURIComponent(userSearchQuery)}`);
+      if (!res.ok) throw new Error('Search failed');
+      return res.json();
+    },
+    enabled: userSearchQuery.length >= 3,
+  });
+
+  // Workspace search query
+  const { data: workspaceSearchResults, refetch: refetchWorkspaces } = useQuery({
+    queryKey: ['/api/admin/support/search', workspaceSearchQuery],
+    queryFn: async () => {
+      const res = await fetch(`/api/admin/support/search?q=${encodeURIComponent(workspaceSearchQuery)}`);
+      if (!res.ok) throw new Error('Search failed');
+      return res.json();
+    },
+    enabled: workspaceSearchQuery.length >= 3,
+  });
+
+  // Account action mutations
+  const suspendAccountMutation = useMutation({
+    mutationFn: async (data: { workspaceId: string; reason: string }) => 
+      await apiRequest('POST', '/api/admin/support/suspend-account', data),
+    onSuccess: () => {
+      toast({ title: "Success", description: "Account suspended successfully" });
+      refetchWorkspaces();
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to suspend account", variant: "destructive" });
+    },
+  });
+
+  const unsuspendAccountMutation = useMutation({
+    mutationFn: async (data: { workspaceId: string }) => 
+      await apiRequest('POST', '/api/admin/support/unsuspend-account', data),
+    onSuccess: () => {
+      toast({ title: "Success", description: "Account unsuspended successfully" });
+      refetchWorkspaces();
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to unsuspend account", variant: "destructive" });
+    },
+  });
+
+  const lockAccountMutation = useMutation({
+    mutationFn: async (data: { workspaceId: string; reason: string }) => 
+      await apiRequest('POST', '/api/admin/support/lock-account', data),
+    onSuccess: () => {
+      toast({ title: "Success", description: "Account locked successfully" });
+      refetchWorkspaces();
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to lock account", variant: "destructive" });
+    },
+  });
+
+  const unlockAccountMutation = useMutation({
+    mutationFn: async (data: { workspaceId: string }) => 
+      await apiRequest('POST', '/api/admin/support/unlock-account', data),
+    onSuccess: () => {
+      toast({ title: "Success", description: "Account unlocked successfully" });
+      refetchWorkspaces();
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to unlock account", variant: "destructive" });
+    },
+  });
+
+  const changeUserRoleMutation = useMutation({
+    mutationFn: async (data: { userId: string; newRole: string; workspaceId: string }) =>
+      await apiRequest('POST', '/api/admin/support/change-user-role', data),
+    onSuccess: () => {
+      toast({ title: "Success", description: "User role changed successfully" });
+      refetchUsers();
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to change user role", variant: "destructive" });
+    },
   });
 
   // Fetch personal staff data for welcome message
@@ -305,6 +396,285 @@ export default function RootAdminDashboard() {
                   </Link>
                 </Button>
               ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 🔐 ADMIN CONTROLS - User & Workspace Management */}
+        <Card className="border-indigo-500/20 bg-gradient-to-br from-slate-900/50 via-red-950/10 to-slate-900/50 backdrop-blur-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ShieldAlert className="h-5 w-5 text-red-400" />
+              Platform Administration Controls
+            </CardTitle>
+            <CardDescription>Search and manage users, workspaces, and permissions</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* User Search & Management */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 mb-3">
+                <UserCog className="h-4 w-4 text-blue-400" />
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-blue-400">User Management</h3>
+              </div>
+              
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search users by ID, email, or name (min 3 chars)..."
+                  value={userSearchQuery}
+                  onChange={(e) => setUserSearchQuery(e.target.value)}
+                  className="pl-10 bg-slate-800/50 border-blue-500/30"
+                  data-testid="input-user-search"
+                />
+              </div>
+
+              {userSearchResults && (userSearchResults as any[]).length > 0 && (
+                <ScrollArea className="h-[200px] border border-blue-500/20 rounded-lg bg-slate-800/30 p-2">
+                  <div className="space-y-2">
+                    {(userSearchResults as any[]).map((user: any) => (
+                      <div
+                        key={user.id}
+                        className="flex items-center justify-between p-3 rounded-lg hover-elevate border border-slate-700 bg-slate-800/50"
+                        data-testid={`user-result-${user.id}`}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-medium text-white truncate">
+                              {user.firstName} {user.lastName}
+                            </p>
+                            <Badge variant="secondary" className="text-xs">
+                              {user.platformRole || 'guest'}
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                          <p className="text-xs text-muted-foreground/70 font-mono">{user.id}</p>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setSelectedUser(user)}
+                          className="ml-2"
+                          data-testid={`button-select-user-${user.id}`}
+                        >
+                          Manage
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              )}
+
+              {selectedUser && (
+                <div className="border border-blue-500/30 rounded-lg p-4 bg-blue-950/20">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-sm font-semibold text-blue-300">Managing: {selectedUser.firstName} {selectedUser.lastName}</h4>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setSelectedUser(null)}
+                      data-testid="button-close-user-panel"
+                    >
+                      <XCircle className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div>
+                        <span className="text-muted-foreground">Email:</span>
+                        <p className="text-white font-medium">{selectedUser.email}</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">User ID:</span>
+                        <p className="text-white font-mono text-[10px]">{selectedUser.id}</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        className="flex-1"
+                        onClick={() => {
+                          if (confirm('Are you sure you want to change this user\'s role?')) {
+                            // This would need additional UI for role selection
+                            toast({ title: "Feature", description: "Role change UI coming soon" });
+                          }
+                        }}
+                        data-testid="button-change-role"
+                      >
+                        <UserCog className="h-3 w-3 mr-1" />
+                        Change Role
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="border-t border-slate-700 pt-4" />
+
+            {/* Workspace Search & Management */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Building2 className="h-4 w-4 text-orange-400" />
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-orange-400">Workspace Management</h3>
+              </div>
+              
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search workspaces by name or ID (min 3 chars)..."
+                  value={workspaceSearchQuery}
+                  onChange={(e) => setWorkspaceSearchQuery(e.target.value)}
+                  className="pl-10 bg-slate-800/50 border-orange-500/30"
+                  data-testid="input-workspace-search"
+                />
+              </div>
+
+              {workspaceSearchResults && (workspaceSearchResults as any[]).length > 0 && (
+                <ScrollArea className="h-[200px] border border-orange-500/20 rounded-lg bg-slate-800/30 p-2">
+                  <div className="space-y-2">
+                    {(workspaceSearchResults as any[]).map((workspace: any) => (
+                      <div
+                        key={workspace.id}
+                        className="flex items-center justify-between p-3 rounded-lg hover-elevate border border-slate-700 bg-slate-800/50"
+                        data-testid={`workspace-result-${workspace.id}`}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-medium text-white truncate">{workspace.name}</p>
+                            {workspace.isSuspended && (
+                              <Badge variant="destructive" className="text-xs">Suspended</Badge>
+                            )}
+                            {workspace.isLocked && (
+                              <Badge variant="destructive" className="text-xs">Locked</Badge>
+                            )}
+                            {workspace.isFrozen && (
+                              <Badge variant="destructive" className="text-xs">Frozen</Badge>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground font-mono">{workspace.id}</p>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setSelectedWorkspace(workspace)}
+                          className="ml-2"
+                          data-testid={`button-select-workspace-${workspace.id}`}
+                        >
+                          Manage
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              )}
+
+              {selectedWorkspace && (
+                <div className="border border-orange-500/30 rounded-lg p-4 bg-orange-950/20">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-sm font-semibold text-orange-300">Managing: {selectedWorkspace.name}</h4>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setSelectedWorkspace(null)}
+                      data-testid="button-close-workspace-panel"
+                    >
+                      <XCircle className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div>
+                        <span className="text-muted-foreground">Status:</span>
+                        <div className="flex gap-1 mt-1">
+                          {selectedWorkspace.isSuspended && <Badge variant="destructive" className="text-[10px]">Suspended</Badge>}
+                          {selectedWorkspace.isLocked && <Badge variant="destructive" className="text-[10px]">Locked</Badge>}
+                          {selectedWorkspace.isFrozen && <Badge variant="destructive" className="text-[10px]">Frozen</Badge>}
+                          {!selectedWorkspace.isSuspended && !selectedWorkspace.isLocked && !selectedWorkspace.isFrozen && (
+                            <Badge variant="secondary" className="text-[10px] bg-green-500/20 text-green-400">Active</Badge>
+                          )}
+                        </div>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Workspace ID:</span>
+                        <p className="text-white font-mono text-[10px] break-all">{selectedWorkspace.id}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-2">
+                      {selectedWorkspace.isSuspended ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="w-full bg-green-500/10 border-green-500/30 hover:bg-green-500/20"
+                          onClick={() => {
+                            if (confirm('Unsuspend this account?')) {
+                              unsuspendAccountMutation.mutate({ workspaceId: selectedWorkspace.id });
+                            }
+                          }}
+                          disabled={unsuspendAccountMutation.isPending}
+                          data-testid="button-unsuspend"
+                        >
+                          <Unlock className="h-3 w-3 mr-1" />
+                          Unsuspend
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          className="w-full"
+                          onClick={() => {
+                            const reason = prompt('Reason for suspension:');
+                            if (reason) {
+                              suspendAccountMutation.mutate({ workspaceId: selectedWorkspace.id, reason });
+                            }
+                          }}
+                          disabled={suspendAccountMutation.isPending}
+                          data-testid="button-suspend"
+                        >
+                          <Ban className="h-3 w-3 mr-1" />
+                          Suspend
+                        </Button>
+                      )}
+
+                      {selectedWorkspace.isLocked ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="w-full bg-blue-500/10 border-blue-500/30 hover:bg-blue-500/20"
+                          onClick={() => {
+                            if (confirm('Unlock this account?')) {
+                              unlockAccountMutation.mutate({ workspaceId: selectedWorkspace.id });
+                            }
+                          }}
+                          disabled={unlockAccountMutation.isPending}
+                          data-testid="button-unlock"
+                        >
+                          <Unlock className="h-3 w-3 mr-1" />
+                          Unlock
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          className="w-full"
+                          onClick={() => {
+                            const reason = prompt('Reason for emergency lock:');
+                            if (reason) {
+                              lockAccountMutation.mutate({ workspaceId: selectedWorkspace.id, reason });
+                            }
+                          }}
+                          disabled={lockAccountMutation.isPending}
+                          data-testid="button-lock"
+                        >
+                          <Lock className="h-3 w-3 mr-1" />
+                          Lock
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
