@@ -69,6 +69,7 @@ import SupportDashboard from "@/pages/support-dashboard";
 import SalesPortal from "@/pages/sales-portal";
 import DesignComparison from "@/pages/design-comparison";
 import LogoShowcase from "@/pages/logo-showcase";
+import LogoShowcaseV2 from "@/pages/logo-showcase-v2";
 import PayrollDashboard from "@/pages/payroll-dashboard";
 import MyPaychecks from "@/pages/my-paychecks";
 import LeadersHub from "@/pages/leaders-hub";
@@ -153,6 +154,7 @@ function AppContent() {
         {/* Removed /mobile-chat from here - FIXED: Duplicate route was causing double WebSocket connections */}
         <Route path="/design-comparison" component={DesignComparison} />
         <Route path="/logo-showcase" component={LogoShowcase} />
+        <Route path="/logo-showcase-v2" component={LogoShowcaseV2} />
         <Route path="/onboarding/:token" component={OnboardingPage} />
         <Route path="/pay-invoice/:id" component={PayInvoice} />
         <Route component={Landing} />
@@ -344,7 +346,7 @@ function AppContent() {
                 <Route path="/support/dashboard" component={SupportDashboard} />
                 <Route path="/platform/admin" component={PlatformAdmin} />
                 <Route path="/platform/users" component={PlatformUsers} />
-                <Route path="/company-reports" component={<CompanyReports />} />
+                <Route path="/company-reports" component={CompanyReports} />
                 <Route path="/platform/sales" component={SalesPortal} />
                 <Route path="/employee/portal" component={EmployeePortal} />
                 <Route path="/auditor/portal" component={AuditorPortal} />
