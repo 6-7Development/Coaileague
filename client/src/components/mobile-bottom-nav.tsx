@@ -6,8 +6,7 @@
 
 import { useLocation } from "wouter";
 import { 
-  Home, Users, Calendar, FileText, 
-  MessageSquare, Settings, BarChart3, Clock
+  Home, Calendar, Clock, BarChart3
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,7 +24,6 @@ const navItems: NavItem[] = [
   { icon: Home, label: "Home", path: "/" },
   { icon: Calendar, label: "Schedule", path: "/schedule" },
   { icon: Clock, label: "Time", path: "/time-tracking" },
-  { icon: MessageSquare, label: "Chat", path: "/messages" },
   { icon: BarChart3, label: "Analytics", path: "/analytics" },
 ];
 
