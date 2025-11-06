@@ -13,7 +13,7 @@ import { useLocation } from "wouter";
 export function PlanBadge() {
   const [, setLocation] = useLocation();
   
-  const { data: workspace } = useQuery({
+  const { data: workspace } = useQuery<{ subscriptionTier?: string }>({
     queryKey: ['/api/workspace'],
   });
 
@@ -41,10 +41,10 @@ export function PlanBadge() {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Badge variant="outline" className="gap-1 cursor-pointer hover:bg-accent">
+        <Button variant="outline" size="sm" className="h-auto px-2.5 py-0.5 gap-1">
           {Icon && <Icon className="h-3 w-3" />}
-          <span>{config.label}</span>
-        </Badge>
+          <span className="text-xs font-semibold">{config.label}</span>
+        </Button>
       </PopoverTrigger>
       <PopoverContent className="w-64">
         <div className="space-y-3">
