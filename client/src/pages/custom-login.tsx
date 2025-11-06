@@ -180,17 +180,17 @@ export default function CustomLogin() {
             <div className="text-sm text-center w-full">
               <button
                 onClick={() => setLocation("/reset-password")}
-                className="text-[hsl(var(--cad-blue))] hover:underline"
+                className="text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 hover:underline"
                 data-testid="link-reset-password"
               >
                 Forgot your password?
               </button>
             </div>
-            <div className="text-sm text-center text-muted-foreground w-full">
+            <div className="text-sm text-center text-gray-600 dark:text-gray-400 w-full">
               Don't have an account?{" "}
               <button
                 onClick={() => setLocation("/register")}
-                className="text-[hsl(var(--cad-blue))] hover:underline font-medium"
+                className="text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 hover:underline font-medium"
                 data-testid="link-register"
               >
                 Sign up
@@ -210,15 +210,15 @@ export default function CustomLogin() {
         </Card>
 
         {/* Demo Access */}
-        <Card className="bg-[hsl(var(--cad-chrome))] border-[hsl(var(--cad-blue))]/30">
+        <Card className="bg-card border-emerald-600/20">
           <CardContent className="pt-6">
             <div className="text-center space-y-3">
-              <p className="text-sm text-[hsl(var(--cad-text-secondary))]">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
                 Want to see it in action?
               </p>
               <Button
                 variant="outline"
-                className="w-full"
+                className="w-full border-emerald-600/50 hover:bg-emerald-50 dark:hover:bg-emerald-950"
                 onClick={() => window.location.href = "/api/demo-login"}
                 data-testid="button-demo"
               >

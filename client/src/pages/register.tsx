@@ -68,7 +68,7 @@ export default function Register() {
 
       toast({
         title: "Account created!",
-        description: "Welcome to WorkforceOS",
+        description: "Welcome to AutoForce™",
       });
 
       // Auto-login after registration
@@ -85,16 +85,16 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-cyan-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-4">
-      <Card className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50 via-white to-green-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-4">
+      <Card className="w-full max-w-md shadow-xl">
         <CardHeader className="space-y-4 text-center">
           <div className="flex justify-center">
             <AutoForceLogo variant="full" size="sm" />
           </div>
           <div>
-            <CardTitle className="text-2xl font-bold">Create Account</CardTitle>
-            <CardDescription>
-              Get started with WorkforceOS today
+            <CardTitle className="text-2xl font-bold text-gray-900 dark:text-white">Create Account</CardTitle>
+            <CardDescription className="text-gray-600 dark:text-gray-400">
+              Get started with AutoForce™ today
             </CardDescription>
           </div>
         </CardHeader>
@@ -179,41 +179,41 @@ export default function Register() {
                   <div className="space-y-1 text-sm">
                     <div className="flex items-center gap-2">
                       {passwordValidation.checks.length ? (
-                        <CheckCircle2 className="h-3 w-3 text-green-500" />
+                        <CheckCircle2 className="h-3 w-3 text-emerald-500" />
                       ) : (
-                        <XCircle className="h-3 w-3 text-muted-foreground" />
+                        <XCircle className="h-3 w-3 text-gray-400" />
                       )}
-                      <span className={passwordValidation.checks.length ? "text-green-600" : "text-muted-foreground"}>
+                      <span className={passwordValidation.checks.length ? "text-emerald-600 dark:text-emerald-400" : "text-gray-500 dark:text-gray-400"}>
                         At least 8 characters
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
                       {passwordValidation.checks.uppercase ? (
-                        <CheckCircle2 className="h-3 w-3 text-green-500" />
+                        <CheckCircle2 className="h-3 w-3 text-emerald-500" />
                       ) : (
-                        <XCircle className="h-3 w-3 text-muted-foreground" />
+                        <XCircle className="h-3 w-3 text-gray-400" />
                       )}
-                      <span className={passwordValidation.checks.uppercase ? "text-green-600" : "text-muted-foreground"}>
+                      <span className={passwordValidation.checks.uppercase ? "text-emerald-600 dark:text-emerald-400" : "text-gray-500 dark:text-gray-400"}>
                         One uppercase letter
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
                       {passwordValidation.checks.number ? (
-                        <CheckCircle2 className="h-3 w-3 text-green-500" />
+                        <CheckCircle2 className="h-3 w-3 text-emerald-500" />
                       ) : (
-                        <XCircle className="h-3 w-3 text-muted-foreground" />
+                        <XCircle className="h-3 w-3 text-gray-400" />
                       )}
-                      <span className={passwordValidation.checks.number ? "text-green-600" : "text-muted-foreground"}>
+                      <span className={passwordValidation.checks.number ? "text-emerald-600 dark:text-emerald-400" : "text-gray-500 dark:text-gray-400"}>
                         One number
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
                       {passwordValidation.checks.special ? (
-                        <CheckCircle2 className="h-3 w-3 text-green-500" />
+                        <CheckCircle2 className="h-3 w-3 text-emerald-500" />
                       ) : (
-                        <XCircle className="h-3 w-3 text-muted-foreground" />
+                        <XCircle className="h-3 w-3 text-gray-400" />
                       )}
-                      <span className={passwordValidation.checks.special ? "text-green-600" : "text-muted-foreground"}>
+                      <span className={passwordValidation.checks.special ? "text-emerald-600 dark:text-emerald-400" : "text-gray-500 dark:text-gray-400"}>
                         One special character
                       </span>
                     </div>
@@ -224,7 +224,7 @@ export default function Register() {
 
             <Button
               type="submit"
-              className="w-full"
+              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
               disabled={isLoading || passwordValidation.strength < 100}
               data-testid="button-register"
             >
@@ -245,10 +245,10 @@ export default function Register() {
         <CardFooter className="flex flex-col space-y-4">
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
+              <span className="w-full border-t border-gray-200 dark:border-gray-700" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">
+              <span className="bg-white dark:bg-gray-800 px-2 text-gray-500 dark:text-gray-400">
                 Or sign up with
               </span>
             </div>
@@ -279,11 +279,11 @@ export default function Register() {
               <SiFacebook className="h-5 w-5 text-blue-600" />
             </Button>
           </div>
-          <div className="text-sm text-center text-muted-foreground">
+          <div className="text-sm text-center text-gray-600 dark:text-gray-400">
             Already have an account?{" "}
             <Button
               variant="ghost"
-              className="h-auto p-0"
+              className="h-auto p-0 text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
               onClick={() => setLocation("/login")}
               data-testid="link-login"
             >
