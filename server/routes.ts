@@ -175,6 +175,7 @@ import {
   batchCalculateHealthScores 
 } from "./services/engagementCalculations";
 import { FEATURES, getFeatureStatus } from "./featureFlags";
+import { ObjectStorageService, objectStorageClient } from "./objectStorage";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Create HTTP server
@@ -4337,7 +4338,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Upload expense receipt
+  // Upload expense receipt to object storage
   app.post('/api/expenses/:id/receipts', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const workspaceId = req.workspaceId!;
@@ -4347,10 +4348,82 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Expense not found" });
       }
 
+      const { fileData, fileName, fileType } = req.body;
+      
+      if (!fileData || !fileName || !fileType) {
+        return res.status(400).json({ message: "File data, name, and type are required" });
+      }
+
+      // SECURITY: Validate file type (only images and PDFs)
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'application/pdf'];
+      if (!allowedTypes.includes(fileType.toLowerCase())) {
+        return res.status(400).json({ message: "Invalid file type. Only images (JPEG, PNG, GIF) and PDF are allowed." });
+      }
+
+      // SECURITY: Sanitize filename - remove path traversal attempts
+      const sanitizedName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_').substring(0, 255);
+      const fileExt = sanitizedName.split('.').pop()?.toLowerCase() || 'png';
+      
+      // SECURITY: Validate extension matches MIME type
+      const extensionMap: Record<string, string[]> = {
+        'image/jpeg': ['jpg', 'jpeg'],
+        'image/jpg': ['jpg', 'jpeg'],
+        'image/png': ['png'],
+        'image/gif': ['gif'],
+        'application/pdf': ['pdf'],
+      };
+      if (!extensionMap[fileType]?.includes(fileExt)) {
+        return res.status(400).json({ message: "File extension does not match MIME type" });
+      }
+
+      // Convert base64 to buffer
+      const base64Data = fileData.replace(/^data:[^;]+;base64,/, '');
+      const buffer = Buffer.from(base64Data, 'base64');
+
+      // SECURITY: Enforce 10MB file size limit
+      const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+      if (buffer.length > MAX_FILE_SIZE) {
+        return res.status(400).json({ message: `File too large. Maximum size is ${MAX_FILE_SIZE / 1024 / 1024}MB` });
+      }
+
+      // SECURITY: Verify PRIVATE_OBJECT_DIR is configured
+      const privateDir = process.env.PRIVATE_OBJECT_DIR;
+      if (!privateDir) {
+        console.error('PRIVATE_OBJECT_DIR environment variable not set');
+        return res.status(500).json({ message: "Object storage not configured" });
+      }
+
+      // Upload to object storage
+      const receiptId = crypto.randomUUID();
+      const objectPath = `${privateDir}/expense-receipts/${workspaceId}/${expense.id}/${receiptId}.${fileExt}`;
+      const { bucketName, objectName } = parseObjectPath(objectPath);
+      
+      const bucket = objectStorageClient.bucket(bucketName);
+      const file = bucket.file(objectName);
+      
+      await file.save(buffer, {
+        metadata: {
+          contentType: fileType,
+          metadata: {
+            workspaceId: workspaceId,
+            expenseId: expense.id,
+            uploadedBy: req.user!.id,
+            timestamp: new Date().toISOString(),
+            originalFileName: sanitizedName,
+          },
+        },
+      });
+
+      // Store receipt URL
+      const fileUrl = `/objects/expense-receipts/${workspaceId}/${expense.id}/${receiptId}.${fileExt}`;
+
       const validated = insertExpenseReceiptSchema.parse({
-        ...req.body,
         workspaceId,
-        expenseId: expense.id
+        expenseId: expense.id,
+        fileName: sanitizedName,
+        fileUrl,
+        fileType,
+        fileSize: buffer.length,
       });
 
       const receipt = await storage.createExpenseReceipt(validated);
@@ -17122,7 +17195,7 @@ ${context.performanceHistory.map((review: any) => `- Overall Rating: ${review.ov
     }
   });
 
-  // POST /api/signatures - Save e-signature with audit trail
+  // POST /api/signatures - Save e-signature with immutable object storage
   app.post('/api/signatures', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const userId = req.user!.id;
@@ -17138,9 +17211,70 @@ ${context.performanceHistory.map((review: any) => `- Overall Rating: ${review.ov
         return res.status(400).json({ message: "Signature data and document type are required" });
       }
 
+      // SECURITY: Verify signature data is PNG
+      if (!signatureData.startsWith('data:image/png;base64,')) {
+        return res.status(400).json({ message: "Invalid signature format. Must be PNG image." });
+      }
+
+      // Convert base64 to buffer
+      const base64Data = signatureData.replace(/^data:image\/png;base64,/, '');
+      const buffer = Buffer.from(base64Data, 'base64');
+
+      // SECURITY: Enforce 1MB signature size limit
+      const MAX_SIGNATURE_SIZE = 1 * 1024 * 1024; // 1MB
+      if (buffer.length > MAX_SIGNATURE_SIZE) {
+        return res.status(400).json({ message: `Signature too large. Maximum size is ${MAX_SIGNATURE_SIZE / 1024 / 1024}MB` });
+      }
+
+      // SECURITY: Verify buffer is valid PNG (check magic number)
+      const isPNG = buffer.length >= 8 && 
+                    buffer[0] === 0x89 && 
+                    buffer[1] === 0x50 && 
+                    buffer[2] === 0x4E && 
+                    buffer[3] === 0x47;
+      if (!isPNG) {
+        return res.status(400).json({ message: "Invalid PNG signature. Data appears corrupted or forged." });
+      }
+
+      // SECURITY: Verify PRIVATE_OBJECT_DIR is configured
+      const privateDir = process.env.PRIVATE_OBJECT_DIR;
+      if (!privateDir) {
+        console.error('PRIVATE_OBJECT_DIR environment variable not set');
+        return res.status(500).json({ message: "Object storage not configured" });
+      }
+
       // Get user details for audit
       const user = await storage.getUser(userId);
       const fullName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.email || 'Unknown';
+
+      // Upload signature to object storage (immutable)
+      const signatureId = randomUUID();
+      const objectPath = `${privateDir}/signatures/${workspace.id}/${signatureId}.png`;
+      const { bucketName, objectName } = parseObjectPath(objectPath);
+      
+      const bucket = objectStorageClient.bucket(bucketName);
+      const file = bucket.file(objectName);
+      
+      await file.save(buffer, {
+        metadata: {
+          contentType: 'image/png',
+          metadata: {
+            workspaceId: workspace.id,
+            userId: userId,
+            documentType: documentType,
+            signedByName: fullName,
+            timestamp: new Date().toISOString(),
+            immutable: 'true', // Mark as immutable
+          },
+        },
+      });
+
+      // Generate hash for integrity verification
+      const cryptoModule = await import('crypto');
+      const hash = cryptoModule.createHash('sha256').update(buffer).digest('hex');
+
+      // Store signature URL in object storage path format
+      const signatureUrl = `/objects/signatures/${workspace.id}/${signatureId}.png`;
 
       // Create signature record with full audit trail
       const signatureRecord = await db.insert(documentSignatures).values({
@@ -17149,7 +17283,8 @@ ${context.performanceHistory.map((review: any) => `- Overall Rating: ${review.ov
         documentType: documentType,
         documentTitle: `${documentType.replace(/_/g, ' ').toUpperCase()} - E-Signature`,
         status: 'signed',
-        signatureData: signatureData, // Base64 encoded PNG
+        signatureData: hash, // Store hash instead of full image
+        documentUrl: signatureUrl, // Object storage URL
         signedByName: fullName,
         signedAt: new Date(),
         ipAddress: req.ip || req.headers['x-forwarded-for'] as string || 'unknown',
@@ -17166,6 +17301,8 @@ ${context.performanceHistory.map((review: any) => `- Overall Rating: ${review.ov
         changes: {
           documentType,
           signedByName: fullName,
+          signatureUrl,
+          hash,
           timestamp: new Date().toISOString(),
         },
         ipAddress: req.ip || 'unknown',
@@ -17178,6 +17315,21 @@ ${context.performanceHistory.map((review: any) => `- Overall Rating: ${review.ov
       res.status(500).json({ message: error.message || "Failed to save signature" });
     }
   });
+
+  // Helper function to parse object storage paths
+  function parseObjectPath(path: string): { bucketName: string; objectName: string } {
+    if (!path.startsWith("/")) {
+      path = `/${path}`;
+    }
+    const pathParts = path.split("/");
+    if (pathParts.length < 3) {
+      throw new Error("Invalid path: must contain at least a bucket name");
+    }
+    return {
+      bucketName: pathParts[1],
+      objectName: pathParts.slice(2).join("/"),
+    };
+  }
 
   // Return the server we created at the top with WebSocket
   return server;

@@ -43,7 +43,7 @@ export const PREMIUM_FEATURES: PremiumFeature[] = [
       timesSaved: 20, // hours per week
       costsSaved: 52000,
     },
-    status: 'coming_soon',
+    status: 'available',
   },
   {
     id: 'auto-payroll',
