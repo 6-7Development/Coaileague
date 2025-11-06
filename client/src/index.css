@@ -1,3 +1,6 @@
+/* AutoForce™ Responsive Design System - Auto-resizing for mobile/tablet/desktop */
+@import './styles/responsive.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

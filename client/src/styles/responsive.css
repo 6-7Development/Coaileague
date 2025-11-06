@@ -1,0 +1,474 @@
+/**
+ * AutoForce™ Responsive Design System
+ * Automatically adapts images, text, and layouts for mobile/tablet/desktop
+ * Prevents visual overflow and ensures proper wrapping on all screen sizes
+ */
+
+/* ============================================================================
+   CONTAINER UTILITIES - Prevent horizontal overflow
+   ============================================================================ */
+
+.responsive-container {
+  width: 100%;
+  max-width: 100vw;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1rem; /* 16px mobile */
+  padding-right: 1rem;
+  overflow-x: hidden;
+}
+
+@media (min-width: 640px) {
+  .responsive-container {
+    padding-left: 1.5rem; /* 24px tablet */
+    padding-right: 1.5rem;
+    max-width: 640px;
+  }
+}
+
+@media (min-width: 768px) {
+  .responsive-container {
+    max-width: 768px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .responsive-container {
+    max-width: 1024px;
+  }
+}
+
+@media (min-width: 1280px) {
+  .responsive-container {
+    max-width: 1280px;
+    padding-left: 2rem; /* 32px desktop */
+    padding-right: 2rem;
+  }
+}
+
+@media (min-width: 1536px) {
+  .responsive-container {
+    max-width: 1536px;
+  }
+}
+
+/* ============================================================================
+   RESPONSIVE SPACING - Adapts to screen size
+   ============================================================================ */
+
+.responsive-spacing-y {
+  padding-top: 2rem; /* 32px mobile */
+  padding-bottom: 2rem;
+}
+
+@media (min-width: 640px) {
+  .responsive-spacing-y {
+    padding-top: 3rem; /* 48px tablet */
+    padding-bottom: 3rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .responsive-spacing-y {
+    padding-top: 4rem; /* 64px desktop */
+    padding-bottom: 4rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  .responsive-spacing-y {
+    padding-top: 6rem; /* 96px large desktop */
+    padding-bottom: 6rem;
+  }
+}
+
+.responsive-spacing-section {
+  padding-top: 3rem; /* 48px mobile */
+  padding-bottom: 3rem;
+}
+
+@media (min-width: 768px) {
+  .responsive-spacing-section {
+    padding-top: 4rem; /* 64px tablet */
+    padding-bottom: 4rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .responsive-spacing-section {
+    padding-top: 6rem; /* 96px desktop */
+    padding-bottom: 6rem;
+  }
+}
+
+/* ============================================================================
+   TYPOGRAPHY - Responsive text sizing
+   ============================================================================ */
+
+.responsive-h1 {
+  font-size: 2rem; /* 32px mobile */
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+@media (min-width: 640px) {
+  .responsive-h1 {
+    font-size: 2.5rem; /* 40px tablet */
+  }
+}
+
+@media (min-width: 1024px) {
+  .responsive-h1 {
+    font-size: 3rem; /* 48px desktop */
+  }
+}
+
+@media (min-width: 1280px) {
+  .responsive-h1 {
+    font-size: 3.5rem; /* 56px large desktop */
+  }
+}
+
+.responsive-h2 {
+  font-size: 1.5rem; /* 24px mobile */
+  line-height: 1.3;
+  font-weight: 600;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+@media (min-width: 640px) {
+  .responsive-h2 {
+    font-size: 1.875rem; /* 30px tablet */
+  }
+}
+
+@media (min-width: 1024px) {
+  .responsive-h2 {
+    font-size: 2.25rem; /* 36px desktop */
+  }
+}
+
+@media (min-width: 1280px) {
+  .responsive-h2 {
+    font-size: 2.5rem; /* 40px large desktop */
+  }
+}
+
+.responsive-h3 {
+  font-size: 1.25rem; /* 20px mobile */
+  line-height: 1.4;
+  font-weight: 600;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+@media (min-width: 640px) {
+  .responsive-h3 {
+    font-size: 1.5rem; /* 24px tablet */
+  }
+}
+
+@media (min-width: 1024px) {
+  .responsive-h3 {
+    font-size: 1.875rem; /* 30px desktop */
+  }
+}
+
+.responsive-body {
+  font-size: 1rem; /* 16px mobile */
+  line-height: 1.6;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+@media (min-width: 640px) {
+  .responsive-body {
+    font-size: 1.0625rem; /* 17px tablet */
+  }
+}
+
+@media (min-width: 1024px) {
+  .responsive-body {
+    font-size: 1.125rem; /* 18px desktop */
+  }
+}
+
+.responsive-small {
+  font-size: 0.875rem; /* 14px mobile */
+  line-height: 1.5;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+@media (min-width: 640px) {
+  .responsive-small {
+    font-size: 0.9375rem; /* 15px tablet */
+  }
+}
+
+/* ============================================================================
+   IMAGE UTILITIES - Auto-resize images for all screen sizes
+   ============================================================================ */
+
+.responsive-img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  object-fit: contain;
+}
+
+.responsive-img-cover {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.responsive-img-hero {
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  object-position: center;
+}
+
+@media (max-width: 639px) {
+  .responsive-img-hero {
+    aspect-ratio: 4 / 3; /* Taller on mobile */
+  }
+}
+
+/* Prevent images from breaking layout */
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* ============================================================================
+   LAYOUT UTILITIES - Fix overflow issues
+   ============================================================================ */
+
+.fix-overflow {
+  overflow-x: hidden;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  word-break: break-word;
+  max-width: 100%;
+}
+
+.text-wrap-auto {
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  hyphens: auto;
+  max-width: 100%;
+}
+
+/* Prevent horizontal scroll on any page */
+body {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+html {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+/* ============================================================================
+   CARD & COMPONENT UTILITIES
+   ============================================================================ */
+
+.responsive-card-grid {
+  display: grid;
+  grid-template-columns: 1fr; /* 1 column mobile */
+  gap: 1rem;
+  width: 100%;
+}
+
+@media (min-width: 640px) {
+  .responsive-card-grid {
+    grid-template-columns: repeat(2, 1fr); /* 2 columns tablet */
+    gap: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .responsive-card-grid {
+    grid-template-columns: repeat(3, 1fr); /* 3 columns desktop */
+    gap: 2rem;
+  }
+}
+
+.responsive-card-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  width: 100%;
+}
+
+@media (min-width: 768px) {
+  .responsive-card-grid-2 {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .responsive-card-grid-2 {
+    gap: 2rem;
+  }
+}
+
+.responsive-card-grid-4 {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  width: 100%;
+}
+
+@media (min-width: 640px) {
+  .responsive-card-grid-4 {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .responsive-card-grid-4 {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 2rem;
+  }
+}
+
+/* ============================================================================
+   BUTTON & TOUCH TARGET UTILITIES
+   ============================================================================ */
+
+/* Ensure all interactive elements are touchable on mobile (min 44x44px) */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ============================================================================
+   HERO SECTION UTILITIES
+   ============================================================================ */
+
+.hero-height {
+  min-height: 400px; /* Mobile */
+}
+
+@media (min-width: 640px) {
+  .hero-height {
+    min-height: 500px; /* Tablet */
+  }
+}
+
+@media (min-width: 1024px) {
+  .hero-height {
+    min-height: 600px; /* Desktop */
+  }
+}
+
+@media (min-width: 1280px) {
+  .hero-height {
+    min-height: 700px; /* Large desktop */
+  }
+}
+
+/* ============================================================================
+   MOBILE-SPECIFIC UTILITIES
+   ============================================================================ */
+
+@media (max-width: 639px) {
+  /* Hide on mobile */
+  .hide-mobile {
+    display: none !important;
+  }
+
+  /* Force full width on mobile */
+  .mobile-full-width {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Stack columns on mobile */
+  .mobile-stack > * {
+    width: 100% !important;
+  }
+}
+
+/* ============================================================================
+   DESKTOP-SPECIFIC UTILITIES
+   ============================================================================ */
+
+@media (min-width: 1024px) {
+  /* Hide on desktop */
+  .hide-desktop {
+    display: none !important;
+  }
+}
+
+/* ============================================================================
+   TABLET-SPECIFIC UTILITIES
+   ============================================================================ */
+
+@media (min-width: 640px) and (max-width: 1023px) {
+  .hide-tablet {
+    display: none !important;
+  }
+}
+
+/* ============================================================================
+   ASPECT RATIO UTILITIES (for consistent image sizing)
+   ============================================================================ */
+
+.aspect-video {
+  aspect-ratio: 16 / 9;
+}
+
+.aspect-square {
+  aspect-ratio: 1 / 1;
+}
+
+.aspect-portrait {
+  aspect-ratio: 3 / 4;
+}
+
+.aspect-landscape {
+  aspect-ratio: 4 / 3;
+}
+
+/* ============================================================================
+   FLEXIBLE MEDIA QUERIES
+   ============================================================================ */
+
+/* Show only on mobile */
+@media (min-width: 640px) {
+  .mobile-only {
+    display: none !important;
+  }
+}
+
+/* Show only on tablet and up */
+@media (max-width: 639px) {
+  .tablet-up {
+    display: none !important;
+  }
+}
+
+/* Show only on desktop */
+@media (max-width: 1023px) {
+  .desktop-only {
+    display: none !important;
+  }
+}
