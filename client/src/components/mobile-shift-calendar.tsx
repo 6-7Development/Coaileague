@@ -1,12 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { format, startOfWeek, addDays, isSameDay, isToday, addWeeks } from "date-fns";
-import { Bell, Plus, X, MessageSquare, FileText, Clock, Eye, AlertCircle, CheckCircle, ChevronRight } from "lucide-react";
+import { Bell, Plus, X, MessageSquare, FileText, Clock, Eye, AlertCircle, CheckCircle, ChevronRight, RefreshCw, ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import type { Shift, Employee, Client, ShiftAcknowledgment } from "@shared/schema";
 import { ShiftActionsMenu } from "@/components/shift-actions-menu";
 
