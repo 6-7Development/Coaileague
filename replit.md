@@ -73,11 +73,16 @@ AutoForce™ features a modular "OS" design (e.g., BillOS™, PayrollOS™, Trac
       - Features: Multi-room chat, member management, audit trails for support staff actions
     - **Private Messages - Direct Messaging (Implementation Status: 100% COMPLETE)**:
       - ✅ Schema: Uses existing chatConversations/chatMessages tables with `subject='Private Message'` isolation
+      - ✅ Encryption: AES-256-GCM server-side encryption with persistent key storage in conversationEncryptionKeys table
       - ✅ Storage methods: getPrivateMessageConversations, getPrivateMessages, sendPrivateMessage, markMessagesAsRead, searchUsers
       - ✅ API routes: GET /conversations, GET /:conversationId, POST /send, POST /start, POST /mark-read, GET /users/search
       - ✅ Security: Subject-based DM isolation (prevents SupportOS/CommOS thread leakage), server-side senderName derivation (prevents identity spoofing)
+      - ✅ Encryption Service: server/encryption.ts with generateEncryptionKey, encryptMessage, decryptMessage (all async with DB persistence)
+      - ✅ Audit Access System: dmAuditRequests, dmAccessLogs tables track all investigation workflows
+      - ✅ Investigation API: POST /api/dm-audit/request, PATCH /approve/:id, PATCH /deny/:id, GET /access/:conversationId
       - ✅ Frontend integration: Complete UI with conversation list, message thread, user search, unread counts
-      - Features: 1-on-1 messaging, read receipts, unread indicators, workspace-scoped user search
+      - Features: 1-on-1 messaging, read receipts, unread indicators, workspace-scoped user search, end-to-end encryption with audit trail
+      - **Differential Monitoring**: CommOS (open chat) always monitored for safety; Private Messages encrypted and only accessible with approved investigation request for legal compliance
     - **AssetOS™ (EXISTING - Verified)**:
       - Vehicle and equipment tracking
       - Billing rates and maintenance schedules
