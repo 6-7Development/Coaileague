@@ -26,24 +26,22 @@ interface FeatureUpdate {
 export function WhatsNewBadge() {
   const [open, setOpen] = useState(false);
 
-  const { data: updates = [] } = useQuery({
+  const { data: updates = [] } = useQuery<FeatureUpdate[]>({
     queryKey: ['/api/feature-updates'],
     enabled: open,
   });
 
-  const { data: lastViewed } = useQuery({
+  const { data: lastViewed } = useQuery<string>({
     queryKey: ['/api/feature-updates/last-viewed'],
   });
 
   const unreadCount = updates.filter(
-    (update: FeatureUpdate) =>
+    (update) =>
       !lastViewed || new Date(update.releaseDate) > new Date(lastViewed)
   ).length;
 
   const markAsViewed = async () => {
-    await apiRequest('/api/feature-updates/mark-viewed', {
-      method: 'POST',
-    });
+    await apiRequest('/api/feature-updates/mark-viewed', 'POST');
   };
 
   const getCategoryColor = (category: string) => {
@@ -70,15 +68,12 @@ export function WhatsNewBadge() {
       }}
     >
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative">
+        <Button variant="ghost" size="icon" className="relative" data-testid="button-whats-new">
           <Sparkles className="h-5 w-5" />
           {unreadCount > 0 && (
-            <Badge
-              variant="default"
-              className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs bg-gradient-to-r from-purple-500 to-pink-500"
-            >
+            <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white flex items-center justify-center text-xs font-medium">
               {unreadCount}
-            </Badge>
+            </span>
           )}
         </Button>
       </PopoverTrigger>
@@ -100,7 +95,7 @@ export function WhatsNewBadge() {
             </div>
           ) : (
             <div className="divide-y">
-              {updates.map((update: FeatureUpdate) => (
+              {updates.map((update) => (
                 <div key={update.id} className="p-4 space-y-2">
                   <div className="flex items-start justify-between gap-2">
                     <h4 className="font-medium text-sm">{update.title}</h4>

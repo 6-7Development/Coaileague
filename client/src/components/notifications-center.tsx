@@ -29,17 +29,21 @@ export function NotificationsCenter() {
   const [open, setOpen] = useState(false);
 
   // Get current user info
-  const { data: currentUser } = useQuery({ queryKey: ['/api/auth/me'] });
+  const { data: currentUser } = useQuery<{ id: string; email?: string }>({ 
+    queryKey: ['/api/auth/me'] 
+  });
   const userId = currentUser?.id;
   
   // Get current workspace
-  const { data: workspace } = useQuery({ queryKey: ['/api/workspace'] });
+  const { data: workspace } = useQuery<{ id: string; name?: string }>({ 
+    queryKey: ['/api/workspace'] 
+  });
   const workspaceId = workspace?.id;
 
   // Connect to notification WebSocket
   const { unreadCount: wsUnreadCount, isConnected } = useNotificationWebSocket(userId, workspaceId);
 
-  const { data: notifications = [], isLoading } = useQuery({
+  const { data: notifications = [], isLoading } = useQuery<Notification[]>({
     queryKey: ['/api/notifications'],
     enabled: open,
   });
@@ -47,13 +51,11 @@ export function NotificationsCenter() {
   // Use WebSocket unread count if available, otherwise calculate from notifications
   const unreadCount = isConnected && wsUnreadCount !== undefined 
     ? wsUnreadCount 
-    : notifications.filter((n: Notification) => !n.isRead).length;
+    : notifications.filter((n) => !n.isRead).length;
 
   const markAsReadMutation = useMutation({
     mutationFn: async (id: string) => {
-      await apiRequest(`/api/notifications/${id}/read`, {
-        method: 'PATCH',
-      });
+      return apiRequest(`/api/notifications/${id}/read`, 'PATCH');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
@@ -62,9 +64,7 @@ export function NotificationsCenter() {
 
   const markAllAsReadMutation = useMutation({
     mutationFn: async () => {
-      await apiRequest('/api/notifications/mark-all-read', {
-        method: 'POST',
-      });
+      return apiRequest('/api/notifications/mark-all-read', 'POST');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
@@ -99,15 +99,12 @@ export function NotificationsCenter() {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative">
+        <Button variant="ghost" size="icon" className="relative" data-testid="button-notifications">
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
-            <Badge
-              variant="destructive"
-              className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
-            >
+            <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center text-xs font-medium">
               {unreadCount > 9 ? '9+' : unreadCount}
-            </Badge>
+            </span>
           )}
         </Button>
       </PopoverTrigger>
@@ -138,7 +135,7 @@ export function NotificationsCenter() {
             </div>
           ) : (
             <div className="divide-y">
-              {notifications.map((notification: Notification) => (
+              {notifications.map((notification) => (
                 <div
                   key={notification.id}
                   className={`p-4 hover:bg-accent cursor-pointer transition-colors ${
