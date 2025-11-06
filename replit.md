@@ -64,6 +64,20 @@ AutoForce™ features a modular "OS" design (e.g., BillOS™, PayrollOS™, Trac
       - ✅ API routes: POST /api/policies, GET /api/policies, PATCH /api/policies/:id/publish, POST /api/policies/:id/acknowledge
       - ✅ Policy management UI: Create/publish policies, version control, acknowledgment tracking
       - Features: Handbook version control, e-signature acknowledgment, compliance tracking, draft/published workflow
+    - **CommOS™ - Team Communication (Implementation Status: 100% COMPLETE)**:
+      - ✅ Schema: Complete (4 tables - commRooms, commRoomMembers, commRoomMessages, commRoomAuditLog)
+      - ✅ Storage methods: Room/member/message CRUD, audit trail creation
+      - ✅ API routes: Complete room lifecycle, member management, messaging endpoints
+      - ✅ Onboarding UI: Create/join rooms with role selection (owner/admin/member/guest)
+      - ✅ Security: Room status enum (active/suspended/closed), member role-based access control
+      - Features: Multi-room chat, member management, audit trails for support staff actions
+    - **Private Messages - Direct Messaging (Implementation Status: 100% COMPLETE)**:
+      - ✅ Schema: Uses existing chatConversations/chatMessages tables with `subject='Private Message'` isolation
+      - ✅ Storage methods: getPrivateMessageConversations, getPrivateMessages, sendPrivateMessage, markMessagesAsRead, searchUsers
+      - ✅ API routes: GET /conversations, GET /:conversationId, POST /send, POST /start, POST /mark-read, GET /users/search
+      - ✅ Security: Subject-based DM isolation (prevents SupportOS/CommOS thread leakage), server-side senderName derivation (prevents identity spoofing)
+      - ✅ Frontend integration: Complete UI with conversation list, message thread, user search, unread counts
+      - Features: 1-on-1 messaging, read receipts, unread indicators, workspace-scoped user search
     - **AssetOS™ (EXISTING - Verified)**:
       - Vehicle and equipment tracking
       - Billing rates and maintenance schedules
