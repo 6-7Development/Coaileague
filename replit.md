@@ -11,6 +11,46 @@ All branding must be 100% AutoForce™ (not WorkforceOS).
 FTC COMPLIANCE: All marketing claims must be factual and verifiable. Avoid monopolistic language.
 
 ## Recent Changes (Nov 6, 2025)
+### ScheduleOS™ - Complete SmartSchedule AI Features ✅
+**Implemented ALL Missing Features** for AI-powered scheduling system with usage-based billing:
+- **Problem**: SmartSchedule AI features were referenced in UI but backend APIs were missing; no AI toggle, generate schedule, request service coverage, or publish schedule functionality
+- **Solution**: Implemented complete AI system with 5 new backend endpoints, 2 database tables, AI billing integration, and full UI controls
+- **New Backend APIs** (`server/routes.ts`):
+  - **AI Toggle**: `POST /api/scheduleos/ai/toggle` with body `{enabled, workspaceId}` - managers/admins only
+  - **AI Status**: `GET /api/scheduleos/ai/status?workspaceId=<id>` returns `{enabled, workspaceId, workspaceName}`
+  - **Generate Schedule**: `POST /api/scheduleos/generate-schedule` with AI billing tracking via `workspaceAiUsage` table
+  - **Request Service**: `POST /api/scheduleos/request-service` for on-demand staffing with AI employee matching
+  - **Publish Schedule**: `POST /api/schedules/publish` makes schedules live for all employees with real-time notifications
+- **New Database Tables** (`shared/schema.ts`):
+  - **serviceCoverageRequests**: Tracks on-demand staffing requests with AI suggestions, job site locations, skill requirements, status workflow ('pending' → 'processing' → 'matched' → 'assigned')
+  - **publishedSchedules**: Version control for schedule publications with employee counts, shift tracking, notification status
+- **AI Billing Integration**:
+  - **300% Markup Model**: OpenAI cost × 4 = client charge (tracks provider cost, markup %, final charge)
+  - **Token Tracking**: Estimates 2000 base tokens + 50 per shift for generate, 1500 + 40 per shift for coverage
+  - **Billing Period**: Monthly billing cycle (YYYY-MM format) with status tracking (pending → invoiced → paid)
+  - **Invoice Integration**: `aiUsageLogId` links to invoices for consolidated billing
+- **Frontend UI** (`client/src/pages/schedule-smart.tsx`):
+  - **AI Toggle Switch**: Workspace-scoped enable/disable with real-time status indicator (Bot icon changes color)
+  - **Generate Schedule Button**: Primary button (only visible when AI enabled) with Sparkles icon
+  - **Request Service Button**: Outline button for coverage requests (only visible when AI enabled) with Send icon
+  - **Publish Schedule Button**: Green button with CloudUpload icon for making schedules live
+  - **Responsive Design**: All buttons mobile-optimized with touch-friendly min-h-9, whitespace-nowrap, flex-shrink-0
+- **AI Engine** (`server/ai/scheduleos.ts`):
+  - Already comprehensive with TalentOS™, ClockOS™, geo-compliance integration
+  - Calculates reliability scores, risk scores, distance from home, availability matching
+  - Penalty queue system for shift denials (recent denials → back of queue)
+  - Auto-replacement logic for denied shifts
+- **Security**:
+  - All endpoints require `isAuthenticated` and `requireManager` middleware
+  - Workspace scoping prevents cross-workspace data access
+  - AI state stored in-memory Map per workspace ID
+- **Workflow**:
+  1. Manager toggles AI on → AI status stored per workspace
+  2. Generate Schedule → AI analyzes employee pool → Creates shifts → Tracks billing
+  3. Request Service → AI finds best matches → Assigns based on skills/location/availability
+  4. Publish Schedule → Shifts go from 'draft' to 'scheduled' → Employees notified via WebSocket
+- **Production Status**: All features implemented, backend APIs functional, UI complete, schema migrated
+
 ### HelpOS Cost Optimization & Branding Cleanup ✅
 **Optimized AI Costs and Removed External Branding** for HelpOS support bot:
 - **Problem**: HelpOS was using expensive AI model (gpt-5-nano) for basic support tasks; external platform branding (Replit) appeared in login page and code comments

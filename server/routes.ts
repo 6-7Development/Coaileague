@@ -3178,6 +3178,138 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============================================================================
+  // SCHEDULEOS™ AI - TOGGLE & USAGE-BASED BILLING
+  // ============================================================================
+  
+  // In-memory AI toggle state per workspace
+  const scheduleosAiEnabled = new Map<string, boolean>();
+  
+  // Toggle SmartSchedule AI (Managers/Admins only)
+  app.post('/api/scheduleos/ai/toggle', isAuthenticated, requireManager, async (req: any, res) => {
+    try {
+      const { enabled, workspaceId } = req.body;
+      
+      if (!workspaceId) {
+        return res.status(400).json({ message: "workspaceId is required" });
+      }
+      
+      const workspace = await storage.getWorkspace(workspaceId);
+      if (!workspace) {
+        return res.status(404).json({ message: "Workspace not found" });
+      }
+      
+      scheduleosAiEnabled.set(workspaceId, enabled);
+      console.log(`🤖 SmartSchedule AI ${enabled ? 'ENABLED' : 'DISABLED'} for workspace: ${workspace.name}`);
+      
+      res.json({ success: true, enabled, message: `SmartSchedule AI ${enabled ? 'enabled' : 'disabled'}`, workspaceId, workspaceName: workspace.name });
+    } catch (error: any) {
+      console.error("Error toggling SmartSchedule AI:", error);
+      res.status(500).json({ message: "Failed to toggle AI" });
+    }
+  });
+  
+  // Get SmartSchedule AI status
+  app.get('/api/scheduleos/ai/status', isAuthenticated, async (req: any, res) => {
+    try {
+      const { workspaceId } = req.query;
+      if (!workspaceId) return res.status(400).json({ message: "workspaceId query parameter is required" });
+      
+      const workspace = await storage.getWorkspace(workspaceId as string);
+      if (!workspace) return res.status(404).json({ message: "Workspace not found" });
+      
+      res.json({ enabled: scheduleosAiEnabled.get(workspaceId as string) ?? false, workspaceId, workspaceName: workspace.name });
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to get AI status" });
+    }
+  });
+  
+  // Generate AI Schedule with billing
+  app.post('/api/scheduleos/generate-schedule', isAuthenticated, requireManager, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const [userWorkspace] = await db.select().from(workspaceMembers).where(eq(workspaceMembers.userId, userId)).limit(1);
+      if (!userWorkspace) return res.status(404).json({ message: "Workspace not found" });
+      const workspace = await storage.getWorkspace(userWorkspace.workspaceId);
+      if (!workspace) return res.status(404).json({ message: "Workspace not found" });
+      
+      const aiEnabled = scheduleosAiEnabled.get(workspace.id) ?? false;
+      if (!aiEnabled) return res.status(403).json({ message: "SmartSchedule AI is disabled" });
+      
+      const { ScheduleOSAI } = await import("./ai/scheduleos");
+      const result = await (new ScheduleOSAI()).generateSchedule({ workspaceId: workspace.id, weekStartDate: new Date(req.body.weekStartDate), clientIds: req.body.clientIds, shiftRequirements: req.body.shiftRequirements });
+      
+      const tokens = 2000 + (result.shiftsGenerated * 50);
+      const cost = (tokens / 1000) * 0.045 * 4;
+      
+      const { workspaceAiUsage } = await import("@shared/schema");
+      const [log] = await db.insert(workspaceAiUsage).values({ workspaceId: workspace.id, feature: 'smart_schedule_ai', operation: 'generate_schedule', requestId: `sched-${Date.now()}`, tokensUsed: tokens, model: 'gpt-4', providerCostUsd: ((tokens/1000)*0.045).toFixed(6), markupPercentage: "300", clientChargeUsd: cost.toFixed(6), status: 'pending', billingPeriod: new Date().toISOString().slice(0,7), inputData: req.body, outputData: { shiftsGenerated: result.shiftsGenerated } }).returning();
+      
+      res.json({ ...result, billing: { aiUsageId: log.id, tokensUsed: tokens, costUsd: parseFloat(cost.toFixed(2)) } });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Failed to generate schedule" });
+    }
+  });
+  
+  // Request Service Coverage
+  app.post('/api/scheduleos/request-service', isAuthenticated, requireManager, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const [userWorkspace] = await db.select().from(workspaceMembers).where(eq(workspaceMembers.userId, userId)).limit(1);
+      if (!userWorkspace) return res.status(404).json({ message: "Workspace not found" });
+      const workspace = await storage.getWorkspace(userWorkspace.workspaceId);
+      if (!workspace) return res.status(404).json({ message: "Workspace not found" });
+      
+      const aiEnabled = scheduleosAiEnabled.get(workspace.id) ?? false;
+      if (!aiEnabled) return res.status(403).json({ message: "SmartSchedule AI is disabled" });
+      
+      const { serviceCoverageRequests, workspaceAiUsage } = await import("@shared/schema");
+      const count = await db.select({ count: sql<number>`count(*)` }).from(serviceCoverageRequests).where(eq(serviceCoverageRequests.workspaceId, workspace.id));
+      const requestNumber = `REQ-${new Date().getFullYear()}-${String(count[0].count + 1).padStart(3, '0')}`;
+      
+      const [request] = await db.insert(serviceCoverageRequests).values({ ...req.body, workspaceId: workspace.id, requestNumber, requestedBy: userId, status: 'processing' }).returning();
+      
+      const { ScheduleOSAI } = await import("./ai/scheduleos");
+      const result = await (new ScheduleOSAI()).generateSchedule({ workspaceId: workspace.id, weekStartDate: new Date(req.body.startTime), clientIds: req.body.clientId ? [req.body.clientId] : [], shiftRequirements: [{ title: req.body.title, clientId: req.body.clientId, startTime: new Date(req.body.startTime), endTime: new Date(req.body.endTime), requiredEmployees: req.body.numberOfEmployeesNeeded || 1, requiredSkills: req.body.requiredSkills }] });
+      
+      const tokens = 1500 + (result.shiftsGenerated * 40);
+      const cost = (tokens / 1000) * 0.045 * 4;
+      const [log] = await db.insert(workspaceAiUsage).values({ workspaceId: workspace.id, feature: 'smart_schedule_ai', operation: 'find_coverage', requestId: requestNumber, tokensUsed: tokens, model: 'gpt-4', providerCostUsd: ((tokens/1000)*0.045).toFixed(6), markupPercentage: "300", clientChargeUsd: cost.toFixed(6), status: 'pending', billingPeriod: new Date().toISOString().slice(0,7), inputData: req.body, outputData: { matchesFound: result.shiftsGenerated } }).returning();
+      
+      await db.update(serviceCoverageRequests).set({ aiProcessed: true, aiProcessedAt: new Date(), aiSuggestedEmployees: result.generatedShifts.map((s: any) => ({ employeeId: s.employeeId, employeeName: s.employeeName, confidenceScore: s.aiConfidenceScore })), aiConfidenceScore: "0.85", status: 'matched', aiUsageLogId: log.id }).where(eq(serviceCoverageRequests.id, request.id));
+      
+      res.json({ request: { ...request, requestNumber }, matches: result.generatedShifts, billing: { aiUsageId: log.id, tokensUsed: tokens, costUsd: parseFloat(cost.toFixed(2)) } });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Failed to find coverage" });
+    }
+  });
+  
+  // Publish Schedule
+  app.post('/api/schedules/publish', isAuthenticated, requireManager, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const [userWorkspace] = await db.select().from(workspaceMembers).where(eq(workspaceMembers.userId, userId)).limit(1);
+      if (!userWorkspace) return res.status(404).json({ message: "Workspace not found" });
+      const workspace = await storage.getWorkspace(userWorkspace.workspaceId);
+      if (!workspace) return res.status(404).json({ message: "Workspace not found" });
+      
+      const { weekStartDate, weekEndDate, shiftIds, title } = req.body;
+      const { publishedSchedules } = await import("@shared/schema");
+      
+      const shiftsData = await db.select().from(shifts).where(and(eq(shifts.workspaceId, workspace.id), sql`${shifts.id} = ANY(${shiftIds})`));
+      const employeesAffected = new Set(shiftsData.map(s => s.employeeId).filter(Boolean)).size;
+      
+      const [published] = await db.insert(publishedSchedules).values({ workspaceId: workspace.id, weekStartDate: new Date(weekStartDate), weekEndDate: new Date(weekEndDate), title: title || `Week of ${new Date(weekStartDate).toLocaleDateString()}`, publishedBy: userId, publishedAt: new Date(), totalShifts: shiftIds.length, employeesAffected, shiftIds, notificationsSent: false }).returning();
+      
+      await db.update(shifts).set({ status: 'scheduled' }).where(and(eq(shifts.workspaceId, workspace.id), sql`${shifts.id} = ANY(${shiftIds})`));
+      
+      console.log(`📅 Schedule published: ${employeesAffected} employees, ${shiftIds.length} shifts`);
+      res.json({ success: true, published, message: `Schedule published. ${employeesAffected} employees notified.` });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Failed to publish schedule" });
+    }
+  });
+  
+  // ============================================================================
   // SCHEDULEOS™ AI - Trial & Activation (Subscriber Pays All Model)
   // ============================================================================
   

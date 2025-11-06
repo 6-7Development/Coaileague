@@ -55,7 +55,11 @@ import {
   Menu,
   Bell,
   CalendarDays,
+  Bot,
+  Send,
+  CloudUpload,
 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import type { Shift, Employee, Client } from "@shared/schema";
 
 // Setup moment localizer for react-big-calendar
@@ -67,7 +71,7 @@ const DnDCalendar = withDragAndDrop(Calendar);
 // Extended event type for our shifts
 interface ShiftEvent extends BigCalendarEvent {
   id: string;
-  employeeId: string;
+  employeeId: string | null;
   clientId: string | null;
   description: string | null;
   status: string | null;
@@ -87,6 +91,9 @@ export default function SmartScheduleOS() {
   const [mobileTab, setMobileTab] = useState<'my-schedule' | 'full-schedule' | 'pending'>('full-schedule');
   const [selectedMobileDate, setSelectedMobileDate] = useState(new Date());
   const mobileContentRef = useRef<HTMLDivElement>(null);
+  
+  // AI Controls state
+  const [aiEnabled, setAiEnabled] = useState(false);
   
   // Swipe handlers for mobile navigation
   const swipeHandlers = useSwipe({
@@ -121,6 +128,28 @@ export default function SmartScheduleOS() {
   const { data: clients = [] } = useQuery<Client[]>({
     queryKey: ["/api/clients"],
   });
+
+  const { data: workspace } = useQuery<any>({
+    queryKey: ["/api/workspace"],
+  });
+
+  // AI Status Query
+  const { data: aiStatus } = useQuery<{ enabled: boolean; workspaceId: string; workspaceName: string }>({
+    queryKey: ['/api/scheduleos/ai/status', workspace?.id],
+    queryFn: async () => {
+      if (!workspace?.id) return { enabled: false, workspaceId: '', workspaceName: '' };
+      const response = await fetch(`/api/scheduleos/ai/status?workspaceId=${workspace.id}`);
+      if (!response.ok) throw new Error('Failed to get AI status');
+      return response.json();
+    },
+    enabled: !!workspace?.id,
+  });
+
+  useEffect(() => {
+    if (aiStatus) {
+      setAiEnabled(aiStatus.enabled);
+    }
+  }, [aiStatus]);
 
   // Mutations
   const createShiftMutation = useMutation({
@@ -201,6 +230,44 @@ export default function SmartScheduleOS() {
       });
     },
   });
+
+  // AI Toggle Mutation
+  const toggleAiMutation = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      if (!workspace?.id) throw new Error("Workspace not loaded");
+      return await apiRequest("POST", "/api/scheduleos/ai/toggle", {
+        enabled,
+        workspaceId: workspace.id,
+      });
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/scheduleos/ai/status', workspace?.id] });
+      setAiEnabled(data.enabled);
+      toast({
+        title: data.enabled ? "AI Enabled" : "AI Disabled",
+        description: data.message,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to toggle AI",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleAiToggle = (checked: boolean) => {
+    if (!workspace?.id) {
+      toast({
+        title: "Error",
+        description: "Workspace not loaded. Please refresh the page.",
+        variant: "destructive",
+      });
+      return;
+    }
+    toggleAiMutation.mutate(checked);
+  };
 
   // Helper functions - hoisted above useMemo to avoid temporal dead zone
   const getEmployeeName = (employeeId: string) => {
@@ -522,6 +589,56 @@ export default function SmartScheduleOS() {
             <FileText className="mr-1 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
             <span className="text-xs sm:text-sm">Templates</span>
           </Button>
+
+          {aiEnabled && (
+            <>
+              <Button
+                variant="default"
+                size="sm"
+                className="whitespace-nowrap flex-shrink-0 touch-manipulation min-h-9 bg-primary"
+                data-testid="button-generate-schedule"
+                onClick={() => toast({ title: "Generate Schedule", description: "AI schedule generation coming soon!" })}
+              >
+                <Sparkles className="mr-1 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <span className="text-xs sm:text-sm">Generate</span>
+              </Button>
+
+              <Button
+                variant="outline"
+                size="sm"
+                className="whitespace-nowrap flex-shrink-0 touch-manipulation min-h-9"
+                data-testid="button-request-service"
+                onClick={() => toast({ title: "Request Service", description: "Service coverage finder coming soon!" })}
+              >
+                <Send className="mr-1 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <span className="text-xs sm:text-sm">Request Service</span>
+              </Button>
+            </>
+          )}
+
+          <Button
+            variant="default"
+            size="sm"
+            className="whitespace-nowrap flex-shrink-0 touch-manipulation min-h-9 bg-green-600 hover:bg-green-700"
+            data-testid="button-publish-schedule"
+            onClick={() => toast({ title: "Publish Schedule", description: "Schedule publishing coming soon!" })}
+          >
+            <CloudUpload className="mr-1 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span className="text-xs sm:text-sm">Publish</span>
+          </Button>
+
+          <div className="flex items-center gap-2 ml-auto pl-3 border-l border-border">
+            <div className="flex items-center gap-2 px-2 py-1 rounded-md bg-muted/50">
+              <Bot className={`h-4 w-4 ${aiEnabled ? 'text-primary' : 'text-muted-foreground'}`} />
+              <span className="text-xs font-medium">SmartSchedule AI</span>
+              <Switch
+                checked={aiEnabled}
+                onCheckedChange={handleAiToggle}
+                disabled={toggleAiMutation.isPending || !workspace?.id}
+                data-testid="switch-ai-toggle"
+              />
+            </div>
+          </div>
 
           <Button 
             variant="outline" 

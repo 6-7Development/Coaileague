@@ -897,6 +897,104 @@ export const insertShiftAcknowledgmentSchema = createInsertSchema(shiftAcknowled
 export type InsertShiftAcknowledgment = z.infer<typeof insertShiftAcknowledgmentSchema>;
 export type ShiftAcknowledgment = typeof shiftAcknowledgments.$inferSelect;
 
+// Service Coverage Requests - AI-powered on-demand staffing
+export const serviceCoverageRequests = pgTable("service_coverage_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  clientId: varchar("client_id").references(() => clients.id, { onDelete: 'set null' }),
+  
+  // Request details
+  requestNumber: varchar("request_number").notNull().unique(), // AUTO-GENERATED: REQ-2024-001
+  title: varchar("title").notNull(),
+  description: text("description").notNull(),
+  
+  // Schedule requirements
+  startTime: timestamp("start_time").notNull(),
+  endTime: timestamp("end_time").notNull(),
+  numberOfEmployeesNeeded: integer("number_of_employees_needed").notNull().default(1),
+  
+  // Location data (for AI distance calculation)
+  jobSiteAddress: text("job_site_address"),
+  jobSiteCity: varchar("job_site_city"),
+  jobSiteState: varchar("job_site_state"),
+  jobSiteZipCode: varchar("job_site_zip_code"),
+  jobSiteLatitude: decimal("job_site_latitude", { precision: 10, scale: 6 }),
+  jobSiteLongitude: decimal("job_site_longitude", { precision: 10, scale: 6 }),
+  
+  // Skill/license requirements
+  requiredSkills: text("required_skills").array(), // ['forklift', 'cdl', 'first_aid']
+  requiredCertifications: text("required_certifications").array(),
+  
+  // AI Processing
+  aiProcessed: boolean("ai_processed").default(false),
+  aiProcessedAt: timestamp("ai_processed_at"),
+  aiSuggestedEmployees: jsonb("ai_suggested_employees"), // Array of employee matches with scores
+  aiConfidenceScore: decimal("ai_confidence_score", { precision: 3, scale: 2 }),
+  
+  // Status workflow
+  status: varchar("status").default('pending'), // 'pending', 'processing', 'matched', 'assigned', 'cancelled'
+  assignedEmployeeIds: text("assigned_employee_ids").array(), // Final assignments
+  
+  // Billing tracking (AI usage charge)
+  aiUsageLogId: varchar("ai_usage_log_id").references(() => workspaceAiUsage.id),
+  
+  // Request metadata
+  requestedBy: varchar("requested_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertServiceCoverageRequestSchema = createInsertSchema(serviceCoverageRequests).omit({
+  id: true,
+  requestNumber: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  startTime: z.string().or(z.date()).transform(val => typeof val === 'string' ? new Date(val) : val),
+  endTime: z.string().or(z.date()).transform(val => typeof val === 'string' ? new Date(val) : val),
+});
+
+export type InsertServiceCoverageRequest = z.infer<typeof insertServiceCoverageRequestSchema>;
+export type ServiceCoverageRequest = typeof serviceCoverageRequests.$inferSelect;
+
+// Published Schedules - Track when schedules go live
+export const publishedSchedules = pgTable("published_schedules", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  // Schedule period
+  weekStartDate: timestamp("week_start_date").notNull(),
+  weekEndDate: timestamp("week_end_date").notNull(),
+  title: varchar("title"), // e.g., "Week of Nov 6-12, 2024"
+  
+  // Publishing details
+  publishedBy: varchar("published_by").notNull().references(() => users.id),
+  publishedAt: timestamp("published_at").notNull().defaultNow(),
+  
+  // Shift tracking
+  totalShifts: integer("total_shifts").default(0),
+  employeesAffected: integer("employees_affected").default(0),
+  shiftIds: text("shift_ids").array(), // All shifts in this published schedule
+  
+  // Notification tracking
+  notificationsSent: boolean("notifications_sent").default(false),
+  notificationsSentAt: timestamp("notifications_sent_at"),
+  
+  // Version control
+  version: integer("version").default(1),
+  replacesScheduleId: varchar("replaces_schedule_id"), // If republishing
+  
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertPublishedScheduleSchema = createInsertSchema(publishedSchedules).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertPublishedSchedule = z.infer<typeof insertPublishedScheduleSchema>;
+export type PublishedSchedule = typeof publishedSchedules.$inferSelect;
+
 // Shift Templates (Reusable shift patterns)
 export const shiftTemplates = pgTable("shift_templates", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -3564,7 +3662,7 @@ export type InsertDmAccessLog = z.infer<typeof insertDmAccessLogSchema>;
 export type DmAccessLog = typeof dmAccessLogs.$inferSelect;
 
 // Encryption Keys - Persistent storage for conversation encryption keys
-export const conversationEncryptionKeys = pgTable("conversation_encryption_keys", {
+export const conversationEncryptionKeys: ReturnType<typeof pgTable<"conversation_encryption_keys", any>> = pgTable("conversation_encryption_keys", {
   id: varchar("id").primaryKey(), // Key ID (UUID)
   conversationId: varchar("conversation_id").notNull().unique().references(() => chatConversations.id, { onDelete: 'cascade' }),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
@@ -3581,7 +3679,7 @@ export const conversationEncryptionKeys = pgTable("conversation_encryption_keys"
   // Key rotation support
   isActive: boolean("is_active").default(true),
   rotatedAt: timestamp("rotated_at"),
-  replacedBy: varchar("replaced_by").references(() => conversationEncryptionKeys.id, { onDelete: 'set null' }),
+  replacedBy: varchar("replaced_by"),
 });
 
 export const insertConversationEncryptionKeySchema = createInsertSchema(conversationEncryptionKeys).omit({
