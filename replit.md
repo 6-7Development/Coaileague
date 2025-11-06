@@ -10,6 +10,19 @@ Do not make changes to the file `Y`.
 All branding must be 100% AutoForce™ (not WorkforceOS).
 FTC COMPLIANCE: All marketing claims must be factual and verifiable. Avoid monopolistic language.
 
+## Recent Changes (Nov 6, 2025)
+### Dashboard Cleanup & Role-Based Widgets
+- **Navigation Consolidation**: Removed redundant MobileBottomNav and QuickActionsMenu components. Removed "Quick Access" section from AppSidebar. Unified navigation through organized sidebar families (Communication → Operations → Growth & AI → Platform).
+- **Role-Based Dashboard**: Replaced 8 generic stat cards with 4 role-specific cards:
+  - **Managers/Owners**: EMPLOYEES, CLIENTS, LABOR COST, CLOCKED IN
+  - **Employees**: MY SHIFTS, HOURS THIS WEEK, TRAINING, EXPENSES
+- **Manager Approval Widgets**: Added dynamic "Pending Approvals" section for managers showing:
+  - ExpenseOS™ pending expense approvals with count badges
+  - I-9 Compliance expiring work authorizations (30/7 day warnings)
+  - PolicIOS™ draft policies ready to publish
+- **Real Data Integration**: Connected BudgetOS™ to /api/budgets endpoints (previously mock data). TrainingOS™ already connected.
+- **Aesthetics**: Removed duplicate quick-action toolbars, simplified layout, consistent spacing, focused on role-relevant data.
+
 ## System Architecture
 AutoForce™ features a modular "OS" design (e.g., BillOS™, PayrollOS™, TrackOS™, TrainingOS™, HelpOS™), emphasizing extension over rebuilding, clean code, and a single source of truth for each feature domain. The revenue model combines subscription fees with usage-based AI pricing.
 
