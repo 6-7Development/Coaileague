@@ -30,7 +30,7 @@ import CustomRegister from "@/pages/custom-register";
 import Pricing from "@/pages/pricing";
 import Contact from "@/pages/contact";
 import Support from "@/pages/support";
-import Dashboard from "@/pages/dashboard-compact";
+import Dashboard from "@/pages/dashboard";
 import { Redirect } from "wouter";
 import SmartScheduleOS from "@/pages/schedule-grid";
 import SalesDashboard from "@/pages/sales/dashboard";
