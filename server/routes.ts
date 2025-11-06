@@ -4935,6 +4935,243 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============================================================================
+  // SHIFT AUDIT DATA AGGREGATION - Comprehensive shift data for audit viewer
+  // ============================================================================
+  
+  app.get('/api/shifts/:id/audit', requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspaceId!;
+      const shiftId = req.params.id;
+      
+      // Get shift data
+      const shift = await storage.getShift(shiftId, workspaceId);
+      if (!shift) {
+        return res.status(404).json({ message: "Shift not found" });
+      }
+      
+      // Get shift creator info
+      let creatorInfo = null;
+      if (shift.createdAt) {
+        // Note: shifts don't have createdBy field, using workspace owner as fallback
+        const workspace = await storage.getWorkspace(workspaceId);
+        if (workspace) {
+          const owner = await storage.getUser(workspace.ownerId);
+          if (owner) {
+            creatorInfo = {
+              name: owner.displayName || owner.email,
+              email: owner.email,
+              role: 'owner'
+            };
+          }
+        }
+      }
+      
+      // Get employee who took the shift
+      let employeeInfo = null;
+      if (shift.employeeId) {
+        const employee = await storage.getEmployeeById(shift.employeeId);
+        if (employee) {
+          employeeInfo = {
+            id: employee.id,
+            name: `${employee.firstName} ${employee.lastName}`,
+            email: employee.email,
+            phone: employee.phoneNumber
+          };
+        }
+      }
+      
+      // Get all time entries for this shift
+      const allTimeEntries = await storage.getTimeEntriesByWorkspace(workspaceId);
+      const shiftTimeEntries = allTimeEntries.filter(te => te.shiftId === shiftId);
+      
+      // Aggregate time entry data (clock in/out, GPS, total time)
+      const timeTrackingData = shiftTimeEntries.map(te => ({
+        id: te.id,
+        clockIn: te.clockIn,
+        clockOut: te.clockOut,
+        totalHours: te.totalHours,
+        totalAmount: te.totalAmount,
+        status: te.status,
+        notes: te.notes,
+        gps: {
+          clockIn: {
+            latitude: te.clockInLatitude,
+            longitude: te.clockInLongitude,
+            accuracy: te.clockInAccuracy,
+            ipAddress: te.clockInIpAddress
+          },
+          clockOut: {
+            latitude: te.clockOutLatitude,
+            longitude: te.clockOutLongitude,
+            accuracy: te.clockOutAccuracy,
+            ipAddress: te.clockOutIpAddress
+          },
+          jobSite: {
+            latitude: te.jobSiteLatitude,
+            longitude: te.jobSiteLongitude,
+            address: te.jobSiteAddress
+          }
+        },
+        createdAt: te.createdAt,
+        updatedAt: te.updatedAt
+      }));
+      
+      // Get timesheet edit discrepancies for this shift's time entries
+      const timeEntryIds = shiftTimeEntries.map(te => te.id);
+      const allDiscrepancies = await storage.getTimeEntryDiscrepancies(workspaceId, {});
+      const shiftDiscrepancies = allDiscrepancies.filter(d => 
+        timeEntryIds.includes(d.timeEntryId)
+      );
+      
+      // Calculate summary stats
+      const totalHours = shiftTimeEntries.reduce((sum, te) => {
+        return sum + (parseFloat(te.totalHours as string || "0"));
+      }, 0);
+      
+      const totalAmount = shiftTimeEntries.reduce((sum, te) => {
+        return sum + (parseFloat(te.totalAmount as string || "0"));
+      }, 0);
+      
+      // Aggregate audit data
+      const auditData = {
+        shift: {
+          id: shift.id,
+          title: shift.title,
+          description: shift.description,
+          startTime: shift.startTime,
+          endTime: shift.endTime,
+          status: shift.status,
+          aiGenerated: shift.aiGenerated,
+          requiresAcknowledgment: shift.requiresAcknowledgment,
+          acknowledgedAt: shift.acknowledgedAt,
+          deniedAt: shift.deniedAt,
+          denialReason: shift.denialReason,
+          billableToClient: shift.billableToClient,
+          hourlyRateOverride: shift.hourlyRateOverride,
+          createdAt: shift.createdAt,
+          updatedAt: shift.updatedAt
+        },
+        creator: creatorInfo,
+        employee: employeeInfo,
+        timeTracking: timeTrackingData,
+        discrepancies: shiftDiscrepancies,
+        summary: {
+          totalTimeEntries: shiftTimeEntries.length,
+          totalHours: totalHours.toFixed(2),
+          totalAmount: totalAmount.toFixed(2),
+          totalDiscrepancies: shiftDiscrepancies.length,
+          hasGpsAnomalies: shiftDiscrepancies.some(d => d.discrepancyType === 'gps_anomaly'),
+          hasIpAnomalies: shiftDiscrepancies.some(d => d.discrepancyType === 'ip_anomaly')
+        }
+      };
+      
+      res.json(auditData);
+    } catch (error: any) {
+      console.error("Error fetching shift audit data:", error);
+      res.status(500).json({ message: error.message || "Failed to fetch shift audit data" });
+    }
+  });
+
+  // ============================================================================
+  // MANUAL CHAT CREATION API - Create chatrooms with participants and guest tokens
+  // ============================================================================
+  
+  app.post('/api/chats/create', requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspaceId!;
+      const userId = req.user!.id;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      const {
+        subject,
+        chatType, // 'employee_to_employee', 'manager_to_employee', 'group', 'customer_support'
+        shiftId, // Optional: link to specific shift
+        participantIds, // Array of user IDs to add as participants
+        guestInvitations, // Array of { name, email, phone, expiresInDays }
+        conversationType // 'open_chat', 'dm_user', 'shift_chat'
+      } = req.body;
+      
+      // Create the conversation
+      const conversationData: InsertChatConversation = {
+        workspaceId,
+        subject: subject || 'Team Chat',
+        status: 'active',
+        conversationType: conversationType || 'open_chat',
+        shiftId: shiftId || null,
+        isEncrypted: false, // Open chats are not encrypted
+        isSilenced: false // Participants can send messages
+      };
+      
+      const conversation = await storage.createChatConversation(conversationData);
+      
+      // Add participants (if provided)
+      const addedParticipants = [];
+      if (participantIds && participantIds.length > 0) {
+        for (const participantId of participantIds) {
+          const participant = await storage.getUser(participantId);
+          if (participant) {
+            // Note: We need to add chatParticipants storage method
+            // For now, just track in memory
+            addedParticipants.push({
+              id: participant.id,
+              name: participant.displayName || participant.email,
+              email: participant.email
+            });
+          }
+        }
+      }
+      
+      // Create guest tokens (if provided)
+      const createdGuestTokens = [];
+      if (guestInvitations && guestInvitations.length > 0) {
+        for (const guest of guestInvitations) {
+          const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+          const expiresAt = new Date();
+          expiresAt.setDate(expiresAt.getDate() + (guest.expiresInDays || 7));
+          
+          // Note: We need to add chatGuestTokens storage method
+          // For now, return token info
+          createdGuestTokens.push({
+            guestName: guest.name,
+            guestEmail: guest.email,
+            guestPhone: guest.phone,
+            accessToken: token,
+            expiresAt
+          });
+        }
+      }
+      
+      // Send welcome system message
+      const userName = user.displayName || user.email;
+      const welcomeMessage = `Chat created by ${userName}. Type: ${chatType}`;
+      
+      await storage.createChatMessage({
+        conversationId: conversation.id,
+        senderId: userId,
+        senderName: userName,
+        senderType: 'system',
+        message: welcomeMessage,
+        isSystemMessage: true,
+        isEncrypted: false
+      });
+      
+      res.json({
+        conversation,
+        participants: addedParticipants,
+        guestTokens: createdGuestTokens,
+        message: "Chat created successfully"
+      });
+    } catch (error: any) {
+      console.error("Error creating chat:", error);
+      res.status(500).json({ message: error.message || "Failed to create chat" });
+    }
+  });
+
+  // ============================================================================
   // SHIFT CHATROOM API - Auto-created chatrooms for shift communication
   // ============================================================================
 
