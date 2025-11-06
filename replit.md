@@ -11,6 +11,19 @@ All branding must be 100% AutoForce™ (not WorkforceOS).
 FTC COMPLIANCE: All marketing claims must be factual and verifiable. Avoid monopolistic language.
 
 ## Recent Changes (Nov 6, 2025)
+### Dashboard Duplication Fix - Clean Single View for All Users ✅
+**Fixed Critical UX Issue** with duplicate dashboards showing redundant content:
+- **Problem**: App.tsx was importing old `dashboard-compact.tsx` with mock data and duplicate sections
+- **Solution**: Updated routing to use new clean `dashboard.tsx` with real notification center
+- **Changes**:
+  - Updated App.tsx import from `@/pages/dashboard-compact` to `@/pages/dashboard`
+  - Removed dashboard-compact.tsx file completely
+  - All non-root users now see single clean dashboard view
+- **Result**: Users no longer see multiple quick actions, multiple data tables, or redundant tools
+- **Verified**: Employee, manager, and owner roles all see streamlined dashboard
+- **Root Admins**: Unchanged - root-admin-dashboard.tsx remains separate for platform administration
+- **Production Status**: Architect-approved, all user roles tested successfully
+
 ### Dashboard with Notification Center - Login Landing Page ✅
 **Comprehensive Dashboard** appears immediately upon login for all users (including root):
 - **Notification Center Table**: Real-time table view with type badges, icons, messages, and timestamps
