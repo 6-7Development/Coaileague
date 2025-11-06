@@ -4863,24 +4863,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const timeEntry = await storage.createTimeEntry(validated);
       
-      // SHIFT CHATROOM: Auto-create chatroom when employee clocks in
-      if (timeEntry.shiftId && validated.employeeId) {
-        try {
-          const employee = await storage.getEmployeeById(validated.employeeId);
-          const employeeName = employee ? `${employee.firstName} ${employee.lastName}` : 'Employee';
-          
-          await storage.createShiftChatroom(
-            workspace.id,
-            timeEntry.shiftId,
-            timeEntry.id,
-            validated.employeeId,
-            employeeName
-          );
-        } catch (chatError) {
-          console.error("Failed to create shift chatroom:", chatError);
-        }
-      }
-      
       res.json(timeEntry);
     } catch (error: any) {
       console.error("Error clocking in:", error);
@@ -4943,15 +4925,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           timeEntry.clockInIpAddress,
           ipAddress
         );
-      }
-
-      // SHIFT CHATROOM: Auto-close chatroom when employee clocks out
-      if (timeEntry.shiftId) {
-        try {
-          await storage.closeShiftChatroom(timeEntry.shiftId, req.params.id);
-        } catch (chatError) {
-          console.error("Failed to close shift chatroom:", chatError);
-        }
       }
 
       res.json(updated);

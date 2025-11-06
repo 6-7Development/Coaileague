@@ -3591,6 +3591,99 @@ export const insertConversationEncryptionKeySchema = createInsertSchema(conversa
 export type InsertConversationEncryptionKey = z.infer<typeof insertConversationEncryptionKeySchema>;
 export type ConversationEncryptionKey = typeof conversationEncryptionKeys.$inferSelect;
 
+// ============================================================================
+// CHAT PARTICIPANTS - Group chat membership management
+// ============================================================================
+
+export const chatParticipants = pgTable("chat_participants", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  conversationId: varchar("conversation_id").notNull().references(() => chatConversations.id, { onDelete: 'cascade' }),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  // Participant info
+  participantId: varchar("participant_id").notNull().references(() => users.id, { onDelete: 'cascade' }), // Employee or manager
+  participantName: varchar("participant_name").notNull(),
+  participantEmail: varchar("participant_email"),
+  participantRole: varchar("participant_role").notNull().default("member"), // 'owner', 'admin', 'member', 'guest'
+  
+  // Permissions
+  canSendMessages: boolean("can_send_messages").default(true),
+  canViewHistory: boolean("can_view_history").default(true),
+  canInviteOthers: boolean("can_invite_others").default(false),
+  
+  // Invitation details
+  invitedBy: varchar("invited_by").references(() => users.id, { onDelete: 'set null' }),
+  invitedAt: timestamp("invited_at").defaultNow(),
+  joinedAt: timestamp("joined_at"),
+  leftAt: timestamp("left_at"),
+  
+  // Status
+  isActive: boolean("is_active").default(true),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// ============================================================================
+// CHAT GUEST TOKENS - Customer invitations (non-user access)
+// ============================================================================
+
+export const chatGuestTokens = pgTable("chat_guest_tokens", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  conversationId: varchar("conversation_id").notNull().references(() => chatConversations.id, { onDelete: 'cascade' }),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  // Guest identity
+  guestName: varchar("guest_name"),
+  guestEmail: varchar("guest_email"),
+  guestPhone: varchar("guest_phone"),
+  
+  // Access token
+  accessToken: varchar("access_token").notNull().unique(), // Short-lived token for guest access
+  tokenType: varchar("token_type").notNull().default("email"), // 'email', 'sms', 'link'
+  
+  // Permissions & scope
+  canSendMessages: boolean("can_send_messages").default(true),
+  canViewFiles: boolean("can_view_files").default(true),
+  canUploadFiles: boolean("can_upload_files").default(true),
+  scopeDescription: text("scope_description"), // What the guest can see/do
+  
+  // Invitation details
+  invitedBy: varchar("invited_by").notNull().references(() => users.id, { onDelete: 'set null' }),
+  invitedByName: varchar("invited_by_name").notNull(),
+  invitationMessage: text("invitation_message"),
+  
+  // Token lifecycle
+  issuedAt: timestamp("issued_at").defaultNow().notNull(),
+  expiresAt: timestamp("expires_at").notNull(), // Usually 7-30 days
+  lastAccessedAt: timestamp("last_accessed_at"),
+  revokedAt: timestamp("revoked_at"),
+  revokedBy: varchar("revoked_by").references(() => users.id, { onDelete: 'set null' }),
+  revokedReason: text("revoked_reason"),
+  
+  // Status
+  isActive: boolean("is_active").default(true),
+  accessCount: integer("access_count").default(0), // Track usage
+  
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertChatParticipantSchema = createInsertSchema(chatParticipants).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertChatGuestTokenSchema = createInsertSchema(chatGuestTokens).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertChatParticipant = z.infer<typeof insertChatParticipantSchema>;
+export type ChatParticipant = typeof chatParticipants.$inferSelect;
+export type InsertChatGuestToken = z.infer<typeof insertChatGuestTokenSchema>;
+export type ChatGuestToken = typeof chatGuestTokens.$inferSelect;
+
 // Terms Acknowledgments - Legal compliance tracking for support chat access
 export const termsAcknowledgments = pgTable("terms_acknowledgments", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
