@@ -17122,6 +17122,63 @@ ${context.performanceHistory.map((review: any) => `- Overall Rating: ${review.ov
     }
   });
 
+  // POST /api/signatures - Save e-signature with audit trail
+  app.post('/api/signatures', requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user!.id;
+      const workspace = await storage.getWorkspaceByMembership(userId);
+      
+      if (!workspace) {
+        return res.status(404).json({ message: "Workspace not found" });
+      }
+
+      const { signatureData, documentType, employeeId } = req.body;
+      
+      if (!signatureData || !documentType) {
+        return res.status(400).json({ message: "Signature data and document type are required" });
+      }
+
+      // Get user details for audit
+      const user = await storage.getUser(userId);
+      const fullName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.email || 'Unknown';
+
+      // Create signature record with full audit trail
+      const signatureRecord = await db.insert(documentSignatures).values({
+        workspaceId: workspace.id,
+        employeeId: employeeId || userId,
+        documentType: documentType,
+        documentTitle: `${documentType.replace(/_/g, ' ').toUpperCase()} - E-Signature`,
+        status: 'signed',
+        signatureData: signatureData, // Base64 encoded PNG
+        signedByName: fullName,
+        signedAt: new Date(),
+        ipAddress: req.ip || req.headers['x-forwarded-for'] as string || 'unknown',
+        userAgent: req.headers['user-agent'] || 'unknown',
+      }).returning();
+
+      // Create audit log
+      await db.insert(auditTrail).values({
+        workspaceId: workspace.id,
+        userId: userId,
+        action: 'signature_captured',
+        entityType: 'document_signature',
+        entityId: signatureRecord[0].id,
+        changes: {
+          documentType,
+          signedByName: fullName,
+          timestamp: new Date().toISOString(),
+        },
+        ipAddress: req.ip || 'unknown',
+        userAgent: req.headers['user-agent'] || 'unknown',
+      });
+
+      res.json(signatureRecord[0]);
+    } catch (error: any) {
+      console.error("Error saving signature:", error);
+      res.status(500).json({ message: error.message || "Failed to save signature" });
+    }
+  });
+
   // Return the server we created at the top with WebSocket
   return server;
 }

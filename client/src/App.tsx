@@ -103,6 +103,8 @@ import Expenses from "@/pages/expenses";
 import ExpenseApprovals from "@/pages/expense-approvals";
 import I9Compliance from "@/pages/i9-compliance";
 import Policies from "@/pages/policies";
+import RoleManagement from "@/pages/role-management";
+import ManagerDashboard from "@/pages/manager-dashboard";
 import { FloatingChatButton } from "@/components/floating-chat-button";
 import { OnboardingWizard } from "@/components/onboarding-wizard";
 import { Sparkles, Search } from "lucide-react";
@@ -288,6 +290,8 @@ function AppContent() {
                 <Route path="/sales" component={SalesDashboard} />
                 <Route path="/time-tracking" component={TimeTracking} />
                 <Route path="/employees" component={Employees} />
+                <Route path="/role-management" component={RoleManagement} />
+                <Route path="/manager-dashboard" component={ManagerDashboard} />
                 <Route path="/engagement/dashboard" component={EngagementDashboard} />
                 <Route path="/engagement/employee" component={EmployeeEngagement} />
                 <Route path="/clients" component={Clients} />
