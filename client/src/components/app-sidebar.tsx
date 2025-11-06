@@ -38,7 +38,6 @@ const communicationFamilyItems = [
 
 // FAMILY 2: Workforce Operations OS
 const operationsFamilyItems = [
-  { title: "⚙️ Operations Family", url: "/os-family/operations", icon: Sparkles, isFamily: true },
   { title: "ScheduleOS™", url: "/schedule", icon: Calendar },
   { title: "TimeOS™", url: "/time-tracking", icon: Clock },
   { title: "PayrollOS™", url: "/payroll", icon: DollarSign },
