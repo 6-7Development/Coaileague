@@ -193,19 +193,23 @@ function AppContent() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1 sm:gap-2">
-                  {/* Status Indicators (Sync/Connection) */}
-                  <StatusIndicators />
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {/* Status Indicators (Sync/Connection) - Hidden on small screens */}
+                  <div className="hidden lg:block">
+                    <StatusIndicators />
+                  </div>
 
-                  {/* Plan Badge */}
-                  <PlanBadge />
+                  {/* Plan Badge - Hidden on small screens */}
+                  <div className="hidden md:block">
+                    <PlanBadge />
+                  </div>
 
                   {/* Global Search Trigger */}
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
                         variant="ghost"
-                        size="sm"
+                        size="icon"
                         onClick={() => {
                           if ((window as any).openCommandPalette) {
                             (window as any).openCommandPalette();
@@ -214,13 +218,10 @@ function AppContent() {
                             document.dispatchEvent(event);
                           }
                         }}
-                        className="gap-1.5 h-9 shrink-0"
+                        className="shrink-0 h-9 w-9"
                         data-testid="button-global-search"
                       >
                         <Search className="h-4 w-4" />
-                        <span className="hidden xl:inline text-xs text-muted-foreground">
-                          ⌘K
-                        </span>
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
@@ -228,19 +229,25 @@ function AppContent() {
                     </TooltipContent>
                   </Tooltip>
 
-                  {/* What's New Badge */}
-                  <WhatsNewBadge />
+                  {/* What's New Badge - Hidden on mobile */}
+                  <div className="hidden sm:block">
+                    <WhatsNewBadge />
+                  </div>
 
                   {/* Notifications Center */}
                   <NotificationsCenter />
 
-                  {/* Help Dropdown */}
-                  <HelpDropdown />
+                  {/* Help Dropdown - Hidden on small screens */}
+                  <div className="hidden md:block">
+                    <HelpDropdown />
+                  </div>
 
-                  {/* Feedback Widget */}
-                  <FeedbackWidget />
+                  {/* Feedback Widget - Hidden on mobile */}
+                  <div className="hidden lg:block">
+                    <FeedbackWidget />
+                  </div>
 
-                  {/* Tutorial/Tour Button */}
+                  {/* Tutorial/Tour Button - Hidden on mobile */}
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
@@ -248,7 +255,7 @@ function AppContent() {
                         size="icon"
                         onClick={() => setShowOnboarding(true)}
                         data-testid="button-open-onboarding"
-                        className="shrink-0"
+                        className="shrink-0 hidden sm:flex h-9 w-9"
                       >
                         <GraduationCap className="h-4 w-4" />
                       </Button>
@@ -258,8 +265,10 @@ function AppContent() {
                     </TooltipContent>
                   </Tooltip>
 
-                  {/* Theme Toggle - Always visible */}
-                  <ThemeToggle />
+                  {/* Theme Toggle */}
+                  <div className="shrink-0">
+                    <ThemeToggle />
+                  </div>
                 </div>
               </header>
             )}

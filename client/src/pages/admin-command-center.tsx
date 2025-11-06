@@ -17,7 +17,7 @@ import {
   Database,
   AlertTriangle,
   CheckCircle,
-  Clock,
+  Bell,
   Cpu,
   HardDrive,
   Wifi,
@@ -34,11 +34,17 @@ import {
 import { AutoForceLogo } from "@/components/autoforce-logo";
 import { MasterKeysPanel } from "@/components/master-keys-panel";
 import { UserManagementPanel } from "@/components/user-management-panel";
+import { TimeGreeting } from "@/components/time-greeting";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export default function AdminCommandCenter() {
   const [, setLocation] = useLocation();
   const { user, isLoading } = useAuth();
-  const [currentTime, setCurrentTime] = useState(new Date());
   const [refreshKey, setRefreshKey] = useState(0);
 
   // GATEKEEPER: Microsoft-style access control - Block unauthorized users
@@ -59,12 +65,6 @@ export default function AdminCommandCenter() {
       }
     }
   }, [user, isLoading, setLocation]);
-
-  // Real-time clock with animation
-  useEffect(() => {
-    const interval = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(interval);
-  }, []);
 
   // REMOVED: Mock live activity feed - will be implemented with real WebSocket tracking later
 
@@ -114,52 +114,84 @@ export default function AdminCommandCenter() {
       </div>
 
       <div className="relative z-10 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
-        {/* Branded Header with Large Logo */}
-        <div className="mb-8">
-          <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-3xl p-6 sm:p-8">
-            <div className="flex flex-col items-center text-center mb-6">
-              {/* Large Prominent Logo with Text Branding */}
-              <div className="mb-6 transform hover:scale-105 transition-transform duration-300 drop-shadow-2xl">
-                <AutoForceLogo size="hero" variant="full" lightMode={true} />
-              </div>
-              <h1 className="text-4xl sm:text-5xl font-bold bg-gradient-to-r from-white via-blue-100 to-indigo-200 bg-clip-text text-transparent mb-3">
-                Platform Command Center
-              </h1>
-              <p className="text-slate-300 text-sm sm:text-base">
-                {getRoleTitle()}
-              </p>
-              {/* Personalized Welcome Message */}
-              {personalData && (
-                <p className="text-indigo-300 text-xs sm:text-sm mt-1 font-medium">
-                  Welcome {personalData.userName} · {personalData.assignedTickets} assigned ticket{personalData.assignedTickets !== 1 ? 's' : ''} · {personalData.newSupportTickets} new support request{personalData.newSupportTickets !== 1 ? 's' : ''}
-                </p>
-              )}
-            </div>
-            
-            <div className="flex items-center justify-between">
-              {/* Live Clock */}
-              <div className="flex items-center gap-3">
-                <div className="h-3 w-3 bg-emerald-500 rounded-full animate-pulse shadow-lg shadow-emerald-500/50"></div>
+        {/* Branded Header - Reduced Padding */}
+        <div className="mb-6">
+          <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-3 sm:p-4">
+            <div className="flex items-center justify-between gap-4">
+              {/* Logo and Title */}
+              <div className="flex items-center gap-4">
+                <div className="transform hover:scale-105 transition-transform duration-300">
+                  <AutoForceLogo size="lg" variant="icon" lightMode={true} />
+                </div>
                 <div>
-                  <div className="text-3xl sm:text-4xl font-bold font-mono text-white tracking-tight">
-                    {currentTime.toLocaleTimeString()}
-                  </div>
-                  <div className="text-xs text-slate-400">
-                    {currentTime.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-                  </div>
+                  <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-white via-blue-100 to-indigo-200 bg-clip-text text-transparent">
+                    Platform Command Center
+                  </h1>
+                  <p className="text-slate-400 text-xs sm:text-sm">
+                    {getRoleTitle()}
+                  </p>
+                  <TimeGreeting 
+                    userName={personalData?.userName}
+                    role=""
+                    className="text-indigo-300 text-xs mt-0.5"
+                  />
                 </div>
               </div>
               
-              <Button
-                variant="outline"
-                size="lg"
-                onClick={() => setRefreshKey(prev => prev + 1)}
-                className="bg-indigo-500/10 border-indigo-500/30 hover:bg-indigo-500/20 text-white"
-                data-testid="button-refresh-command"
-              >
-                <RefreshCw className="h-5 w-5 mr-2" />
-                Refresh
-              </Button>
+              {/* Actions */}
+              <div className="flex items-center gap-2">
+                {/* Notifications Dropdown */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="relative text-white hover:bg-white/10"
+                      data-testid="button-notifications"
+                    >
+                      <Bell className="h-5 w-5" />
+                      {personalData && (personalData.assignedTickets + personalData.newSupportTickets) > 0 && (
+                        <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 text-[10px] font-bold flex items-center justify-center">
+                          {personalData.assignedTickets + personalData.newSupportTickets}
+                        </span>
+                      )}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-80">
+                    {personalData && personalData.assignedTickets > 0 && (
+                      <DropdownMenuItem>
+                        <div className="flex flex-col gap-1">
+                          <p className="font-medium">{personalData.assignedTickets} Assigned Tickets</p>
+                          <p className="text-xs text-muted-foreground">View your assigned support tickets</p>
+                        </div>
+                      </DropdownMenuItem>
+                    )}
+                    {personalData && personalData.newSupportTickets > 0 && (
+                      <DropdownMenuItem>
+                        <div className="flex flex-col gap-1">
+                          <p className="font-medium">{personalData.newSupportTickets} New Support Requests</p>
+                          <p className="text-xs text-muted-foreground">New tickets require attention</p>
+                        </div>
+                      </DropdownMenuItem>
+                    )}
+                    {(!personalData || (personalData.assignedTickets === 0 && personalData.newSupportTickets === 0)) && (
+                      <DropdownMenuItem>
+                        <p className="text-sm text-muted-foreground">No new notifications</p>
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setRefreshKey(prev => prev + 1)}
+                  className="bg-indigo-500/10 border-indigo-500/30 hover:bg-indigo-500/20 text-white"
+                  data-testid="button-refresh-command"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           </div>
         </div>
