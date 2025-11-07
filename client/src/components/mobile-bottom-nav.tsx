@@ -13,28 +13,32 @@ import { Badge } from "@/components/ui/badge";
 import { triggerHaptic } from "@/hooks/use-touch-swipe";
 import { cn } from "@/lib/utils";
 import { useMobile } from "@/hooks/use-mobile";
+import { getFeatureRoute, useDevicePlatform, type FeatureKey } from "@/hooks/use-adaptive-route";
 
 interface NavItem {
   icon: React.ElementType;
   label: string;
-  path: string;
+  feature: FeatureKey; // Feature identifier for adaptive routing
   badge?: number;
 }
-
-const navItems: NavItem[] = [
-  { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
-  { icon: Calendar, label: "Schedule", path: "/schedule" },
-  { icon: Clock, label: "Time", path: "/time-tracking" },
-  { icon: MessageSquare, label: "Chat", path: "/comm-os" },
-  { icon: Menu, label: "More", path: "/settings" },
-];
 
 export function MobileBottomNav() {
   const [location, setLocation] = useLocation();
   const { isIOS } = useMobile();
+  const platform = useDevicePlatform();
 
-  const handleNavigation = (path: string) => {
+  // Use adaptive routing for nav items
+  const navItems: NavItem[] = [
+    { icon: LayoutDashboard, label: "Dashboard", feature: "dashboard" },
+    { icon: Calendar, label: "Schedule", feature: "schedule" },
+    { icon: Clock, label: "Time", feature: "time-tracking" },
+    { icon: MessageSquare, label: "Chat", feature: "chat" },
+    { icon: Menu, label: "More", feature: "settings" },
+  ];
+
+  const handleNavigation = (feature: FeatureKey) => {
     triggerHaptic('light');
+    const path = getFeatureRoute(feature, platform);
     setLocation(path);
   };
 
@@ -50,14 +54,15 @@ export function MobileBottomNav() {
       <div className="flex items-center justify-around h-16 px-1">
         {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive = location === item.path || (item.path !== '/dashboard' && location.startsWith(item.path));
+          const itemPath = getFeatureRoute(item.feature, platform);
+          const isActive = location === itemPath || (itemPath !== '/dashboard' && location.startsWith(itemPath));
           
           return (
             <Button
-              key={item.path}
+              key={item.feature}
               variant="ghost"
               size="icon"
-              onClick={() => handleNavigation(item.path)}
+              onClick={() => handleNavigation(item.feature)}
               className={cn(
                 "mobile-touch-target relative flex flex-col items-center justify-center gap-1 w-full rounded-xl transition-all duration-300",
                 "hover-elevate active-elevate-2 mobile-active-state",

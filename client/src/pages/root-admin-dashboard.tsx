@@ -61,11 +61,6 @@ export default function RootAdminDashboard() {
   const [, setLocation] = useLocation();
   const { user, isLoading} = useAuth();
   const [refreshKey, setRefreshKey] = useState(0);
-  const [editingProfile, setEditingProfile] = useState(false);
-  const [profileForm, setProfileForm] = useState({
-    firstName: '',
-    lastName: '',
-  });
   
   // Adaptive routing and platform detection
   const { navigate, scrollToAnchor } = useAdaptiveRoute();
@@ -114,39 +109,6 @@ export default function RootAdminDashboard() {
       }
     }
   }, [user, isLoading, setLocation]);
-
-  // Initialize profile form when user data loads
-  useEffect(() => {
-    if (user) {
-      setProfileForm({
-        firstName: (user as any).firstName || '',
-        lastName: (user as any).lastName || '',
-      });
-    }
-  }, [user]);
-
-  // Profile update mutation
-  const updateProfileMutation = useMutation({
-    mutationFn: async (data: { firstName: string; lastName: string }) => {
-      return await apiRequest('PATCH', '/api/auth/profile', data);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/auth/me'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/platform/personal-data'] });
-      setEditingProfile(false);
-      toast({
-        title: "Profile Updated",
-        description: "Your profile has been successfully updated.",
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update profile",
-        variant: "destructive",
-      });
-    },
-  });
 
   // Fetch platform-level stats
   const { data: stats, isLoading: statsLoading } = useQuery<PlatformStats>({
@@ -836,133 +798,6 @@ export default function RootAdminDashboard() {
           </CardContent>
         </Card>
 
-        {/* My Profile Section - Desktop only, moved to settings on mobile */}
-        <Card className="hidden md:block border-emerald-500/20 bg-gradient-to-br from-slate-900/50 via-emerald-950/30 to-slate-900/50 backdrop-blur-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <User className="h-5 w-5 text-emerald-400" />
-              My Profile
-            </CardTitle>
-            <CardDescription>Manage your account information</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Email (readonly) */}
-              <div className="space-y-2">
-                <Label className="text-xs text-slate-400">Email</Label>
-                <Input
-                  value={(user as any)?.email || ''}
-                  disabled
-                  className="bg-slate-800/50 border-slate-700 text-slate-400"
-                  data-testid="input-profile-email"
-                />
-              </div>
-
-              {/* User ID (readonly) */}
-              <div className="space-y-2">
-                <Label className="text-xs text-slate-400">User ID</Label>
-                <Input
-                  value={(user as any)?.id || ''}
-                  disabled
-                  className="bg-slate-800/50 border-slate-700 text-slate-400 font-mono text-xs"
-                  data-testid="text-profile-id"
-                />
-              </div>
-
-              {/* First Name (editable) */}
-              <div className="space-y-2">
-                <Label className="text-xs text-slate-300">First Name</Label>
-                <Input
-                  value={editingProfile ? profileForm.firstName : ((user as any)?.firstName || '')}
-                  onChange={(e) => setProfileForm({ ...profileForm, firstName: e.target.value })}
-                  disabled={!editingProfile}
-                  className={editingProfile ? "bg-slate-800/50 border-emerald-500/50" : "bg-slate-800/50 border-slate-700 text-slate-300"}
-                  data-testid="input-profile-firstName"
-                />
-              </div>
-
-              {/* Last Name (editable) */}
-              <div className="space-y-2">
-                <Label className="text-xs text-slate-300">Last Name</Label>
-                <Input
-                  value={editingProfile ? profileForm.lastName : ((user as any)?.lastName || '')}
-                  onChange={(e) => setProfileForm({ ...profileForm, lastName: e.target.value })}
-                  disabled={!editingProfile}
-                  className={editingProfile ? "bg-slate-800/50 border-emerald-500/50" : "bg-slate-800/50 border-slate-700 text-slate-300"}
-                  data-testid="input-profile-lastName"
-                />
-              </div>
-
-              {/* Platform Role (readonly) */}
-              <div className="space-y-2">
-                <Label className="text-xs text-slate-400">Platform Role</Label>
-                <div className="flex items-center h-9 px-3 py-2 bg-slate-800/50 border border-slate-700 rounded-md">
-                  <Badge variant="secondary" className="text-xs">
-                    {(user as any)?.platformRole || 'guest'}
-                  </Badge>
-                </div>
-              </div>
-
-              {/* Account Created (readonly) */}
-              <div className="space-y-2">
-                <Label className="text-xs text-slate-400">Account Created</Label>
-                <Input
-                  value={(user as any)?.createdAt ? new Date((user as any).createdAt).toLocaleDateString() : 'N/A'}
-                  disabled
-                  className="bg-slate-800/50 border-slate-700 text-slate-400"
-                  data-testid="text-profile-created"
-                />
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex gap-2 pt-2">
-              {!editingProfile ? (
-                <Button
-                  onClick={() => {
-                    setProfileForm({
-                      firstName: (user as any)?.firstName || '',
-                      lastName: (user as any)?.lastName || '',
-                    });
-                    setEditingProfile(true);
-                  }}
-                  className="bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 text-white"
-                  data-testid="button-edit-profile"
-                >
-                  <Settings className="h-4 w-4 mr-2" />
-                  Edit Profile
-                </Button>
-              ) : (
-                <>
-                  <Button
-                    onClick={() => updateProfileMutation.mutate(profileForm)}
-                    disabled={updateProfileMutation.isPending}
-                    className="bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 text-white"
-                    data-testid="button-save-profile"
-                  >
-                    <Save className="h-4 w-4 mr-2" />
-                    {updateProfileMutation.isPending ? 'Saving...' : 'Save Changes'}
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      setEditingProfile(false);
-                      setProfileForm({
-                        firstName: (user as any)?.firstName || '',
-                        lastName: (user as any)?.lastName || '',
-                      });
-                    }}
-                    variant="outline"
-                    className="bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-white"
-                    data-testid="button-cancel-profile"
-                  >
-                    Cancel
-                  </Button>
-                </>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
       {/* Platform Business Metrics - COMPACT */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
         <Card className="border-l-4 border-l-emerald-500">
@@ -1175,89 +1010,6 @@ export default function RootAdminDashboard() {
             </div>
           </CardHeader>
           <CardContent>
-            {/* Metrics Grid - Mobile-Optimized */}
-            <div className="mb-6 space-y-4">
-              {/* Business Metrics */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                <div className="bg-gradient-to-br from-emerald-500/10 to-emerald-500/10 border border-emerald-500/20 rounded-xl p-4">
-                  <div className="text-xs font-medium text-emerald-400 mb-2">Workspaces</div>
-                  <div className="text-2xl font-bold text-white">{stats?.totalWorkspaces || 0}</div>
-                </div>
-                <div className="bg-gradient-to-br from-teal-500/10 to-emerald-500/10 border border-teal-500/20 rounded-xl p-4">
-                  <div className="text-xs font-medium text-teal-400 mb-2">Users</div>
-                  <div className="text-2xl font-bold text-white">{stats?.totalUsers || 0}</div>
-                </div>
-                <div className="bg-gradient-to-br from-teal-500/10 to-green-500/10 border border-teal-500/20 rounded-xl p-4">
-                  <div className="text-xs font-medium text-teal-400 mb-2">Subscriptions</div>
-                  <div className="text-2xl font-bold text-teal-400">{stats?.activeSubscriptions || 0}</div>
-                </div>
-                <div className="bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 rounded-xl p-4">
-                  <div className="text-xs font-medium text-emerald-400 mb-2">New (Month)</div>
-                  <div className="text-2xl font-bold text-emerald-400">{stats?.newSignups || 0}</div>
-                </div>
-              </div>
-
-              {/* Revenue Metrics */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                <div className="bg-gradient-to-br from-emerald-500/10 to-green-500/10 border border-emerald-500/20 rounded-xl p-4">
-                  <div className="text-xs font-medium text-emerald-400 mb-2">Revenue</div>
-                  <div className="text-lg font-bold text-emerald-400">${parseFloat(stats?.monthlyRevenue || "0").toLocaleString()}</div>
-                </div>
-                <div className="bg-gradient-to-br from-amber-500/10 to-yellow-500/10 border border-amber-500/20 rounded-xl p-4">
-                  <div className="text-xs font-medium text-amber-400 mb-2">Platform Fees</div>
-                  <div className="text-lg font-bold text-amber-400">${parseFloat(stats?.platformFees || "0").toLocaleString()}</div>
-                </div>
-                <div className="bg-gradient-to-br from-emerald-500/10 to-emerald-500/10 border border-emerald-500/20 rounded-xl p-4">
-                  <div className="text-xs font-medium text-emerald-400 mb-2">Invoices</div>
-                  <div className="text-2xl font-bold text-white">{stats?.invoiceCount || 0}</div>
-                </div>
-                <div className="bg-gradient-to-br from-teal-500/10 to-teal-500/10 border border-teal-500/20 rounded-xl p-4">
-                  <div className="text-xs font-medium text-teal-400 mb-2">Avg Revenue</div>
-                  <div className="text-lg font-bold text-white">${parseFloat(stats?.avgRevenue || "0").toFixed(0)}</div>
-                </div>
-              </div>
-
-              {/* Support Metrics */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                <div className="bg-gradient-to-br from-green-500/10 to-rose-500/10 border border-green-500/20 rounded-xl p-4">
-                  <div className="text-xs font-medium text-green-400 mb-2">Chat Users</div>
-                  <div className="text-2xl font-bold text-green-400">{stats?.chatUsers || 0}</div>
-                </div>
-                <div className="bg-gradient-to-br from-emerald-500/10 to-emerald-500/10 border border-emerald-500/20 rounded-xl p-4">
-                  <div className="text-xs font-medium text-emerald-400 mb-2">Chat Staff</div>
-                  <div className="text-2xl font-bold text-emerald-400">{stats?.chatStaff || 0}</div>
-                </div>
-                <div className="bg-gradient-to-br from-orange-500/10 to-red-500/10 border border-orange-500/20 rounded-xl p-4">
-                  <div className="text-xs font-medium text-orange-400 mb-2">Open Tickets</div>
-                  <div className="text-2xl font-bold text-orange-400">{(supportStats as any)?.openTickets || 0}</div>
-                </div>
-                <div className="bg-gradient-to-br from-red-500/10 to-rose-500/10 border border-red-500/20 rounded-xl p-4">
-                  <div className="text-xs font-medium text-red-400 mb-2">Churn Rate</div>
-                  <div className="text-2xl font-bold text-red-400">{stats?.churnRate || "0"}%</div>
-                </div>
-              </div>
-
-              {/* System Health */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                <div className="bg-gradient-to-br from-slate-500/10 to-gray-500/10 border border-slate-500/20 rounded-xl p-4">
-                  <div className="text-xs font-medium text-slate-400 mb-2">CPU Usage</div>
-                  <div className="text-2xl font-bold text-white">{stats?.systemHealth?.cpu || 0}%</div>
-                </div>
-                <div className="bg-gradient-to-br from-sky-500/10 to-emerald-500/10 border border-sky-500/20 rounded-xl p-4">
-                  <div className="text-xs font-medium text-sky-400 mb-2">Memory</div>
-                  <div className="text-2xl font-bold text-white">{stats?.systemHealth?.memory || 0}%</div>
-                </div>
-                <div className="bg-gradient-to-br from-emerald-500/10 to-green-500/10 border border-emerald-500/20 rounded-xl p-4">
-                  <div className="text-xs font-medium text-emerald-400 mb-2">Database</div>
-                  <div className="text-base font-bold text-emerald-400 capitalize">{stats?.systemHealth?.database || "healthy"}</div>
-                </div>
-                <div className="bg-gradient-to-br from-teal-500/10 to-teal-500/10 border border-teal-500/20 rounded-xl p-4">
-                  <div className="text-xs font-medium text-teal-400 mb-2">Uptime</div>
-                  <div className="text-base font-mono font-bold text-white">{stats?.systemHealth?.uptime ? formatUptime(stats.systemHealth.uptime) : "0d 0h"}</div>
-                </div>
-              </div>
-            </div>
-
             <ScrollArea className="h-[400px]">
               {statsLoading ? (
                 <div className="flex items-center justify-center h-40 text-muted-foreground">
