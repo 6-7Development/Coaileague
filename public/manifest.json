@@ -1,12 +1,13 @@
 {
-  "name": "WorkforceOS - Complete HR Management",
-  "short_name": "WorkforceOS",
-  "description": "Enterprise workforce management with automated payroll, time tracking, and smart hiring",
+  "name": "AutoForce™ - Autonomous Workforce Management",
+  "short_name": "AutoForce™",
+  "description": "Autonomous workforce management platform for emergency services with intelligent automation, real-time tracking, and compliance tools",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0f172a",
-  "theme_color": "#3b82f6",
-  "orientation": "portrait-primary",
+  "theme_color": "#10b981",
+  "orientation": "any",
+  "scope": "/",
   "icons": [
     {
       "src": "/icon-192.png",
@@ -21,14 +22,20 @@
       "purpose": "any maskable"
     }
   ],
-  "categories": ["business", "productivity", "utilities"],
+  "categories": ["business", "productivity", "utilities", "workforce", "emergency-services"],
   "screenshots": [
     {
       "src": "/screenshot-mobile.png",
       "sizes": "390x844",
       "type": "image/png",
       "form_factor": "narrow",
-      "label": "WorkforceOS Mobile Dashboard"
+      "label": "AutoForce™ Mobile Dashboard"
     }
-  ]
+  ],
+  "prefer_related_applications": false,
+  "share_target": {
+    "action": "/",
+    "method": "GET",
+    "enctype": "application/x-www-form-urlencoded"
+  }
 }
