@@ -1423,30 +1423,50 @@ export function setupWebSocket(server: Server) {
             const abuseResult = detectAbuse(payload.message);
             
             if (abuseResult.isAbusive) {
-              // Get current violation count
-              const currentViolationCount = await storage.getUserViolationCount(ws.userId);
+              // Get current violation count (safely handle missing table)
+              let currentViolationCount = 0;
+              try {
+                currentViolationCount = await storage.getUserViolationCount(ws.userId);
+              } catch (tableError: any) {
+                // If abuse_violations table doesn't exist, treat as first violation
+                if (tableError?.code === '42P01') {
+                  console.warn('⚠️ abuse_violations table not found, treating as first violation');
+                  currentViolationCount = 0;
+                } else {
+                  throw tableError; // Re-throw if it's a different error
+                }
+              }
               const newViolationCount = currentViolationCount + 1;
               
               // Determine action
               const action = determineAction(newViolationCount, abuseResult.severity);
               const warningMsg = getWarningMessage(newViolationCount, abuseResult.severity);
               
-              // Log violation
-              const violation = await storage.createAbuseViolation({
-                userId: ws.userId,
-                conversationId: ws.conversationId,
-                violationType: abuseResult.severity === 'high' ? 'threat' : 'profanity',
-                severity: abuseResult.severity,
-                detectedPatterns: abuseResult.matchedPatterns,
-                originalMessage: payload.message,
-                action,
-                warningMessage: warningMsg,
-                detectedBy: 'system',
-                userViolationCount: newViolationCount,
-                isBanned: action === 'ban',
-                bannedUntil: action === 'ban' ? null : undefined, // null = permanent ban
-                banReason: action === 'ban' ? `Repeated abusive behavior (${newViolationCount} violations)` : undefined,
-              });
+              // Log violation (safely handle missing table)
+              try {
+                await storage.createAbuseViolation({
+                  userId: ws.userId,
+                  conversationId: ws.conversationId,
+                  violationType: abuseResult.severity === 'high' ? 'threat' : 'profanity',
+                  severity: abuseResult.severity,
+                  detectedPatterns: abuseResult.matchedPatterns,
+                  originalMessage: payload.message,
+                  action,
+                  warningMessage: warningMsg,
+                  detectedBy: 'system',
+                  userViolationCount: newViolationCount,
+                  isBanned: action === 'ban',
+                  bannedUntil: action === 'ban' ? null : undefined, // null = permanent ban
+                  banReason: action === 'ban' ? `Repeated abusive behavior (${newViolationCount} violations)` : undefined,
+                });
+              } catch (violationError: any) {
+                // If abuse_violations table doesn't exist, just log the warning
+                if (violationError?.code === '42P01') {
+                  console.warn('⚠️ abuse_violations table not found, skipping violation logging');
+                } else {
+                  console.error('Error logging abuse violation:', violationError);
+                }
+              }
               
               // Broadcast Server warning to chatroom
               const serverWarning = await storage.createChatMessage({
@@ -2972,7 +2992,7 @@ export function setupWebSocket(server: Server) {
           name: error instanceof Error ? error.name : 'Unknown',
           message: error instanceof Error ? error.message : String(error),
           stack: error instanceof Error ? error.stack : undefined,
-          rawMessage: JSON.stringify(message).substring(0, 500) // First 500 chars of message
+          rawMessage: data ? data.substring(0, 500) : 'N/A' // First 500 chars of raw data
         });
         ws.send(JSON.stringify({
           type: 'error',
