@@ -8032,13 +8032,13 @@ export const insertAiTokenWalletSchema = createInsertSchema(aiTokenWallets).omit
 export type InsertAiTokenWallet = z.infer<typeof insertAiTokenWalletSchema>;
 export type AiTokenWallet = typeof aiTokenWallets.$inferSelect;
 
-// Invoices - weekly billing aggregation
-export const invoices = pgTable("invoices", {
+// Subscription Invoices - weekly platform billing aggregation
+export const subscriptionInvoices = pgTable("subscription_invoices", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
   
   // Invoice identity
-  invoiceNumber: varchar("invoice_number").notNull().unique(), // e.g., "INV-2024-W14-ORG-XXXX"
+  invoiceNumber: varchar("invoice_number").notNull().unique(), // e.g., "SUB-INV-2024-W14-ORG-XXXX"
   
   // Billing period
   billingPeriodStart: timestamp("billing_period_start").notNull(),
@@ -8066,26 +8066,26 @@ export const invoices = pgTable("invoices", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
-  workspaceIdx: index("invoices_workspace_idx").on(table.workspaceId),
-  statusIdx: index("invoices_status_idx").on(table.status),
-  dueDateIdx: index("invoices_due_date_idx").on(table.dueDate),
-  createdAtIdx: index("invoices_created_at_idx").on(table.createdAt),
-  stripeIdx: index("invoices_stripe_idx").on(table.stripeInvoiceId),
+  workspaceIdx: index("subscription_invoices_workspace_idx").on(table.workspaceId),
+  statusIdx: index("subscription_invoices_status_idx").on(table.status),
+  dueDateIdx: index("subscription_invoices_due_date_idx").on(table.dueDate),
+  createdAtIdx: index("subscription_invoices_created_at_idx").on(table.createdAt),
+  stripeIdx: index("subscription_invoices_stripe_idx").on(table.stripeInvoiceId),
 }));
 
-export const insertInvoiceSchema = createInsertSchema(invoices).omit({
+export const insertSubscriptionInvoiceSchema = createInsertSchema(subscriptionInvoices).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
 });
 
-export type InsertInvoice = z.infer<typeof insertInvoiceSchema>;
-export type Invoice = typeof invoices.$inferSelect;
+export type InsertSubscriptionInvoice = z.infer<typeof insertSubscriptionInvoiceSchema>;
+export type SubscriptionInvoice = typeof subscriptionInvoices.$inferSelect;
 
-// Invoice line items - breakdown of charges on each invoice
-export const invoiceLineItems = pgTable("invoice_line_items", {
+// Subscription Line Items - breakdown of charges on each subscription invoice
+export const subscriptionLineItems = pgTable("subscription_line_items", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  invoiceId: varchar("invoice_id").notNull().references(() => invoices.id, { onDelete: 'cascade' }),
+  invoiceId: varchar("invoice_id").notNull().references(() => subscriptionInvoices.id, { onDelete: 'cascade' }),
   
   // Line item details
   itemType: varchar("item_type").notNull(), // 'subscription', 'addon', 'usage', 'overage', 'credit', 'adjustment'
@@ -8105,24 +8105,24 @@ export const invoiceLineItems = pgTable("invoice_line_items", {
   
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
-  invoiceIdx: index("invoice_line_items_invoice_idx").on(table.invoiceId),
-  typeIdx: index("invoice_line_items_type_idx").on(table.itemType),
-  addonIdx: index("invoice_line_items_addon_idx").on(table.addonId),
+  invoiceIdx: index("subscription_line_items_invoice_idx").on(table.invoiceId),
+  typeIdx: index("subscription_line_items_type_idx").on(table.itemType),
+  addonIdx: index("subscription_line_items_addon_idx").on(table.addonId),
 }));
 
-export const insertInvoiceLineItemSchema = createInsertSchema(invoiceLineItems).omit({
+export const insertSubscriptionLineItemSchema = createInsertSchema(subscriptionLineItems).omit({
   id: true,
   createdAt: true,
 });
 
-export type InsertInvoiceLineItem = z.infer<typeof insertInvoiceLineItemSchema>;
-export type InvoiceLineItem = typeof invoiceLineItems.$inferSelect;
+export type InsertSubscriptionLineItem = z.infer<typeof insertSubscriptionLineItemSchema>;
+export type SubscriptionLineItem = typeof subscriptionLineItems.$inferSelect;
 
-// Payments - track all payment transactions
-export const payments = pgTable("payments", {
+// Subscription Payments - track all subscription payment transactions
+export const subscriptionPayments = pgTable("subscription_payments", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
-  invoiceId: varchar("invoice_id").references(() => invoices.id, { onDelete: 'set null' }),
+  invoiceId: varchar("invoice_id").references(() => subscriptionInvoices.id, { onDelete: 'set null' }),
   
   // Payment details
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
@@ -8151,21 +8151,21 @@ export const payments = pgTable("payments", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
-  workspaceIdx: index("payments_workspace_idx").on(table.workspaceId),
-  invoiceIdx: index("payments_invoice_idx").on(table.invoiceId),
-  statusIdx: index("payments_status_idx").on(table.status),
-  stripeIdx: index("payments_stripe_idx").on(table.stripePaymentIntentId),
-  createdAtIdx: index("payments_created_at_idx").on(table.createdAt),
+  workspaceIdx: index("subscription_payments_workspace_idx").on(table.workspaceId),
+  invoiceIdx: index("subscription_payments_invoice_idx").on(table.invoiceId),
+  statusIdx: index("subscription_payments_status_idx").on(table.status),
+  stripeIdx: index("subscription_payments_stripe_idx").on(table.stripePaymentIntentId),
+  createdAtIdx: index("subscription_payments_created_at_idx").on(table.createdAt),
 }));
 
-export const insertPaymentSchema = createInsertSchema(payments).omit({
+export const insertSubscriptionPaymentSchema = createInsertSchema(subscriptionPayments).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
 });
 
-export type InsertPayment = z.infer<typeof insertPaymentSchema>;
-export type Payment = typeof payments.$inferSelect;
+export type InsertSubscriptionPayment = z.infer<typeof insertSubscriptionPaymentSchema>;
+export type SubscriptionPayment = typeof subscriptionPayments.$inferSelect;
 
 // Billing audit log - comprehensive audit trail for all billing events
 export const billingAuditLog = pgTable("billing_audit_log", {
