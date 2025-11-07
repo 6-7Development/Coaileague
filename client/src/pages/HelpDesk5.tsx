@@ -30,7 +30,7 @@ import {
   MessageSquare, Send, Users, Circle, Shield, 
   Headphones, User, Bot, Sparkles, Wifi, WifiOff,
   Lock, Settings, AlertCircle, CheckCircle, Menu, X,
-  ArrowLeft, MoreVertical, ArrowDown
+  ArrowLeft, MoreVertical, ArrowDown, Smile, Reply
 } from "lucide-react";
 import type { ChatMessage } from "@shared/schema";
 
