@@ -271,10 +271,15 @@ export function requirePlatformRole(allowedRoles: PlatformRole[]) {
         return res.status(401).json({ error: 'User not found' });
       }
       
-      req.user = user;
+      req.user = {
+        id: user.id,
+        email: user.email ?? undefined,
+        firstName: user.firstName ?? undefined,
+        lastName: user.lastName ?? undefined,
+      };
     }
 
-    const platformRole = await getUserPlatformRole(req.user.id);
+    const platformRole = await getUserPlatformRole(req.user!.id);
     
     if (!allowedRoles.includes(platformRole)) {
       return res.status(403).json({ 
