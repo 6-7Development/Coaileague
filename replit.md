@@ -61,6 +61,15 @@ AutoForce™ is built on a modular "OS" design philosophy (e.g., BillOS™, Payr
 - **Multi-Tenancy**: Data isolation is managed on a workspace basis.
 - **Role-Based Access Control (RBAC)**: Implements hierarchical roles and API protection.
 - **Communication**: Utilizes an IRC-style WebSocket command/response architecture for real-time interactions, including server-side validation and permissions.
+  - **Chat System Architecture**: Three distinct chat implementations serve different use cases:
+    - **HelpDesk5** (`/helpdesk5`): Mobile-optimized support chat for organizations to get help from AutoForce™ support team
+    - **LiveChat** (`/live-chat`): Desktop support chat interface for organizations seeking assistance
+    - **CommOS™** (`/comm-os`): Organization chatrooms with role-based access:
+      - Regular users see their own workspace's chat rooms
+      - Support staff (platform_admin/support_staff) see polished table of ALL open chatrooms across all organizations
+      - Support staff automatically granted owner role when joining any org room
+      - System announcement broadcasts when support joins: "🛡️ AutoForce™ Support Staff (email) has joined the room with admin access"
+  - **WebSocket Protocol**: Fixed critical bug where protocol string `'wss:'` was causing invalid `wss:://` URLs; corrected to `'wss'` for proper `wss://` connections in all hooks
 - **Audit Logging**: Comprehensive audit trails provided by AuditOS™.
 - **Core Feature Areas**:
     - **Financials**: Client Management, Billing & Payroll (BillOS™, PayrollOS™), automated invoice generation, payment processing.
