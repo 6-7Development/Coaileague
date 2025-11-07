@@ -135,14 +135,34 @@ export const FEATURE_ROUTES = {
     desktop: '/root-admin-dashboard',
     mobile: '/root-admin-dashboard', // Already responsive
     tablet: '/root-admin-dashboard'
+  },
+  schedule: {
+    desktop: '/schedule',
+    mobile: '/schedule', // Already responsive
+    tablet: '/schedule'
+  },
+  'time-tracking': {
+    desktop: '/time-tracking',
+    mobile: '/time-tracking', // Already responsive
+    tablet: '/time-tracking'
+  },
+  settings: {
+    desktop: '/settings',
+    mobile: '/settings', // Already responsive
+    tablet: '/settings'
   }
 } as const;
+
+/**
+ * Valid feature identifiers for routing
+ */
+export type FeatureKey = keyof typeof FEATURE_ROUTES;
 
 /**
  * Get platform-specific route for a feature
  */
 export function getFeatureRoute(
-  feature: keyof typeof FEATURE_ROUTES,
+  feature: FeatureKey,
   platform: DevicePlatform
 ): string {
   const routes = FEATURE_ROUTES[feature];
