@@ -4,6 +4,8 @@ import {
   aiUsageDailyRollups,
   aiTokenWallets,
   workspaces,
+  workspaceAddons,
+  billingAddons,
   billingAuditLog,
   type InsertAiUsageEvent,
   type AiUsageEvent,
@@ -52,14 +54,84 @@ export class UsageMeteringService {
   }
 
   /**
-   * Record a single usage event and deduct from token wallet
+   * Record a single usage event and apply hybrid billing (allowance + overage)
    */
   async recordUsage(input: UsageEventInput): Promise<AiUsageEvent> {
-    // Calculate cost if not provided
-    const unitPrice = input.unitPrice ?? await this.getUnitPrice(input.featureKey, input.usageType);
-    const totalCost = Number(input.usageAmount) * unitPrice;
+    // Get addon details if addonId provided
+    let addon = null;
+    let workspaceAddon = null;
+    
+    if (input.addonId) {
+      [addon] = await db.select().from(billingAddons).where(eq(billingAddons.id, input.addonId)).limit(1);
+      
+      if (addon) {
+        [workspaceAddon] = await db.select()
+          .from(workspaceAddons)
+          .where(
+            and(
+              eq(workspaceAddons.workspaceId, input.workspaceId),
+              eq(workspaceAddons.addonId, input.addonId),
+              eq(workspaceAddons.status, 'active')
+            )
+          )
+          .limit(1);
+      }
+    }
 
-    // Create usage event
+    // Calculate cost based on hybrid pricing model
+    let unitPrice = input.unitPrice ?? await this.getUnitPrice(input.featureKey, input.usageType);
+    let totalCost = Number(input.usageAmount) * unitPrice;
+    let isOverage = false;
+    let allowanceUsed = 0;
+    let overageAmount = 0;
+
+    // For AI-powered OS modules with hybrid pricing, check monthly allowance
+    if (addon && addon.pricingType === 'hybrid' && addon.monthlyTokenAllowance && workspaceAddon && input.usageType === 'token') {
+      const monthlyAllowance = Number(addon.monthlyTokenAllowance);
+      const currentUsage = Number(workspaceAddon.monthlyTokensUsed || 0);
+      const newUsage = currentUsage + input.usageAmount;
+      
+      // Reset monthly usage if billing period reset
+      const needsReset = this.shouldResetMonthlyUsage(workspaceAddon.lastUsageResetAt);
+      const actualCurrentUsage = needsReset ? 0 : currentUsage;
+      
+      // Calculate allowance vs overage
+      if (actualCurrentUsage < monthlyAllowance) {
+        // Some or all usage is covered by monthly allowance
+        allowanceUsed = Math.min(input.usageAmount, monthlyAllowance - actualCurrentUsage);
+        overageAmount = Math.max(0, input.usageAmount - allowanceUsed);
+        
+        if (overageAmount > 0) {
+          // Charge overage rate for tokens beyond allowance
+          isOverage = true;
+          const overageRate = Number(addon.overageRatePer1kTokens || 0.03); // Default $0.03 per 1k tokens
+          totalCost = (overageAmount / 1000) * overageRate; // Overage cost only
+          unitPrice = (overageAmount > 0) ? totalCost / overageAmount : 0;
+        } else {
+          // All usage covered by allowance - no charge
+          totalCost = 0;
+          unitPrice = 0;
+        }
+      } else {
+        // Already exceeded monthly allowance - all overage
+        isOverage = true;
+        const overageRate = Number(addon.overageRatePer1kTokens || 0.03);
+        totalCost = (input.usageAmount / 1000) * overageRate;
+        unitPrice = totalCost / input.usageAmount;
+        overageAmount = input.usageAmount;
+      }
+
+      // Update workspace addon usage tracking
+      await db.update(workspaceAddons)
+        .set({
+          monthlyTokensUsed: needsReset ? input.usageAmount.toString() : (actualCurrentUsage + input.usageAmount).toString(),
+          lastUsageResetAt: needsReset ? new Date() : workspaceAddon.lastUsageResetAt,
+          updatedAt: new Date(),
+        })
+        .where(eq(workspaceAddons.id, workspaceAddon.id));
+    }
+
+    // Create usage event with overage tracking
     const [event] = await db.insert(aiUsageEvents).values({
       workspaceId: input.workspaceId,
       userId: input.userId,
@@ -72,18 +144,26 @@ export class UsageMeteringService {
       totalCost: totalCost.toString(),
       sessionId: input.sessionId,
       activityType: input.activityType,
-      metadata: input.metadata,
+      metadata: {
+        ...input.metadata,
+        isOverage,
+        allowanceUsed,
+        overageAmount,
+        addonName: addon?.name,
+      },
       ipAddress: input.ipAddress,
       userAgent: input.userAgent,
     }).returning();
 
-    // Deduct from token wallet if cost > 0
+    // Deduct from token wallet ONLY if there's overage cost
     if (totalCost > 0) {
       try {
         await this.creditLedgerService.deductCredits(
           input.workspaceId,
           totalCost,
-          `Usage: ${input.featureKey} - ${input.usageAmount} ${input.usageUnit}`,
+          isOverage 
+            ? `Overage: ${input.featureKey} - ${overageAmount.toLocaleString()} tokens beyond allowance`
+            : `Usage: ${input.featureKey} - ${input.usageAmount} ${input.usageUnit}`,
           event.id
         );
       } catch (error) {
@@ -93,29 +173,47 @@ export class UsageMeteringService {
       }
     }
 
-    // Update daily rollup asynchronously (fire and forget)
+    // Update daily rollup asynchronously
     this.updateDailyRollup(input.workspaceId, input.featureKey, event.createdAt!).catch(console.error);
 
     // Log audit event
     await db.insert(billingAuditLog).values({
       workspaceId: input.workspaceId,
-      eventType: 'usage_recorded',
+      eventType: isOverage ? 'overage_usage_recorded' : 'usage_recorded',
       eventCategory: 'usage',
       actorType: input.userId ? 'user' : 'system',
       actorId: input.userId,
-      description: `Recorded ${input.usageAmount} ${input.usageUnit} for ${input.featureKey}`,
+      description: isOverage 
+        ? `Overage: ${overageAmount.toLocaleString()} tokens (${input.featureKey}) beyond monthly allowance`
+        : `Recorded ${input.usageAmount} ${input.usageUnit} for ${input.featureKey}`,
       relatedEntityType: 'usage_event',
       relatedEntityId: event.id,
       newState: {
         usageAmount: input.usageAmount,
         usageUnit: input.usageUnit,
         totalCost,
+        isOverage,
+        allowanceUsed,
+        overageAmount,
       },
       ipAddress: input.ipAddress,
       userAgent: input.userAgent,
     });
 
     return event;
+  }
+
+  /**
+   * Check if monthly usage should be reset (new billing period)
+   */
+  private shouldResetMonthlyUsage(lastResetAt: Date | null): boolean {
+    if (!lastResetAt) return true;
+    
+    const now = new Date();
+    const daysSinceReset = (now.getTime() - lastResetAt.getTime()) / (1000 * 60 * 60 * 24);
+    
+    // Reset every 30 days (monthly billing cycle)
+    return daysSinceReset >= 30;
   }
 
   /**

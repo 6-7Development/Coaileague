@@ -13,6 +13,20 @@ FTC COMPLIANCE: All marketing claims must be factual and verifiable. Avoid monop
 ## System Architecture
 AutoForce™ is built on a modular "OS" design philosophy (e.g., BillOS™, PayrollOS™, TrackOS™) for clean code and extensibility.
 
+### Advanced Billing & Usage-Based Pricing
+**Hybrid Pricing Model** - AI-powered OS modules use subscription + overage pricing:
+- **RecordOS™**: $49/mo includes 500k tokens (cost: $10, 390% markup), overage $0.03/1k tokens (50% markup)
+- **InsightOS™**: $79/mo includes 1M tokens (cost: $20, 295% markup), overage $0.03/1k tokens
+- **ScheduleOS™**: $59/mo includes 750k tokens (cost: $15, 293% markup), overage $0.03/1k tokens
+- **Non-AI modules** (ExpenseOS™ $39/mo, PolicIOS™ $29/mo): Flat subscription, unlimited usage
+
+**Billing Mechanics:**
+- Monthly token allowances automatically tracked per workspace addon
+- Usage within allowance: $0 charge (covered by subscription)
+- Overage usage: Billed at $0.03 per 1k tokens (50% profit margin over $0.02 base cost)
+- Monthly usage resets every 30 days automatically
+- All overage charges added to weekly aggregated invoices
+
 **UI/UX Decisions:** The platform features a professional aesthetic with Deep Charcoal, Platinum neutrals, and Emergency Green accents. It prioritizes a mobile-first approach with responsive layouts and accessible touch targets. The branding uses an "AF" lightning bolt logo within a circular green gradient badge, symbolizing rapid response and reliability.
 
 **Technical Implementations:**
