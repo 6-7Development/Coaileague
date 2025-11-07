@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { ReenableChatButton } from "@/components/reenable-chat-button";
 import {
   Select,
   SelectContent,
@@ -581,21 +582,24 @@ export default function Contact() {
       {/* Footer */}
       <footer className="border-t border-[hsl(var(--cad-border))] bg-[hsl(var(--cad-chrome))]">
         <div className="container mx-auto px-6 py-8">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2 text-sm text-[hsl(var(--cad-text-tertiary))]">
               <AutoForceLogo size="sm" variant="icon" />
               <span>© 2025 WorkforceOS. Elite-grade workforce automation.</span>
             </div>
-            <div className="flex gap-6 text-xs text-[hsl(var(--cad-text-tertiary))]">
-              <a href="/support" className="hover:text-[hsl(var(--cad-text-primary))]" data-testid="link-support">
-                Support Center
-              </a>
-              <a href="#" className="hover:text-[hsl(var(--cad-text-primary))]">
-                Privacy
-              </a>
-              <a href="#" className="hover:text-[hsl(var(--cad-text-primary))]">
-                Terms
-              </a>
+            <div className="flex items-center gap-6">
+              <ReenableChatButton />
+              <div className="flex gap-6 text-xs text-[hsl(var(--cad-text-tertiary))]">
+                <a href="/support" className="hover:text-[hsl(var(--cad-text-primary))]" data-testid="link-support">
+                  Support Center
+                </a>
+                <a href="#" className="hover:text-[hsl(var(--cad-text-primary))]">
+                  Privacy
+                </a>
+                <a href="#" className="hover:text-[hsl(var(--cad-text-primary))]">
+                  Terms
+                </a>
+              </div>
             </div>
           </div>
         </div>
