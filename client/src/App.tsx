@@ -107,6 +107,7 @@ import Policies from "@/pages/policies";
 import RoleManagement from "@/pages/role-management";
 import ManagerDashboard from "@/pages/manager-dashboard";
 import ChatExport from "@/pages/chat-export";
+import RichTextDemo from "@/pages/RichTextDemo";
 import { FloatingChatButton } from "@/components/floating-chat-button";
 import { ReenableChatButton } from "@/components/reenable-chat-button";
 import { OnboardingWizard } from "@/components/onboarding-wizard";
@@ -328,6 +329,7 @@ function AppContent() {
                 <Route path="/query-os" component={QueryOS} />
                 <Route path="/messages" component={PrivateMessages} />
                 <Route path="/chat-export" component={ChatExport} />
+                <Route path="/rich-text-demo" component={RichTextDemo} />
                 <Route path="/training" component={TrainingOS} />
                 <Route path="/budget" component={BudgetOS} />
                 <Route path="/integrations" component={IntegrationOS} />
