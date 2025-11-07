@@ -11,15 +11,14 @@ export function ThemeToggle() {
       <TooltipTrigger asChild>
         <Button
           variant="ghost"
-          size="sm"
+          size="icon"
           onClick={() => setTheme(theme === "light" ? "dark" : "light")}
           data-testid="button-theme-toggle"
-          className="gap-1.5 h-9 shrink-0 min-w-[40px]"
+          className="h-10 w-10 shrink-0 rounded-xl hover-elevate active-elevate-2"
         >
-          <Sun className="h-[18px] w-[18px] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-          <Moon className="absolute h-[18px] w-[18px] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+          <Sun className="h-5 w-5 rotate-0 scale-100 transition-transform duration-300 dark:-rotate-90 dark:scale-0" />
+          <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-transform duration-300 dark:rotate-0 dark:scale-100" />
           <span className="sr-only">Toggle theme</span>
-          <span className="hidden lg:inline text-xs font-medium whitespace-nowrap" data-testid="text-theme-label">Theme</span>
         </Button>
       </TooltipTrigger>
       <TooltipContent>
