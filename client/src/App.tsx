@@ -7,7 +7,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { GraduationCap } from "lucide-react";
+import { GraduationCap, Settings2, Search } from "lucide-react";
 import { AppSidebar } from "@/components/app-sidebar";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeProvider as WorkspaceThemeProvider } from "@/contexts/ThemeContext";
@@ -112,7 +112,7 @@ import RichTextDemo from "@/pages/RichTextDemo";
 import { FloatingChatButton } from "@/components/floating-chat-button";
 import { ReenableChatButton } from "@/components/reenable-chat-button";
 import { OnboardingWizard } from "@/components/onboarding-wizard";
-import { Sparkles, Search } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { WelcomeMessage } from "@/components/welcome-message";
 import { WorkspaceSwitcher } from "@/components/workspace-switcher";
 import { WhatsNewBadge } from "@/components/whats-new-badge";
@@ -269,6 +269,36 @@ function AppContent() {
                     </TooltipTrigger>
                     <TooltipContent>
                       <p>Start platform walkthrough</p>
+                    </TooltipContent>
+                  </Tooltip>
+
+                  {/* Role-Aware Settings Gear */}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          // Role-based routing
+                          if (isRootAdmin) {
+                            // ROOT/SYSOP → Platform management (maintenance mode, services control)
+                            setLocation('/platform-admin');
+                          } else if ((user as any)?.workspaceRole === 'leader' || (user as any)?.platformRole === 'deputy_admin' || (user as any)?.platformRole === 'deputy_assistant') {
+                            // Support roles → Their tools/admin area
+                            setLocation('/admin-command-center');
+                          } else {
+                            // Regular users → Organization settings
+                            setLocation('/settings');
+                          }
+                        }}
+                        data-testid="button-settings-gear"
+                        className="shrink-0 h-10 w-10 rounded-xl hover-elevate active-elevate-2"
+                      >
+                        <Settings2 className="h-5 w-5 text-emerald-400" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{isRootAdmin ? 'Platform Management' : 'Settings'}</p>
                     </TooltipContent>
                   </Tooltip>
 
