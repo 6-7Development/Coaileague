@@ -9,6 +9,7 @@ import { setupAuth, isAuthenticated } from "./replitAuth";
 import { setupAuth as setupCustomAuth, requireAuth } from "./auth"; // Custom auth
 import authRoutes from "./authRoutes"; // Custom auth routes
 import { billingRouter } from "./billing-api"; // Billing API routes
+import { registerFaqRoutes } from "./faq-routes"; // HelpOS FAQ routes
 import { auditContextMiddleware } from "./middleware/audit";
 import { apiLimiter, authLimiter, mutationLimiter, readLimiter } from "./middleware/rateLimiter";
 import * as notificationHelpers from "./notifications";
@@ -570,6 +571,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register billing API routes (subscription, usage tracking, invoices, add-ons)
   // IMPORTANT: Mount at /api/billing to avoid intercepting root path
   app.use('/api/billing', billingRouter);
+
+  // Register HelpOS FAQ routes (AI-powered FAQ system with semantic search)
+  registerFaqRoutes(app);
 
   // ============================================================================
   // AUTH ROUTES
