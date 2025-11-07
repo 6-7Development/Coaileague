@@ -335,4 +335,193 @@ app.get('/api/helpos/faqs/categories/list', requireAuth, async (req: Authenticat
   }
 });
 
+// ============================================================================
+// AI-POWERED FAQ AUTO-GENERATION
+// ============================================================================
+
+// Generate FAQ suggestion from support ticket resolution
+app.post('/api/helpos/faqs/generate/from-ticket', requireAuth, requirePlatformStaff, async (req: AuthenticatedRequest, res) => {
+  try {
+    const { ticketId } = req.body;
+
+    if (!ticketId) {
+      return res.status(400).json({ message: 'Ticket ID is required' });
+    }
+
+    if (!process.env.OPENAI_API_KEY) {
+      return res.status(503).json({ message: 'AI generation not available - OpenAI API key not configured' });
+    }
+
+    // Fetch the support ticket with resolution
+    const ticket = await db.query.supportTickets.findFirst({
+      where: eq((await import('@shared/schema')).supportTickets.id, ticketId),
+    });
+
+    if (!ticket) {
+      return res.status(404).json({ message: 'Support ticket not found' });
+    }
+
+    if (!ticket.resolution && !ticket.resolutionSummary) {
+      return res.status(400).json({ message: 'Ticket must have a resolution to generate FAQ' });
+    }
+
+    // Use OpenAI to generate FAQ from ticket
+    const openai = getOpenAIClient();
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-3.5-turbo',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a helpful assistant that creates clear, concise FAQ entries from support ticket resolutions. Create a question-answer pair that would help other users with similar issues. Return JSON with: question, answer, category (one of: billing, technical, account, features, general), tags (array of 3-5 relevant keywords).'
+        },
+        {
+          role: 'user',
+          content: `Support Ticket:\nSubject: ${ticket.subject}\nDescription: ${ticket.description}\nResolution: ${ticket.resolutionSummary || ticket.resolution}\n\nCreate a helpful FAQ entry from this.`
+        }
+      ],
+      response_format: { type: 'json_object' },
+      temperature: 0.7,
+    });
+
+    const suggestion = JSON.parse(completion.choices[0].message.content || '{}');
+
+    // Generate embedding for the suggested answer
+    const embeddingResponse = await openai.embeddings.create({
+      model: 'text-embedding-3-small',
+      input: `${suggestion.question} ${suggestion.answer}`,
+    });
+
+    res.json({
+      suggestion: {
+        ...suggestion,
+        embeddingVector: JSON.stringify(embeddingResponse.data[0].embedding),
+        sourceTicketId: ticketId,
+        isPublished: false, // Default to draft
+      }
+    });
+  } catch (error: any) {
+    console.error('Error generating FAQ from ticket:', error);
+    res.status(500).json({ message: 'Failed to generate FAQ suggestion', error: error.message });
+  }
+});
+
+// Generate FAQ suggestion from free-form Q&A (for manual entry during support)
+app.post('/api/helpos/faqs/generate/from-conversation', requireAuth, requirePlatformStaff, async (req: AuthenticatedRequest, res) => {
+  try {
+    const { question, answer, context } = req.body;
+
+    if (!question || !answer) {
+      return res.status(400).json({ message: 'Question and answer are required' });
+    }
+
+    if (!process.env.OPENAI_API_KEY) {
+      return res.status(503).json({ message: 'AI generation not available - OpenAI API key not configured' });
+    }
+
+    // Use OpenAI to refine and categorize the FAQ
+    const openai = getOpenAIClient();
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-3.5-turbo',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a helpful assistant that refines and categorizes FAQ entries. Improve the question and answer for clarity, and suggest a category and tags. Return JSON with: question (refined), answer (refined), category (one of: billing, technical, account, features, general), tags (array of 3-5 relevant keywords).'
+        },
+        {
+          role: 'user',
+          content: `Question: ${question}\nAnswer: ${answer}${context ? `\nContext: ${context}` : ''}\n\nRefine this into a clear FAQ entry.`
+        }
+      ],
+      response_format: { type: 'json_object' },
+      temperature: 0.7,
+    });
+
+    const refined = JSON.parse(completion.choices[0].message.content || '{}');
+
+    // Generate embedding
+    const embeddingResponse = await openai.embeddings.create({
+      model: 'text-embedding-3-small',
+      input: `${refined.question} ${refined.answer}`,
+    });
+
+    res.json({
+      suggestion: {
+        ...refined,
+        embeddingVector: JSON.stringify(embeddingResponse.data[0].embedding),
+        isPublished: false,
+      }
+    });
+  } catch (error: any) {
+    console.error('Error generating FAQ from conversation:', error);
+    res.status(500).json({ message: 'Failed to generate FAQ suggestion', error: error.message });
+  }
+});
+
+// Bulk import FAQs (for new feature releases)
+app.post('/api/helpos/faqs/bulk-import', requireAuth, requirePlatformStaff, async (req: AuthenticatedRequest, res) => {
+  try {
+    const { faqs } = req.body;
+
+    if (!Array.isArray(faqs) || faqs.length === 0) {
+      return res.status(400).json({ message: 'FAQs array is required and must not be empty' });
+    }
+
+    if (!process.env.OPENAI_API_KEY) {
+      return res.status(503).json({ message: 'Bulk import requires OpenAI API key for generating embeddings' });
+    }
+
+    const openai = getOpenAIClient();
+    const createdFaqs = [];
+    const errors = [];
+
+    for (const faq of faqs) {
+      try {
+        // Validate FAQ structure
+        const validated = insertHelposFaqSchema.omit({ id: true }).parse({
+          category: faq.category || 'general',
+          question: faq.question,
+          answer: faq.answer,
+          tags: faq.tags || [],
+          searchKeywords: faq.searchKeywords || null,
+          isPublished: faq.isPublished ?? true,
+          createdBy: req.user?.id,
+          updatedBy: req.user?.id,
+        });
+
+        // Generate embedding
+        const embeddingResponse = await openai.embeddings.create({
+          model: 'text-embedding-3-small',
+          input: `${validated.question} ${validated.answer}`,
+        });
+
+        // Create FAQ
+        const [created] = await db.insert(helposFaqs).values({
+          ...validated,
+          embeddingVector: JSON.stringify(embeddingResponse.data[0].embedding),
+        }).returning();
+
+        createdFaqs.push(created);
+      } catch (error: any) {
+        errors.push({
+          question: faq.question?.substring(0, 50) || 'Unknown',
+          error: error.message,
+        });
+      }
+    }
+
+    res.json({
+      success: true,
+      created: createdFaqs.length,
+      errors: errors.length,
+      details: {
+        createdFaqs: createdFaqs.map(f => ({ id: f.id, question: f.question })),
+        errors,
+      }
+    });
+  } catch (error: any) {
+    console.error('Error bulk importing FAQs:', error);
+    res.status(500).json({ message: 'Failed to bulk import FAQs', error: error.message });
+  }
+});
+
 } // End of registerFaqRoutes function
