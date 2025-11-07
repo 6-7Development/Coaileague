@@ -7842,6 +7842,10 @@ export const billingAddons = pgTable("billing_addons", {
   usagePrice: decimal("usage_price", { precision: 10, scale: 4 }), // Price per usage unit (e.g., per token, per session)
   usageUnit: varchar("usage_unit"), // 'token', 'session', 'activity', 'api_call', 'hour'
   
+  // AI token allowances (for hybrid pricing)
+  monthlyTokenAllowance: decimal("monthly_token_allowance", { precision: 15, scale: 2 }), // Included AI tokens per month
+  overageRatePer1kTokens: decimal("overage_rate_per_1k_tokens", { precision: 10, scale: 4 }), // Overage rate per 1000 tokens
+  
   // Stripe integration
   stripePriceId: varchar("stripe_price_id"), // Stripe price ID for subscription
   stripeMeteredPriceId: varchar("stripe_metered_price_id"), // Stripe price ID for usage billing
@@ -7884,6 +7888,10 @@ export const workspaceAddons = pgTable("workspace_addons", {
   stripeSubscriptionItemId: varchar("stripe_subscription_item_id"), // Stripe subscription item ID
   currentPeriodStart: timestamp("current_period_start"),
   currentPeriodEnd: timestamp("current_period_end"),
+  
+  // Token usage tracking (for hybrid pricing with monthly allowances)
+  monthlyTokensUsed: decimal("monthly_tokens_used", { precision: 15, scale: 2 }).default("0"),
+  lastUsageResetAt: timestamp("last_usage_reset_at").defaultNow(),
   
   // Cancellation
   cancelledAt: timestamp("cancelled_at"),
