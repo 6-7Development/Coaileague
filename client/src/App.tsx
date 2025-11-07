@@ -109,7 +109,7 @@ import ChatExport from "@/pages/chat-export";
 import { FloatingChatButton } from "@/components/floating-chat-button";
 import { OnboardingWizard } from "@/components/onboarding-wizard";
 import { Sparkles, Search } from "lucide-react";
-import { LiveUpdatesTicker } from "@/components/live-updates-ticker";
+import { WelcomeMessage } from "@/components/welcome-message";
 import { WorkspaceSwitcher } from "@/components/workspace-switcher";
 import { WhatsNewBadge } from "@/components/whats-new-badge";
 import { HelpDropdown } from "@/components/help-dropdown";
@@ -193,8 +193,8 @@ function AppContent() {
                 </div>
 
                 <div className="flex items-center gap-2 flex-wrap">
-                  {/* Live Updates Ticker - Replaces bell & refresh icons */}
-                  <LiveUpdatesTicker />
+                  {/* Polished Welcome Message for logged-in users */}
+                  <WelcomeMessage />
 
                   {/* Plan Badge - Hidden on small screens */}
                   <div className="hidden md:block">
