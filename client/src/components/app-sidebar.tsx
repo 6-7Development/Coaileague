@@ -1,5 +1,5 @@
 // Reference: shadcn sidebar documentation
-import { Calendar, Users, UserCircle, FileText, Settings, LayoutDashboard, LogOut, Clock, BarChart3, Activity, Headphones, CreditCard, MessageSquare, Shield, UserCog, DollarSign, Receipt, Briefcase, TrendingUp, Zap, Package, Lock, Sparkles, Brain, Target, Layers, ChevronUp, Building2, Bell, HelpCircle, Download } from "lucide-react";
+import { Calendar, Users, UserCircle, FileText, Settings, LayoutDashboard, LogOut, Clock, BarChart3, Activity, Headphones, CreditCard, MessageSquare, Shield, UserCog, DollarSign, Receipt, Briefcase, TrendingUp, Zap, Package, Lock, Sparkles, Brain, Target, Layers, ChevronUp, Building2, Bell, HelpCircle, Download, MessagesSquare, LockKeyhole, HeadphonesIcon, CalendarClock, Timer, Banknote, FileText as FileInvoice, GraduationCap, UsersRound, UserCheck, Rocket, Medal, LineChart, FileBarChart } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -31,35 +31,35 @@ import {
 
 // FAMILY 1: Communication & Collaboration OS
 const communicationFamilyItems = [
-  { title: "CommOS™", url: "/comm-os", icon: MessageSquare },
-  { title: "Private Messages", url: "/messages", icon: Lock },
-  { title: "SupportOS™ HelpDesk", url: "/live-chat", icon: Headphones },
+  { title: "CommOS™", url: "/comm-os", icon: MessagesSquare },
+  { title: "Private Messages", url: "/messages", icon: LockKeyhole },
+  { title: "SupportOS™ HelpDesk", url: "/live-chat", icon: HeadphonesIcon },
 ];
 
 // FAMILY 2: Workforce Operations OS
 const operationsFamilyItems = [
-  { title: "ScheduleOS™", url: "/schedule", icon: Calendar },
-  { title: "TimeOS™", url: "/time-tracking", icon: Clock },
-  { title: "PayrollOS™", url: "/payroll", icon: DollarSign },
-  { title: "BillOS™", url: "/invoices", icon: FileText },
-  { title: "TrainingOS™", url: "/training", icon: Package },
-  { title: "Employees", url: "/employees", icon: Users },
-  { title: "Clients", url: "/clients", icon: UserCircle },
+  { title: "ScheduleOS™", url: "/schedule", icon: CalendarClock },
+  { title: "TimeOS™", url: "/time-tracking", icon: Timer },
+  { title: "PayrollOS™", url: "/payroll", icon: Banknote },
+  { title: "BillOS™", url: "/invoices", icon: Receipt },
+  { title: "TrainingOS™", url: "/training", icon: GraduationCap },
+  { title: "Employees", url: "/employees", icon: UsersRound },
+  { title: "Clients", url: "/clients", icon: UserCheck },
 ];
 
 // FAMILY 3: Growth & Intelligence OS
 const growthFamilyItems = [
-  { title: "🚀 Growth Family", url: "/os-family/growth", icon: Sparkles, isFamily: true },
+  { title: "🚀 Growth Family", url: "/os-family/growth", icon: Rocket, isFamily: true },
   { title: "DealOS™ Sales", url: "/sales", icon: Target },
-  { title: "TalentOS™", url: "/leaders-hub", icon: UserCog },
+  { title: "TalentOS™", url: "/leaders-hub", icon: Medal },
   { title: "EngagementOS™", url: "/engagement/dashboard", icon: Activity },
-  { title: "AnalyticsOS™", url: "/analytics", icon: BarChart3 },
-  { title: "ReportOS™", url: "/reports", icon: FileText },
+  { title: "AnalyticsOS™", url: "/analytics", icon: LineChart },
+  { title: "ReportOS™", url: "/reports", icon: FileBarChart },
 ];
 
 // FAMILY 4: Platform & Control OS
 const platformFamilyItems = [
-  { title: "🎛️ Platform Family", url: "/os-family/platform", icon: Sparkles, isFamily: true },
+  { title: "⚡ Platform Family", url: "/os-family/platform", icon: Zap, isFamily: true },
   { title: "IntegrationOS™", url: "/integrations", icon: Zap },
   { title: "Admin Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Settings", url: "/settings", icon: Settings },
@@ -101,11 +101,19 @@ export function AppSidebar() {
                 asChild 
                 isActive={location === item.url}
                 data-testid={`link-${item.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
-                className="hover-elevate active-elevate-2 h-9 px-3"
+                className="hover-elevate active-elevate-2 h-9 px-3 group"
               >
                 <Link href={item.url} className="flex items-center gap-3 w-full">
-                  <item.icon className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  <span className="text-sm leading-tight font-medium text-foreground">
+                  <item.icon className={`h-4 w-4 shrink-0 transition-colors ${
+                    location === item.url 
+                      ? 'text-emerald-400' 
+                      : 'text-muted-foreground group-hover:text-emerald-300'
+                  }`} />
+                  <span className={`text-sm leading-tight font-medium transition-colors ${
+                    location === item.url
+                      ? 'text-emerald-100'
+                      : 'text-foreground group-hover:text-emerald-50'
+                  }`}>
                     {item.title}
                   </span>
                 </Link>
