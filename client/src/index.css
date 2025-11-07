@@ -17,6 +17,57 @@
   --elevate-1: rgba(16, 185, 129, .06);  /* Success gradient tint */
   --elevate-2: rgba(16, 185, 129, .12);
 
+  /* ========================================================================
+     MOBILE-FIRST RESPONSIVE DESIGN TOKENS
+     ======================================================================== */
+  
+  /* Breakpoints (for JS/React hooks) */
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+  --breakpoint-2xl: 1536px;
+
+  /* Touch Target Sizes - Native app standards */
+  --touch-target-min: 48px;       /* Minimum tap target (Apple/Android HIG) */
+  --touch-target-comfortable: 56px; /* Comfortable tap target */
+  --touch-target-large: 64px;     /* Large action buttons */
+
+  /* Mobile Spacing Scale */
+  --spacing-mobile-xs: 0.5rem;    /* 8px */
+  --spacing-mobile-sm: 0.75rem;   /* 12px */
+  --spacing-mobile-md: 1rem;      /* 16px */
+  --spacing-mobile-lg: 1.5rem;    /* 24px */
+  --spacing-mobile-xl: 2rem;      /* 32px */
+
+  /* Mobile Typography Scale */
+  --font-size-mobile-xs: 0.75rem;    /* 12px - Micro text */
+  --font-size-mobile-sm: 0.875rem;   /* 14px - Small */
+  --font-size-mobile-base: 1rem;     /* 16px - Body */
+  --font-size-mobile-lg: 1.125rem;   /* 18px - Large */
+  --font-size-mobile-xl: 1.25rem;    /* 20px - Headings */
+  --font-size-mobile-2xl: 1.5rem;    /* 24px - Large headings */
+
+  /* Mobile Navigation Heights */
+  --nav-header-height: 56px;      /* Top header on mobile */
+  --nav-bottom-height: 64px;      /* Bottom tab bar */
+  --nav-safe-area-bottom: env(safe-area-inset-bottom, 0px); /* iOS notch */
+
+  /* Mobile Card/Panel Spacing */
+  --card-padding-mobile: 1rem;    /* 16px inside cards */
+  --card-gap-mobile: 0.75rem;     /* 12px between elements */
+  --panel-padding-mobile: 1rem;   /* 16px page padding */
+
+  /* Z-Index Scale for Layering */
+  --z-index-base: 0;
+  --z-index-dropdown: 1000;
+  --z-index-sticky: 1020;
+  --z-index-fixed-header: 1030;
+  --z-index-bottom-nav: 1040;
+  --z-index-modal-backdrop: 1050;
+  --z-index-modal: 1060;
+  --z-index-toast: 1070;
+
   /* Modern Light Mode - Clean Professional */
   --background: 0 0% 100%;             /* Pure white - Clean canvas */
 
@@ -565,6 +616,134 @@
   
   *::-webkit-scrollbar {
     display: none;  /* Chrome, Safari, Opera */
+  }
+
+  /* ========================================================================
+     MOBILE-FIRST NATIVE APP UTILITIES
+     ======================================================================== */
+
+  /* Touch Target - Ensures minimum 48px tap area */
+  .mobile-touch-target {
+    min-height: var(--touch-target-min);
+    min-width: var(--touch-target-min);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Mobile Safe Area - Handles iOS notch/home indicator */
+  .mobile-safe-area-top {
+    padding-top: env(safe-area-inset-top, 0);
+  }
+
+  .mobile-safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+
+  .mobile-safe-area-left {
+    padding-left: env(safe-area-inset-left, 0);
+  }
+
+  .mobile-safe-area-right {
+    padding-right: env(safe-area-inset-right, 0);
+  }
+
+  /* Mobile Bottom Navigation */
+  .mobile-bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: var(--nav-bottom-height);
+    padding-bottom: env(safe-area-inset-bottom, 0);
+    z-index: var(--z-index-bottom-nav);
+    background: hsl(var(--background));
+    border-top: 1px solid hsl(var(--border));
+  }
+
+  /* Mobile Header */
+  .mobile-header {
+    position: sticky;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: var(--nav-header-height);
+    padding-top: env(safe-area-inset-top, 0);
+    z-index: var(--z-index-fixed-header);
+    background: hsl(var(--background));
+    border-bottom: 1px solid hsl(var(--border));
+  }
+
+  /* Mobile Pull-to-Refresh Indicator */
+  @keyframes pull-to-refresh {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+  .pull-to-refresh-spinner {
+    animation: pull-to-refresh 1s linear infinite;
+  }
+
+  /* Mobile Swipe Gesture Indicator */
+  .swipeable {
+    touch-action: pan-y;
+    user-select: none;
+  }
+
+  /* Smooth Mobile Scroll */
+  .smooth-scroll {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+
+  /* Prevent text selection on mobile UI elements */
+  .no-select {
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  /* Mobile Active State (visual feedback on tap) */
+  .mobile-active-state:active {
+    transform: scale(0.97);
+    transition: transform 0.1s ease;
+  }
+
+  /* Mobile Card - Edge-to-edge on mobile */
+  @media (max-width: 768px) {
+    .mobile-card-full {
+      border-radius: 0;
+      border-left: none;
+      border-right: none;
+      margin-left: calc(-1 * var(--panel-padding-mobile));
+      margin-right: calc(-1 * var(--panel-padding-mobile));
+    }
+  }
+
+  /* Mobile Sheet/Modal - Slide up from bottom */
+  @keyframes slide-up {
+    from {
+      transform: translateY(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  .mobile-sheet {
+    animation: slide-up 0.3s ease-out;
+  }
+
+  /* Disable hover effects on touch devices */
+  @media (hover: none) and (pointer: coarse) {
+    .hover-elevate:hover::after {
+      background-color: transparent;
+    }
   }
 
   /* Animated Background Mesh - WorkforceOS Style */
