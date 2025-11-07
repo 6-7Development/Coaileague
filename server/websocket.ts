@@ -2992,7 +2992,7 @@ export function setupWebSocket(server: Server) {
           name: error instanceof Error ? error.name : 'Unknown',
           message: error instanceof Error ? error.message : String(error),
           stack: error instanceof Error ? error.stack : undefined,
-          rawMessage: data ? data.substring(0, 500) : 'N/A' // First 500 chars of raw data
+          rawMessage: data ? String(data).substring(0, 500) : 'N/A' // First 500 chars of raw data
         });
         ws.send(JSON.stringify({
           type: 'error',
