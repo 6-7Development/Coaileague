@@ -109,11 +109,10 @@ import ChatExport from "@/pages/chat-export";
 import { FloatingChatButton } from "@/components/floating-chat-button";
 import { OnboardingWizard } from "@/components/onboarding-wizard";
 import { Sparkles, Search } from "lucide-react";
-import { NotificationsCenter } from "@/components/notifications-center";
+import { LiveUpdatesTicker } from "@/components/live-updates-ticker";
 import { WorkspaceSwitcher } from "@/components/workspace-switcher";
 import { WhatsNewBadge } from "@/components/whats-new-badge";
 import { HelpDropdown } from "@/components/help-dropdown";
-import { StatusIndicators } from "@/components/status-indicators";
 import { PlanBadge } from "@/components/plan-badge";
 import { FeedbackWidget } from "@/components/feedback-widget";
 
@@ -193,11 +192,9 @@ function AppContent() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  {/* Status Indicators (Sync/Connection) - Hidden on small screens */}
-                  <div className="hidden lg:block">
-                    <StatusIndicators />
-                  </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* Live Updates Ticker - Replaces bell & refresh icons */}
+                  <LiveUpdatesTicker />
 
                   {/* Plan Badge - Hidden on small screens */}
                   <div className="hidden md:block">
@@ -218,10 +215,10 @@ function AppContent() {
                             document.dispatchEvent(event);
                           }
                         }}
-                        className="shrink-0 h-9 w-9"
+                        className="shrink-0 h-10 w-10 rounded-xl hover-elevate active-elevate-2"
                         data-testid="button-global-search"
                       >
-                        <Search className="h-4 w-4" />
+                        <Search className="h-5 w-5" />
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
@@ -233,9 +230,6 @@ function AppContent() {
                   <div className="hidden sm:block">
                     <WhatsNewBadge />
                   </div>
-
-                  {/* Notifications Center */}
-                  <NotificationsCenter />
 
                   {/* Help Dropdown - Hidden on small screens */}
                   <div className="hidden md:block">
@@ -255,9 +249,9 @@ function AppContent() {
                         size="icon"
                         onClick={() => setShowOnboarding(true)}
                         data-testid="button-open-onboarding"
-                        className="shrink-0 hidden sm:flex h-9 w-9"
+                        className="shrink-0 hidden sm:flex h-10 w-10 rounded-xl hover-elevate active-elevate-2"
                       >
-                        <GraduationCap className="h-4 w-4" />
+                        <GraduationCap className="h-5 w-5" />
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
