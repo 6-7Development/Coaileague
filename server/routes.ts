@@ -9577,15 +9577,25 @@ Keep it professional, actionable, and under 250 words.`;
   });
 
   // Support Tickets - Create ticket (requires authentication to get workspaceId)
-  app.post('/api/support/tickets', isAuthenticated, async (req: any, res) => {
+  app.post('/api/support/tickets', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user!.id;
       const user = await storage.getUser(userId);
       if (!user?.currentWorkspaceId) {
         return res.status(403).json({ message: "No workspace selected" });
       }
 
-      const validated = insertSupportTicketSchema.parse(req.body);
+      // Validate request body (omit server-generated fields)
+      const validated = insertSupportTicketSchema.omit({ 
+        workspaceId: true, 
+        ticketNumber: true,
+        isEscalated: true,
+        escalatedAt: true,
+        escalatedBy: true,
+        escalatedReason: true,
+        platformAssignedTo: true,
+        platformNotes: true
+      }).parse(req.body);
       
       // Generate ticket number
       const ticketNumber = `TKT-${new Date().getFullYear()}-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
@@ -9604,9 +9614,9 @@ Keep it professional, actionable, and under 250 words.`;
   });
 
   // Get support tickets for current workspace
-  app.get('/api/support/tickets', isAuthenticated, async (req: any, res) => {
+  app.get('/api/support/tickets', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user!.id;
       const user = await storage.getUser(userId);
       if (!user?.currentWorkspaceId) {
         return res.status(403).json({ message: "No workspace selected" });
@@ -9621,7 +9631,7 @@ Keep it professional, actionable, and under 250 words.`;
   });
 
   // Update support ticket status
-  app.patch('/api/support/tickets/:id', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/support/tickets/:id', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const { id } = req.params;
       const ticket = await storage.updateSupportTicket(id, req.body);
@@ -9633,11 +9643,11 @@ Keep it professional, actionable, and under 250 words.`;
   });
 
   // Escalate support ticket to platform support (org leaders only)
-  app.post('/api/support/tickets/:id/escalate', isAuthenticated, requireManager, async (req: AuthenticatedRequest, res) => {
+  app.post('/api/support/tickets/:id/escalate', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
     try {
       const { id } = req.params;
       const { reason } = req.body;
-      const userId = req.user!.claims.sub;
+      const userId = req.user!.id;
 
       if (!reason) {
         return res.status(400).json({ message: "Escalation reason required" });
@@ -9718,11 +9728,17 @@ Keep it professional, actionable, and under 250 words.`;
   });
 
   // Assign escalated ticket to platform staff
-  app.patch('/api/support/escalated/:id/assign', requirePlatformStaff, async (req: AuthenticatedRequest, res) => {
+  app.patch('/api/support/escalated/:id/assign', requireAuth, requirePlatformStaff, async (req: AuthenticatedRequest, res) => {
     try {
       const { id } = req.params;
-      const { staffId } = req.body;
-      const userId = req.user!.claims.sub;
+      
+      // Validate request body
+      const validated = z.object({
+        staffId: z.string().min(1, "Staff ID required")
+      }).parse(req.body);
+      
+      const { staffId } = validated;
+      const userId = req.user!.id;
 
       // Verify ticket exists and is escalated
       const ticket = await db.query.supportTickets.findFirst({
@@ -9751,10 +9767,16 @@ Keep it professional, actionable, and under 250 words.`;
   });
 
   // Add platform notes to escalated ticket
-  app.patch('/api/support/escalated/:id/notes', requirePlatformStaff, async (req: AuthenticatedRequest, res) => {
+  app.patch('/api/support/escalated/:id/notes', requireAuth, requirePlatformStaff, async (req: AuthenticatedRequest, res) => {
     try {
       const { id } = req.params;
-      const { notes } = req.body;
+      
+      // Validate request body
+      const validated = z.object({
+        notes: z.string().min(1, "Notes required")
+      }).parse(req.body);
+      
+      const { notes } = validated;
 
       const [updatedTicket] = await db.update(supportTickets)
         .set({
@@ -9772,15 +9794,17 @@ Keep it professional, actionable, and under 250 words.`;
   });
 
   // Resolve escalated ticket
-  app.patch('/api/support/escalated/:id/resolve', requirePlatformStaff, async (req: AuthenticatedRequest, res) => {
+  app.patch('/api/support/escalated/:id/resolve', requireAuth, requirePlatformStaff, async (req: AuthenticatedRequest, res) => {
     try {
       const { id } = req.params;
-      const { resolution } = req.body;
-      const userId = req.user!.claims.sub;
-
-      if (!resolution) {
-        return res.status(400).json({ message: "Resolution required" });
-      }
+      const userId = req.user!.id;
+      
+      // Validate request body
+      const validated = z.object({
+        resolution: z.string().min(1, "Resolution required")
+      }).parse(req.body);
+      
+      const { resolution } = validated;
 
       // Verify ticket exists and is escalated
       const ticket = await db.query.supportTickets.findFirst({
