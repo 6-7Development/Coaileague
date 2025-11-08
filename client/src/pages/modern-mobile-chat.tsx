@@ -173,7 +173,7 @@ export default function ModernMobileChat() {
       setShowAgreement(false);
       toast({
         title: "Agreement Accepted",
-        description: "Welcome to WorkforceOS Support Chat",
+        description: "Welcome to AutoForce™ Support Chat",
       });
     },
     onError: (error: any) => {
@@ -189,7 +189,7 @@ export default function ModernMobileChat() {
   useEffect(() => {
     showTransition({
       status: "loading",
-      message: "Initializing WorkforceOS Support...",
+      message: "Initializing AutoForce™ Support...",
       submessage: "Connecting to Live Support Chat",
       duration: 2000,
       onComplete: () => {
@@ -231,7 +231,7 @@ export default function ModernMobileChat() {
       {
         icon: CheckCircle,
         label: 'Welcome & Introduction',
-        text: `Hi ${firstName}! Welcome to WorkforceOS Support! I'm here to assist you. How can I help you today?`,
+        text: `Hi ${firstName}! Welcome to AutoForce™ Support! I'm here to assist you. How can I help you today?`,
         color: 'text-primary'
       },
       {
@@ -273,7 +273,7 @@ export default function ModernMobileChat() {
       {
         icon: Star,
         label: 'Closing Remarks',
-        text: `Thank you for contacting WorkforceOS Support, ${firstName}! Feel free to reach out anytime you need assistance.`,
+        text: `Thank you for contacting AutoForce™ Support, ${firstName}! Feel free to reach out anytime you need assistance.`,
         color: 'text-amber-400'
       }
     ];
