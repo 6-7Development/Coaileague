@@ -45,7 +45,7 @@ export default function LiveChatroom() {
         
         // REDIRECT after 5 seconds
         const redirectTimer = setTimeout(() => {
-          console.log("📱 Auto-redirecting to DC360.5 Mobile Chat");
+          console.log("📱 Auto-redirecting to AutoForce™ Mobile Chat");
           setLocation("/mobile-chat");
         }, 5000);
         
@@ -112,7 +112,7 @@ export default function LiveChatroom() {
               Mobile Device<br className="sm:hidden" /> Detected
             </h2>
             <p className={`text-[10px] sm:text-sm text-slate-300 leading-snug px-2 transition-opacity duration-500 ${stage >= 1 ? 'opacity-100' : 'opacity-0'}`}>
-              Initializing DC360.5 Mobile Chat
+              Initializing AutoForce™ Mobile Chat
             </p>
           </div>
 
@@ -120,7 +120,7 @@ export default function LiveChatroom() {
           <div className="bg-slate-950/50 rounded-lg p-2 sm:p-4 border border-primary/20 space-y-2 sm:space-y-3">
             <div className={`flex items-center justify-between transition-all duration-500 ${stage >= 1 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
               <span className="text-[10px] sm:text-xs text-slate-400">Desktop:</span>
-              <span className="text-xs sm:text-sm font-semibold text-slate-300">DC360</span>
+              <span className="text-xs sm:text-sm font-semibold text-slate-300">AutoForce™</span>
             </div>
             
             {/* Animated Arrow */}
@@ -135,7 +135,7 @@ export default function LiveChatroom() {
             
             <div className={`flex items-center justify-between transition-all duration-500 ${stage >= 2 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
               <span className="text-[10px] sm:text-xs text-slate-400">Mobile:</span>
-              <span className="text-xs sm:text-sm font-semibold text-primary">DC360.5</span>
+              <span className="text-xs sm:text-sm font-semibold text-primary">AutoForce™ Mobile</span>
             </div>
           </div>
 
