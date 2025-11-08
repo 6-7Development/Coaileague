@@ -124,6 +124,7 @@ import { WhatsNewBadge } from "@/components/whats-new-badge";
 import { HelpDropdown } from "@/components/help-dropdown";
 import { PlanBadge } from "@/components/plan-badge";
 import { FeedbackWidget } from "@/components/feedback-widget";
+import { PageBreadcrumb } from "@/components/page-breadcrumb";
 
 function AppContent() {
   const { isAuthenticated, isLoading, user } = useAuth();
@@ -197,20 +198,28 @@ function AppContent() {
           <div className="flex flex-col flex-1 min-h-0 w-full max-w-full overflow-x-hidden">
             <DemoBanner />
 
-            {/* Global Header with Sidebar Toggle - Hidden for mobile chat AND HelpDesk */}
+            {/* Global Header with Sidebar Toggle - STICKY floats over content */}
             {!isMobileChat && !isHelpDesk && (
-              <header className="flex items-center justify-between px-3 sm:px-4 py-2 border-b bg-card shrink-0 h-14">
+              <header className="sticky top-0 z-50 flex items-center justify-between px-3 sm:px-4 py-2 border-b bg-card/95 backdrop-blur-sm h-14">
                 <div className="flex items-center gap-2">
-                  {/* Menu Toggle with label */}
+                  {/* Menu Toggle with visible label */}
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <div className="flex items-center gap-2">
-                        <SidebarTrigger data-testid="button-sidebar-toggle" className="shrink-0" />
-                        <span className="hidden lg:inline text-xs text-muted-foreground font-medium">Menu</span>
-                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          const trigger = document.querySelector('[data-testid="button-sidebar-toggle"]') as HTMLButtonElement;
+                          if (trigger) trigger.click();
+                        }}
+                        data-testid="button-menu-toggle"
+                        className="shrink-0 gap-2"
+                      >
+                        <span className="text-sm">Menu</span>
+                      </Button>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Toggle sidebar menu</p>
+                      <p>Open navigation menu</p>
                     </TooltipContent>
                   </Tooltip>
 
@@ -220,7 +229,7 @@ function AppContent() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-1 flex-wrap">
                   {/* Dynamic Billboard - Greetings, Announcements, Birthday Celebrations */}
                   <HeaderBillboard />
 
@@ -229,12 +238,12 @@ function AppContent() {
                     <PlanBadge />
                   </div>
 
-                  {/* Global Search Trigger */}
+                  {/* Global Search with label */}
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
                         variant="ghost"
-                        size="icon"
+                        size="sm"
                         onClick={() => {
                           if ((window as any).openCommandPalette) {
                             (window as any).openCommandPalette();
@@ -243,14 +252,15 @@ function AppContent() {
                             document.dispatchEvent(event);
                           }
                         }}
-                        className="shrink-0 h-10 w-10 rounded-xl hover-elevate active-elevate-2"
+                        className="shrink-0 gap-2"
                         data-testid="button-global-search"
                       >
-                        <Search className="h-5 w-5" />
+                        <Search className="h-4 w-4" />
+                        <span className="hidden xl:inline text-sm">Search</span>
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Search (Cmd/Ctrl + K)</p>
+                      <p>Search platform (Cmd/Ctrl + K)</p>
                     </TooltipContent>
                   </Tooltip>
 
@@ -269,34 +279,34 @@ function AppContent() {
                     <FeedbackWidget />
                   </div>
 
-                  {/* Tutorial/Tour Button - Hidden on mobile */}
+                  {/* Tutorial/Tour Button with label */}
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
                         variant="ghost"
-                        size="icon"
+                        size="sm"
                         onClick={() => setShowOnboarding(true)}
                         data-testid="button-open-onboarding"
-                        className="shrink-0 hidden sm:flex h-10 w-10 rounded-xl hover-elevate active-elevate-2"
+                        className="shrink-0 hidden sm:flex gap-2"
                       >
-                        <GraduationCap className="h-5 w-5" />
+                        <GraduationCap className="h-4 w-4" />
+                        <span className="hidden xl:inline text-sm">Tutorial</span>
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Start platform walkthrough</p>
+                      <p>Start interactive walkthrough</p>
                     </TooltipContent>
                   </Tooltip>
 
-                  {/* Role-Aware Settings Gear */}
+                  {/* Role-Aware Settings Gear with label */}
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
                         variant="ghost"
-                        size="icon"
+                        size="sm"
                         onClick={() => {
                           // Role-based routing
                           if (isRootAdmin) {
-                            // ROOT/SYSOP → Platform management (maintenance mode, services control)
                             setLocation('/platform-admin');
                           } else if (
                             (user as any)?.platformRole === 'deputy_admin' ||
@@ -304,21 +314,20 @@ function AppContent() {
                             (user as any)?.platformRole === 'support_agent' ||
                             (user as any)?.platformRole === 'compliance_officer'
                           ) {
-                            // Support roles → Their tools/admin area
                             setLocation('/admin-command-center');
                           } else {
-                            // Regular users → Organization settings
                             setLocation('/settings');
                           }
                         }}
                         data-testid="button-settings-gear"
-                        className="shrink-0 h-10 w-10 rounded-xl hover-elevate active-elevate-2"
+                        className="shrink-0 gap-2"
                       >
-                        <Settings2 className="h-5 w-5 text-primary" />
+                        <Settings2 className="h-4 w-4 text-primary" />
+                        <span className="hidden xl:inline text-sm">{isRootAdmin ? 'Admin' : 'Settings'}</span>
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>{isRootAdmin ? 'Platform Management' : 'Settings'}</p>
+                      <p>{isRootAdmin ? 'Platform Management' : 'Organization Settings'}</p>
                     </TooltipContent>
                   </Tooltip>
 
@@ -330,7 +339,14 @@ function AppContent() {
               </header>
             )}
 
+            {/* Hidden SidebarTrigger - controlled by Menu button */}
+            <SidebarTrigger data-testid="button-sidebar-toggle" className="hidden" />
+
+            {/* Main content area */}
             <main className="flex-1 overflow-x-hidden overflow-y-auto scrollbar-hide bg-transparent min-h-0 w-full max-w-full">
+              {/* Breadcrumb Navigation - helps users know where they are */}
+              {!isMobileChat && !isHelpDesk && <PageBreadcrumb />}
+              
               <Switch>
                 <Route path="/">
                   {isRootAdmin ? <RootAdminDashboard /> : <Dashboard />}
