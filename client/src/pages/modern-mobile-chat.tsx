@@ -1083,7 +1083,7 @@ export default function ModernMobileChat() {
                 </span>
                 {/* Private Message Indicator with Glow Effect */}
                 {isPrivate && (
-                  <span className="text-[10px] font-bold text-primary px-2 py-0.5 rounded-full bg-muted/30/20 border border-primary/80/30 animate-pulse-glow" data-testid="badge-private-message">
+                  <span className="text-[10px] font-bold text-primary px-2 py-0.5 rounded-full bg-muted/20 border border-primary/80/30 animate-pulse-glow" data-testid="badge-private-message">
                     whispered
                   </span>
                 )}
@@ -1207,7 +1207,7 @@ export default function ModernMobileChat() {
                       }}
                       className={`w-full flex items-center gap-3 p-3 rounded-lg border transition-all ${
                         selectedUser?.id === user.id
-                          ? 'bg-muted/30/20 border-primary/50'
+                          ? 'bg-muted/20 border-primary/50'
                           : 'bg-white/5 border-white/10 hover-elevate active-elevate-2'
                       }`}
                       data-testid={`user-${user.id}`}

@@ -775,7 +775,7 @@ export default function LeadersHub() {
                         data-testid={`action-item-${action.id}`}
                       >
                         <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 ${
-                          action.status === 'completed' ? 'bg-muted/30/10 text-primary' :
+                          action.status === 'completed' ? 'bg-muted/10 text-primary' :
                           action.status === 'pending' ? 'bg-amber-500/10 text-amber-600' :
                           'bg-destructive/10 text-destructive'
                         }`}>

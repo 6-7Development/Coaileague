@@ -257,7 +257,7 @@ export default function RichTextDemo() {
         </Tabs>
 
         {/* Features List */}
-        <Card className="bg-muted/30/10 border-primary/20">
+        <Card className="bg-muted/10 border-primary/20">
           <CardHeader>
             <CardTitle className="text-primary">Available Formatting Features</CardTitle>
           </CardHeader>

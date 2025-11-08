@@ -163,7 +163,7 @@ export default function EmployeePortal() {
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between mb-2">
                   <Award className="h-5 w-5 text-violet-500" />
-                  <Badge variant="secondary" className="bg-muted/30/10 text-primary">
+                  <Badge variant="secondary" className="bg-muted/10 text-primary">
                     Active
                   </Badge>
                 </div>
@@ -252,7 +252,7 @@ export default function EmployeePortal() {
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm">Status</span>
-                    <Badge className="bg-muted/30/10 text-primary border-0">
+                    <Badge className="bg-muted/10 text-primary border-0">
                       <CheckCircle2 className="h-3 w-3 mr-1" />
                       Active
                     </Badge>

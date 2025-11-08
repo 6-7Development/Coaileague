@@ -226,7 +226,7 @@ export default function AuditorPortal() {
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between mb-2">
                   <DollarSign className="h-5 w-5 text-primary" />
-                  <Badge className="bg-muted/30/10 text-primary border-0">
+                  <Badge className="bg-muted/10 text-primary border-0">
                     <CheckCircle2 className="h-3 w-3 mr-1" />
                     Paid
                   </Badge>
@@ -274,7 +274,7 @@ export default function AuditorPortal() {
                   )}
                   <Badge 
                     className={profitMargin >= 0 
-                      ? "bg-muted/30/10 text-primary border-0" 
+                      ? "bg-muted/10 text-primary border-0" 
                       : "bg-rose-500/10 text-rose-600 border-0"
                     }
                   >
@@ -342,7 +342,7 @@ export default function AuditorPortal() {
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm">Paid Invoices</span>
-                    <Badge className="bg-muted/30/10 text-primary border-0">
+                    <Badge className="bg-muted/10 text-primary border-0">
                       {invoices.filter(i => i.status === 'paid').length}
                     </Badge>
                   </div>
@@ -414,7 +414,7 @@ export default function AuditorPortal() {
                             <Badge
                               className={
                                 invoice.status === 'paid'
-                                  ? 'bg-muted/30/10 text-primary border-0'
+                                  ? 'bg-muted/10 text-primary border-0'
                                   : invoice.status === 'sent'
                                   ? 'bg-amber-500/10 text-amber-600 border-0'
                                   : ''

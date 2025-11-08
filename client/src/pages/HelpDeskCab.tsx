@@ -1858,7 +1858,7 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
                           <h3 className="text-white font-bold text-lg">
                             {userContext.user.firstName} {userContext.user.lastName}
                           </h3>
-                          <Badge variant="secondary" className="bg-muted/30/20 text-primary border-primary/30 mt-1">
+                          <Badge variant="secondary" className="bg-muted/20 text-primary border-primary/30 mt-1">
                             Simulated Demo User
                           </Badge>
                         </div>
@@ -1883,7 +1883,7 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
                     </div>
 
                     {userContext.note && (
-                      <div className="bg-muted/30/10 border border-primary/30 rounded-lg p-3">
+                      <div className="bg-muted/10 border border-primary/30 rounded-lg p-3">
                         <div className="flex items-start gap-2">
                           <Info className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
                           <span className="text-primary text-xs">
@@ -2050,7 +2050,7 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
                             });
                             setShowUserProfile(false);
                           }}
-                          className="w-full bg-muted/30/20 hover:bg-muted/30/30 border border-primary/30 text-white"
+                          className="w-full bg-muted/20 hover:bg-muted/30 border border-primary/30 text-white"
                           data-testid="button-user-history"
                         >
                           <History className="w-4 h-4 mr-2" />
@@ -2076,7 +2076,7 @@ export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}
                             </div>
                           </div>
                         </div>
-                        <div className="mt-4 p-3 bg-muted/30/10 border border-primary/30 rounded-lg">
+                        <div className="mt-4 p-3 bg-muted/10 border border-primary/30 rounded-lg">
                           <p className="text-primary text-xs">
                             <Info className="w-3 h-3 inline mr-1" />
                             Full user details are only visible to support staff

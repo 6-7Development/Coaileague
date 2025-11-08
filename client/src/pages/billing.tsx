@@ -95,7 +95,7 @@ export default function Billing() {
 
   const accountState = workspace?.accountState || "active";
   const accountStateConfig = {
-    active: { icon: CheckCircle2, label: "Active", className: "text-primary", bgClassName: "bg-muted/30/10 border-primary/20" },
+    active: { icon: CheckCircle2, label: "Active", className: "text-primary", bgClassName: "bg-muted/10 border-primary/20" },
     payment_failed: { icon: AlertTriangle, label: "Payment Failed", className: "text-yellow-500", bgClassName: "bg-yellow-500/10 border-yellow-500/20" },
     suspended: { icon: XCircle, label: "Suspended", className: "text-red-500", bgClassName: "bg-red-500/10 border-red-500/20" },
     requires_support: { icon: Clock, label: "Requires Support", className: "text-orange-500", bgClassName: "bg-orange-500/10 border-orange-500/20" },
@@ -389,7 +389,7 @@ export default function Billing() {
                   {addons.map((addon: any) => {
                     const isActive = Array.isArray(activeAddons) && activeAddons.some((a: any) => a.addonId === addon.id);
                     return (
-                      <Card key={addon.id} className={isActive ? "border-primary bg-muted/30/5" : ""} data-testid={`addon-${addon.id}`}>
+                      <Card key={addon.id} className={isActive ? "border-primary bg-muted/5" : ""} data-testid={`addon-${addon.id}`}>
                         <CardHeader>
                           <div className="flex items-start justify-between">
                             <div>

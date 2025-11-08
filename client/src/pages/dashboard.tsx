@@ -388,7 +388,7 @@ export default function Dashboard() {
                     className={`backdrop-blur-xl border rounded-2xl p-4 transition-all duration-300 hover:scale-[1.01] ${
                       notification.isRead
                         ? 'bg-white/5 border-white/10'
-                        : 'bg-muted/30/10 border-primary/30 shadow-lg shadow-primary/10'
+                        : 'bg-muted/10 border-primary/30 shadow-lg shadow-primary/10'
                     }`}
                     data-testid={`notification-${notification.id}`}
                   >

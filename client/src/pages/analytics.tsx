@@ -85,7 +85,7 @@ export default function Analytics() {
           {/* Total Revenue */}
           <div className="group backdrop-blur-xl bg-gradient-to-br from-primary/10 to-green-500/5 border border-primary/20 rounded-2xl p-6 hover:border-primary/40 transition-all duration-300 hover:shadow-lg hover:shadow-primary/20" data-testid="card-revenue">
             <div className="flex items-center justify-between mb-4">
-              <div className="p-3 bg-muted/30/20 rounded-xl group-hover:scale-110 transition-transform">
+              <div className="p-3 bg-muted/20 rounded-xl group-hover:scale-110 transition-transform">
                 <DollarSign className="w-6 h-6 text-primary" />
               </div>
               <div className="h-2 w-2 bg-primary rounded-full animate-pulse"></div>
@@ -221,7 +221,7 @@ export default function Analytics() {
                   </p>
                   <p className="text-xs text-slate-400">Total Invoices</p>
                 </div>
-                <div className="p-4 rounded-lg bg-muted/30/10 border border-primary/20">
+                <div className="p-4 rounded-lg bg-muted/10 border border-primary/20">
                   <p className="text-3xl font-bold text-white mb-1" data-testid="text-paid-invoices">
                     {analytics.paidInvoices}
                   </p>

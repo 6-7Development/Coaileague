@@ -748,7 +748,7 @@ export default function LiveChatroomPage() {
                         setShowStaffControls(true);
                       }}
                       data-testid="button-staff-controls-mobile"
-                      className="w-full gap-2 bg-muted/30/10 border-primary/30 text-green-200 hover:bg-muted/30/20"
+                      className="w-full gap-2 bg-muted/10 border-primary/30 text-green-200 hover:bg-muted/20"
                     >
                       <Settings className="w-4 h-4" />
                       Staff Controls
@@ -829,7 +829,7 @@ export default function LiveChatroomPage() {
                   setShowUserActions(false);
                 }}
                 variant="outline"
-                className="w-full justify-start gap-3 h-12 bg-muted/30/10 border-primary/30 text-green-200 hover:bg-muted/30/20"
+                className="w-full justify-start gap-3 h-12 bg-muted/10 border-primary/30 text-green-200 hover:bg-muted/20"
                 data-testid="button-request-auth"
               >
                 <Lock className="w-4 h-4" />
@@ -921,7 +921,7 @@ export default function LiveChatroomPage() {
                   toast({ title: `Transferred ${selectedUser.name} to senior support` });
                 }}
                 variant="outline"
-                className="w-full justify-start gap-3 h-auto py-3 bg-muted/30/10 border-primary/30 text-primary"
+                className="w-full justify-start gap-3 h-auto py-3 bg-muted/10 border-primary/30 text-primary"
                 data-testid="button-transfer-user"
               >
                 🔄 Transfer to Senior Support
@@ -933,7 +933,7 @@ export default function LiveChatroomPage() {
                   setShowUserActions(false);
                 }}
                 variant="outline"
-                className="w-full justify-start gap-3 h-auto py-3 bg-muted/30/10 border-primary/30 text-green-200"
+                className="w-full justify-start gap-3 h-auto py-3 bg-muted/10 border-primary/30 text-green-200"
                 data-testid="button-mark-resolved"
               >
                 ✅ Mark Resolved
@@ -1001,7 +1001,7 @@ export default function LiveChatroomPage() {
               {messages.length === 0 ? (
                 <Card className="border-dashed border-slate-600/30 bg-slate-800/40 backdrop-blur-sm">
                   <CardContent className="p-8 text-center">
-                    <div className="p-4 bg-muted/30/10 rounded-full w-fit mx-auto mb-4">
+                    <div className="p-4 bg-muted/10 rounded-full w-fit mx-auto mb-4">
                       <MessageSquare className="w-12 h-12 text-primary" />
                     </div>
                     <h3 className="font-semibold mb-2 text-slate-200">Welcome to HelpDesk</h3>
@@ -1159,7 +1159,7 @@ export default function LiveChatroomPage() {
               </div>
             </div>
 
-            <Separator className="bg-muted/30/20" />
+            <Separator className="bg-muted/20" />
 
             <Card className="border-primary/30 bg-gradient-to-br from-green-500/10 to-accent/10 backdrop-blur-sm shadow-lg shadow-green-500/10">
               <CardHeader className="p-3">
@@ -1327,7 +1327,7 @@ export default function LiveChatroomPage() {
                   Your work email address
                 </p>
               </div>
-              <Card className="border-primary/30 bg-muted/30/5">
+              <Card className="border-primary/30 bg-muted/5">
                 <CardContent className="p-2 sm:p-3">
                   <div className="flex items-start gap-2">
                     <Shield className="w-3 h-3 sm:w-4 sm:h-4 text-primary mt-0.5 flex-shrink-0" />
@@ -1439,7 +1439,7 @@ export default function LiveChatroomPage() {
               <Separator />
 
               {/* AI Toggle */}
-              <div className="flex items-center justify-between p-3 rounded-lg border border-border dark:border-primary bg-muted/30/50 dark:bg-slate-950/30">
+              <div className="flex items-center justify-between p-3 rounded-lg border border-border dark:border-primary bg-muted/50 dark:bg-slate-950/30">
                 <div className="flex items-center gap-2 flex-1">
                   <Bot className="w-4 h-4 text-primary dark:text-primary flex-shrink-0" />
                   <div>
@@ -1507,7 +1507,7 @@ export default function LiveChatroomPage() {
                 />
               </div>
 
-              <Card className="border-border dark:border-primary bg-muted/30/50 dark:bg-slate-950/30">
+              <Card className="border-border dark:border-primary bg-muted/50 dark:bg-slate-950/30">
                 <CardContent className="p-3">
                   <div className="flex items-start gap-2">
                     <Shield className="w-4 h-4 text-primary dark:text-primary mt-0.5 flex-shrink-0" />

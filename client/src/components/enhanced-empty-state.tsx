@@ -38,7 +38,7 @@ export function EnhancedEmptyState({
     },
     professional: {
       gradient: "from-primary/20 via-accent/10 to-transparent",
-      iconBg: "bg-muted/30/20",
+      iconBg: "bg-muted/20",
       iconColor: "text-primary",
       glow: "shadow-primary/30",
     },
