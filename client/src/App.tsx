@@ -111,6 +111,9 @@ import ManagerDashboard from "@/pages/manager-dashboard";
 import ChatExport from "@/pages/chat-export";
 import RichTextDemo from "@/pages/RichTextDemo";
 import OrgSupport from "@/pages/org-support";
+import Error403 from "@/pages/error-403";
+import Error404 from "@/pages/error-404";
+import Error500 from "@/pages/error-500";
 import { FloatingChatButton } from "@/components/floating-chat-button";
 import { ReenableChatButton } from "@/components/reenable-chat-button";
 import { OnboardingWizard } from "@/components/onboarding-wizard";
@@ -167,6 +170,12 @@ function AppContent() {
         <Route path="/logo-showcase-v2" component={LogoShowcaseV2} />
         <Route path="/onboarding/:token" component={OnboardingPage} />
         <Route path="/pay-invoice/:id" component={PayInvoice} />
+        
+        {/* Error pages */}
+        <Route path="/error-403" component={Error403} />
+        <Route path="/error-404" component={Error404} />
+        <Route path="/error-500" component={Error500} />
+        
         <Route component={Landing} />
       </Switch>
     );
@@ -433,6 +442,12 @@ function AppContent() {
                 <Route path="/design-comparison" component={DesignComparison} />
                 <Route path="/logo-showcase" component={LogoShowcase} />
                 <Route path="/support" component={Support} />
+                
+                {/* Error pages */}
+                <Route path="/error-403" component={Error403} />
+                <Route path="/error-404" component={Error404} />
+                <Route path="/error-500" component={Error500} />
+                
                 <Route component={NotFound} />
               </Switch>
             </main>
