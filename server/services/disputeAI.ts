@@ -36,6 +36,10 @@ export async function analyzeDispute(
   targetContext?: {
     targetType: string;
     targetData?: any; // Review data, report data, etc.
+  },
+  billingContext?: {
+    workspaceId: string;
+    userId?: string;
   }
 ): Promise<DisputeAnalysis> {
   try {
@@ -90,6 +94,27 @@ Respond ONLY with valid JSON, no other text.`;
       temperature: 0.3, // Lower temperature for more consistent analysis
       max_tokens: 1000,
     });
+
+    // USAGE-BASED BILLING: Track AI token usage for customer billing
+    const tokenUsage = completion.usage;
+    if (tokenUsage && billingContext?.workspaceId) {
+      const { usageMeteringService } = await import('./billing/usageMetering');
+      await usageMeteringService.recordUsage({
+        workspaceId: billingContext.workspaceId,
+        userId: billingContext.userId,
+        featureKey: 'disputeai_analysis',
+        usageType: 'token',
+        usageAmount: tokenUsage.total_tokens,
+        usageUnit: 'tokens',
+        metadata: {
+          model: 'gpt-4-turbo',
+          promptTokens: tokenUsage.prompt_tokens,
+          completionTokens: tokenUsage.completion_tokens,
+          disputeType,
+        },
+      });
+      console.log(`[DisputeAI] Billed ${tokenUsage.total_tokens} tokens to workspace ${billingContext.workspaceId}`);
+    }
 
     const responseText = completion.choices[0]?.message?.content?.trim() || '{}';
     
