@@ -192,15 +192,16 @@ function AppContent() {
     <ProtectedRoute>
       <SidebarProvider defaultOpen={false} style={style as React.CSSProperties}>
         <CommandPalette />
-        <div className="flex h-screen w-full overflow-x-hidden max-w-full">
+        <div className="flex h-screen w-full overflow-x-hidden max-w-full relative">
           {/* Hide global sidebar for mobile chat - it has its own support menu */}
           {!isMobileChat && <AppSidebar />}
-          <div className="flex flex-col flex-1 min-h-0 w-full max-w-full overflow-x-hidden">
+          <div className="flex flex-col absolute inset-0 min-h-0 w-full max-w-full overflow-x-hidden">
+            {/* Demo Banner - positioned to account for fixed header */}
             <DemoBanner />
 
-            {/* Global Header with Sidebar Toggle - STICKY floats over content */}
+            {/* Global Header - FIXED floats over all content */}
             {!isMobileChat && !isHelpDesk && (
-              <header className="sticky top-0 z-50 flex items-center justify-between px-3 sm:px-4 py-2 border-b bg-card/95 backdrop-blur-sm h-14">
+              <header className="fixed top-0 left-0 right-0 z-[60] flex items-center justify-between px-3 sm:px-4 py-2 border-b bg-card/95 backdrop-blur-sm h-14">
                 <div className="flex items-center gap-2">
                   {/* Menu Toggle with visible label */}
                   <Tooltip>
@@ -342,8 +343,8 @@ function AppContent() {
             {/* Hidden SidebarTrigger - controlled by Menu button */}
             <SidebarTrigger data-testid="button-sidebar-toggle" className="hidden" />
 
-            {/* Main content area */}
-            <main className="flex-1 overflow-x-hidden overflow-y-auto scrollbar-hide bg-transparent min-h-0 w-full max-w-full">
+            {/* Main content area - add padding-top for fixed header */}
+            <main className={`flex-1 overflow-x-hidden overflow-y-auto scrollbar-hide bg-transparent min-h-0 w-full max-w-full ${!isMobileChat && !isHelpDesk ? 'pt-14' : ''}`}>
               {/* Breadcrumb Navigation - helps users know where they are */}
               {!isMobileChat && !isHelpDesk && <PageBreadcrumb />}
               
