@@ -78,7 +78,7 @@ export function MobileShiftCalendar({ onCreateShift }: MobileShiftCalendarProps)
   // This enables live sync: desktop changes → mobile updates, mobile → desktop
   const { isConnected: wsConnected } = useShiftWebSocket(
     currentUser?.id,
-    currentUser?.workspaceId
+    currentUser?.currentWorkspaceId ?? undefined
   );
 
   // Fetch data
@@ -114,10 +114,7 @@ export function MobileShiftCalendar({ onCreateShift }: MobileShiftCalendarProps)
   // Clock In mutation
   const clockInMutation = useMutation({
     mutationFn: async (shiftId: string) => {
-      return await apiRequest(`/api/time-entries/clock-in`, {
-        method: "POST",
-        body: { shiftId },
-      });
+      return await apiRequest("POST", `/api/time-entries/clock-in`, { shiftId });
     },
     onSuccess: () => {
       toast({
@@ -141,9 +138,7 @@ export function MobileShiftCalendar({ onCreateShift }: MobileShiftCalendarProps)
   // Clock Out mutation
   const clockOutMutation = useMutation({
     mutationFn: async (timeEntryId: string) => {
-      return await apiRequest(`/api/time-entries/${timeEntryId}/clock-out`, {
-        method: "PATCH",
-      });
+      return await apiRequest("PATCH", `/api/time-entries/${timeEntryId}/clock-out`);
     },
     onSuccess: () => {
       toast({
@@ -167,9 +162,7 @@ export function MobileShiftCalendar({ onCreateShift }: MobileShiftCalendarProps)
   // Acknowledge shift acknowledgment
   const acknowledgeMutation = useMutation({
     mutationFn: async (acknowledgmentId: string) => {
-      return await apiRequest(`/api/acknowledgments/${acknowledgmentId}/acknowledge`, {
-        method: "PATCH",
-      });
+      return await apiRequest("PATCH", `/api/acknowledgments/${acknowledgmentId}/acknowledge`);
     },
     onSuccess: () => {
       toast({
@@ -543,21 +536,19 @@ export function MobileShiftCalendar({ onCreateShift }: MobileShiftCalendarProps)
                 onClick={async () => {
                   try {
                     // Create chat room for this shift
-                    const response = await apiRequest("/api/chat/rooms", {
-                      method: "POST",
-                      body: {
-                        name: `Shift: ${getClientName(selectedShift.clientId) || 'Assignment'}`,
-                        description: `Chat for shift on ${format(new Date(selectedShift.startTime), 'MMM d, yyyy')}`,
-                        isPublic: false,
-                      },
+                    const response = await apiRequest("POST", "/api/chat/rooms", {
+                      name: `Shift: ${getClientName(selectedShift.clientId) || 'Assignment'}`,
+                      description: `Chat for shift on ${format(new Date(selectedShift.startTime), 'MMM d, yyyy')}`,
+                      isPublic: false,
                     });
+                    const data = await response.json();
                     toast({
                       title: "Chat Created",
                       description: "Opening shift communication channel...",
                       variant: "success" as any,
                     });
                     // Navigate to chat or open chat panel
-                    window.location.href = `/team-communication?room=${response.id}`;
+                    window.location.href = `/team-communication?room=${data.id}`;
                   } catch (error: any) {
                     toast({
                       title: "Failed to Create Chat",
@@ -578,7 +569,8 @@ export function MobileShiftCalendar({ onCreateShift }: MobileShiftCalendarProps)
                 onClick={async () => {
                   try {
                     // Fetch audit trail for this shift
-                    const auditData = await apiRequest(`/api/audit/entity/shift/${selectedShift.id}`);
+                    const response = await apiRequest("GET", `/api/audit/entity/shift/${selectedShift.id}`);
+                    const auditData = await response.json();
                     toast({
                       title: "Audit Trail",
                       description: `Found ${auditData.length || 0} audit entries for this shift`,
