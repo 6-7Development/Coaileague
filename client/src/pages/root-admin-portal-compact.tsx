@@ -27,7 +27,7 @@ export default function RootAdminPortalCompact() {
   useEffect(() => {
     if (!isLoading) {
       const platformRole = (user as any)?.platformRole;
-      if (platformRole !== 'root' && platformRole !== 'sysop') {
+      if (platformRole !== 'root_admin' && platformRole !== 'sysop') {
         if (!user) {
           window.location.href = '/login';
         } else {

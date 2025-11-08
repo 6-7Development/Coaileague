@@ -163,7 +163,7 @@ export default function TrainingOS() {
 
   const categories = Array.from(new Set(courses.map((c) => c.category)));
 
-  const isAdmin = (user as any)?.workspaceRole === "owner" || (user as any)?.platformRole === "root";
+  const isAdmin = (user as any)?.workspaceRole === "org_owner" || (user as any)?.platformRole === "root_admin";
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
