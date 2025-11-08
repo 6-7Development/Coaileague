@@ -45,11 +45,15 @@ The platform features a professional aesthetic with Deep Charcoal, Platinum neut
 - **Database**: PostgreSQL with Drizzle ORM.
 - **Authentication**: Custom session-based authentication supporting Replit Auth (OIDC) and Custom Auth, including bcrypt, account locking, and password reset.
 - **Multi-Tenancy**: Data isolation is managed on a workspace basis.
-- **Role-Based Access Control (RBAC)**: Implements comprehensive two-tier hierarchical role system with clear separation between platform support and organization/tenant management:
-  - **Platform Support Roles** (AutoForce™ Internal Team): root_admin, deputy_admin, sysop, support_manager, support_agent, compliance_officer, none
+- **Role-Based Access Control (RBAC)**: **COMPLETED November 2025** - Implements comprehensive two-tier hierarchical role system with clear separation between platform support and organization/tenant management:
+  - **Platform Support Roles** (AutoForce™ Internal Team): root_admin(100), deputy_admin(80), support_manager(60), compliance_officer(50), sysop(40), support_agent(20), none(0) - hierarchy levels ensure proper staff authority
   - **Organization/Tenant Roles** (Subscriber Companies): org_owner, org_admin, department_manager, supervisor, staff, auditor, contractor
   - Platform roles managed via separate `platform_roles` table for flexible multi-role assignments
   - Workspace roles assigned per-employee via `employees` table for tenant-scoped permissions
+  - **Migration Completed**: All existing platform roles (root→root_admin, deputy_assistant→support_manager, support→support_agent) and workspace roles (owner→org_owner, manager→department_manager, employee→staff) successfully updated across 3 platform role records and 12 employee records
+  - **Type Safety**: Full TypeScript type definitions in server/rbac.ts with PlatformRole and WorkspaceRole unions matching schema enums
+  - **Authorization**: Comprehensive guard middleware (requireOwner, requireManager, requireEmployee, requirePlatformStaff, requirePlatformAdmin) using new role names
+  - **UI Consistency**: All 16+ frontend/backend files updated with new role checks for consistent authorization logic
 - **Communication**: Utilizes an IRC-style WebSocket command/response architecture for real-time interactions. The chat system includes:
     - **HelpDesk5/LiveChat**: Mobile and desktop optimized support chat for organizations to interact with AutoForce™ support.
     - **CommOS™**: Organization-specific chatrooms with role-based access, supporting regular users, organization leaders, and platform support staff with specialized functionalities. Inactive rooms are automatically archived.
@@ -89,7 +93,7 @@ The platform features a professional aesthetic with Deep Charcoal, Platinum neut
         - **Smart Escalation**: Hands off complex issues to human staff with context preservation
         - **Dual Notification System**: 
             - **Chat Announcements**: Staff-only inline messages in HelpDesk room for real-time awareness
-            - **Database Notifications**: System notifications sent to all support staff (ROOT, DEPUTY_ADMIN, DEPUTY_ASSISTANT, SYSOP) ensuring agents are notified even when not in chat/dashboard
+            - **Database Notifications**: System notifications sent to all support staff (root_admin, deputy_admin, support_manager, sysop, support_agent, compliance_officer) ensuring agents are notified even when not in chat/dashboard
         - **Bot Workflow Tools**: searchKnowledgeBase, detectUserSentiment, checkTicketStatus, formatFaqAnswer
         - **Decision Logic**: Multi-factor analysis determines search/present/clarify/escalate/close actions with confidence scoring
         - **Continuous Learning**: Successful bot conversations become FAQ entries after staff review
