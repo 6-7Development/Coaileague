@@ -257,7 +257,7 @@ function AppContent() {
                         data-testid="button-global-search"
                       >
                         <Search className="h-4 w-4" />
-                        <span className="hidden xl:inline text-sm">Search</span>
+                        <span className="hidden sm:inline text-sm">Search</span>
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
@@ -291,7 +291,7 @@ function AppContent() {
                         className="shrink-0 hidden sm:flex gap-2"
                       >
                         <GraduationCap className="h-4 w-4" />
-                        <span className="hidden xl:inline text-sm">Tutorial</span>
+                        <span className="text-sm">Tutorial</span>
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
@@ -324,7 +324,7 @@ function AppContent() {
                         className="shrink-0 gap-2"
                       >
                         <Settings2 className="h-4 w-4 text-primary" />
-                        <span className="hidden xl:inline text-sm">{isRootAdmin ? 'Admin' : 'Settings'}</span>
+                        <span className="hidden sm:inline text-sm">{isRootAdmin ? 'Admin' : 'Settings'}</span>
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
