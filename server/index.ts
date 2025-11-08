@@ -4,6 +4,7 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import pgSession from "connect-pg-simple";
 import { pool } from "./db"; // Assuming 'pool' is your PostgreSQL client connection pool
+import { monitoringService } from "./monitoring";
 
 const PgStore = pgSession(session);
 
@@ -14,11 +15,26 @@ app.use(express.urlencoded({ extended: false }));
 // Trust proxy for accurate IP detection behind load balancers
 app.set('trust proxy', 1);
 
-// Add health check endpoint BEFORE authentication middleware
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+// Production health check endpoint with monitoring service
+app.get('/health', async (req, res) => {
+  try {
+    const healthStatus = await monitoringService.getHealthStatus();
+    const httpStatus = healthStatus.status === 'healthy' ? 200 : 
+                       healthStatus.status === 'degraded' ? 503 : 503;
+    res.status(httpStatus).json(healthStatus);
+  } catch (error) {
+    monitoringService.logError(error as Error, { 
+      additionalData: { endpoint: '/health' } 
+    });
+    res.status(503).json({ 
+      status: 'down', 
+      checks: {}, 
+      timestamp: new Date() 
+    });
+  }
 });
 
+// Performance monitoring middleware - tracks all requests
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
@@ -32,6 +48,20 @@ app.use((req, res, next) => {
 
   res.on("finish", () => {
     const duration = Date.now() - start;
+    
+    // Track metrics in monitoring service
+    const userId = (req as any).session?.userId;
+    const workspaceId = (req as any).session?.currentWorkspaceId;
+    
+    monitoringService.trackRequest(
+      path,
+      req.method,
+      duration,
+      res.statusCode,
+      { userId, workspaceId }
+    );
+    
+    // Keep existing console logging for development
     if (path.startsWith("/api")) {
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
       if (capturedJsonResponse) {
@@ -92,12 +122,27 @@ process.on('SIGTERM', () => {
 (async () => {
   const server = await registerRoutes(app);
 
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+  app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
 
+    // Log error to monitoring service
+    const userId = (req as any).session?.userId;
+    const workspaceId = (req as any).session?.currentWorkspaceId;
+    const requestId = (req as any).id;
+    
+    monitoringService.logError(err, {
+      userId,
+      workspaceId,
+      requestId,
+      additionalData: {
+        method: req.method,
+        path: req.path,
+        statusCode: status,
+      }
+    });
+
     res.status(status).json({ message });
-    throw err;
   });
 
   // importantly only setup vite in development and after

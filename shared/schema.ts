@@ -2545,19 +2545,44 @@ export type ApiKey = typeof apiKeys.$inferSelect;
 export const gpsLocations = pgTable("gps_locations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
-  timeEntryId: varchar("time_entry_id").references(() => timeEntries.id, { onDelete: 'cascade' }),
+  
+  // References - for different use cases
+  timeEntryId: varchar("time_entry_id").references(() => timeEntries.id, { onDelete: 'cascade' }), // Clock-in verification
+  employeeId: varchar("employee_id").references(() => employees.id, { onDelete: 'cascade' }), // DispatchOS tracking
 
+  // Location data
   latitude: decimal("latitude", { precision: 10, scale: 7 }).notNull(),
   longitude: decimal("longitude", { precision: 10, scale: 7 }).notNull(),
-  accuracy: decimal("accuracy", { precision: 6, scale: 2 }), // meters
+  accuracy: decimal("accuracy", { precision: 10, scale: 2 }), // meters
+  altitude: decimal("altitude", { precision: 10, scale: 2 }), // meters
 
+  // Movement data (for DispatchOS)
+  speed: decimal("speed", { precision: 10, scale: 2 }), // km/h or mph
+  heading: decimal("heading", { precision: 10, scale: 2 }), // degrees 0-360
+  isMoving: boolean("is_moving").default(false),
+
+  // Clock-in verification fields
   address: varchar("address"),
   verified: boolean("verified").default(false),
   deviceInfo: jsonb("device_info"),
+  
+  // Device data (for DispatchOS)
+  batteryLevel: integer("battery_level"), // percentage 0-100
+  timestamp: timestamp("timestamp").notNull().defaultNow(),
 
   createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  workspaceIdx: index("gps_locations_workspace_idx").on(table.workspaceId),
+  employeeIdx: index("gps_locations_employee_idx").on(table.employeeId),
+  timestampIdx: index("gps_locations_timestamp_idx").on(table.timestamp),
+}));
+
+export const insertGpsLocationSchema = createInsertSchema(gpsLocations).omit({
+  id: true,
+  createdAt: true,
 });
 
+export type InsertGpsLocation = z.infer<typeof insertGpsLocationSchema>;
 export type GpsLocation = typeof gpsLocations.$inferSelect;
 
 // ============================================================================
@@ -8344,3 +8369,230 @@ export const insertBillingAuditLogSchema = createInsertSchema(billingAuditLog).o
 
 export type InsertBillingAuditLog = z.infer<typeof insertBillingAuditLogSchema>;
 export type BillingAuditLog = typeof billingAuditLog.$inferSelect;
+
+// ============================================================================
+// DISPATCHOS™ - COMPUTER-AIDED DISPATCH SYSTEM
+// ============================================================================
+
+// Dispatch incidents (CAD calls)
+export const dispatchIncidents = pgTable("dispatch_incidents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  // Incident identification
+  incidentNumber: varchar("incident_number").notNull().unique(), // CAD-2024-001234
+  priority: varchar("priority").notNull(), // emergency, urgent, routine, low
+  type: varchar("type").notNull(), // alarm, medical, patrol, disturbance, fire, theft, etc.
+  status: varchar("status").notNull().default('queued'), // queued, dispatched, en_route, on_scene, cleared, cancelled
+  
+  // Location
+  clientId: integer("client_id").references(() => clients.id),
+  locationAddress: text("location_address").notNull(),
+  locationLatitude: decimal("location_latitude", { precision: 10, scale: 7 }),
+  locationLongitude: decimal("location_longitude", { precision: 10, scale: 7 }),
+  locationZone: varchar("location_zone"), // "North Sector", "Downtown", etc.
+  
+  // Caller information
+  callerName: varchar("caller_name"),
+  callerPhone: varchar("caller_phone"),
+  callerType: varchar("caller_type"), // client, employee, public, system
+  
+  // Incident details
+  description: text("description"),
+  specialInstructions: text("special_instructions"),
+  notes: text("notes"),
+  
+  // Timeline tracking
+  callReceivedAt: timestamp("call_received_at").notNull(),
+  dispatchedAt: timestamp("dispatched_at"),
+  enRouteAt: timestamp("en_route_at"),
+  arrivedAt: timestamp("arrived_at"),
+  clearedAt: timestamp("cleared_at"),
+  cancelledAt: timestamp("cancelled_at"),
+  
+  // Performance metrics
+  responseTimeSeconds: integer("response_time_seconds"), // dispatchedAt - callReceivedAt
+  travelTimeSeconds: integer("travel_time_seconds"), // arrivedAt - enRouteAt
+  sceneTimeSeconds: integer("scene_time_seconds"), // clearedAt - arrivedAt
+  totalTimeSeconds: integer("total_time_seconds"), // clearedAt - callReceivedAt
+  
+  // Assignment
+  assignedUnits: text("assigned_units").array(), // ["U-12", "U-7"]
+  requiredCertifications: text("required_certifications").array(), // ["CPR", "Armed"]
+  
+  // Metadata
+  createdBy: varchar("created_by").references(() => users.id), // Dispatcher user ID
+  cancelledBy: varchar("cancelled_by").references(() => users.id),
+  cancellationReason: text("cancellation_reason"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  workspaceIdx: index("dispatch_incidents_workspace_idx").on(table.workspaceId),
+  statusIdx: index("dispatch_incidents_status_idx").on(table.status),
+  priorityIdx: index("dispatch_incidents_priority_idx").on(table.priority),
+  incidentNumberIdx: index("dispatch_incidents_number_idx").on(table.incidentNumber),
+  clientIdx: index("dispatch_incidents_client_idx").on(table.clientId),
+  createdAtIdx: index("dispatch_incidents_created_at_idx").on(table.createdAt),
+  callReceivedIdx: index("dispatch_incidents_call_received_idx").on(table.callReceivedAt),
+}));
+
+export const insertDispatchIncidentSchema = createInsertSchema(dispatchIncidents).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertDispatchIncident = z.infer<typeof insertDispatchIncidentSchema>;
+export type DispatchIncident = typeof dispatchIncidents.$inferSelect;
+
+// Unit assignments to incidents
+export const dispatchAssignments = pgTable("dispatch_assignments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  // Assignment details
+  incidentId: varchar("incident_id").notNull().references(() => dispatchIncidents.id, { onDelete: 'cascade' }),
+  employeeId: integer("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
+  unitNumber: varchar("unit_number").notNull(), // "U-12", "AMB-3", "ENG-7"
+  
+  // Status tracking
+  status: varchar("status").notNull().default('assigned'), // assigned, accepted, rejected, en_route, on_scene, cleared, cancelled
+  
+  // Timeline
+  assignedAt: timestamp("assigned_at").notNull(),
+  acceptedAt: timestamp("accepted_at"),
+  rejectedAt: timestamp("rejected_at"),
+  enRouteAt: timestamp("en_route_at"),
+  arrivedAt: timestamp("arrived_at"),
+  clearedAt: timestamp("cleared_at"),
+  
+  // Additional data
+  rejectionReason: text("rejection_reason"),
+  notes: text("notes"),
+  isPrimary: boolean("is_primary").default(false), // Primary unit vs backup
+  
+  // Assignment source
+  assignedBy: varchar("assigned_by").references(() => users.id), // Dispatcher or system
+  assignmentMethod: varchar("assignment_method").default('manual'), // manual, auto, requested
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  workspaceIdx: index("dispatch_assignments_workspace_idx").on(table.workspaceId),
+  incidentIdx: index("dispatch_assignments_incident_idx").on(table.incidentId),
+  employeeIdx: index("dispatch_assignments_employee_idx").on(table.employeeId),
+  statusIdx: index("dispatch_assignments_status_idx").on(table.status),
+  unitNumberIdx: index("dispatch_assignments_unit_idx").on(table.unitNumber),
+  createdAtIdx: index("dispatch_assignments_created_at_idx").on(table.createdAt),
+}));
+
+export const insertDispatchAssignmentSchema = createInsertSchema(dispatchAssignments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertDispatchAssignment = z.infer<typeof insertDispatchAssignmentSchema>;
+export type DispatchAssignment = typeof dispatchAssignments.$inferSelect;
+
+// Real-time unit status tracking
+export const unitStatuses = pgTable("unit_statuses", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  employeeId: integer("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }).unique(),
+  
+  // Unit identification
+  unitNumber: varchar("unit_number").notNull(), // "U-12", "AMB-3", "ENG-7"
+  unitType: varchar("unit_type"), // patrol, ambulance, supervisor, fire_engine, etc.
+  
+  // Current status
+  status: varchar("status").notNull().default('offline'), // available, en_route, on_scene, offline, out_of_service, meal_break
+  statusChangedAt: timestamp("status_changed_at").notNull(),
+  statusChangedBy: varchar("status_changed_by"), // User ID or 'system'
+  
+  // Current assignment
+  currentIncidentId: varchar("current_incident_id").references(() => dispatchIncidents.id),
+  
+  // Last known location
+  lastKnownLatitude: decimal("last_known_latitude", { precision: 10, scale: 7 }),
+  lastKnownLongitude: decimal("last_known_longitude", { precision: 10, scale: 7 }),
+  lastLocationUpdate: timestamp("last_location_update"),
+  
+  // Zone assignment
+  assignedZone: varchar("assigned_zone"), // "North Sector", "Downtown", etc.
+  
+  // Capabilities
+  capabilities: text("capabilities").array(), // ["EMT", "CPR", "Armed", "K9"]
+  equipmentAssigned: text("equipment_assigned").array(), // ["Radio-123", "Vehicle-456"]
+  
+  // Shift tracking
+  currentShiftId: integer("current_shift_id").references(() => shifts.id),
+  clockedInAt: timestamp("clocked_in_at"),
+  
+  // Device info
+  deviceId: varchar("device_id"),
+  appVersion: varchar("app_version"),
+  lastHeartbeat: timestamp("last_heartbeat"), // For detecting disconnected units
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  workspaceIdx: index("unit_statuses_workspace_idx").on(table.workspaceId),
+  employeeIdx: index("unit_statuses_employee_idx").on(table.employeeId),
+  statusIdx: index("unit_statuses_status_idx").on(table.status),
+  unitNumberIdx: index("unit_statuses_unit_number_idx").on(table.unitNumber),
+  incidentIdx: index("unit_statuses_incident_idx").on(table.currentIncidentId),
+  zoneIdx: index("unit_statuses_zone_idx").on(table.assignedZone),
+}));
+
+export const insertUnitStatusSchema = createInsertSchema(unitStatuses).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertUnitStatus = z.infer<typeof insertUnitStatusSchema>;
+export type UnitStatus = typeof unitStatuses.$inferSelect;
+
+// Dispatcher activity log (audit trail)
+export const dispatchLogs = pgTable("dispatch_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  // Event details
+  incidentId: varchar("incident_id").references(() => dispatchIncidents.id, { onDelete: 'cascade' }),
+  employeeId: integer("employee_id").references(() => employees.id),
+  
+  // Action tracking
+  action: varchar("action").notNull(), // created_incident, assigned_unit, changed_status, sent_message, cancelled_incident, etc.
+  actionCategory: varchar("action_category").notNull(), // incident, unit, communication, system
+  
+  // Actor
+  userId: varchar("user_id").references(() => users.id),
+  actorType: varchar("actor_type").default('user'), // user, system, auto
+  
+  // Details
+  description: text("description").notNull(),
+  details: jsonb("details"), // Additional structured data
+  
+  // Metadata
+  ipAddress: varchar("ip_address"),
+  userAgent: text("user_agent"),
+  
+  timestamp: timestamp("timestamp").notNull().defaultNow(),
+}, (table) => ({
+  workspaceIdx: index("dispatch_logs_workspace_idx").on(table.workspaceId),
+  incidentIdx: index("dispatch_logs_incident_idx").on(table.incidentId),
+  employeeIdx: index("dispatch_logs_employee_idx").on(table.employeeId),
+  actionIdx: index("dispatch_logs_action_idx").on(table.action),
+  timestampIdx: index("dispatch_logs_timestamp_idx").on(table.timestamp),
+}));
+
+export const insertDispatchLogSchema = createInsertSchema(dispatchLogs).omit({
+  id: true,
+  timestamp: true,
+});
+
+export type InsertDispatchLog = z.infer<typeof insertDispatchLogSchema>;
+export type DispatchLog = typeof dispatchLogs.$inferSelect;
