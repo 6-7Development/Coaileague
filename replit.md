@@ -74,9 +74,9 @@ Key mobile-first PWA features include:
 - **ORM**: Drizzle ORM
 - **Payment Processing**: Stripe Connect
 - **Email**: Resend
-- **AI**: OpenAI GPT-3.5-turbo (for HelpOS support bot with usage tracking), Gemini 2.0 Flash Exp (for HelpDesk chat with usage tracking)
-  - **AI Usage Billing Coverage**:
+- **AI**: OpenAI GPT-3.5-turbo (for HelpOS support bot with usage tracking), Gemini 2.0 Flash Exp (for HelpDesk chat with usage tracking), GPT-4 (for ScheduleOS auto-scheduling with usage tracking), GPT-4-turbo (for DisputeAI grievance analysis with usage tracking), GPT-4o (for PredictionOS predictions with usage tracking)
+  - **AI Usage Billing Coverage** (**100% COMPLETE**):
     - ✅ **HelpDesk/CommOS** - Fully tracked (Gemini chat, HelpOS AI, Help Bot, FAQ embeddings)
-    - ⚠️ **TODO**: ScheduleOS AI auto-scheduling needs usage tracking
-    - ⚠️ **TODO**: DisputeAI grievance analysis needs usage tracking
-    - ⚠️ **TODO**: PredictionOS turnover/cost predictions need usage tracking
+    - ✅ **ScheduleOS™** - Fully tracked (GPT-4 auto-scheduling via `scheduleos_ai_generation` feature key)
+    - ✅ **DisputeAI** - Fully tracked (GPT-4-turbo grievance analysis via `disputeai_analysis` feature key)
+    - ✅ **PredictionOS™** - Fully tracked (GPT-4o turnover/cost predictions via `predictionos_turnover_analysis` and `predictionos_cost_variance` feature keys)
