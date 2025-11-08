@@ -692,7 +692,7 @@ export default function RootAdminDashboard() {
                           {selectedWorkspace.isLocked && <Badge variant="destructive" className="text-[10px]">Locked</Badge>}
                           {selectedWorkspace.isFrozen && <Badge variant="destructive" className="text-[10px]">Frozen</Badge>}
                           {!selectedWorkspace.isSuspended && !selectedWorkspace.isLocked && !selectedWorkspace.isFrozen && (
-                            <Badge variant="secondary" className="text-[10px] bg-muted/30/20 text-green-400">Active</Badge>
+                            <Badge variant="secondary" className="text-[10px] bg-muted/20 text-green-400">Active</Badge>
                           )}
                         </div>
                       </div>
@@ -707,7 +707,7 @@ export default function RootAdminDashboard() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="w-full bg-muted/30/10 border-primary/30 hover:bg-muted/30/20"
+                          className="w-full bg-muted/10 border-primary/30 hover:bg-muted/20"
                           onClick={() => {
                             if (confirm('Unsuspend this account?')) {
                               unsuspendAccountMutation.mutate({ workspaceId: selectedWorkspace.id });
@@ -742,7 +742,7 @@ export default function RootAdminDashboard() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="w-full bg-muted/30/10 border-primary/30 hover:bg-muted/30/20"
+                          className="w-full bg-muted/10 border-primary/30 hover:bg-muted/20"
                           onClick={() => {
                             if (confirm('Unlock this account?')) {
                               unlockAccountMutation.mutate({ workspaceId: selectedWorkspace.id });
@@ -865,21 +865,21 @@ export default function RootAdminDashboard() {
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <span className="text-xs">Web Application</span>
-                <Badge variant="secondary" className="bg-muted/30/10 text-green-600 text-[10px] py-0 h-5">
+                <Badge variant="secondary" className="bg-muted/10 text-green-600 text-[10px] py-0 h-5">
                   <CheckCircle className="h-2.5 w-2.5 mr-1" />
                   Live
                 </Badge>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-xs">API Server</span>
-                <Badge variant="secondary" className="bg-muted/30/10 text-green-600 text-[10px] py-0 h-5">
+                <Badge variant="secondary" className="bg-muted/10 text-green-600 text-[10px] py-0 h-5">
                   <CheckCircle className="h-2.5 w-2.5 mr-1" />
                   Live
                 </Badge>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-xs">Database</span>
-                <Badge variant="secondary" className="bg-muted/30/10 text-green-600 text-[10px] py-0 h-5">
+                <Badge variant="secondary" className="bg-muted/10 text-green-600 text-[10px] py-0 h-5">
                   <CheckCircle className="h-2.5 w-2.5 mr-1" />
                   {stats?.systemHealth?.database || "healthy"}
                 </Badge>
@@ -955,7 +955,7 @@ export default function RootAdminDashboard() {
                     <Database className="h-4 w-4 text-primary" />
                     <span>Database</span>
                   </div>
-                  <Badge variant="secondary" className="bg-muted/30/10 text-primary">
+                  <Badge variant="secondary" className="bg-muted/10 text-primary">
                     <CheckCircle className="h-3 w-3 mr-1" />
                     {stats?.systemHealth?.database || "healthy"}
                   </Badge>
@@ -986,7 +986,7 @@ export default function RootAdminDashboard() {
                 </CardTitle>
                 <CardDescription>Real-time events and comprehensive data analysis</CardDescription>
               </div>
-              <Badge variant="secondary" className="bg-muted/30/10 text-primary">
+              <Badge variant="secondary" className="bg-muted/10 text-primary">
                 <div className="h-2 w-2 bg-muted/30 rounded-full animate-pulse mr-2" />
                 Live
               </Badge>

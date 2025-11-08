@@ -100,7 +100,7 @@ export default function ClientPortal() {
     switch (status) {
       case 'paid':
         return (
-          <Badge className="bg-muted/30/10 text-primary border-0">
+          <Badge className="bg-muted/10 text-primary border-0">
             <CheckCircle2 className="h-3 w-3 mr-1" />
             Paid
           </Badge>
@@ -192,7 +192,7 @@ export default function ClientPortal() {
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between mb-2">
                   <CheckCircle2 className="h-5 w-5 text-primary" />
-                  <Badge className="bg-muted/30/10 text-primary border-0">
+                  <Badge className="bg-muted/10 text-primary border-0">
                     {clientInvoices.filter(i => i.status === 'paid').length}
                   </Badge>
                 </div>
@@ -304,7 +304,7 @@ export default function ClientPortal() {
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm">Paid Invoices</span>
-                    <Badge className="bg-muted/30/10 text-primary border-0">
+                    <Badge className="bg-muted/10 text-primary border-0">
                       {clientInvoices.filter(i => i.status === 'paid').length}
                     </Badge>
                   </div>
@@ -437,7 +437,7 @@ export default function ClientPortal() {
                             className="flex items-center justify-between p-4 rounded-lg border border-border"
                           >
                             <div className="flex items-center gap-3">
-                              <div className="h-10 w-10 rounded-lg bg-muted/30/10 flex items-center justify-center">
+                              <div className="h-10 w-10 rounded-lg bg-muted/10 flex items-center justify-center">
                                 <CheckCircle2 className="h-5 w-5 text-primary" />
                               </div>
                               <div>

@@ -195,7 +195,7 @@ function DroppableDayCell({ employeeId, date, shifts, employees, clients, onShif
       className={`
         min-h-[120px] flex-1 min-w-[140px] border-r border-b p-2 relative group cursor-pointer transition-all
         ${isOver ? 'bg-primary/10 ring-2 ring-primary' : 'bg-background'}
-        ${isToday ? 'bg-muted/30/5 border-l-2 border-l-primary' : ''}
+        ${isToday ? 'bg-muted/5 border-l-2 border-l-primary' : ''}
         hover-elevate
       `}
       data-testid={`drop-zone-${dropId}`}
@@ -306,12 +306,12 @@ function PlaceholderEmployeeRow({ weekDays, onCreateShift, onAddEmployee }: {
         <div
           key={moment(day).format('YYYY-MM-DD')}
           onClick={() => onCreateShift && onCreateShift('open', day)}
-          className="min-h-[120px] flex-1 min-w-[140px] border-r border-b p-2 relative group cursor-pointer transition-all hover:bg-muted/30/5 hover:border-primary/30"
+          className="min-h-[120px] flex-1 min-w-[140px] border-r border-b p-2 relative group cursor-pointer transition-all hover:bg-muted/5 hover:border-primary/30"
           data-testid={`placeholder-slot-${moment(day).format('YYYY-MM-DD')}`}
         >
           <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300">
             <div className="bg-gradient-to-r from-primary/20 to-primary/20 backdrop-blur-sm border border-primary/40 rounded-xl px-4 py-3 flex items-center gap-2 shadow-lg transform scale-95 group-hover:scale-100 transition-transform">
-              <div className="p-1 bg-muted/30/30 rounded-lg">
+              <div className="p-1 bg-muted/30 rounded-lg">
                 <Plus className="h-4 w-4 text-primary" strokeWidth={2.5} />
               </div>
               <span className="text-sm font-semibold text-primary">Add Open Shift</span>
@@ -1082,7 +1082,7 @@ export default function ScheduleGrid() {
                     key={moment(day).format('YYYY-MM-DD')}
                     className={`
                       flex-1 min-w-[140px] border-r p-3 text-center flex flex-col justify-center h-[60px]
-                      ${isToday ? 'bg-muted/30/10 border-l-2 border-l-primary' : 'bg-muted/10'}
+                      ${isToday ? 'bg-muted/10 border-l-2 border-l-primary' : 'bg-muted/10'}
                     `}
                   >
                     <div className={`text-[10px] font-semibold uppercase ${isToday ? 'text-primary' : 'text-muted-foreground'}`}>
@@ -1377,9 +1377,9 @@ export default function ScheduleGrid() {
                 </div>
               </div>
 
-              <div className="p-4 bg-muted/30/10 border border-primary/30 rounded-lg">
+              <div className="p-4 bg-muted/10 border border-primary/30 rounded-lg">
                 <div className="flex items-start gap-3">
-                  <div className="p-2 bg-muted/30/20 rounded-lg">
+                  <div className="p-2 bg-muted/20 rounded-lg">
                     <Clock className="h-5 w-5 text-primary" />
                   </div>
                   <div className="flex-1">

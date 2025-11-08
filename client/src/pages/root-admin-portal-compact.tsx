@@ -176,7 +176,7 @@ export default function RootAdminPortalCompact() {
                 <h3 className="text-xs font-semibold mb-2 flex items-center gap-1">
                   <Activity className="h-3 w-3" />
                   Live Activity Feed
-                  <Badge variant="secondary" className="ml-auto h-4 text-[9px] bg-muted/30/10 text-primary">
+                  <Badge variant="secondary" className="ml-auto h-4 text-[9px] bg-muted/10 text-primary">
                     <div className="h-1.5 w-1.5 bg-muted/30 rounded-full animate-pulse mr-1" />
                     Live
                   </Badge>
@@ -266,7 +266,7 @@ export default function RootAdminPortalCompact() {
                 <div className="space-y-1.5 text-xs">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Status</span>
-                    <Badge variant="secondary" className="h-4 text-[10px] bg-muted/30/10 text-primary">Connected</Badge>
+                    <Badge variant="secondary" className="h-4 text-[10px] bg-muted/10 text-primary">Connected</Badge>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Pool Size</span>

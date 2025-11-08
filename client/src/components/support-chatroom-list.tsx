@@ -89,7 +89,7 @@ export function SupportChatroomList() {
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="h-12 w-12 rounded-xl bg-muted/30/10 flex items-center justify-center">
+            <div className="h-12 w-12 rounded-xl bg-muted/10 flex items-center justify-center">
               <Shield className="h-6 w-6 text-primary" />
             </div>
             <div>
@@ -302,7 +302,7 @@ export function SupportChatroomList() {
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="text-primary hover:text-primary hover:bg-muted/30/10"
+                            className="text-primary hover:text-primary hover:bg-muted/10"
                             onClick={(e) => {
                               e.stopPropagation();
                               handleJoinRoom(room.id);

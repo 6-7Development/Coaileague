@@ -134,7 +134,7 @@ export default function Pricing() {
       {/* Pricing Hero */}
       <section className="responsive-container responsive-spacing-y">
         <div className="text-center space-y-4 mb-12 animate-slide-up fix-overflow">
-          <Badge className="bg-muted/30/10 text-primary border-primary/20 mb-2">
+          <Badge className="bg-muted/10 text-primary border-primary/20 mb-2">
             <Sparkles className="h-3 w-3 mr-1" />
             Enterprise-Grade ROI
           </Badge>
@@ -328,7 +328,7 @@ export default function Pricing() {
             </div>
 
             {/* AI Features & Token Usage */}
-            <div className="mt-4 p-6 bg-muted/30/5 border border-primary/20 rounded-lg">
+            <div className="mt-4 p-6 bg-muted/5 border border-primary/20 rounded-lg">
               <div className="flex items-start gap-3">
                 <Sparkles className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
                 <div className="space-y-3">

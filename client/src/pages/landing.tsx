@@ -535,7 +535,7 @@ export default function Landing() {
                         <td className="p-4 text-center">
                           {row.us === true ? (
                             <div className="flex justify-center">
-                              <div className="h-6 w-6 rounded-full bg-muted/30/20 flex items-center justify-center">
+                              <div className="h-6 w-6 rounded-full bg-muted/20 flex items-center justify-center">
                                 <CheckCircle2 className="h-4 w-4 text-green-600" />
                               </div>
                             </div>

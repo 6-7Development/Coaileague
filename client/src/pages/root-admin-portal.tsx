@@ -521,7 +521,7 @@ export default function RootAdminPortal() {
                       </CardTitle>
                       <CardDescription>Real-time platform events</CardDescription>
                     </div>
-                    <Badge variant="secondary" className="bg-muted/30/10 text-primary">
+                    <Badge variant="secondary" className="bg-muted/10 text-primary">
                       <div className="h-2 w-2 bg-muted/30 rounded-full animate-pulse mr-2" />
                       Live
                     </Badge>
@@ -601,20 +601,20 @@ export default function RootAdminPortal() {
                   <CardContent className="space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="text-sm">Uptime</span>
-                      <Badge variant="secondary" className="bg-muted/30/10 text-primary">
+                      <Badge variant="secondary" className="bg-muted/10 text-primary">
                         {systemHealth.uptime}
                       </Badge>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm">Database</span>
-                      <Badge variant="secondary" className="bg-muted/30/10 text-primary">
+                      <Badge variant="secondary" className="bg-muted/10 text-primary">
                         <CheckCircle className="h-3 w-3 mr-1" />
                         Healthy
                       </Badge>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm">API Status</span>
-                      <Badge variant="secondary" className="bg-muted/30/10 text-primary">
+                      <Badge variant="secondary" className="bg-muted/10 text-primary">
                         <CheckCircle className="h-3 w-3 mr-1" />
                         Online
                       </Badge>
