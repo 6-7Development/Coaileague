@@ -572,6 +572,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // IMPORTANT: Mount at /api/billing to avoid intercepting root path
   app.use('/api/billing', billingRouter);
 
+  // Register DispatchOS™ routes (GPS tracking, incident management, CAD operations)
+  const dispatchRouter = (await import('./routes/dispatch')).default;
+  app.use('/api/dispatch', dispatchRouter);
+
   // Register HelpOS FAQ routes (AI-powered FAQ system with semantic search)
   registerFaqRoutes(app);
 

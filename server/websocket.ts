@@ -230,7 +230,35 @@ interface WebRTCIceCandidatePayload {
   candidate: RTCIceCandidateInit;
 }
 
-type WebSocketMessage = ChatMessagePayload | JoinConversationPayload | TypingPayload | StatusChangePayload | KickUserPayload | RequestSecurePayload | SecureResponsePayload | ReleaseSpectatorPayload | TransferUserPayload | SilenceUserPayload | GiveVoicePayload | BanUserPayload | JoinShiftUpdatesPayload | ShiftUpdatePayload | JoinNotificationsPayload | NotificationUpdatePayload | CallInitiatedPayload | CallAcceptedPayload | CallRejectedPayload | CallEndedPayload | WebRTCOfferPayload | WebRTCAnswerPayload | WebRTCIceCandidatePayload;
+// DispatchOS™ WebSocket Payloads
+interface JoinDispatchUpdatesPayload {
+  type: 'join_dispatch_updates';
+  workspaceId: string;
+}
+
+interface DispatchGPSUpdatePayload {
+  type: 'dispatch_gps_update';
+  employeeId: string;
+  latitude: number;
+  longitude: number;
+  status: string;
+  timestamp: string;
+}
+
+interface DispatchIncidentUpdatePayload {
+  type: 'dispatch_incident_created' | 'dispatch_incident_updated' | 'dispatch_incident_assigned';
+  incident?: any;
+  incidentId?: number;
+}
+
+interface DispatchUnitStatusUpdatePayload {
+  type: 'dispatch_unit_status_changed';
+  employeeId: string;
+  status: string;
+  incidentId?: number | null;
+}
+
+type WebSocketMessage = ChatMessagePayload | JoinConversationPayload | TypingPayload | StatusChangePayload | KickUserPayload | RequestSecurePayload | SecureResponsePayload | ReleaseSpectatorPayload | TransferUserPayload | SilenceUserPayload | GiveVoicePayload | BanUserPayload | JoinShiftUpdatesPayload | ShiftUpdatePayload | JoinNotificationsPayload | NotificationUpdatePayload | CallInitiatedPayload | CallAcceptedPayload | CallRejectedPayload | CallEndedPayload | WebRTCOfferPayload | WebRTCAnswerPayload | WebRTCIceCandidatePayload | JoinDispatchUpdatesPayload | DispatchGPSUpdatePayload | DispatchIncidentUpdatePayload | DispatchUnitStatusUpdatePayload;
 
 // In-memory MOTD storage (staff can update)
 let currentMOTD = "Welcome to WorkforceOS HelpDesk Support Network - Your satisfaction is our priority - 24/7/365";
@@ -305,6 +333,9 @@ export function setupWebSocket(server: Server) {
   
   // Track notification clients (workspaceId -> Set of WebSocket clients)
   const notificationClients = new Map<string, Map<string, WebSocketClient>>();
+  
+  // Track DispatchOS™ connections by workspace ID
+  const dispatchUpdateClients = new Map<string, Set<WebSocketClient>>();
   
   // Track removed simulated users (so they don't re-appear on reconnect)
   const removedSimulatedUsers = new Set<string>();
@@ -3633,6 +3664,80 @@ export function setupWebSocket(server: Server) {
       console.log(`🔔 Broadcasting ${updateType} to user ${userId} in workspace ${workspaceId}`);
 
       userClient.send(payload);
+    },
+    // DispatchOS™ WebSocket Broadcast Functions
+    broadcastGPSUpdate: (workspaceId: string, employeeId: string, latitude: number, longitude: number, status: string) => {
+      const clients = dispatchUpdateClients.get(workspaceId);
+      if (!clients || clients.size === 0) {
+        return;
+      }
+
+      const payload = JSON.stringify({
+        type: 'dispatch_gps_update',
+        employeeId,
+        latitude,
+        longitude,
+        status,
+        timestamp: new Date().toISOString(),
+      });
+
+      clients.forEach((client) => {
+        if (client.readyState === WebSocket.OPEN) {
+          client.send(payload);
+        }
+      });
+    },
+    broadcastIncidentUpdate: (workspaceId: string, updateType: 'dispatch_incident_created' | 'dispatch_incident_updated' | 'dispatch_incident_assigned', incident: any) => {
+      const clients = dispatchUpdateClients.get(workspaceId);
+      if (!clients || clients.size === 0) {
+        return;
+      }
+
+      // Sanitize incident payload
+      const sanitizedIncident = {
+        id: incident.id,
+        incidentNumber: incident.incidentNumber,
+        priority: incident.priority,
+        incidentType: incident.incidentType,
+        locationAddress: incident.locationAddress,
+        locationLat: incident.locationLat,
+        locationLng: incident.locationLng,
+        status: incident.status,
+        callReceivedAt: incident.callReceivedAt,
+        dispatchedAt: incident.dispatchedAt,
+      };
+
+      const payload = JSON.stringify({
+        type: updateType,
+        incident: sanitizedIncident,
+        timestamp: new Date().toISOString(),
+      });
+
+      clients.forEach((client) => {
+        if (client.readyState === WebSocket.OPEN) {
+          client.send(payload);
+        }
+      });
+    },
+    broadcastUnitStatusUpdate: (workspaceId: string, employeeId: string, status: string, incidentId?: number | null) => {
+      const clients = dispatchUpdateClients.get(workspaceId);
+      if (!clients || clients.size === 0) {
+        return;
+      }
+
+      const payload = JSON.stringify({
+        type: 'dispatch_unit_status_changed',
+        employeeId,
+        status,
+        incidentId,
+        timestamp: new Date().toISOString(),
+      });
+
+      clients.forEach((client) => {
+        if (client.readyState === WebSocket.OPEN) {
+          client.send(payload);
+        }
+      });
     },
   };
 }
