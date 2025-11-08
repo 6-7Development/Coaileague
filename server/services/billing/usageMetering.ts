@@ -387,6 +387,12 @@ export class UsageMeteringService {
   private async getUnitPrice(featureKey: string, usageType: string): Promise<number> {
     // Default pricing (per 1000 tokens/units)
     const defaultPricing: Record<string, number> = {
+      // HelpDesk AI (OpenAI GPT-3.5-turbo + Gemini)
+      'helpdesk_gemini_chat': 0.00003, // $0.03 per 1000 tokens (Gemini 2.0 Flash pricing)
+      'helpdesk_ai_greeting': 0.00002, // $0.02 per 1000 tokens (GPT-3.5-turbo)
+      'helpdesk_ai_response': 0.00002, // $0.02 per 1000 tokens (GPT-3.5-turbo)
+      'helpdesk_ai_analysis': 0.00002, // $0.02 per 1000 tokens (GPT-3.5-turbo)
+      
       // ScheduleOS
       'scheduleos_ai_generation': 0.05, // $0.05 per generation
       'scheduleos_optimization': 0.03,
