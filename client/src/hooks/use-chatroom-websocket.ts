@@ -3,6 +3,7 @@ import type { ChatMessage } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 
 const MAIN_ROOM_ID = 'main-chatroom-workforceos';
+const MAX_RETRIES = 5; // Maximum reconnection attempts before giving up
 
 // IRC-style command ID generator
 function generateCommandId(): string {
@@ -98,10 +99,15 @@ interface SecureRequestCallback {
   (request: { type: string; requestedBy: string; message?: string }): void;
 }
 
+interface ConnectionFailedCallback {
+  (attemptCount: number): void;
+}
+
 export function useChatroomWebSocket(
   userId: string | undefined, 
   userName: string = 'User',
-  onSecureRequest?: SecureRequestCallback
+  onSecureRequest?: SecureRequestCallback,
+  onConnectionFailed?: ConnectionFailedCallback
 ) {
   const { toast } = useToast();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -405,12 +411,24 @@ export function useChatroomWebSocket(
         setIsConnected(false);
         isConnectingRef.current = false; // Reset connection flag
 
+        // Check if we've exceeded max retry attempts
+        if (reconnectAttemptsRef.current >= MAX_RETRIES) {
+          console.error(`❌ Failed to connect after ${MAX_RETRIES} attempts`);
+          setError(`Unable to connect to chat server after ${MAX_RETRIES} attempts`);
+          
+          // Call the failure callback if provided
+          if (onConnectionFailed) {
+            onConnectionFailed(reconnectAttemptsRef.current);
+          }
+          return; // Stop trying to reconnect
+        }
+
         // Attempt to reconnect with exponential backoff
         const delay = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current), 30000);
         reconnectAttemptsRef.current++;
 
         reconnectTimeoutRef.current = setTimeout(() => {
-          console.log(`Reconnecting... (attempt ${reconnectAttemptsRef.current})`);
+          console.log(`Reconnecting... (attempt ${reconnectAttemptsRef.current}/${MAX_RETRIES})`);
           connect();
         }, delay);
       };
@@ -589,8 +607,9 @@ export function useChatroomWebSocket(
       clearTimeout(reconnectTimeoutRef.current);
     }
     
-    // Reset flags
+    // Reset flags and retry counter for manual reconnect
     isConnectingRef.current = false;
+    reconnectAttemptsRef.current = 0; // Reset retry counter
     setIsConnected(false);
     setError(null);
     

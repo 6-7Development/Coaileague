@@ -26,6 +26,7 @@ import { ChatAnnouncementBanner } from "@/components/chat-announcement-banner";
 import { BannerEditorDialog } from "@/components/banner-editor-dialog";
 import { ChatTutorialSlides } from "@/components/chat-tutorial-slides";
 import { QueueViewerDialog } from "@/components/queue-viewer-dialog";
+import { ChatConnectionErrorDialog } from "@/components/chat-connection-error-dialog";
 import { 
   MessageSquare, Send, Users, Circle, Shield, 
   Headphones, User, Bot, Sparkles, Wifi, WifiOff,
@@ -69,6 +70,8 @@ export default function LiveChatroomPage() {
   const [showQueueDialog, setShowQueueDialog] = useState(false);
   const [confirmKick, setConfirmKick] = useState<{ userId: string; userName: string } | null>(null);
   const [aiEnabled, setAiEnabled] = useState(false);
+  const [showConnectionError, setShowConnectionError] = useState(false);
+  const [connectionAttempts, setConnectionAttempts] = useState(0);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -145,12 +148,46 @@ export default function LiveChatroomPage() {
     const index = queueData.findIndex(entry => entry.userId === userId);
     return index >= 0 ? index + 1 : null;
   })();
-  
+
+  // Callback when connection fails after max retries
+  const handleConnectionFailed = useCallback((attemptCount: number) => {
+    console.error(`❌ Connection failed after ${attemptCount} attempts - showing error dialog`);
+    setConnectionAttempts(attemptCount);
+    setShowConnectionError(true);
+  }, []);
+
+  // Handle retry connection attempt
+  const handleRetryConnection = useCallback(() => {
+    setShowConnectionError(false);
+    reconnect(); // Trigger manual reconnect which resets retry counter
+  }, []);
+
+  // Handle report bug action
+  const handleReportBug = useCallback(() => {
+    setShowConnectionError(false);
+    // Navigate to support page or open bug report form
+    toast({
+      title: "Report Bug",
+      description: "Please email support@autoforce.com with details about the connection issue.",
+    });
+  }, [toast]);
+
+  // Handle go to dashboard action
+  const handleGoToDashboard = useCallback(() => {
+    setShowConnectionError(false);
+    window.location.href = "/dashboard"; // Navigate to dashboard
+  }, []);
+
   // Use WebSocket for real-time messaging (only if authenticated)
   const { 
     messages, sendMessage, sendTyping, sendRawMessage, typingUsers, onlineUsers, isConnected, error, reconnect,
     requiresTicket, roomStatus, statusMessage: wsStatusMessage, temporaryError, clearAccessError
-  } = useChatroomWebSocket(isAuthenticated ? userId : undefined, userName);
+  } = useChatroomWebSocket(
+    isAuthenticated ? userId : undefined, 
+    userName,
+    undefined, // onSecureRequest callback (not used here)
+    handleConnectionFailed // onConnectionFailed callback
+  );
   
   const selectedUser = onlineUsers.find(u => u.id === selectedUserId);
   
@@ -1590,6 +1627,16 @@ export default function LiveChatroomPage() {
           }}
         />
       )}
+
+      {/* Connection Error Dialog */}
+      <ChatConnectionErrorDialog
+        open={showConnectionError}
+        onOpenChange={setShowConnectionError}
+        onRetry={handleRetryConnection}
+        onReportBug={handleReportBug}
+        onGoHome={handleGoToDashboard}
+        attemptCount={connectionAttempts}
+      />
     </div>
   );
 }
