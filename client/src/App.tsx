@@ -16,6 +16,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { ProtectedRoute } from "@/components/protected-route";
 import { LeaderRoute } from "@/components/leader-route";
+import { PlatformAdminRoute } from "@/components/platform-admin-route";
 import { DemoBanner } from "@/components/demo-banner";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { CommandPalette } from "@/components/command-palette";
@@ -404,7 +405,11 @@ function AppContent() {
                 <Route path="/owner/hireos/workflow-builder" component={HireOSWorkflowBuilder} />
                 <Route path="/employees/:employeeId/file-cabinet" component={EmployeeFileCabinet} />
                 <Route path="/support/dashboard" component={SupportDashboard} />
-                <Route path="/platform-admin" component={PlatformAdmin} />
+                <Route path="/platform-admin">
+                  <PlatformAdminRoute>
+                    <PlatformAdmin />
+                  </PlatformAdminRoute>
+                </Route>
                 <Route path="/platform/admin">
                   <Redirect to="/platform-admin" />
                 </Route>
