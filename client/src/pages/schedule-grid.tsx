@@ -407,7 +407,7 @@ export default function ScheduleGrid() {
   
   // 🔴 REAL-TIME: Connect to shift updates WebSocket
   // This enables live sync: mobile changes → desktop updates, desktop → mobile
-  useShiftWebSocket(user?.id, user?.workspaceId);
+  useShiftWebSocket(user?.id, user?.currentWorkspaceId ?? undefined);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'week' | 'bi-week' | 'semi-monthly' | 'monthly'>('week');
   const [selectedShift, setSelectedShift] = useState<Shift | null>(null);
