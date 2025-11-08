@@ -28,6 +28,7 @@ import { eq, and, gte, lte, sql, desc, count } from "drizzle-orm";
 
 interface ScheduleRequest {
   workspaceId: string;
+  userId?: string; // Track which user initiated AI scheduling (for billing)
   weekStartDate: Date;
   clientIds?: string[];
   shiftRequirements: {
@@ -209,6 +210,25 @@ CRITICAL RULES:
       response_format: { type: 'json_object' },
       temperature: 0.2, // Very low temperature for consistent, logical scheduling
     });
+
+    // USAGE-BASED BILLING: Track AI token usage for customer billing
+    const { usageMeteringService } = await import('../services/billing/usageMetering');
+    const tokenUsage = aiResponse.usage;
+    if (tokenUsage && request.workspaceId) {
+      await usageMeteringService.recordUsage({
+        workspaceId: request.workspaceId,
+        userId: request.userId,
+        featureKey: 'scheduleos_ai_generation',
+        quantity: tokenUsage.total_tokens,
+        metadata: {
+          model: 'gpt-4',
+          promptTokens: tokenUsage.prompt_tokens,
+          completionTokens: tokenUsage.completion_tokens,
+          shiftsGenerated: request.shiftRequirements.length,
+        },
+      });
+      console.log(`[ScheduleOS™] Billed ${tokenUsage.total_tokens} tokens to workspace ${request.workspaceId}`);
+    }
 
     // 6. Parse AI response
     const aiSchedule = JSON.parse(aiResponse.choices[0].message.content || '{}');
