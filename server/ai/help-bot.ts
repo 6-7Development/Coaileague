@@ -1,6 +1,8 @@
 // Help Bot AI Service
 // Using Replit AI Integrations (OpenAI-compatible API)
+// CRITICAL: All token usage is tracked and billed to customer workspaces
 import OpenAI from "openai";
+import { usageMeteringService } from '../services/billing/usageMetering';
 
 // This is using Replit's AI Integrations service, which provides OpenAI-compatible API access without requiring your own OpenAI API key.
 // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
@@ -14,6 +16,8 @@ export interface HelpBotContext {
   customerName?: string;
   customerEmail?: string;
   previousMessages?: Array<{ role: 'user' | 'assistant'; content: string }>;
+  workspaceId?: string; // Required for billing tracking
+  userId?: string; // Optional for user-level tracking
 }
 
 export class HelpBotService {
@@ -40,6 +44,25 @@ Be friendly, professional, and helpful. Do NOT use any emojis.`;
         messages: [{ role: "user", content: prompt }],
         max_completion_tokens: 200,
       });
+
+      // Record token usage for billing
+      const tokensUsed = completion.usage?.total_tokens || 0;
+      if (tokensUsed > 0 && context.workspaceId) {
+        await usageMeteringService.recordUsage({
+          workspaceId: context.workspaceId,
+          userId: context.userId,
+          featureKey: 'helpdesk_ai_greeting',
+          usageType: 'token',
+          usageAmount: tokensUsed,
+          usageUnit: 'tokens',
+          activityType: 'help_bot_greeting',
+          metadata: {
+            model: 'gpt-5',
+            customerName: context.customerName,
+          }
+        });
+        console.log(`💰 Help Bot - Greeting generated (${tokensUsed} tokens) - Billed to workspace: ${context.workspaceId}`);
+      }
 
       return completion.choices[0]?.message?.content || 
         "Welcome to WorkforceOS Support! I'm help_bot, your AI assistant. You're currently silenced until a support agent joins. Once they grant you voice, we can chat! What brings you here today?";
@@ -94,6 +117,25 @@ Respond to the user's message naturally and helpfully.`;
         messages,
         max_completion_tokens: 300,
       });
+
+      // Record token usage for billing
+      const tokensUsed = completion.usage?.total_tokens || 0;
+      if (tokensUsed > 0 && context.workspaceId) {
+        await usageMeteringService.recordUsage({
+          workspaceId: context.workspaceId,
+          userId: context.userId,
+          featureKey: 'helpdesk_ai_response',
+          usageType: 'token',
+          usageAmount: tokensUsed,
+          usageUnit: 'tokens',
+          activityType: 'help_bot_response',
+          metadata: {
+            model: 'gpt-5',
+            messageLength: userMessage.length,
+          }
+        });
+        console.log(`💰 Help Bot - Response generated (${tokensUsed} tokens) - Billed to workspace: ${context.workspaceId}`);
+      }
 
       return completion.choices[0]?.message?.content || 
         "I'm having trouble responding right now. A support agent will assist you shortly!";

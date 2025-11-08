@@ -11488,6 +11488,8 @@ Keep it professional, actionable, and under 250 words.`;
         customerName: conversation.customerName || undefined,
         customerEmail: conversation.customerEmail || undefined,
         previousMessages,
+        workspaceId: workspace.id, // CRITICAL: Required for billing tracking
+        userId, // Track which user initiated the request
       });
 
       // Save bot response as message
@@ -11524,15 +11526,23 @@ Keep it professional, actionable, and under 250 words.`;
         });
       }
 
-      // Get workspace ID for billing tracking
-      const workspaceId = req.user?.workspaceId || 'default';
+      // CRITICAL: Require valid workspace ID for billing tracking
+      // Do NOT allow fallback to 'default' - all AI usage must be billed to a real workspace
+      const workspaceId = req.user?.workspaceId;
+      if (!workspaceId) {
+        return res.status(400).json({ 
+          message: "Workspace ID is required for AI features. Please ensure you are properly authenticated.",
+          available: false 
+        });
+      }
+
       const userId = req.user?.id;
 
       const response = await generateGeminiResponse({
         message,
         conversationHistory: conversationHistory || [],
         systemPrompt,
-        workspaceId, // Track usage per workspace for billing
+        workspaceId, // Track usage per workspace for billing (REQUIRED)
         userId, // Track which user initiated the request
       });
 
