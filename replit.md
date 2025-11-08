@@ -26,6 +26,11 @@ A hybrid pricing model combines subscriptions with overage charges for AI-powere
 ### UI/UX Decisions
 The platform features a professional aesthetic using Deep Charcoal, Platinum neutrals, and Emergency Green accents. It prioritizes a mobile-first approach with responsive layouts and accessible touch targets. Branding includes an "AF" lightning bolt logo within a circular green gradient badge. User-facing pages consistently use emerald/green/teal colors, a uniform dark gradient background, and emerald accents.
 
+**Navigation Improvements (November 2025)**:
+- **Floating Header**: Sticky header (`position: sticky`) floats over content when scrolling without overlapping sidebar or demo banner. Semi-transparent with backdrop blur for modern aesthetic.
+- **Visible Labels**: All navigation buttons include text labels on larger screens (Menu, Search, Tutorial, Settings/Admin) plus tooltips for clarity. Users know what each button does.
+- **Breadcrumb Navigation**: Contextual breadcrumbs (Home > Section > Page) help users understand their location and navigate back easily. Automatically hidden on dashboard/home where not needed.
+
 Key mobile-first PWA features include:
 - Comprehensive mobile-first CSS variables for breakpoints, touch targets (48px minimum), spacing, typography, and safe areas.
 - Complete Progressive Web App setup with manifest.json and a service worker for offline support and caching.
