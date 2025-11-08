@@ -694,7 +694,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/reports/generate', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
     try {
       const { reportType, startDate, endDate } = req.body;
-      const workspaceId = req.workspace!.id;
+      const userId = req.user!.id;
+      const workspace = await storage.getWorkspaceByOwnerId(userId) || await storage.getWorkspaceByMembership(userId);
+      if (!workspace) {
+        return res.status(404).json({ message: "Workspace not found" });
+      }
+      const workspaceId = workspace.id;
 
       let reportData: any = {};
 
@@ -5571,10 +5576,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ANALYTICS ROUTES
   // ============================================================================
   
-  app.get('/api/analytics', isAuthenticated, async (req: any, res) => {
+  app.get('/api/analytics', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const workspace = await storage.getWorkspaceByOwnerId(userId);
+      const userId = req.user!.id;
+      const workspace = await storage.getWorkspaceByOwnerId(userId) || await storage.getWorkspaceByMembership(userId);
       
       if (!workspace) {
         return res.status(404).json({ message: "Workspace not found" });
@@ -8823,15 +8828,15 @@ ${application.email}`,
   // ============================================================================
 
   // Get all report templates (with activation status per workspace)
-  app.get('/api/report-templates', isAuthenticated, async (req: any, res) => {
+  app.get('/api/report-templates', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      if (!user?.currentWorkspaceId) {
-        return res.status(403).json({ message: "No workspace selected" });
+      const userId = req.user!.id;
+      const workspace = await storage.getWorkspaceByOwnerId(userId) || await storage.getWorkspaceByMembership(userId);
+      if (!workspace) {
+        return res.status(403).json({ message: "No workspace found" });
       }
 
-      const templates = await storage.getReportTemplatesByWorkspace(user.currentWorkspaceId);
+      const templates = await storage.getReportTemplatesByWorkspace(workspace.id);
       res.json(templates);
     } catch (error) {
       console.error("Error fetching report templates:", error);
