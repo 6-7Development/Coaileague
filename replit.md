@@ -78,6 +78,13 @@ The platform features a professional aesthetic with Deep Charcoal, Platinum neut
     - **Asset Management**: AssetOS™ for tracking vehicles and equipment.
     - **AI & Analytics**: RecordOS™ and InsightOS™ for natural language search, autonomous analytics, and predictive insights.
     - **Platform Administration**: ROOT Admin Dashboard, organization onboarding, and HelpDesk queue management.
+    - **Organization Support System** (**COMPLETED November 2025**): Internal support ticket escalation workflow from organization leaders to platform support staff:
+        - **Ticket Creation**: Any organization employee can create support tickets (type, priority, subject, description)
+        - **Escalation Flow**: Organization leaders (org_owner, org_admin, department_manager) can escalate tickets to platform support with reason
+        - **Platform Queue**: Platform support staff (root_admin, deputy_admin, support_manager, sysop, support_agent) access escalated ticket queue
+        - **Assignment & Resolution**: Platform staff can self-assign tickets, add investigation notes, and resolve with notifications back to org
+        - **Technical Implementation**: Extended support_tickets schema with 6 escalation fields (isEscalated, escalatedAt, escalatedBy, escalatedReason, platformAssignedTo, platformNotes), session-based requireAuth middleware for custom auth support, Zod validation on all endpoints
+        - **Frontend UI**: client/src/pages/org-support.tsx with tabbed interface (Open/Resolved/Escalated), ticket creation dialog, escalation dialog (RBAC-protected), priority/status badges
     - **HelpOS™ FAQ System**: AI-powered knowledge base with semantic search and continuous learning from support interactions:
         - **Semantic Search**: OpenAI embedding-based search finds answers even when exact keywords don't match
         - **Auto-Generation from Tickets**: Converts resolved support tickets into reusable FAQ entries using GPT-3.5
@@ -106,3 +113,7 @@ The platform features a professional aesthetic with Deep Charcoal, Platinum neut
 - **Payment Processing**: Stripe Connect
 - **Email**: Resend
 - **AI**: OpenAI GPT-3.5-turbo (for HelpOS support bot), GPT-4o-mini (for advanced features)
+
+## Deployment Notes
+- **Database Schema Sync**: Always run `npm run db:push --force` after schema changes to sync database with shared/schema.ts
+- **Support Tickets Schema**: Database requires escalation columns (is_escalated, escalated_at, escalated_by, escalated_reason, platform_assigned_to, platform_notes) plus resolution columns (resolution_summary, closed_at, closed_by, closed_reason, resolved_at, resolved_by, resolution, assigned_to)
