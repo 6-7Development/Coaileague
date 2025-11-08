@@ -107,8 +107,8 @@ export default function RootAdminPortal() {
     if (!isLoading) {
       const platformRole = (user as any)?.platformRole;
       
-      // Only root and sysop can access root admin portal
-      if (platformRole !== 'root' && platformRole !== 'sysop') {
+      // Only root_admin and sysop can access root admin portal
+      if (platformRole !== 'root_admin' && platformRole !== 'sysop') {
         if (!user) {
           window.location.href = '/login';
         } else {
