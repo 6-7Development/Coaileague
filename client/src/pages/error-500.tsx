@@ -10,7 +10,6 @@ export default function Error500() {
   const [, setLocation] = useLocation();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Check authentication status
   const { data: currentUser } = useQuery<{ user: { id: string } }>({
     queryKey: ["/api/auth/me"],
     retry: false,
@@ -26,43 +25,34 @@ export default function Error500() {
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center p-4 bg-gradient-to-br from-red-950 via-slate-900 to-slate-800">
-      {/* Animated background mesh */}
-      <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0zNiAxOGMzLjMxNCAwIDYgMi42ODYgNiA2cy0yLjY4NiA2LTYgNi02LTIuNjg2LTYtNiAyLjY4Ni02IDYtNnoiIHN0cm9rZT0iIzFmM2E4YSIgc3Ryb2tlLXdpZHRoPSIuNSIgb3BhY2l0eT0iLjEiLz48L2c+PC9zdmc+')] opacity-20" />
-      
-      <Card className="w-full max-w-2xl border-red-500/30 bg-gradient-to-br from-slate-900/90 via-red-950/90 to-slate-800/90 backdrop-blur-xl shadow-2xl relative overflow-hidden">
-        {/* Glow effect */}
-        <div className="absolute -inset-1 bg-gradient-to-r from-red-600 via-orange-600 to-red-600 rounded-lg blur-xl opacity-20 animate-pulse" />
-        
-        <CardHeader className="text-center pb-6 pt-8 relative z-10">
-          {/* WorkforceOS Logo */}
+    <div className="min-h-screen w-full flex items-center justify-center p-4 bg-background">
+      <Card className="w-full max-w-lg border shadow-sm">
+        <CardHeader className="text-center pb-4 pt-8">
           <div className="flex justify-center mb-6">
-            <div className="p-4 bg-gradient-to-br from-red-500/20 to-orange-500/20 rounded-2xl backdrop-blur-sm border border-red-400/30">
-              <AutoForceLogo variant="icon" size="sm" />
+            <div className="p-3 bg-muted rounded-lg border">
+              <AutoForceLogo variant="icon" size="md" />
             </div>
           </div>
 
-          {/* 500 Icon */}
-          <div className="mx-auto mb-6 h-20 w-20 rounded-full bg-gradient-to-br from-red-500/20 to-orange-500/20 flex items-center justify-center border-2 border-red-400/30">
-            <ServerCrash className="h-10 w-10 text-red-400" data-testid="icon-error-500" />
+          <div className="mx-auto mb-6 h-16 w-16 rounded-full bg-destructive/10 flex items-center justify-center border border-destructive/20">
+            <ServerCrash className="h-8 w-8 text-destructive" data-testid="icon-error-500" />
           </div>
 
-          <h1 className="text-4xl sm:text-5xl font-bold bg-gradient-to-r from-red-300 via-orange-300 to-red-300 bg-clip-text text-transparent mb-3" data-testid="text-error-title">
+          <h1 className="text-3xl font-bold text-foreground mb-2" data-testid="text-error-title">
             500 - Server Error
           </h1>
-          <p className="text-base sm:text-lg text-slate-300 mb-2" data-testid="text-error-description">
+          <p className="text-sm text-muted-foreground mb-1" data-testid="text-error-description">
             Something went wrong on our end
           </p>
-          <p className="text-sm text-slate-400 max-w-md mx-auto">
+          <p className="text-xs text-muted-foreground/70 max-w-md mx-auto">
             Our team has been notified. This is usually temporary.
           </p>
         </CardHeader>
 
-        <CardContent className="space-y-6 pb-8 relative z-10">
-          {/* Info box */}
-          <div className="bg-gradient-to-r from-red-500/10 to-orange-500/10 border border-red-400/30 rounded-lg p-4">
-            <h3 className="font-semibold mb-2 text-slate-200">What can you do?</h3>
-            <ul className="text-sm text-slate-300 space-y-1 ml-6 list-disc">
+        <CardContent className="space-y-3 pb-6">
+          <div className="bg-muted border rounded-lg p-3">
+            <h3 className="font-semibold mb-2 text-sm">What can you do?</h3>
+            <ul className="text-xs text-muted-foreground space-y-1 ml-6 list-disc">
               <li>Try refreshing the page</li>
               <li>Clear your browser cache and cookies</li>
               <li>Wait a few minutes and try again</li>
@@ -70,11 +60,10 @@ export default function Error500() {
             </ul>
           </div>
 
-          {/* Quick action buttons */}
-          <div className="grid gap-3">
+          <div className="grid gap-2">
             <Button 
               onClick={handleRefresh} 
-              className="w-full justify-center gap-2 bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-500 hover:to-orange-500 border-0"
+              className="w-full gap-2"
               disabled={isRefreshing}
               data-testid="button-refresh-page"
             >
@@ -85,7 +74,7 @@ export default function Error500() {
             <Button 
               onClick={() => setLocation(isAuthenticated ? "/dashboard" : "/")} 
               variant="outline"
-              className="w-full justify-center gap-2 border-red-400/30 hover:bg-red-500/10"
+              className="w-full gap-2"
               data-testid="button-go-home"
             >
               <Home className="h-4 w-4" />
@@ -96,7 +85,7 @@ export default function Error500() {
               <Button 
                 onClick={() => setLocation("/support")} 
                 variant="outline"
-                className="w-full justify-center gap-2 border-red-400/30 hover:bg-red-500/10"
+                className="w-full gap-2"
                 data-testid="button-contact-support"
               >
                 <MessageSquare className="h-4 w-4" />
@@ -105,13 +94,12 @@ export default function Error500() {
             )}
           </div>
 
-          {/* Help section */}
-          <div className="pt-4 border-t border-slate-700/50 text-center">
-            <p className="text-xs text-slate-400 mb-2">
+          <div className="pt-3 border-t text-center">
+            <p className="text-xs text-muted-foreground/70 mb-1">
               Error Code: 500 - Internal Server Error
             </p>
-            <p className="text-xs text-slate-500">
-              WorkforceOS™ - 99.9% Uptime SLA Guarantee
+            <p className="text-xs text-muted-foreground/50">
+              AutoForce™ - 99.9% Uptime SLA Guarantee
             </p>
           </div>
         </CardContent>
