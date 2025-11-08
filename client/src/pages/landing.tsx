@@ -82,14 +82,14 @@ export default function Landing() {
               <div className="h-6 w-px bg-border" />
               <Button
                 variant="ghost"
-                className="min-h-[44px]"
+                className="min-h-[44px] px-4"
                 onClick={() => setLocation("/login")}
                 data-testid="button-login"
               >
                 Login
               </Button>
               <Button
-                className="min-h-[44px] whitespace-normal"
+                className="min-h-[44px] px-6"
                 onClick={() => setLocation("/register")}
                 data-testid="button-get-started"
               >
@@ -150,7 +150,7 @@ export default function Landing() {
                   <Button
                     size="lg"
                     onClick={() => setLocation("/register")}
-                    className="text-base sm:text-lg px-6 sm:px-8 min-h-[52px] sm:min-h-[56px] w-full sm:w-auto font-semibold whitespace-normal text-center"
+                    className="text-base sm:text-lg px-6 sm:px-8 py-3 sm:py-4 w-full sm:w-auto font-semibold"
                     data-testid="button-start-trial"
                   >
                     Start Free Trial
@@ -160,7 +160,7 @@ export default function Landing() {
                     size="lg"
                     variant="outline"
                     onClick={() => window.location.href = "/api/demo-login"}
-                    className="text-base sm:text-lg px-6 sm:px-8 min-h-[52px] sm:min-h-[56px] w-full sm:w-auto font-semibold whitespace-normal text-center"
+                    className="text-base sm:text-lg px-6 sm:px-8 py-3 sm:py-4 w-full sm:w-auto font-semibold"
                     data-testid="button-view-demo"
                   >
                     View Live Demo
