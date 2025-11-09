@@ -313,14 +313,14 @@ export default function Pricing() {
             </div>
 
             {/* Overage Information */}
-            <div className="mt-8 p-6 bg-amber-500/5 border border-amber-500/20 rounded-lg">
+            <div className="mt-8 p-6 bg-secondary/5 border border-secondary/20 rounded-lg">
               <div className="flex items-start gap-3">
-                <TrendingUp className="h-5 w-5 text-amber-400 flex-shrink-0 mt-0.5" />
+                <TrendingUp className="h-5 w-5 text-secondary flex-shrink-0 mt-0.5" />
                 <div className="space-y-1">
                   <h3 className="font-semibold text-white">Fair Usage & Overage Billing</h3>
                   <p className="text-sm text-slate-400">
                     Each plan includes a set number of employees (25 for Starter, 100 for Professional). 
-                    If you exceed your plan limit, additional employees are billed at <strong className="text-amber-400">$15/employee/month</strong>.
+                    If you exceed your plan limit, additional employees are billed at <strong className="text-secondary">$15/employee/month</strong>.
                     This ensures you only pay for what you use while maintaining consistent pricing.
                   </p>
                 </div>

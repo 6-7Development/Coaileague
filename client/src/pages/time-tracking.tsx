@@ -670,7 +670,7 @@ export default function TimeTracking() {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Accuracy:</span>
-                      <span className={gpsData.accuracy > 50 ? "text-yellow-600" : "text-green-600"}>
+                      <span className={gpsData.accuracy > 50 ? "text-destructive font-semibold" : "text-primary font-semibold"}>
                         ±{Math.round(gpsData.accuracy)}m
                       </span>
                     </div>
