@@ -36,7 +36,14 @@ import {
 import { eq, and, gte, lte, isNull, desc, sql } from "drizzle-orm";
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Lazy initialize Resend only when sending emails (allows server to start without API key)
+let resend: Resend | null = null;
+function getResend() {
+  if (!resend && process.env.RESEND_API_KEY) {
+    resend = new Resend(process.env.RESEND_API_KEY);
+  }
+  return resend;
+}
 
 /**
  * PHASE 4A: AUTOMATED INVOICING & REVENUE STREAM (Subscriber's AR)
@@ -323,7 +330,13 @@ function generateSecureToken(): string {
  */
 async function sendInvoiceEmail(invoice: Invoice, clientEmail: string, portalUrl: string) {
   try {
-    await resend.emails.send({
+    const resendClient = getResend();
+    if (!resendClient) {
+      console.warn('Resend API key not configured - invoice email not sent');
+      return;
+    }
+    
+    await resendClient.emails.send({
       from: 'billing@workforceos.com',
       to: clientEmail,
       subject: `Invoice ${invoice.invoiceNumber} - ${invoice.total}`,
