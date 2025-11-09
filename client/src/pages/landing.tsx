@@ -37,8 +37,8 @@ export default function Landing() {
     <div className="min-h-screen bg-background overflow-x-hidden w-full max-w-full">
       {/* Navigation Header */}
       <nav className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto px-4 sm:px-6">
-          <div className="flex h-16 sm:h-20 items-center justify-between gap-3">
+        <div className="container mx-auto px-3 sm:px-6">
+          <div className="flex h-16 sm:h-20 items-center justify-between gap-2">
             {/* Professional Navigation Logo */}
             <button 
               onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
@@ -52,7 +52,7 @@ export default function Landing() {
               </div>
               {/* Mobile: Show smaller logo */}
               <div className="block sm:hidden">
-                <AnimatedAutoForceLogo variant="full" size="sm" />
+                <AnimatedAutoForceLogo variant="icon" size="sm" />
               </div>
             </button>
 
@@ -97,18 +97,18 @@ export default function Landing() {
               </Button>
             </div>
 
-            {/* Mobile Menu - Improved touch targets with better visibility */}
-            <div className="flex md:hidden items-center gap-2">
+            {/* Mobile Menu - Compact buttons that fit on screen */}
+            <div className="flex md:hidden items-center gap-2 shrink-0">
               <Button
                 variant="outline"
-                className="min-h-[48px] px-5 text-sm whitespace-nowrap"
+                className="min-h-[48px] px-4 text-sm whitespace-nowrap"
                 onClick={() => setLocation("/login")}
                 data-testid="button-login-mobile"
               >
                 Login
               </Button>
               <Button
-                className="min-h-[48px] px-5 text-sm whitespace-nowrap"
+                className="min-h-[48px] px-4 text-sm whitespace-nowrap"
                 onClick={() => setLocation("/register")}
                 data-testid="button-signup-mobile"
               >
