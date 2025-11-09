@@ -23,17 +23,17 @@ const SCHEDULER_CONFIG = {
   invoicing: {
     enabled: true,
     schedule: '0 2 * * *', // Every day at 2 AM
-    description: 'Nightly invoice generation from approved time entries'
+    description: 'Daily check for invoice generation based on workspace schedules'
   },
   scheduling: {
     enabled: true,
-    schedule: '0 23 * * 0', // Every Sunday at 11 PM
-    description: 'Weekly schedule generation for upcoming week'
+    schedule: '0 23 * * *', // Every day at 11 PM
+    description: 'Daily check for schedule generation based on workspace intervals'
   },
   payroll: {
     enabled: true,
-    schedule: '0 3 * * 1', // Every Monday at 3 AM (after invoicing)
-    description: 'Automatic payroll processing on pay period dates'
+    schedule: '0 3 * * *', // Every day at 3 AM (after invoicing)
+    description: 'Daily check for payroll processing based on workspace pay periods'
   }
 };
 
@@ -52,7 +52,7 @@ async function runNightlyInvoiceGeneration() {
   console.log('=================================================');
 
   try {
-    // Get all active workspaces (not suspended, frozen, or locked)
+    // Get all active workspaces with auto-invoicing enabled
     const activeWorkspaces = await db
       .select()
       .from(workspaces)
@@ -60,29 +60,73 @@ async function runNightlyInvoiceGeneration() {
         and(
           eq(workspaces.isSuspended, false),
           eq(workspaces.isFrozen, false),
-          eq(workspaces.isLocked, false)
+          eq(workspaces.isLocked, false),
+          eq(workspaces.autoInvoicingEnabled, true)
         )
       );
 
-    console.log(`Found ${activeWorkspaces.length} active workspace(s)`);
+    console.log(`Found ${activeWorkspaces.length} workspace(s) with auto-invoicing enabled`);
 
     let totalInvoicesGenerated = 0;
     let successCount = 0;
     let errorCount = 0;
 
+    const today = new Date();
+    const dayOfMonth = today.getDate();
+    const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday
+    const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+    
     for (const workspace of activeWorkspaces) {
       try {
-        console.log(`\n📊 Processing workspace: ${workspace.name} (${workspace.id})`);
+        const schedule = workspace.invoiceSchedule || 'monthly';
         
-        // Generate invoices for yesterday's approved time entries
-        const invoices = await generateUsageBasedInvoices(workspace.id);
+        console.log(`\n📊 Checking workspace: ${workspace.name} (${workspace.id})`);
+        console.log(`   Schedule: ${schedule}`);
         
-        if (invoices.length > 0) {
-          console.log(`✅ Generated ${invoices.length} invoice(s) for ${workspace.name}`);
-          totalInvoicesGenerated += invoices.length;
-          successCount++;
+        // Check if today matches the workspace's invoice schedule
+        let shouldGenerateInvoices = false;
+        
+        if (schedule === 'weekly') {
+          const dayOfWeekSetting = workspace.invoiceDayOfWeek ?? 1; // Default Monday
+          shouldGenerateInvoices = dayOfWeek === dayOfWeekSetting;
+          console.log(`   Day of Week: ${dayOfWeekSetting} (today: ${dayOfWeek})`);
+        } else if (schedule === 'biweekly') {
+          const dayOfWeekSetting = workspace.invoiceDayOfWeek ?? 1; // Default Monday
+          shouldGenerateInvoices = dayOfWeek === dayOfWeekSetting && (Math.floor((dayOfMonth - 1) / 7) % 2 === 0);
+          console.log(`   Day of Week: ${dayOfWeekSetting} (today: ${dayOfWeek})`);
+        } else if (schedule === 'semi-monthly') {
+          // 15th and last day of month
+          shouldGenerateInvoices = dayOfMonth === 15 || dayOfMonth === lastDayOfMonth;
+          console.log(`   Pay Dates: 15th and last day (today: ${dayOfMonth})`);
+        } else if (schedule === 'monthly') {
+          const dayOfMonthSetting = workspace.invoiceDayOfMonth ?? 1;
+          shouldGenerateInvoices = dayOfMonth === dayOfMonthSetting;
+          console.log(`   Day of Month: ${dayOfMonthSetting} (today: ${dayOfMonth})`);
+        } else if (schedule === 'net30') {
+          const dayOfMonthSetting = workspace.invoiceDayOfMonth ?? 1;
+          shouldGenerateInvoices = dayOfMonth === dayOfMonthSetting;
+          console.log(`   Day of Month: ${dayOfMonthSetting} (today: ${dayOfMonth})`);
+        } else if (schedule === 'custom' && workspace.invoiceCustomDays) {
+          // TODO: Implement custom interval tracking (needs lastRunDate in DB)
+          console.log(`   ℹ️  Custom schedule not yet implemented (${workspace.invoiceCustomDays} days)`);
+          shouldGenerateInvoices = false;
+        }
+        
+        if (shouldGenerateInvoices) {
+          console.log(`   ✓ Schedule matched, generating invoices...`);
+          
+          // Generate invoices for yesterday's approved time entries
+          const invoices = await generateUsageBasedInvoices(workspace.id);
+          
+          if (invoices.length > 0) {
+            console.log(`✅ Generated ${invoices.length} invoice(s) for ${workspace.name}`);
+            totalInvoicesGenerated += invoices.length;
+            successCount++;
+          } else {
+            console.log(`ℹ️  No unbilled time entries for ${workspace.name}`);
+          }
         } else {
-          console.log(`ℹ️  No unbilled time entries for ${workspace.name}`);
+          console.log(`   ℹ️  Not an invoice generation date for this schedule, skipping`);
         }
       } catch (error) {
         console.error(`❌ Failed to generate invoices for ${workspace.name}:`, error);
@@ -122,18 +166,22 @@ async function runWeeklyScheduleGeneration() {
         and(
           eq(workspaces.isSuspended, false),
           eq(workspaces.isFrozen, false),
-          eq(workspaces.isLocked, false)
-          // TODO: Add workspace.autoSchedulingEnabled field when ready
+          eq(workspaces.isLocked, false),
+          eq(workspaces.autoSchedulingEnabled, true)
         )
       );
 
-    console.log(`Found ${activeWorkspaces.length} active workspace(s)`);
+    console.log(`Found ${activeWorkspaces.length} workspace(s) with auto-scheduling enabled`);
 
+    const today = new Date();
+    const dayOfMonth = today.getDate();
+    const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday
+    
     // Calculate next week's date range
     const nextWeekStart = startOfWeek(addDays(new Date(), 7)); // Next Monday
     const nextWeekEnd = endOfWeek(nextWeekStart); // Following Sunday
 
-    console.log(`\n📅 Generating schedules for week:`);
+    console.log(`\n📅 Target schedule period:`);
     console.log(`   Start: ${format(nextWeekStart, 'MMM dd, yyyy')}`);
     console.log(`   End:   ${format(nextWeekEnd, 'MMM dd, yyyy')}\n`);
 
@@ -142,27 +190,59 @@ async function runWeeklyScheduleGeneration() {
 
     for (const workspace of activeWorkspaces) {
       try {
-        console.log(`\n📊 Processing workspace: ${workspace.name} (${workspace.id})`);
+        const interval = workspace.scheduleGenerationInterval || 'weekly';
+        const advanceNoticeDays = workspace.scheduleAdvanceNoticeDays || 7;
         
-        // TODO: Get shift requirements from workspace configuration
-        // For now, skip auto-scheduling until shift requirements are configured
-        console.log(`ℹ️  Auto-scheduling not yet configured for ${workspace.name}`);
-        console.log(`   (Requires shift requirement templates in workspace settings)`);
+        console.log(`\n📊 Checking workspace: ${workspace.name} (${workspace.id})`);
+        console.log(`   Schedule Interval: ${interval}`);
+        console.log(`   Advance Notice: ${advanceNoticeDays} days`);
         
-        // Example of how it would work:
-        /*
-        const scheduleOSAI = new ScheduleOSAI();
-        const result = await scheduleOSAI.generateSchedule({
-          workspaceId: workspace.id,
-          weekStartDate: nextWeekStart,
-          shiftRequirements: workspace.shiftTemplates // Would come from settings
-        });
+        // Check if today matches the workspace's schedule generation interval
+        let shouldGenerateSchedule = false;
         
-        if (result.success) {
-          console.log(`✅ Generated ${result.shiftsGenerated} shifts for ${workspace.name}`);
-          successCount++;
+        if (interval === 'weekly') {
+          const dayOfWeekSetting = workspace.scheduleDayOfWeek ?? 0; // Default Sunday
+          shouldGenerateSchedule = dayOfWeek === dayOfWeekSetting;
+          console.log(`   Day of Week: ${dayOfWeekSetting} (today: ${dayOfWeek})`);
+        } else if (interval === 'biweekly') {
+          const dayOfWeekSetting = workspace.scheduleDayOfWeek ?? 0; // Default Sunday
+          shouldGenerateSchedule = dayOfWeek === dayOfWeekSetting && (Math.floor((dayOfMonth - 1) / 7) % 2 === 0);
+          console.log(`   Day of Week: ${dayOfWeekSetting} (today: ${dayOfWeek})`);
+        } else if (interval === 'monthly') {
+          const dayOfMonthSetting = workspace.scheduleDayOfMonth ?? 25; // Default 25th
+          shouldGenerateSchedule = dayOfMonth === dayOfMonthSetting;
+          console.log(`   Day of Month: ${dayOfMonthSetting} (today: ${dayOfMonth})`);
+        } else if (interval === 'custom' && workspace.scheduleCustomDays) {
+          // TODO: Implement custom interval tracking (needs lastRunDate in DB)
+          console.log(`   ℹ️  Custom schedule not yet implemented (${workspace.scheduleCustomDays} days)`);
+          shouldGenerateSchedule = false;
         }
-        */
+        
+        if (shouldGenerateSchedule) {
+          console.log(`   ✓ Schedule interval matched, generating schedules...`);
+          
+          // TODO: Get shift requirements from workspace configuration
+          // For now, skip auto-scheduling until shift requirements are configured
+          console.log(`   ℹ️  Shift templates not yet configured for ${workspace.name}`);
+          console.log(`   (Requires shift requirement templates in workspace settings)`);
+          
+          // Example of how it would work:
+          /*
+          const scheduleOSAI = new ScheduleOSAI();
+          const result = await scheduleOSAI.generateSchedule({
+            workspaceId: workspace.id,
+            weekStartDate: nextWeekStart,
+            shiftRequirements: workspace.shiftTemplates // Would come from settings
+          });
+          
+          if (result.success) {
+            console.log(`✅ Generated ${result.shiftsGenerated} shifts for ${workspace.name}`);
+            successCount++;
+          }
+          */
+        } else {
+          console.log(`   ℹ️  Not a schedule generation date for this interval, skipping`);
+        }
         
       } catch (error) {
         console.error(`❌ Failed to generate schedule for ${workspace.name}:`, error);
@@ -193,7 +273,7 @@ async function runAutomaticPayrollProcessing() {
   console.log('=================================================');
 
   try {
-    // Get all active workspaces (not suspended, frozen, or locked)
+    // Get all active workspaces with auto-payroll enabled
     const activeWorkspaces = await db
       .select()
       .from(workspaces)
@@ -201,11 +281,12 @@ async function runAutomaticPayrollProcessing() {
         and(
           eq(workspaces.isSuspended, false),
           eq(workspaces.isFrozen, false),
-          eq(workspaces.isLocked, false)
+          eq(workspaces.isLocked, false),
+          eq(workspaces.autoPayrollEnabled, true)
         )
       );
 
-    console.log(`Found ${activeWorkspaces.length} active workspace(s)`);
+    console.log(`Found ${activeWorkspaces.length} workspace(s) with auto-payroll enabled`);
 
     const today = new Date();
     const dayOfMonth = today.getDate();
@@ -217,24 +298,39 @@ async function runAutomaticPayrollProcessing() {
 
     for (const workspace of activeWorkspaces) {
       try {
-        // Default to bi-weekly if no schedule configured
-        // TODO: Add payrollSchedule field to workspaces table
-        const paySchedule = 'bi-weekly';
+        // Get payroll schedule from workspace settings
+        const paySchedule = workspace.payrollSchedule || 'biweekly';
+        const cutoffDay = workspace.payrollCutoffDay ?? 15;
         let shouldProcessPayroll = false;
 
+        console.log(`\n📊 Checking workspace: ${workspace.name} (${workspace.id})`);
+        console.log(`   Payroll Schedule: ${paySchedule}`);
+
         // Check if today is a pay period date based on schedule
-        if (paySchedule === 'weekly' && dayOfWeek === 1) {
-          shouldProcessPayroll = true; // Every Monday
-        } else if (paySchedule === 'bi-weekly' && dayOfWeek === 1) {
-          // Every other Monday (simplified - would need pay period tracking)
-          const weekNumber = Math.floor(dayOfMonth / 7);
-          shouldProcessPayroll = weekNumber % 2 === 0;
-        } else if (paySchedule === 'monthly' && (dayOfMonth === 1 || dayOfMonth === 15)) {
-          shouldProcessPayroll = true; // 1st and 15th of month
+        if (paySchedule === 'weekly') {
+          const dayOfWeekSetting = workspace.payrollDayOfWeek ?? 1; // Default Monday
+          shouldProcessPayroll = dayOfWeek === dayOfWeekSetting;
+          console.log(`   Day of Week: ${dayOfWeekSetting} (today: ${dayOfWeek})`);
+        } else if (paySchedule === 'biweekly') {
+          const dayOfWeekSetting = workspace.payrollDayOfWeek ?? 1; // Default Monday
+          shouldProcessPayroll = dayOfWeek === dayOfWeekSetting && (Math.floor((dayOfMonth - 1) / 7) % 2 === 0);
+          console.log(`   Day of Week: ${dayOfWeekSetting} (today: ${dayOfWeek})`);
+        } else if (paySchedule === 'semi-monthly') {
+          const processDay = workspace.payrollDayOfMonth ?? 1;
+          shouldProcessPayroll = dayOfMonth === processDay || dayOfMonth === cutoffDay;
+          console.log(`   Pay Dates: ${processDay} and ${cutoffDay} (today: ${dayOfMonth})`);
+        } else if (paySchedule === 'monthly') {
+          const dayOfMonthSetting = workspace.payrollDayOfMonth ?? 1;
+          shouldProcessPayroll = dayOfMonth === dayOfMonthSetting;
+          console.log(`   Day of Month: ${dayOfMonthSetting} (today: ${dayOfMonth})`);
+        } else if (paySchedule === 'custom' && workspace.payrollCustomDays) {
+          // TODO: Implement custom interval logic (needs lastRunDate in DB)
+          console.log(`   ℹ️  Custom schedule not yet implemented (${workspace.payrollCustomDays} days)`);
+          shouldProcessPayroll = false;
         }
 
         if (shouldProcessPayroll) {
-          console.log(`\n📊 Processing payroll for: ${workspace.name} (${paySchedule})`);
+          console.log(`   ✓ Pay period date matched, processing payroll...`);
           
           // Get workspace owner to attribute payroll run
           const [owner] = await db
@@ -267,7 +363,7 @@ async function runAutomaticPayrollProcessing() {
           totalPayrollRuns++;
           successCount++;
         } else {
-          console.log(`ℹ️  Not a pay period date for ${workspace.name} (${paySchedule})`);
+          console.log(`   ℹ️  Not a pay period date, skipping`);
         }
 
       } catch (error) {
@@ -313,28 +409,28 @@ export function startAutonomousScheduler() {
     cron.schedule(SCHEDULER_CONFIG.invoicing.schedule, () => {
       runNightlyInvoiceGeneration();
     });
-    console.log('✅ BillOS™ Nightly Invoicing:');
-    console.log(`   Schedule: ${SCHEDULER_CONFIG.invoicing.schedule} (2 AM daily)`);
+    console.log('✅ BillOS™ Invoicing Automation:');
+    console.log(`   Schedule: ${SCHEDULER_CONFIG.invoicing.schedule} (daily 2 AM)`);
     console.log(`   ${SCHEDULER_CONFIG.invoicing.description}\n`);
   }
 
-  // 2. Weekly Schedule Generation (Sunday 11 PM)
+  // 2. Schedule Generation (11 PM daily)
   if (SCHEDULER_CONFIG.scheduling.enabled) {
     cron.schedule(SCHEDULER_CONFIG.scheduling.schedule, () => {
       runWeeklyScheduleGeneration();
     });
-    console.log('✅ ScheduleOS™ Weekly Scheduling:');
-    console.log(`   Schedule: ${SCHEDULER_CONFIG.scheduling.schedule} (Sunday 11 PM)`);
+    console.log('✅ ScheduleOS™ Schedule Automation:');
+    console.log(`   Schedule: ${SCHEDULER_CONFIG.scheduling.schedule} (daily 11 PM)`);
     console.log(`   ${SCHEDULER_CONFIG.scheduling.description}\n`);
   }
 
-  // 3. Automatic Payroll Processing (Monday 3 AM)
+  // 3. Automatic Payroll Processing (3 AM daily)
   if (SCHEDULER_CONFIG.payroll.enabled) {
     cron.schedule(SCHEDULER_CONFIG.payroll.schedule, () => {
       runAutomaticPayrollProcessing();
     });
-    console.log('✅ PayrollOS™ Automatic Payroll:');
-    console.log(`   Schedule: ${SCHEDULER_CONFIG.payroll.schedule} (Monday 3 AM)`);
+    console.log('✅ PayrollOS™ Payroll Automation:');
+    console.log(`   Schedule: ${SCHEDULER_CONFIG.payroll.schedule} (daily 3 AM)`);
     console.log(`   ${SCHEDULER_CONFIG.payroll.description}\n`);
   }
 
