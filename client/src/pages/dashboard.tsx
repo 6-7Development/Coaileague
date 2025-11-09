@@ -152,7 +152,7 @@ export default function Dashboard() {
       case 'document_assigned':
         return <FileText className="h-5 w-5 text-primary" />;
       case 'policy_acknowledgment':
-        return <AlertCircle className="h-5 w-5 text-amber-500" />;
+        return <AlertCircle className="h-5 w-5 text-secondary" />;
       case 'system':
         return <Bell className="h-5 w-5 text-primary" />;
       default:
@@ -163,13 +163,13 @@ export default function Dashboard() {
   const getNotificationTypeBadge = (type: string) => {
     const badges: Record<string, { label: string; className: string }> = {
       shift_assigned: { label: 'Shift', className: 'bg-accent/20 text-accent border-accent/30' },
-      shift_changed: { label: 'Schedule', className: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
+      shift_changed: { label: 'Schedule', className: 'bg-secondary/20 text-secondary border-secondary/30' },
       shift_removed: { label: 'Shift', className: 'bg-destructive/20 text-destructive border-destructive/30' },
       pto_approved: { label: 'PTO', className: 'bg-primary/20 text-primary border-primary/30' },
       pto_denied: { label: 'PTO', className: 'bg-destructive/20 text-destructive border-destructive/30' },
       profile_updated: { label: 'Profile', className: 'bg-accent/20 text-accent border-accent/30' },
       document_assigned: { label: 'Document', className: 'bg-primary/20 text-primary border-primary/30' },
-      policy_acknowledgment: { label: 'Policy', className: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
+      policy_acknowledgment: { label: 'Policy', className: 'bg-secondary/20 text-secondary border-secondary/30' },
       system: { label: 'System', className: 'bg-primary/20 text-primary border-primary/30' },
     };
     const badge = badges[type] || { label: 'Info', className: 'bg-muted/20 text-muted-foreground border-muted/30' };
