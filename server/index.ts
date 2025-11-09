@@ -5,6 +5,7 @@ import { setupVite, serveStatic, log } from "./vite";
 import pgSession from "connect-pg-simple";
 import { pool } from "./db"; // Assuming 'pool' is your PostgreSQL client connection pool
 import { monitoringService } from "./monitoring";
+import { startAutonomousScheduler } from "./services/autonomousScheduler";
 
 const PgStore = pgSession(session);
 
@@ -165,5 +166,8 @@ process.on('SIGTERM', () => {
     reusePort: true,
   }, () => {
     log(`serving on port ${port}`);
+    
+    // Start autonomous scheduler for automated jobs
+    startAutonomousScheduler();
   });
 })();
