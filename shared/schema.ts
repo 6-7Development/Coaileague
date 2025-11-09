@@ -251,21 +251,24 @@ export const workspaces = pgTable("workspaces", {
   autoInvoicingEnabled: boolean("auto_invoicing_enabled").default(true), // Enable/disable auto-invoice generation
   invoiceSchedule: varchar("invoice_schedule").default('monthly'), // 'weekly', 'biweekly', 'semi-monthly', 'monthly', 'net30', 'custom'
   invoiceCustomDays: integer("invoice_custom_days"), // For 'custom' schedule (e.g., every 10 days)
-  invoiceGenerationDay: integer("invoice_generation_day").default(1), // Day of week (0-6) for weekly/biweekly or day of month (1-31) for monthly
+  invoiceDayOfWeek: integer("invoice_day_of_week"), // 0-6 for weekly/biweekly (0=Sunday)
+  invoiceDayOfMonth: integer("invoice_day_of_month").default(1), // 1-31 for monthly/semi-monthly
   
   // PayrollOS™ Payroll Automation
   autoPayrollEnabled: boolean("auto_payroll_enabled").default(true), // Enable/disable auto-payroll processing
   payrollSchedule: varchar("payroll_schedule").default('biweekly'), // 'weekly', 'biweekly', 'semi-monthly', 'monthly', 'custom'
   payrollCustomDays: integer("payroll_custom_days"), // For 'custom' schedule
-  payrollProcessDay: integer("payroll_process_day").default(1), // Day of week (0-6) or day of month (1-31)
-  payrollCutoffDay: integer("payroll_cutoff_day"), // Cutoff day before process day (for semi-monthly: 15th and last day)
+  payrollDayOfWeek: integer("payroll_day_of_week").default(1), // 0-6 for weekly/biweekly (1=Monday)
+  payrollDayOfMonth: integer("payroll_day_of_month").default(1), // 1-31 for monthly (process day)
+  payrollCutoffDay: integer("payroll_cutoff_day").default(15), // 1-31 for semi-monthly (second pay date)
   
   // ScheduleOS™ Schedule Generation Automation
   autoSchedulingEnabled: boolean("auto_scheduling_enabled").default(true), // Enable/disable auto-schedule generation
   scheduleGenerationInterval: varchar("schedule_generation_interval").default('weekly'), // 'weekly', 'biweekly', 'monthly', 'custom'
   scheduleCustomDays: integer("schedule_custom_days"), // For 'custom' interval
   scheduleAdvanceNoticeDays: integer("schedule_advance_notice_days").default(7), // How many days in advance to generate (default 7)
-  scheduleGenerationDay: integer("schedule_generation_day").default(0), // Day of week to generate schedule (0 = Sunday)
+  scheduleDayOfWeek: integer("schedule_day_of_week").default(0), // 0-6 for weekly/biweekly (0=Sunday)
+  scheduleDayOfMonth: integer("schedule_day_of_month"), // 1-31 for monthly
 
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
