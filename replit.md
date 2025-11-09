@@ -9,6 +9,7 @@ Do not make changes to the folder `Z`.
 Do not make changes to the file `Y`.
 All branding must be 100% AutoForce™ (not WorkforceOS).
 FTC COMPLIANCE: All marketing claims must be factual and verifiable. Avoid monopolistic language.
+DESIGN: Professional Fortune 500 aesthetic - NO bright glowing colors (green-500, blue-500, amber-500, etc.). Use muted professional tones from design_guidelines.md only.
 
 ## FTC Compliance Status (November 8-9, 2025)
 **GPS TRACKING FULLY IMPLEMENTED**: Built complete GPS verification and photo verification features to make marketing claims 100% truthful.
@@ -45,7 +46,21 @@ AutoForce™ is built on a modular "OS" design philosophy (e.g., BillOS™, Payr
 A hybrid pricing model combines subscriptions with overage charges for AI-powered modules based on token usage. Non-AI modules use a flat subscription. Monthly token allowances are tracked per workspace, with overage usage billed profitably.
 
 ### UI/UX Decisions
-The platform features a professional aesthetic using Deep Charcoal, Platinum neutrals, and Emergency Green accents. It prioritizes a mobile-first approach with responsive layouts and accessible touch targets. Branding includes an "AF" lightning bolt logo within a circular green gradient badge. User-facing pages consistently use emerald/green/teal colors, a uniform dark gradient background, and emerald accents.
+The platform features a professional aesthetic using Deep Charcoal, Platinum neutrals, and Emergency Green accents. It prioritizes a mobile-first approach with responsive layouts and accessible touch targets. Branding includes an "AF" lightning bolt logo within a circular green gradient badge.
+
+**Professional Design System Upgrade (November 9, 2025)**:
+- ✅ **Fortune 500 Professional Aesthetic**: Systematic removal of all bright, glowing colors (green-500, blue-500, amber-500, teal-500, pink-500) across the entire platform
+- ✅ **Muted Professional Palette**: Replaced with design_guidelines.md professional tones:
+  - Primary: Muted Evergreen hsl(158, 34%, 32%) - Professional CTAs and success states
+  - Secondary: Steel Blue hsl(210, 32%, 42%) - Supporting actions and warnings
+  - Accent: Professional Teal hsl(162, 29%, 45%) - Highlights and data points
+  - Neutral grays for borders and backgrounds (NO green tints)
+- ✅ **Pages Upgraded**:
+  - Landing page: All checkmarks, trust indicators, OS module cards, pricing features
+  - Dashboard: Notification system badges and icons
+  - Pricing page: Overage information panels
+  - Time tracking: GPS accuracy indicators
+- ✅ **Consistent Professional Branding**: Zero bright colors throughout user-facing pages, maintaining enterprise-grade polish
 
 **Navigation Improvements (November 2025)**:
 - **Floating Header**: Sticky header (`position: sticky`) floats over content when scrolling without overlapping sidebar or demo banner. Semi-transparent with backdrop blur for modern aesthetic.
