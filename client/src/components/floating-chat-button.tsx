@@ -61,7 +61,7 @@ export function FloatingChatButton() {
       y: touch.clientY - rect.top
     };
     
-    e.preventDefault(); // Prevent scrolling while dragging
+    // DON'T preventDefault here - let clicks through for tap navigation
   };
 
   // Handle touch move
@@ -81,7 +81,7 @@ export function FloatingChatButton() {
     
     setPosition({ x: constrainedX, y: constrainedY });
     hasMoved.current = true;
-    e.preventDefault();
+    e.preventDefault(); // Only prevent scrolling when actually dragging
   };
 
   // Handle touch end
