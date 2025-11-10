@@ -15,6 +15,7 @@ DESIGN: Professional Fortune 500 aesthetic - NO bright glowing colors (green-500
 No Refresh Buttons.
 Universal Back Navigation: Every page, modal, dialog needs clear exit/cancel/back buttons.
 Unsaved Changes Protection: Forms and pages with editable content must warn users before navigation/close.
+MOBILE-FIRST: All UI components must be fully responsive with proper text wrapping, scroll behavior, and touch-friendly tap targets.
 
 ## System Architecture
 AutoForce™ is built on a modular "OS" design philosophy with **6 major autonomous systems** to ensure clean code, eliminate redundancy, and maximize automation.
@@ -66,6 +67,15 @@ AutoForce™ is built on a modular "OS" design philosophy with **6 major autonom
 - Private messaging with AES-256-GCM encryption
 - Automated email notifications and templates
 - Support chat with Gemini AI integration (HelpDesk)
+  - **Public Access**: HelpDesk chatroom (/chat) accessible without authentication barriers
+  - **Mobile-First Responsive Design (Nov 10, 2025)**:
+    - Navigation buttons with z-50 layering and pointer-events isolation for reliable tap detection
+    - Responsive layout: stacked vertical (mobile) vs 3-column IRC-style (desktop)
+    - ScrollArea with flex-1 min-h-0 for proper mobile scrolling
+    - Text wrapping: break-words + overflow-wrap-anywhere + hyphens-auto in chat bubbles
+    - Touch-friendly buttons: h-8 (32px) on mobile, h-7 (28px) on desktop
+    - All dialogs: max-w-[95vw] with max-h-[calc(100vh-2rem)] for tiny viewports
+    - Right sidebar hidden on mobile (hidden md:flex)
 - File uploads, @mentions, read receipts
 - Message reactions, threading, rich text formatting
 - WebRTC-powered voice/video calling
