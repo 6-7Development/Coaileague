@@ -22,7 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { ColumnConfig } from "@/lib/responsive-utils";
 
-interface DataField {
+export interface DataField {
   key: string;
   label: string;
   value: ReactNode;
