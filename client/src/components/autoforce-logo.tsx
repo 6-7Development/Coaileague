@@ -45,7 +45,7 @@ export function AutoForceLogo({
     
     return (
       <div 
-        className={cn("flex flex-col items-center justify-center gap-4", className)} 
+        className={cn("flex flex-col items-center justify-center gap-4 pointer-events-none", className)} 
         data-testid="logo-full"
       >
         <div 
