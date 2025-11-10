@@ -5297,6 +5297,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .update(timeEntries)
         .set({
           status: 'rejected',
+          rejectedBy: userId,
+          rejectedAt: new Date(),
+          rejectionReason: reason,
           notes: reason ? `Rejected: ${reason}` : timeEntry.notes,
           updatedAt: new Date()
         })
@@ -5312,6 +5315,123 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error rejecting time entry:", error);
       res.status(500).json({ message: error.message || "Failed to reject time entry" });
+    }
+  });
+
+  // Get pending time entries (Manager/Admin only) - FOR APPROVAL DASHBOARD
+  app.get('/api/time-entries/pending', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspaceId!;
+      const { employeeId, clientId, startDate, endDate, hasGps, hasPhoto } = req.query;
+
+      // Build query with filters
+      let query = db
+        .select({
+          timeEntry: timeEntries,
+          employee: employees,
+          client: clients,
+        })
+        .from(timeEntries)
+        .leftJoin(employees, eq(timeEntries.employeeId, employees.id))
+        .leftJoin(clients, eq(timeEntries.clientId, clients.id))
+        .where(
+          and(
+            eq(timeEntries.workspaceId, workspaceId),
+            eq(timeEntries.status, 'pending'),
+            employeeId ? eq(timeEntries.employeeId, employeeId as string) : undefined,
+            clientId ? eq(timeEntries.clientId, clientId as string) : undefined,
+            startDate ? gte(timeEntries.clockIn, new Date(startDate as string)) : undefined,
+            endDate ? lte(timeEntries.clockIn, new Date(endDate as string)) : undefined
+          )
+        )
+        .orderBy(desc(timeEntries.clockIn));
+
+      const results = await query;
+
+      // Filter by verification status if requested
+      let filtered = results;
+      if (hasGps === 'true') {
+        filtered = filtered.filter(r => r.timeEntry.clockInLatitude !== null);
+      }
+      if (hasPhoto === 'true') {
+        filtered = filtered.filter(r => r.timeEntry.clockInPhotoUrl !== null);
+      }
+
+      res.json(filtered);
+    } catch (error: any) {
+      console.error("Error fetching pending time entries:", error);
+      res.status(500).json({ message: error.message || "Failed to fetch pending time entries" });
+    }
+  });
+
+  // Bulk approve time entries (Manager/Admin only)
+  app.post('/api/time-entries/bulk-approve', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspaceId!;
+      const userId = req.user!.id;
+      const { timeEntryIds } = req.body;
+
+      if (!Array.isArray(timeEntryIds) || timeEntryIds.length === 0) {
+        return res.status(400).json({ message: "timeEntryIds must be a non-empty array" });
+      }
+
+      // Prevent self-approval: get all employee IDs for the time entries
+      const entries = await db
+        .select()
+        .from(timeEntries)
+        .where(
+          and(
+            eq(timeEntries.workspaceId, workspaceId),
+            inArray(timeEntries.id, timeEntryIds)
+          )
+        );
+
+      const employeeIds = [...new Set(entries.map(e => e.employeeId))];
+      
+      // Check if any of these employees are the current user
+      const userEmployees = await db
+        .select()
+        .from(employees)
+        .where(
+          and(
+            eq(employees.workspaceId, workspaceId),
+            eq(employees.userId, userId),
+            inArray(employees.id, employeeIds)
+          )
+        );
+
+      if (userEmployees.length > 0) {
+        return res.status(403).json({ 
+          message: "Cannot approve your own time entries",
+          selfApprovalCount: userEmployees.length
+        });
+      }
+
+      // Bulk approve all valid entries
+      const updated = await db
+        .update(timeEntries)
+        .set({
+          status: 'approved',
+          approvedBy: userId,
+          approvedAt: new Date(),
+          updatedAt: new Date()
+        })
+        .where(
+          and(
+            eq(timeEntries.workspaceId, workspaceId),
+            inArray(timeEntries.id, timeEntryIds),
+            eq(timeEntries.status, 'pending') // Only approve pending entries
+          )
+        )
+        .returning();
+
+      res.json({
+        approved: updated.length,
+        entries: updated
+      });
+    } catch (error: any) {
+      console.error("Error bulk approving time entries:", error);
+      res.status(500).json({ message: error.message || "Failed to bulk approve time entries" });
     }
   });
 
