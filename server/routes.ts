@@ -1066,7 +1066,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/reports/share', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
     try {
       const { reportType, startDate, endDate, recipients, notes } = req.body;
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const userId = req.user!.id;
 
       // Create workflow notification for each recipient
@@ -2344,7 +2344,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all PTO balances (Manager/Owner only)
   app.get('/api/hr/pto-balances', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const balances = await getAllPtoBalances(workspaceId);
       res.json(balances);
     } catch (error: any) {
@@ -2356,7 +2356,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get specific employee PTO balance
   app.get('/api/hr/pto-balances/:employeeId', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const { employeeId } = req.params;
       
       const balance = await calculatePtoAccrual(workspaceId, employeeId);
@@ -2375,7 +2375,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Manually trigger weekly PTO accrual (Owner only)
   app.post('/api/hr/pto-accrual/run', requireAuth, requireOwner, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const updatedCount = await runWeeklyPtoAccrual(workspaceId);
       
       res.json({ 
@@ -2392,7 +2392,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get performance review reminders summary (Manager/Owner only)
   app.get('/api/hr/review-reminders/summary', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const summary = await getReviewReminderSummary(workspaceId);
       res.json(summary);
     } catch (error: any) {
@@ -2404,7 +2404,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all overdue performance reviews (Manager/Owner only)
   app.get('/api/hr/review-reminders/overdue', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const overdueReviews = await getOverdueReviews(workspaceId);
       res.json(overdueReviews);
     } catch (error: any) {
@@ -2416,7 +2416,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get upcoming performance reviews (Manager/Owner only)
   app.get('/api/hr/review-reminders/upcoming', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const daysAhead = parseInt(req.query.days as string) || 30;
       const upcomingReviews = await getUpcomingReviews(workspaceId, daysAhead);
       res.json(upcomingReviews);
@@ -4290,7 +4290,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all acknowledgments for a shift
   app.get('/api/shifts/:shiftId/acknowledgments', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
 
       const { shiftAcknowledgments } = await import("@shared/schema");
       const { eq, and } = await import("drizzle-orm");
@@ -4328,7 +4328,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create a new acknowledgment (Post Order/Special Order)
   app.post('/api/shifts/:shiftId/acknowledgments', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const userId = req.user!.id;
 
       const { eq, and } = await import("drizzle-orm");
@@ -4391,7 +4391,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Employee acknowledges a shift acknowledgment
   app.patch('/api/acknowledgments/:id/acknowledge', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const userId = req.user!.id;
 
       const { eq, and } = await import("drizzle-orm");
@@ -4437,7 +4437,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Employee denies/declines a shift acknowledgment
   app.patch('/api/acknowledgments/:id/deny', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const userId = req.user!.id;
 
       const { eq, and } = await import("drizzle-orm");
@@ -4483,7 +4483,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Delete an acknowledgment (manager only)
   app.delete('/api/acknowledgments/:id', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
 
       const { shiftAcknowledgments } = await import("@shared/schema");
       const { eq, and } = await import("drizzle-orm");
@@ -14284,7 +14284,7 @@ Return ONLY valid JSON array with this exact structure:
   // Generate Predictive Scheduling Alerts - Detect over-allocation before it happens
   app.post('/api/scheduling/generate-alerts', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const userId = req.user!.id;
 
       // Get all employees with their schedules for the next week
@@ -14343,7 +14343,7 @@ Return ONLY valid JSON array with this exact structure:
   // Get active capacity alerts
   app.get('/api/scheduling/alerts', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const { status = 'active' } = req.query;
 
       const alerts = await db
@@ -14368,7 +14368,7 @@ Return ONLY valid JSON array with this exact structure:
   app.post('/api/reports/auto-generate', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const userId = req.user!.id;
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       
       const schema = z.object({
         reportType: z.enum(['weekly_status', 'timesheet_summary', 'accomplishments']),
@@ -14470,7 +14470,7 @@ Return ONLY valid JSON array with this exact structure:
   app.get('/api/reports/auto', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const userId = req.user!.id;
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
 
       const reports = await db
         .select()
@@ -14499,7 +14499,7 @@ Return ONLY valid JSON array with this exact structure:
   app.post('/api/payroll/create-run', requireAuth, requireOwner, async (req: AuthenticatedRequest, res) => {
     try {
       const userId = req.user!.id;
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
 
       // Validate input
       const schema = z.object({
@@ -14548,7 +14548,7 @@ Return ONLY valid JSON array with this exact structure:
   // Get payroll runs for workspace
   app.get('/api/payroll/runs', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const runs = await storage.getPayrollRunsByWorkspace(workspaceId);
       res.json(runs);
     } catch (error: any) {
@@ -14560,7 +14560,7 @@ Return ONLY valid JSON array with this exact structure:
   // Get single payroll run with details
   app.get('/api/payroll/runs/:id', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const { id } = req.params;
 
       const run = await storage.getPayrollRun(id, workspaceId);
@@ -14584,7 +14584,7 @@ Return ONLY valid JSON array with this exact structure:
   app.post('/api/payroll/runs/:id/approve', requireAuth, requireOwner, async (req: AuthenticatedRequest, res) => {
     try {
       const userId = req.user!.id;
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const { id } = req.params;
 
       // Verify run exists and belongs to workspace
@@ -14611,7 +14611,7 @@ Return ONLY valid JSON array with this exact structure:
   app.post('/api/payroll/runs/:id/process', requireAuth, requireOwner, async (req: AuthenticatedRequest, res) => {
     try {
       const userId = req.user!.id;
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const { id } = req.params;
 
       // Verify run exists and belongs to workspace
@@ -14668,7 +14668,7 @@ Return ONLY valid JSON array with this exact structure:
   // Predict employee turnover risk (90-day flight risk)
   app.post('/api/predict/turnover', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const { employeeId } = req.body;
       
       if (!employeeId) {
@@ -14706,7 +14706,7 @@ Return ONLY valid JSON array with this exact structure:
   // Get turnover predictions for all employees
   app.get('/api/predict/turnover/workspace', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       
       const predictions = await db
         .select()
@@ -14733,7 +14733,7 @@ Return ONLY valid JSON array with this exact structure:
   // Predict schedule cost overrun
   app.post('/api/predict/cost-overrun', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const { scheduleDate, proposedShifts } = req.body;
       
       if (!scheduleDate || !proposedShifts || !Array.isArray(proposedShifts)) {
@@ -14772,7 +14772,7 @@ Return ONLY valid JSON array with this exact structure:
   // Create custom automation rule
   app.post('/api/custom-rules', requireAuth, requireOwner, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const userId = req.user!.id;
       
       const validated = insertCustomRuleSchema.parse({
@@ -14792,7 +14792,7 @@ Return ONLY valid JSON array with this exact structure:
   // Get all custom rules for workspace
   app.get('/api/custom-rules', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       
       const rules = await db
         .select()
@@ -14810,7 +14810,7 @@ Return ONLY valid JSON array with this exact structure:
   // Update custom rule
   app.patch('/api/custom-rules/:id', requireAuth, requireOwner, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const userId = req.user!.id;
       const { id } = req.params;
       
@@ -14845,7 +14845,7 @@ Return ONLY valid JSON array with this exact structure:
   // Delete custom rule
   app.delete('/api/custom-rules/:id', requireAuth, requireOwner, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const { id } = req.params;
       
       // Verify rule belongs to workspace and not locked
@@ -14874,7 +14874,7 @@ Return ONLY valid JSON array with this exact structure:
   // Get rule execution logs
   app.get('/api/custom-rules/:id/executions', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const { id } = req.params;
       
       const executions = await db
@@ -14901,7 +14901,7 @@ Return ONLY valid JSON array with this exact structure:
   // Get audit trail for workspace
   app.get('/api/audit-trail', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const { entityType, entityId, limit = 100 } = req.query;
       
       let query = db
@@ -14936,7 +14936,7 @@ Return ONLY valid JSON array with this exact structure:
   // Get time entry discrepancies (geo-compliance violations)
   app.get('/api/compliance/discrepancies', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const { status = 'open' } = req.query;
       
       const discrepancies = await db
@@ -14958,7 +14958,7 @@ Return ONLY valid JSON array with this exact structure:
   // Resolve time entry discrepancy
   app.patch('/api/compliance/discrepancies/:id/resolve', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const userId = req.user!.id;
       const { id } = req.params;
       const { status, resolutionNotes } = req.body;
@@ -15002,7 +15002,7 @@ Return ONLY valid JSON array with this exact structure:
   // Create pulse survey template
   app.post('/api/engagement/pulse-surveys/templates', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const userId = req.user!.id;
       
       const validatedData = insertPulseSurveyTemplateSchema.parse({
@@ -15026,7 +15026,7 @@ Return ONLY valid JSON array with this exact structure:
   // List pulse survey templates
   app.get('/api/engagement/pulse-surveys/templates', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const { isActive } = req.query;
       
       let query = db
@@ -15053,7 +15053,7 @@ Return ONLY valid JSON array with this exact structure:
   // Get single pulse survey template
   app.get('/api/engagement/pulse-surveys/templates/:id', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const { id } = req.params;
       
       const template = await db
@@ -15079,7 +15079,7 @@ Return ONLY valid JSON array with this exact structure:
   // Update pulse survey template
   app.patch('/api/engagement/pulse-surveys/templates/:id', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const { id } = req.params;
       
       const existing = await db
@@ -15116,7 +15116,7 @@ Return ONLY valid JSON array with this exact structure:
   // Submit pulse survey response
   app.post('/api/engagement/pulse-surveys/responses', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const userId = req.user!.id;
       
       // Get employee record
@@ -15209,7 +15209,7 @@ Return ONLY valid JSON array with this exact structure:
   // Get pulse survey responses (Manager only)
   app.get('/api/engagement/pulse-surveys/responses', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const { surveyTemplateId, sentimentLabel } = req.query;
       
       let query = db
@@ -15245,7 +15245,7 @@ Return ONLY valid JSON array with this exact structure:
   // Get survey distribution summary (Manager/Owner only)
   app.get('/api/engagement/pulse-surveys/distribution/summary', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const summary = await getSurveyDistributionSummary(workspaceId);
       res.json(summary);
     } catch (error: any) {
@@ -15257,7 +15257,7 @@ Return ONLY valid JSON array with this exact structure:
   // Get all employees due for surveys today (Manager/Owner only)
   app.get('/api/engagement/pulse-surveys/distribution', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const distributions = await getEmployeesDueForSurveys(workspaceId);
       res.json(distributions);
     } catch (error: any) {
@@ -15269,7 +15269,7 @@ Return ONLY valid JSON array with this exact structure:
   // Get pending surveys for specific employee
   app.get('/api/engagement/pulse-surveys/distribution/employee/:employeeId', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const { employeeId } = req.params;
       
       const pendingSurveys = await getEmployeePendingSurveys(workspaceId, employeeId);
@@ -15283,7 +15283,7 @@ Return ONLY valid JSON array with this exact structure:
   // Get survey analytics (Manager/Owner only)
   app.get('/api/engagement/pulse-surveys/analytics/:surveyId', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const { surveyId } = req.params;
       const { periodDays } = req.query;
       
@@ -15305,7 +15305,7 @@ Return ONLY valid JSON array with this exact structure:
   // Submit employer rating
   app.post('/api/engagement/employer-ratings', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const userId = req.user!.id;
       
       // Get employee record
@@ -15346,7 +15346,7 @@ Return ONLY valid JSON array with this exact structure:
   // Get employer ratings (Manager only)
   app.get('/api/engagement/employer-ratings', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const { ratingType, targetId } = req.query;
       
       let query = db
@@ -15382,7 +15382,7 @@ Return ONLY valid JSON array with this exact structure:
   // Submit anonymous suggestion
   app.post('/api/engagement/suggestions', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const userId = req.user!.id;
       
       // Get employee record
@@ -15422,7 +15422,7 @@ Return ONLY valid JSON array with this exact structure:
   // List anonymous suggestions (Manager only)
   app.get('/api/engagement/suggestions', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const { status, category, urgencyLevel } = req.query;
       
       let query = db
@@ -15463,7 +15463,7 @@ Return ONLY valid JSON array with this exact structure:
   // Update suggestion status (Manager only)
   app.patch('/api/engagement/suggestions/:id', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const { id } = req.params;
       
       const existing = await db
@@ -15501,7 +15501,7 @@ Return ONLY valid JSON array with this exact structure:
   // Create employee recognition (peer or manager)
   app.post('/api/engagement/recognition', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const userId = req.user!.id;
       
       // Get employee record
@@ -15545,7 +15545,7 @@ Return ONLY valid JSON array with this exact structure:
   // Get employee recognition feed
   app.get('/api/engagement/recognition', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const { employeeId, isPublic } = req.query;
       
       let query = db
@@ -15581,7 +15581,7 @@ Return ONLY valid JSON array with this exact structure:
   // Get employee health scores
   app.get('/api/engagement/health-scores', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const { employeeId, riskLevel, requiresManagerAction } = req.query;
       
       let query = db
@@ -15622,7 +15622,7 @@ Return ONLY valid JSON array with this exact structure:
   // Take action on employee health score
   app.patch('/api/engagement/health-scores/:id/action', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const { id } = req.params;
       const { actionNotes } = req.body;
       
@@ -15661,7 +15661,7 @@ Return ONLY valid JSON array with this exact structure:
   // Get employer benchmark scores
   app.get('/api/engagement/benchmarks', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const { benchmarkType, targetId } = req.query;
       
       let query = db
@@ -15697,7 +15697,7 @@ Return ONLY valid JSON array with this exact structure:
   // Manually trigger health score calculation for a single employee
   app.post('/api/engagement/health-scores/calculate', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const { employeeId, periodStart, periodEnd } = req.body;
       
       if (!employeeId || !periodStart || !periodEnd) {
@@ -15721,7 +15721,7 @@ Return ONLY valid JSON array with this exact structure:
   // Batch calculate health scores for all employees
   app.post('/api/engagement/health-scores/calculate-batch', requireAuth, requireOwner, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const { periodStart, periodEnd } = req.body;
       
       if (!periodStart || !periodEnd) {
@@ -15747,7 +15747,7 @@ Return ONLY valid JSON array with this exact structure:
   // Manually trigger employer benchmark calculation
   app.post('/api/engagement/benchmarks/calculate', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const { benchmarkType, targetId, targetName, periodStart, periodEnd } = req.body;
       
       if (!benchmarkType || !periodStart || !periodEnd) {
@@ -15783,7 +15783,7 @@ Return ONLY valid JSON array with this exact structure:
   // Get all training courses
   app.get('/api/training/courses', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const { category, difficulty, status, isRequired } = req.query;
       
       let query = db
@@ -15818,7 +15818,7 @@ Return ONLY valid JSON array with this exact structure:
   // Get single training course
   app.get('/api/training/courses/:id', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const { id } = req.params;
       
       const [course] = await db
@@ -15844,7 +15844,7 @@ Return ONLY valid JSON array with this exact structure:
   // Create training course (Manager/Owner only)
   app.post('/api/training/courses', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       
       const validatedData = insertTrainingCourseSchema.parse({
         ...req.body,
@@ -15869,7 +15869,7 @@ Return ONLY valid JSON array with this exact structure:
   // Update training course (Manager/Owner only)
   app.patch('/api/training/courses/:id', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const { id } = req.params;
       
       const existing = await db
@@ -15910,7 +15910,7 @@ Return ONLY valid JSON array with this exact structure:
   // Delete training course (Manager/Owner only)
   app.delete('/api/training/courses/:id', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const { id } = req.params;
       
       const existing = await db
@@ -15942,7 +15942,7 @@ Return ONLY valid JSON array with this exact structure:
   // Get employee enrollments
   app.get('/api/training/enrollments', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const userId = req.user!.id;
       
       // Get employee record
@@ -15987,7 +15987,7 @@ Return ONLY valid JSON array with this exact structure:
   // Enroll in a course
   app.post('/api/training/courses/:id/enroll', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const userId = req.user!.id;
       const { id: courseId } = req.params;
       
@@ -16058,7 +16058,7 @@ Return ONLY valid JSON array with this exact structure:
   // Update enrollment progress
   app.patch('/api/training/enrollments/:id/progress', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const userId = req.user!.id;
       const { id } = req.params;
       const { progress, status, score } = req.body;
@@ -16119,7 +16119,7 @@ Return ONLY valid JSON array with this exact structure:
   // Get employee certifications
   app.get('/api/training/certifications', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const userId = req.user!.id;
       
       // Get employee record
@@ -16164,7 +16164,7 @@ Return ONLY valid JSON array with this exact structure:
   // Issue certification (Manager/Owner only)
   app.post('/api/training/certifications', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const { employeeId, courseId, enrollmentId } = req.body;
       
       // Verify enrollment and course exist
@@ -16235,7 +16235,7 @@ Return ONLY valid JSON array with this exact structure:
   // Get all budgets
   app.get('/api/budgets', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const { fiscalYear, department, status } = req.query;
       
       let query = db
@@ -16267,7 +16267,7 @@ Return ONLY valid JSON array with this exact structure:
   // Get single budget
   app.get('/api/budgets/:id', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const { id } = req.params;
       
       const [budget] = await db
@@ -16293,7 +16293,7 @@ Return ONLY valid JSON array with this exact structure:
   // Create budget (Manager/Owner only)
   app.post('/api/budgets', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       
       const validatedData = insertBudgetSchema.parse({
         ...req.body,
@@ -16318,7 +16318,7 @@ Return ONLY valid JSON array with this exact structure:
   // Update budget (Manager/Owner only)
   app.patch('/api/budgets/:id', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const { id } = req.params;
       
       const existing = await db
@@ -16359,7 +16359,7 @@ Return ONLY valid JSON array with this exact structure:
   // Delete budget (Owner only)
   app.delete('/api/budgets/:id', requireAuth, requireOwner, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const { id } = req.params;
       
       const existing = await db
@@ -16391,7 +16391,7 @@ Return ONLY valid JSON array with this exact structure:
   // Get line items for a budget
   app.get('/api/budgets/:budgetId/line-items', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const { budgetId } = req.params;
       
       // Verify budget belongs to workspace
@@ -16424,7 +16424,7 @@ Return ONLY valid JSON array with this exact structure:
   // Create budget line item
   app.post('/api/budgets/:budgetId/line-items', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const { budgetId } = req.params;
       
       // Verify budget belongs to workspace
@@ -16464,7 +16464,7 @@ Return ONLY valid JSON array with this exact structure:
   // Update budget line item
   app.patch('/api/budgets/:budgetId/line-items/:id', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const { budgetId, id } = req.params;
       
       // Verify budget belongs to workspace
@@ -16516,7 +16516,7 @@ Return ONLY valid JSON array with this exact structure:
   // Delete budget line item
   app.delete('/api/budgets/:budgetId/line-items/:id', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const { budgetId, id } = req.params;
       
       // Verify budget belongs to workspace
@@ -16562,7 +16562,7 @@ Return ONLY valid JSON array with this exact structure:
   // Get variances for a budget
   app.get('/api/budgets/:budgetId/variances', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const { budgetId } = req.params;
       const { year, month } = req.query;
       
@@ -16605,7 +16605,7 @@ Return ONLY valid JSON array with this exact structure:
   // Create budget variance snapshot
   app.post('/api/budgets/:budgetId/variances', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const { budgetId } = req.params;
       
       // Verify budget belongs to workspace
@@ -16678,7 +16678,7 @@ Return ONLY valid JSON array with this exact structure:
   // [2] CONNECTIONS - Manage workspace integrations (Manager/Owner)
   app.get('/api/integrations/connections', requireAuth, readLimiter, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       
       const connections = await db
         .select()
@@ -16696,7 +16696,7 @@ Return ONLY valid JSON array with this exact structure:
   // Connect to an integration
   app.post('/api/integrations/connections', requireAuth, requireManager, mutationLimiter, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const userId = req.user!.id;
       const { integrationId, connectionName, authType, apiKey, apiSecret } = req.body;
       
@@ -16750,7 +16750,7 @@ Return ONLY valid JSON array with this exact structure:
   // Disconnect an integration
   app.delete('/api/integrations/connections/:id', requireAuth, requireManager, mutationLimiter, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const { id } = req.params;
       
       await db
@@ -16775,7 +16775,7 @@ Return ONLY valid JSON array with this exact structure:
   // [3] API KEYS - Developer access management (Owner only)
   app.get('/api/integrations/api-keys', requireAuth, requireOwner, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       
       const apiKeys = await db
         .select({
@@ -16808,7 +16808,7 @@ Return ONLY valid JSON array with this exact structure:
   // Create API key
   app.post('/api/integrations/api-keys', requireAuth, requireOwner, mutationLimiter, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const userId = req.user!.id;
       const { name, description, scopes, rateLimit, expiresAt } = req.body;
       
@@ -16851,7 +16851,7 @@ Return ONLY valid JSON array with this exact structure:
   // Revoke API key
   app.delete('/api/integrations/api-keys/:id', requireAuth, requireOwner, mutationLimiter, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const { id } = req.params;
       
       await db
@@ -16875,7 +16875,7 @@ Return ONLY valid JSON array with this exact structure:
   // [4] WEBHOOKS - Event subscriptions (Manager/Owner)
   app.get('/api/integrations/webhooks', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       
       const webhooks = await db
         .select()
@@ -16893,7 +16893,7 @@ Return ONLY valid JSON array with this exact structure:
   // Create webhook subscription
   app.post('/api/integrations/webhooks', requireAuth, requireManager, mutationLimiter, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const userId = req.user!.id;
       const { name, targetUrl, events, filters, authType, authConfig, maxRetries } = req.body;
       
@@ -16926,7 +16926,7 @@ Return ONLY valid JSON array with this exact structure:
   // Toggle webhook active status
   app.patch('/api/integrations/webhooks/:id/toggle', requireAuth, requireManager, mutationLimiter, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const { id } = req.params;
       
       const [webhook] = await db
@@ -16961,7 +16961,7 @@ Return ONLY valid JSON array with this exact structure:
   // Delete webhook
   app.delete('/api/integrations/webhooks/:id', requireAuth, requireManager, mutationLimiter, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const { id } = req.params;
       
       await db
@@ -16981,7 +16981,7 @@ Return ONLY valid JSON array with this exact structure:
   // Get webhook delivery history
   app.get('/api/integrations/webhooks/:id/deliveries', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const { id } = req.params;
       
       const deliveries = await db
@@ -18818,7 +18818,7 @@ ${context.performanceHistory.map((review: any) => `- Overall Rating: ${review.ov
   app.post('/api/dev/seed-expired-keys', requireAuth, requireOwner, async (req: AuthenticatedRequest, res) => {
     try {
       const { count = 5, daysOld = 65 } = req.body;
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const { idempotencyKeys } = await import('@shared/schema');
       const { sql } = await import('drizzle-orm');
       
@@ -18903,7 +18903,7 @@ ${context.performanceHistory.map((review: any) => `- Overall Rating: ${review.ov
    */
   app.get('/api/dev/automation-audit-logs', requireAuth, requireOwner, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = req.workspace!.id;
+      const workspaceId = req.workspaceId!;
       const { limit = 50, jobType } = req.query;
       
       // Query audit logs for automation events

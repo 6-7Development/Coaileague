@@ -234,15 +234,15 @@ interface ResponsiveTableWrapperProps {
 }
 
 const mobileVisibilityMap = {
-  sm: 'sm:hidden', // Hide at 640px+
-  md: 'md:hidden', // Hide at 768px+
-  lg: 'lg:hidden', // Hide at 1024px+
+  sm: 'sm:!hidden', // Hide at 640px+ (force with !important)
+  md: 'md:!hidden', // Hide at 768px+ (force with !important)
+  lg: 'lg:!hidden', // Hide at 1024px+ (force with !important)
 };
 
 const desktopVisibilityMap = {
-  sm: 'hidden sm:block', // Show at 640px+
-  md: 'hidden md:block', // Show at 768px+
-  lg: 'hidden lg:block', // Show at 1024px+
+  sm: '!hidden sm:!block', // Show at 640px+ (force with !important)
+  md: '!hidden md:!block', // Show at 768px+ (force with !important)
+  lg: '!hidden lg:!block', // Show at 1024px+ (force with !important)
 };
 
 export function ResponsiveTableWrapper({
