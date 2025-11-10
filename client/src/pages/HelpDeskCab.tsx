@@ -80,7 +80,8 @@ interface HelpDeskCabProps {
 
 // Desktop IRC/MSN-style 3-column chatroom with WorkforceOS blue branding
 // Can also be forced to mobile layout for /mobilechat route
-export function HelpDeskCab({ forceMobileLayout = false }: HelpDeskCabProps = {}) {
+export function HelpDeskCab(props?: HelpDeskCabProps & any) {
+  const { forceMobileLayout = false } = props || {};
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const [, navigate] = useLocation(); // For navigation buttons
