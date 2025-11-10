@@ -293,6 +293,22 @@ export const workspaces = pgTable("workspaces", {
   defaultBillableRate: decimal("default_billable_rate", { precision: 10, scale: 2 }), // Default billing rate for client invoices
   defaultHourlyRate: decimal("default_hourly_rate", { precision: 10, scale: 2 }), // Default pay rate for employees
 
+  // ============================================================================
+  // HOLIDAY CALENDAR & RATE MULTIPLIERS
+  // ============================================================================
+
+  // Holiday Calendar (array of ISO dates with optional metadata)
+  // Format: [{"date": "2025-12-25", "name": "Christmas", "billMultiplier": 2.5, "payMultiplier": 2.0}]
+  holidayCalendar: jsonb("holiday_calendar").default('[]'),
+
+  // Overtime Multipliers (default 1.5x for billing and pay)
+  overtimeBillableMultiplier: decimal("overtime_billable_multiplier", { precision: 5, scale: 2 }).default("1.50"),
+  overtimePayMultiplier: decimal("overtime_pay_multiplier", { precision: 5, scale: 2 }).default("1.50"),
+
+  // Holiday Multipliers (default 2.0x for billing and pay)
+  holidayBillableMultiplier: decimal("holiday_billable_multiplier", { precision: 5, scale: 2 }).default("2.00"),
+  holidayPayMultiplier: decimal("holiday_pay_multiplier", { precision: 5, scale: 2 }).default("2.00"),
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -857,6 +873,11 @@ export const clients = pgTable("clients", {
   // Billing
   billingEmail: varchar("billing_email"),
   taxId: varchar("tax_id"),
+
+  // Client-Specific Rate Multiplier Overrides (for enterprise contracts)
+  // If set, these override workspace defaults for this client's billing
+  clientOvertimeMultiplier: decimal("client_overtime_multiplier", { precision: 5, scale: 2 }), // Override workspace OT multiplier
+  clientHolidayMultiplier: decimal("client_holiday_multiplier", { precision: 5, scale: 2 }), // Override workspace holiday multiplier
 
   // Status
   isActive: boolean("is_active").default(true),
