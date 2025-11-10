@@ -157,6 +157,17 @@ export default function ModernMobileChat() {
     });
   }, []); // Only run once on mount
 
+  // Watch for voice_granted event to immediately enable chat
+  useEffect(() => {
+    if (justGotVoice) {
+      toast({
+        title: "Chat Enabled",
+        description: "You can now send messages!",
+        duration: 3000,
+      });
+    }
+  }, [justGotVoice, toast]);
+
   // Role-based permission system
   const hasPermission = (requiredRoles: string[]) => {
     if (!userPlatformRole) return false;
@@ -1290,9 +1301,9 @@ export default function ModernMobileChat() {
 
           <button
             onClick={handleSend}
-            disabled={!isConnected || !messageText.trim()}
+            disabled={!isConnected || !messageText.trim() || isSilenced}
             className={`p-3 rounded-full text-white transition-all ${
-              isConnected && messageText.trim()
+              isConnected && messageText.trim() && !isSilenced
                 ? 'bg-gradient-to-r from-primary to-accent hover:shadow-lg hover:shadow-primary/50 active:scale-95'
                 : 'bg-slate-600 cursor-not-allowed opacity-50'
             }`}
