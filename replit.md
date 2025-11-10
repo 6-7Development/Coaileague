@@ -70,3 +70,38 @@ The platform features a professional aesthetic using Deep Charcoal, Platinum neu
 -   **AI**: OpenAI GPT-3.5-turbo, Gemini 2.0 Flash Exp, GPT-4, GPT-4-turbo, GPT-4o.
 -   **Constraint Solving**: TypeScript greedy constraint solver for ScheduleOS™.
 -   **Financial Integrations (Phase 1: Partner-Native)**: QuickBooks Online (QBO) for invoicing, Gusto for payroll.
+-   **Partner API Services**: Complete implementation for QuickBooks Online and Gusto integrations:
+    - **QuickBooks Service** (`server/services/partners/quickbooks.ts`):
+      - Customer sync (create/update AutoForce clients as QuickBooks customers)
+      - Invoice creation from AutoForce invoices with automatic customer mapping
+      - Payment recording with linked invoice tracking
+      - All operations use v3 API endpoints with usage tracking integration
+    - **Gusto Service** (`server/services/partners/gusto.ts`):
+      - Employee sync (create/update AutoForce employees in Gusto)
+      - Payroll run creation based on AutoForce pay periods
+      - Time activity submission for accurate payroll processing
+      - Payroll processing (calculate and submit)
+      - All operations tracked for usage-based billing
+    - **Data Mapping System** (`partnerDataMappings` table):
+      - Automatic sync tracking between AutoForce entities and partner entities
+      - Bi-directional mapping (client↔customer, employee↔employee, invoice↔invoice, payroll↔payroll)
+      - Sync status tracking (synced/pending/error) with timestamps
+      - Supports both auto and manual mapping sources
+    - **Integration API Routes** (`server/integrationRoutes.ts`):
+      - POST `/api/integrations/quickbooks/sync-client` - Sync client to QuickBooks
+      - POST `/api/integrations/quickbooks/create-invoice` - Create invoice in QuickBooks
+      - POST `/api/integrations/quickbooks/record-payment` - Record payment
+      - POST `/api/integrations/gusto/sync-employee` - Sync employee to Gusto
+      - POST `/api/integrations/gusto/create-payroll` - Create payroll run
+      - POST `/api/integrations/gusto/submit-time` - Submit time activities
+      - POST `/api/integrations/gusto/process-payroll` - Process payroll
+      - All routes require authentication and workspace membership validation
+    - **Integration Management UI** (`/integrations` page):
+      - OAuth connection status for QuickBooks and Gusto
+      - Connect/disconnect functionality with confirmation dialogs
+      - Token refresh capability for expired connections
+      - Connection details display (company ID, last sync, token expiry)
+      - Status badges (connected/expired/error/disconnected)
+      - Integrated into BillOS™ sidebar navigation
+      - Production setup instructions and documentation links
+    - **Usage Tracking Integration**: All partner API calls wrapped with `withUsageTracking()` or `withBatchUsageTracking()` for accurate billing
