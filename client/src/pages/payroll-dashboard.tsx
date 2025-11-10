@@ -14,6 +14,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { 
+  ResponsiveTableWrapper, 
+  DataSummaryCard,
+  type DataField 
+} from "@/components/DataSummaryCard";
 import {
   Dialog,
   DialogContent,
@@ -254,29 +259,33 @@ export default function PayrollDashboard() {
               No payroll runs yet. Create your first automated payroll run.
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Period</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Employees</TableHead>
-                  <TableHead>Gross Pay</TableHead>
-                  <TableHead>Net Pay</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {runs.map((run) => (
-                  <TableRow key={run.id} data-testid={`row-payroll-${run.id}`}>
-                    <TableCell>
-                      {format(new Date(run.periodStart), 'MMM d')} - {format(new Date(run.periodEnd), 'MMM d, yyyy')}
-                    </TableCell>
-                    <TableCell>{getStatusBadge(run.status)}</TableCell>
-                    <TableCell>{run.employeeCount}</TableCell>
-                    <TableCell>${run.totalGrossPay}</TableCell>
-                    <TableCell>${run.totalNetPay}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
+            <ResponsiveTableWrapper
+              breakpoint="md"
+              data-testid="table-payroll-runs"
+              desktopTable={
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Period</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Employees</TableHead>
+                      <TableHead>Gross Pay</TableHead>
+                      <TableHead>Net Pay</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {runs.map((run) => (
+                      <TableRow key={run.id} data-testid={`row-payroll-${run.id}`}>
+                        <TableCell>
+                          {format(new Date(run.periodStart), 'MMM d')} - {format(new Date(run.periodEnd), 'MMM d, yyyy')}
+                        </TableCell>
+                        <TableCell>{getStatusBadge(run.status)}</TableCell>
+                        <TableCell>{run.employeeCount}</TableCell>
+                        <TableCell>${run.totalGrossPay}</TableCell>
+                        <TableCell>${run.totalNetPay}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
                         <Dialog>
                           <DialogTrigger asChild>
                             <Button
@@ -416,6 +425,171 @@ export default function PayrollDashboard() {
                 ))}
               </TableBody>
             </Table>
+              }
+              mobileCards={
+                <div className="space-y-3">
+                  {runs.map((run) => {
+                    const periodText = `${format(new Date(run.periodStart), 'MMM d')} - ${format(new Date(run.periodEnd), 'MMM d, yyyy')}`;
+                    
+                    const fields: DataField[] = [
+                      { key: 'period', label: 'Period', value: periodText, priority: 'P1' },
+                      { key: 'status', label: 'Status', value: getStatusBadge(run.status), priority: 'P1' },
+                      { key: 'netPay', label: 'Net Pay', value: `$${run.totalNetPay}`, priority: 'P1' },
+                      { key: 'employees', label: 'Employees', value: run.employeeCount, priority: 'P2' },
+                      { key: 'grossPay', label: 'Gross Pay', value: `$${run.totalGrossPay}`, priority: 'P2' },
+                    ];
+
+                    const actions = (
+                      <div className="flex items-center gap-2">
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setSelectedRun(run.id)}
+                              data-testid={`button-view-${run.id}`}
+                            >
+                              Details
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                            <DialogHeader>
+                              <DialogTitle>Payroll Run Details</DialogTitle>
+                              <DialogDescription>
+                                Period: {periodText}
+                              </DialogDescription>
+                            </DialogHeader>
+                            {isLoadingDetails ? (
+                              <div className="flex justify-center p-8">
+                                <Loader2 className="h-8 w-8 animate-spin" />
+                              </div>
+                            ) : runDetails ? (
+                              <div className="space-y-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                    <p className="text-sm text-muted-foreground">Status</p>
+                                    <p className="font-medium">{getStatusBadge(runDetails.status)}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-sm text-muted-foreground">Total Gross Pay</p>
+                                    <p className="font-medium">${runDetails.totalGrossPay}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-sm text-muted-foreground">Total Net Pay</p>
+                                    <p className="font-medium">${runDetails.totalNetPay}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-sm text-muted-foreground">Employees</p>
+                                    <p className="font-medium">{runDetails.employeeCount}</p>
+                                  </div>
+                                </div>
+
+                                <div>
+                                  <h3 className="font-semibold mb-2">Employee Paychecks</h3>
+                                  <Table>
+                                    <TableHeader>
+                                      <TableRow>
+                                        <TableHead>Employee</TableHead>
+                                        <TableHead>Hours</TableHead>
+                                        <TableHead>Gross</TableHead>
+                                        <TableHead>Taxes</TableHead>
+                                        <TableHead>Net</TableHead>
+                                      </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                      {runDetails.entries.map((entry) => (
+                                        <TableRow key={entry.id}>
+                                          <TableCell>{entry.employeeName}</TableCell>
+                                          <TableCell>
+                                            {entry.regularHours}
+                                            {entry.overtimeHours > 0 && (
+                                              <span className="text-xs text-muted-foreground ml-1">
+                                                (+{entry.overtimeHours} OT)
+                                              </span>
+                                            )}
+                                          </TableCell>
+                                          <TableCell>${entry.grossPay}</TableCell>
+                                          <TableCell className="text-xs">
+                                            <div>Fed: ${entry.federalTax}</div>
+                                            <div>State: ${entry.stateTax}</div>
+                                            <div>SS: ${entry.socialSecurity}</div>
+                                            <div>Med: ${entry.medicare}</div>
+                                          </TableCell>
+                                          <TableCell className="font-medium">${entry.netPay}</TableCell>
+                                        </TableRow>
+                                      ))}
+                                    </TableBody>
+                                  </Table>
+                                </div>
+
+                                <div className="flex justify-end gap-2 pt-4">
+                                  {runDetails.status === 'pending' && (
+                                    <Button
+                                      onClick={() => handleApproveClick(runDetails.id)}
+                                      disabled={approveRunMutation.isPending}
+                                      data-testid="button-approve"
+                                    >
+                                      <CheckCircle className="mr-2 h-4 w-4" />
+                                      Approve (QC)
+                                    </Button>
+                                  )}
+                                  {runDetails.status === 'approved' && (
+                                    <Button
+                                      onClick={() => processRunMutation.mutate(runDetails.id)}
+                                      disabled={processRunMutation.isPending}
+                                      data-testid="button-process"
+                                    >
+                                      <Play className="mr-2 h-4 w-4" />
+                                      Process Payments
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
+                            ) : null}
+                          </DialogContent>
+                        </Dialog>
+
+                        {run.status === 'pending' && (
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => handleApproveClick(run.id)}
+                            disabled={approveRunMutation.isPending}
+                            data-testid={`button-approve-${run.id}`}
+                          >
+                            <CheckCircle className="mr-1 h-3 w-3" />
+                            Approve
+                          </Button>
+                        )}
+
+                        {run.status === 'approved' && (
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => processRunMutation.mutate(run.id)}
+                            disabled={processRunMutation.isPending}
+                            data-testid={`button-process-${run.id}`}
+                          >
+                            <Play className="mr-1 h-3 w-3" />
+                            Process
+                          </Button>
+                        )}
+                      </div>
+                    );
+
+                    return (
+                      <DataSummaryCard
+                        key={run.id}
+                        id={run.id}
+                        fields={fields}
+                        actions={actions}
+                        data-testid={`card-payroll-${run.id}`}
+                      />
+                    );
+                  })}
+                </div>
+              }
+            />
           )}
         </CardContent>
       </Card>
