@@ -101,9 +101,16 @@ export function PeekRailNav({ defaultPinned = false }: PeekRailNavProps) {
   const { workspaceRole, subscriptionTier, isPlatformStaff, isLoading } = useWorkspaceAccess();
   const transition = useTransition();
   
-  // State management
-  const [isPinned, setIsPinned] = useState(defaultPinned);
-  const [isExpanded, setIsExpanded] = useState(defaultPinned);
+  // State management - lazy load pin preference from localStorage
+  const [isPinned, setIsPinned] = useState(() => {
+    const saved = localStorage.getItem("peek-rail-pinned");
+    return saved !== null ? saved === "true" : defaultPinned;
+  });
+  const [isExpanded, setIsExpanded] = useState(() => {
+    const saved = localStorage.getItem("peek-rail-pinned");
+    const initialPinned = saved !== null ? saved === "true" : defaultPinned;
+    return initialPinned && window.innerWidth >= 768; // Don't auto-expand on mobile
+  });
   const [isMobile, setIsMobile] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
 
@@ -116,18 +123,6 @@ export function PeekRailNav({ defaultPinned = false }: PeekRailNavProps) {
     window.addEventListener("resize", checkMobile);
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
-
-  // Load pinned state from localStorage
-  useEffect(() => {
-    const saved = localStorage.getItem("peek-rail-pinned");
-    if (saved !== null) {
-      const pinned = saved === "true";
-      setIsPinned(pinned);
-      if (!isMobile) {
-        setIsExpanded(pinned);
-      }
-    }
-  }, [isMobile]);
 
   // Save pinned state to localStorage
   useEffect(() => {
@@ -157,6 +152,17 @@ export function PeekRailNav({ defaultPinned = false }: PeekRailNavProps) {
   const handleMobileToggle = () => {
     if (isMobile) {
       setIsExpanded(!isExpanded);
+    }
+  };
+
+  // Keyboard navigation support
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Escape" && isExpanded && isMobile) {
+      setIsExpanded(false);
+    }
+    if ((e.key === "Enter" || e.key === " ") && !isMobile && !isExpanded) {
+      e.preventDefault();
+      setIsExpanded(true);
     }
   };
 
@@ -220,6 +226,8 @@ export function PeekRailNav({ defaultPinned = false }: PeekRailNavProps) {
         }}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
+        onKeyDown={handleKeyDown}
+        tabIndex={0}
         className={cn(
           "fixed left-0 top-0 h-screen z-50 flex flex-col",
           "bg-gradient-to-b from-background via-background/95 to-muted/20",
@@ -232,6 +240,7 @@ export function PeekRailNav({ defaultPinned = false }: PeekRailNavProps) {
         }}
         role="navigation"
         aria-label="Main navigation"
+        aria-expanded={isExpanded}
         data-testid="peek-rail-nav"
       >
         {/* Header with Logo and Pin Button */}
