@@ -1,6 +1,6 @@
 import { db } from "server/db";
 import { timeEntries, employees, workspaces, clients } from "@shared/schema";
-import { and, eq, gte, lte, isNull } from "drizzle-orm";
+import { and, eq, gte, lte, isNull, sql } from "drizzle-orm";
 import { resolveRates, bucketHours, calculateAmount, roundHours } from "./rateResolver";
 
 /**
@@ -9,6 +9,16 @@ import { resolveRates, bucketHours, calculateAmount, roundHours } from "./rateRe
  * Automatically collects approved, unpayrolled time entries for a pay period
  * and prepares them for payroll processing. This is the "data collection" 
  * automation that feeds into PayrollOS™.
+ * 
+ * CRITICAL: Must sort entries chronologically to ensure deterministic overtime
+ * calculation per FLSA requirements.
+ * 
+ * Algorithm:
+ * 1. Batch-load workspace settings and client metadata (eliminate N+1 queries)
+ * 2. Group entries by employee
+ * 3. Sort chronologically within each employee (for deterministic OT)
+ * 4. Calculate overtime using workspace rules and weekly accumulator
+ * 5. Return employee-level summaries with gross pay breakdown
  * 
  * Key Features:
  * - Finds approved time entries in date range
@@ -75,7 +85,7 @@ export async function aggregatePayrollHours(params: {
   
   console.log(`[PayrollHours] Aggregating for workspace ${workspaceId} from ${startDate.toISOString()} to ${endDate.toISOString()}`);
 
-  // Get workspace settings for overtime rules
+  // Get workspace settings for overtime rules and default rates
   const workspace = await db.query.workspaces.findFirst({
     where: eq(workspaces.id, workspaceId),
   });
@@ -83,6 +93,12 @@ export async function aggregatePayrollHours(params: {
   if (!workspace) {
     throw new Error(`Workspace ${workspaceId} not found`);
   }
+
+  // Apply workspace overtime rules and default rates
+  const enableDailyOT = workspace.enableDailyOvertime || false;
+  const dailyOTThreshold = parseFloat(workspace.dailyOvertimeThreshold || "8.00");
+  const weeklyOTThreshold = parseFloat(workspace.weeklyOvertimeThreshold || "40.00");
+  const workspaceDefaultPayRate = workspace.defaultHourlyRate;
 
   // Find all approved, unpayrolled time entries in period
   const approvedEntries = await db
@@ -96,7 +112,7 @@ export async function aggregatePayrollHours(params: {
       and(
         eq(timeEntries.workspaceId, workspaceId),
         eq(timeEntries.status, 'approved'),
-        isNull(timeEntries.payrolledAt), // Not already payrolled
+        isNull(timeEntries.payrolledAt),
         gte(timeEntries.clockIn, startDate),
         lte(timeEntries.clockIn, endDate)
       )
@@ -116,6 +132,26 @@ export async function aggregatePayrollHours(params: {
     };
   }
 
+  // Batch-load all unique clients to eliminate N+1 queries
+  const uniqueClientIds = Array.from(new Set(approvedEntries.map(e => e.timeEntry.clientId).filter(Boolean) as string[]));
+  let clientsMap = new Map<string, string | null>();
+  
+  if (uniqueClientIds.length > 0) {
+    const clientsList = await db
+      .select({
+        id: clients.id,
+        companyName: clients.companyName,
+      })
+      .from(clients)
+      .where(
+        sql`${clients.id} IN (${sql.join(uniqueClientIds.map(id => sql.raw(`'${id}'`)), sql.raw(', '))})`
+      );
+    
+    clientsMap = new Map(clientsList.map(c => [c.id, c.companyName]));
+  }
+
+  const warnings: string[] = [];
+
   // Group entries by employee
   const employeeGroups = new Map<string, typeof approvedEntries>();
   for (const entry of approvedEntries) {
@@ -126,7 +162,6 @@ export async function aggregatePayrollHours(params: {
     employeeGroups.get(employeeId)!.push(entry);
   }
 
-  const warnings: string[] = [];
   const employeeSummaries: EmployeePayrollSummary[] = [];
   let totalPayrollAmount = 0;
 
@@ -141,6 +176,12 @@ export async function aggregatePayrollHours(params: {
     }
 
     const employeeName = `${employee.firstName} ${employee.lastName}`;
+    
+    // Sort entries chronologically for deterministic overtime calculation
+    const sortedEntries = entries.sort((a, b) => 
+      a.timeEntry.clockIn.getTime() - b.timeEntry.clockIn.getTime()
+    );
+
     const employeePayroll: TimeEntryPayroll[] = [];
     let employeeTotalHours = 0;
     let employeeTotalRegularHours = 0;
@@ -153,10 +194,28 @@ export async function aggregatePayrollHours(params: {
 
     // Calculate cumulative hours for overtime calculation
     let weeklyHoursSoFar = 0;
+    let currentWeekStart: Date | null = null;
+
+    // Helper: Get start of ISO week (Monday at midnight) for a given date
+    const getWeekStart = (date: Date): Date => {
+      const d = new Date(date);
+      const day = d.getDay();
+      const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday
+      d.setDate(diff);
+      d.setHours(0, 0, 0, 0); // Normalize to midnight for consistent comparison
+      return d;
+    };
 
     // Process each time entry for this employee
-    for (const entry of entries) {
+    for (const entry of sortedEntries) {
       const { timeEntry } = entry;
+
+      // Reset weekly hours when crossing week boundary (FLSA compliance)
+      const entryWeekStart = getWeekStart(timeEntry.clockIn);
+      if (currentWeekStart === null || entryWeekStart.getTime() !== currentWeekStart.getTime()) {
+        weeklyHoursSoFar = 0;
+        currentWeekStart = entryWeekStart;
+      }
 
       // Validate entry has required data
       if (!timeEntry.clockOut) {
@@ -169,25 +228,25 @@ export async function aggregatePayrollHours(params: {
         continue;
       }
 
-      // Resolve pay rate
+      // Resolve pay rate with workspace default fallback
       const resolved = resolveRates({
         timeEntry,
         employeeHourlyRate: employee.hourlyRate,
         clientBillableRate: null, // Not used for payroll
-        workspaceDefaultRate: null,
+        workspaceDefaultRate: workspaceDefaultPayRate,
       });
 
       if (resolved.hasWarning) {
         employeeWarnings.push(resolved.warningMessage!);
       }
 
-      // Calculate hours bucketing (regular, OT, holiday)
+      // Calculate hours bucketing (regular, OT, holiday) using workspace settings
       const totalHours = parseFloat(timeEntry.totalHours);
       const hoursBucket = bucketHours({
         totalHours,
         weeklyHoursSoFar,
-        enableDailyOvertime: false, // TODO: Get from workspace settings
-        weeklyOvertimeThreshold: 40, // FLSA standard
+        enableDailyOvertime: enableDailyOT,
+        weeklyOvertimeThreshold: weeklyOTThreshold,
         isHoliday: false, // TODO: Check if shift is marked as holiday
       });
 
@@ -200,15 +259,8 @@ export async function aggregatePayrollHours(params: {
       const holidayPay = calculateAmount(hoursBucket.holidayHours, resolved.payRate * 2.0);
       const totalPay = regularPay + overtimePay + holidayPay;
 
-      // Get client info from time entry if available
-      let clientName: string | null = null;
-      if (timeEntry.clientId) {
-        const client = await db.query.clients.findFirst({
-          where: eq(clients.id, timeEntry.clientId),
-          columns: { companyName: true },
-        });
-        clientName = client?.companyName || null;
-      }
+      // Get client name from batch-loaded map
+      const clientName = timeEntry.clientId ? clientsMap.get(timeEntry.clientId) || null : null;
 
       employeePayroll.push({
         timeEntryId: timeEntry.id,

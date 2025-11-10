@@ -280,6 +280,19 @@ export const workspaces = pgTable("workspaces", {
   lastScheduleRunAt: timestamp("last_schedule_run_at", { withTimezone: true }),
   lastPayrollRunAt: timestamp("last_payroll_run_at", { withTimezone: true }),
 
+  // ============================================================================
+  // OVERTIME & RATE CONFIGURATION
+  // ============================================================================
+  
+  // Overtime Rules
+  enableDailyOvertime: boolean("enable_daily_overtime").default(false), // Enable 8-hour daily OT threshold
+  dailyOvertimeThreshold: decimal("daily_overtime_threshold", { precision: 5, scale: 2 }).default("8.00"), // Hours per day before OT
+  weeklyOvertimeThreshold: decimal("weekly_overtime_threshold", { precision: 5, scale: 2 }).default("40.00"), // Hours per week before OT (FLSA standard)
+  
+  // Default Rates (fallback when employee/client rates not configured)
+  defaultBillableRate: decimal("default_billable_rate", { precision: 10, scale: 2 }), // Default billing rate for client invoices
+  defaultHourlyRate: decimal("default_hourly_rate", { precision: 10, scale: 2 }), // Default pay rate for employees
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

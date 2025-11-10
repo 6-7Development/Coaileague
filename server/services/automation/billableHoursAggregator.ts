@@ -1,6 +1,6 @@
 import { db } from "server/db";
-import { timeEntries, clients, employees, clientRates, workspaces } from "@shared/schema";
-import { and, eq, gte, lte, isNull } from "drizzle-orm";
+import { timeEntries, employees, clients, clientRates, workspaces } from "@shared/schema";
+import { and, eq, gte, lte, isNull, sql } from "drizzle-orm";
 import { resolveRates, bucketHours, calculateAmount, roundHours } from "./rateResolver";
 
 /**
@@ -10,12 +10,21 @@ import { resolveRates, bucketHours, calculateAmount, roundHours } from "./rateRe
  * and prepares them for invoice generation. This is the "data collection" 
  * automation that feeds into BillOS™.
  * 
+ * CRITICAL: Overtime must be calculated at the employee level (tracking weekly
+ * hours across all clients), but the output is grouped by client (for invoicing).
+ * 
+ * Algorithm:
+ * 1. Batch-load workspace settings and client rates (eliminate N+1 queries)
+ * 2. Group entries by employee FIRST (to track weekly hours)
+ * 3. Sort chronologically within each employee (for deterministic OT)
+ * 4. Calculate overtime using workspace rules and weekly accumulator
+ * 5. Restructure output by client (for invoice line items)
+ * 
  * Key Features:
- * - Finds approved time entries in date range
- * - Groups by client for invoice line items
- * - Calculates billable hours (regular, overtime, holiday)
- * - Applies billing rates using rate resolution precedence
- * - Filters out already-billed entries
+ * - Finds approved, unbilled entries (status='approved', billedAt IS NULL)
+ * - Applies workspace overtime rules (daily/weekly thresholds)
+ * - Calculates billing amounts (regular, OT, holiday)
+ * - Uses rate resolution precedence (entry → employee → client → workspace)
  * - Validates data completeness
  */
 
@@ -46,7 +55,7 @@ export interface TimeEntryBillable {
   employeeId: string;
   employeeName: string;
   clockIn: Date;
-  clockOut: Date | null;
+  clockOut: Date;
   totalHours: number;
   regularHours: number;
   overtimeHours: number;
@@ -58,6 +67,12 @@ export interface TimeEntryBillable {
 
 /**
  * Aggregate billable hours for a workspace in a given period
+ * 
+ * CRITICAL: Overtime calculation requires employee-level tracking, so we:
+ * 1. Group by employee FIRST (to track weekly hours)
+ * 2. Sort chronologically (for deterministic OT)
+ * 3. Calculate OT using workspace rules
+ * 4. Then restructure output by client (for invoice generation)
  */
 export async function aggregateBillableHours(params: {
   workspaceId: string;
@@ -68,7 +83,7 @@ export async function aggregateBillableHours(params: {
   
   console.log(`[BillableHours] Aggregating for workspace ${workspaceId} from ${startDate.toISOString()} to ${endDate.toISOString()}`);
 
-  // Get workspace settings for overtime rules
+  // Get workspace settings for overtime rules and default rates
   const workspace = await db.query.workspaces.findFirst({
     where: eq(workspaces.id, workspaceId),
   });
@@ -76,6 +91,12 @@ export async function aggregateBillableHours(params: {
   if (!workspace) {
     throw new Error(`Workspace ${workspaceId} not found`);
   }
+
+  // Apply workspace overtime rules and default rates
+  const enableDailyOT = workspace.enableDailyOvertime || false;
+  const dailyOTThreshold = parseFloat(workspace.dailyOvertimeThreshold || "8.00");
+  const weeklyOTThreshold = parseFloat(workspace.weeklyOvertimeThreshold || "40.00");
+  const workspaceDefaultRate = workspace.defaultBillableRate;
 
   // Find all approved, unbilled time entries in period
   const approvedEntries = await db
@@ -91,7 +112,7 @@ export async function aggregateBillableHours(params: {
       and(
         eq(timeEntries.workspaceId, workspaceId),
         eq(timeEntries.status, 'approved'),
-        isNull(timeEntries.billedAt), // Not already billed
+        isNull(timeEntries.billedAt),
         gte(timeEntries.clockIn, startDate),
         lte(timeEntries.clockIn, endDate),
         eq(timeEntries.billableToClient, true)
@@ -112,76 +133,131 @@ export async function aggregateBillableHours(params: {
     };
   }
 
-  // Group entries by client
-  const clientGroups = new Map<string, typeof approvedEntries>();
-  for (const entry of approvedEntries) {
-    const clientId = entry.timeEntry.clientId || 'unassigned';
-    if (!clientGroups.has(clientId)) {
-      clientGroups.set(clientId, []);
-    }
-    clientGroups.get(clientId)!.push(entry);
+  // Batch-load all unique client rates to eliminate N+1 queries
+  const uniqueClientIds = Array.from(new Set(approvedEntries.map(e => e.timeEntry.clientId).filter(Boolean) as string[]));
+  let clientRatesMap = new Map<string, string>();
+  
+  if (uniqueClientIds.length > 0) {
+    const clientRatesList = await db
+      .select()
+      .from(clientRates)
+      .where(
+        and(
+          eq(clientRates.isActive, true),
+          sql`${clientRates.clientId} IN (${sql.join(uniqueClientIds.map(id => sql.raw(`'${id}'`)), sql.raw(', '))})`
+        )
+      );
+    
+    clientRatesMap = new Map(clientRatesList.map(cr => [cr.clientId, cr.billableRate]));
   }
 
   const warnings: string[] = [];
-  const clientSummaries: ClientBillableSummary[] = [];
-  let totalBillableAmount = 0;
+  
+  // STEP 1: Group entries by employee (for overtime calculation)
+  const employeeGroups = new Map<string, typeof approvedEntries>();
+  for (const entry of approvedEntries) {
+    const employeeId = entry.timeEntry.employeeId;
+    if (!employeeGroups.has(employeeId)) {
+      employeeGroups.set(employeeId, []);
+    }
+    employeeGroups.get(employeeId)!.push(entry);
+  }
 
-  // Process each client group
-  for (const [clientId, entries] of Array.from(clientGroups)) {
-    const firstEntry = entries[0];
-    const clientName = firstEntry.client?.companyName || 'Unassigned Client';
+  // STEP 2: Process each employee's entries chronologically, calculating OT
+  interface ProcessedEntry {
+    timeEntryId: string;
+    employeeId: string;
+    employeeName: string;
+    clientId: string | null;
+    clientName: string | null;
+    clockIn: Date;
+    clockOut: Date;
+    totalHours: number;
+    regularHours: number;
+    overtimeHours: number;
+    holidayHours: number;
+    billingRate: number;
+    amount: number;
+    rateSource: string;
+  }
 
-    // Get client billing rate (if configured)
-    const clientRateConfig = await db.query.clientRates.findFirst({
-      where: and(
-        eq(clientRates.clientId, clientId),
-        eq(clientRates.isActive, true)
-      ),
-    });
+  const allProcessedEntries: ProcessedEntry[] = [];
 
-    const clientBillable: TimeEntryBillable[] = [];
-    let clientTotalHours = 0;
-    let clientTotalRegularHours = 0;
-    let clientTotalOvertimeHours = 0;
-    let clientTotalHolidayHours = 0;
-    let clientTotalAmount = 0;
-    const clientWarnings: string[] = [];
+  for (const [employeeId, entries] of Array.from(employeeGroups)) {
+    const employee = entries[0].employee;
+    
+    if (!employee) {
+      warnings.push(`Employee ${employeeId} not found - skipping entries`);
+      continue;
+    }
 
-    // Process each time entry for this client
-    for (const entry of entries) {
-      const { timeEntry, employee } = entry;
+    const employeeName = `${employee.firstName} ${employee.lastName}`;
+
+    // Sort entries chronologically for deterministic overtime calculation
+    const sortedEntries = entries.sort((a, b) => 
+      a.timeEntry.clockIn.getTime() - b.timeEntry.clockIn.getTime()
+    );
+
+    let weeklyHoursSoFar = 0;
+    let currentWeekStart: Date | null = null;
+
+    // Helper: Get start of ISO week (Monday at midnight) for a given date
+    const getWeekStart = (date: Date): Date => {
+      const d = new Date(date);
+      const day = d.getDay();
+      const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday
+      d.setDate(diff);
+      d.setHours(0, 0, 0, 0); // Normalize to midnight for consistent comparison
+      return d;
+    };
+
+    for (const entry of sortedEntries) {
+      const { timeEntry, client } = entry;
+
+      // Reset weekly hours when crossing week boundary (FLSA compliance)
+      const entryWeekStart = getWeekStart(timeEntry.clockIn);
+      if (currentWeekStart === null || entryWeekStart.getTime() !== currentWeekStart.getTime()) {
+        weeklyHoursSoFar = 0;
+        currentWeekStart = entryWeekStart;
+      }
 
       // Validate entry has required data
       if (!timeEntry.clockOut) {
-        clientWarnings.push(`Time entry ${timeEntry.id} missing clock-out - skipping`);
+        warnings.push(`Time entry ${timeEntry.id} missing clock-out - skipping`);
         continue;
       }
 
       if (!timeEntry.totalHours) {
-        clientWarnings.push(`Time entry ${timeEntry.id} missing total hours - skipping`);
+        warnings.push(`Time entry ${timeEntry.id} missing total hours - skipping`);
         continue;
       }
 
-      // Resolve billing rate
+      // Resolve billing rate using batch-loaded client rates
+      const clientBillableRate = timeEntry.clientId ? clientRatesMap.get(timeEntry.clientId) : undefined;
+      
       const resolved = resolveRates({
         timeEntry,
-        employeeHourlyRate: employee?.hourlyRate,
-        clientBillableRate: clientRateConfig?.billableRate,
-        workspaceDefaultRate: null, // Could add workspace default rate here
+        employeeHourlyRate: employee.hourlyRate,
+        clientBillableRate,
+        workspaceDefaultRate,
       });
 
       if (resolved.hasWarning) {
-        clientWarnings.push(resolved.warningMessage!);
+        warnings.push(resolved.warningMessage!);
       }
 
-      // Calculate hours bucketing (regular, OT, holiday)
+      // Calculate hours bucketing (regular, OT, holiday) using workspace settings
       const totalHours = parseFloat(timeEntry.totalHours);
       const hoursBucket = bucketHours({
         totalHours,
-        weeklyHoursSoFar: 0, // TODO: Calculate weekly hours so far for this employee
-        enableDailyOvertime: false, // TODO: Get from workspace settings
+        weeklyHoursSoFar,
+        enableDailyOvertime: enableDailyOT,
+        weeklyOvertimeThreshold: weeklyOTThreshold,
         isHoliday: false, // TODO: Check if shift is marked as holiday
       });
+
+      // Update weekly hours accumulator for next entry
+      weeklyHoursSoFar += totalHours;
 
       // Calculate billable amount
       const regularAmount = calculateAmount(hoursBucket.regularHours, resolved.billingRate);
@@ -189,10 +265,12 @@ export async function aggregateBillableHours(params: {
       const holidayAmount = calculateAmount(hoursBucket.holidayHours, resolved.billingRate * 2.0);
       const totalAmount = regularAmount + overtimeAmount + holidayAmount;
 
-      clientBillable.push({
+      allProcessedEntries.push({
         timeEntryId: timeEntry.id,
-        employeeId: timeEntry.employeeId,
-        employeeName: employee ? `${employee.firstName} ${employee.lastName}` : 'Unknown',
+        employeeId,
+        employeeName,
+        clientId: timeEntry.clientId,
+        clientName: client?.companyName || null,
         clockIn: timeEntry.clockIn,
         clockOut: timeEntry.clockOut,
         totalHours,
@@ -203,31 +281,67 @@ export async function aggregateBillableHours(params: {
         amount: totalAmount,
         rateSource: resolved.rateSource,
       });
-
-      clientTotalHours += totalHours;
-      clientTotalRegularHours += hoursBucket.regularHours;
-      clientTotalOvertimeHours += hoursBucket.overtimeHours;
-      clientTotalHolidayHours += hoursBucket.holidayHours;
-      clientTotalAmount += totalAmount;
     }
+  }
 
-    if (clientBillable.length > 0) {
-      clientSummaries.push({
-        clientId,
-        clientName,
-        entries: clientBillable,
-        totalHours: roundHours(clientTotalHours),
-        totalRegularHours: roundHours(clientTotalRegularHours),
-        totalOvertimeHours: roundHours(clientTotalOvertimeHours),
-        totalHolidayHours: roundHours(clientTotalHolidayHours),
-        totalAmount: clientTotalAmount,
-        warnings: clientWarnings,
-      });
-
-      totalBillableAmount += clientTotalAmount;
+  // STEP 3: Restructure processed entries by client for invoice generation
+  const clientGroups = new Map<string, ProcessedEntry[]>();
+  for (const entry of allProcessedEntries) {
+    const clientId = entry.clientId || 'unassigned';
+    if (!clientGroups.has(clientId)) {
+      clientGroups.set(clientId, []);
     }
+    clientGroups.get(clientId)!.push(entry);
+  }
 
-    warnings.push(...clientWarnings);
+  const clientSummaries: ClientBillableSummary[] = [];
+  let totalBillableAmount = 0;
+
+  for (const [clientId, entries] of Array.from(clientGroups)) {
+    const clientName = entries[0].clientName || 'Unassigned Client';
+    
+    let clientTotalHours = 0;
+    let clientTotalRegularHours = 0;
+    let clientTotalOvertimeHours = 0;
+    let clientTotalHolidayHours = 0;
+    let clientTotalAmount = 0;
+
+    const clientBillable: TimeEntryBillable[] = entries.map(entry => {
+      clientTotalHours += entry.totalHours;
+      clientTotalRegularHours += entry.regularHours;
+      clientTotalOvertimeHours += entry.overtimeHours;
+      clientTotalHolidayHours += entry.holidayHours;
+      clientTotalAmount += entry.amount;
+
+      return {
+        timeEntryId: entry.timeEntryId,
+        employeeId: entry.employeeId,
+        employeeName: entry.employeeName,
+        clockIn: entry.clockIn,
+        clockOut: entry.clockOut,
+        totalHours: entry.totalHours,
+        regularHours: entry.regularHours,
+        overtimeHours: entry.overtimeHours,
+        holidayHours: entry.holidayHours,
+        billingRate: entry.billingRate,
+        amount: entry.amount,
+        rateSource: entry.rateSource,
+      };
+    });
+
+    clientSummaries.push({
+      clientId,
+      clientName,
+      entries: clientBillable,
+      totalHours: roundHours(clientTotalHours),
+      totalRegularHours: roundHours(clientTotalRegularHours),
+      totalOvertimeHours: roundHours(clientTotalOvertimeHours),
+      totalHolidayHours: roundHours(clientTotalHolidayHours),
+      totalAmount: clientTotalAmount,
+      warnings: [],
+    });
+
+    totalBillableAmount += clientTotalAmount;
   }
 
   console.log(`[BillableHours] Processed ${approvedEntries.length} entries, $${totalBillableAmount.toFixed(2)} total billable`);
