@@ -169,10 +169,10 @@ function AppContent() {
         <Route path="/support" component={Support} />
         {/* Consolidated chat routes - redirect to main chat */}
         <Route path="/chat" component={HelpDeskCab} />
+        <Route path="/mobile-chat" component={MobileChatPage} /> {/* Guest access for mobile */}
         <Route path="/live-chat"><Redirect to="/chat" /></Route>
         <Route path="/helpdesk5"><Redirect to="/chat" /></Route>
         <Route path="/support/chat"><Redirect to="/chat" /></Route>
-        {/* Removed /mobile-chat from here - FIXED: Duplicate route was causing double WebSocket connections */}
         <Route path="/design-comparison" component={DesignComparison} />
         <Route path="/logo-showcase" component={LogoShowcase} />
         <Route path="/logo-showcase-v2" component={LogoShowcaseV2} />
