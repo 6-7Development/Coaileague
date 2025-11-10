@@ -206,15 +206,25 @@ export async function checkIdempotency(params: IdempotencyParams): Promise<Idemp
 /**
  * Mark idempotency operation as completed or failed
  * Unified interface for updating idempotency status
+ * 
+ * IMPORTANT: To ensure atomicity with other operations (e.g., anchor advancement),
+ * pass a transaction client via the `tx` parameter. Otherwise, this will execute
+ * in its own isolated transaction.
+ * 
+ * @param params - Idempotency result parameters
+ * @param tx - Optional transaction client for atomic multi-operation updates
  */
-export async function updateIdempotencyResult(params: {
-  idempotencyKeyId: string;
-  status: 'completed' | 'failed';
-  resultId?: number | string;
-  resultMetadata?: Record<string, any>;
-  errorMessage?: string;
-  errorStack?: string;
-}): Promise<void> {
+export async function updateIdempotencyResult(
+  params: {
+    idempotencyKeyId: string;
+    status: 'completed' | 'failed';
+    resultId?: number | string;
+    resultMetadata?: Record<string, any>;
+    errorMessage?: string;
+    errorStack?: string;
+  },
+  tx?: any // Transaction client (PgTransaction)
+): Promise<void> {
   const { idempotencyKeyId, status, resultId, resultMetadata, errorMessage, errorStack } = params;
   
   const updateData: any = {
@@ -238,13 +248,16 @@ export async function updateIdempotencyResult(params: {
     }
   }
   
-  await db
+  // Use transaction client if provided, otherwise use global db
+  const dbClient = tx || db;
+  
+  await dbClient
     .update(idempotencyKeys)
     .set(updateData)
     .where(eq(idempotencyKeys.id, idempotencyKeyId));
 
   if (status === 'completed') {
-    console.log(`[IDEMPOTENCY] Operation completed: ${idempotencyKeyId} → ${resultId || 'no result'}`);
+    console.log(`[IDEMPOTENCY] Operation completed${tx ? ' (atomic)' : ''}: ${idempotencyKeyId} → ${resultId || 'no result'}`);
   } else {
     console.log(`[IDEMPOTENCY] Operation failed: ${idempotencyKeyId}`);
     console.error(`[IDEMPOTENCY] Error: ${errorMessage}`);

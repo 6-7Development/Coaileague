@@ -150,9 +150,9 @@ async function logAutomationLifecycle<T>(
       workspaceId,
       ...AUTOFORCE_AUTOMATION_USER,
       action: 'automation_job_start',
+      actionDescription: `${osName} automation started for ${workspaceName}`,
       entityType: 'automation_job',
       entityId: runId,
-      entityDescription: `${osName} automation started for ${workspaceName}`,
       metadata: {
         jobType,
         osName,
@@ -174,9 +174,9 @@ async function logAutomationLifecycle<T>(
         workspaceId,
         ...AUTOFORCE_AUTOMATION_USER,
         action: 'automation_job_complete',
+        actionDescription: `${osName} automation completed for ${workspaceName}`,
         entityType: 'automation_job',
         entityId: runId,
-        entityDescription: `${osName} automation completed for ${workspaceName}`,
         metadata: {
           jobType,
           osName,
@@ -199,9 +199,9 @@ async function logAutomationLifecycle<T>(
         workspaceId,
         ...AUTOFORCE_AUTOMATION_USER,
         action: 'automation_job_error',
+        actionDescription: `${osName} automation failed for ${workspaceName}: ${error.message}`,
         entityType: 'automation_job',
         entityId: runId,
-        entityDescription: `${osName} automation failed for ${workspaceName}: ${error.message}`,
         metadata: {
           jobType,
           osName,
@@ -392,22 +392,20 @@ async function runNightlyInvoiceGeneration() {
                     .set(updateData)
                     .where(eq(workspaces.id, workspace.id));
                   
-                  // Mark idempotency complete in SAME transaction with metadata for monitoring
-                  await tx.update(idempotencyKeys)
-                    .set({
-                      status: 'completed',
-                      resultId: invoices.length > 0 ? String(invoices[0].id) : null,
-                      resultMetadata: {
-                        invoicesGenerated: invoices.length,
-                        isDuplicate: false,
-                        workspaceName: workspace.name,
-                        schedule,
-                        periodStart: buildInvoiceFingerprintData(workspace, today).periodStart,
-                        periodEnd: buildInvoiceFingerprintData(workspace, today).periodEnd,
-                      },
-                      completedAt: new Date(),
-                    })
-                    .where(eq(idempotencyKeys.id, idem.idempotencyKeyId));
+                  // Mark idempotency complete in SAME transaction using transaction-aware helper
+                  await updateIdempotencyResult({
+                    idempotencyKeyId: idem.idempotencyKeyId,
+                    status: 'completed',
+                    resultId: invoices.length > 0 ? String(invoices[0].id) : undefined,
+                    resultMetadata: {
+                      invoicesGenerated: invoices.length,
+                      isDuplicate: false,
+                      workspaceName: workspace.name,
+                      schedule,
+                      periodStart: buildInvoiceFingerprintData(workspace, today).periodStart,
+                      periodEnd: buildInvoiceFingerprintData(workspace, today).periodEnd,
+                    },
+                  }, tx); // Pass transaction client for atomic update
                 });
                 
                 return { 
