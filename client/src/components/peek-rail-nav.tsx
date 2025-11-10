@@ -230,6 +230,8 @@ export function PeekRailNav({ defaultPinned = false }: PeekRailNavProps) {
         style={{
           width: railWidth,
         }}
+        role="navigation"
+        aria-label="Main navigation"
         data-testid="peek-rail-nav"
       >
         {/* Header with Logo and Pin Button */}
@@ -256,6 +258,8 @@ export function PeekRailNav({ defaultPinned = false }: PeekRailNavProps) {
                   onClick={handleTogglePin}
                   className="h-8 w-8"
                   data-testid="button-toggle-pin"
+                  aria-label={isPinned ? "Unpin navigation" : "Pin navigation"}
+                  aria-pressed={isPinned}
                 >
                   {isPinned ? (
                     <ChevronLeft className="h-4 w-4" />
@@ -269,7 +273,11 @@ export function PeekRailNav({ defaultPinned = false }: PeekRailNavProps) {
         </div>
 
         {/* Scrollable Navigation Content */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden mobile-scroll px-2 py-4">
+        <div 
+          className="flex-1 overflow-y-auto overflow-x-hidden mobile-scroll px-2 py-4"
+          role="menu"
+          aria-label="Navigation menu"
+        >
           <TooltipProvider>
             {families.map((family) => (
               <div key={family.id} className="mb-6">
