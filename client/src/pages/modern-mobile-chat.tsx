@@ -8,7 +8,6 @@ import { useChatroomWebSocket } from "@/hooks/use-chatroom-websocket";
 import { useChatSounds } from "@/hooks/use-chat-sounds";
 import { AutoForceLogo } from "@/components/autoforce-logo";
 import { WFLogoCompact } from "@/components/wf-logo";
-import { ChatAgreementModal } from "@/components/chat-agreement-modal";
 import { UserDiagnosticsPanel } from "@/components/user-diagnostics-panel";
 import { useTransition } from "@/contexts/transition-context";
 import { apiRequest } from "@/lib/queryClient";
@@ -38,8 +37,6 @@ export default function ModernMobileChat() {
   const [showTools, setShowTools] = useState(false);
   const [selectedUser, setSelectedUser] = useState<OnlineUser | null>(null);
   const [diagnosticsUserId, setDiagnosticsUserId] = useState<string | null>(null);
-  const [showAgreement, setShowAgreement] = useState(false);
-  const [hasAcceptedAgreement, setHasAcceptedAgreement] = useState(false);
   const [showFABs, setShowFABs] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -145,45 +142,6 @@ export default function ModernMobileChat() {
     messages, sendMessage, sendRawMessage, kickUser, silenceUser, giveVoice, onlineUsers, isConnected
   } = useChatroomWebSocket(isAuthenticated ? userId : undefined, userName);
 
-  // Check if user has accepted agreement - FIXED: Custom queryFn to pass sessionId properly  
-  const { data: agreementStatus } = useQuery<{ hasAccepted: boolean; acceptedAt: string | null }>({
-    queryKey: ['/api/helpdesk/agreement/check/helpdesk', sessionId],
-    queryFn: async () => {
-      const res = await fetch(`/api/helpdesk/agreement/check/helpdesk?sessionId=${sessionId}`, {
-        credentials: 'include',
-      });
-      if (!res.ok) throw new Error('Failed to check agreement');
-      return res.json();
-    },
-    enabled: isAuthenticated,
-    retry: false,
-  });
-
-  // Agreement acceptance mutation
-  const acceptAgreementMutation = useMutation({
-    mutationFn: async (fullName: string) => {
-      return apiRequest('POST', '/api/helpdesk/agreement/accept', {
-        fullName,
-        roomSlug: 'helpdesk',
-        sessionId,
-      });
-    },
-    onSuccess: () => {
-      setHasAcceptedAgreement(true);
-      setShowAgreement(false);
-      toast({
-        title: "Agreement Accepted",
-        description: "Welcome to AutoForce™ Support Chat",
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to submit agreement",
-        variant: "destructive",
-      });
-    },
-  });
 
   // Show loading transition on initial load
   useEffect(() => {
@@ -194,20 +152,9 @@ export default function ModernMobileChat() {
       duration: 2000,
       onComplete: () => {
         hideTransition();
-        // Show agreement if not accepted
-        if (agreementStatus && !agreementStatus.hasAccepted && !hasAcceptedAgreement && isAuthenticated) {
-          setShowAgreement(true);
-        }
       }
     });
   }, []); // Only run once on mount
-
-  // Show agreement modal if not accepted (after loading)
-  useEffect(() => {
-    if (agreementStatus && !agreementStatus.hasAccepted && !hasAcceptedAgreement && isAuthenticated) {
-      setShowAgreement(true);
-    }
-  }, [agreementStatus, hasAcceptedAgreement, isAuthenticated]);
 
   // Role-based permission system
   const hasPermission = (requiredRoles: string[]) => {
@@ -1355,14 +1302,6 @@ export default function ModernMobileChat() {
         </div>
       </div>
 
-      {/* Agreement Modal - Mobile Optimized */}
-      {showAgreement && (
-        <ChatAgreementModal
-          roomName="WorkforceOS Support Chat"
-          onAccept={(fullName) => acceptAgreementMutation.mutate(fullName)}
-          isSubmitting={acceptAgreementMutation.isPending}
-        />
-      )}
 
       {/* QueryOS™ - User Diagnostics Panel (Mobile) */}
       <UserDiagnosticsPanel
