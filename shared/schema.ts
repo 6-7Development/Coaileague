@@ -9124,3 +9124,74 @@ export const insertOAuthStateSchema = createInsertSchema(oauthStates).omit({
 
 export type InsertOAuthState = z.infer<typeof insertOAuthStateSchema>;
 export type OAuthState = typeof oauthStates.$inferSelect;
+
+// ============================================================================
+// OVERSIGHT EVENTS - 1% Autonomous Oversight Queue
+// ============================================================================
+
+// Entity types that can be flagged for oversight
+export const oversightEntityTypeEnum = pgEnum('oversight_entity_type', [
+  'invoice',
+  'expense',
+  'timesheet',
+  'shift',
+  'payroll_run',
+  'dispute',
+  'time_entry',
+]);
+
+// Oversight status
+export const oversightStatusEnum = pgEnum('oversight_status', [
+  'pending',      // Awaiting review
+  'approved',     // Human approved
+  'rejected',     // Human rejected
+  'auto_resolved' // Automatically resolved by rules
+]);
+
+// Oversight Events - Track items flagged for human review in the 1% oversight queue
+export const oversightEvents = pgTable("oversight_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  // Entity reference
+  entityType: oversightEntityTypeEnum("entity_type").notNull(),
+  entityId: varchar("entity_id").notNull(), // References the actual entity (invoice.id, expense.id, etc.)
+  
+  // Detection details
+  detectedBy: varchar("detected_by").notNull(), // 'auto' or user ID for manual flags
+  detectedAt: timestamp("detected_at").defaultNow(),
+  autoScore: integer("auto_score"), // 0-100 risk/confidence score
+  flagReason: text("flag_reason").notNull(), // Plain English reason for flagging
+  
+  // Entity summary for display (denormalized for performance)
+  entitySummary: jsonb("entity_summary"), // { amount, date, employeeName, clientName, etc. }
+  
+  // Status & resolution
+  status: oversightStatusEnum("status").notNull().default('pending'),
+  resolvedBy: varchar("resolved_by").references(() => users.id), // User who approved/rejected
+  resolvedAt: timestamp("resolved_at"),
+  resolutionNotes: text("resolution_notes"), // Optional notes from reviewer
+  
+  // Metadata
+  metadata: jsonb("metadata"), // Additional context, rule triggers, etc.
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  workspaceIdx: index("oversight_events_workspace_idx").on(table.workspaceId),
+  statusIdx: index("oversight_events_status_idx").on(table.status),
+  entityIdx: index("oversight_events_entity_idx").on(table.entityType, table.entityId),
+  workspaceStatusIdx: index("oversight_events_workspace_status_idx").on(table.workspaceId, table.status),
+  detectedAtIdx: index("oversight_events_detected_at_idx").on(table.detectedAt),
+  // Compound index for pending queue queries
+  pendingQueueIdx: index("oversight_events_pending_queue_idx").on(table.workspaceId, table.status, table.detectedAt),
+}));
+
+export const insertOversightEventSchema = createInsertSchema(oversightEvents).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertOversightEvent = z.infer<typeof insertOversightEventSchema>;
+export type OversightEvent = typeof oversightEvents.$inferSelect;
