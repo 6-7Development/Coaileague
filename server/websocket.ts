@@ -819,7 +819,7 @@ export function setupWebSocket(server: Server) {
                 if (isStaff) {
                   greeting = `Welcome back, ${displayName}! Support chat is active. Right-click users for quick actions.`;
                 } else {
-                  greeting = `Welcome! Please wait to be helped. You cannot send messages right now - wait, gather your thoughts, evidence, and problem details. We will be with you shortly.`;
+                  greeting = `Welcome to AutoForce™ Support! You can send messages right away. A support agent will assist you shortly. Feel free to describe your issue or ask any questions.`;
                 }
 
                 // Send welcome message ONLY to the joining user (not saved to DB)
