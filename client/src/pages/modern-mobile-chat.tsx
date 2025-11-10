@@ -32,6 +32,7 @@ interface OnlineUser {
 
 export default function ModernMobileChat() {
   const [, navigate] = useLocation();
+  const [shouldRedirect, setShouldRedirect] = useState(false);
   
   // Desktop Detection & Auto-Redirect (runs once on mount)
   useEffect(() => {
@@ -40,9 +41,15 @@ export default function ModernMobileChat() {
     
     if (!isMobileDevice && !isSmallScreen) {
       console.log('💻 Desktop/large screen detected, redirecting to /chat');
+      setShouldRedirect(true);
       navigate('/chat', { replace: true });
     }
   }, []); // Empty deps - run only once on mount
+  
+  // Don't render if redirecting
+  if (shouldRedirect) {
+    return null;
+  }
   
   const [messageText, setMessageText] = useState("");
   const [showQuickResponses, setShowQuickResponses] = useState(false);
