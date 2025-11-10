@@ -41,7 +41,10 @@ export function PageHeader({
   
   return (
     <div className={cn("border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10", className)}>
-      <div className="container max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
+      <div className={cn(
+        "mx-auto px-4 sm:px-6 py-3 sm:py-4",
+        isCentered ? "w-full" : "container max-w-7xl"
+      )}>
         {/* Breadcrumbs */}
         {breadcrumbs.length > 0 && !isCentered && (
           <Breadcrumb className="mb-2">
@@ -111,17 +114,17 @@ export function PageHeader({
             )}
 
             {/* Title & Description */}
-            <div className={cn("min-w-0", isCentered ? "max-w-3xl" : "flex-1")}>
+            <div className={cn("min-w-0", isCentered ? "w-full" : "flex-1")}>
               <h1 className={cn(
                 "text-2xl sm:text-3xl font-semibold text-foreground tracking-tight",
-                isCentered ? "text-center" : "truncate"
+                isCentered ? "text-center w-full" : "truncate"
               )}>
                 {title}
               </h1>
               {description && (
                 <p className={cn(
                   "text-sm text-muted-foreground mt-1",
-                  isCentered ? "text-center" : "line-clamp-2"
+                  isCentered ? "text-center w-full" : "line-clamp-2"
                 )}>
                   {description}
                 </p>
