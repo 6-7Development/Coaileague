@@ -297,6 +297,10 @@ export const workspaces = pgTable("workspaces", {
   // HOLIDAY CALENDAR & RATE MULTIPLIERS
   // ============================================================================
 
+  // Timezone for local date calculations (IANA format, e.g., "America/New_York")
+  // Used for holiday detection and shift segmentation at midnight boundaries
+  timezone: varchar("timezone").default("America/New_York"),
+
   // Holiday Calendar (array of ISO dates with optional metadata)
   // Format: [{"date": "2025-12-25", "name": "Christmas", "billMultiplier": 2.5, "payMultiplier": 2.0}]
   holidayCalendar: jsonb("holiday_calendar").default('[]'),

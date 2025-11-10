@@ -24,18 +24,46 @@ export interface HolidayEntry {
 }
 
 /**
- * Check if a given date is a holiday
- * @param date Date to check
+ * Convert a UTC timestamp to local date string (YYYY-MM-DD) in workspace timezone
+ * Uses UTC as fallback if timezone not configured
+ */
+export function toLocalDateString(date: Date, timezone?: string): string {
+  if (!timezone) {
+    // Fallback to UTC if no timezone configured
+    return date.toISOString().split('T')[0];
+  }
+
+  try {
+    // Use Intl API for timezone-aware date formatting
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: timezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    
+    // Format returns "YYYY-MM-DD" in en-CA locale
+    return formatter.format(date);
+  } catch (error) {
+    console.warn(`[RateResolver] Invalid timezone "${timezone}", falling back to UTC`);
+    return date.toISOString().split('T')[0];
+  }
+}
+
+/**
+ * Check if a given date is a holiday (timezone-aware)
+ * @param date Date to check (UTC timestamp)
  * @param holidays Array of holiday configurations from workspace
+ * @param timezone Workspace timezone (IANA format, e.g., "America/New_York")
  * @returns Holiday entry if found, null otherwise
  */
-export function findHoliday(date: Date, holidays: any[]): HolidayEntry | null {
+export function findHoliday(date: Date, holidays: any[], timezone?: string): HolidayEntry | null {
   if (!holidays || holidays.length === 0) {
     return null;
   }
 
-  // Convert date to ISO format (YYYY-MM-DD) for comparison
-  const dateStr = date.toISOString().split('T')[0];
+  // Convert date to local date string in workspace timezone
+  const dateStr = toLocalDateString(date, timezone);
 
   // Find matching holiday
   const holiday = holidays.find((h: any) => {
@@ -63,6 +91,146 @@ export function findHoliday(date: Date, holidays: any[]): HolidayEntry | null {
     billMultiplier: holiday.billMultiplier ? parseFloat(holiday.billMultiplier) : undefined,
     payMultiplier: holiday.payMultiplier ? parseFloat(holiday.payMultiplier) : undefined,
   };
+}
+
+/**
+ * Daily segment for multi-day shift handling
+ */
+export interface DailySegment {
+  date: string; // ISO date "YYYY-MM-DD" in workspace timezone
+  startTime: Date; // UTC timestamp for segment start
+  endTime: Date; // UTC timestamp for segment end
+  hours: number; // Hours in this segment
+}
+
+/**
+ * Split a shift spanning multiple calendar days into daily segments
+ * Critical for correct holiday hour calculation
+ * 
+ * Example: Shift from Dec 25 22:00 → Dec 26 06:00 (8 hours)
+ * Segments: [
+ *   {date: "2025-12-25", hours: 2.0},  // 22:00-00:00
+ *   {date: "2025-12-26", hours: 6.0}   // 00:00-06:00
+ * ]
+ */
+export function splitShiftIntoDays(
+  clockIn: Date,
+  clockOut: Date,
+  timezone?: string
+): DailySegment[] {
+  const segments: DailySegment[] = [];
+  
+  // Handle same-day shifts (optimization)
+  const clockInDate = toLocalDateString(clockIn, timezone);
+  const clockOutDate = toLocalDateString(clockOut, timezone);
+  
+  if (clockInDate === clockOutDate) {
+    // Same calendar day - no split needed
+    const hours = (clockOut.getTime() - clockIn.getTime()) / (1000 * 60 * 60);
+    return [{
+      date: clockInDate,
+      startTime: clockIn,
+      endTime: clockOut,
+      hours: roundHours(hours),
+    }];
+  }
+
+  // Multi-day shift - split at midnight boundaries in workspace timezone
+  let currentTime = new Date(clockIn);
+  
+  while (currentTime < clockOut) {
+    const currentDate = toLocalDateString(currentTime, timezone);
+    
+    // Find midnight of next day in workspace timezone
+    const nextMidnight = getNextMidnight(currentTime, timezone);
+    const segmentEnd = nextMidnight > clockOut ? clockOut : nextMidnight;
+    
+    const segmentHours = (segmentEnd.getTime() - currentTime.getTime()) / (1000 * 60 * 60);
+    
+    segments.push({
+      date: currentDate,
+      startTime: new Date(currentTime),
+      endTime: new Date(segmentEnd),
+      hours: roundHours(segmentHours),
+    });
+    
+    currentTime = segmentEnd;
+  }
+  
+  return segments;
+}
+
+/**
+ * Get the next midnight in workspace timezone
+ * Returns UTC timestamp representing midnight in the specified timezone
+ * 
+ * Approach: Format current and next-day dates in target timezone,
+ * calculate offset, and apply to find UTC time of next midnight.
+ */
+function getNextMidnight(date: Date, timezone?: string): Date {
+  if (!timezone) {
+    // UTC fallback
+    const next = new Date(date);
+    next.setUTCDate(next.getUTCDate() + 1);
+    next.setUTCHours(0, 0, 0, 0);
+    return next;
+  }
+
+  try {
+    // Get the current local date in the target timezone
+    const currentLocalDate = toLocalDateString(date, timezone);
+    const [year, month, day] = currentLocalDate.split('-').map(Number);
+    
+    // Calculate next day's date
+    const nextDate = new Date(year, month - 1, day + 1);
+    const nextYear = nextDate.getFullYear();
+    const nextMonth = nextDate.getMonth() + 1;
+    const nextDay = nextDate.getDate();
+    
+    // Create a probe date: assume next day midnight is at this UTC time
+    const probeUTC = Date.UTC(nextYear, nextMonth - 1, nextDay, 0, 0, 0, 0);
+    const probeDate = new Date(probeUTC);
+    
+    // Format this probe date as it appears in the target timezone
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    });
+    
+    // Parse the formatted result to extract time offset
+    const parts = formatter.formatToParts(probeDate);
+    const tzHour = parseInt(parts.find(p => p.type === 'hour')!.value);
+    const tzMinute = parseInt(parts.find(p => p.type === 'minute')!.value);
+    
+    // Calculate offset in milliseconds
+    // If probe shows "08:00" in TZ when we set UTC to "00:00", 
+    // then TZ is 8 hours ahead, so we need to subtract 8 hours from UTC
+    const offsetMs = (tzHour * 60 + tzMinute) * 60 * 1000;
+    
+    // Apply offset to get true UTC time of next midnight in TZ
+    const midnightUTC = new Date(probeUTC - offsetMs);
+    
+    // Validation: ensure result is actually after the input date
+    if (midnightUTC <= date) {
+      // If not, add 24 hours
+      midnightUTC.setUTCHours(midnightUTC.getUTCHours() + 24);
+    }
+    
+    return midnightUTC;
+    
+  } catch (error) {
+    console.warn(`[RateResolver] Error calculating next midnight in ${timezone}:`, error);
+    const fallback = new Date(date);
+    fallback.setUTCDate(fallback.getUTCDate() + 1);
+    fallback.setUTCHours(0, 0, 0, 0);
+    return fallback;
+  }
 }
 
 export interface RateResolutionContext {
@@ -243,7 +411,7 @@ export interface BucketedAmounts {
   overtimeAmount: number;
   holidayAmount: number;
   totalAmount: number;
-  billingMultipliers: {
+  appliedMultipliers: {
     regular: number;
     overtime: number;
     holiday: number;
@@ -289,7 +457,7 @@ export function calculateBillingAmounts(
     overtimeAmount,
     holidayAmount,
     totalAmount: regularAmount + overtimeAmount + holidayAmount,
-    billingMultipliers: {
+    appliedMultipliers: {
       regular: 1.0,
       overtime: otMultiplier,
       holiday: holidayMultiplier,
@@ -329,7 +497,7 @@ export function calculatePayrollAmounts(
     overtimeAmount,
     holidayAmount,
     totalAmount: regularAmount + overtimeAmount + holidayAmount,
-    billingMultipliers: {
+    appliedMultipliers: {
       regular: 1.0,
       overtime: otMultiplier,
       holiday: holidayMultiplier,
