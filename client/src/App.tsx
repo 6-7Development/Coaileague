@@ -111,6 +111,8 @@ import ManagerDashboard from "@/pages/manager-dashboard";
 import ChatExport from "@/pages/chat-export";
 import RichTextDemo from "@/pages/RichTextDemo";
 import OrgSupport from "@/pages/org-support";
+import PendingTimeEntries from "@/pages/pending-time-entries";
+import TimesheetApprovals from "@/pages/timesheet-approvals";
 import Error403 from "@/pages/error-403";
 import Error404 from "@/pages/error-404";
 import Error500 from "@/pages/error-500";
@@ -376,6 +378,8 @@ function AppContent() {
                 <Route path="/billing" component={Billing} />
                 <Route path="/expenses" component={Expenses} />
                 <Route path="/expense-approvals" component={ExpenseApprovals} />
+                <Route path="/timesheets/pending" component={PendingTimeEntries} />
+                <Route path="/timesheets/approvals" component={TimesheetApprovals} />
                 <Route path="/i9-compliance" component={I9Compliance} />
                 <Route path="/policies" component={Policies} />
                 <Route path="/payroll" component={PayrollDashboard} />
