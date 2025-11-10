@@ -32,7 +32,7 @@ The platform features a professional aesthetic using Deep Charcoal, Platinum neu
 - **Communication**:
     - **HelpDesk (Consolidated Chat System)**: Features a unified `/chat` experience with Gemini AI integration, connection error handling, and usage-based billing for AI features. It supports public access for guests (human support only) and full AI functionality for workspace members.
     - **CommOS™**: Organization-specific chatrooms with role-based access, supporting private messages (AES-256-GCM encrypted), message reactions, threading, file uploads, @mentions, read receipts, rich text formatting, and WebRTC-powered voice/video calling.
-- **Audit Logging**: Comprehensive audit trails provided by AuditOS™.
+- **Audit Logging**: Comprehensive audit trails provided by AuditOS™. All autonomous automation activities (BillOS™ invoicing, ScheduleOS™ scheduling, PayrollOS™ payroll) emit lifecycle events (start/complete/error) with duration tracking, job results, and workspace context. Automation logs attributed to dedicated `system-autoforce` user for traceability.
 - **Core Feature Areas**:
     - **Financials**: Client Management, Billing & Payroll (BillOS™, PayrollOS™), automated invoice generation, payment processing.
     - **Employee Lifecycle**: Onboarding, contract management, shift management, timesheet and time-off requests.
@@ -57,6 +57,7 @@ The platform features a professional aesthetic using Deep Charcoal, Platinum neu
         - **Drift Detection**: Warns if anchor >30 days behind current date, enabling proactive monitoring.
         - **Backfill Support**: Standalone script seeds anchors for existing workspaces, ensuring smooth transition to anchor-based system.
         - **Automated Data Collection**: Production-ready billable and payroll hours aggregation services automatically collect, validate, and aggregate approved time entries with workspace-configured OT rules, FLSA-compliant weekly resets, employee-first grouping for deterministic OT, chronological sorting, batch-loaded rates, and N+1 query elimination. Services output structured summaries ready for invoice/payroll generation.
+        - **Automation Audit Tracking**: All automation jobs emit comprehensive AuditOS lifecycle logs (job start, completion, error) per workspace with duration metrics and result metadata. System user context (`system-autoforce`) enables traceability. Logs queryable via new audit action types: `automation_job_start`, `automation_job_complete`, `automation_job_error`, `automation_artifact_generated`.
 - **BillOS™ Integration**: Fully integrated with billable hours aggregator. Generates draft invoices with employee-grouped line items showing regular/OT/holiday hour breakdowns. Handles mixed-rate scenarios by preserving per-entry amounts. Surfaced warnings for manager review.
 - **PayrollOS™ Integration**: Fully integrated with payroll hours aggregator. Generates pending payroll runs with FLSA-compliant tax calculations. Extended schema with `holidayHours` field for complete audit trail. Fails early on empty aggregation, surfaces warnings to callers, maintains backward-compatible approval workflow.
 - **Security**: Includes Stripe webhook signature validation, payroll data protection, strict Zod validation, workspace scoping, and audit trails.
