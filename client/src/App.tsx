@@ -21,7 +21,7 @@ import { DemoBanner } from "@/components/demo-banner";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { CommandPalette } from "@/components/command-palette";
 import { useAuth } from "@/hooks/useAuth";
-import { useIsMobile, ResponsiveAppFrame } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { MobileLoading } from "@/components/mobile-loading";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import NotFound from "@/pages/not-found";
@@ -491,12 +491,10 @@ export default function App() {
           <WorkspaceThemeProvider>
             <TransitionProvider>
               <TooltipProvider>
-                <ResponsiveAppFrame>
-                  <AppContent />
-                  <FloatingChatButton />
-                  <ReenableChatButton />
-                  <Toaster />
-                </ResponsiveAppFrame>
+                <AppContent />
+                <FloatingChatButton />
+                <ReenableChatButton />
+                <Toaster />
               </TooltipProvider>
             </TransitionProvider>
           </WorkspaceThemeProvider>
