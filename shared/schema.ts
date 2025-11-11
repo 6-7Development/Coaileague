@@ -3507,7 +3507,14 @@ export const supportTickets = pgTable("support_tickets", {
   // Timestamps
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  // Performance indexes for ticket filtering and routing
+  index("support_tickets_status_idx").on(table.status),
+  index("support_tickets_priority_idx").on(table.priority),
+  index("support_tickets_workspace_created_idx").on(table.workspaceId, table.createdAt),
+  index("support_tickets_assigned_idx").on(table.assignedTo),
+  index("support_tickets_platform_assigned_idx").on(table.platformAssignedTo),
+]);
 
 export const insertSupportTicketSchema = createInsertSchema(supportTickets).omit({
   id: true,
@@ -3827,11 +3834,18 @@ export const chatMessages = pgTable("chat_messages", {
   editedAt: timestamp("edited_at"),
 
   createdAt: timestamp("created_at").defaultNow(),
-}, (table) => ({
-  conversationIdx: index("chat_messages_conversation_idx").on(table.conversationId),
-  threadIdx: index("chat_messages_thread_idx").on(table.threadId),
-  parentMessageFk: index("chat_messages_parent_idx").on(table.parentMessageId), // For thread lookups
-}));
+}, (table) => [
+  // Existing indexes
+  index("chat_messages_conversation_idx").on(table.conversationId),
+  index("chat_messages_thread_idx").on(table.threadId),
+  index("chat_messages_parent_idx").on(table.parentMessageId),
+  
+  // New performance indexes for chat enhancements
+  index("chat_messages_conversation_created_idx").on(table.conversationId, table.createdAt), // Chronological retrieval
+  index("chat_messages_sender_idx").on(table.senderId), // User message history
+  index("chat_messages_unread_idx").on(table.isRead, table.createdAt), // Unread message queries
+  index("chat_messages_recipient_idx").on(table.recipientId), // DM recipient lookups
+]);
 
 // Message Reactions - Slack/Discord-style emoji reactions
 export const messageReactions = pgTable("message_reactions", {
