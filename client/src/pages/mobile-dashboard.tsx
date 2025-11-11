@@ -4,7 +4,7 @@ import { MobileNav } from "@/components/mobile/MobileNav";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
-import { useEmployee } from "@/hooks/useEmployee";
+import { useIdentity } from "@/hooks/useIdentity";
 
 function FeatureCard({ icon: Icon, label, href }: { icon: typeof MessageSquare; label: string; href: string }) {
   return (
@@ -25,7 +25,15 @@ function FeatureCard({ icon: Icon, label, href }: { icon: typeof MessageSquare; 
 
 export default function MobileDashboard() {
   const { user } = useAuth();
-  const { employee, employeeId } = useEmployee(); // RBAC tracking - employee ID required
+  const { 
+    externalId, 
+    employeeId, 
+    supportCode, 
+    orgId, 
+    userType, 
+    workspaceRole,
+    identity
+  } = useIdentity(); // Universal RBAC tracking - ALL user types
 
   const isStaff = user?.platformRole &&
     ['root_admin', 'deputy_admin', 'support_manager', 'sysop', 'support_agent'].includes(user.platformRole);
@@ -38,6 +46,10 @@ export default function MobileDashboard() {
   const initials = user?.firstName && user?.lastName
     ? `${user.firstName[0]}${user.lastName[0]}`.toUpperCase()
     : user?.email?.[0]?.toUpperCase() || "U";
+
+  // Determine which external ID to display based on user type
+  const displayExternalId = employeeId || supportCode || externalId;
+  const displayRole = workspaceRole || user?.platformRole;
 
   return (
     <div className="min-h-screen bg-background">
@@ -54,14 +66,19 @@ export default function MobileDashboard() {
                   Welcome, {displayName}!
                 </CardTitle>
                 <div className="flex items-center gap-2 flex-wrap mt-0.5">
-                  {employeeId && (
-                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4" data-testid="badge-employee-id">
-                      {employeeId}
+                  {displayExternalId && (
+                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4" data-testid="badge-external-id">
+                      {displayExternalId}
                     </Badge>
                   )}
-                  {employee?.workspaceRole && (
-                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4" data-testid="badge-workspace-role">
-                      {employee.workspaceRole.replace(/_/g, ' ')}
+                  {displayRole && (
+                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4" data-testid="badge-role">
+                      {displayRole.replace(/_/g, ' ')}
+                    </Badge>
+                  )}
+                  {orgId && (
+                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4" data-testid="badge-org-id">
+                      {orgId}
                     </Badge>
                   )}
                 </div>
