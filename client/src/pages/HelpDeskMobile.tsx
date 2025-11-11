@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { useEmployee } from "@/hooks/useEmployee";
+import { useIdentity } from "@/hooks/useIdentity";
 import { useChatroomWebSocket } from "@/hooks/use-chatroom-websocket";
 import { useChatSounds } from "@/hooks/use-chat-sounds";
 import { AutoForceLogo } from "@/components/autoforce-logo";
@@ -71,7 +71,15 @@ export default function ModernMobileChat() {
 
   // Get current user data using useAuth hook (matches desktop implementation)
   const { user } = useAuth();
-  const { employee, employeeId } = useEmployee(); // RBAC tracking - employee ID required
+  const { 
+    externalId, 
+    employeeId, 
+    supportCode, 
+    orgId, 
+    userType, 
+    workspaceRole,
+    platformRole
+  } = useIdentity(); // Universal RBAC tracking - ALL user types
 
   const userId = user?.id;
   // Generate display name like desktop does
@@ -83,14 +91,15 @@ export default function ModernMobileChat() {
     ['root_admin', 'deputy_admin', 'support_manager', 'sysop', 'support_agent'].includes(userPlatformRole);
   const isAuthenticated = !!user;
 
-  // Log employee tracking for RBAC (critical for audit trails)
+  // Log comprehensive identity tracking for RBAC (critical for audit trails)
   useEffect(() => {
-    if (employeeId && userId) {
-      console.log(`[MOBILE RBAC] User authenticated: ${userName} (${employeeId}) - Role: ${employee?.workspaceRole || userPlatformRole || 'guest'}`);
+    if (externalId && userId) {
+      const role = workspaceRole || platformRole || userPlatformRole || 'guest';
+      console.log(`[MOBILE RBAC] User authenticated: ${userName} (${externalId}) - Type: ${userType} - Role: ${role} - Org: ${orgId || 'N/A'}`);
     } else if (userId) {
-      console.log(`[MOBILE RBAC] User authenticated: ${userName} (No employee record) - Role: ${userPlatformRole || 'guest'}`);
+      console.log(`[MOBILE RBAC] User authenticated: ${userName} (No external ID) - Role: ${userPlatformRole || 'guest'}`);
     }
-  }, [employeeId, userId, userName, employee?.workspaceRole, userPlatformRole]);
+  }, [externalId, userId, userName, userType, workspaceRole, platformRole, userPlatformRole, orgId]);
   
   // Get role display text
   const getRoleDisplay = (role?: string) => {

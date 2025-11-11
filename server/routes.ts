@@ -70,6 +70,8 @@ import {
   insertChatMessageSchema,
   clients,
   employees,
+  supportRegistry,
+  externalIdentifiers,
   reportTemplates,
   reportAttachments,
   shifts,
@@ -2121,6 +2123,107 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error fetching employee profile:", error);
       res.status(500).json({ message: "Failed to fetch employee profile" });
+    }
+  });
+
+  // Get current user's complete identity (ALL user types) - RBAC tracking
+  // Returns external IDs for employees (EMP-XXXX), support agents (SUP-XXXX), clients (CLI-XXXX), orgs (ORG-XXXX)
+  app.get('/api/identity/me', async (req: any, res) => {
+    try {
+      // Support BOTH auth systems for mobile/desktop compatibility
+      let userId: string | undefined;
+      
+      // Try custom auth first (session-based)
+      if (req.session?.userId) {
+        userId = req.session.userId;
+      }
+      // Try Replit Auth (OIDC)
+      else if (req.isAuthenticated?.() && req.user?.claims?.sub) {
+        userId = req.user.claims.sub;
+      }
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      // Get user account
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      const identity: any = {
+        userType: 'guest',
+        externalId: null,
+        employeeId: null,
+        supportCode: null,
+        clientId: null,
+        orgId: null,
+        platformRole: user.platformRole,
+        workspaceRole: null,
+        details: null,
+      };
+      
+      // Check if user is a support agent (platform staff with SUP-XXXX code)
+      const [supportAgent] = await db
+        .select()
+        .from(supportRegistry)
+        .where(and(
+          eq(supportRegistry.userId, userId),
+          eq(supportRegistry.isActive, true)
+        ))
+        .limit(1);
+      
+      if (supportAgent) {
+        identity.userType = 'support_agent';
+        identity.supportCode = supportAgent.supportCode; // SUP-XXXX
+        identity.externalId = supportAgent.supportCode;
+        identity.details = supportAgent;
+        return res.json(identity);
+      }
+      
+      // Check if user is an employee
+      const employee = await storage.getEmployeeByUserId(userId);
+      if (employee) {
+        identity.userType = 'employee';
+        identity.employeeId = employee.employeeNumber; // EMP-XXXX-00001
+        identity.externalId = employee.employeeNumber;
+        identity.workspaceRole = employee.workspaceRole;
+        identity.details = employee;
+        
+        // Get organization external ID (ORG-XXXX)
+        if (employee.workspaceId) {
+          const [orgIdentifier] = await db
+            .select()
+            .from(externalIdentifiers)
+            .where(and(
+              eq(externalIdentifiers.entityType, 'org'),
+              eq(externalIdentifiers.entityId, employee.workspaceId)
+            ))
+            .limit(1);
+          
+          if (orgIdentifier) {
+            identity.orgId = orgIdentifier.externalId; // ORG-XXXX
+          }
+        }
+        
+        return res.json(identity);
+      }
+      
+      // Check for platform admin (no employee/support record)
+      if (user.platformRole && ['root_admin', 'deputy_admin', 'sysop', 'support_manager'].includes(user.platformRole)) {
+        identity.userType = 'platform_admin';
+        return res.json(identity);
+      }
+      
+      // TODO: Add client lookup when client system is implemented
+      // const client = await storage.getClientByUserId(userId);
+      
+      // Default: guest or unassigned user
+      return res.json(identity);
+    } catch (error: any) {
+      console.error("Error fetching user identity:", error);
+      res.status(500).json({ message: "Failed to fetch user identity" });
     }
   });
 
