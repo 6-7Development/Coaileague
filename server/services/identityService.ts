@@ -117,25 +117,44 @@ async function ensureOrgIdentifiersInTx(
   }
 
   // Initialize employee sequence for this org
-  await tx
-    .insert(idSequences)
-    .values({
+  try {
+    console.log(`[Identity] Initializing employee sequence for org ${orgId}...`);
+    await tx.insert(idSequences).values({
       orgId: orgId,
       kind: 'employee',
       nextVal: 1,
-    })
-    .onConflictDoNothing();
+    });
+    console.log(`[Identity] Employee sequence initialized successfully`);
+  } catch (error: any) {
+    console.log(`[Identity] Employee sequence init caught error: ${error.code}`);
+    // Ignore unique constraint violation - another transaction created it
+    if (error.code !== '23505') {
+      console.error(`[Identity] Unexpected error initializing employee sequence:`, error);
+      throw error;
+    }
+    console.log(`[Identity] Employee sequence already exists (conflict ignored)`);
+  }
 
   // Initialize client sequence for this org
-  await tx
-    .insert(idSequences)
-    .values({
+  try {
+    console.log(`[Identity] Initializing client sequence for org ${orgId}...`);
+    await tx.insert(idSequences).values({
       orgId: orgId,
       kind: 'client',
       nextVal: 1,
-    })
-    .onConflictDoNothing();
+    });
+    console.log(`[Identity] Client sequence initialized successfully`);
+  } catch (error: any) {
+    console.log(`[Identity] Client sequence init caught error: ${error.code}`);
+    // Ignore unique constraint violation - another transaction created it
+    if (error.code !== '23505') {
+      console.error(`[Identity] Unexpected error initializing client sequence:`, error);
+      throw error;
+    }
+    console.log(`[Identity] Client sequence already exists (conflict ignored)`);
+  }
 
+  console.log(`[Identity] ensureOrgIdentifiersInTx completed successfully`);
   return { orgCode, externalId };
 }
 
@@ -202,25 +221,10 @@ export async function attachEmployeeExternalId(
         }
 
         const { orgCode } = await ensureOrgIdentifiersInTx(tx, orgId, org[0].name);
+        console.log(`[Identity] Returned from ensureOrgIdentifiersInTx with orgCode: ${orgCode}`);
 
-        // Get next employee number for this org (with concurrent-safe initialization)
-        let nextVal = 1;
-        
-        // Try to initialize sequence if it doesn't exist (concurrent-safe)
-        try {
-          await tx.insert(idSequences).values({
-            orgId: orgId,
-            kind: 'employee',
-            nextVal: 1,
-          });
-        } catch (error: any) {
-          // Ignore unique constraint violation - another transaction created it
-          if (error.code !== '23505') {
-            throw error;
-          }
-        }
-        
-        // Now atomically increment and get the value
+        // ensureOrgIdentifiersInTx already initialized the sequence, so just increment it
+        console.log(`[Identity] Atomically incrementing employee sequence...`);
         const updated = await tx
           .update(idSequences)
           .set({ 
@@ -234,6 +238,9 @@ export async function attachEmployeeExternalId(
             )
           )
           .returning({ issued: sql`${idSequences.nextVal} - 1` });
+        console.log(`[Identity] Atomic increment completed, updated ${updated.length} rows`);
+        
+        let nextVal = 1;
         
         if (updated.length > 0) {
           nextVal = updated[0].issued as number;
@@ -307,24 +314,7 @@ export async function attachClientExternalId(
 
         const { orgCode } = await ensureOrgIdentifiersInTx(tx, orgId, org[0].name);
 
-        // Get next client number for this org (with concurrent-safe initialization)
-        let nextVal = 1;
-        
-        // Try to initialize sequence if it doesn't exist (concurrent-safe)
-        try {
-          await tx.insert(idSequences).values({
-            orgId: orgId,
-            kind: 'client',
-            nextVal: 1,
-          });
-        } catch (error: any) {
-          // Ignore unique constraint violation - another transaction created it
-          if (error.code !== '23505') {
-            throw error;
-          }
-        }
-        
-        // Now atomically increment and get the value
+        // ensureOrgIdentifiersInTx already initialized the sequence, so just increment it
         const updated = await tx
           .update(idSequences)
           .set({ 
@@ -338,6 +328,8 @@ export async function attachClientExternalId(
             )
           )
           .returning({ issued: sql`${idSequences.nextVal} - 1` });
+        
+        let nextVal = 1;
         
         if (updated.length > 0) {
           nextVal = updated[0].issued as number;
