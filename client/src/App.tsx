@@ -307,19 +307,19 @@ function AppContent() {
     <ProtectedRoute>
       <CommandPalette />
       <div className="flex h-screen w-full overflow-x-hidden max-w-full">
-        {/* Gmail-style Peek Rail Navigation */}
-        {!isMobileChat && <PeekRailNav defaultPinned={false} />}
+        {/* Gmail-style Peek Rail Navigation - HIDDEN on mobile */}
+        {!isMobileChat && !isMobile && <PeekRailNav defaultPinned={false} />}
         
-        {/* Main content container with proper spacing for peek rail */}
+        {/* Main content container with proper spacing for peek rail (no margin on mobile) */}
         <div className={cn(
           "flex flex-col flex-1 min-h-0 w-full max-w-full overflow-x-hidden",
-          !isMobileChat && "ml-14 md:ml-14" // 56px (3.5rem = 14*4px) margin for collapsed rail
+          !isMobileChat && !isMobile && "ml-14 md:ml-14" // 56px (3.5rem = 14*4px) margin for collapsed rail
         )}>
-            {/* Demo Banner - positioned to account for fixed header */}
-            <DemoBanner />
+            {/* Demo Banner - positioned to account for fixed header (hidden on mobile) */}
+            {!isMobile && <DemoBanner />}
 
-            {/* Global Header - FIXED floats over all content */}
-            {!isMobileChat && !isHelpDesk && (
+            {/* Global Header - FIXED floats over all content - HIDDEN on mobile */}
+            {!isMobileChat && !isHelpDesk && !isMobile && (
               <AppHeader 
                 isRootAdmin={isRootAdmin} 
                 setLocation={setLocation} 
@@ -327,10 +327,10 @@ function AppContent() {
               />
             )}
 
-            {/* Main content area - add padding-top for fixed header */}
-            <main className={`flex-1 overflow-x-hidden overflow-y-auto scrollbar-hide bg-transparent min-h-0 w-full max-w-full ${!isMobileChat && !isHelpDesk ? 'pt-14' : ''}`}>
-              {/* Breadcrumb Navigation - helps users know where they are */}
-              {!isMobileChat && !isHelpDesk && <PageBreadcrumb />}
+            {/* Main content area - add padding-top for fixed header (desktop only) */}
+            <main className={`flex-1 overflow-x-hidden overflow-y-auto scrollbar-hide bg-transparent min-h-0 w-full max-w-full ${!isMobileChat && !isHelpDesk && !isMobile ? 'pt-14' : ''}`}>
+              {/* Breadcrumb Navigation - helps users know where they are (desktop only) */}
+              {!isMobileChat && !isHelpDesk && !isMobile && <PageBreadcrumb />}
               
               <Switch>
                 <Route path="/">
