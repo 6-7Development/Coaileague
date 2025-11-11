@@ -1,6 +1,9 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation, Link } from "wouter";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import {
   DndContext,
   DragOverlay,
@@ -30,6 +33,16 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import {
   ChevronLeft,
   ChevronRight,
@@ -70,6 +83,234 @@ import { MobileShiftCalendar } from "@/components/mobile-shift-calendar";
 import { ShiftActionsMenu } from "@/components/shift-actions-menu";
 import type { Shift, Employee, Client } from "@shared/schema";
 import moment from "moment";
+
+// Helper function to combine date and time
+function combineDateWithTime(date: Date, timeString: string): string {
+  const [hours, minutes] = timeString.split(':').map(Number);
+  const combined = moment(date)
+    .hour(hours)
+    .minute(minutes)
+    .second(0)
+    .millisecond(0);
+  return combined.toISOString();
+}
+
+// Form validation schema
+const shiftFormSchema = z.object({
+  employeeId: z.string().nullable(),
+  clientId: z.string().min(1, "Client is required"),
+  startTime: z.string().min(1, "Start time is required"),
+  endTime: z.string().min(1, "End time is required"),
+  title: z.string().optional(),
+  description: z.string().optional(),
+}).refine((data) => {
+  if (!data.startTime || !data.endTime) return true;
+  const start = data.startTime;
+  const end = data.endTime;
+  return end > start;
+}, {
+  message: "End time must be after start time",
+  path: ["endTime"],
+});
+
+type ShiftFormValues = z.infer<typeof shiftFormSchema>;
+
+// Shift Create Form Component
+function ShiftCreateForm({ 
+  date, 
+  preselectedEmployeeId,
+  employees,
+  clients,
+  onSubmit,
+  onCancel,
+  isSubmitting,
+}: {
+  date: Date;
+  preselectedEmployeeId?: string | null;
+  employees: Employee[];
+  clients: Client[];
+  onSubmit: (data: ShiftFormValues & { date: Date }) => void;
+  onCancel: () => void;
+  isSubmitting: boolean;
+}) {
+  const form = useForm<ShiftFormValues>({
+    resolver: zodResolver(shiftFormSchema),
+    defaultValues: {
+      employeeId: preselectedEmployeeId === 'open' ? null : (preselectedEmployeeId || null),
+      clientId: "",
+      startTime: "08:00",
+      endTime: "16:00",
+      title: "",
+      description: "",
+    },
+  });
+
+  const handleSubmit = (data: ShiftFormValues) => {
+    onSubmit({ ...data, date });
+  };
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+        <div className="grid gap-4 py-4">
+          <FormField
+            control={form.control}
+            name="employeeId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Employee</FormLabel>
+                <Select
+                  value={field.value || "open"}
+                  onValueChange={(value) => field.onChange(value === "open" ? null : value)}
+                >
+                  <FormControl>
+                    <SelectTrigger data-testid="select-shift-employee">
+                      <SelectValue placeholder="Select employee" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="open">Open Shift (Unassigned)</SelectItem>
+                    {employees.map((employee) => (
+                      <SelectItem key={employee.id} value={employee.id}>
+                        {employee.firstName} {employee.lastName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="clientId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Client *</FormLabel>
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <FormControl>
+                    <SelectTrigger data-testid="select-shift-client">
+                      <SelectValue placeholder="Select client" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {clients.map((client) => (
+                      <SelectItem key={client.id} value={client.id}>
+                        {client.firstName} {client.lastName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <div>
+            <Label>Date</Label>
+            <div className="text-sm font-medium py-2" data-testid="input-shift-date">
+              {moment(date).format('MMMM D, YYYY (dddd)')}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="startTime"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Start Time *</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="time"
+                      {...field}
+                      data-testid="input-shift-start"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="endTime"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>End Time *</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="time"
+                      {...field}
+                      data-testid="input-shift-end"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <FormField
+            control={form.control}
+            name="title"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Position / Title (Optional)</FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="e.g., Paramedic, EMT"
+                    {...field}
+                    data-testid="input-shift-title"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="description"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Description (Optional)</FormLabel>
+                <FormControl>
+                  <Textarea
+                    placeholder="Add any notes or special instructions..."
+                    {...field}
+                    data-testid="textarea-shift-description"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <DialogFooter className="gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onCancel}
+            disabled={isSubmitting}
+            data-testid="button-cancel-shift-form"
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            disabled={isSubmitting}
+            data-testid="button-save-shift"
+          >
+            {isSubmitting ? "Creating..." : "Create Shift"}
+          </Button>
+        </DialogFooter>
+      </form>
+    </Form>
+  );
+}
 
 // Draggable shift card
 function DraggableShiftCard({ shift, employee, client, onAddAcknowledgment }: {
@@ -592,6 +833,51 @@ export default function ScheduleGrid() {
     },
   });
 
+  // Create shift mutation
+  const createShiftMutation = useMutation({
+    mutationFn: async (data: {
+      employeeId: string | null;
+      clientId: string;
+      startTime: string;
+      endTime: string;
+      title?: string;
+      description?: string;
+    }) => {
+      return await apiRequest("POST", "/api/shifts", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/shifts"] });
+      toast({
+        title: "Shift Created",
+        description: "The shift has been added to the schedule",
+      });
+      setIsCreateShiftDialogOpen(false);
+      setCreateShiftContext(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create shift",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Handle shift form submission
+  const handleCreateShift = (data: ShiftFormValues & { date: Date }) => {
+    const startTime = combineDateWithTime(data.date, data.startTime);
+    const endTime = combineDateWithTime(data.date, data.endTime);
+
+    createShiftMutation.mutate({
+      employeeId: data.employeeId,
+      clientId: data.clientId,
+      startTime,
+      endTime,
+      title: data.title || undefined,
+      description: data.description || undefined,
+    });
+  };
+
   const handleDragStart = (event: DragStartEvent) => {
     const shift = shifts.find(s => s.id === event.active.id);
     setActiveShift(shift || null);
@@ -639,7 +925,7 @@ export default function ScheduleGrid() {
     setIsEditDialogOpen(true);
   };
 
-  const handleCreateShift = (employeeId: string, date: Date) => {
+  const handleOpenCreateShiftDialog = (employeeId: string, date: Date) => {
     setCreateShiftContext({ employeeId, date });
     setIsCreateShiftDialogOpen(true);
   };
@@ -1028,7 +1314,7 @@ export default function ScheduleGrid() {
                 <Button 
                   size="sm" 
                   className="h-8 text-xs bg-primary hover:bg-primary" 
-                  onClick={() => handleCreateShift('open', new Date())}
+                  onClick={() => handleOpenCreateShiftDialog('open', new Date())}
                   data-testid="button-add-shift"
                 >
                   <Plus className="h-3 w-3 mr-1" />
@@ -1103,7 +1389,7 @@ export default function ScheduleGrid() {
             {employees.length === 0 ? (
               <PlaceholderEmployeeRow 
                 weekDays={weekDays}
-                onCreateShift={handleCreateShift}
+                onCreateShift={handleOpenCreateShiftDialog}
                 onAddEmployee={handleAddEmployee}
               />
             ) : (
@@ -1117,7 +1403,7 @@ export default function ScheduleGrid() {
                     employees={employees}
                     clients={clients}
                     onShiftClick={handleShiftClick}
-                    onCreateShift={handleCreateShift}
+                    onCreateShift={handleOpenCreateShiftDialog}
                     onAddAcknowledgment={handleAddAcknowledgment}
                   />
                 ))}
@@ -1152,56 +1438,23 @@ export default function ScheduleGrid() {
       {/* Create Shift Dialog */}
       {createShiftContext && (
         <Dialog open={isCreateShiftDialogOpen} onOpenChange={setIsCreateShiftDialogOpen}>
-          <DialogContent>
+          <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>Create New Shift</DialogTitle>
               <DialogDescription>
-                {moment(createShiftContext.date).format('dddd, MMMM D, YYYY')}
+                Fill in the details below to create a shift
               </DialogDescription>
             </DialogHeader>
 
-            <div className="space-y-4 py-4">
-              <div className="text-center">
-                <div className="inline-flex items-center gap-2 bg-primary/10 px-4 py-3 rounded-lg">
-                  <Clock className="h-5 w-5 text-primary" />
-                  <div className="text-left">
-                    <div className="text-sm font-semibold">
-                      {createShiftContext.employeeId === 'open' ? 'Open Shift' : 'Employee Shift'}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      Use the shift builder below to configure this shift
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="text-center text-sm text-muted-foreground">
-                <p>Quick shift creation coming soon!</p>
-                <p className="mt-2">For now, use the "Create Shift" button in the header to add detailed shifts.</p>
-              </div>
-            </div>
-
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setIsCreateShiftDialogOpen(false)}
-                data-testid="button-cancel-create-shift"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={() => {
-                  toast({
-                    title: "Coming Soon",
-                    description: "Quick shift creation is in development. Please use the main shift builder.",
-                  });
-                  setIsCreateShiftDialogOpen(false);
-                }}
-                data-testid="button-confirm-create-shift"
-              >
-                Continue to Shift Builder
-              </Button>
-            </DialogFooter>
+            <ShiftCreateForm
+              date={createShiftContext.date}
+              preselectedEmployeeId={createShiftContext.employeeId}
+              employees={employees}
+              clients={clients}
+              onSubmit={handleCreateShift}
+              onCancel={() => setIsCreateShiftDialogOpen(false)}
+              isSubmitting={createShiftMutation.isPending}
+            />
           </DialogContent>
         </Dialog>
       )}

@@ -47,7 +47,7 @@ import { getEmployeesDueForSurveys, getSurveyDistributionSummary, getEmployeePen
 import { queueManager } from './services/helpOsQueue';
 import { HelpOSAI } from './helpos-ai';
 import { seedAnchor } from './services/utils/scheduling';
-import { requireOwner, requireManager, requireManagerOrPlatformStaff, requireHRManager, requireSupervisor, validateManagerAssignment, requirePlatformStaff, requirePlatformAdmin, requireWorkspaceRole, type AuthenticatedRequest } from "./rbac";
+import { requireOwner, requireManager, requireManagerOrPlatformStaff, requireHRManager, requireSupervisor, requireEmployee, validateManagerAssignment, requirePlatformStaff, requirePlatformAdmin, requireWorkspaceRole, getUserPlatformRole, resolveWorkspaceForUser, type AuthenticatedRequest } from "./rbac";
 import { requireStarter, requireProfessional, requireEnterprise } from "./tierGuards";
 import { 
   insertWorkspaceSchema,
@@ -3463,29 +3463,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // SHIFT ROUTES (Multi-tenant isolated)
   // ============================================================================
   
-  app.get('/api/shifts', async (req: any, res) => {
+  app.get('/api/shifts', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      let userId: string;
-      let user: any;
+      const userId = req.user!.id;
       
-      if (req.isAuthenticated && req.isAuthenticated() && req.user?.claims) {
-        userId = req.user.claims.sub;
-        user = req.user;
-      } else if (req.session?.userId) {
-        userId = req.session.userId;
-        const [dbUser] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
-        if (!dbUser) {
-          return res.status(401).json({ message: "Unauthorized" });
+      // Check if user is platform staff (root_admin/sysop) for diagnostic access
+      const platformRole = await getUserPlatformRole(userId);
+      if (platformRole === 'root_admin' || platformRole === 'sysop' || platformRole === 'support_manager') {
+        // Platform staff: optional workspace filter for diagnostics
+        const requestedWorkspaceId = req.query.workspaceId as string | undefined;
+        if (requestedWorkspaceId) {
+          const shifts = await storage.getShiftsByWorkspace(requestedWorkspaceId);
+          return res.json(shifts);
         }
-        user = dbUser;
-        const userPlatformRoles = await db.select().from(platformRoles).where(eq(platformRoles.userId, userId));
-        const activePlatformRole = userPlatformRoles.find(pr => !pr.revokedAt);
-        user.platformRole = activePlatformRole?.role || null;
-      } else {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-      
-      if (user.platformRole === 'root_admin' || user.platformRole === 'sysop') {
+        // No workspace specified: return first workspace's shifts (diagnostic mode)
         const allWorkspaces = await db.select().from(workspaces).limit(1);
         if (allWorkspaces.length > 0) {
           const shifts = await storage.getShiftsByWorkspace(allWorkspaces[0].id);
@@ -3494,13 +3485,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json([]);
       }
       
-      const workspace = await storage.getWorkspaceByOwnerId(userId);
+      // Regular workspace member: resolve workspace via RBAC
+      const requestedWorkspaceId = req.query.workspaceId as string | undefined;
+      const { workspaceId, role, error } = await resolveWorkspaceForUser(userId, requestedWorkspaceId);
       
-      if (!workspace) {
-        return res.status(404).json({ message: "Workspace not found" });
+      if (!workspaceId || !role) {
+        return res.status(403).json({ error: error || 'No workspace access found' });
       }
-
-      const shifts = await storage.getShiftsByWorkspace(workspace.id);
+      
+      // All workspace roles can view shifts (owner, manager, admin, supervisor, staff)
+      const shifts = await storage.getShiftsByWorkspace(workspaceId);
       res.json(shifts);
     } catch (error) {
       console.error("Error fetching shifts:", error);
@@ -3508,27 +3502,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/shifts', isAuthenticated, async (req: any, res) => {
+  app.post('/api/shifts', requireAuth, requireManagerOrPlatformStaff, async (req: AuthenticatedRequest, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const workspace = await storage.getWorkspaceByOwnerId(userId);
-      
-      if (!workspace) {
-        return res.status(404).json({ message: "Workspace not found" });
-      }
+      const userId = req.user!.id;
+      const workspaceId = req.workspaceId!;
 
       // Validate with Zod and enforce workspace ownership
       const validated = insertShiftSchema.parse({
         ...req.body,
-        workspaceId: workspace.id, // Force workspace from auth, ignore client input
+        workspaceId, // Force workspace from auth, ignore client input
       });
 
       const shift = await storage.createShift(validated);
       
       // Send shift assignment email if employee has email
       if (shift.employeeId) {
-        const employee = await storage.getEmployee(shift.employeeId, workspace.id);
-        const client = shift.clientId ? await storage.getClient(shift.clientId, workspace.id) : null;
+        const employee = await storage.getEmployee(shift.employeeId, workspaceId);
+        const client = shift.clientId ? await storage.getClient(shift.clientId, workspaceId) : null;
         
         if (employee?.email) {
           const startTime = new Date(shift.startTime).toLocaleString('en-US', {
@@ -3550,7 +3540,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // 📡 REAL-TIME: Broadcast shift creation ONLY after successful DB operation
-      broadcastShiftUpdate(workspace.id, 'shift_created', shift);
+      broadcastShiftUpdate(workspaceId, 'shift_created', shift);
       
       // 🔔 NOTIFICATION: Create notification for assigned employee
       if (shift.employeeId) {
@@ -3563,7 +3553,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await notificationHelpers.createShiftAssignedNotification(
           { storage, broadcastNotification },
           {
-            workspaceId: workspace.id,
+            workspaceId,
             userId: shift.employeeId,
             shiftId: shift.id,
             shiftTitle: shift.title || 'Shift',
@@ -3580,26 +3570,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/shifts/:id', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/shifts/:id', requireAuth, requireManagerOrPlatformStaff, async (req: AuthenticatedRequest, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const workspace = await storage.getWorkspaceByOwnerId(userId);
-      
-      if (!workspace) {
-        return res.status(404).json({ message: "Workspace not found" });
-      }
+      const userId = req.user!.id;
+      const workspaceId = req.workspaceId!;
 
       // Validate partial update, ensure no workspaceId override
-      const { workspaceId, ...updateData } = req.body;
+      const { workspaceId: _, ...updateData } = req.body;
       const validated = insertShiftSchema.partial().parse(updateData);
 
-      const shift = await storage.updateShift(req.params.id, workspace.id, validated);
+      const shift = await storage.updateShift(req.params.id, workspaceId, validated);
       if (!shift) {
         return res.status(404).json({ message: "Shift not found" });
       }
       
       // 📡 REAL-TIME: Broadcast shift update ONLY after successful DB operation
-      broadcastShiftUpdate(workspace.id, 'shift_updated', shift);
+      broadcastShiftUpdate(workspaceId, 'shift_updated', shift);
       
       // 🔔 NOTIFICATION: Notify assigned employee about changes
       if (shift.employeeId) {
@@ -3615,7 +3601,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await notificationHelpers.createShiftChangedNotification(
           { storage, broadcastNotification },
           {
-            workspaceId: workspace.id,
+            workspaceId,
             userId: shift.employeeId,
             shiftId: shift.id,
             shiftTitle: shift.title || 'Shift',
@@ -3632,25 +3618,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/shifts/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/shifts/:id', requireAuth, requireManagerOrPlatformStaff, async (req: AuthenticatedRequest, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const workspace = await storage.getWorkspaceByOwnerId(userId);
-      
-      if (!workspace) {
-        return res.status(404).json({ message: "Workspace not found" });
-      }
+      const userId = req.user!.id;
+      const workspaceId = req.workspaceId!;
 
       // Get shift details before deletion for notification
-      const shift = await storage.getShift(req.params.id, workspace.id);
+      const shift = await storage.getShift(req.params.id, workspaceId);
       
-      const deleted = await storage.deleteShift(req.params.id, workspace.id);
+      const deleted = await storage.deleteShift(req.params.id, workspaceId);
       if (!deleted) {
         return res.status(404).json({ message: "Shift not found" });
       }
       
       // 📡 REAL-TIME: Broadcast shift deletion ONLY after successful DB operation
-      broadcastShiftUpdate(workspace.id, 'shift_deleted', undefined, req.params.id);
+      broadcastShiftUpdate(workspaceId, 'shift_deleted', undefined, req.params.id);
       
       // 🔔 NOTIFICATION: Notify employee about shift cancellation
       if (shift && shift.employeeId) {
@@ -3663,7 +3645,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await notificationHelpers.createShiftCancelledNotification(
           { storage, broadcastNotification },
           {
-            workspaceId: workspace.id,
+            workspaceId,
             userId: shift.employeeId,
             shiftId: shift.id,
             shiftTitle: shift.title || 'Shift',
@@ -3685,22 +3667,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================================================
 
   // Employee acknowledges AI-generated shift
-  app.post('/api/shifts/:id/acknowledge', isAuthenticated, async (req: any, res) => {
+  app.post('/api/shifts/:id/acknowledge', requireAuth, requireEmployee, async (req: AuthenticatedRequest, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const workspace = await storage.getWorkspaceByOwnerId(userId);
-      
-      if (!workspace) {
-        return res.status(404).json({ message: "Workspace not found" });
-      }
+      const workspaceId = req.workspaceId!;
+      const employeeId = req.employeeId;
 
-      const shift = await storage.getShift(req.params.id, workspace.id);
+      const shift = await storage.getShift(req.params.id, workspaceId);
       if (!shift) {
         return res.status(404).json({ message: "Shift not found" });
       }
 
+      // OWNERSHIP CHECK: Employee can only acknowledge their own shifts
+      if (shift.employeeId !== employeeId) {
+        return res.status(403).json({ message: "You can only acknowledge shifts assigned to you" });
+      }
+
       // Update shift with acknowledgment
-      const updated = await storage.updateShift(req.params.id, workspace.id, {
+      const updated = await storage.updateShift(req.params.id, workspaceId, {
         acknowledgedAt: new Date().toISOString(),
         status: 'scheduled',
       });
@@ -3717,24 +3700,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Employee denies AI-generated shift (triggers auto-replacement)
-  app.post('/api/shifts/:id/deny', isAuthenticated, async (req: any, res) => {
+  app.post('/api/shifts/:id/deny', requireAuth, requireEmployee, async (req: AuthenticatedRequest, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const workspace = await storage.getWorkspaceByOwnerId(userId);
-      
-      if (!workspace) {
-        return res.status(404).json({ message: "Workspace not found" });
-      }
+      const workspaceId = req.workspaceId!;
+      const employeeId = req.employeeId;
 
       const { denialReason } = req.body;
-      const shift = await storage.getShift(req.params.id, workspace.id);
+      const shift = await storage.getShift(req.params.id, workspaceId);
       
       if (!shift) {
         return res.status(404).json({ message: "Shift not found" });
       }
 
+      // OWNERSHIP CHECK: Employee can only deny their own shifts
+      if (shift.employeeId !== employeeId) {
+        return res.status(403).json({ message: "You can only deny shifts assigned to you" });
+      }
+
       // Mark shift as denied
-      await storage.updateShift(req.params.id, workspace.id, {
+      await storage.updateShift(req.params.id, workspaceId, {
         deniedAt: new Date().toISOString(),
         denialReason: denialReason || 'Employee declined assignment',
         status: 'cancelled',
@@ -3747,7 +3731,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(
           and(
             eq(shifts.replacementForShiftId, shift.id),
-            eq(shifts.workspaceId, workspace.id),
+            eq(shifts.workspaceId, workspaceId),
             ne(shifts.status, 'cancelled')
           )
         )
@@ -3772,7 +3756,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         // Generate replacement shift for same time slot
         const replacementResult = await scheduleOSAI.generateSchedule({
-          workspaceId: workspace.id,
+          workspaceId,
           weekStartDate: new Date(shift.startTime),
           clientIds: shift.clientId ? [shift.clientId] : [],
           shiftRequirements: [{
@@ -3791,7 +3775,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Don't assign to same employee who denied
           if (replacement.employeeId !== shift.employeeId) {
             const newShift = await storage.createShift({
-              workspaceId: workspace.id,
+              workspaceId,
               employeeId: replacement.employeeId,
               clientId: replacement.clientId || null,
               title: replacement.title || null,
@@ -3813,7 +3797,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             if (shift.clientId) {
               try {
                 // Search for invoice line item by metadata.shiftId for reliability
-                const allInvoices = await storage.getInvoicesByClient(shift.clientId, workspace.id);
+                const allInvoices = await storage.getInvoicesByClient(shift.clientId, workspaceId);
                 let deniedShiftLineItem: any = null;
                 let targetInvoice: any = null;
 
@@ -3868,7 +3852,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   const newTaxAmount = newSubtotal * (taxRate / 100);
                   const newTotal = newSubtotal + newTaxAmount;
 
-                  await storage.updateInvoice(targetInvoice.id, workspace.id, {
+                  await storage.updateInvoice(targetInvoice.id, workspaceId, {
                     subtotal: newSubtotal.toFixed(2),
                     taxAmount: newTaxAmount.toFixed(2),
                     total: newTotal.toFixed(2),
@@ -3941,14 +3925,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Bulk create shifts (recurring)
-  app.post('/api/shifts/bulk', isAuthenticated, async (req: any, res) => {
+  app.post('/api/shifts/bulk', requireAuth, requireManagerOrPlatformStaff, async (req: AuthenticatedRequest, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const workspace = await storage.getWorkspaceByOwnerId(userId);
-      
-      if (!workspace) {
-        return res.status(404).json({ message: "Workspace not found" });
-      }
+      const workspaceId = req.workspaceId!;
 
       const { employeeId, clientId, title, description, startDate, endDate, startTime, endTime, recurrence, days } = req.body;
       
@@ -3976,7 +3955,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           shiftEnd.setHours(parseInt(endHours), parseInt(endMinutes), 0);
           
           const shift = await storage.createShift({
-            workspaceId: workspace.id,
+            workspaceId,
             employeeId,
             clientId: clientId || null,
             title: title || null,

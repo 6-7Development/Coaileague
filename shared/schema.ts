@@ -614,6 +614,8 @@ export const insertEmployeeSchema = createInsertSchema(employees).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+}).extend({
+  hourlyRate: z.union([z.string(), z.number()]).transform(val => typeof val === 'number' ? val.toString() : val).optional(),
 });
 
 export type InsertEmployee = z.infer<typeof insertEmployeeSchema>;
