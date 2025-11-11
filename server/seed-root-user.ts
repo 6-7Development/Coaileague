@@ -92,13 +92,5 @@ export async function seedRootUser() {
   return { success: true };
 }
 
-// Run if called directly
-seedRootUser()
-  .then(() => {
-    console.log('Seed completed');
-    process.exit(0);
-  })
-  .catch((error) => {
-    console.error('Seed failed:', error);
-    process.exit(1);
-  });
+// Note: Auto-run removed to prevent process.exit() when imported as a module
+// To run this seed script directly, use: tsx server/seed-root-user.ts

@@ -860,11 +860,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       });
 
+      console.log('✅ Workspace demo login successful (org_owner)');
       // Redirect to dashboard
       res.redirect('/dashboard');
     } catch (error) {
       console.error("Error in demo login:", error);
       res.status(500).json({ message: "Failed to start demo" });
+    }
+  });
+
+  // Platform Staff Demo Login - separate endpoint for security clarity
+  // ⚠️  SECURITY: Grants root_admin platform access for E2E testing  
+  // Only enabled in development. Production access blocked for security.
+  app.get('/api/demo-login-platform', async (req: any, res) => {
+    // Block demo login in production environments
+    if (process.env.NODE_ENV === 'production') {
+      console.warn('⚠️  Platform demo login blocked in production environment');
+      return res.status(403).json({ 
+        message: "Platform demo login is disabled in production for security reasons." 
+      });
+    }
+
+    try {
+      const ROOT_USER_ID = 'root-user-00000000';
+      
+      // Ensure root user exists with platform role
+      const { seedRootUser } = await import("./seed-root-user");
+      await seedRootUser();
+      
+      const rootUser = await storage.getUser(ROOT_USER_ID);
+      if (!rootUser) {
+        throw new Error('Failed to create root user');
+      }
+      
+      // Support BOTH auth systems (custom auth + Replit Auth)
+      req.session.userId = ROOT_USER_ID;
+      
+      req.session.passport = {
+        user: {
+          claims: {
+            sub: ROOT_USER_ID,
+            email: "root@getdc360.com",
+            first_name: "Root",
+            last_name: "Administrator"
+          },
+          expires_at: Math.floor(Date.now() / 1000) + (24 * 60 * 60),
+          refresh_token: "root-refresh-token",
+        }
+      };
+      
+      await new Promise((resolve, reject) => {
+        req.session.save((err: any) => {
+          if (err) reject(err);
+          else resolve(undefined);
+        });
+      });
+      
+      console.log('✅ Platform staff demo login successful (root_admin)');
+      res.redirect('/root-admin-dashboard');
+    } catch (error) {
+      console.error("Error in platform demo login:", error);
+      res.status(500).json({ message: "Failed to start platform demo" });
     }
   });
 
