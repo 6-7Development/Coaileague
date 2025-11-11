@@ -15,12 +15,11 @@ export function useAuth() {
   const { data, isLoading, error } = useQuery<AuthResponse>({
     queryKey: ["/api/auth/me"],
     retry: false,
-    retryOnMount: false,
-    staleTime: Infinity, // Never auto-refetch
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
-    refetchOnReconnect: false,
-    refetchInterval: false,
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes (was Infinity)
+    refetchOnWindowFocus: true, // Refetch when window gains focus (was false)
+    refetchOnMount: true, // Refetch on component mount (was false)
+    refetchOnReconnect: true, // Refetch on reconnect (was false)
+    refetchInterval: false, // No polling
     // Return null on 401 instead of throwing error
     queryFn: async () => {
       const res = await fetch("/api/auth/me", {
