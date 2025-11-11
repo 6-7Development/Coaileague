@@ -55,15 +55,11 @@ export default function CommOSOnboarding() {
 
   const completeOnboardingMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest('/api/comm-os/complete-onboarding', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          roomName,
-          roomDescription,
-          channels,
-          allowGuests,
-        }),
+      return await apiRequest('POST', '/api/comm-os/complete-onboarding', {
+        roomName,
+        roomDescription,
+        channels,
+        allowGuests,
       });
     },
     onSuccess: () => {

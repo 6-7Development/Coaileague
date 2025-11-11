@@ -78,7 +78,9 @@ export default function CommOS() {
   });
 
   // Fetch onboarding status for organization
-  const { data: onboardingStatus } = useQuery({
+  const { data: onboardingStatus } = useQuery<{
+    isCompleted: boolean;
+  }>({
     queryKey: ['/api/comm-os/onboarding-status'],
     enabled: !!user && !isSupportStaff,
   });

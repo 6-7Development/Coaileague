@@ -43,7 +43,16 @@ export default function CompanyReports() {
   const [shareNotes, setShareNotes] = useState("");
 
   // Fetch aggregated data
-  const { data: reportData, isLoading } = useQuery({
+  const { data: reportData, isLoading } = useQuery<{
+    totalPayroll?: number;
+    payrollCount?: number;
+    totalRevenue?: number;
+    invoiceCount?: number;
+    totalHours?: number;
+    activeEmployees?: number;
+    profitMargin?: number;
+    details?: any[];
+  }>({
     queryKey: ['/api/reports/company-data', selectedReport, dateRange],
     queryFn: async () => {
       return await apiRequest('POST', '/api/reports/generate', {

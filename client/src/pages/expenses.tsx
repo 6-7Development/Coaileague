@@ -43,11 +43,11 @@ export default function ExpensesPage() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
 
-  const { data: categories = [], isLoading: categoriesLoading } = useQuery({
+  const { data: categories = [], isLoading: categoriesLoading } = useQuery<any[]>({
     queryKey: ['/api/expense-categories'],
   });
 
-  const { data: expenses = [], isLoading: expensesLoading } = useQuery({
+  const { data: expenses = [], isLoading: expensesLoading } = useQuery<any[]>({
     queryKey: ['/api/expenses'],
   });
 

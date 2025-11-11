@@ -15,19 +15,23 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Building2, Check, Plus, ChevronsUpDown } from "lucide-react";
 
 export function WorkspaceSwitcher() {
-  const { data: currentWorkspace } = useQuery({
+  const { data: currentWorkspace } = useQuery<{
+    id: string;
+    name: string;
+  }>({
     queryKey: ['/api/workspace'],
   });
 
-  const { data: workspaces = [] } = useQuery({
+  const { data: workspaces = [] } = useQuery<Array<{
+    id: string;
+    name: string;
+  }>>({
     queryKey: ['/api/workspaces/all'],
     enabled: false, // Only fetch when dropdown opens
   });
 
   const switchWorkspace = async (workspaceId: string) => {
-    await apiRequest(`/api/workspace/switch/${workspaceId}`, {
-      method: 'POST',
-    });
+    await apiRequest('POST', `/api/workspace/switch/${workspaceId}`);
     window.location.reload();
   };
 

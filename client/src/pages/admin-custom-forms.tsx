@@ -58,10 +58,7 @@ export default function AdminCustomForms() {
   // Create form mutation
   const createFormMutation = useMutation({
     mutationFn: async (formData: any) => {
-      return await apiRequest("/api/custom-forms", {
-        method: "POST",
-        body: JSON.stringify(formData),
-      });
+      return await apiRequest("POST", "/api/custom-forms", formData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/custom-forms"] });
@@ -80,10 +77,7 @@ export default function AdminCustomForms() {
   // Update form mutation
   const updateFormMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
-      return await apiRequest(`/api/custom-forms/${id}`, {
-        method: "PATCH",
-        body: JSON.stringify(data),
-      });
+      return await apiRequest("PATCH", `/api/custom-forms/${id}`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/custom-forms"] });
@@ -102,9 +96,7 @@ export default function AdminCustomForms() {
   // Delete form mutation
   const deleteFormMutation = useMutation({
     mutationFn: async (id: string) => {
-      return await apiRequest(`/api/custom-forms/${id}`, {
-        method: "DELETE",
-      });
+      return await apiRequest("DELETE", `/api/custom-forms/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/custom-forms"] });
@@ -292,7 +284,6 @@ export default function AdminCustomForms() {
                                 onChange={(e) =>
                                   updateField(index, { label: e.target.value })
                                 }
-                                size="sm"
                                 data-testid={`input-field-label-${index}`}
                               />
                             </div>
@@ -301,7 +292,6 @@ export default function AdminCustomForms() {
                               <Input
                                 value={field.type}
                                 disabled
-                                size="sm"
                                 className="bg-muted"
                               />
                             </div>
