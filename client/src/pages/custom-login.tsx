@@ -12,6 +12,7 @@ import { showLoginTransition, showErrorTransition, showSuccessTransition } from 
 import { AnimatedAutoForceLogo } from "@/components/animated-autoforce-logo";
 import { Loader2, Eye, EyeOff } from "lucide-react";
 import { useLocation } from "wouter";
+import { queryClient } from "@/lib/queryClient";
 
 const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -58,6 +59,9 @@ export default function CustomLogin() {
       if (!response.ok) {
         throw new Error(result.message || "Login failed");
       }
+
+      // Invalidate auth query to refresh user state
+      await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
 
       // Show success transition with redirect
       showSuccessTransition(

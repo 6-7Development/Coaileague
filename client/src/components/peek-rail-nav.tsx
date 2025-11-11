@@ -21,6 +21,7 @@ import { useWorkspaceAccess } from "@/hooks/useWorkspaceAccess";
 import { selectSidebarFamilies } from "@/lib/osModules";
 import { showLogoutTransition } from "@/lib/transition-utils";
 import { useTransition } from "@/contexts/transition-context";
+import { queryClient } from "@/lib/queryClient";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -167,6 +168,8 @@ export function PeekRailNav({ defaultPinned = false }: PeekRailNavProps) {
         method: "POST",
         credentials: "include",
       });
+      // Invalidate auth query to clear user state
+      await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
     } catch (error) {
       console.error("Logout error:", error);
     }
