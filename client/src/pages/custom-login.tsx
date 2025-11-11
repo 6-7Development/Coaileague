@@ -38,11 +38,12 @@ export default function CustomLogin() {
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
     
-    // Show transition overlay
+    // Show login transition with scenario-based messages
     transition.showTransition({
       status: "loading",
-      message: "Logging you in...",
-      submessage: "Please wait..."
+      scenario: "login",
+      message: "Signing In...",
+      submessage: "Authenticating your credentials..."
     });
 
     try {

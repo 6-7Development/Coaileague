@@ -12,6 +12,7 @@ export interface TransitionHelperProps {
 export function showLoginTransition(helpers: TransitionHelperProps, username: string) {
   helpers.showTransition({
     status: "loading" as TransitionStatus,
+    scenario: "login",
     message: "Logging you in...",
     submessage: `Welcome back, ${username}!`
   });
@@ -23,9 +24,10 @@ export function showLoginTransition(helpers: TransitionHelperProps, username: st
 export function showLogoutTransition(helpers: TransitionHelperProps) {
   helpers.showTransition({
     status: "loading" as TransitionStatus,
+    scenario: "logout",
     message: "Logging you out...",
     submessage: "See you soon!",
-    duration: 1500,
+    duration: 2000,
     onComplete: () => {
       window.location.href = "/";
     }
