@@ -1,5 +1,5 @@
-import { createContext, useContext, useState, useCallback, ReactNode } from "react";
-import { ProgressLoadingOverlay } from "@/components/progress-loading-overlay";
+import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from "react";
+import { ProgressLoadingOverlay, ProgressScenario } from "@/components/progress-loading-overlay";
 
 export type TransitionStatus = "loading" | "success" | "error" | "info";
 
@@ -9,6 +9,7 @@ interface TransitionOptions {
   submessage?: string;
   duration?: number;
   onComplete?: () => void;
+  scenario?: ProgressScenario;
 }
 
 interface TransitionContextType {
@@ -50,10 +51,35 @@ export function TransitionProvider({ children }: { children: ReactNode }) {
     hideTransition();
   }, [options, hideTransition]);
 
+  // Auto-hide and trigger onComplete after duration
+  // Triggers on: success/error states, OR loading state with explicit duration
+  useEffect(() => {
+    if (!isVisible) return;
+    
+    const shouldAutoHide = 
+      options.status === "success" || 
+      options.status === "error" ||
+      (options.status === "loading" && options.duration !== undefined);
+    
+    if (shouldAutoHide) {
+      const timer = setTimeout(() => {
+        handleComplete();
+      }, options.duration || 2000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [isVisible, options.status, options.duration, handleComplete]);
+
   return (
     <TransitionContext.Provider value={{ showTransition, hideTransition, updateTransition }}>
       {children}
-      {/* ProgressLoadingOverlay disabled - using static HTML loader in index.html instead */}
+      <ProgressLoadingOverlay
+        isVisible={isVisible}
+        status={options.status}
+        scenario={options.scenario}
+        title={options.message}
+        duration={options.duration}
+      />
     </TransitionContext.Provider>
   );
 }
