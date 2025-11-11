@@ -284,7 +284,6 @@ function AppContent() {
         <Route path="/live-chat"><Redirect to="/chat" /></Route>
         <Route path="/helpdesk5"><Redirect to="/chat" /></Route>
         <Route path="/support/chat"><Redirect to="/chat" /></Route>
-        <Route path="/design-comparison" component={DesignComparison} />
         <Route path="/logo-showcase" component={LogoShowcase} />
         <Route path="/logo-showcase-v2" component={LogoShowcaseV2} />
         <Route path="/onboarding/:token" component={OnboardingPage} />
@@ -388,7 +387,6 @@ function AppContent() {
                 <Route path="/query-os" component={QueryOS} />
                 <Route path="/messages" component={PrivateMessages} />
                 <Route path="/chat-export" component={ChatExport} />
-                <Route path="/rich-text-demo" component={RichTextDemo} />
                 <Route path="/training" component={TrainingOS} />
                 <Route path="/budget" component={BudgetOS} />
                 <Route path="/integrations" component={IntegrationOS} />
@@ -452,7 +450,6 @@ function AppContent() {
                 <Route path="/support/chat"><Redirect to="/chat" /></Route>
                 <Route path="/live-chat"><Redirect to="/chat" /></Route>
                 <Route path="/helpdesk5"><Redirect to="/chat" /></Route>
-                <Route path="/design-comparison" component={DesignComparison} />
                 <Route path="/logo-showcase" component={LogoShowcase} />
                 <Route path="/support" component={Support} />
                 

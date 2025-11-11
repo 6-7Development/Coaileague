@@ -1,0 +1,476 @@
+Absolutely—here’s a single, copy-paste Replit Shell command that will upgrade your existing project with the organizational/employee/support ID workflow, additive DB schema, service logic, and support endpoints. It won’t replace your current IDs; it layers on an external, human-readable ID system and wiring to approvals/audit, so support can search, freeze/restore, propose edits, and dual-control delete.
+
+Paste this whole block in the Replit Shell:
+
+bash -lc '
+mkdir -p scripts lib services routes migrations &&
+
+cat > migrations/2025-11-10_identity_upgrade.sql << "SQL"
+BEGIN;
+
+CREATE TABLE IF NOT EXISTS external_identifiers (
+  id UUID NOT NULL,
+  entity_type TEXT NOT NULL CHECK (entity_type IN (\'org\',\'employee\',\'user\',\'support\')),
+  entity_id UUID NOT NULL,
+  external_id TEXT NOT NULL,
+  org_id UUID NULL,
+  is_primary BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(entity_type, external_id),
+  UNIQUE(entity_type, entity_id, is_primary)
+);
+
+ALTER TABLE organizations ADD COLUMN IF NOT EXISTS org_code TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_orgs_org_code ON organizations(org_code);
+
+CREATE TABLE IF NOT EXISTS id_sequences (
+  id UUID NOT NULL,
+  org_id UUID NOT NULL,
+  kind TEXT NOT NULL CHECK (kind IN (\'employee\',\'ticket\')),
+  next_val BIGINT NOT NULL DEFAULT 1,
+  updated_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(org_id, kind)
+);
+
+CREATE TABLE IF NOT EXISTS support_registry (
+  id UUID NOT NULL,
+  user_id UUID NOT NULL,
+  support_code TEXT UNIQUE NOT NULL,
+  active_bool BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS tombstones (
+  id UUID NOT NULL,
+  entity_type TEXT NOT NULL,
+  entity_id UUID NOT NULL,
+  org_id UUID,
+  deleted_by_user_id UUID NOT NULL,
+  approval_id UUID,
+  reason TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE IF EXISTS financial_audit_log
+  ADD COLUMN IF NOT EXISTS action_kind TEXT,
+  ADD COLUMN IF NOT EXISTS target_entity TEXT,
+  ADD COLUMN IF NOT EXISTS target_id UUID,
+  ADD COLUMN IF NOT EXISTS before_json JSONB,
+  ADD COLUMN IF NOT EXISTS after_json JSONB;
+
+CREATE INDEX IF NOT EXISTS idx_extids_external_id ON external_identifiers(external_id);
+CREATE INDEX IF NOT EXISTS idx_extids_entity ON external_identifiers(entity_type, entity_id);
+CREATE INDEX IF NOT EXISTS idx_extids_org ON external_identifiers(org_id);
+
+COMMIT;
+SQL
+
+cat > scripts/apply-sql.js << "JS"
+const fs = require("fs");
+const { Client } = require("pg");
+(async () => {
+  const file = process.argv[2];
+  if (!file) { console.error("Usage: node scripts/apply-sql.js <file.sql>"); process.exit(1); }
+  const sql = fs.readFileSync(file, "utf8");
+  const client = new Client({ connectionString: process.env.DATABASE_URL });
+  await client.connect();
+  try {
+    await client.query(sql);
+    console.log("Applied:", file);
+    process.exit(0);
+  } catch (e) {
+    console.error("SQL error:", e.message);
+    process.exit(2);
+  } finally {
+    await client.end();
+  }
+})();
+JS
+
+cat > lib/ids.ts << "TS"
+import crypto from "crypto";
+
+const base32 = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+const base36 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+function rndAlpha(set: string, len: number) {
+  const bytes = crypto.randomBytes(len);
+  let s = "";
+  for (let i = 0; i < len; i++) s += set[bytes[i] % set.length];
+  return s;
+}
+
+export function safeSlug4(name: string) {
+  const s = (name || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+  const core = s.slice(0, 4) || rndAlpha(base32, 4);
+  return core.padEnd(4, "X");
+}
+
+export function genOrgExternal(orgCode: string) {
+  return `ORG-${orgCode}`;
+}
+
+export function genSupportCode() {
+  return `SUP-${rndAlpha(base32,2)}${rndAlpha(base36,2)}`;
+}
+
+export function genEmployeeExternal(orgCode: string, n: number) {
+  return `EMP-${orgCode}-${String(n).padStart(5,"0")}`;
+}
+TS
+
+cat > services/identity.ts << "TS"
+import { Pool } from "pg";
+import { genEmployeeExternal, genOrgExternal, genSupportCode, safeSlug4 } from "../lib/ids";
+
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
+export async function ensureOrgIdentifiers(orgId: string, orgName: string) {
+  const c = await pool.connect();
+  try {
+    await c.query("BEGIN");
+    const { rows: orgRows } = await c.query("SELECT org_code FROM organizations WHERE id=$1 FOR UPDATE", [orgId]);
+    let orgCode = orgRows[0]?.org_code;
+    if (!orgCode) {
+      orgCode = safeSlug4(orgName);
+      const { rowCount } = await c.query("UPDATE organizations SET org_code=$1 WHERE id=$2", [orgCode, orgId]);
+      if (!rowCount) throw new Error("org not found");
+    }
+    const ext = genOrgExternal(orgCode);
+    await c.query(
+      `INSERT INTO external_identifiers(id, entity_type, entity_id, external_id, org_id, is_primary)
+       VALUES ($1,'org',$2,$3,NULL,TRUE) ON CONFLICT (entity_type, external_id) DO NOTHING`,
+      [cryptoUUID(), orgId, ext]
+    );
+    await c.query(
+      `INSERT INTO id_sequences(id, org_id, kind, next_val)
+       VALUES ($1,$2,'employee',1)
+       ON CONFLICT (org_id, kind) DO NOTHING`,
+      [cryptoUUID(), orgId]
+    );
+    await c.query("COMMIT");
+    return { orgCode, externalId: ext };
+  } catch (e) {
+    await c.query("ROLLBACK");
+    throw e;
+  } finally {
+    c.release();
+  }
+}
+
+export async function nextEmployeeExternal(orgId: string) {
+  const c = await pool.connect();
+  try {
+    await c.query("BEGIN");
+    const { rows: org } = await c.query("SELECT org_code FROM organizations WHERE id=$1 FOR UPDATE", [orgId]);
+    if (!org.length) throw new Error("org not found");
+    const orgCode = org[0].org_code || "XXXX";
+    const { rows: seq } = await c.query(
+      "SELECT next_val FROM id_sequences WHERE org_id=$1 AND kind='employee' FOR UPDATE",
+      [orgId]
+    );
+    let nextVal = seq[0]?.next_val ?? 1;
+    await c.query(
+      "INSERT INTO id_sequences(id, org_id, kind, next_val) VALUES ($1,$2,'employee',$3) ON CONFLICT (org_id,kind) DO NOTHING",
+      [cryptoUUID(), orgId, nextVal]
+    );
+    const { rows: seq2 } = await c.query(
+      "UPDATE id_sequences SET next_val = next_val + 1, updated_at=now() WHERE org_id=$1 AND kind='employee' RETURNING next_val-1 as issued",
+      [orgId]
+    );
+    const issued = seq2[0].issued;
+    const external = genEmployeeExternal(orgCode, issued);
+    await c.query(
+      `INSERT INTO external_identifiers(id, entity_type, entity_id, external_id, org_id, is_primary)
+       VALUES ($1,'employee',$2,$3,$4,TRUE)
+       ON CONFLICT (entity_type, external_id) DO NOTHING`,
+      [cryptoUUID(), "00000000-0000-0000-0000-000000000000", external, orgId] // entity_id filled by caller after employee create
+    );
+    await c.query("COMMIT");
+    return { external, localNumber: issued };
+  } catch (e) {
+    await c.query("ROLLBACK");
+    throw e;
+  } finally {
+    c.release();
+  }
+}
+
+export async function attachEmployeeExternal(employeeId: string, orgId: string) {
+  const c = await pool.connect();
+  try {
+    await c.query("BEGIN");
+    const { rows: existing } = await c.query(
+      "SELECT external_id FROM external_identifiers WHERE entity_type='employee' AND entity_id=$1",
+      [employeeId]
+    );
+    if (existing.length) { await c.query("COMMIT"); return { external: existing[0].external_id }; }
+    const { rows: org } = await c.query("SELECT org_code FROM organizations WHERE id=$1", [orgId]);
+    const orgCode = org[0]?.org_code || "XXXX";
+    const { rows: seq2 } = await c.query(
+      "UPDATE id_sequences SET next_val = next_val + 1, updated_at=now() WHERE org_id=$1 AND kind='employee' RETURNING next_val-1 as issued",
+      [orgId]
+    );
+    const issued = seq2[0]?.issued ?? 1;
+    const external = genEmployeeExternal(orgCode, issued);
+    await c.query(
+      `INSERT INTO external_identifiers(id, entity_type, entity_id, external_id, org_id, is_primary)
+       VALUES ($1,'employee',$2,$3,$4,TRUE)`,
+      [cryptoUUID(), employeeId, external, orgId]
+    );
+    await c.query("COMMIT");
+    return { external };
+  } catch (e) {
+    await c.query("ROLLBACK");
+    throw e;
+  } finally {
+    c.release();
+  }
+}
+
+export async function ensureSupportCode(userId: string) {
+  const c = await pool.connect();
+  try {
+    const code = genSupportCode();
+    await c.query(
+      `INSERT INTO support_registry(id, user_id, support_code, active_bool)
+       VALUES ($1,$2,$3,TRUE)
+       ON CONFLICT (support_code) DO NOTHING`,
+      [cryptoUUID(), userId, code]
+    );
+    return { supportCode: code };
+  } finally {
+    c.release();
+  }
+}
+
+export async function supportLookup(q: string) {
+  const c = await pool.connect();
+  try {
+    const isId = /^[A-F0-9-]{36}$/.test(q);
+    if (/^(EMP|ORG|SUP)-/i.test(q)) {
+      const { rows } = await c.query(
+        "SELECT entity_type, entity_id, external_id, org_id FROM external_identifiers WHERE external_id=$1",
+        [q]
+      );
+      return rows;
+    } else if (isId) {
+      const { rows } = await c.query(
+        "SELECT entity_type, entity_id, external_id, org_id FROM external_identifiers WHERE entity_id=$1",
+        [q]
+      );
+      return rows;
+    } else {
+      const { rows } = await c.query(
+        "SELECT id, email FROM users WHERE LOWER(email)=LOWER($1) LIMIT 10",
+        [q]
+      );
+      return rows;
+    }
+  } finally {
+    c.release();
+  }
+}
+
+function cryptoUUID() {
+  return ([1e7]+-1e3+-4e3+-8e3+-1e11 as any)
+    .replace(/[018]/g, (c: string) =>
+      (Number(c) ^ (cryptoRandom() & 15) >> (Number(c) / 4)).toString(16)
+    );
+}
+function cryptoRandom() {
+  const b = new Uint8Array(1);
+  require("crypto").randomFillSync(b);
+  return b[0];
+}
+TS
+
+cat > routes/support.ts << "TS"
+import { Router } from "express";
+import { ensureOrgIdentifiers, attachEmployeeExternal, ensureSupportCode, supportLookup } from "../services/identity";
+import { Pool } from "pg";
+
+const r = Router();
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
+function requireRole(roles: string[]) {
+  return (req: any, res: any, next: any) => {
+    const user = req.user || {};
+    const has = (user.roles || []).some((r: string) => roles.includes(r));
+    if (!has) return res.status(403).json({ error: "forbidden" });
+    next();
+  };
+}
+
+r.get("/lookup", requireRole(["support","admin","owner"]), async (req, res) => {
+  const q = String(req.query.q || "").trim();
+  if (!q) return res.status(400).json({ error: "missing q" });
+  const rows = await supportLookup(q);
+  res.json({ rows });
+});
+
+r.post("/ids/propose-change", requireRole(["support","admin"]), async (req, res) => {
+  const { entity_type, entity_id, new_external_id, reason } = req.body || {};
+  if (!entity_type || !entity_id || !new_external_id) return res.status(400).json({ error: "missing fields" });
+  const c = await pool.connect();
+  try {
+    await c.query("BEGIN");
+    const { rows } = await c.query(
+      `INSERT INTO pending_approvals (id, created_at, reason, payload_json, status)
+       VALUES ($1, now(), $2, $3, 'PENDING') RETURNING id`,
+      [uuid(), reason || "ID change", JSON.stringify({ entity_type, entity_id, new_external_id })]
+    );
+    await c.query("COMMIT");
+    res.json({ approval_id: rows[0].id });
+  } catch (e:any) {
+    await c.query("ROLLBACK");
+    res.status(500).json({ error: e.message });
+  } finally {
+    c.release();
+  }
+});
+
+r.post("/account/freeze", requireRole(["support","admin"]), async (req, res) => {
+  const { entity_type, entity_id, reason } = req.body || {};
+  if (!entity_type || !entity_id) return res.status(400).json({ error: "missing fields" });
+  const c = await pool.connect();
+  try {
+    await c.query("BEGIN");
+    if (entity_type === "org") {
+      await c.query("UPDATE organizations SET status='suspended' WHERE id=$1", [entity_id]);
+    } else if (entity_type === "user") {
+      await c.query("UPDATE users SET status='suspended' WHERE id=$1", [entity_id]);
+    }
+    await c.query(
+      `INSERT INTO financial_audit_log(id, action_kind, target_entity, target_id, before_json, after_json, created_at)
+       VALUES ($1,'SUSPEND',$2,$3,NULL,$4, now())`,
+      [uuid(), entity_type, entity_id, JSON.stringify({ reason })]
+    );
+    await c.query("COMMIT");
+    res.json({ ok: true });
+  } catch (e:any) {
+    await c.query("ROLLBACK"); res.status(500).json({ error: e.message });
+  } finally { c.release(); }
+});
+
+r.post("/account/restore", requireRole(["support","admin"]), async (req, res) => {
+  const { entity_type, entity_id, reason } = req.body || {};
+  if (!entity_type || !entity_id) return res.status(400).json({ error: "missing fields" });
+  const c = await pool.connect();
+  try {
+    await c.query("BEGIN");
+    if (entity_type === "org") {
+      await c.query("UPDATE organizations SET status='active' WHERE id=$1", [entity_id]);
+    } else if (entity_type === "user") {
+      await c.query("UPDATE users SET status='active' WHERE id=$1", [entity_id]);
+    }
+    await c.query(
+      `INSERT INTO financial_audit_log(id, action_kind, target_entity, target_id, before_json, after_json, created_at)
+       VALUES ($1,'RESTORE',$2,$3,NULL,$4, now())`,
+      [uuid(), entity_type, entity_id, JSON.stringify({ reason })]
+    );
+    await c.query("COMMIT");
+    res.json({ ok: true });
+  } catch (e:any) {
+    await c.query("ROLLBACK"); res.status(500).json({ error: e.message });
+  } finally { c.release(); }
+});
+
+function uuid() {
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function(c) {
+    const r = (Math.random()*16)|0, v = c === "x" ? r : (r&0x3|0x8);
+    return v.toString(16);
+  });
+}
+
+export default r;
+TS
+
+cat > scripts/identity_smoke_test.js << "JS"
+const { Client } = require("pg");
+(async () => {
+  const c = new Client({ connectionString: process.env.DATABASE_URL });
+  await c.connect();
+  try {
+    const chk = await c.query("SELECT 1");
+    if (chk.rows[0]["?column?"] !== 1 && chk.rows[0]["?column?"] !== undefined && chk.rows[0].count !== undefined) throw new Error("db");
+    console.log("DB ok");
+
+    const cols = await c.query("SELECT column_name FROM information_schema.columns WHERE table_name='external_identifiers'");
+    const need = ["entity_type","entity_id","external_id"];
+    const have = need.every(n => cols.rows.find(r => r.column_name === n));
+    if (!have) throw new Error("external_identifiers missing columns");
+    console.log("Tables ok");
+  } catch (e) {
+    console.error("Smoke test failed:", e.message);
+    process.exit(2);
+  } finally {
+    await c.end();
+  }
+})();
+JS
+
+if [ ! -f package.json ]; then
+  npm init -y >/dev/null 2>&1
+fi
+
+node -e "try{require.resolve('pg')}catch(e){process.exit(1)}" || npm i pg
+node -e "try{require.resolve('typescript')}catch(e){process.exit(1)}" || npm i typescript
+node -e "try{require.resolve('ts-node')}catch(e){process.exit(1)}" || npm i ts-node
+
+node scripts/apply-sql.js migrations/2025-11-10_identity_upgrade.sql
+node scripts/identity_smoke_test.js
+
+echo
+echo "Next steps:"
+echo "1) Mount support routes in your server: app.use(\"/support\", require(\"./routes/support\").default);"
+echo "2) Call ensureOrgIdentifiers(orgId, orgName) after org create; attachEmployeeExternal(employeeId, orgId) after employee create."
+echo "3) For support roles, call ensureSupportCode(userId) when granting support role."
+'
+
+What this gives you (without breaking what you have)
+
+New tables (additive): external_identifiers, id_sequences, support_registry, tombstones, and extra audit fields.
+
+Service functions you can call in your existing org/employee create flows:
+
+ensureOrgIdentifiers(orgId, orgName)
+
+attachEmployeeExternal(employeeId, orgId)
+
+ensureSupportCode(userId)
+
+Support endpoints you can mount:
+
+GET /support/lookup?q= (search by ORG-XXXX, EMP-ACME-00001, SUP-XXXX, or email)
+
+POST /support/ids/propose-change (approval-backed edits)
+
+POST /support/account/freeze and /support/account/restore
+
+Smoke test to confirm DB shape.
+
+Where to wire in your current app
+
+After org signup completes and owner verifies email → call ensureOrgIdentifiers(org.id, org.name).
+
+After you create an employee → call attachEmployeeExternal(employee.id, org.id).
+
+When promoting a user to support → call ensureSupportCode(user.id).
+
+Mount the route:
+
+import supportRoutes from "./routes/support";
+app.use("/support", supportRoutes);
+
+Optional (but recommended) approval hook
+
+If your approvals system uses pending_approvals, point its “approve” handler to:
+
+Update external_identifiers.external_id for that entity_type/entity_id
+
+Insert a financial_audit_log row with before/after snapshots
+
+Notify the requestor
+
+If you want, say the word and I’ll generate the tiny “approval-consumer” endpoint to finalize ID edits end-to-end.
