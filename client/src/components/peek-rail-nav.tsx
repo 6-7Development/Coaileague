@@ -318,7 +318,8 @@ export function PeekRailNav({ defaultPinned = false }: PeekRailNavProps) {
                           className={cn(
                             "w-full justify-start h-10 px-3",
                             "hover-elevate active-elevate-2",
-                            !isExpanded && "px-2"
+                            !isExpanded && "px-2",
+                            isActive && "bg-secondary/80"
                           )}
                           data-testid={`link-${route.id}`}
                           aria-current={isActive ? "page" : undefined}
@@ -326,7 +327,7 @@ export function PeekRailNav({ defaultPinned = false }: PeekRailNavProps) {
                           <route.icon
                             className={cn(
                               "h-5 w-5 flex-shrink-0",
-                              isActive ? "text-primary" : "text-muted-foreground"
+                              isActive ? "text-foreground" : "text-muted-foreground"
                             )}
                           />
                           <AnimatePresence>
@@ -341,7 +342,7 @@ export function PeekRailNav({ defaultPinned = false }: PeekRailNavProps) {
                                 <span
                                   className={cn(
                                     "text-sm font-medium truncate",
-                                    isActive ? "text-primary" : "text-foreground"
+                                    isActive ? "text-foreground" : "text-foreground"
                                   )}
                                 >
                                   {route.label}
