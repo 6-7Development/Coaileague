@@ -40,7 +40,8 @@ export default function Support() {
       icon: Book,
       title: "Documentation",
       description: "Complete guides and API references",
-      color: "blue",
+      bgColor: "bg-blue-50",
+      textColor: "text-blue-600",
       items: [
         "Getting Started Guide",
         "Administrator Manual",
@@ -52,7 +53,8 @@ export default function Support() {
       icon: Video,
       title: "Video Tutorials",
       description: "Step-by-step video walkthroughs",
-      color: "purple",
+      bgColor: "bg-purple-50",
+      textColor: "text-purple-600",
       items: [
         "Platform Overview (5 min)",
         "Setting Up Your Workspace",
@@ -64,7 +66,8 @@ export default function Support() {
       icon: FileText,
       title: "Knowledge Base",
       description: "Common solutions and best practices",
-      color: "cyan",
+      bgColor: "bg-cyan-50",
+      textColor: "text-cyan-600",
       items: [
         "Troubleshooting Guide",
         "Feature Comparisons",
@@ -76,7 +79,8 @@ export default function Support() {
       icon: Keyboard,
       title: "Keyboard Shortcuts",
       description: "Boost productivity with shortcuts",
-      color: "green",
+      bgColor: "bg-green-50",
+      textColor: "text-green-600",
       items: [
         "Navigation Shortcuts",
         "Quick Actions (Ctrl+K)",
@@ -197,7 +201,7 @@ export default function Support() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search for help articles, guides, and FAQs..."
-              className="pl-12 h-14 text-base bg-[hsl(var(--cad-surface-elevated))] border-[hsl(var(--cad-border-strong))]"
+              className="pl-12 h-14 text-base bg-white border-gray-200"
               data-testid="input-search"
             />
           </div>
@@ -205,12 +209,12 @@ export default function Support() {
 
         {/* Customer Support Portal CTA */}
         <div className="max-w-2xl mx-auto mb-16">
-          <Card className="bg-gradient-to-br from-[hsl(var(--cad-blue))]/10 to-[hsl(var(--cad-purple))]/10 border-[hsl(var(--cad-blue))]/30 hover-elevate active-elevate-2 cursor-pointer transition-all duration-200" data-testid="card-support-tickets">
+          <Card className="bg-gradient-to-br from-blue-50 to-purple-50 border-2 border-blue-200 shadow-md hover-elevate active-elevate-2 cursor-pointer transition-all duration-200" data-testid="card-support-tickets">
             <div className="p-6" onClick={() => window.location.href = "/support/tickets"}>
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-start gap-4">
                   <div className="h-12 w-12 rounded-md bg-gradient-to-r from-blue-500 to-blue-600/20 flex items-center justify-center flex-shrink-0">
-                    <LifeBuoy className="h-6 w-6 text-[hsl(var(--cad-blue))]" />
+                    <LifeBuoy className="h-6 w-6 text-blue-600" />
                   </div>
                   <div className="space-y-2">
                     <h3 className="text-lg font-semibold flex items-center gap-2">
@@ -243,12 +247,12 @@ export default function Support() {
         </div>
 
         {/* System Status */}
-        <Card className="bg-[hsl(var(--cad-surface))] border-[hsl(var(--cad-border-strong))] mb-16" data-testid="card-status">
+        <Card className="bg-white border-gray-200 mb-16" data-testid="card-status">
           <div className="p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-md bg-[hsl(var(--cad-green))]/10 flex items-center justify-center">
-                  <CheckCircle2 className="h-5 w-5 text-[hsl(var(--cad-green))]" />
+                <div className="h-10 w-10 rounded-md bg-green-600/10 flex items-center justify-center">
+                  <CheckCircle2 className="h-5 w-5 text-green-600" />
                 </div>
                 <div>
                   <h3 className="font-semibold">System Status</h3>
@@ -258,7 +262,7 @@ export default function Support() {
               <Button
                 variant="outline"
                 size="sm"
-                className="border-[hsl(var(--cad-border-strong))]"
+                className="border-gray-200"
                 data-testid="button-status-page"
               >
                 <ExternalLink className="h-4 w-4 mr-2" />
@@ -268,7 +272,7 @@ export default function Support() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {statusItems.map((item) => (
                 <div key={item.label} className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-[hsl(var(--cad-green))]" />
+                  <div className="w-2 h-2 rounded-full bg-green-600" />
                   <div className="flex-1">
                     <p className="text-xs text-gray-500">{item.label}</p>
                     <p className="text-sm font-medium">{item.value}</p>
@@ -286,7 +290,7 @@ export default function Support() {
             {resourceCategories.map((category) => (
               <Card
                 key={category.title}
-                className="bg-[hsl(var(--cad-surface-elevated))] border-[hsl(var(--cad-border-strong))] p-6 space-y-4 hover:border-[hsl(var(--cad-blue))]/50 hover-elevate active-elevate-2 transition-all duration-200 cursor-pointer"
+                className="bg-white border-2 border-gray-200 shadow-md p-6 space-y-4 hover:border-blue-300 hover-elevate active-elevate-2 transition-all duration-200 cursor-pointer"
                 data-testid={`card-resource-${category.title.toLowerCase().replace(/\s+/g, "-")}`}
                 onClick={() => {
                   if (category.title === "Documentation") {
@@ -302,16 +306,16 @@ export default function Support() {
                   }
                 }}
               >
-                <div className={`h-12 w-12 rounded-md bg-[hsl(var(--cad-${category.color}))]/10 flex items-center justify-center`}>
-                  <category.icon className={`h-6 w-6 text-[hsl(var(--cad-${category.color}))]`} />
+                <div className={`h-12 w-12 rounded-md ${category.bgColor} flex items-center justify-center`}>
+                  <category.icon className={`h-6 w-6 ${category.textColor}`} />
                 </div>
                 <div className="space-y-2">
-                  <h3 className="font-semibold">{category.title}</h3>
+                  <h3 className="font-semibold text-gray-900">{category.title}</h3>
                   <p className="text-sm text-gray-600">
                     {category.description}
                   </p>
                 </div>
-                <ul className="space-y-1.5 pt-2 border-t border-[hsl(var(--cad-border))]">
+                <ul className="space-y-1.5 pt-2 border-t border-gray-200">
                   {category.items.map((item) => (
                     <li key={item} className="text-xs text-gray-600 flex items-center gap-2 hover:text-gray-900 transition-colors">
                       <ExternalLink className="h-3 w-3" />
@@ -338,7 +342,7 @@ export default function Support() {
             ].map((topic) => (
               <Card
                 key={topic.title}
-                className="bg-[hsl(var(--cad-surface))] border-[hsl(var(--cad-border))] p-5 flex items-center gap-4 hover:border-[hsl(var(--cad-blue))]/50 hover-elevate active-elevate-2 transition-all duration-200 cursor-pointer"
+                className="bg-white border-2 border-gray-200 shadow-md p-5 flex items-center gap-4 hover:border-blue-300 hover-elevate active-elevate-2 transition-all duration-200 cursor-pointer"
                 data-testid={`card-topic-${topic.title.toLowerCase().replace(/\s+/g, "-")}`}
                 onClick={() => {
                   if (topic.action) {
@@ -348,7 +352,7 @@ export default function Support() {
                   }
                 }}
               >
-                <topic.icon className="h-5 w-5 text-[hsl(var(--cad-blue))]" />
+                <topic.icon className="h-5 w-5 text-blue-600" />
                 <div className="flex-1">
                   <h3 className="font-semibold text-sm">{topic.title}</h3>
                   <p className="text-xs text-gray-500">{topic.articles} articles</p>
@@ -362,11 +366,11 @@ export default function Support() {
         {/* FAQs */}
         <div className="mb-16">
           <h2 className="text-2xl font-bold mb-6">Frequently Asked Questions</h2>
-          <Card className="bg-[hsl(var(--cad-surface-elevated))] border-[hsl(var(--cad-border-strong))]">
+          <Card className="bg-white border-gray-200">
             <Accordion type="single" collapsible className="w-full" data-testid="accordion-faq">
               {faqs.map((faq, index) => (
-                <AccordionItem key={index} value={`item-${index}`} className="border-[hsl(var(--cad-border))]">
-                  <AccordionTrigger className="px-6 hover:no-underline hover:bg-[hsl(var(--cad-surface))]/50 data-testid={`faq-question-${index}`}">
+                <AccordionItem key={index} value={`item-${index}`} className="border-gray-200">
+                  <AccordionTrigger className="px-6 hover:no-underline hover:bg-white/50 data-testid={`faq-question-${index}`}">
                     <span className="text-left font-semibold">{faq.question}</span>
                   </AccordionTrigger>
                   <AccordionContent className="px-6 pb-4 text-gray-600" data-testid={`faq-answer-${index}`}>
@@ -380,16 +384,16 @@ export default function Support() {
 
         {/* Quick Actions */}
         <div className="grid md:grid-cols-3 gap-6 mb-16">
-          <Card className="bg-gradient-to-r from-blue-500 to-blue-600/10 border-[hsl(var(--cad-blue))]/20 p-6 space-y-4">
-            <MessageSquare className="h-8 w-8 text-[hsl(var(--cad-blue))]" />
+          <Card className="bg-white border-2 border-gray-200 shadow-md p-6 space-y-4">
+            <MessageSquare className="h-8 w-8 text-blue-600" />
             <div className="space-y-2">
-              <h3 className="font-semibold">Still Have Questions?</h3>
+              <h3 className="font-semibold text-gray-900">Still Have Questions?</h3>
               <p className="text-sm text-gray-600">
                 Our support team is available 24/7 to help you succeed
               </p>
             </div>
             <Button
-              className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:bg-gradient-to-r from-blue-500 to-blue-600/90 text-white"
+              className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-md"
               onClick={() => window.location.href = "/contact"}
               data-testid="button-contact-support"
             >
@@ -397,17 +401,17 @@ export default function Support() {
             </Button>
           </Card>
 
-          <Card className="bg-[hsl(var(--cad-purple))]/10 border-[hsl(var(--cad-purple))]/20 p-6 space-y-4">
-            <Download className="h-8 w-8 text-[hsl(var(--cad-purple))]" />
+          <Card className="bg-white border-2 border-gray-200 shadow-md p-6 space-y-4">
+            <Download className="h-8 w-8 text-purple-600" />
             <div className="space-y-2">
-              <h3 className="font-semibold">Download Resources</h3>
+              <h3 className="font-semibold text-gray-900">Download Resources</h3>
               <p className="text-sm text-gray-600">
                 Get PDFs, templates, and guides for offline reference
               </p>
             </div>
             <Button
               variant="outline"
-              className="w-full border-[hsl(var(--cad-purple))] text-[hsl(var(--cad-purple))] hover:bg-[hsl(var(--cad-purple))]/10"
+              className="w-full border-purple-600 text-purple-600 hover:bg-purple-50"
               data-testid="button-download-resources"
               onClick={() => {
                 // Open the features showcase and login guide
@@ -419,17 +423,17 @@ export default function Support() {
             </Button>
           </Card>
 
-          <Card className="bg-[hsl(var(--cad-green))]/10 border-[hsl(var(--cad-green))]/20 p-6 space-y-4">
-            <Video className="h-8 w-8 text-[hsl(var(--cad-green))]" />
+          <Card className="bg-white border-2 border-gray-200 shadow-md p-6 space-y-4">
+            <Video className="h-8 w-8 text-green-600" />
             <div className="space-y-2">
-              <h3 className="font-semibold">Video Walkthrough</h3>
+              <h3 className="font-semibold text-gray-900">Video Walkthrough</h3>
               <p className="text-sm text-gray-600">
                 Watch our comprehensive platform tutorial series
               </p>
             </div>
             <Button
               variant="outline"
-              className="w-full border-[hsl(var(--cad-green))] text-[hsl(var(--cad-green))] hover:bg-[hsl(var(--cad-green))]/10"
+              className="w-full border-green-600 text-green-600 hover:bg-green-50"
               data-testid="button-watch-tutorials"
               onClick={() => window.location.href = "/api/demo-login"}
             >
@@ -440,7 +444,7 @@ export default function Support() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-[hsl(var(--cad-border))] bg-[hsl(var(--cad-chrome))]">
+      <footer className="border-t border-gray-200 bg-slate-50">
         <div className="container mx-auto px-6 py-8">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-500">
