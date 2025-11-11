@@ -38,7 +38,7 @@ export function MobileNav({ onMore }: MobileNavProps) {
   return (
     <nav className="fixed bottom-0 inset-x-0 z-50 bg-background/95 backdrop-blur-sm border-t pb-safe">
       <div className="mx-auto max-w-screen-md flex justify-around py-2 px-2">
-        <NavItem icon={Home} label="Home" href="/dashboard" />
+        <NavItem icon={Home} label="Home" href="/mobile-dashboard" />
         <NavItem icon={Calendar} label="Schedule" href="/schedule-grid" />
         <NavItem icon={Clock} label="Time" href="/time-tracking" />
         <NavItem icon={MessageSquare} label="Chat" href="/mobile-chat" />
