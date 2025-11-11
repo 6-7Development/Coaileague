@@ -24,6 +24,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useIsMobile, ResponsiveAppFrame } from "@/hooks/use-mobile";
 import { MobileLoading } from "@/components/mobile-loading";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
+import { ProgressLoadingOverlay } from "@/components/progress-loading-overlay";
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
 import CustomLogin from "@/pages/custom-login";
@@ -260,14 +261,7 @@ function AppContent() {
 
   // Show minimal loading state during auth check to prevent routing issues
   if (isLoading) {
-    return (
-      <div className="fixed inset-0 bg-background flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <div className="h-8 w-8 mx-auto border-2 border-primary border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    );
+    return <ProgressLoadingOverlay isVisible={true} title="Authenticating" status="loading" />;
   }
 
   if (!isAuthenticated) {

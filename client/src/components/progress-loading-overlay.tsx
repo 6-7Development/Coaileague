@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 interface ProgressLoadingOverlayProps {
   isVisible: boolean;
   title?: string;
-  status?: "loading" | "success" | "error";
+  status?: "loading" | "success" | "error" | "info";
 }
 
 const TECH_MESSAGES = [
