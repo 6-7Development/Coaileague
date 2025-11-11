@@ -8,6 +8,7 @@ import { queueManager } from './services/helpOsQueue';
 import type { ChatMessage } from '@shared/schema';
 import { trackConnection, trackDisconnection, checkMessageRateLimit } from './middleware/wsRateLimiter';
 import { randomUUID } from 'crypto';
+import { sanitizeChatMessage, sanitizePlainText } from './lib/sanitization';
 
 /**
  * Helper function to create system messages with all required ChatMessage fields
@@ -1750,13 +1751,16 @@ export function setupWebSocket(server: Server) {
               return; // Don't save the abusive message
             }
 
+            // SECURITY: Sanitize message content to prevent XSS attacks
+            const sanitizedMessage = sanitizeChatMessage(payload.message);
+
             // Save message to database
             const savedMessage = await storage.createChatMessage({
               conversationId: ws.conversationId, // Use server-bound conversation, not client payload
               senderId: ws.userId?.startsWith('guest-') ? null : ws.userId, // Guests don't have user records - use null for FK compatibility
               senderName: displayName, // Use server-formatted display name
               senderType: payload.senderType,
-              message: payload.message,
+              message: sanitizedMessage, // Use sanitized message
               messageType: 'text',
             });
 
