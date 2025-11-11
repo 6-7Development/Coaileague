@@ -90,58 +90,69 @@ export function PageHeader({
         )}
 
         {/* Header Content */}
-        <div className={cn(
-          "flex items-start gap-4",
-          isCentered ? "flex-col items-center justify-center text-center" : "justify-between"
-        )}>
-          <div className={cn(
-            "flex items-center gap-3 min-w-0",
-            isCentered ? "flex-col" : "flex-1"
-          )}>
-            {/* Back Button */}
-            {showBackButton && !isCentered && (
-              <Link href={backHref}>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="shrink-0"
-                  data-testid="button-back"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                  <span className="sr-only">Back to Dashboard</span>
-                </Button>
-              </Link>
-            )}
-
-            {/* Title & Description */}
-            <div className={cn("min-w-0", isCentered ? "w-full" : "flex-1")}>
-              <h1 className={cn(
-                "text-2xl sm:text-3xl font-semibold text-foreground tracking-tight",
-                isCentered ? "text-center w-full" : "truncate"
-              )}>
+        {isCentered ? (
+          // Centered Layout: Three-column grid for true centering
+          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4 w-full">
+            {/* Left spacer */}
+            <div></div>
+            
+            {/* Center: Title & Description */}
+            <div className="flex flex-col items-center justify-center text-center">
+              <h1 className="text-2xl sm:text-3xl font-semibold text-foreground tracking-tight whitespace-nowrap">
                 {title}
               </h1>
               {description && (
-                <p className={cn(
-                  "text-sm text-muted-foreground mt-1",
-                  isCentered ? "text-center w-full" : "line-clamp-2"
-                )}>
+                <p className="text-sm text-muted-foreground mt-1">
                   {description}
                 </p>
               )}
             </div>
-          </div>
-
-          {/* Action Buttons */}
-          {children && (
-            <div className={cn(
-              "flex items-center gap-2 shrink-0",
-              isCentered && "mt-2"
-            )}>
+            
+            {/* Right: Action Buttons */}
+            <div className="flex items-center gap-2 justify-end">
               {children}
             </div>
-          )}
-        </div>
+          </div>
+        ) : (
+          // Left-aligned Layout: Standard flex layout
+          <div className="flex items-start gap-4 justify-between">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              {/* Back Button */}
+              {showBackButton && (
+                <Link href={backHref}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="shrink-0"
+                    data-testid="button-back"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                    <span className="sr-only">Back to Dashboard</span>
+                  </Button>
+                </Link>
+              )}
+
+              {/* Title & Description */}
+              <div className="min-w-0 flex-1">
+                <h1 className="text-2xl sm:text-3xl font-semibold text-foreground tracking-tight truncate">
+                  {title}
+                </h1>
+                {description && (
+                  <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                    {description}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            {children && (
+              <div className="flex items-center gap-2 shrink-0">
+                {children}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
