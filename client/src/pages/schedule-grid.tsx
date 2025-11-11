@@ -437,8 +437,8 @@ function DroppableDayCell({ employeeId, date, shifts, employees, clients, onShif
       onClick={handleCellClick}
       className={`
         min-h-[120px] flex-1 min-w-[140px] border-r border-b p-2 relative group cursor-pointer transition-all
-        ${isOver ? 'bg-primary/10 ring-2 ring-primary' : 'bg-background'}
-        ${isToday ? 'bg-muted/5 border-l-2 border-l-primary' : ''}
+        ${isOver ? 'bg-primary/10 ring-2 ring-primary' : ''}
+        ${isToday ? 'bg-blue-50/50 border-l-2 border-l-primary' : ''}
         hover-elevate
       `}
       data-testid={`drop-zone-${dropId}`}
@@ -475,7 +475,7 @@ function DroppableDayCell({ employeeId, date, shifts, employees, clients, onShif
 }
 
 // Employee row with day columns
-function EmployeeRow({ employee, weekDays, shifts, employees, clients, onShiftClick, onCreateShift, onAddAcknowledgment }: {
+function EmployeeRow({ employee, weekDays, shifts, employees, clients, onShiftClick, onCreateShift, onAddAcknowledgment, employeeIndex }: {
   employee: Employee;
   weekDays: Date[];
   shifts: Shift[];
@@ -484,11 +484,12 @@ function EmployeeRow({ employee, weekDays, shifts, employees, clients, onShiftCl
   onShiftClick: (shift: Shift) => void;
   onCreateShift?: (employeeId: string, date: Date) => void;
   onAddAcknowledgment?: (shift: Shift) => void;
+  employeeIndex: number;
 }) {
   return (
-    <div className="flex">
+    <div className={`flex ${employeeIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-blue-50 transition-all`}>
       {/* Employee name cell */}
-      <div className="sticky left-0 z-10 w-[140px] sm:w-[160px] border-r border-b bg-card p-2 flex items-center gap-2 min-h-[120px]">
+      <div className="sticky left-0 z-10 w-[140px] sm:w-[160px] border-r border-b p-2 flex items-center gap-2 min-h-[120px]">
         <Avatar className="h-7 w-7">
           <AvatarFallback className="text-xs bg-primary/20">
             {employee.firstName[0]}{employee.lastName[0]}
@@ -549,7 +550,7 @@ function PlaceholderEmployeeRow({ weekDays, onCreateShift, onAddEmployee }: {
         <div
           key={moment(day).format('YYYY-MM-DD')}
           onClick={() => onCreateShift && onCreateShift('open', day)}
-          className="min-h-[120px] flex-1 min-w-[140px] border-r border-b p-2 relative group cursor-pointer transition-all hover:bg-muted/5 hover:border-primary/30"
+          className="min-h-[120px] flex-1 min-w-[140px] border-r border-b p-2 relative group cursor-pointer transition-all bg-white hover:bg-gray-50 hover:border-primary/30"
           data-testid={`placeholder-slot-${moment(day).format('YYYY-MM-DD')}`}
         >
           <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300">
@@ -1227,7 +1228,7 @@ export default function ScheduleGrid() {
         {/* Sling-style: Separate horizontal bars */}
         
         {/* Bar 1: Top Navigation Tabs */}
-        <div className="border-b bg-muted/30">
+        <div className="border-b bg-gray-50">
         <div className="flex items-center justify-between px-2 sm:px-4 py-1.5 sm:py-2 mobile-scroll gap-2">
           <div className="flex items-center gap-0.5 sm:gap-1 flex-1 min-w-0">
             <Tooltip>
@@ -1235,7 +1236,7 @@ export default function ScheduleGrid() {
                 <Button 
                   variant="ghost" 
                   size="sm" 
-                  className="text-[10px] sm:text-xs whitespace-nowrap bg-muted min-h-[44px] min-w-[44px] px-2 sm:px-3" 
+                  className="text-[10px] sm:text-xs whitespace-nowrap bg-white min-h-[44px] min-w-[44px] px-2 sm:px-3" 
                   data-testid="tab-all-schedule"
                   aria-label="All Schedule"
                 >
@@ -1533,7 +1534,7 @@ export default function ScheduleGrid() {
       </div>
 
       {/* Bar 3: Legend */}
-      <div className="border-b bg-muted/20 px-4 py-2">
+      <div className="border-b bg-white px-4 py-2">
         <div className="flex items-center gap-4 text-xs flex-wrap">
           <div className="flex items-center gap-1.5">
             <div className="h-3 w-3 rounded bg-gradient-to-br from-blue-500 to-blue-600"></div>
@@ -1561,9 +1562,9 @@ export default function ScheduleGrid() {
         <div className="flex-1 overflow-auto">
           <div className="min-w-fit">
             {/* Day headers */}
-            <div className="flex sticky top-0 z-20 bg-background border-b-2">
+            <div className="flex sticky top-0 z-20 bg-white border-b-2">
               {/* Empty corner cell */}
-              <div className="sticky left-0 z-30 w-[140px] sm:w-[160px] border-r bg-muted/20 h-[60px]"></div>
+              <div className="sticky left-0 z-30 w-[140px] sm:w-[160px] border-r bg-gray-50 h-[60px]"></div>
               
               {/* Day column headers */}
               {weekDays.map((day) => {
@@ -1573,7 +1574,7 @@ export default function ScheduleGrid() {
                     key={moment(day).format('YYYY-MM-DD')}
                     className={`
                       flex-1 min-w-[140px] border-r p-3 text-center flex flex-col justify-center h-[60px]
-                      ${isToday ? 'bg-muted/10 border-l-2 border-l-primary' : 'bg-muted/10'}
+                      ${isToday ? 'bg-blue-50 border-l-2 border-l-primary' : 'bg-gray-50'}
                     `}
                   >
                     <div className={`text-[10px] font-semibold uppercase ${isToday ? 'text-primary' : 'text-muted-foreground'}`}>
@@ -1599,7 +1600,7 @@ export default function ScheduleGrid() {
               />
             ) : (
               <>
-                {employees.map(employee => (
+                {employees.map((employee, empIdx) => (
                   <EmployeeRow
                     key={employee.id}
                     employee={employee}
@@ -1610,6 +1611,7 @@ export default function ScheduleGrid() {
                     onShiftClick={handleShiftClick}
                     onCreateShift={handleOpenCreateShiftDialog}
                     onAddAcknowledgment={handleAddAcknowledgment}
+                    employeeIndex={empIdx}
                   />
                 ))}
               </>
