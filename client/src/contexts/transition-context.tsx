@@ -1,5 +1,7 @@
 import { createContext, useContext, useState, useCallback, ReactNode } from "react";
-import { UniversalTransitionOverlay, TransitionStatus } from "@/components/universal-transition-overlay";
+import { ProgressLoadingOverlay } from "@/components/progress-loading-overlay";
+
+export type TransitionStatus = "loading" | "success" | "error" | "info";
 
 interface TransitionOptions {
   status?: TransitionStatus;
@@ -51,13 +53,10 @@ export function TransitionProvider({ children }: { children: ReactNode }) {
   return (
     <TransitionContext.Provider value={{ showTransition, hideTransition, updateTransition }}>
       {children}
-      <UniversalTransitionOverlay
+      <ProgressLoadingOverlay
         isVisible={isVisible}
-        status={options.status}
-        message={options.message}
-        submessage={options.submessage}
-        duration={options.duration}
-        onComplete={handleComplete}
+        status={options.status || "loading"}
+        title={options.message || "Loading"}
       />
     </TransitionContext.Provider>
   );
