@@ -106,9 +106,9 @@ export default function Pricing() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-gradient text-white">
+    <div className="min-h-screen bg-white">
       {/* Modern Header */}
-      <div className="bg-card-translucent border-b border-primary/20 backdrop-blur-sm">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-white shadow-md">
         <div className="container mx-auto px-3 sm:px-6 h-16 flex items-center justify-between gap-2">
           <div className="shrink-0">
             {/* Desktop: Show full logo */}
@@ -123,119 +123,121 @@ export default function Pricing() {
           <div className="flex items-center gap-2 shrink-0">
             <Button
               variant="ghost"
-              className="min-h-[44px] px-3 text-sm text-slate-400 hover:text-white whitespace-nowrap"
+              className="min-h-[44px] px-3 text-sm text-gray-600 hover:text-gray-900 whitespace-nowrap"
               onClick={() => window.location.href = "/"}
+              data-testid="button-back"
             >
               Back
             </Button>
             <Button
-              className="min-h-[44px] px-3 sm:px-4 text-sm bg-gradient-to-r from-primary to-accent btn-scale whitespace-nowrap"
+              className="min-h-[44px] px-3 sm:px-4 text-sm bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white whitespace-nowrap shadow-md"
               onClick={() => window.location.href = "/api/login"}
+              data-testid="button-launch-platform"
             >
               <span className="hidden sm:inline">Launch Platform</span>
               <span className="sm:hidden">Login</span>
             </Button>
           </div>
         </div>
-      </div>
+      </nav>
 
       {/* Pricing Hero */}
-      <section className="responsive-container responsive-spacing-y">
-        <div className="text-center space-y-4 mb-12 animate-slide-up fix-overflow">
-          <Badge className="bg-muted/10 text-primary border-primary/20 mb-2">
+      <section className="pt-24 pb-16 px-6 bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50">
+        <div className="container mx-auto max-w-7xl">
+        <div className="text-center space-y-4 mb-12">
+          <Badge className="bg-gradient-to-r from-emerald-100 to-green-100 text-emerald-700 border-emerald-200 mb-2 shadow-md">
             <Sparkles className="h-3 w-3 mr-1" />
             Enterprise-Grade ROI
           </Badge>
-          <h1 className="responsive-h1 text-wrap-auto">
-            <span className="gradient-text">Investment That Pays Itself</span> In Weeks
+          <h1 className="text-4xl lg:text-5xl font-bold tracking-tight text-gray-900">
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 via-green-600 to-teal-600">Investment That Pays Itself</span> In Weeks
           </h1>
-          <p className="responsive-body text-slate-400 max-w-2xl mx-auto text-wrap-auto">
+          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
             Replace entire departments. Save $100k-$500k annually. All plans include 14-day free trial.
           </p>
         </div>
 
         {/* Pricing Tiers */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
           {tiers.map((tier, index) => (
             <Card
               key={tier.name}
-              className={`card-interactive hover-lift p-8 space-y-6 relative animate-slide-up ${
-                tier.popular ? "border-primary/50" : ""
+              className={`bg-white border-2 p-8 space-y-6 relative hover:border-emerald-300 hover:shadow-2xl transition-all ${
+                tier.popular ? "border-emerald-300 shadow-xl" : "border-gray-200"
               }`}
-              style={{ animationDelay: `${index * 0.1}s` }}
               data-testid={`card-pricing-${tier.name.toLowerCase().replace(/\s+/g, "-")}`}
             >
               {tier.popular && (
-                <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-primary to-accent text-white border-none">
+                <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-emerald-600 to-green-600 text-white border-none shadow-lg">
                   Best Value
                 </Badge>
               )}
 
               <div className="space-y-3">
-                <h3 className="text-2xl font-bold text-white">
+                <h3 className="text-2xl font-bold text-gray-900">
                   {tier.name}
                 </h3>
-                <p className="text-sm text-slate-400">
+                <p className="text-sm text-gray-600">
                   {tier.description}
                 </p>
                 
                 {/* ROI Badge */}
                 <div className="flex items-center gap-2 pt-2">
-                  <TrendingUp className="h-4 w-4 text-primary" />
-                  <span className="text-sm font-semibold text-primary">
+                  <TrendingUp className="h-4 w-4 text-emerald-600" />
+                  <span className="text-sm font-semibold text-emerald-700">
                     {tier.roi}
                   </span>
-                  <span className="text-xs text-slate-500">
-                    • Save {tier.savings}
+                  <span className="text-xs text-gray-500">
+                    • {tier.savings}
                   </span>
                 </div>
               </div>
 
               <div className="space-y-1">
-                <div className="text-4xl font-bold font-mono gradient-text">
+                <div className="text-4xl font-bold font-mono text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-green-600">
                   {tier.price}
-                  {tier.price !== "Contact Sales" && (
-                    <span className="text-lg font-normal text-slate-400">
+                  {tier.price !== "Contact Sales" && tier.price !== "Custom" && (
+                    <span className="text-lg font-normal text-gray-500">
                       /mo
                     </span>
                   )}
                 </div>
-                {tier.price !== "Contact Sales" && (
-                  <p className="text-xs text-slate-500">
+                {tier.price !== "Contact Sales" && tier.price !== "Custom" && (
+                  <p className="text-xs text-gray-500">
                     Billed annually • 14-day free trial
                   </p>
                 )}
               </div>
 
               <Button
-                className={`w-full h-11 btn-scale ${
+                className={`w-full h-11 shadow-md ${
                   tier.popular
-                    ? "bg-gradient-to-r from-primary to-accent"
-                    : ""
+                    ? "bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white"
+                    : "bg-white text-gray-900 border-2 border-gray-300 hover:border-emerald-400 hover:bg-gray-50"
                 }`}
                 variant={tier.popular ? "default" : "outline"}
-                onClick={() => window.location.href = tier.cta === "Contact Sales" ? "mailto:sales@workforceos.com" : "/api/login"}
+                onClick={() => window.location.href = tier.cta === "Contact Sales" ? "/contact" : "/api/login"}
                 data-testid={`button-${tier.name.toLowerCase().replace(/\s+/g, "-")}-cta`}
               >
                 {tier.cta}
               </Button>
 
-              <div className="space-y-3 pt-4 border-t border-slate-700">
+              <div className="space-y-3 pt-4 border-t border-gray-200">
                 {tier.features.map((feature) => (
                   <div
                     key={feature.name}
                     className="flex items-start gap-3 text-sm"
                   >
                     {feature.included ? (
-                      <Check className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                      <Check className="h-5 w-5 text-emerald-600 flex-shrink-0 mt-0.5" />
                     ) : (
-                      <X className="h-5 w-5 text-slate-600 flex-shrink-0 mt-0.5" />
+                      <X className="h-5 w-5 text-gray-400 flex-shrink-0 mt-0.5" />
                     )}
                     <span
                       className={
                         feature.included
-                          ? "text-slate-300"
-                          : "text-slate-600"
+                          ? "text-gray-700"
+                          : "text-gray-400"
                       }
                     >
                       {feature.name}
@@ -246,13 +248,17 @@ export default function Pricing() {
             </Card>
           ))}
         </div>
+        </div>
+        </div>
+      </section>
 
-        {/* Cost Breakdown */}
-        <div className="mt-16 max-w-4xl mx-auto card-interactive hover-lift p-8">
+      {/* Cost Breakdown */}
+      <section className="py-16 px-6 bg-white">
+        <div className="container mx-auto max-w-6xl">
           <div className="space-y-6">
             <div className="text-center space-y-2">
-              <h2 className="text-2xl font-bold gradient-text">Why Our Pricing Makes Sense</h2>
-              <p className="text-sm text-slate-400">
+              <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-green-600">Why Our Pricing Makes Sense</h2>
+              <p className="text-gray-600">
                 Compare our monthly fee to the staff costs you're replacing
               </p>
             </div>
@@ -284,36 +290,36 @@ export default function Pricing() {
                   netSavings: "$300k+/yr"
                 },
               ].map((breakdown) => (
-                <div key={breakdown.plan} className="bg-slate-900/50 border border-primary/20 rounded-lg p-6 space-y-4">
+                <div key={breakdown.plan} className="bg-gradient-to-br from-emerald-50 to-green-50 border-2 border-emerald-200 rounded-xl p-6 space-y-4 hover:shadow-xl transition-shadow">
                   <div className="space-y-2">
-                    <h3 className="font-semibold text-lg text-white">
+                    <h3 className="font-semibold text-lg text-gray-900">
                       {breakdown.plan}
                     </h3>
-                    <div className="text-2xl font-bold text-primary font-mono">
+                    <div className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-green-600 font-mono">
                       {breakdown.price}
                     </div>
                   </div>
 
                   <div className="space-y-2 text-sm">
-                    <div className="text-xs text-slate-500 uppercase tracking-wide">
+                    <div className="text-xs text-emerald-700 uppercase tracking-wide font-semibold">
                       Replaces:
                     </div>
                     {breakdown.replaces.map((item) => (
-                      <div key={item} className="flex items-center gap-2 text-slate-300">
-                        <Check className="h-3 w-3 text-primary" />
+                      <div key={item} className="flex items-center gap-2 text-gray-700">
+                        <Check className="h-3 w-3 text-emerald-600" />
                         {item}
                       </div>
                     ))}
                   </div>
 
-                  <div className="pt-4 border-t border-slate-700 space-y-1">
+                  <div className="pt-4 border-t border-emerald-300 space-y-1">
                     <div className="flex justify-between text-sm">
-                      <span className="text-slate-400">Annual plan cost:</span>
-                      <span className="text-rose-400 font-mono">-{breakdown.costOfPlan}</span>
+                      <span className="text-gray-600">Annual plan cost:</span>
+                      <span className="text-rose-600 font-mono font-semibold">-{breakdown.costOfPlan}</span>
                     </div>
                     <div className="flex justify-between text-sm font-semibold pt-2">
-                      <span className="text-white">Net savings:</span>
-                      <span className="text-primary font-mono text-lg">+{breakdown.netSavings}</span>
+                      <span className="text-gray-900">Net savings:</span>
+                      <span className="text-emerald-700 font-mono text-lg">+{breakdown.netSavings}</span>
                     </div>
                   </div>
                 </div>
@@ -321,14 +327,14 @@ export default function Pricing() {
             </div>
 
             {/* Overage Information */}
-            <div className="mt-8 p-6 bg-secondary/5 border border-secondary/20 rounded-lg">
+            <div className="mt-8 p-6 bg-blue-50 border-2 border-blue-200 rounded-xl">
               <div className="flex items-start gap-3">
-                <TrendingUp className="h-5 w-5 text-secondary flex-shrink-0 mt-0.5" />
+                <TrendingUp className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
                 <div className="space-y-1">
-                  <h3 className="font-semibold text-white">Fair Usage & Overage Billing</h3>
-                  <p className="text-sm text-slate-400">
-                    Each plan includes a set number of employees (25 for Starter, 100 for Professional). 
-                    If you exceed your plan limit, additional employees are billed at <strong className="text-secondary">$15/employee/month</strong>.
+                  <h3 className="font-semibold text-gray-900">Fair Usage & Overage Billing</h3>
+                  <p className="text-sm text-gray-700">
+                    Each plan includes a set number of employees (25 for Starter, 150 for Professional). 
+                    If you exceed your plan limit, additional employees are billed at <strong className="text-blue-700">$15/employee/month</strong>.
                     This ensures you only pay for what you use while maintaining consistent pricing.
                   </p>
                 </div>
@@ -336,33 +342,33 @@ export default function Pricing() {
             </div>
 
             {/* AI Features & Token Usage */}
-            <div className="mt-4 p-6 bg-muted/5 border border-primary/20 rounded-lg">
+            <div className="mt-4 p-6 bg-purple-50 border-2 border-purple-200 rounded-xl">
               <div className="flex items-start gap-3">
-                <Sparkles className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                <Sparkles className="h-5 w-5 text-purple-600 flex-shrink-0 mt-0.5" />
                 <div className="space-y-3">
-                  <h3 className="font-semibold text-white">AI Features & Token Usage</h3>
-                  <p className="text-sm text-slate-400">
-                    AI-powered features (HelpOS™ Support Bot, TrainingOS™ AI, Smart RFP Analysis, Platform Healing) operate on a <strong className="text-primary">customer-pays usage model</strong> to ensure fair pricing as we scale.
+                  <h3 className="font-semibold text-gray-900">AI Features & Token Usage</h3>
+                  <p className="text-sm text-gray-700">
+                    AI-powered features (HelpOS™ Support Bot, TrainingOS™ AI, Smart RFP Analysis, Platform Healing) operate on a <strong className="text-purple-700">customer-pays usage model</strong> to ensure fair pricing as we scale.
                   </p>
                   <div className="grid sm:grid-cols-2 gap-3 pt-2">
                     <div className="space-y-1">
-                      <div className="text-xs font-semibold text-primary">HelpOS™ Support Bot</div>
-                      <div className="text-xs text-slate-400">$0.002 per message • ~$0.50 avg per session</div>
+                      <div className="text-xs font-semibold text-purple-700">HelpOS™ Support Bot</div>
+                      <div className="text-xs text-gray-600">$0.002 per message • ~$0.50 avg per session</div>
                     </div>
                     <div className="space-y-1">
-                      <div className="text-xs font-semibold text-primary">TrainingOS™ AI Tutor</div>
-                      <div className="text-xs text-slate-400">$0.003 per interaction • ~$2 avg per course</div>
+                      <div className="text-xs font-semibold text-purple-700">TrainingOS™ AI Tutor</div>
+                      <div className="text-xs text-gray-600">$0.003 per interaction • ~$2 avg per course</div>
                     </div>
                     <div className="space-y-1">
-                      <div className="text-xs font-semibold text-primary">Smart RFP Analysis</div>
-                      <div className="text-xs text-slate-400">$0.10 per RFP document analyzed</div>
+                      <div className="text-xs font-semibold text-purple-700">Smart RFP Analysis</div>
+                      <div className="text-xs text-gray-600">$0.10 per RFP document analyzed</div>
                     </div>
                     <div className="space-y-1">
-                      <div className="text-xs font-semibold text-primary">Platform Healing AI</div>
-                      <div className="text-xs text-slate-400">$0.005 per diagnostic session</div>
+                      <div className="text-xs font-semibold text-purple-700">Platform Healing AI</div>
+                      <div className="text-xs text-gray-600">$0.005 per diagnostic session</div>
                     </div>
                   </div>
-                  <p className="text-xs text-slate-500 pt-2 border-t border-primary/10">
+                  <p className="text-xs text-gray-500 pt-2 border-t border-purple-200">
                     <strong>Example:</strong> Professional plan with 50 employees using AI features moderately: Base $999/mo + ~$25/mo AI usage = $1,024/mo total (still saving $100k+/year vs. traditional staffing).
                   </p>
                 </div>
@@ -370,18 +376,20 @@ export default function Pricing() {
             </div>
           </div>
         </div>
+      </section>
 
-        {/* FAQ */}
-        <div className="mt-20 max-w-3xl mx-auto space-y-8">
+      {/* FAQ */}
+      <section className="py-16 px-6 bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50">
+        <div className="container mx-auto max-w-3xl space-y-8">
           <div className="text-center space-y-2">
-            <h2 className="text-3xl font-bold gradient-text">Frequently Asked Questions</h2>
+            <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-green-600">Frequently Asked Questions</h2>
           </div>
 
           <div className="space-y-4">
             {[
               {
-                q: "How does WorkforceOS save me money?",
-                a: "WorkforceOS automates tasks traditionally handled by multiple staff members. At $999/month for Professional, you save over $100k/year by replacing HR coordinators, payroll specialists, and training platforms. The ROI is typically 10-20x your monthly investment.",
+                q: "How does AutoForce™ save me money?",
+                a: "AutoForce™ automates tasks traditionally handled by multiple staff members. At $999/month for Professional, you save over $100k/year by replacing HR coordinators, payroll specialists, and training platforms. The ROI is typically 10-20x your monthly investment.",
               },
               {
                 q: "What's included in the free trial?",
@@ -389,11 +397,11 @@ export default function Pricing() {
               },
               {
                 q: "Can I start with Starter and upgrade later?",
-                a: "Absolutely. Most customers start with Starter ($299/mo) and upgrade to Professional ($999/mo) within 3-6 months as they see ROI. Your data migrates seamlessly, and we'll credit any unused time toward your new plan.",
+                a: "Absolutely. Most customers start with Starter ($599/mo) and upgrade to Professional ($999/mo) within 3-6 months as they see ROI. Your data migrates seamlessly, and we'll credit any unused time toward your new plan.",
               },
               {
                 q: "What happens if I exceed my employee limit?",
-                a: "No problem! Additional employees beyond your plan limit are billed at $15/employee/month. For example, if you have 30 employees on the Starter plan (25 included), you'll pay $299 + (5 × $15) = $374/month total.",
+                a: "No problem! Additional employees beyond your plan limit are billed at $15/employee/month. For example, if you have 55 employees on the Starter plan (50 included), you'll pay $599 + (5 × $15) = $674/month total.",
               },
               {
                 q: "What payment methods do you accept?",
@@ -410,12 +418,12 @@ export default function Pricing() {
             ].map((faq) => (
               <div
                 key={faq.q}
-                className="card-interactive p-6 hover-lift"
+                className="bg-white border-2 border-gray-200 rounded-xl p-6 hover:border-emerald-300 hover:shadow-lg transition-all"
               >
-                <h3 className="font-semibold mb-2 text-white">
+                <h3 className="font-semibold mb-2 text-gray-900">
                   {faq.q}
                 </h3>
-                <p className="text-sm text-slate-400">
+                <p className="text-sm text-gray-600">
                   {faq.a}
                 </p>
               </div>
@@ -425,24 +433,24 @@ export default function Pricing() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-primary/20 bg-card-translucent backdrop-blur-sm">
+      <footer className="border-t border-gray-200 bg-white">
         <div className="container mx-auto px-6 py-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-sm text-slate-400">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-2 text-sm text-gray-600">
               <AutoForceLogo size="sm" variant="icon" />
-              <span>© 2025 WorkForceOS by Drill Consulting 360. Enterprise-grade workforce automation.</span>
+              <span className="text-xs sm:text-sm">© 2025 AutoForce™ by Drill Consulting 360. Enterprise-grade workforce automation.</span>
             </div>
-            <div className="flex gap-6 text-xs text-slate-400">
-              <a href="/support" className="hover:text-white transition-colors" data-testid="link-support">
+            <div className="flex gap-4 sm:gap-6 text-xs text-gray-600">
+              <a href="/support" className="hover:text-emerald-600 transition-colors" data-testid="link-support">
                 Support Center
               </a>
-              <a href="/contact" className="hover:text-white transition-colors" data-testid="link-contact">
+              <a href="/contact" className="hover:text-emerald-600 transition-colors" data-testid="link-contact">
                 Contact Us
               </a>
-              <a href="#" className="hover:text-white transition-colors">
+              <a href="#" className="hover:text-emerald-600 transition-colors">
                 Privacy
               </a>
-              <a href="#" className="hover:text-white transition-colors">
+              <a href="#" className="hover:text-emerald-600 transition-colors">
                 Terms
               </a>
             </div>
