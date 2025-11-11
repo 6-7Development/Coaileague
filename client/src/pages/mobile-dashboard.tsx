@@ -2,7 +2,9 @@ import { MessageSquare, HelpCircle, Mail, Shield, Calendar, Clock, Users, Layout
 import { AppShellMobile } from "@/components/mobile/AppShellMobile";
 import { MobileNav } from "@/components/mobile/MobileNav";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
-import { useQuery } from "@tanstack/react-query";
+import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/hooks/useAuth";
+import { useEmployee } from "@/hooks/useEmployee";
 
 function FeatureCard({ icon: Icon, label, href }: { icon: typeof MessageSquare; label: string; href: string }) {
   return (
@@ -22,13 +24,20 @@ function FeatureCard({ icon: Icon, label, href }: { icon: typeof MessageSquare; 
 }
 
 export default function MobileDashboard() {
-  const { data: currentUser } = useQuery<{ user: { email: string; platformRole?: string } }>({
-    queryKey: ["/api/auth/me"],
-    retry: false,
-  });
+  const { user } = useAuth();
+  const { employee, employeeId } = useEmployee(); // RBAC tracking - employee ID required
 
-  const isStaff = currentUser?.user?.platformRole &&
-    ['root_admin', 'deputy_admin', 'support_manager', 'sysop', 'support_agent'].includes(currentUser.user.platformRole);
+  const isStaff = user?.platformRole &&
+    ['root_admin', 'deputy_admin', 'support_manager', 'sysop', 'support_agent'].includes(user.platformRole);
+
+  // Generate display name like desktop does
+  const displayName = user?.firstName && user?.lastName 
+    ? `${user.firstName} ${user.lastName}` 
+    : user?.email?.split('@')[0] || 'User';
+    
+  const initials = user?.firstName && user?.lastName
+    ? `${user.firstName[0]}${user.lastName[0]}`.toUpperCase()
+    : user?.email?.[0]?.toUpperCase() || "U";
 
   return (
     <div className="min-h-screen bg-background">
@@ -38,14 +47,26 @@ export default function MobileDashboard() {
           <CardHeader className="pb-3">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-primary-foreground font-bold">
-                {currentUser?.user?.email?.[0]?.toUpperCase() || "U"}
+                {initials}
               </div>
               <div className="flex-1 min-w-0">
                 <CardTitle className="text-base truncate">
-                  Welcome back!
+                  Welcome, {displayName}!
                 </CardTitle>
-                <p className="text-xs text-muted-foreground truncate">
-                  {currentUser?.user?.email || "Loading..."}
+                <div className="flex items-center gap-2 flex-wrap mt-0.5">
+                  {employeeId && (
+                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4" data-testid="badge-employee-id">
+                      {employeeId}
+                    </Badge>
+                  )}
+                  {employee?.workspaceRole && (
+                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4" data-testid="badge-workspace-role">
+                      {employee.workspaceRole.replace(/_/g, ' ')}
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground truncate mt-1">
+                  {user?.email || "Loading..."}
                 </p>
               </div>
             </div>

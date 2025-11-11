@@ -2091,9 +2091,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get current employee profile (Employee Self-Service)
-  app.get('/api/employees/me', isAuthenticated, async (req: AuthenticatedRequest, res) => {
+  // Get current user's employee record - supports BOTH custom auth and Replit auth
+  app.get('/api/employees/me', async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      // Support BOTH auth systems for mobile/desktop compatibility
+      let userId: string | undefined;
+      
+      // Try custom auth first (session-based)
+      if (req.session?.userId) {
+        userId = req.session.userId;
+      }
+      // Try Replit Auth (OIDC)
+      else if (req.isAuthenticated?.() && req.user?.claims?.sub) {
+        userId = req.user.claims.sub;
+      }
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
       
       // Find employee by userId
       const employee = await storage.getEmployeeByUserId(userId);

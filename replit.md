@@ -33,12 +33,14 @@ The platform features a professional aesthetic using Deep Charcoal, Platinum neu
 -   **Frontend**: React, Vite, TypeScript, Wouter, TanStack Query, shadcn/ui, `react-hook-form`, `zod`.
 -   **Backend**: Express.js, TypeScript, Zod for validation.
 -   **Database**: PostgreSQL with Drizzle ORM.
--   **Authentication**: Custom session-based authentication supporting Replit Auth (OIDC) and Custom Auth, with account locking and password reset.
+-   **Authentication**: Custom session-based authentication supporting Replit Auth (OIDC) and Custom Auth, with account locking and password reset. Dual-auth middleware pattern ensures API endpoints work with both auth systems seamlessly.
 -   **Multi-Tenancy**: Data isolation managed on a workspace basis.
 -   **External Identifier System**: Human-readable IDs (e.g., ORG-XXXX, EMP-XXXX-00001) for organizations, employees, clients, and support agents, auto-generated with collision-resistant logic and per-organization sequences.
+-   **RBAC Employee Tracking**: Unified employee data access via `useEmployee` hook across mobile and desktop, providing employee IDs, workspace roles, and comprehensive employee records for audit trails and access control. Mobile pages fully synchronized with desktop for consistent RBAC enforcement.
 -   **Autonomous Automation System**: Anchor-based biweekly scheduling for BillOS™ and OperationsOS™ ensuring consistent cadence for invoicing and payroll, with FLSA-compliant calculations and audit tracking.
 -   **Security**: Stripe webhook validation, payroll data protection, strict Zod validation, workspace scoping, audit trails, comprehensive XSS protection via DOMPurify sanitization across all messaging surfaces, IPv6-compliant rate limiting (100 requests/15min per IP), and conversation-level access control for file uploads.
 -   **CommOS™ Workroom System**: Shift-linked room creation for field operations coordination, multi-file upload system with MIME type validation and filename sanitization, automated room lifecycle management via cron (5-minute cadence), participant management with isActive enforcement, comprehensive audit trail via roomEvents and AuditOS integration, and workspace-scoped access control.
+-   **Mobile Experience**: Fully responsive mobile interface with auto-detection and dedicated mobile pages. Static HTML loading screen with green shiny gradient bar, rotating messages, and percentage display (4.5-5s duration). Mobile chat and dashboard fully integrated with RBAC tracking, displaying employee IDs and roles matching desktop functionality.
 -   **Partner API Usage Tracking**: Middleware-based tracking system with caller-supplied deterministic IDs for idempotency, database deduplication, and non-blocking asynchronous architecture.
 -   **Cost Aggregation & Billing**: Automated cost calculation and Stripe invoice generation, aggregating AI usage and partner API costs per workspace with tier-based markup rates.
 -   **Partner OAuth Integration**: Secure OAuth 2.0 implementation for QuickBooks Online and Gusto, featuring AES-256-GCM encryption for tokens, PKCE, CSRF protection, auto-refresh logic, and multi-tenant isolation.
