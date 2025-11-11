@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { useEmployee } from "@/hooks/useEmployee";
 import { useChatroomWebSocket } from "@/hooks/use-chatroom-websocket";
 import { useChatSounds } from "@/hooks/use-chat-sounds";
 import { AutoForceLogo } from "@/components/autoforce-logo";
@@ -67,20 +69,28 @@ export default function ModernMobileChat() {
     return newId;
   });
 
-  // Get current user data
-  const { data: currentUser } = useQuery<{ user: { id: string; email: string; platformRole?: string } }>({
-    queryKey: ["/api/auth/me"],
-    retry: false,
-    staleTime: Infinity,
-    refetchOnWindowFocus: false,
-  });
+  // Get current user data using useAuth hook (matches desktop implementation)
+  const { user } = useAuth();
+  const { employee, employeeId } = useEmployee(); // RBAC tracking - employee ID required
 
-  const userId = currentUser?.user?.id;
-  const userName = currentUser?.user?.email || 'Guest';
-  const userPlatformRole = currentUser?.user?.platformRole;
+  const userId = user?.id;
+  // Generate display name like desktop does
+  const userName = user?.firstName && user?.lastName 
+    ? `${user.firstName} ${user.lastName}` 
+    : user?.email?.split('@')[0] || 'Guest';
+  const userPlatformRole = user?.platformRole;
   const isStaff = userPlatformRole && 
     ['root_admin', 'deputy_admin', 'support_manager', 'sysop', 'support_agent'].includes(userPlatformRole);
-  const isAuthenticated = !!currentUser?.user;
+  const isAuthenticated = !!user;
+
+  // Log employee tracking for RBAC (critical for audit trails)
+  useEffect(() => {
+    if (employeeId && userId) {
+      console.log(`[MOBILE RBAC] User authenticated: ${userName} (${employeeId}) - Role: ${employee?.workspaceRole || userPlatformRole || 'guest'}`);
+    } else if (userId) {
+      console.log(`[MOBILE RBAC] User authenticated: ${userName} (No employee record) - Role: ${userPlatformRole || 'guest'}`);
+    }
+  }, [employeeId, userId, userName, employee?.workspaceRole, userPlatformRole]);
   
   // Get role display text
   const getRoleDisplay = (role?: string) => {
@@ -1062,7 +1072,7 @@ export default function ModernMobileChat() {
                           ? 'text-green-400'
                           : 'text-green-400/70'
                     }`}>
-                      ({roleDisplay || (msg.senderId === userId ? getRoleDisplay(userPlatformRole) : null)})
+                      ({roleDisplay || (msg.senderId === userId ? getRoleDisplay(userPlatformRole || undefined) : null)})
                     </sup>
                   )}
                 </span>
