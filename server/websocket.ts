@@ -441,20 +441,24 @@ export function setupWebSocket(server: Server) {
             }
 
             // RATE LIMITING: Track connection (enforce 3 concurrent connections max)
-            const connectionTracking = await trackConnection(
-              payload.userId,
-              ws.sessionId!,
-              ws.ipAddress,
-              ws.userAgent
-            );
-            
-            if (!connectionTracking.allowed) {
-              ws.send(JSON.stringify({
-                type: 'error',
-                message: connectionTracking.error || 'Connection limit exceeded',
-              }));
-              ws.close(1008, 'Too many concurrent connections');
-              return;
+            // Skip tracking for guest users since they don't have user records
+            const isGuestUser = payload.userId?.startsWith('guest-');
+            if (!isGuestUser) {
+              const connectionTracking = await trackConnection(
+                payload.userId,
+                ws.sessionId!,
+                ws.ipAddress,
+                ws.userAgent
+              );
+              
+              if (!connectionTracking.allowed) {
+                ws.send(JSON.stringify({
+                  type: 'error',
+                  message: connectionTracking.error || 'Connection limit exceeded',
+                }));
+                ws.close(1008, 'Too many concurrent connections');
+                return;
+              }
             }
 
             // Associate this client with the conversation
@@ -3434,7 +3438,7 @@ export function setupWebSocket(server: Server) {
           // Create leave announcement
           const leaveAnnouncement = await storage.createChatMessage({
             conversationId: ws.conversationId,
-            senderId: ws.userId,
+            senderId: ws.userId?.startsWith('guest-') ? null : ws.userId, // Guests don't have user records - use null for FK compatibility
             senderName: 'Server',
             senderType: 'system',
             message: `${displayName} has left the chatroom`,
