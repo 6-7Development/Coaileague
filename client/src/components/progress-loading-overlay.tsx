@@ -44,7 +44,6 @@ export function ProgressLoadingOverlay({
 }: ProgressLoadingOverlayProps) {
   const [progress, setProgress] = useState(0);
   const [messageIndex, setMessageIndex] = useState(0);
-  const [startTime] = useState(Date.now());
   const [showError, setShowError] = useState(false);
   const [errorMessage] = useState("Authentication failed. Invalid credentials.");
 
@@ -60,9 +59,10 @@ export function ProgressLoadingOverlay({
       return;
     }
 
-    // Reset on mount
+    // Reset on mount and record start time
     setProgress(0);
     setMessageIndex(0);
+    const startTime = Date.now(); // Reset start time each time loading begins
 
     if (status !== "loading") {
       // Jump to 100% when complete
@@ -98,7 +98,7 @@ export function ProgressLoadingOverlay({
       clearInterval(interval);
       clearInterval(messageInterval);
     };
-  }, [isVisible, status, startTime, messages.length]);
+  }, [isVisible, status, messages.length]);
 
   // When loading completes, jump to 100%
   useEffect(() => {
