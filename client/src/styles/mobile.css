@@ -1,0 +1,81 @@
+/* Fluid Typography - scales smoothly from phone to tablet */
+:root {
+  --t-1: clamp(11px, 2.4vw, 12px);
+  --t0: clamp(12px, 2.8vw, 14px);
+  --t1: clamp(14px, 3.4vw, 16px);
+  --t2: clamp(16px, 4.2vw, 18px);
+  --t3: clamp(18px, 5vw, 20px);
+}
+
+.text-xs { font-size: var(--t-1); }
+.text-sm { font-size: var(--t0); }
+.text-base { font-size: var(--t1); }
+.text-lg { font-size: var(--t2); }
+.text-xl { font-size: var(--t3); }
+
+/* Safe-area + bottom nav spacing for notched devices */
+:root {
+  --bottom-nav-h: 64px;
+}
+
+.has-bottom-nav {
+  padding-bottom: calc(var(--bottom-nav-h) + env(safe-area-inset-bottom));
+}
+
+.pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+.pt-safe { padding-top: env(safe-area-inset-top); }
+.pl-safe { padding-left: env(safe-area-inset-left); }
+.pr-safe { padding-right: env(safe-area-inset-right); }
+
+/* Touch targets - minimum 44px for accessibility */
+.tap {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+.card {
+  min-height: 92px;
+  line-height: 1.2;
+}
+
+/* Tablet grids - responsive columns */
+@media (min-width: 640px) {
+  .grid-auto-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 768px) {
+  .grid-auto-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* Keyboard friendly 100vh on iOS PWA */
+@supports (-webkit-touch-callout: none) {
+  .vh-screen {
+    height: -webkit-fill-available;
+  }
+}
+
+/* Reduced motion accessibility */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* Mobile chat input - prevent keyboard overlap */
+.chat-input-sticky {
+  position: sticky;
+  bottom: 0;
+  background: var(--background);
+  z-index: 50;
+}
+
+/* Smooth scrolling for message lists */
+.smooth-scroll {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
