@@ -108,7 +108,7 @@ export default function Pricing() {
   return (
     <div className="min-h-screen bg-white">
       {/* Modern Header */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white shadow-md">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-white shadow-md border-b border-gray-200">
         <div className="container mx-auto px-3 sm:px-6 h-16 flex items-center justify-between gap-2">
           <div className="shrink-0">
             {/* Desktop: Show full logo */}
@@ -162,7 +162,7 @@ export default function Pricing() {
           {tiers.map((tier, index) => (
             <Card
               key={tier.name}
-              className={`bg-white border-2 p-8 space-y-6 relative hover:border-emerald-300 hover:shadow-2xl transition-all ${
+              className={`bg-white border-2 shadow-md p-8 space-y-6 relative hover:border-emerald-300 hover:shadow-2xl transition-all ${
                 tier.popular ? "border-emerald-300 shadow-xl" : "border-gray-200"
               }`}
               data-testid={`card-pricing-${tier.name.toLowerCase().replace(/\s+/g, "-")}`}

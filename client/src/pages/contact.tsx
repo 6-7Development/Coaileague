@@ -142,19 +142,19 @@ export default function Contact() {
 
         {/* Support Channels Grid */}
         <div className="grid md:grid-cols-2 gap-6 mb-16">
-          <Card className="bg-[hsl(var(--cad-surface-elevated))] border-[hsl(var(--cad-border-strong))] p-6 space-y-4" data-testid="card-email-support">
-            <div className="h-12 w-12 rounded-md bg-[hsl(var(--cad-cyan))]/10 flex items-center justify-center">
-              <Mail className="h-6 w-6 text-[hsl(var(--cad-cyan))]" />
+          <Card className="bg-white border-2 border-gray-200 shadow-md p-6 space-y-4" data-testid="card-email-support">
+            <div className="h-12 w-12 rounded-md bg-cyan-50 flex items-center justify-center">
+              <Mail className="h-6 w-6 text-cyan-600" />
             </div>
             <div className="space-y-2">
-              <h3 className="text-lg font-semibold">Email Support</h3>
+              <h3 className="text-lg font-semibold text-gray-900">Email Support</h3>
               <p className="text-sm text-gray-600">
                 Get detailed technical assistance
               </p>
               <div className="space-y-1 pt-2">
                 <a
                   href="mailto:support@getdc360.com"
-                  className="text-sm font-mono text-[hsl(var(--cad-blue))] hover:underline block"
+                  className="text-sm font-mono text-blue-600 hover:underline block"
                   data-testid="link-email-support"
                 >
                   support@getdc360.com
@@ -166,12 +166,12 @@ export default function Contact() {
             </div>
           </Card>
 
-          <Card className="bg-[hsl(var(--cad-surface-elevated))] border-[hsl(var(--cad-border-strong))] p-6 space-y-4" data-testid="card-live-chat">
-            <div className="h-12 w-12 rounded-md bg-[hsl(var(--cad-purple))]/10 flex items-center justify-center">
-              <MessageSquare className="h-6 w-6 text-[hsl(var(--cad-purple))]" />
+          <Card className="bg-white border-2 border-gray-200 shadow-md p-6 space-y-4" data-testid="card-live-chat">
+            <div className="h-12 w-12 rounded-md bg-purple-50 flex items-center justify-center">
+              <MessageSquare className="h-6 w-6 text-purple-600" />
             </div>
             <div className="space-y-2">
-              <h3 className="text-lg font-semibold">Live Chat</h3>
+              <h3 className="text-lg font-semibold text-gray-900">Live Chat</h3>
               <p className="text-sm text-gray-600">
                 Instant answers from our team
               </p>
@@ -179,7 +179,7 @@ export default function Contact() {
                 <Link href="/chat">
                   <Button
                     size="sm"
-                    className="bg-[hsl(var(--cad-purple))] hover:bg-[hsl(var(--cad-purple))]/90 text-white h-9"
+                    className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white h-9 shadow-md"
                     data-testid="button-start-chat"
                     disabled={isLoadingAuth}
                   >
@@ -196,10 +196,10 @@ export default function Contact() {
         </div>
 
         {/* Support Tiers */}
-        <Card className="bg-[hsl(var(--cad-surface))] border-[hsl(var(--cad-border-strong))] mb-16" data-testid="card-support-tiers">
+        <Card className="bg-white border-2 border-gray-200 shadow-md mb-16" data-testid="card-support-tiers">
           <div className="p-8 space-y-6">
             <div className="text-center space-y-2">
-              <h2 className="text-2xl font-bold">Enterprise Support Tiers</h2>
+              <h2 className="text-2xl font-bold text-gray-900">Enterprise Support Tiers</h2>
               <p className="text-sm text-gray-500">
                 Comprehensive support packages for businesses of all sizes
               </p>
@@ -208,84 +208,84 @@ export default function Contact() {
             <div className="grid md:grid-cols-3 gap-6">
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
-                  <HeadphonesIcon className="h-5 w-5 text-[hsl(var(--cad-green))]" />
-                  <h3 className="font-semibold">Standard Support</h3>
+                  <HeadphonesIcon className="h-5 w-5 text-green-600" />
+                  <h3 className="font-semibold text-gray-900">Standard Support</h3>
                 </div>
                 <ul className="space-y-2 text-sm text-gray-600">
                   <li className="flex items-start gap-2">
-                    <span className="text-[hsl(var(--cad-green))]">•</span>
+                    <span className="text-green-600">•</span>
                     Email & chat support
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-[hsl(var(--cad-green))]">•</span>
+                    <span className="text-green-600">•</span>
                     Response within 4 hours
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-[hsl(var(--cad-green))]">•</span>
+                    <span className="text-green-600">•</span>
                     Knowledge base access
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-[hsl(var(--cad-green))]">•</span>
+                    <span className="text-green-600">•</span>
                     Community forum
                   </li>
                 </ul>
-                <Badge className="bg-[hsl(var(--cad-green))]/10 text-[hsl(var(--cad-green))] border-none">
+                <Badge className="bg-green-50 text-green-600 border-none">
                   Included in Starter
                 </Badge>
               </div>
 
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
-                  <Briefcase className="h-5 w-5 text-[hsl(var(--cad-blue))]" />
-                  <h3 className="font-semibold">Priority Support</h3>
+                  <Briefcase className="h-5 w-5 text-blue-600" />
+                  <h3 className="font-semibold text-gray-900">Priority Support</h3>
                 </div>
                 <ul className="space-y-2 text-sm text-gray-600">
                   <li className="flex items-start gap-2">
-                    <span className="text-[hsl(var(--cad-blue))]">•</span>
+                    <span className="text-blue-600">•</span>
                     Phone, email & chat support
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-[hsl(var(--cad-blue))]">•</span>
+                    <span className="text-blue-600">•</span>
                     Response within 1 hour
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-[hsl(var(--cad-blue))]">•</span>
+                    <span className="text-blue-600">•</span>
                     Dedicated support engineer
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-[hsl(var(--cad-blue))]">•</span>
+                    <span className="text-blue-600">•</span>
                     Quarterly business reviews
                   </li>
                 </ul>
-                <Badge className="bg-gradient-to-r from-blue-500 to-blue-600/10 text-[hsl(var(--cad-blue))] border-none">
+                <Badge className="bg-blue-50 text-blue-600 border-none">
                   Included in Professional
                 </Badge>
               </div>
 
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
-                  <Zap className="h-5 w-5 text-[hsl(var(--cad-purple))]" />
-                  <h3 className="font-semibold">White-Glove Support</h3>
+                  <Zap className="h-5 w-5 text-purple-600" />
+                  <h3 className="font-semibold text-gray-900">White-Glove Support</h3>
                 </div>
                 <ul className="space-y-2 text-sm text-gray-600">
                   <li className="flex items-start gap-2">
-                    <span className="text-[hsl(var(--cad-purple))]">•</span>
+                    <span className="text-purple-600">•</span>
                     24/7 priority phone support
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-[hsl(var(--cad-purple))]">•</span>
+                    <span className="text-purple-600">•</span>
                     Response within 15 minutes
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-[hsl(var(--cad-purple))]">•</span>
+                    <span className="text-purple-600">•</span>
                     Dedicated account manager
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-[hsl(var(--cad-purple))]">•</span>
+                    <span className="text-purple-600">•</span>
                     Custom SLA & integrations
                   </li>
                 </ul>
-                <Badge className="bg-[hsl(var(--cad-purple))]/10 text-[hsl(var(--cad-purple))] border-none">
+                <Badge className="bg-purple-50 text-purple-600 border-none">
                   Included in Enterprise
                 </Badge>
               </div>
@@ -420,10 +420,10 @@ export default function Contact() {
                 </form>
               </>
             ) : (
-              <Card className="bg-[hsl(var(--cad-green))]/10 border-[hsl(var(--cad-green))]/20 p-8 space-y-6" data-testid="card-success">
+              <Card className="bg-green-50 border-2 border-green-200 shadow-md p-8 space-y-6" data-testid="card-success">
                 <div className="flex items-center gap-4">
-                  <div className="h-16 w-16 rounded-full bg-[hsl(var(--cad-green))]/20 flex items-center justify-center">
-                    <CheckCircle2 className="h-8 w-8 text-[hsl(var(--cad-green))]" />
+                  <div className="h-16 w-16 rounded-full bg-green-100 flex items-center justify-center">
+                    <CheckCircle2 className="h-8 w-8 text-green-600" />
                   </div>
                   <div className="space-y-1">
                     <h3 className="text-2xl font-bold text-gray-900">Support Ticket Created!</h3>
@@ -433,10 +433,10 @@ export default function Contact() {
                   </div>
                 </div>
                 
-                <div className="space-y-3 p-4 bg-[hsl(var(--cad-background))] rounded-md border border-[hsl(var(--cad-border-strong))]">
+                <div className="space-y-3 p-4 bg-white rounded-md border border-gray-200 shadow-sm">
                   <p className="text-sm font-semibold text-gray-900">Your Ticket Number:</p>
                   <div className="flex items-center justify-between gap-3">
-                    <code className="text-2xl font-bold font-mono text-[hsl(var(--cad-green))]" data-testid="text-ticket-number">
+                    <code className="text-2xl font-bold font-mono text-green-600" data-testid="text-ticket-number">
                       {ticketNumber}
                     </code>
                     <Button
@@ -449,7 +449,7 @@ export default function Contact() {
                           description: "Ticket number copied to clipboard",
                         });
                       }}
-                      className="border-[hsl(var(--cad-green))] text-[hsl(var(--cad-green))] hover:bg-[hsl(var(--cad-green))]/10"
+                      className="border-green-600 text-green-600 hover:bg-green-50"
                       data-testid="button-copy-ticket"
                     >
                       Copy
@@ -463,7 +463,7 @@ export default function Contact() {
                 <div className="flex gap-3">
                   <Button
                     onClick={() => setLocation("/chat")}
-                    className="flex-1 bg-[hsl(var(--cad-purple))] hover:bg-[hsl(var(--cad-purple))]/90 text-white"
+                    className="flex-1 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white shadow-md"
                     data-testid="button-goto-chat"
                   >
                     <MessageSquare className="h-4 w-4 mr-2" />
@@ -484,7 +484,7 @@ export default function Contact() {
                       });
                     }}
                     variant="outline"
-                    className="border-[hsl(var(--cad-border-strong))]"
+                    className="border-gray-200"
                     data-testid="button-send-another"
                   >
                     New Ticket
@@ -495,10 +495,10 @@ export default function Contact() {
           </div>
 
           <div className="space-y-6">
-            <Card className="bg-[hsl(var(--cad-surface-elevated))] border-[hsl(var(--cad-border-strong))] p-6 space-y-4">
+            <Card className="bg-white border-2 border-gray-200 shadow-md p-6 space-y-4">
               <div className="flex items-center gap-3">
-                <Clock className="h-5 w-5 text-[hsl(var(--cad-blue))]" />
-                <h3 className="font-semibold">Business Hours</h3>
+                <Clock className="h-5 w-5 text-blue-600" />
+                <h3 className="font-semibold text-gray-900">Business Hours</h3>
               </div>
               <div className="space-y-2 text-sm text-gray-600">
                 <div className="flex justify-between">
@@ -509,18 +509,18 @@ export default function Contact() {
                   <span>Saturday - Sunday:</span>
                   <span className="font-mono">8:00 AM - 8:00 PM EST</span>
                 </div>
-                <div className="pt-2 border-t border-[hsl(var(--cad-border))]">
-                  <Badge className="bg-[hsl(var(--cad-green))]/10 text-[hsl(var(--cad-green))] border-none">
+                <div className="pt-2 border-t border-gray-200">
+                  <Badge className="bg-green-50 text-green-600 border-none">
                     24/7 Emergency Support Available
                   </Badge>
                 </div>
               </div>
             </Card>
 
-            <Card className="bg-[hsl(var(--cad-surface-elevated))] border-[hsl(var(--cad-border-strong))] p-6 space-y-4">
+            <Card className="bg-white border-2 border-gray-200 shadow-md p-6 space-y-4">
               <div className="flex items-center gap-3">
-                <Globe className="h-5 w-5 text-[hsl(var(--cad-cyan))]" />
-                <h3 className="font-semibold">Online Business</h3>
+                <Globe className="h-5 w-5 text-cyan-600" />
+                <h3 className="font-semibold text-gray-900">Online Business</h3>
               </div>
               <div className="space-y-2 text-sm">
                 <p className="text-gray-600">
@@ -530,7 +530,7 @@ export default function Contact() {
                   <p className="text-xs font-semibold text-gray-900">General Inquiries:</p>
                   <a
                     href="mailto:info@getdc360.com"
-                    className="text-sm font-mono text-[hsl(var(--cad-blue))] hover:underline block"
+                    className="text-sm font-mono text-blue-600 hover:underline block"
                     data-testid="link-email-info"
                   >
                     info@getdc360.com
@@ -539,14 +539,14 @@ export default function Contact() {
               </div>
             </Card>
 
-            <Card className="bg-gradient-to-r from-blue-500 to-blue-600/10 border-[hsl(var(--cad-blue))]/20 p-6 space-y-2">
+            <Card className="bg-blue-50 border-2 border-blue-200 shadow-md p-6 space-y-2">
               <h3 className="font-semibold text-gray-900">Enterprise Inquiries</h3>
               <p className="text-sm text-gray-600">
                 Managing 100+ employees? Contact our team for custom pricing and dedicated onboarding.
               </p>
               <Button
                 variant="outline"
-                className="border-[hsl(var(--cad-blue))] text-[hsl(var(--cad-blue))] hover:bg-gradient-to-r from-blue-500 to-blue-600/10"
+                className="border-blue-600 text-blue-600 hover:bg-blue-100"
                 onClick={() => window.location.href = "mailto:info@getdc360.com"}
                 data-testid="button-enterprise-contact"
               >
@@ -558,7 +558,7 @@ export default function Contact() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-[hsl(var(--cad-border))] bg-[hsl(var(--cad-chrome))]">
+      <footer className="border-t border-gray-200 bg-slate-50">
         <div className="container mx-auto px-6 py-8">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2 text-sm text-gray-500">
