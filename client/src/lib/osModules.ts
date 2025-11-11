@@ -31,6 +31,11 @@ import {
 } from "lucide-react";
 
 export type WorkspaceRole = 
+  // Platform roles (for platform staff)
+  | 'root_admin'
+  | 'sysop'
+  | 'support_agent'
+  // Workspace roles (for workspace members)
   | 'org_owner' 
   | 'org_admin' 
   | 'department_manager' 
@@ -101,6 +106,39 @@ export interface SidebarFamily {
  * Defines which capabilities each role has access to
  */
 export const roleCapabilities: Record<WorkspaceRole, OSCapability[]> = {
+  // Platform roles (root_admin, sysop, support_agent)
+  root_admin: [
+    'view_schedules', 'manage_schedules',
+    'view_timesheets', 'approve_timesheets',
+    'view_invoices', 'manage_invoices',
+    'view_payroll', 'process_payroll',
+    'view_reports', 'advanced_analytics',
+    'manage_employees', 'manage_clients',
+    'view_audit_logs', 'manage_workspace',
+    'view_messages',
+    'support_dashboard', // Platform staff capability
+  ],
+  sysop: [
+    'view_schedules', 'manage_schedules',
+    'view_timesheets', 'approve_timesheets',
+    'view_invoices', 'manage_invoices',
+    'view_payroll', 'process_payroll',
+    'view_reports', 'advanced_analytics',
+    'manage_employees', 'manage_clients',
+    'view_audit_logs', 'manage_workspace',
+    'view_messages',
+    'support_dashboard', // Platform staff capability
+  ],
+  support_agent: [
+    'view_schedules',
+    'view_timesheets',
+    'view_invoices',
+    'view_reports',
+    'view_messages',
+    'support_dashboard', // Platform staff capability
+  ],
+  
+  // Workspace roles
   org_owner: [
     'view_schedules', 'manage_schedules',
     'view_timesheets', 'approve_timesheets',
