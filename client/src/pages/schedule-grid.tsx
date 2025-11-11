@@ -1223,7 +1223,7 @@ export default function ScheduleGrid() {
       </div>
 
       {/* Desktop View - Grid Style (shown on screens >= md) */}
-      <div className="hidden md:flex flex-col h-screen bg-background">
+      <div className="hidden md:flex flex-col h-screen bg-slate-100">
         {/* Sling-style: Separate horizontal bars */}
         
         {/* Bar 1: Top Navigation Tabs */}
