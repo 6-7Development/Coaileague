@@ -18,7 +18,7 @@ export default function EmployeeEngagement() {
   const [activeTab, setActiveTab] = useState("pulse");
 
   // Fetch active pulse surveys
-  const { data: pulseSurveys } = useQuery({
+  const { data: pulseSurveys } = useQuery<any[]>({
     queryKey: ['/api/engagement/pulse-surveys/templates'],
     queryFn: async () => {
       const response = await fetch('/api/engagement/pulse-surveys/templates?isActive=true');
@@ -28,7 +28,7 @@ export default function EmployeeEngagement() {
   });
 
   // Fetch recognition feed
-  const { data: recognitions } = useQuery({
+  const { data: recognitions } = useQuery<any[]>({
     queryKey: ['/api/engagement/recognition'],
   });
 

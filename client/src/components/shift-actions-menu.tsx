@@ -141,10 +141,7 @@ function CreateChatDialog({
 
   const createChatMutation = useMutation({
     mutationFn: async (data: any) => {
-      return await apiRequest("/api/chats/create", {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
+      return await apiRequest("POST", "/api/chats/create", data);
     },
     onSuccess: (data) => {
       toast({
@@ -388,7 +385,13 @@ function AuditDataDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const { data: auditData, isLoading } = useQuery({
+  const { data: auditData, isLoading } = useQuery<{
+    shift: any;
+    employee: any;
+    timeTracking: any[];
+    summary: any;
+    discrepancies: any[];
+  }>({
     queryKey: ["/api/shifts", shift.id, "audit"],
     enabled: open,
   });

@@ -14,23 +14,23 @@ export default function ManagerDashboard() {
   const { user } = useAuth();
 
   // Fetch all pending approvals
-  const { data: pendingTimeOff, isLoading: loadingTimeOff } = useQuery({
+  const { data: pendingTimeOff, isLoading: loadingTimeOff } = useQuery<any[]>({
     queryKey: ['/api/manager/time-off-requests'],
   });
 
-  const { data: pendingTimesheetEdits, isLoading: loadingTimesheetEdits } = useQuery({
+  const { data: pendingTimesheetEdits, isLoading: loadingTimesheetEdits } = useQuery<any[]>({
     queryKey: ['/api/manager/timesheet-edit-requests'],
   });
 
-  const { data: pendingShifts, isLoading: loadingShifts } = useQuery({
+  const { data: pendingShifts, isLoading: loadingShifts } = useQuery<any[]>({
     queryKey: ['/api/manager/shift-action-requests'],
   });
 
-  const { data: pendingExpenses, isLoading: loadingExpenses } = useQuery({
+  const { data: pendingExpenses, isLoading: loadingExpenses } = useQuery<any[]>({
     queryKey: ['/api/expenses/pending-approval'],
   });
 
-  const { data: expiringI9, isLoading: loadingI9 } = useQuery({
+  const { data: expiringI9, isLoading: loadingI9 } = useQuery<any[]>({
     queryKey: ['/api/i9-records/expiring'],
   });
 

@@ -125,11 +125,7 @@ export function MasterKeysPanel() {
       adminFlags?: string[];
       actionDescription: string;
     }) => {
-      return apiRequest(`/api/platform/master-keys/organizations/${data.id}`, {
-        method: "PATCH",
-        body: JSON.stringify(data),
-        headers: { "Content-Type": "application/json" },
-      });
+      return apiRequest("PATCH", `/api/platform/master-keys/organizations/${data.id}`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/platform/master-keys/organizations'] });
@@ -151,11 +147,7 @@ export function MasterKeysPanel() {
   // Reset organization mutation
   const resetOrgMutation = useMutation({
     mutationFn: async (data: { id: string; reason: string }) => {
-      return apiRequest(`/api/platform/master-keys/organizations/${data.id}/reset`, {
-        method: "POST",
-        body: JSON.stringify({ reason: data.reason }),
-        headers: { "Content-Type": "application/json" },
-      });
+      return apiRequest("POST", `/api/platform/master-keys/organizations/${data.id}/reset`, { reason: data.reason });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/platform/master-keys/organizations'] });

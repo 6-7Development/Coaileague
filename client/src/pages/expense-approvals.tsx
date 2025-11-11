@@ -19,7 +19,7 @@ export default function ExpenseApprovalsPage() {
   const [reviewAction, setReviewAction] = useState<'approve' | 'reject'>('approve');
   const [reviewNotes, setReviewNotes] = useState("");
 
-  const { data: expenses = [], isLoading } = useQuery({
+  const { data: expenses = [], isLoading } = useQuery<any[]>({
     queryKey: ['/api/expenses'],
   });
 

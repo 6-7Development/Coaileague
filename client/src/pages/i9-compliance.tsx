@@ -6,15 +6,15 @@ import { AlertTriangle, CheckCircle2, Clock, FileText } from "lucide-react";
 import { format, differenceInDays } from "date-fns";
 
 export default function I9CompliancePage() {
-  const { data: allRecords = [], isLoading: allLoading } = useQuery({
+  const { data: allRecords = [], isLoading: allLoading } = useQuery<any[]>({
     queryKey: ['/api/i9-records'],
   });
 
-  const { data: expiring30 = [], isLoading: expiring30Loading } = useQuery({
+  const { data: expiring30 = [], isLoading: expiring30Loading } = useQuery<any[]>({
     queryKey: ['/api/i9-records/expiring?days=30'],
   });
 
-  const { data: expiring7 = [], isLoading: expiring7Loading } = useQuery({
+  const { data: expiring7 = [], isLoading: expiring7Loading } = useQuery<any[]>({
     queryKey: ['/api/i9-records/expiring?days=7'],
   });
 

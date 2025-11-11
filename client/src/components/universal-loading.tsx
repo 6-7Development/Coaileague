@@ -50,7 +50,7 @@ export function UniversalLoading({
       <div className="flex flex-col items-center gap-4 sm:gap-6 w-full max-w-md">
         {/* New Animated AutoForce™ Gear Logo */}
         <AnimatedAutoForceLogo 
-          variant="gear" 
+          variant="icon" 
           size={logoSize} 
           animated={true} 
         />

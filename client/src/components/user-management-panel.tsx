@@ -124,11 +124,7 @@ export function UserManagementPanel() {
   // Update user mutation
   const updateUserMutation = useMutation({
     mutationFn: async (data: { userId: string; updates: any }) => {
-      return apiRequest(`/api/platform/users/${data.userId}`, {
-        method: "PATCH",
-        body: JSON.stringify(data.updates),
-        headers: { "Content-Type": "application/json" },
-      });
+      return apiRequest("PATCH", `/api/platform/users/${data.userId}`, data.updates);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/platform/users'] });
@@ -149,11 +145,7 @@ export function UserManagementPanel() {
   // Set password mutation
   const setPasswordMutation = useMutation({
     mutationFn: async (data: { userId: string; password: string }) => {
-      return apiRequest(`/api/platform/users/${data.userId}/set-password`, {
-        method: "POST",
-        body: JSON.stringify({ password: data.password }),
-        headers: { "Content-Type": "application/json" },
-      });
+      return apiRequest("POST", `/api/platform/users/${data.userId}/set-password`, { password: data.password });
     },
     onSuccess: () => {
       toast({
@@ -175,11 +167,7 @@ export function UserManagementPanel() {
   // Grant role mutation
   const grantRoleMutation = useMutation({
     mutationFn: async (data: { userId: string; role: string; reason: string }) => {
-      return apiRequest(`/api/platform/users/${data.userId}/grant-role`, {
-        method: "POST",
-        body: JSON.stringify({ role: data.role, reason: data.reason }),
-        headers: { "Content-Type": "application/json" },
-      });
+      return apiRequest("POST", `/api/platform/users/${data.userId}/grant-role`, { role: data.role, reason: data.reason });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/platform/users'] });
@@ -201,11 +189,7 @@ export function UserManagementPanel() {
   // Create user mutation
   const createUserMutation = useMutation({
     mutationFn: async (data: any) => {
-      return apiRequest('/api/platform/users', {
-        method: "POST",
-        body: JSON.stringify(data),
-        headers: { "Content-Type": "application/json" },
-      });
+      return apiRequest("POST", '/api/platform/users', data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/platform/users'] });
