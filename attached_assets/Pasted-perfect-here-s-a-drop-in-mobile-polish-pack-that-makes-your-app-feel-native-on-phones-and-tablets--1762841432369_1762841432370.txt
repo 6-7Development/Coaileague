@@ -1,0 +1,266 @@
+perfect — here’s a drop-in mobile polish pack that makes your app feel native on phones and tablets: keyboard-aware chat input, safe-area bottom nav, split-view tablet helpdesk, and small CSS helpers. It won’t break your desktop layout.
+
+
+---
+
+🚀 One Replit command (copy–paste)
+
+bash -lc '
+# deps already ok (Tailwind + lucide-react). If not installed earlier:
+npm i lucide-react simple-peer --silent || true
+
+mkdir -p src/mobile/{components,pages,plugins} src/styles
+
+# 1) Mobile CSS: fluid type, safe-area, tablet grids, reduced motion
+cat > src/styles/mobile.css << "CSS"
+/* Fluid type */
+:root{ --t-1:clamp(11px,2.4vw,12px); --t0:clamp(12px,2.8vw,14px); --t1:clamp(14px,3.4vw,16px); --t2:clamp(16px,4.2vw,18px); --t3:clamp(18px,5vw,20px); }
+.text-xs{font-size:var(--t-1)} .text-sm{font-size:var(--t0)} .text-base{font-size:var(--t1)} .text-lg{font-size:var(--t2)} .text-xl{font-size:var(--t3)}
+/* Safe-area + bottom nav spacing */
+:root{ --bottom-nav-h:64px; }
+.has-bottom-nav{ padding-bottom: calc(var(--bottom-nav-h) + env(safe-area-inset-bottom)); }
+.pb-safe{ padding-bottom: env(safe-area-inset-bottom); } .pt-safe{ padding-top: env(safe-area-inset-top); }
+/* Touch targets + cards */
+.tap{ min-height:44px; min-width:44px; } .card{ min-height:92px; line-height:1.2 }
+/* Tablet grids */
+@media (min-width:640px){ .grid-auto-2{ grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media (min-width:768px){ .grid-auto-3{ grid-template-columns:repeat(3,minmax(0,1fr)); } }
+/* Keyboard friendly 100vh on iOS PWA */
+@supports (-webkit-touch-callout: none){ .vh-screen{ height:-webkit-fill-available; } }
+/* Reduced motion */
+@media (prefers-reduced-motion:reduce){ *{animation:none!important;transition:none!important} }
+CSS
+
+# ensure imported into your main css
+if [ -f src/index.css ]; then
+  grep -q "styles/mobile.css" src/index.css || echo "@import './styles/mobile.css';" >> src/index.css
+elif [ -f src/main.css ]; then
+  grep -q "styles/mobile.css" src/main.css || echo "@import './styles/mobile.css';" >> src/main.css
+fi
+
+# 2) Updated safe-area MobileNav
+cat > src/mobile/components/MobileNav.tsx << "TSX"
+import React from "react";
+import { Home, Calendar, Clock, MessageSquare, MoreHorizontal } from "lucide-react";
+
+export default function MobileNav({ onMore }:{ onMore:()=>void }){
+  const Item=({icon,label,href}:{icon:React.ReactNode;label:string;href?:string})=>(
+    <a href={href||"#"} className="tap flex flex-col items-center gap-1 text-[11px] text-slate-300 active:text-teal-400">
+      {icon}<span className="truncate max-w-[72px]">{label}</span>
+    </a>
+  );
+  return (
+    <nav className="fixed bottom-0 inset-x-0 z-50 bg-[#0A0F1C]/95 backdrop-blur-sm border-t border-[#1F2D40] pb-safe">
+      <div className="mx-auto max-w-screen-md flex justify-around py-2">
+        <Item icon={<Home size={18}/>} label="Home" href="/"/>
+        <Item icon={<Calendar size={18}/>} label="Schedule" href="/schedule"/>
+        <Item icon={<Clock size={18}/>} label="Time" href="/time"/>
+        <Item icon={<MessageSquare size={18}/>} label="Chat" href="/chat"/>
+        <button onClick={onMore} className="tap flex flex-col items-center gap-1 text-[11px] text-slate-300 active:text-teal-400">
+          <MoreHorizontal size={18}/><span>More</span>
+        </button>
+      </div>
+    </nav>
+  );
+}
+TSX
+
+# 3) AppShellMobile with safe-area header
+cat > src/mobile/components/AppShellMobile.tsx << "TSX"
+import React from "react";
+import { PanelLeftOpen, MessageSquare } from "lucide-react";
+
+export default function AppShellMobile({ children, title }:{ children:React.ReactNode; title?:string }){
+  return (
+    <div className="min-h-screen bg-[#0A0F1C] text-[#E6EDF5]">
+      <header className="sticky top-0 z-40 bg-[#0A0F1C]/90 backdrop-blur-sm border-b border-[#1F2D40] px-4 py-3 pt-safe flex items-center gap-3">
+        <button onClick={()=>{ if(history.length>1) history.back(); else location.assign("/"); }} className="tap p-2 rounded-xl bg-[#111A26] border border-[#1F2D40]"><PanelLeftOpen size={16}/></button>
+        <div className="flex-1 truncate font-semibold text-base">{title||"Dashboard"}</div>
+      </header>
+      <main className="px-4 pt-4 has-bottom-nav">{children}</main>
+      <a href="/support" className="fixed bottom-[calc(var(--bottom-nav-h)+16px)] right-4 z-40 rounded-full bg-teal-500 p-3 shadow-xl active:scale-95">
+        <MessageSquare className="text-white"/>
+      </a>
+    </div>
+  );
+}
+TSX
+
+# 4) Keyboard-aware chat input (mobile)
+cat > src/mobile/components/KeyboardAwareInput.tsx << "TSX"
+import React, { useEffect, useRef, useState } from "react";
+type Props={ value:string; onChange:(v:string)=>void; onSend:()=>void; placeholder?:string; left?:React.ReactNode; right?:React.ReactNode; };
+export default function KeyboardAwareInput({ value,onChange,onSend,placeholder,left,right }:Props){
+  const wrapRef=useRef<HTMLDivElement>(null);
+  const [kb, setKb] = useState(false);
+  useEffect(()=>{
+    const vh=()=>{ document.documentElement.style.setProperty("--vh", window.innerHeight*0.01+"px"); };
+    vh(); window.addEventListener("resize",vh); return ()=>window.removeEventListener("resize",vh);
+  },[]);
+  useEffect(()=>{
+    const ro=new ResizeObserver(()=>{ setKb(window.innerHeight < 600); });
+    ro.observe(document.documentElement); return ()=>ro.disconnect();
+  },[]);
+  return (
+    <div ref={wrapRef} className="sticky bottom-0 bg-[#0A0F1C] border-t border-[#1F2D40] px-3 pt-2 pb-safe">
+      <div className="flex items-end gap-2">
+        {left}
+        <input value={value} onChange={e=>onChange(e.target.value)} onKeyDown={e=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); onSend(); } }} placeholder={placeholder||'Type a message…'} className="flex-1 bg-[#0E1622] border border-[#1F2D40] rounded-xl px-3 py-2 text-sm outline-none"/>
+        <button onClick={onSend} className="tap px-3 py-2 text-sm bg-teal-600 rounded-xl">Send</button>
+        {right}
+      </div>
+    </div>
+  );
+}
+TSX
+
+# 5) Mobile Helpdesk page using keyboard-aware input
+cat > src/mobile/pages/HelpdeskMobile.tsx << "TSX"
+import React, { useRef, useState, useEffect } from "react";
+import AppShellMobile from "../components/AppShellMobile";
+import KeyboardAwareInput from "../components/KeyboardAwareInput";
+
+export default function HelpdeskMobile(){
+  const [draft,setDraft]=useState("");
+  const [msgs,setMsgs]=useState<{me?:boolean;text:string}[]>([{text:"Welcome to Help Desk. An agent will be with you shortly."}]);
+  const listRef=useRef<HTMLDivElement>(null);
+  useEffect(()=>{ listRef.current?.scrollTo({top:listRef.current.scrollHeight,behavior:"smooth"}); },[msgs]);
+  return (
+    <AppShellMobile title="Help Desk">
+      <div ref={listRef} className="vh-screen max-h-[calc(100vh-160px)] overflow-y-auto rounded-2xl bg-[#0B1420] border border-[#1F2D40] p-3">
+        {msgs.map((m,i)=>(
+          <div key={i} className={m.me? "text-right" : "text-left"}>
+            <span className={"inline-block px-3 py-2 my-1 rounded-2xl text-sm "+(m.me?"bg-teal-600":"bg-[#111A26] border border-[#1F2D40]")}>{m.text}</span>
+          </div>
+        ))}
+      </div>
+      <KeyboardAwareInput
+        value={draft}
+        onChange={setDraft}
+        onSend={()=>{ if(!draft.trim())return; setMsgs(m=>[...m,{me:true,text:draft.trim()}]); setDraft(""); }}
+      />
+    </AppShellMobile>
+  );
+}
+TSX
+
+# 6) Split-view Tablet Helpdesk (list + chat)
+cat > src/mobile/pages/HelpdeskTablet.tsx << "TSX"
+import React, { useState } from "react";
+import AppShellMobile from "../components/AppShellMobile";
+import KeyboardAwareInput from "../components/KeyboardAwareInput";
+
+export default function HelpdeskTablet(){
+  const [conv] = useState([{id:"t1", name:"Assistant Emily"},{id:"t2", name:"Maria Garcia"}]);
+  const [active, setActive] = useState("t1");
+  const [draft,setDraft]=useState("");
+  const [msgs,setMsgs]=useState<{me?:boolean;text:string}[]>([{text:"Welcome! Choose a ticket."}]);
+  return (
+    <AppShellMobile title="Help Desk">
+      <div className="hidden md:grid md:grid-cols-[320px,1fr] gap-3">
+        <aside className="rounded-2xl bg-[#0B1420] border border-[#1F2D40] p-2">
+          {conv.map(c=>(
+            <button key={c.id} onClick={()=>setActive(c.id)} className={"w-full text-left px-3 py-2 rounded-xl my-1 "+(active===c.id?"bg-[#111A26] border border-[#1F2D40]":"hover:bg-[#0E1622]")}>
+              <div className="text-sm">{c.name}</div>
+              <div className="text-xs text-slate-400">#{c.id}</div>
+            </button>
+          ))}
+        </aside>
+        <section className="rounded-2xl bg-[#0B1420] border border-[#1F2D40] flex flex-col">
+          <div className="flex-1 overflow-y-auto p-3">
+            {msgs.map((m,i)=>(
+              <div key={i} className={m.me? "text-right" : "text-left"}>
+                <span className={"inline-block px-3 py-2 my-1 rounded-2xl text-sm "+(m.me?"bg-teal-600":"bg-[#111A26] border border-[#1F2D40]")}>{m.text}</span>
+              </div>
+            ))}
+          </div>
+          <KeyboardAwareInput value={draft} onChange={setDraft} onSend={()=>{ if(!draft.trim())return; setMsgs(m=>[...m,{me:true,text:draft.trim()}]); setDraft(""); }}/>
+        </section>
+      </div>
+      <div className="md:hidden text-sm text-slate-400">Open on a tablet/large phone to see split view.</div>
+    </AppShellMobile>
+  );
+}
+TSX
+
+# 7) Mobile Dashboard (uses grids that scale to tablet)
+cat > src/mobile/pages/MobileDashboard.tsx << "TSX"
+import React, { useState } from "react";
+import { MessageSquare, HelpCircle, Mail, Shield, Calendar, Clock, Camera, Upload, Mic, MoreHorizontal } from "lucide-react";
+import AppShellMobile from "../components/AppShellMobile";
+import MobileNav from "../components/MobileNav";
+
+function Card({ icon, label, href }:{ icon:React.ReactNode; label:string; href:string }){
+  return (
+    <a href={href} className="card rounded-2xl bg-[#111A26] border border-[#1F2D40] flex flex-col justify-center items-center gap-2 active:scale-[0.99] transition p-3">
+      <div className="p-2 rounded-xl bg-[#0E1622] border border-[#1F2D40]">{icon}</div>
+      <div className="text-[12px] text-slate-200 text-center px-2 leading-tight">{label}</div>
+    </a>
+  );
+}
+
+export default function MobileDashboard(){
+  const [moreOpen] = useState(false);
+  return (
+    <AppShellMobile title="Quick Access">
+      <section className="rounded-3xl bg-[#0B1420] border border-[#1F2D40] p-4 mb-4">
+        <div className="text-[13px] tracking-wide text-teal-300 font-semibold mb-2">SUPPORT & HELP DESK</div>
+        <div className="grid gap-3 grid-cols-2 grid-auto-3">
+          <Card icon={<MessageSquare size={18} className="text-teal-300"/>} label="Live Chat" href="/chat"/>
+          <Card icon={<HelpCircle size={18} className="text-teal-300"/>} label="Help Desk" href="/m/help"/>
+          <Card icon={<Mail size={18} className="text-teal-300"/>} label="Support Email" href="/support/email"/>
+          <Card icon={<Shield size={18} className="text-teal-300"/>} label="Audit Logs" href="/audit"/>
+        </div>
+      </section>
+      <section className="rounded-2xl border border-[#1F2D40] bg-[#0B1420] p-4 mb-4">
+        <div className="text-sm font-semibold text-slate-100 mb-2">Platform Management</div>
+        <div className="grid gap-3 grid-cols-2 grid-auto-3">
+          <Card icon={<Calendar size={18} className="text-teal-300"/>} label="ScheduleOS" href="/schedule"/>
+          <Card icon={<Clock size={18} className="text-teal-300"/>} label="TimeOS" href="/time"/>
+          <Card icon={<MessageSquare size={18} className="text-teal-300"/>} label="CommOS" href="/comms"/>
+          <Card icon={<Shield size={18} className="text-teal-300"/>} label="Admin" href="/admin"/>
+        </div>
+      </section>
+      <section className="rounded-2xl border border-[#1F2D40] bg-[#0B1420] p-4">
+        <div className="text-sm font-semibold text-slate-100 mb-2">Core Features</div>
+        <div className="grid gap-3 grid-cols-2 grid-auto-3">
+          <Card icon={<Upload size={18} className="text-teal-300"/>} label="Uploads" href="/m/camera"/>
+          <Card icon={<Mic size={18} className="text-teal-300"/>} label="Voice Room" href="/m/voice"/>
+          <Card icon={<Camera size={18} className="text-teal-300"/>} label="Take Photo" href="/m/camera"/>
+        </div>
+      </section>
+      <MobileNav onMore={()=>{}}/>
+    </AppShellMobile>
+  );
+}
+TSX
+
+# 8) Helpful console note
+echo "
+Add routes (React Router example):
+  import MobileDashboard from './mobile/pages/MobileDashboard';
+  import HelpdeskMobile from './mobile/pages/HelpdeskMobile';
+  import HelpdeskTablet from './mobile/pages/HelpdeskTablet';
+  <Route path='/m' element={<MobileDashboard/>}/>
+  <Route path='/m/help' element={<HelpdeskMobile/>}/>
+  <Route path='/m/helpdesk' element={<HelpdeskTablet/>}/>
+Also ensure your index.html has:
+  <meta name='viewport' content='width=device-width, initial-scale=1, viewport-fit=cover'>
+"
+'
+
+
+---
+
+What you get
+
+Native-like phone UX: safe-area header/footer, big tap targets, keyboard-aware send bar.
+
+Tablet split view: helpdesk list + chat side-by-side.
+
+No text overlap: fluid typography and grid scaling.
+
+Zero dead-ends: bottom nav spacing prevents input overlap; header back button always visible.
+
+
+If your router is different, just import these pages and mount them on your paths. Want me to bundle a dark theme token file or icon size map to keep everything perfectly consistent across modules?

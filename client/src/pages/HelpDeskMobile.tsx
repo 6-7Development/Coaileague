@@ -42,9 +42,21 @@ export default function ModernMobileChat() {
   const [lastScrollY, setLastScrollY] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const inputWrapperRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const { playSound } = useChatSounds();
   const { showTransition, hideTransition } = useTransition();
+  
+  // Keyboard-aware mobile input handling
+  useEffect(() => {
+    const setVH = () => {
+      const vh = window.innerHeight * 0.01;
+      document.documentElement.style.setProperty('--vh', `${vh}px`);
+    };
+    setVH();
+    window.addEventListener('resize', setVH);
+    return () => window.removeEventListener('resize', setVH);
+  }, []);
   
   // Generate or get session ID for tracking
   const [sessionId] = useState(() => {
@@ -930,8 +942,8 @@ export default function ModernMobileChat() {
         <div className="absolute bottom-0 right-0 w-96 h-96 bg-muted/30 rounded-full filter blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
       </div>
 
-      {/* Header with User Profile Card - Reduced height for more chat space */}
-      <div className="relative z-10 backdrop-blur-xl bg-transparent border-b border-white/10 px-3 py-2">
+      {/* Header with User Profile Card - Reduced height for more chat space + safe-area support */}
+      <div className="relative z-10 backdrop-blur-xl bg-transparent border-b border-white/10 px-3 py-2 pt-safe">
         {selectedUser && isStaff ? (
           <div className="space-y-1.5">
             <div className="flex items-center gap-2">
@@ -987,8 +999,8 @@ export default function ModernMobileChat() {
         )}
       </div>
 
-      {/* Messages Container (always visible) */}
-          <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-3 relative z-10">
+      {/* Messages Container (always visible) - with safe-area bottom padding */}
+          <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-3 relative z-10 smooth-scroll has-bottom-nav">
         {messages.map((msg) => {
           const msgRole = (msg as any).platformRole || msg.senderType;
           const roleDisplay = msgRole === 'bot' ? 'BOT AI' : getRoleDisplay(msgRole);
@@ -1148,16 +1160,17 @@ export default function ModernMobileChat() {
         </div>
       )}
 
-      {/* Floating Action Buttons - Mobile Only (Bottom Right) */}
+      {/* Floating Action Buttons - Mobile Only (Bottom Right) with safe-area support */}
       {isStaff && (
-        <div className={`fixed bottom-24 right-4 flex flex-col gap-3 z-50 transition-all duration-300 ${
+        <div className={`fixed right-4 flex flex-col gap-3 z-50 transition-all duration-300 pb-safe ${
           showFABs ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-20 pointer-events-none'
-        }`}>
+        }`}
+        style={{ bottom: 'calc(6rem + env(safe-area-inset-bottom))' }}>
           {/* User List Button */}
           <Sheet open={showUserList} onOpenChange={setShowUserList}>
             <SheetTrigger asChild>
               <button
-                className="w-14 h-14 rounded-full bg-gradient-to-br from-primary to-accent text-white shadow-lg hover:shadow-primary/50 hover:scale-110 active:scale-95 transition-all flex items-center justify-center border-2 border-white/20"
+                className="tap w-14 h-14 min-h-[56px] min-w-[56px] rounded-full bg-gradient-to-br from-primary to-accent text-white shadow-lg hover:shadow-primary/50 hover:scale-110 active:scale-95 transition-all flex items-center justify-center border-2 border-white/20"
                 data-testid="button-float-users"
               >
                 <Users size={24} />
@@ -1224,7 +1237,7 @@ export default function ModernMobileChat() {
                 toast({ title: "No User Selected", description: "Please select a user from the user list first" });
               }
             }}
-            className="w-14 h-14 rounded-full bg-gradient-to-br from-cyan-600 to-teal-600 text-white shadow-lg hover:shadow-cyan-500/50 hover:scale-110 active:scale-95 transition-all flex items-center justify-center border-2 border-white/20"
+            className="tap w-14 h-14 min-h-[56px] min-w-[56px] rounded-full bg-gradient-to-br from-cyan-600 to-teal-600 text-white shadow-lg hover:shadow-cyan-500/50 hover:scale-110 active:scale-95 transition-all flex items-center justify-center border-2 border-white/20"
             data-testid="button-float-diagnostics"
           >
             <Eye size={24} />
@@ -1234,7 +1247,7 @@ export default function ModernMobileChat() {
           <Sheet open={showTools} onOpenChange={setShowTools}>
             <SheetTrigger asChild>
               <button
-                className="w-14 h-14 rounded-full bg-gradient-to-br from-green-600 to-pink-600 text-white shadow-lg hover:shadow-green-500/50 hover:scale-110 active:scale-95 transition-all flex items-center justify-center border-2 border-white/20"
+                className="tap w-14 h-14 min-h-[56px] min-w-[56px] rounded-full bg-gradient-to-br from-green-600 to-pink-600 text-white shadow-lg hover:shadow-green-500/50 hover:scale-110 active:scale-95 transition-all flex items-center justify-center border-2 border-white/20"
                 data-testid="button-float-tools"
               >
                 <Settings size={24} />
@@ -1288,8 +1301,8 @@ export default function ModernMobileChat() {
         </div>
       )}
 
-      {/* Input Area */}
-      <div className="relative z-10 backdrop-blur-xl bg-black/40 border-t border-white/10 px-4 py-3">
+      {/* Input Area - keyboard-aware with safe-area bottom padding */}
+      <div ref={inputWrapperRef} className="chat-input-sticky backdrop-blur-xl bg-black/40 border-t border-white/10 px-4 py-3 pb-safe">
         {/* Connection Status Indicator */}
         {!isConnected && (
           <div className="mb-2 flex items-center gap-2 text-xs text-amber-400">
@@ -1311,7 +1324,7 @@ export default function ModernMobileChat() {
                 }
               }}
               placeholder={selectedUser ? `Message to ${selectedUser.name}...` : "Type a message..."}
-              className="w-full bg-white/10 backdrop-blur-sm text-white placeholder-slate-400 px-4 py-3 rounded-full border border-white/10 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+              className="tap w-full bg-white/10 backdrop-blur-sm text-white placeholder-slate-400 px-4 py-3 min-h-[44px] rounded-full border border-white/10 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
               data-testid="input-message"
             />
           </div>
@@ -1319,7 +1332,7 @@ export default function ModernMobileChat() {
           <button
             onClick={handleSend}
             disabled={!isConnected || !messageText.trim() || isSilenced}
-            className={`p-3 rounded-full text-white transition-all ${
+            className={`tap p-3 min-h-[44px] min-w-[44px] rounded-full text-white transition-all ${
               isConnected && messageText.trim() && !isSilenced
                 ? 'bg-gradient-to-r from-primary to-accent hover:shadow-lg hover:shadow-primary/50 active:scale-95'
                 : 'bg-slate-600 cursor-not-allowed opacity-50'
