@@ -7,6 +7,21 @@ interface ProgressLoadingOverlayProps {
   status?: "loading" | "success" | "error" | "info";
 }
 
+const AUTH_MESSAGES = [
+  "Connecting to AutoForce™...",
+  "Establishing secure connection...",
+  "Logging you in...",
+  "Verifying credentials...",
+  "Checking authentication status...",
+  "Validating session token...",
+  "Credentials accepted ✓",
+  "Loading your workspace...",
+  "Syncing account data...",
+  "Preparing dashboard...",
+  "Finalizing login...",
+  "Almost there...",
+];
+
 const TECH_MESSAGES = [
   "Initializing workspace...",
   "Loading modules...",
@@ -30,10 +45,18 @@ export function ProgressLoadingOverlay({
   const [progress, setProgress] = useState(0);
   const [messageIndex, setMessageIndex] = useState(0);
   const [startTime] = useState(Date.now());
+  const [showError, setShowError] = useState(false);
+  const [errorMessage] = useState("Authentication failed. Invalid credentials.");
+
+  // Determine which message set to use
+  const isAuthFlow = title.toLowerCase().includes("authenticat") || title.toLowerCase().includes("login");
+  const messages = isAuthFlow ? AUTH_MESSAGES : TECH_MESSAGES;
 
   useEffect(() => {
-    if (!isVisible || status !== "loading") {
-      setProgress(100);
+    if (!isVisible) {
+      setProgress(0);
+      setMessageIndex(0);
+      setShowError(false);
       return;
     }
 
@@ -41,7 +64,13 @@ export function ProgressLoadingOverlay({
     setProgress(0);
     setMessageIndex(0);
 
-    // Simulate realistic loading progress based on elapsed time
+    if (status !== "loading") {
+      // Jump to 100% when complete
+      setProgress(100);
+      return;
+    }
+
+    // Simulate realistic loading progress based on elapsed time - STARTS AT 0%
     const interval = setInterval(() => {
       const elapsed = Date.now() - startTime;
       
@@ -60,21 +89,25 @@ export function ProgressLoadingOverlay({
       setProgress(Math.min(98, targetProgress));
     }, 50);
 
-    // Rotate messages every 800ms
+    // Rotate messages every 700ms (slightly faster for more dynamic feel)
     const messageInterval = setInterval(() => {
-      setMessageIndex((prev) => (prev + 1) % TECH_MESSAGES.length);
-    }, 800);
+      setMessageIndex((prev) => (prev + 1) % messages.length);
+    }, 700);
 
     return () => {
       clearInterval(interval);
       clearInterval(messageInterval);
     };
-  }, [isVisible, status, startTime]);
+  }, [isVisible, status, startTime, messages.length]);
 
   // When loading completes, jump to 100%
   useEffect(() => {
-    if (status === "success" || status === "error") {
+    if (status === "success") {
       setProgress(100);
+      setShowError(false);
+    } else if (status === "error") {
+      setProgress(100);
+      setShowError(true);
     }
   }, [status]);
 
@@ -138,25 +171,48 @@ export function ProgressLoadingOverlay({
               </div>
             </motion.div>
 
-            {/* Tech Messages */}
+            {/* Dynamic Status Messages */}
             <motion.div
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.3 }}
               className="h-12 flex items-center justify-center"
             >
-              <AnimatePresence mode="wait">
-                <motion.p
-                  key={messageIndex}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.3 }}
-                  className="text-sm sm:text-base text-primary font-medium text-center"
+              {showError ? (
+                <motion.div
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  className="text-center"
                 >
-                  {TECH_MESSAGES[messageIndex]}
+                  <p className="text-sm sm:text-base text-red-400 font-semibold mb-1">
+                    ✗ Credentials Denied
+                  </p>
+                  <p className="text-xs text-red-300/80">
+                    {errorMessage}
+                  </p>
+                </motion.div>
+              ) : status === "success" ? (
+                <motion.p
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  className="text-sm sm:text-base text-primary font-semibold"
+                >
+                  ✓ {isAuthFlow ? "Login Successful!" : "Complete!"}
                 </motion.p>
-              </AnimatePresence>
+              ) : (
+                <AnimatePresence mode="wait">
+                  <motion.p
+                    key={messageIndex}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.3 }}
+                    className="text-sm sm:text-base text-primary font-medium text-center"
+                  >
+                    {messages[messageIndex]}
+                  </motion.p>
+                </AnimatePresence>
+              )}
             </motion.div>
 
             {/* Decorative elements */}
