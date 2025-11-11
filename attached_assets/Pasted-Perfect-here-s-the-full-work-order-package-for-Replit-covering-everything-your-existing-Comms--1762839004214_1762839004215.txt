@@ -1,0 +1,337 @@
+Perfect — here’s the full work order package for Replit covering everything:
+✅ your existing Comms / chat system,
+✅ the Workroom + Helpdesk upgrade,
+✅ the audit trail, upload, and role tools,
+✅ and universal navigation safety.
+
+
+---
+
+🧩 PROJECT TITLE: Autoforce – Workroom & Helpdesk Chat Upgrade
+
+Goal
+
+Upgrade the existing chatroom (Comms) feature to allow:
+
+Room creation linked to work assignments or schedules.
+
+Persistent communication (text, voice, uploads, photos).
+
+Secure helpdesk DMs.
+
+End-of-day archiving and audit export.
+
+Full RBAC enforcement and universal navigation.
+
+
+
+---
+
+🧱 1. Core Additions
+
+A. Database Changes
+
+Command:
+
+psql $DATABASE_URL <<'SQL'
+ALTER TABLE rooms ADD COLUMN IF NOT EXISTS schedule_id UUID NULL;
+ALTER TABLE rooms ADD COLUMN IF NOT EXISTS work_assignment_id UUID NULL;
+ALTER TABLE rooms ADD COLUMN IF NOT EXISTS auto_close_at TIMESTAMPTZ NULL;
+ALTER TABLE rooms ADD COLUMN IF NOT EXISTS visibility TEXT DEFAULT 'org';
+ALTER TABLE rooms ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'open';
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS room_id UUID NULL;
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS shift_id UUID NULL;
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS attachments JSONB DEFAULT '[]';
+CREATE TABLE IF NOT EXISTS uploads (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  uploader_id UUID NOT NULL,
+  org_id UUID,
+  room_id UUID,
+  filename TEXT,
+  path TEXT,
+  mimetype TEXT,
+  size BIGINT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS room_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  room_id UUID,
+  actor_id UUID,
+  event TEXT,
+  payload JSONB,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+SQL
+
+
+---
+
+💬 2. Chatroom + Room Management Routes
+
+Create / Join Room
+
+routes/rooms.ts
+
+import { Router } from "express";
+import { Pool } from "pg";
+import crypto from "crypto";
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const r = Router();
+
+r.post("/create", async (req:any,res)=>{
+  const { title, schedule_id, work_assignment_id } = req.body;
+  const token = crypto.randomBytes(6).toString("hex");
+  const { rows } = await pool.query(
+    "INSERT INTO rooms (org_id, token, title, schedule_id, work_assignment_id, owner_user_id, status, visibility, created_by) VALUES ($1,$2,$3,$4,$5,$6,'open','org',$6) RETURNING *",
+    [req.user.org_id, token, title||"Untitled Room", schedule_id, work_assignment_id, req.user.id]
+  );
+  res.json({ room: rows[0], url: `/r/${rows[0].token}` });
+});
+export default r;
+
+
+---
+
+📎 3. File Upload + Attachment Handling
+
+routes/uploads.ts
+
+import { Router } from "express";
+import multer from "multer";
+import fs from "fs";
+const upload = multer({ dest: "uploads/" });
+const r = Router();
+
+r.post("/", upload.single("file"), (req:any,res:any)=>{
+  if(!req.file) return res.status(400).json({error:"no_file"});
+  const meta = {
+    id: crypto.randomUUID(),
+    uploader_id: req.user.id,
+    org_id: req.user.org_id,
+    room_id: req.body.room_id,
+    filename: req.file.originalname,
+    path: req.file.path,
+    mimetype: req.file.mimetype,
+    size: req.file.size
+  };
+  // TODO: insert into uploads table
+  res.json({ ok:true, meta });
+});
+export default r;
+
+Mount in app.ts:
+
+app.use("/api/upload", require("./routes/uploads").default);
+
+
+---
+
+🔐 4. Role-Based Controls
+
+Enforced via your existing middleware.
+
+Roles:
+
+root/admin – global override.
+
+support/mod – moderate, mute, archive.
+
+owner – create and link to shifts.
+
+employee – join assigned work rooms.
+
+viewer – read-only.
+
+
+
+> Each moderation action auto-generates a room_events row + audit ticket.
+
+
+
+
+---
+
+📡 5. Real-time & Voice Chat
+
+Stack:
+
+Text = WebSocket / SSE
+
+Voice = WebRTC (simple-peer)
+
+Event: "room:join", "room:leave", "room:message", "room:upload", "room:voice"
+
+
+Flow:
+
+Users join → server emits presence update.
+
+Messages and uploads push to connected sockets.
+
+Voice calls = P2P within room (signaling via same socket namespace).
+
+
+
+---
+
+🕑 6. Room Lifecycle + Archiving
+
+Auto-close job (daily cron):
+
+node scripts/autoCloseRooms.js
+
+scripts/autoCloseRooms.js
+
+import { Pool } from "pg";
+import fs from "fs";
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const rooms = await pool.query(
+  "SELECT * FROM rooms WHERE status='open' AND auto_close_at <= now()"
+);
+for (const room of rooms.rows) {
+  await pool.query("UPDATE rooms SET status='closed' WHERE id=$1", [room.id]);
+  const messages = await pool.query("SELECT * FROM messages WHERE room_id=$1", [room.id]);
+  fs.writeFileSync(`archives/${room.token}.json`, JSON.stringify(messages.rows));
+  await pool.query(
+    "INSERT INTO room_events (room_id, actor_id, event, payload) VALUES ($1,$2,'archive',$3)",
+    [room.id, room.owner_user_id, { export_path: `/archives/${room.token}.json` }]
+  );
+}
+process.exit();
+
+
+---
+
+🧠 7. Audit & Ticket Integration
+
+All moderation and closure actions → room_events.
+
+If any disciplinary action happens → create linked ticket:
+
+INSERT INTO tickets (org_id, actor_id, type, linked_room_id, description)
+VALUES ($1,$2,'chat_violation',$3,$4)
+
+Ticket + chat transcript stored for compliance.
+
+
+
+---
+
+📱 8. UI / UX Requirements
+
+Desktop:
+
+Sidebar → “Work Rooms” / “Helpdesk”.
+
+Room header shows: Title | Assignment | Status (Open/Closed).
+
+Buttons: Upload, Voice, End Room.
+
+Auto-closes + shows summary (“Room closed, transcript archived”).
+
+
+Mobile:
+
+Bubble = Room.
+
+Tap = open chat.
+
+Long-press = quick menu (Upload, Call, Report).
+
+Purple outline = private helpdesk.
+
+Gray outline = workroom.
+
+Audio call via floating “🎙️” button.
+
+
+
+---
+
+⚙️ 9. Universal Navigation
+
+Add to every workspace page:
+
+Back | Save | Cancel
+
+Auto checkpoint for unsent text.
+
+Global 404 redirect /safe-home.
+
+
+Syncs with org/role routing middleware.
+
+
+
+---
+
+🔔 10. Notifications
+
+Real-time via WebSocket + push.
+
+Triggers:
+
+Room opened/closed.
+
+File uploaded.
+
+Mentioned in message.
+
+Shift starting soon.
+
+
+Fallback: email + in-app notification center.
+
+
+
+---
+
+🧾 11. Helpdesk Integration
+
+Private DMs auto-created when agent right-clicks a username → “Start Help Session”.
+
+Chat opens in private tab (purple frame).
+
+Transcript linked to ticket ID.
+
+Both user and agent see “This conversation is private and recorded for security.”
+
+On close → archived to ticket + user profile.
+
+
+
+---
+
+🧰 12. Replit Commands Summary
+
+# Run migrations
+node scripts/apply-sql.js migrations/2025-11-11_rooms.sql
+
+# Add uploads route
+app.use("/api/upload", require("./routes/uploads").default);
+
+# Mount room routes
+app.use("/api/rooms", require("./routes/rooms").default);
+
+# Run daily cron to auto-close
+node scripts/autoCloseRooms.js
+
+
+---
+
+🧩 13. Optional Add-ons (Post Launch)
+
+Feature	Description
+
+AI Room Summary	Auto-summarize shift chats for daily reports.
+SLA Timer	For Helpdesk tickets (auto color changes as time passes).
+Multi-language bubbles	Auto-detect + translate user messages.
+Real-time transcript download	/api/audit/:room_id/export.
+Call Recording (opt-in)	Secure voice logs for training/audit.
+
+
+
+---
+
+Would you like me to bundle all of this into one deployable Replit-ready .zip package with the routes, SQL migrations, and cron script already scaffolded?
+That way, your developer can just drag it in and run npm start with no setup missing.
