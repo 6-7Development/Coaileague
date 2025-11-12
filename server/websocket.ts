@@ -706,6 +706,36 @@ export function setupWebSocket(server: Server) {
 
             await broadcastUserList();
 
+            // Broadcast participants update with detailed user info
+            const clients2 = conversationClients.get(payload.conversationId);
+            if (clients2) {
+              const participants = [];
+              for (const client of Array.from(clients2)) {
+                if (client.userId && client.readyState === WebSocket.OPEN) {
+                  const userRole = await storage.getUserPlatformRole(client.userId).catch(() => null);
+                  participants.push({
+                    id: client.userId,
+                    name: client.userName || 'User',
+                    role: userRole || 'guest',
+                    status: client.userStatus || 'online',
+                    userType: client.userType || 'guest'
+                  });
+                }
+              }
+
+              const participantsPayload = JSON.stringify({
+                type: 'participants_update',
+                conversationId: payload.conversationId,
+                participants: participants,
+              });
+
+              clients2.forEach((client) => {
+                if (client.readyState === WebSocket.OPEN) {
+                  client.send(participantsPayload);
+                }
+              });
+            }
+
             // HELPDESK ANNOUNCEMENTS: System + HelpOS™ (only if user is joining for the first time)
             if (payload.conversationId === MAIN_ROOM_ID && !userAlreadyInRoom) {
               try {
@@ -1787,6 +1817,22 @@ export function setupWebSocket(server: Server) {
               clients.forEach((client) => {
                 if (client.readyState === WebSocket.OPEN) {
                   client.send(messagePayload);
+                  
+                  // Emit read_receipt when other clients receive the message
+                  // (simulate immediate read for real-time chat experience)
+                  if (client.userId !== ws.userId) {
+                    setTimeout(() => {
+                      if (client.readyState === WebSocket.OPEN) {
+                        client.send(JSON.stringify({
+                          type: 'read_receipt',
+                          messageId: savedMessage.id,
+                          readBy: client.userId,
+                          readByName: client.userName || 'User',
+                          readAt: new Date().toISOString(),
+                        }));
+                      }
+                    }, 1000); // 1 second delay to simulate reading
+                  }
                 }
               });
             }
