@@ -79,7 +79,7 @@ export default function Analytics() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-950 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
         <div className="animate-spin w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full" />
       </div>
     );
@@ -87,8 +87,8 @@ export default function Analytics() {
 
   if (!analytics) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-950 flex items-center justify-center">
-        <p className="text-slate-300">No analytics data available</p>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
+        <p className="text-gray-600">No analytics data available</p>
       </div>
     );
   }
@@ -106,27 +106,27 @@ export default function Analytics() {
     : 0;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-950 relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 relative overflow-hidden">
       {/* Animated background gradient orbs */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-indigo-600/20 rounded-full filter blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-blue-600/20 rounded-full filter blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
-        <div className="absolute top-1/2 left-1/2 w-96 h-96 bg-blue-600/10 rounded-full filter blur-3xl animate-pulse" style={{ animationDelay: '2s' }}></div>
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-500/10 rounded-full filter blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-indigo-500/10 rounded-full filter blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
+        <div className="absolute top-1/2 left-1/2 w-96 h-96 bg-cyan-500/5 rounded-full filter blur-3xl animate-pulse" style={{ animationDelay: '2s' }}></div>
       </div>
 
       <div className="relative z-10 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
         {/* Branded Header with Logo */}
         <div className="mb-8">
-          <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-3xl p-6 sm:p-8">
+          <div className="backdrop-blur-xl bg-white/80 border border-gray-200 rounded-3xl p-6 sm:p-8">
             <div className="flex flex-wrap items-center gap-4">
               <div className="transform hover:scale-105 transition-transform duration-300">
                 <AnimatedAutoForceLogo size="lg" variant="icon" />
               </div>
               <div className="flex-1 min-w-[200px]">
-                <h2 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-white via-blue-100 to-indigo-200 bg-clip-text text-transparent mb-1" data-testid="heading-analytics">
+                <h2 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-gray-900 via-blue-600 to-indigo-600 bg-clip-text text-transparent mb-1" data-testid="heading-analytics">
                   Analytics Dashboard
                 </h2>
-                <p className="text-slate-300 text-sm sm:text-base">
+                <p className="text-gray-600 text-sm sm:text-base">
                   📊 Track your business performance and usage metrics
                 </p>
               </div>
@@ -136,7 +136,7 @@ export default function Analytics() {
                   size="sm"
                   onClick={() => handleExport('csv')}
                   data-testid="button-export-csv"
-                  className="gap-2 bg-white/5 hover-elevate"
+                  className="gap-2 bg-white hover-elevate"
                 >
                   <FileSpreadsheet className="h-4 w-4" />
                   <span className="hidden sm:inline">CSV</span>
@@ -146,7 +146,7 @@ export default function Analytics() {
                   size="sm"
                   onClick={() => handleExport('pdf')}
                   data-testid="button-export-pdf"
-                  className="gap-2 bg-white/5 hover-elevate"
+                  className="gap-2 bg-white hover-elevate"
                 >
                   <Download className="h-4 w-4" />
                   <span className="hidden sm:inline">PDF</span>
@@ -166,11 +166,11 @@ export default function Analytics() {
               </div>
               <div className="h-2 w-2 bg-primary rounded-full animate-pulse"></div>
             </div>
-            <p className="text-slate-300 text-sm mb-2">Total Revenue</p>
-            <div className="text-3xl font-bold text-white mb-1" data-testid="text-total-revenue">
+            <p className="text-gray-600 text-sm mb-2">Total Revenue</p>
+            <div className="text-3xl font-bold text-gray-900 mb-1" data-testid="text-total-revenue">
               ${analytics.totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
-            <p className="text-xs text-slate-400">After platform fees</p>
+            <p className="text-xs text-gray-500">After platform fees</p>
           </div>
 
           {/* Hours Worked */}
@@ -181,11 +181,11 @@ export default function Analytics() {
               </div>
               <div className="h-2 w-2 bg-blue-400 rounded-full animate-pulse"></div>
             </div>
-            <p className="text-slate-300 text-sm mb-2">Hours Worked</p>
-            <div className="text-3xl font-bold text-white mb-1" data-testid="text-total-hours">
+            <p className="text-gray-600 text-sm mb-2">Hours Worked</p>
+            <div className="text-3xl font-bold text-gray-900 mb-1" data-testid="text-total-hours">
               {analytics.totalHoursWorked.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
             </div>
-            <p className="text-xs text-slate-400">Total time tracked</p>
+            <p className="text-xs text-gray-500">Total time tracked</p>
           </div>
 
           {/* Active Employees */}
@@ -196,11 +196,11 @@ export default function Analytics() {
               </div>
               <div className="h-2 w-2 bg-indigo-400 rounded-full animate-pulse"></div>
             </div>
-            <p className="text-slate-300 text-sm mb-2">Active Employees</p>
-            <div className="text-3xl font-bold text-white mb-1" data-testid="text-active-employees">
+            <p className="text-gray-600 text-sm mb-2">Active Employees</p>
+            <div className="text-3xl font-bold text-gray-900 mb-1" data-testid="text-active-employees">
               {analytics.activeEmployees}
             </div>
-            <p className="text-xs text-slate-400">Out of {analytics.employeeCount} total</p>
+            <p className="text-xs text-gray-500">Out of {analytics.employeeCount} total</p>
           </div>
 
           {/* Active Clients */}
@@ -211,20 +211,20 @@ export default function Analytics() {
               </div>
               <div className="h-2 w-2 bg-purple-400 rounded-full animate-pulse"></div>
             </div>
-            <p className="text-slate-300 text-sm mb-2">Active Clients</p>
-            <div className="text-3xl font-bold text-white mb-1" data-testid="text-active-clients">
+            <p className="text-gray-600 text-sm mb-2">Active Clients</p>
+            <div className="text-3xl font-bold text-gray-900 mb-1" data-testid="text-active-clients">
               {analytics.activeClients}
             </div>
-            <p className="text-xs text-slate-400">Out of {analytics.clientCount} total</p>
+            <p className="text-xs text-gray-500">Out of {analytics.clientCount} total</p>
           </div>
         </div>
 
         {/* Detailed Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Workspace Usage */}
-          <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl overflow-hidden" data-testid="card-usage">
-            <div className="p-6 border-b border-white/10">
-              <h3 className="text-xl font-bold text-white flex items-center gap-2">
+          <div className="backdrop-blur-xl bg-white/80 border border-gray-200 rounded-2xl overflow-hidden" data-testid="card-usage">
+            <div className="p-6 border-b border-gray-200">
+              <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
                 <TrendingUp className="h-6 w-6 text-indigo-400" />
                 Workspace Usage
               </h3>
@@ -233,19 +233,19 @@ export default function Analytics() {
               {/* Employee Capacity */}
               <div>
                 <div className="flex justify-between items-center mb-3">
-                  <span className="text-sm font-medium text-slate-300">Employee Capacity</span>
-                  <span className="text-sm text-slate-400">
+                  <span className="text-sm font-medium text-gray-600">Employee Capacity</span>
+                  <span className="text-sm text-gray-500">
                     {analytics.employeeCount} / {analytics.workspace.maxEmployees}
                   </span>
                 </div>
-                <div className="w-full bg-slate-800/50 rounded-full h-3 overflow-hidden">
+                <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
                   <div
                     className="bg-gradient-to-r from-indigo-500 to-blue-500 h-3 rounded-full transition-all duration-500 shadow-lg shadow-indigo-500/30"
                     style={{ width: `${Math.min(employeeUsagePercent, 100)}%` }}
                     data-testid="progress-employees"
                   />
                 </div>
-                <p className="text-xs text-slate-400 mt-2">
+                <p className="text-xs text-gray-500 mt-2">
                   {employeeUsagePercent}% utilized
                 </p>
               </div>
@@ -253,27 +253,27 @@ export default function Analytics() {
               {/* Client Capacity */}
               <div>
                 <div className="flex justify-between items-center mb-3">
-                  <span className="text-sm font-medium text-slate-300">Client Capacity</span>
-                  <span className="text-sm text-slate-400">
+                  <span className="text-sm font-medium text-gray-600">Client Capacity</span>
+                  <span className="text-sm text-gray-500">
                     {analytics.clientCount} / {analytics.workspace.maxClients}
                   </span>
                 </div>
-                <div className="w-full bg-slate-800/50 rounded-full h-3 overflow-hidden">
+                <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
                   <div
                     className="bg-gradient-to-r from-purple-500 to-pink-500 h-3 rounded-full transition-all duration-500 shadow-lg shadow-purple-500/30"
                     style={{ width: `${Math.min(clientUsagePercent, 100)}%` }}
                     data-testid="progress-clients"
                   />
                 </div>
-                <p className="text-xs text-slate-400 mt-2">
+                <p className="text-xs text-gray-500 mt-2">
                   {clientUsagePercent}% utilized
                 </p>
               </div>
 
               {/* Current Plan */}
-              <div className="pt-4 border-t border-white/10">
+              <div className="pt-4 border-t border-gray-200">
                 <div className="flex items-center justify-between p-3 rounded-lg bg-indigo-500/10 border border-indigo-500/20">
-                  <span className="text-sm font-medium text-slate-300">Current Plan</span>
+                  <span className="text-sm font-medium text-gray-600">Current Plan</span>
                   <span className="capitalize font-bold text-indigo-400">{analytics.workspace.subscriptionTier}</span>
                 </div>
               </div>
@@ -281,9 +281,9 @@ export default function Analytics() {
           </div>
 
           {/* Invoice Statistics */}
-          <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl overflow-hidden" data-testid="card-invoice-stats">
-            <div className="p-6 border-b border-white/10">
-              <h3 className="text-xl font-bold text-white flex items-center gap-2">
+          <div className="backdrop-blur-xl bg-white/80 border border-gray-200 rounded-2xl overflow-hidden" data-testid="card-invoice-stats">
+            <div className="p-6 border-b border-gray-200">
+              <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
                 <FileText className="h-6 w-6 text-indigo-400" />
                 Invoice Statistics
               </h3>
@@ -292,28 +292,28 @@ export default function Analytics() {
               {/* Invoice Counts */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-4 rounded-lg bg-blue-500/10 border border-blue-500/20">
-                  <p className="text-3xl font-bold text-white mb-1" data-testid="text-total-invoices">
+                  <p className="text-3xl font-bold text-gray-900 mb-1" data-testid="text-total-invoices">
                     {analytics.totalInvoices}
                   </p>
-                  <p className="text-xs text-slate-400">Total Invoices</p>
+                  <p className="text-xs text-gray-500">Total Invoices</p>
                 </div>
                 <div className="p-4 rounded-lg bg-muted/10 border border-primary/20">
-                  <p className="text-3xl font-bold text-white mb-1" data-testid="text-paid-invoices">
+                  <p className="text-3xl font-bold text-gray-900 mb-1" data-testid="text-paid-invoices">
                     {analytics.paidInvoices}
                   </p>
-                  <p className="text-xs text-slate-400">Paid Invoices</p>
+                  <p className="text-xs text-gray-500">Paid Invoices</p>
                 </div>
               </div>
 
               {/* Payment Rate */}
               <div>
                 <div className="flex justify-between items-center mb-3">
-                  <span className="text-sm font-medium text-slate-300">Payment Rate</span>
+                  <span className="text-sm font-medium text-gray-600">Payment Rate</span>
                   <span className="text-sm text-primary font-bold">
                     {paidInvoiceRate}%
                   </span>
                 </div>
-                <div className="w-full bg-slate-800/50 rounded-full h-3 overflow-hidden">
+                <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
                   <div
                     className="bg-gradient-to-r from-primary to-blue-500 h-3 rounded-full transition-all duration-500 shadow-lg shadow-primary/30"
                     style={{ width: `${paidInvoiceRate}%` }}
@@ -323,9 +323,9 @@ export default function Analytics() {
               </div>
 
               {/* Outstanding */}
-              <div className="pt-4 border-t border-white/10">
+              <div className="pt-4 border-t border-gray-200">
                 <div className="flex items-center justify-between p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
-                  <span className="text-sm text-slate-300">Draft/Sent</span>
+                  <span className="text-sm text-gray-600">Draft/Sent</span>
                   <span className="font-bold text-blue-400">
                     {analytics.totalInvoices - analytics.paidInvoices}
                   </span>

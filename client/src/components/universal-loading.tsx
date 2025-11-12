@@ -24,7 +24,7 @@ export function UniversalLoading({
   if (fullScreen) {
     return (
       <div 
-        className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-gradient-to-br from-slate-900/95 via-indigo-950/95 to-slate-900/95 backdrop-blur-xl px-4"
+        className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-900/95 dark:via-indigo-950/95 dark:to-slate-900/95 backdrop-blur-xl px-4"
         data-testid="universal-loading-fullscreen"
       >
         <div className="flex flex-col items-center gap-6 sm:gap-8 w-full max-w-md">
@@ -37,18 +37,18 @@ export function UniversalLoading({
           
           {/* AutoForce Blue + Silver Wave Animation */}
           <div className="w-full max-w-sm">
-            <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+            <div className="h-2 bg-gray-200 dark:bg-slate-800 rounded-full overflow-hidden">
               <div 
                 className="h-full animate-wave-loading"
                 style={{
-                  background: 'linear-gradient(90deg, #0B4DFF 0%, #E2E8F0 25%, #0B4DFF 50%, #E2E8F0 75%, #0B4DFF 100%)',
+                  background: 'linear-gradient(90deg, #0B4DFF 0%, #60A5FA 25%, #0B4DFF 50%, #60A5FA 75%, #0B4DFF 100%)',
                   backgroundSize: '200% 100%',
                 }}
               />
             </div>
           </div>
           
-          <div className={`flex items-center gap-2 sm:gap-3 ${textSize} text-white/90 font-medium w-full justify-center px-4`}>
+          <div className={`flex items-center gap-2 sm:gap-3 ${textSize} text-gray-700 dark:text-white/90 font-medium w-full justify-center px-4`}>
             <span className="text-center break-words">{message}</span>
           </div>
         </div>
