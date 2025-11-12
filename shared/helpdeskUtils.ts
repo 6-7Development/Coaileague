@@ -4,7 +4,38 @@ export type UITicketStatus = 'new' | 'assigned' | 'investigating' | 'waiting_use
 
 export type TicketPriority = 'low' | 'normal' | 'high' | 'urgent';
 
-export type TicketLifecyclePhase = 'intake' | 'triage' | 'diagnosing' | 'awaiting_customer' | 'validating' | 'completed';
+export type TicketLifecyclePhase = 'intake' | 'triage' | 'diagnosing' | 'validating' | 'completed';
+
+/**
+ * TECH DEBT: Awaiting Customer Phase
+ * 
+ * The lifecycle system is designed for 6 phases but currently supports 5 due to database schema limitations.
+ * 
+ * MISSING PHASE: 'awaiting_customer'
+ * - Represents tickets waiting for customer response
+ * - Would show amber warning to customers: "We need additional information from you"
+ * - Progressive bar would use amber gradient: from-amber-500 to-orange-500
+ * 
+ * TO IMPLEMENT:
+ * 1. Add database field to support_tickets table:
+ *    ALTER TABLE support_tickets ADD COLUMN awaiting_customer_response BOOLEAN DEFAULT false;
+ * 
+ * 2. Update mapTicketStatusToHeaderStatus to return 'waiting_user' when field is true
+ * 
+ * 3. Add 'awaiting_customer' back to TicketLifecyclePhase union type
+ * 
+ * 4. Update LIFECYCLE_PHASE_CONFIG with awaiting_customer configuration (order: 3)
+ * 
+ * 5. Update LIFECYCLE_STEPS array in HelpDeskProgressHeader component
+ * 
+ * ACCEPTANCE CRITERIA:
+ * - Support agents can mark ticket as "waiting for customer"
+ * - Customers see prominent amber notification when input needed
+ * - Progressive bar shows amber phase between diagnosing and validating
+ * - WebSocket events notify customers in real-time when status changes to awaiting_customer
+ * 
+ * PRIORITY: Medium (defer until HelpDesk features are validated by users)
+ */
 
 export const SLA_THRESHOLDS: Record<TicketPriority, number> = {
   low: 72 * 60 * 60,
@@ -22,49 +53,44 @@ export const LIFECYCLE_PHASE_CONFIG: Record<TicketLifecyclePhase, {
 }> = {
   intake: {
     label: 'Intake',
-    color: 'text-slate-600',
+    color: 'text-slate-600 dark:text-slate-400',
     gradient: 'from-slate-400 to-slate-500',
     customerLabel: 'Received',
     order: 0
   },
   triage: {
     label: 'Triage',
-    color: 'text-blue-600',
-    gradient: 'from-blue-500 to-blue-600',
+    color: 'text-emerald-600 dark:text-emerald-400',
+    gradient: 'from-emerald-500 to-emerald-600',
     customerLabel: 'Reviewing',
     order: 1
   },
   diagnosing: {
     label: 'Diagnosing',
-    color: 'text-emerald-600',
+    color: 'text-cyan-600 dark:text-cyan-400',
     gradient: 'from-emerald-500 to-cyan-500',
     customerLabel: 'Investigating',
     order: 2
   },
-  awaiting_customer: {
-    label: 'Awaiting Customer',
-    color: 'text-amber-600',
-    gradient: 'from-amber-500 to-orange-500',
-    customerLabel: 'Need Your Input',
-    order: 3
-  },
   validating: {
     label: 'Validating Fix',
-    color: 'text-cyan-600',
+    color: 'text-cyan-600 dark:text-cyan-400',
     gradient: 'from-cyan-500 to-teal-500',
     customerLabel: 'Testing Solution',
-    order: 4
+    order: 3
   },
   completed: {
     label: 'Completed',
-    color: 'text-emerald-600',
+    color: 'text-emerald-600 dark:text-emerald-400',
     gradient: 'from-emerald-600 to-green-600',
     customerLabel: 'Resolved',
-    order: 5
+    order: 4
   }
 };
 
-export function mapTicketStatusToHeaderStatus(ticket: Pick<SupportTicket, 'status' | 'assignedTo'>): UITicketStatus {
+export function mapTicketStatusToHeaderStatus(ticket: Pick<SupportTicket, 'status' | 'assignedTo' | 'isEscalated'>): UITicketStatus {
+  if (ticket.isEscalated) return 'escalated';
+  
   if (ticket.status === 'closed') return 'resolved';
   if (ticket.status === 'resolved') return 'resolved';
   
@@ -88,11 +114,11 @@ export function mapUIStatusToLifecyclePhase(
     case 'investigating':
       return 'diagnosing';
     case 'waiting_user':
-      return 'awaiting_customer';
+      return 'diagnosing';
     case 'resolved':
       return 'validating';
     case 'escalated':
-      return 'completed';
+      return 'diagnosing';
     default:
       return 'diagnosing';
   }
