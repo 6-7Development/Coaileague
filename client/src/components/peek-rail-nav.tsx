@@ -223,8 +223,8 @@ export function PeekRailNav({ defaultPinned = false }: PeekRailNavProps) {
         tabIndex={0}
         className={cn(
           "fixed left-0 top-0 h-screen z-50 flex flex-col",
-          "bg-gradient-to-b from-background via-background/95 to-muted/20",
-          "border-r border-border/40 backdrop-blur-xl",
+          "bg-sidebar",
+          "border-r border-sidebar-border backdrop-blur-xl",
           "shadow-xl",
           isMobile && "md:relative"
         )}
@@ -237,7 +237,7 @@ export function PeekRailNav({ defaultPinned = false }: PeekRailNavProps) {
         data-testid="peek-rail-nav"
       >
         {/* Header with Logo and Pin Button */}
-        <div className="h-14 border-b border-border/40 flex items-center justify-between px-3 flex-shrink-0">
+        <div className="h-14 border-b border-sidebar-border flex items-center justify-between px-3 flex-shrink-0">
           <Link href="/dashboard" className="flex items-center min-w-0 flex-1" data-testid="link-dashboard-logo">
             {isExpanded ? (
               <div className="flex items-center gap-2 min-w-0">
@@ -282,9 +282,9 @@ export function PeekRailNav({ defaultPinned = false }: PeekRailNavProps) {
                   aria-pressed={isPinned}
                 >
                   {isPinned ? (
-                    <ChevronLeft className="h-4 w-4" />
+                    <ChevronLeft className="h-4 w-4 text-primary" />
                   ) : (
-                    <ChevronRight className="h-4 w-4" />
+                    <ChevronRight className="h-4 w-4 text-primary" />
                   )}
                 </Button>
               </motion.div>
@@ -309,7 +309,7 @@ export function PeekRailNav({ defaultPinned = false }: PeekRailNavProps) {
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: -10 }}
                       transition={{ duration: 0.2 }}
-                      className="px-3 mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/40"
+                      className="px-3 mb-2 text-[10px] font-bold uppercase tracking-widest text-blue-400/60"
                     >
                       {family.label}
                     </motion.div>
@@ -338,7 +338,7 @@ export function PeekRailNav({ defaultPinned = false }: PeekRailNavProps) {
                           <route.icon
                             className={cn(
                               "h-5 w-5 flex-shrink-0",
-                              isActive ? "text-foreground" : "text-muted-foreground"
+                              isActive ? "text-primary" : "text-blue-400"
                             )}
                           />
                           <AnimatePresence>
@@ -396,9 +396,9 @@ export function PeekRailNav({ defaultPinned = false }: PeekRailNavProps) {
                   {isExpanded && family.routes.filter(route => route.isPrimary === false).length > 0 && (
                     <Accordion type="single" collapsible className="w-full">
                       <AccordionItem value="more" className="border-none">
-                        <AccordionTrigger className="py-2 px-3 text-xs text-muted-foreground hover:no-underline hover-elevate rounded-md" data-testid={`button-more-${family.id}`}>
+                        <AccordionTrigger className="py-2 px-3 text-xs text-blue-300 hover:no-underline hover-elevate rounded-md" data-testid={`button-more-${family.id}`}>
                           <div className="flex items-center gap-2">
-                            <ChevronDown className="h-3 w-3" />
+                            <ChevronDown className="h-3 w-3 text-blue-400" />
                             <span>More</span>
                           </div>
                         </AccordionTrigger>
@@ -419,7 +419,7 @@ export function PeekRailNav({ defaultPinned = false }: PeekRailNavProps) {
                                     data-testid={`link-${route.id}`}
                                     aria-current={isActive ? "page" : undefined}
                                   >
-                                    <route.icon className={cn("h-4 w-4 flex-shrink-0", isActive ? "text-foreground" : "text-muted-foreground")} />
+                                    <route.icon className={cn("h-4 w-4 flex-shrink-0", isActive ? "text-primary" : "text-blue-400")} />
                                     <span className={cn("ml-3 truncate", isActive ? "text-foreground" : "text-foreground")}>{route.label}</span>
                                     {route.badge && (
                                       <Badge variant="secondary" className="text-[10px] px-1.5 py-0 ml-auto flex-shrink-0">
@@ -449,7 +449,7 @@ export function PeekRailNav({ defaultPinned = false }: PeekRailNavProps) {
                         )}
                         data-testid={`link-locked-${route.id}`}
                       >
-                        <route.icon className="h-5 w-5 flex-shrink-0 text-muted-foreground" />
+                        <route.icon className="h-5 w-5 flex-shrink-0 text-blue-300/50" />
                         <AnimatePresence>
                           {isExpanded && (
                             <motion.div
@@ -502,7 +502,7 @@ export function PeekRailNav({ defaultPinned = false }: PeekRailNavProps) {
         </div>
 
         {/* Footer with User Profile */}
-        <div className="border-t border-border/40 p-3 flex-shrink-0">
+        <div className="border-t border-sidebar-border p-3 flex-shrink-0">
           {isExpanded ? (
             <DropdownMenu open={showUserMenu} onOpenChange={setShowUserMenu}>
               <DropdownMenuTrigger asChild>
@@ -551,7 +551,7 @@ export function PeekRailNav({ defaultPinned = false }: PeekRailNavProps) {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <Link href="/profile" className="flex items-center cursor-pointer" data-testid="link-profile">
-                    <UserCircle className="mr-2 h-4 w-4" />
+                    <UserCircle className="mr-2 h-4 w-4 text-blue-400" />
                     <span>Profile</span>
                   </Link>
                 </DropdownMenuItem>
@@ -561,13 +561,13 @@ export function PeekRailNav({ defaultPinned = false }: PeekRailNavProps) {
                     className="flex items-center cursor-pointer"
                     data-testid="link-unavailability"
                   >
-                    <Calendar className="mr-2 h-4 w-4" />
+                    <Calendar className="mr-2 h-4 w-4 text-blue-400" />
                     <span>Unavailability</span>
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link href="/employees" className="flex items-center cursor-pointer" data-testid="link-employees">
-                    <Users className="mr-2 h-4 w-4" />
+                    <Users className="mr-2 h-4 w-4 text-blue-400" />
                     <span>Employees</span>
                   </Link>
                 </DropdownMenuItem>
@@ -577,7 +577,7 @@ export function PeekRailNav({ defaultPinned = false }: PeekRailNavProps) {
                     className="flex items-center cursor-pointer"
                     data-testid="link-account-settings"
                   >
-                    <Settings className="mr-2 h-4 w-4" />
+                    <Settings className="mr-2 h-4 w-4 text-blue-400" />
                     <span>Account</span>
                   </Link>
                 </DropdownMenuItem>
@@ -590,7 +590,7 @@ export function PeekRailNav({ defaultPinned = false }: PeekRailNavProps) {
                         className="flex items-center cursor-pointer"
                         data-testid="link-platform-admin"
                       >
-                        <Shield className="mr-2 h-4 w-4" />
+                        <Shield className="mr-2 h-4 w-4 text-blue-400" />
                         <span>Platform Admin</span>
                       </Link>
                     </DropdownMenuItem>
@@ -599,20 +599,20 @@ export function PeekRailNav({ defaultPinned = false }: PeekRailNavProps) {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <Link href="/create-org" className="flex items-center cursor-pointer" data-testid="link-create-org">
-                    <Building2 className="mr-2 h-4 w-4" />
+                    <Building2 className="mr-2 h-4 w-4 text-blue-400" />
                     <span>Create new org</span>
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <Link href="/updates" className="flex items-center cursor-pointer" data-testid="link-updates">
-                    <Bell className="mr-2 h-4 w-4" />
+                    <Bell className="mr-2 h-4 w-4 text-blue-400" />
                     <span>Product updates</span>
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link href="/help" className="flex items-center cursor-pointer" data-testid="link-help">
-                    <HelpCircle className="mr-2 h-4 w-4" />
+                    <HelpCircle className="mr-2 h-4 w-4 text-blue-400" />
                     <span>Help Center</span>
                   </Link>
                 </DropdownMenuItem>
@@ -622,7 +622,7 @@ export function PeekRailNav({ defaultPinned = false }: PeekRailNavProps) {
                   className="text-red-600 dark:text-red-400 cursor-pointer"
                   data-testid="button-logout"
                 >
-                  <LogOut className="mr-2 h-4 w-4" />
+                  <LogOut className="mr-2 h-4 w-4 text-red-500" />
                   <span>Log out</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>

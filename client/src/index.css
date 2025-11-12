@@ -14,9 +14,9 @@
   /* Automatic computation of border around primary / danger buttons */
   --opaque-button-border-intensity: -8; /* In terms of percentages */
 
-  /* Backgrounds applied on top of other backgrounds when hovered/active - Subdued professional tint */
-  --elevate-1: rgba(47, 111, 94, .04);  /* Muted evergreen tint */
-  --elevate-2: rgba(47, 111, 94, .08);
+  /* Backgrounds applied on top of other backgrounds when hovered/active - AutoForce blue tint */
+  --elevate-1: rgba(11, 77, 255, .06);  /* AutoForce blue tint */
+  --elevate-2: rgba(11, 77, 255, .12);
 
   /* ========================================================================
      MOBILE-FIRST RESPONSIVE DESIGN TOKENS
@@ -89,7 +89,7 @@
 
   --sidebar-border: 215 20% 25%;       /* Subtle dark border */
 
-  --sidebar-primary: 158 34% 32%;      /* Muted evergreen - Active items */
+  --sidebar-primary: 220 67% 32%;      /* AutoForce blue - Active items */
 
   --sidebar-primary-foreground: 0 0% 100%;
 
@@ -97,7 +97,7 @@
 
   --sidebar-accent-foreground: 210 20% 96%;
 
-  --sidebar-ring: 158 34% 32%;         /* Muted evergreen focus ring */
+  --sidebar-ring: 217 90% 56%;         /* AutoForce blue focus ring */
 
   /* Popovers */
   --popover: 210 12% 96%;              /* Light gray */
@@ -106,13 +106,13 @@
 
   --popover-border: 213 16% 86%;       /* Neutral border */
 
-  /* Primary - Professional Muted Evergreen */
-  --primary: 158 34% 32%;              /* Muted evergreen - Professional CTAs */
+  /* Primary - AutoForce Blue */
+  --primary: 217 90% 56%;              /* AutoForce blue - Primary CTAs */
 
   --primary-foreground: 0 0% 100%;     /* White text */
 
   /* Secondary - Professional Steel Blue */
-  --secondary: 210 32% 42%;            /* Steel blue - Secondary actions */
+  --secondary: 213 70% 42%;            /* Steel blue - Secondary actions */
 
   --secondary-foreground: 0 0% 100%;   /* White text */
 
@@ -121,8 +121,8 @@
 
   --muted-foreground: 215 16% 47%;     /* Medium gray */
 
-  /* Accent - Professional Teal */
-  --accent: 162 29% 45%;               /* Muted teal - Accents, highlights */
+  /* Accent - Professional Blue Accent */
+  --accent: 200 86% 62%;               /* Blue accent - Highlights */
 
   --accent-foreground: 0 0% 100%;      /* White text */
 
@@ -133,13 +133,13 @@
 
   /* Input & Ring */
   --input: 213 16% 86%;                /* Neutral border */
-  --ring: 158 34% 32%;                 /* Muted evergreen focus ring */
+  --ring: 217 90% 56%;                 /* AutoForce blue focus ring */
   
-  /* Charts - Professional Palette */
-  --chart-1: 158 34% 32%;              /* Muted Evergreen */
-  --chart-2: 210 32% 42%;              /* Steel Blue */
+  /* Charts - AutoForce Blue Palette */
+  --chart-1: 217 90% 56%;              /* AutoForce Blue */
+  --chart-2: 213 70% 42%;              /* Steel Blue */
   --chart-3: 38 72% 48%;               /* Subdued Amber */
-  --chart-4: 162 29% 45%;              /* Professional Teal */
+  --chart-4: 200 86% 62%;              /* Blue Accent */
   --chart-5: 0 65% 52%;                /* Subdued Red */
 
   --font-sans: Inter, Open Sans, sans-serif;
@@ -214,9 +214,9 @@
 
   --opaque-button-border-intensity: 9;  /* In terms of percentages */
 
-  /* Backgrounds applied on top of other backgrounds when hovered/active */
-  --elevate-1: rgba(78, 159, 135, 0.06);  /* Muted teal tint */
-  --elevate-2: rgba(78, 159, 135, 0.12);
+  /* Backgrounds applied on top of other backgrounds when hovered/active - AutoForce blue tint */
+  --elevate-1: rgba(11, 77, 255, 0.06);  /* AutoForce blue tint */
+  --elevate-2: rgba(11, 77, 255, 0.12);
 
   /* AUTOFORCE™ DARK MODE - Blue-tinted Navy (matches homepage) */
   --background: 217 64% 10%;           /* Deep navy #0A1729 - Blue-tinted dark */
@@ -232,31 +232,31 @@
   --sidebar: 217 64% 10%;              /* Deep navy matching background */
   --sidebar-foreground: 210 20% 96%;
   --sidebar-border: 217 60% 20%;       /* Blue-tinted border */
-  --sidebar-primary: 158 34% 38%;      /* Muted evergreen - Slightly brighter for dark mode */
+  --sidebar-primary: 220 67% 38%;      /* AutoForce blue - Slightly brighter for dark mode */
   --sidebar-primary-foreground: 0 0% 100%;
   --sidebar-accent: 215 24% 18%;       /* Hover state */
   --sidebar-accent-foreground: 210 20% 96%;
-  --sidebar-ring: 158 34% 38%;
+  --sidebar-ring: 217 90% 56%;         /* AutoForce blue focus ring */
   
   /* Popovers */
   --popover: 215 24% 18%;
   --popover-foreground: 210 20% 96%;
   --popover-border: 215 20% 25%;
   
-  /* Primary - Professional Muted Evergreen */
-  --primary: 158 34% 38%;              /* Muted evergreen - Professional */
+  /* Primary - AutoForce Blue */
+  --primary: 217 90% 56%;              /* AutoForce blue - Professional */
   --primary-foreground: 0 0% 100%;
   
   /* Secondary - Professional Steel Blue */
-  --secondary: 210 32% 48%;            /* Steel blue - Secondary actions */
+  --secondary: 213 70% 48%;            /* Steel blue - Secondary actions */
   --secondary-foreground: 0 0% 100%;
   
   /* Muted */
   --muted: 215 22% 22%;
   --muted-foreground: 215 16% 65%;     /* Medium gray */
   
-  /* Accent - Professional Teal */
-  --accent: 162 29% 50%;               /* Muted teal - Accent */
+  /* Accent - Professional Blue Accent */
+  --accent: 200 86% 62%;               /* Blue accent - Accent */
   --accent-foreground: 217 28% 14%;    /* Dark text on accent */
   
   /* Destructive */
@@ -265,13 +265,13 @@
   
   /* Input & Ring */
   --input: 215 20% 25%;
-  --ring: 158 34% 38%;                 /* Muted evergreen focus ring */
+  --ring: 217 90% 56%;                 /* AutoForce blue focus ring */
   
-  /* Charts - Professional Dark Mode Palette */
-  --chart-1: 158 34% 38%;              /* Muted Evergreen */
-  --chart-2: 210 32% 48%;              /* Steel Blue */
+  /* Charts - AutoForce Blue Dark Mode Palette */
+  --chart-1: 217 90% 56%;              /* AutoForce Blue */
+  --chart-2: 213 70% 48%;              /* Steel Blue */
   --chart-3: 38 72% 52%;               /* Subdued Amber */
-  --chart-4: 162 29% 50%;              /* Professional Teal */
+  --chart-4: 200 86% 62%;              /* Blue Accent */
   --chart-5: 0 65% 52%;                /* Subdued Red */
 
   --shadow-2xs: 0px 1px 2px 0px hsl(218 85% 5% / 0.30);
