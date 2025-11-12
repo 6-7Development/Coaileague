@@ -265,15 +265,15 @@ export default function Dashboard() {
         {/* Workspace Health Status - Simple visual indicator */}
         {workspaceHealth && (
           <div className={`mb-8 rounded-xl border-2 p-6 ${
-            workspaceHealth.status === 'green' ? 'bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-500/30' :
-            workspaceHealth.status === 'yellow' ? 'bg-amber-50/50 dark:bg-amber-950/20 border-amber-500/30' :
+            workspaceHealth.status === 'green' ? 'bg-blue-50/50 dark:bg-blue-950/20 border-blue-500/30' :
+            workspaceHealth.status === 'yellow' ? 'bg-blue-100/50 dark:bg-blue-900/20 border-blue-400/30' :
             'bg-red-50/50 dark:bg-red-950/20 border-red-500/30'
           }`} data-testid="workspace-health-status">
             <div className="flex items-start gap-4">
               {/* Traffic Light Indicator */}
               <div className={`w-16 h-16 rounded-full flex items-center justify-center shrink-0 ${
-                workspaceHealth.status === 'green' ? 'bg-emerald-500' :
-                workspaceHealth.status === 'yellow' ? 'bg-amber-500' :
+                workspaceHealth.status === 'green' ? 'bg-blue-600' :
+                workspaceHealth.status === 'yellow' ? 'bg-blue-400' :
                 'bg-red-500'
               }`}>
                 {workspaceHealth.status === 'green' && <CheckCircle className="w-8 h-8 text-white" />}
@@ -396,18 +396,18 @@ export default function Dashboard() {
                     >
                       <div className="p-3 bg-muted/50 rounded-lg w-fit mb-4 relative">
                         <route.icon className="w-8 h-8 text-muted-foreground" />
-                        <div className="absolute -top-1 -right-1 bg-amber-500 dark:bg-amber-600 rounded-full p-1">
+                        <div className="absolute -top-1 -right-1 bg-blue-500 dark:bg-blue-600 rounded-full p-1">
                           <Lock className="w-3 h-3 text-white" />
                         </div>
                       </div>
                       <div className="flex items-center gap-2 mb-2">
                         <h4 className="font-bold text-muted-foreground text-lg">{route.label}</h4>
-                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-amber-500/50 text-amber-600 dark:text-amber-400">
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-blue-500/50 text-blue-600 dark:text-blue-400">
                           {route.badge}
                         </Badge>
                       </div>
                       <p className="text-sm text-muted-foreground/80 mb-3">{route.description}</p>
-                      <div className="flex items-center text-amber-600 dark:text-amber-400 text-sm font-semibold">
+                      <div className="flex items-center text-blue-600 dark:text-blue-400 text-sm font-semibold">
                         Upgrade to unlock <ArrowRight className="w-4 h-4 ml-1" />
                       </div>
                     </button>
@@ -416,7 +416,7 @@ export default function Dashboard() {
                 <TooltipContent side="top" className="max-w-xs">
                   <p className="font-medium">{route.label}</p>
                   <p className="text-xs text-muted-foreground mt-1">{route.description}</p>
-                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-2 font-semibold">
+                  <p className="text-xs text-blue-600 dark:text-blue-400 mt-2 font-semibold">
                     Requires {route.badge} plan to access
                   </p>
                 </TooltipContent>
