@@ -138,12 +138,12 @@ export function AgentToolbelt({
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button 
-            variant="outline" 
+            variant="secondary" 
             size="sm" 
-            className={className}
+            className={`gap-2 ${className || ''}`}
             data-testid="agent-toolbelt-trigger"
           >
-            <Wrench className="w-4 h-4 mr-2" />
+            <Wrench className="h-4 w-4" />
             Agent Tools
           </Button>
         </DropdownMenuTrigger>
