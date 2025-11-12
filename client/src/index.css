@@ -218,20 +218,20 @@
   --elevate-1: rgba(78, 159, 135, 0.06);  /* Muted teal tint */
   --elevate-2: rgba(78, 159, 135, 0.12);
 
-  /* AUTOFORCE™ DARK MODE - Professional Fortune 500 Style */
-  --background: 217 28% 14%;           /* Dark graphite - Professional dark */
+  /* AUTOFORCE™ DARK MODE - Blue-tinted Navy (matches homepage) */
+  --background: 217 64% 10%;           /* Deep navy #0A1729 - Blue-tinted dark */
   --foreground: 210 20% 96%;           /* Light gray - Clear text */
   
-  --border: 215 20% 25%;               /* Subtle dark border */
+  --border: 217 60% 20%;               /* Blue-tinted border #132B4D */
   
-  --card: 215 24% 18%;                 /* Dark card surface */
+  --card: 217 55% 15%;                 /* Blue-tinted card surface */
   --card-foreground: 210 20% 96%;
-  --card-border: 215 20% 25%;
+  --card-border: 217 60% 20%;          /* Blue-tinted borders */
   
-  /* Sidebar - Professional Dark */
-  --sidebar: 217 28% 12%;              /* Deep graphite */
+  /* Sidebar - Blue-tinted Navy */
+  --sidebar: 217 64% 10%;              /* Deep navy matching background */
   --sidebar-foreground: 210 20% 96%;
-  --sidebar-border: 215 20% 25%;
+  --sidebar-border: 217 60% 20%;       /* Blue-tinted border */
   --sidebar-primary: 158 34% 38%;      /* Muted evergreen - Slightly brighter for dark mode */
   --sidebar-primary-foreground: 0 0% 100%;
   --sidebar-accent: 215 24% 18%;       /* Hover state */
