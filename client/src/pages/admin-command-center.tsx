@@ -336,7 +336,7 @@ export default function AdminCommandCenter() {
               </Button>
 
               <Button 
-                className="h-auto py-6 px-6 flex-col gap-3 bg-amber-500/20 border-amber-500/30 hover:bg-amber-500/30 text-white" 
+                className="h-auto py-6 px-6 flex-col gap-3 bg-blue-500/20 border-blue-500/30 hover:bg-blue-500/30 text-white" 
                 onClick={() => window.location.href = '/admin/logs'}
                 data-testid="button-logs-tool"
               >
@@ -348,7 +348,7 @@ export default function AdminCommandCenter() {
               </Button>
 
               <Button 
-                className="h-auto py-6 px-6 flex-col gap-3 bg-rose-500/20 border-rose-500/30 hover:bg-rose-500/30 text-white" 
+                className="h-auto py-6 px-6 flex-col gap-3 bg-blue-600/20 border-blue-600/30 hover:bg-blue-600/30 text-white" 
                 onClick={() => window.location.href = '/admin/alerts'}
                 data-testid="button-alerts-tool"
               >

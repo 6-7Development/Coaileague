@@ -137,7 +137,7 @@ export default function PlatformAdmin() {
   }
 
   const healthColor = (value: number) => {
-    if (value >= 90) return "text-green-600";
+    if (value >= 90) return "text-blue-600";
     if (value >= 70) return "text-yellow-600";
     return "text-red-600";
   };
@@ -338,7 +338,7 @@ export default function PlatformAdmin() {
                 <div className="flex items-center gap-2">
                   {stats?.systemHealth?.database === "healthy" ? (
                     <>
-                      <CheckCircle className="h-5 w-5 text-green-600" />
+                      <CheckCircle className="h-5 w-5 text-blue-600" />
                       <span className="text-sm font-medium">Healthy</span>
                     </>
                   ) : (
