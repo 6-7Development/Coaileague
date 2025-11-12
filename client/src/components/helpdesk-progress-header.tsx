@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { CheckCircle, Clock, MessageCircle, AlertCircle, TrendingUp, Sparkles } from "lucide-react";
+import { CheckCircle, Clock, MessageCircle, AlertCircle, TrendingUp, Sparkles, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
@@ -30,7 +30,6 @@ const LIFECYCLE_STEPS: TicketLifecyclePhase[] = [
   'intake',
   'triage',
   'diagnosing',
-  'awaiting_customer',
   'validating',
   'completed'
 ];
@@ -65,28 +64,42 @@ export function HelpDeskProgressHeader({
   }
   
   const lifecyclePhase = mapUIStatusToLifecyclePhase(ticketData.status);
+  const isEscalated = ticketData.status === 'escalated';
   
   const config = LIFECYCLE_PHASE_CONFIG[lifecyclePhase];
-  const isStaffUser = propIsStaff ?? (user as any)?.platformRole && 
-    ['root_admin', 'deputy_admin', 'support_manager', 'sysop', 'support_agent'].includes((user as any).platformRole);
+  const isStaffUser = propIsStaff ?? ((user as any)?.platformRole && 
+    ['root_admin', 'deputy_admin', 'support_manager', 'sysop', 'support_agent'].includes((user as any).platformRole));
   
-  const displayLabel = isStaffUser ? config.label : config.customerLabel;
+  const displayLabel = isEscalated 
+    ? (isStaffUser ? 'Platform Escalated' : 'Escalated to Senior Support')
+    : (isStaffUser ? config.label : config.customerLabel);
   const currentStepOrder = config.order;
 
   return (
     <Card className={cn("border-0 shadow-none", className)} data-testid="helpdesk-progress-header">
-      <div className="px-4 py-3 rounded-lg bg-gradient-to-r from-white to-slate-50 dark:from-slate-900 dark:to-slate-800 border border-slate-200 dark:border-slate-700">
+      <div className={cn(
+        "px-4 py-3 rounded-lg border",
+        isEscalated 
+          ? "bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-950/30 dark:to-orange-950/30 border-red-300 dark:border-red-700"
+          : "bg-gradient-to-r from-white to-slate-50 dark:from-slate-900 dark:to-slate-800 border-slate-200 dark:border-slate-700"
+      )}>
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-3 min-w-0 flex-1">
             <div className={cn(
               "w-2 h-2 rounded-full flex-shrink-0",
+              isEscalated ? 'bg-red-500 animate-pulse' :
               lifecyclePhase === 'completed' ? 'bg-emerald-500' :
-              lifecyclePhase === 'awaiting_customer' ? 'bg-amber-500 animate-pulse' :
               'bg-cyan-500 animate-pulse'
             )} />
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className={cn("font-semibold text-sm", config.color)} data-testid="status-label">
+                {isEscalated && (
+                  <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0" />
+                )}
+                <span className={cn(
+                  "font-semibold text-sm",
+                  isEscalated ? 'text-red-600 dark:text-red-400' : config.color
+                )} data-testid="status-label">
                   {displayLabel}
                 </span>
                 {ticketData.ticketNumber && (
@@ -100,14 +113,19 @@ export function HelpDeskProgressHeader({
                   Agent: {ticketData.assignedAgent}
                 </p>
               )}
-              {!isStaffUser && lifecyclePhase !== 'awaiting_customer' && (
+              {!isStaffUser && isEscalated && (
+                <p className="text-xs text-red-600 dark:text-red-400 mt-0.5 font-medium">
+                  Your request has been escalated to our senior support team
+                </p>
+              )}
+              {!isStaffUser && !isEscalated && lifecyclePhase !== 'completed' && (
                 <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
                   We're working on your request
                 </p>
               )}
-              {!isStaffUser && lifecyclePhase === 'awaiting_customer' && (
-                <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5 font-medium">
-                  We need additional information from you
+              {!isStaffUser && !isEscalated && lifecyclePhase === 'completed' && (
+                <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-0.5 font-medium">
+                  Your request has been resolved
                 </p>
               )}
             </div>
@@ -130,7 +148,7 @@ export function HelpDeskProgressHeader({
           </div>
         </div>
 
-        {/* Progressive Color Bars - AutoForce emerald/cyan gradient */}
+        {/* Progressive Color Bars - AutoForce emerald/cyan gradient (or red for escalated) */}
         <div className="mt-3 flex items-center gap-1">
           {LIFECYCLE_STEPS.map((step) => {
             const stepConfig = LIFECYCLE_PHASE_CONFIG[step];
@@ -144,11 +162,13 @@ export function HelpDeskProgressHeader({
                 className={cn(
                   "h-1.5 rounded-full flex-1 transition-all duration-500",
                   isCompleted && "bg-gradient-to-r from-emerald-500 to-cyan-500",
-                  isCurrent && `bg-gradient-to-r ${stepConfig.gradient} animate-pulse`,
+                  isCurrent && isEscalated && "bg-gradient-to-r from-red-500 to-orange-500 animate-pulse",
+                  isCurrent && !isEscalated && `bg-gradient-to-r ${stepConfig.gradient} animate-pulse`,
                   isPending && "bg-slate-200 dark:bg-slate-700"
                 )}
                 data-testid={`progress-step-${step}`}
-                title={isStaffUser ? stepConfig.label : stepConfig.customerLabel}
+                title={isEscalated && isCurrent ? 'Escalated to Platform Support' : (isStaffUser ? stepConfig.label : stepConfig.customerLabel)}
+                aria-label={isEscalated && isCurrent ? 'Escalated to Platform Support' : (isStaffUser ? stepConfig.label : stepConfig.customerLabel)}
               />
             );
           })}
