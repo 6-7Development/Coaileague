@@ -8,25 +8,20 @@ import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { 
   AlertCircle, Clock, Users, Zap, TrendingUp, 
-  Award, Bell, MessageCircle, Star, Heart, Ghost 
+  Award, Bell, MessageCircle, Star, Heart
 } from "lucide-react";
 import { 
-  ParticleSystem, 
-  AnimatedGradientText, 
-  TypingText, 
-  FloatingEmojis,
-  PulseGlow,
-  AnimatedIconCarousel,
-  WaveText
+  ParticleSystem
 } from "./advanced-banner-effects";
 
 interface BannerMessage {
   id: string;
   text: string;
-  type: 'info' | 'warning' | 'success' | 'promo' | 'queue';
+  type: 'info' | 'warning' | 'success' | 'promo' | 'queue' | 'incident' | 'maintenance';
   link?: string;
   icon?: string;
   emoticon?: string;
+  progress?: number; // For incident/maintenance status (0-100)
 }
 
 interface ChatAnnouncementBannerProps {
@@ -77,9 +72,6 @@ export function ChatAnnouncementBanner({
       setSeasonalEffect('none');
     }
   }, []);
-
-  // No emoticons - guidelines prohibit emojis
-  const emoticons: Record<string, string> = {};
 
   // Icon mapping
   const iconMap: Record<string, any> = {
@@ -252,145 +244,62 @@ export function ChatAnnouncementBanner({
 
   const currentMessage = messages[currentIndex];
   const IconComponent = currentMessage.icon ? iconMap[currentMessage.icon] : null;
-  const emoticon = currentMessage.emoticon ? emoticons[currentMessage.emoticon] : null;
 
-  // Color schemes - TRANSPARENT to blend with header (animations show through)
-  const colorSchemes = {
-    info: 'bg-transparent text-white',
-    warning: 'bg-transparent text-amber-200',
-    success: 'bg-transparent text-primary',
-    promo: 'bg-transparent text-white',
-    queue: 'bg-transparent text-cyan-200'
-  };
+  // Special styling for incident/maintenance messages
+  const isSpecialStatus = currentMessage.type === 'incident' || currentMessage.type === 'maintenance';
+  const backgroundClass = isSpecialStatus 
+    ? 'bg-emerald-700' 
+    : 'bg-gradient-to-r from-emerald-600 via-emerald-500 to-green-600';
 
   const BannerContent = (
     <div className={`
-      w-full min-h-[72px] transition-all duration-500 ease-in-out relative overflow-hidden
-      bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-500
-      shadow-xl backdrop-blur-sm
+      w-full min-h-[60px] transition-all duration-500 ease-in-out relative overflow-hidden
+      ${backgroundClass}
+      shadow-md
+      px-4 py-3 sm:px-6
       animate-in fade-in slide-in-from-top-2
     `}>
-      {/* ADVANCED PARTICLE EFFECTS - Physics-based with emojis - Controlled by seasonalAnimationsEnabled */}
-      {seasonalAnimationsEnabled && seasonalEffect === 'snow' && (
-        <>
-          <ParticleSystem type="snow" count={40} duration={300000} enabled={true} />
-          <FloatingEmojis emojis={['❄️', '⛄', '🌨️']} count={5} />
-        </>
+      {/* Icon-based particle effects only - NO EMOJIS per guidelines */}
+      {seasonalAnimationsEnabled && !isSpecialStatus && seasonalEffect === 'snow' && (
+        <ParticleSystem type="snow" count={40} duration={300000} enabled={true} />
       )}
-      {seasonalAnimationsEnabled && seasonalEffect === 'fireworks' && (
+      {seasonalAnimationsEnabled && !isSpecialStatus && seasonalEffect === 'fireworks' && (
         <>
           <ParticleSystem type="fireworks" count={60} duration={300000} enabled={true} />
           <ParticleSystem type="stars" count={30} duration={300000} enabled={true} />
-          <FloatingEmojis emojis={['🎆', '🎇', '✨', '💫', '🌟']} count={8} />
         </>
       )}
-      {seasonalAnimationsEnabled && seasonalEffect === 'hearts' && (
-        <>
-          <ParticleSystem type="hearts" count={35} duration={300000} enabled={true} />
-          <FloatingEmojis emojis={['❤️', '💕', '💖', '💗', '💘', '💝']} count={8} />
-        </>
+      {seasonalAnimationsEnabled && !isSpecialStatus && seasonalEffect === 'hearts' && (
+        <ParticleSystem type="hearts" count={35} duration={300000} enabled={true} />
       )}
-      {seasonalAnimationsEnabled && seasonalEffect === 'halloween' && (
-        <>
-          <ParticleSystem type="celebration" count={40} duration={300000} enabled={true} />
-          <FloatingEmojis emojis={['👻', '🎃', '🦇', '🕷️', '🕸️', '💀']} count={10} />
-        </>
+      {seasonalAnimationsEnabled && !isSpecialStatus && seasonalEffect === 'halloween' && (
+        <ParticleSystem type="celebration" count={40} duration={300000} enabled={true} />
       )}
       
       {/* CONFETTI for celebrations */}
-      {seasonalAnimationsEnabled && currentMessage.type === 'promo' && (
+      {seasonalAnimationsEnabled && !isSpecialStatus && currentMessage.type === 'promo' && (
         <ParticleSystem type="confetti" count={30} duration={300000} enabled={true} />
       )}
-      <div className="max-w-full px-4 sm:px-6 py-3 flex items-center justify-center gap-2 sm:gap-3 relative z-10 min-h-[48px]">
-        {/* Icon - Animated if enabled, static if disabled */}
+      <div className="max-w-full flex items-center justify-center gap-2 sm:gap-3 relative z-10 min-h-[48px] flex-wrap">
+        {/* Icon - White color for bright gradient theme */}
         {IconComponent && (
-          seasonalAnimationsEnabled ? (
-            <PulseGlow color={currentMessage.type === 'promo' ? '#00ffff' : '#ffff00'} intensity={15}>
-              <div className="scale-110">
-                <AnimatedIconCarousel 
-                  icons={['sparkles', 'star', 'zap', 'trophy', 'crown']}
-                  size={28}
-                  colors={['text-yellow-400', 'text-cyan-400', 'text-purple-400', 'text-pink-400', 'text-orange-400']}
-                  interval={1500}
-                />
-              </div>
-            </PulseGlow>
-          ) : (
-            <IconComponent className="w-7 h-7 text-yellow-400" />
-          )
+          <IconComponent className="w-6 h-6 text-white flex-shrink-0" />
         )}
         
-        {/* Emoticon - Animated if enabled, static if disabled */}
-        {emoticon && (
-          seasonalAnimationsEnabled ? (
-            <PulseGlow color="#ff00ff" intensity={20}>
-              <span className="text-2xl sm:text-3xl leading-none animate-bounce" style={{ animationDuration: '1.5s' }}>
-                {emoticon}
-              </span>
-            </PulseGlow>
-          ) : (
-            <span className="text-2xl sm:text-3xl leading-none">
-              {emoticon}
-            </span>
-          )
-        )}
-        
-        {/* MESSAGE TEXT - Animated if enabled, static if disabled */}
-        <div className="flex-1 text-center">
-          {seasonalAnimationsEnabled ? (
-            // ANIMATIONS ENABLED - Use fancy text effects
-            <>
-              {currentMessage.type === 'promo' ? (
-                <div className="text-base sm:text-xl font-extrabold">
-                  <AnimatedGradientText 
-                    colors={['#ff0080', '#ff8c00', '#40e0d0', '#9370db', '#ff0080']}
-                    speed={4}
-                  >
-                    {currentMessage.text}
-                  </AnimatedGradientText>
-                </div>
-              ) : currentMessage.type === 'warning' ? (
-                <PulseGlow color="#ff6600" intensity={15}>
-                  <div className="text-base sm:text-lg font-bold text-amber-300">
-                    <TypingText text={currentMessage.text} speed={80} />
-                  </div>
-                </PulseGlow>
-              ) : currentMessage.type === 'success' ? (
-                <div className="text-base sm:text-lg font-bold text-primary">
-                  <WaveText text={currentMessage.text} delay={80} />
-                </div>
-              ) : (
-                <div className="text-sm sm:text-base font-semibold">
-                  <AnimatedGradientText 
-                    colors={['#60a5fa', '#a78bfa', '#60a5fa']}
-                    speed={3}
-                  >
-                    {currentMessage.text}
-                  </AnimatedGradientText>
-                </div>
-              )}
-            </>
-          ) : (
-            // ANIMATIONS DISABLED - Use plain text with appropriate colors
-            <>
-              {currentMessage.type === 'promo' ? (
-                <div className="text-base sm:text-xl font-extrabold text-white">
-                  {currentMessage.text}
-                </div>
-              ) : currentMessage.type === 'warning' ? (
-                <div className="text-base sm:text-lg font-bold text-amber-300">
-                  {currentMessage.text}
-                </div>
-              ) : currentMessage.type === 'success' ? (
-                <div className="text-base sm:text-lg font-bold text-primary">
-                  {currentMessage.text}
-                </div>
-              ) : (
-                <div className="text-sm sm:text-base font-semibold text-blue-200">
-                  {currentMessage.text}
-                </div>
-              )}
-            </>
+        {/* MESSAGE TEXT - Clean white text on bright gradient */}
+        <div className="flex-1 text-center sm:text-left">
+          <div className="text-sm sm:text-base font-semibold text-white">
+            {currentMessage.text}
+          </div>
+          
+          {/* Progress bar for incident/maintenance messages */}
+          {isSpecialStatus && currentMessage.progress !== undefined && (
+            <div className="mt-2 w-full bg-emerald-900/30 rounded-full h-2 overflow-hidden">
+              <div 
+                className="bg-white h-full rounded-full transition-all duration-500"
+                style={{ width: `${currentMessage.progress}%` }}
+              />
+            </div>
           )}
         </div>
 
