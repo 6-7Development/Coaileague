@@ -577,7 +577,7 @@ export function HelpDesk(props?: HelpDeskProps & any) {
     const isBot = role === 'bot';
     // Smaller superscript (text-[9px]) but still visible with space separation
     return (
-      <sup className={`text-[9px] font-semibold ml-1 ${isBot ? 'text-amber-500' : 'text-green-500'}`}>
+      <sup className={`text-[9px] font-semibold ml-1 ${isBot ? 'text-amber-500' : 'text-emerald-500'}`}>
         ({roleText})
       </sup>
     );
@@ -609,7 +609,7 @@ export function HelpDesk(props?: HelpDeskProps & any) {
       parts.push(
         <span key={key++} className="font-semibold">
           {userName}
-          <sup className={`text-[9px] font-semibold ml-1 ${isBot ? 'text-amber-500' : 'text-green-500'}`}>
+          <sup className={`text-[9px] font-semibold ml-1 ${isBot ? 'text-amber-500' : 'text-emerald-500'}`}>
             ({roleText})
           </sup>
         </span>
@@ -628,11 +628,11 @@ export function HelpDesk(props?: HelpDeskProps & any) {
 
   const getRoleColor = (role: string) => {
     switch (role) {
-      case 'root_admin': return 'text-green-600 font-bold';  // Root admin
-      case 'bot': return 'text-amber-600 font-bold';  // Bot
-      case 'deputy_admin': return 'text-green-600 font-bold';
-      case 'support_manager': return 'text-primary font-bold';
-      case 'sysop': return 'text-primary font-bold';
+      case 'root_admin': return 'text-emerald-600 font-bold';  // Root admin
+      case 'bot': return 'text-amber-500 font-bold';  // Bot
+      case 'deputy_admin': return 'text-emerald-600 font-bold';
+      case 'support_manager': return 'text-green-600 font-bold';
+      case 'sysop': return 'text-cyan-600 font-bold';
       default: return 'text-slate-700 font-semibold';  // Regular users
     }
   };
@@ -640,8 +640,8 @@ export function HelpDesk(props?: HelpDeskProps & any) {
   // Get message bubble color - Unified, aesthetically pleasing design with good contrast
   const getMessageBubbleColor = (senderType: string, role: string, isSelf: boolean) => {
     if (isSelf) {
-      // Support staff own messages - soft indigo (not too dark)
-      return 'bg-gradient-to-br from-neutral-50 to-primary border border-green-200 shadow-sm';
+      // Support staff own messages - professional white card
+      return 'bg-white border border-gray-200 shadow-md text-foreground';
     }
     
     // Bot messages - warm amber/cream background
@@ -654,8 +654,8 @@ export function HelpDesk(props?: HelpDeskProps & any) {
       return 'bg-gradient-to-br from-neutral-50 to-primary border border-primary shadow-sm';
     }
     
-    // Customer/regular messages - neutral warm gray
-    return 'bg-gradient-to-br from-slate-50 to-gray-50 border border-slate-200 shadow-sm';
+    // Customer/regular messages - professional white card
+    return 'bg-white border border-gray-200 shadow-md text-foreground';
   };
 
   const isStaff = user && ['root_admin', 'deputy_admin', 'support_manager', 'sysop', 'support_agent'].includes((user as any).platformRole);
@@ -890,16 +890,16 @@ export function HelpDesk(props?: HelpDeskProps & any) {
       <SeasonalBackground enabled={seasonalAnimationsEnabled} />
       
       {/* CLEAN MOBILE-FIRST HEADER - No overlapping elements */}
-      <header className="relative z-50 bg-gradient-to-r from-primary via-teal-600 to-primary border-b-4 border-accent flex-shrink-0">
+      <header className="relative z-50 bg-white border-b border-gray-200 shadow-md flex-shrink-0">
         <div className="flex items-center justify-between px-3 py-2 gap-2">
           {/* Left: Logo + Title */}
           <div className="flex items-center gap-2 min-w-0 flex-1">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-accent to-green-600 flex items-center justify-center flex-shrink-0 shadow-md">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-600 to-green-600 shadow-md flex items-center justify-center flex-shrink-0">
               <span className="text-white font-black text-sm">AF</span>
             </div>
             <div className="min-w-0">
-              <h1 className="text-white font-bold text-sm sm:text-base truncate">HelpDesk</h1>
-              <p className="text-white/80 text-[10px] sm:text-xs truncate">Live support chat</p>
+              <h1 className="text-gray-900 font-bold text-sm sm:text-base truncate">HelpDesk</h1>
+              <p className="text-gray-600 text-[10px] sm:text-xs truncate">Live support chat</p>
             </div>
           </div>
 
@@ -908,7 +908,7 @@ export function HelpDesk(props?: HelpDeskProps & any) {
             onClick={() => navigate('/')}
             variant="ghost"
             size="icon"
-            className="h-10 w-10 flex-shrink-0 bg-white/10 hover:bg-white/20 border border-white/20 text-white shadow-md"
+            className="h-10 w-10 flex-shrink-0"
             data-testid="button-close-helpdesk"
             title="Close and return home"
           >
@@ -917,8 +917,8 @@ export function HelpDesk(props?: HelpDeskProps & any) {
         </div>
 
         {/* Queue Status Bar - Subtle info strip */}
-        <div className="bg-white/10 backdrop-blur-sm px-3 py-1.5 border-t border-white/10">
-          <div className="flex items-center justify-between gap-2 text-[11px] sm:text-xs text-white/90">
+        <div className="bg-gray-50 px-3 py-1.5 border-t border-gray-200">
+          <div className="flex items-center justify-between gap-2 text-[11px] sm:text-xs text-gray-700">
             <span className="flex items-center gap-1.5">
               <Users className="w-3.5 h-3.5 flex-shrink-0" />
               <span className="truncate">{uniqueUsers.filter(u => ['root_admin', 'deputy_admin', 'support_manager', 'sysop'].includes(u.role)).length} agents online</span>
@@ -1082,10 +1082,10 @@ export function HelpDesk(props?: HelpDeskProps & any) {
         </section>
 
         {/* RIGHT COLUMN: User List or Context Panel - Hidden on mobile, visible on desktop */}
-        <section className="hidden md:flex min-w-[280px] max-w-[320px] w-auto bg-gradient-to-b from-slate-100 via-teal-50 to-slate-100 backdrop-blur-sm flex-col flex-shrink-0 shadow-[-4px_0_12px_rgba(0,0,0,0.1)]">
+        <section className="hidden md:flex min-w-[280px] max-w-[320px] w-auto bg-white border-l border-gray-200 shadow-md flex-col flex-shrink-0">
           
           {/* Header with toggle */}
-          <div className="px-3 py-2 border-b border-primary/50 flex-shrink-0 bg-gradient-to-r from-neutral-100/80 to-slate-100/80">
+          <div className="px-3 py-2 border-b border-gray-200 flex-shrink-0 bg-gray-50">
             <div className="flex items-center gap-1.5">
               {showContextPanel && isStaff ? (
                 <>
@@ -1726,7 +1726,7 @@ export function HelpDesk(props?: HelpDeskProps & any) {
 
       {/* Controls Menu - Slide-Over Panel (Emerald Color Scheme) */}
       <Sheet open={showControlsMenu} onOpenChange={setShowControlsMenu}>
-        <SheetContent className="w-full sm:max-w-2xl bg-gradient-to-br from-neutral-50 to-green-50 border-primary">
+        <SheetContent className="w-full sm:max-w-2xl bg-white border-gray-200">
           <SheetHeader className="border-b border-primary pb-4 mb-4">
             <div className="flex items-center justify-between">
               <SheetTitle className="text-2xl font-bold text-primary">
@@ -1842,9 +1842,9 @@ export function HelpDesk(props?: HelpDeskProps & any) {
                 {(selectedUserId.startsWith('sim-') || selectedUserId.startsWith('demo-')) && userContext.user?.isSimulated ? (
                   /* Simulated/Demo user information */
                   <div className="space-y-4">
-                    <div className="bg-gradient-to-r from-primary/20 to-green-500/20 border border-primary/30 rounded-lg p-4">
+                    <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-md">
                       <div className="flex items-center gap-3 mb-3">
-                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-green-600 flex items-center justify-center ring-2 ring-primary/50">
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-600 to-green-600 shadow-md flex items-center justify-center ring-2 ring-gray-200">
                           <Users size={24} className="text-white" />
                         </div>
                         <div>
@@ -1935,7 +1935,7 @@ export function HelpDesk(props?: HelpDeskProps & any) {
 
                     <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3">
                       <div className="flex items-start gap-2">
-                        <AlertCircle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+                        <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
                         <span className="text-amber-300 text-xs">
                           This is an automated system. For sensitive issues, request human support agent.
                         </span>
