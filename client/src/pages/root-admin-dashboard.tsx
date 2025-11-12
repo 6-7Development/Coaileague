@@ -300,16 +300,16 @@ export default function RootAdminDashboard() {
                   <AnimatedAutoForceLogo size="lg" variant="icon" />
                 </div>
                 <div>
-                  <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-gray-900 via-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                  <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-emerald-600 via-cyan-600 to-teal-600 bg-clip-text text-transparent">
                     Platform Command Center
                   </h1>
-                  <p className="text-gray-600 text-xs sm:text-sm">
+                  <p className="text-slate-700 dark:text-slate-300 text-xs sm:text-sm font-medium">
                     {getRoleTitle()}
                   </p>
                   <TimeGreeting 
                     userName={personalData?.userName}
                     role=""
-                    className="text-primary text-xs mt-0.5"
+                    className="text-emerald-600 dark:text-emerald-400 text-xs mt-0.5"
                   />
                 </div>
               </div>
@@ -365,17 +365,17 @@ export default function RootAdminDashboard() {
         {/* Desktop: 2-Column Grid | Mobile: Stacked */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
           {/* Quick Access Menu - Organized by Categories (Registry-Based) */}
-          <Card className="bg-white/80 backdrop-blur-sm border-2 border-gray-200 shadow-md">
+          <Card className="bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-sm border-2 border-slate-200 dark:border-slate-700 shadow-md">
             <CardContent className="p-3 sm:p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <Zap className="h-4 w-4 sm:h-5 sm:w-5 text-primary shrink-0" />
-                <h2 className="text-xs sm:text-sm font-semibold uppercase tracking-wide text-gray-900">Quick Access</h2>
+              <div className="flex items-center justify-center gap-2 mb-3 lg:flex-col lg:gap-1">
+                <Zap className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wide text-slate-900 dark:text-slate-100 lg:text-center">Quick Access</h2>
               </div>
 
               {/* Support & Helpdesk Tools */}
               {supportActions.length > 0 && (
                 <div className="mb-3">
-                  <h3 className="text-[10px] sm:text-xs font-semibold text-primary/70 mb-2 uppercase tracking-wider">Support & Helpdesk</h3>
+                  <h3 className="text-[10px] sm:text-xs font-bold text-emerald-700 dark:text-emerald-400 mb-2 uppercase tracking-wider lg:text-center">Support & Helpdesk</h3>
                   <div className="grid grid-cols-3 gap-2">
                     {supportActions.map((action) => {
                       const Icon = action.icon;
@@ -407,7 +407,7 @@ export default function RootAdminDashboard() {
               {/* Platform Management Tools */}
               {platformActions.length > 0 && (
                 <div className="mb-3">
-                  <h3 className="text-[10px] sm:text-xs font-semibold text-blue-400/70 mb-2 uppercase tracking-wider">Platform Management</h3>
+                  <h3 className="text-[10px] sm:text-xs font-bold text-cyan-700 dark:text-cyan-400 mb-2 uppercase tracking-wider lg:text-center">Platform Management</h3>
                   <div className="grid grid-cols-3 gap-2">
                     {platformActions.map((action) => {
                       const Icon = action.icon;
@@ -439,7 +439,7 @@ export default function RootAdminDashboard() {
               {/* Operations & Monitoring */}
               {operationsActions.length > 0 && (
                 <div className="mb-3">
-                  <h3 className="text-[10px] sm:text-xs font-semibold text-blue-400/70 mb-2 uppercase tracking-wider">Operations & Monitoring</h3>
+                  <h3 className="text-[10px] sm:text-xs font-bold text-teal-700 dark:text-teal-400 mb-2 uppercase tracking-wider lg:text-center">Operations & Monitoring</h3>
                   <div className="grid grid-cols-3 gap-2">
                     {operationsActions.map((action) => {
                       const Icon = action.icon;
@@ -471,7 +471,7 @@ export default function RootAdminDashboard() {
               {/* Core Features */}
               {coreActions.length > 0 && (
                 <div>
-                  <h3 className="text-[10px] sm:text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wider">Core Features</h3>
+                  <h3 className="text-[10px] sm:text-xs font-bold text-slate-700 dark:text-slate-300 mb-2 uppercase tracking-wider lg:text-center">Core Features</h3>
                   <div className="grid grid-cols-3 gap-2">
                     {coreActions.map((action) => {
                       const Icon = action.icon;
@@ -503,20 +503,20 @@ export default function RootAdminDashboard() {
           </Card>
 
           {/* 🔐 ADMIN CONTROLS - User & Workspace Management */}
-          <Card className="bg-white/80 backdrop-blur-sm border-2 border-gray-200 shadow-md">
+          <Card className="bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-sm border-2 border-slate-200 dark:border-slate-700 shadow-md">
             <CardHeader className="pb-3 pt-3 px-4">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <ShieldAlert className="h-4 w-4 text-red-400" />
-                Platform Administration
+              <CardTitle className="flex items-center justify-center gap-2 text-base lg:flex-col lg:gap-1">
+                <ShieldAlert className="h-4 w-4 text-red-500 dark:text-red-400" />
+                <span className="text-slate-900 dark:text-slate-100 font-bold lg:text-center">Platform Administration</span>
               </CardTitle>
-              <CardDescription className="text-xs">Search and manage users, workspaces, and permissions</CardDescription>
+              <CardDescription className="text-xs text-slate-700 dark:text-slate-300 font-medium lg:text-center">Search and manage users, workspaces, and permissions</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 px-4 pb-4">
               {/* User Search & Management */}
               <div className="space-y-3" id="user-section">
-                <div className="flex items-center gap-2">
-                  <UserCog className="h-3.5 w-3.5 text-primary" />
-                  <h3 className="text-xs font-semibold uppercase tracking-wide text-primary">User Management</h3>
+                <div className="flex items-center justify-center gap-2 lg:flex-col lg:gap-1">
+                  <UserCog className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <h3 className="text-xs font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-400 lg:text-center">User Management</h3>
                 </div>
                 
                 <div className="relative">
@@ -615,9 +615,9 @@ export default function RootAdminDashboard() {
 
               {/* Workspace Search & Management */}
               <div className="space-y-3" id="workspace-section">
-                <div className="flex items-center gap-2">
-                  <Building2 className="h-3.5 w-3.5 text-teal-400" />
-                  <h3 className="text-xs font-semibold uppercase tracking-wide text-teal-400">Workspace Management</h3>
+                <div className="flex items-center justify-center gap-2 lg:flex-col lg:gap-1">
+                  <Building2 className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-400" />
+                  <h3 className="text-xs font-bold uppercase tracking-wide text-cyan-700 dark:text-cyan-400 lg:text-center">Workspace Management</h3>
                 </div>
                 
                 <div className="relative">
