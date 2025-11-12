@@ -91,26 +91,28 @@ export function PageHeader({
 
         {/* Header Content */}
         {isCentered ? (
-          // Centered Layout: Three-column grid for true centering
-          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4 w-full">
-            {/* Left spacer */}
-            <div></div>
-            
-            {/* Center: Title & Description */}
-            <div className="flex flex-col items-center justify-center text-center">
-              <h1 className="text-2xl sm:text-3xl font-semibold text-foreground tracking-tight whitespace-nowrap">
-                {title}
-              </h1>
-              {description && (
-                <p className="text-sm text-muted-foreground mt-1">
-                  {description}
-                </p>
-              )}
-            </div>
-            
-            {/* Right: Action Buttons */}
-            <div className="flex items-center gap-2 justify-end">
-              {children}
+          // Centered Layout: Three-column grid for true centering with max-width
+          <div className="max-w-5xl mx-auto w-full">
+            <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
+              {/* Left spacer */}
+              <div></div>
+              
+              {/* Center: Title & Description */}
+              <div className="flex flex-col items-center justify-center text-center">
+                <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight whitespace-nowrap" style={{ color: '#0B4DFF' }}>
+                  {title}
+                </h1>
+                {description && (
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {description}
+                  </p>
+                )}
+              </div>
+              
+              {/* Right: Action Buttons */}
+              <div className="flex items-center gap-2 justify-end">
+                {children}
+              </div>
             </div>
           </div>
         ) : (

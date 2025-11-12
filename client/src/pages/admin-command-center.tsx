@@ -31,7 +31,7 @@ import {
   UserCog,
   KeyRound,
 } from "lucide-react";
-import { AutoForceLogo } from "@/components/autoforce-logo";
+import { AnimatedAutoForceLogo } from "@/components/animated-autoforce-logo";
 import { MasterKeysPanel } from "@/components/master-keys-panel";
 import { UserManagementPanel } from "@/components/user-management-panel";
 import { TimeGreeting } from "@/components/time-greeting";
@@ -193,7 +193,7 @@ export default function AdminCommandCenter() {
                 </TabsTrigger>
                 <TabsTrigger 
                   value="organizations" 
-                  className="data-[state=active]:bg-indigo-500/40 data-[state=active]:text-white text-slate-300"
+                  className="data-[state=active]:bg-primary/20"
                   data-testid="tab-organizations"
                 >
                   <KeyRound className="h-4 w-4 mr-2" />
@@ -207,36 +207,36 @@ export default function AdminCommandCenter() {
           <TabsContent value="overview" className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Platform Metrics */}
-              <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-6">
+              <div className="backdrop-blur-xl bg-card/50 border border-border rounded-2xl p-6">
                 <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5 text-indigo-400" />
+                  <BarChart3 className="h-5 w-5 text-primary" />
                   Platform Metrics
                 </h3>
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 hover-elevate">
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-primary/10 border border-primary/20 hover-elevate">
                     <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-lg bg-blue-500/20">
-                        <Building2 className="h-5 w-5 text-blue-400" />
+                      <div className="p-2 rounded-lg bg-primary/20">
+                        <Building2 className="h-5 w-5 text-primary" />
                       </div>
-                      <span className="text-sm font-medium text-slate-300">Workspaces</span>
+                      <span className="text-sm font-medium text-muted-foreground">Workspaces</span>
                     </div>
                     <div className="text-2xl font-bold text-white">{(stats as any)?.totalEmployees || 0}</div>
                   </div>
-                  <div className="flex items-center justify-between p-3 rounded-lg bg-muted/10 border border-primary/20 hover-elevate">
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-primary/10 border border-primary/20 hover-elevate">
                     <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-lg bg-muted/20">
+                      <div className="p-2 rounded-lg bg-primary/20">
                         <DollarSign className="h-5 w-5 text-primary" />
                       </div>
-                      <span className="text-sm font-medium text-slate-300">Monthly Revenue</span>
+                      <span className="text-sm font-medium text-muted-foreground">Monthly Revenue</span>
                     </div>
                     <div className="text-2xl font-bold text-white">${(stats as any)?.totalRevenue || "0"}</div>
                   </div>
-                  <div className="flex items-center justify-between p-3 rounded-lg bg-violet-500/10 border border-violet-500/20 hover-elevate">
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-primary/10 border border-primary/20 hover-elevate">
                     <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-lg bg-violet-500/20">
-                        <Users className="h-5 w-5 text-violet-400" />
+                      <div className="p-2 rounded-lg bg-primary/20">
+                        <Users className="h-5 w-5 text-primary" />
                       </div>
-                      <span className="text-sm font-medium text-slate-300">Total Users</span>
+                      <span className="text-sm font-medium text-muted-foreground">Total Users</span>
                     </div>
                     <div className="text-2xl font-bold text-white">{(stats as any)?.totalClients || 0}</div>
                   </div>
@@ -244,38 +244,38 @@ export default function AdminCommandCenter() {
               </div>
 
               {/* System Status */}
-              <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-6">
+              <div className="backdrop-blur-xl bg-card/50 border border-border rounded-2xl p-6">
                 <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
-                  <Shield className="h-5 w-5 text-indigo-400" />
+                  <Shield className="h-5 w-5 text-primary" />
                   System Health
                 </h3>
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between p-3 rounded-lg bg-white/5 hover-elevate">
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-card/50 hover-elevate">
                     <div className="flex items-center gap-2">
                       <Cpu className="h-4 w-4 text-slate-400" />
-                      <span className="text-sm text-slate-300">Database</span>
+                      <span className="text-sm text-muted-foreground">Database</span>
                     </div>
-                    <Badge className="bg-muted/20 text-primary border-primary/30">
+                    <Badge className="bg-primary/20 text-primary border-primary/30">
                       <CheckCircle className="h-3 w-3 mr-1" />
                       Healthy
                     </Badge>
                   </div>
-                  <div className="flex items-center justify-between p-3 rounded-lg bg-white/5 hover-elevate">
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-card/50 hover-elevate">
                     <div className="flex items-center gap-2">
                       <Server className="h-4 w-4 text-slate-400" />
-                      <span className="text-sm text-slate-300">API Status</span>
+                      <span className="text-sm text-muted-foreground">API Status</span>
                     </div>
-                    <Badge className="bg-muted/20 text-primary border-primary/30">
+                    <Badge className="bg-primary/20 text-primary border-primary/30">
                       <CheckCircle className="h-3 w-3 mr-1" />
                       Online
                     </Badge>
                   </div>
-                  <div className="flex items-center justify-between p-3 rounded-lg bg-white/5 hover-elevate">
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-card/50 hover-elevate">
                     <div className="flex items-center gap-2">
                       <Activity className="h-4 w-4 text-slate-400" />
-                      <span className="text-sm text-slate-300">Uptime</span>
+                      <span className="text-sm text-muted-foreground">Uptime</span>
                     </div>
-                    <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30">
+                    <Badge className="bg-primary/20 text-primary border-primary/30">
                       99.9%
                     </Badge>
                   </div>
@@ -288,7 +288,7 @@ export default function AdminCommandCenter() {
           <TabsContent value="tools" className="space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <Button 
-                className="h-auto py-6 px-6 flex-col gap-3 bg-indigo-500/20 border-indigo-500/30 hover:bg-indigo-500/30 text-white" 
+                className="h-auto py-6 px-6 flex-col gap-3 bg-primary/20 border-primary/30 hover:bg-primary/30 text-white" 
                 onClick={() => window.location.href = '/admin/support'}
                 data-testid="button-support-tool"
               >
@@ -300,7 +300,7 @@ export default function AdminCommandCenter() {
               </Button>
               
               <Button 
-                className="h-auto py-6 px-6 flex-col gap-3 bg-blue-500/20 border-blue-500/30 hover:bg-blue-500/30 text-white" 
+                className="h-auto py-6 px-6 flex-col gap-3 bg-primary/20 border-primary/30 hover:bg-primary/30 text-white" 
                 onClick={() => window.location.href = '/admin/usage'}
                 data-testid="button-usage-tool"
               >
@@ -312,7 +312,7 @@ export default function AdminCommandCenter() {
               </Button>
               
               <Button 
-                className="h-auto py-6 px-6 flex-col gap-3 bg-violet-500/20 border-violet-500/30 hover:bg-violet-500/30 text-white" 
+                className="h-auto py-6 px-6 flex-col gap-3 bg-primary/20 border-primary/30 hover:bg-primary/30 text-white" 
                 onClick={() => window.location.href = '/analytics'}
                 data-testid="button-analytics-tool"
               >
@@ -324,7 +324,7 @@ export default function AdminCommandCenter() {
               </Button>
 
               <Button 
-                className="h-auto py-6 px-6 flex-col gap-3 bg-muted/20 border-primary/30 hover:bg-muted/30 text-white" 
+                className="h-auto py-6 px-6 flex-col gap-3 bg-primary/20 border-primary/30 hover:bg-primary/30 text-white" 
                 onClick={() => window.location.href = '/dashboard'}
                 data-testid="button-workspace-tool"
               >
@@ -336,7 +336,7 @@ export default function AdminCommandCenter() {
               </Button>
 
               <Button 
-                className="h-auto py-6 px-6 flex-col gap-3 bg-blue-500/20 border-blue-500/30 hover:bg-blue-500/30 text-white" 
+                className="h-auto py-6 px-6 flex-col gap-3 bg-primary/20 border-primary/30 hover:bg-primary/30 text-white" 
                 onClick={() => window.location.href = '/admin/logs'}
                 data-testid="button-logs-tool"
               >
@@ -348,7 +348,7 @@ export default function AdminCommandCenter() {
               </Button>
 
               <Button 
-                className="h-auto py-6 px-6 flex-col gap-3 bg-blue-600/20 border-blue-600/30 hover:bg-blue-600/30 text-white" 
+                className="h-auto py-6 px-6 flex-col gap-3 bg-primary/20 border-primary/30 hover:bg-primary/30 text-white" 
                 onClick={() => window.location.href = '/admin/alerts'}
                 data-testid="button-alerts-tool"
               >
