@@ -221,7 +221,7 @@ export function ChatAnnouncementBanner({
       },
       {
         id: '5',
-        text: 'WorkforceOS Elite - Priority support + advanced automation',
+        text: 'AutoForce™ Elite - Priority support + advanced automation',
         type: 'promo',
         link: '/pricing',
         icon: 'award'
