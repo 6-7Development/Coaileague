@@ -1022,7 +1022,7 @@ export function HelpDesk(props?: HelpDeskProps & any) {
           <div className="border-t-2 border-primary bg-white/90 backdrop-blur-sm p-2 sm:p-3 md:p-4">
             {/* Agent Toolbelt - Only visible to staff, stacked on mobile */}
             {isStaff && (
-              <div className="mb-2 sm:mb-3 flex flex-col xs:flex-row items-stretch xs:items-center gap-2">
+              <div className="mb-2 sm:mb-3 flex flex-col xs:flex-row xs:items-center xs:justify-between gap-2 rounded-md border border-border bg-muted/40 p-2 sm:p-3 backdrop-blur">
                 <AgentToolbelt
                   ticketId={sessionId}
                   onMacroInsert={(macro) => setInputMessage(prev => prev ? `${prev}\n\n${macro}` : macro)}
@@ -1042,7 +1042,7 @@ export function HelpDesk(props?: HelpDeskProps & any) {
                   className="w-full xs:w-auto"
                 />
                 <Button
-                  variant="outline"
+                  variant="default"
                   size="sm"
                   onClick={() => {
                     const statuses: typeof ticketStatus[] = ['assigned', 'investigating', 'waiting_user', 'resolved'];
@@ -1051,9 +1051,10 @@ export function HelpDesk(props?: HelpDeskProps & any) {
                     setTicketStatus(statuses[nextIndex]);
                     toast({ title: "Status Updated", description: `Changed to ${statuses[nextIndex]}` });
                   }}
-                  className="w-full xs:w-auto"
+                  className="w-full xs:w-auto gap-2"
                   data-testid="button-update-status"
                 >
+                  <UserCog className="h-4 w-4" />
                   Update Status
                 </Button>
               </div>
