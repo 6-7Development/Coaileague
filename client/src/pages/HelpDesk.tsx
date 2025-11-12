@@ -931,6 +931,15 @@ export function HelpDesk(props?: HelpDeskProps & any) {
         </div>
       </header>
 
+      {/* Announcement Banner - Bright emerald/green theme */}
+      <ChatAnnouncementBanner
+        queuePosition={messages.filter(m => m.senderType === 'customer').length + 1}
+        queueWaitTime="2-3 minutes"
+        onlineStaff={uniqueUsers.filter(u => ['root_admin', 'deputy_admin', 'support_manager', 'sysop'].includes(u.role)).length}
+        customMessages={promotionalBanners}
+        seasonalAnimationsEnabled={seasonalAnimationsEnabled}
+      />
+
       {/* Main Layout - Responsive: Stacked (mobile) vs 3-column (desktop) */}
       <main className="flex flex-col md:flex-row flex-grow overflow-y-auto md:overflow-hidden w-full relative z-10">
         {/* CENTER COLUMN: Chat Area - Mobile-first with proper scroll */}
