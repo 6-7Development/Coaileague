@@ -31,7 +31,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/print-styles.css" media="print">
     <style>
-      /* Initial loading screen - shows BEFORE React loads */
+      /* Minimal loading screen - fast fade for public pages */
       #initial-loader {
         position: fixed;
         inset: 0;
@@ -39,46 +39,43 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+        background: #0f172a;
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       }
       
       #initial-loader.loaded {
         opacity: 0;
         pointer-events: none;
-        transition: opacity 0.4s ease-out;
-      }
-      
-      .loader-content {
-        width: 90vw;
-        max-width: 420px;
-        padding: 0 24px;
+        transition: opacity 0.3s ease-out;
       }
       
       .loader-logo {
         display: flex;
         align-items: center;
-        justify-content: center;
-        margin-bottom: 24px;
         gap: 12px;
+        animation: fade-in 0.4s ease-out;
+      }
+      
+      @keyframes fade-in {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
       }
       
       .loader-logo-icon {
-        width: 40px;
-        height: 40px;
-        border-radius: 8px;
+        width: 48px;
+        height: 48px;
+        border-radius: 10px;
         background: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);
         display: flex;
         align-items: center;
         justify-content: center;
         font-weight: 700;
-        font-size: 18px;
+        font-size: 20px;
         color: white;
-        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
       }
       
       .loader-logo h1 {
-        font-size: 24px;
+        font-size: 28px;
         font-weight: 700;
         background: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);
         -webkit-background-clip: text;
@@ -86,380 +83,31 @@
         background-clip: text;
         margin: 0;
       }
-      
-      .loader-bar-container {
-        position: relative;
-        margin-bottom: 16px;
-      }
-      
-      .loader-bar {
-        height: 10px;
-        background: rgba(30, 41, 59, 0.6);
-        border-radius: 999px;
-        overflow: hidden;
-        border: 1px solid rgba(16, 185, 129, 0.2);
-        position: relative;
-      }
-      
-      /* Animation Type 1: Gradient Wave */
-      .loader-bar-fill.style-wave {
-        height: 100%;
-        background: linear-gradient(90deg, 
-          #10b981 0%, 
-          #06b6d4 25%, 
-          #10b981 50%, 
-          #06b6d4 75%, 
-          #10b981 100%);
-        background-size: 200% 100%;
-        animation: wave-shimmer 2s ease-in-out infinite;
-        width: 0%;
-        transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-        box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
-      }
-      
-      /* Animation Type 2: Pulse Glow */
-      .loader-bar-fill.style-pulse {
-        height: 100%;
-        background: linear-gradient(90deg, #10b981 0%, #06b6d4 100%);
-        width: 0%;
-        transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-        animation: pulse-glow 1.5s ease-in-out infinite;
-      }
-      
-      /* Animation Type 3: Shimmer Sweep */
-      .loader-bar-fill.style-shimmer {
-        height: 100%;
-        background: linear-gradient(90deg, #10b981 0%, #06b6d4 100%);
-        width: 0%;
-        transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-        position: relative;
-        overflow: hidden;
-      }
-      
-      .loader-bar-fill.style-shimmer::after {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: -100%;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(90deg, 
-          transparent 0%, 
-          rgba(255, 255, 255, 0.3) 50%, 
-          transparent 100%);
-        animation: shimmer-sweep 2s ease-in-out infinite;
-      }
-      
-      /* Animation Type 4: Particles */
-      .loader-bar-fill.style-particles {
-        height: 100%;
-        background: linear-gradient(90deg, #10b981 0%, #06b6d4 100%);
-        width: 0%;
-        transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-        box-shadow: 0 0 12px rgba(16, 185, 129, 0.6), inset 0 0 8px rgba(6, 182, 212, 0.4);
-        animation: particles-float 1.8s ease-in-out infinite;
-      }
-      
-      /* Animation Type 5: Neon Flow */
-      .loader-bar-fill.style-neon {
-        height: 100%;
-        background: linear-gradient(90deg, #10b981 0%, #06b6d4 50%, #10b981 100%);
-        background-size: 200% 100%;
-        width: 0%;
-        transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-        animation: neon-flow 2.2s linear infinite;
-        box-shadow: 0 0 15px rgba(16, 185, 129, 0.7);
-      }
-      
-      /* Animation Type 6: Aurora Gradient */
-      .loader-bar-fill.style-aurora {
-        height: 100%;
-        background: linear-gradient(90deg, 
-          #10b981 0%, 
-          #06b6d4 20%, 
-          #3b82f6 40%, 
-          #8b5cf6 60%, 
-          #06b6d4 80%, 
-          #10b981 100%);
-        background-size: 300% 100%;
-        width: 0%;
-        transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-        animation: aurora-shift 3s ease-in-out infinite;
-        box-shadow: 0 0 18px rgba(59, 130, 246, 0.5);
-      }
-      
-      @keyframes wave-shimmer {
-        0% { background-position: 200% 0; }
-        100% { background-position: -200% 0; }
-      }
-      
-      @keyframes pulse-glow {
-        0%, 100% { 
-          box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
-          filter: brightness(1);
-        }
-        50% { 
-          box-shadow: 0 0 16px rgba(6, 182, 212, 0.6);
-          filter: brightness(1.2);
-        }
-      }
-      
-      @keyframes shimmer-sweep {
-        0% { left: -100%; }
-        100% { left: 200%; }
-      }
-      
-      @keyframes particles-float {
-        0%, 100% { 
-          filter: brightness(1) saturate(1);
-        }
-        33% { 
-          filter: brightness(1.15) saturate(1.1);
-        }
-        66% { 
-          filter: brightness(0.95) saturate(0.95);
-        }
-      }
-      
-      @keyframes neon-flow {
-        0% { background-position: 0% 0; }
-        100% { background-position: 200% 0; }
-      }
-      
-      @keyframes aurora-shift {
-        0% { background-position: 0% 0; }
-        50% { background-position: 150% 0; }
-        100% { background-position: 300% 0; }
-      }
-      
-      .loader-stats {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-top: 10px;
-        padding: 0 4px;
-      }
-      
-      .loader-percentage {
-        font-size: 13px;
-        font-weight: 600;
-        color: #10b981;
-        font-family: 'JetBrains Mono', monospace;
-        letter-spacing: 0.5px;
-      }
-      
-      .loader-label {
-        font-size: 11px;
-        color: #64748b;
-        font-family: 'JetBrains Mono', monospace;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-      }
-      
-      .loader-message {
-        text-align: center;
-        min-height: 52px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        margin-top: 16px;
-      }
-      
-      .loader-message p {
-        font-size: 14px;
-        font-weight: 500;
-        color: #94a3b8;
-        margin: 0;
-        animation: text-fade 1.2s ease-in-out infinite;
-      }
-      
-      @keyframes text-fade {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.6; }
-      }
-      
-      .bouncing-dots {
-        display: inline-flex;
-        gap: 3px;
-      }
-      
-      .bouncing-dots span {
-        width: 5px;
-        height: 5px;
-        background: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);
-        border-radius: 50%;
-        display: inline-block;
-        animation: dot-bounce 1.2s ease-in-out infinite;
-      }
-      
-      .bouncing-dots span:nth-child(1) {
-        animation-delay: 0s;
-      }
-      
-      .bouncing-dots span:nth-child(2) {
-        animation-delay: 0.15s;
-      }
-      
-      .bouncing-dots span:nth-child(3) {
-        animation-delay: 0.3s;
-      }
-      
-      @keyframes dot-bounce {
-        0%, 60%, 100% {
-          transform: translateY(0);
-          opacity: 1;
-        }
-        30% {
-          transform: translateY(-6px);
-          opacity: 0.7;
-        }
-      }
     </style>
   </head>
   <body>
-    <!-- Static HTML loader - appears INSTANTLY before React -->
+    <!-- Minimal loader - fast fade for public pages -->
     <div id="initial-loader">
-      <div class="loader-content">
-        <div class="loader-logo">
-          <div class="loader-logo-icon">AF</div>
-          <h1>AutoForce™</h1>
-        </div>
-        <div class="loader-bar-container">
-          <div class="loader-bar">
-            <div class="loader-bar-fill" id="loader-bar-fill"></div>
-          </div>
-          <div class="loader-stats">
-            <span class="loader-percentage" id="loader-percentage">0%</span>
-            <span class="loader-label">Loading</span>
-          </div>
-        </div>
-        <div class="loader-message">
-          <p id="loader-text">Initializing workspace</p>
-          <div class="bouncing-dots">
-            <span></span>
-            <span></span>
-            <span></span>
-          </div>
-        </div>
+      <div class="loader-logo">
+        <div class="loader-logo-icon">AF</div>
+        <h1>AutoForce™</h1>
       </div>
     </div>
     
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
     
-    <!-- Animate loader with randomized styles and realistic messages -->
+    <!-- Fast fade loader script -->
     <script>
-      (function() {
-        var messages = [
-          "Initializing workspace",
-          "Connecting to AutoForce™",
-          "Establishing secure connection",
-          "Loading modules",
-          "Authenticating session",
-          "Verifying credentials",
-          "Syncing data",
-          "Configuring environment",
-          "Preparing dashboard",
-          "Optimizing performance",
-          "Building interface",
-          "Loading components",
-          "Finalizing setup",
-          "Almost ready"
-        ];
-        
-        // Randomized animation styles (6 variants)
-        var animationStyles = ['style-wave', 'style-pulse', 'style-shimmer', 'style-particles', 'style-neon', 'style-aurora'];
-        var selectedStyle = animationStyles[Math.floor(Math.random() * animationStyles.length)];
-        
-        var barFill = document.getElementById('loader-bar-fill');
-        var percentageText = document.getElementById('loader-percentage');
-        var messageText = document.getElementById('loader-text');
-        
-        // Apply random animation style
-        barFill.className = 'loader-bar-fill ' + selectedStyle;
-        
-        // Smooth progression with realistic timing
-        var currentProgress = 0;
-        var targetProgress = 0;
-        var currentMessage = 0;
-        var isComplete = false;
-        
-        // Progress milestones with variable durations (slowed for better UX)
-        var milestones = [
-          { target: 12, duration: 600 + Math.random() * 300 },
-          { target: 25, duration: 700 + Math.random() * 350 },
-          { target: 38, duration: 750 + Math.random() * 300 },
-          { target: 52, duration: 700 + Math.random() * 400 },
-          { target: 65, duration: 650 + Math.random() * 350 },
-          { target: 78, duration: 700 + Math.random() * 300 },
-          { target: 88, duration: 800 + Math.random() * 300 },
-          { target: 96, duration: 750 + Math.random() * 400 }
-        ];
-        
-        var currentMilestone = 0;
-        
-        function smoothProgress() {
-          if (isComplete) return;
-          
-          if (currentProgress < targetProgress) {
-            currentProgress += 0.5;
-            barFill.style.width = currentProgress + '%';
-            percentageText.textContent = Math.floor(currentProgress) + '%';
-            requestAnimationFrame(smoothProgress);
-          } else if (currentMilestone < milestones.length) {
-            // Move to next milestone
-            var milestone = milestones[currentMilestone];
-            targetProgress = milestone.target;
-            currentMilestone++;
-            
-            // Update message
-            messageText.textContent = messages[currentMessage];
-            currentMessage = (currentMessage + 1) % messages.length;
-            
-            setTimeout(smoothProgress, milestone.duration);
-          }
+      window.addEventListener('load', function() {
+        var loader = document.getElementById('initial-loader');
+        if (loader) {
+          loader.classList.add('loaded');
+          setTimeout(function() {
+            loader.remove();
+          }, 300);
         }
-        
-        // Start smooth progression (delayed for better mobile UX)
-        setTimeout(smoothProgress, 300);
-        
-        // Complete loading when React is ready
-        window.addEventListener('load', function() {
-          if (isComplete) return;
-          isComplete = true;
-          
-          // Jump to 100%
-          targetProgress = 100;
-          
-          function finalProgress() {
-            if (currentProgress < 100) {
-              currentProgress += 1; // Slower increment (was 2)
-              barFill.style.width = currentProgress + '%';
-              percentageText.textContent = Math.floor(currentProgress) + '%';
-              requestAnimationFrame(finalProgress);
-            } else {
-              barFill.style.width = '100%';
-              percentageText.textContent = '100%';
-              messageText.textContent = 'Ready!';
-              
-              // Longer delay before fadeout for satisfying completion
-              setTimeout(function() {
-                var loader = document.getElementById('initial-loader');
-                if (loader) {
-                  loader.classList.add('loaded');
-                  setTimeout(function() {
-                    loader.remove();
-                  }, 600); // Increased fade duration
-                }
-              }, 500); // Increased hold at 100%
-            }
-          }
-          
-          setTimeout(finalProgress, 200); // Slight delay before final push
-        });
-      })();
+      });
     </script>
   </body>
 </html>
