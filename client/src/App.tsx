@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeProvider as WorkspaceThemeProvider } from "@/contexts/ThemeContext";
 import { TransitionProvider } from "@/contexts/transition-context";
+import { LoadingManagerProvider } from "@/contexts/loading-manager";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { ProtectedRoute } from "@/components/protected-route";
@@ -481,9 +482,10 @@ export default function App() {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <ThemeProvider defaultTheme="dark">
-          <WorkspaceThemeProvider>
-            <TransitionProvider>
+        <LoadingManagerProvider>
+          <ThemeProvider defaultTheme="dark">
+            <WorkspaceThemeProvider>
+              <TransitionProvider>
               <AppBootOverlay />
               <TooltipProvider>
                 <ResponsiveAppFrame>
@@ -493,9 +495,10 @@ export default function App() {
                   <Toaster />
                 </ResponsiveAppFrame>
               </TooltipProvider>
-            </TransitionProvider>
-          </WorkspaceThemeProvider>
-        </ThemeProvider>
+              </TransitionProvider>
+            </WorkspaceThemeProvider>
+          </ThemeProvider>
+        </LoadingManagerProvider>
       </QueryClientProvider>
     </ErrorBoundary>
   );
