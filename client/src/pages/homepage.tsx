@@ -44,31 +44,27 @@ export default function Homepage() {
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white shadow-md">
         <div className="max-w-7xl mx-auto px-6 py-3">
           <div className="flex items-center justify-between">
-            <Link href="/">
-              <a className="flex items-center gap-3 cursor-pointer" data-testid="nav-logo">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 via-blue-500 to-blue-600 rounded-lg flex items-center justify-center shadow-lg">
-                  <Cpu className="w-5 h-5 text-white" />
+            <Link href="/" className="flex items-center gap-3 cursor-pointer" data-testid="nav-logo">
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 via-blue-500 to-blue-600 rounded-lg flex items-center justify-center shadow-lg">
+                <Cpu className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <div className="font-bold text-lg">
+                  <span className="text-gray-900">AUTO</span>
+                  <span className="text-blue-600">FORCE</span>
+                  <span className="text-xs align-super text-gray-600">™</span>
                 </div>
-                <div>
-                  <div className="font-bold text-lg">
-                    <span className="text-gray-900">AUTO</span>
-                    <span className="text-blue-600">FORCE</span>
-                    <span className="text-xs align-super text-gray-600">™</span>
-                  </div>
-                  <div className="text-xs text-gray-500">Autonomous Workforce Management</div>
-                </div>
-              </a>
+                <div className="text-xs text-gray-500">Autonomous Workforce Management</div>
+              </div>
             </Link>
 
             <div className="hidden md:flex items-center gap-6">
               <a href="#features" className="text-gray-700 hover:text-blue-600 transition-colors text-sm font-medium" data-testid="nav-link-features">Features</a>
-              <Link href="/pricing"><a className="text-gray-700 hover:text-blue-600 transition-colors text-sm font-medium" data-testid="nav-link-pricing">Pricing</a></Link>
-              <Link href="/contact"><a className="text-gray-700 hover:text-blue-600 transition-colors text-sm font-medium" data-testid="nav-link-contact">Contact</a></Link>
-              <Link href="/login"><a className="text-gray-700 hover:text-blue-600 transition-colors text-sm font-medium" data-testid="nav-link-login">Login</a></Link>
-              <Link href="/register">
-                <a className="px-5 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg font-semibold hover:from-blue-600 hover:to-blue-700 transition-all shadow-md text-sm" data-testid="nav-button-start-trial">
-                  Start Free Trial
-                </a>
+              <Link href="/pricing" className="text-gray-700 hover:text-blue-600 transition-colors text-sm font-medium" data-testid="nav-link-pricing">Pricing</Link>
+              <Link href="/contact" className="text-gray-700 hover:text-blue-600 transition-colors text-sm font-medium" data-testid="nav-link-contact">Contact</Link>
+              <Link href="/login" className="text-gray-700 hover:text-blue-600 transition-colors text-sm font-medium" data-testid="nav-link-login">Login</Link>
+              <Link href="/register" className="px-5 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg font-semibold hover:from-blue-600 hover:to-blue-700 transition-all shadow-md text-sm" data-testid="nav-button-start-trial">
+                Start Free Trial
               </Link>
             </div>
 
@@ -82,13 +78,11 @@ export default function Homepage() {
             <div className="md:hidden mt-4 pb-4 border-t border-gray-200 pt-4" data-testid="mobile-menu">
               <div className="flex flex-col gap-3">
                 <a href="#features" className="text-gray-700 hover:text-blue-600 transition-colors text-sm font-medium py-2" data-testid="mobile-link-features">Features</a>
-                <Link href="/pricing"><a className="text-gray-700 hover:text-blue-600 transition-colors text-sm font-medium py-2" data-testid="mobile-link-pricing">Pricing</a></Link>
-                <Link href="/contact"><a className="text-gray-700 hover:text-blue-600 transition-colors text-sm font-medium py-2" data-testid="mobile-link-contact">Contact</a></Link>
-                <Link href="/login"><a className="text-gray-700 hover:text-blue-600 transition-colors text-sm font-medium py-2" data-testid="mobile-link-login">Login</a></Link>
-                <Link href="/register">
-                  <a className="px-5 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg font-semibold hover:from-blue-600 hover:to-blue-700 transition-all shadow-md text-sm text-center" data-testid="mobile-button-start-trial">
-                    Start Free Trial
-                  </a>
+                <Link href="/pricing" className="text-gray-700 hover:text-blue-600 transition-colors text-sm font-medium py-2" data-testid="mobile-link-pricing">Pricing</Link>
+                <Link href="/contact" className="text-gray-700 hover:text-blue-600 transition-colors text-sm font-medium py-2" data-testid="mobile-link-contact">Contact</Link>
+                <Link href="/login" className="text-gray-700 hover:text-blue-600 transition-colors text-sm font-medium py-2" data-testid="mobile-link-login">Login</Link>
+                <Link href="/register" className="px-5 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg font-semibold hover:from-blue-600 hover:to-blue-700 transition-all shadow-md text-sm text-center" data-testid="mobile-button-start-trial">
+                  Start Free Trial
                 </Link>
               </div>
             </div>
@@ -444,15 +438,15 @@ export default function Homepage() {
               <h4 className="font-bold mb-4">Product</h4>
               <ul className="space-y-2 text-gray-400 text-sm">
                 <li><a href="#features" className="hover:text-white transition-colors" data-testid="footer-link-features">Features</a></li>
-                <li><Link href="/pricing"><a className="hover:text-white transition-colors" data-testid="footer-link-pricing">Pricing</a></Link></li>
-                <li><Link href="/contact"><a className="hover:text-white transition-colors" data-testid="footer-link-contact">Contact</a></Link></li>
+                <li><Link href="/pricing" className="hover:text-white transition-colors" data-testid="footer-link-pricing">Pricing</Link></li>
+                <li><Link href="/contact" className="hover:text-white transition-colors" data-testid="footer-link-contact">Contact</Link></li>
               </ul>
             </div>
             <div>
               <h4 className="font-bold mb-4">Company</h4>
               <ul className="space-y-2 text-gray-400 text-sm">
-                <li><Link href="/support"><a className="hover:text-white transition-colors" data-testid="footer-link-support">Support</a></Link></li>
-                <li><Link href="/contact"><a className="hover:text-white transition-colors" data-testid="footer-link-contact-us">Contact Us</a></Link></li>
+                <li><Link href="/support" className="hover:text-white transition-colors" data-testid="footer-link-support">Support</Link></li>
+                <li><Link href="/contact" className="hover:text-white transition-colors" data-testid="footer-link-contact-us">Contact Us</Link></li>
               </ul>
             </div>
             <div>
