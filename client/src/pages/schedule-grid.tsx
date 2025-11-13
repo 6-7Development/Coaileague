@@ -591,15 +591,15 @@ function OpenShiftsSection({ shifts, weekDays, onShiftClick, clients, onAddAckno
   const totalOpenShifts = Object.values(openShiftsByDay).reduce((sum, arr) => sum + arr.length, 0);
 
   return (
-    <div className="flex border-t-2 border-purple-500/30">
+    <div className="flex border-t-2 border-border">
       {/* Open shifts label */}
-      <div className="sticky left-0 z-10 w-[140px] sm:w-[160px] border-r bg-purple-500/20 p-2 min-h-[120px] flex items-center">
+      <div className="sticky left-0 z-10 w-[140px] sm:w-[160px] border-r bg-muted p-2 min-h-[120px] flex items-center">
         <div className="flex items-center gap-2">
-          <div className="p-1.5 rounded-lg bg-purple-500/20">
-            <Users className="h-3 w-3 text-purple-400" />
+          <div className="p-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-900/20">
+            <Users className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
           </div>
           <div>
-            <div className="text-xs font-semibold">
+            <div className="text-xs font-semibold text-foreground">
               Open Shifts
             </div>
             <div className="text-[10px] text-muted-foreground">
@@ -617,7 +617,7 @@ function OpenShiftsSection({ shifts, weekDays, onShiftClick, clients, onAddAckno
         return (
           <div
             key={dayKey}
-            className="min-h-[120px] flex-1 min-w-[140px] border-r border-b bg-purple-500/5 p-2"
+            className="min-h-[120px] flex-1 min-w-[140px] border-r border-b bg-background p-2"
           >
             {dayOpenShifts.map(shift => (
               <div
@@ -634,7 +634,7 @@ function OpenShiftsSection({ shifts, weekDays, onShiftClick, clients, onAddAckno
             ))}
             {dayOpenShifts.length === 0 && (
               <div className="h-full flex items-center justify-center opacity-30">
-                <Users className="h-6 w-6 text-purple-300" />
+                <Users className="h-6 w-6 text-muted-foreground" />
               </div>
             )}
           </div>
