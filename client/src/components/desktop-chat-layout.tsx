@@ -140,7 +140,7 @@ export function DesktopChatLayout({
             </div>
             <div>
               <h2 className="text-lg font-bold" data-testid="chat-title">
-                WorkforceOS Support
+                AutoForce™ Support
               </h2>
               <p className="text-xs text-muted-foreground">
                 {users.length} {users.length === 1 ? 'user' : 'users'} online

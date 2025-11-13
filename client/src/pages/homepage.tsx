@@ -249,11 +249,9 @@ export default function Homepage() {
                       <span className="text-xs font-bold text-blue-600">100% Automated</span>
                     </div>
                   </div>
-                  <Link href="/register">
-                    <a className="block w-full px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg font-semibold text-sm hover:from-blue-600 hover:to-blue-700 transition-all flex items-center justify-center gap-2 shadow-lg hover:shadow-xl" data-testid="button-watch-demo">
-                      <Play className="w-4 h-4" />
-                      Watch AI Demo
-                    </a>
+                  <Link href="/register" className="block w-full px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg font-semibold text-sm hover:from-blue-600 hover:to-blue-700 transition-all flex items-center justify-center gap-2 shadow-lg hover:shadow-xl" data-testid="button-watch-demo">
+                    <Play className="w-4 h-4" />
+                    Watch AI Demo
                   </Link>
                 </div>
               </div>
@@ -364,15 +362,13 @@ export default function Homepage() {
                   </div>
                 </div>
 
-                <Link href="/register">
-                  <a className={`block w-full px-4 py-3 rounded-lg font-semibold text-white transition-all shadow-md hover:shadow-xl flex items-center justify-center gap-2 ${
+                <Link href="/register" className={`block w-full px-4 py-3 rounded-lg font-semibold text-white transition-all shadow-md hover:shadow-xl flex items-center justify-center gap-2 ${
                     feature.color === 'blue' ? 'bg-gradient-to-r from-blue-600 to-blue-600 hover:from-blue-700 hover:to-blue-700' :
                     feature.color === 'green' ? 'bg-gradient-to-r from-blue-600 to-blue-600 hover:from-blue-700 hover:to-blue-700' :
                     'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700'
                   }`} data-testid={`button-demo-${feature.color}`}>
-                    See AI Demo
-                    <ArrowRight className="w-4 h-4" />
-                  </a>
+                  See AI Demo
+                  <ArrowRight className="w-4 h-4" />
                 </Link>
               </div>
             ))}
