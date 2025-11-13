@@ -143,11 +143,31 @@ export function HelpDesk(props?: HelpDeskProps & any) {
     return newId;
   });
 
+  // Read URL parameters for direct conversation links (from escalation)
+  const urlParams = new URLSearchParams(window.location.search);
+  const urlConversationId = urlParams.get('conversationId');
+  const urlGuestToken = urlParams.get('guestToken');
+  
+  // Check sessionStorage for escalation data
+  const escalationData = sessionStorage.getItem('helpos_escalation');
+  const parsedEscalation = escalationData ? JSON.parse(escalationData) : null;
+  
+  // Determine the conversation ID to join (escalation > default)
+  const conversationToJoin = urlConversationId || parsedEscalation?.conversationId || MAIN_ROOM_ID;
+  
+  console.log('[HelpDesk] Conversation join logic:', {
+    urlConversationId,
+    urlGuestToken,
+    parsedEscalation,
+    conversationToJoin,
+    isGuest: !user
+  });
+
   // No IRC-style messages - users see terms/agreement first, then optional MOTD dialog if set by admins
 
   const userName = user?.firstName && user?.lastName 
     ? `${user.firstName} ${user.lastName}` 
-    : user?.email?.split('@')[0] || 'User';
+    : parsedEscalation?.guestName || user?.email?.split('@')[0] || 'Guest';
 
   const { 
     messages, 
@@ -167,7 +187,7 @@ export function HelpDesk(props?: HelpDeskProps & any) {
   } = useChatroomWebSocket(
     user?.id || `guest-${sessionId}`, // Use sessionId for guests so WebSocket connects
     userName,
-    MAIN_ROOM_ID, // Default conversation ID for main chatroom
+    conversationToJoin, // Join escalated conversation or default main room
     (request) => {
       // When staff requests secure info, open the dialog
       setSecureRequest({
