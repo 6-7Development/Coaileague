@@ -361,6 +361,62 @@ Be helpful, empathetic, and solution-oriented.`;
   }
 
   // ============================================================================
+  // ESCALATION HANDLER
+  // ============================================================================
+
+  async handleEscalation(params: {
+    workspaceId: string;
+    userId: string;
+    userName: string;
+    userEmail: string;
+    sessionId: string;
+    escalationReason: string;
+    aiSummary: string;
+    storage: IStorage;
+  }): Promise<{
+    ticketId: string;
+    conversationId: string;
+    ticketNumber: string;
+  }> {
+    const { workspaceId, userId, userName, userEmail, sessionId, escalationReason, aiSummary, storage } = params;
+
+    // Get full conversation history from HelpOS session
+    const transcripts = await storage.getHelposTranscripts(sessionId);
+    const conversationContext = transcripts
+      .map(t => `${t.role.toUpperCase()}: ${t.content}`)
+      .join('\n\n');
+
+    // Create support ticket
+    const ticket = await storage.createSupportTicket({
+      workspaceId,
+      requestorId: userId,
+      requestorEmail: userEmail,
+      category: 'helpdesk_escalation',
+      subject: `HelpOS™ Escalation - ${escalationReason}`,
+      description: `**Escalation Reason:** ${escalationReason}\n\n**AI Summary:**\n${aiSummary}\n\n**Full Conversation:**\n${conversationContext}`,
+      priority: escalationReason === 'critical_keyword' ? 'urgent' : 'normal',
+      status: 'open',
+    });
+
+    // Create chat conversation for live helpdesk
+    const conversation = await storage.createChatConversation({
+      workspaceId,
+      customerId: userId,
+      customerName: userName,
+      customerEmail: userEmail,
+      subject: ticket.subject,
+      status: 'active',
+      priority: ticket.priority,
+    });
+
+    return {
+      ticketId: ticket.id,
+      conversationId: conversation.id,
+      ticketNumber: ticket.ticketNumber,
+    };
+  }
+
+  // ============================================================================
   // STAFF COPILOT FACADE
   // ============================================================================
 
