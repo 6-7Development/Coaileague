@@ -263,12 +263,12 @@ export function canAccessRoute(
  */
 export const osModules: OSModule[] = [
   {
-    id: 'dashboard',
+    id: 'workspace-dashboard',
     name: 'Dashboard',
-    description: 'Your personalized overview',
+    description: 'Your workspace overview',
     icon: LayoutDashboard,
     color: 'hsl(var(--primary))',
-    capabilities: [],
+    capabilities: [], // Available to all workspace users
     familyId: 'platform',
     routes: [
       {
@@ -276,11 +276,11 @@ export const osModules: OSModule[] = [
         label: 'Dashboard',
         href: '/dashboard',
         icon: LayoutDashboard,
-        description: 'Your personalized overview',
+        description: 'Workspace overview and quick actions',
         familyId: 'platform',
         isPrimary: true,
-        order: 1,
-        // Hide from platform staff who have Control Center
+        order: 0,
+        // Hide from platform staff who have Control Center instead
         excludeForCapabilities: ['support_dashboard'],
       },
     ],
@@ -716,9 +716,17 @@ export function selectSidebarFamilies(
     });
   }
 
-  // Add regular module routes
+  // Add regular module routes (with exclusion filtering)
   osModules.forEach(module => {
     module.routes.forEach(route => {
+      // Check exclusion filter FIRST - before adding to allRoutes
+      if (route.excludeForCapabilities && route.excludeForCapabilities.length > 0) {
+        const shouldExclude = route.excludeForCapabilities.some(cap => hasCapability(role, cap));
+        if (shouldExclude) {
+          return; // Skip this route - user has an excluded capability
+        }
+      }
+      
       // For platform staff, highlight curated routes with QA badge
       if (isPlatformStaff && curatedWorkspaceRoutesForPlatformStaff.includes(route.id)) {
         allRoutes.push({
@@ -742,16 +750,9 @@ export function selectSidebarFamilies(
   };
 
   // Categorize each route as accessible or locked
+  // Note: Exclusion filtering already happened when building allRoutes
   allRoutes.forEach(route => {
     if (!route.familyId) return;
-
-    // Check if route should be excluded for user's capabilities
-    if (route.excludeForCapabilities && route.excludeForCapabilities.length > 0) {
-      const shouldExclude = route.excludeForCapabilities.some(cap => hasCapability(role, cap));
-      if (shouldExclude) {
-        return; // Skip this route entirely for this user
-      }
-    }
 
     const hasRoleAccess = !route.capabilities || 
       route.capabilities.some(cap => hasCapability(role, cap));
