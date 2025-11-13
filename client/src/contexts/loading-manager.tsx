@@ -37,23 +37,31 @@ export function LoadingManagerProvider({ children }: { children: React.ReactNode
   const [queue, setQueue] = useState<LoadingRequest[]>([]);
   const scenarioIndexRef = useRef(0);
   const requestCounterRef = useRef(0);
-  const [isBootComplete, setIsBootComplete] = useState(false);
+  const isBootCompleteRef = useRef(false);
 
   // Mark boot as complete when HTML loader finishes
   useEffect(() => {
-    // Wait for static HTML loader to complete (it removes itself)
+    // IMMEDIATE check - if HTML loader is already gone, we're post-boot
+    const htmlLoader = document.getElementById('initial-loader');
+    if (!htmlLoader) {
+      isBootCompleteRef.current = true;
+      return;
+    }
+
+    // Otherwise, wait for it to be removed
     const checkBootComplete = () => {
-      const htmlLoader = document.getElementById('initial-loader');
-      if (!htmlLoader) {
-        setIsBootComplete(true);
+      const loader = document.getElementById('initial-loader');
+      if (!loader) {
+        isBootCompleteRef.current = true;
+        console.log('[LoadingManager] Boot complete - React overlays enabled');
       } else {
-        // Check again in 100ms
-        setTimeout(checkBootComplete, 100);
+        // Check again in 50ms
+        setTimeout(checkBootComplete, 50);
       }
     };
     
-    // Start checking after a small delay
-    setTimeout(checkBootComplete, 500);
+    // Start checking immediately
+    checkBootComplete();
   }, []);
 
   // Load last used scenario index from sessionStorage
@@ -79,7 +87,7 @@ export function LoadingManagerProvider({ children }: { children: React.ReactNode
   // Begin loading - returns request ID
   const beginLoading = useCallback((options?: { scenario?: ProgressScenario; minDuration?: number }) => {
     // SUPPRESS during initial boot - let HTML loader handle it
-    if (!isBootComplete) {
+    if (!isBootCompleteRef.current) {
       console.log('[LoadingManager] Suppressed during boot - using HTML loader');
       return `suppressed-${++requestCounterRef.current}`;
     }
@@ -119,7 +127,7 @@ export function LoadingManagerProvider({ children }: { children: React.ReactNode
     }
 
     return id;
-  }, [activeRequest, getNextScenario, overlayController, isBootComplete]);
+  }, [activeRequest, getNextScenario, overlayController]);
 
   // End loading - enforces minimum display time
   const endLoading = useCallback((id: string) => {
