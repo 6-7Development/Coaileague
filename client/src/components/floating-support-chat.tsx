@@ -345,47 +345,43 @@ export function FloatingSupportChat() {
           )}
           data-testid="support-chat-window"
         >
-          {/* Header */}
-          <div className="bg-gradient-to-r from-blue-500 to-cyan-400 text-white px-3 py-2.5 sm:px-4 sm:py-3 rounded-t-2xl flex items-center justify-between shadow-md">
-            <div className="flex items-center space-x-2 sm:space-x-3 min-w-0 flex-1">
-              <div className="bg-white rounded-full p-1 sm:p-1.5 flex-shrink-0">
-                <Bot className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" />
+          {/* Header - Compact */}
+          <div className="bg-gradient-to-r from-blue-500 to-cyan-400 text-white px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-t-2xl flex items-center justify-between shadow-md">
+            <div className="flex items-center space-x-1.5 sm:space-x-2 min-w-0 flex-1">
+              <div className="bg-white rounded-full p-0.5 sm:p-1 flex-shrink-0">
+                <Bot className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-500" />
               </div>
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0 flex-1 flex items-center gap-1">
                 <h2 className="font-bold text-xs sm:text-sm truncate">
-                  HelpOS<span className="text-[0.5rem] sm:text-[0.6rem] align-super">™</span> <span className="text-[10px] sm:text-xs font-normal">(Bot)</span>
+                  HelpOS<span className="text-[0.5rem] align-super">™</span>
                 </h2>
-                <p className="text-[10px] sm:text-xs text-blue-50 truncate">AutoForce™ Support</p>
-                <div className="flex items-center space-x-1 sm:space-x-1.5 mt-0.5">
-                  <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-green-400 rounded-full animate-pulse"></div>
-                  <span className="text-[10px] sm:text-xs text-blue-50">Online</span>
-                </div>
+                <div className="w-1.5 h-1.5 bg-green-400 rounded-full flex-shrink-0"></div>
               </div>
             </div>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-1">
               <button
                 onClick={() => setIsMinimized(!isMinimized)}
-                className="hover:bg-blue-600 p-1.5 rounded-lg transition-colors"
+                className="hover:bg-blue-600 p-1 rounded transition-colors"
                 aria-label="Minimize chat"
                 data-testid="button-minimize-chat"
               >
-                <Minimize2 className="w-4 h-4" />
+                <Minimize2 className="w-3.5 h-3.5" />
               </button>
               <button
                 onClick={() => setIsOpen(false)}
-                className="hover:bg-blue-600 p-1.5 rounded-lg transition-colors"
+                className="hover:bg-blue-600 p-1 rounded transition-colors"
                 aria-label="Close chat"
                 data-testid="button-close-chat"
               >
-                <X className="w-4 h-4" />
+                <X className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
 
           {!isMinimized && (
             <>
-              {/* Messages Container */}
-              <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 bg-muted/30">
+              {/* Messages Container - Maximized space */}
+              <div className="flex-1 overflow-y-auto px-3 py-2.5 space-y-2 bg-muted/30">
                 {messages.map((message) => (
                   <div
                     key={message.id}
@@ -445,47 +441,47 @@ export function FloatingSupportChat() {
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* Quick Actions - Horizontal scroll on mobile, grid on desktop */}
+              {/* Quick Actions - Compact */}
               {messages.length === 1 && (
-                <div className="px-4 pb-3 bg-muted/30 border-b border-border">
-                  <p className="text-xs text-muted-foreground mb-2 font-medium">Quick Actions:</p>
-                  {/* Mobile: Horizontal scrollable */}
-                  <div className="flex sm:hidden gap-2 overflow-x-auto pb-2 -mx-4 px-4 snap-x snap-mandatory scrollbar-hide">
+                <div className="px-3 pb-2 bg-muted/30 border-b border-border">
+                  <p className="text-[10px] text-muted-foreground mb-1.5 font-medium">Quick Actions:</p>
+                  {/* Mobile: Horizontal scrollable - Compact */}
+                  <div className="flex sm:hidden gap-1.5 overflow-x-auto pb-1.5 -mx-3 px-3 snap-x snap-mandatory scrollbar-hide">
                     {quickActions.map((action, index) => (
                       <Button
                         key={index}
                         variant="outline"
                         size="sm"
                         onClick={() => handleQuickAction(action.value)}
-                        className="flex-shrink-0 h-auto py-2 px-3 snap-start min-w-[140px]"
+                        className="flex-shrink-0 h-auto py-1.5 px-2.5 snap-start min-w-[120px]"
                         data-testid={`button-quick-action-${index}`}
                       >
-                        <span className="text-lg mr-2">{action.icon}</span>
-                        <span className="text-xs font-medium whitespace-nowrap">{action.text}</span>
+                        <span className="text-base mr-1.5">{action.icon}</span>
+                        <span className="text-[11px] font-medium whitespace-nowrap">{action.text}</span>
                       </Button>
                     ))}
                   </div>
-                  {/* Desktop: Grid layout */}
-                  <div className="hidden sm:grid grid-cols-2 gap-2">
+                  {/* Desktop: Grid layout - Compact */}
+                  <div className="hidden sm:grid grid-cols-2 gap-1.5">
                     {quickActions.map((action, index) => (
                       <Button
                         key={index}
                         variant="outline"
                         size="sm"
                         onClick={() => handleQuickAction(action.value)}
-                        className="justify-start h-auto py-2 px-3 text-left"
+                        className="justify-start h-auto py-1.5 px-2.5 text-left"
                         data-testid={`button-quick-action-${index}`}
                       >
-                        <span className="text-lg mr-2">{action.icon}</span>
-                        <span className="text-xs font-medium">{action.text}</span>
+                        <span className="text-base mr-1.5">{action.icon}</span>
+                        <span className="text-[11px] font-medium">{action.text}</span>
                       </Button>
                     ))}
                   </div>
                 </div>
               )}
 
-              {/* Input Area */}
-              <div className="bg-background dark:bg-card border-t border-border px-4 py-3 rounded-b-2xl">
+              {/* Input Area - Compact */}
+              <div className="bg-background dark:bg-card border-t border-border px-3 py-2 rounded-b-2xl">
                 <div className="flex items-end space-x-2">
                   <Input
                     type="text"
@@ -493,21 +489,21 @@ export function FloatingSupportChat() {
                     onChange={(e) => setInputValue(e.target.value)}
                     onKeyPress={handleKeyPress}
                     placeholder="Type your message..."
-                    className="flex-1 rounded-full"
+                    className="flex-1 rounded-full text-sm"
                     data-testid="input-chat-message"
                   />
                   <Button
                     onClick={handleSend}
                     disabled={inputValue.trim() === ''}
                     size="icon"
-                    className="rounded-full bg-blue-500 hover:bg-blue-600 text-white flex-shrink-0"
+                    className="rounded-full bg-blue-500 hover:bg-blue-600 text-white flex-shrink-0 h-9 w-9"
                     data-testid="button-send-message"
                   >
-                    <Send className="w-4 h-4" />
+                    <Send className="w-3.5 h-3.5" />
                   </Button>
                 </div>
-                <p className="text-xs text-muted-foreground mt-2 text-center">
-                  Powered by AI • Typically replies in seconds
+                <p className="text-[10px] text-muted-foreground/70 mt-1 text-center">
+                  AI-powered • Quick replies
                 </p>
               </div>
             </>
