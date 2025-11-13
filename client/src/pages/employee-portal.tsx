@@ -25,6 +25,7 @@ import {
   Award,
 } from "lucide-react";
 import type { Employee, Shift, TimeEntry } from "@shared/schema";
+import { DashboardShell, ResponsiveSection } from "@/components/dashboard-shell";
 
 export default function EmployeePortal() {
   const { user } = useAuth();
@@ -84,7 +85,7 @@ export default function EmployeePortal() {
 
   if (!currentEmployee) {
     return (
-      <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full h-full overflow-auto">
+      <DashboardShell>
         <div className="p-8 text-center">
           <AlertCircle className="h-12 w-12 text-blue-500 mx-auto mb-4" />
           <h2 className="text-2xl font-bold mb-2">Employee Profile Not Found</h2>
@@ -92,17 +93,15 @@ export default function EmployeePortal() {
             You need to be registered as an employee to access the portal.
           </p>
         </div>
-      </div>
+      </DashboardShell>
     );
   }
 
   const initials = `${currentEmployee.firstName?.[0] || ''}${currentEmployee.lastName?.[0] || ''}`.toUpperCase();
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full h-full overflow-auto">
-      <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
-        {/* Header */}
-        <div className="mb-6">
+    <DashboardShell>
+      <ResponsiveSection spacing="lg">
           <div className="flex items-center gap-4 mb-4">
             <Avatar className="h-16 w-16 border-2 border-primary">
               <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-violet-500 text-white text-xl font-bold">
@@ -174,9 +173,10 @@ export default function EmployeePortal() {
               </CardContent>
             </Card>
           </div>
-        </div>
+      </ResponsiveSection>
 
-        {/* Main Content */}
+      {/* Main Content */}
+      <ResponsiveSection>
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-4 lg:w-auto">
             <TabsTrigger value="overview">Overview</TabsTrigger>
@@ -404,7 +404,7 @@ export default function EmployeePortal() {
             </Card>
           </TabsContent>
         </Tabs>
-      </div>
-    </div>
+      </ResponsiveSection>
+    </DashboardShell>
   );
 }

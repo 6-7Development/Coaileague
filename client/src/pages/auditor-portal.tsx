@@ -36,6 +36,7 @@ import {
   FileSpreadsheet,
 } from "lucide-react";
 import type { Invoice, TimeEntry, Employee, Client } from "@shared/schema";
+import { DashboardShell, ResponsiveSection } from "@/components/dashboard-shell";
 
 export default function AuditorPortal() {
   const { user } = useAuth();
