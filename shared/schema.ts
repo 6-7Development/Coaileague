@@ -4536,6 +4536,64 @@ export const insertAbuseViolationSchema = createInsertSchema(abuseViolations).om
 export type InsertAbuseViolation = z.infer<typeof insertAbuseViolationSchema>;
 export type AbuseViolation = typeof abuseViolations.$inferSelect;
 
+// Service Health Status - Track platform service availability
+export const serviceStatusEnum = pgEnum('service_status', ['operational', 'degraded', 'down']);
+export const serviceKeyEnum = pgEnum('service_key', ['database', 'chat_websocket', 'gemini_ai', 'object_storage', 'stripe', 'email']);
+export const errorTypeEnum = pgEnum('error_type', ['connection_failed', 'timeout', 'server_error', 'unknown']);
+export const incidentStatusEnum = pgEnum('incident_status', ['submitted', 'triaged', 'resolved', 'dismissed']);
+
+// Service Incident Reports - User-submitted error reports when services fail
+export const serviceIncidentReports = pgTable("service_incident_reports", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // User & workspace tracking
+  workspaceId: varchar("workspace_id").references(() => workspaces.id, { onDelete: 'cascade' }),
+  userId: varchar("user_id").references(() => users.id, { onDelete: 'set null' }), // Null for anonymous
+  
+  // Service identification
+  serviceKey: serviceKeyEnum("service_key").notNull(),
+  errorType: errorTypeEnum("error_type").notNull(),
+  
+  // Criticality (for UI prioritization)
+  isCriticalService: boolean("is_critical_service").default(true).notNull(), // false for email, object_storage
+  
+  // Error details
+  userMessage: text("user_message"), // User-provided description
+  errorMessage: text("error_message"), // Technical error message
+  stackTrace: text("stack_trace"), // Error stack if available
+  metadata: jsonb("metadata").default(sql`'{}'::jsonb`), // { url, browser, viewport, etc. }
+  
+  // Screenshot/evidence
+  screenshotUrl: varchar("screenshot_url"), // Object storage URL
+  screenshotKey: varchar("screenshot_key"), // Object storage key for deletion
+  
+  // Support integration
+  supportTicketId: varchar("support_ticket_id"),
+  helpOsQueueId: varchar("help_os_queue_id"),
+  
+  // Status tracking
+  status: incidentStatusEnum("status").default("submitted").notNull(),
+  resolvedAt: timestamp("resolved_at"),
+  resolvedBy: varchar("resolved_by").references(() => users.id, { onDelete: 'set null' }),
+  resolutionNotes: text("resolution_notes"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("service_incident_reports_workspace_status_idx").on(table.workspaceId, table.status),
+  index("service_incident_reports_service_key_idx").on(table.serviceKey),
+  index("service_incident_reports_created_at_idx").on(table.createdAt),
+]);
+
+export const insertServiceIncidentReportSchema = createInsertSchema(serviceIncidentReports).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertServiceIncidentReport = z.infer<typeof insertServiceIncidentReportSchema>;
+export type ServiceIncidentReport = typeof serviceIncidentReports.$inferSelect;
+
 // ============================================================================
 // SALES & MARKETING AUTOMATION SYSTEM
 // ============================================================================
