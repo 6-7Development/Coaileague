@@ -326,8 +326,8 @@ class HelpOSService {
       await storage.createHelposTranscript(userTranscript);
     }
 
-    // Check if user is asking for human help
-    const wantsHumanHelp = /talk to (a )?human|speak to agent|escalate|transfer/i.test(userMessage);
+    // Check if user is asking for human help - comprehensive detection
+    const wantsHumanHelp = /talk to (a )?(human|agent|someone|support|person)|speak (to|with) (a )?(human|agent|someone|support|live|person)|escalate|transfer|live (support|agent|help)|human (help|support|agent)|support (team|agent|person)|connect (me )?(to|with)|real person|actual person/i.test(userMessage);
 
     // Determine if escalation is needed
     if (needsEscalation || wantsHumanHelp || currentFailedAttempts >= 3) {
