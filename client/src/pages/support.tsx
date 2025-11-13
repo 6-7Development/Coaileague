@@ -92,7 +92,7 @@ export default function Support() {
 
   const faqs = [
     {
-      question: "How do I get started with WorkforceOS?",
+      question: "How do I get started with AutoForce™?",
       answer: "Getting started is simple: 1) Sign up for a free trial, 2) Create your workspace and invite your first employee, 3) Set up your clients and schedule your first shift, 4) Start tracking time and generating invoices. Our interactive demo walks you through each step, or schedule a personalized onboarding session with our team.",
     },
     {
@@ -105,15 +105,15 @@ export default function Support() {
     },
     {
       question: "Can I import existing employee data?",
-      answer: "Yes! WorkforceOS supports bulk import via CSV for employees, clients, and historical data. Our team can also assist with custom data migration from other HR systems like ADP, Workday, or BambooHR during your onboarding process.",
+      answer: "Yes! AutoForce™ supports bulk import via CSV for employees, clients, and historical data. Our team can also assist with custom data migration from other HR systems like ADP, Workday, or BambooHR during your onboarding process.",
     },
     {
       question: "How does automated invoice generation work?",
-      answer: "Select unbilled time entries for one or more clients, and WorkforceOS automatically generates professional invoices with calculated hours, rates, taxes, and platform fees. Invoices can be sent via email or downloaded as PDF. You can track payment status and generate reports for accounting.",
+      answer: "Select unbilled time entries for one or more clients, and AutoForce™ automatically generates professional invoices with calculated hours, rates, taxes, and platform fees. Invoices can be sent via email or downloaded as PDF. You can track payment status and generate reports for accounting.",
     },
     {
       question: "What security measures are in place?",
-      answer: "WorkforceOS uses bank-level encryption (AES-256), SOC 2 Type II compliance, multi-factor authentication, role-based access control, and immutable audit logs. All data is backed up hourly with 99.9% uptime SLA for Enterprise customers. We're also GDPR and CCPA compliant.",
+      answer: "AutoForce™ uses bank-level encryption (AES-256), SOC 2 Type II compliance, multi-factor authentication, role-based access control, and immutable audit logs. All data is backed up hourly with 99.9% uptime SLA for Enterprise customers. We're also GDPR and CCPA compliant.",
     },
     {
       question: "How do I upgrade or downgrade my plan?",
@@ -455,10 +455,10 @@ export default function Support() {
               <a href="/contact" className="hover:text-gray-900 whitespace-nowrap" data-testid="link-contact">
                 Contact Us
               </a>
-              <a href="#" className="hover:text-gray-900 whitespace-nowrap">
+              <a href="/privacy" className="hover:text-gray-900 whitespace-nowrap" data-testid="link-privacy">
                 Privacy
               </a>
-              <a href="#" className="hover:text-gray-900 whitespace-nowrap">
+              <a href="/terms" className="hover:text-gray-900 whitespace-nowrap" data-testid="link-terms">
                 Terms
               </a>
             </div>
