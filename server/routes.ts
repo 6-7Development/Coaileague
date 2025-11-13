@@ -719,15 +719,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
           isAuthenticated
         });
         
-        // For anonymous users, don't create support ticket yet
-        // Just return escalation flag - ticket will be created when they submit guest form
+        // For anonymous users, create a basic conversation record so WebSocket can join
         if (!isAuthenticated) {
-          console.log('[HelpOS] Anonymous escalation - no ticket created yet');
+          console.log('[HelpOS] Anonymous escalation - creating conversation for WebSocket join');
+          
+          const ticketNumber = `GUEST-${Date.now()}`;
+          const conversation = await storage.createChatConversation({
+            workspaceId,
+            customerId: userId,
+            customerName: userName || 'Guest',
+            customerEmail: userEmail || 'guest@anonymous',
+            subject: `HelpOS™ Escalation - ${response.escalationReason}`,
+            status: 'active',
+            priority: 'normal',
+          });
+          
           return res.json({
             ...response,
             escalated: true,
-            conversationId: response.sessionId, // Use session ID as conversation ID for now
-            ticketNumber: `GUEST-${Date.now()}`, // Temporary ticket number
+            conversationId: conversation.id, // Use real conversation ID
+            ticketNumber,
           });
         }
         
