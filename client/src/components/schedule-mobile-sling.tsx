@@ -11,6 +11,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ChevronLeft, ChevronRight, Clock, MapPin, Users } from "lucide-react";
 import type { Shift, Employee, Client } from "@shared/schema";
+import { getShiftTheme } from "@/lib/shift-theme";
 import moment from "moment";
 
 interface SlingMobileScheduleProps {
@@ -120,20 +121,6 @@ export function SlingMobileSchedule({
     onDateChange(newStart.toDate());
   };
 
-  // Get shift color based on status
-  const getShiftColor = (shift: Shift) => {
-    if (!shift.employeeId) {
-      // Open shift - gray
-      return "bg-gray-400 border-gray-300";
-    }
-    if (shift.status === "draft") {
-      // Draft - blue
-      return "bg-blue-200 border-blue-300 text-blue-900";
-    }
-    // Published - red/salmon
-    return "bg-red-400 border-red-500";
-  };
-
   // Render shift card
   const ShiftCard = ({ shift }: { shift: Shift }) => {
     const employee = employees.find((e) => e.id === shift.employeeId);
@@ -143,12 +130,19 @@ export function SlingMobileSchedule({
     );
     const hours = Math.floor(duration.asHours());
     const minutes = duration.minutes();
-    const colorClass = getShiftColor(shift);
+    
+    // Get vibrant theme colors
+    const theme = getShiftTheme(shift, client, employee);
 
     return (
       <div
         onClick={() => onShiftClick(shift)}
-        className={`${colorClass} rounded-lg p-4 mb-3 shadow-sm border-2 cursor-pointer hover-elevate active-elevate-2 transition-all`}
+        style={{
+          backgroundColor: theme.backgroundColor,
+          borderColor: theme.borderColor,
+          color: theme.textColor,
+        }}
+        className="rounded-lg p-4 mb-3 shadow-sm border-2 cursor-pointer hover-elevate active-elevate-2 transition-all"
         data-testid={`mobile-shift-card-${shift.id}`}
       >
         {/* Time and Duration */}
