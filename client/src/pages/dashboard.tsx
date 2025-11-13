@@ -25,6 +25,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { DashboardShell, ResponsiveSection, CenteredActions } from "@/components/dashboard-shell";
 
 interface Notification {
   id: string;
@@ -291,38 +292,39 @@ export default function Dashboard() {
       
       {/* Professional subtle background - NO bright glowing orbs */}
 
-      <div className="relative z-10 mobile-safe-container max-w-7xl mx-auto">
-        {/* Branded Header with Logo - Centered on Desktop */}
-        <div className="mb-8">
+      <DashboardShell>
+        {/* Branded Header with Logo - Centered on Large Screens */}
+        <ResponsiveSection spacing="lg">
           <div className="bg-card border border-border rounded-xl p-6 sm:p-8">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between lg:grid lg:grid-cols-[1fr_auto_1fr] lg:items-center">
-              {/* Logo and Title - Centered on Large Screens */}
-              <div className="flex items-start gap-3 lg:col-start-2 lg:flex-col lg:items-center lg:text-center">
-                <div className="transform hover:scale-105 transition-transform duration-300">
-                  <AnimatedAutoForceLogo variant="full" size="md" />
-                </div>
-                <div>
-                  <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-1 break-words" data-testid="text-welcome">
-                    Welcome back, {firstName}
-                  </h2>
-                  <p className="text-muted-foreground text-sm sm:text-base">
-                    {workspaceRole === 'org_owner' ? 'Manage your entire workforce with AutoForce™' : 
-                     workspaceRole === 'org_admin' ? 'Administer your organization' :
-                     workspaceRole === 'department_manager' ? 'Oversee your team performance' :
-                     workspaceRole === 'supervisor' ? 'Lead your team to success' :
-                     workspaceRole === 'auditor' ? 'Audit financial, payroll, and compliance data' :
-                     workspaceRole === 'contractor' ? 'Access your assigned projects and tasks' :
-                     'Track your time and tasks'}
-                  </p>
-                </div>
+            <div className="flex flex-col items-center text-center gap-4">
+              {/* Logo */}
+              <div className="transform hover:scale-105 transition-transform duration-300">
+                <AnimatedAutoForceLogo variant="full" size="md" />
+              </div>
+              
+              {/* Welcome Text - Centered */}
+              <div>
+                <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground mb-2 break-words" data-testid="text-welcome">
+                  Welcome back, {firstName}
+                </h2>
+                <p className="text-muted-foreground text-sm sm:text-base lg:text-lg">
+                  {workspaceRole === 'org_owner' ? 'Manage your entire workforce with AutoForce™' : 
+                   workspaceRole === 'org_admin' ? 'Administer your organization' :
+                   workspaceRole === 'department_manager' ? 'Oversee your team performance' :
+                   workspaceRole === 'supervisor' ? 'Lead your team to success' :
+                   workspaceRole === 'auditor' ? 'Audit financial, payroll, and compliance data' :
+                   workspaceRole === 'contractor' ? 'Access your assigned projects and tasks' :
+                   'Track your time and tasks'}
+                </p>
               </div>
             </div>
           </div>
-        </div>
+        </ResponsiveSection>
 
         {/* Workspace Health Status - Simple visual indicator */}
         {workspaceHealth && (
-          <div className={`mb-8 rounded-xl border-2 p-6 ${
+          <ResponsiveSection>
+          <div className={`rounded-xl border-2 p-6 ${
             workspaceHealth.status === 'green' ? 'bg-blue-50/50 dark:bg-blue-950/20 border-blue-500/30' :
             workspaceHealth.status === 'yellow' ? 'bg-blue-100/50 dark:bg-blue-900/20 border-blue-400/30' :
             'bg-red-50/50 dark:bg-red-950/20 border-red-500/30'
@@ -380,10 +382,12 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
+          </ResponsiveSection>
         )}
 
         {/* Metrics Grid - Professional Cards (NO glow effects) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+        <ResponsiveSection>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {/* Total Employees Card */}
           <div className="group bg-card border border-border rounded-lg p-6 hover-elevate active-elevate-2 transition-all duration-200" data-testid="card-employees">
             <div className="flex items-center justify-between mb-4">
@@ -419,9 +423,11 @@ export default function Dashboard() {
             </p>
           </div>
         </div>
+        </ResponsiveSection>
 
         {/* Quick Actions Grid - Role-Based Dynamic Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+        <ResponsiveSection>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {/* Accessible quick actions */}
           {quickActions.map((route) => (
             <Link key={route.id} href={route.href}>
@@ -484,10 +490,12 @@ export default function Dashboard() {
             </TooltipProvider>
           ))}
         </div>
+        </ResponsiveSection>
 
         {/* Organization Auditor Panel - Read-Only Financial, Payroll & Compliance Data */}
         {workspaceRole === 'auditor' && (
-          <div className="mb-8 space-y-6">
+          <ResponsiveSection>
+          <div className="space-y-6">
             <div className="bg-gradient-to-br from-emerald-50 to-cyan-50 dark:from-emerald-950/20 dark:to-cyan-950/20 border-2 border-emerald-500/30 rounded-xl p-6">
               <div className="flex items-center gap-3 mb-6">
                 <div className="p-3 bg-emerald-600 dark:bg-emerald-700 rounded-lg">
@@ -973,9 +981,11 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
+          </ResponsiveSection>
         )}
 
         {/* Notification Center Section - Professional Style */}
+        <ResponsiveSection>
         <div className="bg-card border border-border rounded-lg p-6 sm:p-8">
           {/* Notification Center Header */}
           <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
@@ -1136,8 +1146,8 @@ export default function Dashboard() {
               </div>
             )}
           </div>
-        </div>
-      </div>
+        </ResponsiveSection>
+      </DashboardShell>
     </div>
   );
 }

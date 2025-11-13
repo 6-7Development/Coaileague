@@ -34,6 +34,7 @@ import {
   Download,
 } from "lucide-react";
 import type { Invoice, Client } from "@shared/schema";
+import { DashboardShell, ResponsiveSection } from "@/components/dashboard-shell";
 
 export default function ClientPortal() {
   const { user } = useAuth();

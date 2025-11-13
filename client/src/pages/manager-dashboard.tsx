@@ -9,6 +9,7 @@ import {
   CheckCircle, XCircle, Clock, Calendar, Edit, Receipt,
   AlertTriangle, FileText, TrendingUp, Users, DollarSign
 } from "lucide-react";
+import { DashboardShell, ResponsiveSection, CenteredActions } from "@/components/dashboard-shell";
 
 export default function ManagerDashboard() {
   const { user } = useAuth();
@@ -45,20 +46,23 @@ export default function ManagerDashboard() {
   const isLoading = loadingTimeOff || loadingTimesheetEdits || loadingShifts || loadingExpenses || loadingI9;
 
   return (
-    <div className="container mx-auto p-6 max-w-7xl">
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold flex items-center gap-2">
-          <CheckCircle className="h-8 w-8 text-primary" />
-          Manager Approval Dashboard
-        </h1>
-        <p className="text-muted-foreground mt-2">
-          Review and approve pending requests from your team
-        </p>
-      </div>
+    <DashboardShell>
+      {/* Header - Centered */}
+      <ResponsiveSection spacing="lg">
+        <div className="text-center">
+          <div className="flex items-center justify-center gap-3 mb-3">
+            <CheckCircle className="h-10 w-10 text-primary" />
+            <h1 className="text-3xl sm:text-4xl font-bold">Manager Approval Dashboard</h1>
+          </div>
+          <p className="text-muted-foreground text-sm sm:text-base">
+            Review and approve pending requests from your team
+          </p>
+        </div>
+      </ResponsiveSection>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+      <ResponsiveSection>
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
@@ -353,6 +357,7 @@ export default function ManagerDashboard() {
           </CardContent>
         </Card>
       </div>
-    </div>
+      </ResponsiveSection>
+    </DashboardShell>
   );
 }
