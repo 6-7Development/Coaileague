@@ -63,14 +63,14 @@ const serviceIncidentReportSchema = z.object({
 
 // Register health routes
 export function registerHealthRoutes(app: Express, requireAuth: any) {
-  const router = express.Router();
-
   // ============================================================================
-  // HEALTH CHECK ENDPOINTS
+  // HEALTH CHECK ROUTER (/api/health/*)
   // ============================================================================
+  const healthRouter = express.Router();
 
   // Get overall health summary (all services)
-  router.get('/summary', async (req: Request, res: Response) => {
+  // GET /api/health/summary
+  healthRouter.get('/summary', async (req: Request, res: Response) => {
     try {
       const summary = await getHealthSummary();
       res.json(summary);
@@ -88,7 +88,8 @@ export function registerHealthRoutes(app: Express, requireAuth: any) {
   });
 
   // Get individual service health
-  router.get('/:service', async (req: Request, res: Response) => {
+  // GET /api/health/:service
+  healthRouter.get('/:service', async (req: Request, res: Response) => {
     try {
       const { service } = req.params;
       
@@ -111,14 +112,18 @@ export function registerHealthRoutes(app: Express, requireAuth: any) {
     }
   });
 
+  // Mount health router
+  app.use('/api/health', healthRouter);
+
   // ============================================================================
-  // SERVICE INCIDENT REPORTING
+  // SERVICE INCIDENT REPORTING ROUTER (/api/support/*)
   // ============================================================================
+  const supportRouter = express.Router();
 
   // Create service incident report with optional screenshot
-  // Note: This is mounted under /api, so full path is /api/support/service-incidents
-  router.post(
-    '/support/service-incidents',
+  // POST /api/support/service-incidents
+  supportRouter.post(
+    '/service-incidents',
     requireAuth,
     incidentReportLimiter,
     upload.single('screenshot'),
@@ -195,10 +200,6 @@ export function registerHealthRoutes(app: Express, requireAuth: any) {
     }
   );
 
-  // Mount the router at /api
-  // This makes:
-  // - GET /api/health/summary
-  // - GET /api/health/:service
-  // - POST /api/support/service-incidents
-  app.use('/api', router);
+  // Mount support router
+  app.use('/api/support', supportRouter);
 }
