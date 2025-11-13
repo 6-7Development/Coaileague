@@ -108,8 +108,8 @@ export default function CustomLogin() {
             <div 
               className="w-20 h-20 max-sm:w-16 max-sm:h-16 rounded-[20px] inline-flex items-center justify-center text-[32px] max-sm:text-2xl font-bold text-white mb-4"
               style={{
-                background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 100%)',
-                boxShadow: '0 8px 24px rgba(16, 185, 129, 0.3)'
+                background: 'linear-gradient(135deg, #3b82f6 0%, #22d3ee 100%)',
+                boxShadow: '0 8px 24px rgba(59, 130, 246, 0.3)'
               }}
             >
               AF
@@ -121,7 +121,7 @@ export default function CustomLogin() {
               <span 
                 className="bg-clip-text text-transparent"
                 style={{
-                  backgroundImage: 'linear-gradient(135deg, #10b981 0%, #06b6d4 100%)',
+                  backgroundImage: 'linear-gradient(135deg, #3b82f6 0%, #22d3ee 100%)',
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent'
                 }}
@@ -222,7 +222,7 @@ export default function CustomLogin() {
                   type="button"
                   onClick={() => setLocation("/reset-password")}
                   className="text-sm transition-colors"
-                  style={{ color: '#10b981' }}
+                  style={{ color: '#3b82f6' }}
                   data-testid="link-reset-password"
                 >
                   Forgot your password?
@@ -235,8 +235,8 @@ export default function CustomLogin() {
                 disabled={isLoading}
                 className="w-full py-3.5 rounded-xl text-white text-base font-semibold transition-all duration-300 disabled:opacity-70"
                 style={{
-                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                  boxShadow: '0 4px 16px rgba(16, 185, 129, 0.3)',
+                  background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                  boxShadow: '0 4px 16px rgba(59, 130, 246, 0.3)',
                   cursor: isLoading ? 'not-allowed' : 'pointer'
                 }}
                 data-testid="button-login"
@@ -260,7 +260,7 @@ export default function CustomLogin() {
               <button
                 onClick={() => setLocation("/register")}
                 className="font-medium transition-colors"
-                style={{ color: '#10b981' }}
+                style={{ color: '#3b82f6' }}
                 data-testid="link-register"
               >
                 Sign up
@@ -272,19 +272,19 @@ export default function CustomLogin() {
           <div 
             className="mt-8 p-5 rounded-xl text-center border-2"
             style={{
-              background: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)',
-              borderColor: '#10b981'
+              background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
+              borderColor: '#3b82f6'
             }}
           >
-            <p className="text-sm font-medium mb-3" style={{ color: '#065f46' }}>
+            <p className="text-sm font-medium mb-3" style={{ color: '#1e40af' }}>
               Want to see it in action?
             </p>
             <button
               onClick={() => window.location.href = "/api/demo-login"}
               className="px-6 py-2.5 bg-white rounded-lg text-sm font-semibold transition-all duration-300 border-2"
               style={{
-                color: '#10b981',
-                borderColor: '#10b981'
+                color: '#3b82f6',
+                borderColor: '#3b82f6'
               }}
               data-testid="button-demo"
             >
