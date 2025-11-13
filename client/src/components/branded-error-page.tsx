@@ -28,7 +28,7 @@ export function BrandedErrorPage({
     "404": {
       icon: AlertTriangle,
       defaultTitle: "Page Not Found",
-      defaultMessage: "The page you're looking for doesn't exist in WorkforceOS.",
+      defaultMessage: "The page you're looking for doesn't exist in AutoForce™.",
       color: "text-blue-500"
     },
     "403": {
@@ -40,7 +40,7 @@ export function BrandedErrorPage({
     "500": {
       icon: ServerCrash,
       defaultTitle: "System Error",
-      defaultMessage: "WorkforceOS encountered an unexpected error. Our team has been notified.",
+      defaultMessage: "AutoForce™ encountered an unexpected error. Our team has been notified.",
       color: "text-purple-500"
     },
     "error": {
@@ -119,14 +119,14 @@ export function BrandedErrorPage({
             className="text-emerald-700 dark:text-emerald-400 hover:underline"
             data-testid="link-contact-support"
           >
-            WorkforceOS Support
+            AutoForce™ Support
           </button>
         </div>
       </div>
 
       {/* Branding Footer */}
       <div className="mt-8 text-xs text-white/30 animate-pulse">
-        Powered by WorkforceOS Platform
+        Powered by AutoForce™ Platform
       </div>
     </div>
   );
