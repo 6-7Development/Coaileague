@@ -6,7 +6,8 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { 
   Users, Activity, DollarSign, 
   FileText, Calendar, Clock, ArrowRight,
-  Bell, Trash2, CheckCircle, XCircle, AlertCircle, Mail, Lock
+  Bell, Trash2, CheckCircle, XCircle, AlertCircle, Mail, Lock,
+  Shield, UserCog, Server, Database, MessageCircle, Settings
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { AnimatedAutoForceLogo } from "@/components/animated-autoforce-logo";
@@ -573,6 +574,356 @@ export default function Dashboard() {
                     <p className="text-xs text-cyan-700 dark:text-cyan-300 mt-1 lg:text-center">
                       You have platform-wide compliance oversight including audit trail reviews, AI governance monitoring, 
                       policy attestation tracking, and data retention management across all workspaces.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Support Manager Panel - Manage Support Operations */}
+        {platformRole === 'support_manager' && (
+          <div className="mb-8 space-y-6">
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border-2 border-blue-500/30 rounded-xl p-6">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-3 bg-blue-600 dark:bg-blue-700 rounded-lg">
+                  <Users className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-bold text-foreground lg:text-center">Support Management Center</h3>
+                  <p className="text-sm text-muted-foreground lg:text-center">Oversee support operations, team performance, and escalations</p>
+                </div>
+              </div>
+
+              {/* Support Manager Quick Stats */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <div className="bg-card border border-border rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <MessageCircle className="w-4 h-4 text-blue-700 dark:text-blue-400" />
+                    <p className="text-xs font-semibold uppercase tracking-wide text-blue-700 dark:text-blue-400 lg:text-center">All Conversations</p>
+                  </div>
+                  <p className="text-2xl font-bold text-foreground lg:text-center">Manage</p>
+                  <p className="text-xs text-muted-foreground mt-1 lg:text-center">All support tickets</p>
+                </div>
+
+                <div className="bg-card border border-border rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Activity className="w-4 h-4 text-indigo-700 dark:text-indigo-400" />
+                    <p className="text-xs font-semibold uppercase tracking-wide text-indigo-700 dark:text-indigo-400 lg:text-center">Team Performance</p>
+                  </div>
+                  <p className="text-2xl font-bold text-foreground lg:text-center">Monitor</p>
+                  <p className="text-xs text-muted-foreground mt-1 lg:text-center">Agent metrics & SLAs</p>
+                </div>
+
+                <div className="bg-card border border-border rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Bell className="w-4 h-4 text-violet-700 dark:text-violet-400" />
+                    <p className="text-xs font-semibold uppercase tracking-wide text-violet-700 dark:text-violet-400 lg:text-center">Escalations</p>
+                  </div>
+                  <p className="text-2xl font-bold text-foreground lg:text-center">Handle</p>
+                  <p className="text-xs text-muted-foreground mt-1 lg:text-center">High priority issues</p>
+                </div>
+
+                <div className="bg-card border border-border rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <FileText className="w-4 h-4 text-slate-700 dark:text-slate-400" />
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-400 lg:text-center">Reports</p>
+                  </div>
+                  <p className="text-2xl font-bold text-foreground lg:text-center">Generate</p>
+                  <p className="text-xs text-muted-foreground mt-1 lg:text-center">Support analytics</p>
+                </div>
+              </div>
+
+              {/* Support Manager Access Notice */}
+              <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-semibold text-blue-900 dark:text-blue-100 lg:text-center">Support Manager Access</p>
+                    <p className="text-xs text-blue-700 dark:text-blue-300 mt-1 lg:text-center">
+                      You can manage all support conversations, monitor agent performance, handle escalations, 
+                      and access support analytics across all workspaces.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Support Agent Panel - Handle Support Tickets */}
+        {platformRole === 'support_agent' && (
+          <div className="mb-8 space-y-6">
+            <div className="bg-gradient-to-br from-teal-50 to-cyan-50 dark:from-teal-950/20 dark:to-cyan-950/20 border-2 border-teal-500/30 rounded-xl p-6">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-3 bg-teal-600 dark:bg-teal-700 rounded-lg">
+                  <MessageCircle className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-bold text-foreground lg:text-center">Support Agent Workspace</h3>
+                  <p className="text-sm text-muted-foreground lg:text-center">Handle customer conversations and resolve tickets</p>
+                </div>
+              </div>
+
+              {/* Support Agent Quick Stats */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <div className="bg-card border border-border rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <MessageCircle className="w-4 h-4 text-teal-700 dark:text-teal-400" />
+                    <p className="text-xs font-semibold uppercase tracking-wide text-teal-700 dark:text-teal-400 lg:text-center">My Queue</p>
+                  </div>
+                  <p className="text-2xl font-bold text-foreground lg:text-center">View</p>
+                  <p className="text-xs text-muted-foreground mt-1 lg:text-center">Assigned conversations</p>
+                </div>
+
+                <div className="bg-card border border-border rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Clock className="w-4 h-4 text-cyan-700 dark:text-cyan-400" />
+                    <p className="text-xs font-semibold uppercase tracking-wide text-cyan-700 dark:text-cyan-400 lg:text-center">Response Time</p>
+                  </div>
+                  <p className="text-2xl font-bold text-foreground lg:text-center">Track</p>
+                  <p className="text-xs text-muted-foreground mt-1 lg:text-center">SLA compliance</p>
+                </div>
+
+                <div className="bg-card border border-border rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <CheckCircle className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
+                    <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400 lg:text-center">Resolved Today</p>
+                  </div>
+                  <p className="text-2xl font-bold text-foreground lg:text-center">Count</p>
+                  <p className="text-xs text-muted-foreground mt-1 lg:text-center">Tickets closed</p>
+                </div>
+
+                <div className="bg-card border border-border rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Activity className="w-4 h-4 text-slate-700 dark:text-slate-400" />
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-400 lg:text-center">Performance</p>
+                  </div>
+                  <p className="text-2xl font-bold text-foreground lg:text-center">Monitor</p>
+                  <p className="text-xs text-muted-foreground mt-1 lg:text-center">My metrics</p>
+                </div>
+              </div>
+
+              {/* Support Agent Access Notice */}
+              <div className="bg-teal-50 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-800 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-teal-600 dark:text-teal-400 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-semibold text-teal-900 dark:text-teal-100 lg:text-center">Support Agent Access</p>
+                    <p className="text-xs text-teal-700 dark:text-teal-300 mt-1 lg:text-center">
+                      You can view your assigned conversation queue, respond to customer tickets, 
+                      monitor your response times, and track your performance metrics.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Root Admin Panel - Full Platform Control */}
+        {platformRole === 'root_admin' && (
+          <div className="mb-8 space-y-6">
+            <div className="bg-gradient-to-br from-purple-50 to-fuchsia-50 dark:from-purple-950/20 dark:to-fuchsia-950/20 border-2 border-purple-500/30 rounded-xl p-6">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-3 bg-purple-600 dark:bg-purple-700 rounded-lg">
+                  <Shield className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-bold text-foreground lg:text-center">Root Admin Control Center</h3>
+                  <p className="text-sm text-muted-foreground lg:text-center">Full platform oversight and administrative control</p>
+                </div>
+              </div>
+
+              {/* Root Admin Quick Stats */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <div className="bg-card border border-border rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Settings className="w-4 h-4 text-purple-700 dark:text-purple-400" />
+                    <p className="text-xs font-semibold uppercase tracking-wide text-purple-700 dark:text-purple-400 lg:text-center">System Config</p>
+                  </div>
+                  <p className="text-2xl font-bold text-foreground lg:text-center">Manage</p>
+                  <p className="text-xs text-muted-foreground mt-1 lg:text-center">Platform settings</p>
+                </div>
+
+                <div className="bg-card border border-border rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Users className="w-4 h-4 text-fuchsia-700 dark:text-fuchsia-400" />
+                    <p className="text-xs font-semibold uppercase tracking-wide text-fuchsia-700 dark:text-fuchsia-400 lg:text-center">All Workspaces</p>
+                  </div>
+                  <p className="text-2xl font-bold text-foreground lg:text-center">Oversee</p>
+                  <p className="text-xs text-muted-foreground mt-1 lg:text-center">Platform-wide data</p>
+                </div>
+
+                <div className="bg-card border border-border rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Activity className="w-4 h-4 text-violet-700 dark:text-violet-400" />
+                    <p className="text-xs font-semibold uppercase tracking-wide text-violet-700 dark:text-violet-400 lg:text-center">System Health</p>
+                  </div>
+                  <p className="text-2xl font-bold text-foreground lg:text-center">Monitor</p>
+                  <p className="text-xs text-muted-foreground mt-1 lg:text-center">Infrastructure status</p>
+                </div>
+
+                <div className="bg-card border border-border rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Shield className="w-4 h-4 text-slate-700 dark:text-slate-400" />
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-400 lg:text-center">Security</p>
+                  </div>
+                  <p className="text-2xl font-bold text-foreground lg:text-center">Control</p>
+                  <p className="text-xs text-muted-foreground mt-1 lg:text-center">Access & permissions</p>
+                </div>
+              </div>
+
+              {/* Root Admin Access Notice */}
+              <div className="bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-purple-600 dark:text-purple-400 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-semibold text-purple-900 dark:text-purple-100 lg:text-center">Root Administrator Access</p>
+                    <p className="text-xs text-purple-700 dark:text-purple-300 mt-1 lg:text-center">
+                      You have unrestricted access to all platform features, system configuration, workspace management, 
+                      security controls, and infrastructure monitoring.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Deputy Admin Panel - Platform Management Support */}
+        {platformRole === 'deputy_admin' && (
+          <div className="mb-8 space-y-6">
+            <div className="bg-gradient-to-br from-indigo-50 to-violet-50 dark:from-indigo-950/20 dark:to-violet-950/20 border-2 border-indigo-500/30 rounded-xl p-6">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-3 bg-indigo-600 dark:bg-indigo-700 rounded-lg">
+                  <UserCog className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-bold text-foreground lg:text-center">Deputy Admin Dashboard</h3>
+                  <p className="text-sm text-muted-foreground lg:text-center">Assist with platform administration and user management</p>
+                </div>
+              </div>
+
+              {/* Deputy Admin Quick Stats */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <div className="bg-card border border-border rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Users className="w-4 h-4 text-indigo-700 dark:text-indigo-400" />
+                    <p className="text-xs font-semibold uppercase tracking-wide text-indigo-700 dark:text-indigo-400 lg:text-center">User Management</p>
+                  </div>
+                  <p className="text-2xl font-bold text-foreground lg:text-center">Manage</p>
+                  <p className="text-xs text-muted-foreground mt-1 lg:text-center">Platform users</p>
+                </div>
+
+                <div className="bg-card border border-border rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Activity className="w-4 h-4 text-violet-700 dark:text-violet-400" />
+                    <p className="text-xs font-semibold uppercase tracking-wide text-violet-700 dark:text-violet-400 lg:text-center">Workspace Support</p>
+                  </div>
+                  <p className="text-2xl font-bold text-foreground lg:text-center">Assist</p>
+                  <p className="text-xs text-muted-foreground mt-1 lg:text-center">Customer success</p>
+                </div>
+
+                <div className="bg-card border border-border rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <FileText className="w-4 h-4 text-cyan-700 dark:text-cyan-400" />
+                    <p className="text-xs font-semibold uppercase tracking-wide text-cyan-700 dark:text-cyan-400 lg:text-center">Reports</p>
+                  </div>
+                  <p className="text-2xl font-bold text-foreground lg:text-center">Generate</p>
+                  <p className="text-xs text-muted-foreground mt-1 lg:text-center">Platform analytics</p>
+                </div>
+
+                <div className="bg-card border border-border rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Settings className="w-4 h-4 text-slate-700 dark:text-slate-400" />
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-400 lg:text-center">Configuration</p>
+                  </div>
+                  <p className="text-2xl font-bold text-foreground lg:text-center">Assist</p>
+                  <p className="text-xs text-muted-foreground mt-1 lg:text-center">System setup</p>
+                </div>
+              </div>
+
+              {/* Deputy Admin Access Notice */}
+              <div className="bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-800 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-semibold text-indigo-900 dark:text-indigo-100 lg:text-center">Deputy Administrator Access</p>
+                    <p className="text-xs text-indigo-700 dark:text-indigo-300 mt-1 lg:text-center">
+                      You can assist with user management, workspace support, platform reporting, 
+                      and configuration assistance under Root Admin supervision.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* SysOp Panel - Infrastructure & Operations */}
+        {platformRole === 'sysop' && (
+          <div className="mb-8 space-y-6">
+            <div className="bg-gradient-to-br from-slate-50 to-zinc-50 dark:from-slate-950/20 dark:to-zinc-950/20 border-2 border-slate-500/30 rounded-xl p-6">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-3 bg-slate-600 dark:bg-slate-700 rounded-lg">
+                  <Server className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-bold text-foreground lg:text-center">System Operations Center</h3>
+                  <p className="text-sm text-muted-foreground lg:text-center">Monitor infrastructure, databases, and system performance</p>
+                </div>
+              </div>
+
+              {/* SysOp Quick Stats */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <div className="bg-card border border-border rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Server className="w-4 h-4 text-slate-700 dark:text-slate-400" />
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-400 lg:text-center">Infrastructure</p>
+                  </div>
+                  <p className="text-2xl font-bold text-foreground lg:text-center">Monitor</p>
+                  <p className="text-xs text-muted-foreground mt-1 lg:text-center">Server health</p>
+                </div>
+
+                <div className="bg-card border border-border rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Database className="w-4 h-4 text-zinc-700 dark:text-zinc-400" />
+                    <p className="text-xs font-semibold uppercase tracking-wide text-zinc-700 dark:text-zinc-400 lg:text-center">Databases</p>
+                  </div>
+                  <p className="text-2xl font-bold text-foreground lg:text-center">Maintain</p>
+                  <p className="text-xs text-muted-foreground mt-1 lg:text-center">DB operations</p>
+                </div>
+
+                <div className="bg-card border border-border rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Activity className="w-4 h-4 text-blue-700 dark:text-blue-400" />
+                    <p className="text-xs font-semibold uppercase tracking-wide text-blue-700 dark:text-blue-400 lg:text-center">Performance</p>
+                  </div>
+                  <p className="text-2xl font-bold text-foreground lg:text-center">Optimize</p>
+                  <p className="text-xs text-muted-foreground mt-1 lg:text-center">System metrics</p>
+                </div>
+
+                <div className="bg-card border border-border rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <AlertCircle className="w-4 h-4 text-red-700 dark:text-red-400" />
+                    <p className="text-xs font-semibold uppercase tracking-wide text-red-700 dark:text-red-400 lg:text-center">Incidents</p>
+                  </div>
+                  <p className="text-2xl font-bold text-foreground lg:text-center">Respond</p>
+                  <p className="text-xs text-muted-foreground mt-1 lg:text-center">Emergency support</p>
+                </div>
+              </div>
+
+              {/* SysOp Access Notice */}
+              <div className="bg-slate-50 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-800 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-slate-600 dark:text-slate-400 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900 dark:text-slate-100 lg:text-center">System Operations Access</p>
+                    <p className="text-xs text-slate-700 dark:text-slate-300 mt-1 lg:text-center">
+                      You can monitor infrastructure health, maintain databases, optimize performance metrics, 
+                      and respond to system incidents.
                     </p>
                   </div>
                 </div>
