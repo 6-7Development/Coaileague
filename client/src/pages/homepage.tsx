@@ -139,17 +139,13 @@ export default function Homepage() {
               </div>
 
               <div className="flex flex-wrap gap-4 mb-8">
-                <Link href="/pricing">
-                  <a className="px-8 py-4 bg-gradient-to-r from-blue-600 to-blue-600 text-white rounded-xl font-bold hover:from-blue-700 hover:to-blue-700 transition-all shadow-lg hover:shadow-xl flex items-center gap-2" data-testid="button-calculate-savings">
-                    Calculate Your Savings
-                    <ArrowRight className="w-5 h-5" />
-                  </a>
+                <Link href="/pricing" className="px-8 py-4 bg-gradient-to-r from-blue-600 to-blue-600 text-white rounded-xl font-bold hover:from-blue-700 hover:to-blue-700 transition-all shadow-lg hover:shadow-xl flex items-center gap-2" data-testid="button-calculate-savings">
+                  Calculate Your Savings
+                  <ArrowRight className="w-5 h-5" />
                 </Link>
-                <Link href="/register">
-                  <a className="px-8 py-4 bg-white text-gray-900 rounded-xl font-semibold hover:bg-gray-50 transition-all border-2 border-gray-200 flex items-center gap-2 shadow-md" data-testid="button-see-demo">
-                    <Play className="w-5 h-5" />
-                    See AI in Action
-                  </a>
+                <Link href="/register" className="px-8 py-4 bg-white text-gray-900 rounded-xl font-semibold hover:bg-gray-50 transition-all border-2 border-gray-200 flex items-center gap-2 shadow-md" data-testid="button-see-demo">
+                  <Play className="w-5 h-5" />
+                  See AI in Action
                 </Link>
               </div>
 
