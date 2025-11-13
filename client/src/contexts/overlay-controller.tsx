@@ -25,6 +25,10 @@ interface OverlayControllerContextValue {
   showOverlay: (request: Omit<OverlayRequest, "id" | "visibleSince">) => string;
   hideOverlay: (id: string, minDuration?: number) => void;
   updateOverlay: (id: string, updates: Partial<OverlayRequest>) => void;
+  isModalActive: () => boolean;
+  registerModal: (modalId: string) => void;
+  unregisterModal: (modalId: string) => void;
+  tryActivate: (modalId: string) => boolean;
 }
 
 const OverlayControllerContext = createContext<OverlayControllerContextValue | null>(null);
@@ -33,6 +37,7 @@ export function OverlayControllerProvider({ children }: { children: ReactNode })
   const [activeOverlay, setActiveOverlay] = useState<OverlayRequest | null>(null);
   const [queue, setQueue] = useState<OverlayRequest[]>([]);
   const requestCounterRef = useRef(0);
+  const [activeModals, setActiveModals] = useState<Set<string>>(new Set());
 
   const showOverlay = useCallback((request: Omit<OverlayRequest, "id" | "visibleSince">) => {
     const id = `overlay-${++requestCounterRef.current}`;
@@ -119,8 +124,52 @@ export function OverlayControllerProvider({ children }: { children: ReactNode })
     }
   }, [activeOverlay]);
 
+  const isModalActive = useCallback(() => {
+    return activeModals.size > 0;
+  }, [activeModals]);
+
+  const registerModal = useCallback((modalId: string) => {
+    setActiveModals(prev => {
+      if (prev.has(modalId)) return prev;
+      const next = new Set(prev);
+      next.add(modalId);
+      return next;
+    });
+  }, []);
+
+  const unregisterModal = useCallback((modalId: string) => {
+    setActiveModals(prev => {
+      if (!prev.has(modalId)) return prev;
+      const next = new Set(prev);
+      next.delete(modalId);
+      return next;
+    });
+  }, []);
+
+  const tryActivate = useCallback((modalId: string): boolean => {
+    let canActivate = false;
+    setActiveModals(prev => {
+      // Check if another modal is active (excluding self)
+      const otherModalActive = Array.from(prev).some(id => id !== modalId);
+      
+      if (otherModalActive) {
+        console.warn(`[OverlayController] Cannot activate "${modalId}" - another modal is already active`);
+        canActivate = false;
+        return prev; // No change
+      }
+      
+      // Atomically register this modal
+      canActivate = true;
+      if (prev.has(modalId)) return prev;
+      const next = new Set(prev);
+      next.add(modalId);
+      return next;
+    });
+    return canActivate;
+  }, []);
+
   return (
-    <OverlayControllerContext.Provider value={{ showOverlay, hideOverlay, updateOverlay }}>
+    <OverlayControllerContext.Provider value={{ showOverlay, hideOverlay, updateOverlay, isModalActive, registerModal, unregisterModal, tryActivate }}>
       {children}
       {/* Single overlay instance - only one can be visible at a time */}
       {activeOverlay && (
