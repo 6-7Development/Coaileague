@@ -49,11 +49,25 @@ export function UniversalLoading({
     if (progress !== undefined) {
       setAnimatedProgress(progress);
     } else {
-      // Simulate loading progress: fast start, slow finish
+      // Simulate loading progress: fast start (0-90%), slow finish (90-100%)
       const interval = setInterval(() => {
         setAnimatedProgress(prev => {
+          if (prev >= 100) {
+            clearInterval(interval);
+            return 100;
+          }
+          if (prev >= 90) {
+            // Slower progression from 90% to 100%
+            const next = prev + Math.random() * 0.8;
+            if (next >= 100) {
+              clearInterval(interval);
+              return 100;
+            }
+            return next;
+          }
+          // Faster progression from 0% to 90%
           const next = prev + Math.random() * 4;
-          return next >= 90 ? 90 : next;
+          return Math.min(next, 90);
         });
       }, 150);
       return () => clearInterval(interval);
