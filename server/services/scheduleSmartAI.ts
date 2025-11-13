@@ -22,6 +22,26 @@ export interface ScheduleSmartRequest {
     requiredSkills?: string[];
     preferExperience?: boolean;
     balanceWorkload?: boolean;
+    // Enhanced weighted constraints
+    hardConstraints?: {
+      respectAvailability?: boolean;
+      preventDoubleBooking?: boolean;
+      enforceRestPeriods?: boolean; // Min hours between shifts
+      respectTimeOffRequests?: boolean;
+    };
+    softConstraints?: {
+      preferExperience?: boolean;
+      balanceWorkload?: boolean;
+      minimizeCommute?: boolean;
+      respectPreferences?: boolean;
+      avoidClopening?: boolean; // Closing shift followed by opening shift
+    };
+    // Predictive metrics
+    predictiveMetrics?: {
+      enableReliabilityScoring?: boolean;
+      penalizeLateHistory?: boolean;
+      considerAbsenteeismRisk?: boolean;
+    };
   };
 }
 
@@ -87,20 +107,31 @@ export async function scheduleSmartAI(request: ScheduleSmartRequest): Promise<Sc
     role: emp.role
   }));
 
-  const systemPrompt = `You are ScheduleOS™, AutoForce's intelligent scheduling AI.
+  const systemPrompt = `You are ScheduleOS™, AutoForce's intelligent scheduling AI powered by weighted constraint optimization.
 
-Your task: Assign employees to open shifts based on these rules:
-1. **MUST**: Respect employee availability (if provided)
-2. **MUST**: Balance workload across employees (avoid overloading one person)
-3. **PREFER**: Assign employees with matching skills/roles
-4. **PREFER**: Minimize gaps between shifts for same employee
-5. **AVOID**: Double-booking (one employee, one shift at a time)
+Your task: Assign employees to open shifts using HARD and SOFT constraints:
 
-Constraints:
+**HARD CONSTRAINTS (Non-Negotiable - Must be 100% satisfied):**
+1. **MUST**: Respect employee availability ${request.constraints?.hardConstraints?.respectAvailability !== false ? '✓' : '(disabled)'}
+2. **MUST**: Prevent double-booking ${request.constraints?.hardConstraints?.preventDoubleBooking !== false ? '✓' : '(disabled)'}
+3. **MUST**: Enforce rest periods (min 8-12 hours between shifts) ${request.constraints?.hardConstraints?.enforceRestPeriods !== false ? '✓' : '(disabled)'}
+4. **MUST**: Respect time-off requests ${request.constraints?.hardConstraints?.respectTimeOffRequests !== false ? '✓' : '(disabled)'}
+
+**SOFT CONSTRAINTS (Penalty-weighted preferences - Minimize violations):**
+1. **PREFER**: Experienced employees (penalty: -5% per violation) ${request.constraints?.softConstraints?.preferExperience !== false ? '✓' : '(disabled)'}
+2. **PREFER**: Balanced workload across employees (penalty: -10% if >20% imbalance) ${request.constraints?.softConstraints?.balanceWorkload !== false ? '✓' : '(disabled)'}
+3. **PREFER**: Minimize commute distance (penalty: -3% per >30mi assignment) ${request.constraints?.softConstraints?.minimizeCommute !== false ? '✓' : '(disabled)'}
+4. **PREFER**: Respect employee preferences (penalty: -5% per violation) ${request.constraints?.softConstraints?.respectPreferences !== false ? '✓' : '(disabled)'}
+5. **AVOID**: Clopening (closing→opening) shifts (penalty: -8% per occurrence) ${request.constraints?.softConstraints?.avoidClopening !== false ? '✓' : '(disabled)'}
+
+**PREDICTIVE METRICS (Fairness & Reliability):**
+- Reliability scoring: ${request.constraints?.predictiveMetrics?.enableReliabilityScoring !== false ? '✓' : '(disabled)'}
+- Late history penalty: ${request.constraints?.predictiveMetrics?.penalizeLateHistory !== false ? '✓' : '(disabled)'}
+- Absenteeism risk consideration: ${request.constraints?.predictiveMetrics?.considerAbsenteeismRisk !== false ? '✓' : '(disabled)'}
+
+Legacy Constraints:
 - Max shifts per employee: ${request.constraints?.maxShiftsPerEmployee || 'unlimited'}
 - Required skills: ${request.constraints?.requiredSkills?.join(', ') || 'none'}
-- Prefer experience: ${request.constraints?.preferExperience !== false}
-- Balance workload: ${request.constraints?.balanceWorkload !== false}
 
 **GOVERNANCE (99% AI, 1% Human Approval):**
 Calculate an overallConfidence score (0-100%) for the entire schedule:
