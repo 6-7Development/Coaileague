@@ -9,7 +9,7 @@ import {
   escalationTickets,
   shifts
 } from "../../shared/schema";
-import { eq, gte, count, sum, sql, and } from "drizzle-orm";
+import { eq, gte, lte, count, sum, sql, and } from "drizzle-orm";
 import type { AnalyticsStats } from "../../shared/schema";
 import { monitoringService } from "../monitoring";
 
@@ -101,12 +101,12 @@ export async function getAnalyticsStats(
           .where(and(
             eq(invoices.workspaceId, workspaceId),
             gte(invoices.paidAt, previousMonthStart),
-            sql`${invoices.paidAt} <= ${previousMonthEnd}`
+            lte(invoices.paidAt, previousMonthEnd)
           ))
       : db.select({ total: sum(invoices.total) }).from(invoices)
           .where(and(
             gte(invoices.paidAt, previousMonthStart),
-            sql`${invoices.paidAt} <= ${previousMonthEnd}`
+            lte(invoices.paidAt, previousMonthEnd)
           )),
     
     // Open support tickets
@@ -135,12 +135,12 @@ export async function getAnalyticsStats(
           .where(and(
             eq(shifts.workspaceId, workspaceId),
             gte(shifts.startTime, new Date()),
-            sql`${shifts.startTime} <= ${new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)}`
+            lte(shifts.startTime, new Date(Date.now() + 7 * 24 * 60 * 60 * 1000))
           ))
       : db.select({ count: count() }).from(shifts)
           .where(and(
             gte(shifts.startTime, new Date()),
-            sql`${shifts.startTime} <= ${new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)}`
+            lte(shifts.startTime, new Date(Date.now() + 7 * 24 * 60 * 60 * 1000))
           )),
     
     // Get system monitoring data (monitoring service returns current metrics)
