@@ -4,10 +4,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ManagedDialog } from '@/components/ui/managed-dialog';
 import { cn } from '@/lib/utils';
 import { useLocation } from 'wouter';
 import { useAuth } from '@/hooks/useAuth';
+import { useOverlayController } from '@/contexts/overlay-controller';
 
 interface Message {
   id: number;
@@ -32,6 +34,7 @@ interface QuickAction {
 export function FloatingSupportChat() {
   const { user } = useAuth();
   const [location, setLocation] = useLocation();
+  const { isModalActive, registerModal, unregisterModal } = useOverlayController();
   const [isOpen, setIsOpen] = useState(false);
   
   // Hide floating chat on certain pages to avoid conflicts
@@ -186,7 +189,20 @@ export function FloatingSupportChat() {
           return;
         }
         
-        // Guest user - show info capture form before escalating
+        // Guest user - check if another modal is already active before proceeding
+        if (isModalActive()) {
+          console.warn('[FloatingSupportChat] Another modal is active, cannot open guest dialog');
+          const warningMessage: Message = {
+            id: messages.length + 2,
+            type: 'bot',
+            text: 'Please close any open dialogs first, then try again.',
+            timestamp: new Date()
+          };
+          setMessages(prev => [...prev, warningMessage]);
+          return;
+        }
+        
+        // Show info capture form before escalating
         setPendingEscalation({
           conversationId: data.conversationId,
           ticketNumber: data.ticketNumber,
@@ -500,7 +516,7 @@ export function FloatingSupportChat() {
       )}
       
       {/* Guest Info Capture Dialog - For unauthenticated users */}
-      <Dialog open={showGuestDialog} onOpenChange={setShowGuestDialog}>
+      <ManagedDialog modalId="floating-support-guest-dialog" open={showGuestDialog} onOpenChange={setShowGuestDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Connect to Live Support</DialogTitle>
@@ -568,7 +584,7 @@ export function FloatingSupportChat() {
             </Button>
           </DialogFooter>
         </DialogContent>
-      </Dialog>
+      </ManagedDialog>
     </>
   );
 }
