@@ -617,9 +617,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = authReq.user!.id;
       const { workspaceId } = await resolveWorkspaceForUser(userId, req.body.workspaceId);
       
+      // SECURITY: Validate session ownership to prevent cross-workspace data access
+      if (sessionId) {
+        const existingSession = await storage.getHelposSession(sessionId, workspaceId);
+        if (!existingSession) {
+          return res.status(403).json({ message: 'Invalid session or unauthorized access' });
+        }
+        // Verify session belongs to this user
+        if (existingSession.userId !== userId) {
+          return res.status(403).json({ message: 'Unauthorized: Session does not belong to this user' });
+        }
+      }
+      
       // Get user details for chat context
       const user = await storage.getUser(userId);
       const userName = user?.email || 'User';
+      const userEmail = user?.email || '';
 
       const response = await helposService.bubbleAgent_reply({
         workspaceId,
@@ -630,6 +643,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
         conversationHistory: conversationHistory || [],
         storage,
       });
+
+      // Handle escalation to live helpdesk
+      if (response.shouldEscalate && response.escalationReason) {
+        // Get AI summary from session
+        const session = await storage.getHelposSession(response.sessionId, workspaceId);
+        const aiSummary = session?.aiSummary || 'No summary available';
+
+        const escalationData = await helposService.handleEscalation({
+          workspaceId,
+          userId,
+          userName,
+          userEmail,
+          sessionId: response.sessionId,
+          escalationReason: response.escalationReason,
+          aiSummary,
+          storage,
+        });
+
+        // Notify support agents via WebSocket
+        const { broadcastToWorkspace } = await import('./websocket');
+        await broadcastToWorkspace(workspaceId, {
+          type: 'helpos_escalation',
+          payload: {
+            ticketId: escalationData.ticketId,
+            ticketNumber: escalationData.ticketNumber,
+            conversationId: escalationData.conversationId,
+            customerName: userName,
+            priority: response.escalationReason === 'critical_keyword' ? 'urgent' : 'normal',
+          },
+        });
+
+        return res.json({
+          ...response,
+          escalated: true,
+          conversationId: escalationData.conversationId,
+          ticketNumber: escalationData.ticketNumber,
+        });
+      }
 
       res.json(response);
     } catch (error: any) {

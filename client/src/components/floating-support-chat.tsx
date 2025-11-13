@@ -3,12 +3,14 @@ import { Send, Bot, User, X, MessageCircle, Minimize2, Sparkles } from 'lucide-r
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { useLocation } from 'wouter';
 
 interface Message {
   id: number;
   type: 'bot' | 'user';
   text: string;
   timestamp: Date;
+  isEscalation?: boolean;
 }
 
 interface QuickAction {
@@ -18,6 +20,7 @@ interface QuickAction {
 }
 
 export function FloatingSupportChat() {
+  const [, setLocation] = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
@@ -31,6 +34,7 @@ export function FloatingSupportChat() {
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -76,23 +80,60 @@ export function FloatingSupportChat() {
     setIsTyping(true);
 
     try {
-      const response = await fetch('/api/support/ai-chat', {
+      // Build conversation history for context
+      const conversationHistory = messages
+        .filter(m => m.type !== 'bot' || !m.isEscalation)
+        .map(m => ({
+          role: m.type === 'user' ? 'user' : 'assistant',
+          content: m.text
+        }));
+
+      const response = await fetch('/api/support/helpos-chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: query })
+        credentials: 'include',
+        body: JSON.stringify({ 
+          message: query,
+          sessionId: sessionId,
+          conversationHistory: conversationHistory.slice(-5) // Last 5 messages for context
+        })
       });
 
       if (!response.ok) {
-        throw new Error('Failed to get AI response');
+        throw new Error('Failed to get HelpOS™ response');
       }
 
       const data = await response.json();
       
+      // Store sessionId for conversation continuity
+      if (data.sessionId && !sessionId) {
+        setSessionId(data.sessionId);
+      }
+      
       setIsTyping(false);
+
+      // Handle escalation to live helpdesk
+      if (data.escalated && data.conversationId) {
+        const escalationMessage: Message = {
+          id: messages.length + 2,
+          type: 'bot',
+          text: `${data.message}\n\n🎫 Ticket #${data.ticketNumber} created.\n\nRedirecting you to live support chat...`,
+          timestamp: new Date(),
+          isEscalation: true
+        };
+        setMessages(prev => [...prev, escalationMessage]);
+
+        // Redirect to live helpdesk after 2 seconds
+        setTimeout(() => {
+          setLocation(`/support/chat/${data.conversationId}`);
+        }, 2000);
+        return;
+      }
+
       const botMessage: Message = {
         id: messages.length + 2,
         type: 'bot',
-        text: data.response,
+        text: data.message,
         timestamp: new Date()
       };
 
@@ -102,7 +143,7 @@ export function FloatingSupportChat() {
       const errorMessage: Message = {
         id: messages.length + 2,
         type: 'bot',
-        text: "I apologize, but I'm having trouble connecting right now. Please try again or visit our Help Center at /help for more assistance.",
+        text: "I apologize, but I'm having trouble connecting right now. Please try again or contact our support team directly.",
         timestamp: new Date()
       };
       setMessages(prev => [...prev, errorMessage]);
