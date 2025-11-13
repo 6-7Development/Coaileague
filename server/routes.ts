@@ -4397,6 +4397,127 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // ScheduleOS™ - Migrate schedule from external apps (Deputy, WhenIWork, GetSling)
+  app.post('/api/scheduleos/migrate-schedule', isAuthenticated, requireManager, async (req: any, res) => {
+    try {
+      const { fileData, mimeType, sourceApp } = req.body;
+
+      if (!fileData || !mimeType) {
+        return res.status(400).json({ message: "fileData and mimeType are required" });
+      }
+
+      // Validate mime type
+      const allowedTypes = ['image/png', 'image/jpeg', 'application/pdf'];
+      if (!allowedTypes.includes(mimeType)) {
+        return res.status(400).json({ message: "Unsupported file type. Use PNG, JPEG, or PDF" });
+      }
+
+      const userId = req.user!.id;
+      const { workspaceId } = await resolveWorkspaceForUser(userId, req.body.workspaceId);
+
+      // Import migration service
+      const { extractScheduleFromFile } = await import('./services/scheduleMigration');
+
+      // Extract schedule data using Gemini Vision
+      const migrationResult = await extractScheduleFromFile({
+        fileData,
+        mimeType,
+        sourceApp,
+        workspaceId,
+        userId,
+      });
+
+      res.json(migrationResult);
+    } catch (error: any) {
+      console.error("Schedule migration error:", error);
+      res.status(500).json({ message: error.message || "Failed to migrate schedule" });
+    }
+  });
+
+  // ScheduleOS™ - Import extracted shifts from migration
+  app.post('/api/scheduleos/import-migrated-shifts', isAuthenticated, requireManager, async (req: any, res) => {
+    try {
+      const { extractedShifts, sourceApp } = req.body;
+
+      if (!Array.isArray(extractedShifts) || extractedShifts.length === 0) {
+        return res.status(400).json({ message: "extractedShifts array is required" });
+      }
+
+      const userId = req.user!.id;
+      const { workspaceId } = await resolveWorkspaceForUser(userId, req.body.workspaceId);
+
+      // Import shifts table and migration service schema
+      const { shifts } = await import('@shared/schema');
+      const { extractedShiftSchema } = await import('./services/scheduleMigration');
+
+      // Validate each extracted shift and filter invalid ones
+      const validatedShifts = [];
+      const errors = [];
+
+      for (let i = 0; i < extractedShifts.length; i++) {
+        const extracted = extractedShifts[i];
+        
+        try {
+          // Validate schema
+          extractedShiftSchema.parse(extracted);
+          
+          // Validate date/time parsing
+          const startDateTime = new Date(`${extracted.startDate}T${extracted.startTime}`);
+          const endDateTime = new Date(`${extracted.endDate}T${extracted.endTime}`);
+          
+          // Check for Invalid Date
+          if (isNaN(startDateTime.getTime()) || isNaN(endDateTime.getTime())) {
+            errors.push(`Shift ${i + 1}: Invalid date/time format`);
+            continue;
+          }
+          
+          // Check logical date order
+          if (endDateTime <= startDateTime) {
+            errors.push(`Shift ${i + 1}: End time must be after start time`);
+            continue;
+          }
+
+          validatedShifts.push({
+            workspaceId,
+            title: extracted.position || extracted.employeeName || 'Imported Shift',
+            description: `Migrated from ${sourceApp || 'external app'}${extracted.notes ? ` - ${extracted.notes}` : ''}\nEmployee: ${extracted.employeeName}${extracted.location ? `\nLocation: ${extracted.location}` : ''}`,
+            startTime: startDateTime,
+            endTime: endDateTime,
+            status: 'draft' as const, // Start as draft - manager assigns employees
+            aiGenerated: false, // Migrated shifts are not AI-generated
+            // NOTE: employeeId, clientId, scheduleId not populated
+            // Manager must assign employees manually after import
+          });
+        } catch (validationError: any) {
+          errors.push(`Shift ${i + 1}: ${validationError.message}`);
+        }
+      }
+
+      if (validatedShifts.length === 0) {
+        return res.status(400).json({ 
+          message: "No valid shifts to import",
+          errors,
+        });
+      }
+
+      // Bulk insert valid shifts
+      const createdShifts = await db.insert(shifts).values(validatedShifts).returning();
+
+      console.log(`📥 Schedule Migration: Imported ${createdShifts.length}/${extractedShifts.length} shifts from ${sourceApp}`);
+
+      res.json({
+        success: true,
+        shiftsCreated: createdShifts.length,
+        shiftsTotal: extractedShifts.length,
+        shifts: createdShifts,
+        errors: errors.length > 0 ? errors : undefined,
+      });
+    } catch (error: any) {
+      console.error("Shift import error:", error);
+      res.status(500).json({ message: error.message || "Failed to import shifts" });
+    }
+  });
+  
   // Request Service Coverage
   app.post('/api/scheduleos/request-service', isAuthenticated, requireManager, async (req: any, res) => {
     try {

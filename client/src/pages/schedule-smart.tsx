@@ -41,6 +41,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScheduleOSPanel } from "@/components/scheduleos-panel";
 import { ScheduleProposalDrawer } from "@/components/schedule-proposal-drawer";
+import { ScheduleMigrationDialog } from "@/components/schedule-migration-dialog";
 import { 
   Plus,
   Copy,
