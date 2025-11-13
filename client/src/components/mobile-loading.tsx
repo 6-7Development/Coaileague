@@ -51,11 +51,25 @@ export function MobileLoading({ message, fullScreen = false, progress }: MobileL
     if (progress !== undefined) {
       setAnimatedProgress(progress);
     } else {
-      // Auto-animate to 90% if no progress provided
+      // Simulate loading progress: fast start (0-90%), slow finish (90-100%)
       const interval = setInterval(() => {
         setAnimatedProgress(prev => {
+          if (prev >= 100) {
+            clearInterval(interval);
+            return 100;
+          }
+          if (prev >= 90) {
+            // Slower progression from 90% to 100%
+            const next = prev + Math.random() * 0.8;
+            if (next >= 100) {
+              clearInterval(interval);
+              return 100;
+            }
+            return next;
+          }
+          // Faster progression from 0% to 90%
           const next = prev + Math.random() * 3;
-          return next >= 90 ? 90 : next;
+          return Math.min(next, 90);
         });
       }, 150);
       return () => clearInterval(interval);
