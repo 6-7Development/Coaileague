@@ -29,11 +29,18 @@ export interface ScheduleSmartResponse {
   assignments: Array<{
     shiftId: string;
     employeeId: string;
-    confidence: number; // 0-1 score
+    confidence: number; // 0-1 score for individual assignment
     reasoning: string;
   }>;
   unassignedShifts: string[];
   summary: string;
+  overallConfidence: number; // 0-100 percentage for entire schedule (99% AI, 1% human approval threshold)
+  confidenceFactors: {
+    hardConstraintsMet: boolean;
+    softConstraintsViolated: number;
+    unassignedCount: number;
+    reasoning: string;
+  };
 }
 
 // Zod schema for validating Gemini AI responses
@@ -45,7 +52,14 @@ const scheduleSmartResponseSchema = z.object({
     reasoning: z.string()
   })),
   unassignedShifts: z.array(z.string()),
-  summary: z.string()
+  summary: z.string(),
+  overallConfidence: z.number().min(0).max(100),
+  confidenceFactors: z.object({
+    hardConstraintsMet: z.boolean(),
+    softConstraintsViolated: z.number(),
+    unassignedCount: z.number(),
+    reasoning: z.string()
+  })
 });
 
 export async function scheduleSmartAI(request: ScheduleSmartRequest): Promise<ScheduleSmartResponse> {
@@ -68,7 +82,7 @@ export async function scheduleSmartAI(request: ScheduleSmartRequest): Promise<Sc
   const employeesContext = request.availableEmployees.map((emp, idx) => ({
     index: idx,
     id: emp.id,
-    name: emp.name,
+    name: `${emp.firstName} ${emp.lastName}`,
     email: emp.email,
     role: emp.role
   }));
@@ -88,6 +102,19 @@ Constraints:
 - Prefer experience: ${request.constraints?.preferExperience !== false}
 - Balance workload: ${request.constraints?.balanceWorkload !== false}
 
+**GOVERNANCE (99% AI, 1% Human Approval):**
+Calculate an overallConfidence score (0-100%) for the entire schedule:
+- 100% = Perfect schedule, all constraints met, zero violations
+- 95-99% = Excellent schedule, minor soft-constraint violations (AUTO-APPROVED)
+- 85-94% = Good schedule, some soft-constraint violations (REQUIRES HUMAN APPROVAL)
+- <85% = Poor schedule, significant issues (REQUIRES HUMAN REVIEW)
+
+Confidence Factors:
+- hardConstraintsMet: true if all MUST rules satisfied, false if any violations
+- softConstraintsViolated: count of PREFER rules violated
+- unassignedCount: number of shifts that couldn't be assigned
+- reasoning: explain what affected confidence
+
 Return ONLY valid JSON in this exact format (no markdown, no code blocks):
 {
   "assignments": [
@@ -99,7 +126,14 @@ Return ONLY valid JSON in this exact format (no markdown, no code blocks):
     }
   ],
   "unassignedShifts": ["shift-id-if-cant-assign"],
-  "summary": "Overall summary of scheduling decisions"
+  "summary": "Overall summary of scheduling decisions",
+  "overallConfidence": 96,
+  "confidenceFactors": {
+    "hardConstraintsMet": true,
+    "softConstraintsViolated": 1,
+    "unassignedCount": 0,
+    "reasoning": "One employee assigned slightly more shifts than ideal for perfect balance"
+  }
 }`;
 
   const userPrompt = `**Open Shifts:**
