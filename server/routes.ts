@@ -540,64 +540,118 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get feature updates (What's New)
+  // Get active feature updates (only major, undismissed updates)
   app.get('/api/feature-updates', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      const updates = [
-        {
-          id: '1',
-          title: 'ScheduleOS™ Auto-Scheduling',
-          description: 'AI-powered automatic shift scheduling with conflict detection and optimization',
-          category: 'new',
-          releaseDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-          learnMoreUrl: '/schedule',
-        },
-        {
-          id: '2',
-          title: 'Enhanced Mobile Chat',
-          description: 'Redesigned mobile chat experience with improved performance and UX',
-          category: 'improvement',
-          releaseDate: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
-          learnMoreUrl: '/mobile-chat',
-        },
-        {
-          id: '3',
-          title: 'Quick Actions Menu',
-          description: 'Fast access to common tasks from anywhere in the platform',
-          category: 'new',
-          releaseDate: new Date(),
-          learnMoreUrl: null,
-        },
-      ];
-      
-      res.json(updates);
+      const userId = req.user!.id;
+      const workspaceId = req.user!.currentWorkspaceId;
+
+      if (!workspaceId) {
+        return res.json([]);
+      }
+
+      const now = new Date();
+
+      // Get all active major feature updates
+      const activeUpdates = await db
+        .select()
+        .from(schema.featureUpdates)
+        .where(
+          and(
+            eq(schema.featureUpdates.status, 'active'),
+            eq(schema.featureUpdates.isMajor, true), // Only show major updates
+            or(
+              isNull(schema.featureUpdates.releaseAt),
+              lte(schema.featureUpdates.releaseAt, now)
+            ),
+            or(
+              isNull(schema.featureUpdates.expireAt),
+              gte(schema.featureUpdates.expireAt, now)
+            )
+          )
+        )
+        .orderBy(desc(schema.featureUpdates.createdAt));
+
+      // Get user's dismissed updates
+      const dismissedReceipts = await db
+        .select()
+        .from(schema.featureUpdateReceipts)
+        .where(
+          and(
+            eq(schema.featureUpdateReceipts.userId, userId),
+            eq(schema.featureUpdateReceipts.workspaceId, workspaceId),
+            isNotNull(schema.featureUpdateReceipts.dismissedAt)
+          )
+        );
+
+      const dismissedIds = new Set(dismissedReceipts.map(r => r.featureUpdateId));
+
+      // Filter out dismissed updates
+      const undismissedUpdates = activeUpdates
+        .filter(update => !dismissedIds.has(update.id))
+        .map(update => ({
+          id: update.id,
+          title: update.title,
+          description: update.description,
+          category: update.category,
+          releaseDate: update.createdAt,
+          learnMoreUrl: update.learnMoreUrl,
+        }));
+
+      res.json(undismissedUpdates);
     } catch (error) {
       console.error('Error fetching feature updates:', error);
       res.status(500).json({ message: 'Failed to fetch feature updates' });
     }
   });
 
-  // Get last viewed feature updates timestamp
-  app.get('/api/feature-updates/last-viewed', requireAuth, async (req: AuthenticatedRequest, res) => {
+  // Dismiss a specific feature update
+  app.post('/api/feature-updates/:id/dismiss', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const userId = req.user!.id;
-      // Mock - would fetch from user preferences in DB
-      res.json(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString());
-    } catch (error) {
-      console.error('Error fetching last viewed:', error);
-      res.status(500).json({ message: 'Failed to fetch last viewed timestamp' });
-    }
-  });
+      const workspaceId = req.user!.currentWorkspaceId;
+      const updateId = req.params.id;
 
-  // Mark feature updates as viewed
-  app.post('/api/feature-updates/mark-viewed', requireAuth, async (req: AuthenticatedRequest, res) => {
-    try {
-      const userId = req.user!.id;
-      // Implementation would update user preferences in DB
+      if (!workspaceId) {
+        return res.status(400).json({ message: 'No workspace selected' });
+      }
+
+      // Check if receipt already exists
+      const existingReceipt = await db
+        .select()
+        .from(schema.featureUpdateReceipts)
+        .where(
+          and(
+            eq(schema.featureUpdateReceipts.userId, userId),
+            eq(schema.featureUpdateReceipts.workspaceId, workspaceId),
+            eq(schema.featureUpdateReceipts.featureUpdateId, updateId)
+          )
+        )
+        .limit(1);
+
+      if (existingReceipt.length > 0) {
+        // Update existing receipt
+        await db
+          .update(schema.featureUpdateReceipts)
+          .set({
+            dismissedAt: new Date(),
+          })
+          .where(eq(schema.featureUpdateReceipts.id, existingReceipt[0].id));
+      } else {
+        // Create new receipt
+        await db.insert(schema.featureUpdateReceipts).values({
+          userId,
+          workspaceId,
+          featureUpdateId: updateId,
+          viewedAt: new Date(),
+          dismissedAt: new Date(),
+        });
+      }
+
       res.json({ success: true });
     } catch (error) {
-      console.error('Error marking updates as viewed:', error);
-      res.status(500).json({ message: 'Failed to mark updates as viewed' });
+      console.error('Error dismissing update:', error);
+      res.status(500).json({ message: 'Failed to dismiss update' });
     }
   });
 
