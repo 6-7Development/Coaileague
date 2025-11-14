@@ -124,6 +124,7 @@ import Error404 from "@/pages/error-404";
 import Error500 from "@/pages/error-500";
 import IntegrationsPage from "@/pages/integrations-page";
 import OversightHub from "@/pages/oversight-hub";
+import WorkflowApprovals from "@/pages/workflow-approvals";
 import { FloatingSupportChat } from "@/components/floating-support-chat";
 import { ReenableChatButton } from "@/components/reenable-chat-button";
 import { OnboardingWizard } from "@/components/onboarding-wizard";
@@ -351,6 +352,7 @@ function AppContent() {
                 <Route path="/dashboard" component={Dashboard} />
                 <Route path="/schedule" component={UniversalSchedule} />
                 <Route path="/universal-schedule"><Redirect to="/schedule" /></Route>
+                <Route path="/workflow-approvals" component={WorkflowApprovals} />
                 <Route path="/sales" component={SalesDashboard} />
                 <Route path="/time-tracking" component={TimeTracking} />
                 <Route path="/employees" component={Employees} />
