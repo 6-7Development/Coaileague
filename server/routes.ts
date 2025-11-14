@@ -2419,7 +2419,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Employee profile not found" });
       }
       
-      res.json(employee);
+      // Fetch platformRole for RBAC (chat routing, access control)
+      const [platformRoleData] = await db
+        .select({ role: platformRoles.role })
+        .from(platformRoles)
+        .where(eq(platformRoles.userId, userId))
+        .limit(1);
+      
+      // Return employee data with platformRole
+      res.json({
+        ...employee,
+        platformRole: platformRoleData?.role || null
+      });
     } catch (error: any) {
       console.error("Error fetching employee profile:", error);
       res.status(500).json({ message: "Failed to fetch employee profile" });
@@ -21759,7 +21770,16 @@ Respond with valid JSON array only.`
   // GET /api/support/chatrooms - Get formatted chatroom list for support staff (with participant counts, activity, etc.)
   app.get('/api/support/chatrooms', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      const isSupportStaff = req.user!.platformRole && ['root', 'sysop', 'deputy_admin', 'deputy_assistant'].includes(req.user!.platformRole);
+      const isSupportStaff = req.user!.platformRole && [
+        'root_admin', 
+        'support_manager', 
+        'support_agent', 
+        'support', 
+        'root', 
+        'sysop', 
+        'deputy_admin', 
+        'deputy_assistant'
+      ].includes(req.user!.platformRole);
       
       if (!isSupportStaff) {
         return res.status(403).json({ message: "Only support staff can access this endpoint" });

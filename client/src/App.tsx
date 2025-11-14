@@ -116,6 +116,8 @@ import Policies from "@/pages/policies";
 import RoleManagement from "@/pages/role-management";
 import ManagerDashboard from "@/pages/manager-dashboard";
 import ChatExport from "@/pages/chat-export";
+import SupportChatroomDashboard from "@/pages/support-chatroom-dashboard";
+import OrgChatHub from "@/pages/org-chat-hub";
 import OrgSupport from "@/pages/org-support";
 import PendingTimeEntries from "@/pages/pending-time-entries";
 import TimesheetApprovals from "@/pages/timesheet-approvals";
@@ -286,6 +288,10 @@ function AppContent() {
         <Route path="/chat" component={HelpDesk} /> {/* Universal responsive chat with Gemini AI (works on desktop + mobile) */}
         <Route path="/mobile-chat"><Redirect to="/chat" /></Route> {/* Redirect to universal chat */}
         <Route path="/live-chat"><Redirect to="/chat" /></Route>
+        
+        {/* New chat system routes */}
+        <Route path="/support/chatrooms" component={SupportChatroomDashboard} /> {/* Support dashboard for managing chatrooms */}
+        <Route path="/org-chat" component={OrgChatHub} /> {/* Organization chat hub for workspace users */}
         <Route path="/helpdesk5"><Redirect to="/chat" /></Route>
         <Route path="/support/chat"><Redirect to="/chat" /></Route>
         <Route path="/logo-showcase" component={LogoShowcase} />

@@ -1,586 +1,434 @@
+/**
+ * FloatingSupportChat - Enhanced Draggable Chat Launcher
+ * 
+ * Features:
+ * - Draggable with Pointer Events API (desktop + mobile touch)
+ * - Minimizable to compact pill
+ * - Shows real IDs (workId, orgId, orgName)
+ * - Role-based routing:
+ *   - Support roles → /support/chatrooms dashboard
+ *   - Regular users → /org-chat hub
+ *   - Guests → AI support flow
+ * - Position persistence via localStorage
+ * - Viewport bounds clamping
+ */
+
 import { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, X, MessageCircle, Minimize2 } from 'lucide-react';
+import { Send, Bot, User, X, MessageCircle, Minimize2, Maximize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ManagedDialog } from '@/components/ui/managed-dialog';
-import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
 import { useLocation } from 'wouter';
 import { useAuth } from '@/hooks/useAuth';
-import { useOverlayController } from '@/contexts/overlay-controller';
+import { useEmployee } from '@/hooks/useEmployee';
+import { cn } from '@/lib/utils';
+
+interface ChatBubbleState {
+  position: { x: number; y: number };
+  isMinimized: boolean;
+  isOpen: boolean;
+}
 
 interface Message {
   id: number;
   type: 'bot' | 'user';
   text: string;
   timestamp: Date;
-  isEscalation?: boolean;
-}
-
-interface GuestInfo {
-  name: string;
-  email: string;
-  issue: string;
-}
-
-interface QuickAction {
-  icon: string;
-  text: string;
-  value: string;
 }
 
 export function FloatingSupportChat() {
   const { user } = useAuth();
+  const { employee } = useEmployee();
   const [location, setLocation] = useLocation();
-  const { isModalActive, registerModal, unregisterModal } = useOverlayController();
-  const [isOpen, setIsOpen] = useState(false);
   
-  // Hide floating chat on certain pages to avoid conflicts
-  const shouldHide = location === '/chat' || location.startsWith('/chat');
-  const [isMinimized, setIsMinimized] = useState(false);
+  // Real IDs from auth system
+  const workId = employee?.employeeNumber || 'GUEST';
+  const orgId = employee?.workspaceId || 'N/A';
+  const platformRole = (employee as any)?.platformRole || null;
+  const workspaceRole = employee?.workspaceRole || null;
+  
+  // Hide on chat pages to avoid conflicts
+  const shouldHide = location.startsWith('/chat') || 
+                     location.startsWith('/org-chat') || 
+                     location.startsWith('/support/chatrooms');
+  
+  // State management with localStorage persistence (browser-safe)
+  const [state, setState] = useState<ChatBubbleState>({
+    position: { x: 0, y: 0 },
+    isMinimized: false,
+    isOpen: false
+  });
+  
+  // Hydrate from localStorage on mount (browser only)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('chat-bubble-state');
+      if (saved) {
+        try {
+          setState(JSON.parse(saved));
+        } catch {
+          // Fallback: set position based on viewport
+          setState({
+            position: { 
+              x: Math.max(0, window.innerWidth - 420), 
+              y: Math.max(0, window.innerHeight - 620) 
+            },
+            isMinimized: false,
+            isOpen: false
+          });
+        }
+      } else {
+        // First time: set position based on viewport
+        setState({
+          position: { 
+            x: Math.max(0, window.innerWidth - 420), 
+            y: Math.max(0, window.innerHeight - 620) 
+          },
+          isMinimized: false,
+          isOpen: false
+        });
+      }
+    }
+  }, []);
+  
+  // AI chat state (for guest flow)
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 1,
       type: 'bot',
-      text: "👋 Hi! I'm HelpOS™, your AutoForce™ Support Assistant. I'm here to help you resolve issues quickly. What can I help you with today?",
+      text: "Hi! I'm HelpOS™, your AutoForce™ Support Assistant. How can I help you today?",
       timestamp: new Date()
     }
   ]);
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [sessionId, setSessionId] = useState<string | null>(null);
-  const [showGuestDialog, setShowGuestDialog] = useState(false);
-  const [pendingEscalation, setPendingEscalation] = useState<any>(null);
-  const [guestInfo, setGuestInfo] = useState<GuestInfo>({
-    name: '',
-    email: '',
-    issue: ''
-  });
-  const [isEscalating, setIsEscalating] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  
+  // Dragging state
+  const isDraggingRef = useRef(false);
+  const dragStartRef = useRef({ x: 0, y: 0 });
+  
+  // Save state to localStorage whenever it changes (browser only)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('chat-bubble-state', JSON.stringify(state));
+    }
+  }, [state]);
+  
+  // Viewport bounds clamping on resize
+  useEffect(() => {
+    const handleResize = () => {
+      const maxX = window.innerWidth - 400;
+      const maxY = window.innerHeight - 600;
+      setState(prev => ({
+        ...prev,
+        position: {
+          x: Math.max(0, Math.min(prev.position.x, maxX)),
+          y: Math.max(0, Math.min(prev.position.y, maxY))
+        }
+      }));
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+  
+  // Pointer Events drag handlers
+  const handlePointerDown = (e: React.PointerEvent) => {
+    if ((e.target as HTMLElement).closest('button, input, textarea')) {
+      return; // Don't drag when interacting with controls
+    }
+    
+    e.preventDefault();
+    isDraggingRef.current = true;
+    dragStartRef.current = {
+      x: e.clientX - state.position.x,
+      y: e.clientY - state.position.y
+    };
+    
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
   };
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  useEffect(() => {
-    if (!isOpen && messages.length > 1) {
-      setUnreadCount(prev => prev + 1);
+  
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!isDraggingRef.current) return;
+    
+    const newX = Math.max(0, Math.min(e.clientX - dragStartRef.current.x, window.innerWidth - 400));
+    const newY = Math.max(0, Math.min(e.clientY - dragStartRef.current.y, window.innerHeight - 100));
+    
+    setState(prev => ({
+      ...prev,
+      position: { x: newX, y: newY }
+    }));
+  };
+  
+  const handlePointerUp = (e: React.PointerEvent) => {
+    if (isDraggingRef.current) {
+      isDraggingRef.current = false;
+      (e.target as HTMLElement).releasePointerCapture(e.pointerId);
     }
-  }, [messages, isOpen]);
-
-  useEffect(() => {
-    if (isOpen) {
-      setUnreadCount(0);
+  };
+  
+  // Smart routing handler (role-based)
+  const handleChatClick = () => {
+    if (!user) {
+      // Guest: Stay in FloatingSupportChat AI flow
+      setState(prev => ({ ...prev, isOpen: true, isMinimized: false }));
+    } else if (platformRole === 'root_admin' || platformRole === 'support' || 
+               platformRole === 'support_manager' || platformRole === 'support_agent') {
+      // Support roles: Navigate to dashboard
+      setLocation('/support/chatrooms');
+    } else {
+      // Regular users: Navigate to org chatroom
+      setLocation('/org-chat');
     }
-  }, [isOpen]);
-
-  const quickActions: QuickAction[] = [
-    { icon: "🔐", text: "Login Help", value: "I can't log in to my account" },
-    { icon: "📅", text: "Schedule Help", value: "How do I view my schedule?" },
-    { icon: "⏰", text: "Time Tracking", value: "Help with clock in/out" },
-    { icon: "👤", text: "Talk to Human", value: "I need to speak with a live support agent" }
-  ];
-
+  };
+  
+  // Send message to HelpOS AI
   const handleSend = async () => {
     if (inputValue.trim() === '') return;
-
+    
     const userMessage: Message = {
       id: messages.length + 1,
       type: 'user',
       text: inputValue,
       timestamp: new Date()
     };
-
+    
     setMessages(prev => [...prev, userMessage]);
     const query = inputValue;
     setInputValue('');
     setIsTyping(true);
-
+    
     try {
-      // Build conversation history for context
-      const conversationHistory = messages
-        .filter(m => m.type !== 'bot' || !m.isEscalation)
-        .map(m => ({
-          role: m.type === 'user' ? 'user' : 'assistant',
-          content: m.text
-        }));
-
-      console.log('[HelpOS] Sending request:', { 
-        message: query, 
-        sessionId, 
-        historyLength: conversationHistory.length,
-        isEscalationRequest: /talk to (a )?human|speak to agent|escalate|transfer|live support/i.test(query)
-      });
-
       const response = await fetch('/api/support/helpos-chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ 
           message: query,
-          sessionId: sessionId,
-          conversationHistory: conversationHistory.slice(-5) // Last 5 messages for context
+          conversationHistory: messages.slice(-5).map(m => ({
+            role: m.type === 'user' ? 'user' : 'assistant',
+            content: m.text
+          }))
         })
       });
-
-      console.log('[HelpOS] Response status:', response.status, response.statusText);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('[HelpOS] Error response body:', errorText);
-        throw new Error(`HelpOS API Error: ${response.status} - ${errorText.substring(0, 100)}`);
-      }
-
+      
+      if (!response.ok) throw new Error('HelpOS API Error');
+      
       const data = await response.json();
-      console.log('[HelpOS] Success response:', {
-        ...data,
-        hasEscalated: !!data.escalated,
-        hasConversationId: !!data.conversationId,
-        hasTicketNumber: !!data.ticketNumber
-      });
-      
-      // Store sessionId for conversation continuity
-      if (data.sessionId && !sessionId) {
-        console.log('[HelpOS] Setting sessionId:', data.sessionId);
-        setSessionId(data.sessionId);
-      }
-      
       setIsTyping(false);
-
-      // Handle escalation to live helpdesk - show guest form if not logged in
-      if (data.escalated && data.conversationId) {
-        console.log('[HelpOS] ✅ ESCALATION TRIGGERED:', {
-          conversationId: data.conversationId,
-          ticketNumber: data.ticketNumber,
-          escalationReason: data.escalationReason,
-          isAuthenticated: !!user
-        });
-        
-        // If user is logged in, route directly to HelpDesk
-        if (user) {
-          sessionStorage.setItem('helpos_escalation', JSON.stringify({
-            conversationId: data.conversationId,
-            ticketNumber: data.ticketNumber,
-            escalationReason: data.escalationReason,
-            timestamp: new Date().toISOString()
-          }));
-          
-          const escalationMessage: Message = {
-            id: messages.length + 2,
-            type: 'bot',
-            text: `✅ ${data.message}\n\n🎫 Ticket #${data.ticketNumber} created.\n\n🔄 Connecting you to live support...`,
-            timestamp: new Date(),
-            isEscalation: true
-          };
-          setMessages(prev => [...prev, escalationMessage]);
-          
-          setTimeout(() => {
-            setIsOpen(false);
-            setLocation(`/chat?conversationId=${data.conversationId}`);
-          }, 1500);
-          return;
-        }
-        
-        // Guest user - check if another modal is already active before proceeding
-        if (isModalActive()) {
-          console.warn('[FloatingSupportChat] Another modal is active, cannot open guest dialog');
-          const warningMessage: Message = {
-            id: messages.length + 2,
-            type: 'bot',
-            text: 'Please close any open dialogs first, then try again.',
-            timestamp: new Date()
-          };
-          setMessages(prev => [...prev, warningMessage]);
-          return;
-        }
-        
-        // Show info capture form before escalating
-        setPendingEscalation({
-          conversationId: data.conversationId,
-          ticketNumber: data.ticketNumber,
-          escalationReason: data.escalationReason,
-          botMessage: data.message
-        });
-        setShowGuestDialog(true);
-        return;
-      }
-
+      
       const botMessage: Message = {
         id: messages.length + 2,
         type: 'bot',
-        text: data.message,
+        text: data.response,
         timestamp: new Date()
       };
-
+      
       setMessages(prev => [...prev, botMessage]);
-    } catch (error: any) {
-      console.error('[HelpOS] FULL ERROR:', error);
-      console.error('[HelpOS] Error type:', typeof error);
-      console.error('[HelpOS] Error keys:', Object.keys(error));
-      console.error('[HelpOS] Error message:', error?.message);
-      console.error('[HelpOS] Error stack:', error?.stack);
       
+      // Handle escalation
+      if (data.escalated) {
+        if (user) {
+          sessionStorage.setItem('helpos_escalation', JSON.stringify({
+            conversationId: data.conversationId,
+            ticketNumber: data.ticketNumber
+          }));
+          setLocation(`/chat/${data.conversationId}`);
+        } else {
+          // Guest escalation flow would go here
+          alert('Please log in to connect with a live support agent.');
+        }
+      }
+    } catch (error) {
+      console.error('[HelpOS] Error:', error);
       setIsTyping(false);
-      
-      const errorDetails = error?.message 
-        ? error.message 
-        : error?.toString 
-        ? error.toString() 
-        : 'Unknown error - check browser console for details';
-      
       const errorMessage: Message = {
         id: messages.length + 2,
         type: 'bot',
-        text: `I apologize, but I'm having trouble connecting right now. Please try again or contact our support team directly.\n\n🔍 Debug Info: ${errorDetails}`,
+        text: "I'm having trouble connecting right now. Please try again or contact support directly.",
         timestamp: new Date()
       };
       setMessages(prev => [...prev, errorMessage]);
     }
   };
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-  };
-
-  const handleQuickAction = (value: string) => {
-    setInputValue(value);
-  };
-
-  const handleGuestFormSubmit = async () => {
-    if (!guestInfo.name || !guestInfo.email || !guestInfo.issue) {
-      return;
-    }
-    
-    setIsEscalating(true);
-    
-    try {
-      // Call dedicated escalation endpoint with guest info
-      const response = await fetch('/api/support/escalate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          conversationId: pendingEscalation.conversationId,
-          guestName: guestInfo.name,
-          guestEmail: guestInfo.email,
-          issue: guestInfo.issue,
-          sessionId
-        })
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to escalate to live support');
-      }
-      
-      const data = await response.json();
-      console.log('[HelpOS] Escalation complete:', data);
-      
-      // Store guest token and conversation details
-      sessionStorage.setItem('helpos_escalation', JSON.stringify({
-        conversationId: data.conversationId,
-        ticketNumber: data.ticketNumber,
-        guestToken: data.guestToken,
-        guestName: guestInfo.name,
-        guestEmail: guestInfo.email,
-        timestamp: new Date().toISOString()
-      }));
-      
-      // Close dialog and chat, navigate to HelpDesk
-      setShowGuestDialog(false);
-      setIsOpen(false);
-      setLocation(`/chat?conversationId=${data.conversationId}&guestToken=${data.guestToken}`);
-    } catch (error) {
-      console.error('[HelpOS] Escalation error:', error);
-      alert('Failed to connect to live support. Please try again.');
-    } finally {
-      setIsEscalating(false);
-    }
-  };
-
-  // Don't render on HelpDesk page or other chat pages
-  if (shouldHide) {
-    return null;
+  
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+  
+  if (shouldHide) return null;
+  
+  // Minimized pill UI
+  if (state.isMinimized) {
+    return (
+      <div
+        style={{
+          position: 'fixed',
+          left: state.position.x,
+          top: state.position.y,
+          zIndex: 9999,
+          touchAction: 'none'
+        }}
+        className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-cyan-400 text-white rounded-full px-4 py-3 shadow-2xl cursor-pointer hover-elevate active-elevate-2"
+        onClick={() => setState(prev => ({ ...prev, isMinimized: false }))}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        data-testid="chat-bubble-minimized"
+      >
+        <MessageCircle className="w-5 h-5" />
+        <span className="font-medium text-sm">Live Chat</span>
+      </div>
+    );
   }
   
-  return (
-    <>
-      {/* Chat Bubble Button */}
-      {!isOpen && (
-        <button
-          onClick={() => setIsOpen(true)}
-          className="fixed bottom-20 sm:bottom-6 right-6 bg-gradient-to-r from-blue-500 to-cyan-400 text-white rounded-full p-4 shadow-2xl hover:shadow-blue-500/50 hover:scale-110 transition-all duration-300 z-[15000] group"
-          aria-label="Open support chat"
-          data-testid="button-open-support-chat"
-        >
-          <MessageCircle className="w-7 h-7" />
-          {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center animate-pulse">
-              {unreadCount}
-            </span>
-          )}
-          <span className="absolute right-full mr-3 bg-gray-900 dark:bg-gray-800 text-white px-3 py-2 rounded-lg text-sm whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg">
-            Need help? Chat with us!
-          </span>
-        </button>
-      )}
-
-      {/* Chat Window */}
-      {isOpen && (
-        <div 
-          className={cn(
-            "fixed bg-background dark:bg-card shadow-2xl z-[15000] flex flex-col transition-all duration-300 border border-border",
-            isMinimized ? 'h-16 w-80' : 'h-[600px] w-96',
-            "max-sm:inset-4 max-sm:w-auto max-sm:h-auto max-sm:rounded-2xl",
-            "sm:bottom-6 sm:right-6 sm:w-96 sm:h-[600px] sm:rounded-2xl"
-          )}
-          data-testid="support-chat-window"
-        >
-          {/* Header - Compact */}
-          <div className="bg-gradient-to-r from-blue-500 to-cyan-400 text-white px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-t-2xl flex items-center justify-between shadow-md">
-            <div className="flex items-center space-x-1.5 sm:space-x-2 min-w-0 flex-1">
-              <div className="bg-white rounded-full p-0.5 sm:p-1 flex-shrink-0">
-                <Bot className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-500" />
-              </div>
-              <div className="min-w-0 flex-1 flex items-center gap-1">
-                <h2 className="font-bold text-xs sm:text-sm truncate">
-                  HelpOS<span className="text-[0.5rem] align-super">™</span>
-                </h2>
-                <div className="w-1.5 h-1.5 bg-green-400 rounded-full flex-shrink-0"></div>
-              </div>
-            </div>
-            <div className="flex items-center space-x-1">
-              <button
-                onClick={() => setIsMinimized(!isMinimized)}
-                className="hover:bg-blue-600 p-1 rounded transition-colors"
-                aria-label="Minimize chat"
-                data-testid="button-minimize-chat"
-              >
-                <Minimize2 className="w-3.5 h-3.5" />
-              </button>
-              <button
-                onClick={() => setIsOpen(false)}
-                className="hover:bg-blue-600 p-1 rounded transition-colors"
-                aria-label="Close chat"
-                data-testid="button-close-chat"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </div>
-
-          {!isMinimized && (
-            <>
-              {/* Messages Container - Maximized space */}
-              <div className="flex-1 overflow-y-auto px-3 py-2.5 space-y-2 bg-muted/30">
-                {messages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
-                  >
-                    <div className={cn(
-                      "flex items-start space-x-1.5 sm:space-x-2 max-w-[85%]",
-                      message.type === 'user' && 'flex-row-reverse space-x-reverse'
-                    )}>
-                      <div className={cn(
-                        "flex-shrink-0 w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center",
-                        message.type === 'user' 
-                          ? 'bg-blue-500' 
-                          : 'bg-gradient-to-br from-blue-500 to-cyan-400'
-                      )}>
-                        {message.type === 'user' ? (
-                          <User className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
-                        ) : (
-                          <Bot className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
-                        )}
-                      </div>
-                      <div className={cn(
-                        "px-3 py-2",
-                        message.type === 'user' 
-                          ? 'bg-blue-500 text-white rounded-2xl rounded-tr-sm' 
-                          : 'bg-blue-500/10 rounded-2xl rounded-tl-sm'
-                      )}>
-                        <p className="whitespace-pre-line text-sm leading-relaxed">{message.text}</p>
-                        <span className={cn(
-                          "text-xs mt-1 block",
-                          message.type === 'user' ? 'text-blue-100' : 'text-muted-foreground'
-                        )}>
-                          {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-
-                {isTyping && (
-                  <div className="flex justify-start">
-                    <div className="flex items-start space-x-1.5 sm:space-x-2">
-                      <div className="flex-shrink-0 w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center">
-                        <Bot className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
-                      </div>
-                      <div className="bg-blue-500/10 rounded-2xl rounded-tl-sm px-3 py-2 sm:px-4 sm:py-3">
-                        <div className="flex space-x-1.5">
-                          <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce"></div>
-                          <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                          <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-                
-                <div ref={messagesEndRef} />
-              </div>
-
-              {/* Quick Actions - Compact */}
-              {messages.length === 1 && (
-                <div className="px-3 pb-2 bg-muted/30 border-b border-border">
-                  <p className="text-[10px] text-muted-foreground mb-1.5 font-medium">Quick Actions:</p>
-                  {/* Mobile: Horizontal scrollable - Compact */}
-                  <div className="flex sm:hidden gap-1.5 overflow-x-auto pb-1.5 -mx-3 px-3 snap-x snap-mandatory scrollbar-hide">
-                    {quickActions.map((action, index) => (
-                      <Button
-                        key={index}
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleQuickAction(action.value)}
-                        className="flex-shrink-0 h-auto py-1.5 px-2.5 snap-start min-w-[120px]"
-                        data-testid={`button-quick-action-${index}`}
-                      >
-                        <span className="text-base mr-1.5">{action.icon}</span>
-                        <span className="text-[11px] font-medium whitespace-nowrap">{action.text}</span>
-                      </Button>
-                    ))}
-                  </div>
-                  {/* Desktop: Grid layout - Compact */}
-                  <div className="hidden sm:grid grid-cols-2 gap-1.5">
-                    {quickActions.map((action, index) => (
-                      <Button
-                        key={index}
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleQuickAction(action.value)}
-                        className="justify-start h-auto py-1.5 px-2.5 text-left"
-                        data-testid={`button-quick-action-${index}`}
-                      >
-                        <span className="text-base mr-1.5">{action.icon}</span>
-                        <span className="text-[11px] font-medium">{action.text}</span>
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Input Area - Compact */}
-              <div className="bg-background dark:bg-card border-t border-border px-3 py-2 rounded-b-2xl">
-                <div className="flex items-end space-x-2">
-                  <Input
-                    type="text"
-                    value={inputValue}
-                    onChange={(e) => setInputValue(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    placeholder="Type your message..."
-                    className="flex-1 rounded-full text-sm"
-                    data-testid="input-chat-message"
-                  />
-                  <Button
-                    onClick={handleSend}
-                    disabled={inputValue.trim() === ''}
-                    size="icon"
-                    className="rounded-full bg-blue-500 hover:bg-blue-600 text-white flex-shrink-0 h-9 w-9"
-                    data-testid="button-send-message"
-                  >
-                    <Send className="w-3.5 h-3.5" />
-                  </Button>
-                </div>
-                <p className="text-[10px] text-muted-foreground/70 mt-1 text-center">
-                  AI-powered • Quick replies
-                </p>
-              </div>
-            </>
-          )}
+  // Floating button (when closed)
+  if (!state.isOpen) {
+    return (
+      <button
+        onClick={handleChatClick}
+        className="fixed bottom-20 sm:bottom-6 right-6 bg-gradient-to-r from-blue-500 to-cyan-400 text-white rounded-full p-4 shadow-2xl hover:shadow-blue-500/50 hover:scale-110 transition-all duration-300 z-[9999] group"
+        data-testid="button-open-chat"
+      >
+        <MessageCircle className="w-6 h-6" />
+        <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold opacity-0 group-hover:opacity-100 transition-opacity">
+          !
         </div>
-      )}
+      </button>
+    );
+  }
+  
+  // Full chat window (guest AI flow)
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        left: state.position.x,
+        top: state.position.y,
+        zIndex: 9999,
+        width: '400px',
+        maxHeight: '600px',
+        touchAction: 'none'
+      }}
+      className="bg-card border-2 border-border rounded-lg shadow-2xl flex flex-col"
+      data-testid="chat-bubble-window"
+    >
+      {/* Draggable header */}
+      <div
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        className="p-3 border-b cursor-move bg-gradient-to-r from-blue-500/10 to-cyan-400/10 rounded-t-lg"
+        data-testid="chat-bubble-header"
+      >
+        <div className="flex justify-between items-center">
+          <div className="flex-1">
+            <h3 className="font-bold text-sm">Live Chat - HelpOS™</h3>
+            <p className="text-xs text-muted-foreground">
+              {workId} • {orgId}
+            </p>
+          </div>
+          <div className="flex gap-1">
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-7 w-7"
+              onClick={(e) => {
+                e.stopPropagation();
+                setState(prev => ({ ...prev, isMinimized: true }));
+              }}
+              data-testid="button-minimize-chat"
+            >
+              <Minimize2 className="w-4 h-4" />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-7 w-7"
+              onClick={(e) => {
+                e.stopPropagation();
+                setState(prev => ({ ...prev, isOpen: false }));
+              }}
+              data-testid="button-close-chat"
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      </div>
       
-      {/* Guest Info Capture Dialog - For unauthenticated users */}
-      <ManagedDialog modalId="floating-support-guest-dialog" open={showGuestDialog} onOpenChange={setShowGuestDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Connect to Live Support</DialogTitle>
-            <DialogDescription>
-              {pendingEscalation?.ticketNumber && (
-                <span className="block mb-2 font-semibold text-blue-600 dark:text-blue-400">
-                  🎫 Ticket #{pendingEscalation.ticketNumber}
-                </span>
+      {/* Chat messages */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[400px] max-h-[450px]">
+        {messages.map((msg) => (
+          <div
+            key={msg.id}
+            className={cn(
+              "flex gap-2",
+              msg.type === 'user' ? 'justify-end' : 'justify-start'
+            )}
+          >
+            {msg.type === 'bot' && (
+              <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-cyan-400 flex items-center justify-center flex-shrink-0">
+                <Bot className="w-4 h-4 text-white" />
+              </div>
+            )}
+            <div
+              className={cn(
+                "rounded-lg px-3 py-2 max-w-[80%]",
+                msg.type === 'user'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted'
               )}
-              Please provide your contact information so our support team can assist you.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="guest-name">Your Name</Label>
-              <Input
-                id="guest-name"
-                placeholder="John Doe"
-                value={guestInfo.name}
-                onChange={(e) => setGuestInfo(prev => ({ ...prev, name: e.target.value }))}
-                data-testid="input-guest-name"
-              />
+            >
+              <p className="text-sm">{msg.text}</p>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="guest-email">Email Address</Label>
-              <Input
-                id="guest-email"
-                type="email"
-                placeholder="john@example.com"
-                value={guestInfo.email}
-                onChange={(e) => setGuestInfo(prev => ({ ...prev, email: e.target.value }))}
-                data-testid="input-guest-email"
-              />
+            {msg.type === 'user' && (
+              <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                <User className="w-4 h-4" />
+              </div>
+            )}
+          </div>
+        ))}
+        {isTyping && (
+          <div className="flex gap-2 justify-start">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-cyan-400 flex items-center justify-center">
+              <Bot className="w-4 h-4 text-white" />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="guest-issue">Brief Description of Issue</Label>
-              <Textarea
-                id="guest-issue"
-                placeholder="Describe what you need help with..."
-                rows={3}
-                value={guestInfo.issue}
-                onChange={(e) => setGuestInfo(prev => ({ ...prev, issue: e.target.value }))}
-                data-testid="input-guest-issue"
-              />
+            <div className="bg-muted rounded-lg px-3 py-2">
+              <div className="flex gap-1">
+                <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" />
+                <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
+                <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+              </div>
             </div>
           </div>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setShowGuestDialog(false)}
-              disabled={isEscalating}
-              data-testid="button-cancel-escalation"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              onClick={handleGuestFormSubmit}
-              disabled={!guestInfo.name || !guestInfo.email || !guestInfo.issue || isEscalating}
-              className="bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500"
-              data-testid="button-submit-escalation"
-            >
-              {isEscalating ? 'Connecting...' : 'Connect to Live Support'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </ManagedDialog>
-    </>
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+      
+      {/* Input area */}
+      <div className="p-3 border-t">
+        <div className="flex gap-2">
+          <Input
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
+            placeholder="Type your message..."
+            className="flex-1"
+            data-testid="input-chat-message"
+          />
+          <Button
+            onClick={handleSend}
+            disabled={!inputValue.trim() || isTyping}
+            size="icon"
+            data-testid="button-send-message"
+          >
+            <Send className="w-4 h-4" />
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 }
