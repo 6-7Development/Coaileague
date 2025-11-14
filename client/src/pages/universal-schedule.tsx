@@ -14,7 +14,7 @@
 
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors, DragEndEvent, useDraggable, useDroppable } from '@dnd-kit/core';
+import { DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors, DragEndEvent, DragOverlay, useDraggable, useDroppable } from '@dnd-kit/core';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -106,7 +106,7 @@ const DraggableEmployee = ({ employee, isSelected, onSelect, getEmployeeColor }:
 
   const style = transform ? {
     transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-    opacity: isDragging ? 0.5 : 1
+    opacity: isDragging ? 0 : 1  // Hide original during drag (DragOverlay shows clone)
   } : undefined;
 
   return (
@@ -187,9 +187,18 @@ export default function UniversalSchedule() {
     useSensor(KeyboardSensor)
   );
   
+  // Drag state for DragOverlay
+  const [activeEmployeeId, setActiveEmployeeId] = useState<string | null>(null);
+  
+  // Drag start handler
+  const handleDragStart = (event: any) => {
+    setActiveEmployeeId(event.active.id as string);
+  };
+  
   // Drag-and-drop handler
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
+    setActiveEmployeeId(null); // Clear active drag
     if (!over) return;
     
     const employeeId = active.id as string;
@@ -453,6 +462,7 @@ export default function UniversalSchedule() {
     <DndContext
       sensors={isTouchDevice ? [] : sensors}
       collisionDetection={closestCenter}
+      onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
       <div className="flex h-screen bg-background">
@@ -976,6 +986,37 @@ export default function UniversalSchedule() {
         </DialogContent>
       </Dialog>
     </div>
+    
+    {/* DragOverlay - shows full-opacity clone during drag */}
+    <DragOverlay>
+      {activeEmployeeId && employees.find(e => e.id === activeEmployeeId) ? (
+        <div className="p-3 rounded-lg border-2 border-primary bg-card cursor-grabbing opacity-100 shadow-2xl">
+          {(() => {
+            const activeEmployee = employees.find(e => e.id === activeEmployeeId)!;
+            return (
+              <>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center space-x-2">
+                    <div
+                      className="w-3 h-3 rounded-full"
+                      style={{ backgroundColor: getEmployeeColor(activeEmployee.id) }}
+                    />
+                    <span className="font-medium text-sm">{activeEmployee.firstName} {activeEmployee.lastName}</span>
+                  </div>
+                  {activeEmployee.performanceScore && (
+                    <span className="text-xs font-bold text-green-600">{activeEmployee.performanceScore}</span>
+                  )}
+                </div>
+                <div className="text-xs text-muted-foreground">{activeEmployee.role || 'Employee'}</div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  ${activeEmployee.hourlyRate?.toString() || '0'}/hr
+                </div>
+              </>
+            );
+          })()}
+        </div>
+      ) : null}
+    </DragOverlay>
     </DndContext>
   );
 }
