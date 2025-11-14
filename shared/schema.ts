@@ -10460,3 +10460,94 @@ export const insertHelposAiTranscriptEntrySchema = createInsertSchema(helposAiTr
 
 export type InsertHelposAiTranscriptEntry = z.infer<typeof insertHelposAiTranscriptEntrySchema>;
 export type HelposAiTranscriptEntry = typeof helposAiTranscriptEntries.$inferSelect;
+
+// ============================================================================
+// PLATFORM FEATURE UPDATES & ANNOUNCEMENTS
+// ============================================================================
+
+// Feature update status enum
+export const featureUpdateStatusEnum = pgEnum('feature_update_status', [
+  'draft',      // Being prepared by admin
+  'scheduled',  // Scheduled for future release
+  'active',     // Currently active and visible
+  'expired',    // Past expiration date
+  'archived'    // Manually archived
+]);
+
+// Feature update category enum
+export const featureUpdateCategoryEnum = pgEnum('feature_update_category', [
+  'new',         // New feature
+  'improvement', // Feature improvement
+  'fix',         // Bug fix
+  'security',    // Security update
+  'maintenance'  // Maintenance or infrastructure
+]);
+
+// Feature Updates - Platform-wide announcements with lifecycle management
+export const featureUpdates = pgTable("feature_updates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Content
+  title: varchar("title").notNull(),
+  description: text("description").notNull(),
+  category: featureUpdateCategoryEnum("category").notNull(),
+  isMajor: boolean("is_major").default(false), // Only major updates show in badge
+  
+  // Optional links
+  learnMoreUrl: varchar("learn_more_url"),
+  documentationUrl: varchar("documentation_url"),
+  
+  // Lifecycle management
+  status: featureUpdateStatusEnum("status").notNull().default('draft'),
+  releaseAt: timestamp("release_at"), // When to make visible (null = immediate)
+  expireAt: timestamp("expire_at"),   // When to hide (null = never expire)
+  
+  // Admin metadata
+  createdBy: varchar("created_by").references(() => users.id, { onDelete: 'set null' }),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("feature_updates_status_idx").on(table.status),
+  index("feature_updates_release_idx").on(table.releaseAt),
+  index("feature_updates_major_idx").on(table.isMajor),
+]);
+
+export const insertFeatureUpdateSchema = createInsertSchema(featureUpdates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertFeatureUpdate = z.infer<typeof insertFeatureUpdateSchema>;
+export type FeatureUpdate = typeof featureUpdates.$inferSelect;
+
+// Feature Update Receipts - Tracks which users have seen/dismissed each update
+export const featureUpdateReceipts = pgTable("feature_update_receipts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // User tracking (workspace-scoped)
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  featureUpdateId: varchar("feature_update_id").notNull().references(() => featureUpdates.id, { onDelete: 'cascade' }),
+  
+  // Interaction tracking
+  viewedAt: timestamp("viewed_at"), // When user first saw it
+  dismissedAt: timestamp("dismissed_at"), // When user dismissed it
+  
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("feature_receipts_user_idx").on(table.userId),
+  index("feature_receipts_workspace_idx").on(table.workspaceId),
+  index("feature_receipts_update_idx").on(table.featureUpdateId),
+  // Ensure one receipt per user+workspace+update
+  index("feature_receipts_unique_idx").on(table.userId, table.workspaceId, table.featureUpdateId),
+]);
+
+export const insertFeatureUpdateReceiptSchema = createInsertSchema(featureUpdateReceipts).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertFeatureUpdateReceipt = z.infer<typeof insertFeatureUpdateReceiptSchema>;
+export type FeatureUpdateReceipt = typeof featureUpdateReceipts.$inferSelect;
