@@ -1,0 +1,827 @@
+// TimeOS™ - Universal Time Tracking & Clock System
+// Comprehensive time tracking with clock in/out, break management, and approval workflow
+
+import { Router } from 'express';
+import { db } from "./db";
+import { eq, and, isNull, desc, gte, lte, sql } from "drizzle-orm";
+import { 
+  timeEntries,
+  timeEntryBreaks,
+  timeEntryAuditEvents,
+  employees,
+  users,
+  insertTimeEntrySchema,
+  insertTimeEntryBreakSchema,
+  insertTimeEntryAuditEventSchema,
+  type TimeEntry,
+  type TimeEntryBreak,
+  type TimeEntryAuditEvent
+} from "@shared/schema";
+import { requireAuth } from "./auth";
+import { requireWorkspaceRole, type AuthenticatedRequest } from "./rbac";
+import { readLimiter, mutationLimiter } from "./middleware/rateLimiter";
+
+export const timeosRouter = Router();
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+/**
+ * Create audit event for time tracking action
+ */
+async function createAuditEvent(params: {
+  workspaceId: string;
+  timeEntryId?: string;
+  breakId?: string;
+  actorUserId: string;
+  actorEmployeeId?: string;
+  actorName: string;
+  actionType: 'clock_in' | 'clock_out' | 'start_break' | 'end_break' | 'edit_time' | 'approve_time' | 'reject_time' | 'delete_time' | 'manual_entry' | 'system_adjustment';
+  description: string;
+  payload?: any;
+  ipAddress?: string;
+  userAgent?: string;
+}) {
+  return await db.insert(timeEntryAuditEvents).values({
+    workspaceId: params.workspaceId,
+    timeEntryId: params.timeEntryId,
+    breakId: params.breakId,
+    actorUserId: params.actorUserId,
+    actorEmployeeId: params.actorEmployeeId,
+    actorName: params.actorName,
+    actionType: params.actionType,
+    description: params.description,
+    payload: params.payload,
+    ipAddress: params.ipAddress,
+    userAgent: params.userAgent,
+  }).returning();
+}
+
+/**
+ * Calculate total hours between two timestamps
+ */
+function calculateHours(start: Date, end: Date): number {
+  const diff = end.getTime() - start.getTime();
+  return parseFloat((diff / (1000 * 60 * 60)).toFixed(2));
+}
+
+/**
+ * Check if user has permission to view time entry
+ */
+function canViewTimeEntry(entry: TimeEntry, employeeId: string | undefined, workspaceRole: string): boolean {
+  // Staff can only view their own entries
+  if (workspaceRole === 'staff') {
+    return entry.employeeId === employeeId;
+  }
+  // Managers, admins, and owners can view all entries
+  return ['manager', 'org_admin', 'org_owner'].includes(workspaceRole);
+}
+
+/**
+ * Check if user can approve time entries
+ */
+function canApproveTimeEntries(workspaceRole: string): boolean {
+  return ['manager', 'org_admin', 'org_owner'].includes(workspaceRole);
+}
+
+// ============================================================================
+// CLOCK IN/OUT ENDPOINTS
+// ============================================================================
+
+/**
+ * GET /api/timeos/status - Get current clock status for logged-in employee
+ * Returns active time entry if clocked in, null if clocked out
+ */
+timeosRouter.get('/status', requireAuth, readLimiter, async (req: AuthenticatedRequest, res) => {
+  try {
+    const user = req.user;
+    if (!user?.currentWorkspaceId) {
+      return res.status(400).json({ error: 'No workspace selected' });
+    }
+
+    // Get employee record
+    const [employee] = await db.select().from(employees)
+      .where(and(
+        eq(employees.userId, user.id),
+        eq(employees.workspaceId, user.currentWorkspaceId)
+      ))
+      .limit(1);
+
+    if (!employee) {
+      return res.status(404).json({ error: 'Employee record not found' });
+    }
+
+    // Check for active time entry (clockOut is null)
+    const [activeEntry] = await db.select().from(timeEntries)
+      .where(and(
+        eq(timeEntries.employeeId, employee.id),
+        eq(timeEntries.workspaceId, user.currentWorkspaceId),
+        isNull(timeEntries.clockOut)
+      ))
+      .limit(1);
+
+    // Get active break if exists
+    let activeBreak: TimeEntryBreak | null = null;
+    if (activeEntry) {
+      const [breakRecord] = await db.select().from(timeEntryBreaks)
+        .where(and(
+          eq(timeEntryBreaks.timeEntryId, activeEntry.id),
+          isNull(timeEntryBreaks.endTime)
+        ))
+        .limit(1);
+      activeBreak = breakRecord || null;
+    }
+
+    res.json({
+      isClockedIn: !!activeEntry,
+      activeTimeEntry: activeEntry || null,
+      activeBreak: activeBreak,
+      employeeId: employee.id,
+      employeeName: `${employee.firstName} ${employee.lastName}`
+    });
+  } catch (error) {
+    console.error('Error getting clock status:', error);
+    res.status(500).json({ error: 'Failed to get clock status' });
+  }
+});
+
+/**
+ * POST /api/timeos/clock-in - Clock in (start new time entry)
+ */
+timeosRouter.post('/clock-in', requireAuth, mutationLimiter, async (req: AuthenticatedRequest, res) => {
+  try {
+    const user = req.user;
+    if (!user?.currentWorkspaceId) {
+      return res.status(400).json({ error: 'No workspace selected' });
+    }
+
+    const { shiftId, clientId, latitude, longitude, accuracy, notes } = req.body;
+
+    // Get employee record
+    const [employee] = await db.select().from(employees)
+      .where(and(
+        eq(employees.userId, user.id),
+        eq(employees.workspaceId, user.currentWorkspaceId)
+      ))
+      .limit(1);
+
+    if (!employee) {
+      return res.status(404).json({ error: 'Employee record not found' });
+    }
+
+    // Check if already clocked in
+    const [existingEntry] = await db.select().from(timeEntries)
+      .where(and(
+        eq(timeEntries.employeeId, employee.id),
+        eq(timeEntries.workspaceId, user.currentWorkspaceId),
+        isNull(timeEntries.clockOut)
+      ))
+      .limit(1);
+
+    if (existingEntry) {
+      return res.status(400).json({ error: 'Already clocked in. Please clock out first.' });
+    }
+
+    // Create new time entry
+    const clockInTime = new Date();
+    const [newEntry] = await db.insert(timeEntries).values({
+      workspaceId: user.currentWorkspaceId,
+      employeeId: employee.id,
+      shiftId: shiftId || null,
+      clientId: clientId || null,
+      clockIn: clockInTime,
+      clockInLatitude: latitude || null,
+      clockInLongitude: longitude || null,
+      clockInAccuracy: accuracy || null,
+      clockInIpAddress: req.ip || null,
+      hourlyRate: employee.hourlyRate || null,
+      notes: notes || null,
+      status: 'pending'
+    }).returning();
+
+    // Create audit event
+    await createAuditEvent({
+      workspaceId: user.currentWorkspaceId,
+      timeEntryId: newEntry.id,
+      actorUserId: user.id,
+      actorEmployeeId: employee.id,
+      actorName: `${employee.firstName} ${employee.lastName}`,
+      actionType: 'clock_in',
+      description: `Clocked in at ${clockInTime.toLocaleTimeString()}`,
+      payload: { latitude, longitude, accuracy, shiftId, clientId },
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent')
+    });
+
+    res.status(201).json({ 
+      message: 'Clocked in successfully',
+      timeEntry: newEntry 
+    });
+  } catch (error) {
+    console.error('Error clocking in:', error);
+    res.status(500).json({ error: 'Failed to clock in' });
+  }
+});
+
+/**
+ * POST /api/timeos/clock-out - Clock out (complete time entry)
+ */
+timeosRouter.post('/clock-out', requireAuth, mutationLimiter, async (req: AuthenticatedRequest, res) => {
+  try {
+    const user = req.user;
+    if (!user?.currentWorkspaceId) {
+      return res.status(400).json({ error: 'No workspace selected' });
+    }
+
+    const { latitude, longitude, accuracy, notes } = req.body;
+
+    // Get employee record
+    const [employee] = await db.select().from(employees)
+      .where(and(
+        eq(employees.userId, user.id),
+        eq(employees.workspaceId, user.currentWorkspaceId)
+      ))
+      .limit(1);
+
+    if (!employee) {
+      return res.status(404).json({ error: 'Employee record not found' });
+    }
+
+    // Find active time entry
+    const [activeEntry] = await db.select().from(timeEntries)
+      .where(and(
+        eq(timeEntries.employeeId, employee.id),
+        eq(timeEntries.workspaceId, user.currentWorkspaceId),
+        isNull(timeEntries.clockOut)
+      ))
+      .limit(1);
+
+    if (!activeEntry) {
+      return res.status(400).json({ error: 'No active time entry found. Please clock in first.' });
+    }
+
+    // End any active breaks
+    await db.update(timeEntryBreaks)
+      .set({ endTime: new Date() })
+      .where(and(
+        eq(timeEntryBreaks.timeEntryId, activeEntry.id),
+        isNull(timeEntryBreaks.endTime)
+      ));
+
+    // Calculate total hours
+    const clockOutTime = new Date();
+    const totalHours = calculateHours(new Date(activeEntry.clockIn), clockOutTime);
+
+    // Update time entry with clock out
+    const [updatedEntry] = await db.update(timeEntries)
+      .set({
+        clockOut: clockOutTime,
+        clockOutLatitude: latitude || null,
+        clockOutLongitude: longitude || null,
+        clockOutAccuracy: accuracy || null,
+        clockOutIpAddress: req.ip || null,
+        totalHours: totalHours.toString(),
+        totalAmount: activeEntry.hourlyRate 
+          ? (parseFloat(activeEntry.hourlyRate) * totalHours).toFixed(2)
+          : null,
+        notes: notes || activeEntry.notes,
+        updatedAt: new Date()
+      })
+      .where(eq(timeEntries.id, activeEntry.id))
+      .returning();
+
+    // Create audit event
+    await createAuditEvent({
+      workspaceId: user.currentWorkspaceId,
+      timeEntryId: activeEntry.id,
+      actorUserId: user.id,
+      actorEmployeeId: employee.id,
+      actorName: `${employee.firstName} ${employee.lastName}`,
+      actionType: 'clock_out',
+      description: `Clocked out at ${clockOutTime.toLocaleTimeString()} - Total: ${totalHours} hours`,
+      payload: { latitude, longitude, accuracy, totalHours },
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent')
+    });
+
+    res.json({ 
+      message: 'Clocked out successfully',
+      timeEntry: updatedEntry,
+      totalHours 
+    });
+  } catch (error) {
+    console.error('Error clocking out:', error);
+    res.status(500).json({ error: 'Failed to clock out' });
+  }
+});
+
+// ============================================================================
+// BREAK MANAGEMENT ENDPOINTS
+// ============================================================================
+
+/**
+ * POST /api/timeos/break/start - Start a break
+ */
+timeosRouter.post('/break/start', requireAuth, mutationLimiter, async (req: AuthenticatedRequest, res) => {
+  try {
+    const user = req.user;
+    if (!user?.currentWorkspaceId) {
+      return res.status(400).json({ error: 'No workspace selected' });
+    }
+
+    const { breakType = 'rest', isPaid = false, notes } = req.body;
+
+    // Get employee record
+    const [employee] = await db.select().from(employees)
+      .where(and(
+        eq(employees.userId, user.id),
+        eq(employees.workspaceId, user.currentWorkspaceId)
+      ))
+      .limit(1);
+
+    if (!employee) {
+      return res.status(404).json({ error: 'Employee record not found' });
+    }
+
+    // Find active time entry
+    const [activeEntry] = await db.select().from(timeEntries)
+      .where(and(
+        eq(timeEntries.employeeId, employee.id),
+        eq(timeEntries.workspaceId, user.currentWorkspaceId),
+        isNull(timeEntries.clockOut)
+      ))
+      .limit(1);
+
+    if (!activeEntry) {
+      return res.status(400).json({ error: 'Must be clocked in to take a break' });
+    }
+
+    // Check if already on break
+    const [existingBreak] = await db.select().from(timeEntryBreaks)
+      .where(and(
+        eq(timeEntryBreaks.timeEntryId, activeEntry.id),
+        isNull(timeEntryBreaks.endTime)
+      ))
+      .limit(1);
+
+    if (existingBreak) {
+      return res.status(400).json({ error: 'Already on break' });
+    }
+
+    // Create break record
+    const breakStartTime = new Date();
+    const [newBreak] = await db.insert(timeEntryBreaks).values({
+      workspaceId: user.currentWorkspaceId,
+      timeEntryId: activeEntry.id,
+      employeeId: employee.id,
+      breakType,
+      startTime: breakStartTime,
+      isPaid,
+      notes
+    }).returning();
+
+    // Create audit event
+    await createAuditEvent({
+      workspaceId: user.currentWorkspaceId,
+      timeEntryId: activeEntry.id,
+      breakId: newBreak.id,
+      actorUserId: user.id,
+      actorEmployeeId: employee.id,
+      actorName: `${employee.firstName} ${employee.lastName}`,
+      actionType: 'start_break',
+      description: `Started ${breakType} break at ${breakStartTime.toLocaleTimeString()}`,
+      payload: { breakType, isPaid },
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent')
+    });
+
+    res.status(201).json({ 
+      message: 'Break started',
+      break: newBreak 
+    });
+  } catch (error) {
+    console.error('Error starting break:', error);
+    res.status(500).json({ error: 'Failed to start break' });
+  }
+});
+
+/**
+ * POST /api/timeos/break/end - End a break
+ */
+timeosRouter.post('/break/end', requireAuth, mutationLimiter, async (req: AuthenticatedRequest, res) => {
+  try {
+    const user = req.user;
+    if (!user?.currentWorkspaceId) {
+      return res.status(400).json({ error: 'No workspace selected' });
+    }
+
+    // Get employee record
+    const [employee] = await db.select().from(employees)
+      .where(and(
+        eq(employees.userId, user.id),
+        eq(employees.workspaceId, user.currentWorkspaceId)
+      ))
+      .limit(1);
+
+    if (!employee) {
+      return res.status(404).json({ error: 'Employee record not found' });
+    }
+
+    // Find active time entry
+    const [activeEntry] = await db.select().from(timeEntries)
+      .where(and(
+        eq(timeEntries.employeeId, employee.id),
+        eq(timeEntries.workspaceId, user.currentWorkspaceId),
+        isNull(timeEntries.clockOut)
+      ))
+      .limit(1);
+
+    if (!activeEntry) {
+      return res.status(400).json({ error: 'No active time entry found' });
+    }
+
+    // Find active break
+    const [activeBreak] = await db.select().from(timeEntryBreaks)
+      .where(and(
+        eq(timeEntryBreaks.timeEntryId, activeEntry.id),
+        isNull(timeEntryBreaks.endTime)
+      ))
+      .limit(1);
+
+    if (!activeBreak) {
+      return res.status(400).json({ error: 'No active break found' });
+    }
+
+    // Calculate break duration
+    const breakEndTime = new Date();
+    const durationMinutes = (breakEndTime.getTime() - new Date(activeBreak.startTime).getTime()) / (1000 * 60);
+
+    // Update break record
+    const [updatedBreak] = await db.update(timeEntryBreaks)
+      .set({
+        endTime: breakEndTime,
+        duration: durationMinutes.toFixed(2),
+        updatedAt: new Date()
+      })
+      .where(eq(timeEntryBreaks.id, activeBreak.id))
+      .returning();
+
+    // Create audit event
+    await createAuditEvent({
+      workspaceId: user.currentWorkspaceId,
+      timeEntryId: activeEntry.id,
+      breakId: activeBreak.id,
+      actorUserId: user.id,
+      actorEmployeeId: employee.id,
+      actorName: `${employee.firstName} ${employee.lastName}`,
+      actionType: 'end_break',
+      description: `Ended break at ${breakEndTime.toLocaleTimeString()} - Duration: ${durationMinutes.toFixed(0)} minutes`,
+      payload: { durationMinutes: durationMinutes.toFixed(2) },
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent')
+    });
+
+    res.json({ 
+      message: 'Break ended',
+      break: updatedBreak,
+      durationMinutes: parseFloat(durationMinutes.toFixed(2))
+    });
+  } catch (error) {
+    console.error('Error ending break:', error);
+    res.status(500).json({ error: 'Failed to end break' });
+  }
+});
+
+// ============================================================================
+// TIMESHEET VIEWING & FILTERING
+// ============================================================================
+
+/**
+ * GET /api/timeos/entries - Get time entries with filtering
+ * Query params: employeeId, startDate, endDate, status
+ */
+timeosRouter.get('/entries', requireAuth, readLimiter, async (req: AuthenticatedRequest, res) => {
+  try {
+    const user = req.user;
+    if (!user?.currentWorkspaceId) {
+      return res.status(400).json({ error: 'No workspace selected' });
+    }
+
+    const { employeeId, startDate, endDate, status } = req.query;
+
+    // Get current employee record for RBAC
+    const [currentEmployee] = await db.select().from(employees)
+      .where(and(
+        eq(employees.userId, user.id),
+        eq(employees.workspaceId, user.currentWorkspaceId)
+      ))
+      .limit(1);
+
+    if (!currentEmployee) {
+      return res.status(404).json({ error: 'Employee record not found' });
+    }
+
+    // Build query conditions
+    const conditions = [eq(timeEntries.workspaceId, user.currentWorkspaceId)];
+
+    // Staff can only see their own entries
+    if (currentEmployee.workspaceRole === 'staff') {
+      conditions.push(eq(timeEntries.employeeId, currentEmployee.id));
+    } else if (employeeId) {
+      // Managers/admins can filter by employee
+      conditions.push(eq(timeEntries.employeeId, employeeId as string));
+    }
+
+    // Date range filtering
+    if (startDate) {
+      conditions.push(gte(timeEntries.clockIn, new Date(startDate as string)));
+    }
+    if (endDate) {
+      conditions.push(lte(timeEntries.clockIn, new Date(endDate as string)));
+    }
+
+    // Status filtering
+    if (status) {
+      conditions.push(eq(timeEntries.status, status as string));
+    }
+
+    // Fetch time entries
+    const entries = await db.select({
+      id: timeEntries.id,
+      employeeId: timeEntries.employeeId,
+      employeeName: sql<string>`${employees.firstName} || ' ' || ${employees.lastName}`,
+      clockIn: timeEntries.clockIn,
+      clockOut: timeEntries.clockOut,
+      totalHours: timeEntries.totalHours,
+      totalAmount: timeEntries.totalAmount,
+      status: timeEntries.status,
+      approvedBy: timeEntries.approvedBy,
+      approvedAt: timeEntries.approvedAt,
+      notes: timeEntries.notes,
+      createdAt: timeEntries.createdAt
+    })
+    .from(timeEntries)
+    .innerJoin(employees, eq(timeEntries.employeeId, employees.id))
+    .where(and(...conditions))
+    .orderBy(desc(timeEntries.clockIn));
+
+    res.json({ entries });
+  } catch (error) {
+    console.error('Error fetching time entries:', error);
+    res.status(500).json({ error: 'Failed to fetch time entries' });
+  }
+});
+
+/**
+ * GET /api/timeos/entries/:id - Get single time entry with breaks and audit log
+ */
+timeosRouter.get('/entries/:id', requireAuth, readLimiter, async (req: AuthenticatedRequest, res) => {
+  try {
+    const user = req.user;
+    if (!user?.currentWorkspaceId) {
+      return res.status(400).json({ error: 'No workspace selected' });
+    }
+
+    const { id } = req.params;
+
+    // Get time entry
+    const [entry] = await db.select().from(timeEntries)
+      .where(and(
+        eq(timeEntries.id, id),
+        eq(timeEntries.workspaceId, user.currentWorkspaceId)
+      ))
+      .limit(1);
+
+    if (!entry) {
+      return res.status(404).json({ error: 'Time entry not found' });
+    }
+
+    // Get current employee for RBAC
+    const [currentEmployee] = await db.select().from(employees)
+      .where(and(
+        eq(employees.userId, user.id),
+        eq(employees.workspaceId, user.currentWorkspaceId)
+      ))
+      .limit(1);
+
+    if (!currentEmployee) {
+      return res.status(404).json({ error: 'Employee record not found' });
+    }
+
+    // Check permissions
+    if (!canViewTimeEntry(entry, currentEmployee.id, currentEmployee.workspaceRole || 'staff')) {
+      return res.status(403).json({ error: 'Permission denied' });
+    }
+
+    // Get breaks for this entry
+    const breaks = await db.select().from(timeEntryBreaks)
+      .where(eq(timeEntryBreaks.timeEntryId, id))
+      .orderBy(desc(timeEntryBreaks.startTime));
+
+    // Get audit events
+    const auditEvents = await db.select().from(timeEntryAuditEvents)
+      .where(eq(timeEntryAuditEvents.timeEntryId, id))
+      .orderBy(desc(timeEntryAuditEvents.occurredAt));
+
+    res.json({ 
+      entry,
+      breaks,
+      auditEvents
+    });
+  } catch (error) {
+    console.error('Error fetching time entry:', error);
+    res.status(500).json({ error: 'Failed to fetch time entry' });
+  }
+});
+
+// ============================================================================
+// APPROVAL WORKFLOW ENDPOINTS
+// ============================================================================
+
+/**
+ * POST /api/timeos/entries/:id/approve - Approve a time entry
+ */
+timeosRouter.post('/entries/:id/approve', requireAuth, requireWorkspaceRole(['manager', 'org_admin', 'org_owner']), mutationLimiter, async (req: AuthenticatedRequest, res) => {
+  try {
+    const user = req.user;
+    if (!user?.currentWorkspaceId) {
+      return res.status(400).json({ error: 'No workspace selected' });
+    }
+
+    const { id } = req.params;
+    const { notes } = req.body;
+
+    // Get time entry
+    const [entry] = await db.select().from(timeEntries)
+      .where(and(
+        eq(timeEntries.id, id),
+        eq(timeEntries.workspaceId, user.currentWorkspaceId)
+      ))
+      .limit(1);
+
+    if (!entry) {
+      return res.status(404).json({ error: 'Time entry not found' });
+    }
+
+    if (entry.status === 'approved') {
+      return res.status(400).json({ error: 'Time entry already approved' });
+    }
+
+    // Get employee record
+    const [employee] = await db.select().from(employees)
+      .where(and(
+        eq(employees.userId, user.id),
+        eq(employees.workspaceId, user.currentWorkspaceId)
+      ))
+      .limit(1);
+
+    // Update time entry
+    const approvedAt = new Date();
+    const [updatedEntry] = await db.update(timeEntries)
+      .set({
+        status: 'approved',
+        approvedBy: user.id,
+        approvedAt,
+        updatedAt: new Date()
+      })
+      .where(eq(timeEntries.id, id))
+      .returning();
+
+    // Create audit event
+    await createAuditEvent({
+      workspaceId: user.currentWorkspaceId,
+      timeEntryId: id,
+      actorUserId: user.id,
+      actorEmployeeId: employee?.id,
+      actorName: employee ? `${employee.firstName} ${employee.lastName}` : user.email || 'Unknown',
+      actionType: 'approve_time',
+      description: `Approved time entry - ${entry.totalHours} hours`,
+      payload: { notes, previousStatus: entry.status },
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent')
+    });
+
+    res.json({ 
+      message: 'Time entry approved',
+      timeEntry: updatedEntry
+    });
+  } catch (error) {
+    console.error('Error approving time entry:', error);
+    res.status(500).json({ error: 'Failed to approve time entry' });
+  }
+});
+
+/**
+ * POST /api/timeos/entries/:id/reject - Reject a time entry
+ */
+timeosRouter.post('/entries/:id/reject', requireAuth, requireWorkspaceRole(['manager', 'org_admin', 'org_owner']), mutationLimiter, async (req: AuthenticatedRequest, res) => {
+  try {
+    const user = req.user;
+    if (!user?.currentWorkspaceId) {
+      return res.status(400).json({ error: 'No workspace selected' });
+    }
+
+    const { id } = req.params;
+    const { reason } = req.body;
+
+    if (!reason) {
+      return res.status(400).json({ error: 'Rejection reason is required' });
+    }
+
+    // Get time entry
+    const [entry] = await db.select().from(timeEntries)
+      .where(and(
+        eq(timeEntries.id, id),
+        eq(timeEntries.workspaceId, user.currentWorkspaceId)
+      ))
+      .limit(1);
+
+    if (!entry) {
+      return res.status(404).json({ error: 'Time entry not found' });
+    }
+
+    // Get employee record
+    const [employee] = await db.select().from(employees)
+      .where(and(
+        eq(employees.userId, user.id),
+        eq(employees.workspaceId, user.currentWorkspaceId)
+      ))
+      .limit(1);
+
+    // Update time entry
+    const rejectedAt = new Date();
+    const [updatedEntry] = await db.update(timeEntries)
+      .set({
+        status: 'rejected',
+        rejectedBy: user.id,
+        rejectedAt,
+        rejectionReason: reason,
+        updatedAt: new Date()
+      })
+      .where(eq(timeEntries.id, id))
+      .returning();
+
+    // Create audit event
+    await createAuditEvent({
+      workspaceId: user.currentWorkspaceId,
+      timeEntryId: id,
+      actorUserId: user.id,
+      actorEmployeeId: employee?.id,
+      actorName: employee ? `${employee.firstName} ${employee.lastName}` : user.email || 'Unknown',
+      actionType: 'reject_time',
+      description: `Rejected time entry - Reason: ${reason}`,
+      payload: { reason, previousStatus: entry.status },
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent')
+    });
+
+    res.json({ 
+      message: 'Time entry rejected',
+      timeEntry: updatedEntry
+    });
+  } catch (error) {
+    console.error('Error rejecting time entry:', error);
+    res.status(500).json({ error: 'Failed to reject time entry' });
+  }
+});
+
+// ============================================================================
+// ACTIVE STATUS ENDPOINTS
+// ============================================================================
+
+/**
+ * GET /api/timeos/active - Get all currently clocked-in employees (for managers)
+ */
+timeosRouter.get('/active', requireAuth, readLimiter, async (req: AuthenticatedRequest, res) => {
+  try {
+    const user = req.user;
+    if (!user?.currentWorkspaceId) {
+      return res.status(400).json({ error: 'No workspace selected' });
+    }
+
+    // Get active time entries (clockOut is null)
+    const activeEntries = await db.select({
+      entryId: timeEntries.id,
+      employeeId: employees.id,
+      employeeName: sql<string>`${employees.firstName} || ' ' || ${employees.lastName}`,
+      clockIn: timeEntries.clockIn,
+      hoursSoFar: sql<number>`EXTRACT(EPOCH FROM (NOW() - ${timeEntries.clockIn})) / 3600`,
+      isOnBreak: sql<boolean>`EXISTS(SELECT 1 FROM ${timeEntryBreaks} WHERE ${timeEntryBreaks.timeEntryId} = ${timeEntries.id} AND ${timeEntryBreaks.endTime} IS NULL)`
+    })
+    .from(timeEntries)
+    .innerJoin(employees, eq(timeEntries.employeeId, employees.id))
+    .where(and(
+      eq(timeEntries.workspaceId, user.currentWorkspaceId),
+      isNull(timeEntries.clockOut)
+    ))
+    .orderBy(desc(timeEntries.clockIn));
+
+    res.json({ activeEntries });
+  } catch (error) {
+    console.error('Error fetching active employees:', error);
+    res.status(500).json({ error: 'Failed to fetch active employees' });
+  }
+});
+
+export default timeosRouter;
