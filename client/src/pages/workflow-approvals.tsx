@@ -16,7 +16,7 @@
  * - Delegation system
  */
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
@@ -90,23 +90,21 @@ export default function WorkflowApprovals() {
     queryKey: ['/api/scheduleos/proposals'],
   });
 
-  // Fetch approval stats
-  const { data: stats } = useQuery<ApprovalStats>({
-    queryKey: ['/api/approvals/stats'],
-    queryFn: async () => {
-      const pending = scheduleProposals.filter(p => p.status === 'pending').length;
-      const approved = scheduleProposals.filter(p => p.status === 'approved').length;
-      const rejected = scheduleProposals.filter(p => p.status === 'rejected').length;
-      const autoApproved = scheduleProposals.filter(p => p.status === 'auto_approved').length;
-      return { pending, approved, rejected, autoApproved };
-    },
-    enabled: !!scheduleProposals,
-  });
+  // Compute approval stats from proposals
+  const stats: ApprovalStats = useMemo(() => {
+    if (!scheduleProposals) return { pending: 0, approved: 0, rejected: 0, autoApproved: 0 };
+    return {
+      pending: scheduleProposals.filter(p => p.status === 'pending').length,
+      approved: scheduleProposals.filter(p => p.status === 'approved').length,
+      rejected: scheduleProposals.filter(p => p.status === 'rejected').length,
+      autoApproved: scheduleProposals.filter(p => p.status === 'auto_approved').length,
+    };
+  }, [scheduleProposals]);
 
   // Approve proposal mutation
   const approveMutation = useMutation({
     mutationFn: async ({ id, action, reason }: { id: string; action: 'approve' | 'reject'; reason?: string }) => {
-      return await apiRequest('POST', `/api/scheduleos/proposals/${id}/${action}`, { reason });
+      return await apiRequest('PATCH', `/api/scheduleos/proposals/${id}/${action}`, { reason });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/scheduleos/proposals'] });
