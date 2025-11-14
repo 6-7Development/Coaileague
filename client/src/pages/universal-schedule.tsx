@@ -35,7 +35,6 @@ import {
   CheckSquare, MapPin, Menu, Sparkles
 } from 'lucide-react';
 import type { Shift, Employee, Client, ShiftOrder } from '@shared/schema';
-import MobileSchedule from '@/components/MobileSchedule';
 
 // Post order template data (will be pre-created in database)
 const POST_ORDER_TEMPLATES = [
@@ -468,18 +467,7 @@ export default function UniversalSchedule() {
     );
   }
 
-  // Mobile: Render dedicated mobile schedule component
-  if (isMobile) {
-    return (
-      <MobileSchedule 
-        weekStart={weekStart} 
-        weekEnd={weekEnd} 
-        onWeekChange={handleWeekChange}
-      />
-    );
-  }
-
-  // Desktop: Render grid-based schedule
+  // Render grid-based schedule (works on both mobile and desktop)
   return (
     <DndContext
       sensors={isTouchDevice ? [] : sensors}
