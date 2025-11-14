@@ -310,7 +310,8 @@ export default function UniversalSchedule() {
   };
 
   const isOpenShift = (shift: Shift) => {
-    return shift.status === 'open' || !shift.employeeId;
+    // Open shifts have no assigned employee
+    return !shift.employeeId;
   };
 
   if (isLoading) {
@@ -533,8 +534,11 @@ export default function UniversalSchedule() {
                     </div>
                   ))}
 
-                  {/* Shifts */}
-                  {shiftsGrid[`${dayIndex}-${hour}`]?.map(shift => {
+                  {/* Shifts - render all shifts for this day */}
+                  {Object.entries(shiftsGrid)
+                    .filter(([key]) => key.startsWith(`${dayIndex}-`))
+                    .flatMap(([_, dayShifts]) => dayShifts)
+                    .map(shift => {
                     const position = getShiftPosition(shift);
                     const employee = shift.employeeId ? employees.find(e => e.id === shift.employeeId) : null;
                     const client = shift.clientId ? clients.find(c => c.id === shift.clientId) : null;
