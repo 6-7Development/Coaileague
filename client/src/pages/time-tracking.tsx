@@ -42,6 +42,8 @@ export default function TimeTracking() {
   const isMobile = useIsMobile();
   const [view, setView] = useState('clock');
   const [clockInDialogOpen, setClockInDialogOpen] = useState(false);
+  const [clockOutDialogOpen, setClockOutDialogOpen] = useState(false);
+  const [clockingOutEntryId, setClockingOutEntryId] = useState<string | null>(null);
   const [selectedEmployee, setSelectedEmployee] = useState<string>("");
   const [selectedClient, setSelectedClient] = useState<string>("");
   const [notes, setNotes] = useState("");
@@ -116,6 +118,14 @@ export default function TimeTracking() {
   const currentEmployee = employees.find(emp => emp.userId === user?.id);
   const workspaceRole = currentEmployee?.workspaceRole || 'staff';
 
+  // Auto-select current employee for staff role (RBAC enforcement)
+  // Only run once when currentEmployee becomes available
+  useEffect(() => {
+    if (currentEmployee && workspaceRole === 'staff' && !selectedEmployee) {
+      setSelectedEmployee(currentEmployee.id);
+    }
+  }, [currentEmployee, workspaceRole]); // Remove selectedEmployee from deps to prevent loop
+
   // Role-based filtering: employees see only their own entries
   const timeEntries = useMemo(() => {
     if (workspaceRole === 'staff') {
@@ -147,7 +157,12 @@ export default function TimeTracking() {
         description: "Time tracking started successfully with GPS verification",
       });
       setClockInDialogOpen(false);
-      setSelectedEmployee("");
+      // For staff, keep employee selected for next clock-in; managers/owners clear selection
+      if (workspaceRole === 'staff' && currentEmployee) {
+        setSelectedEmployee(currentEmployee.id);
+      } else {
+        setSelectedEmployee("");
+      }
       setSelectedClient("");
       setSelectedShift("");
       setNotes("");
@@ -188,6 +203,13 @@ export default function TimeTracking() {
         title: "Clocked Out",
         description: "Time entry completed successfully",
       });
+      // Close dialog and clear state AFTER mutation completes
+      setClockOutDialogOpen(false);
+      setClockingOutEntryId(null);
+      setGpsData(null);
+      setCapturedPhoto(null);
+      setGpsError(null);
+      stopCamera();
     },
     onError: (error: any) => {
       toast({
@@ -419,24 +441,20 @@ export default function TimeTracking() {
     }
   };
 
-  // Auto-capture GPS and start camera when dialog opens
+  // Auto-capture GPS and start camera when dialogs open
   useEffect(() => {
-    if (clockInDialogOpen) {
+    if (clockInDialogOpen || clockOutDialogOpen) {
       captureGPS();
       if (!isMobile) {
         startCamera();
       }
-    } else {
-      stopCamera();
-      setGpsData(null);
-      setCapturedPhoto(null);
-      setGpsError(null);
     }
+    // Don't auto-clear GPS/photo on dialog close - mutations handle cleanup
     
     return () => {
       stopCamera();
     };
-  }, [clockInDialogOpen]);
+  }, [clockInDialogOpen, clockOutDialogOpen]);
 
   const handleClockIn = () => {
     if (!selectedEmployee) {
@@ -482,14 +500,39 @@ export default function TimeTracking() {
     });
   };
 
-  const handleClockOut = async (entryId: string) => {
-    const gps = await captureGPS();
+  const handleClockOut = (entryId: string) => {
+    setClockingOutEntryId(entryId);
+    setClockOutDialogOpen(true);
+  };
+
+  const handleConfirmClockOut = () => {
+    if (!clockingOutEntryId) return;
+
+    if (!gpsData) {
+      toast({
+        title: "GPS Required",
+        description: "Please wait for GPS to be captured or try again",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!capturedPhoto) {
+      toast({
+        title: "Photo Required",
+        description: "Please capture a verification photo",
+        variant: "destructive",
+      });
+      return;
+    }
     
+    // Don't close dialog here - let mutation onSuccess handle cleanup
     clockOutMutation.mutate({
-      timeEntryId: entryId,
-      gpsLatitude: gps?.latitude,
-      gpsLongitude: gps?.longitude,
-      gpsAccuracy: gps?.accuracy,
+      timeEntryId: clockingOutEntryId,
+      gpsLatitude: gpsData.latitude,
+      gpsLongitude: gpsData.longitude,
+      gpsAccuracy: gpsData.accuracy,
+      photoUrl: capturedPhoto,
     });
   };
 
@@ -1196,22 +1239,30 @@ export default function TimeTracking() {
             </DialogHeader>
             
             <div className="space-y-4 mt-4">
-              {/* Employee Selection */}
-              <div>
-                <Label>Employee *</Label>
-                <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
-                  <SelectTrigger data-testid="select-employee">
-                    <SelectValue placeholder="Select employee" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {employees.map(emp => (
-                      <SelectItem key={emp.id} value={emp.id}>
-                        {emp.firstName} {emp.lastName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {/* Employee Selection - Hide for staff role (RBAC enforcement) */}
+              {workspaceRole !== 'staff' && (
+                <div>
+                  <Label>Employee *</Label>
+                  <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
+                    <SelectTrigger data-testid="select-employee">
+                      <SelectValue placeholder="Select employee" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {employees.map(emp => (
+                        <SelectItem key={emp.id} value={emp.id}>
+                          {emp.firstName} {emp.lastName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              {workspaceRole === 'staff' && currentEmployee && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <Label className="text-blue-900">Employee</Label>
+                  <p className="font-bold text-blue-900">{currentEmployee.firstName} {currentEmployee.lastName}</p>
+                </div>
+              )}
 
               {/* GPS Status */}
               <div className="bg-gray-50 rounded-lg p-4">
@@ -1412,12 +1463,133 @@ export default function TimeTracking() {
           </DialogContent>
         </Dialog>
 
-        {/* Reject Dialog */}
+        {/* Clock Out Dialog */}
+        <Dialog open={clockOutDialogOpen} onOpenChange={setClockOutDialogOpen}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader className="bg-gradient-to-r from-red-600 to-rose-600 text-white -mx-6 -mt-6 px-6 py-4 rounded-t-lg">
+              <DialogTitle>Clock Out - Verification Required</DialogTitle>
+              <DialogDescription className="text-white/90">
+                GPS and photo verification for accurate time tracking
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4 mt-4">
+              {/* GPS Status */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center space-x-2">
+                    <MapPin className="w-5 h-5 text-red-600" />
+                    <Label>GPS Location</Label>
+                  </div>
+                  {isCapturingGPS && (
+                    <Badge variant="secondary">Capturing...</Badge>
+                  )}
+                </div>
+                {gpsData ? (
+                  <div className="text-sm text-green-600 flex items-center space-x-2">
+                    <CheckCircle className="w-4 h-4" />
+                    <span>Location verified ({Math.round(gpsData.accuracy)}m accuracy)</span>
+                  </div>
+                ) : gpsError ? (
+                  <div className="text-sm text-red-600 flex items-center space-x-2">
+                    <XCircle className="w-4 h-4" />
+                    <span>{gpsError}</span>
+                  </div>
+                ) : (
+                  <div className="text-sm text-gray-500">Waiting for GPS...</div>
+                )}
+                {!gpsData && !isCapturingGPS && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => captureGPS()}
+                    className="mt-2"
+                    data-testid="button-retry-gps-clockout"
+                  >
+                    Retry GPS Capture
+                  </Button>
+                )}
+              </div>
+
+              {/* Photo Capture */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <div className="flex items-center space-x-2 mb-2">
+                  <Camera className="w-5 h-5 text-red-600" />
+                  <Label>Verification Photo</Label>
+                </div>
+                
+                {!capturedPhoto ? (
+                  <div>
+                    {isCameraActive ? (
+                      <div className="space-y-2">
+                        <video
+                          ref={videoRef}
+                          autoPlay
+                          playsInline
+                          className="w-full rounded-lg"
+                        />
+                        <Button
+                          variant="default"
+                          onClick={capturePhoto}
+                          className="w-full"
+                          data-testid="button-capture-photo-clockout"
+                        >
+                          Capture Photo
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        onClick={startCamera}
+                        className="w-full"
+                        data-testid="button-start-camera-clockout"
+                      >
+                        <Camera className="w-4 h-4 mr-2" />
+                        Start Camera
+                      </Button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <img
+                      src={capturedPhoto}
+                      alt="Captured"
+                      className="w-full rounded-lg"
+                    />
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setCapturedPhoto(null);
+                        startCamera();
+                      }}
+                      className="w-full"
+                      data-testid="button-retake-photo-clockout"
+                    >
+                      Retake Photo
+                    </Button>
+                  </div>
+                )}
+                <canvas ref={canvasRef} className="hidden" />
+              </div>
+
+              <Button 
+                onClick={handleConfirmClockOut} 
+                className="w-full bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700"
+                disabled={clockOutMutation.isPending || !gpsData || !capturedPhoto}
+                data-testid="button-confirm-clock-out"
+              >
+                {clockOutMutation.isPending ? "Clocking Out..." : "Confirm Clock Out"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Reject Dialog with Validation */}
         <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Reject Time Entry</DialogTitle>
-              <DialogDescription>Please provide a reason for rejection</DialogDescription>
+              <DialogDescription>Please provide a reason for rejection (required)</DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <Textarea
@@ -1425,23 +1597,31 @@ export default function TimeTracking() {
                 onChange={(e) => setRejectReason(e.target.value)}
                 placeholder="Enter reason for rejection..."
                 data-testid="input-reject-reason"
+                className={rejectReason.trim() === "" && rejectReason.length > 0 ? "border-red-500" : ""}
               />
+              {rejectReason.trim() === "" && rejectReason.length > 0 && (
+                <p className="text-sm text-red-600">Reason cannot be empty</p>
+              )}
               <div className="flex gap-2">
                 <Button 
                   variant="outline" 
-                  onClick={() => setRejectDialogOpen(false)}
+                  onClick={() => {
+                    setRejectDialogOpen(false);
+                    setRejectReason("");
+                  }}
                   className="flex-1"
+                  data-testid="button-cancel-reject"
                 >
                   Cancel
                 </Button>
                 <Button
                   onClick={() => {
-                    if (rejectingEntryId && rejectReason) {
-                      rejectMutation.mutate({ timeEntryId: rejectingEntryId, reason: rejectReason });
+                    if (rejectingEntryId && rejectReason.trim()) {
+                      rejectMutation.mutate({ timeEntryId: rejectingEntryId, reason: rejectReason.trim() });
                     }
                   }}
                   className="flex-1 bg-red-600 hover:bg-red-700"
-                  disabled={!rejectReason || rejectMutation.isPending}
+                  disabled={!rejectReason.trim() || rejectMutation.isPending}
                   data-testid="button-confirm-reject"
                 >
                   {rejectMutation.isPending ? "Rejecting..." : "Confirm Reject"}
