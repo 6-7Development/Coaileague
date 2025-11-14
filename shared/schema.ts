@@ -627,6 +627,283 @@ export const insertEmployeeSchema = createInsertSchema(employees).omit({
 export type InsertEmployee = z.infer<typeof insertEmployeeSchema>;
 export type Employee = typeof employees.$inferSelect;
 
+// ============================================================================
+// EMPLOYEE SCORING & AI AUTOMATION TABLES
+// ============================================================================
+
+// Employee Skills (for AI scoring and matching)
+export const employeeSkills = pgTable("employee_skills", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
+  skillName: varchar("skill_name").notNull(), // e.g., "Spanish", "CDL-A", "Forklift", "CPR"
+  skillCategory: varchar("skill_category").notNull(), // "language", "certification", "technical", "soft_skill"
+  proficiencyLevel: integer("proficiency_level").default(3), // 1-5 scale
+  verified: boolean("verified").default(false), // Has this been verified by manager/certification?
+  verifiedBy: varchar("verified_by").references(() => users.id),
+  verifiedAt: timestamp("verified_at"),
+  expiresAt: timestamp("expires_at"), // For certifications that expire
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_employee_skills_employee").on(table.employeeId),
+  index("idx_employee_skills_category").on(table.skillCategory),
+]);
+
+export const insertEmployeeSkillSchema = createInsertSchema(employeeSkills).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertEmployeeSkill = z.infer<typeof insertEmployeeSkillSchema>;
+export type EmployeeSkill = typeof employeeSkills.$inferSelect;
+
+// NOTE: employeeCertifications table already exists for onboarding/compliance at line 2516
+// We'll reuse that existing table for AI scoring - it has all the fields we need
+
+// Employee Performance Metrics (for AI scoring)
+export const employeeMetrics = pgTable("employee_metrics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
+  
+  // Reliability metrics
+  reliabilityScore: decimal("reliability_score", { precision: 3, scale: 2 }).default("0.85"), // 0.00-1.00
+  tardinessCount: integer("tardiness_count").default(0), // Last 90 days
+  noShowCount: integer("no_show_count").default(0), // Last 90 days
+  lastMinuteCancellations: integer("last_minute_cancellations").default(0), // Last 90 days
+  
+  // Experience metrics
+  yearsExperience: decimal("years_experience", { precision: 4, scale: 1 }).default("0.0"),
+  shiftsCompleted: integer("shifts_completed").default(0),
+  totalHoursWorked: decimal("total_hours_worked", { precision: 10, scale: 2 }).default("0.00"),
+  
+  // Distance & Location
+  preferredMaxDistance: integer("preferred_max_distance").default(50), // miles
+  homeLatitude: decimal("home_latitude", { precision: 10, scale: 7 }),
+  homeLongitude: decimal("home_longitude", { precision: 10, scale: 7 }),
+  
+  // Cost metrics
+  averagePayRate: decimal("average_pay_rate", { precision: 10, scale: 2 }),
+  overtimeEligible: boolean("overtime_eligible").default(true),
+  maxWeeklyHours: integer("max_weekly_hours").default(40),
+  
+  // Availability
+  availableForLastMinute: boolean("available_for_last_minute").default(false),
+  typicalResponseTime: integer("typical_response_time").default(120), // minutes
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_employee_metrics_employee").on(table.employeeId),
+  index("idx_employee_metrics_reliability").on(table.reliabilityScore),
+]);
+
+export const insertEmployeeMetricsSchema = createInsertSchema(employeeMetrics).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertEmployeeMetrics = z.infer<typeof insertEmployeeMetricsSchema>;
+export type EmployeeMetrics = typeof employeeMetrics.$inferSelect;
+
+// ============================================================================
+// CONTRACTOR POOL & MARKETPLACE TABLES
+// ============================================================================
+
+// Contractor Pool (external workers available for Fill Request)
+export const contractorPool = pgTable("contractor_pool", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Basic info
+  firstName: varchar("first_name").notNull(),
+  lastName: varchar("last_name").notNull(),
+  email: varchar("email").notNull(),
+  phone: varchar("phone").notNull(),
+  
+  // Employment type
+  contractorType: varchar("contractor_type").notNull(), // "w2_temp", "1099_independent", "agency"
+  agencyName: varchar("agency_name"), // If agency worker
+  
+  // Availability
+  isActive: boolean("is_active").default(true),
+  availableForLastMinute: boolean("available_for_last_minute").default(true),
+  maxDistanceWilling: integer("max_distance_willing").default(75), // miles
+  homeLatitude: decimal("home_latitude", { precision: 10, scale: 7 }),
+  homeLongitude: decimal("home_longitude", { precision: 10, scale: 7 }),
+  
+  // Compensation
+  minHourlyRate: decimal("min_hourly_rate", { precision: 10, scale: 2 }).notNull(),
+  maxHourlyRate: decimal("max_hourly_rate", { precision: 10, scale: 2 }),
+  overtimeAllowed: boolean("overtime_allowed").default(false),
+  maxWeeklyHours: integer("max_weekly_hours").default(40),
+  
+  // Profile
+  profilePhotoUrl: text("profile_photo_url"),
+  bio: text("bio"),
+  
+  // Onboarding status
+  onboardingCompleted: boolean("onboarding_completed").default(false),
+  backgroundCheckStatus: varchar("background_check_status").default("pending"), // "pending", "approved", "failed"
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_contractor_pool_active").on(table.isActive, table.availableForLastMinute),
+  index("idx_contractor_pool_email").on(table.email),
+]);
+
+export const insertContractorPoolSchema = createInsertSchema(contractorPool).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertContractorPool = z.infer<typeof insertContractorPoolSchema>;
+export type ContractorPool = typeof contractorPool.$inferSelect;
+
+// Contractor Skills
+export const contractorSkills = pgTable("contractor_skills", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  contractorId: varchar("contractor_id").notNull().references(() => contractorPool.id, { onDelete: 'cascade' }),
+  skillName: varchar("skill_name").notNull(),
+  skillCategory: varchar("skill_category").notNull(),
+  proficiencyLevel: integer("proficiency_level").default(3),
+  verified: boolean("verified").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_contractor_skills_contractor").on(table.contractorId),
+]);
+
+export const insertContractorSkillSchema = createInsertSchema(contractorSkills).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertContractorSkill = z.infer<typeof insertContractorSkillSchema>;
+export type ContractorSkill = typeof contractorSkills.$inferSelect;
+
+// Contractor Certifications
+export const contractorCertifications = pgTable("contractor_certifications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  contractorId: varchar("contractor_id").notNull().references(() => contractorPool.id, { onDelete: 'cascade' }),
+  certificationType: varchar("certification_type").notNull(),
+  certificationName: varchar("certification_name").notNull(),
+  certificationNumber: varchar("certification_number"),
+  issuedDate: timestamp("issued_date"),
+  expirationDate: timestamp("expiration_date"),
+  status: varchar("status").default("active"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_contractor_certs_contractor").on(table.contractorId),
+]);
+
+export const insertContractorCertificationSchema = createInsertSchema(contractorCertifications).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertContractorCertification = z.infer<typeof insertContractorCertificationSchema>;
+export type ContractorCertification = typeof contractorCertifications.$inferSelect;
+
+// Contractor Performance Metrics
+export const contractorMetrics = pgTable("contractor_metrics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  contractorId: varchar("contractor_id").notNull().references(() => contractorPool.id, { onDelete: 'cascade' }),
+  
+  reliabilityScore: decimal("reliability_score", { precision: 3, scale: 2 }).default("0.80"),
+  tardinessCount: integer("tardiness_count").default(0),
+  noShowCount: integer("no_show_count").default(0),
+  yearsExperience: decimal("years_experience", { precision: 4, scale: 1 }).default("0.0"),
+  shiftsCompleted: integer("shifts_completed").default(0),
+  totalHoursWorked: decimal("total_hours_worked", { precision: 10, scale: 2 }).default("0.00"),
+  averageRating: decimal("average_rating", { precision: 2, scale: 1 }).default("4.0"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_contractor_metrics_contractor").on(table.contractorId),
+]);
+
+export const insertContractorMetricsSchema = createInsertSchema(contractorMetrics).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertContractorMetrics = z.infer<typeof insertContractorMetricsSchema>;
+export type ContractorMetrics = typeof contractorMetrics.$inferSelect;
+
+// Shift Requests (when no internal employees available)
+export const shiftRequests = pgTable("shift_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  shiftId: varchar("shift_id").notNull().references(() => shifts.id, { onDelete: 'cascade' }),
+  
+  requestReason: text("request_reason"), // Why searching external pool
+  requiredSkills: text("required_skills").array(), // Must-have skills
+  preferredSkills: text("preferred_skills").array(), // Nice-to-have skills
+  maxPayRate: decimal("max_pay_rate", { precision: 10, scale: 2 }), // Budget constraint
+  maxDistance: integer("max_distance").default(50),
+  
+  status: varchar("status").default("searching"), // "searching", "offers_sent", "filled", "cancelled"
+  offersCount: integer("offers_count").default(0),
+  acceptedOfferId: varchar("accepted_offer_id"),
+  
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+}, (table) => [
+  index("idx_shift_requests_workspace").on(table.workspaceId, table.status),
+  index("idx_shift_requests_shift").on(table.shiftId),
+]);
+
+export const insertShiftRequestSchema = createInsertSchema(shiftRequests).omit({
+  id: true,
+  createdAt: true,
+  completedAt: true,
+});
+
+export type InsertShiftRequest = z.infer<typeof insertShiftRequestSchema>;
+export type ShiftRequest = typeof shiftRequests.$inferSelect;
+
+// Shift Offers (sent to contractors)
+export const shiftOffers = pgTable("shift_offers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  shiftRequestId: varchar("shift_request_id").notNull().references(() => shiftRequests.id, { onDelete: 'cascade' }),
+  shiftId: varchar("shift_id").notNull().references(() => shifts.id, { onDelete: 'cascade' }),
+  contractorId: varchar("contractor_id").notNull().references(() => contractorPool.id, { onDelete: 'cascade' }),
+  
+  // Offer details
+  offeredPayRate: decimal("offered_pay_rate", { precision: 10, scale: 2 }).notNull(),
+  matchScore: decimal("match_score", { precision: 3, scale: 2 }), // 0.00-1.00 from AI scoring
+  matchReasons: jsonb("match_reasons").$type<string[]>(), // Why this contractor matched
+  
+  // Status tracking
+  status: varchar("status").default("pending"), // "pending", "accepted", "declined", "expired"
+  sentAt: timestamp("sent_at").defaultNow(),
+  respondedAt: timestamp("responded_at"),
+  expiresAt: timestamp("expires_at").notNull(), // Offer expires after X hours
+  
+  // Onboarding (if accepted)
+  onboardingStarted: boolean("onboarding_started").default(false),
+  onboardingCompleted: boolean("onboarding_completed").default(false),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_shift_offers_request").on(table.shiftRequestId),
+  index("idx_shift_offers_contractor").on(table.contractorId, table.status),
+]);
+
+export const insertShiftOfferSchema = createInsertSchema(shiftOffers).omit({
+  id: true,
+  createdAt: true,
+  sentAt: true,
+});
+
+export type InsertShiftOffer = z.infer<typeof insertShiftOfferSchema>;
+export type ShiftOffer = typeof shiftOffers.$inferSelect;
+
 // Employee Benefits (Insurance, 401k, PTO, etc.)
 export const benefitTypeEnum = pgEnum('benefit_type', [
   'health_insurance',
