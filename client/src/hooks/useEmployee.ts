@@ -20,6 +20,7 @@ interface Employee {
   emergencyContactRelation: string | null;
   role: string | null; // Job title
   workspaceRole: 'org_owner' | 'org_admin' | 'manager' | 'staff' | null;
+  platformRole: string | null; // Platform role for support staff (root_admin, support_manager, support_agent, etc.)
   hourlyRate: string | null;
   color: string | null;
   onboardingStatus: string | null;
@@ -51,6 +52,7 @@ interface EmployeeResponse {
   emergencyContactRelation: string | null;
   role: string | null;
   workspaceRole: string | null;
+  platformRole: string | null; // Platform role for support staff
   hourlyRate: string | null;
   color: string | null;
   onboardingStatus: string | null;
