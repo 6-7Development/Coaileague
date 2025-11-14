@@ -1698,6 +1698,93 @@ export const insertTimeEntrySchema = createInsertSchema(timeEntries).omit({
 export type InsertTimeEntry = z.infer<typeof insertTimeEntrySchema>;
 export type TimeEntry = typeof timeEntries.$inferSelect;
 
+// Break type enum
+export const breakTypeEnum = pgEnum('break_type', [
+  'meal', // Meal break (typically 30-60 minutes)
+  'rest', // Rest break (typically 10-15 minutes)
+  'personal', // Personal break
+  'emergency' // Emergency/unscheduled break
+]);
+
+// Time Entry Breaks - Track all breaks within a time entry/shift
+export const timeEntryBreaks = pgTable("time_entry_breaks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  timeEntryId: varchar("time_entry_id").notNull().references(() => timeEntries.id, { onDelete: 'cascade' }),
+  employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
+  
+  // Break tracking
+  breakType: breakTypeEnum("break_type").default('rest'),
+  startTime: timestamp("start_time").notNull(),
+  endTime: timestamp("end_time"),
+  duration: decimal("duration", { precision: 10, scale: 2 }), // Minutes
+  
+  // Break details
+  isPaid: boolean("is_paid").default(false),
+  notes: text("notes"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertTimeEntryBreakSchema = createInsertSchema(timeEntryBreaks).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  startTime: z.string().or(z.date()),
+  endTime: z.string().or(z.date()).optional(),
+});
+
+export type InsertTimeEntryBreak = z.infer<typeof insertTimeEntryBreakSchema>;
+export type TimeEntryBreak = typeof timeEntryBreaks.$inferSelect;
+
+// Audit action types
+export const auditActionTypeEnum = pgEnum('audit_action_type', [
+  'clock_in',
+  'clock_out',
+  'start_break',
+  'end_break',
+  'edit_time',
+  'approve_time',
+  'reject_time',
+  'delete_time',
+  'manual_entry',
+  'system_adjustment'
+]);
+
+// Time Entry Audit Events - Complete audit trail for all time tracking actions
+export const timeEntryAuditEvents = pgTable("time_entry_audit_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  timeEntryId: varchar("time_entry_id").references(() => timeEntries.id, { onDelete: 'cascade' }),
+  breakId: varchar("break_id").references(() => timeEntryBreaks.id, { onDelete: 'cascade' }),
+  
+  // Actor information
+  actorUserId: varchar("actor_user_id").references(() => users.id, { onDelete: 'set null' }),
+  actorEmployeeId: varchar("actor_employee_id").references(() => employees.id, { onDelete: 'set null' }),
+  actorName: varchar("actor_name").notNull(), // Cached for display
+  
+  // Action details
+  actionType: auditActionTypeEnum("action_type").notNull(),
+  description: text("description").notNull(), // Human-readable description
+  payload: jsonb("payload"), // JSON data with before/after values, coordinates, etc.
+  
+  // Context
+  ipAddress: varchar("ip_address"),
+  userAgent: text("user_agent"),
+  
+  occurredAt: timestamp("occurred_at").defaultNow().notNull(),
+});
+
+export const insertTimeEntryAuditEventSchema = createInsertSchema(timeEntryAuditEvents).omit({
+  id: true,
+  occurredAt: true,
+});
+
+export type InsertTimeEntryAuditEvent = z.infer<typeof insertTimeEntryAuditEventSchema>;
+export type TimeEntryAuditEvent = typeof timeEntryAuditEvents.$inferSelect;
+
 // Time Entry Approval Audit Trail (Immutable history)
 export const timeEntryApprovalAudit = pgTable("time_entry_approval_audit", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -2270,6 +2357,46 @@ export const timeEntriesRelations = relations(timeEntries, ({ one, many }) => ({
     references: [clients.id],
   }),
   approvalAudits: many(timeEntryApprovalAudit),
+  breaks: many(timeEntryBreaks),
+  auditEvents: many(timeEntryAuditEvents),
+}));
+
+export const timeEntryBreaksRelations = relations(timeEntryBreaks, ({ one }) => ({
+  workspace: one(workspaces, {
+    fields: [timeEntryBreaks.workspaceId],
+    references: [workspaces.id],
+  }),
+  timeEntry: one(timeEntries, {
+    fields: [timeEntryBreaks.timeEntryId],
+    references: [timeEntries.id],
+  }),
+  employee: one(employees, {
+    fields: [timeEntryBreaks.employeeId],
+    references: [employees.id],
+  }),
+}));
+
+export const timeEntryAuditEventsRelations = relations(timeEntryAuditEvents, ({ one }) => ({
+  workspace: one(workspaces, {
+    fields: [timeEntryAuditEvents.workspaceId],
+    references: [workspaces.id],
+  }),
+  timeEntry: one(timeEntries, {
+    fields: [timeEntryAuditEvents.timeEntryId],
+    references: [timeEntries.id],
+  }),
+  break: one(timeEntryBreaks, {
+    fields: [timeEntryAuditEvents.breakId],
+    references: [timeEntryBreaks.id],
+  }),
+  actorUser: one(users, {
+    fields: [timeEntryAuditEvents.actorUserId],
+    references: [users.id],
+  }),
+  actorEmployee: one(employees, {
+    fields: [timeEntryAuditEvents.actorEmployeeId],
+    references: [employees.id],
+  }),
 }));
 
 export const timeEntryApprovalAuditRelations = relations(timeEntryApprovalAudit, ({ one }) => ({
