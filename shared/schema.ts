@@ -10551,3 +10551,334 @@ export const insertFeatureUpdateReceiptSchema = createInsertSchema(featureUpdate
 
 export type InsertFeatureUpdateReceipt = z.infer<typeof insertFeatureUpdateReceiptSchema>;
 export type FeatureUpdateReceipt = typeof featureUpdateReceipts.$inferSelect;
+
+// ============================================================================
+// UNIFIED AI BRAIN - GLOBAL INTELLIGENCE SYSTEM
+// ============================================================================
+
+// AI Brain Job Status
+export const aiBrainJobStatusEnum = pgEnum('ai_brain_job_status', [
+  'pending',      // Queued, waiting to execute
+  'running',      // Currently executing
+  'completed',    // Successfully completed
+  'failed',       // Execution failed
+  'cancelled',    // User or system cancelled
+  'requires_approval' // Needs human review
+]);
+
+// AI Brain Job Priority
+export const aiBrainJobPriorityEnum = pgEnum('ai_brain_job_priority', [
+  'low',
+  'normal',
+  'high',
+  'critical'
+]);
+
+// AI Brain Skill Types (all autonomous features)
+export const aiBrainSkillEnum = pgEnum('ai_brain_skill', [
+  'scheduleos_generation',    // Schedule generation
+  'scheduleos_migration',     // Schedule migration via vision
+  'billos_invoice_review',    // Invoice review and approval
+  'billos_payroll_review',    // Payroll review and approval
+  'auditos_compliance',       // Compliance auditing
+  'intelligenceos_prediction',// Predictive analytics
+  'helpos_support',           // Customer support chat
+  'disputeos_resolution',     // Dispute resolution
+  'talentos_scoring',         // Employee scoring
+  'marketingos_campaign'      // Marketing automation
+]);
+
+// AI Brain Jobs - All AI task requests across the platform
+export const aiBrainJobs = pgTable("ai_brain_jobs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Job context
+  workspaceId: varchar("workspace_id").references(() => workspaces.id, { onDelete: 'cascade' }),
+  userId: varchar("user_id").references(() => users.id, { onDelete: 'set null' }),
+  skill: aiBrainSkillEnum("skill").notNull(), // Which AI skill to use
+  
+  // Job execution
+  priority: aiBrainJobPriorityEnum("priority").notNull().default('normal'),
+  status: aiBrainJobStatusEnum("status").notNull().default('pending'),
+  
+  // Input/Output
+  input: jsonb("input").notNull(), // Job parameters
+  output: jsonb("output"), // Job results
+  error: text("error"), // Error message if failed
+  
+  // Execution metadata
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+  executionTimeMs: integer("execution_time_ms"),
+  retryCount: integer("retry_count").default(0),
+  
+  // AI metrics
+  tokensUsed: integer("tokens_used"),
+  confidenceScore: doublePrecision("confidence_score"), // 0-1, AI confidence in result
+  requiresHumanReview: boolean("requires_human_review").default(false),
+  
+  // Approval workflow
+  approvedBy: varchar("approved_by").references(() => users.id, { onDelete: 'set null' }),
+  approvedAt: timestamp("approved_at"),
+  rejectedBy: varchar("rejected_by").references(() => users.id, { onDelete: 'set null' }),
+  rejectedAt: timestamp("rejected_at"),
+  rejectionReason: text("rejection_reason"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("ai_brain_jobs_workspace_idx").on(table.workspaceId),
+  index("ai_brain_jobs_status_idx").on(table.status),
+  index("ai_brain_jobs_skill_idx").on(table.skill),
+  index("ai_brain_jobs_priority_idx").on(table.priority),
+  index("ai_brain_jobs_created_idx").on(table.createdAt),
+]);
+
+export const insertAiBrainJobSchema = createInsertSchema(aiBrainJobs).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertAiBrainJob = z.infer<typeof insertAiBrainJobSchema>;
+export type AiBrainJob = typeof aiBrainJobs.$inferSelect;
+
+// AI Event Stream - Telemetry from all platform events for learning
+export const aiEventStream = pgTable("ai_event_stream", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Event context (anonymized for cross-org learning)
+  workspaceId: varchar("workspace_id").references(() => workspaces.id, { onDelete: 'cascade' }),
+  eventType: varchar("event_type").notNull(), // e.g., 'error', 'resolution', 'feedback'
+  feature: varchar("feature").notNull(), // e.g., 'timetracker', 'schedule', 'invoice'
+  
+  // Event data
+  fingerprint: varchar("fingerprint").notNull(), // Anonymized hash for pattern matching
+  payload: jsonb("payload").notNull(), // Anonymized event data
+  outcome: varchar("outcome"), // 'success', 'failure', 'timeout', etc.
+  
+  // Learning signals
+  userFeedback: varchar("user_feedback"), // 'helpful', 'not_helpful', 'resolved'
+  resolutionTime: integer("resolution_time_seconds"),
+  
+  // Metadata
+  clientInfo: jsonb("client_info"), // Browser, device info (anonymized)
+  
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("ai_event_stream_workspace_idx").on(table.workspaceId),
+  index("ai_event_stream_type_idx").on(table.eventType),
+  index("ai_event_stream_fingerprint_idx").on(table.fingerprint),
+  index("ai_event_stream_created_idx").on(table.createdAt),
+]);
+
+export const insertAiEventStreamSchema = createInsertSchema(aiEventStream).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertAiEventStream = z.infer<typeof insertAiEventStreamSchema>;
+export type AiEventStream = typeof aiEventStream.$inferSelect;
+
+// AI Global Patterns - Cross-organizational learnings (anonymized)
+export const aiGlobalPatterns = pgTable("ai_global_patterns", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Pattern identification
+  patternType: varchar("pattern_type").notNull(), // e.g., 'scheduling_conflict', 'invoice_error'
+  fingerprint: varchar("fingerprint").notNull().unique(), // Unique pattern identifier
+  
+  // Pattern data (anonymized)
+  description: text("description").notNull(),
+  occurrences: integer("occurrences").default(1), // How many times seen across all orgs
+  affectedWorkspaces: integer("affected_workspaces").default(1), // K-anonymity count
+  
+  // Learning status
+  validated: boolean("validated").default(false), // Human verified
+  validatedBy: varchar("validated_by").references(() => users.id, { onDelete: 'set null' }),
+  validatedAt: timestamp("validated_at"),
+  
+  // Solution linkage
+  hasSolution: boolean("has_solution").default(false),
+  
+  // Metadata
+  metadata: jsonb("metadata"), // Additional pattern details
+  embedding: text("embedding"), // Vector embedding for similarity search
+  
+  firstSeenAt: timestamp("first_seen_at").defaultNow(),
+  lastSeenAt: timestamp("last_seen_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("ai_global_patterns_type_idx").on(table.patternType),
+  index("ai_global_patterns_validated_idx").on(table.validated),
+  index("ai_global_patterns_has_solution_idx").on(table.hasSolution),
+]);
+
+export const insertAiGlobalPatternSchema = createInsertSchema(aiGlobalPatterns).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  firstSeenAt: true,
+  lastSeenAt: true,
+});
+
+export type InsertAiGlobalPattern = z.infer<typeof insertAiGlobalPatternSchema>;
+export type AiGlobalPattern = typeof aiGlobalPatterns.$inferSelect;
+
+// AI Solution Library - Validated fixes available to all organizations
+export const aiSolutionLibrary = pgTable("ai_solution_library", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Linked pattern
+  patternId: varchar("pattern_id").references(() => aiGlobalPatterns.id, { onDelete: 'cascade' }),
+  
+  // Solution details
+  title: varchar("title").notNull(),
+  description: text("description").notNull(),
+  solutionType: varchar("solution_type").notNull(), // 'automated', 'manual', 'hybrid'
+  
+  // Implementation
+  automationScript: text("automation_script"), // Code/logic for automated fix
+  manualSteps: jsonb("manual_steps"), // Step-by-step instructions
+  
+  // Effectiveness metrics
+  successRate: doublePrecision("success_rate").default(0), // 0-1
+  timesApplied: integer("times_applied").default(0),
+  avgResolutionTime: integer("avg_resolution_time_seconds"),
+  
+  // Validation
+  validated: boolean("validated").default(false),
+  validatedBy: varchar("validated_by").references(() => users.id, { onDelete: 'set null' }),
+  validatedAt: timestamp("validated_at"),
+  
+  // Status
+  status: varchar("status").notNull().default('active'), // 'active', 'deprecated', 'experimental'
+  
+  // Rollout control
+  rolloutPercentage: integer("rollout_percentage").default(0), // 0-100, gradual rollout
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("ai_solution_library_pattern_idx").on(table.patternId),
+  index("ai_solution_library_status_idx").on(table.status),
+  index("ai_solution_library_validated_idx").on(table.validated),
+]);
+
+export const insertAiSolutionLibrarySchema = createInsertSchema(aiSolutionLibrary).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertAiSolutionLibrary = z.infer<typeof insertAiSolutionLibrarySchema>;
+export type AiSolutionLibrary = typeof aiSolutionLibrary.$inferSelect;
+
+// AI Feedback Loops - Human validation and confidence scoring
+export const aiFeedbackLoops = pgTable("ai_feedback_loops", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Context
+  workspaceId: varchar("workspace_id").references(() => workspaces.id, { onDelete: 'cascade' }),
+  userId: varchar("user_id").references(() => users.id, { onDelete: 'set null' }),
+  jobId: varchar("job_id").references(() => aiBrainJobs.id, { onDelete: 'cascade' }),
+  
+  // Feedback
+  rating: integer("rating"), // 1-5 stars
+  sentiment: varchar("sentiment"), // 'positive', 'neutral', 'negative'
+  feedback: text("feedback"),
+  wasHelpful: boolean("was_helpful"),
+  
+  // Outcome tracking
+  issueResolved: boolean("issue_resolved"),
+  timeToResolution: integer("time_to_resolution_seconds"),
+  
+  // Human corrections
+  aiSuggestion: jsonb("ai_suggestion"), // What AI recommended
+  humanCorrection: jsonb("human_correction"), // What human actually did
+  
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("ai_feedback_loops_workspace_idx").on(table.workspaceId),
+  index("ai_feedback_loops_job_idx").on(table.jobId),
+  index("ai_feedback_loops_helpful_idx").on(table.wasHelpful),
+]);
+
+export const insertAiFeedbackLoopSchema = createInsertSchema(aiFeedbackLoops).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertAiFeedbackLoop = z.infer<typeof insertAiFeedbackLoopSchema>;
+export type AiFeedbackLoop = typeof aiFeedbackLoops.$inferSelect;
+
+// AI Skill Registry - Registered AI skills/modules
+export const aiSkillRegistry = pgTable("ai_skill_registry", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Skill identification
+  skillKey: varchar("skill_key").notNull().unique(), // e.g., 'scheduleos_generation'
+  name: varchar("name").notNull(),
+  description: text("description").notNull(),
+  
+  // Configuration
+  enabled: boolean("enabled").default(true),
+  requiresApproval: boolean("requires_approval").default(false),
+  confidenceThreshold: doublePrecision("confidence_threshold").default(0.95),
+  
+  // Resource limits
+  maxConcurrentJobs: integer("max_concurrent_jobs").default(5),
+  timeoutSeconds: integer("timeout_seconds").default(300),
+  maxRetries: integer("max_retries").default(3),
+  
+  // Cost management
+  estimatedCostPer1kTokens: decimal("estimated_cost_per_1k_tokens", { precision: 10, scale: 4 }),
+  
+  // Metrics
+  totalExecutions: integer("total_executions").default(0),
+  successfulExecutions: integer("successful_executions").default(0),
+  failedExecutions: integer("failed_executions").default(0),
+  avgExecutionTimeMs: integer("avg_execution_time_ms"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("ai_skill_registry_enabled_idx").on(table.enabled),
+]);
+
+export const insertAiSkillRegistrySchema = createInsertSchema(aiSkillRegistry).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertAiSkillRegistry = z.infer<typeof insertAiSkillRegistrySchema>;
+export type AiSkillRegistry = typeof aiSkillRegistry.$inferSelect;
+
+// AI Dashboard Snapshots - Pre-computed metrics for fast dashboard loading
+export const aiDashboardSnapshots = pgTable("ai_dashboard_snapshots", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Scope
+  workspaceId: varchar("workspace_id").references(() => workspaces.id, { onDelete: 'cascade' }),
+  snapshotType: varchar("snapshot_type").notNull(), // 'global', 'workspace', 'daily'
+  snapshotDate: timestamp("snapshot_date").notNull(),
+  
+  // Metrics
+  metrics: jsonb("metrics").notNull(), // Pre-computed dashboard data
+  
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("ai_dashboard_snapshots_workspace_idx").on(table.workspaceId),
+  index("ai_dashboard_snapshots_type_idx").on(table.snapshotType),
+  index("ai_dashboard_snapshots_date_idx").on(table.snapshotDate),
+]);
+
+export const insertAiDashboardSnapshotSchema = createInsertSchema(aiDashboardSnapshots).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertAiDashboardSnapshot = z.infer<typeof insertAiDashboardSnapshotSchema>;
+export type AiDashboardSnapshot = typeof aiDashboardSnapshots.$inferSelect;
