@@ -5177,6 +5177,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // List All Schedule Proposals (for workflow approval page)
+  app.get('/api/scheduleos/proposals', isAuthenticated, requireManager, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const [userWorkspace] = await db.select().from(workspaceMembers).where(eq(workspaceMembers.userId, userId)).limit(1);
+      if (!userWorkspace) return res.status(404).json({ message: "Workspace not found" });
+      
+      const { scheduleProposals } = await import("@shared/schema");
+      
+      // Fetch all proposals for this workspace, ordered by newest first
+      const rawProposals = await db.select().from(scheduleProposals)
+        .where(eq(scheduleProposals.workspaceId, userWorkspace.workspaceId))
+        .orderBy(desc(scheduleProposals.id)) // Use id for ordering (safer than createdAt)
+        .limit(100); // Limit to 100 most recent proposals
+      
+      // Transform proposals to include week dates from aiResponse
+      const proposals = rawProposals.map(p => {
+        const aiResp = p.aiResponse as any;
+        
+        // Safety: Extract first assignment's shift to get week dates (with fallback)
+        let weekStart: Date | null = null;
+        let weekEnd: Date | null = null;
+        
+        try {
+          const firstShift = aiResp?.assignments?.[0]?.shifts?.[0];
+          if (firstShift?.startTime) {
+            weekStart = new Date(firstShift.startTime);
+            weekEnd = new Date(weekStart);
+            weekEnd.setDate(weekEnd.getDate() + 6);
+          }
+        } catch (e) {
+          console.warn('Failed to extract week dates from proposal:', p.id);
+        }
+        
+        // Fallback to proposal creation date if no shift data
+        if (!weekStart) {
+          weekStart = p.createdAt ? new Date(p.createdAt) : new Date();
+          weekEnd = new Date(weekStart);
+          weekEnd.setDate(weekEnd.getDate() + 6);
+        }
+        
+        return {
+          ...p,
+          weekStartDate: weekStart.toISOString(),
+          weekEndDate: weekEnd.toISOString(),
+        };
+      });
+      
+      res.json(proposals);
+    } catch (error: any) {
+      console.error("Error fetching schedule proposals:", error);
+      res.status(500).json({ message: error.message || "Failed to fetch proposals" });
+    }
+  });
+  
   // Get Schedule Proposal Details
   app.get('/api/scheduleos/proposals/:id', isAuthenticated, async (req: any, res) => {
     try {
