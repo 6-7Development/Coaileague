@@ -1012,7 +1012,7 @@ export default function UniversalSchedule() {
                 <Select value={shiftForm.employeeId || ''} onValueChange={(value) =>
                   setShiftForm(prev => ({ ...prev, employeeId: value }))
                 }>
-                  <SelectTrigger id="employee" data-testid="select-employee" className="h-9">
+                  <SelectTrigger id="employee" data-testid="select-employee">
                     <SelectValue placeholder="Select employee" />
                   </SelectTrigger>
                   <SelectContent>
@@ -1035,7 +1035,6 @@ export default function UniversalSchedule() {
                   value={shiftForm.position}
                   onChange={(e) => setShiftForm(prev => ({ ...prev, position: e.target.value }))}
                   placeholder="Role"
-                  className="h-9"
                   data-testid="input-position"
                 />
               </div>
@@ -1044,7 +1043,7 @@ export default function UniversalSchedule() {
                 <Select value={shiftForm.clientId} onValueChange={(value) =>
                   setShiftForm(prev => ({ ...prev, clientId: value }))
                 }>
-                  <SelectTrigger id="client" data-testid="select-client" className="h-9">
+                  <SelectTrigger id="client" data-testid="select-client">
                     <SelectValue placeholder="Select" />
                   </SelectTrigger>
                   <SelectContent>
@@ -1066,7 +1065,6 @@ export default function UniversalSchedule() {
                 value={shiftForm.location}
                 onChange={(e) => setShiftForm(prev => ({ ...prev, location: e.target.value }))}
                 placeholder="Area/Site"
-                className="h-9"
                 data-testid="input-location"
               />
             </div>
@@ -1080,7 +1078,6 @@ export default function UniversalSchedule() {
                   type="time"
                   value={shiftForm.clockIn}
                   onChange={(e) => setShiftForm(prev => ({ ...prev, clockIn: e.target.value }))}
-                  className="h-9"
                   data-testid="input-clock-in"
                 />
               </div>
@@ -1091,7 +1088,6 @@ export default function UniversalSchedule() {
                   type="time"
                   value={shiftForm.clockOut}
                   onChange={(e) => setShiftForm(prev => ({ ...prev, clockOut: e.target.value }))}
-                  className="h-9"
                   data-testid="input-clock-out"
                 />
               </div>
