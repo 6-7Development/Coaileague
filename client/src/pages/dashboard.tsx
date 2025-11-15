@@ -219,16 +219,17 @@ export default function Dashboard() {
     },
   });
 
-  // Show loading transition on mount
-  useEffect(() => {
-    showTransition({
-      status: "loading",
-      message: "Loading Dashboard...",
-      submessage: "Preparing your workspace",
-      duration: 1500,
-      onComplete: hideTransition
-    });
-  }, []);
+  // DISABLED: Loading transition was blocking workspace access
+  // The dashboard loads fast enough without a loading overlay
+  // useEffect(() => {
+  //   showTransition({
+  //     status: "loading",
+  //     message: "Loading Dashboard...",
+  //     submessage: "Preparing your workspace",
+  //     duration: 1500,
+  //     onComplete: hideTransition
+  //   });
+  // }, []);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
