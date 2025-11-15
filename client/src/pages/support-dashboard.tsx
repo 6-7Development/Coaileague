@@ -97,10 +97,10 @@ export default function SupportDashboard() {
       <ScrollArea className="h-full w-full">
         <div className="flex flex-col gap-6 p-4 md:p-6 max-w-7xl mx-auto pb-8">
           {/* Branded Header with Large Logo */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 p-6 sm:p-8 border border-indigo-500/20">
+        <div className="relative overflow-hidden rounded-2xl bg-card border p-6 sm:p-8">
           {/* Animated gradient orbs */}
-          <div className="absolute top-0 left-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute bottom-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+          <div className="absolute top-0 left-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-0 right-0 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
           
           {/* Logo and Title */}
           <div className="relative z-10 flex flex-col sm:flex-row items-center gap-6">
@@ -108,10 +108,10 @@ export default function SupportDashboard() {
               <AnimatedAutoForceLogo size="lg" variant="full" />
             </div>
             <div className="text-center sm:text-left">
-              <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-white via-blue-100 to-indigo-200 bg-clip-text text-transparent mb-2">
+              <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-primary via-primary/80 to-accent bg-clip-text text-transparent mb-2">
                 Support Dashboard
               </h1>
-              <p className="text-slate-300 text-sm sm:text-base">
+              <p className="text-muted-foreground text-sm sm:text-base">
                 Manage support conversations and help users in real-time
               </p>
             </div>

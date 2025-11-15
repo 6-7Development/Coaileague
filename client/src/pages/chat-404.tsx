@@ -52,11 +52,11 @@ export default function Chat404() {
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center p-4 bg-gradient-to-br from-blue-950 via-slate-900 to-slate-800">
+    <div className="min-h-screen w-full flex items-center justify-center p-4 bg-background">
       {/* Animated background mesh */}
       <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0zNiAxOGMzLjMxNCAwIDYgMi42ODYgNiA2cy0yLjY4NiA2LTYgNi02LTIuNjg2LTYtNiAyLjY4Ni02IDYtNnoiIHN0cm9rZT0iIzFmM2E4YSIgc3Ryb2tlLXdpZHRoPSIuNSIgb3BhY2l0eT0iLjEiLz48L2c+PC9zdmc+')] opacity-20" />
       
-      <Card className="w-full max-w-2xl border-blue-500/30 bg-gradient-to-br from-slate-900/90 via-blue-950/90 to-slate-800/90 backdrop-blur-xl shadow-2xl relative overflow-hidden">
+      <Card className="w-full max-w-2xl border backdrop-blur-xl shadow-2xl relative overflow-hidden">
         {/* Glow effect */}
         <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-lg blur-xl opacity-20 animate-pulse" />
         

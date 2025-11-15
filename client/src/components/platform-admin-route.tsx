@@ -9,7 +9,7 @@ export function PlatformAdminRoute({ children }: { children: React.ReactNode }) 
 
   if (isLoading) {
     return (
-      <div className="h-screen flex items-center justify-center">
+      <div className="h-screen flex items-center justify-center bg-background">
         <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" aria-label="Loading" />
       </div>
     );
@@ -21,7 +21,7 @@ export function PlatformAdminRoute({ children }: { children: React.ReactNode }) 
 
   if (!isPlatformAdmin) {
     return (
-      <div className="h-screen flex items-center justify-center p-6">
+      <div className="h-screen flex items-center justify-center bg-background p-6">
         <Card className="max-w-md w-full">
           <CardHeader>
             <div className="flex items-center gap-3">
