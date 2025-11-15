@@ -258,6 +258,12 @@ export async function attachEmployeeExternalId(
           isPrimary: true,
         });
 
+        // CRITICAL: Sync external ID back to employees.employee_number column
+        await tx
+          .update(employees)
+          .set({ employeeNumber: externalId })
+          .where(eq(employees.id, employeeId));
+
         console.log(`[Identity] Created employee external ID: ${externalId} for employee ${employeeId}`);
         return { externalId, localNumber: nextVal };
       } catch (innerError: any) {

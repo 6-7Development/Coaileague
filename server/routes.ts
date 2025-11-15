@@ -2149,13 +2149,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const employee = await storage.createEmployee(validated);
       
-      // Generate external ID for new employee (non-blocking)
+      // Generate external ID for new employee (MUST complete before response)
       const { attachEmployeeExternalId } = await import('./services/identityService');
-      attachEmployeeExternalId(employee.id, workspaceId).catch(err => 
-        console.error('Failed to attach employee external ID:', err)
-      );
+      try {
+        await attachEmployeeExternalId(employee.id, workspaceId);
+      } catch (err) {
+        console.error('Failed to attach employee external ID:', err);
+      }
       
-      // Send onboarding email if employee has email
+      // Fetch updated employee with external ID
+      const updatedEmployee = await storage.getEmployee(employee.id, workspaceId);
+      
+      // Send onboarding email if employee has email (non-blocking)
       if (employee.email) {
         sendEmployeeOnboardingEmail(employee.email, {
           employeeName: `${employee.firstName} ${employee.lastName}`,
@@ -2164,7 +2169,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }).catch(err => console.error('Failed to send onboarding email:', err));
       }
       
-      res.json(employee);
+      res.json(updatedEmployee || employee);
     } catch (error: any) {
       console.error("Error creating employee:", error);
       res.status(400).json({ message: error.message || "Failed to create employee" });
