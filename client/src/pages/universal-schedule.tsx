@@ -35,7 +35,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import {
   Calendar, Clock, Users, Edit2, Trash2, Copy, ChevronLeft, ChevronRight, Plus, Download,
   Bot, CheckCircle, AlertCircle, BarChart3, Play, X, Camera, MessageSquare, FileText,
-  CheckSquare, MapPin, Menu, Sparkles, Zap, Bell, Settings, Shield, UserCheck, XCircle
+  CheckSquare, MapPin, Menu, Sparkles, Zap, Bell, Settings, Shield, UserCheck, XCircle,
+  PauseCircle, Send, AlertTriangle
 } from 'lucide-react';
 import type { Shift, Employee, Client, ShiftOrder } from '@shared/schema';
 import MobileSchedule from '@/pages/mobile-schedule';
@@ -177,9 +178,10 @@ export default function UniversalSchedule() {
   const { employee: currentEmployee } = useEmployee();
   const { workspaceRole } = useWorkspaceAccess();
   
-  // RBAC permissions
-  const isManager = workspaceRole === 'manager' || workspaceRole === 'admin' || workspaceRole === 'owner';
-  const isAdmin = workspaceRole === 'admin' || workspaceRole === 'owner';
+  // RBAC permissions - workspaceRole is authoritative
+  // Map org_owner to admin-level access per architect guidance
+  const isManager = ['manager', 'admin', 'owner', 'org_owner'].includes(workspaceRole);
+  const isAdmin = ['admin', 'owner', 'org_owner'].includes(workspaceRole);
   
   // Handler for admin-only actions
   const handleAdminOnlyAction = (actionName: string) => {
@@ -595,24 +597,174 @@ export default function UniversalSchedule() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2 flex-wrap">
-              <Button variant="outline" data-testid="button-export">
-                <Download className="w-4 h-4 mr-2" />
-                <span className="hidden sm:inline">Export</span>
-              </Button>
-              <Button variant="outline" data-testid="button-reports">
-                <BarChart3 className="w-4 h-4 mr-2" />
-                <span className="hidden sm:inline">Reports</span>
-              </Button>
-              <Button
-                onClick={() => setShowAIPanel(!showAIPanel)}
-                className="bg-gradient-to-r from-[#3b82f6] to-[#22d3ee] hover:from-[#2563eb] hover:to-[#06b6d4]"
-                data-testid="button-ai-assistant"
-              >
-                <Bot className="w-4 h-4 mr-2" />
-                AI Assistant
-              </Button>
-            </div>
+            {/* Schedule Tools - RBAC-aware toolbar */}
+            {isManager ? (
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Shift Governance */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" data-testid="button-shift-governance">
+                      <UserCheck className="w-4 h-4 mr-1" />
+                      Approvals
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-64">
+                    <div className="space-y-2">
+                      <h4 className="font-medium text-sm">Shift Governance</h4>
+                      <Separator />
+                      <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => toast({ description: "Approve shifts feature coming soon" })} data-testid="button-approve-shifts">
+                        <CheckCircle className="w-4 h-4 mr-2 text-green-600" />
+                        Approve Pending Shifts
+                      </Button>
+                      <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => toast({ description: "Reject shifts feature coming soon" })} data-testid="button-reject-shifts">
+                        <XCircle className="w-4 h-4 mr-2 text-red-600" />
+                        Review Rejections
+                      </Button>
+                      <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => toast({ description: "Escalation matrix feature coming soon" })} data-testid="button-escalations">
+                        <AlertCircle className="w-4 h-4 mr-2 text-orange-600" />
+                        Escalation Matrix
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="w-full justify-start" 
+                        onClick={() => handleAdminOnlyAction('Lock Schedule')}
+                        data-testid="button-lock-schedule"
+                      >
+                        <Shield className="w-4 h-4 mr-2" />
+                        Lock Schedule {!isAdmin && <span className="ml-auto text-xs text-muted-foreground">(Admin)</span>}
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="w-full justify-start" 
+                        onClick={() => handleAdminOnlyAction('Override Rules')}
+                        data-testid="button-override-rules"
+                      >
+                        <Settings className="w-4 h-4 mr-2" />
+                        Override Rules {!isAdmin && <span className="ml-auto text-xs text-muted-foreground">(Admin)</span>}
+                      </Button>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+
+                {/* Process Automation */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" data-testid="button-process-automation">
+                      <Zap className="w-4 h-4 mr-1" />
+                      Workflows
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-64">
+                    <div className="space-y-2">
+                      <h4 className="font-medium text-sm">Automation & Workflows</h4>
+                      <Separator />
+                      <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => toast({ description: "View workflows feature coming soon" })} data-testid="button-view-workflows">
+                        <Clock className="w-4 h-4 mr-2" />
+                        View Active Workflows
+                      </Button>
+                      <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => toast({ description: "Trigger AI fill feature coming soon" })} data-testid="button-trigger-fill">
+                        <Bot className="w-4 h-4 mr-2 text-blue-600" />
+                        Trigger AI Fill
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="w-full justify-start" 
+                        onClick={() => handleAdminOnlyAction('Pause Automation')}
+                        data-testid="button-pause-automation"
+                      >
+                        <PauseCircle className="w-4 h-4 mr-2" />
+                        Pause Automation {!isAdmin && <span className="ml-auto text-xs text-muted-foreground">(Admin)</span>}
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="w-full justify-start" 
+                        onClick={() => handleAdminOnlyAction('Manage Rules')}
+                        data-testid="button-manage-rules"
+                      >
+                        <Settings className="w-4 h-4 mr-2" />
+                        Manage Rules {!isAdmin && <span className="ml-auto text-xs text-muted-foreground">(Admin)</span>}
+                      </Button>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+
+                {/* Communications */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" data-testid="button-communications">
+                      <Bell className="w-4 h-4 mr-1" />
+                      Alerts
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-64">
+                    <div className="space-y-2">
+                      <h4 className="font-medium text-sm">Communications & Alerts</h4>
+                      <Separator />
+                      <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => toast({ description: "Send reminder feature coming soon" })} data-testid="button-send-reminder">
+                        <Send className="w-4 h-4 mr-2" />
+                        Send Shift Reminder
+                      </Button>
+                      <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => toast({ description: "Escalation matrix feature coming soon" })} data-testid="button-escalation-matrix">
+                        <AlertCircle className="w-4 h-4 mr-2" />
+                        Escalation Matrix
+                      </Button>
+                      <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => toast({ description: "Exception alerts feature coming soon" })} data-testid="button-exception-alerts">
+                        <AlertTriangle className="w-4 h-4 mr-2" />
+                        Exception Alerts
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="w-full justify-start" 
+                        onClick={() => handleAdminOnlyAction('Compliance Audit')}
+                        data-testid="button-compliance-audit"
+                      >
+                        <FileText className="w-4 h-4 mr-2" />
+                        Compliance Audit {!isAdmin && <span className="ml-auto text-xs text-muted-foreground">(Admin)</span>}
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="w-full justify-start" 
+                        onClick={() => handleAdminOnlyAction('AI Override Log')}
+                        data-testid="button-ai-override-log"
+                      >
+                        <Bot className="w-4 h-4 mr-2" />
+                        AI Override Log {!isAdmin && <span className="ml-auto text-xs text-muted-foreground">(Admin)</span>}
+                      </Button>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+
+                {/* AI Assistant - preserved */}
+                <Button
+                  onClick={() => setShowAIPanel(!showAIPanel)}
+                  className="bg-gradient-to-r from-[#3b82f6] to-[#22d3ee] hover:from-[#2563eb] hover:to-[#06b6d4]"
+                  size="sm"
+                  data-testid="button-ai-assistant"
+                >
+                  <Bot className="w-4 h-4 mr-2" />
+                  AI Assistant
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Employee view - minimal toolbar */}
+                <Button
+                  onClick={() => setShowAIPanel(!showAIPanel)}
+                  className="bg-gradient-to-r from-[#3b82f6] to-[#22d3ee] hover:from-[#2563eb] hover:to-[#06b6d4]"
+                  size="sm"
+                  data-testid="button-ai-assistant"
+                >
+                  <Bot className="w-4 h-4 mr-2" />
+                  AI Assistant
+                </Button>
+              </div>
+            )}
           </div>
 
           {/* AI Status Bar */}
@@ -647,165 +799,6 @@ export default function UniversalSchedule() {
               </Badge>
             )}
           </div>
-
-          {/* Schedule Tools - RBAC-aware with per-action permissions */}
-          {isManager && (
-            <div className="mt-3 p-3 bg-muted/50 rounded-lg border">
-              <div className="flex items-center justify-between flex-wrap gap-3">
-                <div className="flex items-center gap-2">
-                  <Shield className="w-4 h-4 text-blue-600" />
-                  <span className="font-medium text-sm">Schedule Tools</span>
-                </div>
-                
-                <div className="flex items-center gap-2 flex-wrap">
-                  {/* Shift Governance */}
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" size="sm" data-testid="button-shift-governance">
-                        <UserCheck className="w-4 h-4 mr-1" />
-                        Approvals
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-64">
-                      <div className="space-y-2">
-                        <h4 className="font-medium text-sm">Shift Governance</h4>
-                        <Separator />
-                        {/* Manager-level actions */}
-                        <Button variant="ghost" size="sm" className="w-full justify-start" data-testid="button-approve-shifts">
-                          <CheckCircle className="w-4 h-4 mr-2 text-green-600" />
-                          Approve Pending Shifts
-                        </Button>
-                        <Button variant="ghost" size="sm" className="w-full justify-start" data-testid="button-reject-shifts">
-                          <XCircle className="w-4 h-4 mr-2 text-red-600" />
-                          Review Rejections
-                        </Button>
-                        <Button variant="ghost" size="sm" className="w-full justify-start" data-testid="button-escalations">
-                          <AlertCircle className="w-4 h-4 mr-2 text-orange-600" />
-                          Escalation Matrix
-                        </Button>
-                        {/* Admin-only actions */}
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="w-full justify-start" 
-                          onClick={() => handleAdminOnlyAction('Lock Schedule')}
-                          data-testid="button-lock-schedule"
-                        >
-                          <Shield className="w-4 h-4 mr-2" />
-                          Lock Schedule {!isAdmin && <span className="ml-auto text-xs text-muted-foreground">(Admin)</span>}
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="w-full justify-start" 
-                          onClick={() => handleAdminOnlyAction('Override Rules')}
-                          data-testid="button-override-rules"
-                        >
-                          <Settings className="w-4 h-4 mr-2" />
-                          Override Rules {!isAdmin && <span className="ml-auto text-xs text-muted-foreground">(Admin)</span>}
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="w-full justify-start" 
-                          onClick={() => handleAdminOnlyAction('Compliance Audit')}
-                          data-testid="button-compliance-audit"
-                        >
-                          <FileText className="w-4 h-4 mr-2" />
-                          Compliance Audit {!isAdmin && <span className="ml-auto text-xs text-muted-foreground">(Admin)</span>}
-                        </Button>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-
-                  {/* Process Automation */}
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" size="sm" data-testid="button-workflows">
-                        <Zap className="w-4 h-4 mr-1" />
-                        Workflows
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-64">
-                      <div className="space-y-2">
-                        <h4 className="font-medium text-sm">Automation & Workflows</h4>
-                        <Separator />
-                        {/* Manager-level actions */}
-                        <Button variant="ghost" size="sm" className="w-full justify-start" data-testid="button-view-workflows">
-                          <FileText className="w-4 h-4 mr-2" />
-                          View Active Workflows
-                        </Button>
-                        <Button variant="ghost" size="sm" className="w-full justify-start" data-testid="button-trigger-ai-fill">
-                          <Bot className="w-4 h-4 mr-2 text-blue-600" />
-                          Trigger AI Auto-Fill
-                        </Button>
-                        {/* Admin-only actions */}
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="w-full justify-start" 
-                          onClick={() => handleAdminOnlyAction('AI Override Log')}
-                          data-testid="button-ai-override-log"
-                        >
-                          <Shield className="w-4 h-4 mr-2" />
-                          AI Override Log {!isAdmin && <span className="ml-auto text-xs text-muted-foreground">(Admin)</span>}
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="w-full justify-start" 
-                          onClick={() => handleAdminOnlyAction('Pause Automation')}
-                          data-testid="button-pause-automation"
-                        >
-                          <AlertCircle className="w-4 h-4 mr-2 text-yellow-600" />
-                          Pause Automation {!isAdmin && <span className="ml-auto text-xs text-muted-foreground">(Admin)</span>}
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="w-full justify-start" 
-                          onClick={() => handleAdminOnlyAction('Manage Org Rules')}
-                          data-testid="button-manage-rules"
-                        >
-                          <Settings className="w-4 h-4 mr-2" />
-                          Manage Org Rules {!isAdmin && <span className="ml-auto text-xs text-muted-foreground">(Admin)</span>}
-                        </Button>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-
-                  {/* Communications */}
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" size="sm" data-testid="button-notifications">
-                        <Bell className="w-4 h-4 mr-1" />
-                        Alerts
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-64">
-                      <div className="space-y-2">
-                        <h4 className="font-medium text-sm">Communications</h4>
-                        <Separator />
-                        {/* Manager-level actions */}
-                        <Button variant="ghost" size="sm" className="w-full justify-start" data-testid="button-notification-inbox">
-                          <Bell className="w-4 h-4 mr-2" />
-                          Notification Inbox
-                        </Button>
-                        <Button variant="ghost" size="sm" className="w-full justify-start" data-testid="button-broadcast">
-                          <MessageSquare className="w-4 h-4 mr-2" />
-                          Broadcast Update
-                        </Button>
-                        <Button variant="ghost" size="sm" className="w-full justify-start" data-testid="button-exception-alerts">
-                          <AlertCircle className="w-4 h-4 mr-2 text-orange-600" />
-                          Exception Alerts
-                        </Button>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Schedule Grid */}
