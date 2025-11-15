@@ -69,13 +69,21 @@ The platform features a professional aesthetic with Deep Charcoal, Platinum neut
    - Pattern: `await tx.update(clients).set({ clientCode: externalId }).where(eq(clients.id, clientId))`
    - Guarantees immediate visibility in UI and database queries
 
-3. **Backfill Script**: Created `server/scripts/backfill-external-ids.ts`
+3. **Critical Bug Fix - Early Return Paths**: Fixed both `attachEmployeeExternalId()` and `attachClientExternalId()`
+   - **Issue**: Early return paths when external ID already exists were not syncing to entity tables
+   - **Impact**: Legacy records with external IDs in `externalIdentifiers` but NULL in entity columns never synced
+   - **Fix**: Added sync UPDATE to early return paths in both functions
+   - **Result**: Both creation and retrieval paths now ensure entity tables are synced
+   - Idempotent: Multiple calls safely update to same value
+
+4. **Backfill Script**: Created `server/scripts/backfill-external-ids.ts`
    - Populates NULL `employee_number` and `client_code` from `externalIdentifiers` table
    - Idempotent: Safe to run multiple times
-   - Results: 4 employees + 4 clients updated successfully
-   - Identified: 32 legacy records (20 employees, 12 clients) with no external ID entries
+   - Initial run: 4 employees + 4 clients updated successfully
+   - Second run (post-fix): 0 updates needed - all records with external IDs now synced
+   - Identified: 32 legacy records (20 employees, 12 clients) with no external ID entries (test data)
 
-4. **E2E Testing**: Verified client creation with external ID sync
+5. **E2E Testing**: Verified client creation with external ID sync
    - Created test client via UI: "TestClient External"
    - Confirmed `client_code='CLI-DEMO-00004'` in database
    - Verified sync: `externalIdentifiers.external_id` matches `clients.client_code`
