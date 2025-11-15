@@ -2,6 +2,7 @@ import { db } from "../db";
 import { 
   workspaces, 
   employees,
+  clients,
   users,
   externalIdentifiers, 
   idSequences,
@@ -350,6 +351,12 @@ export async function attachClientExternalId(
           orgId: orgId,
           isPrimary: true,
         });
+
+        // CRITICAL: Sync external ID back to clients.client_code column
+        await tx
+          .update(clients)
+          .set({ clientCode: externalId })
+          .where(eq(clients.id, clientId));
 
         console.log(`[Identity] Created client external ID: ${externalId} for client ${clientId}`);
         return { externalId, localNumber: nextVal };
