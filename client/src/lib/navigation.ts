@@ -103,7 +103,7 @@ export const mainNavigation: NavSection[] = [
     ],
   },
   {
-    title: "OperationsOS™",
+    title: "Operations",
     items: [
       {
         label: "Schedules",
@@ -128,7 +128,7 @@ export const mainNavigation: NavSection[] = [
     ],
   },
   {
-    title: "BillOS™",
+    title: "Billing & Payroll",
     items: [
       {
         label: "Invoices",
@@ -167,7 +167,7 @@ export const mainNavigation: NavSection[] = [
     ],
   },
   {
-    title: "IntelligenceOS™",
+    title: "Analytics",
     items: [
       {
         label: "Reports",
@@ -188,7 +188,7 @@ export const mainNavigation: NavSection[] = [
     ],
   },
   {
-    title: "CommOS™",
+    title: "Communications",
     items: [
       {
         label: "Messages",
@@ -199,7 +199,7 @@ export const mainNavigation: NavSection[] = [
     ],
   },
   {
-    title: "AuditOS™",
+    title: "Compliance",
     items: [
       {
         label: "Audit Logs",

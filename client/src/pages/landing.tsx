@@ -132,12 +132,12 @@ export default function Landing() {
                 </Badge>
                 
                 <h1 className="responsive-h1 max-w-full text-balance">
-                  <span className="block">Workforce Management</span>
-                  <span className="block text-primary mt-1 sm:mt-2">Built for Rapid Response</span>
+                  <span className="block">AI-Powered Workforce</span>
+                  <span className="block text-primary mt-1 sm:mt-2">That Runs Itself</span>
                 </h1>
                 
                 <p className="responsive-body text-muted-foreground max-w-full">
-                  Streamline scheduling, time tracking, payroll, and compliance for emergency response teams and service organizations. Designed to reduce administrative tasks and improve operational efficiency.*
+                  Our integrated AI Brain autonomously manages scheduling, payroll, compliance, and operations from start to finish. Watch as complex workforce tasks complete themselves while you focus on growing your business.*
                 </p>
                 
                 <p className="responsive-small text-muted-foreground/80 max-w-full">
@@ -201,21 +201,80 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Stats Bar - PLATFORM CAPABILITIES */}
+      {/* Stats Bar - AI BRAIN CAPABILITIES */}
       <section className="border-b py-8 sm:py-12">
         <div className="responsive-container">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-8 max-w-4xl mx-auto text-center">
             <div className="space-y-1 sm:space-y-2">
-              <div className="responsive-h2 text-primary">8</div>
-              <div className="responsive-small text-muted-foreground text-wrap-auto">Core OS Modules</div>
-            </div>
-            <div className="space-y-1 sm:space-y-2">
-              <div className="responsive-h2 text-primary">99.9%</div>
-              <div className="responsive-small text-muted-foreground text-wrap-auto">Uptime SLA</div>
+              <div className="responsive-h2 text-primary">99%</div>
+              <div className="responsive-small text-muted-foreground text-wrap-auto">Tasks Completed by AI</div>
             </div>
             <div className="space-y-1 sm:space-y-2">
               <div className="responsive-h2 text-primary">24/7</div>
-              <div className="responsive-small text-muted-foreground text-wrap-auto">AI Support</div>
+              <div className="responsive-small text-muted-foreground text-wrap-auto">Autonomous Operations</div>
+            </div>
+            <div className="space-y-1 sm:space-y-2">
+              <div className="responsive-h2 text-primary">0</div>
+              <div className="responsive-small text-muted-foreground text-wrap-auto">Manual Intervention Required</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* AI Brain Showcase - THE MAIN SELLER */}
+      <section className="border-b bg-gradient-to-b from-background to-muted/20 responsive-spacing-y">
+        <div className="responsive-container">
+          <div className="text-center mb-8 sm:mb-12 max-w-full">
+            <Badge variant="outline" className="mb-4 inline-flex bg-primary/10">
+              <Sparkles className="h-3 w-3 mr-1 shrink-0 text-primary" />
+              Powered by AI Brain
+            </Badge>
+            <h2 className="responsive-h2 mb-4 max-w-full">
+              The AI Brain That Runs Your Business
+            </h2>
+            <p className="responsive-body text-muted-foreground max-w-2xl mx-auto px-4">
+              Our integrated AI Brain autonomously manages your entire workforce operation—from scheduling shifts to processing payroll—without manual intervention
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8 sm:mb-12">
+            {[
+              { icon: CalendarClock, title: "Smart Scheduling", desc: "AI creates optimized schedules matching skills, availability, and workload" },
+              { icon: DollarSign, title: "Auto Payroll", desc: "Calculate wages, deductions, and generate payments automatically" },
+              { icon: FileText, title: "Invoice Generation", desc: "Create and send client invoices based on completed work" },
+              { icon: Shield, title: "Compliance Monitoring", desc: "Track regulations and flag issues before they become problems" },
+            ].map((feature) => (
+              <Card key={feature.title} className="p-4 sm:p-6 hover-elevate">
+                <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-3 sm:mb-4">
+                  <feature.icon className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+                </div>
+                <h3 className="font-semibold text-base sm:text-lg mb-2">{feature.title}</h3>
+                <p className="text-xs sm:text-sm text-muted-foreground">{feature.desc}</p>
+              </Card>
+            ))}
+          </div>
+
+          <div className="bg-muted/50 rounded-lg sm:rounded-xl p-6 sm:p-8 lg:p-12 max-w-4xl mx-auto">
+            <div className="text-center space-y-4">
+              <div className="inline-flex items-center gap-2 text-sm font-medium text-primary">
+                <Zap className="h-4 w-4" />
+                <span>How It Works</span>
+              </div>
+              <p className="text-lg sm:text-xl font-semibold max-w-2xl mx-auto">
+                Set your organization's rules once. The AI Brain handles everything else—scheduling shifts, approving timesheets, generating invoices, processing payroll, and ensuring compliance.
+              </p>
+              <p className="text-sm text-muted-foreground max-w-2xl mx-auto">
+                The system monitors your operations 24/7, makes intelligent decisions based on your preferences, and only alerts you when human approval is needed (typically less than 1% of tasks).
+              </p>
+              <Button 
+                size="lg" 
+                onClick={() => setLocation("/register")}
+                className="mt-4"
+                data-testid="button-try-ai-brain"
+              >
+                Experience AI Brain Free
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
             </div>
           </div>
         </div>
@@ -227,13 +286,13 @@ export default function Landing() {
           <div className="text-center mb-12 sm:mb-16 max-w-full">
             <Badge variant="outline" className="mb-4 inline-flex">
               <Sparkles className="h-3 w-3 mr-1 shrink-0" />
-              Platform Preview
+              Platform Features
             </Badge>
             <h2 className="responsive-h2 mb-4 max-w-full">
-              See the Platform in Action
+              Complete Workforce Management
             </h2>
             <p className="responsive-body text-muted-foreground max-w-2xl mx-auto px-4">
-              Every module designed for enterprise-grade performance and ease of use
+              Integrated tools for every aspect of workforce operations
             </p>
           </div>
 
@@ -243,7 +302,7 @@ export default function Landing() {
               <div className="space-y-3 sm:space-y-4 max-w-full">
                 <Badge variant="outline" className="inline-flex">
                   <Clock className="h-3 w-3 mr-1 shrink-0" />
-                  TimeOS™
+                  Time Tracking
                 </Badge>
                 <h3 className="text-xl sm:text-2xl lg:text-3xl font-bold max-w-full">
                   GPS-Verified Time Tracking
@@ -286,10 +345,10 @@ export default function Landing() {
               <div className="lg:order-2 space-y-3 sm:space-y-4 max-w-full">
                 <Badge variant="outline" className="inline-flex">
                   <CalendarClock className="h-3 w-3 mr-1 shrink-0" />
-                  ScheduleOS™
+                  Scheduling
                 </Badge>
                 <h3 className="text-xl sm:text-2xl lg:text-3xl font-bold max-w-full">
-                  Smart Scheduling
+                  AI-Powered Smart Scheduling
                 </h3>
                 <p className="text-muted-foreground text-base sm:text-lg max-w-full">
                   Create schedules with drag-and-drop interface. Conflict detection prevents double-booking.
@@ -330,7 +389,7 @@ export default function Landing() {
               <div className="space-y-3 sm:space-y-4 max-w-full">
                 <Badge variant="outline" className="inline-flex">
                   <BarChart3 className="h-3 w-3 mr-1 shrink-0" />
-                  AnalyticsOS™
+                  Analytics
                 </Badge>
                 <h3 className="text-xl sm:text-2xl lg:text-3xl font-bold max-w-full">
                   Real-Time Business Intelligence
@@ -371,19 +430,19 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Features Section - Core OS Modules */}
+      {/* Features Section - AI Brain Managed Features */}
       <section id="features" className="py-20 sm:py-28">
         <div className="container mx-auto px-4 sm:px-6">
           <div className="text-center max-w-3xl mx-auto mb-16">
             <Badge variant="outline" className="mb-4">
               <Sparkles className="h-3 w-3 mr-1" />
-              Complete Operating System
+              AI Brain Automation
             </Badge>
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4">
-              Everything You Need in One Platform
+              Complete Workforce Automation
             </h2>
             <p className="text-lg text-muted-foreground">
-              Eight integrated "OS" modules that work together seamlessly to automate your entire workforce operation.
+              Integrated features managed by our AI Brain—working together seamlessly to run your entire operation autonomously.
             </p>
           </div>
 
@@ -391,15 +450,15 @@ export default function Landing() {
             {[
               {
                 icon: CalendarClock,
-                title: "ScheduleOS™",
-                description: "AI-powered intelligent scheduling with constraint solver + GPT-4 validation. Optimizes for reliability, location, and compliance.",
-                features: ["Smart algorithms", "GPT-4 validation", "Conflict detection", "Risk scoring"],
+                title: "AI Scheduling",
+                description: "Intelligent scheduling managed by AI Brain. Automatically optimizes for skills, availability, and compliance.",
+                features: ["AI optimization", "Auto-assignments", "Conflict detection", "Risk scoring"],
                 badge: "AI Powered",
                 color: "text-primary",
               },
               {
                 icon: Clock,
-                title: "TimeOS™",
+                title: "Time Tracking",
                 description: "GPS-verified time tracking with photo proof. Eliminate buddy punching and time theft.",
                 features: ["GPS verification", "Photo required", "Location accuracy", "Real-time tracking"],
                 badge: "Live",
@@ -407,49 +466,49 @@ export default function Landing() {
               },
               {
                 icon: DollarSign,
-                title: "PayrollOS™",
-                description: "Fully automated payroll processing. Zero-touch calculation with tax withholding.",
+                title: "Auto Payroll",
+                description: "Fully automated payroll processing. Zero-touch calculation with tax withholding managed by AI.",
                 features: ["Auto-payroll", "Tax calculations", "Multi-state ready", "Compliance"],
-                badge: "Live",
+                badge: "AI Powered",
                 color: "text-primary",
               },
               {
                 icon: CreditCard,
-                title: "BillOS™",
-                description: "Automatic invoice generation from time entries. Get paid faster.",
+                title: "Smart Billing",
+                description: "Automatic invoice generation from time entries. Get paid faster with AI-managed billing cycles.",
                 features: ["Auto-invoicing", "Client billing", "Stripe integration", "Payment tracking"],
-                badge: "Live",
+                badge: "AI Powered",
                 color: "text-primary",
               },
               {
                 icon: UserPlus,
-                title: "HireOS™",
-                description: "Smart hiring and digital onboarding. From applicant to employee in hours.",
+                title: "Smart Hiring",
+                description: "AI-assisted hiring and digital onboarding. From applicant to employee in hours.",
                 features: ["ATS system", "E-signatures", "Compliance docs", "Onboarding flow"],
                 badge: "Live",
                 color: "text-primary",
               },
               {
                 icon: FileText,
-                title: "ReportOS™",
-                description: "Industry-specific compliance reports with photo requirements.",
+                title: "Compliance Reports",
+                description: "Industry-specific compliance reports with photo requirements. AI monitors and alerts.",
                 features: ["Templates", "Photo capture", "Approvals", "Client delivery"],
                 badge: "Live",
                 color: "text-accent",
               },
               {
                 icon: BarChart3,
-                title: "AnalyticsOS™",
-                description: "Real-time business intelligence. Track labor costs, revenue, performance.",
+                title: "AI Analytics",
+                description: "Real-time business intelligence powered by AI Brain. Track labor costs, revenue, performance.",
                 features: ["Dashboards", "Forecasting", "Cost analysis", "ROI metrics"],
-                badge: "Live",
+                badge: "AI Powered",
                 color: "text-secondary",
               },
               {
                 icon: Headphones,
-                title: "SupportOS™",
-                description: "Live help desk with AI knowledge base. Get answers fast.",
-                features: ["Live chat", "AI assistant", "Knowledge base", "Support available"],
+                title: "AI Support",
+                description: "24/7 AI-powered help desk with intelligent knowledge base. Get answers instantly.",
+                features: ["Live chat", "AI assistant", "Knowledge base", "Always available"],
                 badge: "AI Powered",
                 color: "text-primary",
               },

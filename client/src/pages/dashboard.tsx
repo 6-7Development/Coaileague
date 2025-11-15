@@ -579,9 +579,9 @@ export default function Dashboard() {
             <div className="bg-gradient-to-br from-blue-600 to-indigo-600 dark:from-blue-700 dark:to-indigo-700 rounded-xl p-6 sm:p-8 text-white shadow-lg border-2 border-blue-500 dark:border-blue-600">
               <div className="flex items-start justify-between mb-6">
                 <div>
-                  <h3 className="text-2xl font-bold mb-2" data-testid="text-automation-title">AutoForce™ Automation Value</h3>
+                  <h3 className="text-2xl font-bold mb-2" data-testid="text-automation-title">AI Brain Automation Value</h3>
                   <p className="text-blue-100 text-sm max-w-2xl">
-                    AI-powered automation saving your organization time and money across ScheduleOS™, BillOS™, and PayrollOS™
+                    Autonomous AI managing scheduling, billing, and payroll—saving your organization time and money 24/7
                   </p>
                   <div className="mt-2 text-xs text-blue-200 bg-blue-800/30 dark:bg-blue-900/30 rounded px-2 py-1 inline-flex items-center gap-1.5" data-testid="text-automation-disclaimer">
                     <AlertTriangle className="w-3 h-3 flex-shrink-0" />
@@ -624,37 +624,37 @@ export default function Dashboard() {
 
               {/* System Breakdown */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-white/5 rounded-lg p-4 border border-white/10" data-testid="card-schedule-os">
+                <div className="bg-white/5 rounded-lg p-4 border border-white/10" data-testid="card-schedule-ai">
                   <div className="flex items-center gap-2 mb-2">
                     <Calendar className="w-4 h-4 text-blue-200" />
-                    <h4 className="font-semibold text-sm">ScheduleOS™</h4>
+                    <h4 className="font-semibold text-sm">AI Scheduling</h4>
                   </div>
                   <p className="text-2xl font-bold mb-1">{stats.automation.breakdown.scheduleOS.shiftsGenerated}</p>
-                  <p className="text-xs text-blue-200">Shifts generated</p>
+                  <p className="text-xs text-blue-200">Shifts auto-generated</p>
                   <div className="mt-2 pt-2 border-t border-white/10">
                     <p className="text-xs text-blue-200">{stats.automation.breakdown.scheduleOS.hoursSaved.toFixed(1)} hrs saved • {(stats.automation.breakdown.scheduleOS.successRate * 100).toFixed(0)}% success</p>
                   </div>
                 </div>
 
-                <div className="bg-white/5 rounded-lg p-4 border border-white/10" data-testid="card-bill-os">
+                <div className="bg-white/5 rounded-lg p-4 border border-white/10" data-testid="card-bill-ai">
                   <div className="flex items-center gap-2 mb-2">
                     <FileText className="w-4 h-4 text-blue-200" />
-                    <h4 className="font-semibold text-sm">BillOS™</h4>
+                    <h4 className="font-semibold text-sm">Smart Billing</h4>
                   </div>
                   <p className="text-2xl font-bold mb-1">{stats.automation.breakdown.billOS.invoicesGenerated}</p>
-                  <p className="text-xs text-blue-200">Invoices generated</p>
+                  <p className="text-xs text-blue-200">Invoices auto-generated</p>
                   <div className="mt-2 pt-2 border-t border-white/10">
                     <p className="text-xs text-blue-200">{stats.automation.breakdown.billOS.hoursSaved.toFixed(1)} hrs saved • {(stats.automation.breakdown.billOS.successRate * 100).toFixed(0)}% success</p>
                   </div>
                 </div>
 
-                <div className="bg-white/5 rounded-lg p-4 border border-white/10" data-testid="card-payroll-os">
+                <div className="bg-white/5 rounded-lg p-4 border border-white/10" data-testid="card-payroll-ai">
                   <div className="flex items-center gap-2 mb-2">
                     <DollarSign className="w-4 h-4 text-blue-200" />
-                    <h4 className="font-semibold text-sm">PayrollOS™</h4>
+                    <h4 className="font-semibold text-sm">Auto Payroll</h4>
                   </div>
                   <p className="text-2xl font-bold mb-1">{stats.automation.breakdown.payrollOS.payrollsProcessed}</p>
-                  <p className="text-xs text-blue-200">Payrolls processed</p>
+                  <p className="text-xs text-blue-200">Payrolls auto-processed</p>
                   <div className="mt-2 pt-2 border-t border-white/10">
                     <p className="text-xs text-blue-200">{stats.automation.breakdown.payrollOS.hoursSaved.toFixed(1)} hrs saved • {(stats.automation.breakdown.payrollOS.successRate * 100).toFixed(0)}% success</p>
                   </div>
