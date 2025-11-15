@@ -10618,6 +10618,64 @@ export const aiBrainSkillEnum = pgEnum('ai_brain_skill', [
   'marketingos_campaign'      // Marketing automation
 ]);
 
+// Monitoring & Alerting Enums
+export const monitoringScopeEnum = pgEnum('monitoring_scope', [
+  'global',
+  'workspace'
+]);
+
+export const monitoringTypeEnum = pgEnum('monitoring_type', [
+  'credential_expiry',
+  'contract_expiry',
+  'payment_issue',
+  'schedule_conflict',
+  'compliance_violation',
+  'timecard_anomaly'
+]);
+
+export const monitoringStatusEnum = pgEnum('monitoring_status', [
+  'active',
+  'paused',
+  'failed'
+]);
+
+export const alertTypeEnum = pgEnum('alert_type', [
+  'credential_expiry',
+  'contract_expiry',
+  'payment_issue',
+  'schedule_conflict',
+  'compliance_violation',
+  'timecard_anomaly',
+  'system_alert'
+]);
+
+export const alertSeverityEnum = pgEnum('alert_severity', [
+  'low',
+  'medium',
+  'high',
+  'critical'
+]);
+
+export const alertChannelEnum = pgEnum('alert_channel', [
+  'helpos',
+  'email',
+  'sms'
+]);
+
+export const alertStatusEnum = pgEnum('alert_status', [
+  'queued',
+  'dispatched',
+  'acknowledged',
+  'resolved'
+]);
+
+export const notificationDeliveryStatusEnum = pgEnum('notification_delivery_status', [
+  'pending',
+  'sent',
+  'delivered',
+  'failed'
+]);
+
 // AI Brain Jobs - All AI task requests across the platform
 export const aiBrainJobs = pgTable("ai_brain_jobs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -10912,3 +10970,145 @@ export const insertAiDashboardSnapshotSchema = createInsertSchema(aiDashboardSna
 
 export type InsertAiDashboardSnapshot = z.infer<typeof insertAiDashboardSnapshotSchema>;
 export type AiDashboardSnapshot = typeof aiDashboardSnapshots.$inferSelect;
+
+// AI Context - Feature-specific context storage for monitoring
+export const aiContext = pgTable("ai_context", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").references(() => workspaces.id, { onDelete: "cascade" }),
+  scope: monitoringScopeEnum("scope").notNull().default("workspace"),
+  monitoringType: monitoringTypeEnum("monitoring_type").notNull(),
+  contextKey: varchar("context_key").notNull(),
+  entityType: varchar("entity_type").notNull(),
+  entityId: varchar("entity_id").notNull().default(''),
+  contextData: jsonb("context_data").notNull().default("{}"),
+  metadata: jsonb("metadata").default("{}"),
+  refreshIntervalMinutes: integer("refresh_interval_minutes").notNull().default(1440),
+  lastRefreshedAt: timestamp("last_refreshed_at").defaultNow(),
+  nextRefreshAt: timestamp("next_refresh_at"),
+  staleAfter: timestamp("stale_after"),
+  version: integer("version").notNull().default(1),
+  updatedBy: varchar("updated_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  uniqueIndex("ai_context_unique_idx").on(
+    sql`COALESCE(${table.workspaceId}, '')`,
+    table.scope,
+    table.monitoringType,
+    table.contextKey,
+    table.entityType,
+    table.entityId,
+  ),
+  index("ai_context_workspace_idx").on(table.workspaceId, table.scope),
+  index("ai_context_refresh_idx").on(table.nextRefreshAt),
+]);
+
+export const insertAiContextSchema = createInsertSchema(aiContext).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertAiContext = z.infer<typeof insertAiContextSchema>;
+export type AiContext = typeof aiContext.$inferSelect;
+
+// AI Monitoring Tasks - Scheduled monitoring jobs
+export const aiMonitoringTasks = pgTable("ai_monitoring_tasks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").references(() => workspaces.id, { onDelete: "cascade" }),
+  scope: monitoringScopeEnum("scope").notNull().default("workspace"),
+  monitoringType: monitoringTypeEnum("monitoring_type").notNull(),
+  status: monitoringStatusEnum("status").notNull().default("active"),
+  contextId: varchar("context_id").references(() => aiContext.id, { onDelete: "set null" }),
+  targetEntityType: varchar("target_entity_type").notNull(),
+  targetEntityId: varchar("target_entity_id").notNull().default(''),
+  configuration: jsonb("configuration").notNull().default("{}"),
+  runIntervalMinutes: integer("run_interval_minutes").notNull().default(1440),
+  lastRunAt: timestamp("last_run_at"),
+  nextRunAt: timestamp("next_run_at"),
+  lastRunStatus: monitoringStatusEnum("last_run_status"),
+  consecutiveFailures: integer("consecutive_failures").notNull().default(0),
+  failureReason: text("failure_reason"),
+  createdBy: varchar("created_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  uniqueIndex("ai_monitoring_tasks_unique_idx").on(
+    sql`COALESCE(${table.workspaceId}, '')`,
+    table.monitoringType,
+    table.targetEntityType,
+    table.targetEntityId,
+  ),
+  index("ai_monitoring_tasks_workspace_idx").on(table.workspaceId, table.status),
+  index("ai_monitoring_tasks_next_run_idx").on(table.nextRunAt),
+]);
+
+export const insertAiMonitoringTaskSchema = createInsertSchema(aiMonitoringTasks).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertAiMonitoringTask = z.infer<typeof insertAiMonitoringTaskSchema>;
+export type AiMonitoringTask = typeof aiMonitoringTasks.$inferSelect;
+
+// AI Proactive Alerts - Generated alerts with lifecycle management
+export const aiProactiveAlerts = pgTable("ai_proactive_alerts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").references(() => workspaces.id, { onDelete: "cascade" }),
+  taskId: varchar("task_id").references(() => aiMonitoringTasks.id, { onDelete: "set null" }),
+  alertType: alertTypeEnum("alert_type").notNull(),
+  severity: alertSeverityEnum("severity").notNull().default("medium"),
+  status: alertStatusEnum("status").notNull().default("queued"),
+  dedupeHash: varchar("dedupe_hash"),
+  payload: jsonb("payload").notNull().default("{}"),
+  contextSnapshot: jsonb("context_snapshot").default("{}"),
+  triggeredAt: timestamp("triggered_at").defaultNow(),
+  acknowledgedBy: varchar("acknowledged_by").references(() => users.id, { onDelete: "set null" }),
+  acknowledgedAt: timestamp("acknowledged_at"),
+  resolvedBy: varchar("resolved_by").references(() => users.id, { onDelete: "set null" }),
+  resolvedAt: timestamp("resolved_at"),
+  resolutionNote: text("resolution_note"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  uniqueIndex("ai_proactive_alerts_dedupe_idx").on(table.workspaceId, table.alertType, table.dedupeHash),
+  index("ai_proactive_alerts_workspace_idx").on(table.workspaceId, table.status),
+  index("ai_proactive_alerts_task_idx").on(table.taskId),
+]);
+
+export const insertAiProactiveAlertSchema = createInsertSchema(aiProactiveAlerts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertAiProactiveAlert = z.infer<typeof insertAiProactiveAlertSchema>;
+export type AiProactiveAlert = typeof aiProactiveAlerts.$inferSelect;
+
+// AI Notification History - Alert delivery tracking
+export const aiNotificationHistory = pgTable("ai_notification_history", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  alertId: varchar("alert_id").notNull().references(() => aiProactiveAlerts.id, { onDelete: "cascade" }),
+  workspaceId: varchar("workspace_id").references(() => workspaces.id, { onDelete: "cascade" }),
+  recipientUserId: varchar("recipient_user_id").references(() => users.id, { onDelete: "set null" }),
+  channel: alertChannelEnum("channel").notNull(),
+  status: notificationDeliveryStatusEnum("status").notNull().default("pending"),
+  payload: jsonb("payload").notNull().default("{}"),
+  metadata: jsonb("metadata").default("{}"),
+  sentAt: timestamp("sent_at"),
+  deliveredAt: timestamp("delivered_at"),
+  failureReason: text("failure_reason"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("ai_notification_history_alert_idx").on(table.alertId, table.status),
+  index("ai_notification_history_workspace_idx").on(table.workspaceId),
+]);
+
+export const insertAiNotificationHistorySchema = createInsertSchema(aiNotificationHistory).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertAiNotificationHistory = z.infer<typeof insertAiNotificationHistorySchema>;
+export type AiNotificationHistory = typeof aiNotificationHistory.$inferSelect;
