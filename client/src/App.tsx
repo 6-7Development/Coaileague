@@ -133,7 +133,6 @@ import { HelpDropdown } from "@/components/help-dropdown";
 import { PlanBadge } from "@/components/plan-badge";
 import { FeedbackWidget } from "@/components/feedback-widget";
 import { PageBreadcrumb } from "@/components/page-breadcrumb";
-import { AppBootOverlay } from "@/components/app-boot-overlay";
 
 // Separate header component for app navigation
 function AppHeader({ isRootAdmin, setLocation, setShowOnboarding }: any) {
@@ -496,7 +495,6 @@ export default function App() {
             <ThemeProvider defaultTheme="dark">
               <WorkspaceThemeProvider>
                 <TransitionProvider>
-                <AppBootOverlay />
                 <TooltipProvider>
                   <ResponsiveAppFrame>
                     <AppContent />
