@@ -95,7 +95,7 @@ export default function Invoices() {
   const autoGenerateMutation = useMutation({
     mutationFn: async (): Promise<{ generated: number; invoices: any[]; errors: any[] }> => {
       const response = await apiRequest("POST", "/api/invoices/auto-generate");
-      return response as { generated: number; invoices: any[]; errors: any[] };
+      return response as unknown as { generated: number; invoices: any[]; errors: any[] };
     },
     onSuccess: (data) => {
       setAutoGenerateResults(data);
