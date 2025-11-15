@@ -70,6 +70,7 @@ import { scheduleSmartAI, isScheduleSmartAvailable } from './services/scheduleSm
 import { seedAnchor } from './services/utils/scheduling';
 import { requireOwner, requireManager, requireManagerOrPlatformStaff, requireHRManager, requireSupervisor, requireEmployee, validateManagerAssignment, requirePlatformStaff, requirePlatformAdmin, requireWorkspaceRole, getUserPlatformRole, resolveWorkspaceForUser, attachWorkspaceId, type AuthenticatedRequest } from "./rbac";
 import { requireStarter, requireProfessional, requireEnterprise } from "./tierGuards";
+import { clientsQuerySchema } from "../shared/validation/pagination";
 import { 
   insertWorkspaceSchema,
   insertEmployeeSchema,
@@ -3694,27 +3695,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // CLIENT ROUTES (Multi-tenant isolated)
   // ============================================================================
   
-  // PROTECTED: Manager or platform staff
+  // PROTECTED: Manager or platform staff (paginated with invoice counts)
   app.get('/api/clients', requireAuth, requireManagerOrPlatformStaff, async (req: AuthenticatedRequest, res) => {
     try {
       // Platform staff accessing for diagnostics (middleware sets platformRole)
       if (req.platformRole && (req.platformRole === 'root_admin' || req.platformRole === 'sysop' || req.platformRole === 'support_manager')) {
-        // Platform staff can specify workspaceId via query
-        const targetWorkspaceId = req.workspaceId || req.query.workspaceId as string;
+        // Extract workspaceId separately from pagination params
+        const { workspaceId: queryWorkspaceId, ...paginationQuery } = req.query;
+        const targetWorkspaceId = req.workspaceId || queryWorkspaceId as string;
         
-        if (targetWorkspaceId) {
-          // Get specific workspace clients
-          const clients = await storage.getClientsByWorkspace(targetWorkspaceId);
-          return res.json(clients);
+        if (!targetWorkspaceId) {
+          // No workspace specified - return empty paginated response
+          return res.json({
+            data: [],
+            total: 0,
+            page: 1,
+            limit: 50,
+            pageCount: 0,
+            hasNext: false,
+            hasPrev: false
+          });
         }
         
-        // No workspaceId specified - show demo workspace for backwards compatibility
-        const allWorkspaces = await db.select().from(workspaces).limit(1);
-        if (allWorkspaces.length > 0) {
-          const clients = await storage.getClientsByWorkspace(allWorkspaces[0].id);
-          return res.json(clients);
-        }
-        return res.json([]);
+        // Validate pagination params
+        const validated = clientsQuerySchema.parse(paginationQuery);
+        
+        // Get paginated clients with invoice counts
+        const result = await storage.listClients({
+          workspaceId: targetWorkspaceId,
+          ...validated
+        });
+        
+        return res.json(result);
       }
       
       // Regular workspace manager/owner - use workspace from middleware
@@ -3724,9 +3736,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Workspace ID is required" });
       }
 
-      const clients = await storage.getClientsByWorkspace(workspaceId);
-      res.json(clients);
+      // Validate pagination params
+      const validated = clientsQuerySchema.parse(req.query);
+      
+      // Get paginated clients with invoice counts
+      const result = await storage.listClients({
+        workspaceId,
+        ...validated
+      });
+      
+      res.json(result);
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({
+          message: "Invalid query parameters",
+          errors: error.errors
+        });
+      }
       console.error("Error fetching clients:", error);
       res.status(500).json({ message: "Failed to fetch clients" });
     }
