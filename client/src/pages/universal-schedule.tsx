@@ -176,12 +176,13 @@ export default function UniversalSchedule() {
   const isMobile = useIsMobile();
   const { toast } = useToast();
   const { employee: currentEmployee } = useEmployee();
-  const { workspaceRole } = useWorkspaceAccess();
+  const { workspaceRole, platformRole } = useWorkspaceAccess();
   
-  // RBAC permissions - workspaceRole is authoritative
-  // Map org_owner to admin-level access per architect guidance
-  const isManager = ['manager', 'admin', 'owner', 'org_owner'].includes(workspaceRole);
-  const isAdmin = ['admin', 'owner', 'org_owner'].includes(workspaceRole);
+  // RBAC permissions - prefer workspaceRole, fallback to platformRole
+  // This ensures users with platformRole set (but workspaceRole null) retain access
+  const effectiveRole = workspaceRole || platformRole;
+  const isManager = ['manager', 'admin', 'owner', 'org_owner'].includes(effectiveRole);
+  const isAdmin = ['admin', 'owner', 'org_owner'].includes(effectiveRole);
   
   // Handler for admin-only actions
   const handleAdminOnlyAction = (actionName: string) => {
