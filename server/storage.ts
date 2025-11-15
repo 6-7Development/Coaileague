@@ -181,8 +181,10 @@ import {
   type Notification,
   type InsertNotification,
 } from "@shared/schema";
+import type { PaginatedResponse, ClientWithInvoiceCount } from "@shared/types";
+import type { ClientsQueryParams } from "@shared/validation/pagination";
 import { db } from "./db";
-import { eq, and, desc, isNotNull, isNull, or, like, sql, lte } from "drizzle-orm";
+import { eq, and, desc, isNotNull, isNull, or, like, sql, lte, count } from "drizzle-orm";
 
 // Generate unique organization ID: wfosupport-#########
 function generateOrganizationId(): string {
@@ -209,6 +211,11 @@ async function generateOrganizationSerial(): Promise<string> {
   
   return `ORG-${sequentialStr}-${randomStr}`;
 }
+
+// Pagination options for listClients (extends validated query params)
+export type ListClientsOptions = ClientsQueryParams & {
+  workspaceId: string;
+};
 
 // Storage Interface with Multi-Tenant Methods
 export interface IStorage {
@@ -238,6 +245,7 @@ export interface IStorage {
   createClient(client: InsertClient): Promise<Client>;
   getClient(id: string, workspaceId: string): Promise<Client | undefined>;
   getClientsByWorkspace(workspaceId: string): Promise<Client[]>;
+  listClients(options: ListClientsOptions): Promise<PaginatedResponse<ClientWithInvoiceCount>>;
   updateClient(id: string, workspaceId: string, data: Partial<InsertClient>): Promise<Client | undefined>;
   deleteClient(id: string, workspaceId: string): Promise<boolean>;
   
@@ -895,6 +903,111 @@ export class DatabaseStorage implements IStorage {
       .from(clients)
       .where(eq(clients.workspaceId, workspaceId))
       .orderBy(desc(clients.createdAt));
+  }
+
+  async listClients(options: ListClientsOptions): Promise<PaginatedResponse<ClientWithInvoiceCount>> {
+    const { workspaceId, page, limit, search, status, sort, order } = options;
+
+    // Build WHERE conditions
+    const conditions = [eq(clients.workspaceId, workspaceId)];
+
+    // Status filter
+    if (status === 'active') {
+      conditions.push(eq(clients.isActive, true));
+    } else if (status === 'inactive') {
+      conditions.push(eq(clients.isActive, false));
+    }
+
+    // Search filter (firstName, lastName, companyName, email, phone) - case-insensitive
+    if (search && search.trim().length > 0) {
+      const searchPattern = `%${search.trim()}%`;
+      conditions.push(
+        or(
+          sql`${clients.firstName} ILIKE ${searchPattern}`,
+          sql`${clients.lastName} ILIKE ${searchPattern}`,
+          sql`${clients.companyName} ILIKE ${searchPattern}`,
+          sql`${clients.email} ILIKE ${searchPattern}`,
+          sql`${clients.phone} ILIKE ${searchPattern}`
+        )!
+      );
+    }
+
+    // Build sort column
+    let sortColumn: any;
+    switch (sort) {
+      case 'firstName':
+        sortColumn = clients.firstName;
+        break;
+      case 'lastName':
+        sortColumn = clients.lastName;
+        break;
+      case 'companyName':
+        sortColumn = clients.companyName;
+        break;
+      case 'createdAt':
+      default:
+        sortColumn = clients.createdAt;
+        break;
+    }
+
+    // Get total count (without pagination)
+    const [countResult] = await db
+      .select({ count: sql<number>`COUNT(*)::int` })
+      .from(clients)
+      .where(and(...conditions));
+
+    const total = countResult?.count || 0;
+
+    // Get paginated data with invoice counts (workspace-scoped)
+    const offset = (page - 1) * limit;
+    const clientsData = await db
+      .select({
+        id: clients.id,
+        workspaceId: clients.workspaceId,
+        firstName: clients.firstName,
+        lastName: clients.lastName,
+        companyName: clients.companyName,
+        email: clients.email,
+        phone: clients.phone,
+        address: clients.address,
+        latitude: clients.latitude,
+        longitude: clients.longitude,
+        billingEmail: clients.billingEmail,
+        taxId: clients.taxId,
+        clientOvertimeMultiplier: clients.clientOvertimeMultiplier,
+        clientHolidayMultiplier: clients.clientHolidayMultiplier,
+        isActive: clients.isActive,
+        notes: clients.notes,
+        color: clients.color,
+        createdAt: clients.createdAt,
+        updatedAt: clients.updatedAt,
+        invoiceCount: sql<number>`COALESCE(COUNT(${invoices.id}), 0)::int`,
+      })
+      .from(clients)
+      .leftJoin(invoices, and(
+        eq(invoices.clientId, clients.id),
+        eq(invoices.workspaceId, clients.workspaceId)
+      ))
+      .where(and(...conditions))
+      .groupBy(clients.id)
+      .orderBy(order === 'asc' ? sortColumn : desc(sortColumn))
+      .limit(limit)
+      .offset(offset);
+
+    // Calculate pagination metadata
+    const pageCount = Math.ceil(total / limit);
+    const hasNext = page < pageCount;
+    const hasPrev = page > 1;
+
+    return {
+      data: clientsData,
+      total,
+      page,
+      limit,
+      pageCount,
+      hasNext,
+      hasPrev,
+    };
   }
 
   async updateClient(id: string, workspaceId: string, data: Partial<InsertClient>): Promise<Client | undefined> {
