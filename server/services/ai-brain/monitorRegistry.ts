@@ -13,18 +13,18 @@ export class MonitorRegistry {
   private monitors = new Map<string, MonitorDefinition>();
 
   /**
-   * Register a monitor definition
+   * Register a monitor definition (keyed by monitoringType)
    */
   registerMonitor(definition: MonitorDefinition): void {
-    this.monitors.set(definition.id, definition);
-    console.log(`📋 [MonitorRegistry] Registered monitor: ${definition.name} (${definition.id})`);
+    this.monitors.set(definition.monitoringType, definition);
+    console.log(`📋 [MonitorRegistry] Registered monitor: ${definition.name} (${definition.monitoringType})`);
   }
 
   /**
-   * Get a monitor definition by ID
+   * Get a monitor definition by monitoring type
    */
-  getMonitor(monitorId: string): MonitorDefinition | undefined {
-    return this.monitors.get(monitorId);
+  getMonitor(monitoringType: string): MonitorDefinition | undefined {
+    return this.monitors.get(monitoringType);
   }
 
   /**

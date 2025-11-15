@@ -135,7 +135,7 @@ export interface ScheduledMonitor {
   workspaceId: string | null;
   scope: 'global' | 'workspace';
   targetEntityType: string;
-  targetEntityId: string;
+  targetEntityId: string | null;
   configuration: Record<string, any>;
   nextRunAt: Date | null;
 }
