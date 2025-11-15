@@ -1186,6 +1186,9 @@ export type EmployeeTermination = typeof employeeTerminations.$inferSelect;
 export const clients = pgTable("clients", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  // External ID (CLI-XXXX-NNNNN format)
+  clientCode: varchar("client_code"),
 
   // Client information
   firstName: varchar("first_name").notNull(),
