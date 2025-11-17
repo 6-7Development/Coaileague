@@ -44,24 +44,8 @@ export interface GeminiResponse<T = any> {
   completionTokens?: number;
 }
 
-export interface ScheduleDecision {
-  shifts: Array<{
-    employeeId: string;
-    clientId: string;
-    startTime: string;
-    endTime: string;
-    role: string;
-    confidence: number;
-    reasoning: string;
-  }>;
-  conflicts: Array<{
-    type: string;
-    description: string;
-    severity: 'high' | 'medium' | 'low';
-  }>;
-  overallConfidence: number;
-  requiresApproval: boolean;
-}
+// Use ValidatedScheduleDecision from schemas instead
+export type ScheduleDecision = ValidatedScheduleDecision;
 
 export interface InvoiceDecision {
   clientId: string;

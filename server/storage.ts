@@ -382,6 +382,7 @@ export interface IStorage {
   // Event Sourcing & Data Integrity operations
   createAuditEvent(event: InsertAuditEvent): Promise<string>;
   getAuditEvent(id: string): Promise<AuditEvent | undefined>;
+  getAuditEvents(filters?: { workspaceId?: string; actorType?: string; eventType?: string; limit?: number }): Promise<AuditEvent[]>;
   verifyAuditEvent(eventId: string, actionHash: string): Promise<void>;
   registerID(entry: InsertIdRegistry): Promise<void>;
   createWriteAheadLog(entry: InsertWriteAheadLog): Promise<string>;
@@ -2001,6 +2002,38 @@ export class DatabaseStorage implements IStorage {
       .where(eq(auditEvents.id, id));
     
     return event;
+  }
+
+  async getAuditEvents(filters?: { workspaceId?: string; actorType?: string; eventType?: string; limit?: number }): Promise<AuditEvent[]> {
+    let query = db
+      .select()
+      .from(auditEvents);
+
+    const conditions = [];
+    
+    if (filters?.workspaceId) {
+      conditions.push(eq(auditEvents.workspaceId, filters.workspaceId));
+    }
+    
+    if (filters?.actorType) {
+      conditions.push(eq(auditEvents.actorType, filters.actorType));
+    }
+    
+    if (filters?.eventType) {
+      conditions.push(eq(auditEvents.eventType, filters.eventType));
+    }
+
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+
+    query = query.orderBy(desc(auditEvents.timestamp)) as any;
+
+    if (filters?.limit) {
+      query = query.limit(filters.limit) as any;
+    }
+
+    return await query;
   }
   
   async verifyAuditEvent(eventId: string, actionHash: string): Promise<void> {
