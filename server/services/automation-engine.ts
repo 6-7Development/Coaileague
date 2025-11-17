@@ -18,6 +18,17 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { storage } from '../storage';
 import { auditLogger, type AuditContext } from './audit-logger';
 import type { Shift, Employee, Client, TimeEntry } from '@shared/schema';
+import {
+  scheduleDecisionSchema,
+  invoiceDecisionSchema,
+  payrollDecisionSchema,
+  createFallbackScheduleDecision,
+  createFallbackInvoiceDecision,
+  createFallbackPayrollDecision,
+  type ValidatedScheduleDecision,
+  type ValidatedInvoiceDecision,
+  type ValidatedPayrollDecision,
+} from './automation-schemas';
 
 // Initialize Gemini AI
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
