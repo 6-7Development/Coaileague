@@ -49,8 +49,8 @@ export function WorkspaceLayout({
   return (
     <div
       className={cn(
-        "min-h-screen bg-white dark:bg-white overflow-x-hidden w-full",
-        heroGradient && "bg-gradient-to-b from-white via-white to-blue-50/30",
+        "min-h-screen bg-background overflow-x-hidden w-full",
+        heroGradient && "bg-gradient-to-b from-background via-background to-blue-50/30 dark:to-blue-950/30",
         className
       )}
     >
@@ -109,20 +109,20 @@ export function WorkspaceSection({
     <section
       className={cn(
         "space-y-4 sm:space-y-6",
-        card && "bg-white dark:bg-white border border-gray-200 dark:border-gray-200 rounded-lg p-4 sm:p-6",
-        bordered && !card && "border-b border-gray-200 dark:border-gray-200 pb-6 sm:pb-8",
+        card && "bg-card border border-border rounded-lg p-4 sm:p-6",
+        bordered && !card && "border-b border-border pb-6 sm:pb-8",
         className
       )}
     >
       {(title || description) && (
         <div className="space-y-1 sm:space-y-2">
           {title && (
-            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-900">
+            <h2 className="text-2xl sm:text-3xl font-bold text-foreground">
               {title}
             </h2>
           )}
           {description && (
-            <p className="text-sm sm:text-base text-gray-600 dark:text-gray-600">
+            <p className="text-sm sm:text-base text-muted-foreground">
               {description}
             </p>
           )}
