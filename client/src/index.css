@@ -230,12 +230,12 @@
   
   /* Sidebar - Blue-tinted Navy */
   --sidebar: 217 64% 10%;              /* Deep navy matching background */
-  --sidebar-foreground: 210 20% 96%;
+  --sidebar-foreground: 210 40% 80%;   /* Lighter blue-gray for better visibility */
   --sidebar-border: 217 60% 20%;       /* Blue-tinted border */
   --sidebar-primary: 221 83% 58%;      /* AutoForce blue #2563eb - Slightly brighter for dark mode */
   --sidebar-primary-foreground: 0 0% 100%;
   --sidebar-accent: 215 24% 18%;       /* Hover state */
-  --sidebar-accent-foreground: 210 20% 96%;
+  --sidebar-accent-foreground: 210 40% 85%;  /* Even lighter for hover visibility */
   --sidebar-ring: 221 83% 58%;         /* AutoForce blue focus ring */
   
   /* Popovers */
