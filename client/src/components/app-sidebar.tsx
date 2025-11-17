@@ -85,9 +85,9 @@ export function AppSidebar() {
                 <h1 className="text-xl font-bold leading-tight">
                   <span className="text-foreground dark:text-white">AUTO </span>
                   <span className="text-primary dark:text-blue-400">FORCE</span>
-                  <span className="text-xs text-muted-foreground dark:text-slate-400 ml-1">™</span>
+                  <span className="text-xs text-sidebar-foreground/70 dark:text-slate-400 ml-1">™</span>
                 </h1>
-                <p className="text-xs text-muted-foreground dark:text-slate-400">Workforce Management</p>
+                <p className="text-xs text-sidebar-foreground/70 dark:text-slate-400">Workforce Management</p>
               </div>
             </>
           )}
@@ -102,7 +102,7 @@ export function AppSidebar() {
             <SidebarGroupLabel asChild>
               <button
                 onClick={() => toggleSection(family.id)}
-                className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-muted-foreground hover:text-foreground dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
+                className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-sidebar-foreground hover:text-sidebar-foreground dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
                 data-testid={`toggle-section-${family.id}`}
               >
                 <span className="tracking-wider">{family.label}</span>
@@ -136,7 +136,7 @@ export function AppSidebar() {
                               <Icon size={18} className={`transition-colors ${
                                 isActive 
                                   ? 'text-primary dark:text-blue-400' 
-                                  : 'text-muted-foreground dark:text-slate-400 group-hover:text-primary dark:group-hover:text-blue-400'
+                                  : 'text-sidebar-foreground dark:text-slate-400 group-hover:text-primary dark:group-hover:text-blue-400'
                               }`} />
                             </div>
                             <span className={`flex-1 text-sm font-medium transition-colors ${
@@ -173,7 +173,7 @@ export function AppSidebar() {
                           data-testid={`link-locked-${route.id}`}
                         >
                           <div className="w-9 h-9 bg-muted dark:bg-slate-800/50 rounded-lg flex items-center justify-center">
-                            <Icon size={18} className="text-muted-foreground dark:text-slate-400" />
+                            <Icon size={18} className="text-sidebar-foreground dark:text-slate-400" />
                           </div>
                           <span className="flex-1 text-sm text-foreground/90 dark:text-slate-200 font-medium">
                             {route.label}
@@ -211,11 +211,11 @@ export function AppSidebar() {
                 ? `${user?.firstName || ""} ${user?.lastName || ""}`.trim()
                 : "User"}
             </p>
-            <p className="text-xs text-muted-foreground dark:text-slate-400 truncate" data-testid="text-user-email">
+            <p className="text-xs text-sidebar-foreground/70 dark:text-slate-400 truncate" data-testid="text-user-email">
               {user?.email || ""}
             </p>
           </div>
-          <ChevronRight size={16} className="text-muted-foreground dark:text-slate-400 group-hover:text-foreground dark:group-hover:text-slate-200 transition-colors" />
+          <ChevronRight size={16} className="text-sidebar-foreground dark:text-slate-400 group-hover:text-foreground dark:group-hover:text-slate-200 transition-colors" />
         </div>
       </SidebarFooter>
     </Sidebar>
