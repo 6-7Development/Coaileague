@@ -31,7 +31,7 @@ const scheduleApplySchema = z.object({
   transactionId: z.string().min(1),
   shifts: z.array(z.object({
     employeeId: z.string(),
-    clientId: z.string().nullable(),
+    clientId: z.string().nullable().optional(),
     startTime: z.string().datetime(),
     endTime: z.string().datetime(),
     role: z.string(),
@@ -110,10 +110,10 @@ automationRouter.post('/schedule/generate', async (req: any, res: Response) => {
     }
 
     // Get employees for workspace
-    const employees = await storage.getAllEmployees(req.workspace.id);
+    const employees = await storage.getEmployeesByWorkspace(req.workspace.id);
     
     // Get existing shifts in date range to avoid conflicts
-    const existingShifts = await storage.getShiftsByDateRange(
+    const existingShifts = await storage.getShiftsByWorkspace(
       req.workspace.id,
       new Date(startDate),
       new Date(endDate)
