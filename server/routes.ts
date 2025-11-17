@@ -2145,23 +2145,99 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Workspace not found" });
       }
 
-      // Validate with Zod and enforce workspace from middleware
+      // Extract platform role (support staff only) before validation
+      // Normalize empty strings to undefined to prevent database errors
+      const { platformRole: rawPlatformRole, workspaceId: _, ...employeeData } = req.body;
+      const platformRole = rawPlatformRole && rawPlatformRole.trim() !== '' ? rawPlatformRole : undefined;
+
+      // Validate platform role requirements BEFORE creating employee
+      if (platformRole) {
+        const isPlatformStaff = req.user?.platformRole && req.user.platformRole !== 'none';
+        
+        if (!isPlatformStaff) {
+          return res.status(403).json({ message: "Only platform staff can assign platform roles" });
+        }
+        
+        if (!employeeData.email) {
+          return res.status(400).json({ message: "Email is required when assigning platform roles" });
+        }
+        
+        const validPlatformRoles = ['support_agent', 'support_manager', 'compliance_officer', 'sysop', 'deputy_admin', 'root_admin'];
+        if (!validPlatformRoles.includes(platformRole)) {
+          return res.status(400).json({ message: `Invalid platform role: ${platformRole}` });
+        }
+      }
+
+      // Validate with Zod - only employee fields, no platformRole
       const validated = insertEmployeeSchema.parse({
-        ...req.body,
+        ...employeeData,
         workspaceId, // Force workspace from middleware, ignore client input
       });
 
-      const employee = await storage.createEmployee(validated);
-      
-      // Generate external ID for new employee (MUST complete before response)
-      const { attachEmployeeExternalId } = await import('./services/identityService');
+      // Use transaction to ensure atomic employee + user + platform role creation
+      let employee;
       try {
-        await attachEmployeeExternalId(employee.id, workspaceId);
-      } catch (err) {
-        console.error('Failed to attach employee external ID:', err);
+        employee = await db.transaction(async (tx) => {
+          // Create employee
+          const [newEmployee] = await tx.insert(employees).values(validated).returning();
+          
+          // Generate external ID (required for all employees) - use transaction
+          const { attachEmployeeExternalId } = await import('./services/identityService');
+          await attachEmployeeExternalId(newEmployee.id, workspaceId, tx); // Pass transaction
+          
+          // If platform role requested, provision user and assign role
+          if (platformRole && newEmployee.email) {
+            const userEmail = newEmployee.email;
+            let userId = newEmployee.userId;
+            
+            if (!userId) {
+              // Check if user already exists with this email
+              const existingUser = await tx.select().from(users)
+                .where(eq(users.email, userEmail)).limit(1);
+              
+              if (existingUser.length > 0) {
+                userId = existingUser[0].id;
+              } else {
+                // Create new user account
+                const [user] = await tx.insert(users).values({
+                  email: userEmail,
+                  name: `${newEmployee.firstName} ${newEmployee.lastName}`,
+                }).returning();
+                userId = user.id;
+              }
+              
+              // Link user to employee
+              await tx.update(employees)
+                .set({ userId })
+                .where(eq(employees.id, newEmployee.id));
+            }
+            
+            // Assign platform role
+            await tx.insert(platformRoles).values({
+              userId,
+              role: platformRole,
+              grantedBy: req.user!.id,
+              grantedReason: `Assigned during employee creation by ${req.user!.email || 'platform staff'}`,
+            });
+            console.log(`✅ Platform role ${platformRole} assigned to employee ${newEmployee.id} (user: ${userId})`);
+          }
+          
+          return newEmployee;
+        });
+      } catch (err: any) {
+        console.error("Transaction error during employee creation:", err);
+        // Distinguish 404 vs 500 errors
+        if (err.message && err.message.includes('Organization not found')) {
+          return res.status(404).json({ message: "Workspace not found" });
+        }
+        // All other errors are 500 (transaction rolled back successfully)
+        return res.status(500).json({ 
+          message: "Failed to create employee. No partial data was created.",
+          error: err.message || "Unknown error"
+        });
       }
       
-      // Fetch updated employee with external ID
+      // Fetch employee with external ID (created inside transaction)
       const updatedEmployee = await storage.getEmployee(employee.id, workspaceId);
       
       // Send onboarding email if employee has email (non-blocking)

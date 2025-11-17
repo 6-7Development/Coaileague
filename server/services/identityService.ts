@@ -161,26 +161,32 @@ async function ensureOrgIdentifiersInTx(
 
 /**
  * Ensure organization has an external ID and employee sequence initialized
- * Public wrapper that starts its own transaction
+ * Public wrapper that starts its own transaction (or uses provided one)
  */
 export async function ensureOrgIdentifiers(
   orgId: string,
-  orgName: string
+  orgName: string,
+  txParam?: any
 ): Promise<{ orgCode: string; externalId: string }> {
+  // If transaction provided, use it directly
+  if (txParam) {
+    return ensureOrgIdentifiersInTx(txParam, orgId, orgName);
+  }
+  
+  // Otherwise start own transaction (backward compatible)
   return await db.transaction(async (tx: any) => {
     return ensureOrgIdentifiersInTx(tx, orgId, orgName);
   });
 }
 
 /**
- * Generate and attach external ID to an employee
+ * Internal function to attach employee external ID within a transaction
  */
-export async function attachEmployeeExternalId(
+async function attachEmployeeExternalIdInTx(
+  tx: any,
   employeeId: string,
   orgId: string
 ): Promise<{ externalId: string; localNumber: number }> {
-  try {
-    return await db.transaction(async (tx: any) => {
       try {
         console.log(`[Identity] attachEmployeeExternalId starting for ${employeeId}`);
         
@@ -274,14 +280,34 @@ export async function attachEmployeeExternalId(
 
         console.log(`[Identity] Created employee external ID: ${externalId} for employee ${employeeId}`);
         return { externalId, localNumber: nextVal };
-      } catch (innerError: any) {
-        console.error('[Identity] Transaction error in attachEmployeeExternalId:', innerError.message, innerError.code);
-        throw innerError;
+      } catch (error: any) {
+        console.error('[Identity] Error in attachEmployeeExternalIdInTx:', error.message, error.code);
+        throw error;
       }
+}
+
+/**
+ * Generate and attach external ID to an employee
+ * Public wrapper that starts its own transaction (for backward compatibility)
+ */
+export async function attachEmployeeExternalId(
+  employeeId: string,
+  orgId: string,
+  txParam?: any
+): Promise<{ externalId: string; localNumber: number }> {
+  // If transaction provided, use it directly
+  if (txParam) {
+    return attachEmployeeExternalIdInTx(txParam, employeeId, orgId);
+  }
+  
+  // Otherwise start own transaction (backward compatible)
+  try {
+    return await db.transaction(async (tx: any) => {
+      return attachEmployeeExternalIdInTx(tx, employeeId, orgId);
     });
-  } catch (outerError: any) {
-    console.error('[Identity] Failed to attach employee external ID:', outerError.message, outerError.code);
-    throw outerError;
+  } catch (error: any) {
+    console.error('[Identity] Failed to attach employee external ID:', error.message, error.code);
+    throw error;
   }
 }
 
