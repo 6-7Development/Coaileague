@@ -707,7 +707,7 @@ Return ONLY valid JSON (no markdown):
     startDate.setDate(startDate.getDate() - 14);
 
     // Get all employees for workspace
-    const employees = await storage.getAllEmployees(params.workspaceId);
+    const employees = await storage.getEmployeesByWorkspace(params.workspaceId);
     
     const payrolls: PayrollDecision[] = [];
     const requiresApproval: PayrollDecision[] = [];
