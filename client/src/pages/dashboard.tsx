@@ -31,6 +31,7 @@ import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { useIdentity } from "@/hooks/useIdentity";
 import { AppShellMobile } from "@/components/mobile/AppShellMobile";
 import { ResponsiveLoading } from "@/components/loading-indicators";
+import { MetricTile } from "@/components/metric-tile";
 
 interface Notification {
   id: string;
@@ -551,43 +552,29 @@ export default function Dashboard() {
           </ResponsiveSection>
         )}
 
-        {/* Metrics Grid - Professional Cards (NO glow effects) */}
+        {/* Metrics Grid - Fortune 500 Compact Layout */}
         <ResponsiveSection>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {/* Total Employees Card */}
-          <div className="group bg-card border border-border rounded-lg p-6 hover-elevate active-elevate-2 transition-all duration-200" data-testid="card-employees">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-3 bg-muted rounded-lg">
-                <Users className="w-6 h-6 text-primary" />
-              </div>
-            </div>
-            <p className="text-muted-foreground text-sm mb-2">Total Employees</p>
-            <p className="text-4xl font-bold text-foreground">{totalEmployees}</p>
-          </div>
-
-          {/* Total Clients Card */}
-          <div className="group bg-card border border-border rounded-lg p-6 hover-elevate active-elevate-2 transition-all duration-200" data-testid="card-clients">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-3 bg-muted rounded-lg">
-                <Users className="w-6 h-6 text-accent" />
-              </div>
-            </div>
-            <p className="text-muted-foreground text-sm mb-2">Total Clients</p>
-            <p className="text-4xl font-bold text-foreground">{totalClients}</p>
-          </div>
-
-          {/* Revenue Card */}
-          <div className="group bg-card border border-border rounded-lg p-6 hover-elevate active-elevate-2 transition-all duration-200" data-testid="card-revenue">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-3 bg-muted rounded-lg">
-                <DollarSign className="w-6 h-6 text-primary" />
-              </div>
-            </div>
-            <p className="text-muted-foreground text-sm mb-2">Total Revenue</p>
-            <p className="text-4xl font-bold text-foreground">
-              ${totalRevenue >= 1000 ? `${(totalRevenue / 1000).toFixed(1)}K` : totalRevenue.toFixed(2)}
-            </p>
-          </div>
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-4 max-w-5xl mx-auto">
+          <MetricTile
+            title="Total Employees"
+            value={totalEmployees}
+            icon={Users}
+            data-testid="card-employees"
+          />
+          
+          <MetricTile
+            title="Total Clients"
+            value={totalClients}
+            icon={Users}
+            data-testid="card-clients"
+          />
+          
+          <MetricTile
+            title="Total Revenue"
+            value={`$${totalRevenue >= 1000 ? `${(totalRevenue / 1000).toFixed(1)}K` : totalRevenue.toFixed(2)}`}
+            icon={DollarSign}
+            data-testid="card-revenue"
+          />
         </div>
         </ResponsiveSection>
 
