@@ -238,9 +238,9 @@ export default function Invoices() {
     createInvoiceMutation.mutate({
       clientId: formData.clientId,
       dueDate: new Date(formData.dueDate).toISOString(),
-      subtotal,
-      tax,
-      total,
+      subtotal: subtotal.toString(),
+      tax: tax.toString(),
+      total: total.toString(),
       status: "draft",
     });
   };
