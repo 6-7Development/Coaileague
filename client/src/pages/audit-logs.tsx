@@ -13,6 +13,7 @@ import {
 import { Shield, Search, Filter, Download, Calendar, User, FileText, AlertTriangle, CheckCircle, XCircle } from "lucide-react";
 import { useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { WorkspaceLayout, WorkspaceSection } from "@/components/workspace-layout";
 
 interface AuditLog {
   id: string;
@@ -90,18 +91,19 @@ export default function AuditLogs() {
   });
 
   return (
-    <div className="flex flex-col gap-6 p-4 md:p-6 max-w-screen-2xl mx-auto">
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-            <Shield className="h-5 w-5 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-foreground">AI Compliance</h1>
-            <p className="text-sm text-muted-foreground">AI-powered compliance and activity tracking</p>
+    <WorkspaceLayout maxWidth="7xl">
+      <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+              <Shield className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold text-foreground">AI Compliance</h1>
+              <p className="text-sm text-muted-foreground">AI-powered compliance and activity tracking</p>
+            </div>
           </div>
         </div>
-      </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
@@ -277,6 +279,7 @@ export default function AuditLogs() {
           </div>
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </WorkspaceLayout>
   );
 }
