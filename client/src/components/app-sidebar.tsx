@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, GraduationCap, Search, HelpCircle, MessageSquare } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -21,6 +21,11 @@ import { useTransition } from "@/contexts/transition-context";
 import { showLogoutTransition } from "@/lib/transition-utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AutoForceAFLogo } from "@/components/autoforce-af-logo";
+import { Button } from "@/components/ui/button";
+import { PlanBadge } from "@/components/plan-badge";
+import { WhatsNewBadge } from "@/components/whats-new-badge";
+import { HelpDropdown } from "@/components/help-dropdown";
+import { FeedbackWidget } from "@/components/feedback-widget";
 
 export function AppSidebar() {
   const [location] = useLocation();
@@ -28,6 +33,7 @@ export function AppSidebar() {
   const { workspaceRole, subscriptionTier, isPlatformStaff, isLoading } = useWorkspaceAccess();
   const transition = useTransition();
   const { state } = useSidebar();
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   // Get sidebar families with RBAC filtering
   const families = isLoading 
@@ -192,8 +198,104 @@ export function AppSidebar() {
         ))}
       </SidebarContent>
 
-      {/* User Profile */}
-      <SidebarFooter className="p-4 border-t border-border">
+      {/* Footer: Tools & User Profile */}
+      <SidebarFooter className="p-4 border-t border-border space-y-3">
+        {/* Quick Tools Section */}
+        {state !== 'collapsed' && (
+          <div className="space-y-2">
+            {/* Plan Badge */}
+            <div className="px-2">
+              <PlanBadge />
+            </div>
+
+            {/* Tool Buttons - Grid Layout */}
+            <div className="grid grid-cols-2 gap-2">
+              {/* Tutorial */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  if ((window as any).setShowOnboarding) {
+                    (window as any).setShowOnboarding(true);
+                  }
+                }}
+                className="justify-start gap-2 h-9"
+                data-testid="button-sidebar-tutorial"
+              >
+                <GraduationCap className="h-4 w-4" />
+                <span className="text-xs">Tutorial</span>
+              </Button>
+
+              {/* Search */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  if ((window as any).openCommandPalette) {
+                    (window as any).openCommandPalette();
+                  } else {
+                    const event = new KeyboardEvent('keydown', { key: 'k', metaKey: true, ctrlKey: true });
+                    document.dispatchEvent(event);
+                  }
+                }}
+                className="justify-start gap-2 h-9"
+                data-testid="button-sidebar-search"
+              >
+                <Search className="h-4 w-4" />
+                <span className="text-xs">Search</span>
+              </Button>
+            </div>
+
+            {/* Help & Feedback Row */}
+            <div className="flex items-center gap-2">
+              <div className="flex-1">
+                <HelpDropdown />
+              </div>
+              <div className="flex-1">
+                <FeedbackWidget />
+              </div>
+            </div>
+
+            {/* What's New Badge */}
+            <div className="px-2">
+              <WhatsNewBadge />
+            </div>
+          </div>
+        )}
+
+        {/* Collapsed State - Icon Only Buttons */}
+        {state === 'collapsed' && (
+          <div className="flex flex-col items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => {
+                if ((window as any).setShowOnboarding) {
+                  (window as any).setShowOnboarding(true);
+                }
+              }}
+              className="w-10 h-10"
+              data-testid="button-sidebar-tutorial-collapsed"
+            >
+              <GraduationCap className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => {
+                if ((window as any).openCommandPalette) {
+                  (window as any).openCommandPalette();
+                }
+              }}
+              className="w-10 h-10"
+              data-testid="button-sidebar-search-collapsed"
+            >
+              <Search className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+
+        {/* User Profile */}
         <div 
           onClick={handleLogout}
           className="flex items-center gap-3 p-3 rounded-xl bg-sidebar-accent hover:bg-sidebar-accent/80 transition-colors cursor-pointer group"
@@ -205,17 +307,21 @@ export function AppSidebar() {
               {getInitials(user?.firstName, user?.lastName)}
             </AvatarFallback>
           </Avatar>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-sidebar-foreground truncate" data-testid="text-user-name">
-              {user?.firstName || user?.lastName 
-                ? `${user?.firstName || ""} ${user?.lastName || ""}`.trim()
-                : "User"}
-            </p>
-            <p className="text-xs text-sidebar-foreground/70 truncate" data-testid="text-user-email">
-              {user?.email || ""}
-            </p>
-          </div>
-          <ChevronRight size={16} className="text-sidebar-foreground group-hover:text-sidebar-foreground transition-colors" />
+          {state !== 'collapsed' && (
+            <>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-sidebar-foreground truncate" data-testid="text-user-name">
+                  {user?.firstName || user?.lastName 
+                    ? `${user?.firstName || ""} ${user?.lastName || ""}`.trim()
+                    : "User"}
+                </p>
+                <p className="text-xs text-sidebar-foreground/70 truncate" data-testid="text-user-email">
+                  {user?.email || ""}
+                </p>
+              </div>
+              <ChevronRight size={16} className="text-sidebar-foreground group-hover:text-sidebar-foreground transition-colors" />
+            </>
+          )}
         </div>
       </SidebarFooter>
     </Sidebar>

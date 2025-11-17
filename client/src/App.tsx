@@ -128,10 +128,6 @@ import { OnboardingWizard } from "@/components/onboarding-wizard";
 import { Sparkles } from "lucide-react";
 import { HeaderBillboard } from "@/components/header-billboard";
 import { WorkspaceSwitcher } from "@/components/workspace-switcher";
-import { WhatsNewBadge } from "@/components/whats-new-badge";
-import { HelpDropdown } from "@/components/help-dropdown";
-import { PlanBadge } from "@/components/plan-badge";
-import { FeedbackWidget } from "@/components/feedback-widget";
 import { PageBreadcrumb } from "@/components/page-breadcrumb";
 
 // Separate header component for app navigation
@@ -145,73 +141,8 @@ function AppHeader({ isRootAdmin, setLocation, setShowOnboarding }: any) {
         <WorkspaceSwitcher />
       </div>
 
-      <div className="flex items-center gap-1 flex-wrap">
-        {/* Plan Badge */}
-        <div className="hidden md:block">
-          <PlanBadge />
-        </div>
-
-        {/* Global Search */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                if ((window as any).openCommandPalette) {
-                  (window as any).openCommandPalette();
-                } else {
-                  const event = new KeyboardEvent('keydown', { key: 'k', metaKey: true, ctrlKey: true });
-                  document.dispatchEvent(event);
-                }
-              }}
-              className="shrink-0 gap-2"
-              data-testid="button-global-search"
-            >
-              <Search className="h-4 w-4" />
-              <span className="hidden sm:inline text-sm">Search</span>
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Search platform (Cmd/Ctrl + K)</p>
-          </TooltipContent>
-        </Tooltip>
-
-        {/* What's New Badge */}
-        <div className="hidden sm:block">
-          <WhatsNewBadge />
-        </div>
-
-        {/* Help Dropdown */}
-        <div className="hidden md:block">
-          <HelpDropdown />
-        </div>
-
-        {/* Feedback Widget */}
-        <div className="hidden lg:block">
-          <FeedbackWidget />
-        </div>
-
-        {/* Tutorial Button */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowOnboarding(true)}
-              data-testid="button-open-onboarding"
-              className="shrink-0 hidden sm:flex gap-2"
-            >
-              <GraduationCap className="h-4 w-4" />
-              <span className="text-sm">Tutorial</span>
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Start interactive walkthrough</p>
-          </TooltipContent>
-        </Tooltip>
-
-        {/* Settings Gear */}
+      <div className="flex items-center gap-2">
+        {/* Settings Gear - Keep in header for quick access */}
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
@@ -242,7 +173,6 @@ function AppHeader({ isRootAdmin, setLocation, setShowOnboarding }: any) {
             <p>{isRootAdmin ? 'Platform Management' : 'Organization Settings'}</p>
           </TooltipContent>
         </Tooltip>
-
       </div>
     </header>
   );
@@ -317,6 +247,9 @@ function AppContent() {
 
   // Check if user is Root Admin (platform-level access)
   const isRootAdmin = (user as any)?.platformRole === 'root_admin' || (user as any)?.platformRole === 'sysop';
+  
+  // Expose tutorial function globally for sidebar access
+  (window as any).setShowOnboarding = setShowOnboarding;
 
   // Sidebar width configuration
   const sidebarStyle = {
