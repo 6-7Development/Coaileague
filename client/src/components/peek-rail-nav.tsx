@@ -223,8 +223,8 @@ export function PeekRailNav({ defaultPinned = false }: PeekRailNavProps) {
         tabIndex={0}
         className={cn(
           "fixed left-0 top-0 h-screen z-50 flex flex-col",
-          "bg-sidebar",
-          "border-r border-sidebar-border backdrop-blur-xl",
+          "bg-white",
+          "border-r border-gray-200 backdrop-blur-xl",
           "shadow-xl",
           isMobile && "md:relative"
         )}
@@ -237,7 +237,7 @@ export function PeekRailNav({ defaultPinned = false }: PeekRailNavProps) {
         data-testid="peek-rail-nav"
       >
         {/* Header with Logo and Pin Button */}
-        <div className="h-14 border-b border-sidebar-border flex items-center justify-between px-3 flex-shrink-0">
+        <div className="h-14 border-b border-gray-200 flex items-center justify-between px-3 flex-shrink-0">
           <Link href="/dashboard" className="flex items-center min-w-0 flex-1" data-testid="link-dashboard-logo">
             {isExpanded ? (
               <div className="flex items-center gap-2 min-w-0">
@@ -246,11 +246,11 @@ export function PeekRailNav({ defaultPinned = false }: PeekRailNavProps) {
                 </div>
                 <div className="flex flex-col min-w-0 overflow-hidden">
                   <div className="text-base font-bold tracking-tight leading-tight flex items-baseline gap-1 whitespace-nowrap">
-                    <span className="text-foreground">AUTO</span>
+                    <span className="text-gray-900">AUTO</span>
                     <span className="text-primary">FORCE</span>
                     <span className="text-[10px] align-super">™</span>
                   </div>
-                  <div className="text-[9px] text-muted-foreground font-medium tracking-wide truncate">
+                  <div className="text-[9px] text-gray-600 font-medium tracking-wide truncate">
                     Workforce Management
                   </div>
                 </div>
@@ -655,7 +655,7 @@ export function PeekRailNav({ defaultPinned = false }: PeekRailNavProps) {
                       ? `${user?.firstName || ""} ${user?.lastName || ""}`.trim()
                       : "User"}
                   </p>
-                  <p className="text-xs text-muted-foreground">{user?.email}</p>
+                  <p className="text-xs text-gray-600">{user?.email}</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
