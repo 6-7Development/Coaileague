@@ -129,6 +129,7 @@ import { Sparkles } from "lucide-react";
 import { HeaderBillboard } from "@/components/header-billboard";
 import { WorkspaceSwitcher } from "@/components/workspace-switcher";
 import { PageBreadcrumb } from "@/components/page-breadcrumb";
+import { UniversalNavHeader } from "@/components/universal-nav-header";
 
 // Compact top-right utility cluster - Fortune 500 aesthetic
 function AppUtilityCluster({ setLocation }: any) {
@@ -242,23 +243,26 @@ function AppContent() {
       <CommandPalette />
       <SidebarProvider style={sidebarStyle as React.CSSProperties}>
         <div className="flex h-screen w-full">
-          {/* Universal Sidebar - HIDDEN on mobile */}
+          {/* Desktop Sidebar - ONLY shown on desktop */}
           {!isMobileChat && !isMobile && <AppSidebar />}
           
           {/* Main content container */}
           <div className="flex flex-col flex-1 min-h-0 w-full max-w-full overflow-x-hidden">
+            {/* Universal Navigation Header - Shows on ALL pages (mobile + desktop) */}
+            {!isHelpDesk && <UniversalNavHeader />}
+
             {/* Demo Banner - positioned to account for fixed header (hidden on mobile) */}
             {!isMobile && <DemoBanner />}
 
-            {/* Compact top-right utility cluster - HIDDEN on mobile */}
-            {!isMobileChat && !isHelpDesk && !isMobile && (
+            {/* Compact top-right utility cluster - HIDDEN on mobile and when universal header is shown */}
+            {!isMobileChat && !isHelpDesk && !isMobile && !true && (
               <AppUtilityCluster setLocation={setLocation} />
             )}
 
             {/* Main content area - no padding needed for floating utility cluster */}
             <main className="flex-1 overflow-x-hidden overflow-y-auto scrollbar-hide bg-white min-h-0 w-full max-w-full">
               {/* Breadcrumb Navigation - helps users know where they are (desktop only) */}
-              {!isMobileChat && !isHelpDesk && !isMobile && <PageBreadcrumb />}
+              {!isMobileChat && !isHelpDesk && !isMobile && false && <PageBreadcrumb />}
               
               <Switch>
                 <Route path="/" component={Dashboard} />
