@@ -28,8 +28,9 @@ import {
   Zap,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
-import { MobilePageWrapper } from "@/components/mobile-page-wrapper";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { WorkspaceLayout } from "@/components/workspace-layout";
+import { AppShellMobile } from "@/components/mobile/AppShellMobile";
 import { useUnsavedChangesWarning } from "@/hooks/use-unsaved-changes";
 import { SettingsCardSkeleton, PageHeaderSkeleton } from "@/components/loading-indicators/skeletons";
 
@@ -366,18 +367,12 @@ export default function Settings() {
   };
 
   const pageContent = isLoading ? (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full h-full overflow-auto">
-      <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
-        <div className="space-y-4 sm:space-y-6">
-          <PageHeaderSkeleton />
-          <SettingsCardSkeleton count={4} />
-        </div>
-      </div>
+    <div className="space-y-4 sm:space-y-6">
+      <PageHeaderSkeleton />
+      <SettingsCardSkeleton count={4} />
     </div>
   ) : (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full h-full overflow-auto">
-      <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
-        <div className="space-y-4 sm:space-y-6">
+    <div className="space-y-4 sm:space-y-6">
           <div>
             <h2 className="text-2xl sm:text-3xl font-bold mb-1" data-testid="text-settings-title">
               Settings
@@ -910,22 +905,22 @@ export default function Settings() {
             </div>
           </CardContent>
         </Card>
-        </div>
       </div>
-    </div>
   );
 
   if (isMobile) {
     return (
-      <MobilePageWrapper 
-        onRefresh={handleRefresh}
-        enablePullToRefresh={true}
-        withBottomNav={true}
-      >
-        {pageContent}
-      </MobilePageWrapper>
+      <WorkspaceLayout>
+        <AppShellMobile title="Settings" showBack={true}>
+          {pageContent}
+        </AppShellMobile>
+      </WorkspaceLayout>
     );
   }
 
-  return pageContent;
+  return (
+    <WorkspaceLayout maxWidth="7xl">
+      {pageContent}
+    </WorkspaceLayout>
+  );
 }

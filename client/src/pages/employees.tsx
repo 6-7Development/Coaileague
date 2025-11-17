@@ -22,9 +22,11 @@ import {
   Clock,
   AlertCircle,
 } from "lucide-react";
-import { MobilePageWrapper } from "@/components/mobile-page-wrapper";
 import { SwipeToDelete } from "@/components/swipe-to-delete";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { WorkspaceLayout } from "@/components/workspace-layout";
+import { AppShellMobile } from "@/components/mobile/AppShellMobile";
+import { ResponsiveLoading } from "@/components/loading-indicators";
 import {
   Dialog,
   DialogContent,
@@ -258,9 +260,7 @@ export default function Employees() {
   };
 
   const pageContent = (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full h-full overflow-auto">
-      <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
-        <div className="space-y-4 sm:space-y-6">
+    <div className="space-y-4 sm:space-y-6">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <h2 className="text-2xl sm:text-3xl font-bold mb-1" data-testid="text-employees-title">
@@ -684,22 +684,22 @@ export default function Employees() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-        </div>
       </div>
-    </div>
   );
 
   if (isMobile) {
     return (
-      <MobilePageWrapper 
-        onRefresh={handleRefresh}
-        enablePullToRefresh={true}
-        withBottomNav={true}
-      >
-        {pageContent}
-      </MobilePageWrapper>
+      <WorkspaceLayout>
+        <AppShellMobile title="Employees" showBack={true}>
+          {pageContent}
+        </AppShellMobile>
+      </WorkspaceLayout>
     );
   }
 
-  return pageContent;
+  return (
+    <WorkspaceLayout maxWidth="7xl">
+      {pageContent}
+    </WorkspaceLayout>
+  );
 }

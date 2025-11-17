@@ -31,8 +31,9 @@ import {
 import { format, formatDistanceToNow, parseISO, startOfWeek, endOfWeek, subDays } from "date-fns";
 import type { Employee, Client, TimeEntry, Shift } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { MobilePageWrapper } from "@/components/mobile-page-wrapper";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { WorkspaceLayout } from "@/components/workspace-layout";
+import { AppShellMobile } from "@/components/mobile/AppShellMobile";
 import { Link } from "wouter";
 import { PageHeader } from "@/components/page-header";
 import { TimelineSkeleton, MetricsCardsSkeleton } from "@/components/loading-indicators/skeletons";
@@ -618,26 +619,41 @@ export default function TimeTracking() {
     return null;
   }
 
-  return isLoading ? (
-    <MobilePageWrapper>
-      <div className="min-h-screen bg-gray-50 pb-20 lg:pb-0">
-        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white sticky top-0 z-40 shadow-lg px-4 py-6">
+  if (isLoading) {
+    const loadingSkeleton = (
+      <>
+        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg p-6 mb-6">
           <div className="flex items-center space-x-3">
             <Clock className="w-6 h-6" />
             <h1 className="text-xl font-bold">TimeTracker</h1>
           </div>
         </div>
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          <MetricsCardsSkeleton count={3} columns={3} />
-          <div className="mt-6">
-            <TimelineSkeleton entries={5} />
-          </div>
+        <MetricsCardsSkeleton count={3} columns={3} />
+        <div className="mt-6">
+          <TimelineSkeleton entries={5} />
         </div>
-      </div>
-    </MobilePageWrapper>
-  ) : (
-    <MobilePageWrapper>
-      <div className="min-h-screen bg-gray-50 pb-20 lg:pb-0">
+      </>
+    );
+
+    if (isMobile) {
+      return (
+        <WorkspaceLayout>
+          <AppShellMobile title="Time Tracking" showBack={true}>
+            {loadingSkeleton}
+          </AppShellMobile>
+        </WorkspaceLayout>
+      );
+    }
+
+    return (
+      <WorkspaceLayout maxWidth="7xl">
+        {loadingSkeleton}
+      </WorkspaceLayout>
+    );
+  }
+
+  const pageContent = (
+    <div className="space-y-6">
         {/* Blue/Cyan Gradient Header */}
         <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white sticky top-0 z-40 shadow-lg">
           <div className="max-w-7xl mx-auto px-4 py-3 lg:py-4">
@@ -1760,6 +1776,21 @@ export default function TimeTracking() {
           </DialogContent>
         </Dialog>
       </div>
-    </MobilePageWrapper>
+  );
+
+  if (isMobile) {
+    return (
+      <WorkspaceLayout>
+        <AppShellMobile title="Time Tracking" showBack={true}>
+          {pageContent}
+        </AppShellMobile>
+      </WorkspaceLayout>
+    );
+  }
+
+  return (
+    <WorkspaceLayout maxWidth="7xl">
+      {pageContent}
+    </WorkspaceLayout>
   );
 }
