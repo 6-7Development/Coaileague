@@ -13,8 +13,11 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { MobilePageWrapper, MobilePageHeader } from "@/components/mobile-page-wrapper";
 import { useIsMobile, useMobile } from "@/hooks/use-mobile";
+import { WorkspaceLayout } from "@/components/workspace-layout";
+import { AppShellMobile } from "@/components/mobile/AppShellMobile";
+import { ResponsiveLoading } from "@/components/loading-indicators";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   MessageSquare, Send, Search, UserPlus, MoreVertical,
   Eye, Sparkles, CheckCheck, Circle, Lock, Zap,
@@ -329,7 +332,7 @@ export default function PrivateMessages() {
   };
 
   if (authLoading) {
-    return <ResponsiveLoading fullScreen message="Loading Messages..." />;
+    return <ResponsiveLoading message="Loading Messages..." />;
   }
 
   const filteredConversations = conversations.filter((conv) =>
@@ -343,7 +346,7 @@ export default function PrivateMessages() {
   const showChatArea = !isMobileDevice || selectedConversation;
 
   const pageContent = (
-    <div className="flex h-[calc(100vh-4rem)] gap-0">
+    <div className="flex h-[calc(100vh-8rem)] gap-0">
       {/* Conversations Sidebar */}
       <div className={cn(
         "flex flex-col bg-card border-r",
@@ -526,8 +529,17 @@ export default function PrivateMessages() {
             <ScrollArea className="flex-1 p-4 bg-purple-500/[0.02]">
               {messagesLoading ? (
                 <div className="flex flex-col items-center justify-center h-full space-y-4">
-                  <DataStreamIndicator progress={75} height="h-32" />
-                  <p className="text-sm text-muted-foreground">Loading messages...</p>
+                  <div className="w-full max-w-md space-y-3">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="flex gap-3">
+                        <Skeleton className="h-8 w-8 rounded-full" />
+                        <div className="flex-1 space-y-2">
+                          <Skeleton className="h-4 w-24" />
+                          <Skeleton className="h-16 w-full rounded-lg" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ) : messages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
@@ -672,7 +684,9 @@ export default function PrivateMessages() {
                     className="bg-purple-600 hover:bg-purple-700"
                   >
                     {uploadingFile ? (
-                      <DataStreamIndicator progress={50} height="h-4" />
+                      <div className="flex items-center gap-2">
+                        <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      </div>
                     ) : (
                       <Send className="h-4 w-4" />
                     )}
@@ -857,15 +871,17 @@ export default function PrivateMessages() {
 
   if (isMobile) {
     return (
-      <MobilePageWrapper 
-        onRefresh={handleRefresh}
-        enablePullToRefresh={true}
-        withBottomNav={true}
-      >
-        {pageContent}
-      </MobilePageWrapper>
+      <WorkspaceLayout>
+        <AppShellMobile title="Private Messages" showBack={true}>
+          {pageContent}
+        </AppShellMobile>
+      </WorkspaceLayout>
     );
   }
 
-  return pageContent;
+  return (
+    <WorkspaceLayout maxWidth="7xl">
+      {pageContent}
+    </WorkspaceLayout>
+  );
 }
