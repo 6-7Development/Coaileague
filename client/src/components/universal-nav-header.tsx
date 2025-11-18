@@ -88,15 +88,15 @@ export function UniversalNavHeader() {
 
   return (
     <div className="sticky top-0 z-40 border-b bg-gradient-to-r from-primary via-primary/95 to-primary/90 text-white shadow-md">
-      <div className="flex items-center justify-between px-4 py-3">
+      <div className="flex items-center justify-between px-3 py-3 gap-2">
         {/* Left: Hamburger Menu + Role Badge */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 flex-shrink-0">
           <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
             <SheetTrigger asChild>
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-10 w-10 text-white hover:bg-white/20"
+                className="h-10 w-10 text-white hover:bg-white/20 flex-shrink-0"
                 data-testid="button-hamburger-menu"
                 aria-label="Open navigation menu"
               >
@@ -240,11 +240,11 @@ export function UniversalNavHeader() {
           </Sheet>
 
           {/* Role Badge */}
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+          <div className="hidden sm:flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
               <span className="text-xs font-bold">{getRoleDisplay()[0]}</span>
             </div>
-            <div className="hidden sm:block">
+            <div>
               <p className="text-sm font-semibold leading-tight">{getRoleDisplay()}</p>
               {subscriptionTier && (
                 <p className="text-xs opacity-90 capitalize">{subscriptionTier}</p>
@@ -253,34 +253,34 @@ export function UniversalNavHeader() {
           </div>
         </div>
 
-        {/* Center: AutoForce Branding (mobile only shows icon) */}
-        <div className="absolute left-1/2 transform -translate-x-1/2">
+        {/* Center: AutoForce Branding */}
+        <div className="flex-1 flex items-center justify-center min-w-0 px-2">
           <div className="flex items-baseline gap-1">
-            <span className="hidden sm:inline text-base font-bold">AutoForce</span>
+            <span className="hidden sm:inline text-base font-bold whitespace-nowrap">AutoForce</span>
             <span className="sm:hidden text-lg font-bold">AF</span>
             <span className="text-[8px] sm:text-[10px] font-bold align-super">™</span>
           </div>
         </div>
 
         {/* Right: User Initials + Notifications */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-shrink-0">
           {/* User Initials Display (no dropdown - settings/sign-out in hamburger menu) */}
           <div 
-            className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center"
+            className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0"
             data-testid="display-user-initials"
           >
             <span className="text-sm font-bold">{getInitials(user?.firstName, user?.lastName)}</span>
           </div>
           
           {/* Notifications */}
-          <div className="[&_button]:text-white [&_button]:hover:bg-white/20">
+          <div className="[&_button]:text-white [&_button]:hover:bg-white/20 flex-shrink-0">
             <NotificationsCenter />
           </div>
         </div>
       </div>
 
       {/* Date indicator */}
-      <div className="px-4 pb-2 text-center">
+      <div className="px-3 pb-2 text-center">
         <p className="text-sm font-medium">
           Today
         </p>
