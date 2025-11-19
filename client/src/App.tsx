@@ -65,6 +65,7 @@ import ClientPortal from "@/pages/client-portal";
 import Workspace from "@/pages/workspace";
 import CustomerSupport from "@/pages/customer-support";
 import Billing from "@/pages/billing";
+import UsageDashboard from "@/pages/usage-dashboard";
 import HRBenefits from "@/pages/hr-benefits";
 import HRReviews from "@/pages/hr-reviews";
 import HRPTO from "@/pages/hr-pto";
@@ -280,6 +281,7 @@ function AppContent() {
               <Route path="/audit-logs" component={AuditLogs} />
               <Route path="/ai/command-center" component={AICommandCenter} />
               <Route path="/billing" component={Billing} />
+              <Route path="/usage" component={UsageDashboard} />
               <Route path="/integrations" component={IntegrationsPage} />
               <Route path="/oversight" component={OversightHub} />
               <Route path="/expenses" component={Expenses} />
