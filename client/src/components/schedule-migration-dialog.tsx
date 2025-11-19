@@ -46,7 +46,7 @@ export function ScheduleMigrationDialog() {
   const [migrationResult, setMigrationResult] = useState<MigrationResponse | null>(null);
   const { toast } = useToast();
 
-  const uploadMutation = useMutation({
+  const uploadMutation = useMutation<MigrationResponse, Error, File>({
     mutationFn: async (fileToUpload: File) => {
       // Convert file to base64
       const reader = new FileReader();
@@ -61,12 +61,12 @@ export function ScheduleMigrationDialog() {
         reader.readAsDataURL(fileToUpload);
       });
 
-      const response = await apiRequest("/api/scheduleos/migrate-schedule", "POST", {
+      const response = await apiRequest("POST", "/api/ai-scheduling/migrate-schedule", {
         fileData,
         mimeType: fileToUpload.type,
         sourceApp,
       });
-      return response;
+      return response.json() as Promise<MigrationResponse>;
     },
     onSuccess: (data: MigrationResponse) => {
       setMigrationResult(data);
@@ -88,11 +88,11 @@ export function ScheduleMigrationDialog() {
     mutationFn: async () => {
       if (!migrationResult) throw new Error("No migration result to import");
       
-      const response = await apiRequest("/api/scheduleos/import-migrated-shifts", "POST", {
+      const response = await apiRequest("POST", "/api/ai-scheduling/import-migrated-shifts", {
         extractedShifts: migrationResult.shifts,
         sourceApp,
       });
-      return response;
+      return response.json();
     },
     onSuccess: (data: any) => {
       const hasErrors = data.errors && data.errors.length > 0;
