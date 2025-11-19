@@ -11409,3 +11409,156 @@ export const insertWriteAheadLogSchema = createInsertSchema(writeAheadLog).omit(
 
 export type InsertWriteAheadLog = z.infer<typeof insertWriteAheadLogSchema>;
 export type WriteAheadLog = typeof writeAheadLog.$inferSelect;
+
+// ============================================================================
+// AUTOMATION CREDIT SYSTEM
+// ============================================================================
+
+// Credit transaction types
+export const creditTransactionTypeEnum = pgEnum('credit_transaction_type', [
+  'monthly_allocation',  // Monthly tier-based credit refill
+  'purchase',           // User purchased credit pack
+  'deduction',          // AI automation consumed credits
+  'refund',             // Credit refund (e.g., failed automation)
+  'bonus',              // Promotional credits
+  'adjustment',         // Admin manual adjustment
+  'expiration'          // Credits expired
+]);
+
+// Workspace Credits - Current balance and monthly allocation
+export const workspaceCredits = pgTable("workspace_credits", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }).unique(),
+  
+  // Current balance
+  currentBalance: integer("current_balance").notNull().default(0), // Available credits
+  
+  // Monthly allocation based on subscription tier
+  monthlyAllocation: integer("monthly_allocation").notNull().default(100), // Free: 100, Starter: 500, Pro: 2000, Enterprise: 10000
+  
+  // Lifecycle tracking
+  lastResetAt: timestamp("last_reset_at").defaultNow(), // Last monthly reset
+  nextResetAt: timestamp("next_reset_at"), // Next scheduled reset
+  
+  // Usage tracking
+  totalCreditsEarned: integer("total_credits_earned").notNull().default(0), // Lifetime credits received
+  totalCreditsSpent: integer("total_credits_spent").notNull().default(0), // Lifetime credits consumed
+  totalCreditsPurchased: integer("total_credits_purchased").notNull().default(0), // Lifetime purchased
+  
+  // Rollover settings (Enterprise only)
+  rolloverEnabled: boolean("rollover_enabled").default(false),
+  rolloverBalance: integer("rollover_balance").default(0), // Unused credits from previous month
+  maxRolloverCredits: integer("max_rollover_credits").default(0), // Maximum rollover allowed
+  
+  // Status
+  isActive: boolean("is_active").default(true),
+  isSuspended: boolean("is_suspended").default(false), // Suspend credit usage
+  suspendedReason: text("suspended_reason"),
+  suspendedAt: timestamp("suspended_at"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("workspace_credits_workspace_idx").on(table.workspaceId),
+  index("workspace_credits_next_reset_idx").on(table.nextResetAt),
+]);
+
+export const insertWorkspaceCreditsSchema = createInsertSchema(workspaceCredits).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertWorkspaceCredits = z.infer<typeof insertWorkspaceCreditsSchema>;
+export type WorkspaceCredits = typeof workspaceCredits.$inferSelect;
+
+// Credit Transactions - Log every credit addition/deduction
+export const creditTransactions = pgTable("credit_transactions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  userId: varchar("user_id").references(() => users.id), // User who triggered transaction
+  
+  // Transaction type and amount
+  transactionType: creditTransactionTypeEnum("transaction_type").notNull(),
+  amount: integer("amount").notNull(), // Positive for additions, negative for deductions
+  balanceAfter: integer("balance_after").notNull(), // Balance after this transaction
+  
+  // Feature context (for deductions)
+  featureKey: varchar("feature_key"), // e.g., 'ai_scheduling', 'ai_invoicing', 'ai_payroll'
+  featureName: varchar("feature_name"), // Human-readable name
+  
+  // Purchase context (for purchases)
+  creditPackId: varchar("credit_pack_id"), // Reference to purchased pack
+  stripePaymentIntentId: varchar("stripe_payment_intent_id"), // Stripe payment ID
+  amountPaid: decimal("amount_paid", { precision: 10, scale: 2 }), // Amount paid in USD
+  
+  // Automation context (for deductions)
+  aiUsageEventId: varchar("ai_usage_event_id").references(() => aiUsageEvents.id), // Link to AI usage event
+  relatedEntityType: varchar("related_entity_type"), // 'schedule', 'invoice', 'payroll', etc.
+  relatedEntityId: varchar("related_entity_id"), // ID of schedule/invoice/etc.
+  
+  // Metadata
+  description: text("description"), // Human-readable description
+  metadata: jsonb("metadata").default("{}"), // Additional context
+  
+  // Audit
+  actorType: actorTypeEnum("actor_type"), // Who performed this transaction
+  
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("credit_transactions_workspace_idx").on(table.workspaceId, table.createdAt),
+  index("credit_transactions_type_idx").on(table.transactionType),
+  index("credit_transactions_feature_idx").on(table.featureKey),
+  index("credit_transactions_user_idx").on(table.userId),
+]);
+
+export const insertCreditTransactionSchema = createInsertSchema(creditTransactions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertCreditTransaction = z.infer<typeof insertCreditTransactionSchema>;
+export type CreditTransaction = typeof creditTransactions.$inferSelect;
+
+// Credit Packs - Purchasable credit bundles
+export const creditPacks = pgTable("credit_packs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Pack details
+  name: varchar("name").notNull(), // e.g., "Starter Pack", "Power User Pack"
+  description: text("description"),
+  creditsAmount: integer("credits_amount").notNull(), // Number of credits in pack
+  
+  // Pricing
+  priceUsd: decimal("price_usd", { precision: 10, scale: 2 }).notNull(), // Price in USD
+  stripePriceId: varchar("stripe_price_id"), // Stripe Price ID
+  stripeProductId: varchar("stripe_product_id"), // Stripe Product ID
+  
+  // Bonus credits (promotional)
+  bonusCredits: integer("bonus_credits").default(0), // Extra credits included
+  
+  // Availability
+  isActive: boolean("is_active").default(true),
+  isPopular: boolean("is_popular").default(false), // Featured pack
+  displayOrder: integer("display_order").default(0), // Sort order in UI
+  
+  // Tier restrictions
+  availableForTiers: text("available_for_tiers").array().default(sql`ARRAY['free', 'starter', 'professional', 'enterprise']::text[]`), // Which tiers can buy this
+  
+  // Metadata
+  metadata: jsonb("metadata").default("{}"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("credit_packs_active_idx").on(table.isActive, table.displayOrder),
+]);
+
+export const insertCreditPackSchema = createInsertSchema(creditPacks).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertCreditPack = z.infer<typeof insertCreditPackSchema>;
+export type CreditPack = typeof creditPacks.$inferSelect;
