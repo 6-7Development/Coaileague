@@ -31,7 +31,7 @@ export default function PrivacyPolicy() {
               <li><strong>Account Information:</strong> Name, email address, phone number, company details</li>
               <li><strong>Employee Data:</strong> Names, contact information, roles, wages, schedules, time tracking data</li>
               <li><strong>Financial Information:</strong> Payment method details (processed securely via Stripe), billing addresses</li>
-              <li><strong>Communications:</strong> Messages sent through CommOS™, support tickets, feedback</li>
+              <li><strong>Communications:</strong> Messages sent through AI Communications, support tickets, feedback</li>
               <li><strong>Uploaded Files:</strong> Schedules, documents, compliance records</li>
             </ul>
 
@@ -57,7 +57,7 @@ export default function PrivacyPolicy() {
             <p className="text-foreground/90 mb-4">We use collected information to:</p>
             <ul className="list-disc pl-6 mb-4 text-foreground/90">
               <li><strong>Provide Services:</strong> Time tracking, scheduling, invoicing, payroll, AI-powered automation</li>
-              <li><strong>AI Processing:</strong> Train and improve HelpOS™ and ScheduleOS™ Smart AI algorithms</li>
+              <li><strong>AI Processing:</strong> Train and improve HelpOS™ and AI Scheduling™ Smart AI algorithms</li>
               <li><strong>Analytics:</strong> Monitor usage patterns, improve features, optimize performance</li>
               <li><strong>Communications:</strong> Send updates, invoices, support responses, security alerts</li>
               <li><strong>Compliance:</strong> Maintain audit trails, generate compliance reports, ensure labor law adherence</li>
@@ -70,7 +70,7 @@ export default function PrivacyPolicy() {
           <section className="mb-8">
             <h2 className="text-2xl font-semibold mb-4">4. AI and Machine Learning</h2>
             <p className="text-foreground/90 mb-4">
-              Our AI-powered features (HelpOS™, ScheduleOS™ Smart AI) process your data to:
+              Our AI-powered features (HelpOS™, AI Scheduling™ Smart AI) process your data to:
             </p>
             <ul className="list-disc pl-6 mb-4 text-foreground/90">
               <li>Generate automated schedules based on employee availability and preferences</li>

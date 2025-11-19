@@ -4,7 +4,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Calendar, GripVertical, Sparkles } from "lucide-react";
 
 /**
- * ScheduleOS Preview Component - GetSling-Style Drag & Drop Grid
+ * AI Scheduling Preview Component - GetSling-Style Drag & Drop Grid
  * Shows the modern drag-and-drop scheduling interface
  * Showcases the actual product's advanced scheduling capabilities
  */
@@ -33,11 +33,11 @@ export function SchedulePreview() {
 
   return (
     <div className="w-full h-full bg-background rounded-lg overflow-hidden shadow-xl">
-      {/* Header - Modern ScheduleOS branding */}
+      {/* Header - Modern AI Scheduling branding */}
       <div className="border-b bg-gradient-to-r from-primary/10 via-primary/5 to-background px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Calendar className="h-5 w-5 text-primary" />
-          <h3 className="font-bold text-sm">ScheduleOS™</h3>
+          <h3 className="font-bold text-sm">AI Scheduling™</h3>
           <Badge variant="outline" className="text-xs px-2">
             <Sparkles className="h-3 w-3 mr-1" />
             Drag & Drop Grid

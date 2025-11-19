@@ -24,7 +24,7 @@ interface SearchMetadata {
   searchType: string;
 }
 
-export default function RecordOS() {
+export default function AI Records() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchType, setSearchType] = useState<string>("all");
   const [results, setResults] = useState<SearchResult | null>(null);
@@ -76,7 +76,7 @@ export default function RecordOS() {
             <Search className="h-6 w-6 text-white" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold">RecordOS™</h1>
+            <h1 className="text-3xl font-bold">AI Records™</h1>
             <p className="text-muted-foreground">Natural language search across all your data</p>
           </div>
         </div>

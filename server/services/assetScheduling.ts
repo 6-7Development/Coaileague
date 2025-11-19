@@ -1,7 +1,7 @@
 /**
  * ASSETOS™ - DUAL-LAYER RESOURCE SCHEDULING
  * 
- * Extends ScheduleOS™ to schedule physical resources alongside people.
+ * Extends AI Scheduling™ to schedule physical resources alongside people.
  * Real-time conflict detection prevents double-booking expensive equipment.
  */
 

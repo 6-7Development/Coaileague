@@ -1529,7 +1529,7 @@ export function HelpDesk(props?: HelpDeskProps & any) {
                               setShowDiagnostics(true);
                             }} data-testid={`button-view-profile-${u.id}`}>
                               <Eye className="w-4 h-4 mr-2" />
-                              View Profile (QueryOS™)
+                              View Profile (AI Diagnostics™)
                             </ContextMenuItem>
                           )}
                           <ContextMenuItem onClick={() => {
@@ -1616,7 +1616,7 @@ export function HelpDesk(props?: HelpDeskProps & any) {
         onCancel={() => setSilenceDialogUser(null)}
       />
 
-      {/* QueryOS™ - User Diagnostics Panel (Desktop) */}
+      {/* AI Diagnostics™ - User Diagnostics Panel (Desktop) */}
       <UserDiagnosticsPanel
         userId={diagnosticsUserId}
         open={showDiagnostics}

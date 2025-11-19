@@ -46,7 +46,7 @@ interface AiInsight {
   createdAt: string;
 }
 
-export default function InsightOS() {
+export default function AI Analytics() {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [dismissingInsight, setDismissingInsight] = useState<string | null>(null);
   const [dismissReason, setDismissReason] = useState("");
@@ -155,7 +155,7 @@ export default function InsightOS() {
               <Lightbulb className="h-6 w-6 text-white" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold">InsightOS™</h1>
+              <h1 className="text-3xl font-bold">AI Analytics™</h1>
               <p className="text-muted-foreground">AI-powered analytics & autonomous insights</p>
             </div>
           </div>

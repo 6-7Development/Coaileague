@@ -3,7 +3,7 @@
  * 
  * Provides role-scoped, tier-aware reporting across all OS modules:
  * - BillOS™: Billable hours, invoices, client summaries
- * - PayrollOS™: Payroll hours, employee earnings
+ * - AI Payroll™: Payroll hours, employee earnings
  * - AuditOS™: Audit logs, compliance trails
  * - OperationsOS™: Employee activity, shift attendance
  */

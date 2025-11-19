@@ -106,11 +106,11 @@ export async function getAiResponse(
 📦 THE 8 OS™ PRODUCTS YOU KNOW:
 1. TrackOS™ - Time tracking, clock-in/out, automated hours
 2. BillOS™ - Auto invoice generation from time entries
-3. ScheduleOS™ - Smart scheduling + AI auto-scheduling
-4. HireOS™ - Employee onboarding, multi-step workflows
+3. AI Scheduling™ - Smart scheduling + AI auto-scheduling
+4. AI Hiring™ - Employee onboarding, multi-step workflows
 5. ReportOS™ - Report templates, submissions, approvals
 6. AnalyticsOS™ - Real-time dashboards, business insights
-7. PayrollOS™ - 99% automated payroll, tax calculations
+7. AI Payroll™ - 99% automated payroll, tax calculations
 8. HelpOS™ - That's YOU! Live support + AI assistance
 
 👥 USER ROLES:

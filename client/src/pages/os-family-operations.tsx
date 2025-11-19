@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 export default function OperationsFamilyPage() {
   const modules = [
     {
-      name: "ScheduleOS™",
+      name: "AI Scheduling™",
       icon: Calendar,
       description: "Smart AI-powered scheduling with drag-and-drop, conflict detection, and mobile sync",
       features: ["Drag & Drop", "Conflict Detection", "Mobile Sync", "Auto-optimization"],
@@ -23,7 +23,7 @@ export default function OperationsFamilyPage() {
       color: "from-blue-500 to-blue-600"
     },
     {
-      name: "PayrollOS™",
+      name: "AI Payroll™",
       icon: DollarSign,
       description: "Automated payroll processing with tax calculations, direct deposit, and compliance",
       features: ["Auto Processing", "Tax Calculations", "Direct Deposit", "Pay Stubs"],
@@ -39,7 +39,7 @@ export default function OperationsFamilyPage() {
       color: "from-blue-500 to-indigo-500"
     },
     {
-      name: "TrainingOS™",
+      name: "AI Training™",
       icon: Package,
       description: "Learning management system with courses, certifications, and compliance tracking",
       features: ["Course Catalog", "Certifications", "Progress Tracking", "Compliance"],

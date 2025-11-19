@@ -13,7 +13,7 @@ import { MessageSquare, ArrowRight, ArrowLeft, CheckCircle2, Sparkles, Loader2 }
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 
-export default function CommOSOnboarding() {
+export default function AI CommunicationsOnboarding() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
@@ -91,7 +91,7 @@ export default function CommOSOnboarding() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold flex items-center gap-3 mb-2">
           <MessageSquare className="w-8 h-8 text-primary" />
-          CommOS™ Setup
+          AI Communications Setup
         </h1>
         <p className="text-muted-foreground">
           Set up your organization's communication channels in just 4 steps

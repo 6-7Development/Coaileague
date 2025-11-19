@@ -98,16 +98,16 @@ const onboardingSteps: OnboardingStep[] = [
     icon: Calendar,
     url: "/os-family/operations",
     features: [
-      "ScheduleOS™ - AI-powered smart scheduling",
+      "AI Scheduling™ - AI-powered smart scheduling",
       "TimeOS™ - Geofencing and mobile clock-in",
-      "PayrollOS™ - Automated payroll processing",
+      "AI Payroll™ - Automated payroll processing",
       "BillOS™ - Invoice generation and tracking"
     ]
   },
   {
     id: "schedule-os",
     family: "operations",
-    title: "ScheduleOS™ - Smart Scheduling",
+    title: "AI Scheduling™ - Smart Scheduling",
     description: "Drag-and-drop scheduling with AI conflict detection",
     icon: Calendar,
     url: "/schedule",
@@ -141,7 +141,7 @@ const onboardingSteps: OnboardingStep[] = [
     icon: Briefcase,
     url: "/os-family/growth",
     features: [
-      "HireOS™ - Recruitment workflow automation",
+      "AI Hiring™ - Recruitment workflow automation",
       "EngagementOS™ - Employee engagement analytics",
       "AnalyticsOS™ - Predictive workforce insights",
       "ReportOS™ - Automated compliance reports"
@@ -150,7 +150,7 @@ const onboardingSteps: OnboardingStep[] = [
   {
     id: "hire-os",
     family: "growth",
-    title: "HireOS™ - Recruitment Workflow",
+    title: "AI Hiring™ - Recruitment Workflow",
     description: "Streamline hiring with candidate tracking and interview scheduling",
     icon: Briefcase,
     url: "/owner/hireos/workflow-builder",
@@ -184,16 +184,16 @@ const onboardingSteps: OnboardingStep[] = [
     icon: Activity,
     url: "/os-family/platform",
     features: [
-      "QueryOS™ - User diagnostics and troubleshooting",
-      "IntegrationOS™ - Connect external services",
-      "BudgetOS™ - Budget planning and control",
+      "AI Diagnostics™ - User diagnostics and troubleshooting",
+      "AI Integrations™ - Connect external services",
+      "AI Budgeting™ - Budget planning and control",
       "Command Center - Platform administration"
     ]
   },
   {
     id: "integration-os",
     family: "platform",
-    title: "IntegrationOS™ - External Services",
+    title: "AI Integrations™ - External Services",
     description: "Connect to QuickBooks, Salesforce, Slack, and 50+ platforms",
     icon: Zap,
     url: "/integrations",
@@ -207,7 +207,7 @@ const onboardingSteps: OnboardingStep[] = [
   {
     id: "query-os",
     family: "platform",
-    title: "QueryOS™ - User Diagnostics",
+    title: "AI Diagnostics™ - User Diagnostics",
     description: "Platform staff diagnostics for troubleshooting and support (Admin Only)",
     icon: Activity,
     url: "/query-os",

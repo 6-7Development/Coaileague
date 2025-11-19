@@ -429,11 +429,11 @@ export function MasterKeysPanel() {
                 </CardHeader>
                 <CardContent className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                   {Object.entries({
-                    scheduleos: 'ScheduleOS™',
+                    scheduleos: 'AI Scheduling™',
                     timeos: 'TimeOS™',
-                    payrollos: 'PayrollOS™',
+                    payrollos: 'AI Payroll™',
                     billos: 'BillOS™',
-                    hireos: 'HireOS™',
+                    hireos: 'AI Hiring™',
                     reportos: 'ReportOS™',
                     analyticsos: 'AnalyticsOS™',
                     supportos: 'SupportOS™',

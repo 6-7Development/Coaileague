@@ -234,7 +234,7 @@ interface WebRTCIceCandidatePayload {
   candidate: RTCIceCandidateInit;
 }
 
-// DispatchOS™ WebSocket Payloads
+// AI Dispatch™ WebSocket Payloads
 interface JoinDispatchUpdatesPayload {
   type: 'join_dispatch_updates';
   workspaceId: string;
@@ -338,7 +338,7 @@ export function setupWebSocket(server: Server) {
   // Track notification clients (workspaceId -> Set of WebSocket clients)
   const notificationClients = new Map<string, Map<string, WebSocketClient>>();
   
-  // Track DispatchOS™ connections by workspace ID
+  // Track AI Dispatch™ connections by workspace ID
   const dispatchUpdateClients = new Map<string, Set<WebSocketClient>>();
   
   // Track removed simulated users (so they don't re-appear on reconnect)
@@ -3603,7 +3603,7 @@ export function setupWebSocket(server: Server) {
       { sender: 'sim-user-3', name: 'Maria Garcia', type: 'customer', message: 'Thank you! I can log in now!' },
       
       // Scenario 4: Schedule question
-      { sender: 'sim-user-4', name: 'James Wilson', type: 'customer', message: 'I need help with ScheduleOS. How do I assign shifts to multiple employees at once?' },
+      { sender: 'sim-user-4', name: 'James Wilson', type: 'customer', message: 'I need help with AI Scheduling. How do I assign shifts to multiple employees at once?' },
       { sender: 'sim-staff-1', name: 'Sarah Martinez', type: 'support', message: 'Hi James! You can use the drag-and-drop feature. Just hold Shift and click multiple employees, then drag a shift template onto the selection.' },
       { sender: 'sim-user-4', name: 'James Wilson', type: 'customer', message: 'Oh wow, that is so much easier! Thank you!' },
       
@@ -3795,7 +3795,7 @@ export function setupWebSocket(server: Server) {
 
       userClient.send(payload);
     },
-    // DispatchOS™ WebSocket Broadcast Functions
+    // AI Dispatch™ WebSocket Broadcast Functions
     broadcastGPSUpdate: (workspaceId: string, employeeId: string, latitude: number, longitude: number, status: string) => {
       const clients = dispatchUpdateClients.get(workspaceId);
       if (!clients || clients.size === 0) {

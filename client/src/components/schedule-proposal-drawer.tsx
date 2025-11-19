@@ -1,5 +1,5 @@
 /**
- * ScheduleOS™ Smart AI Proposal Review Drawer
+ * AI Scheduling™ Smart AI Proposal Review Drawer
  * 99% AI, 1% Human Governance - Review and approve AI-generated schedules
  */
 
@@ -319,7 +319,7 @@ export function ScheduleProposalDrawer({
                         htmlFor="disclaimer"
                         className="text-sm leading-relaxed cursor-pointer"
                       >
-                        I acknowledge that ScheduleOS™ generated this schedule at{" "}
+                        I acknowledge that AI Scheduling™ generated this schedule at{" "}
                         <strong>{proposal.confidence}% confidence</strong> and I accept
                         responsibility for verifying assignments before publishing.
                       </Label>
@@ -401,7 +401,7 @@ export function ScheduleProposalDrawer({
                 <strong className="text-foreground">{proposal?.confidence}% confidence</strong>.
               </p>
               <p>
-                By approving, you acknowledge that ScheduleOS™ performed autonomous scheduling
+                By approving, you acknowledge that AI Scheduling™ performed autonomous scheduling
                 and you accept responsibility for reviewing and verifying all assignments.
               </p>
             </AlertDialogDescription>

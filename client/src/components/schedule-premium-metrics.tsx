@@ -155,7 +155,7 @@ export function PremiumMetrics({
                   </div>
                 </div>
                 <div>
-                  <div className="font-bold text-lg">ScheduleOS™ AI Engine</div>
+                  <div className="font-bold text-lg">AI Scheduling™ AI Engine</div>
                   <div className="text-xs text-blue-700 dark:text-blue-400">
                     Status: Active • {roleLabel} {(externalId || employeeId) && `• ${externalId || employeeId}`}
                   </div>

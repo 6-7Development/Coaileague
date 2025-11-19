@@ -409,7 +409,7 @@ export default function Dashboard() {
             <div className="grid gap-3 grid-cols-2">
               <FeatureCard icon={Calendar} label="Schedule" href="/schedule" />
               <FeatureCard icon={Clock} label="Time Tracking" href="/time-tracking" />
-              <FeatureCard icon={MessageSquare} label="CommOS™" href="/comm-os" />
+              <FeatureCard icon={MessageSquare} label="AI Communications" href="/comm-os" />
               <FeatureCard icon={Users} label="Employees" href="/employees" />
             </div>
           </section>

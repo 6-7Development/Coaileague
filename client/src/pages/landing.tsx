@@ -101,7 +101,7 @@ export default function Landing() {
                 </div>
               </div>
 
-              {/* Right: REAL Product Preview - ScheduleOS */}
+              {/* Right: REAL Product Preview - AI Scheduling */}
               <div className="relative w-full max-w-full">
                 <div className="aspect-video rounded-lg sm:rounded-xl border-2 bg-card/50 backdrop-blur-sm overflow-hidden shadow-2xl w-full">
                   {/* REAL AutoForce™ Schedule Interface - NOT a placeholder! */}
@@ -259,7 +259,7 @@ export default function Landing() {
               </div>
             </div>
 
-            {/* ScheduleOS Visual */}
+            {/* AI Scheduling Visual */}
             <div className="grid lg:grid-cols-2 gap-8 sm:gap-10 lg:gap-12 items-center">
               <div className="lg:order-2 space-y-3 sm:space-y-4 max-w-full">
                 <Badge variant="outline" className="inline-flex">

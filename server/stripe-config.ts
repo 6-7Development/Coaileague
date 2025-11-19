@@ -10,7 +10,7 @@ export const STRIPE_PRODUCTS = {
     amount: 29900, // $299.00/month
     employeeLimit: 25,
     features: [
-      'ScheduleOS™ - Smart Scheduling',
+      'AI Scheduling™ - Smart Scheduling',
       'TimeOS™ - Time Tracking',  
       'BillOS™ - Automated Invoicing',
       'Basic Payroll',
@@ -27,12 +27,12 @@ export const STRIPE_PRODUCTS = {
     employeeLimit: 100,
     features: [
       'Everything in Starter',
-      'PayrollOS™ - Full Payroll Automation',
-      'TrainingOS™ - LMS & Certifications',
+      'AI Payroll™ - Full Payroll Automation',
+      'AI Training™ - LMS & Certifications',
       'Performance Reviews & PTO',
       'Benefits Management',
       'Custom Forms & Reports',
-      'IntegrationOS™',
+      'AI Integrations™',
       'Priority Support',
       'Advanced Analytics'
     ]

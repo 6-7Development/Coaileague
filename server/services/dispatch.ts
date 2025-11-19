@@ -1,5 +1,5 @@
 /**
- * DispatchOS™ - Computer-Aided Dispatch Service Layer
+ * AI Dispatch™ - Computer-Aided Dispatch Service Layer
  * Handles GPS tracking, unit status, incident management, and real-time updates
  */
 
@@ -449,7 +449,7 @@ export class DispatchService {
   }
 
   /**
-   * Get on-shift units only (ScheduleOS™ integration)
+   * Get on-shift units only (AI Scheduling™ integration)
    */
   async getOnShiftUnits(workspaceId: string) {
     const now = new Date();

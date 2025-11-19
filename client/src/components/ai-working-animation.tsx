@@ -1,6 +1,6 @@
 /**
  * AI Working Animation
- * Unique animation for ScheduleOS Smart AI automation
+ * Unique animation for AI Scheduling Smart AI automation
  * Shows when AI is processing schedules, analyzing data, or generating proposals
  */
 
@@ -57,7 +57,7 @@ export function AIWorkingAnimation({ message = "Working..." }: { message?: strin
           <p className="text-lg font-semibold text-foreground">{message}</p>
         </div>
         <p className="text-sm text-muted-foreground text-center max-w-xs">
-          ScheduleOS™ Smart AI is analyzing data and optimizing assignments
+          AI Scheduling™ Smart AI is analyzing data and optimizing assignments
         </p>
       </div>
       

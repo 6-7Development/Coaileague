@@ -96,13 +96,13 @@ export async function getAutomationMetrics(workspaceId: string | null): Promise<
     prevMonthInvoices,
     prevMonthPayrolls,
   ] = await Promise.all([
-    getScheduleOSMetrics(workspaceId, monthStart, monthEnd),
+    getAI SchedulingMetrics(workspaceId, monthStart, monthEnd),
     getBillOSMetrics(workspaceId, monthStart, monthEnd),
-    getPayrollOSMetrics(workspaceId, monthStart, monthEnd),
+    getAI PayrollMetrics(workspaceId, monthStart, monthEnd),
     getAIJobMetrics(workspaceId, monthStart, monthEnd),
-    getScheduleOSMetrics(workspaceId, prevMonthStart, prevMonthEnd),
+    getAI SchedulingMetrics(workspaceId, prevMonthStart, prevMonthEnd),
     getBillOSMetrics(workspaceId, prevMonthStart, prevMonthEnd),
-    getPayrollOSMetrics(workspaceId, prevMonthStart, prevMonthEnd),
+    getAI PayrollMetrics(workspaceId, prevMonthStart, prevMonthEnd),
   ]);
   
   // Calculate total hours saved this month
@@ -138,9 +138,9 @@ export async function getAutomationMetrics(workspaceId: string | null): Promise<
   
   // Calculate true all-time hours saved from historical data
   const allTimeMetrics = await Promise.all([
-    getScheduleOSMetrics(workspaceId, new Date(0), now), // All time
+    getAI SchedulingMetrics(workspaceId, new Date(0), now), // All time
     getBillOSMetrics(workspaceId, new Date(0), now),
-    getPayrollOSMetrics(workspaceId, new Date(0), now),
+    getAI PayrollMetrics(workspaceId, new Date(0), now),
   ]);
   
   const hoursSavedAllTime = 
@@ -190,9 +190,9 @@ export async function getAutomationMetrics(workspaceId: string | null): Promise<
 }
 
 /**
- * Get ScheduleOS™ automation metrics
+ * Get AI Scheduling™ automation metrics
  */
-async function getScheduleOSMetrics(
+async function getAI SchedulingMetrics(
   workspaceId: string,
   startDate: Date,
   endDate: Date
@@ -306,9 +306,9 @@ async function getBillOSMetrics(
 }
 
 /**
- * Get PayrollOS™ automation metrics
+ * Get AI Payroll™ automation metrics
  */
-async function getPayrollOSMetrics(
+async function getAI PayrollMetrics(
   workspaceId: string,
   startDate: Date,
   endDate: Date

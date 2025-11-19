@@ -379,12 +379,12 @@ export class InvoiceService {
    */
   private formatFeatureName(featureKey: string): string {
     const names: Record<string, string> = {
-      'scheduleos_ai_generation': 'ScheduleOS AI Generation',
-      'scheduleos_optimization': 'ScheduleOS Optimization',
-      'recordos_search': 'RecordOS Search',
-      'recordos_ai_query': 'RecordOS AI Query',
-      'insightos_prediction': 'InsightOS Prediction',
-      'insightos_analytics': 'InsightOS Analytics',
+      'scheduleos_ai_generation': 'AI Scheduling AI Generation',
+      'scheduleos_optimization': 'AI Scheduling Optimization',
+      'recordos_search': 'AI Records Search',
+      'recordos_ai_query': 'AI Records AI Query',
+      'insightos_prediction': 'AI Analytics Prediction',
+      'insightos_analytics': 'AI Analytics Analytics',
     };
 
     return names[featureKey] || featureKey;

@@ -1,5 +1,5 @@
 /**
- * ScheduleOS™ Smart AI Engine
+ * AI Scheduling™ Smart AI Engine
  * Powered by Gemini 2.0 Flash - Auto-schedules employees to open shifts
  * Uses intelligent constraint solving based on availability, skills, and business rules
  */
@@ -107,7 +107,7 @@ export async function scheduleSmartAI(request: ScheduleSmartRequest): Promise<Sc
     role: emp.role
   }));
 
-  const systemPrompt = `You are ScheduleOS™, AutoForce's intelligent scheduling AI powered by weighted constraint optimization.
+  const systemPrompt = `You are AI Scheduling™, AutoForce's intelligent scheduling AI powered by weighted constraint optimization.
 
 Your task: Assign employees to open shifts using HARD and SOFT constraints:
 
@@ -208,7 +208,7 @@ Assign employees to shifts. Return valid JSON only.`;
           completionTokens: usage?.candidatesTokenCount,
         }
       });
-      console.log(`🧠 ScheduleOS™ AI - ${totalTokens} tokens - ${request.openShifts.length} shifts analyzed`);
+      console.log(`🧠 AI Scheduling™ AI - ${totalTokens} tokens - ${request.openShifts.length} shifts analyzed`);
     }
     
     // Parse JSON response with structured fallback handling
@@ -228,20 +228,20 @@ Assign employees to shifts. Return valid JSON only.`;
     try {
       parsedResponse = JSON.parse(cleanedResponse);
     } catch (parseError: any) {
-      console.error("ScheduleOS™ AI - Invalid JSON response:", cleanedResponse);
+      console.error("AI Scheduling™ AI - Invalid JSON response:", cleanedResponse);
       throw new Error(`AI returned non-JSON response: ${parseError.message}`);
     }
     
     // Validate response structure with Zod
     const validationResult = scheduleSmartResponseSchema.safeParse(parsedResponse);
     if (!validationResult.success) {
-      console.error("ScheduleOS™ AI - Invalid response structure:", validationResult.error.errors);
+      console.error("AI Scheduling™ AI - Invalid response structure:", validationResult.error.errors);
       throw new Error(`AI response validation failed: ${JSON.stringify(validationResult.error.errors)}`);
     }
     
     return validationResult.data;
   } catch (error: any) {
-    console.error("ScheduleOS™ AI error:", error);
+    console.error("AI Scheduling™ AI error:", error);
     throw new Error(`AI scheduling error: ${error.message || 'Unknown error'}`);
   }
 }

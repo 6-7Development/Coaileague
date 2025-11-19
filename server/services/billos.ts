@@ -1,6 +1,6 @@
 /**
  * BillOS™ - Full Financial Automation System
- * Combines InvoiceOS (AR) and PayrollOS (HR) into unified billing solution
+ * Combines InvoiceOS (AR) and AI Payroll (HR) into unified billing solution
  * 
  * Features:
  * - Zero-touch usage-based invoicing
@@ -738,7 +738,7 @@ export async function processInvoicePayment(
 
 /**
  * PHASE 4B: FULL-SERVICE PAYROLL & LIABILITY (Subscriber's HR)
- * These functions integrate with the existing PayrollOS™ system
+ * These functions integrate with the existing AI Payroll™ system
  */
 
 /**

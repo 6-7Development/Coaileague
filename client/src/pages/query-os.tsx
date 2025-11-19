@@ -61,7 +61,7 @@ interface SessionInfo {
   lastActivity?: string;
 }
 
-export default function QueryOS() {
+export default function AI Diagnostics() {
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -184,7 +184,7 @@ export default function QueryOS() {
             <Terminal className="h-6 w-6 text-white" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold">QueryOS™</h1>
+            <h1 className="text-3xl font-bold">AI Diagnostics™</h1>
             <p className="text-sm text-muted-foreground">
               User Diagnostics & Troubleshooting Panel
             </p>

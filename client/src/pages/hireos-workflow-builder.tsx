@@ -18,7 +18,7 @@ import { GripVertical, Plus, Trash2, Edit, Save, AlertCircle, FileText, Upload, 
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
-// Step types available in HireOS
+// Step types available in AI Hiring
 const STEP_TYPES = [
   { value: 'personal_info', label: 'Personal Information', icon: FileText, description: 'Name, address, emergency contacts' },
   { value: 'tax_classification', label: 'Tax Classification', icon: FileText, description: 'W-4 Employee or W-9 Contractor' },
@@ -350,7 +350,7 @@ function StepEditorDialog({ open, onOpenChange, step, onSave, reportTemplates }:
   );
 }
 
-export default function HireOSWorkflowBuilder() {
+export default function AI HiringWorkflowBuilder() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const [editingStep, setEditingStep] = useState<any>(null);
@@ -502,7 +502,7 @@ export default function HireOSWorkflowBuilder() {
   return (
     <div className="container mx-auto py-6 max-w-6xl">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-2">HireOS™ Workflow Builder</h1>
+        <h1 className="text-3xl font-bold mb-2">AI Hiring™ Workflow Builder</h1>
         <p className="text-muted-foreground">
           Design your custom onboarding sequence with drag-and-drop simplicity
         </p>

@@ -42,7 +42,7 @@ interface BudgetLine {
   variancePercent: number;
 }
 
-export default function BudgetOS() {
+export default function AI Budgeting() {
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -126,7 +126,7 @@ export default function BudgetOS() {
               <Wallet className="h-6 w-6 text-white" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold">BudgetOS™</h1>
+              <h1 className="text-3xl font-bold">AI Budgeting™</h1>
               <p className="text-sm text-muted-foreground">
                 Budget Planning & Financial Control
               </p>

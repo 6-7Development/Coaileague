@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 export default function PlatformFamilyPage() {
   const modules = [
     {
-      name: "QueryOS™",
+      name: "AI Diagnostics™",
       icon: Activity,
       description: "Platform staff diagnostics with user search, account management, and impersonation controls",
       features: ["User Diagnostics", "Account Management", "Impersonation", "Audit Logs"],
@@ -16,7 +16,7 @@ export default function PlatformFamilyPage() {
       adminOnly: true
     },
     {
-      name: "IntegrationOS™",
+      name: "AI Integrations™",
       icon: Zap,
       description: "External service ecosystem with marketplace, API keys, webhooks, and OAuth2 connections",
       features: ["Marketplace", "API Keys", "Webhooks", "OAuth2"],
@@ -24,7 +24,7 @@ export default function PlatformFamilyPage() {
       color: "from-blue-500 to-indigo-500"
     },
     {
-      name: "BudgetOS™",
+      name: "AI Budgeting™",
       icon: TrendingUp,
       description: "Budget planning and control with variance analysis, forecasting, and approval workflows",
       features: ["Budget Planning", "Variance Analysis", "Forecasting", "Approvals"],

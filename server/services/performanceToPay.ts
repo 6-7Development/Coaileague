@@ -2,7 +2,7 @@
  * TALENTOS™ - PERFORMANCE-TO-PAY LOOP
  * 
  * Auto-generates data-driven compensation recommendations.
- * Pulls metrics from Unified Data Nexus (ClockOS™, ReportOS™, ScheduleOS™).
+ * Pulls metrics from Unified Data Nexus (ClockOS™, ReportOS™, AI Scheduling™).
  */
 
 import { storage } from "../storage";

@@ -5,7 +5,7 @@
  * RBAC: owner, admin, manager, accountant, hr_manager roles
  * 
  * Approves:
- * - ScheduleOS™ AI-generated schedules (schedule_proposals)
+ * - AI Scheduling™ AI-generated schedules (schedule_proposals)
  * - BillOS™ Auto-generated invoices
  * - OperationsOS™ Auto-generated payroll
  * 
@@ -289,7 +289,7 @@ export default function WorkflowApprovals() {
         <TabsList className={`${isMobile ? 'w-full' : ''}`}>
           <TabsTrigger value="schedules" className="flex-1" data-testid="tab-schedules">
             <Calendar className="w-4 h-4 mr-2" />
-            ScheduleOS™
+            AI Scheduling™
           </TabsTrigger>
           <TabsTrigger value="invoices" className="flex-1" data-testid="tab-invoices">
             <DollarSign className="w-4 h-4 mr-2" />
@@ -297,11 +297,11 @@ export default function WorkflowApprovals() {
           </TabsTrigger>
           <TabsTrigger value="payroll" className="flex-1" data-testid="tab-payroll">
             <Users className="w-4 h-4 mr-2" />
-            PayrollOS™
+            AI Payroll™
           </TabsTrigger>
         </TabsList>
 
-        {/* ScheduleOS™ Proposals */}
+        {/* AI Scheduling™ Proposals */}
         <TabsContent value="schedules" className="flex-1 flex flex-col">
           <ScrollArea className="flex-1">
             {isLoadingSchedules ? (

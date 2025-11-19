@@ -205,7 +205,7 @@ Be concise, professional, and helpful. If you don't know something specific to t
   }
 
   /**
-   * ScheduleOS Generation - AI-powered scheduling
+   * AI Scheduling Generation - AI-powered scheduling
    */
   private async executeScheduleGeneration(job: AiBrainJob): Promise<{ output: any; tokensUsed: number; confidence: number }> {
     const { shifts, employees, constraints } = job.input;
@@ -216,7 +216,7 @@ Be concise, professional, and helpful. If you don't know something specific to t
       job.workspaceId || undefined
     );
 
-    const systemPrompt = `You are AutoForce™ ScheduleOS AI, an expert at creating optimal employee schedules.
+    const systemPrompt = `You are AutoForce™ AI Scheduling AI, an expert at creating optimal employee schedules.
 
 Analyze the provided shifts, employees, and constraints to create an optimal schedule assignment.
 Consider:

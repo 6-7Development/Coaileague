@@ -60,7 +60,7 @@ interface Certification {
   status: "valid" | "expired" | "revoked";
 }
 
-export default function TrainingOS() {
+export default function AI Training() {
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
@@ -179,7 +179,7 @@ export default function TrainingOS() {
               <GraduationCap className="h-6 w-6 text-white" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold">TrainingOS™</h1>
+              <h1 className="text-3xl font-bold">AI Training™</h1>
               <p className="text-sm text-muted-foreground">
                 Learning Management & Certification Platform
               </p>
