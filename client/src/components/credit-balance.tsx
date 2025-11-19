@@ -10,6 +10,7 @@ import { Progress } from '@/components/ui/progress';
 import { useQuery } from '@tanstack/react-query';
 import { Coins, TrendingUp, Calendar, ShoppingCart, Zap, AlertTriangle } from 'lucide-react';
 import { useState } from 'react';
+import { BuyCreditsModal } from './buy-credits-modal';
 
 interface CreditBalance {
   currentBalance: number;
@@ -30,6 +31,8 @@ interface CreditUsageBreakdown {
 }
 
 export function CreditBalanceCard({ onBuyCredits }: { onBuyCredits?: () => void }) {
+  const [showBuyModal, setShowBuyModal] = useState(false);
+  
   const { data: balance, isLoading } = useQuery<CreditBalance>({
     queryKey: ['/api/credits/balance'],
   });
@@ -37,6 +40,14 @@ export function CreditBalanceCard({ onBuyCredits }: { onBuyCredits?: () => void 
   const { data: usage } = useQuery<CreditUsageBreakdown[]>({
     queryKey: ['/api/credits/usage-breakdown'],
   });
+
+  const handleBuyClick = () => {
+    if (onBuyCredits) {
+      onBuyCredits();
+    } else {
+      setShowBuyModal(true);
+    }
+  };
 
   if (isLoading || !balance) {
     return (
@@ -169,7 +180,7 @@ export function CreditBalanceCard({ onBuyCredits }: { onBuyCredits?: () => void 
 
         {/* Buy Credits Button */}
         <Button 
-          onClick={onBuyCredits} 
+          onClick={handleBuyClick} 
           className="w-full gap-2"
           variant={isCritical ? 'default' : 'outline'}
           data-testid="button-buy-credits"
@@ -178,6 +189,8 @@ export function CreditBalanceCard({ onBuyCredits }: { onBuyCredits?: () => void 
           {isCritical ? 'Buy Credits Now' : 'Buy More Credits'}
         </Button>
       </CardContent>
+      
+      <BuyCreditsModal open={showBuyModal} onOpenChange={setShowBuyModal} />
     </Card>
   );
 }

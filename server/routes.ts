@@ -2578,6 +2578,84 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  /**
+   * Create Stripe checkout session for credit purchase
+   * RBAC: org_owner and org_admin only
+   */
+  app.post('/api/credits/purchase', requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user!.id;
+      const { resolveWorkspaceForUser } = await import('./rbac');
+      const { workspaceId, role, error } = await resolveWorkspaceForUser(userId);
+
+      if (!workspaceId) {
+        return res.status(400).json({ error: error || 'No workspace found' });
+      }
+
+      // RBAC: Only org_owner and org_admin can purchase credits
+      if (role !== 'org_owner' && role !== 'org_admin') {
+        return res.status(403).json({ error: 'Insufficient permissions to purchase credits' });
+      }
+
+      const { creditPackId, successUrl, cancelUrl } = req.body;
+
+      if (!creditPackId || !successUrl || !cancelUrl) {
+        return res.status(400).json({ error: 'Missing required fields' });
+      }
+
+      const { creditPurchaseService } = await import('./services/billing/creditPurchase');
+      const session = await creditPurchaseService.createCheckoutSession({
+        workspaceId,
+        userId,
+        creditPackId,
+        successUrl,
+        cancelUrl,
+      });
+
+      res.json(session);
+    } catch (error) {
+      console.error('[API] Error creating credit purchase session:', error);
+      res.status(500).json({ message: 'Failed to create checkout session' });
+    }
+  });
+
+  /**
+   * Stripe webhook handler for credit purchases
+   * Public endpoint (no auth) - validates via Stripe signature
+   */
+  app.post('/api/webhooks/stripe/credits', async (req, res) => {
+    const signature = req.headers['stripe-signature'];
+
+    if (!signature) {
+      return res.status(400).json({ error: 'Missing stripe-signature header' });
+    }
+
+    try {
+      const { creditPurchaseService } = await import('./services/billing/creditPurchase');
+      
+      // Verify webhook signature and parse event
+      const event = creditPurchaseService.verifyWebhookSignature(
+        req.body,
+        signature as string
+      );
+
+      // Handle the event
+      if (event.type === 'checkout.session.completed') {
+        const session = event.data.object as any;
+        
+        // Only process credit purchases
+        if (session.metadata?.type === 'credit_purchase') {
+          await creditPurchaseService.handlePaymentSuccess(session);
+        }
+      }
+
+      res.json({ received: true });
+    } catch (error) {
+      console.error('[Webhook] Error processing Stripe webhook:', error);
+      res.status(400).json({ error: 'Webhook processing failed' });
+    }
+  });
+
   // ==================== REPORTING API ROUTES ====================
   
   /**
