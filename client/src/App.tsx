@@ -470,6 +470,7 @@ function AppContent() {
                 <Route path="/audit-logs" component={AuditLogs} />
                 <Route path="/ai/command-center" component={AICommandCenter} />
                 <Route path="/billing" component={Billing} />
+                <Route path="/usage" component={UsageDashboard} />
                 <Route path="/integrations" component={IntegrationsPage} />
                 <Route path="/oversight" component={OversightHub} />
                 <Route path="/expenses" component={Expenses} />

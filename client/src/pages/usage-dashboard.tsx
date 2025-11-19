@@ -53,7 +53,7 @@ interface CostSummary {
 
 export default function UsageDashboard() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
-  const { workspaceRole, subscriptionTier } = useWorkspaceAccess();
+  const { workspaceRole, subscriptionTier, isLoading: accessLoading } = useWorkspaceAccess();
   
   // Default to current month
   const now = new Date();
@@ -66,7 +66,8 @@ export default function UsageDashboard() {
     enabled: isAuthenticated,
   });
 
-  if (authLoading || !isAuthenticated) {
+  // Show loading while auth or workspace access is loading
+  if (authLoading || !isAuthenticated || accessLoading) {
     return <ResponsiveLoading message="Loading Usage Dashboard..." />;
   }
 
