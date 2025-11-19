@@ -1,4 +1,4 @@
-// CommOS™ Chat File Upload Routes
+// AI Communications Chat File Upload Routes
 // Secure file upload system with workspace scoping, sanitization, and audit tracking
 
 import { Router, type Request } from "express";

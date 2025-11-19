@@ -25,8 +25,8 @@ export const OS_FEATURES: Record<string, OSFeature> = {
   },
   
   scheduleOS: {
-    name: 'ScheduleOS',
-    displayName: 'ScheduleOS™',
+    name: 'AI Scheduling',
+    displayName: 'AI Scheduling™',
     tagline: 'AI-Powered Auto-Scheduling',
     description: 'Let AI schedule your entire workforce in 30 seconds. Learns employee patterns, detects conflicts, optimizes coverage',
     icon: 'Calendar',
@@ -44,8 +44,8 @@ export const OS_FEATURES: Record<string, OSFeature> = {
   },
   
   payrollOS: {
-    name: 'PayrollOS',
-    displayName: 'PayrollOS™',
+    name: 'AI Payroll',
+    displayName: 'AI Payroll™',
     tagline: 'Intelligent Payroll Automation',
     description: 'Automated payroll processing with tax calculations, deductions, and direct deposit management',
     icon: 'DollarSign',
@@ -53,8 +53,8 @@ export const OS_FEATURES: Record<string, OSFeature> = {
   },
   
   hireOS: {
-    name: 'HireOS',
-    displayName: 'HireOS™',
+    name: 'AI Hiring',
+    displayName: 'AI Hiring™',
     tagline: 'Smart Hiring & Onboarding',
     description: 'AI-powered candidate screening, digital onboarding workflows, e-signature documents, compliance tracking',
     icon: 'UserPlus',

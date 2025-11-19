@@ -1,6 +1,6 @@
 /**
  * CUSTOM WORKFLOW RULES ENGINE (Monopolistic Feature #2)
- * Drag-and-drop automation for PayrollOS™ and ScheduleOS™
+ * Drag-and-drop automation for AI Payroll™ and AI Scheduling™
  * 
  * Allows workspace owners to create custom IF/THEN rules like:
  * - IF employee works > 40 hours => THEN apply 1.5x overtime

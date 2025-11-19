@@ -1,5 +1,5 @@
 /**
- * ScheduleOS™ - INTELLIGENT AUTO-SCHEDULING ENGINE
+ * AI Scheduling™ - INTELLIGENT AUTO-SCHEDULING ENGINE
  * 
  * Integrates with ALL WorkforceOS™ systems for comprehensive scheduling:
  * - TalentOS™: Performance scores, attendance rates, composite scores
@@ -129,7 +129,7 @@ interface ScheduleResult {
 // SCHEDULEOS™ AI ENGINE
 // ============================================================================
 
-export class ScheduleOSAI {
+export class AI SchedulingAI {
   private openai: OpenAI;
 
   constructor() {
@@ -148,7 +148,7 @@ export class ScheduleOSAI {
   async generateSchedule(request: ScheduleRequest): Promise<ScheduleResult> {
     const startTime = Date.now();
     
-    console.log(`[ScheduleOS™] Generating intelligent schedule for week ${request.weekStartDate.toISOString()}`);
+    console.log(`[AI Scheduling™] Generating intelligent schedule for week ${request.weekStartDate.toISOString()}`);
     
     // 1. Get comprehensive employee intelligence from all systems
     const employeeIntelligence = await this.gatherEmployeeIntelligence(
@@ -156,7 +156,7 @@ export class ScheduleOSAI {
       request.weekStartDate
     );
     
-    console.log(`[ScheduleOS™] Analyzed ${employeeIntelligence.length} employees across all systems`);
+    console.log(`[AI Scheduling™] Analyzed ${employeeIntelligence.length} employees across all systems`);
     
     // 2. Get job site data for location-based assignment
     const jobSites = await this.getJobSiteData(request.clientIds || [], request.workspaceId);
@@ -177,7 +177,7 @@ export class ScheduleOSAI {
       );
 
     // 4. CONSTRAINT SOLVER: Generate optimal schedule using proper CSP solving
-    console.log(`[ScheduleOS™] Running constraint solver for optimal scheduling...`);
+    console.log(`[AI Scheduling™] Running constraint solver for optimal scheduling...`);
     const solverStartTime = Date.now();
     
     const solvedSchedule = await this.constraintSolver(
@@ -188,10 +188,10 @@ export class ScheduleOSAI {
     );
     
     const solverTimeMs = Date.now() - solverStartTime;
-    console.log(`[ScheduleOS™] Constraint solver completed in ${solverTimeMs}ms`);
+    console.log(`[AI Scheduling™] Constraint solver completed in ${solverTimeMs}ms`);
 
     // 5. GPT-4 VALIDATION: Verify solution quality and generate explanations
-    console.log(`[ScheduleOS™] Using GPT-4 to validate and explain schedule...`);
+    console.log(`[AI Scheduling™] Using GPT-4 to validate and explain schedule...`);
     const aiPrompt = this.buildValidationPrompt(
       employeeIntelligence,
       request.shiftRequirements,
@@ -203,7 +203,7 @@ export class ScheduleOSAI {
       messages: [
         {
           role: 'system',
-          content: `You are ScheduleOS™ AI Validator. Your job is to:
+          content: `You are AI Scheduling™ AI Validator. Your job is to:
 1. Verify the schedule satisfies all hard constraints (availability, max hours, conflicts)
 2. Identify any risks or warnings (high-risk employees, long distances, tight scheduling)
 3. Provide business-friendly explanations and recommendations
@@ -238,7 +238,7 @@ Respond with JSON containing: { valid: boolean, warnings: string[], recommendati
           shiftsGenerated: request.shiftRequirements.length,
         },
       });
-      console.log(`[ScheduleOS™] Billed ${tokenUsage.total_tokens} tokens to workspace ${request.workspaceId}`);
+      console.log(`[AI Scheduling™] Billed ${tokenUsage.total_tokens} tokens to workspace ${request.workspaceId}`);
     }
 
     // 6. Parse GPT-4 validation response
@@ -246,7 +246,7 @@ Respond with JSON containing: { valid: boolean, warnings: string[], recommendati
 
     // FAIL FAST: If GPT-4 validation fails, reject the schedule
     if (validationResult.valid === false) {
-      console.error(`[ScheduleOS™] GPT-4 validation failed. Rejecting schedule.`);
+      console.error(`[AI Scheduling™] GPT-4 validation failed. Rejecting schedule.`);
       throw new Error(`Schedule validation failed: ${validationResult.warnings?.join(', ') || 'Unknown validation errors'}`);
     }
 
@@ -276,7 +276,7 @@ Respond with JSON containing: { valid: boolean, warnings: string[], recommendati
 
     const processingTimeMs = Date.now() - startTime;
 
-    console.log(`[ScheduleOS™] Generated ${generatedShifts.length} optimal shifts in ${processingTimeMs}ms`);
+    console.log(`[AI Scheduling™] Generated ${generatedShifts.length} optimal shifts in ${processingTimeMs}ms`);
 
     return {
       success: true,
@@ -840,7 +840,7 @@ Analyze the solution quality and provide:
     jobSites: any[]
   ): string {
     return `
-You are ScheduleOS™, the world's most advanced AI workforce scheduling system. Generate an optimal schedule using comprehensive employee intelligence data.
+You are AI Scheduling™, the world's most advanced AI workforce scheduling system. Generate an optimal schedule using comprehensive employee intelligence data.
 
 ═══════════════════════════════════════════════════════════════════════════════
 EMPLOYEE INTELLIGENCE (Integrated from TalentOS™, ClockOS™, Geo-Compliance)
@@ -940,4 +940,4 @@ RESPONSE FORMAT (JSON)
   }
 }
 
-export const scheduleOSAI = new ScheduleOSAI();
+export const scheduleOSAI = new AI SchedulingAI();

@@ -58,7 +58,7 @@ import { SupportChatroomList } from "@/components/support-chatroom-list";
 import { MessageSearch } from "@/components/message-search";
 import { WebRTCCall } from "@/components/webrtc-call";
 
-export default function CommOS() {
+export default function AI Communications() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [suspendDialogOpen, setSuspendDialogOpen] = useState(false);
@@ -238,7 +238,7 @@ export default function CommOS() {
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <MessageSquare className="w-12 h-12 mx-auto mb-4 text-muted-foreground animate-pulse" />
-          <p className="text-muted-foreground">Loading CommOS™...</p>
+          <p className="text-muted-foreground">Loading AI Communications...</p>
         </div>
       </div>
     );
@@ -257,7 +257,7 @@ export default function CommOS() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <MessageSquare className="w-6 h-6 text-primary" />
-              Welcome to CommOS™
+              Welcome to AI Communications
             </CardTitle>
             <CardDescription>
               Set up your organization's communication channels
@@ -265,7 +265,7 @@ export default function CommOS() {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              CommOS™ allows your organization to create dedicated chat rooms and channels for your team, customers, and support staff.
+              AI Communications allows your organization to create dedicated chat rooms and channels for your team, customers, and support staff.
             </p>
             <div className="bg-muted/50 rounded-lg p-4 space-y-2">
               <h4 className="font-semibold text-sm">What you'll get:</h4>
@@ -308,7 +308,7 @@ export default function CommOS() {
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-3">
             <MessageSquare className="w-8 h-8 text-primary" />
-            CommOS™
+            AI Communications
           </h1>
           <p className="text-muted-foreground mt-1">
             {isSupportStaff 

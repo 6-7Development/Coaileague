@@ -1,5 +1,5 @@
 /**
- * QueryOS™ - User Diagnostics Panel
+ * AI Diagnostics™ - User Diagnostics Panel
  * Universal user information retrieval system for support staff
  * Works on both mobile and desktop platforms
  */
@@ -31,7 +31,7 @@ export function UserDiagnosticsPanel({
   onClose, 
   variant = 'desktop' 
 }: UserDiagnosticsPanelProps) {
-  // QueryOS™ - User Context Query
+  // AI Diagnostics™ - User Context Query
   const { data: userContext, isLoading, error } = useQuery({
     queryKey: ['/api/helpdesk/user-context', userId],
     enabled: !!userId && open,
@@ -285,7 +285,7 @@ export function UserDiagnosticsPanel({
           <SheetHeader className="flex-shrink-0">
             <SheetTitle className="flex items-center gap-2">
               <User className="w-5 h-5" />
-              User Diagnostics - QueryOS™
+              User Diagnostics - AI Diagnostics™
             </SheetTitle>
           </SheetHeader>
           <div className="flex-1 overflow-y-auto mt-4 pr-2">
@@ -303,7 +303,7 @@ export function UserDiagnosticsPanel({
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <User className="w-5 h-5" />
-            User Diagnostics - QueryOS™
+            User Diagnostics - AI Diagnostics™
           </DialogTitle>
         </DialogHeader>
         <div className="flex-1 overflow-y-auto pr-2">

@@ -148,7 +148,7 @@ export const quickActionsRegistry: QuickAction[] = [
     icon: MessageSquare,
     color: 'text-blue-400',
     category: 'support',
-    desktopPath: '/comm-os', // Desktop: Full CommOS
+    desktopPath: '/comm-os', // Desktop: Full AI Communications
     mobilePath: '/private-messages', // Mobile: Mobile-optimized chat
     requiresAuth: true,
     testId: 'quick-chat',

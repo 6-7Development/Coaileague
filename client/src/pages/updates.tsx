@@ -16,7 +16,7 @@ interface Update {
 const updates: Update[] = [
   {
     id: "1",
-    title: "InsightOS™ - AI Analytics Platform",
+    title: "AI Analytics™ - AI Analytics Platform",
     description: "Launch of autonomous AI analytics with real-time insights, cost-saving recommendations, and anomaly detection. Get actionable recommendations with confidence scores and estimated ROI impact.",
     date: "2025-11-04",
     category: "feature",
@@ -24,7 +24,7 @@ const updates: Update[] = [
   },
   {
     id: "2",
-    title: "RecordOS™ - Natural Language Search",
+    title: "AI Records™ - Natural Language Search",
     description: "Search your entire workforce database using natural language. Ask questions like 'Show me employees hired this month' or 'Find invoices over $5000' and get instant results.",
     date: "2025-11-04",
     category: "feature",

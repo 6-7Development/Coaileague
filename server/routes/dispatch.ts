@@ -1,5 +1,5 @@
 /**
- * DispatchOS™ API Routes
+ * AI Dispatch™ API Routes
  * GPS tracking, incident management, unit status, real-time CAD operations
  */
 
@@ -92,7 +92,7 @@ router.get('/units/:employeeId/trail', async (req: Request, res: Response) => {
 
 /**
  * GET /api/dispatch/units/on-shift
- * Get only units currently on shift (ScheduleOS™ integration)
+ * Get only units currently on shift (AI Scheduling™ integration)
  */
 router.get('/units/on-shift', async (req: Request, res: Response) => {
   try {

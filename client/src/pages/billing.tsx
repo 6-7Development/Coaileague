@@ -329,7 +329,7 @@ export default function Billing() {
                     <div className="p-4 rounded-md border">
                       <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
                         <Brain className="h-4 w-4" />
-                        RecordOS™
+                        AI Records™
                       </div>
                       <div className="text-2xl font-bold">{(usageData as any)?.recordOSTokens?.toLocaleString() || "0"}</div>
                       <p className="text-xs text-muted-foreground mt-1">tokens used</p>
@@ -337,7 +337,7 @@ export default function Billing() {
                     <div className="p-4 rounded-md border">
                       <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
                         <TrendingUp className="h-4 w-4" />
-                        InsightOS™
+                        AI Analytics™
                       </div>
                       <div className="text-2xl font-bold">{(usageData as any)?.insightOSTokens?.toLocaleString() || "0"}</div>
                       <p className="text-xs text-muted-foreground mt-1">tokens used</p>
@@ -345,7 +345,7 @@ export default function Billing() {
                     <div className="p-4 rounded-md border">
                       <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
                         <Calendar className="h-4 w-4" />
-                        ScheduleOS™
+                        AI Scheduling™
                       </div>
                       <div className="text-2xl font-bold">{(usageData as any)?.scheduleOSTokens?.toLocaleString() || "0"}</div>
                       <p className="text-xs text-muted-foreground mt-1">tokens used</p>

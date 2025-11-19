@@ -252,7 +252,7 @@ export default function IntegrationMarketplace() {
           <div>
             <h1 className="text-3xl font-bold flex items-center gap-2" data-testid="heading-integrationos">
               <Zap className="w-8 h-8 text-primary" />
-              IntegrationOS™
+              AI Integrations™
             </h1>
             <p className="text-muted-foreground mt-2">
               Connect WorkforceOS to your entire enterprise ecosystem. Certified integrations with one-click setup.

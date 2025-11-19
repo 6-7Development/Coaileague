@@ -1,5 +1,5 @@
 /**
- * ScheduleOS™ AI Auto-Scheduling Panel
+ * AI Scheduling™ AI Auto-Scheduling Panel
  * Subscriber-Pays-All Model: 7-day free trial → Payment required
  */
 
@@ -12,16 +12,16 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
-interface ScheduleOSPanelProps {
+interface AI SchedulingPanelProps {
   weekStartDate: Date;
   onScheduleGenerated?: () => void;
 }
 
-export function ScheduleOSPanel({ weekStartDate, onScheduleGenerated }: ScheduleOSPanelProps) {
+export function AI SchedulingPanel({ weekStartDate, onScheduleGenerated }: AI SchedulingPanelProps) {
   const { toast } = useToast();
   const [showPreview, setShowPreview] = useState(false);
 
-  // Check ScheduleOS™ status
+  // Check AI Scheduling™ status
   const { data: status, isLoading: statusLoading } = useQuery<any>({
     queryKey: ['/api/scheduleos/status'],
   });
@@ -35,7 +35,7 @@ export function ScheduleOSPanel({ weekStartDate, onScheduleGenerated }: Schedule
     onSuccess: (data) => {
       toast({
         title: "Trial Started!",
-        description: `ScheduleOS™ 7-day free trial activated. ${data.daysLeft} days remaining.`,
+        description: `AI Scheduling™ 7-day free trial activated. ${data.daysLeft} days remaining.`,
       });
       queryClient.invalidateQueries({ queryKey: ['/api/scheduleos/status'] });
     },
@@ -58,7 +58,7 @@ export function ScheduleOSPanel({ weekStartDate, onScheduleGenerated }: Schedule
     },
     onSuccess: () => {
       toast({
-        title: "ScheduleOS™ Activated!",
+        title: "AI Scheduling™ Activated!",
         description: "AI scheduling is now active. Generate your first schedule!",
       });
       queryClient.invalidateQueries({ queryKey: ['/api/scheduleos/status'] });
@@ -66,7 +66,7 @@ export function ScheduleOSPanel({ weekStartDate, onScheduleGenerated }: Schedule
     onError: (error: any) => {
       toast({
         title: "Activation Failed",
-        description: error.message || "Failed to activate ScheduleOS™",
+        description: error.message || "Failed to activate AI Scheduling™",
         variant: "destructive",
       });
     },
@@ -84,7 +84,7 @@ export function ScheduleOSPanel({ weekStartDate, onScheduleGenerated }: Schedule
     },
     onSuccess: (data) => {
       toast({
-        title: "ScheduleOS™ Complete!",
+        title: "AI Scheduling™ Complete!",
         description: data.message || `Generated ${data.shiftsGenerated} shifts in ${data.processingTimeMs}ms`,
       });
       setShowPreview(true);
@@ -93,7 +93,7 @@ export function ScheduleOSPanel({ weekStartDate, onScheduleGenerated }: Schedule
     },
     onError: (error: any) => {
       toast({
-        title: "ScheduleOS™ Error",
+        title: "AI Scheduling™ Error",
         description: error.message || "Failed to generate schedule",
         variant: "destructive",
       });
@@ -117,7 +117,7 @@ export function ScheduleOSPanel({ weekStartDate, onScheduleGenerated }: Schedule
         <CardHeader>
           <div className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-blue-700 dark:text-blue-400" />
-            <CardTitle className="text-lg">ScheduleOS™ AI Auto-Scheduling</CardTitle>
+            <CardTitle className="text-lg">AI Scheduling™ AI Auto-Scheduling</CardTitle>
             <Badge className="ml-auto bg-gradient-to-r from-indigo-600 to-purple-600">Active</Badge>
           </div>
           <CardDescription>
@@ -193,7 +193,7 @@ export function ScheduleOSPanel({ weekStartDate, onScheduleGenerated }: Schedule
         <CardHeader>
           <div className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-blue-700 dark:text-blue-400" />
-            <CardTitle className="text-lg">ScheduleOS™ AI - Free Trial</CardTitle>
+            <CardTitle className="text-lg">AI Scheduling™ AI - Free Trial</CardTitle>
             <Badge variant="outline" className="ml-auto bg-blue-500/10 text-blue-500 border-blue-500/30">
               <Calendar className="h-3 w-3 mr-1" />
               {status.daysLeft} days left
@@ -226,7 +226,7 @@ export function ScheduleOSPanel({ weekStartDate, onScheduleGenerated }: Schedule
           <div className="p-3 rounded-md bg-blue-500/10 border border-blue-500/30">
             <p className="text-sm text-blue-500 font-medium">Trial expires in {status.daysLeft} days</p>
             <p className="text-xs text-blue-500/80 mt-1">
-              Activate with payment to continue using ScheduleOS™ AI
+              Activate with payment to continue using AI Scheduling™ AI
             </p>
           </div>
 
@@ -252,7 +252,7 @@ export function ScheduleOSPanel({ weekStartDate, onScheduleGenerated }: Schedule
         <CardHeader>
           <div className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-red-400" />
-            <CardTitle className="text-lg">ScheduleOS™ AI - Trial Expired</CardTitle>
+            <CardTitle className="text-lg">AI Scheduling™ AI - Trial Expired</CardTitle>
             <Badge variant="outline" className="ml-auto bg-red-500/10 text-red-500 border-red-500/30">
               Locked
             </Badge>
@@ -265,7 +265,7 @@ export function ScheduleOSPanel({ weekStartDate, onScheduleGenerated }: Schedule
           <div className="p-3 rounded-md bg-red-500/10 border border-red-500/30">
             <p className="text-sm text-red-500 font-medium">Trial has expired</p>
             <p className="text-xs text-red-500/80 mt-1">
-              Add payment method to unlock ScheduleOS™ AI (Owner/Manager only)
+              Add payment method to unlock AI Scheduling™ AI (Owner/Manager only)
             </p>
           </div>
 
@@ -283,7 +283,7 @@ export function ScheduleOSPanel({ weekStartDate, onScheduleGenerated }: Schedule
             ) : (
               <>
                 <CreditCard className="mr-2 h-4 w-4" />
-                Activate ScheduleOS™ with Payment
+                Activate AI Scheduling™ with Payment
               </>
             )}
           </Button>
@@ -302,7 +302,7 @@ export function ScheduleOSPanel({ weekStartDate, onScheduleGenerated }: Schedule
       <CardHeader>
         <div className="flex items-center gap-2">
           <Sparkles className="h-5 w-5 text-blue-700 dark:text-blue-400" />
-          <CardTitle className="text-lg">ScheduleOS™ AI Auto-Scheduling</CardTitle>
+          <CardTitle className="text-lg">AI Scheduling™ AI Auto-Scheduling</CardTitle>
           <Badge variant="outline" className="ml-auto bg-indigo-500/10 text-blue-700 dark:text-blue-400 border-indigo-500/30">
             AI Powered
           </Badge>

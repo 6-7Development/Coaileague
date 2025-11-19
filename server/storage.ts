@@ -495,7 +495,7 @@ export interface IStorage {
   getCustomFormSubmissionsByForm(formId: string): Promise<CustomFormSubmission[]>;
   updateCustomFormSubmission(id: string, data: Partial<InsertCustomFormSubmission>): Promise<CustomFormSubmission | undefined>;
   
-  // PayrollOS™ operations (Automated Payroll Processing)
+  // AI Payroll™ operations (Automated Payroll Processing)
   getPayrollRunsByWorkspace(workspaceId: string): Promise<PayrollRun[]>;
   getPayrollRun(id: string, workspaceId: string): Promise<PayrollRun | undefined>;
   updatePayrollRunStatus(id: string, status: string, processedBy: string): Promise<PayrollRun | undefined>;
@@ -651,7 +651,7 @@ export interface IStorage {
   getOnboardingChecklistByApplication(applicationId: string): Promise<OnboardingChecklist | undefined>;
   updateOnboardingChecklist(id: string, data: Partial<InsertOnboardingChecklist>): Promise<OnboardingChecklist | undefined>;
   
-  getHireOSComplianceReport(workspaceId: string): Promise<any>;
+  getAI HiringComplianceReport(workspaceId: string): Promise<any>;
   
   // ========================================================================
   // HELPER METHODS FOR UNIFIED DATA NEXUS
@@ -693,7 +693,7 @@ export interface IStorage {
   // Export support conversation with messages
   getSupportConversationForExport(conversationId: string): Promise<{ conversation: ChatConversation; messages: ChatMessage[]; exportedAt: Date } | null>;
   
-  // Export CommOS room with messages and members
+  // Export AI Communications room with messages and members
   getCommRoomForExport(roomId: string): Promise<{ room: any; messages: ChatMessage[]; members: any[]; exportedAt: Date } | null>;
   
   // Export private DM conversation with DECRYPTED messages (requires authorization)
@@ -4820,7 +4820,7 @@ export class DatabaseStorage implements IStorage {
     return checklist;
   }
   
-  async getHireOSComplianceReport(workspaceId: string): Promise<any> {
+  async getAI HiringComplianceReport(workspaceId: string): Promise<any> {
     // Get all employees
     const allEmployees = await this.getEmployeesByWorkspace(workspaceId);
     

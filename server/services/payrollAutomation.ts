@@ -1,5 +1,5 @@
 /**
- * PayrollOS™ Automation Engine
+ * AI Payroll™ Automation Engine
  * 99% Automated Payroll Processing with 1% Human QC
  * 
  * Features:
@@ -204,12 +204,12 @@ export class PayrollAutomationEngine {
     
     // Log warnings for human review (surfaced in payroll review dashboard)
     if (aggregationResult.warnings.length > 0) {
-      console.warn('[PayrollOS™] Payroll hours aggregation warnings:', aggregationResult.warnings);
+      console.warn('[AI Payroll™] Payroll hours aggregation warnings:', aggregationResult.warnings);
     }
     
     // Fail early if no employees to process (prevent empty payroll runs)
     if (aggregationResult.employeeSummaries.length === 0) {
-      console.warn('[PayrollOS™] No employees with approved hours for period:', payPeriod);
+      console.warn('[AI Payroll™] No employees with approved hours for period:', payPeriod);
       throw new Error('No employees with approved time entries found for payroll period');
     }
     
@@ -240,7 +240,7 @@ export class PayrollAutomationEngine {
       if (grossPay === 0 && (regularHours > 0 || overtimeHours > 0 || holidayHours > 0)) {
         const warning = `Employee ${employeeSummary.employeeName} has ${regularHours + overtimeHours + holidayHours} hours but $0 gross pay - missing pay rates`;
         allWarnings.push(warning);
-        console.warn(`[PayrollOS™] ${warning}`);
+        console.warn(`[AI Payroll™] ${warning}`);
       }
       
       // Calculate taxes and deductions on gross pay
@@ -343,7 +343,7 @@ export class PayrollAutomationEngine {
         payrollRunId,
       });
     } else {
-      console.warn(`[PayrollOS™] Approved payroll ${payrollRunId} without marking entries - timeEntryIds not provided`);
+      console.warn(`[AI Payroll™] Approved payroll ${payrollRunId} without marking entries - timeEntryIds not provided`);
     }
   }
   
@@ -380,7 +380,7 @@ export const calculatePayroll = (params: {
   taxState: string;
 }) => {
   // Legacy function - use processAutomatedPayroll instead
-  console.warn('[PayrollOS™] Legacy calculatePayroll called - use processAutomatedPayroll with aggregator instead');
+  console.warn('[AI Payroll™] Legacy calculatePayroll called - use processAutomatedPayroll with aggregator instead');
   throw new Error('calculatePayroll is deprecated - use processAutomatedPayroll instead');
 };
 

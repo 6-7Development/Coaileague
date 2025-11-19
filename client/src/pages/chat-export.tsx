@@ -93,7 +93,7 @@ export default function ChatExport() {
       <div className="mb-6">
         <h1 className="text-3xl font-bold mb-2" data-testid="text-page-title">Chat History Export</h1>
         <p className="text-muted-foreground" data-testid="text-page-description">
-          Export chat conversations, support tickets, and CommOS room transcripts for compliance, training, or archival purposes.
+          Export chat conversations, support tickets, and AI Communications room transcripts for compliance, training, or archival purposes.
         </p>
       </div>
 
@@ -116,7 +116,7 @@ export default function ChatExport() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="support" data-testid="option-support">Support Conversation</SelectItem>
-                <SelectItem value="commroom" data-testid="option-commroom">CommOS Chat Room</SelectItem>
+                <SelectItem value="commroom" data-testid="option-commroom">AI Communications Chat Room</SelectItem>
                 <SelectItem value="private" data-testid="option-private">Private DM (Requires Audit Approval)</SelectItem>
               </SelectContent>
             </Select>
@@ -187,7 +187,7 @@ export default function ChatExport() {
             </p>
           </div>
           <div>
-            <h3 className="font-semibold mb-1">CommOS Chat Rooms</h3>
+            <h3 className="font-semibold mb-1">AI Communications Chat Rooms</h3>
             <p className="text-sm text-muted-foreground">
               Export team communication room transcripts. Requires manager or higher permissions.
             </p>

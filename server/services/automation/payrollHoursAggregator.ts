@@ -9,7 +9,7 @@ import { isHolidayDate } from "./holidayDetector";
  * 
  * Automatically collects approved, unpayrolled time entries for a pay period
  * and prepares them for payroll processing. This is the "data collection" 
- * automation that feeds into PayrollOS™.
+ * automation that feeds into AI Payroll™.
  * 
  * CRITICAL: Must sort entries chronologically to ensure deterministic overtime
  * calculation per FLSA requirements.

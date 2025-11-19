@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 export default function GrowthFamilyPage() {
   const modules = [
     {
-      name: "HireOS™",
+      name: "AI Hiring™",
       icon: Briefcase,
       description: "Intelligent recruitment workflow with candidate tracking, interview scheduling, and offer management",
       features: ["Candidate Pipeline", "Interview Scheduling", "Offer Letters", "ATS Integration"],

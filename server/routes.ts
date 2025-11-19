@@ -147,21 +147,21 @@ import {
   insertEmployeeRecognitionSchema,
   insertEmployeeHealthScoreSchema,
   insertEmployerBenchmarkScoreSchema,
-  // TrainingOS™ Tables
+  // AI Training™ Tables
   trainingCourses,
   trainingEnrollments,
   trainingCertifications,
   insertTrainingCourseSchema,
   insertTrainingEnrollmentSchema,
   insertTrainingCertificationSchema,
-  // BudgetOS™ Tables
+  // AI Budgeting™ Tables
   budgets,
   budgetLineItems,
   budgetVariances,
   insertBudgetSchema,
   insertBudgetLineItemSchema,
   insertBudgetVarianceSchema,
-  // IntegrationOS™ Tables
+  // AI Integrations™ Tables
   integrationMarketplace,
   integrationConnections,
   integrationApiKeys,
@@ -186,10 +186,10 @@ import {
   insertDealSchema,
   insertRfpSchema,
   insertLeadSchema,
-  // RecordOS™ - Natural Language Search
+  // AI Records™ - Natural Language Search
   searchQueries,
   insertSearchQuerySchema,
-  // InsightOS™ - AI Analytics & Autonomous Insights
+  // AI Analytics™ - AI Analytics & Autonomous Insights
   aiInsights,
   metricsSnapshots,
   insertAiInsightSchema,
@@ -1109,15 +1109,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Core Automation routes (Scheduling, Invoicing, Payroll) - REQUIRES AUTH
   app.use('/api/automation', requireAuth, automationRouter);
 
-  // Register DispatchOS™ routes (GPS tracking, incident management, CAD operations)
+  // Register AI Dispatch™ routes (GPS tracking, incident management, CAD operations)
   const dispatchRouter = (await import('./routes/dispatch')).default;
   app.use('/api/dispatch', dispatchRouter);
 
-  // Register CommOS™ Chat Upload routes (file uploads with security, workroom attachments)
+  // Register AI Communications Chat Upload routes (file uploads with security, workroom attachments)
   const chatUploadsRouter = (await import('./routes/chat-uploads')).default;
   app.use('/api/chat/upload', chatUploadsRouter);
 
-  // Register CommOS™ Chat Room routes (room creation, participant management, shift-based rooms)
+  // Register AI Communications Chat Room routes (room creation, participant management, shift-based rooms)
   const chatRoomsRouter = (await import('./routes/chat-rooms')).default;
   app.use('/api/chat/rooms', chatRoomsRouter);
 
@@ -4920,7 +4920,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .limit(1);
 
       if (existingReplacement.length > 0) {
-        console.log(`[ScheduleOS™] Replacement already exists for shift ${shift.id}, skipping duplicate creation`);
+        console.log(`[AI Scheduling™] Replacement already exists for shift ${shift.id}, skipping duplicate creation`);
         return res.json({
           success: true,
           deniedShift: shift,
@@ -4933,7 +4933,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // AUTO-REPLACEMENT: Find backup employee
       const { scheduleOSAI } = await import('./ai/scheduleos');
       
-      console.log(`[ScheduleOS™] Shift ${shift.id} denied by employee ${shift.employeeId}. Starting auto-replacement...`);
+      console.log(`[AI Scheduling™] Shift ${shift.id} denied by employee ${shift.employeeId}. Starting auto-replacement...`);
 
       try {
         // Generate replacement shift for same time slot
@@ -5089,7 +5089,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
 
       } catch (replacementError: any) {
-        console.error("[ScheduleOS™] Auto-replacement failed:", replacementError);
+        console.error("[AI Scheduling™] Auto-replacement failed:", replacementError);
         
         return res.json({
           success: true,
@@ -5343,7 +5343,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             shiftIdsCreated,
           }).returning();
           
-          console.log(`✅ ScheduleOS™ AUTO-APPROVED: ${aiResponse.overallConfidence}% confidence - ${shiftIdsCreated.length} shifts assigned`);
+          console.log(`✅ AI Scheduling™ AUTO-APPROVED: ${aiResponse.overallConfidence}% confidence - ${shiftIdsCreated.length} shifts assigned`);
           
           res.json({
             applied: true,
@@ -5364,7 +5364,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           status: 'pending',
         }).returning();
         
-        console.log(`⏸️ ScheduleOS™ PENDING REVIEW: ${aiResponse.overallConfidence}% confidence - ${aiResponse.assignments.length} assignments await approval`);
+        console.log(`⏸️ AI Scheduling™ PENDING REVIEW: ${aiResponse.overallConfidence}% confidence - ${aiResponse.assignments.length} assignments await approval`);
         
         res.json({
           applied: false,
@@ -5378,7 +5378,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
     } catch (error: any) {
-      console.error("ScheduleOS™ Smart Generate Error:", error);
+      console.error("AI Scheduling™ Smart Generate Error:", error);
       res.status(500).json({ message: error.message || "Failed to generate schedule" });
     }
   });
@@ -5517,7 +5517,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           updatedAt: new Date(),
         }).where(eq(scheduleProposals.id, id));
         
-        console.log(`✅ ScheduleOS™ APPROVED by ${userId}: ${shiftIdsCreated.length} shifts assigned`);
+        console.log(`✅ AI Scheduling™ APPROVED by ${userId}: ${shiftIdsCreated.length} shifts assigned`);
         
         res.json({
           success: true,
@@ -5527,7 +5527,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       });
     } catch (error: any) {
-      console.error("ScheduleOS™ Approval Error:", error);
+      console.error("AI Scheduling™ Approval Error:", error);
       res.status(500).json({ message: error.message || "Failed to approve proposal" });
     }
   });
@@ -5562,7 +5562,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         updatedAt: new Date(),
       }).where(eq(scheduleProposals.id, id));
       
-      console.log(`❌ ScheduleOS™ REJECTED by ${userId}: Proposal ${id}`);
+      console.log(`❌ AI Scheduling™ REJECTED by ${userId}: Proposal ${id}`);
       
       res.json({
         success: true,
@@ -5786,7 +5786,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // ScheduleOS™ - Migrate schedule from external apps (Deputy, WhenIWork, GetSling)
+  // AI Scheduling™ - Migrate schedule from external apps (Deputy, WhenIWork, GetSling)
   app.post('/api/scheduleos/migrate-schedule', isAuthenticated, requireManager, async (req: any, res) => {
     try {
       const { fileData, mimeType, sourceApp } = req.body;
@@ -5823,7 +5823,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // ScheduleOS™ - Import extracted shifts from migration
+  // AI Scheduling™ - Import extracted shifts from migration
   app.post('/api/scheduleos/import-migrated-shifts', isAuthenticated, requireManager, async (req: any, res) => {
     try {
       const { extractedShifts, sourceApp } = req.body;
@@ -5926,8 +5926,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const [request] = await db.insert(serviceCoverageRequests).values({ ...req.body, workspaceId: workspace.id, requestNumber, requestedBy: userId, status: 'processing' }).returning();
       
-      const { ScheduleOSAI } = await import("./ai/scheduleos");
-      const result = await (new ScheduleOSAI()).generateSchedule({ workspaceId: workspace.id, weekStartDate: new Date(req.body.startTime), clientIds: req.body.clientId ? [req.body.clientId] : [], shiftRequirements: [{ title: req.body.title, clientId: req.body.clientId, startTime: new Date(req.body.startTime), endTime: new Date(req.body.endTime), requiredEmployees: req.body.numberOfEmployeesNeeded || 1, requiredSkills: req.body.requiredSkills }] });
+      const { AI SchedulingAI } = await import("./ai/scheduleos");
+      const result = await (new AI SchedulingAI()).generateSchedule({ workspaceId: workspace.id, weekStartDate: new Date(req.body.startTime), clientIds: req.body.clientId ? [req.body.clientId] : [], shiftRequirements: [{ title: req.body.title, clientId: req.body.clientId, startTime: new Date(req.body.startTime), endTime: new Date(req.body.endTime), requiredEmployees: req.body.numberOfEmployeesNeeded || 1, requiredSkills: req.body.requiredSkills }] });
       
       const tokens = 1500 + (result.shiftsGenerated * 40);
       const cost = (tokens / 1000) * 0.045 * 4;
@@ -6004,18 +6004,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({
         success: true,
-        message: "ScheduleOS™ 7-day free trial activated!",
+        message: "AI Scheduling™ 7-day free trial activated!",
         trialStartedAt: new Date(),
         trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         daysLeft: 7,
       });
     } catch (error: any) {
-      console.error("Error starting ScheduleOS™ trial:", error);
+      console.error("Error starting AI Scheduling™ trial:", error);
       res.status(500).json({ message: "Failed to start trial" });
     }
   });
 
-  // Activate ScheduleOS™ with payment (Owner/Manager only)
+  // Activate AI Scheduling™ with payment (Owner/Manager only)
   app.post('/api/scheduleos/activate', isAuthenticated, requireManager, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -6051,17 +6051,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({
         success: true,
-        message: "ScheduleOS™ activated successfully!",
+        message: "AI Scheduling™ activated successfully!",
         activatedAt: new Date(),
         activatedBy: userId,
       });
     } catch (error: any) {
-      console.error("Error activating ScheduleOS™:", error);
-      res.status(500).json({ message: "Failed to activate ScheduleOS™" });
+      console.error("Error activating AI Scheduling™:", error);
+      res.status(500).json({ message: "Failed to activate AI Scheduling™" });
     }
   });
 
-  // Check ScheduleOS™ status (trial/activated)
+  // Check AI Scheduling™ status (trial/activated)
   app.get('/api/scheduleos/status', async (req: any, res) => {
     try {
       let userId: string;
@@ -6138,7 +6138,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json(response);
     } catch (error: any) {
-      console.error("Error checking ScheduleOS™ status:", error);
+      console.error("Error checking AI Scheduling™ status:", error);
       res.status(500).json({ message: "Failed to check status" });
     }
   });
@@ -6177,7 +6177,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Require activation or active trial
         if (!isActivated && !isInTrial) {
           return res.status(403).json({
-            message: "ScheduleOS™ requires payment activation or active trial",
+            message: "AI Scheduling™ requires payment activation or active trial",
             trialExpired: workspace.scheduleosTrialStartedAt ? true : false,
             requiresPayment: true,
             feature: "scheduleOS"
@@ -6185,7 +6185,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Import ScheduleOS AI
+      // Import AI Scheduling AI
       const { scheduleOSAI } = await import('./ai/scheduleos');
 
       const { weekStartDate, shiftRequirements, clientIds } = req.body;
@@ -6256,7 +6256,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               taxRate: '0',
               taxAmount: '0',
               total: '0',
-              notes: `Auto-generated by ScheduleOS™ for ${invoiceMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`,
+              notes: `Auto-generated by AI Scheduling™ for ${invoiceMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`,
             });
           }
 
@@ -6298,7 +6298,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({
         ...result,
-        message: `ScheduleOS™ generated ${result.shiftsGenerated} shifts for ${result.employeesScheduled} employees in ${result.processingTimeMs}ms`,
+        message: `AI Scheduling™ generated ${result.shiftsGenerated} shifts for ${result.employeesScheduled} employees in ${result.processingTimeMs}ms`,
         billosIntegration: {
           invoiceLineItemsCreated: invoiceLineItems.length,
           totalBillableHours: billableShifts.reduce((sum, s) => sum + s.billableHours, 0),
@@ -6309,9 +6309,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
       });
     } catch (error: any) {
-      console.error("ScheduleOS™ error:", error);
+      console.error("AI Scheduling™ error:", error);
       res.status(500).json({
-        message: error.message || "ScheduleOS™ failed to generate schedule",
+        message: error.message || "AI Scheduling™ failed to generate schedule",
         error: "SCHEDULEOS_ERROR"
       });
     }
@@ -6424,7 +6424,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "No available employees found" });
       }
 
-      // Call ScheduleOS™ AI Engine
+      // Call AI Scheduling™ AI Engine
       const aiResponse = await scheduleSmartAI({
         openShifts,
         availableEmployees,
@@ -6433,14 +6433,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         constraints
       });
 
-      console.log(`🧠 ScheduleOS™ AI - ${aiResponse.assignments.length} assignments suggested for workspace ${workspaceId}`);
+      console.log(`🧠 AI Scheduling™ AI - ${aiResponse.assignments.length} assignments suggested for workspace ${workspaceId}`);
 
       res.json({
         success: true,
         data: aiResponse
       });
     } catch (error: any) {
-      console.error('ScheduleOS™ AI error:', error);
+      console.error('AI Scheduling™ AI error:', error);
       res.status(500).json({ error: error.message || 'AI scheduling failed' });
     }
   });
@@ -9635,7 +9635,7 @@ ${application.email}`,
         return res.status(404).json({ message: "Workspace not found" });
       }
 
-      const report = await storage.getHireOSComplianceReport(workspace.id);
+      const report = await storage.getAI HiringComplianceReport(workspace.id);
       res.json(report);
     } catch (error) {
       console.error("Error generating compliance report:", error);
@@ -9813,7 +9813,7 @@ ${application.email}`,
         doc.fontSize(8).fillColor('#666666');
         const footerY = doc.page.height - 80;
         doc.text(
-          `Legal Retention: ${document.deleteAfterDate ? 'Delete after ' + new Date(document.deleteAfterDate).toLocaleDateString() : '7 years (default)'} | Generated by WorkforceOS HireOS™ Digital File Cabinet`,
+          `Legal Retention: ${document.deleteAfterDate ? 'Delete after ' + new Date(document.deleteAfterDate).toLocaleDateString() : '7 years (default)'} | Generated by WorkforceOS AI Hiring™ Digital File Cabinet`,
           50,
           footerY,
           { width: doc.page.width - 100, align: 'center' }
@@ -9841,7 +9841,7 @@ ${application.email}`,
       doc.text(`This packet was digitally generated and signed on ${new Date().toLocaleString()} by ${req.user.claims.email}.`);
       doc.moveDown();
       doc.fontSize(8).fillColor('#666666');
-      doc.text('Powered by WorkforceOS™ HireOS™ - Enterprise-Grade Digital File Cabinet & Compliance Automation', { align: 'center' });
+      doc.text('Powered by WorkforceOS™ AI Hiring™ - Enterprise-Grade Digital File Cabinet & Compliance Automation', { align: 'center' });
 
       // Finalize metadata PDF
       doc.end();
@@ -21415,7 +21415,7 @@ ${context.performanceHistory.map((review: any) => `- Overall Rating: ${review.ov
           model: 'gpt-3.5-turbo',
           messages: [{
             role: 'system',
-            content: 'You are RecordOS™, an AI search assistant. Convert natural language queries to structured search criteria. Extract: entity type (employees/clients/invoices/shifts), search terms, filters (dates, amounts, status). Respond with JSON only.'
+            content: 'You are AI Records™, an AI search assistant. Convert natural language queries to structured search criteria. Extract: entity type (employees/clients/invoices/shifts), search terms, filters (dates, amounts, status). Respond with JSON only.'
           }, {
             role: 'user',
             content: `Parse this search query: "${query}"`
@@ -21436,7 +21436,7 @@ ${context.performanceHistory.map((review: any) => `- Overall Rating: ${review.ov
           searchCriteria = { keywords: query.toLowerCase().split(' ') };
         }
 
-        console.log('[RecordOS™ AI] Search criteria:', searchCriteria);
+        console.log('[AI Records™ AI] Search criteria:', searchCriteria);
       }
 
       // Perform intelligent searches
@@ -21828,7 +21828,7 @@ ${context.performanceHistory.map((review: any) => `- Overall Rating: ${review.ov
           model: 'gpt-4o',
           messages: [{
             role: 'system',
-            content: `You are InsightOS™, an advanced AI analytics engine for workforce management. Analyze metrics and generate 3-5 actionable insights. For each insight, provide:
+            content: `You are AI Analytics™, an advanced AI analytics engine for workforce management. Analyze metrics and generate 3-5 actionable insights. For each insight, provide:
 1. Title (concise, under 50 chars)
 2. Category (cost_savings, revenue_opportunity, risk_alert, efficiency_improvement, growth_opportunity)
 3. Priority (high, medium, low)
@@ -21875,7 +21875,7 @@ Respond with valid JSON array only.`
             insights.push(savedInsight[0]);
           }
         } catch (parseError) {
-          console.error('[InsightOS™] Failed to parse AI response:', parseError);
+          console.error('[AI Analytics™] Failed to parse AI response:', parseError);
         }
 
         // Track AI usage for billing
@@ -23004,7 +23004,7 @@ Respond with valid JSON array only.`
     }
   });
 
-  // POST /api/chat-export/comm-room/:id - Export CommOS room (PDF or HTML)
+  // POST /api/chat-export/comm-room/:id - Export AI Communications room (PDF or HTML)
   app.post('/api/chat-export/comm-room/:id', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       // Support staff authorization
@@ -23032,7 +23032,7 @@ Respond with valid JSON array only.`
         userEmail: req.user!.email,
         userRole: req.user!.role || 'support_staff',
         action: 'export_data',
-        actionDescription: `Exported CommOS room ${data.room.name || roomId} as ${format.toUpperCase()}`,
+        actionDescription: `Exported AI Communications room ${data.room.name || roomId} as ${format.toUpperCase()}`,
         targetType: 'comm_room',
         targetId: roomId,
         metadata: {

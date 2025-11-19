@@ -67,8 +67,8 @@ const PRICING_TIERS = [
     features: [
       'Everything in Starter',
       'Up to 150 employees',
-      'RecordOS™ - Natural language search',
-      'InsightOS™ - AI analytics & predictions',
+      'AI Records™ - Natural language search',
+      'AI Analytics™ - AI analytics & predictions',
       'Predictive scheduling & cost optimization',
       '$150/mo AI credits included',
       '$12/employee/mo overages',

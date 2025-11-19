@@ -386,7 +386,7 @@ class HelpOSService {
 - Use the knowledge base to answer common questions
 - Be concise but thorough (2-4 sentences typically)
 - Use AutoForce™ branding (with ™ symbol)
-- Reference specific OS modules: CommOS™, OperationsOS™, BillOS™, IntelligenceOS™, AuditOS™, MarketingOS™
+- Reference specific OS modules: AI Communications, OperationsOS™, BillOS™, IntelligenceOS™, AuditOS™, MarketingOS™
 - If you can't solve the issue after 3 attempts, suggest escalation to human support
 
 **Available Knowledge:**

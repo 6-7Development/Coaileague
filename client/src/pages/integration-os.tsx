@@ -65,7 +65,7 @@ interface WebhookData {
   deliveryCount?: number;
 }
 
-export default function IntegrationOS() {
+export default function AI Integrations() {
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
@@ -216,7 +216,7 @@ export default function IntegrationOS() {
               <Plug className="h-6 w-6 text-white" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold">IntegrationOS™</h1>
+              <h1 className="text-3xl font-bold">AI Integrations™</h1>
               <p className="text-sm text-muted-foreground">
                 External Service Ecosystem & API Management
               </p>

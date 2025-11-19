@@ -297,7 +297,7 @@ export const osModules: OSModule[] = [
     routes: [
       {
         id: 'schedule-os',
-        label: 'ScheduleOS™',
+        label: 'AI Scheduling™',
         href: '/schedule',
         icon: CalendarDays,
         description: 'Intelligent shift scheduling',
@@ -354,7 +354,7 @@ export const osModules: OSModule[] = [
     routes: [
       {
         id: 'payroll-os',
-        label: 'PayrollOS™',
+        label: 'AI Payroll™',
         href: '/payroll',
         icon: Wallet,
         description: 'FLSA-compliant payroll processing',
@@ -399,7 +399,7 @@ export const osModules: OSModule[] = [
     routes: [
       {
         id: 'training-os',
-        label: 'TrainingOS™',
+        label: 'AI Training™',
         href: '/training',
         icon: GraduationCap,
         description: 'Employee onboarding and compliance training',
@@ -502,7 +502,7 @@ export const osModules: OSModule[] = [
       },
       {
         id: 'insight-os',
-        label: 'InsightOS™ Reports',
+        label: 'AI Analytics™ Reports',
         href: '/analytics/reports',
         icon: FileCheck2,
         description: 'Management reports with role-based access',
@@ -516,7 +516,7 @@ export const osModules: OSModule[] = [
   },
   {
     id: 'comm-os',
-    name: 'CommOS™',
+    name: 'AI Communications',
     description: 'Unified Communications Platform',
     icon: MessagesSquare,
     color: 'hsl(var(--chart-5))',
@@ -525,7 +525,7 @@ export const osModules: OSModule[] = [
     routes: [
       {
         id: 'comm-os-dashboard',
-        label: 'CommOS™',
+        label: 'AI Communications',
         href: '/comm-os',
         icon: MessagesSquare,
         description: 'Communication hub dashboard',
@@ -635,8 +635,8 @@ export const platformSupportModule: OSModule = {
  * Key operational routes needed for QA/support/monitoring
  */
 const curatedWorkspaceRoutesForPlatformStaff: string[] = [
-  'schedule-os',         // ScheduleOS™ - verify schedule automation
-  'payroll-os',          // PayrollOS™ - verify payroll processing
+  'schedule-os',         // AI Scheduling™ - verify schedule automation
+  'payroll-os',          // AI Payroll™ - verify payroll processing
   'bill-os-invoices',    // BillOS™ Invoices - verify invoice generation
   'time-os',             // TimeOS™ - verify time tracking
   'employees',           // Employee management

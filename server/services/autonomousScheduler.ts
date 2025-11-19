@@ -14,7 +14,7 @@ import { workspaces, employees, idempotencyKeys, chatConversations, roomEvents }
 import { eq, and, sql, lt } from 'drizzle-orm';
 import { generateUsageBasedInvoices, sendInvoiceViaStripe } from './billos';
 import { PayrollAutomationEngine } from './payrollAutomation';
-import { ScheduleOSAI } from '../ai/scheduleos';
+import { AI SchedulingAI } from '../ai/scheduleos';
 import { AIBrainService } from './ai-brain/aiBrainService';
 import { gustoService } from './partners/gusto';
 import { addDays, startOfWeek, endOfWeek, format } from 'date-fns';
@@ -796,7 +796,7 @@ async function runWeeklyScheduleGeneration() {
           
           // Example of how it would work:
           /*
-          const scheduleOSAI = new ScheduleOSAI();
+          const scheduleOSAI = new AI SchedulingAI();
           const result = await scheduleOSAI.generateSchedule({
             workspaceId: workspace.id,
             weekStartDate: nextWeekStart,
