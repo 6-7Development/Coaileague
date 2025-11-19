@@ -546,19 +546,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get active feature updates (only major, undismissed updates)
+  // Get active feature updates (platform-wide, shown to all users)
   app.get('/api/feature-updates', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const userId = req.user!.id;
-      const workspaceId = req.user!.currentWorkspaceId;
-
-      if (!workspaceId) {
-        return res.json([]);
-      }
-
       const now = new Date();
 
-      // Get all active major feature updates
+      // Get all active major feature updates (platform-wide)
       const activeUpdates = await db
         .select()
         .from(featureUpdates)
@@ -578,14 +572,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         )
         .orderBy(desc(featureUpdates.createdAt));
 
-      // Get user's dismissed updates
+      // Get user's dismissed updates (across all workspaces)
       const dismissedReceipts = await db
         .select()
         .from(featureUpdateReceipts)
         .where(
           and(
             eq(featureUpdateReceipts.userId, userId),
-            eq(featureUpdateReceipts.workspaceId, workspaceId),
             isNotNull(featureUpdateReceipts.dismissedAt)
           )
         );
@@ -611,16 +604,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Dismiss a specific feature update
+  // Dismiss a specific feature update (platform-wide, user-scoped)
   app.post('/api/feature-updates/:id/dismiss', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const userId = req.user!.id;
-      const workspaceId = req.user!.currentWorkspaceId;
       const updateId = req.params.id;
-
-      if (!workspaceId) {
-        return res.status(400).json({ message: 'No workspace selected' });
-      }
+      // Use current workspace if available, otherwise use a placeholder
+      const workspaceId = req.user!.currentWorkspaceId || 'platform-global';
 
       // Check if receipt already exists
       const existingReceipt = await db
@@ -629,7 +619,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(
           and(
             eq(featureUpdateReceipts.userId, userId),
-            eq(featureUpdateReceipts.workspaceId, workspaceId),
             eq(featureUpdateReceipts.featureUpdateId, updateId)
           )
         )
