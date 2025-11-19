@@ -581,6 +581,28 @@ export const osModules: OSModule[] = [
     ],
   },
   {
+    id: 'usage-dashboard',
+    name: 'Usage & Billing',
+    description: 'AI Usage & Cost Transparency',
+    icon: TrendingUp,
+    color: 'hsl(var(--primary))',
+    capabilities: ['manage_workspace'],
+    familyId: 'platform',
+    routes: [
+      {
+        id: 'usage-billing',
+        label: 'Usage & Costs',
+        href: '/usage',
+        icon: TrendingUp,
+        description: 'Track AI usage and partner API costs',
+        capabilities: ['manage_workspace'],
+        familyId: 'platform',
+        isPrimary: false,
+        order: 1,
+      },
+    ],
+  },
+  {
     id: 'settings',
     name: 'Settings',
     description: 'Configuration & Preferences',
