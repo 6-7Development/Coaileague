@@ -1,9 +1,13 @@
 /**
  * Credit Wrapper Utility
  * Provides a reusable wrapper for any automation function to handle credit checks and deductions
+ * Now includes AI Brain checkpoint system for graceful automation pausing
  */
 
 import { creditManager, CREDIT_COSTS } from './creditManager';
+import { db } from '../../db';
+import { aiCheckpoints, workspaceCredits } from '@shared/schema';
+import { eq } from 'drizzle-orm';
 
 // Re-export the feature keys from CREDIT_COSTS for type safety
 export type FeatureKey = keyof typeof CREDIT_COSTS;
@@ -13,6 +17,11 @@ export interface CreditWrapperOptions {
   featureKey: FeatureKey;
   description: string;
   userId?: string;
+  // Checkpoint support - automation state for resume
+  stateSnapshot?: Record<string, any>;
+  resumeParameters?: Record<string, any>;
+  completedSteps?: string[];
+  progressPercentage?: number;
 }
 
 export interface CreditWrapperResult<T> {
@@ -21,10 +30,63 @@ export interface CreditWrapperResult<T> {
   error?: string;
   creditsDeducted?: number;
   insufficientCredits?: boolean;
+  checkpointId?: string; // AI Brain checkpoint ID when paused
+  checkpointExpiry?: Date; // When checkpoint expires (24h)
+}
+
+/**
+ * Create AI Brain checkpoint when automation paused due to insufficient credits
+ * Allows users to resume from where they left off after purchasing credits
+ */
+async function createCheckpoint(
+  options: CreditWrapperOptions,
+  creditsRequired: number,
+  currentBalance: number
+): Promise<{ checkpointId: string; expiresAt: Date }> {
+  const {
+    workspaceId,
+    featureKey,
+    description,
+    userId,
+    stateSnapshot = {},
+    resumeParameters = {},
+    completedSteps = [],
+    progressPercentage = 0
+  } = options;
+
+  // Calculate expiry (24 hours from now)
+  const expiresAt = new Date();
+  expiresAt.setHours(expiresAt.getHours() + 24);
+
+  const [checkpoint] = await db.insert(aiCheckpoints).values({
+    workspaceId,
+    userId: userId || null,
+    featureKey,
+    featureName: description || featureKey,
+    status: 'paused',
+    creditsRequired,
+    creditsAtPause: currentBalance,
+    progressPercentage,
+    completedSteps,
+    stateSnapshot,
+    resumeParameters,
+    expiresAt,
+    errorMessage: `Automation paused: Insufficient credits (need ${creditsRequired}, have ${currentBalance})`,
+  }).returning();
+
+  console.log(`💾 [AI Brain Checkpoint] Created checkpoint ${checkpoint.id} for ${featureKey}`);
+  console.log(`   Expires: ${expiresAt.toISOString()}`);
+  console.log(`   Progress: ${progressPercentage}%`);
+
+  return {
+    checkpointId: checkpoint.id,
+    expiresAt: checkpoint.expiresAt
+  };
 }
 
 /**
  * Wraps any async function with credit checking and deduction
+ * Now includes AI Brain checkpoint system for graceful automation pausing
  * 
  * Usage example:
  * ```typescript
@@ -32,7 +94,10 @@ export interface CreditWrapperResult<T> {
  *   workspaceId: '123',
  *   featureKey: 'ai_scheduling',
  *   description: 'Generated weekly schedule for workspace',
- *   userId: 'user-456'
+ *   userId: 'user-456',
+ *   stateSnapshot: { weekStartDate: '2025-11-28', shiftRequirements: [...] },
+ *   resumeParameters: { continueFrom: 'step2' },
+ *   progressPercentage: 35
  * }, async () => {
  *   // Your automation logic here
  *   return await scheduleGenerator.generate();
@@ -41,7 +106,7 @@ export interface CreditWrapperResult<T> {
  * if (result.success) {
  *   console.log('Automation completed:', result.result);
  * } else if (result.insufficientCredits) {
- *   console.log('Out of credits!');
+ *   console.log('Paused! Resume with checkpoint:', result.checkpointId);
  * }
  * ```
  */
@@ -59,10 +124,19 @@ export async function withCredits<T>(
       console.log(`❌ [Credit Wrapper] Insufficient credits for ${featureKey} in workspace ${workspaceId}`);
       console.log(`   Required: ${creditCheck.required}, Available: ${creditCheck.currentBalance}`);
       
+      // Create AI Brain checkpoint for graceful resume
+      const { checkpointId, expiresAt } = await createCheckpoint(
+        options,
+        creditCheck.required,
+        creditCheck.currentBalance
+      );
+      
       return {
         success: false,
         insufficientCredits: true,
         error: `Insufficient credits. Need ${creditCheck.required}, have ${creditCheck.currentBalance}`,
+        checkpointId,
+        checkpointExpiry: expiresAt,
       };
     }
 

@@ -829,7 +829,7 @@ async function runWeeklyScheduleGeneration() {
           
           // Example of how it would work:
           /*
-          const scheduleOSAI = new AI SchedulingAI();
+          const scheduleOSAI = new SchedulingAI();
           const result = await scheduleOSAI.generateSchedule({
             workspaceId: workspace.id,
             weekStartDate: nextWeekStart,
