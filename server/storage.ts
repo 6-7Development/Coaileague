@@ -651,7 +651,7 @@ export interface IStorage {
   getOnboardingChecklistByApplication(applicationId: string): Promise<OnboardingChecklist | undefined>;
   updateOnboardingChecklist(id: string, data: Partial<InsertOnboardingChecklist>): Promise<OnboardingChecklist | undefined>;
   
-  getAI HiringComplianceReport(workspaceId: string): Promise<any>;
+  getHiringComplianceReport(workspaceId: string): Promise<any>;
   
   // ========================================================================
   // HELPER METHODS FOR UNIFIED DATA NEXUS
