@@ -136,6 +136,7 @@ import {
   offCyclePayrollRuns,
   payrollRuns,
   payrollEntries,
+  workspaceCredits,
   // EngagementOS™ Tables
   pulseSurveyTemplates,
   pulseSurveyResponses,
@@ -6611,27 +6612,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Platform staff get full access without trial/activation checks
       if (!isPlatformStaff) {
-        // Check if activated (paid) OR in trial period
-        const isActivated = !!workspace.scheduleosActivatedAt;
-        let isInTrial = false;
-        
-        if (workspace.scheduleosTrialStartedAt && !isActivated) {
-          const trialStart = new Date(workspace.scheduleosTrialStartedAt);
-          const trialEnd = new Date(trialStart.getTime() + 7 * 24 * 60 * 60 * 1000);
-          const now = new Date();
-          const daysLeft = Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-          isInTrial = daysLeft > 0;
-        }
+        // NEW CREDIT SYSTEM: Check if workspace has active credit account
+        // If they have credits, bypass legacy trial/activation system
+        const hasCreditAccount = await db.select()
+          .from(workspaceCredits)
+          .where(eq(workspaceCredits.workspaceId, workspace.id))
+          .limit(1)
+          .then(rows => rows.length > 0 && rows[0].isActive);
 
-        // Require activation or active trial
-        if (!isActivated && !isInTrial) {
-          return res.status(403).json({
-            message: "AI Scheduling™ requires payment activation or active trial",
-            trialExpired: workspace.scheduleosTrialStartedAt ? true : false,
-            requiresPayment: true,
-            feature: "scheduleOS"
-          });
+        if (!hasCreditAccount) {
+          // LEGACY SYSTEM: Check if activated (paid) OR in trial period
+          const isActivated = !!workspace.scheduleosActivatedAt;
+          let isInTrial = false;
+          
+          if (workspace.scheduleosTrialStartedAt && !isActivated) {
+            const trialStart = new Date(workspace.scheduleosTrialStartedAt);
+            const trialEnd = new Date(trialStart.getTime() + 7 * 24 * 60 * 60 * 1000);
+            const now = new Date();
+            const daysLeft = Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+            isInTrial = daysLeft > 0;
+          }
+
+          // Require activation or active trial (legacy system only)
+          if (!isActivated && !isInTrial) {
+            return res.status(403).json({
+              message: "AI Scheduling™ requires payment activation or active trial",
+              trialExpired: workspace.scheduleosTrialStartedAt ? true : false,
+              requiresPayment: true,
+              feature: "scheduleOS"
+            });
+          }
         }
+        // If hasCreditAccount=true, skip legacy checks and proceed to credit deduction
       }
 
       // Import AI Scheduling AI

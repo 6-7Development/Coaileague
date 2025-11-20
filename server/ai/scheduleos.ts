@@ -129,7 +129,7 @@ interface ScheduleResult {
 // SCHEDULEOS™ AI ENGINE
 // ============================================================================
 
-export class AI SchedulingAI {
+export class SchedulingAI {
   private openai: OpenAI;
 
   constructor() {
@@ -940,4 +940,4 @@ RESPONSE FORMAT (JSON)
   }
 }
 
-export const scheduleOSAI = new AI SchedulingAI();
+export const scheduleOSAI = new SchedulingAI();
