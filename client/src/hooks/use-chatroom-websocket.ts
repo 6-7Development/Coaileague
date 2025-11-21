@@ -53,7 +53,7 @@ interface OnlineUser {
 }
 
 interface WebSocketMessage {
-  type: 'conversation_joined' | 'conversation_history' | 'new_message' | 'private_message' | 'user_typing' | 'error' | 'system_message' | 'user_list_update' | 'status_change' | 'kicked' | 'secure_request' | 'spectator_released' | 'secure_data_received' | 'banner_update' | 'voice_granted' | 'voice_removed' | 'command_ack' | 'read_receipt' | 'participants_update';
+  type: 'conversation_joined' | 'conversation_history' | 'new_message' | 'private_message' | 'user_typing' | 'error' | 'system_message' | 'user_list_update' | 'status_change' | 'kicked' | 'secure_request' | 'spectator_released' | 'secure_data_received' | 'banner_update' | 'voice_granted' | 'voice_removed' | 'command_ack' | 'read_receipt' | 'participants_update' | 'escalation_redirect';
   messages?: ChatMessage[];
   message?: ChatMessage | string;
   userId?: string;
@@ -100,6 +100,9 @@ interface WebSocketMessage {
   error?: string;
   targetUserId?: string;
   targetName?: string;
+  // Escalation redirect fields
+  targetRoom?: string;
+  ticketId?: string;
 }
 
 interface SecureRequestCallback {
@@ -568,6 +571,25 @@ export function useChatroomWebSocket(
                   return next;
                 });
               }
+              break;
+
+            case 'escalation_redirect':
+              // HelpOS bot escalated - redirect user to main HelpDesk where staff can help
+              console.log('🔄 Bot escalation - redirecting to main HelpDesk');
+              if (data.message) {
+                toast({
+                  title: "Connecting you with support team",
+                  description: typeof data.message === 'string' ? data.message : 'Redirecting to HelpDesk...',
+                  duration: 3000,
+                });
+              }
+              // Redirect to main HelpDesk room after a short delay (let user see the message)
+              setTimeout(() => {
+                if (data.targetRoom) {
+                  // Use window.location to ensure a full navigation to the HelpDesk
+                  window.location.href = `/helpdesk`;
+                }
+              }, 1500);
               break;
           }
         } catch (err) {

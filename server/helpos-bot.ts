@@ -467,7 +467,7 @@ export async function processBotMessage(
       } else {
         // No good answer found - escalate
         conversation.state = BotState.ESCALATING;
-        response = "I couldn't find a clear answer in our knowledge base. Let me connect you with our support team who can provide personalized assistance.";
+        response = "I couldn't find a clear answer in our knowledge base. **Redirecting you to the main HelpDesk** where our support team can provide personalized assistance...";
         shouldEscalate = true;
       }
       break;
@@ -475,15 +475,16 @@ export async function processBotMessage(
     case BotState.ANSWERING:
     case BotState.CLARIFYING:
       // User is responding to bot's answer
-      if (conversation.satisfactionSignals >= 2 || sentiment.satisfaction >= 2) {
+      // Use accumulated signals from conversation object (sentiment was already added at line 385-386)
+      if (conversation.satisfactionSignals >= 2) {
         // User is satisfied!
         conversation.state = BotState.RESOLVED;
         response = "Great! I'm glad I could help. This ticket will be marked as resolved. If you need anything else, feel free to create a new support ticket!";
         shouldClose = true;
-      } else if (conversation.escalationSignals >= 2 || sentiment.escalation >= 2) {
+      } else if (conversation.escalationSignals >= 2) {
         // User needs human help
         conversation.state = BotState.ESCALATING;
-        response = "I understand you need more help. Let me connect you with our support team right away. They'll reach out to you shortly.";
+        response = "I understand you need more help. **Redirecting you to our main HelpDesk** where our support team is standing by to assist you...";
         shouldEscalate = true;
       } else {
         // Need clarification
@@ -494,7 +495,7 @@ export async function processBotMessage(
       
     case BotState.WAITING_FOR_HUMAN:
       // User is waiting for human - acknowledge
-      response = "Our support team has been notified and will assist you shortly. They'll reach out via private message. Thank you for your patience!";
+      response = "You're now in the main HelpDesk! Our support team has been notified and will assist you shortly. Thank you for your patience!";
       break;
       
     default:
@@ -530,13 +531,13 @@ export async function processBotMessage(
         response += `\n\n✅ **Ticket ${ticketNumber}** created successfully! Let me search for answers to your issue...`;
       } catch (error) {
         console.error('Error creating support ticket:', error);
-        response = "I encountered an error creating your ticket. Let me connect you with a support agent who can assist you directly.";
+        response = "I encountered an error creating your ticket. **Redirecting you to the main HelpDesk** where a support agent can assist you directly...";
         shouldEscalate = true;
         conversation.state = BotState.ESCALATING;
       }
     } else {
       // Missing required data - fall back to escalation
-      response = "I'm missing some information to create your ticket. Let me connect you with a support agent who can help.";
+      response = "I'm missing some information to create your ticket. **Redirecting you to the main HelpDesk** where a support agent can help...";
       shouldEscalate = true;
       conversation.state = BotState.ESCALATING;
     }
