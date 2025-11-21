@@ -878,9 +878,8 @@ export function setupWebSocket(server: Server) {
                   let ticketNumber: string;
                   
                   if (!existingTicket && ws.workspaceId) {
-                    // NO TICKET: Start intake flow to create one
-                    const { startIntakeFlow } = await import('./helpos-bot');
-                    welcomeMessage = startIntakeFlow(conversationId, payload.userId, ws.workspaceId);
+                    // NO TICKET: Provide welcome message with instructions
+                    welcomeMessage = "👋 Welcome to AutoForce™ Support! I'm HelpOS, your AI assistant.\n\nHow can I help you today? Please describe your question or issue, and I'll do my best to assist you.";
                     ticketNumber = `INTAKE-${Date.now().toString().slice(-6)}`; // Temp ID until real ticket created
                   } else {
                     // HAS TICKET: Use existing ticket or create temp one
@@ -2405,6 +2404,20 @@ export function setupWebSocket(server: Server) {
 
             // If not found as a connected client but is a simulated user, handle removal
             if (!targetClient && !isSimulatedUser) {
+              // Check if user exists in database to provide better error message
+              let helpfulMessage = 'User not found in this room';
+              try {
+                const userExists = await storage.getUser(payload.targetUserId);
+                if (userExists) {
+                  helpfulMessage = 'User is offline or disconnected. They are not currently in this room.';
+                } else {
+                  helpfulMessage = 'User not found. They may have never joined this conversation or the user ID is invalid.';
+                }
+              } catch (err) {
+                // If user lookup fails, use generic message
+                console.error('Failed to check user existence for kick:', err);
+              }
+              
               // IRC-style command acknowledgment for user not found
               ws.send(JSON.stringify({
                 type: 'command_ack',
@@ -2412,7 +2425,7 @@ export function setupWebSocket(server: Server) {
                 action: 'kick_user',
                 success: false,
                 error: 'USER_NOT_FOUND',
-                message: 'User not found in this room',
+                message: helpfulMessage,
               }));
               return;
             }
