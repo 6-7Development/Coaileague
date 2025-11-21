@@ -34,9 +34,15 @@ export function HelpOsAiTester() {
   const testAiMutation = useMutation({
     mutationFn: async (testMessage: string) => {
       const workspaceId = (workspace as any)?.id;
+      
+      // Authenticated users MUST provide workspaceId (security requirement)
+      if (!workspaceId && user) {
+        throw new Error("Workspace ID required for authenticated users");
+      }
+      
       const response = await apiRequest("/api/support/helpos-chat", "POST", {
         message: testMessage,
-        // Send workspace ID if available
+        // Always send workspace ID if user is authenticated
         ...(workspaceId ? { workspaceId } : {}),
       });
       return response;
