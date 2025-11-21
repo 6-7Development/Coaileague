@@ -9083,6 +9083,97 @@ export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 export type Notification = typeof notifications.$inferSelect;
 
 // ============================================================================
+// AI-POWERED NOTIFICATION DIGESTS - Prevent Notification Floods
+// ============================================================================
+
+// Digest frequency enum - How often to send AI-summarized notification digests
+export const digestFrequencyEnum = pgEnum('digest_frequency', [
+  'realtime',   // Send individual notifications immediately (default)
+  '15min',      // Batch and summarize every 15 minutes
+  '1hour',      // Batch and summarize every hour
+  '4hours',     // Batch and summarize every 4 hours
+  'daily',      // Once per day summary (morning)
+  'never',      // Disable all notifications
+]);
+
+// User Notification Preferences - Control how users receive notifications
+export const userNotificationPreferences = pgTable("user_notification_preferences", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().unique().references(() => users.id, { onDelete: 'cascade' }),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  // Digest settings
+  digestFrequency: digestFrequencyEnum("digest_frequency").notNull().default('realtime'),
+  enableAiSummarization: boolean("enable_ai_summarization").default(true), // Use Gemini to summarize
+  
+  // Notification type filters (which types to include in digests)
+  enabledTypes: jsonb("enabled_types").$type<string[]>().default(sql`'[]'::jsonb`), // Empty = all types
+  
+  // Delivery preferences
+  preferEmail: boolean("prefer_email").default(false), // Also send digest via email
+  quietHoursStart: integer("quiet_hours_start"), // 0-23 hour (null = disabled)
+  quietHoursEnd: integer("quiet_hours_end"), // 0-23 hour
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  userWorkspaceIdx: index("user_notification_preferences_user_workspace_idx").on(table.userId, table.workspaceId),
+}));
+
+// Notification Digests - AI-summarized batches of notifications
+export const notificationDigests = pgTable("notification_digests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  // Digest content
+  title: varchar("title", { length: 255 }).notNull(), // e.g., "15 updates in the last hour"
+  aiSummary: text("ai_summary").notNull(), // Gemini-generated summary
+  rawSummary: text("raw_summary"), // Fallback non-AI summary (if Gemini fails)
+  
+  // Source notifications
+  notificationIds: jsonb("notification_ids").$type<string[]>().notNull(), // IDs of notifications in this digest
+  notificationCount: integer("notification_count").notNull(), // How many notifications summarized
+  
+  // Time window
+  periodStart: timestamp("period_start").notNull(), // When this digest period started
+  periodEnd: timestamp("period_end").notNull(), // When this digest period ended
+  
+  // Status
+  isRead: boolean("is_read").default(false),
+  readAt: timestamp("read_at"),
+  emailSent: boolean("email_sent").default(false),
+  emailSentAt: timestamp("email_sent_at"),
+  
+  // AI metadata
+  generatedBy: varchar("generated_by", { length: 50 }).default('gemini-2.0-flash-exp'), // AI model used
+  confidenceScore: doublePrecision("confidence_score"), // AI confidence (0-1)
+  
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  userIdx: index("notification_digests_user_idx").on(table.userId),
+  workspaceIdx: index("notification_digests_workspace_idx").on(table.workspaceId),
+  isReadIdx: index("notification_digests_is_read_idx").on(table.isRead),
+  createdAtIdx: index("notification_digests_created_at_idx").on(table.createdAt),
+}));
+
+export const insertUserNotificationPreferencesSchema = createInsertSchema(userNotificationPreferences).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertNotificationDigestSchema = createInsertSchema(notificationDigests).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertUserNotificationPreferences = z.infer<typeof insertUserNotificationPreferencesSchema>;
+export type UserNotificationPreferences = typeof userNotificationPreferences.$inferSelect;
+export type InsertNotificationDigest = z.infer<typeof insertNotificationDigestSchema>;
+export type NotificationDigest = typeof notificationDigests.$inferSelect;
+
+// ============================================================================
 // CHAT SYSTEM ENHANCEMENTS - Connection Tracking, Routing, CSAT
 // ============================================================================
 

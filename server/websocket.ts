@@ -2,7 +2,6 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { Server, IncomingMessage } from 'http';
 import { storage } from './storage';
 import { formatUserDisplayName, formatUserDisplayNameForChat } from './utils/formatUserDisplayName';
-import { generateGreeting, generateStaffIntroduction, getAiResponse, shouldBotRespond, generateQueueWelcome, generateStaffQueueAlert } from './services/aiBot';
 import { parseSlashCommand, validateCommand, getHelpText, COMMAND_REGISTRY } from '@shared/commands';
 import { queueManager } from './services/helpOsQueue';
 import type { ChatMessage } from '@shared/schema';
@@ -898,13 +897,9 @@ export function setupWebSocket(server: Server) {
                     
                     if (updatedEntry) {
                       const queueStatus = await queueManager.getQueueStatus();
-                      welcomeMessage = await generateQueueWelcome(
-                        displayName,
-                        ticketNumber,
-                        updatedEntry.queuePosition || 1,
-                        updatedEntry.estimatedWaitMinutes || 5,
-                        queueStatus.waitingCount
-                      );
+                      const position = updatedEntry.queuePosition || 1;
+                      const waitTime = updatedEntry.estimatedWaitMinutes || 5;
+                      welcomeMessage = `👋 Welcome ${displayName}! Your ticket ${ticketNumber} has been created.\n\nYou're #${position} in queue with an estimated wait time of ${waitTime} minutes. ${queueStatus.waitingCount} users are currently waiting. A support staff member will assist you shortly.`;
                       await queueManager.markWelcomeSent(queueEntry.id);
                     } else {
                       welcomeMessage = `Welcome ${displayName}! Your ticket is ${ticketNumber}.`;
@@ -1982,11 +1977,13 @@ export function setupWebSocket(server: Server) {
               });
             }
 
-            // AI BOT Q&A: ENABLED with cost tracking (subscriber pays model)
-            const MAIN_ROOM_ID = 'main-chatroom-workforceos';
+            // GEMINI Q&A BOT: Intelligent responses using Gemini 2.0 Flash
+            const MAIN_ROOM_ID = 'helpdesk';
+            const { shouldBotRespond, getAiResponse } = await import('./services/geminiQABot');
+            
             if (ws.conversationId === MAIN_ROOM_ID && shouldBotRespond(payload.message)) {
               try {
-                // Determine if user is subscriber or free guest
+                // Determine if user is subscriber
                 const platformRole = await storage.getUserPlatformRole(ws.userId);
                 const isSubscriber = !!(platformRole && ['root_admin', 'deputy_admin', 'support_manager', 'sysop'].includes(platformRole));
                 
@@ -2000,7 +1997,7 @@ export function setupWebSocket(server: Server) {
                     content: m.message
                   }));
 
-                // Get AI response with cost tracking
+                // Get AI response with Gemini
                 const aiResponse = await getAiResponse(
                   ws.userId,
                   ws.workspaceId || 'platform-external',
@@ -2010,179 +2007,37 @@ export function setupWebSocket(server: Server) {
                   isSubscriber
                 );
 
-                // Save AI response to database
-                const aiMessage = await storage.createChatMessage({
-                  conversationId: ws.conversationId,
-                  senderId: 'ai-bot',
-                  senderName: 'HelpOS™',
-                  senderType: 'bot',
-                  message: aiResponse.message,
-                  messageType: 'text',
-                });
-
-                // Log cost for debugging (subscriber pays)
-                if (aiResponse.tokenUsage) {
-                  console.log(`AI Response Cost: $${aiResponse.tokenUsage.totalCost.toFixed(6)} (${aiResponse.tokenUsage.totalTokens} tokens)`);
-                }
-
-                // Broadcast AI response to all clients
-                if (clients) {
-                  const aiPayload = JSON.stringify({
-                    type: 'new_message',
-                    message: aiMessage,
+                if (aiResponse.shouldRespond) {
+                  // Save AI response to database
+                  const aiMessage = await storage.createChatMessage({
+                    conversationId: ws.conversationId,
+                    senderId: 'ai-bot',
+                    senderName: 'HelpOS™',
+                    senderType: 'bot',
+                    message: aiResponse.message,
+                    messageType: 'text',
                   });
-                  clients.forEach((client) => {
-                    if (client.readyState === WebSocket.OPEN) {
-                      client.send(aiPayload);
-                    }
-                  });
+
+                  // Log cost for debugging
+                  if (aiResponse.tokenUsage) {
+                    console.log(`✨ Gemini Q&A: $${aiResponse.tokenUsage.totalCost.toFixed(6)} (${aiResponse.tokenUsage.totalTokens} tokens)`);
+                  }
+
+                  // Broadcast AI response to all clients
+                  if (clients) {
+                    const aiPayload = JSON.stringify({
+                      type: 'new_message',
+                      message: aiMessage,
+                    });
+                    clients.forEach((client) => {
+                      if (client.readyState === WebSocket.OPEN) {
+                        client.send(aiPayload);
+                      }
+                    });
+                  }
                 }
               } catch (aiError) {
-                console.error('AI Bot Q&A error:', aiError);
-              }
-            }
-
-            // HELPOS AUTONOMOUS BOT: Auto-assist in support ticket conversations
-            // Only activate for conversations that are NOT the main room and appear to be support tickets
-            if (ws.conversationId !== MAIN_ROOM_ID && ws.conversationId.startsWith('ticket-')) {
-              try {
-                // Check if HelpOS bot is enabled
-                const { isBotEnabled, processBotMessage, closeBotTicketSuccess, escalateBotTicket } = await import('./helpos-bot');
-                
-                if (isBotEnabled()) {
-                  // Process user message through autonomous bot with billing context
-                  const botResult = await processBotMessage(
-                    ws.conversationId, 
-                    payload.message, 
-                    ws.workspaceId, // For billing tracking
-                    ws.userId // For billing tracking
-                  );
-                  
-                  // Send bot response
-                  if (botResult.response) {
-                    const botMessage = await storage.createChatMessage({
-                      conversationId: ws.conversationId,
-                      senderId: 'helpos-bot',
-                      senderName: 'HelpOS™',
-                      senderType: 'bot',
-                      message: botResult.response,
-                      messageType: 'text',
-                    });
-                    
-                    // Broadcast bot response to all clients
-                    if (clients) {
-                      const botPayload = JSON.stringify({
-                        type: 'new_message',
-                        message: botMessage,
-                      });
-                      clients.forEach((client) => {
-                        if (client.readyState === WebSocket.OPEN) {
-                          client.send(botPayload);
-                        }
-                      });
-                    }
-                  }
-                  
-                  // Handle ticket closure (bot successfully resolved)
-                  if (botResult.shouldClose) {
-                    const closeResult = await closeBotTicketSuccess(ws.conversationId, ws.userId);
-                    
-                    // Send success announcement to support team (staff only)
-                    const staffAnnouncement = await storage.createChatMessage({
-                      conversationId: MAIN_ROOM_ID, // Post to main HelpDesk room
-                      senderId: null,
-                      senderName: 'Server',
-                      senderType: 'system',
-                      message: `✅ **HelpOS Bot Success** - Ticket ${ws.conversationId} resolved autonomously\n\n${closeResult.conversationSummary}`,
-                      messageType: 'text',
-                      isSystemMessage: true,
-                      visibleToStaffOnly: true, // Only support team sees this
-                    });
-                    
-                    // Broadcast to main room (staff will see it, users won't)
-                    const mainRoomClients = conversationClients.get(MAIN_ROOM_ID);
-                    if (mainRoomClients) {
-                      const announcementPayload = JSON.stringify({
-                        type: 'new_message',
-                        message: staffAnnouncement,
-                      });
-                      mainRoomClients.forEach((client) => {
-                        // Only send to staff members
-                        if (client.readyState === WebSocket.OPEN && client.userType === 'staff') {
-                          client.send(announcementPayload);
-                        }
-                      });
-                    }
-                    
-                    // Auto-generate FAQ suggestion if conversation was valuable
-                    if (closeResult.faqSuggestion) {
-                      // Notify staff about FAQ suggestion (could be implemented as a queue/dashboard item)
-                      console.log('✅ HelpOS Bot generated FAQ suggestion:', closeResult.faqSuggestion);
-                    }
-                  }
-                  
-                  // Handle escalation to human support
-                  if (botResult.shouldEscalate) {
-                    await escalateBotTicket(ws.conversationId, 'Bot unable to resolve - escalating to human support');
-                    
-                    // Get conversation details for notification
-                    const conversation = await storage.getChatConversation(ws.conversationId);
-                    const ticketTitle = conversation?.customerName ? `Support for ${conversation.customerName}` : 'Support Request';
-                    const userQuery = 'Bot escalation - requires human support';
-                    
-                    // NOTIFICATION SYSTEM: Notify all support staff via database notifications
-                    // This ensures agents get notified even if they're not in the HelpDesk chat
-                    const { notifySupportStaffOfEscalation } = await import('./helpos-bot');
-                    await notifySupportStaffOfEscalation(ws.conversationId, ticketTitle, userQuery);
-                    
-                    // CHAT ANNOUNCEMENT: Notify support team in main room (inline chat notification)
-                    const escalationAnnouncement = await storage.createChatMessage({
-                      conversationId: MAIN_ROOM_ID,
-                      senderId: null,
-                      senderName: 'Server',
-                      senderType: 'system',
-                      message: `🚨 **Escalation Required** - Ticket ${ws.conversationId} needs human assistance\n\nBot state: ${botResult.state}\nUser needs personalized support.`,
-                      messageType: 'text',
-                      isSystemMessage: true,
-                      visibleToStaffOnly: true,
-                    });
-                    
-                    // Broadcast to staff in main room
-                    const mainRoomClients = conversationClients.get(MAIN_ROOM_ID);
-                    if (mainRoomClients) {
-                      const escalationPayload = JSON.stringify({
-                        type: 'new_message',
-                        message: escalationAnnouncement,
-                      });
-                      mainRoomClients.forEach((client) => {
-                        if (client.readyState === WebSocket.OPEN && client.userType === 'staff') {
-                          client.send(escalationPayload);
-                        }
-                      });
-                    }
-                    
-                    // REDIRECT USER: Send redirect event to user's client to switch to main HelpDesk
-                    // This moves them from their isolated ticket conversation to the main room where staff are
-                    const ticketClients = conversationClients.get(ws.conversationId);
-                    if (ticketClients) {
-                      const redirectPayload = JSON.stringify({
-                        type: 'escalation_redirect',
-                        targetRoom: 'helpdesk', // Main HelpDesk room slug
-                        message: 'Connecting you with our support team in the main HelpDesk...',
-                        ticketId: ws.conversationId,
-                      });
-                      ticketClients.forEach((client) => {
-                        // Send redirect to the end user (not staff)
-                        if (client.readyState === WebSocket.OPEN && client.userType !== 'staff') {
-                          client.send(redirectPayload);
-                        }
-                      });
-                    }
-                  }
-                }
-              } catch (helposError) {
-                console.error('HelpOS autonomous bot error:', helposError);
-                // Fail gracefully - don't block user messages
+                console.error('Gemini Q&A Bot error:', aiError);
               }
             }
             break;
