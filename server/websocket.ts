@@ -386,10 +386,45 @@ export function setupWebSocket(server: Server) {
 
         switch (payload.type) {
           case 'join_conversation': {
-            const MAIN_ROOM_ID = 'main-chatroom-workforceos';
+            const MAIN_ROOM_ID = 'helpdesk'; // Support room slug
+            
+            // Check if this is a support room slug instead of conversation ID
+            let conversationId = payload.conversationId;
+            let isMainRoom = false; // Track if this is the main helpdesk room
+            let conversation = await storage.getChatConversation(conversationId);
+            
+            // If conversation not found, check if it's a support room slug
+            if (!conversation) {
+              const supportRoom = await storage.getSupportRoomBySlug(conversationId);
+              if (supportRoom) {
+                // Track if this is the main helpdesk room
+                isMainRoom = (supportRoom.slug === MAIN_ROOM_ID);
+                
+                // Support room exists - get or create its conversation
+                if (supportRoom.conversationId) {
+                  conversationId = supportRoom.conversationId;
+                  conversation = await storage.getChatConversation(conversationId);
+                } else {
+                  // Auto-create conversation for this support room
+                  // Use platform workspace for platform-wide rooms (null workspaceId)
+                  const newConversation = await storage.createChatConversation({
+                    subject: supportRoom.name,
+                    conversationType: 'open_chat',
+                    workspaceId: supportRoom.workspaceId || 'autoforce-platform-workspace',
+                    participants: [],
+                    isActive: true,
+                  });
+                  
+                  // Link conversation to support room
+                  await storage.updateSupportRoomConversation(supportRoom.slug, newConversation.id);
+                  
+                  conversationId = newConversation.id;
+                  conversation = newConversation;
+                }
+              }
+            }
             
             // SECURITY: Verify conversation exists before allowing join
-            const conversation = await storage.getChatConversation(payload.conversationId);
             if (!conversation) {
               ws.send(JSON.stringify({
                 type: 'error',
@@ -410,7 +445,7 @@ export function setupWebSocket(server: Server) {
 
             // HELPDESK ACCESS CONTROL: For the main HelpDesk room (public IRC-style chatroom)
             let userRoleInfo = '';
-            if (payload.conversationId === MAIN_ROOM_ID) {
+            if (isMainRoom || payload.conversationId === MAIN_ROOM_ID) {
               // This is the main HelpDesk public chatroom - all authenticated users allowed
               try {
                 const platformRole = await storage.getUserPlatformRole(payload.userId);
@@ -465,20 +500,20 @@ export function setupWebSocket(server: Server) {
             ws.userId = payload.userId;
             ws.userName = displayName;
             ws.workspaceId = conversation.workspaceId;
-            ws.conversationId = payload.conversationId;
+            ws.conversationId = conversationId; // Use resolved conversation ID
             ws.userStatus = 'online'; // Default status
             ws.userType = userType;
 
             // Check if user already has an active connection in this room
-            const existingClients = conversationClients.get(payload.conversationId);
+            const existingClients = conversationClients.get(conversationId);
             const userAlreadyInRoom = existingClients ? Array.from(existingClients).some(
               client => client.userId === payload.userId && client.readyState === WebSocket.OPEN
             ) : false;
 
-            if (!conversationClients.has(payload.conversationId)) {
-              conversationClients.set(payload.conversationId, new Set());
+            if (!conversationClients.has(conversationId)) {
+              conversationClients.set(conversationId, new Set());
             }
-            conversationClients.get(payload.conversationId)!.add(ws);
+            conversationClients.get(conversationId)!.add(ws);
 
             // GLOBAL TRACKING: Add to platform-wide stats
             globalConnections.totalConnections++;
@@ -491,18 +526,18 @@ export function setupWebSocket(server: Server) {
             }
 
             // Send conversation history
-            const messages = await storage.getChatMessagesByConversation(payload.conversationId);
+            const messages = await storage.getChatMessagesByConversation(conversationId);
             ws.send(JSON.stringify({
               type: 'conversation_history',
               messages,
             }));
 
             // Mark messages as read
-            await storage.markMessagesAsRead(payload.conversationId, payload.userId);
+            await storage.markMessagesAsRead(conversationId, payload.userId);
 
             // Broadcast updated user list to all clients in this conversation
             const broadcastUserList = async () => {
-              const clients = conversationClients.get(payload.conversationId);
+              const clients = conversationClients.get(conversationId);
               if (clients) {
                 const onlineUsers = [];
 
@@ -725,7 +760,7 @@ export function setupWebSocket(server: Server) {
 
               const participantsPayload = JSON.stringify({
                 type: 'participants_update',
-                conversationId: payload.conversationId,
+                conversationId: conversationId,
                 participants: participants,
               });
 
@@ -737,7 +772,7 @@ export function setupWebSocket(server: Server) {
             }
 
             // HELPDESK ANNOUNCEMENTS: System + HelpOS™ (only if user is joining for the first time)
-            if (payload.conversationId === MAIN_ROOM_ID && !userAlreadyInRoom) {
+            if (isMainRoom && !userAlreadyInRoom) {
               try {
                 const platformRole = await storage.getUserPlatformRole(payload.userId);
                 const isStaff = platformRole && ['root_admin', 'deputy_admin', 'support_manager', 'sysop'].includes(platformRole);
@@ -745,7 +780,7 @@ export function setupWebSocket(server: Server) {
                 // 1. SYSTEM announcement (IRC-style): User joined
                 // displayName already includes title for staff (e.g., "Admin Brigido", "SysOp James")
                 const systemJoinMessage = await storage.createChatMessage({
-                  conversationId: payload.conversationId,
+                  conversationId: conversationId,
                   senderId: null,
                   senderName: 'Server',
                   senderType: 'system',
@@ -755,7 +790,7 @@ export function setupWebSocket(server: Server) {
                 });
 
                 // Broadcast system message
-                const clients = conversationClients.get(payload.conversationId);
+                const clients = conversationClients.get(conversationId);
                 if (clients) {
                   const systemPayload = JSON.stringify({
                     type: 'new_message',
@@ -775,7 +810,7 @@ export function setupWebSocket(server: Server) {
                   const ticketNumber = `TKT-${Date.now().toString().slice(-6)}`;
                   
                   const queueEntry = await queueManager.enqueue({
-                    conversationId: payload.conversationId,
+                    conversationId: conversationId,
                     userId: payload.userId?.startsWith('guest-') ? undefined : payload.userId, // Guests don't have user records
                     ticketNumber,
                     userName: displayName,
@@ -783,7 +818,7 @@ export function setupWebSocket(server: Server) {
                   });
 
                   // AUTO-VOICE for public HelpDesk room: Give guests immediate ability to send messages
-                  if (payload.conversationId === MAIN_ROOM_ID) {
+                  if (isMainRoom) {
                     if (ws.readyState === WebSocket.OPEN) {
                       ws.send(JSON.stringify({ type: 'voice_granted' }));
                       console.log(`🎤 Auto-granted voice to ${displayName} in public HelpDesk`);
@@ -791,7 +826,7 @@ export function setupWebSocket(server: Server) {
                   }
 
                   await queueManager.updateQueuePositions();
-                  const updatedEntry = await queueManager.getQueueEntry(payload.conversationId);
+                  const updatedEntry = await queueManager.getQueueEntry(conversationId);
                   
                   if (updatedEntry) {
                     const queueStatus = await queueManager.getQueueStatus();
@@ -807,7 +842,7 @@ export function setupWebSocket(server: Server) {
                     // Create message object for WebSocket only
                     const botMessage = {
                       id: `temp-${Date.now()}`,
-                      conversationId: payload.conversationId,
+                      conversationId: conversationId,
                       senderId: 'ai-bot',
                       senderName: 'HelpOS™',
                       senderType: 'bot',
@@ -841,9 +876,9 @@ export function setupWebSocket(server: Server) {
                 
                 // FALLBACK: Send basic welcome if queue system fails
                 try {
-                  const clients = conversationClients.get(payload.conversationId);
+                  const clients = conversationClients.get(conversationId);
                   const fallbackMessage = await storage.createChatMessage({
-                    conversationId: payload.conversationId,
+                    conversationId: conversationId,
                     senderId: null,
                     senderName: 'System',
                     senderType: 'system',
@@ -870,7 +905,7 @@ export function setupWebSocket(server: Server) {
             }
 
             // HelpOS greets everyone who joins (only send to the joining user, not the entire room, and only if first time joining)
-            if (payload.conversationId === MAIN_ROOM_ID && !userAlreadyInRoom) {
+            if (isMainRoom && !userAlreadyInRoom) {
               try {
                 // Determine greeting based on user type
                 // displayName already includes title for staff (e.g., "Admin Brigido")
@@ -887,7 +922,7 @@ export function setupWebSocket(server: Server) {
                   message: {
                     id: `welcome-${Date.now()}`,
                     createdAt: new Date(),
-                    conversationId: payload.conversationId,
+                    conversationId: conversationId,
                     senderId: 'helpos-ai-bot',
                     senderName: 'HelpOS™',
                     senderType: 'bot',
@@ -908,7 +943,7 @@ export function setupWebSocket(server: Server) {
 
             // Single consolidated log message (only for NEW joins, not reconnections)
             if (!userAlreadyInRoom) {
-              if (payload.conversationId === MAIN_ROOM_ID) {
+              if (isMainRoom) {
                 console.log(`✅ ${displayName} joined HelpDesk (${userRoleInfo})`);
               } else {
                 console.log(`${displayName} joined conversation ${payload.conversationId}`);
