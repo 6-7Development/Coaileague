@@ -31,7 +31,7 @@ export function useFeatureFlags() {
 
   // Check if user has platform staff role - grant Elite access
   const isPlatformStaff = user?.platformRole && 
-    ['root', 'deputy_admin', 'deputy_assistant', 'sysop', 'support'].includes(user.platformRole);
+    ['root_admin', 'deputy_admin', 'deputy_assistant', 'sysop', 'support'].includes(user.platformRole);
 
   // Platform staff always get Elite tier access regardless of workspace tier
   const tier = isPlatformStaff ? 'elite' : (workspace?.subscriptionTier || 'free');

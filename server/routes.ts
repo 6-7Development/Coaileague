@@ -4136,7 +4136,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         )
         .limit(1);
       
-      const isPlatformStaff = staffRole && ['root', 'deputy_admin', 'deputy_assistant', 'sysop'].includes(staffRole.role);
+      const isPlatformStaff = staffRole && ['root_admin', 'deputy_admin', 'deputy_assistant', 'sysop'].includes(staffRole.role);
       
       if (!isPlatformStaff) {
         return res.status(403).json({ message: "Only platform staff can update escalation tickets" });
@@ -6691,7 +6691,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Check if user is platform staff - grant full access
       const platformRole = await storage.getUserPlatformRole(userId);
-      const isPlatformStaff = platformRole && ['root', 'deputy_admin', 'deputy_assistant', 'sysop', 'support'].includes(platformRole);
+      const isPlatformStaff = platformRole && ['root_admin', 'deputy_admin', 'deputy_assistant', 'sysop', 'support'].includes(platformRole);
 
       // Platform staff get full access without trial/activation checks
       if (!isPlatformStaff) {
@@ -14505,7 +14505,7 @@ Keep it professional, actionable, and under 250 words.`;
       const { userId } = req.params;
       const { role, reason } = req.body;
       
-      if (!role || !['root', 'deputy_admin', 'deputy_assistant', 'sysop', 'support'].includes(role)) {
+      if (!role || !['root_admin', 'deputy_admin', 'deputy_assistant', 'sysop', 'support'].includes(role)) {
         return res.status(400).json({ error: "Invalid platform role" });
       }
 
@@ -15890,7 +15890,7 @@ Keep it professional, actionable, and under 250 words.`;
         .from(platformRoles)
         .where(eq(platformRoles.userId, staffUser.id));
 
-      const hasStaffRole = roleRecord && ['root', 'deputy_admin', 'deputy_assistant', 'sysop'].includes(roleRecord.role);
+      const hasStaffRole = roleRecord && ['root_admin', 'deputy_admin', 'deputy_assistant', 'sysop'].includes(roleRecord.role);
 
       if (!hasStaffRole) {
         return res.status(403).json({ message: "Unauthorized - Staff access required" });
@@ -16052,7 +16052,7 @@ Keep it professional, actionable, and under 250 words.`;
       
       // Check if user is staff (always has access)
       const platformRole = await storage.getUserPlatformRole(userId);
-      const isStaff = platformRole && ['root', 'deputy_admin', 'deputy_assistant', 'sysop'].includes(platformRole);
+      const isStaff = platformRole && ['root_admin', 'deputy_admin', 'deputy_assistant', 'sysop'].includes(platformRole);
       
       if (isStaff) {
         return res.json({ 
@@ -16092,7 +16092,7 @@ Keep it professional, actionable, and under 250 words.`;
       
       // SECURITY: Only platform staff can revoke access
       const platformRole = await storage.getUserPlatformRole(userId);
-      if (!platformRole || !['root', 'deputy_admin', 'deputy_assistant', 'sysop'].includes(platformRole)) {
+      if (!platformRole || !['root_admin', 'deputy_admin', 'deputy_assistant', 'sysop'].includes(platformRole)) {
         return res.status(403).json({ message: "Unauthorized - Staff access required" });
       }
       
@@ -16876,7 +16876,7 @@ Return ONLY valid JSON array with this exact structure:
       
       // Check if user is staff
       const platformRole = await storage.getUserPlatformRole(userId);
-      if (!platformRole || !['root', 'deputy_admin', 'deputy_assistant', 'sysop'].includes(platformRole)) {
+      if (!platformRole || !['root_admin', 'deputy_admin', 'deputy_assistant', 'sysop'].includes(platformRole)) {
         return res.status(403).json({ error: "Staff access required" });
       }
 

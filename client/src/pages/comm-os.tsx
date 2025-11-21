@@ -69,7 +69,7 @@ export default function AICommunications() {
   const [exportFormat, setExportFormat] = useState<"pdf" | "html">("pdf");
 
   // Check if user has any support/admin platform role
-  const isSupportStaff = user?.platformRole && ['root', 'deputy_admin', 'deputy_assistant', 'sysop', 'support'].includes(user.platformRole);
+  const isSupportStaff = user?.platformRole && ['root_admin', 'deputy_admin', 'deputy_assistant', 'sysop', 'support'].includes(user.platformRole);
 
   // Fetch chat rooms
   const { data: rooms, isLoading } = useQuery<OrganizationChatRoom[]>({
