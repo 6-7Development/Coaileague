@@ -2161,6 +2161,24 @@ export function setupWebSocket(server: Server) {
                         }
                       });
                     }
+                    
+                    // REDIRECT USER: Send redirect event to user's client to switch to main HelpDesk
+                    // This moves them from their isolated ticket conversation to the main room where staff are
+                    const ticketClients = conversationClients.get(ws.conversationId);
+                    if (ticketClients) {
+                      const redirectPayload = JSON.stringify({
+                        type: 'escalation_redirect',
+                        targetRoom: 'helpdesk', // Main HelpDesk room slug
+                        message: 'Connecting you with our support team in the main HelpDesk...',
+                        ticketId: ws.conversationId,
+                      });
+                      ticketClients.forEach((client) => {
+                        // Send redirect to the end user (not staff)
+                        if (client.readyState === WebSocket.OPEN && client.userType !== 'staff') {
+                          client.send(redirectPayload);
+                        }
+                      });
+                    }
                   }
                 }
               } catch (helposError) {
