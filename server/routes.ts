@@ -557,6 +557,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user!.id;
       const now = new Date();
 
+      // Check if user is new (created within last 7 days)
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+      
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const isNewUser = user && user.createdAt && new Date(user.createdAt) > sevenDaysAgo;
+
       // Get all active major feature updates (platform-wide)
       const activeUpdates = await db
         .select()
@@ -575,7 +586,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             )
           )
         )
-        .orderBy(desc(featureUpdates.createdAt));
+        .orderBy(desc(featureUpdates.createdAt))
+        .limit(isNewUser ? 1 : 1000); // New users see only the latest major update
 
       // Get user's dismissed updates (across all workspaces)
       const dismissedReceipts = await db
