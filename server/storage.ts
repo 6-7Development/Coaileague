@@ -475,6 +475,7 @@ export interface IStorage {
   getSupportRoomBySlug(slug: string): Promise<SupportRoom | undefined>;
   getAllSupportRooms(workspaceId?: string | null): Promise<SupportRoom[]>;
   updateSupportRoomStatus(slug: string, status: string, statusMessage: string | null, changedBy: string): Promise<SupportRoom | undefined>;
+  updateSupportRoomConversation(slug: string, conversationId: string): Promise<SupportRoom | undefined>;
   verifyTicketForChatAccess(ticketNumber: string, userId: string): Promise<SupportTicket | undefined>;
   grantTicketAccess(access: InsertSupportTicketAccess): Promise<SupportTicketAccess>;
   checkTicketAccess(userId: string, roomId: string): Promise<SupportTicketAccess | undefined>;
@@ -3022,6 +3023,19 @@ export class DatabaseStorage implements IStorage {
         statusMessage,
         lastStatusChange: new Date(),
         statusChangedBy: changedBy,
+        updatedAt: new Date()
+      })
+      .where(eq(supportRooms.slug, slug))
+      .returning();
+    
+    return updated;
+  }
+  
+  async updateSupportRoomConversation(slug: string, conversationId: string): Promise<SupportRoom | undefined> {
+    const [updated] = await db
+      .update(supportRooms)
+      .set({ 
+        conversationId,
         updatedAt: new Date()
       })
       .where(eq(supportRooms.slug, slug))
