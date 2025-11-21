@@ -2165,9 +2165,9 @@ export function setupWebSocket(server: Server) {
               return;
             }
 
-            // SECURITY: Only platform staff (root, deputy admins) can kick users
+            // SECURITY: Only platform staff (root_admin, deputy admins, support managers) can kick users
             const kickerRole = await storage.getUserPlatformRole(ws.userId).catch(() => null);
-            const canKick = kickerRole && ['root', 'deputy_admin'].includes(kickerRole);
+            const canKick = kickerRole && ['root_admin', 'deputy_admin', 'support_manager', 'sysop'].includes(kickerRole);
             
             if (!canKick) {
               // IRC-style command acknowledgment for permission denied
@@ -2191,8 +2191,8 @@ export function setupWebSocket(server: Server) {
             } : null;
             const targetDisplayName = targetUserInfo ? formatUserDisplayName(targetUserInfo) : 'User';
             
-            // Only root can kick root
-            if (targetRole === 'root' && kickerRole !== 'root') {
+            // Only root_admin can kick root_admin
+            if (targetRole === 'root_admin' && kickerRole !== 'root_admin') {
               // Send public error message visible to all in chat
               const errorMessage = createSystemMessage(
                 ws.conversationId,
