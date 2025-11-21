@@ -773,9 +773,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // For anonymous users, use AutoForce Platform workspace
       const { PLATFORM_WORKSPACE_ID } = await import('./seed-platform-workspace');
-      const workspaceId = isAuthenticated 
-        ? (await resolveWorkspaceForUser(userId!, req.body.workspaceId)).workspaceId
-        : PLATFORM_WORKSPACE_ID;
+      let workspaceId: string;
+      
+      if (isAuthenticated) {
+        const resolution = await resolveWorkspaceForUser(userId!, req.body.workspaceId);
+        
+        // SECURITY: Never fallback authenticated users to platform workspace
+        // This prevents cross-tenant data leakage
+        if (!resolution.workspaceId) {
+          return res.status(400).json({ 
+            message: resolution.error || 'Please specify a valid workspace',
+            requiresWorkspace: true
+          });
+        }
+        
+        workspaceId = resolution.workspaceId;
+      } else {
+        workspaceId = PLATFORM_WORKSPACE_ID;
+      }
       
       // SECURITY: Validate session ownership to prevent cross-user access
       // For ALL requests with sessionId, validate the session belongs to this user
