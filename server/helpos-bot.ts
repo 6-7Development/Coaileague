@@ -370,10 +370,21 @@ export async function processBotMessage(
   });
   conversation.lastInteraction = new Date();
   
-  // Detect sentiment
-  const sentiment = detectSentiment(userMessage);
-  conversation.satisfactionSignals += sentiment.satisfaction;
-  conversation.escalationSignals += sentiment.escalation;
+  // CRITICAL: Skip sentiment detection during intake flow
+  // Prevents premature escalation before ticket creation completes
+  const isIntakeFlow = [
+    BotState.INTAKE_SUBJECT,
+    BotState.INTAKE_DESCRIPTION,
+    BotState.INTAKE_PRIORITY,
+    BotState.CREATING_TICKET
+  ].includes(conversation.state);
+  
+  if (!isIntakeFlow) {
+    // Detect sentiment only after intake completes
+    const sentiment = detectSentiment(userMessage);
+    conversation.satisfactionSignals += sentiment.satisfaction;
+    conversation.escalationSignals += sentiment.escalation;
+  }
   
   let response = '';
   let shouldEscalate = false;
