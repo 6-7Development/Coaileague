@@ -74,7 +74,7 @@ import { TicketContextPanel } from "@/components/ticket-context-panel";
 import { sanitizeMessage } from "@/lib/sanitize";
 import { MobileChatLayout } from "@/components/mobile-chat-layout";
 
-const MAIN_ROOM_ID = 'main-chatroom-autoforce';
+const MAIN_ROOM_ID = 'helpdesk'; // Must match support_rooms.slug in database
 
 interface HelpDeskProps {
   forceMobileLayout?: boolean; // Force mobile layout regardless of screen size
