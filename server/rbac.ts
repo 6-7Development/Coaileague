@@ -278,13 +278,13 @@ export const attachWorkspaceId: RequestHandler = async (req, res, next) => {
   if (!resolved.workspaceId) {
     // User has no workspace - this is okay for some endpoints
     authReq.workspaceId = undefined;
-    authReq.workspaceRole = null;
+    authReq.workspaceRole = undefined;
     authReq.employeeId = undefined;
     return next();
   }
   
   authReq.workspaceId = resolved.workspaceId;
-  authReq.workspaceRole = resolved.role || null;
+  authReq.workspaceRole = resolved.role || undefined;
   authReq.employeeId = resolved.employeeId || undefined;
   
   next();
