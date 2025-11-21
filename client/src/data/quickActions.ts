@@ -137,7 +137,7 @@ export const quickActionsRegistry: QuickAction[] = [
     color: 'text-primary',
     category: 'support',
     desktopPath: '/dashboard', // Consolidated admin dashboard
-    requiresPlatformRoles: ['root', 'sysop', 'deputy_admin', 'deputy_assistant'],
+    requiresPlatformRoles: ['root_admin', 'sysop', 'deputy_admin', 'deputy_assistant'],
     requiresAuth: true,
     testId: 'quick-tickets',
     description: 'Manage support tickets and customer requests'
@@ -188,7 +188,7 @@ export const quickActionsRegistry: QuickAction[] = [
     color: 'text-primary',
     category: 'platform',
     desktopPath: '/platform-users',
-    requiresPlatformRoles: ['root', 'sysop'],
+    requiresPlatformRoles: ['root_admin', 'sysop'],
     requiresAuth: true,
     testId: 'quick-users',
     description: 'Manage platform users and permissions'
@@ -200,7 +200,7 @@ export const quickActionsRegistry: QuickAction[] = [
     color: 'text-blue-400',
     category: 'platform',
     desktopPath: '/platform-admin',
-    requiresPlatformRoles: ['root', 'sysop'],
+    requiresPlatformRoles: ['root_admin', 'sysop'],
     requiresAuth: true,
     testId: 'quick-workspaces',
     description: 'Manage workspaces and organizations'
@@ -223,7 +223,7 @@ export const quickActionsRegistry: QuickAction[] = [
     color: 'text-blue-500',
     category: 'platform',
     desktopPath: '/settings',
-    requiresPlatformRoles: ['root', 'sysop'],
+    requiresPlatformRoles: ['root_admin', 'sysop'],
     requiresAuth: true,
     testId: 'quick-flags',
     description: 'Manage feature flags and rollouts'
@@ -240,7 +240,7 @@ export const quickActionsRegistry: QuickAction[] = [
     category: 'operations',
     desktopPath: '/root-admin-dashboard#system-stats',
     isHashAnchor: true,
-    requiresPlatformRoles: ['root', 'sysop'],
+    requiresPlatformRoles: ['root_admin', 'sysop'],
     requiresAuth: true,
     testId: 'quick-health',
     description: 'Monitor system performance and health'
@@ -253,7 +253,7 @@ export const quickActionsRegistry: QuickAction[] = [
     category: 'operations',
     desktopPath: '/root-admin-dashboard#recent-activity',
     isHashAnchor: true,
-    requiresPlatformRoles: ['root', 'sysop'],
+    requiresPlatformRoles: ['root_admin', 'sysop'],
     requiresAuth: true,
     testId: 'quick-errors',
     description: 'View recent errors and system issues'
@@ -266,7 +266,7 @@ export const quickActionsRegistry: QuickAction[] = [
     category: 'operations',
     desktopPath: '/root-admin-dashboard#system-stats',
     isHashAnchor: true,
-    requiresPlatformRoles: ['root', 'sysop'],
+    requiresPlatformRoles: ['root_admin', 'sysop'],
     requiresAuth: true,
     testId: 'quick-performance',
     description: 'Monitor application performance metrics'
@@ -278,7 +278,7 @@ export const quickActionsRegistry: QuickAction[] = [
     color: 'text-blue-400',
     category: 'operations',
     desktopPath: '/settings',
-    requiresPlatformRoles: ['root', 'sysop', 'deputy_admin'],
+    requiresPlatformRoles: ['root_admin', 'sysop', 'deputy_admin'],
     requiresAuth: true,
     testId: 'quick-webhooks',
     description: 'Configure webhook integrations'
@@ -291,7 +291,7 @@ export const quickActionsRegistry: QuickAction[] = [
     category: 'operations',
     desktopPath: '/root-admin-dashboard#system-stats',
     isHashAnchor: true,
-    requiresPlatformRoles: ['root', 'sysop'],
+    requiresPlatformRoles: ['root_admin', 'sysop'],
     requiresAuth: true,
     testId: 'quick-api',
     description: 'Check API status and health'

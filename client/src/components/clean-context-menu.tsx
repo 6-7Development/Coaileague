@@ -276,7 +276,7 @@ export function createUserMenuItems(
     onAddNote: () => void;
   }
 ): MenuItem[] {
-  const isStaff = ['root', 'deputy_admin', 'deputy_assistant', 'sysop'].includes(currentUserRole);
+  const isStaff = ['root_admin', 'deputy_admin', 'deputy_assistant', 'sysop'].includes(currentUserRole);
   
   if (!isStaff) {
     return [

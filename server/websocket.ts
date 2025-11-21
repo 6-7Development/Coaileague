@@ -1058,7 +1058,7 @@ export function setupWebSocket(server: Server) {
               }) : ws.userName || 'Support Staff';
               
               const staffRole = staffInfo?.platformRole || 'support';
-              const staffRoleName = staffRole === 'root' ? 'Senior Support Administrator' :
+              const staffRoleName = staffRole === 'root_admin' ? 'Senior Support Administrator' :
                                   staffRole === 'deputy_admin' ? 'Support Manager' :
                                   staffRole === 'deputy_assistant' ? 'Senior Support Agent' :
                                   staffRole === 'sysop' ? 'Support Agent' : 'Support Team Member';
@@ -2987,7 +2987,7 @@ export function setupWebSocket(server: Server) {
 
             // Check if user has staff permissions
             const staffInfo = await storage.getUserDisplayInfo(ws.userId);
-            const isStaff = staffInfo?.platformRole && ['root', 'admin', 'deputy', 'assistant', 'sysop'].includes(staffInfo.platformRole);
+            const isStaff = staffInfo?.platformRole && ['root_admin', 'deputy_admin', 'support_manager', 'sysop', 'support_agent'].includes(staffInfo.platformRole);
             
             if (!isStaff) {
               ws.send(JSON.stringify({

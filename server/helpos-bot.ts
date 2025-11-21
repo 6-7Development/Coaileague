@@ -507,12 +507,12 @@ export async function notifySupportStaffOfEscalation(
     const { storage } = await import('./storage');
     const { notifications } = await import('@shared/schema');
     
-    // Get all platform support staff (ROOT, DEPUTY_ADMIN, DEPUTY_ASSISTANT)
+    // Get all platform support staff (ROOT_ADMIN, DEPUTY_ADMIN, DEPUTY_ASSISTANT)
     const supportStaff = await db.execute(sql`
       SELECT u.id, u.current_workspace_id
       FROM users u
       INNER JOIN platform_roles pr ON pr.user_id = u.id
-      WHERE pr.role IN ('root', 'deputy_admin', 'deputy_assistant', 'sysop')
+      WHERE pr.role IN ('root_admin', 'deputy_admin', 'deputy_assistant', 'sysop')
       AND pr.is_active = true
     `);
     
