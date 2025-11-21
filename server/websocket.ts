@@ -547,16 +547,27 @@ export function setupWebSocket(server: Server) {
               success: true,
             }));
 
-            // Now send conversation history (after client knows the correct UUID)
-            const messages = await storage.getChatMessagesByConversation(conversationId);
-            ws.send(JSON.stringify({
-              type: 'conversation_history',
-              conversationId, // CRITICAL: Include conversationId so frontend filter accepts messages
-              messages,
-            }));
-
-            // Mark messages as read
-            await storage.markMessagesAsRead(conversationId, payload.userId);
+            // Send conversation history - but only for escalated tickets, not main HelpDesk
+            // Main HelpDesk starts fresh each time (users get individual help)
+            // Escalated tickets need history for staff context
+            if (!isMainRoom) {
+              const messages = await storage.getChatMessagesByConversation(conversationId);
+              ws.send(JSON.stringify({
+                type: 'conversation_history',
+                conversationId, // CRITICAL: Include conversationId so frontend filter accepts messages
+                messages,
+              }));
+              
+              // Mark messages as read for escalated tickets
+              await storage.markMessagesAsRead(conversationId, payload.userId);
+            } else {
+              // For main HelpDesk: Send empty history (start fresh)
+              ws.send(JSON.stringify({
+                type: 'conversation_history',
+                conversationId,
+                messages: [],
+              }));
+            }
 
             // Broadcast updated user list to all clients in this conversation
             const broadcastUserList = async () => {
