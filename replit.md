@@ -4,7 +4,49 @@
 AutoForce™ (Autonomous Workforce Management Solutions) is a comprehensive platform powered by a unified AI Brain that autonomously manages end-to-end workforce operations. Its core purpose is to achieve complete automation—from intelligent scheduling and payroll to compliance monitoring and billing—with a 99% AI completion rate, minimizing human intervention. Key capabilities include AI-powered scheduling, automated invoice and payroll generation, smart hiring, compliance auditing, and real-time analytics. AutoForce™ targets emergency services and service-related industries with a hybrid subscription and usage-based revenue model, aiming for significant market potential through its autonomous capabilities.
 
 ## Recent Updates (Nov 21, 2025)
-**HELPDESK INTAKE SYSTEM + TOOL TARGETING (Latest):**
+**GEMINI Q&A BOT + NOTIFICATION DIGEST SYSTEM (Latest):**
+
+**OpenAI Dependencies Completely Removed:**
+- **Change**: Eliminated all OpenAI imports/calls from WebSocket; platform now 100% Gemini-powered
+- **Fix**: Removed deprecated `aiBot.ts` import, replaced `generateQueueWelcome()` with static message, deleted entire autonomous Q&A bot block requiring OPENAI_API_KEY
+- **Result**: No runtime reliance on missing OpenAI API keys; prevents crashes and errors
+- **Files Modified**: `server/websocket.ts` (lines 5, 901-905, 1980-2091)
+
+**Gemini Q&A Bot Restored:**
+- **Feature**: Intelligent Q&A bot now responds to user questions in HelpDesk using Gemini 2.0 Flash Exp
+- **Capabilities**: Answers questions about AutoForce™ features (scheduling, payroll, billing, employees), provides concise 2-3 sentence responses, maintains conversation context
+- **Integration**: Automatically detects questions with help keywords (`help`, `how`, `what`, `?`, etc.), respects conversation history (last 5 messages), logs token usage for cost monitoring
+- **Cost**: ~$0.000075 per million tokens (extremely cheap with Gemini 2.0 Flash pricing)
+- **Files Created**: `server/services/geminiQABot.ts`
+- **Files Modified**: `server/websocket.ts` (lines 1983-2045)
+
+**AI Notification Digest System:**
+- **Feature**: Prevents notification flooding with AI-powered batch summarization using Gemini 2.0 Flash Exp
+- **Capabilities**: 4 frequency tiers (15min/1hour/4hours/daily), quiet hours support (9PM-8AM), Gemini summarization with fallback to simple bullet points
+- **Schema**: Added `userNotificationPreferences`, `notificationDigests` tables with proper indexes/types
+- **Service**: Created `notificationDigestService.ts` with batch processing, Gemini integration, cost tracking
+- **Files Created**: `server/services/notificationDigestService.ts`
+- **Files Modified**: `shared/schema.ts` (lines 9088-9177)
+
+**Enhanced Kick Command Error Messages:**
+- **Feature**: Contextual error messages explaining why kick failed
+- **Implementation**: Database lookup distinguishes "user is offline" vs "user never joined this conversation"
+- **Files Modified**: `server/websocket.ts` (lines 2410-2422)
+
+**What's New Filtering for New Users:**
+- **Feature**: New users (< 7 days old) see only the most recent major update instead of full history
+- **Rationale**: Prevents information overload during onboarding
+- **Implementation**: Detects user creation date, limits to 1 update for new users vs 1000 for existing
+- **Files Modified**: `server/routes.ts` (lines 563-593)
+
+**5 New Feature Updates Added:**
+- HelpOS Bot Escalation (Automated ticket creation and staff routing)
+- RBAC Security Hardening (Fixed 14 instances of 'root' → 'root_admin')
+- WebSocket Chat Stability (Race condition fixes, event ordering)
+- Mobile-First HelpDesk (Responsive design, touch-friendly UI)
+- Gemini 2.0 Integration (100% Gemini-powered AI across platform)
+
+**Previous: HELPDESK INTAKE SYSTEM + TOOL TARGETING:**
 
 **HelpOS Bot Auto-Ticket Creation:**
 - **Feature**: Bot automatically creates support tickets for users who join HelpDesk without active tickets
