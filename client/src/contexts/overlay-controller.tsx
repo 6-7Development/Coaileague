@@ -190,9 +190,10 @@ export function OverlayControllerProvider({ children }: { children: ReactNode })
       {children}
       {/* Single overlay instance - only one can be visible at a time */}
       {/* Uses UniversalTransitionOverlay with multiple animation variants */}
-      {/* Never show overlays on public routes */}
-      {shouldShowOverlay && (
+      {/* Never show overlays on public routes - CRITICAL: Only render if shouldShowOverlay is true */}
+      {activeOverlay && activeOverlay.status === "loading" ? (
         <ResponsiveLoading
+          isVisible={!isPublicRoute}
           message={activeOverlay.title}
           submessage={activeOverlay.submessage}
           scenario={activeOverlay.scenario}
@@ -202,7 +203,7 @@ export function OverlayControllerProvider({ children }: { children: ReactNode })
           duration={activeOverlay.duration}
           onComplete={activeOverlay.onComplete}
         />
-      )}
+      ) : null}
     </OverlayControllerContext.Provider>
   );
 }
