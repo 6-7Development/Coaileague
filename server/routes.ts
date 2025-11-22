@@ -1216,25 +1216,125 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // HEALTH CHECK & MONITORING (No rate limiting)
   // ============================================================================
   
-  // Health check endpoint for uptime monitoring (no auth or rate limit required)
-  app.get('/api/health', async (req, res) => {
+  // Auto-create support ticket when critical service fails (spam prevention: 1 ticket/hour per service)
+  async function autoCreateSupportTicket(service: string, message: string, severity: 'critical' | 'high'): Promise<void> {
     try {
-      // Basic health check - verify database connection using imported db
-      const { db: database } = await import("./db");
-      await database.execute(sql`SELECT 1`);
+      const [supportWorkspace] = await db.select()
+        .from(workspaces)
+        .where(eq(workspaces.organizationCode, 'ORG-SUPT'))
+        .limit(1);
       
-      res.json({
-        status: 'healthy',
+      if (!supportWorkspace) return;
+
+      const oneHourAgo = new Date(Date.now() - 3600000);
+      const [recentTicket] = await db.select()
+        .from(supportTickets)
+        .where(and(
+          eq(supportTickets.workspaceId, supportWorkspace.id),
+          sql`${supportTickets.subject} LIKE ${'%' + service + '%'}`,
+          sql`${supportTickets.createdAt} > ${oneHourAgo}`
+        ))
+        .limit(1);
+      
+      if (recentTicket) return;
+
+      await storage.createSupportTicket({
+        workspaceId: supportWorkspace.id,
+        ticketNumber: `SUPT-${Date.now()}`,
+        type: 'support',
+        priority: severity === 'critical' ? 'urgent' : 'high',
+        requestedBy: 'AutoForce Monitor',
+        subject: `[${severity.toUpperCase()}] ${service} Service Failure`,
+        description: `${message}\n\nDetected: ${new Date().toISOString()}`,
+        status: 'open',
+        isEscalated: severity === 'critical',
+      });
+
+      console.log(`[AutoTicket] Created ticket for ${service}`);
+    } catch (error) {
+      console.error('[AutoTicket] Failed:', error);
+    }
+  }
+
+  // Health check endpoint with comprehensive service monitoring
+  app.get('/api/health', async (req, res) => {
+    const checks: Record<string, { status: string; message?: string }> = {};
+    
+    try {
+      // 1. Database check
+      try {
+        await db.execute(sql`SELECT 1`);
+        checks.database = { status: 'up' };
+      } catch (error) {
+        checks.database = { status: 'down', message: (error as any).message };
+        await autoCreateSupportTicket('Database', 'Database connection failed', 'critical');
+      }
+
+      // 2. Stripe check
+      try {
+        if (stripe) {
+          await stripe.charges.list({ limit: 1 });
+          checks.stripe = { status: 'up' };
+        } else {
+          checks.stripe = { status: 'unconfigured' };
+        }
+      } catch (error) {
+        checks.stripe = { status: 'down', message: (error as any).message };
+        await autoCreateSupportTicket('Stripe', 'Stripe API unreachable', 'high');
+      }
+
+      // 3. Gemini AI check
+      try {
+        const response = await fetch('https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash-exp:generateContent', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': process.env.GEMINI_API_KEY || ''
+          },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: 'ping' }] }]
+          })
+        });
+        checks.gemini = response.ok ? { status: 'up' } : { status: 'down', message: 'API returned error' };
+        if (!response.ok) {
+          await autoCreateSupportTicket('Gemini AI', 'Gemini API unreachable', 'high');
+        }
+      } catch (error) {
+        checks.gemini = { status: 'down', message: (error as any).message };
+        await autoCreateSupportTicket('Gemini AI', 'Gemini API connection failed', 'high');
+      }
+
+      // 4. Resend email service check
+      try {
+        if (emailService) {
+          checks.resend = { status: 'up' };
+        } else {
+          checks.resend = { status: 'unconfigured' };
+        }
+      } catch (error) {
+        checks.resend = { status: 'down', message: (error as any).message };
+        await autoCreateSupportTicket('Resend', 'Email service unavailable', 'high');
+      }
+
+      // 5. WebSocket check
+      checks.websocket = { status: 'up' }; // If server is running, WebSocket is available
+
+      const isHealthy = !Object.values(checks).some(c => c.status === 'down');
+      
+      res.status(isHealthy ? 200 : 503).json({
+        status: isHealthy ? 'healthy' : 'degraded',
         timestamp: new Date().toISOString(),
         uptime: process.uptime(),
-        version: '1.0.0'
+        version: '1.0.0',
+        services: checks
       });
     } catch (error) {
-      console.error('Health check failed:', error);
+      console.error('Health check error:', error);
       res.status(503).json({
         status: 'unhealthy',
         timestamp: new Date().toISOString(),
-        error: 'Database connection failed'
+        error: 'Health check failed',
+        services: checks
       });
     }
   });
