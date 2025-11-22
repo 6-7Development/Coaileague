@@ -13379,6 +13379,166 @@ Keep it professional, actionable, and under 250 words.`;
     }
   });
 
+  // Generate AI summary of support conversation
+  app.post('/api/support/tickets/:id/generate-summary', chatMessageLimiter, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { messages, guestEmail, guestName } = req.body;
+
+      if (!messages || !Array.isArray(messages)) {
+        return res.status(400).json({ message: 'Messages array is required' });
+      }
+
+      // Get the ticket to update
+      const ticket = await db.query.supportTickets.findFirst({
+        where: eq(supportTickets.id, id),
+      });
+
+      if (!ticket) {
+        return res.status(404).json({ message: 'Ticket not found' });
+      }
+
+      try {
+        // Use Gemini to generate conversation summary
+        const { generateGeminiResponse, isGeminiAvailable } = await import('./gemini');
+        
+        if (!isGeminiAvailable()) {
+          console.warn('Gemini not available, skipping AI summary generation');
+          return res.status(503).json({ message: 'AI summary generation temporarily unavailable' });
+        }
+
+        // Format messages for Gemini
+        const conversationText = messages
+          .map((m: any) => `${m.senderName || 'Support Agent'}: ${m.message}`)
+          .join('\n');
+
+        const summaryPrompt = `Please provide a concise executive summary of this support conversation in 2-3 sentences, focusing on:
+1. The customer's main issue
+2. What was resolved or recommended
+3. Next steps if any
+
+Conversation:
+${conversationText}
+
+Summary:`;
+
+        const summary = await generateGeminiResponse({
+          model: 'gemini-2.0-flash-exp',
+          messages: [{
+            role: 'user',
+            content: summaryPrompt
+          }],
+          maxTokens: 200
+        });
+
+        // Store summary in ticket
+        const [updatedTicket] = await db.update(supportTickets)
+          .set({
+            resolution: summary,
+            updatedAt: new Date(),
+          })
+          .where(eq(supportTickets.id, id))
+          .returning();
+
+        res.json({ 
+          success: true, 
+          summary,
+          ticket: updatedTicket
+        });
+      } catch (geminiError) {
+        console.error('Gemini summary generation failed:', geminiError);
+        // Return graceful degradation - ticket exists, summary failed
+        res.status(503).json({ 
+          message: 'AI summary generation failed',
+          details: geminiError instanceof Error ? geminiError.message : 'Unknown error'
+        });
+      }
+    } catch (error) {
+      console.error('Error generating summary:', error);
+      res.status(500).json({ message: 'Failed to generate summary' });
+    }
+  });
+
+  // Close support ticket and email summary to user
+  app.post('/api/support/tickets/:id/close', chatMessageLimiter, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { summary, guestEmail, guestName } = req.body;
+
+      if (!guestEmail) {
+        return res.status(400).json({ message: 'Guest email is required' });
+      }
+
+      // Get the ticket
+      const ticket = await db.query.supportTickets.findFirst({
+        where: eq(supportTickets.id, id),
+      });
+
+      if (!ticket) {
+        return res.status(404).json({ message: 'Ticket not found' });
+      }
+
+      // Update ticket status to closed
+      const [closedTicket] = await db.update(supportTickets)
+        .set({
+          status: 'closed',
+          resolution: summary || ticket.resolution || 'Support completed',
+          updatedAt: new Date(),
+        })
+        .where(eq(supportTickets.id, id))
+        .returning();
+
+      // Send email to guest with summary
+      try {
+        const { getUncachableResendClient } = await import('./email');
+        const { client: resend, fromEmail } = await getUncachableResendClient();
+
+        const emailHtml = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #2563eb;">Support Ticket Closed - ${ticket.ticketNumber}</h2>
+            <p>Hello ${guestName || 'there'},</p>
+            <p>Thank you for contacting AutoForce™ Support. Your support ticket has been closed.</p>
+            
+            <div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #2563eb;">
+              <p style="margin: 5px 0;"><strong>Ticket #:</strong> ${ticket.ticketNumber}</p>
+              <p style="margin: 5px 0;"><strong>Issue:</strong> ${ticket.subject}</p>
+              <p style="margin: 10px 0; font-weight: bold;">Summary of Resolution:</p>
+              <p style="margin: 5px 0; white-space: pre-wrap;">${summary || 'Support completed'}</p>
+            </div>
+
+            <p>If you have any follow-up questions or need further assistance, please don't hesitate to reach out to us.</p>
+            
+            <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">
+              This is an automated message from AutoForce™ Support.<br/>
+              Thank you for using our services!
+            </p>
+          </div>
+        `;
+
+        await resend.emails.send({
+          from: fromEmail,
+          to: guestEmail,
+          subject: `Support Ticket Closed: ${ticket.ticketNumber}`,
+          html: emailHtml,
+        });
+
+        console.log(`✅ Support summary email sent to ${guestEmail} for ticket ${ticket.ticketNumber}`);
+      } catch (emailError) {
+        console.error('Failed to send support summary email:', emailError);
+        // Don't fail the whole operation if email fails
+      }
+
+      res.json({ 
+        success: true, 
+        message: 'Ticket closed and summary sent to customer',
+        ticket: closedTicket
+      });
+    } catch (error) {
+      console.error('Error closing ticket:', error);
+      res.status(500).json({ message: 'Failed to close ticket' });
+    }
+  });
+
   // ============================================================================
   // ADMIN SUPPORT ROUTES - Platform Administration
   // ============================================================================
