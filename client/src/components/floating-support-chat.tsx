@@ -109,7 +109,7 @@ export function FloatingSupportChat() {
     {
       id: 1,
       type: 'bot',
-      text: "Hi! I'm your AutoForce™ AI Support Assistant. How can I help you today?",
+      text: "Hi! I'm AutoForce™ AI, your intelligent support system. How can I help you today?",
       timestamp: new Date()
     }
   ]);
