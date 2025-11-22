@@ -205,9 +205,6 @@ function AppContent() {
         <Route path="/mobile-chat"><Redirect to="/chat" /></Route> {/* Redirect to universal chat */}
         <Route path="/live-chat"><Redirect to="/chat" /></Route>
         
-        {/* New chat system routes */}
-        <Route path="/support/chatrooms" component={SupportChatroomDashboard} /> {/* Support dashboard for managing chatrooms */}
-        <Route path="/org-chat" component={OrgChatHub} /> {/* Organization chat hub for workspace users */}
         <Route path="/helpdesk5"><Redirect to="/chat" /></Route>
         <Route path="/support/chat"><Redirect to="/chat" /></Route>
         <Route path="/logo-showcase" component={LogoShowcase} />
@@ -306,7 +303,6 @@ function AppContent() {
               <Route path="/comm-os/onboarding" component={AICommunicationsOnboarding} />
               <Route path="/query-os" component={AIDiagnostics} />
               <Route path="/messages" component={PrivateMessages} />
-              <Route path="/chat-export" component={ChatExport} />
               <Route path="/training" component={AITraining} />
               <Route path="/budget" component={AIBudgeting} />
               <Route path="/integrations" component={AIIntegrations} />
@@ -326,9 +322,6 @@ function AppContent() {
               <Route path="/updates" component={Updates} />
               <Route path="/help" component={Help} />
 
-              {/* Support & Admin routes */}
-              <Route path="/org-support" component={OrgSupport} />
-              
               {/* Unified Root Administrator Control Center */}
               <Route path="/root-admin-dashboard">
                 <PlatformAdminRoute>
@@ -355,11 +348,9 @@ function AppContent() {
               
               {/* Platform admin tools (accessible from control center) */}
               <Route path="/admin/usage" component={AdminUsage} />
-              <Route path="/admin/support" component={AdminSupport} />
               <Route path="/admin/custom-forms" component={AdminCustomForms} />
               <Route path="/owner/hireos/workflow-builder" component={HiringWorkflowBuilder} />
               <Route path="/employees/:employeeId/file-cabinet" component={EmployeeFileCabinet} />
-              <Route path="/support/dashboard" component={SupportDashboard} />
               <Route path="/platform/users" component={PlatformUsers} />
               <Route path="/company-reports" component={CompanyReports} />
               <Route path="/platform/sales" component={SalesPortal} />
@@ -370,7 +361,6 @@ function AppContent() {
               <Route path="/employee/profile" component={EmployeeProfile} />
               <Route path="/pricing" component={Pricing} />
               <Route path="/contact" component={Contact} />
-              <Route path="/support/tickets" component={CustomerSupport} />
               <Route path="/terms" component={TermsOfService} />
               <Route path="/privacy" component={PrivacyPolicy} />
               {/* Consolidated Chat Routes - ONE UNIVERSAL CHAT */}
@@ -496,7 +486,6 @@ function AppContent() {
                 <Route path="/comm-os/onboarding" component={AICommunicationsOnboarding} />
                 <Route path="/query-os" component={AIDiagnostics} />
                 <Route path="/messages" component={PrivateMessages} />
-                <Route path="/chat-export" component={ChatExport} />
                 <Route path="/training" component={AITraining} />
                 <Route path="/budget" component={AIBudgeting} />
                 <Route path="/integrations" component={AIIntegrations} />
@@ -516,9 +505,6 @@ function AppContent() {
                 <Route path="/updates" component={Updates} />
                 <Route path="/help" component={Help} />
 
-                {/* Support & Admin routes */}
-                <Route path="/org-support" component={OrgSupport} />
-                
                 {/* Unified Root Administrator Control Center */}
                 <Route path="/root-admin-dashboard">
                   <PlatformAdminRoute>
@@ -545,11 +531,9 @@ function AppContent() {
                 
                 {/* Platform admin tools (accessible from control center) */}
                 <Route path="/admin/usage" component={AdminUsage} />
-                <Route path="/admin/support" component={AdminSupport} />
                 <Route path="/admin/custom-forms" component={AdminCustomForms} />
                 <Route path="/owner/hireos/workflow-builder" component={HiringWorkflowBuilder} />
                 <Route path="/employees/:employeeId/file-cabinet" component={EmployeeFileCabinet} />
-                <Route path="/support/dashboard" component={SupportDashboard} />
                 <Route path="/platform/users" component={PlatformUsers} />
                 <Route path="/company-reports" component={CompanyReports} />
                 <Route path="/platform/sales" component={SalesPortal} />
@@ -560,7 +544,6 @@ function AppContent() {
                 <Route path="/employee/profile" component={EmployeeProfile} />
                 <Route path="/pricing" component={Pricing} />
                 <Route path="/contact" component={Contact} />
-                <Route path="/support/tickets" component={CustomerSupport} />
                 <Route path="/terms" component={TermsOfService} />
                 <Route path="/privacy" component={PrivacyPolicy} />
                 {/* Consolidated Chat Routes - ONE UNIVERSAL CHAT */}
