@@ -25,7 +25,7 @@ import {
   SelectValue 
 } from "@/components/ui/select";
 
-export function HelpOsAiTester() {
+export function AutoforceAiTester() {
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState("Hi, I need help logging in");
   const [aiResponse, setAiResponse] = useState("");
@@ -50,7 +50,7 @@ export function HelpOsAiTester() {
     onSuccess: () => {
       toast({
         title: "✅ Workspace Selected",
-        description: "AI Support Assistant is ready",
+        description: "AutoForce™ AI is ready",
       });
     },
     onError: (error: any) => {
@@ -97,8 +97,8 @@ export function HelpOsAiTester() {
     onSuccess: (data: any) => {
       setAiResponse(data.message || "No response from AI");
       toast({
-        title: "✅ AI Brain Responding",
-        description: "Intelligent automation system active!",
+        title: "✅ AutoForce™ AI Active",
+        description: "Intelligent automation system responding",
       });
     },
     onError: (error: any) => {
