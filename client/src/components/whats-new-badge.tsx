@@ -16,7 +16,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Sparkles, ExternalLink, X } from "lucide-react";
+import { Sparkles, ExternalLink, X, Check } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 interface FeatureUpdate {
@@ -44,9 +44,23 @@ export function WhatsNewBadge() {
     },
   });
 
+  const clearAllMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest('POST', '/api/feature-updates/clear-all');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/feature-updates'] });
+      setOpen(false);
+    },
+  });
+
   const handleDismiss = (updateId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     dismissMutation.mutate(updateId);
+  };
+
+  const handleClearAll = () => {
+    clearAllMutation.mutate();
   };
 
   const getCategoryColor = (category: string) => {
@@ -83,11 +97,24 @@ export function WhatsNewBadge() {
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-80 p-0" align="start" side="right" sideOffset={8}>
-        <div className="p-4">
+        <div className="p-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-purple-500" />
             <h3 className="font-semibold">What's New</h3>
           </div>
+          {updates.length > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 px-2 text-xs"
+              onClick={handleClearAll}
+              disabled={clearAllMutation.isPending}
+              data-testid="button-clear-all-updates"
+            >
+              <Check className="h-3 w-3 mr-1" />
+              Clear All
+            </Button>
+          )}
         </div>
         <Separator />
         <ScrollArea className="h-[400px]">
