@@ -11716,6 +11716,7 @@ export const insertAiCheckpointSchema = createInsertSchema(aiCheckpoints).omit({
 
 export type InsertAiCheckpoint = z.infer<typeof insertAiCheckpointSchema>;
 
+
 // SALES & ORG INVITATIONS
 export const orgInvitations = pgTable("org_invitations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -11742,7 +11743,7 @@ export const insertOrgInvitationSchema = createInsertSchema(orgInvitations).omit
 export type InsertOrgInvitation = z.infer<typeof insertOrgInvitationSchema>;
 export type OrgInvitation = typeof orgInvitations.$inferSelect;
 
-export const proposals = pgTable("proposals", {
+export const salesProposals = pgTable("sales_proposals", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   title: varchar("title").notNull(),
   description: text("description"),
@@ -11757,18 +11758,18 @@ export const proposals = pgTable("proposals", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
-  index("proposals_email_idx").on(table.prospectEmail),
-  index("proposals_status_idx").on(table.status),
+  index("sales_proposals_email_idx").on(table.prospectEmail),
+  index("sales_proposals_status_idx").on(table.status),
 ]);
-export const insertProposalSchema = createInsertSchema(proposals).omit({ id: true, createdAt: true, updatedAt: true });
-export type InsertProposal = z.infer<typeof insertProposalSchema>;
-export type Proposal = typeof proposals.$inferSelect;
+export const insertSalesProposalSchema = createInsertSchema(salesProposals).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertSalesProposal = z.infer<typeof insertSalesProposalSchema>;
+export type SalesProposal = typeof salesProposals.$inferSelect;
 
 export const salesActivities = pgTable("sales_activities", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   activityType: varchar("activity_type").notNull(),
   prospectEmail: varchar("prospect_email"),
-  proposalId: varchar("proposal_id").references(() => proposals.id, { onDelete: 'set null' }),
+  proposalId: varchar("proposal_id").references(() => salesProposals.id, { onDelete: 'set null' }),
   invitationId: varchar("invitation_id").references(() => orgInvitations.id, { onDelete: 'set null' }),
   title: varchar("title").notNull(),
   createdBy: varchar("created_by").notNull().references(() => users.id, { onDelete: 'set null' }),

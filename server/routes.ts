@@ -97,10 +97,10 @@ import {
   insertChatMessageSchema,
   insertChatMacroSchema,
   orgInvitations,
-  proposals,
+  salesProposals,
   salesActivities,
   insertOrgInvitationSchema,
-  insertProposalSchema,
+  insertSalesProposalSchema,
   insertSalesActivitySchema,
   clients,
   employees,
@@ -24412,7 +24412,7 @@ app.post("/api/sales/invitations/send", requireAuth, async (req, res) => {
 
 app.get("/api/sales/proposals", requireAuth, async (req, res) => {
   try {
-    const list = await db.select().from(proposals);
+    const list = await db.select().from(salesProposals);
     res.json(list);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -24422,7 +24422,7 @@ app.get("/api/sales/proposals", requireAuth, async (req, res) => {
 app.post("/api/sales/proposals", requireAuth, async (req, res) => {
   try {
     const { title, description, prospectEmail, prospectName, prospectOrganization, suggestedTier, estimatedValue } = req.body;
-    const result = await db.insert(proposals).values({
+    const result = await db.insert(salesProposals).values({
       title,
       description,
       prospectEmail,
