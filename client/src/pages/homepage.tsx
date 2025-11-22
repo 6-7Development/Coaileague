@@ -7,74 +7,15 @@ import { Link } from 'wouter';
 import { UniversalHeader } from '@/components/universal-header';
 
 export default function Homepage() {
-  // DEBUG: Find what's rendering the overlay
+  // Hide the pre-React loading screen on public pages
   useEffect(() => {
-    console.log('🏠 HOMEPAGE MOUNTED');
-    document.body.setAttribute('data-public-route', 'true');
-    
-    const hideAllOverlays = () => {
-      // Look for ALL fixed positioned elements
-      const allFixed = document.querySelectorAll('[style*="position: fixed"], [class*="fixed"]');
-      
-      // Log what we find - DETAILED
-      if (allFixed.length > 0) {
-        console.log(`📍 Found ${allFixed.length} fixed elements:`);
-        
-        allFixed.forEach((el, idx) => {
-          const classes = (el as HTMLElement).className;
-          const id = (el as HTMLElement).id;
-          const testid = (el as HTMLElement).getAttribute('data-testid');
-          const computed = window.getComputedStyle(el);
-          const bgColor = computed.backgroundColor;
-          const zIndex = computed.zIndex;
-          const width = (el as HTMLElement).offsetWidth;
-          const height = (el as HTMLElement).offsetHeight;
-          const top = computed.top;
-          const left = computed.left;
-          
-          // Extract just the first few classes for readability
-          const classArray = classes.split(' ').slice(0, 5).join(' ');
-          
-          console.log(`  [${idx}] <${el.tagName.toLowerCase()}> ${width}x${height} z:${zIndex}`, {
-            id: id || 'none',
-            testid: testid || 'none',
-            classes: classArray || 'none',
-            bg: bgColor,
-            pos: `${top}, ${left}`,
-            html: (el as HTMLElement).outerHTML.substring(0, 100)
-          });
-        });
-      }
-      
-      // Hide ALL fixed overlays with high z-index that might be blocking content
-      allFixed.forEach((el) => {
-        const style = window.getComputedStyle(el);
-        const zIndex = parseInt(style.zIndex);
-        
-        // If it has a background color and high z-index, it's probably an overlay
-        if ((style.backgroundColor && style.backgroundColor !== 'rgba(0, 0, 0, 0)') || zIndex > 40) {
-          (el as HTMLElement).style.display = 'none !important';
-          (el as HTMLElement).style.visibility = 'hidden !important';
-          (el as HTMLElement).style.opacity = '0 !important';
-        }
-      });
-    };
-    
-    // Run immediately and multiple times
-    hideAllOverlays();
-    const intervals: NodeJS.Timeout[] = [];
-    for (let i = 1; i <= 50; i++) {
-      intervals.push(setTimeout(hideAllOverlays, i * 100));
+    const loader = document.getElementById('initial-loader');
+    if (loader) {
+      loader.style.display = 'none';
+      loader.style.visibility = 'hidden';
+      loader.style.opacity = '0';
+      loader.style.pointerEvents = 'none';
     }
-    
-    // Monitor DOM changes
-    const observer = new MutationObserver(hideAllOverlays);
-    observer.observe(document.body, { childList: true, subtree: true });
-    
-    return () => {
-      intervals.forEach(clearTimeout);
-      observer.disconnect();
-    };
   }, []);
 
   const autonomousFeatures = [
