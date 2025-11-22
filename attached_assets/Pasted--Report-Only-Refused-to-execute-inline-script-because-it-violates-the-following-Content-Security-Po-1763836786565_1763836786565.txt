@@ -1,0 +1,274 @@
+[Report Only] Refused to execute inline script because it violates the following Content Security Policy directive: "script-src 'none'". Either the 'unsafe-inline' keyword, a hash ('sha256-erRce/ixvOhNLFQP09kM9C1nKGWxC7gv6ctY0EdJrBc='), or a nonce ('nonce-...') is required to enable inline execution.
+
+AutoForceTM:144 [Report Only] Refused to execute inline script because it violates the following Content Security Policy directive: "script-src 'none'". Either the 'unsafe-inline' keyword, a hash ('sha256-Q2BC+6wvEMMGAG5ptiy0mdlUVz5ymLU+2wnaD11rhyc='), or a nonce ('nonce-...') is required to enable inline execution.
+
+AutoForceTM:147 [Report Only] Refused to execute inline script because it violates the following Content Security Policy directive: "script-src 'none'". Either the 'unsafe-inline' keyword, a hash ('sha256-XYvVliZ7kJ9JIDhACMzGUvidf8E8T+euknSiwFmyDfg='), or a nonce ('nonce-...') is required to enable inline execution.
+
+AutoForceTM:147 [Report Only] Refused to execute inline script because it violates the following Content Security Policy directive: "script-src 'none'". Either the 'unsafe-inline' keyword, a hash ('sha256-20KlW9lrvCBCMU6zLml9ivAGdhZi6YXOR8WVO9QbCV0='), or a nonce ('nonce-...') is required to enable inline execution.
+
+AutoForceTM:147 [Report Only] Refused to execute inline script because it violates the following Content Security Policy directive: "script-src 'none'". Either the 'unsafe-inline' keyword, a hash ('sha256-/jHy94eyFL8dTfREdmM+mpzO07r+XDqQPgiy6bP0ZUU='), or a nonce ('nonce-...') is required to enable inline execution.
+
+AutoForceTM:147 [Report Only] Refused to execute inline script because it violates the following Content Security Policy directive: "script-src 'none'". Either the 'unsafe-inline' keyword, a hash ('sha256-07l5B4sWF6cor6yDQ+CQBYw+BXfYaB+C6wxFZmj0wqo='), or a nonce ('nonce-...') is required to enable inline execution.
+
+203[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+AutoForceTM:150 [Report Only] Refused to execute inline script because it violates the following Content Security Policy directive: "script-src 'none'". Either the 'unsafe-inline' keyword, a hash ('sha256-AQueeHl2N8bLd4p6xnNE6DshmhLYMb+Bl9ut5mkadvY='), or a nonce ('nonce-...') is required to enable inline execution.
+
+AutoForceTM:1 [Intervention] Slow network is detected. See https://www.chromestatus.com/feature/5636954674692096 for more details. Fallback font will be used while loading: https://replit.com/public/fonts/ibm-plex-sans-v8-latin-regular.woff2
+a0df91602a414c03.js:2 [Report Only] Refused to create a worker from 'https://replit.com/public/stallwart.build.js' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'worker-src' was not explicitly set, so 'script-src' is used as a fallback.
+
+12The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.Understand this error
+12The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?Understand this error
+12The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.Understand this error
+AutoForceTM:1 The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.Understand this error
+AutoForceTM:1 The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?Understand this error
+AutoForceTM:1 The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.Understand this error
+152[Report Only] Refused to connect to '<URL>' because it violates the following Content Security Policy directive: "connect-src 'none'".
+
+fc65ec85f4f7b441.js:2 [Report Only] Refused to evaluate a string as JavaScript because 'unsafe-eval' is not an allowed source of script in the following Content Security Policy directive: "script-src 'none'".
+
+fc65ec85f4f7b441.js:2 [Report Only] Refused to evaluate a string as JavaScript because 'unsafe-eval' is not an allowed source of script in the following Content Security Policy directive: "script-src 'none'".
+
+75c7b43d8c21bded.js:2 [Report Only] Refused to evaluate a string as JavaScript because 'unsafe-eval' is not an allowed source of script in the following Content Security Policy directive: "script-src 'none'".
+
+cf.js?config=%257B%2522projectId%2522%253A%252268c9ad4d4cddb58cf3a1f93d%2522%252C%2522startTime%2522%253A1763836687483%252C%2522timeoutMs%2522%253A1000%252C%2522currentUrl%2522%253A%2522https%253A%252F%252Freplit.com%252F%2540DrillConsult360%252FAutoForceTM%2522%252C%2522trackingOnly%2522%253Atrue%257D:10 [Report Only] Refused to evaluate a string as JavaScript because 'unsafe-eval' is not an allowed source of script in the following Content Security Policy directive: "script-src 'none'".
+
+a0df91602a414c03.js:2 [Coframe] Replit Enterprise watcher loaded
+a0df91602a414c03.js:2 
+      /////////////////////
+   ///////////////////////////
+  ////////@@@@@@@//////////////
+  ////////@@@@@@@//////////////
+  ////////@@@@@@@//////////////        Curious and driven?
+  ///////////////@@@@@@@///////        Work with us!
+  ///////////////@@@@@@@///////
+  ///////////////@@@@@@@///////        https://join.replit.com/hack.with.us
+  ////////@@@@@@@//////////////
+  ////////@@@@@@@//////////////
+  ////////@@@@@@#//////////////
+   ///////////////////////////
+      /////////////////////
+      
+a0df91602a414c03.js:2 Download the Apollo DevTools for a better development experience: https://chrome.google.com/webstore/detail/apollo-client-developer-t/jdkknkkbebbapilgoeccciglkfbmbnfm
+AutoForceTM:1 Banner not shown: beforeinstallpromptevent.preventDefault() called. The page must call beforeinstallpromptevent.prompt() to show the banner.
+www.google-analytics.com/analytics.js:1 
+            
+            
+           Failed to load resource: net::ERR_BLOCKED_BY_CLIENTUnderstand this error
+googleads.g.doubleclick.net/pagead/viewthroughconversion/11411994397/?random=1763836689713&cv=11&fst=1763836689713&bg=ffffff&guid=ON&async=1&en=gtag.config&gtm=45be5bi1v9171242957za200zd9171242957xec&gcd=13l3l3l3l1l1&dma=0&tag_exp=103116026~103200004~104527907~104528501~104684208~104684211~115583767~115938466~115938469~116184927~116184929~116217636~116217638&u_w=1642&u_h=924&url=https%3A%2F%2Freplit.com%2F%40DrillConsult360%2FAutoForceTM&ref=https%3A%2F%2Freplit.com%2F%40DrillConsult360%2FAutoForceTM&frm=0&tiba=Loading...%20-%20Replit&hn=www.googleadservices.com&npa=0&pscdl=noapi&auid=1569004226.1761968915&data=event%3Dgtag.config&rfmt=3&fmt=4:1 
+            
+            
+           Failed to load resource: net::ERR_BLOCKED_BY_CLIENTUnderstand this error
+a0df91602a414c03.js:2 [LaunchDarkly] LaunchDarkly client initialized
+6Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.Understand this error
+ed1e693c96a75807.js:2 Unrecognized feature: 'ambient-light-sensor'.
+z @ ed1e693c96a75807.js:2Understand this warning
+ed1e693c96a75807.js:2 Unrecognized feature: 'battery'.
+z @ ed1e693c96a75807.js:2Understand this warning
+ed1e693c96a75807.js:2 Unrecognized feature: 'execution-while-not-rendered'.
+z @ ed1e693c96a75807.js:2Understand this warning
+ed1e693c96a75807.js:2 Unrecognized feature: 'execution-while-out-of-viewport'.
+z @ ed1e693c96a75807.js:2Understand this warning
+ed1e693c96a75807.js:2 Unrecognized feature: 'layout-animations'.
+z @ ed1e693c96a75807.js:2Understand this warning
+ed1e693c96a75807.js:2 Unrecognized feature: 'legacy-image-formats'.
+z @ ed1e693c96a75807.js:2Understand this warning
+ed1e693c96a75807.js:2 Unrecognized feature: 'navigation-override'.
+z @ ed1e693c96a75807.js:2Understand this warning
+ed1e693c96a75807.js:2 Unrecognized feature: 'oversized-images'.
+z @ ed1e693c96a75807.js:2Understand this warning
+ed1e693c96a75807.js:2 Unrecognized feature: 'publickey-credentials'.
+z @ ed1e693c96a75807.js:2Understand this warning
+ed1e693c96a75807.js:2 Unrecognized feature: 'speaker-selection'.
+z @ ed1e693c96a75807.js:2Understand this warning
+ed1e693c96a75807.js:2 Unrecognized feature: 'unoptimized-images'.
+z @ ed1e693c96a75807.js:2Understand this warning
+ed1e693c96a75807.js:2 Unrecognized feature: 'unsized-media'.
+z @ ed1e693c96a75807.js:2Understand this warning
+ed1e693c96a75807.js:2 Unrecognized feature: 'pointer-lock'.
+z @ ed1e693c96a75807.js:2Understand this warning
+ed1e693c96a75807.js:2 Allow attribute will take precedence over 'allowfullscreen'.
+z @ ed1e693c96a75807.js:2Understand this warning
+ed1e693c96a75807.js:2 Allow attribute will take precedence over 'allowpaymentrequest'.
+z @ ed1e693c96a75807.js:2Understand this warning
+workspace_iframe.html:32 Unrecognized feature: 'ambient-light-sensor'.Understand this warning
+workspace_iframe.html:32 Unrecognized feature: 'ambient-light-sensor'.Understand this warning
+workspace_iframe.html:32 Unrecognized feature: 'battery'.Understand this warning
+workspace_iframe.html:32 Unrecognized feature: 'battery'.Understand this warning
+workspace_iframe.html:32 Unrecognized feature: 'execution-while-not-rendered'.Understand this warning
+workspace_iframe.html:32 Unrecognized feature: 'execution-while-not-rendered'.Understand this warning
+workspace_iframe.html:32 Unrecognized feature: 'execution-while-out-of-viewport'.Understand this warning
+workspace_iframe.html:32 Unrecognized feature: 'execution-while-out-of-viewport'.Understand this warning
+workspace_iframe.html:32 Unrecognized feature: 'layout-animations'.Understand this warning
+workspace_iframe.html:32 Unrecognized feature: 'layout-animations'.Understand this warning
+workspace_iframe.html:32 Unrecognized feature: 'legacy-image-formats'.Understand this warning
+workspace_iframe.html:32 Unrecognized feature: 'legacy-image-formats'.Understand this warning
+workspace_iframe.html:32 Unrecognized feature: 'navigation-override'.Understand this warning
+workspace_iframe.html:32 Unrecognized feature: 'navigation-override'.Understand this warning
+workspace_iframe.html:32 Unrecognized feature: 'oversized-images'.Understand this warning
+workspace_iframe.html:32 Unrecognized feature: 'oversized-images'.Understand this warning
+workspace_iframe.html:32 Unrecognized feature: 'publickey-credentials'.Understand this warning
+workspace_iframe.html:32 Unrecognized feature: 'publickey-credentials'.Understand this warning
+workspace_iframe.html:32 Unrecognized feature: 'speaker-selection'.Understand this warning
+workspace_iframe.html:32 Unrecognized feature: 'speaker-selection'.Understand this warning
+workspace_iframe.html:32 Unrecognized feature: 'unoptimized-images'.Understand this warning
+workspace_iframe.html:32 Unrecognized feature: 'unoptimized-images'.Understand this warning
+workspace_iframe.html:32 Unrecognized feature: 'unsized-media'.Understand this warning
+workspace_iframe.html:32 Unrecognized feature: 'unsized-media'.Understand this warning
+workspace_iframe.html:32 Allow attribute will take precedence over 'allowfullscreen'.Understand this warning
+workspace_iframe.html:32 Allow attribute will take precedence over 'allowfullscreen'.Understand this warning
+workspace_iframe.html:32 Allow attribute will take precedence over 'allowpaymentrequest'.Understand this warning
+workspace_iframe.html:32 Allow attribute will take precedence over 'allowpaymentrequest'.Understand this warning
+client:536 WebSocket connection to 'wss://db56a2c0-e2f1-4d42-b899-6511f9a8cbad-00-29n8nr39wraa.riker.replit.dev/?token=NIpUY-1i0-MR' failed: 
+setupWebSocket @ client:536Understand this error
+ WebSocket connection to 'wss://db56a2c0-e2f1-4d42-b899-6511f9a8cbad-00-29n8nr39wraa.riker.replit.dev/?token=NIpUY-1i0-MR' failed: 
+setupWebSocket @ db56a2c0-e2f1-4d42-b…ev/@vite/client:536Understand this error
+db56a2c0-e2f1-4d42-b899-6511f9a8cbad-00-29n8nr39wraa.riker.replit.dev/api/auth/me:1 
+            
+            
+           Failed to load resource: the server responded with a status of 401 (Unauthorized)Understand this error
+db56a2c0-e2f1-4d42-b899-6511f9a8cbad-00-29n8nr39wraa.riker.replit.dev/api/auth/me:1 
+            
+            
+           Failed to load resource: the server responded with a status of 401 (Unauthorized)Understand this error
+db56a2c0-e2f1-4d42-b899-6511f9a8cbad-00-29n8nr39wraa.riker.replit.dev/api/workspace/theme:1 
+            
+            
+           Failed to load resource: the server responded with a status of 401 (Unauthorized)Understand this error
+db56a2c0-e2f1-4d42-b899-6511f9a8cbad-00-29n8nr39wraa.riker.replit.dev/api/workspace/theme:1 
+            
+            
+           Failed to load resource: the server responded with a status of 401 (Unauthorized)Understand this error
+client:536 WebSocket connection to 'wss://db56a2c0-e2f1-4d42-b899-6511f9a8cbad-00-29n8nr39wraa.riker.replit.dev/?token=NIpUY-1i0-MR' failed: 
+setupWebSocket @ client:536Understand this error
+ WebSocket connection to 'wss://db56a2c0-e2f1-4d42-b899-6511f9a8cbad-00-29n8nr39wraa.riker.replit.dev/?token=NIpUY-1i0-MR' failed: 
+setupWebSocket @ db56a2c0-e2f1-4d42-b…ev/@vite/client:536Understand this error
+client:536 Uncaught (in promise) SyntaxError: Failed to construct 'WebSocket': The URL 'wss://localhost:undefined/?token=NIpUY-1i0-MR' is invalid.
+    at setupWebSocket (client:536:19)
+    at fallback (client:509:16)
+    at WebSocket.<anonymous> (client:555:7)Understand this error
+4injected.js:37 [ServiceHealth] No data yet, polling every 30s
+db56a2c0-e2f1-4d42-b899-6511f9a8cbad-00-29n8nr39wraa.riker.replit.dev/api/workspace/theme:1 
+            
+            
+           Failed to load resource: the server responded with a status of 401 (Unauthorized)Understand this error
+db56a2c0-e2f1-4d42-b899-6511f9a8cbad-00-29n8nr39wraa.riker.replit.dev/api/workspace/theme:1 
+            
+            
+           Failed to load resource: the server responded with a status of 401 (Unauthorized)Understand this error
+db56a2c0-e2f1-4d42-b899-6511f9a8cbad-00-29n8nr39wraa.riker.replit.dev/api/auth/me:1 
+            
+            
+           Failed to load resource: the server responded with a status of 401 (Unauthorized)Understand this error
+db56a2c0-e2f1-4d42-b899-6511f9a8cbad-00-29n8nr39wraa.riker.replit.dev/api/auth/me:1 
+            
+            
+           Failed to load resource: the server responded with a status of 401 (Unauthorized)Understand this error
+2injected.js:37 [ServiceHealth] System operational, polling every 30s
+
+                
+          
+          
+          
+         Chrome is moving towards a new experience that allows users to choose to browse without third-party cookies.Understand this warning
+manifest.json:1 
+            
+            
+           Failed to load resource: the server responded with a status of 500 (Internal Server Error)Understand this error
+manifest.json:1 
+            
+            
+           Failed to load resource: the server responded with a status of 500 (Internal Server Error)Understand this error
+stallwart.build.js:1 stallwart: failed ping 1
+stallwart.build.js:1 stallwart: failed ping 2
+
+                
+          
+          
+          
+         Chrome is moving towards a new experience that allows users to choose to browse without third-party cookies.Understand this warning
+stallwart.build.js:1 stallwart: failed ping 3
+client:536 WebSocket connection to 'wss://db56a2c0-e2f1-4d42-b899-6511f9a8cbad-00-29n8nr39wraa.riker.replit.dev/?token=NIpUY-1i0-MR' failed: 
+setupWebSocket @ client:536
+(anonymous) @ client:531Understand this error
+client:536 Uncaught (in promise) SyntaxError: Failed to construct 'WebSocket': The URL 'wss://localhost:undefined/?token=NIpUY-1i0-MR' is invalid.
+    at setupWebSocket (client:536:19)
+    at fallback (client:509:16)
+    at WebSocket.<anonymous> (client:555:7)
+setupWebSocket @ client:536
+fallback @ client:509
+(anonymous) @ client:555Understand this error
+stallwart.build.js:1 stallwart: failed ping 1
+stallwart.build.js:1 stallwart: failed ping 2
+injected.js:37 [ServiceHealth] No data yet, polling every 30s
+injected.js:37 [ServiceHealth] No data yet, polling every 30s
+injected.js:37 [ServiceHealth] No data yet, polling every 30s
+injected.js:37 [ServiceHealth] No data yet, polling every 30s
+stallwart.build.js:1 stallwart: failed ping 3
+injected.js:214 
+            
+            
+           GET https://db56a2c0-e2f1-4d42-b899-6511f9a8cbad-00-29n8nr39wraa.riker.replit.dev/api/auth/me 401 (Unauthorized)
+apply @ injected.js:214
+queryFn @ useAuth.ts:25
+fetchFn @ @tanstack_react-query.js?v=0e25bd9c:840
+run @ @tanstack_react-query.js?v=0e25bd9c:494
+start @ @tanstack_react-query.js?v=0e25bd9c:536
+fetch @ @tanstack_react-query.js?v=0e25bd9c:926
+executeFetch_fn @ @tanstack_react-query.js?v=0e25bd9c:2211
+onSubscribe @ @tanstack_react-query.js?v=0e25bd9c:1898
+subscribe @ @tanstack_react-query.js?v=0e25bd9c:24
+(anonymous) @ @tanstack_react-query.js?v=0e25bd9c:3022
+subscribeToStore @ chunk-RPCDYKBN.js?v=0e25bd9c:11984
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=0e25bd9c:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=0e25bd9c:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=0e25bd9c:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=0e25bd9c:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=0e25bd9c:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=0e25bd9c:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=0e25bd9c:19447
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=0e25bd9c:18868
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=0e25bd9c:9119
+commitRootImpl @ chunk-RPCDYKBN.js?v=0e25bd9c:19432
+commitRoot @ chunk-RPCDYKBN.js?v=0e25bd9c:19277
+finishConcurrentRender @ chunk-RPCDYKBN.js?v=0e25bd9c:18805
+performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js?v=0e25bd9c:18718
+workLoop @ chunk-RPCDYKBN.js?v=0e25bd9c:197
+flushWork @ chunk-RPCDYKBN.js?v=0e25bd9c:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=0e25bd9c:384Understand this error
+injected.js:214 
+            
+            
+           GET https://db56a2c0-e2f1-4d42-b899-6511f9a8cbad-00-29n8nr39wraa.riker.replit.dev/api/workspace/theme 401 (Unauthorized)
+apply @ injected.js:214
+(anonymous) @ queryClient.ts:54
+fetchFn @ @tanstack_react-query.js?v=0e25bd9c:840
+run @ @tanstack_react-query.js?v=0e25bd9c:494
+start @ @tanstack_react-query.js?v=0e25bd9c:536
+fetch @ @tanstack_react-query.js?v=0e25bd9c:926
+executeFetch_fn @ @tanstack_react-query.js?v=0e25bd9c:2211
+onSubscribe @ @tanstack_react-query.js?v=0e25bd9c:1898
+subscribe @ @tanstack_react-query.js?v=0e25bd9c:24
+(anonymous) @ @tanstack_react-query.js?v=0e25bd9c:3022
+subscribeToStore @ chunk-RPCDYKBN.js?v=0e25bd9c:11984
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=0e25bd9c:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=0e25bd9c:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=0e25bd9c:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=0e25bd9c:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=0e25bd9c:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=0e25bd9c:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=0e25bd9c:19447
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=0e25bd9c:18868
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=0e25bd9c:9119
+commitRootImpl @ chunk-RPCDYKBN.js?v=0e25bd9c:19432
+commitRoot @ chunk-RPCDYKBN.js?v=0e25bd9c:19277
+finishConcurrentRender @ chunk-RPCDYKBN.js?v=0e25bd9c:18805
+performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js?v=0e25bd9c:18718
+workLoop @ chunk-RPCDYKBN.js?v=0e25bd9c:197
+flushWork @ chunk-RPCDYKBN.js?v=0e25bd9c:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=0e25bd9c:384Understand this error
+injected.js:37 [ServiceHealth] System operational, polling every 30s
+injected.js:37 [ServiceHealth] System operational, polling every 30s
+stallwart.build.js:1 stallwart: failed ping 4
+stallwart.build.js:1 stallwart: failed ping 5
+stallwart.build.js:1 stallwart: session stalled
