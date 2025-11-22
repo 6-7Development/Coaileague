@@ -255,6 +255,28 @@ import {
 import { FEATURES, getFeatureStatus } from "./featureFlags";
 import { ObjectStorageService, objectStorageClient } from "./objectStorage";
 
+// ============================================================================
+// EMAIL NORMALIZATION HELPER
+// ============================================================================
+/**
+ * Normalize email for consistent matching (trim + lowercase + validation)
+ * Handles edge cases: null, empty, invalid format, whitespace
+ * 
+ * @param email - Email address to normalize
+ * @returns Normalized email or null if invalid
+ */
+function normalizeEmail(email: string | null | undefined): string | null {
+  if (!email || typeof email !== 'string') return null;
+  
+  const trimmed = email.trim();
+  if (trimmed.length === 0) return null;
+  
+  // Basic email validation (has @ and .)
+  if (!trimmed.includes('@') || !trimmed.includes('.')) return null;
+  
+  return trimmed.toLowerCase();
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Create HTTP server
   const server = createServer(app);
@@ -3477,8 +3499,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json(identity);
       }
       
-      // TODO: Add client lookup when client system is implemented
-      // const client = await storage.getClientByUserId(userId);
+      // Check if user is a client
+      const client = await storage.getClientByUserId(userId);
+      if (client) {
+        identity.userType = 'client';
+        identity.clientId = client.clientCode; // CLI-XXXX-00001
+        identity.externalId = client.clientCode;
+        identity.details = client;
+        
+        // Get organization external ID (ORG-XXXX)
+        if (client.workspaceId) {
+          const [orgIdentifier] = await db
+            .select()
+            .from(externalIdentifiers)
+            .where(and(
+              eq(externalIdentifiers.entityType, 'org'),
+              eq(externalIdentifiers.entityId, client.workspaceId)
+            ))
+            .limit(1);
+          
+          if (orgIdentifier) {
+            identity.orgId = orgIdentifier.externalId; // ORG-XXXX
+          }
+        }
+        
+        return res.json(identity);
+      }
       
       // Default: guest or unassigned user
       return res.json(identity);
@@ -4697,8 +4743,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         workspaceId, // Force workspace from middleware, ignore client input
       });
 
-      // Create the client
-      const client = await storage.createClient(validated);
+      // Link client to user if email matches existing user (normalized email matching)
+      let userId: string | null = null;
+      const normalizedEmail = normalizeEmail(validated.email);
+      if (normalizedEmail) {
+        try {
+          const [matchingUser] = await db.select()
+            .from(users)
+            .where(sql`lower(${users.email}) = ${normalizedEmail}`)
+            .limit(1);
+          
+          if (matchingUser) {
+            userId = matchingUser.id;
+            console.log(`[Client Creation] Linked client to user ${matchingUser.id} via email`);
+          }
+        } catch (error) {
+          console.error('[Client Creation] Error looking up user by email:', error);
+          // Continue without linking - don't fail client creation
+        }
+      }
+
+      // Create the client with userId if found
+      const client = await storage.createClient({
+        ...validated,
+        userId: userId || validated.userId || null,
+      });
 
       // Generate external ID for new client (non-blocking)
       const { attachClientExternalId } = await import('./services/identityService');
@@ -14365,7 +14434,31 @@ Summary:`;
         workspaceId,
       });
       
-      const client = await storage.createClient(validated);
+      // Link client to user if email matches existing user (normalized email matching)
+      let userId: string | null = null;
+      const normalizedEmail = normalizeEmail(validated.email);
+      if (normalizedEmail) {
+        try {
+          const [matchingUser] = await db.select()
+            .from(users)
+            .where(sql`lower(${users.email}) = ${normalizedEmail}`)
+            .limit(1);
+          
+          if (matchingUser) {
+            userId = matchingUser.id;
+            console.log(`[Admin Client Creation] Linked client to user ${matchingUser.id} via email`);
+          }
+        } catch (error) {
+          console.error('[Admin Client Creation] Error looking up user by email:', error);
+          // Continue without linking - don't fail client creation
+        }
+      }
+      
+      // Create the client with userId if found
+      const client = await storage.createClient({
+        ...validated,
+        userId: userId || validated.userId || null,
+      });
       
       res.json({ 
         success: true, 
@@ -15160,6 +15253,82 @@ Summary:`;
         return res.status(400).json({ error: "Invalid request data", details: error.errors });
       }
       res.status(500).json({ error: "Failed to reset organization" });
+    }
+  });
+
+  // Backfill client userId for existing clients (link clients to users by email)
+  app.post('/api/platform/master-keys/clients/backfill-users', requirePlatformAdmin, async (req: AuthenticatedRequest, res) => {
+    try {
+      // Get all clients without userId
+      const clientsWithoutUsers = await db.select()
+        .from(clients)
+        .where(isNull(clients.userId));
+      
+      let linkedCount = 0;
+      let errorCount = 0;
+      const skippedNoEmail = [];
+      const linkedClients = [];
+      const failedClients = [];
+      
+      for (const client of clientsWithoutUsers) {
+        // Normalize client email (trim + lowercase + validate)
+        const normalizedClientEmail = normalizeEmail(client.email);
+        if (!normalizedClientEmail) {
+          skippedNoEmail.push({ clientId: client.id, name: `${client.firstName} ${client.lastName}`, reason: 'Invalid or empty email' });
+          continue; // Skip clients with invalid email
+        }
+        
+        try {
+          // Find user with matching email (normalized)
+          const [matchingUser] = await db.select()
+            .from(users)
+            .where(sql`lower(${users.email}) = ${normalizedClientEmail}`)
+            .limit(1);
+          
+          if (matchingUser) {
+            // Link client to user
+            await db.update(clients)
+              .set({ userId: matchingUser.id })
+              .where(eq(clients.id, client.id));
+            
+            linkedCount++;
+            linkedClients.push({
+              clientId: client.id,
+              clientName: `${client.firstName} ${client.lastName}`,
+              clientEmail: client.email,
+              userId: matchingUser.id,
+              userEmail: matchingUser.email
+            });
+            
+            console.log(`[Backfill] Linked client ${client.id} (${client.email}) to user ${matchingUser.id}`);
+          }
+        } catch (error) {
+          console.error(`Failed to link client ${client.id}:`, error);
+          errorCount++;
+          failedClients.push({
+            clientId: client.id,
+            clientEmail: client.email,
+            error: error instanceof Error ? error.message : 'Unknown error'
+          });
+        }
+      }
+      
+      res.json({
+        success: true,
+        message: `Backfill complete: ${linkedCount} clients linked, ${skippedNoEmail.length} skipped (no email), ${errorCount} errors`,
+        linkedCount,
+        errorCount,
+        totalProcessed: clientsWithoutUsers.length,
+        skippedNoEmailCount: skippedNoEmail.length,
+        details: {
+          linked: linkedClients,
+          skippedNoEmail,
+          failed: failedClients
+        }
+      });
+    } catch (error: any) {
+      console.error('Backfill error:', error);
+      res.status(500).json({ error: 'Backfill failed', details: error.message });
     }
   });
 
