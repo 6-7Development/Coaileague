@@ -4,9 +4,17 @@ import "./index.css";
 
 // Suppress Vite HMR WebSocket errors in development (harmless dev-only warnings)
 if (import.meta.env.DEV) {
+  // Handle unhandled promise rejections (WebSocket errors from Vite)
+  window.addEventListener('unhandledrejection', (event: PromiseRejectionEvent) => {
+    if (event.reason?.message?.includes("Failed to construct 'WebSocket'") || 
+        event.reason?.message?.includes("localhost:undefined")) {
+      event.preventDefault(); // Suppress the error
+    }
+  });
+  
+  // Also suppress console.error for these
   const origError = console.error;
   console.error = (...args: any[]) => {
-    // Filter out WebSocket URL construction errors from Vite HMR
     if (args[0]?.message?.includes("Failed to construct 'WebSocket'")) {
       return;
     }
