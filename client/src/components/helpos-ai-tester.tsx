@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Bot, Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Bot, Loader2, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -12,11 +12,18 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useWorkspaceAccess } from "@/hooks/useWorkspaceAccess";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
 
 export function HelpOsAiTester() {
   const [open, setOpen] = useState(false);
@@ -25,19 +32,57 @@ export function HelpOsAiTester() {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  // Try to get workspace from API since workspaceAccess might be null
-  const { data: workspace } = useQuery({
-    queryKey: ['/api/workspace'],
-    enabled: !!user,
+  // Fetch all workspaces user has access to
+  const { data: workspaces = [] } = useQuery({
+    queryKey: ['/api/workspaces/all'],
+    enabled: !!user && open, // Only fetch when dialog opens
   });
+
+  // Switch workspace mutation
+  const switchWorkspaceMutation = useMutation({
+    mutationFn: async (workspaceId: string) => {
+      await apiRequest(`/api/workspace/switch/${workspaceId}`, "POST");
+      // Refetch user query to reload currentWorkspaceId and WAIT for it
+      await queryClient.refetchQueries({ queryKey: ['/api/auth/me'] });
+    },
+    onSuccess: () => {
+      toast({
+        title: "✅ Workspace Selected",
+        description: "HelpOS will now use this workspace",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "❌ Failed to Switch Workspace",
+        description: error.message || "Please try again",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Auto-select sole workspace if user has exactly one and no currentWorkspaceId
+  useEffect(() => {
+    if (
+      open &&
+      user &&
+      !user.currentWorkspaceId &&
+      Array.isArray(workspaces) &&
+      workspaces.length === 1 &&
+      !switchWorkspaceMutation.isPending
+    ) {
+      const soleWorkspace = workspaces[0];
+      switchWorkspaceMutation.mutate(soleWorkspace.id);
+    }
+  }, [open, user?.currentWorkspaceId, workspaces]);
 
   const testAiMutation = useMutation({
     mutationFn: async (testMessage: string) => {
-      const workspaceId = (workspace as any)?.id;
+      // Use currentWorkspaceId from user object (set via workspace switcher)
+      const workspaceId = user?.currentWorkspaceId;
       
-      // Authenticated users MUST provide workspaceId (security requirement)
+      // Authenticated users MUST provide currentWorkspaceId (security requirement)
       if (!workspaceId && user) {
-        throw new Error("Workspace ID required for authenticated users");
+        throw new Error("Please select a workspace first using the workspace switcher");
       }
       
       const response = await apiRequest("/api/support/helpos-chat", "POST", {
@@ -97,6 +142,44 @@ export function HelpOsAiTester() {
           </DialogHeader>
 
           <div className="space-y-4 py-4">
+            {/* Workspace Selector - shown for multi-workspace users OR users without currentWorkspaceId */}
+            {user && Array.isArray(workspaces) && workspaces.length > 0 && (
+              (!user.currentWorkspaceId || workspaces.length > 1) && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium flex items-center gap-2">
+                    <Building2 className="h-4 w-4" />
+                    {workspaces.length === 1 ? 'Workspace' : 'Select Workspace for HelpOS'}
+                  </label>
+                  <Select
+                    value={user.currentWorkspaceId || ""}
+                    onValueChange={(value) => switchWorkspaceMutation.mutate(value)}
+                    disabled={switchWorkspaceMutation.isPending}
+                  >
+                    <SelectTrigger data-testid="select-helpos-workspace">
+                      <SelectValue placeholder="Choose a workspace..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {workspaces.map((ws: any) => (
+                        <SelectItem key={ws.id} value={ws.id}>
+                          {ws.name || ws.id}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {!user.currentWorkspaceId && workspaces.length === 1 && (
+                    <p className="text-xs text-muted-foreground">
+                      ℹ️ Auto-selecting your workspace...
+                    </p>
+                  )}
+                  {!user.currentWorkspaceId && workspaces.length > 1 && (
+                    <p className="text-xs text-destructive">
+                      ⚠️ Please select a workspace to use HelpOS
+                    </p>
+                  )}
+                </div>
+              )
+            )}
+
             {/* Input Message */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Test Message</label>
