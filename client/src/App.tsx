@@ -167,10 +167,17 @@ function AppContent() {
   // to avoid React Hooks issues with conditional rendering
   const isMobileChat = window.location.pathname === '/mobile-chat';
   const isHelpDesk = window.location.pathname === '/chat' || window.location.pathname.startsWith('/chat');
+  
+  // Determine if current path is a public route (should never show loading screen)
+  const pathname = window.location.pathname;
+  const isPublicRoute = ['/', '/login', '/register', '/pricing', '/contact', '/support', '/terms', '/privacy', '/chat', '/logo-showcase'].includes(pathname) || 
+    pathname.startsWith('/onboarding/') || 
+    pathname.startsWith('/pay-invoice/') ||
+    pathname.startsWith('/error-');
 
-  // Show loading screen ONLY if user is authenticated and auth check is still pending
-  // For unauthenticated users, skip loading and show public routes immediately
-  if (isLoading && isAuthenticated) {
+  // Show loading screen ONLY if user is authenticated, loading, AND not on a public route
+  // This ensures public pages never show loading screens, only authenticated workspace pages do
+  if (isLoading && isAuthenticated && !isPublicRoute) {
     return (
       <div className="flex items-center justify-center h-screen bg-background">
         <div className="flex flex-col items-center gap-4">
