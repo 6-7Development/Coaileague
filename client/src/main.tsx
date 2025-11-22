@@ -6,8 +6,15 @@ import "./index.css";
 if (import.meta.env.DEV) {
   // Handle unhandled promise rejections (WebSocket errors from Vite)
   window.addEventListener('unhandledrejection', (event: PromiseRejectionEvent) => {
-    if (event.reason?.message?.includes("Failed to construct 'WebSocket'") || 
-        event.reason?.message?.includes("localhost:undefined")) {
+    const reason = event.reason;
+    const reasonStr = String(reason);
+    const messageStr = reason?.message ? String(reason.message) : "";
+    
+    // Check multiple ways the error can be represented
+    if (reasonStr.includes("Failed to construct 'WebSocket'") || 
+        reasonStr.includes("localhost:undefined") ||
+        messageStr.includes("Failed to construct 'WebSocket'") ||
+        messageStr.includes("localhost:undefined")) {
       event.preventDefault(); // Suppress the error
     }
   });
@@ -15,7 +22,9 @@ if (import.meta.env.DEV) {
   // Also suppress console.error for these
   const origError = console.error;
   console.error = (...args: any[]) => {
-    if (args[0]?.message?.includes("Failed to construct 'WebSocket'")) {
+    const fullStr = args.map(a => String(a)).join(" ");
+    if (fullStr.includes("Failed to construct 'WebSocket'") || 
+        fullStr.includes("localhost:undefined")) {
       return;
     }
     origError(...args);
