@@ -11787,3 +11787,34 @@ export const salesActivities = pgTable("sales_activities", {
 export const insertSalesActivitySchema = createInsertSchema(salesActivities).omit({ id: true, createdAt: true });
 export type InsertSalesActivity = z.infer<typeof insertSalesActivitySchema>;
 export type SalesActivity = typeof salesActivities.$inferSelect;
+
+// ============================================================================
+// EMAIL EVENTS AUDIT TABLE
+// ============================================================================
+
+export const emailEvents = pgTable("email_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").references(() => workspaces.id, { onDelete: 'cascade' }),
+  userId: varchar("user_id").references(() => users.id),
+  emailType: varchar("email_type").notNull(), // 'verification', 'password_reset', 'support_ticket', 'report_delivery', etc.
+  recipientEmail: varchar("recipient_email").notNull(),
+  status: varchar("status").notNull(), // 'pending', 'sent', 'failed', 'bounced'
+  resendId: varchar("resend_id"), // Resend message ID for tracking
+  errorMessage: text("error_message"),
+  sentAt: timestamp("sent_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("email_events_workspace_idx").on(table.workspaceId),
+  index("email_events_user_idx").on(table.userId),
+  index("email_events_type_idx").on(table.emailType),
+  index("email_events_status_idx").on(table.status),
+  index("email_events_created_idx").on(table.createdAt),
+]);
+
+export const insertEmailEventSchema = createInsertSchema(emailEvents).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertEmailEvent = z.infer<typeof insertEmailEventSchema>;
+export type EmailEvent = typeof emailEvents.$inferSelect;

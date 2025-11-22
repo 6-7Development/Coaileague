@@ -62,6 +62,7 @@ import {
   sendTimesheetEditApprovedEmail,
   sendTimesheetEditDeniedEmail
 } from "./email";
+import { emailService } from "./services/emailService";
 import { calculatePtoAccrual, getAllPtoBalances, runWeeklyPtoAccrual, deductPtoHours } from './services/ptoAccrual';
 import { getReviewReminderSummary, getOverdueReviews, getUpcomingReviews } from './services/performanceReviewReminders';
 import { getEmployeesDueForSurveys, getSurveyDistributionSummary, getEmployeePendingSurveys, calculateSurveyResponseRate } from './services/pulseSurveyAutomation';
@@ -12576,8 +12577,15 @@ ${application.email}`,
         timestamp: new Date().toISOString()
       });
 
-      // TODO: Send email to support team using Resend
-      // TODO: Send confirmation email to customer with ticket number
+      // Send confirmation email to customer with ticket number
+      await emailService.sendSupportTicketConfirmation(
+        externalWorkspaceId,
+        ticket.id,
+        email,
+        ticketNumber,
+        subject,
+        name
+      );
       
       // Return success with ticket number
       res.json({ 

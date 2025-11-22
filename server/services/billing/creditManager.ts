@@ -283,7 +283,7 @@ export class CreditManager {
       .where(eq(workspaceCredits.id, credits.id));
     
     // Log transaction
-    const [transaction] = await db.insert(creditTransactions).values({
+    const transactionData: InsertCreditTransaction = {
       workspaceId,
       userId,
       transactionType: 'purchase',
@@ -291,10 +291,12 @@ export class CreditManager {
       balanceAfter: newBalance,
       creditPackId,
       stripePaymentIntentId,
-      amountPaid,
+      amountPaid: String(amountPaid),
       description: description || `Purchased ${amount} credits for $${amountPaid}`,
       actorType: 'END_USER',
-    }).returning();
+    };
+    
+    const [transaction] = await db.insert(creditTransactions).values(transactionData).returning();
     
     return {
       success: true,

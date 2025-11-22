@@ -11,6 +11,7 @@
 
 import { storage } from "../storage";
 import crypto from "crypto";
+import { emailService } from "./emailService";
 
 // ============================================================================
 // WORKFLOW INITIALIZATION
@@ -299,26 +300,38 @@ async function sendReportToClient(
     throw new Error('Client not found');
   }
 
+  // Verify client has email
+  if (!client.email) {
+    console.warn(`[WORKFLOW] Client ${client.name} has no email address. Cannot send report.`);
+    throw new Error('Client has no email address on file');
+  }
+
+  // Get template for report title
+  const template = await storage.getReportTemplateById(submission.templateId);
+  const reportTitle = template?.name || 'Report';
+
   // Mark as sent BEFORE attempting email (so status reflects intent)
   await storage.updateReportSubmission(submissionId, workspaceId, {
     status: 'sent_to_customer',
     sentToCustomerAt: new Date(),
   });
 
-  // TODO: Integrate with Resend email service for actual delivery
-  // For now, log for manual verification
-  console.log(`[WORKFLOW] Report ${submission.reportNumber} marked as sent to client ${client.name} (${client.email || 'no email on file'})`);
-  
-  // Future: Use Resend integration
-  // const { Resend } = await import('resend');
-  // const resend = new Resend(process.env.RESEND_API_KEY);
-  // await resend.emails.send({
-  //   from: 'noreply@workforceos.com',
-  //   to: client.email,
-  //   subject: workflow.emailSubject || `Report: ${submission.reportNumber}`,
-  //   html: workflow.emailTemplate || 'Please see attached report.',
-  //   attachments: [{ filename: `${submission.reportNumber}.pdf`, content: pdfBuffer }]
-  // });
+  // Send report delivery email via EmailService
+  const emailResult = await emailService.sendReportDelivery(
+    workspaceId,
+    client.email,
+    {
+      reportNumber: submission.reportNumber,
+      reportTitle,
+      clientName: client.name,
+    }
+  );
+
+  if (!emailResult.success) {
+    console.error(`[WORKFLOW] Failed to send report email to ${client.email}:`, emailResult.error);
+  } else {
+    console.log(`[WORKFLOW] Report ${submission.reportNumber} sent to client ${client.name} (${client.email}) - Resend ID: ${emailResult.resendId}`);
+  }
 }
 
 // ============================================================================

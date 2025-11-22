@@ -33,7 +33,7 @@ async function getCredentials() {
 
 // WARNING: Never cache this client.
 // Access tokens expire, so a new client must be created each time.
-async function getUncachableResendClient() {
+export async function getUncachableResendClient() {
   const { apiKey, fromEmail } = await getCredentials();
   return {
     client: new Resend(apiKey),
