@@ -205,10 +205,13 @@ export function useChatroomWebSocket(
     }
 
     try {
-      // Connect to WebSocket server
+      // Connect to WebSocket server with fallback for port detection
       const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-      // Fix: Use window.location.host for proper host/port resolution
-      const wsHost = window.location.host;
+      // Fallback: if window.location.host is undefined, construct from hostname + port
+      const wsHost = window.location.host || 
+        (window.location.port 
+          ? `${window.location.hostname}:${window.location.port}` 
+          : window.location.hostname);
       const wsUrl = `${protocol}://${wsHost}/ws/chat`;
       console.log('🔗 Attempting WebSocket connection to:', wsUrl);
       const ws = new WebSocket(wsUrl);
