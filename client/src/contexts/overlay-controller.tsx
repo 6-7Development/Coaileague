@@ -4,10 +4,14 @@
  */
 
 import { createContext, useContext, useState, useCallback, useRef, ReactNode } from "react";
+import { useLocation } from "wouter";
 import { ResponsiveLoading, type ScenarioType, type AnimationType } from "@/components/loading-indicators";
 
 export type OverlayStatus = "loading" | "success" | "error" | "info";
 export type OverlayPriority = "critical" | "high" | "normal";
+
+// Public routes that should never show loading overlays
+const PUBLIC_ROUTES = ['/', '/login', '/register', '/pricing', '/contact', '/support', '/terms', '/privacy', '/chat'];
 
 interface OverlayRequest {
   id: string;
@@ -37,10 +41,15 @@ interface OverlayControllerContextValue {
 const OverlayControllerContext = createContext<OverlayControllerContextValue | null>(null);
 
 export function OverlayControllerProvider({ children }: { children: ReactNode }) {
+  const [location] = useLocation();
   const [activeOverlay, setActiveOverlay] = useState<OverlayRequest | null>(null);
   const [queue, setQueue] = useState<OverlayRequest[]>([]);
   const requestCounterRef = useRef(0);
   const [activeModals, setActiveModals] = useState<Set<string>>(new Set());
+  
+  // Never show loading overlay on public routes
+  const isPublicRoute = PUBLIC_ROUTES.includes(location);
+  const shouldShowOverlay = activeOverlay && activeOverlay.status === "loading" && !isPublicRoute;
 
   const showOverlay = useCallback((request: Omit<OverlayRequest, "id" | "visibleSince">) => {
     const id = `overlay-${++requestCounterRef.current}`;
@@ -176,7 +185,8 @@ export function OverlayControllerProvider({ children }: { children: ReactNode })
       {children}
       {/* Single overlay instance - only one can be visible at a time */}
       {/* Uses UniversalTransitionOverlay with multiple animation variants */}
-      {activeOverlay && activeOverlay.status === "loading" && (
+      {/* Never show overlays on public routes */}
+      {shouldShowOverlay && (
         <ResponsiveLoading
           message={activeOverlay.title}
           submessage={activeOverlay.submessage}
