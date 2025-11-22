@@ -21,6 +21,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 });
 
 // Subscription tier pricing (monthly base prices)
+// VALUE-BASED PRICING: Captures 40-50% of $250K-$430K administrative salary replacement
 export const TIER_PRICING = {
   free: {
     monthlyPrice: 0,
@@ -28,27 +29,35 @@ export const TIER_PRICING = {
     stripePriceId: null,
     stripeYearlyPriceId: null,
     credits: TIER_CREDIT_ALLOCATIONS.free,
+    maxEmployees: 5,
+    adminReplacementValue: 0, // Annual value of positions replaced
   },
   starter: {
-    monthlyPrice: 4900, // $49/month
-    yearlyPrice: 49900, // $499/year ($41.58/month - 15% savings)
+    monthlyPrice: 499900, // $4,999/month
+    yearlyPrice: 5999880, // $59,998.80/year ($4,999.90/month - saves $60/year on annual)
     stripePriceId: process.env.STRIPE_STARTER_MONTHLY_PRICE_ID,
     stripeYearlyPriceId: process.env.STRIPE_STARTER_YEARLY_PRICE_ID,
     credits: TIER_CREDIT_ALLOCATIONS.starter,
+    maxEmployees: 50,
+    adminReplacementValue: 252500, // Replaces 2-3 high-end admin positions (~$170K-$255K/year)
   },
   professional: {
-    monthlyPrice: 14900, // $149/month
-    yearlyPrice: 149900, // $1,499/year ($124.92/month - 16% savings)
+    monthlyPrice: 999900, // $9,999/month
+    yearlyPrice: 11998800, // $119,988/year ($9,999/month - saves $1,200/year on annual)
     stripePriceId: process.env.STRIPE_PROFESSIONAL_MONTHLY_PRICE_ID,
     stripeYearlyPriceId: process.env.STRIPE_PROFESSIONAL_YEARLY_PRICE_ID,
     credits: TIER_CREDIT_ALLOCATIONS.professional,
+    maxEmployees: 150,
+    adminReplacementValue: 335000, // Replaces 3-4 high-end admin positions (~$255K-$335K/year)
   },
   enterprise: {
-    monthlyPrice: 49900, // $499/month
-    yearlyPrice: 499900, // $4,999/year ($416.58/month - 17% savings)
+    monthlyPrice: 1799900, // $17,999/month
+    yearlyPrice: 21598800, // $215,988/year ($17,999/month - saves $2,400/year on annual)
     stripePriceId: process.env.STRIPE_ENTERPRISE_MONTHLY_PRICE_ID,
     stripeYearlyPriceId: process.env.STRIPE_ENTERPRISE_YEARLY_PRICE_ID,
     credits: TIER_CREDIT_ALLOCATIONS.enterprise,
+    maxEmployees: 999999, // Unlimited
+    adminReplacementValue: 432500, // Replaces 4-5 high-end admin positions (~$335K-$432K/year)
   },
 } as const;
 

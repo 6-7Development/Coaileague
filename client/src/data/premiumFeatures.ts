@@ -27,10 +27,10 @@ export const PREMIUM_FEATURES: PremiumFeature[] = [
     description: 'AI-powered scheduling that eliminates conflicts and optimizes coverage automatically',
     icon: Zap,
     tier: 'professional',
-    price: 199,
+    price: 0, // Included in Starter+ plans
     savings: {
-      label: 'Save 20 hours/week on scheduling',
-      value: 52000, // 20 hrs/week × $50/hr × 52 weeks
+      label: 'Replaces Workforce Scheduler ($77.5K/year)',
+      value: 77500,
     },
     benefits: [
       '1-click auto-fill for entire week',
@@ -41,7 +41,7 @@ export const PREMIUM_FEATURES: PremiumFeature[] = [
     ],
     roi: {
       timesSaved: 20, // hours per week
-      costsSaved: 52000,
+      costsSaved: 77500,
     },
     status: 'available',
   },
@@ -51,10 +51,10 @@ export const PREMIUM_FEATURES: PremiumFeature[] = [
     description: 'Automatic payroll processing with tax calculations and direct deposit',
     icon: DollarSign,
     tier: 'professional',
-    price: 299,
+    price: 0, // Included in Starter+ plans
     savings: {
-      label: 'Eliminates $45k/year payroll admin salary',
-      value: 41412, // $45k salary - $3,588/year subscription
+      label: 'Replaces Senior Payroll Specialist ($90K/year)',
+      value: 90000,
     },
     benefits: [
       'Sync with ADP, Gusto, Paychex',
@@ -64,7 +64,7 @@ export const PREMIUM_FEATURES: PremiumFeature[] = [
       'YTD tracking & reporting',
     ],
     roi: {
-      costsSaved: 41412,
+      costsSaved: 90000,
     },
     status: 'available',
   },
@@ -98,10 +98,10 @@ export const PREMIUM_FEATURES: PremiumFeature[] = [
     description: 'Automatically generate and send invoices based on completed work',
     icon: FileText,
     tier: 'professional',
-    price: 149,
+    price: 0, // Included in Starter+ plans
     savings: {
-      label: 'Save 10 hours/week on billing',
-      value: 25212, // (10 hrs/week × $50/hr × 52 weeks) - $1,788/year
+      label: 'Replaces Senior Billing Specialist ($85K/year)',
+      value: 85000,
     },
     benefits: [
       'Auto-generate from time entries',
@@ -112,7 +112,7 @@ export const PREMIUM_FEATURES: PremiumFeature[] = [
     ],
     roi: {
       timesSaved: 10,
-      costsSaved: 25212,
+      costsSaved: 85000,
     },
     status: 'available',
   },
@@ -122,10 +122,10 @@ export const PREMIUM_FEATURES: PremiumFeature[] = [
     description: 'Applicant tracking system with job posting and candidate management',
     icon: Users,
     tier: 'professional',
-    price: 299,
+    price: 0, // Included in Professional+ plans
     savings: {
-      label: 'Eliminate $30k/year recruiting costs',
-      value: 26412, // $30k agency fees - $3,588/year subscription
+      label: 'Part of HR Operations ($82.5K/year position)',
+      value: 30000, // Partial value attribution
     },
     benefits: [
       'Post to Indeed, LinkedIn, ZipRecruiter',
@@ -133,10 +133,9 @@ export const PREMIUM_FEATURES: PremiumFeature[] = [
       'Interview scheduling',
       'Background checks',
       'Onboarding integration',
-      '$50 per successful hire',
     ],
     roi: {
-      costsSaved: 26412,
+      costsSaved: 30000,
     },
     status: 'available',
   },
@@ -146,10 +145,10 @@ export const PREMIUM_FEATURES: PremiumFeature[] = [
     description: 'Deep insights into labor costs, productivity, and profitability',
     icon: TrendingUp,
     tier: 'professional',
-    price: 199,
+    price: 0, // Included in Professional+ plans
     savings: {
-      label: 'Identify 15% cost savings opportunities',
-      value: 50000, // Typical 15% reduction in labor costs
+      label: 'Part of Admin Operations Manager role ($97.5K/year)',
+      value: 40000, // Partial value attribution
     },
     benefits: [
       'Labor cost optimization',
@@ -159,7 +158,7 @@ export const PREMIUM_FEATURES: PremiumFeature[] = [
       'Predictive forecasting',
     ],
     roi: {
-      costsSaved: 50000,
+      costsSaved: 40000,
     },
     status: 'available',
   },
@@ -169,10 +168,10 @@ export const PREMIUM_FEATURES: PremiumFeature[] = [
     description: 'Manage health insurance, 401(k), PTO, and other employee benefits',
     icon: Shield,
     tier: 'professional',
-    price: 299,
+    price: 0, // Included in Professional+ plans
     savings: {
-      label: 'Save 5 hours/week on benefits admin',
-      value: 9412, // (5 hrs/week × $40/hr × 52 weeks) - $3,588/year
+      label: 'Part of HR Operations Analyst role ($82.5K/year)',
+      value: 30000, // Partial value attribution
     },
     benefits: [
       'Health insurance enrollment',
@@ -183,7 +182,7 @@ export const PREMIUM_FEATURES: PremiumFeature[] = [
     ],
     roi: {
       timesSaved: 5,
-      costsSaved: 9412,
+      costsSaved: 30000,
     },
     status: 'available',
   },
@@ -193,10 +192,10 @@ export const PREMIUM_FEATURES: PremiumFeature[] = [
     description: 'Manage multiple locations with centralized control and local autonomy',
     icon: Briefcase,
     tier: 'enterprise',
-    price: 999,
+    price: 0, // Included in Enterprise plan
     savings: {
-      label: 'Manage 10+ locations from one dashboard',
-      value: 120000, // Typical enterprise efficiency gains
+      label: 'Eliminates regional admin overhead (3+ positions)',
+      value: 250000, // Typical enterprise efficiency gains
     },
     benefits: [
       'Unlimited locations',
@@ -206,7 +205,7 @@ export const PREMIUM_FEATURES: PremiumFeature[] = [
       'Franchise management tools',
     ],
     roi: {
-      costsSaved: 120000,
+      costsSaved: 250000,
     },
     status: 'available',
   },
@@ -216,10 +215,10 @@ export const PREMIUM_FEATURES: PremiumFeature[] = [
     description: 'Training courses, certifications, and compliance tracking',
     icon: Calendar,
     tier: 'professional',
-    price: 199,
+    price: 0, // Included in Professional+ plans
     savings: {
-      label: 'Eliminate $12k/year training costs',
-      value: 9812, // $12k LMS costs - $2,388/year subscription
+      label: 'Part of HR Operations Analyst role ($82.5K/year)',
+      value: 22000, // Partial value attribution
     },
     benefits: [
       'Course creation & delivery',
@@ -229,7 +228,7 @@ export const PREMIUM_FEATURES: PremiumFeature[] = [
       'Training history reports',
     ],
     roi: {
-      costsSaved: 9812,
+      costsSaved: 22000,
     },
     status: 'available',
   },

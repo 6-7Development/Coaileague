@@ -18,75 +18,75 @@ interface PricingTier {
 export default function Pricing() {
   const tiers: PricingTier[] = [
     {
-      name: "Basic",
-      price: "$299",
-      savings: "Save $4k/month",
-      roi: "13x ROI",
-      description: "Manual workforce management tools",
+      name: "Free",
+      price: "Free",
+      savings: "Try before you buy",
+      roi: "∞ ROI",
+      description: "30-day demo with all features",
       cta: "Start Free Trial",
       features: [
-        { name: "Up to 25 employees", included: true },
-        { name: "Manual scheduling & time tracking", included: true },
-        { name: "Basic invoicing (manual entry)", included: true },
-        { name: "GPS clock-in/out verification", included: true },
-        { name: "Basic reports (PDF export)", included: true },
-        { name: "$20/employee/mo overages", included: true },
-        { name: "Email Support (48hr)", included: true },
+        { name: "Up to 5 employees for 30 days", included: true },
+        { name: "All Professional features unlocked", included: true },
+        { name: "Real data - migrate to paid seamlessly", included: true },
+        { name: "GPS clock-in/out + time tracking", included: true },
+        { name: "Smart scheduling preview", included: true },
+        { name: "Email support", included: true },
+        { name: "No credit card required", included: true },
         { name: "Auto-billing & invoicing", included: false },
         { name: "Auto-payroll processing", included: false },
-        { name: "AI-Powered Search", included: false },
-        { name: "AI Analytics", included: false },
+        { name: "QuickBooks/Gusto integrations", included: false },
+        { name: "Unlimited employees", included: false },
       ],
     },
     {
       name: "Starter",
-      price: "$599",
-      savings: "Save $15k/month",
-      roi: "25x ROI",
-      description: "Full automation for growing teams",
+      price: "$4,999",
+      savings: "Save $192K/year",
+      roi: "3.2x ROI",
+      description: "Replace your scheduling & billing staff",
       cta: "Start Free Trial",
       popular: true,
       features: [
         { name: "Up to 50 employees", included: true },
-        { name: "Smart scheduling & auto-assignment", included: true },
-        { name: "Smart Billing - Auto-billing & invoicing (weekly/bi-weekly)", included: true },
-        { name: "Auto Payroll - Payroll processing (weekly/bi-weekly)", included: true },
+        { name: "AI-powered scheduling automation", included: true },
+        { name: "Auto-billing & invoicing", included: true },
+        { name: "Auto-payroll processing (weekly/bi-weekly)", included: true },
         { name: "GPS + photo verification", included: true },
-        { name: "Advanced analytics & reporting", included: true },
         { name: "Client portal access", included: true },
-        { name: "$15/employee/mo overages", included: true },
-        { name: "Priority email support (24hr)", included: true },
-        { name: "AI-Powered Search", included: false },
-        { name: "AI Analytics", included: false },
+        { name: "Advanced analytics & reporting", included: true },
+        { name: "$50/employee/mo overages", included: true },
+        { name: "Priority email support (12hr)", included: true },
+        { name: "QuickBooks/Gusto integrations", included: false },
+        { name: "AI-Powered Search & Analytics", included: false },
       ],
     },
     {
       name: "Professional",
-      price: "$999",
-      savings: "Save $40k/month",
-      roi: "40x ROI",
-      description: "AI-powered workforce intelligence",
+      price: "$9,999",
+      savings: "Save $215K/year",
+      roi: "2.1x ROI",
+      description: "Replace entire HR & admin departments",
       cta: "Start Free Trial",
       features: [
         { name: "Up to 150 employees", included: true },
         { name: "Everything in Starter", included: true },
+        { name: "QuickBooks & Gusto integrations", included: true },
         { name: "AI-Powered Natural Language Search", included: true },
         { name: "Autonomous AI Analytics & Predictions", included: true },
         { name: "Predictive scheduling & cost optimization", included: true },
         { name: "Learning Management & Certifications", included: true },
         { name: "Performance Reviews & PTO Management", included: true },
-        { name: "Integrations - QuickBooks, Stripe, etc.", included: true },
-        { name: "$150/mo AI credits included", included: true },
-        { name: "$12/employee/mo overages", included: true },
-        { name: "Priority Support (8hr)", included: true },
+        { name: "$200/mo AI credits included", included: true },
+        { name: "$40/employee/mo overages", included: true },
+        { name: "Priority Support (4hr)", included: true },
       ],
     },
     {
       name: "Enterprise",
-      price: "$2,999",
-      savings: "Save $100k/month",
-      roi: "33x ROI",
-      description: "Complete workforce automation at scale",
+      price: "$17,999",
+      savings: "Save $216K/year",
+      roi: "1.2x ROI",
+      description: "Fortune 500-grade automation at scale",
       cta: "Contact Sales",
       features: [
         { name: "Unlimited employees", included: true },
@@ -94,12 +94,12 @@ export default function Pricing() {
         { name: "Advanced AI Search with Custom Data Sources", included: true },
         { name: "AI Premium: Predictive Analytics & Forecasting", included: true },
         { name: "SOC2-Ready Compliance & Audit Trails", included: true },
-        { name: "$500/mo AI credits included", included: true },
+        { name: "$1,000/mo AI credits included", included: true },
         { name: "White-Label Branding Options", included: true },
         { name: "API Access & Custom Webhooks", included: true },
-        { name: "$10/employee/mo overages", included: true },
+        { name: "$30/employee/mo overages (volume discount)", included: true },
         { name: "Dedicated Account Manager", included: true },
-        { name: "Priority Support (2hr)", included: true },
+        { name: "Priority Support (1hr SLA)", included: true },
         { name: "Custom feature development", included: true },
       ],
     },
@@ -119,10 +119,10 @@ export default function Pricing() {
             Enterprise-Grade ROI
           </Badge>
           <h1 className="text-4xl lg:text-5xl font-bold tracking-tight text-gray-900">
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-blue-600 to-blue-600">Investment That Pays Itself</span> In Weeks
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-blue-600 to-blue-600">Replace $250K-$430K</span> in Administrative Salaries
           </h1>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Replace entire departments. Save $100k-$500k annually. All plans include 14-day free trial.
+            Pay once per month. Save $192K-$217K annually. AutoForce™ replaces 3-5 high-end administrative positions with AI automation.
           </p>
         </div>
 
@@ -235,27 +235,42 @@ export default function Pricing() {
               {[
                 {
                   plan: "Starter",
-                  price: "$299/mo",
-                  replaces: ["Part-time Scheduler ($2.5k/mo)", "Time Tracking Software ($500/mo)", "Manual Invoicing ($1k/mo)"],
-                  totalSaved: "$48k/yr",
-                  costOfPlan: "$3.6k/yr",
-                  netSavings: "$44k/yr"
+                  price: "$4,999/mo",
+                  replaces: [
+                    "Senior Payroll Specialist ($90k/yr)",
+                    "Senior Billing Specialist ($85k/yr)",
+                    "Workforce Scheduler ($77.5k/yr)",
+                  ],
+                  totalSaved: "$252.5k/yr",
+                  costOfPlan: "$60k/yr",
+                  netSavings: "$192.5k/yr"
                 },
                 {
                   plan: "Professional",
-                  price: "$999/mo",
-                  replaces: ["HR Coordinator ($55k/yr)", "Payroll Specialist ($48k/yr)", "LMS Platform ($12k/yr)"],
-                  totalSaved: "$115k/yr",
-                  costOfPlan: "$12k/yr",
-                  netSavings: "$103k/yr"
+                  price: "$9,999/mo",
+                  replaces: [
+                    "Senior Payroll Specialist ($90k/yr)",
+                    "Senior Billing Specialist ($85k/yr)",
+                    "Workforce Scheduler ($77.5k/yr)",
+                    "HR Operations Analyst ($82.5k/yr)",
+                  ],
+                  totalSaved: "$335k/yr",
+                  costOfPlan: "$120k/yr",
+                  netSavings: "$215k/yr"
                 },
                 {
                   plan: "Enterprise",
-                  price: "Custom",
-                  replaces: ["HR Manager ($120k/yr)", "Full Payroll Team ($180k/yr)", "Benefits Admin ($85k/yr)", "Training Coordinator ($65k/yr)"],
-                  totalSaved: "$450k/yr",
-                  costOfPlan: "Custom",
-                  netSavings: "$300k+/yr"
+                  price: "$17,999/mo",
+                  replaces: [
+                    "Senior Payroll Specialist ($90k/yr)",
+                    "Senior Billing Specialist ($85k/yr)",
+                    "Workforce Scheduler ($77.5k/yr)",
+                    "HR Operations Analyst ($82.5k/yr)",
+                    "Admin Operations Manager ($97.5k/yr)",
+                  ],
+                  totalSaved: "$432.5k/yr",
+                  costOfPlan: "$216k/yr",
+                  netSavings: "$216.5k/yr"
                 },
               ].map((breakdown) => (
                 <div key={breakdown.plan} className="bg-gradient-to-br from-blue-50 to-blue-50 border-2 border-blue-200 rounded-xl p-6 space-y-4 hover:shadow-xl transition-shadow">
@@ -301,9 +316,11 @@ export default function Pricing() {
                 <div className="space-y-1">
                   <h3 className="font-semibold text-gray-900">Fair Usage & Overage Billing</h3>
                   <p className="text-sm text-gray-700">
-                    Each plan includes a set number of employees (25 for Starter, 150 for Professional). 
-                    If you exceed your plan limit, additional employees are billed at <strong className="text-blue-700">$15/employee/month</strong>.
-                    This ensures you only pay for what you use while maintaining consistent pricing.
+                    Each plan includes a set number of employees (50 for Starter, 150 for Professional, Unlimited for Enterprise). 
+                    If you exceed your plan limit, additional employees are billed at <strong className="text-blue-700">$50/employee/month for Starter</strong>, 
+                    <strong className="text-blue-700"> $40/employee/month for Professional</strong>, and 
+                    <strong className="text-blue-700"> $30/employee/month for Enterprise</strong>.
+                    This ensures you only pay for what you use while scaling efficiently.
                   </p>
                 </div>
               </div>
@@ -356,32 +373,36 @@ export default function Pricing() {
           <div className="space-y-4">
             {[
               {
-                q: "How does AutoForce™ save me money?",
-                a: "AutoForce™ automates tasks traditionally handled by multiple staff members. At $999/month for Professional, you save over $100k/year by replacing HR coordinators, payroll specialists, and training platforms. The ROI is typically 10-20x your monthly investment.",
+                q: "Why is AutoForce™ priced so much higher than other workforce management tools?",
+                a: "Because we replace entire positions, not just software. Traditional tools like When I Work or Deputy cost $2-5/employee but still require a payroll specialist ($90K/yr), billing coordinator ($85K/yr), and scheduler ($77K/yr). AutoForce™ eliminates these salaries entirely through AI automation. At $4,999-$17,999/month, you save $192K-$217K annually—a 2-3x ROI even at our premium pricing.",
               },
               {
-                q: "What's included in the free trial?",
-                a: "Full access to all features in your chosen plan for 14 days. No credit card required. Experience smart scheduling, automated payroll, time tracking, and client portals risk-free.",
+                q: "What positions does AutoForce™ actually replace?",
+                a: "AutoForce™ replaces 3-5 high-end administrative positions: Senior Payroll Specialist ($90K/yr), Senior Billing Specialist ($85K/yr), Workforce Scheduler ($77K/yr), HR Operations Analyst ($82K/yr), and Admin Operations Manager ($97K/yr). These aren't entry-level roles—they're experienced professionals that cost $250K-$430K/year in combined salaries.",
+              },
+              {
+                q: "Is there still a free trial?",
+                a: "Yes! Try AutoForce™ free for 30 days with up to 5 employees. All Professional features are unlocked so you can experience the full power of AI automation. No credit card required. When you upgrade, your data migrates seamlessly.",
               },
               {
                 q: "Can I start with Starter and upgrade later?",
-                a: "Absolutely. Most customers start with Starter ($599/mo) and upgrade to Professional ($999/mo) within 3-6 months as they see ROI. Your data migrates seamlessly, and we'll credit any unused time toward your new plan.",
+                a: "Absolutely. Many customers start with Starter ($4,999/mo) to replace 2-3 positions, then upgrade to Professional ($9,999/mo) within 3-6 months as they scale. Your data migrates instantly, and we'll prorate any unused time toward your new plan.",
               },
               {
                 q: "What happens if I exceed my employee limit?",
-                a: "No problem! Additional employees beyond your plan limit are billed at $15/employee/month. For example, if you have 55 employees on the Starter plan (50 included), you'll pay $599 + (5 × $15) = $674/month total.",
+                a: "Additional employees beyond your plan limit are billed per-employee monthly: $50/employee for Starter, $40/employee for Professional, $30/employee for Enterprise (volume discount). Example: 55 employees on Starter (50 included) = $4,999 + (5 × $50) = $5,249/month total.",
               },
               {
                 q: "What payment methods do you accept?",
-                a: "All major credit cards, ACH transfers, and wire transfers. Enterprise plans can be invoiced quarterly or annually with custom payment terms.",
+                a: "All major credit cards, ACH transfers, and wire transfers. Enterprise plans ($17,999/mo) can be invoiced quarterly or annually with custom payment terms and net-30/60 arrangements.",
               },
               {
                 q: "How does AI feature billing work?",
-                a: "AI-powered features (AI Support, AI Training, RFP Analysis, Platform Healing) use a customer-pays usage model where you only pay for what you use. Typical costs are very low: $0.002-$0.10 per interaction. Most businesses see $10-$50/month in AI usage, still providing 10-20x ROI compared to traditional solutions. Detailed usage appears on your monthly invoice.",
+                a: "AI features (AI Support Bot, Training Tutor, RFP Analysis) use customer-pays usage model at $0.002-$0.10 per interaction. Most customers spend $50-$200/month on AI usage. All plans include AI credits: Starter gets $100/mo, Professional gets $200/mo, Enterprise gets $1,000/mo. This keeps costs predictable while ensuring fair pricing.",
               },
               {
-                q: "What if I need custom features?",
-                a: "Enterprise plans include API access, webhooks, and custom integration assistance. Our team can help you connect AutoForce™ to your existing tools and workflows. Future roadmap includes custom feature development and white-label options—contact sales to discuss.",
+                q: "Is AutoForce™ worth it for smaller companies?",
+                a: "If you have 10+ employees and currently employ a scheduler, billing coordinator, or payroll specialist, AutoForce™ delivers 2-3x ROI immediately. Even at our premium pricing, replacing just 2 positions ($170K/year in salaries) saves you $110K/year on the Starter plan ($4,999/mo = $60K/year).",
               },
             ].map((faq) => (
               <div
