@@ -16,6 +16,7 @@ import {
   resetPassword,
   requireAuth,
 } from "./auth";
+import { emailService } from "./services/emailService";
 
 const router = Router();
 
@@ -156,8 +157,13 @@ router.post("/api/auth/register", async (req, res) => {
     // Create verification token
     const verificationToken = await createVerificationToken(newUser.id);
 
-    // TODO: Send verification email
-    // await sendVerificationEmail(newUser.email, verificationToken);
+    // Send verification email
+    await emailService.sendVerificationEmail(
+      newUser.id,
+      newUser.email,
+      verificationToken,
+      newUser.firstName || undefined
+    );
 
     // Auto-login after registration
     req.session.userId = newUser.id;
@@ -325,10 +331,14 @@ router.post("/api/auth/reset-password-request", async (req, res) => {
 
     const result = await createPasswordResetToken(data.email);
 
-    if (result.token) {
-      // TODO: Send password reset email
-      // await sendPasswordResetEmail(data.email, result.token);
-      console.log("Password reset token:", result.token); // Dev only
+    if (result.token && result.user) {
+      // Send password reset email
+      await emailService.sendPasswordResetEmail(
+        result.user.id,
+        data.email,
+        result.token,
+        result.user.firstName || undefined
+      );
     }
 
     // Always return success to prevent email enumeration
