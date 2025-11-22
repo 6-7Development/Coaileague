@@ -776,13 +776,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let workspaceId: string;
       
       if (isAuthenticated) {
-        const resolution = await resolveWorkspaceForUser(userId!, req.body.workspaceId);
+        // If client didn't send workspaceId, try to use user's currentWorkspaceId
+        let requestedWorkspaceId = req.body.workspaceId;
+        
+        if (!requestedWorkspaceId) {
+          const [userRecord] = await db.select().from(users).where(eq(users.id, userId!)).limit(1);
+          requestedWorkspaceId = userRecord?.currentWorkspaceId || undefined;
+        }
+        
+        const resolution = await resolveWorkspaceForUser(userId!, requestedWorkspaceId);
         
         // SECURITY: Never fallback authenticated users to platform workspace
         // This prevents cross-tenant data leakage
         if (!resolution.workspaceId) {
           return res.status(400).json({ 
-            message: resolution.error || 'Please specify a valid workspace',
+            message: resolution.error || 'Please select a workspace using the workspace switcher',
             requiresWorkspace: true
           });
         }
