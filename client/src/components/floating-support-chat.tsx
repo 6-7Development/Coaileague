@@ -230,16 +230,10 @@ export function FloatingSupportChat() {
         description: "Connecting you to a support agent...",
       });
 
-      // Route based on role
+      // Route to universal helpdesk for all users
       if (user) {
         sessionStorage.setItem('support_ticket_id', data.ticketId);
-        // Support staff see the helpdesk dashboard, regular users see their chat hub
-        if (platformRole === 'root_admin' || platformRole === 'support' || 
-            platformRole === 'support_manager' || platformRole === 'support_agent') {
-          setLocation('/support/chatrooms');
-        } else {
-          setLocation('/org-chat');
-        }
+        setLocation('/chat'); // Universal platform helpdesk
       }
       setState(prev => ({ ...prev, isOpen: false }));
     } catch (error) {
