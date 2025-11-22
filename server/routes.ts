@@ -738,6 +738,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Create support ticket from floating chat (AutoForce™ AI)
+  app.post('/api/support/create-ticket', chatMessageLimiter, async (req, res) => {
+    try {
+      const authReq = req as any;
+      const { subject, description, conversationHistory } = req.body;
+      
+      if (!subject || !description) {
+        return res.status(400).json({ message: 'Subject and description are required' });
+      }
+
+      // Get user info (support both auth methods)
+      let userId: string | null = null;
+      let workspaceId: string | null = null;
+      let userEmail = 'guest@autoforce.local';
+      
+      // Try custom auth first (session-based)
+      if (authReq.session?.userId) {
+        userId = authReq.session.userId;
+        workspaceId = authReq.session.workspaceId || null;
+      }
+      // Try Replit Auth (OIDC)
+      else if (authReq.isAuthenticated?.() && authReq.user?.claims?.sub) {
+        userId = authReq.user.claims.sub;
+        userEmail = authReq.user?.claims?.email || userEmail;
+      }
+      
+      // For guests, use AutoForce Platform workspace
+      const { PLATFORM_WORKSPACE_ID } = await import('./seed-platform-workspace');
+      if (!workspaceId) {
+        workspaceId = PLATFORM_WORKSPACE_ID;
+      }
+      
+      // Combine conversation history into description
+      const fullDescription = conversationHistory && Array.isArray(conversationHistory)
+        ? `${description}\n\n--- Conversation History ---\n${conversationHistory.map(m => `${m.type === 'user' ? 'User' : 'AI'}: ${m.text}`).join('\n')}`
+        : description;
+      
+      // Create the support ticket
+      const ticket = await storage.createSupportTicket({
+        workspaceId,
+        requestorId: userId || 'guest-user',
+        requestorEmail: userEmail,
+        category: 'support_request',
+        subject,
+        description: fullDescription,
+        priority: 'normal',
+        status: 'open'
+      });
+
+      res.json({ 
+        success: true, 
+        ticketId: ticket.id,
+        ticketNumber: (ticket as any).ticketNumber || ticket.id
+      });
+    } catch (error) {
+      console.error('[AutoForce™ AI] Error creating support ticket:', error);
+      res.status(500).json({ 
+        error: 'Failed to create support ticket',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
   // HelpOS™ bubble chat - Customer-facing AI chat (supports both authenticated and anonymous users)
   app.post('/api/support/helpos-chat', chatMessageLimiter, async (req, res) => {
     try {
