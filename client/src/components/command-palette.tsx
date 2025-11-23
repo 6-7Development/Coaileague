@@ -29,6 +29,7 @@ import {
   Shield,
   MessageSquare,
 } from "lucide-react";
+import { performLogout } from "@/lib/logoutHandler";
 
 export function CommandPalette() {
   const [open, setOpen] = useState(false);
@@ -167,7 +168,7 @@ export function CommandPalette() {
 
         <CommandGroup heading="Account">
           <CommandItem
-            onSelect={() => handleSelect(() => window.location.href = "/api/auth/logout")}
+            onSelect={() => handleSelect(() => performLogout())}
             data-testid="command-logout"
           >
             <LogOut className="mr-2 h-4 w-4" />
