@@ -132,7 +132,11 @@ export class AIGuardRails {
     // 4. Prompt injection protection - Flag suspicious patterns
     if (this.containsPromptInjection(sanitizedInput)) {
       errors.push('Input contains suspicious prompt manipulation patterns');
-      this.auditLog.push({
+      const key = `${context.workspaceId}:${new Date().toISOString().split('T')[0]}`;
+      if (!this.auditLog.has(key)) {
+        this.auditLog.set(key, []);
+      }
+      this.auditLog.get(key)!.push({
         type: 'SUSPICIOUS_INPUT',
         context,
         input: sanitizedInput.substring(0, 100),
@@ -355,7 +359,11 @@ export class AIGuardRails {
       }
     };
 
-    this.auditLog.push({
+    const key = `${context.workspaceId}:${new Date().toISOString().split('T')[0]}`;
+    if (!this.auditLog.has(key)) {
+      this.auditLog.set(key, []);
+    }
+    this.auditLog.get(key)!.push({
       type: 'AI_FALLBACK',
       context,
       operation,
