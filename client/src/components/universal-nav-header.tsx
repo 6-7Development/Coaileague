@@ -17,6 +17,7 @@ import { AutoForceAFLogo } from "@/components/autoforce-af-logo";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useTransition } from "@/contexts/transition-context";
 import { showLogoutTransition } from "@/lib/transition-utils";
+import { useToast } from "@/hooks/use-toast";
 import { NotificationsCenter } from "@/components/notifications-center";
 import { HelpDropdown } from "@/components/help-dropdown";
 import { FeedbackWidget } from "@/components/feedback-widget";
@@ -27,8 +28,9 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 export function UniversalNavHeader() {
   const { workspaceRole, subscriptionTier, isPlatformStaff, isLoading } = useWorkspaceAccess();
   const { user } = useAuth();
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const transition = useTransition();
+  const { toast } = useToast();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Get CONDENSED navigation items for mobile (essential features only)
@@ -87,10 +89,20 @@ export function UniversalNavHeader() {
         method: "POST",
         credentials: "include"
       });
+      toast({
+        title: "Signed out successfully",
+        description: "You have been logged out of AutoForce™",
+      });
+      setSidebarOpen(false);
+      setLocation("/login");
     } catch (error) {
       console.error("Logout error:", error);
+      toast({
+        title: "Sign out failed",
+        description: "Please try again",
+        variant: "destructive",
+      });
     }
-    showLogoutTransition(transition);
   };
 
   const handleNavigate = () => {
