@@ -33,17 +33,14 @@ interface CreditUsageBreakdown {
 
 export function CreditBalanceCard({ onBuyCredits }: { onBuyCredits?: () => void }) {
   const [showBuyModal, setShowBuyModal] = useState(false);
-  const { user } = useAuth();
-  const workspaceId = user?.currentWorkspaceId;
   
+  // Backend automatically resolves workspace from logged-in user
   const { data: balance, isLoading } = useQuery<CreditBalance>({
-    queryKey: ['/api/credits/balance', workspaceId],
-    enabled: !!workspaceId,
+    queryKey: ['/api/credits/balance'],
   });
 
   const { data: usage } = useQuery<CreditUsageBreakdown[]>({
-    queryKey: ['/api/credits/usage-breakdown', workspaceId],
-    enabled: !!workspaceId,
+    queryKey: ['/api/credits/usage-breakdown'],
   });
 
   const handleBuyClick = () => {
