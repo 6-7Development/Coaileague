@@ -207,5 +207,8 @@ export function getAgentMetricTarget(metricId: string) {
 
 export function getMetricAlertThreshold(metricId: string) {
   const queueMetric = SUPPORT_METRICS_CONFIG.queueMetrics[metricId as keyof typeof SUPPORT_METRICS_CONFIG.queueMetrics];
-  return queueMetric?.alertThreshold || null;
+  if (queueMetric && 'alertThreshold' in queueMetric) {
+    return queueMetric.alertThreshold;
+  }
+  return null;
 }
