@@ -216,134 +216,96 @@ export default function RootAdminPortal() {
   // Mutations
   const suspendAccountMutation = useMutation({
     mutationFn: (data: { workspaceId: string; reason: string }) =>
-      apiRequest("/api/admin/support/suspend-account", "POST", data),
+      apiPost('admin.suspendAccount', data),
     onSuccess: () => {
       toast({ title: "Account Suspended", description: "Account has been suspended successfully" });
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/support/workspace", selectedWorkspace] });
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/support/search"] });
       setActionDialog(null);
     },
   });
 
   const unsuspendAccountMutation = useMutation({
     mutationFn: (data: { workspaceId: string }) =>
-      apiRequest("/api/admin/support/unsuspend-account", "POST", data),
+      apiPost('admin.unsuspendAccount', data),
     onSuccess: () => {
       toast({ title: "Account Unsuspended", description: "Account has been reactivated" });
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/support/workspace", selectedWorkspace] });
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/support/search"] });
       setActionDialog(null);
     },
   });
 
   const freezeAccountMutation = useMutation({
     mutationFn: (data: { workspaceId: string; reason: string }) =>
-      apiRequest("/api/admin/support/freeze-account", "POST", data),
+      apiPost('admin.freezeAccount', data),
     onSuccess: () => {
       toast({ title: "Account Frozen", description: "Account frozen for non-payment" });
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/support/workspace", selectedWorkspace] });
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/support/search"] });
       setActionDialog(null);
     },
   });
 
   const unfreezeAccountMutation = useMutation({
     mutationFn: (data: { workspaceId: string }) =>
-      apiRequest("/api/admin/support/unfreeze-account", "POST", data),
+      apiPost('admin.unfreezeAccount', data),
     onSuccess: () => {
       toast({ title: "Account Unfrozen", description: "Account has been unfrozen" });
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/support/workspace", selectedWorkspace] });
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/support/search"] });
       setActionDialog(null);
     },
   });
 
   const lockAccountMutation = useMutation({
     mutationFn: (data: { workspaceId: string; reason: string }) =>
-      apiRequest("/api/admin/support/lock-account", "POST", data),
+      apiPost('admin.lockAccount', data),
     onSuccess: () => {
       toast({ title: "Account Locked", description: "Account locked for security" });
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/support/workspace", selectedWorkspace] });
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/support/search"] });
       setActionDialog(null);
     },
   });
 
   const unlockAccountMutation = useMutation({
     mutationFn: (data: { workspaceId: string }) =>
-      apiRequest("/api/admin/support/unlock-account", "POST", data),
+      apiPost('admin.unlockAccount', data),
     onSuccess: () => {
       toast({ title: "Account Unlocked", description: "Account has been unlocked" });
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/support/workspace", selectedWorkspace] });
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/support/search"] });
       setActionDialog(null);
     },
   });
 
   const changeUserRoleMutation = useMutation({
     mutationFn: (data: { userId: string; newRole: string; workspaceId: string }) =>
-      apiRequest("/api/admin/support/change-user-role", "POST", data),
+      apiPost('admin.changeUserRole', data),
     onSuccess: () => {
       toast({ title: "Role Updated", description: "User role has been changed" });
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/support/workspace", selectedWorkspace] });
       setActionDialog(null);
     },
   });
 
   const sendMessage = useMutation({
-    mutationFn: async (data: { conversationId: string; content: string }) => {
-      return await apiRequest(`/api/chat/conversations/${data.conversationId}/messages`, "POST", { 
-        message: data.content,
-        messageType: "text",
-      });
-    },
+    mutationFn: (data: { conversationId: string; content: string }) =>
+      apiPost('chat.sendMessage', { conversationId: data.conversationId, message: data.content, messageType: "text" }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/chat/conversations", selectedConversation, "messages"] });
       setMessageText("");
     },
   });
 
   const grantVoice = useMutation({
-    mutationFn: async (conversationId: string) => {
-      return await apiRequest(`/api/chat/conversations/${conversationId}/grant-voice`, "POST", {});
-    },
+    mutationFn: (conversationId: string) =>
+      apiPost('chat.grantVoice', { conversationId }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/chat/conversations"] });
       toast({ title: "Voice Granted", description: "User can now send messages" });
     },
   });
 
   const closeConversation = useMutation({
-    mutationFn: async (conversationId: string) => {
-      return await apiRequest(`/api/chat/conversations/${conversationId}/close`, "POST", {});
-    },
+    mutationFn: (conversationId: string) =>
+      apiPost('chat.closeConversation', { conversationId }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/chat/conversations"] });
       toast({ title: "Conversation Closed", description: "Conversation has been closed" });
     },
   });
 
   const createConversation = useMutation({
-    mutationFn: async (data: any) => {
-      const response = await apiRequest("/api/chat/conversations", "POST", data);
-      return response;
-    },
+    mutationFn: (data: any) =>
+      apiPost('chat.createConversation', data),
     onSuccess: (data: any) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/chat/conversations"] });
       setSelectedConversation(data.id);
-      
-      // Send helpbot welcome message
-      setTimeout(() => {
-        apiRequest(`/api/chat/conversations/${data.id}/messages`, "POST", {
-          message: `Welcome to AutoForce™ Live Support! ${data.isSilenced ? "You're in the waiting queue. A support agent will grant you voice shortly." : "You have full access to chat. How can we help you today?"}`,
-          messageType: "system",
-          senderType: "bot",
-          senderName: "HelpBot",
-        }).then(() => {
-          queryClient.invalidateQueries({ queryKey: ["/api/chat/conversations", data.id, "messages"] });
-        });
-      }, 500);
-      
       toast({ 
         title: "Entered Chat Room", 
         description: data.isSilenced ? "You're in the queue. Please wait for voice grant." : "You're now in the live chat room!"

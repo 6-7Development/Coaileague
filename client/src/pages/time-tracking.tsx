@@ -239,13 +239,9 @@ export default function TimeTracking() {
   });
 
   const startBreakMutation = useMutation({
-    mutationFn: async (data: { breakType: 'meal' | 'rest' }) => {
-      return apiRequest("POST", "/api/time-entries/break/start", data);
-    },
+    mutationFn: (data: { breakType: 'meal' | 'rest' }) => apiPost('timeEntries.startBreak', data),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/time-entries"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/time-entries/status"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/time-entries/active"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.timeEntries.all });
       toast({
         title: "Break Started",
         description: `${variables.breakType === 'meal' ? 'Meal' : 'Rest'} break has been started`,
@@ -261,13 +257,9 @@ export default function TimeTracking() {
   });
 
   const endBreakMutation = useMutation({
-    mutationFn: async () => {
-      return apiRequest("POST", "/api/time-entries/break/end", {});
-    },
+    mutationFn: () => apiPost('timeEntries.endBreak', {}),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/time-entries"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/time-entries/status"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/time-entries/active"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.timeEntries.all });
       toast({
         title: "Break Ended",
         description: "You're back on the clock",
@@ -283,13 +275,9 @@ export default function TimeTracking() {
   });
 
   const approveMutation = useMutation({
-    mutationFn: async (timeEntryId: string) => {
-      return apiRequest("POST", `/api/time-entries/${timeEntryId}/approve`, {});
-    },
+    mutationFn: (timeEntryId: string) => apiPost('timeEntries.approve', { timeEntryId }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/time-entries"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/time-entries/status"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/time-entries/active"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.timeEntries.all });
       toast({
         title: "Entry Approved",
         description: "Time entry has been approved successfully",
@@ -305,13 +293,9 @@ export default function TimeTracking() {
   });
 
   const rejectMutation = useMutation({
-    mutationFn: async (data: { timeEntryId: string; reason: string }) => {
-      return apiRequest("POST", `/api/time-entries/${data.timeEntryId}/reject`, { reason: data.reason });
-    },
+    mutationFn: (data: { timeEntryId: string; reason: string }) => apiPost('timeEntries.reject', data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/time-entries"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/time-entries/status"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/time-entries/active"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.timeEntries.all });
       toast({
         title: "Entry Rejected",
         description: "Time entry has been rejected",
