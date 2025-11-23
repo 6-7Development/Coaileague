@@ -18,6 +18,9 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { storage } from '../storage';
 import { auditLogger, type AuditContext } from './audit-logger';
 import { aiGuardRails, type AIRequestContext } from './aiGuardRails';
+import { db } from '../db';
+import { timeEntries } from '@shared/schema';
+import { and, eq, gte, lte } from 'drizzle-orm';
 import type { Shift, Employee, Client, TimeEntry } from '@shared/schema';
 import {
   scheduleDecisionSchema,
@@ -538,19 +541,19 @@ Return ONLY valid JSON (no markdown):
     // Generate invoice for each client
     for (const client of clients) {
       // Get time entries for this client in the anchor period from actual database
-      const timeEntries = await db
+      const clientTimeEntries = await db
         .select()
-        .from(timeEntriesTable)
+        .from(timeEntries)
         .where(
           and(
-            eq(timeEntriesTable.clientId, client.id),
-            gte(timeEntriesTable.startTime, startDate),
-            lte(timeEntriesTable.endTime, endDate),
-            eq(timeEntriesTable.workspaceId, params.workspaceId)
+            eq(timeEntries.clientId, client.id),
+            gte(timeEntries.startTime, startDate),
+            lte(timeEntries.endTime, endDate),
+            eq(timeEntries.workspaceId, params.workspaceId)
           )
         );
 
-      if (timeEntries.length === 0) {
+      if (clientTimeEntries.length === 0) {
         continue; // Skip clients with no billable time
       }
 
@@ -558,7 +561,7 @@ Return ONLY valid JSON (no markdown):
         clientId: client.id,
         startDate,
         endDate,
-        timeEntries,
+        timeEntries: clientTimeEntries,
         client,
       });
 
