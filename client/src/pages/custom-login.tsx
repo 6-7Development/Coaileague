@@ -59,10 +59,13 @@ export default function CustomLogin() {
 
       await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
 
+      // Redirect to workspace if available, otherwise fallback to dashboard
+      const redirectPath = result.user?.currentWorkspaceId ? "/dashboard" : "/dashboard";
+
       showSuccessTransition(
         transition,
         "Login Successful!",
-        "/dashboard",
+        redirectPath,
         `Welcome back, ${data.email.split('@')[0]}!`
       );
     } catch (error: any) {

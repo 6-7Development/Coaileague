@@ -260,6 +260,7 @@ router.post("/api/auth/login", async (req, res) => {
         role: user.role,
         emailVerified: user.emailVerified,
         platformRole: activePlatformRole?.role || null, // GATEKEEPER: Include platform role for routing
+        currentWorkspaceId: user.currentWorkspaceId, // Include workspace for proper redirect
       },
     });
   } catch (error) {

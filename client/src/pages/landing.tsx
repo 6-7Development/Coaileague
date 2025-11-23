@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -6,6 +7,7 @@ import { SchedulePreview } from "@/components/schedule-preview";
 import { DashboardPreview } from "@/components/dashboard-preview";
 import { TimeTrackingPreview } from "@/components/time-tracking-preview";
 import { useLocation } from "wouter";
+import { useAuth } from "@/hooks/useAuth";
 import {
   Shield,
   Zap,
@@ -32,6 +34,19 @@ import {
 
 export default function Landing() {
   const [, setLocation] = useLocation();
+  const { isAuthenticated } = useAuth();
+
+  // Redirect authenticated users to dashboard
+  useEffect(() => {
+    if (isAuthenticated) {
+      setLocation("/dashboard");
+    }
+  }, [isAuthenticated, setLocation]);
+
+  // Don't render landing page for authenticated users
+  if (isAuthenticated) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden w-full max-w-full">
