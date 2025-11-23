@@ -42,9 +42,30 @@
     <div id="root"></div>
     <script>
       // Suppress Vite HMR WebSocket errors BEFORE any modules load (development-only)
-      // This catches the unhandledrejection from @vite/client before it propagates
+      
+      // Patch WebSocket constructor to prevent "localhost:undefined" errors
+      const OriginalWebSocket = globalThis.WebSocket;
+      globalThis.WebSocket = function(url, ...args) {
+        if (typeof url === 'string' && (url.includes('localhost:undefined') || url.includes('localhost:null'))) {
+          // Return a mock WebSocket that silently fails
+          const mockWs = {
+            readyState: 3,
+            close: () => {},
+            send: () => {},
+            addEventListener: () => {},
+            removeEventListener: () => {},
+            dispatchEvent: () => true
+          };
+          return mockWs;
+        }
+        return new OriginalWebSocket(url, ...args);
+      };
+      Object.setPrototypeOf(globalThis.WebSocket, OriginalWebSocket);
+      
+      // Catch any unhandledrejections from Vite HMR
       window.addEventListener('unhandledrejection', function(event) {
         const reason = event.reason;
+        if (!reason) return;
         const reasonStr = String(reason);
         const messageStr = reason?.message ? String(reason.message) : "";
         
