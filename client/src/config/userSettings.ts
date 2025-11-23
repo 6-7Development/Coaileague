@@ -104,7 +104,7 @@ export function getUserSettingSection(sectionId: string) {
 }
 
 export function getAllUserSettingItems() {
-  const items = [];
+  const items: typeof USER_SETTINGS_CONFIG.sections.account.items = [];
   Object.values(USER_SETTINGS_CONFIG.sections).forEach((section) => {
     items.push(...section.items);
   });
