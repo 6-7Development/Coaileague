@@ -535,6 +535,17 @@ export const osModules: OSModule[] = [
         order: 5,
       },
       {
+        id: 'org-chatrooms',
+        label: 'Chatrooms',
+        href: '/chatrooms',
+        icon: MessageSquare,
+        description: 'Discover and join team conversations',
+        capabilities: ['view_messages'],
+        familyId: 'people',
+        isPrimary: false,
+        order: 5.5,
+      },
+      {
         id: 'private-messages',
         label: 'Messages',
         href: '/messages',
