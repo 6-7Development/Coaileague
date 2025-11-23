@@ -493,7 +493,7 @@ Return ONLY valid JSON (no markdown):
           aggregateId: transactionId,
           aggregateType: 'invoice',
           schema: invoiceDecisionSchema,
-          buildFallback: createFallbackInvoiceDecision,
+          buildFallback: () => createFallbackInvoiceDecision(params.clientId),
           transactionId,
         });
 
@@ -530,7 +530,7 @@ Return ONLY valid JSON (no markdown):
     startDate.setDate(startDate.getDate() - 14);
 
     // Get all clients for workspace
-    const clients = await storage.getClients(params.workspaceId);
+    const clients = await storage.getClientsByWorkspace(params.workspaceId);
     
     const invoices: InvoiceDecision[] = [];
     const requiresApproval: InvoiceDecision[] = [];
@@ -669,21 +669,16 @@ Return ONLY valid JSON (no markdown):
           aggregateId: transactionId,
           aggregateType: 'payroll',
           schema: payrollDecisionSchema,
-          buildFallback: createFallbackPayrollDecision,
+          buildFallback: () => createFallbackPayrollDecision(params.employeeId),
           transactionId,
         });
 
         // Register payroll ID
         const payrollId = `payroll_${transactionId}`;
         await auditLogger.registerID(
-          context,
           payrollId,
           'payroll',
-          {
-            transactionId,
-            employeeId: params.employeeId,
-            aiGenerated: true,
-          }
+          context
         );
 
         return {
