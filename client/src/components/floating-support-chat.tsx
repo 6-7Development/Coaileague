@@ -400,9 +400,7 @@ export function FloatingSupportChat() {
     >
       {/* Draggable header */}
       <div
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
+        onMouseDown={handlePointerDown}
         className="p-3 border-b cursor-move bg-gradient-to-r from-blue-500/10 to-blue-500/10 rounded-t-lg"
         data-testid="chat-bubble-header"
       >
