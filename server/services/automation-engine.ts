@@ -179,8 +179,8 @@ export class AutomationEngine {
       }
       
       // Log the AI action with full audit trail
-      await auditLogger.logAIAction(context, {
-        eventType,
+      await auditLogger.logEvent(context, {
+        eventType: `AI_${eventType}`,
         aggregateId,
         aggregateType,
         payload: {
@@ -196,7 +196,7 @@ export class AutomationEngine {
           validationStatus,
           transactionId,
         },
-      });
+      }, { generateHash: true, autoCommit: true });
       
       return {
         decision,
@@ -265,13 +265,16 @@ export class AutomationEngine {
     // Use WAL for transaction safety
     return await auditLogger.executeWithWAL(
       context,
-      'schedule_generation',
-      transactionId,
       {
-        startDate: params.startDate.toISOString(),
-        endDate: params.endDate.toISOString(),
-        employeeCount: params.employees.length,
-        existingShiftCount: params.existingShifts.length,
+        operationType: 'schedule_generation',
+        entityType: 'schedule',
+        entityId: transactionId,
+        payload: {
+          startDate: params.startDate.toISOString(),
+          endDate: params.endDate.toISOString(),
+          employeeCount: params.employees.length,
+          existingShiftCount: params.existingShifts.length,
+        },
       },
       async () => {
         // Build comprehensive prompt
@@ -280,7 +283,7 @@ export class AutomationEngine {
 **Date Range:** ${params.startDate.toISOString()} to ${params.endDate.toISOString()}
 
 **Available Employees:**
-${params.employees.map(e => `- ${e.name} (ID: ${e.id}, Role: ${e.role || 'General'}, Skills: ${(e.skills || []).join(', ') || 'None'})`).join('\n')}
+${params.employees.map(e => `- ${e.firstName} ${e.lastName} (ID: ${e.id}, Role: ${e.role || 'General'})`).join('\n')}
 
 **Existing Shifts (to avoid conflicts):**
 ${params.existingShifts.map(s => `- Employee ${s.employeeId}: ${s.startTime} - ${s.endTime}`).join('\n')}
@@ -335,14 +338,9 @@ Return ONLY valid JSON (no markdown):
         for (let i = 0; i < decision.shifts.length; i++) {
           const shiftId = `shift_${transactionId}_${i}`;
           await auditLogger.registerID(
-            context,
             shiftId,
             'shift',
-            {
-              transactionId,
-              employeeId: decision.shifts[i].employeeId,
-              aiGenerated: true,
-            }
+            context
           );
         }
 
@@ -377,7 +375,6 @@ Return ONLY valid JSON (no markdown):
         clientId: shift.clientId || undefined,
         startTime: new Date(shift.startTime),
         endTime: new Date(shift.endTime),
-        role: shift.role,
         status: 'draft',
         workspaceId: context.workspaceId || '',
       });
@@ -425,13 +422,16 @@ Return ONLY valid JSON (no markdown):
 
     return await auditLogger.executeWithWAL(
       context,
-      'invoice_generation',
-      transactionId,
       {
-        clientId: params.clientId,
-        startDate: params.startDate.toISOString(),
-        endDate: params.endDate.toISOString(),
-        timeEntryCount: params.timeEntries.length,
+        operationType: 'invoice_generation',
+        entityType: 'invoice',
+        entityId: transactionId,
+        payload: {
+          clientId: params.clientId,
+          startDate: params.startDate.toISOString(),
+          endDate: params.endDate.toISOString(),
+          timeEntryCount: params.timeEntries.length,
+        },
       },
       async () => {
         // Calculate totals
@@ -442,11 +442,11 @@ Return ONLY valid JSON (no markdown):
           return sum + hours;
         }, 0);
 
-        const billingRate = params.client.billingRate || 75; // Default rate
+        const billingRate = 75; // Default rate (client may not have this field)
 
         const prompt = `You are an invoicing AI for AutoForce™. Generate an invoice for client services:
 
-**Client:** ${params.client.name}
+**Client:** ${params.client.companyName || params.client.firstName || 'Unknown'}
 **Period:** ${params.startDate.toISOString().split('T')[0]} to ${params.endDate.toISOString().split('T')[0]}
 **Billing Rate:** $${billingRate}/hour
 
@@ -486,26 +486,23 @@ Return ONLY valid JSON (no markdown):
   "anomalies": ["list any issues found"]
 }`;
 
-        const response = await this.callGemini<InvoiceDecision>(
+        const response = await this.callGemini<InvoiceDecision>({
           prompt,
           context,
-          'invoice_generated',
+          eventType: 'invoice_generated',
+          aggregateId: transactionId,
+          aggregateType: 'invoice',
+          schema: invoiceDecisionSchema,
+          buildFallback: createFallbackInvoiceDecision,
           transactionId,
-          'invoice',
-          transactionId
-        );
+        });
 
         // Register invoice ID
         const invoiceId = `invoice_${transactionId}`;
         await auditLogger.registerID(
-          context,
           invoiceId,
           'invoice',
-          {
-            transactionId,
-            clientId: params.clientId,
-            aiGenerated: true,
-          }
+          context
         );
 
         return {
@@ -533,7 +530,7 @@ Return ONLY valid JSON (no markdown):
     startDate.setDate(startDate.getDate() - 14);
 
     // Get all clients for workspace
-    const { items: clients } = await storage.searchClients(params.workspaceId, { limit: 1000, offset: 0 });
+    const clients = await storage.getClients(params.workspaceId);
     
     const invoices: InvoiceDecision[] = [];
     const requiresApproval: InvoiceDecision[] = [];
@@ -586,13 +583,16 @@ Return ONLY valid JSON (no markdown):
 
     return await auditLogger.executeWithWAL(
       context,
-      'payroll_generation',
-      transactionId,
       {
-        employeeId: params.employeeId,
-        startDate: params.startDate.toISOString(),
-        endDate: params.endDate.toISOString(),
-        timeEntryCount: params.timeEntries.length,
+        operationType: 'payroll_generation',
+        entityType: 'payroll',
+        entityId: transactionId,
+        payload: {
+          employeeId: params.employeeId,
+          startDate: params.startDate.toISOString(),
+          endDate: params.endDate.toISOString(),
+          timeEntryCount: params.timeEntries.length,
+        },
       },
       async () => {
         // Calculate total hours
@@ -614,12 +614,13 @@ Return ONLY valid JSON (no markdown):
           regularHours = totalHours;
         }
 
-        const hourlyRate = params.employee.hourlyRate || 15;
+        const hourlyRateStr = params.employee.hourlyRate || '15';
+        const hourlyRate = typeof hourlyRateStr === 'string' ? parseFloat(hourlyRateStr) : hourlyRateStr;
         const otRate = hourlyRate * 1.5;
 
         const prompt = `You are a payroll processing AI for AutoForce™. Calculate payroll for an employee:
 
-**Employee:** ${params.employee.name}
+**Employee:** ${params.employee.firstName} ${params.employee.lastName}
 **Period:** ${params.startDate.toISOString().split('T')[0]} to ${params.endDate.toISOString().split('T')[0]}
 **Hourly Rate:** $${hourlyRate}
 **OT Rate:** $${otRate}
@@ -661,14 +662,16 @@ Return ONLY valid JSON (no markdown):
   "warnings": ["list any issues"]
 }`;
 
-        const response = await this.callGemini<PayrollDecision>(
+        const response = await this.callGemini<PayrollDecision>({
           prompt,
           context,
-          'payroll_generated',
+          eventType: 'payroll_generated',
+          aggregateId: transactionId,
+          aggregateType: 'payroll',
+          schema: payrollDecisionSchema,
+          buildFallback: createFallbackPayrollDecision,
           transactionId,
-          'payroll',
-          transactionId
-        );
+        });
 
         // Register payroll ID
         const payrollId = `payroll_${transactionId}`;
