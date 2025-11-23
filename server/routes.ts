@@ -72,6 +72,8 @@ import {
   sendTimesheetEditDeniedEmail
 } from "./email";
 import { emailService } from "./services/emailService";
+import { taxCalculator } from "./services/taxCalculator";
+import { performanceMetrics } from "./services/performanceMetrics";
 import { calculatePtoAccrual, getAllPtoBalances, runWeeklyPtoAccrual, deductPtoHours } from './services/ptoAccrual';
 import { getReviewReminderSummary, getOverdueReviews, getUpcomingReviews } from './services/performanceReviewReminders';
 import { getEmployeesDueForSurveys, getSurveyDistributionSummary, getEmployeePendingSurveys, calculateSurveyResponseRate } from './services/pulseSurveyAutomation';
@@ -25289,6 +25291,77 @@ app.post("/api/sales/proposals", requireAuth, async (req, res) => {
     res.json({ success: true, proposal: result[0] });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================================================
+// PAYROLL & TAX CALCULATION ROUTES (Task #9)
+// ============================================================================
+
+app.post("/api/payroll/calculate-taxes", requireAuth, async (req, res) => {
+  try {
+    const { grossWages, filingStatus, ytdWages } = req.body;
+    
+    if (!grossWages || typeof grossWages !== 'number' || grossWages < 0) {
+      return res.status(400).json({ error: 'Invalid grossWages amount' });
+    }
+    
+    const result = taxCalculator.calculateTaxes({
+      grossWages,
+      filingStatus: filingStatus || 'single',
+      ytdWages: ytdWages || 0
+    });
+
+    res.json({
+      success: true,
+      calculation: result,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error: any) {
+    console.error('Tax calculation error:', error);
+    res.status(400).json({ error: error.message || 'Tax calculation failed' });
+  }
+});
+
+// ============================================================================
+// PERFORMANCE METRICS ROUTES (Task #13)
+// ============================================================================
+
+app.get("/api/metrics/performance", requirePlatformStaff, async (req: AuthenticatedRequest, res) => {
+  try {
+    const metrics = performanceMetrics.getMetrics();
+    res.json({
+      timestamp: new Date().toISOString(),
+      metrics,
+      health: {
+        isHealthy: metrics.averageResponseTime < 500 && metrics.automationSuccessRate > 95,
+        alertLevel: metrics.averageResponseTime > 1000 ? 'critical' : metrics.averageResponseTime > 500 ? 'warning' : 'normal'
+      }
+    });
+  } catch (error: any) {
+    console.error('Error fetching metrics:', error);
+    res.status(500).json({ error: error.message || 'Failed to fetch metrics' });
+  }
+});
+
+app.get("/api/metrics/dashboard", requirePlatformStaff, async (req: AuthenticatedRequest, res) => {
+  try {
+    const metrics = performanceMetrics.getMetrics();
+    
+    res.json({
+      summary: {
+        avgResponseTime: `${metrics.averageResponseTime}ms`,
+        p95ResponseTime: `${metrics.p95ResponseTime}ms`,
+        p99ResponseTime: `${metrics.p99ResponseTime}ms`,
+        automationSuccess: `${metrics.automationSuccessRate}%`,
+        recentFailures: metrics.automationFailureCount
+      },
+      status: metrics.averageResponseTime < 500 ? 'healthy' : 'degraded',
+      lastUpdated: new Date().toISOString()
+    });
+  } catch (error: any) {
+    console.error('Error fetching dashboard metrics:', error);
+    res.status(500).json({ error: 'Failed to fetch dashboard metrics' });
   }
 });
 
