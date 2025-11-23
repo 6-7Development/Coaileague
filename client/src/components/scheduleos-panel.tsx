@@ -51,10 +51,24 @@ export function AISchedulingPanel({ weekStartDate, onScheduleGenerated }: AISche
   // Activate with payment mutation
   const activateMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest('POST', '/api/scheduleos/activate', {
-        paymentMethod: 'stripe_subscription', // TODO: Real Stripe flow when test keys added
+      // Trigger real Stripe checkout via redirect
+      const response = await fetch("/api/billing/create-checkout-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          priceId: process.env.VITE_STRIPE_SCHEDULEOS_PRICE || 'price_scheduleos_test',
+          successUrl: `${window.location.origin}/scheduling?ai_activated=true`,
+          cancelUrl: `${window.location.origin}/scheduling`,
+        }),
       });
-      return res.json();
+      const session = await response.json();
+      if (session.error) throw new Error(session.error);
+      
+      const stripe = await import("@stripe/js").then(m => m.loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY || ""));
+      if (!stripe) throw new Error("Stripe not loaded");
+      const result = await stripe.redirectToCheckout({ sessionId: session.sessionId });
+      if (result.error) throw new Error(result.error.message);
+      return { success: true };
     },
     onSuccess: () => {
       toast({
