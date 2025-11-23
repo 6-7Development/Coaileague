@@ -72,7 +72,44 @@ import { TicketContextPanel } from "@/components/ticket-context-panel";
 import { sanitizeMessage } from "@/lib/sanitize";
 import { MobileChatLayout } from "@/components/mobile-chat-layout";
 
-const MAIN_ROOM_ID = 'helpdesk'; // Must match support_rooms.slug in database
+// Dynamically load chat configuration from backend
+const CHAT_CONFIG = {
+  rooms: { main: { id: 'helpdesk' } },
+  messages: {
+    guestIntake: { label: '[GUEST INTAKE]' },
+    queueUpdate: { label: '⏳ Queue Update' },
+    ticketCreated: {
+      title: '✓ Ticket Created',
+      description: (id: string) =>
+        `Ticket #${id} - AutoForce™ AI is analyzing your issue. An agent will be with you shortly.`,
+    },
+    ticketAssigned: {
+      title: '✅ Agent Assigned',
+      message: (id: string) =>
+        `✅ An agent is now helping you!\n\nTicket #${id} has been assigned. Your chat is no longer read-only.`,
+      sender: 'AutoForce™ AI',
+    },
+  },
+  queue: { updateInterval: 60000 },
+  roles: {
+    supportStaff: [
+      'root_admin',
+      'deputy_admin',
+      'support_manager',
+      'sysop',
+      'support',
+    ],
+  },
+  display: { showProgressHeaderEscalated: true },
+  system: {
+    storagePrefix: 'chat:',
+    sessionIdKey: 'chat-session-id',
+    ticketIdKey: 'support_ticket_id',
+    escalationDataKey: 'helpos_escalation',
+  },
+};
+
+const MAIN_ROOM_ID = CHAT_CONFIG.rooms.main.id;
 
 interface HelpDeskProps {
   forceMobileLayout?: boolean; // Force mobile layout regardless of screen size
@@ -127,12 +164,14 @@ export function HelpDesk(props?: HelpDeskProps & any) {
   const [showDiagnostics, setShowDiagnostics] = useState(false);
   const [diagnosticsUserId, setDiagnosticsUserId] = useState<string | null>(null);
   
-  // Generate or get session ID for tracking
+  // Generate or get session ID for tracking (using config key)
   const [sessionId] = useState(() => {
-    const stored = sessionStorage.getItem('chat-session-id');
+    const stored = sessionStorage.getItem(
+      CHAT_CONFIG.system.sessionIdKey
+    );
     if (stored) return stored;
     const newId = crypto.randomUUID();
-    sessionStorage.setItem('chat-session-id', newId);
+    sessionStorage.setItem(CHAT_CONFIG.system.sessionIdKey, newId);
     return newId;
   });
 
@@ -141,8 +180,10 @@ export function HelpDesk(props?: HelpDeskProps & any) {
   const urlConversationId = urlParams.get('conversationId');
   const urlGuestToken = urlParams.get('guestToken');
   
-  // Check sessionStorage for escalation data
-  const escalationData = sessionStorage.getItem('helpos_escalation');
+  // Check sessionStorage for escalation data (using config key)
+  const escalationData = sessionStorage.getItem(
+    CHAT_CONFIG.system.escalationDataKey
+  );
   const parsedEscalation = escalationData ? JSON.parse(escalationData) : null;
   
   // Guest intake form state (now parsedEscalation is defined)
@@ -154,7 +195,7 @@ export function HelpDesk(props?: HelpDeskProps & any) {
     problemDescription: ''
   });
   const [hasCompletedIntake, setHasCompletedIntake] = useState(false);
-  const [ticketNumber, setTicketNumber] = useState<string | null>(() => sessionStorage.getItem('support_ticket_id') || null);
+  const [ticketNumber, setTicketNumber] = useState<string | null>(() => sessionStorage.getItem(CHAT_CONFIG.system.ticketIdKey) || null);
   const [queueJoinTime] = useState(() => new Date());
   const [queueUpdateInterval, setQueueUpdateInterval] = useState<NodeJS.Timeout | null>(null);
   
@@ -214,12 +255,14 @@ export function HelpDesk(props?: HelpDeskProps & any) {
     userName,
     conversationToJoin, // Join escalated conversation or default main room
     (request) => {
-      // When staff requests secure info, open the dialog
-      setSecureRequest({
-        type: request.type as any,
-        requestedBy: request.requestedBy,
-        message: request.message,
-      });
+      // When staff requests secure info, open the dialog (if moderation enabled)
+      if (CHAT_CONFIG.moderation.allowBan || CHAT_CONFIG.moderation.allowSilence || CHAT_CONFIG.moderation.allowKick) {
+        setSecureRequest({
+          type: request.type as any,
+          requestedBy: request.requestedBy,
+          message: request.message,
+        });
+      }
     }
   );
 
@@ -236,8 +279,8 @@ export function HelpDesk(props?: HelpDeskProps & any) {
       setQueueUpdateInterval(null);
       // Send notification that agent is helping
       sendMessage(
-        `✅ An agent is now helping you!\n\nTicket #${ticketNumber} has been assigned. Your chat is no longer read-only.`,
-        'AutoForce™ AI',
+        CHAT_CONFIG.messages.ticketAssigned.message(ticketNumber || 'PENDING'),
+        CHAT_CONFIG.messages.ticketAssigned.sender,
         'system'
       );
     }
@@ -439,12 +482,12 @@ export function HelpDesk(props?: HelpDeskProps & any) {
     },
     onSuccess: (data: any) => {
       const newTicketId = data.ticketId;
-      sessionStorage.setItem('support_ticket_id', newTicketId);
+      sessionStorage.setItem(CHAT_CONFIG.system.ticketIdKey, newTicketId);
       setTicketNumber(newTicketId);
       
       // Send intake data to agents via system message with guest's actual name
       sendMessage(
-        `[GUEST INTAKE]\nTicket: ${newTicketId}\nName: ${guestIntakeData.name}\nEmail: ${guestIntakeData.email}\nIssue Type: ${guestIntakeData.issueType}\n\nDescription:\n${guestIntakeData.problemDescription}`,
+        `${CHAT_CONFIG.messages.guestIntake.label}\nTicket: ${newTicketId}\nName: ${guestIntakeData.name}\nEmail: ${guestIntakeData.email}\nIssue Type: ${guestIntakeData.issueType}\n\nDescription:\n${guestIntakeData.problemDescription}`,
         guestIntakeData.name,
         'system'
       );
@@ -460,19 +503,19 @@ export function HelpDesk(props?: HelpDeskProps & any) {
             const positionInQueue = silencedUsers.size; // Count of silenced users
             
             sendMessage(
-              `⏳ Queue Update\nTicket: ${newTicketId}\nWait Time: ${waitMinutes}m ${waitSeconds % 60}s\nPosition in Queue: #${positionInQueue}\n\nAutoForce™ AI is reviewing your issue. An agent will be assigned shortly.`,
+              `${CHAT_CONFIG.messages.queueUpdate.label}\nTicket: ${newTicketId}\nWait Time: ${waitMinutes}m ${waitSeconds % 60}s\nPosition in Queue: #${positionInQueue}\n\nAutoForce™ AI is reviewing your issue. An agent will be assigned shortly.`,
               'AutoForce™ AI',
               'system'
             );
           }
-        }, 60000); // Update every 60 seconds
+        }, CHAT_CONFIG.queue.updateInterval);
         
         setQueueUpdateInterval(interval);
       }
       
       toast({
-        title: "✓ Ticket Created",
-        description: `Ticket #${newTicketId} - AutoForce™ AI is analyzing your issue. An agent will be with you shortly.`,
+        title: CHAT_CONFIG.messages.ticketCreated.title,
+        description: CHAT_CONFIG.messages.ticketCreated.description(newTicketId),
       });
     },
     onError: (error: any) => {
@@ -1108,14 +1151,18 @@ export function HelpDesk(props?: HelpDeskProps & any) {
         {/* Queue Status Bar - Blue info strip */}
         <div className="bg-blue-950/40 px-3 py-1.5 border-t border-blue-700">
           <div className="flex items-center justify-between gap-2 text-sm sm:text-base text-blue-300">
-            <span className="flex items-center gap-1.5">
-              <Users className="w-3.5 h-3.5 flex-shrink-0" />
-              <span className="truncate">{uniqueUsers.filter(u => ['root_admin', 'deputy_admin', 'support_manager', 'sysop'].includes(u.role)).length} agents online</span>
-            </span>
-            <span className="flex items-center gap-1.5 flex-shrink-0">
-              <Clock className="w-3.5 h-3.5" />
-              <span>~2-3 min wait</span>
-            </span>
+            {CHAT_CONFIG.display.showUserCount && (
+              <span className="flex items-center gap-1.5">
+                <Users className="w-3.5 h-3.5 flex-shrink-0" />
+                <span className="truncate">{uniqueUsers.filter(u => CHAT_CONFIG.roles.supportStaff.includes(u.role)).length} agents online</span>
+              </span>
+            )}
+            {CHAT_CONFIG.display.showWaitTime && (
+              <span className="flex items-center gap-1.5 flex-shrink-0">
+                <Clock className="w-3.5 h-3.5" />
+                <span>~{CHAT_CONFIG.queue.estimatedWaitTime.min}-{CHAT_CONFIG.queue.estimatedWaitTime.max} min wait</span>
+              </span>
+            )}
           </div>
         </div>
       </header>
@@ -1126,7 +1173,7 @@ export function HelpDesk(props?: HelpDeskProps & any) {
         {/* CENTER COLUMN: Chat Area - WHITE BACKGROUND for readability */}
         <section className="flex-grow flex flex-col bg-white relative md:border-r-2 border-blue-300 shadow-inner min-h-0">
           {/* Progress Header - Only show for escalated tickets with real ticket IDs */}
-          {isStaff && urlConversationId && urlConversationId !== 'helpdesk' && (
+          {isStaff && urlConversationId && urlConversationId !== MAIN_ROOM_ID && CHAT_CONFIG.display.showProgressHeaderEscalated && (
             <div className="px-4 py-3 border-b border-blue-700 bg-slate-800/70">
               <HelpDeskProgressHeader
                 ticketId={urlConversationId}
