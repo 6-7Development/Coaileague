@@ -147,6 +147,26 @@ export default function Billing() {
       {/* AI Brain Checkpoint Alert */}
       <CheckpointAlert workspaceId={workspace?.id || null} variant="detailed" />
 
+      {/* Upgrade CTA Section */}
+      {workspace?.tier === 'free' && (
+        <Card className="border-[hsl(var(--cad-blue))]/30 bg-[hsl(var(--cad-blue))]/5">
+          <CardHeader>
+            <div className="flex items-start justify-between">
+              <div className="space-y-1">
+                <CardTitle>Ready to Unlock Premium Features?</CardTitle>
+                <CardDescription>Upgrade your plan to access AI-powered scheduling, advanced analytics, and more.</CardDescription>
+              </div>
+              <Button variant="default" data-testid="button-upgrade-now" onClick={() => {
+                window.location.href = '/billing?tab=upgrade';
+              }} className="gap-2 whitespace-nowrap">
+                <Zap className="h-4 w-4" />
+                View Plans
+              </Button>
+            </div>
+          </CardHeader>
+        </Card>
+      )}
+
       {/* Main Content Tabs */}
       <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-6">
         <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">

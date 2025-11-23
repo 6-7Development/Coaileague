@@ -275,11 +275,18 @@ export function UpgradeModal({ isOpen, onClose, feature }: UpgradeModalProps) {
         </Tabs>
 
         <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={onClose} data-testid="button-cancel-upgrade">
+          <Button variant="outline" onClick={onClose} data-testid="button-cancel-upgrade" disabled={isLoading}>
             Maybe Later
           </Button>
-          <Button onClick={handleUpgrade} data-testid="button-confirm-upgrade">
-            Upgrade to {PRICING_TIERS.find(t => t.id === selectedTier)?.name}
+          <Button onClick={handleUpgrade} data-testid="button-confirm-upgrade" disabled={isLoading} className="gap-2">
+            {isLoading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Processing Payment...
+              </>
+            ) : (
+              `Upgrade to ${PRICING_TIERS.find(t => t.id === selectedTier)?.name}`
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

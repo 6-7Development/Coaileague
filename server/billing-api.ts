@@ -17,6 +17,11 @@ import {
 import { eq } from 'drizzle-orm';
 import { isAuthenticated } from './replitAuth';
 import { requireAuth } from './auth';
+import Stripe from 'stripe';
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: '2025-09-30.clover',
+});
 
 export const billingRouter = Router();
 
@@ -611,6 +616,111 @@ billingRouter.post('/account/reactivate', async (req, res) => {
     res.json({ success: true, workspace });
   } catch (error: any) {
     console.error('Failed to reactivate account:', error);
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// ============================================================================
+// STRIPE CHECKOUT ENDPOINTS
+// ============================================================================
+
+/**
+ * Create Stripe checkout session for subscription upgrade
+ */
+billingRouter.post('/create-checkout-session', async (req, res) => {
+  try {
+    const workspaceId = req.user?.workspaceId;
+    if (!workspaceId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { priceId, successUrl, cancelUrl } = z.object({
+      priceId: z.string(),
+      successUrl: z.string(),
+      cancelUrl: z.string(),
+    }).parse(req.body);
+
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: [
+        {
+          price: priceId,
+          quantity: 1,
+        },
+      ],
+      mode: 'subscription',
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      metadata: {
+        workspaceId,
+        userId: req.user?.id,
+      },
+    });
+
+    res.json({ sessionId: session.id });
+  } catch (error: any) {
+    console.error('Failed to create checkout session:', error);
+    res.status(400).json({ error: error.message });
+  }
+});
+
+/**
+ * Create payment intent for one-time purchases (credits, add-ons)
+ */
+billingRouter.post('/create-payment-intent', async (req, res) => {
+  try {
+    const workspaceId = req.user?.workspaceId;
+    if (!workspaceId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { amount } = z.object({
+      amount: z.number().positive(),
+    }).parse(req.body);
+
+    const intent = await stripe.paymentIntents.create({
+      amount: Math.round(amount * 100), // Convert to cents
+      currency: 'usd',
+      metadata: {
+        workspaceId,
+        userId: req.user?.id,
+      },
+    });
+
+    res.json({ 
+      clientSecret: intent.client_secret,
+      paymentIntentId: intent.id,
+    });
+  } catch (error: any) {
+    console.error('Failed to create payment intent:', error);
+    res.status(400).json({ error: error.message });
+  }
+});
+
+/**
+ * Verify payment status after checkout
+ */
+billingRouter.get('/verify-payment/:workspaceId', async (req, res) => {
+  try {
+    const { workspaceId } = req.params;
+    if (req.user?.workspaceId !== workspaceId) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    const { session_id } = req.query;
+    if (!session_id || typeof session_id !== 'string') {
+      return res.status(400).json({ error: 'Missing session_id' });
+    }
+
+    const session = await stripe.checkout.sessions.retrieve(session_id);
+    
+    res.json({
+      status: session.payment_status,
+      subscriptionId: session.subscription,
+      customerId: session.customer,
+    });
+  } catch (error: any) {
+    console.error('Failed to verify payment:', error);
     res.status(400).json({ error: error.message });
   }
 });
