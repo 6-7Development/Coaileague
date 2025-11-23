@@ -74,6 +74,7 @@ import {
 import { emailService } from "./services/emailService";
 import { taxCalculator } from "./services/taxCalculator";
 import { performanceMetrics } from "./services/performanceMetrics";
+import { sentimentAnalyzer } from "./services/sentimentAnalyzer";
 import { calculatePtoAccrual, getAllPtoBalances, runWeeklyPtoAccrual, deductPtoHours } from './services/ptoAccrual';
 import { getReviewReminderSummary, getOverdueReviews, getUpcomingReviews } from './services/performanceReviewReminders';
 import { getEmployeesDueForSurveys, getSurveyDistributionSummary, getEmployeePendingSurveys, calculateSurveyResponseRate } from './services/pulseSurveyAutomation';
@@ -25362,6 +25363,31 @@ app.get("/api/metrics/dashboard", requirePlatformStaff, async (req: Authenticate
   } catch (error: any) {
     console.error('Error fetching dashboard metrics:', error);
     res.status(500).json({ error: 'Failed to fetch dashboard metrics' });
+  }
+});
+
+// ============================================================================
+// AI SENTIMENT ANALYSIS ROUTES (Task #11)
+// ============================================================================
+
+app.post("/api/disputes/analyze-sentiment", requireAuth, async (req: AuthenticatedRequest, res) => {
+  try {
+    const { message, context } = req.body;
+    
+    if (!message || typeof message !== 'string' || message.trim().length === 0) {
+      return res.status(400).json({ error: 'Message is required' });
+    }
+    
+    const analysis = await sentimentAnalyzer.analyzeSentiment(message, context);
+    
+    res.json({
+      success: true,
+      analysis,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error: any) {
+    console.error('Sentiment analysis error:', error);
+    res.status(500).json({ error: error.message || 'Sentiment analysis failed' });
   }
 });
 
