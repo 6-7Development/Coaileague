@@ -108,48 +108,54 @@ export default function CustomLogin() {
         />
       )}
 
-      <div 
-        className="min-h-screen flex items-center justify-center p-4"
-        style={{
-          background: 'linear-gradient(135deg, #fafbff 0%, #f5f9ff 100%)'
-        }}
-      >
-      <div 
-        className="w-full max-w-[360px] animate-[fadeInUp_0.6s_ease]"
-        style={{
-          animation: 'fadeInUp 0.6s ease'
-        }}
-      >
-        {/* White Login Card - Minimal Modern Design */}
-        <div 
-          className="bg-white rounded-2xl p-10 max-sm:p-8"
-          style={{
-            boxShadow: '0 4px 32px rgba(0, 0, 0, 0.08)'
-          }}
-        >
-          {/* Logo & Brand Section */}
-          <div className="text-center mb-8">
-            {/* AF Logo with Subtle Gradient */}
+      <div className="min-h-screen flex flex-col" style={{ background: 'linear-gradient(135deg, #fafbff 0%, #f5f9ff 100%)' }}>
+        {/* Header */}
+        <div className="border-b" style={{ background: 'rgba(255, 255, 255, 0.7)', borderColor: '#e2e8f0' }}>
+          <div className="container mx-auto px-6 py-5 flex items-center justify-between">
+            <button 
+              onClick={() => setLocation("/")}
+              className="flex items-center gap-3 hover-elevate"
+              data-testid="button-logo-login"
+            >
+              <div 
+                className="w-10 h-10 rounded-lg inline-flex items-center justify-center text-xl font-bold text-white"
+                style={{
+                  background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                  boxShadow: '0 2px 8px rgba(59, 130, 246, 0.2)'
+                }}
+              >
+                AF
+              </div>
+              <div>
+                <div className="font-semibold" style={{ color: '#1e293b' }}>AUTOFORCE</div>
+                <div className="text-xs" style={{ color: '#94a3b8' }}>Workforce Intelligence</div>
+              </div>
+            </button>
+            <button
+              onClick={() => setLocation("/")}
+              className="text-sm font-medium transition-colors"
+              style={{ color: '#3b82f6' }}
+              data-testid="link-back-landing"
+            >
+              Back to Home
+            </button>
+          </div>
+        </div>
+
+        {/* Main Content */}
+        <div className="flex-1 flex items-center justify-center p-6">
+          <div 
+            className="w-full max-w-[420px] animate-[fadeInUp_0.6s_ease]"
+            style={{ animation: 'fadeInUp 0.6s ease' }}
+          >
+            {/* White Login Card */}
             <div 
-              className="w-16 h-16 max-sm:w-14 max-sm:h-14 rounded-xl inline-flex items-center justify-center text-2xl max-sm:text-xl font-bold text-white mb-3"
+              className="bg-white rounded-2xl p-12 max-sm:p-8"
               style={{
-                background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
-                boxShadow: '0 4px 12px rgba(59, 130, 246, 0.2)'
+                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
               }}
             >
-              AF
-            </div>
-
-            {/* Brand Name - Subtle */}
-            <div className="text-xl max-sm:text-lg font-semibold mb-1" style={{ color: '#1e293b' }}>
-              AUTO<span style={{ color: '#3b82f6' }}>FORCE</span>
-            </div>
-
-            {/* Tagline - Smaller */}
-            <div className="text-xs" style={{ color: '#94a3b8' }}>
-              Workforce Intelligence Platform
-            </div>
-          </div>
+          {/* No logo here - it's in header now */}
 
           {/* Login Header - Minimal */}
           <div className="text-center mb-7">
@@ -303,17 +309,7 @@ export default function CustomLogin() {
           >
             Try Demo Account
           </button>
-
-          {/* Back to Home - Minimal */}
-          <div className="mt-5 pt-4 text-center border-t" style={{ borderColor: '#e2e8f0' }}>
-            <button
-              onClick={() => setLocation("/")}
-              className="text-xs transition-colors font-medium"
-              style={{ color: '#94a3b8' }}
-              data-testid="button-back-home"
-            >
-              ← Back to Home
-            </button>
+            </div>
           </div>
         </div>
       </div>
@@ -330,7 +326,6 @@ export default function CustomLogin() {
           }
         }
       `}</style>
-      </div>
     </>
   );
 }
