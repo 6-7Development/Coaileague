@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ServerCrash, Home, RefreshCw, MessageSquare } from "lucide-react";
 import { useState } from "react";
-import { AutoForceAFLogo } from "@/components/autoforce-af-logo";
+import { AutoForceStaticLogo } from "@/components/autoforce-static-logo";
 
 export default function Error500() {
   const [, setLocation] = useLocation();
@@ -30,7 +30,7 @@ export default function Error500() {
         <CardHeader className="text-center pb-4 pt-8">
           <div className="flex justify-center mb-6">
             <div className="p-3 bg-muted rounded-lg border">
-              <AutoForceAFLogo variant="icon" size="md" />
+              <AutoForceStaticLogo variant="icon" size="md" />
             </div>
           </div>
 
