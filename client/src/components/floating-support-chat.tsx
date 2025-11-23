@@ -23,6 +23,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useEmployee } from '@/hooks/useEmployee';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { CHAT_BUBBLE_CONFIG } from '@/config/chatBubble';
 
 interface ChatBubbleState {
   position: { x: number; y: number };
@@ -86,8 +87,8 @@ export function FloatingSupportChat() {
           // Fallback: set position based on viewport
           setState({
             position: { 
-              x: Math.max(0, window.innerWidth - 420), 
-              y: Math.max(0, window.innerHeight - 620) 
+              x: Math.max(0, window.innerWidth - CHAT_BUBBLE_CONFIG.positioning.initialOffsetX), 
+              y: Math.max(0, window.innerHeight - CHAT_BUBBLE_CONFIG.positioning.initialOffsetY) 
             },
             isMinimized: true,
             isOpen: false
@@ -97,8 +98,8 @@ export function FloatingSupportChat() {
         // First time: set position based on viewport
         setState({
           position: { 
-            x: Math.max(0, window.innerWidth - 420), 
-            y: Math.max(0, window.innerHeight - 620) 
+            x: Math.max(0, window.innerWidth - CHAT_BUBBLE_CONFIG.positioning.initialOffsetX), 
+            y: Math.max(0, window.innerHeight - CHAT_BUBBLE_CONFIG.positioning.initialOffsetY) 
           },
           isMinimized: true,
           isOpen: false
@@ -112,7 +113,7 @@ export function FloatingSupportChat() {
     {
       id: 1,
       type: 'bot',
-      text: "Hi! I'm AutoForce™ AI, your intelligent support system. How can I help you today?",
+      text: CHAT_BUBBLE_CONFIG.content.initialMessage,
       timestamp: new Date()
     }
   ]);
@@ -136,8 +137,8 @@ export function FloatingSupportChat() {
     if (typeof window === 'undefined') return;
     
     const handleResize = () => {
-      const maxX = window.innerWidth - 400;
-      const maxY = window.innerHeight - 600;
+      const maxX = window.innerWidth - CHAT_BUBBLE_CONFIG.positioning.maxWidth;
+      const maxY = window.innerHeight - CHAT_BUBBLE_CONFIG.positioning.maxHeight;
       setState(prev => ({
         ...prev,
         position: {
@@ -158,8 +159,8 @@ export function FloatingSupportChat() {
     const handleDocumentMove = (e: MouseEvent) => {
       if (!isDraggingRef.current) return;
       
-      const newX = Math.max(0, Math.min(e.clientX - dragStartRef.current.x, window.innerWidth - 400));
-      const newY = Math.max(0, Math.min(e.clientY - dragStartRef.current.y, window.innerHeight - 100));
+      const newX = Math.max(0, Math.min(e.clientX - dragStartRef.current.x, window.innerWidth - CHAT_BUBBLE_CONFIG.positioning.maxWidth));
+      const newY = Math.max(0, Math.min(e.clientY - dragStartRef.current.y, window.innerHeight - CHAT_BUBBLE_CONFIG.positioning.bottomBoundary));
       
       setState(prev => ({
         ...prev,
@@ -244,8 +245,8 @@ export function FloatingSupportChat() {
       
       const data = await response.json();
       toast({
-        title: "✅ Support Ticket Created",
-        description: "Connecting you to a support agent...",
+        title: CHAT_BUBBLE_CONFIG.content.buttonText.successTitle,
+        description: CHAT_BUBBLE_CONFIG.content.buttonText.successDesc,
       });
 
       // Route to universal helpdesk for all users (both authenticated and guests)
@@ -255,8 +256,8 @@ export function FloatingSupportChat() {
     } catch (error) {
       console.error('Error creating support ticket:', error);
       toast({
-        title: "❌ Error",
-        description: "Could not create support ticket. Please try again.",
+        title: CHAT_BUBBLE_CONFIG.content.buttonText.errorTitle,
+        description: CHAT_BUBBLE_CONFIG.content.buttonText.errorDesc,
         variant: "destructive",
       });
     } finally {
@@ -349,18 +350,18 @@ export function FloatingSupportChat() {
           position: 'fixed',
           left: `${state.position.x}px`,
           top: `${state.position.y}px`,
-          zIndex: 9999,
-          touchAction: 'none',
+          zIndex: CHAT_BUBBLE_CONFIG.zIndex,
+          touchAction: CHAT_BUBBLE_CONFIG.touchAction,
           cursor: isDraggingRef.current ? 'grabbing' : 'grab',
-          userSelect: 'none'
+          userSelect: CHAT_BUBBLE_CONFIG.userSelect
         }}
-        className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-full px-4 py-3 shadow-2xl hover-elevate active-elevate-2"
+        className={`flex items-center gap-2 bg-gradient-to-r ${CHAT_BUBBLE_CONFIG.colors.primary} ${CHAT_BUBBLE_CONFIG.colors.text} ${CHAT_BUBBLE_CONFIG.effects.rounded} px-${CHAT_BUBBLE_CONFIG.sizes.pillPaddingX} py-${CHAT_BUBBLE_CONFIG.sizes.pillPaddingY} ${CHAT_BUBBLE_CONFIG.effects.shadow} hover-elevate active-elevate-2`}
         onClick={handleClickWithDragCheck}
         onMouseDown={handlePointerDown}
         data-testid="chat-bubble-minimized"
       >
-        <MessageCircle className="w-5 h-5" />
-        <span className="font-medium text-sm">Live Chat</span>
+        <MessageCircle className={`w-${CHAT_BUBBLE_CONFIG.sizes.pillIconSize} h-${CHAT_BUBBLE_CONFIG.sizes.pillIconSize}`} />
+        <span className="font-medium text-sm">{CHAT_BUBBLE_CONFIG.content.buttonText.liveChat}</span>
       </div>
     );
   }
@@ -373,21 +374,21 @@ export function FloatingSupportChat() {
           position: 'fixed',
           left: `${state.position.x}px`,
           top: `${state.position.y}px`,
-          zIndex: 9999,
-          touchAction: 'none',
+          zIndex: CHAT_BUBBLE_CONFIG.zIndex,
+          touchAction: CHAT_BUBBLE_CONFIG.touchAction,
           cursor: isDraggingRef.current ? 'grabbing' : 'grab',
-          userSelect: 'none'
+          userSelect: CHAT_BUBBLE_CONFIG.userSelect
         }}
         onMouseDown={handlePointerDown}
         onClick={handleClickWithDragCheck}
         className="group"
       >
         <button
-          className="bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-full p-4 shadow-2xl hover:shadow-blue-500/50 hover:scale-110 transition-all duration-300 w-16 h-16 flex items-center justify-center pointer-events-none"
+          className={`bg-gradient-to-r ${CHAT_BUBBLE_CONFIG.colors.primary} ${CHAT_BUBBLE_CONFIG.colors.text} ${CHAT_BUBBLE_CONFIG.effects.rounded} p-${CHAT_BUBBLE_CONFIG.sizes.buttonPadding} ${CHAT_BUBBLE_CONFIG.effects.shadow} hover:shadow-blue-500/50 hover:scale-110 ${CHAT_BUBBLE_CONFIG.effects.transition} w-${CHAT_BUBBLE_CONFIG.sizes.buttonSize} h-${CHAT_BUBBLE_CONFIG.sizes.buttonSize} flex items-center justify-center pointer-events-none`}
           data-testid="button-open-chat"
         >
-          <MessageCircle className="w-6 h-6" />
-          <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold opacity-0 group-hover:opacity-100 transition-opacity">
+          <MessageCircle className={`w-${CHAT_BUBBLE_CONFIG.sizes.buttonIconSize} h-${CHAT_BUBBLE_CONFIG.sizes.buttonIconSize}`} />
+          <div className={`absolute -top-1 -right-1 ${CHAT_BUBBLE_CONFIG.colors.error} ${CHAT_BUBBLE_CONFIG.colors.text} text-xs ${CHAT_BUBBLE_CONFIG.effects.rounded} w-5 h-5 flex items-center justify-center font-bold opacity-0 group-hover:opacity-100 ${CHAT_BUBBLE_CONFIG.effects.transitionOpacity}`}>
             !
           </div>
         </button>
@@ -400,35 +401,35 @@ export function FloatingSupportChat() {
     <div
       style={{
         position: 'fixed',
-        left: state.position.x,
-        top: state.position.y,
-        zIndex: 9999,
-        width: '400px',
-        maxHeight: '600px',
-        touchAction: 'none'
+        left: `${state.position.x}px`,
+        top: `${state.position.y}px`,
+        zIndex: CHAT_BUBBLE_CONFIG.zIndex,
+        width: `${CHAT_BUBBLE_CONFIG.sizes.windowWidth}px`,
+        maxHeight: `${CHAT_BUBBLE_CONFIG.sizes.windowHeight}px`,
+        touchAction: CHAT_BUBBLE_CONFIG.touchAction
       }}
-      className="bg-card border-2 border-border rounded-lg shadow-2xl flex flex-col"
+      className={`${CHAT_BUBBLE_CONFIG.colors.background} border-2 ${CHAT_BUBBLE_CONFIG.colors.border} ${CHAT_BUBBLE_CONFIG.effects.roundedLg} ${CHAT_BUBBLE_CONFIG.effects.shadow} flex flex-col`}
       data-testid="chat-bubble-window"
     >
       {/* Draggable header */}
       <div
         onMouseDown={handlePointerDown}
-        className="p-3 border-b cursor-move bg-gradient-to-r from-blue-500/10 to-blue-500/10 rounded-t-lg"
+        className={`p-${CHAT_BUBBLE_CONFIG.sizes.headerPadding} border-b cursor-move bg-gradient-to-r ${CHAT_BUBBLE_CONFIG.colors.secondary} ${CHAT_BUBBLE_CONFIG.effects.roundedLg}`}
         data-testid="chat-bubble-header"
       >
         <div className="flex justify-between items-center">
           <div className="flex-1">
-            <h3 className="font-bold text-sm">Live Chat - AI Support</h3>
+            <h3 className="font-bold text-sm">{CHAT_BUBBLE_CONFIG.content.headerTitle}</h3>
             <p className="text-xs text-muted-foreground">
               {workId} • {orgId}
             </p>
           </div>
-          <div className="flex gap-1">
+          <div className={`flex gap-${CHAT_BUBBLE_CONFIG.sizes.headerGap}`}>
             {user && (
               <Button
                 size="icon"
                 variant="ghost"
-                className="h-7 w-7"
+                className={`h-${CHAT_BUBBLE_CONFIG.sizes.headerButtonSize} w-${CHAT_BUBBLE_CONFIG.sizes.headerButtonSize}`}
                 onClick={(e) => {
                   e.stopPropagation();
                   handleNavigateToDashboard();
@@ -436,55 +437,55 @@ export function FloatingSupportChat() {
                 title={platformRole && ['root_admin', 'support', 'support_manager', 'support_agent'].includes(platformRole) ? "Go to Support Dashboard" : "Go to Team Chat"}
                 data-testid="button-navigate-dashboard"
               >
-                <ExternalLink className="w-4 h-4" />
+                <ExternalLink className={`w-${CHAT_BUBBLE_CONFIG.sizes.headerIconSize} h-${CHAT_BUBBLE_CONFIG.sizes.headerIconSize}`} />
               </Button>
             )}
             <Button
               size="icon"
               variant="ghost"
-              className="h-7 w-7"
+              className={`h-${CHAT_BUBBLE_CONFIG.sizes.headerButtonSize} w-${CHAT_BUBBLE_CONFIG.sizes.headerButtonSize}`}
               onClick={(e) => {
                 e.stopPropagation();
                 setState(prev => ({ ...prev, isMinimized: true }));
               }}
               data-testid="button-minimize-chat"
             >
-              <Minimize2 className="w-4 h-4" />
+              <Minimize2 className={`w-${CHAT_BUBBLE_CONFIG.sizes.headerIconSize} h-${CHAT_BUBBLE_CONFIG.sizes.headerIconSize}`} />
             </Button>
             <Button
               size="icon"
               variant="ghost"
-              className="h-7 w-7"
+              className={`h-${CHAT_BUBBLE_CONFIG.sizes.headerButtonSize} w-${CHAT_BUBBLE_CONFIG.sizes.headerButtonSize}`}
               onClick={(e) => {
                 e.stopPropagation();
                 setState(prev => ({ ...prev, isOpen: false }));
               }}
               data-testid="button-close-chat"
             >
-              <X className="w-4 h-4" />
+              <X className={`w-${CHAT_BUBBLE_CONFIG.sizes.headerIconSize} h-${CHAT_BUBBLE_CONFIG.sizes.headerIconSize}`} />
             </Button>
           </div>
         </div>
       </div>
       
       {/* Chat messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[400px] max-h-[450px]">
+      <div className={`flex-1 overflow-y-auto p-${CHAT_BUBBLE_CONFIG.sizes.chatAreaPadding} space-y-${CHAT_BUBBLE_CONFIG.sizes.chatAreaSpacing} min-h-[${CHAT_BUBBLE_CONFIG.sizes.chatAreaMinHeight}px] max-h-[${CHAT_BUBBLE_CONFIG.sizes.chatAreaMaxHeight}px]`}>
         {messages.map((msg) => (
           <div
             key={msg.id}
             className={cn(
-              "flex gap-2",
+              `flex gap-${CHAT_BUBBLE_CONFIG.sizes.messageGap}`,
               msg.type === 'user' ? 'justify-end' : 'justify-start'
             )}
           >
             {msg.type === 'bot' && (
-              <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 flex items-center justify-center flex-shrink-0">
-                <Bot className="w-4 h-4 text-white" />
+              <div className={`w-${CHAT_BUBBLE_CONFIG.sizes.avatarSize} h-${CHAT_BUBBLE_CONFIG.sizes.avatarSize} rounded-full bg-gradient-to-r ${CHAT_BUBBLE_CONFIG.colors.primary} flex items-center justify-center flex-shrink-0`}>
+                <Bot className={`w-${CHAT_BUBBLE_CONFIG.sizes.avatarIconSize} h-${CHAT_BUBBLE_CONFIG.sizes.avatarIconSize} text-white`} />
               </div>
             )}
             <div
               className={cn(
-                "rounded-lg px-3 py-2 max-w-[80%]",
+                `rounded-lg px-${CHAT_BUBBLE_CONFIG.sizes.messagePaddingX} py-${CHAT_BUBBLE_CONFIG.sizes.messagePaddingY} max-w-[${CHAT_BUBBLE_CONFIG.sizes.messageMaxWidth}%]`,
                 msg.type === 'user'
                   ? 'bg-primary text-primary-foreground'
                   : 'bg-muted'
@@ -493,22 +494,22 @@ export function FloatingSupportChat() {
               <p className="text-sm">{msg.text}</p>
             </div>
             {msg.type === 'user' && (
-              <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-                <User className="w-4 h-4" />
+              <div className={`w-${CHAT_BUBBLE_CONFIG.sizes.avatarSize} h-${CHAT_BUBBLE_CONFIG.sizes.avatarSize} rounded-full bg-muted flex items-center justify-center flex-shrink-0`}>
+                <User className={`w-${CHAT_BUBBLE_CONFIG.sizes.avatarIconSize} h-${CHAT_BUBBLE_CONFIG.sizes.avatarIconSize}`} />
               </div>
             )}
           </div>
         ))}
         {isTyping && (
-          <div className="flex gap-2 justify-start">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 flex items-center justify-center">
-              <Bot className="w-4 h-4 text-white" />
+          <div className={`flex gap-${CHAT_BUBBLE_CONFIG.sizes.messageGap} justify-start`}>
+            <div className={`w-${CHAT_BUBBLE_CONFIG.sizes.avatarSize} h-${CHAT_BUBBLE_CONFIG.sizes.avatarSize} rounded-full bg-gradient-to-r ${CHAT_BUBBLE_CONFIG.colors.primary} flex items-center justify-center`}>
+              <Bot className={`w-${CHAT_BUBBLE_CONFIG.sizes.avatarIconSize} h-${CHAT_BUBBLE_CONFIG.sizes.avatarIconSize} text-white`} />
             </div>
-            <div className="bg-muted rounded-lg px-3 py-2">
+            <div className={`bg-muted rounded-lg px-${CHAT_BUBBLE_CONFIG.sizes.messagePaddingX} py-${CHAT_BUBBLE_CONFIG.sizes.messagePaddingY}`}>
               <div className="flex gap-1">
-                <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" />
-                <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
-                <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+                <div className={`w-${CHAT_BUBBLE_CONFIG.sizes.smallAvatarSize} h-${CHAT_BUBBLE_CONFIG.sizes.smallAvatarSize} bg-muted-foreground rounded-full animate-bounce`} />
+                <div className={`w-${CHAT_BUBBLE_CONFIG.sizes.smallAvatarSize} h-${CHAT_BUBBLE_CONFIG.sizes.smallAvatarSize} bg-muted-foreground rounded-full animate-bounce`} style={{ animationDelay: CHAT_BUBBLE_CONFIG.sizes.typingDelay1 }} />
+                <div className={`w-${CHAT_BUBBLE_CONFIG.sizes.smallAvatarSize} h-${CHAT_BUBBLE_CONFIG.sizes.smallAvatarSize} bg-muted-foreground rounded-full animate-bounce`} style={{ animationDelay: CHAT_BUBBLE_CONFIG.sizes.typingDelay2 }} />
               </div>
             </div>
           </div>
@@ -517,22 +518,22 @@ export function FloatingSupportChat() {
       </div>
       
       {/* Input area */}
-      <div className="p-3 border-t space-y-2">
+      <div className={`p-${CHAT_BUBBLE_CONFIG.sizes.inputAreaPadding} border-t space-y-${CHAT_BUBBLE_CONFIG.sizes.inputAreaSpacing}`}>
         <Button
           onClick={handleRequestHumanHelp}
           disabled={isCreatingTicket}
-          className="w-full bg-gradient-to-r from-blue-600 to-blue-500 text-white hover:from-blue-700 hover:to-blue-600"
+          className={`w-full bg-gradient-to-r ${CHAT_BUBBLE_CONFIG.colors.primary} ${CHAT_BUBBLE_CONFIG.colors.text} hover:${CHAT_BUBBLE_CONFIG.colors.primaryHover}`}
           data-testid="button-human-help"
         >
-          <Headset className="w-4 h-4 mr-2" />
-          {isCreatingTicket ? 'Creating Ticket...' : 'Request Human Help'}
+          <Headset className={`w-${CHAT_BUBBLE_CONFIG.sizes.inputIconSize} h-${CHAT_BUBBLE_CONFIG.sizes.inputIconSize} mr-${CHAT_BUBBLE_CONFIG.sizes.inputIconMarginRight}`} />
+          {isCreatingTicket ? CHAT_BUBBLE_CONFIG.content.buttonText.sending : CHAT_BUBBLE_CONFIG.content.buttonText.requestHelp}
         </Button>
-        <div className="flex gap-2">
+        <div className={`flex gap-${CHAT_BUBBLE_CONFIG.sizes.inputGap}`}>
           <Input
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
-            placeholder="Type your message..."
+            placeholder={CHAT_BUBBLE_CONFIG.content.messagePlaceholder}
             className="flex-1"
             data-testid="input-chat-message"
           />
@@ -542,7 +543,7 @@ export function FloatingSupportChat() {
             size="icon"
             data-testid="button-send-message"
           >
-            <Send className="w-4 h-4" />
+            <Send className={`w-${CHAT_BUBBLE_CONFIG.sizes.inputIconSize} h-${CHAT_BUBBLE_CONFIG.sizes.inputIconSize}`} />
           </Button>
         </div>
       </div>
