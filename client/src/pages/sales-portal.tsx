@@ -35,13 +35,13 @@ export default function SalesPortal() {
 
   // Fetch email templates
   const { data: templates = [], isLoading: templatesLoading } = useQuery<EmailTemplate[]>({
-    queryKey: queryKeys.sales?.templates ?? ["sales", "templates"],
+    queryKey: queryKeys.sales.templates,
     queryFn: () => apiGet('sales.templates'),
   });
 
   // Fetch leads
   const { data: leads = [], isLoading: leadsLoading } = useQuery<Lead[]>({
-    queryKey: queryKeys.sales?.leads ?? ["sales", "leads"],
+    queryKey: queryKeys.sales.leads,
     queryFn: () => apiGet('sales.leads'),
   });
 
@@ -86,7 +86,7 @@ export default function SalesPortal() {
       return await apiPost('sales.addLead', data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.sales?.leads ?? ["sales", "leads"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.sales.leads });
       toast({
         title: "Lead Added",
         description: "New lead added to database successfully",

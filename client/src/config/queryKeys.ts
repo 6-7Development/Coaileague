@@ -145,6 +145,13 @@ export const queryKeys = {
     get: (id: string) => ["clients", id],
     list: (page: number, limit: number) => ["clients", "list", page, limit],
   },
+
+  // Sales
+  sales: {
+    templates: ["sales", "templates"],
+    leads: ["sales", "leads"],
+    sendEmail: ["sales", "sendEmail"],
+  },
 };
 
 /**
