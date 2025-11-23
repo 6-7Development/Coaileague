@@ -426,6 +426,64 @@ export function HelpDesk(props?: HelpDeskProps & any) {
     },
   });
 
+  // Support ticket creation mutation
+  const createSupportTicketMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest('POST', '/api/support/create-ticket', {
+        subject: guestIntakeData.issueType,
+        description: guestIntakeData.problemDescription,
+        userEmail: guestIntakeData.email,
+        userName: guestIntakeData.name,
+        conversationHistory: []
+      });
+    },
+    onSuccess: (data: any) => {
+      const newTicketId = data.ticketId;
+      sessionStorage.setItem('support_ticket_id', newTicketId);
+      setTicketNumber(newTicketId);
+      
+      // Send intake data to agents via system message with guest's actual name
+      sendMessage(
+        `[GUEST INTAKE]\nTicket: ${newTicketId}\nName: ${guestIntakeData.name}\nEmail: ${guestIntakeData.email}\nIssue Type: ${guestIntakeData.issueType}\n\nDescription:\n${guestIntakeData.problemDescription}`,
+        guestIntakeData.name,
+        'system'
+      );
+      setHasCompletedIntake(true);
+      setShowGuestIntakeForm(false);
+      
+      // Start periodic queue update messages
+      if (isGuest) {
+        const interval = setInterval(() => {
+          if (!justGotVoice && isSilenced) { // Only send if still in queue
+            const waitSeconds = Math.round((Date.now() - queueJoinTime.getTime()) / 1000);
+            const waitMinutes = Math.floor(waitSeconds / 60);
+            const positionInQueue = silencedUsers.size; // Count of silenced users
+            
+            sendMessage(
+              `⏳ Queue Update\nTicket: ${newTicketId}\nWait Time: ${waitMinutes}m ${waitSeconds % 60}s\nPosition in Queue: #${positionInQueue}\n\nAutoForce™ AI is reviewing your issue. An agent will be assigned shortly.`,
+              'AutoForce™ AI',
+              'system'
+            );
+          }
+        }, 60000); // Update every 60 seconds
+        
+        setQueueUpdateInterval(interval);
+      }
+      
+      toast({
+        title: "✓ Ticket Created",
+        description: `Ticket #${newTicketId} - AutoForce™ AI is analyzing your issue. An agent will be with you shortly.`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "⚠️ Error Creating Ticket",
+        description: error.message || "Failed to create support ticket. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Sort users: Root admin at top, then bot, then staff (by role hierarchy), then subscribers, org users, guests
   const sortedUsers = [...onlineUsers].sort((a, b) => {
     // Role priority (lower number = higher priority)
@@ -1680,42 +1738,8 @@ export function HelpDesk(props?: HelpDeskProps & any) {
                 const isValidEmail = emailRegex.test(guestIntakeData.email);
                 
                 if (guestIntakeData.name && isValidEmail && guestIntakeData.issueType && guestIntakeData.problemDescription) {
-                  // Get ticket number from session storage (set when guest created ticket)
-                  const savedTicketId = sessionStorage.getItem('support_ticket_id');
-                  if (savedTicketId) setTicketNumber(savedTicketId);
-                  
-                  // Send intake data to agents via system message with guest's actual name
-                  sendMessage(
-                    `[GUEST INTAKE]\nTicket: ${savedTicketId || 'PENDING'}\nName: ${guestIntakeData.name}\nEmail: ${guestIntakeData.email}\nIssue Type: ${guestIntakeData.issueType}\n\nDescription:\n${guestIntakeData.problemDescription}`,
-                    guestIntakeData.name,
-                    'system'
-                  );
-                  setHasCompletedIntake(true);
-                  setShowGuestIntakeForm(false);
-                  
-                  // Start periodic queue update messages
-                  if (isGuest) {
-                    const interval = setInterval(() => {
-                      if (!justGotVoice && isSilenced) { // Only send if still in queue
-                        const waitSeconds = Math.round((Date.now() - queueJoinTime.getTime()) / 1000);
-                        const waitMinutes = Math.floor(waitSeconds / 60);
-                        const positionInQueue = silencedUsers.size; // Count of silenced users
-                        
-                        sendMessage(
-                          `⏳ Queue Update\nTicket: ${savedTicketId}\nWait Time: ${waitMinutes}m ${waitSeconds % 60}s\nPosition in Queue: #${positionInQueue}\n\nAutoForce™ AI is reviewing your issue. An agent will be assigned shortly.`,
-                          'AutoForce™ AI',
-                          'system'
-                        );
-                      }
-                    }, 60000); // Update every 60 seconds
-                    
-                    setQueueUpdateInterval(interval);
-                  }
-                  
-                  toast({
-                    title: "✓ Information Received",
-                    description: `Ticket #${savedTicketId || 'PENDING'} - AutoForce™ AI is analyzing your issue. An agent will be with you shortly.`,
-                  });
+                  // Create ticket via mutation - will handle all success/error logic
+                  createSupportTicketMutation.mutate();
                 } else {
                   let errorMsg = "Please fill in all fields to continue.";
                   if (!guestIntakeData.name) errorMsg = "Please enter your name.";
@@ -1730,10 +1754,11 @@ export function HelpDesk(props?: HelpDeskProps & any) {
                   });
                 }
               }}
+              disabled={createSupportTicketMutation.isPending}
               className="w-full"
               data-testid="button-submit-intake"
             >
-              Start Chat
+              {createSupportTicketMutation.isPending ? "Creating Ticket..." : "Start Chat"}
             </Button>
           </DialogFooter>
         </DialogContent>
