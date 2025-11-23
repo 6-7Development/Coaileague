@@ -49,9 +49,6 @@ export function AutoForceAFLogo({
         </style>
       </defs>
 
-      {/* Energy core */}
-      <circle cx="50" cy="50" r="2.5" fill="#FFD700" className="energy" />
-
       {/* Letter A - Left side */}
       <g className="letter-a">
         <line x1="32" y1="25" x2="18" y2="70" stroke="#FFFFFF" strokeWidth="5" strokeLinecap="round" />
