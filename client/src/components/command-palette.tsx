@@ -167,7 +167,7 @@ export function CommandPalette() {
 
         <CommandGroup heading="Account">
           <CommandItem
-            onSelect={() => handleSelect(() => window.location.href = "/api/logout")}
+            onSelect={() => handleSelect(() => window.location.href = "/api/auth/logout")}
             data-testid="command-logout"
           >
             <LogOut className="mr-2 h-4 w-4" />
