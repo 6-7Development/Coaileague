@@ -151,7 +151,10 @@ export default function DisputesPage() {
     return (
       <div className="h-full flex flex-col">
         <div className="flex-1 flex items-center justify-center">
-          <ResponsiveLoading message="Loading disputes..." />
+          <div className="text-center space-y-4">
+            <div className="w-12 h-12 rounded-full border-4 border-muted border-t-primary animate-spin mx-auto"></div>
+            <p className="text-muted-foreground">Loading disputes...</p>
+          </div>
         </div>
       </div>
     );
