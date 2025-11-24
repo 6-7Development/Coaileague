@@ -84,6 +84,8 @@ import { exportEmployees, exportPayroll, exportAuditLogs, exportTimeEntries, exp
 import { creditInvoice, discountInvoice, refundInvoice, correctInvoiceLineItem, getInvoiceAdjustmentHistory, bulkCreditInvoices } from "./services/invoiceAdjustmentService";
 import { approveShift, rejectShift, getPendingShifts, getShiftWithDetails, bulkApproveShifts, getApprovalStats } from "./services/shiftApprovalService";
 import { employerRatingsService } from "./services/employerRatingsService";
+import { compositeScoresService } from "./services/compositeScoresService";
+import { breaksService } from "./services/breaksService";
 import { approveDispute, rejectDispute, getPendingDisputes, getDisputesAssignedToUser } from "./services/timeEntryDisputeService";
 import { addDeduction, addGarnishment, applyDeductionsAndGarnishments, calculateTotalDeductions, calculateTotalGarnishments } from "./services/payrollDeductionService";
 import { calculatePtoAccrual, getAllPtoBalances, runWeeklyPtoAccrual, deductPtoHours } from './services/ptoAccrual';
@@ -26327,38 +26329,65 @@ app.get("/api/ratings/at-risk-managers", requireAuth, requireManager, readLimite
   }
 });
 
-app.get("/api/analytics/composite-score", requireAuth, async (req: AuthenticatedRequest, res) => {
+app.get("/api/analytics/composite-score", requireAuth, readLimiter, async (req: AuthenticatedRequest, res) => {
   try {
-    const workspaceId = (req as any).workspace?.id;
+    const workspaceId = req.workspaceId!;
     const { employeeId } = req.query;
-    if (!workspaceId || !employeeId) return res.status(400).json({ error: 'Workspace and employeeId required' });
+    if (!employeeId) return res.status(400).json({ error: 'employeeId required' });
 
-    const reviews = await db
-      .select()
-      .from(performanceReviews)
-      .where(and(
-        eq(performanceReviews.workspaceId, workspaceId),
-        eq(performanceReviews.employeeId, employeeId as string)
-      ))
-      .orderBy(desc(performanceReviews.reviewDate))
-      .limit(10);
+    const compositeScore = await compositeScoresService.calculateCompositeScore(
+      workspaceId,
+      employeeId as string
+    );
 
-    if (!reviews.length) {
-      return res.json({ success: true, data: { score: 0, reviewCount: 0 } });
+    if (!compositeScore) {
+      return res.status(404).json({ error: 'Employee not found' });
     }
 
-    const avgScore = reviews.reduce((sum, r) => sum + (parseFloat(r.compositeScore?.toString() || '0')), 0) / reviews.length;
+    res.json({ success: true, data: compositeScore });
+  } catch (error: any) {
+    console.error('Error calculating composite score:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get composite scores for all workspace employees
+app.get("/api/analytics/composite-scores", requireAuth, requireManager, readLimiter, async (req: AuthenticatedRequest, res) => {
+  try {
+    const workspaceId = req.workspaceId!;
+
+    const scores = await compositeScoresService.calculateWorkspaceCompositeScores(workspaceId);
+
     res.json({ 
       success: true, 
-      data: {
-        employeeId,
-        compositeScore: Math.round(avgScore * 100) / 100,
-        reviewCount: reviews.length,
-        latestReview: reviews[0]?.reviewDate
+      data: scores,
+      summary: {
+        totalEmployees: scores.length,
+        averageScore: scores.length > 0 ? Math.round(scores.reduce((sum, s) => sum + s.compositeScore, 0) / scores.length) : 0,
+        topPerformer: scores[0],
       }
     });
   } catch (error: any) {
-    console.error('Error calculating composite score:', error);
+    console.error('Error fetching workspace composite scores:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get employee performance rank
+app.get("/api/analytics/employee-rank/:employeeId", requireAuth, readLimiter, async (req: AuthenticatedRequest, res) => {
+  try {
+    const workspaceId = req.workspaceId!;
+    const { employeeId } = req.params;
+
+    const rank = await compositeScoresService.getEmployeeRank(workspaceId, employeeId);
+
+    if (!rank) {
+      return res.status(404).json({ error: 'Employee not found' });
+    }
+
+    res.json({ success: true, data: rank });
+  } catch (error: any) {
+    console.error('Error fetching employee rank:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -26486,6 +26515,68 @@ app.get("/api/employees/:employeeId/metadata", requireAuth, async (req: Authenti
     res.json({ success: true, data: employee.metadata || {} });
   } catch (error: any) {
     console.error('Error fetching employee metadata:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================================================
+// TIER-2: BREAKS STATUS & COMPLIANCE
+// ============================================================================
+
+app.get("/api/breaks/status/:employeeId", requireAuth, readLimiter, async (req: AuthenticatedRequest, res) => {
+  try {
+    const workspaceId = req.workspaceId!;
+    const { employeeId } = req.params;
+
+    const status = await breaksService.getBreakStatus(workspaceId, employeeId);
+
+    if (!status) {
+      return res.status(404).json({ error: 'Employee not found' });
+    }
+
+    res.json({ success: true, data: status });
+  } catch (error: any) {
+    console.error('Error fetching break status:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get all employees break status
+app.get("/api/breaks/workspace-status", requireAuth, requireManager, readLimiter, async (req: AuthenticatedRequest, res) => {
+  try {
+    const workspaceId = req.workspaceId!;
+
+    const statuses = await breaksService.getWorkspaceBreakStatus(workspaceId);
+
+    res.json({ 
+      success: true, 
+      data: statuses,
+      summary: {
+        onBreak: statuses.filter(s => s.currentStatus === 'on-break').length,
+        idle: statuses.filter(s => s.currentStatus === 'idle').length,
+        working: statuses.filter(s => s.currentStatus === 'not-on-break').length,
+      }
+    });
+  } catch (error: any) {
+    console.error('Error fetching workspace break status:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get break compliance report
+app.get("/api/breaks/compliance-report", requireAuth, requireManager, readLimiter, async (req: AuthenticatedRequest, res) => {
+  try {
+    const workspaceId = req.workspaceId!;
+
+    const report = await breaksService.getBreakComplianceReport(workspaceId);
+
+    res.json({ 
+      success: true, 
+      data: report,
+      percentCompliant: Math.round((report.compliant / report.totalEmployees) * 100),
+    });
+  } catch (error: any) {
+    console.error('Error fetching break compliance report:', error);
     res.status(500).json({ error: error.message });
   }
 });
