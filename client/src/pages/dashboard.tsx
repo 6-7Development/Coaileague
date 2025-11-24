@@ -612,6 +612,11 @@ export default function Dashboard() {
           </div>
         </ResponsiveSection>
 
+        {/* Pending Shift Approvals Banner */}
+        <ResponsiveSection>
+          <PendingApprovalsBanner />
+        </ResponsiveSection>
+
         {/* Workspace Health Status - Simple visual indicator */}
         {workspaceHealth && (
           <ResponsiveSection>
