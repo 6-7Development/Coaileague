@@ -79,6 +79,11 @@ export const FEATURE_TOGGLES = {
     performanceMonitoring: true,
   },
 
+  // Automation
+  automation: {
+    autoTicketCreation: true, // Auto-create support tickets for critical health check failures
+  },
+
   // Phase 4: Advanced Automation & Compliance
   phase4: {
     disputeResolution: true, // Phase 4C: Time entry dispute resolution with AI analysis

@@ -6,12 +6,23 @@ import { sql } from 'drizzle-orm';
 import Stripe from 'stripe';
 import { wsCounter } from './websocketCounter';
 import { objectStorageClient } from '../objectStorage';
+import { storage } from '../storage';
+import { featureToggles } from '../../shared/config/featureToggles';
+
+// Platform workspace ID for system-level support tickets
+// This should be configured during platform initialization
+const PLATFORM_WORKSPACE_ID = process.env.PLATFORM_WORKSPACE_ID || 'platform';
 
 // Cache health check results to prevent thrashing
 // Don't cache failures so recovery is detected quickly
 const healthCache = new Map<string, { result: ServiceHealth; expiresAt: number }>();
 const CACHE_TTL_MS = 30000; // 30 seconds for successful checks
 const FAILURE_CACHE_TTL_MS = 5000; // 5 seconds for failed checks (faster recovery detection)
+
+// Track last ticket creation time per service to prevent spam
+// Only create 1 ticket per service per hour
+const lastTicketCreation = new Map<string, number>();
+const TICKET_CREATION_COOLDOWN_MS = 60 * 60 * 1000; // 1 hour
 
 function getCached(key: string): ServiceHealth | null {
   const cached = healthCache.get(key);
@@ -34,6 +45,88 @@ const CRITICAL_SERVICES: Set<string> = new Set(['database', 'chat_websocket', 'g
 
 function isCriticalService(service: string): boolean {
   return CRITICAL_SERVICES.has(service);
+}
+
+/**
+ * Generate unique ticket number for health check tickets
+ * Format: HEALTH-YYYYMMDD-HHmmss-SERVICE
+ */
+function generateTicketNumber(serviceName: string): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  const seconds = String(now.getSeconds()).padStart(2, '0');
+  
+  return `HEALTH-${year}${month}${day}-${hours}${minutes}${seconds}-${serviceName.toUpperCase()}`;
+}
+
+/**
+ * Create support ticket for critical health check failure
+ * Only creates ticket if:
+ * - Feature is enabled
+ * - Service status is 'critical' (not 'down' from the schema, but we map 'down' to 'critical')
+ * - No ticket created for this service in the last hour
+ */
+async function createHealthCheckTicket(serviceHealth: ServiceHealth): Promise<void> {
+  // Check if auto-ticket creation is enabled via feature toggle
+  if (!featureToggles.automation.autoTicketCreation) {
+    return;
+  }
+
+  // Only create tickets for critical status (map 'down' to critical)
+  if (serviceHealth.status !== 'down') {
+    return;
+  }
+
+  // Check if service is critical
+  if (!serviceHealth.isCritical) {
+    return;
+  }
+
+  // Check cooldown period - prevent duplicate tickets
+  const lastCreated = lastTicketCreation.get(serviceHealth.service);
+  const now = Date.now();
+  if (lastCreated && (now - lastCreated) < TICKET_CREATION_COOLDOWN_MS) {
+    console.log(`[HealthCheck] Skipping ticket creation for ${serviceHealth.service} - cooldown active`);
+    return;
+  }
+
+  try {
+    // Build ticket description with service details
+    const description = `Critical health check failure detected for ${serviceHealth.service}
+
+**Status**: ${serviceHealth.status}
+**Error Message**: ${serviceHealth.message}
+**Response Time**: ${serviceHealth.latencyMs ? `${serviceHealth.latencyMs}ms` : 'N/A'}
+**Timestamp**: ${serviceHealth.lastChecked}
+
+${serviceHealth.metadata ? `**Additional Details**:\n${JSON.stringify(serviceHealth.metadata, null, 2)}` : ''}
+
+This is an automated ticket created by the health monitoring system. Immediate investigation required.`;
+
+    // Create support ticket
+    const ticket = await storage.createSupportTicket({
+      workspaceId: PLATFORM_WORKSPACE_ID,
+      ticketNumber: generateTicketNumber(serviceHealth.service),
+      type: 'support',
+      priority: 'high', // High priority for critical failures
+      subject: `[CRITICAL] ${serviceHealth.service} service failure`,
+      description,
+      status: 'open',
+      requestedBy: 'system-health-monitor',
+    });
+
+    // Update last ticket creation time
+    lastTicketCreation.set(serviceHealth.service, now);
+
+    console.log(`[HealthCheck] Created support ticket ${ticket.ticketNumber} for critical ${serviceHealth.service} failure`);
+  } catch (error: any) {
+    console.error(`[HealthCheck] Failed to create support ticket for ${serviceHealth.service}:`, error.message);
+    // Don't throw - health check should continue even if ticket creation fails
+  }
 }
 
 // Database health check with real connectivity probe
@@ -70,6 +163,10 @@ export async function checkDatabase(): Promise<ServiceHealth> {
     };
 
     setCache('database', result, FAILURE_CACHE_TTL_MS); // Short cache for failures
+    
+    // Auto-create support ticket for critical failure
+    await createHealthCheckTicket(result);
+    
     return result;
   }
 }
@@ -111,6 +208,10 @@ export async function checkChatWebSocket(): Promise<ServiceHealth> {
     };
 
     setCache('chat_websocket', result, FAILURE_CACHE_TTL_MS);
+    
+    // Auto-create support ticket for critical failure
+    await createHealthCheckTicket(result);
+    
     return result;
   }
 }
@@ -131,6 +232,10 @@ export async function checkGeminiAI(): Promise<ServiceHealth> {
         lastChecked: new Date().toISOString(),
       };
       setCache('gemini_ai', result, FAILURE_CACHE_TTL_MS);
+      
+      // Auto-create support ticket for critical failure
+      await createHealthCheckTicket(result);
+      
       return result;
     }
 
