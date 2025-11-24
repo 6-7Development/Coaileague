@@ -12011,7 +12011,7 @@ export const invoiceAdjustments = pgTable(
   "invoice_adjustments",
   {
     id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-    invoiceId: varchar("invoice_id").notNull().references(() => subscriptionInvoices.id, { onDelete: 'cascade' }),
+    invoiceId: varchar("invoice_id").notNull().references(() => invoices.id, { onDelete: 'cascade' }),
     workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
 
     // Adjustment details

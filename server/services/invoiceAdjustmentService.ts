@@ -4,9 +4,9 @@
  */
 
 import { db } from "../db";
-import { invoices, invoiceLineItems } from "@shared/schema";
-import { eq, and } from "drizzle-orm";
-import type { Invoice } from "@shared/schema";
+import { invoices, invoiceLineItems, invoiceAdjustments } from "@shared/schema";
+import { eq, and, desc } from "drizzle-orm";
+import type { Invoice, InsertInvoiceAdjustment } from "@shared/schema";
 
 export interface InvoiceAdjustment {
   type: "credit" | "discount" | "refund" | "correction";
@@ -76,6 +76,20 @@ export async function creditInvoice(
     .where(eq(invoices.id, invoiceId))
     .returning();
 
+  // Save adjustment record
+  await db.insert(invoiceAdjustments).values({
+    invoiceId,
+    workspaceId: invoice.workspaceId,
+    adjustmentType: 'credit',
+    description,
+    amount: String(-amount), // Negative for credit
+    reason: description,
+    createdBy: adjustedBy,
+    approvedBy: adjustedBy,
+    approvedAt: new Date(),
+    status: 'applied',
+  });
+
   // Log credit action
   console.log(`[INVOICE ADJUSTMENT] Credit applied: ${invoiceId} -$${amount.toFixed(2)} by ${adjustedBy}`);
 
@@ -125,6 +139,20 @@ export async function discountInvoice(
     })
     .where(eq(invoices.id, invoiceId))
     .returning();
+
+  // Save adjustment record
+  await db.insert(invoiceAdjustments).values({
+    invoiceId,
+    workspaceId: invoice.workspaceId,
+    adjustmentType: 'discount',
+    description: `${discountPercent}% discount: ${reason}`,
+    amount: String(-discountAmount), // Negative for discount
+    reason,
+    createdBy: approvedBy,
+    approvedBy,
+    approvedAt: new Date(),
+    status: 'applied',
+  });
 
   return {
     success: true,
@@ -177,6 +205,20 @@ export async function refundInvoice(
     })
     .where(eq(invoices.id, invoiceId))
     .returning();
+
+  // Save adjustment record
+  await db.insert(invoiceAdjustments).values({
+    invoiceId,
+    workspaceId: invoice.workspaceId,
+    adjustmentType: 'refund',
+    description: `Refund: ${reason}`,
+    amount: String(-refundAmount), // Negative for refund
+    reason,
+    createdBy: processedBy,
+    approvedBy: processedBy,
+    approvedAt: new Date(),
+    status: 'applied',
+  });
 
   // Log refund action
   console.log(`[INVOICE ADJUSTMENT] Refund processed: ${invoiceId} -$${refundAmount.toFixed(2)} by ${processedBy}`);
@@ -255,6 +297,20 @@ export async function correctInvoiceLineItem(
     .where(eq(invoices.id, invoiceId))
     .returning();
 
+  // Save adjustment record
+  await db.insert(invoiceAdjustments).values({
+    invoiceId,
+    workspaceId: invoice.workspaceId,
+    adjustmentType: 'correction',
+    description: reason || 'Line item correction',
+    amount: String(difference), // Can be positive or negative
+    reason: reason || 'Manual correction',
+    createdBy: approvedBy || 'system',
+    approvedBy: approvedBy || 'system',
+    approvedAt: new Date(),
+    status: 'applied',
+  });
+
   return {
     success: true,
     previousTotal: invoiceTotal,
@@ -265,27 +321,47 @@ export async function correctInvoiceLineItem(
 }
 
 /**
- * Get adjustment history for an invoice
+ * Get adjustment history for an invoice (UI-compatible format)
+ * Returns formatted strings for backward compatibility with existing UI code
  */
 export async function getInvoiceAdjustmentHistory(
   invoiceId: string
 ): Promise<{ adjustments: string[]; currentTotal: number }> {
+  const records = await db.select()
+    .from(invoiceAdjustments)
+    .where(eq(invoiceAdjustments.invoiceId, invoiceId))
+    .orderBy(desc(invoiceAdjustments.createdAt));
+  
+  const adjustments = records.map(record => {
+    const amount = parseFloat(record.amount);
+    const sign = amount < 0 ? '-' : '+';
+    const absAmount = Math.abs(amount);
+    const type = record.adjustmentType.toUpperCase();
+    const date = record.createdAt?.toISOString() || '';
+    const approver = record.approvedBy || 'system';
+    
+    return `[${type}] ${record.description} (${sign}$${absAmount.toFixed(2)}) by ${approver} at ${date}`;
+  });
+  
   const invoice = await db.query.invoices.findFirst({
     where: eq(invoices.id, invoiceId),
   });
-
-  if (!invoice) {
-    throw new Error(`Invoice ${invoiceId} not found`);
-  }
-
-  const adjustments = (invoice.notes || "")
-    .split("\n")
-    .filter(line => line.includes("["));
-
+  
   return {
     adjustments,
-    currentTotal: parseFloat(String(invoice.total || 0)),
+    currentTotal: parseFloat(String(invoice?.total || 0)),
   };
+}
+
+/**
+ * Get structured adjustment records (for APIs, reports, analytics)
+ * Returns raw database records for programmatic access
+ */
+export async function getInvoiceAdjustmentRecords(invoiceId: string) {
+  return await db.select()
+    .from(invoiceAdjustments)
+    .where(eq(invoiceAdjustments.invoiceId, invoiceId))
+    .orderBy(desc(invoiceAdjustments.createdAt));
 }
 
 /**
@@ -318,4 +394,14 @@ export async function bulkCreditInvoices(
     processedCount,
     failedCount,
   };
+}
+
+/**
+ * Get all adjustments for a workspace
+ */
+export async function getWorkspaceAdjustments(workspaceId: string) {
+  return await db.select()
+    .from(invoiceAdjustments)
+    .where(eq(invoiceAdjustments.workspaceId, workspaceId))
+    .orderBy(desc(invoiceAdjustments.createdAt));
 }
