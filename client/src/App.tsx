@@ -85,6 +85,8 @@ import Disputes from "@/pages/disputes";
 import MyAuditRecord from "@/pages/my-audit-record";
 import FileGrievance from "@/pages/file-grievance";
 import ReviewDisputes from "@/pages/review-disputes";
+import PayrollDeductions from "@/pages/payroll-deductions";
+import PayrollGarnishments from "@/pages/payroll-garnishments";
 import AICommunications from "@/pages/comm-os";
 import AICommunicationsOnboarding from "@/pages/comm-os-onboarding";
 import AIDiagnostics from "@/pages/query-os";
@@ -309,6 +311,8 @@ function AppContent() {
               <Route path="/my-audit-record" component={MyAuditRecord} />
               <Route path="/file-grievance" component={FileGrievance} />
               <Route path="/review-disputes" component={ReviewDisputes} />
+              <Route path="/payroll/deductions" component={PayrollDeductions} />
+              <Route path="/payroll/garnishments" component={PayrollGarnishments} />
               <Route path="/comm-os" component={AICommunications} />
               <Route path="/comm-os/onboarding" component={AICommunicationsOnboarding} />
               <Route path="/query-os" component={AIDiagnostics} />
