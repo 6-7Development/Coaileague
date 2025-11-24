@@ -26911,6 +26911,60 @@ app.post("/api/training/requirements/:requiredPerYear", requireAuth, requireMana
 });
 
 // ============================================================================
+// AUTOMATION SETTINGS - Admin Hourly Rate Configuration
+// ============================================================================
+
+app.post("/api/automation/admin-hourly-rate", requireAuth, requireManager, mutationLimiter, async (req: AuthenticatedRequest, res) => {
+  try {
+    const workspaceId = req.workspaceId!;
+    const { hourlyRate } = req.body;
+
+    // Validate input
+    if (!hourlyRate || typeof hourlyRate !== 'number') {
+      return res.status(400).json({ error: "Invalid hourly rate - must be a number" });
+    }
+
+    if (hourlyRate <= 0 || hourlyRate > 500) {
+      return res.status(400).json({ error: "Hourly rate must be between $1 and $500" });
+    }
+
+    // Import and call the service
+    const { setWorkspaceAdminHourlyRate } = await import("./services/automationMetrics");
+    await setWorkspaceAdminHourlyRate(workspaceId, hourlyRate);
+
+    res.json({
+      success: true,
+      message: `Admin hourly rate set to $${hourlyRate}/hour`,
+      hourlyRate,
+    });
+  } catch (error: any) {
+    console.error('Error setting admin hourly rate:', error);
+    res.status(500).json({ error: error.message || "Failed to set hourly rate" });
+  }
+});
+
+app.get("/api/automation/admin-hourly-rate", requireAuth, readLimiter, async (req: AuthenticatedRequest, res) => {
+  try {
+    const workspaceId = req.workspaceId!;
+    
+    const workspace = await db.query.workspaces.findFirst({
+      where: eq(workspaces.id, workspaceId),
+    });
+
+    const config = workspace?.config as any;
+    const hourlyRate = config?.adminHourlyRate || 35; // Default to $35/hour
+
+    res.json({
+      success: true,
+      hourlyRate,
+    });
+  } catch (error: any) {
+    console.error('Error fetching admin hourly rate:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================================================
 // TIER-5: ANALYTICS DATA SERVICE (Real Data Instead of Mock)
 // ============================================================================
 
