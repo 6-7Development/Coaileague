@@ -6,6 +6,9 @@
  */
 
 import { storage } from "../storage";
+import { db } from "../db";
+import { trainingCertifications } from "@shared/schema";
+import { and, eq, gte, lte } from "drizzle-orm";
 
 // ============================================================================
 // PERFORMANCE METRICS CALCULATION

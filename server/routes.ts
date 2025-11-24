@@ -22152,9 +22152,24 @@ Return ONLY valid JSON array with this exact structure:
         return res.status(400).json({ message: "Dispute must be resolved before applying changes" });
       }
 
-      // TODO: Implement logic to apply changes to the target entity
-      // This will depend on the dispute type and resolution action
-      // For now, just mark it as applied
+      // Apply changes based on dispute type and resolution
+      const targetType = dispute.targetType;
+      const targetId = dispute.targetId;
+      const resolution = dispute.resolutionAction;
+      
+      if (targetType === 'timeEntry' && resolution === 'approve') {
+        // Approve disputed time entry
+        const entry = await storage.getTimeEntry(targetId);
+        if (entry) {
+          await storage.updateTimeEntry(targetId, { status: 'approved' });
+        }
+      } else if (targetType === 'shift' && resolution === 'reschedule') {
+        // Apply rescheduled shift
+        await storage.updateShift(targetId, { status: 'rescheduled', updatedAt: new Date() });
+      } else if (targetType === 'payroll' && resolution === 'adjust_payment') {
+        // Mark payroll entry for manual adjustment
+        await storage.updatePayrollEntry(targetId, { status: 'adjusting', updatedAt: new Date() });
+      }
       
       const updated = await storage.applyDisputeChanges(id, user.currentWorkspaceId);
       res.json(updated);
@@ -24262,7 +24277,7 @@ Respond with valid JSON array only.`
             isStaff: u.isStaff,
           })),
           isJoined: connectionData.onlineUsers.some(u => u.id === userId),
-          unreadCount: 0, // TODO: Implement via separate lightweight endpoint or cached counters to avoid fetching full message histories
+          unreadCount: connectionData.unreadCounts?.[userId] || 0, // Cached counter from WebSocket connection tracking
           lastActivity: room.updatedAt || room.createdAt,
         };
       });
