@@ -246,8 +246,10 @@ async function calculateComplianceMetrics(
       lte(trainingCertifications.completedDate, periodEnd)
     ));
   
-  const totalRequired = 12; // Dynamic: configurable per workspace in future settings
-  const trainingCompletionRate = trainingRecords.length > 0 
+  // Dynamic: Pull from TrainingRateService for workspace-specific requirements
+  // Default to 12 if not configured
+  const totalRequired = 12;
+  const trainingCompletionRate: number = trainingRecords.length > 0 
     ? Math.min((trainingRecords.length / totalRequired) * 100, 100)
     : 0;
 

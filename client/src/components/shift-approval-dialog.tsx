@@ -74,9 +74,8 @@ export function ShiftApprovalDialog({
             {shift.employeeId && (
               <div className="text-sm mt-2">
                 <p className="font-medium">Shift Details</p>
-                <p className="text-xs mt-1">Date: {shift.shiftDate?.toString().split('T')[0] || 'N/A'}</p>
-                <p className="text-xs">Time: {shift.startTime} - {shift.endTime}</p>
-                <p className="text-xs">Status: <Badge variant="outline">{shift.status}</Badge></p>
+                <p className="text-xs mt-1">Shift ID: {shift.id}</p>
+                <p className="text-xs">Status: <Badge variant="outline">{shift.status || 'pending'}</Badge></p>
               </div>
             )}
           </DialogDescription>
