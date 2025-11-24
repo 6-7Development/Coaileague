@@ -205,8 +205,8 @@ export async function getAnalyticsStats(
     LIMIT 1000
   `).catch(() => null);
   
-  const avgFirstResponseHours = avgResponseQuery?.[0]?.avg_hours 
-    ? Math.round(parseFloat(avgResponseQuery[0].avg_hours) * 10) / 10
+  const avgFirstResponseHours = avgResponseQuery?.rows?.[0]?.avg_hours 
+    ? Math.round(parseFloat((avgResponseQuery.rows[0] as any).avg_hours) * 10) / 10
     : 2.5;
 
   const stats: AnalyticsStats = {

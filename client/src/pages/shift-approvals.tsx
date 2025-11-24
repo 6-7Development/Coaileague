@@ -18,13 +18,16 @@ import {
   AlertCircle,
   Loader2,
   ArrowRightLeft,
-  UserMinus
+  UserMinus,
+  CheckSquare
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import { apiGet, apiPatch } from "@/lib/apiClient";
 import { queryKeys } from "@/config/queryKeys";
 import { format } from "date-fns";
+import { ShiftApprovalModal } from "@/components/shift-approval-modal";
+import { BulkShiftApprovalsCard } from "@/components/bulk-shift-approvals-card";
 
 interface ShiftAction {
   id: string;
@@ -46,6 +49,8 @@ interface ShiftAction {
 export default function ShiftApprovalsPage() {
   const [selectedAction, setSelectedAction] = useState<ShiftAction | null>(null);
   const [denialReason, setDenialReason] = useState("");
+  const [showModalForAction, setShowModalForAction] = useState<ShiftAction | null>(null);
+  const [selectedForBulk, setSelectedForBulk] = useState<Set<string>>(new Set());
   const { toast } = useToast();
 
   // Fetch pending shift actions
@@ -79,20 +84,25 @@ export default function ShiftApprovalsPage() {
     },
   });
 
-  const handleApprove = (action: ShiftAction) => {
-    actionMutation.mutate({ actionId: action.id, approved: true });
+  const handleApprove = (actionId: string) => {
+    actionMutation.mutate({ actionId, approved: true });
+    setShowModalForAction(null);
   };
 
-  const handleDeny = (action: ShiftAction) => {
-    if (!denialReason.trim()) {
-      toast({
-        title: "Reason Required",
-        description: "Please provide a reason for denying this request",
-        variant: "destructive",
-      });
-      return;
+  const handleDeny = (actionId: string, reason: string) => {
+    actionMutation.mutate({ actionId, approved: false, managerNotes: reason.trim() });
+    setShowModalForAction(null);
+  };
+
+  const handleBulkApprove = async (actionIds: string[]) => {
+    for (const actionId of actionIds) {
+      await actionMutation.mutateAsync({ actionId, approved: true });
     }
-    actionMutation.mutate({ actionId: action.id, approved: false, managerNotes: denialReason.trim() });
+    setSelectedForBulk(new Set());
+    toast({
+      title: "Bulk Approval Complete",
+      description: `Approved ${actionIds.length} shift action(s)`,
+    });
   };
 
   const getActionIcon = (type: string) => {
@@ -155,14 +165,34 @@ export default function ShiftApprovalsPage() {
     );
   }
 
+  const selectedActionsData = pendingActions.filter(a => selectedForBulk.has(a.id));
+
   return (
-    <div className="container mx-auto py-8 px-4">
+    <div className="container mx-auto py-8 px-4 space-y-6">
+      <ShiftApprovalModal
+        action={showModalForAction}
+        open={!!showModalForAction}
+        onOpenChange={(open) => !open && setShowModalForAction(null)}
+        onApprove={handleApprove}
+        onDeny={handleDeny}
+        isPending={actionMutation.isPending}
+      />
+
       <div className="mb-6">
         <h1 className="text-3xl font-bold mb-2">Shift Approvals</h1>
         <p className="text-muted-foreground">
           Review and approve employee shift change requests
         </p>
       </div>
+
+      {selectedForBulk.size > 0 && (
+        <BulkShiftApprovalsCard
+          selectedCount={selectedForBulk.size}
+          onApproveAll={() => handleBulkApprove(Array.from(selectedForBulk))}
+          onClearSelection={() => setSelectedForBulk(new Set())}
+          isPending={actionMutation.isPending}
+        />
+      )}
 
       {pendingActions.length === 0 ? (
         <Card>
