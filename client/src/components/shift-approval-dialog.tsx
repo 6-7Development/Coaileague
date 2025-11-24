@@ -38,10 +38,7 @@ export function ShiftApprovalDialog({
         ? `/api/shifts/${shift.id}/approve`
         : `/api/shifts/${shift.id}/reject`;
 
-      return apiRequest(endpoint, {
-        method: 'POST',
-        body: { notes, reason: notes },
-      });
+      return apiRequest('POST', endpoint, { notes, reason: notes });
     },
     onSuccess: () => {
       toast({
@@ -77,7 +74,7 @@ export function ShiftApprovalDialog({
             {shift.employeeId && (
               <div className="text-sm mt-2">
                 <p className="font-medium">Shift Details</p>
-                <p className="text-xs mt-1">Date: {shift.date}</p>
+                <p className="text-xs mt-1">Date: {shift.shiftDate?.toString().split('T')[0] || 'N/A'}</p>
                 <p className="text-xs">Time: {shift.startTime} - {shift.endTime}</p>
                 <p className="text-xs">Status: <Badge variant="outline">{shift.status}</Badge></p>
               </div>

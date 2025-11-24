@@ -126,7 +126,7 @@ export function ViewWorkflowsDialog({
 
                   {/* Steps */}
                   <div className="space-y-2">
-                    {workflow.steps.map((step, idx) => (
+                    {workflow.steps.map((step: any, idx: number) => (
                       <div
                         key={idx}
                         className="flex items-center gap-2 text-xs"

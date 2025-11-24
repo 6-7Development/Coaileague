@@ -33,7 +33,7 @@ export function EscalationMatrixDisplay({ workspaceId }: EscalationMatrixDisplay
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
+            {[1, 2, 3].map((i: number) => (
               <Skeleton key={i} className="h-12 w-full" />
             ))}
           </div>
