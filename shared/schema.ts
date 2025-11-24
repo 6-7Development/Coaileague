@@ -3610,6 +3610,54 @@ export type InsertPayrollEntry = z.infer<typeof insertPayrollEntrySchema>;
 export type PayrollEntry = typeof payrollEntries.$inferSelect;
 
 // ============================================================================
+// PHASE 4D: PAYROLL DEDUCTIONS & GARNISHMENTS
+// ============================================================================
+
+export const payrollDeductions = pgTable("payroll_deductions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  payrollEntryId: varchar("payroll_entry_id").notNull().references(() => payrollEntries.id, { onDelete: 'cascade' }),
+  employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  deductionType: varchar("deduction_type").notNull(), // 'health_insurance', 'dental', 'vision', 'ira', '401k', 'hsa', 'fsa', 'other'
+  description: text("description"),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  isPreTax: boolean("is_pre_tax").default(true), // Pre-tax or post-tax
+  
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const payrollGarnishments = pgTable("payroll_garnishments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  payrollEntryId: varchar("payroll_entry_id").notNull().references(() => payrollEntries.id, { onDelete: 'cascade' }),
+  employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  garnishmentType: varchar("garnishment_type").notNull(), // 'child_support', 'alimony', 'taxes', 'student_loans', 'court_order', 'other'
+  description: text("description"),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  priority: integer("priority").default(1), // 1=highest priority (federal taxes, child support), higher numbers=lower priority
+  caseNumber: varchar("case_number"), // Court case reference
+  
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertPayrollDeductionSchema = createInsertSchema(payrollDeductions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertPayrollGarnishmentSchema = createInsertSchema(payrollGarnishments).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertPayrollDeduction = z.infer<typeof insertPayrollDeductionSchema>;
+export type PayrollDeduction = typeof payrollDeductions.$inferSelect;
+export type InsertPayrollGarnishment = z.infer<typeof insertPayrollGarnishmentSchema>;
+export type PayrollGarnishment = typeof payrollGarnishments.$inferSelect;
+
+// ============================================================================
 // ENTERPRISE FEATURES - Platform-Level Roles (Root, Sysop, Auditor)
 // ============================================================================
 
