@@ -319,6 +319,22 @@ export class MigrationService {
   }
 
   /**
+   * Classify document type based on filename and keywords
+   */
+  private classifyDocumentType(filename: string, fileContent?: string): MigrationType {
+    const lowerFilename = filename.toLowerCase();
+    
+    // Check document classification config for keyword patterns
+    for (const [docType, config] of Object.entries(migrationConfig.documentClassification)) {
+      if (config.keywords.some((kw: string) => lowerFilename.includes(kw) || fileContent?.toLowerCase().includes(kw))) {
+        return docType as MigrationType;
+      }
+    }
+    
+    return 'other';
+  }
+
+  /**
    * Extract data from document using Gemini Vision
    */
   private async extractDataWithGemini(
