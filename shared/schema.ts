@@ -9685,6 +9685,7 @@ export const subscriptionInvoices = pgTable("subscription_invoices", {
   // Payment status
   status: varchar("status").notNull().default('draft'), // 'draft', 'pending', 'paid', 'overdue', 'cancelled', 'void'
   paidAt: timestamp("paid_at"),
+  amountPaid: decimal("amount_paid", { precision: 10, scale: 2 }).default("0.00"),
   dueDate: timestamp("due_date").notNull(),
   
   // Stripe integration
