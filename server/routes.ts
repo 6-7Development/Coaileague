@@ -96,6 +96,8 @@ import { jobRetrievalService } from "./services/jobRetrievalService";
 import { helposSettingsService } from "./services/helposSettingsService";
 import { monitoringService } from "./services/monitoringService";
 import { processingMetricsService } from "./services/processingMetricsService";
+import { trainingRateService } from "./services/trainingRateService";
+import { analyticsDataService } from "./services/analyticsDataService";
 import { approveDispute, rejectDispute, getPendingDisputes, getDisputesAssignedToUser } from "./services/timeEntryDisputeService";
 import { addDeduction, addGarnishment, applyDeductionsAndGarnishments, calculateTotalDeductions, calculateTotalGarnishments } from "./services/payrollDeductionService";
 import { calculatePtoAccrual, getAllPtoBalances, runWeeklyPtoAccrual, deductPtoHours } from './services/ptoAccrual';
@@ -26845,6 +26847,71 @@ app.get("/api/metrics/payroll/duration", requireAuth, readLimiter, async (req: A
     });
   } catch (error: any) {
     console.error('Error fetching payroll metrics:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================================================
+// TIER-5: TRAINING RATE SERVICE (Replace Hardcoded 85%)
+// ============================================================================
+
+app.get("/api/training/completion/:employeeId", requireAuth, readLimiter, async (req: AuthenticatedRequest, res) => {
+  try {
+    const workspaceId = req.workspaceId!;
+    const { employeeId } = req.params;
+
+    const metrics = await trainingRateService.getTrainingCompletionRate(workspaceId, employeeId);
+
+    res.json({ success: true, data: metrics });
+  } catch (error: any) {
+    console.error('Error fetching training rate:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get("/api/training/team-summary", requireAuth, readLimiter, async (req: AuthenticatedRequest, res) => {
+  try {
+    const workspaceId = req.workspaceId!;
+
+    const summary = await trainingRateService.getTeamTrainingCompletionRate(workspaceId);
+
+    res.json({ success: true, data: summary });
+  } catch (error: any) {
+    console.error('Error fetching team training summary:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/training/requirements/:requiredPerYear", requireAuth, requireManager, mutationLimiter, async (req: AuthenticatedRequest, res) => {
+  try {
+    const workspaceId = req.workspaceId!;
+    const { requiredPerYear } = req.params;
+
+    trainingRateService.setTrainingRequirements(workspaceId, parseInt(requiredPerYear));
+
+    res.json({ 
+      success: true, 
+      message: `Training requirements set to ${requiredPerYear} per year`,
+    });
+  } catch (error: any) {
+    console.error('Error setting training requirements:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================================================
+// TIER-5: ANALYTICS DATA SERVICE (Real Data Instead of Mock)
+// ============================================================================
+
+app.get("/api/analytics/summary", requireAuth, readLimiter, async (req: AuthenticatedRequest, res) => {
+  try {
+    const workspaceId = req.workspaceId!;
+
+    const summary = await analyticsDataService.getAnalyticsSummary(workspaceId);
+
+    res.json({ success: true, data: summary });
+  } catch (error: any) {
+    console.error('Error fetching analytics summary:', error);
     res.status(500).json({ error: error.message });
   }
 });
