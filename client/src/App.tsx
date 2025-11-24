@@ -440,8 +440,7 @@ function AppContent() {
           
           {/* Main content with sidebar */}
           <div className="flex flex-1 min-h-0 w-full overflow-hidden">
-            {/* Desktop Sidebar */}
-            {!isMobileChat && !isMobile && <AppSidebar />}
+            {/* Desktop Sidebar - REMOVED: Now using WorkspaceTabsNav for unified navigation */}
             
             {/* Main content container */}
             <div className="flex flex-col flex-1 min-h-0 w-full max-w-full overflow-x-hidden">
