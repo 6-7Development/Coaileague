@@ -4,6 +4,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useClientsTable, useDeleteClient } from "@/hooks/useClients";
 import { useToast } from "@/hooks/use-toast";
 import { useEmployee } from "@/hooks/useEmployee";
+import { queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -45,11 +46,20 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Label } from "@/components/ui/label";
 import { Search, ArrowUpDown, ArrowUp, ArrowDown, MoreVertical, Edit2, Trash2, FileText, Mail, Phone, Building2, Calendar, DollarSign } from "lucide-react";
 import type { ClientWithInvoiceCount } from "@shared/types";
 
@@ -224,6 +234,9 @@ export function ClientsTable() {
   const [searchInput, setSearchInput] = useState(searchParams.get('search') || '');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [clientToDelete, setClientToDelete] = useState<ClientWithInvoiceCount | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [clientToEdit, setClientToEdit] = useState<ClientWithInvoiceCount | null>(null);
+  const [editFormData, setEditFormData] = useState({ firstName: '', lastName: '', email: '', phone: '', companyName: '' });
 
   const params = {
     page: Number(searchParams.get('page')) || 1,
@@ -300,11 +313,33 @@ export function ClientsTable() {
   };
 
   const handleEdit = (client: ClientWithInvoiceCount) => {
-    // TODO: Implement edit dialog
-    toast({
-      title: "Coming soon",
-      description: "Edit functionality will be implemented",
+    setClientToEdit(client);
+    setEditFormData({
+      firstName: client.firstName || '',
+      lastName: client.lastName || '',
+      email: client.email || '',
+      phone: client.phone || '',
+      companyName: client.companyName || '',
     });
+    setEditDialogOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!clientToEdit) return;
+    try {
+      const response = await fetch(`/api/clients/${clientToEdit.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editFormData),
+      });
+      if (!response.ok) throw new Error('Failed to update client');
+      toast({ title: "Success", description: "Client updated successfully" });
+      setEditDialogOpen(false);
+      // Refresh client data
+      queryClient.invalidateQueries({ queryKey: ['/api/clients'] });
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
   };
 
   if (isLoading) {
@@ -590,6 +625,71 @@ export function ClientsTable() {
       <div className="text-sm text-muted-foreground text-center">
         Showing {((currentPage - 1) * params.limit) + 1} to {Math.min(currentPage * params.limit, total)} of {total} client{total !== 1 ? 's' : ''}
       </div>
+
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent data-testid="dialog-edit-client">
+          <DialogHeader>
+            <DialogTitle>Edit Client</DialogTitle>
+            <DialogDescription>Update client information</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="firstName">First Name</Label>
+              <Input
+                id="firstName"
+                data-testid="input-edit-firstName"
+                value={editFormData.firstName}
+                onChange={(e) => setEditFormData({ ...editFormData, firstName: e.target.value })}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="lastName">Last Name</Label>
+              <Input
+                id="lastName"
+                data-testid="input-edit-lastName"
+                value={editFormData.lastName}
+                onChange={(e) => setEditFormData({ ...editFormData, lastName: e.target.value })}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                data-testid="input-edit-email"
+                type="email"
+                value={editFormData.email}
+                onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="phone">Phone</Label>
+              <Input
+                id="phone"
+                data-testid="input-edit-phone"
+                value={editFormData.phone}
+                onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="companyName">Company</Label>
+              <Input
+                id="companyName"
+                data-testid="input-edit-companyName"
+                value={editFormData.companyName}
+                onChange={(e) => setEditFormData({ ...editFormData, companyName: e.target.value })}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)} data-testid="button-cancel-edit">
+              Cancel
+            </Button>
+            <Button onClick={handleSaveEdit} data-testid="button-save-edit">
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

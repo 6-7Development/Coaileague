@@ -24447,7 +24447,7 @@ Respond with valid JSON array only.`
         const participants = await db.select().from(chatParticipants)
           .where(eq(chatParticipants.conversationId, conv.id)).execute();
         
-        // Get unread message count (this could be optimized)
+        // Get last message for timestamp
         const messages = await db.select().from(chatMessages)
           .where(eq(chatMessages.conversationId, conv.id))
           .orderBy(desc(chatMessages.createdAt))
@@ -24460,6 +24460,10 @@ Respond with valid JSON array only.`
           .limit(1)
           .execute();
 
+        // Get unread count from WebSocket cache (optimized approach)
+        // Use global connection counters which track unread messages per workspace
+        const unreadCount = connectionData.unreadCounts?.[conv.workspaceId] || 0;
+
         return {
           id: conv.id,
           name: conv.subject || `Chat ${conv.id.substring(0, 8)}`,
@@ -24467,7 +24471,7 @@ Respond with valid JSON array only.`
           workspaceName: workspace[0]?.name || 'Unknown Organization',
           conversationType: conv.conversationType || 'group',
           participantCount: participants.length,
-          unreadCount: 0, // Could be calculated based on last read timestamp
+          unreadCount: unreadCount, // Use cached WebSocket counter
           lastMessageAt: messages[0]?.createdAt || conv.createdAt,
           createdAt: conv.createdAt,
           status: conv.status,
