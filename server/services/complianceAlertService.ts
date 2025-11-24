@@ -54,11 +54,11 @@ export async function checkExpiringCertifications() {
     // Send notifications to HR managers
     for (const [workspaceId, skills] of Object.entries(alertsByWorkspace)) {
       try {
-        // Find HR managers in this workspace (workspaceId is implicit for workspace context)
+        // Find HR managers in this workspace
         const managers = await db
           .select()
           .from(users)
-          .where(eq(users.workspaceId, workspaceId as string));
+          .where(eq(users.currentWorkspaceId, workspaceId as string));
 
         for (const manager of managers) {
           // Only notify HR/managers

@@ -10,7 +10,7 @@
 
 import cron from 'node-cron';
 import { db } from '../db';
-import { workspaces, employees, users, idempotencyKeys, chatConversations, roomEvents } from '@shared/schema';
+import { workspaces, employees, users, customSchedulerIntervals, idempotencyKeys, chatConversations, roomEvents } from '@shared/schema';
 import { eq, and, sql, lt } from 'drizzle-orm';
 import { generateUsageBasedInvoices, sendInvoiceViaStripe } from './billos';
 import { PayrollAutomationEngine } from './payrollAutomation';
@@ -386,9 +386,11 @@ async function runNightlyInvoiceGeneration() {
           shouldGenerateInvoices = dayOfMonth === dayOfMonthSetting;
           console.log(`   Day of Month: ${dayOfMonthSetting} (today: ${dayOfMonth})`);
         } else if (schedule === 'custom' && workspace.invoiceCustomDays) {
-          // PHASE 4B: Custom interval tracking - feature for future implementation
-          // For now, skip custom intervals (table not yet in schema)
-          const customIntervals: any[] = [];
+          // PHASE 4B: Custom interval tracking using database table
+          const customIntervals = await db
+            .select()
+            .from(customSchedulerIntervals)
+            .where(eq(customSchedulerIntervals.workspaceId, workspace.id));
           
           if (customIntervals.length > 0) {
             const interval = customIntervals[0];
@@ -657,8 +659,11 @@ async function runWeeklyScheduleGeneration() {
           shouldGenerateSchedule = dayOfMonth === dayOfMonthSetting;
           console.log(`   Day of Month: ${dayOfMonthSetting} (today: ${dayOfMonth})`);
         } else if (interval === 'custom' && workspace.scheduleCustomDays) {
-          // PHASE 4B: Custom interval tracking - feature for future implementation
-          const customIntervals: any[] = [];
+          // PHASE 4B: Custom interval tracking using database table
+          const customIntervals = await db
+            .select()
+            .from(customSchedulerIntervals)
+            .where(eq(customSchedulerIntervals.workspaceId, workspace.id));
           
           if (customIntervals.length > 0) {
             const intervalRecord = customIntervals[0];
@@ -983,8 +988,11 @@ async function runAutomaticPayrollProcessing() {
           shouldProcessPayroll = dayOfMonth === dayOfMonthSetting;
           console.log(`   Day of Month: ${dayOfMonthSetting} (today: ${dayOfMonth})`);
         } else if (paySchedule === 'custom' && workspace.payrollCustomDays) {
-          // PHASE 4B: Custom interval tracking - feature for future implementation
-          const customIntervals: any[] = [];
+          // PHASE 4B: Custom interval tracking using database table
+          const customIntervals = await db
+            .select()
+            .from(customSchedulerIntervals)
+            .where(eq(customSchedulerIntervals.workspaceId, workspace.id));
           
           if (customIntervals.length > 0) {
             const intervalRecord = customIntervals[0];
