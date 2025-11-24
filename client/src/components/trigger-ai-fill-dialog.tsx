@@ -62,7 +62,7 @@ export function TriggerAIFillDialog({
     },
   });
 
-  const levelDescriptions = {
+  const levelDescriptions: Record<string, string> = {
     standard: 'Basic matching based on availability and skills',
     advanced: 'Considers patterns, preferences, and compliance',
     expert: 'Full AI analysis with optimization and fairness',

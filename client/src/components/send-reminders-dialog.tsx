@@ -69,7 +69,7 @@ export function SendRemindersDialog({
     },
   });
 
-  const enabledChannels = Object.values(reminderTypes).filter(Boolean).length;
+  const enabledChannels = Object.values(reminderTypes).filter((v: any) => v).length;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

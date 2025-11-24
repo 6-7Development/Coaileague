@@ -40,10 +40,10 @@ export function ClientEditDialog({
     client || {
       id: '',
       name: '',
-      email: '',
-      phone: '',
-      address: '',
-      notes: '',
+      email: undefined,
+      phone: undefined,
+      address: undefined,
+      notes: undefined,
     }
   );
   const { toast } = useToast();
