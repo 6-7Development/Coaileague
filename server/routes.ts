@@ -86,6 +86,9 @@ import { approveShift, rejectShift, getPendingShifts, getShiftWithDetails, bulkA
 import { employerRatingsService } from "./services/employerRatingsService";
 import { compositeScoresService } from "./services/compositeScoresService";
 import { breaksService } from "./services/breaksService";
+import { unreadMessageService } from "./services/unreadMessageService";
+import { shiftRemindersService } from "./services/shiftRemindersService";
+import { aiSchedulingTriggerService } from "./services/aiSchedulingTriggerService";
 import { approveDispute, rejectDispute, getPendingDisputes, getDisputesAssignedToUser } from "./services/timeEntryDisputeService";
 import { addDeduction, addGarnishment, applyDeductionsAndGarnishments, calculateTotalDeductions, calculateTotalGarnishments } from "./services/payrollDeductionService";
 import { calculatePtoAccrual, getAllPtoBalances, runWeeklyPtoAccrual, deductPtoHours } from './services/ptoAccrual';
@@ -26515,6 +26518,161 @@ app.get("/api/employees/:employeeId/metadata", requireAuth, async (req: Authenti
     res.json({ success: true, data: employee.metadata || {} });
   } catch (error: any) {
     console.error('Error fetching employee metadata:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================================================
+// TIER-2: UNREAD MESSAGES OPTIMIZATION
+// ============================================================================
+
+app.get("/api/chat/unread-count", requireAuth, readLimiter, async (req: AuthenticatedRequest, res) => {
+  try {
+    const userId = req.user!.id;
+    const { conversationId } = req.query;
+
+    if (conversationId) {
+      // Get unread for specific conversation
+      const count = await unreadMessageService.getUnreadCount(conversationId as string, userId);
+      res.json({ success: true, data: { conversationId, unreadCount: count } });
+    } else {
+      // Get total unread across all conversations
+      const total = await unreadMessageService.getTotalUnreadCount(userId);
+      res.json({ success: true, data: { totalUnreadCount: total } });
+    }
+  } catch (error: any) {
+    console.error('Error fetching unread count:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/chat/mark-as-read", requireAuth, mutationLimiter, async (req: AuthenticatedRequest, res) => {
+  try {
+    const userId = req.user!.id;
+    const { conversationId } = req.body;
+    if (!conversationId) return res.status(400).json({ error: 'conversationId required' });
+
+    await unreadMessageService.markMessagesAsRead(conversationId, userId);
+
+    res.json({ success: true, message: 'Messages marked as read' });
+  } catch (error: any) {
+    console.error('Error marking messages as read:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================================================
+// TIER-2: SHIFT REMINDERS
+// ============================================================================
+
+app.post("/api/shifts/:shiftId/send-reminder", requireAuth, requireManager, mutationLimiter, async (req: AuthenticatedRequest, res) => {
+  try {
+    const workspaceId = req.workspaceId!;
+    const { shiftId } = req.params;
+
+    const result = await shiftRemindersService.sendShiftReminder(shiftId, workspaceId);
+
+    if (!result) {
+      return res.status(404).json({ error: 'Shift not found' });
+    }
+
+    res.json({ 
+      success: result.status === 'sent', 
+      data: result,
+    });
+  } catch (error: any) {
+    console.error('Error sending shift reminder:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/shifts/send-reminders/bulk", requireAuth, requireManager, mutationLimiter, async (req: AuthenticatedRequest, res) => {
+  try {
+    const workspaceId = req.workspaceId!;
+    const { startDate, endDate } = req.body;
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({ error: 'startDate and endDate required' });
+    }
+
+    const results = await shiftRemindersService.sendBulkShiftReminders(
+      workspaceId,
+      new Date(startDate),
+      new Date(endDate)
+    );
+
+    const successCount = results.filter(r => r.status === 'sent').length;
+
+    res.json({ 
+      success: true,
+      data: {
+        totalReminders: results.length,
+        successful: successCount,
+        failed: results.length - successCount,
+        details: results,
+      }
+    });
+  } catch (error: any) {
+    console.error('Error sending bulk shift reminders:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/shifts/send-reminders/upcoming", requireAuth, requireManager, mutationLimiter, async (req: AuthenticatedRequest, res) => {
+  try {
+    const workspaceId = req.workspaceId!;
+
+    const results = await shiftRemindersService.sendUpcomingShiftReminders(workspaceId);
+
+    const successCount = results.filter(r => r.status === 'sent').length;
+
+    res.json({ 
+      success: true,
+      data: {
+        totalReminders: results.length,
+        successful: successCount,
+        failed: results.length - successCount,
+        message: `Sent ${successCount} reminders for upcoming shifts`,
+      }
+    });
+  } catch (error: any) {
+    console.error('Error sending upcoming shift reminders:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================================================
+// TIER-2: AI SCHEDULING TRIGGER
+// ============================================================================
+
+app.post("/api/automation/trigger-ai-schedule", requireAuth, requireManager, mutationLimiter, async (req: AuthenticatedRequest, res) => {
+  try {
+    const workspaceId = req.workspaceId!;
+
+    const result = await aiSchedulingTriggerService.triggerAIScheduleGeneration(workspaceId);
+
+    res.json({ 
+      success: result.success,
+      data: result,
+    });
+  } catch (error: any) {
+    console.error('Error triggering AI schedule:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get("/api/automation/ai-schedule-status", requireAuth, readLimiter, async (req: AuthenticatedRequest, res) => {
+  try {
+    const workspaceId = req.workspaceId!;
+
+    const status = await aiSchedulingTriggerService.getAISchedulingStatus(workspaceId);
+
+    res.json({ 
+      success: true,
+      data: status,
+    });
+  } catch (error: any) {
+    console.error('Error fetching AI schedule status:', error);
     res.status(500).json({ error: error.message });
   }
 });
