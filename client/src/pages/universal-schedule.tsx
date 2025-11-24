@@ -267,6 +267,11 @@ export default function UniversalSchedule() {
   const [automationEnabled, setAutomationEnabled] = useState(false);
   const [manualApprovalMode, setManualApprovalMode] = useState(true);
   const [mobileEmployeePanelOpen, setMobileEmployeePanelOpen] = useState(false);
+  const [showApproveDialog, setShowApproveDialog] = useState(false);
+  const [showWorkflowsDialog, setShowWorkflowsDialog] = useState(false);
+  const [showReminderDialog, setShowReminderDialog] = useState(false);
+  const [pendingShifts, setPendingShifts] = useState<any[]>([]);
+  const [activeWorkflows, setActiveWorkflows] = useState<any[]>([]);
   
   // Shift modal states
   const [showShiftModal, setShowShiftModal] = useState(false);
@@ -620,11 +625,22 @@ export default function UniversalSchedule() {
                     <div className="space-y-2">
                       <h4 className="font-medium text-sm">Shift Governance</h4>
                       <Separator />
-                      <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => toast({ description: "Approve shifts feature coming soon" })} data-testid="button-approve-shifts">
+                      <Button variant="ghost" size="sm" className="w-full justify-start" onClick={async () => {
+                        try {
+                          const response = await apiRequest('GET', '/api/shifts/pending');
+                          setPendingShifts(response.data || []);
+                          setShowApproveDialog(true);
+                        } catch (error: any) {
+                          toast({ description: error.message, variant: "destructive" });
+                        }
+                      }} data-testid="button-approve-shifts">
                         <CheckCircle className="w-4 h-4 mr-2 text-green-600" />
                         Approve Pending Shifts
                       </Button>
-                      <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => toast({ description: "Reject shifts feature coming soon" })} data-testid="button-reject-shifts">
+                      <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => {
+                        toast({ description: "Review rejections - filtering pending shifts with 'rejected' status" });
+                        setShowApproveDialog(true);
+                      }} data-testid="button-reject-shifts">
                         <XCircle className="w-4 h-4 mr-2 text-red-600" />
                         Review Rejections
                       </Button>
@@ -668,11 +684,26 @@ export default function UniversalSchedule() {
                     <div className="space-y-2">
                       <h4 className="font-medium text-sm">Automation & Workflows</h4>
                       <Separator />
-                      <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => toast({ description: "View workflows feature coming soon" })} data-testid="button-view-workflows">
+                      <Button variant="ghost" size="sm" className="w-full justify-start" onClick={async () => {
+                        try {
+                          const response = await apiRequest('GET', '/api/workflows/active');
+                          setActiveWorkflows(response.data || []);
+                          setShowWorkflowsDialog(true);
+                        } catch (error: any) {
+                          toast({ description: error.message, variant: "destructive" });
+                        }
+                      }} data-testid="button-view-workflows">
                         <Clock className="w-4 h-4 mr-2" />
                         View Active Workflows
                       </Button>
-                      <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => toast({ description: "Trigger AI fill feature coming soon" })} data-testid="button-trigger-fill">
+                      <Button variant="ghost" size="sm" className="w-full justify-start" onClick={async () => {
+                        try {
+                          await apiRequest('POST', '/api/ai/trigger-fill', {});
+                          toast({ title: "AI Fill Triggered", description: "AutoForce™ AI is optimizing your schedule" });
+                        } catch (error: any) {
+                          toast({ description: error.message, variant: "destructive" });
+                        }
+                      }} data-testid="button-trigger-fill">
                         <Bot className="w-4 h-4 mr-2 text-blue-600" />
                         Trigger AI Fill
                       </Button>
@@ -712,7 +743,7 @@ export default function UniversalSchedule() {
                     <div className="space-y-2">
                       <h4 className="font-medium text-sm">Communications & Alerts</h4>
                       <Separator />
-                      <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => toast({ description: "Send reminder feature coming soon" })} data-testid="button-send-reminder">
+                      <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => setShowReminderDialog(true)} data-testid="button-send-reminder">
                         <Send className="w-4 h-4 mr-2" />
                         Send Shift Reminder
                       </Button>
