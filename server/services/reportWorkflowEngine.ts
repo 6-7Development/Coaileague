@@ -35,7 +35,7 @@ export async function initializeWorkflow(
   }
 
   // Update submission status to 'pending_review'
-  await storage.updateReportSubmission(submissionId, workspaceId, {
+  await storage.updateReportSubmission(submissionId, {
     status: 'pending_review',
     submittedAt: new Date(),
   });
@@ -120,7 +120,7 @@ export async function processApproval(
 
   // Update submission status
   if (action === 'reject') {
-    await storage.updateReportSubmission(submissionId, step.workspaceId, {
+    await storage.updateReportSubmission(submissionId, {
       status: 'rejected',
     });
 
@@ -192,7 +192,7 @@ async function finalizeWorkflow(
   switch (workflow.finalDestination) {
     case 'audit_database':
       // Set to approved and lock
-      await storage.updateReportSubmission(submissionId, workspaceId, {
+      await storage.updateReportSubmission(submissionId, {
         status: 'approved',
       });
       
@@ -205,7 +205,7 @@ async function finalizeWorkflow(
 
     case 'email_client':
       // First approve
-      await storage.updateReportSubmission(submissionId, workspaceId, {
+      await storage.updateReportSubmission(submissionId, {
         status: 'approved',
       });
       
@@ -220,7 +220,7 @@ async function finalizeWorkflow(
 
     case 'return_to_submitter':
       // Just mark as approved and return
-      await storage.updateReportSubmission(submissionId, workspaceId, {
+      await storage.updateReportSubmission(submissionId, {
         status: 'approved',
       });
       
@@ -296,7 +296,7 @@ async function sendReportToClient(
     throw new Error('No client associated with this report');
   }
 
-  const client = await storage.getClientById(submission.clientId, workspaceId);
+  const client = await storage.getClient(submission.clientId, workspaceId);
   if (!client) {
     throw new Error('Client not found');
   }
@@ -368,7 +368,7 @@ async function notifyNextApprover(
   await storage.createAuditLog({
     workspaceId,
     userId: pendingStep.assignedTo || 'system',
-    action: 'workflow_notification',
+    action: 'update',
     entityType: 'report_approval',
     entityId: submissionId,
     metadata: {
@@ -402,7 +402,7 @@ async function notifySubmitter(
   await storage.createAuditLog({
     workspaceId: submission.workspaceId,
     userId: submission.employeeId,
-    action: 'workflow_notification',
+    action: 'update',
     entityType: 'report_submission',
     entityId: submissionId,
     metadata: {
