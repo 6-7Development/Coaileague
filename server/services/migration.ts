@@ -393,8 +393,9 @@ Extract data from the provided document and return a JSON response with this str
 
 `;
 
-    // Use prompts from centralized config
-    const configPrompt = migrationConfig.extractionPrompts[documentType] || migrationConfig.extractionPrompts.other;
+    // Use prompts from centralized config, with safe fallback
+    const promptsObject = migrationConfig.extractionPrompts as Record<string, string>;
+    const configPrompt = promptsObject[documentType] || 'Extract all relevant data from the document.';
     return basePrompt + configPrompt;
   }
 
