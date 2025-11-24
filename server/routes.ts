@@ -89,6 +89,9 @@ import { breaksService } from "./services/breaksService";
 import { unreadMessageService } from "./services/unreadMessageService";
 import { shiftRemindersService } from "./services/shiftRemindersService";
 import { aiSchedulingTriggerService } from "./services/aiSchedulingTriggerService";
+import { escalationMatrixService } from "./services/escalationMatrixService";
+import { workflowStatusService } from "./services/workflowStatusService";
+import { employeePatternService } from "./services/employeePatternService";
 import { approveDispute, rejectDispute, getPendingDisputes, getDisputesAssignedToUser } from "./services/timeEntryDisputeService";
 import { addDeduction, addGarnishment, applyDeductionsAndGarnishments, calculateTotalDeductions, calculateTotalGarnishments } from "./services/payrollDeductionService";
 import { calculatePtoAccrual, getAllPtoBalances, runWeeklyPtoAccrual, deductPtoHours } from './services/ptoAccrual';
@@ -26735,6 +26738,167 @@ app.get("/api/breaks/compliance-report", requireAuth, requireManager, readLimite
     });
   } catch (error: any) {
     console.error('Error fetching break compliance report:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================================================
+// TIER-2: ESCALATION MATRIX
+// ============================================================================
+
+app.get("/api/escalation/matrix", requireAuth, readLimiter, async (req: AuthenticatedRequest, res) => {
+  try {
+    const workspaceId = req.workspaceId!;
+
+    const matrix = await escalationMatrixService.getEscalationMatrix(workspaceId);
+
+    res.json({ 
+      success: true, 
+      data: matrix,
+    });
+  } catch (error: any) {
+    console.error('Error fetching escalation matrix:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/escalation/check-sla", requireAuth, readLimiter, async (req: AuthenticatedRequest, res) => {
+  try {
+    const { priority, ageMinutes } = req.body;
+    if (!priority || ageMinutes === undefined) {
+      return res.status(400).json({ error: 'priority and ageMinutes required' });
+    }
+
+    const slaStatus = escalationMatrixService.checkSLABreach(priority, ageMinutes);
+    const action = escalationMatrixService.getEscalationAction(priority, ageMinutes);
+
+    res.json({ 
+      success: true, 
+      data: {
+        slaStatus,
+        recommendedAction: action,
+      },
+    });
+  } catch (error: any) {
+    console.error('Error checking SLA:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================================================
+// TIER-2: WORKFLOW STATUS
+// ============================================================================
+
+app.get("/api/workflows/active", requireAuth, readLimiter, async (req: AuthenticatedRequest, res) => {
+  try {
+    const workspaceId = req.workspaceId!;
+
+    const workflows = await workflowStatusService.getActiveWorkflows(workspaceId);
+
+    res.json({ 
+      success: true, 
+      data: workflows,
+      count: workflows.length,
+    });
+  } catch (error: any) {
+    console.error('Error fetching active workflows:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get("/api/workflows/summary", requireAuth, readLimiter, async (req: AuthenticatedRequest, res) => {
+  try {
+    const workspaceId = req.workspaceId!;
+
+    const summary = await workflowStatusService.getWorkflowStatusSummary(workspaceId);
+
+    res.json({ 
+      success: true, 
+      data: summary,
+    });
+  } catch (error: any) {
+    console.error('Error fetching workflow summary:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get("/api/workflows/:workflowId", requireAuth, readLimiter, async (req: AuthenticatedRequest, res) => {
+  try {
+    const workspaceId = req.workspaceId!;
+    const { workflowId } = req.params;
+
+    const workflow = await workflowStatusService.getWorkflowDetails(workspaceId, workflowId);
+
+    if (!workflow) {
+      return res.status(404).json({ error: 'Workflow not found' });
+    }
+
+    res.json({ 
+      success: true, 
+      data: workflow,
+    });
+  } catch (error: any) {
+    console.error('Error fetching workflow details:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================================================
+// TIER-2: EMPLOYEE SCHEDULING PATTERNS
+// ============================================================================
+
+app.get("/api/patterns/employee/:employeeId", requireAuth, readLimiter, async (req: AuthenticatedRequest, res) => {
+  try {
+    const workspaceId = req.workspaceId!;
+    const { employeeId } = req.params;
+
+    const pattern = await employeePatternService.getEmployeePattern(workspaceId, employeeId);
+
+    if (!pattern) {
+      return res.status(404).json({ error: 'Employee not found' });
+    }
+
+    res.json({ 
+      success: true, 
+      data: pattern,
+    });
+  } catch (error: any) {
+    console.error('Error fetching employee pattern:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get("/api/patterns/workspace", requireAuth, requireManager, readLimiter, async (req: AuthenticatedRequest, res) => {
+  try {
+    const workspaceId = req.workspaceId!;
+
+    const patterns = await employeePatternService.getWorkspacePatterns(workspaceId);
+
+    res.json({ 
+      success: true, 
+      data: patterns,
+      count: patterns.length,
+    });
+  } catch (error: any) {
+    console.error('Error fetching workspace patterns:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get("/api/patterns/similar/:employeeId", requireAuth, readLimiter, async (req: AuthenticatedRequest, res) => {
+  try {
+    const workspaceId = req.workspaceId!;
+    const { employeeId } = req.params;
+
+    const similarPatterns = await employeePatternService.findSimilarPatterns(workspaceId, employeeId);
+
+    res.json({ 
+      success: true, 
+      data: similarPatterns,
+      count: similarPatterns.length,
+    });
+  } catch (error: any) {
+    console.error('Error finding similar patterns:', error);
     res.status(500).json({ error: error.message });
   }
 });
