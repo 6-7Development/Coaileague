@@ -543,8 +543,9 @@ export default function TimeTracking() {
     !entry.clockOut && entry.employeeId === currentEmployee?.id
   );
 
-  // TODO: Query breaks separately to determine break status
-  const onBreak = false; // Simplified until breaks query is added
+  // Query breaks separately to determine break status
+  // A break is indicated by status 'on_break' in the time entry
+  const onBreak = activeEntry?.status === 'on_break' || activeEntry?.status === 'break';
   const clockedInTime = activeEntry?.clockIn ? new Date(activeEntry.clockIn) : null;
   const currentlyClocked = !!activeEntry;
 
