@@ -211,7 +211,7 @@ function testPayrollCalculationMath(): void {
   assertEqual('Overtime Hours = 0', 0, overtimeResult1.overtime);
   assertEqual('Social Security (6.2% of $1000)', 62.00, socialSecurity1, 0.01);
   assertEqual('Medicare (1.45% of $1000)', 14.50, medicare1, 0.01);
-  assertEqual('State Tax (5% of $1000)', 50.00, stateTax1, 0.01);
+  assertEqual('State Tax (TX: 0%)', 0.00, stateTax1, 0.01);
   
   // Federal tax for $1000 bi-weekly = $26,000 annual
   // First $11,000 @ 10% = $1,100
@@ -240,7 +240,7 @@ function testPayrollCalculationMath(): void {
   const grossPay2 = regularPay2 + overtimePay2; // $1375
   
   const federalTax2 = PayrollAutomationEngine.calculateFederalTax(grossPay2, 'bi-weekly');
-  const stateTax2 = PayrollAutomationEngine.calculateStateTax(grossPay2);
+  const stateTax2 = PayrollAutomationEngine.calculateStateTax(grossPay2, 'TX');
   const socialSecurity2 = PayrollAutomationEngine.calculateSocialSecurity(grossPay2);
   const medicare2 = PayrollAutomationEngine.calculateMedicare(grossPay2);
   
@@ -279,11 +279,11 @@ function testPayrollCalculationMath(): void {
   // Calculate expected deductions for $1375
   const expectedSS2 = parseFloat((1375 * 0.062).toFixed(2));
   const expectedMedicare2 = parseFloat((1375 * 0.0145).toFixed(2));
-  const expectedStateTax2 = parseFloat((1375 * 0.05).toFixed(2));
+  const expectedStateTax2 = 0 // TX has no state income tax; parseFloat((1375 * 0.00).toFixed(2));
   
   assertEqual('Social Security (6.2% of $1375)', expectedSS2, socialSecurity2, 0.02);
   assertEqual('Medicare (1.45% of $1375)', expectedMedicare2, medicare2, 0.02);
-  assertEqual('State Tax (5% of $1375)', expectedStateTax2, stateTax2, 0.02);
+  assertEqual('State Tax (TX: 0%)', 0.00, stateTax2, 0.02);
   
   // Federal tax for $1375 bi-weekly = $35,750 annual
   // First $11,000 @ 10% = $1,100

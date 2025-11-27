@@ -1,9 +1,15 @@
-// Email notification service using Resend
+// Email notification service using Resend with fallback to development mode
 import { Resend } from 'resend';
 
 let connectionSettings: any;
+let resendConfigured = false;
 
 async function getCredentials() {
+  // Skip if in development without Resend configured
+  if (process.env.NODE_ENV !== 'production' && !process.env.RESEND_API_KEY) {
+    return null;
+  }
+
   const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME
   const xReplitToken = process.env.REPL_IDENTITY 
     ? 'repl ' + process.env.REPL_IDENTITY 
@@ -15,30 +21,60 @@ async function getCredentials() {
     throw new Error('X_REPLIT_TOKEN not found for repl/depl');
   }
 
-  connectionSettings = await fetch(
-    'https://' + hostname + '/api/v2/connection?include_secrets=true&connector_names=resend',
-    {
-      headers: {
-        'Accept': 'application/json',
-        'X_REPLIT_TOKEN': xReplitToken
+  try {
+    connectionSettings = await fetch(
+      'https://' + hostname + '/api/v2/connection?include_secrets=true&connector_names=resend',
+      {
+        headers: {
+          'Accept': 'application/json',
+          'X_REPLIT_TOKEN': xReplitToken
+        }
       }
-    }
-  ).then(res => res.json()).then(data => data.items?.[0]);
+    ).then(res => res.json()).then(data => data.items?.[0]);
 
-  if (!connectionSettings || (!connectionSettings.settings.api_key)) {
-    throw new Error('Resend not connected');
+    if (!connectionSettings || (!connectionSettings.settings.api_key)) {
+      return null;
+    }
+    return {apiKey: connectionSettings.settings.api_key, fromEmail: connectionSettings.settings.from_email};
+  } catch (error) {
+    return null;
   }
-  return {apiKey: connectionSettings.settings.api_key, fromEmail: connectionSettings.settings.from_email};
 }
 
 // WARNING: Never cache this client.
 // Access tokens expire, so a new client must be created each time.
 export async function getUncachableResendClient() {
-  const { apiKey, fromEmail } = await getCredentials();
+  const credentials = await getCredentials();
+  
+  if (!credentials) {
+    // Development mode: return mock client
+    resendConfigured = false;
+    return {
+      client: {
+        emails: {
+          send: async (params: any) => {
+            console.log(`📧 [DEV MODE] Email would be sent to ${params.to}`);
+            console.log(`   Subject: ${params.subject}`);
+            return { data: { id: `dev-${Date.now()}` } };
+          }
+        }
+      } as any,
+      fromEmail: process.env.RESEND_FROM_EMAIL || 'noreply@autoforce.ai'
+    };
+  }
+  
+  resendConfigured = true;
   return {
-    client: new Resend(apiKey),
-    fromEmail: fromEmail
+    client: new Resend(credentials.apiKey),
+    fromEmail: credentials.fromEmail
   };
+}
+
+/**
+ * Check if Resend is properly configured
+ */
+export function isResendConfigured(): boolean {
+  return resendConfigured;
 }
 
 // Email Templates

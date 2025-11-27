@@ -12,7 +12,7 @@ import { db } from "../db";
 import { emailEvents } from "@shared/schema";
 import { eq } from "drizzle-orm";
 // Reuse existing Resend client from email.ts (no duplication!)
-import { getUncachableResendClient } from "../email";
+import { getUncachableResendClient, isResendConfigured } from "../email";
 
 // ============================================================================
 // BASE URL UTILITY
