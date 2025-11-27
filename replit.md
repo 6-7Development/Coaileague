@@ -1,7 +1,7 @@
-# AutoForce™ - Universal Dynamic Configuration System
+# CoAIleague - AI-Powered Workforce Intelligence Platform
 
 ### Overview
-AutoForce™ is a Fortune 500-grade multi-tenant autonomous workforce management platform powered by Gemini 2.0 Flash AI. Its core purpose is to eliminate hardcoded values through centralized dynamic configuration. The platform integrates financials with real Stripe payments, features comprehensive error handling, and provides a production-ready architecture.
+CoAIleague is a Fortune 500-grade multi-tenant autonomous workforce management platform powered by Gemini 2.0 Flash AI. Its core purpose is to eliminate hardcoded values through centralized dynamic configuration. The platform integrates financials with real Stripe payments, features comprehensive error handling, and provides a production-ready architecture.
 
 Key capabilities include:
 - **Dynamic Configuration**: All application settings are managed via centralized configuration files.

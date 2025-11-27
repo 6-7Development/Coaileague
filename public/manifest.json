@@ -1,7 +1,7 @@
 {
-  "name": "AutoForce™ - Autonomous Workforce Management",
-  "short_name": "AutoForce™",
-  "description": "Autonomous workforce management platform for emergency services with intelligent automation, real-time tracking, and compliance tools",
+  "name": "CoAIleague - AI-Powered Workforce Management",
+  "short_name": "CoAIleague",
+  "description": "AI-powered workforce management platform with intelligent automation, real-time collaboration, and compliance tools powered by Gemini 2.0 Flash",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0f172a",
@@ -22,14 +22,14 @@
       "purpose": "any maskable"
     }
   ],
-  "categories": ["business", "productivity", "utilities", "workforce", "emergency-services"],
+  "categories": ["business", "productivity", "utilities", "workforce", "ai"],
   "screenshots": [
     {
       "src": "/screenshot-mobile.png",
       "sizes": "390x844",
       "type": "image/png",
       "form_factor": "narrow",
-      "label": "AutoForce™ Mobile Dashboard"
+      "label": "CoAIleague Mobile Dashboard"
     }
   ],
   "prefer_related_applications": false,

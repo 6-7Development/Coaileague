@@ -108,7 +108,7 @@ class GeminiProvider implements AIProvider {
     const usage = response.usageMetadata;
     const totalTokens = (usage?.promptTokenCount || 0) + (usage?.candidatesTokenCount || 0);
     
-    const isAnonymousWorkspace = options.workspaceId === 'autoforce-platform-workspace';
+    const isAnonymousWorkspace = options.workspaceId === 'coaileague-platform-workspace';
     
     if (totalTokens > 0 && options.workspaceId && !isAnonymousWorkspace) {
       await usageMeteringService.recordUsage({
@@ -309,8 +309,8 @@ class HelpOSService {
     let session: HelposAiSession | null = null;
     let currentFailedAttempts = 0;
 
-    // For anonymous users (workspaceId='autoforce-platform-workspace'), don't persist sessions
-    const isAnonymous = workspaceId === 'autoforce-platform-workspace';
+    // For anonymous users (workspaceId='coaileague-platform-workspace'), don't persist sessions
+    const isAnonymous = workspaceId === 'coaileague-platform-workspace';
 
     if (sessionId && !isAnonymous) {
       session = await storage.getHelposSession(sessionId, workspaceId) || null;
