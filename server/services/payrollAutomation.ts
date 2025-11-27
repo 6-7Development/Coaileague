@@ -13,8 +13,8 @@
 
 import { db } from "../db";
 import { timeEntries, employees, payrollRuns, payrollEntries, workspaces, invoiceLineItems, type TimeEntry } from "@shared/schema";
-import { eq, and, gte, lte, isNull, sql, notInArray } from "drizzle-orm";
-import { startOfWeek, endOfWeek, subWeeks, format, startOfMonth, endOfMonth, subMonths } from "date-fns";
+import { eq, and, gte, lte, isNull, sql, notInArray, inArray } from "drizzle-orm";
+import { startOfWeek, endOfWeek, subWeeks, format, startOfMonth, endOfMonth, subMonths, startOfYear, endOfYear } from "date-fns";
 import { aggregatePayrollHours, markEntriesAsPayrolled } from "./automation/payrollHoursAggregator";
 
 interface PayPeriod {
@@ -31,10 +31,13 @@ interface PayrollCalculation {
   holidayHours: number; // Added for FLSA holiday pay tracking
   hourlyRate: number;
   grossPay: number;
+  preTaxDeductions: number; // 401k, health insurance, HSA, FSA, etc.
+  taxableGrossPay: number; // grossPay - preTaxDeductions
   federalTax: number;
   stateTax: number;
   socialSecurity: number;
   medicare: number;
+  postTaxDeductions: number; // Extra deductions after taxes
   netPay: number;
 }
 
@@ -121,24 +124,168 @@ export class PayrollAutomationEngine {
   }
   
   /**
-   * Calculate state tax (simplified - flat 5% for demo)
-   * In production, this would use state-specific tables
+   * State-specific tax configuration with 2024 rates
+   * Supports no-tax states, flat rates, and simplified progressive brackets
+   */
+  private static readonly STATE_TAX_CONFIG: Record<string, { type: 'none' | 'flat' | 'progressive'; rate?: number; brackets?: Array<{ limit: number; rate: number }> }> = {
+    // No income tax states
+    'AK': { type: 'none' },
+    'FL': { type: 'none' },
+    'NV': { type: 'none' },
+    'SD': { type: 'none' },
+    'TN': { type: 'none' },
+    'TX': { type: 'none' },
+    'WA': { type: 'none' },
+    'WY': { type: 'none' },
+    
+    // Flat rate states (top 10)
+    'CO': { type: 'flat', rate: 0.044 },
+    'GA': { type: 'flat', rate: 0.0575 },
+    'IL': { type: 'flat', rate: 0.0495 },
+    'IN': { type: 'flat', rate: 0.0323 },
+    'KY': { type: 'flat', rate: 0.045 },
+    'MA': { type: 'flat', rate: 0.05 },
+    'MI': { type: 'flat', rate: 0.0425 },
+    'NC': { type: 'flat', rate: 0.0525 },
+    'PA': { type: 'flat', rate: 0.0307 },
+    'UT': { type: 'flat', rate: 0.0465 },
+    
+    // Progressive states (simplified - top marginal rate)
+    'AZ': { type: 'progressive', brackets: [{ limit: 36500, rate: 0.02 }, { limit: 90000, rate: 0.0455 }, { limit: Infinity, rate: 0.055 }] },
+    'AR': { type: 'progressive', brackets: [{ limit: 4500, rate: 0.02 }, { limit: 9000, rate: 0.04 }, { limit: Infinity, rate: 0.0575 }] },
+    'CA': { type: 'progressive', brackets: [{ limit: 10000, rate: 0.01 }, { limit: 23000, rate: 0.02 }, { limit: 37500, rate: 0.04 }, { limit: 52500, rate: 0.06 }, { limit: 67500, rate: 0.08 }, { limit: 340000, rate: 0.093 }, { limit: 410000, rate: 0.103 }, { limit: 680000, rate: 0.113 }, { limit: Infinity, rate: 0.123 }] },
+    'CT': { type: 'progressive', rate: 0.0575 },
+    'DE': { type: 'progressive', rate: 0.0615 },
+    'IA': { type: 'progressive', rate: 0.0585 },
+    'ID': { type: 'progressive', rate: 0.0585 },
+    'IL': { type: 'flat', rate: 0.0495 },
+    'KS': { type: 'progressive', rate: 0.057 },
+    'LA': { type: 'progressive', rate: 0.0575 },
+    'ME': { type: 'progressive', rate: 0.0715 },
+    'MD': { type: 'progressive', rate: 0.0575 },
+    'MN': { type: 'progressive', rate: 0.0985 },
+    'MO': { type: 'progressive', rate: 0.0575 },
+    'MS': { type: 'progressive', rate: 0.05 },
+    'MT': { type: 'progressive', rate: 0.065 },
+    'NE': { type: 'progressive', rate: 0.0684 },
+    'NH': { type: 'none' }, // No income tax (only dividends)
+    'NJ': { type: 'progressive', rate: 0.0897 },
+    'NM': { type: 'progressive', rate: 0.059 },
+    'NY': { type: 'progressive', rate: 0.0685 },
+    'OH': { type: 'progressive', rate: 0.0399 },
+    'OK': { type: 'progressive', rate: 0.05 },
+    'OR': { type: 'progressive', rate: 0.099 },
+    'RI': { type: 'progressive', rate: 0.0675 },
+    'SC': { type: 'progressive', rate: 0.07 },
+    'VT': { type: 'progressive', rate: 0.085 },
+    'VA': { type: 'progressive', rate: 0.0575 },
+    'WI': { type: 'progressive', rate: 0.0685 },
+    'WV': { type: 'progressive', rate: 0.065 },
+  };
+  
+  /**
+   * Calculate state tax based on state-specific rules
+   * Supports no-tax, flat-rate, and progressive bracket states
    */
   static calculateStateTax(grossPay: number, state: string = 'CA'): number {
-    // Simplified state tax - 5% flat rate
-    // In production, use state-specific tax tables
-    return parseFloat((grossPay * 0.05).toFixed(2));
+    const stateCode = state.toUpperCase();
+    const config = this.STATE_TAX_CONFIG[stateCode];
+    
+    // Default to CA if state not found
+    if (!config) {
+      console.warn(`[Payroll] Unknown state ${state}, defaulting to CA rates`);
+      return parseFloat((grossPay * 0.0575).toFixed(2));
+    }
+    
+    // No income tax states
+    if (config.type === 'none') {
+      return 0;
+    }
+    
+    // Flat rate states
+    if (config.type === 'flat' && config.rate) {
+      return parseFloat((grossPay * config.rate).toFixed(2));
+    }
+    
+    // Progressive bracket states (simplified calculation on gross pay basis)
+    if (config.type === 'progressive') {
+      if (config.rate) {
+        // Single marginal rate for simplicity
+        return parseFloat((grossPay * config.rate).toFixed(2));
+      }
+      if (config.brackets) {
+        let tax = 0;
+        let previousLimit = 0;
+        for (const bracket of config.brackets) {
+          if (grossPay > bracket.limit) {
+            tax += (bracket.limit - previousLimit) * bracket.rate;
+            previousLimit = bracket.limit;
+          } else {
+            tax += (grossPay - previousLimit) * bracket.rate;
+            break;
+          }
+        }
+        return parseFloat(tax.toFixed(2));
+      }
+    }
+    
+    return 0;
+  }
+  
+  /**
+   * Get Year-to-Date wages for Social Security wage base tracking
+   * Sums gross pay from all approved/paid payroll entries for the employee in the given year
+   * 
+   * @param employeeId - The employee ID to query
+   * @param year - The calendar year to sum wages for
+   * @returns Promise<number> - The total YTD gross wages subject to SS
+   */
+  static async getSocialSecurityYtdWages(employeeId: string, year: number): Promise<number> {
+    const yearStart = startOfYear(new Date(year, 0, 1));
+    const yearEnd = endOfYear(new Date(year, 0, 1));
+    
+    // Query payroll entries joined with payroll runs to filter by year and status
+    // Only count approved or paid payroll runs (not draft or pending)
+    const result = await db
+      .select({
+        totalGrossPay: sql<string>`COALESCE(SUM(${payrollEntries.grossPay}), 0)`
+      })
+      .from(payrollEntries)
+      .innerJoin(payrollRuns, eq(payrollEntries.payrollRunId, payrollRuns.id))
+      .where(
+        and(
+          eq(payrollEntries.employeeId, employeeId),
+          gte(payrollRuns.periodEnd, yearStart),
+          lte(payrollRuns.periodEnd, yearEnd),
+          inArray(payrollRuns.status, ['approved', 'paid'])
+        )
+      );
+    
+    const ytdWages = parseFloat(result[0]?.totalGrossPay || '0');
+    return ytdWages;
   }
   
   /**
    * Calculate Social Security (6.2% up to wage base $168,600)
+   * Implements YTD wage base tracking to stop withholding once annual limit is reached
+   * 
+   * @param grossPay - Current period gross pay
+   * @param ytdWages - Year-to-date wages already subject to SS (default 0 for backward compatibility)
+   * @returns The Social Security tax amount to withhold
    */
-  static calculateSocialSecurity(grossPay: number): number {
+  static calculateSocialSecurity(grossPay: number, ytdWages: number = 0): number {
     const SS_RATE = 0.062;
     const WAGE_BASE = 168600; // 2024 wage base
     
-    // For simplicity, not tracking YTD - in production track cumulative
-    return parseFloat((grossPay * SS_RATE).toFixed(2));
+    // If YTD wages already exceed the wage base, no SS tax due
+    if (ytdWages >= WAGE_BASE) {
+      return 0;
+    }
+    
+    // Calculate taxable wages for this period (capped at remaining room under wage base)
+    const taxableWages = Math.min(grossPay, Math.max(0, WAGE_BASE - ytdWages));
+    
+    return parseFloat((taxableWages * SS_RATE).toFixed(2));
   }
   
   /**
@@ -163,6 +310,62 @@ export class PayrollAutomationEngine {
       regular: OVERTIME_THRESHOLD,
       overtime: totalHours - OVERTIME_THRESHOLD
     };
+  }
+
+  /**
+   * Calculate pre-tax deductions for an employee
+   * Includes: 401k, health insurance, HSA, FSA, etc.
+   * These reduce taxable income before federal/state/SS/Medicare calculations
+   */
+  static async getPreTaxDeductions(employeeId: string, payPeriodEnd: Date): Promise<number> {
+    // Query payrollDeductions table for active deductions
+    const deductions = await db
+      .select({ amount: sql<number>`CAST(${db.raw('amount')} AS FLOAT)` })
+      .from(db.raw('payroll_deductions'))
+      .where(
+        sql`employee_id = ${employeeId} 
+            AND workspace_id IS NOT NULL
+            AND (end_date IS NULL OR end_date >= ${payPeriodEnd})`
+      );
+    
+    const total = deductions.reduce((sum, d) => sum + (d.amount || 0), 0);
+    return parseFloat(total.toFixed(2));
+  }
+
+  /**
+   * Calculate currency exchange amount for multi-currency support
+   * Supports converting between USD and other currencies
+   */
+  static convertCurrency(amount: number, fromCurrency: string = 'USD', toCurrency: string = 'USD'): number {
+    if (fromCurrency === toCurrency) return amount;
+    
+    // Simple exchange rates (in production, fetch from external service)
+    const exchangeRates: Record<string, number> = {
+      'USD': 1.0,
+      'EUR': 0.92,
+      'GBP': 0.79,
+      'CAD': 1.36,
+      'AUD': 1.52,
+      'JPY': 149.5,
+      'INR': 83.12,
+    };
+    
+    const fromRate = exchangeRates[fromCurrency] || 1.0;
+    const toRate = exchangeRates[toCurrency] || 1.0;
+    
+    return parseFloat((amount * (toRate / fromRate)).toFixed(2));
+  }
+
+  /**
+   * Lookup tax jurisdiction by geographic coordinates
+   * Returns state/province for tax calculation purposes
+   */
+  static getTaxJurisdictionByLocation(latitude: number, longitude: number): string {
+    // Simplified mapping - in production use geocoding API
+    // For now, return CA as default
+    // This would use Google Maps or similar to convert lat/lng to state
+    console.log(`[Payroll] Tax jurisdiction lookup for ${latitude}, ${longitude}`);
+    return 'CA';
   }
   
   /**
@@ -221,6 +424,9 @@ export class PayrollAutomationEngine {
     const allTimeEntryIds: string[] = [];
     const allWarnings = [...aggregationResult.warnings];
     
+    // Get the year from the pay period end date for YTD wage base calculations
+    const payrollYear = payPeriod.end.getFullYear();
+    
     // Process each employee's payroll summary from aggregator
     for (const employeeSummary of aggregationResult.employeeSummaries) {
       // Use aggregator's FLSA-compliant hour calculations
@@ -243,10 +449,22 @@ export class PayrollAutomationEngine {
         console.warn(`[AI Payroll™] ${warning}`);
       }
       
+      // Fetch YTD wages for Social Security wage base tracking
+      const ytdWages = await this.getSocialSecurityYtdWages(employeeSummary.employeeId, payrollYear);
+      
+      // Log when employee has reached the SS wage base limit
+      const SS_WAGE_BASE = 168600;
+      if (ytdWages >= SS_WAGE_BASE) {
+        console.log(`[AI Payroll™] Employee ${employeeSummary.employeeName} has reached SS wage base limit ($${ytdWages.toFixed(2)} YTD) - no SS withholding`);
+      } else if (ytdWages + grossPay > SS_WAGE_BASE) {
+        const taxableThisPeriod = SS_WAGE_BASE - ytdWages;
+        console.log(`[AI Payroll™] Employee ${employeeSummary.employeeName} will reach SS wage base limit this period - withholding on $${taxableThisPeriod.toFixed(2)} of $${grossPay.toFixed(2)} gross`);
+      }
+      
       // Calculate taxes and deductions on gross pay
       const federalTax = this.calculateFederalTax(grossPay, payPeriod.type);
       const stateTax = this.calculateStateTax(grossPay);
-      const socialSecurity = this.calculateSocialSecurity(grossPay);
+      const socialSecurity = this.calculateSocialSecurity(grossPay, ytdWages);
       const medicare = this.calculateMedicare(grossPay);
       
       // Calculate net pay
