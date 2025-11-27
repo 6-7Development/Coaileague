@@ -158,7 +158,6 @@ export class PayrollAutomationEngine {
     'DE': { type: 'progressive', rate: 0.0615 },
     'IA': { type: 'progressive', rate: 0.0585 },
     'ID': { type: 'progressive', rate: 0.0585 },
-    'IL': { type: 'flat', rate: 0.0495 },
     'KS': { type: 'progressive', rate: 0.057 },
     'LA': { type: 'progressive', rate: 0.0575 },
     'ME': { type: 'progressive', rate: 0.0715 },

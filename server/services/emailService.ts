@@ -209,7 +209,23 @@ interface EmailResult {
   error?: string;
 }
 
+interface EmailRetryJob {
+  id: string;
+  eventId: string;
+  recipientEmail: string;
+  subject: string;
+  html: string;
+  emailType: string;
+  workspaceId?: string;
+  userId?: string;
+  retryCount: number;
+  nextRetryAt: Date;
+  createdAt: Date;
+}
+
 export class EmailService {
+  private retryQueue: Map<string, EmailRetryJob> = new Map();
+  private retryCheckInterval: NodeJS.Timeout | null = null;
   
   /**
    * Log email event to database
@@ -266,7 +282,131 @@ export class EmailService {
   }
 
   /**
-   * Send email via Resend with audit logging
+   * Calculate next retry time with exponential backoff
+   * Retry attempt 1: 30 seconds, 2: 5 mins, 3: 30 mins, 4: 2 hours, 5: 24 hours
+   */
+  private getNextRetryTime(retryCount: number): Date {
+    const backoffMs = [
+      30 * 1000,        // Attempt 1: 30 seconds
+      5 * 60 * 1000,    // Attempt 2: 5 minutes
+      30 * 60 * 1000,   // Attempt 3: 30 minutes
+      2 * 60 * 60 * 1000, // Attempt 4: 2 hours
+      24 * 60 * 60 * 1000, // Attempt 5: 24 hours
+    ];
+    
+    const delayMs = backoffMs[Math.min(retryCount, backoffMs.length - 1)];
+    return new Date(Date.now() + delayMs);
+  }
+
+  /**
+   * Add email to retry queue
+   */
+  private addToRetryQueue(
+    eventId: string,
+    to: string,
+    subject: string,
+    html: string,
+    emailType: string,
+    workspaceId?: string,
+    userId?: string,
+    retryCount: number = 0
+  ): void {
+    const retryJobId = `${eventId}-retry-${retryCount}`;
+    const job: EmailRetryJob = {
+      id: retryJobId,
+      eventId,
+      recipientEmail: to,
+      subject,
+      html,
+      emailType,
+      workspaceId,
+      userId,
+      retryCount,
+      nextRetryAt: this.getNextRetryTime(retryCount),
+      createdAt: new Date(),
+    };
+    
+    this.retryQueue.set(retryJobId, job);
+    console.log(`[EmailService] Added to retry queue: ${emailType} to ${to} (retry ${retryCount + 1}/5)`);
+  }
+
+  /**
+   * Process retry queue - check for jobs that should be retried
+   */
+  private async processRetryQueue(): Promise<void> {
+    const now = new Date();
+    const jobsToRetry = Array.from(this.retryQueue.values()).filter(job => job.nextRetryAt <= now);
+    
+    if (jobsToRetry.length === 0) return;
+    
+    console.log(`[EmailService] Processing ${jobsToRetry.length} retry jobs...`);
+    
+    for (const job of jobsToRetry) {
+      if (job.retryCount >= 5) {
+        // Max retries exceeded - mark as permanently failed
+        await this.updateEmailEvent(
+          job.eventId,
+          'failed',
+          undefined,
+          `Failed after 5 retry attempts`
+        );
+        this.retryQueue.delete(job.id);
+        console.warn(`[EmailService] Max retries exceeded: ${job.emailType} to ${job.recipientEmail}`);
+        continue;
+      }
+      
+      // Attempt to resend
+      try {
+        const { client, fromEmail } = await getUncachableResendClient();
+        const result = await client.emails.send({
+          from: fromEmail,
+          to: job.recipientEmail,
+          subject: job.subject,
+          html: job.html,
+        });
+        
+        // Success - update log and remove from queue
+        await this.updateEmailEvent(job.eventId, 'sent', result.data?.id);
+        this.retryQueue.delete(job.id);
+        console.log(`[EmailService] Retry successful: ${job.emailType} to ${job.recipientEmail}`);
+      } catch (error: any) {
+        // Schedule next retry
+        job.retryCount++;
+        job.nextRetryAt = this.getNextRetryTime(job.retryCount);
+        console.warn(`[EmailService] Retry failed: ${job.emailType} to ${job.recipientEmail}, next attempt: ${job.nextRetryAt}`);
+      }
+    }
+  }
+
+  /**
+   * Initialize retry queue processor
+   */
+  startRetryProcessor(): void {
+    if (this.retryCheckInterval) return;
+    
+    // Check retry queue every 60 seconds
+    this.retryCheckInterval = setInterval(() => {
+      this.processRetryQueue().catch(error => {
+        console.error('[EmailService] Error processing retry queue:', error);
+      });
+    }, 60 * 1000);
+    
+    console.log('[EmailService] Email retry processor started (checks every 60s)');
+  }
+
+  /**
+   * Stop retry queue processor
+   */
+  stopRetryProcessor(): void {
+    if (this.retryCheckInterval) {
+      clearInterval(this.retryCheckInterval);
+      this.retryCheckInterval = null;
+      console.log('[EmailService] Email retry processor stopped');
+    }
+  }
+
+  /**
+   * Send email via Resend with audit logging and automatic retry on failure
    */
   private async sendEmail(
     to: string,
@@ -309,10 +449,13 @@ export class EmailService {
     } catch (error: any) {
       const errorMessage = error.message || 'Unknown error';
       
-      // Update log with failure
+      // Log initial failure
       await this.updateEmailEvent(eventId, 'failed', undefined, errorMessage);
+      
+      // Add to retry queue for automatic retry
+      this.addToRetryQueue(eventId, to, subject, html, emailType, workspaceId, userId, 0);
 
-      console.error(`[EmailService] Email failed: ${emailType} to ${to}`, errorMessage);
+      console.error(`[EmailService] Email failed (will retry): ${emailType} to ${to}`, errorMessage);
 
       return {
         success: false,
