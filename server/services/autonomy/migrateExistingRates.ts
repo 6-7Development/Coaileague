@@ -180,7 +180,7 @@ async function migrateWorkspaceRates(): Promise<{ count: number; errors: string[
  */
 export async function migrateAllRates(): Promise<MigrationStats> {
   console.log('\n╔════════════════════════════════════════════════════════════╗');
-  console.log('║  AUTOFORCE™ RATE HISTORY MIGRATION                        ║');
+  console.log('║  COAILEAGUE RATE HISTORY MIGRATION                        ║');
   console.log('║  Phase 1: Idempotency & Rate Versioning                   ║');
   console.log('╚════════════════════════════════════════════════════════════╝');
   console.log(`\nTimestamp: ${new Date().toISOString()}\n`);

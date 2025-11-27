@@ -1066,7 +1066,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Create support ticket from floating chat (AutoForce™ AI)
+  // Create support ticket from floating chat (CoAIleague AI)
   app.post('/api/support/create-ticket', chatMessageLimiter, async (req, res) => {
     try {
       const authReq = req as any;
@@ -1126,7 +1126,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ticketNumber: (ticket as any).ticketNumber || ticket.id
       });
     } catch (error) {
-      console.error('[AutoForce™ AI] Error creating support ticket:', error);
+      console.error('[CoAIleague AI] Error creating support ticket:', error);
       res.status(500).json({ 
         error: 'Failed to create support ticket',
         details: error instanceof Error ? error.message : 'Unknown error'
@@ -2346,7 +2346,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       doc.pipe(res);
 
       // Header
-      doc.fontSize(24).text(workspace.companyName || 'AutoForce™', { align: 'center' });
+      doc.fontSize(24).text(workspace.companyName || 'CoAIleague', { align: 'center' });
       doc.fontSize(10).text(workspace.address || '', { align: 'center' });
       doc.moveDown();
       
@@ -4649,7 +4649,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         employee.email || '',
         tempPassword,
         employee.firstName || 'Employee',
-        workspace?.name || 'AutoForce™'
+        workspace?.name || 'CoAIleague'
       ).catch(err => console.error(`[PASSWORD RESET] Failed to send email to ${employee.email}:`, err.message));
       
       res.json({ 
@@ -6234,7 +6234,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                             <p style="margin: 15px 0 0 0;">Please review your search criteria and try again with expanded parameters.</p>
                           </div>
                           <p style="color: #6b7280; font-size: 14px; margin-top: 20px;">
-                            This is an automated notification from AutoForce™.
+                            This is an automated notification from CoAIleague.
                           </p>
                         </div>
                       `,
@@ -14572,7 +14572,7 @@ Summary:`;
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <h2 style="color: #2563eb;">Support Ticket Closed - ${ticket.ticketNumber}</h2>
             <p>Hello ${guestName || 'there'},</p>
-            <p>Thank you for contacting AutoForce™ Support. Your support ticket has been closed.</p>
+            <p>Thank you for contacting CoAIleague Support. Your support ticket has been closed.</p>
             
             <div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #2563eb;">
               <p style="margin: 5px 0;"><strong>Ticket #:</strong> ${ticket.ticketNumber}</p>
@@ -14584,7 +14584,7 @@ Summary:`;
             <p>If you have any follow-up questions or need further assistance, please don't hesitate to reach out to us.</p>
             
             <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">
-              This is an automated message from AutoForce™ Support.<br/>
+              This is an automated message from CoAIleague Support.<br/>
               Thank you for using our services!
             </p>
           </div>
@@ -24744,7 +24744,7 @@ Respond with valid JSON array only.`
         senderId: userId,
         senderName: userName,
         senderType: 'system',
-        message: `AutoForce™ Support Staff (${userName}) has joined the room with admin access`,
+        message: `CoAIleague Support Staff (${userName}) has joined the room with admin access`,
         messageType: 'system',
         isSystemMessage: true,
         isEncrypted: false,
