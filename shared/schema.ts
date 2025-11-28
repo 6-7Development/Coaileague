@@ -12505,3 +12505,571 @@ export const insertLeaderboardCacheSchema = createInsertSchema(leaderboardCache)
 
 export type InsertLeaderboardCache = z.infer<typeof insertLeaderboardCacheSchema>;
 export type LeaderboardCache = typeof leaderboardCache.$inferSelect;
+
+// ============================================================================
+// COAILEAGUE AUTONOMOUS SCHEDULER - PHASE 1 (Gap Analysis Implementation)
+// ============================================================================
+
+// Pool type enum for scheduler
+export const schedulerPoolTypeEnum = pgEnum('scheduler_pool_type', ['org', 'global']);
+
+// Scoring event type enum
+export const scoringEventTypeEnum = pgEnum('scoring_event_type', [
+  'clock_in_on_time', 'clock_in_late', 'clock_out_on_time', 'clock_out_early', 'clock_out_late',
+  'shift_completed', 'shift_perfect', 'shift_no_show', 'shift_call_off', 'shift_call_off_late',
+  'shift_accepted', 'shift_rejected', 'shift_dropped',
+  'client_positive_feedback', 'client_negative_feedback', 'client_neutral_feedback',
+  'overtime_compliance', 'overtime_violation',
+  'certification_added', 'certification_expired', 'certification_renewed',
+  'training_completed', 'skill_verified',
+  'manual_adjustment'
+]);
+
+// Personality tag category enum  
+export const personalityTagCategoryEnum = pgEnum('personality_tag_category', [
+  'work_style', 'communication', 'energy_level', 'experience_type', 'special_skills'
+]);
+
+// Pool failure type enum
+export const poolFailureTypeEnum = pgEnum('pool_failure_type', ['hard', 'soft', 'threshold']);
+
+// Unified CoAIleague Employee Profile for AI Scheduling
+export const coaileagueEmployeeProfiles = pgTable("coaileague_employee_profiles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }).unique(),
+  
+  // === COMPOSITE SCORES (0.00-1.00 normalized) ===
+  overallScore: decimal("overall_score", { precision: 5, scale: 4 }).default("0.7500"),
+  reliabilityScore: decimal("reliability_score", { precision: 5, scale: 4 }).default("0.8500"),
+  skillMatchScore: decimal("skill_match_score", { precision: 5, scale: 4 }).default("0.8000"),
+  distanceScore: decimal("distance_score", { precision: 5, scale: 4 }).default("0.7000"),
+  personalityLikenessScore: decimal("personality_likeness_score", { precision: 5, scale: 4 }).default("0.5000"),
+  costEfficiencyScore: decimal("cost_efficiency_score", { precision: 5, scale: 4 }).default("0.8000"),
+  
+  // === RAW METRICS ===
+  // Reliability
+  totalShiftsAssigned: integer("total_shifts_assigned").default(0),
+  shiftsCompleted: integer("shifts_completed").default(0),
+  shiftsNoShow: integer("shifts_no_show").default(0),
+  shiftsCallOff: integer("shifts_call_off").default(0),
+  shiftsLateCallOff: integer("shifts_late_call_off").default(0),
+  shiftsDropped: integer("shifts_dropped").default(0),
+  clockInsOnTime: integer("clock_ins_on_time").default(0),
+  clockInsLate: integer("clock_ins_late").default(0),
+  clockOutsOnTime: integer("clock_outs_on_time").default(0),
+  clockOutsLate: integer("clock_outs_late").default(0),
+  perfectShifts: integer("perfect_shifts").default(0),
+  
+  // Distance & Location
+  homeLatitude: decimal("home_latitude", { precision: 10, scale: 7 }),
+  homeLongitude: decimal("home_longitude", { precision: 10, scale: 7 }),
+  maxWillingDistance: integer("max_willing_distance").default(50),
+  preferredRegions: text("preferred_regions").array().default(sql`ARRAY[]::text[]`),
+  
+  // Availability & Response
+  typicalResponseTimeMinutes: integer("typical_response_time_minutes").default(120),
+  availableForLastMinute: boolean("available_for_last_minute").default(false),
+  preferredShiftTypes: text("preferred_shift_types").array().default(sql`ARRAY[]::text[]`),
+  blackoutDates: jsonb("blackout_dates"), // Array of date ranges
+  
+  // Client Feedback Aggregates
+  clientPositiveFeedback: integer("client_positive_feedback").default(0),
+  clientNegativeFeedback: integer("client_negative_feedback").default(0),
+  clientNeutralFeedback: integer("client_neutral_feedback").default(0),
+  averageClientRating: decimal("average_client_rating", { precision: 3, scale: 2 }).default("4.00"),
+  
+  // Cost Metrics
+  currentHourlyRate: decimal("current_hourly_rate", { precision: 10, scale: 2 }),
+  maxWeeklyHours: integer("max_weekly_hours").default(40),
+  currentWeeklyHours: decimal("current_weekly_hours", { precision: 6, scale: 2 }).default("0.00"),
+  overtimeEligible: boolean("overtime_eligible").default(true),
+  
+  // Points System (ties to gamification)
+  goodPoints: integer("good_points").default(0),
+  negativePoints: integer("negative_points").default(0),
+  netPoints: integer("net_points").default(0),
+  
+  // === HISTORICAL AGGREGATES (for Gemini learning) ===
+  weeklyAverageScore30Days: decimal("weekly_average_score_30_days", { precision: 5, scale: 4 }),
+  weeklyAverageScore90Days: decimal("weekly_average_score_90_days", { precision: 5, scale: 4 }),
+  callOffRate30Days: decimal("call_off_rate_30_days", { precision: 5, scale: 4 }),
+  callOffRate90Days: decimal("call_off_rate_90_days", { precision: 5, scale: 4 }),
+  reliabilityTrend: varchar("reliability_trend"), // 'improving', 'stable', 'declining'
+  
+  // Day-of-week reliability patterns (0.00-1.00 for each day)
+  sundayReliability: decimal("sunday_reliability", { precision: 5, scale: 4 }),
+  mondayReliability: decimal("monday_reliability", { precision: 5, scale: 4 }),
+  tuesdayReliability: decimal("tuesday_reliability", { precision: 5, scale: 4 }),
+  wednesdayReliability: decimal("wednesday_reliability", { precision: 5, scale: 4 }),
+  thursdayReliability: decimal("thursday_reliability", { precision: 5, scale: 4 }),
+  fridayReliability: decimal("friday_reliability", { precision: 5, scale: 4 }),
+  saturdayReliability: decimal("saturday_reliability", { precision: 5, scale: 4 }),
+  
+  // Licensing & Certifications (quick reference)
+  activeLicenses: text("active_licenses").array().default(sql`ARRAY[]::text[]`),
+  expiringLicenses: jsonb("expiring_licenses"), // {license: string, expiresAt: date}[]
+  
+  // Pool membership
+  isInOrgPool: boolean("is_in_org_pool").default(true),
+  isInGlobalPool: boolean("is_in_global_pool").default(false),
+  globalPoolCategories: text("global_pool_categories").array().default(sql`ARRAY[]::text[]`),
+  
+  // Last activity timestamps
+  lastShiftAssigned: timestamp("last_shift_assigned"),
+  lastShiftCompleted: timestamp("last_shift_completed"),
+  lastScoreUpdate: timestamp("last_score_update"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("coaileague_profiles_workspace_idx").on(table.workspaceId),
+  index("coaileague_profiles_employee_idx").on(table.employeeId),
+  index("coaileague_profiles_overall_score_idx").on(table.overallScore),
+  index("coaileague_profiles_reliability_idx").on(table.reliabilityScore),
+  index("coaileague_profiles_org_pool_idx").on(table.isInOrgPool),
+  index("coaileague_profiles_global_pool_idx").on(table.isInGlobalPool),
+]);
+
+export const insertCoaileagueEmployeeProfileSchema = createInsertSchema(coaileagueEmployeeProfiles).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertCoaileagueEmployeeProfile = z.infer<typeof insertCoaileagueEmployeeProfileSchema>;
+export type CoaileagueEmployeeProfile = typeof coaileagueEmployeeProfiles.$inferSelect;
+
+// Employee Score Snapshots (Historical tracking for trends)
+export const employeeScoreSnapshots = pgTable("employee_score_snapshots", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
+  profileId: varchar("profile_id").references(() => coaileagueEmployeeProfiles.id, { onDelete: 'cascade' }),
+  
+  // Snapshot period
+  periodType: varchar("period_type").notNull(), // 'daily', 'weekly', 'monthly'
+  periodStart: timestamp("period_start").notNull(),
+  periodEnd: timestamp("period_end").notNull(),
+  
+  // Scores at snapshot time
+  overallScore: decimal("overall_score", { precision: 5, scale: 4 }),
+  reliabilityScore: decimal("reliability_score", { precision: 5, scale: 4 }),
+  skillMatchScore: decimal("skill_match_score", { precision: 5, scale: 4 }),
+  distanceScore: decimal("distance_score", { precision: 5, scale: 4 }),
+  personalityLikenessScore: decimal("personality_likeness_score", { precision: 5, scale: 4 }),
+  
+  // Activity during period
+  shiftsAssigned: integer("shifts_assigned").default(0),
+  shiftsCompleted: integer("shifts_completed").default(0),
+  shiftsNoShow: integer("shifts_no_show").default(0),
+  shiftsCallOff: integer("shifts_call_off").default(0),
+  pointsEarned: integer("points_earned").default(0),
+  pointsLost: integer("points_lost").default(0),
+  
+  // Calculated metrics
+  reliabilityPercentage: decimal("reliability_percentage", { precision: 5, scale: 2 }),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("score_snapshots_workspace_idx").on(table.workspaceId),
+  index("score_snapshots_employee_idx").on(table.employeeId),
+  index("score_snapshots_period_idx").on(table.periodType, table.periodStart),
+]);
+
+export const insertEmployeeScoreSnapshotSchema = createInsertSchema(employeeScoreSnapshots).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertEmployeeScoreSnapshot = z.infer<typeof insertEmployeeScoreSnapshotSchema>;
+export type EmployeeScoreSnapshot = typeof employeeScoreSnapshots.$inferSelect;
+
+// Employee Event Log (Event-driven score updates)
+export const employeeEventLog = pgTable("employee_event_log", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
+  profileId: varchar("profile_id").references(() => coaileagueEmployeeProfiles.id, { onDelete: 'set null' }),
+  
+  // Event details
+  eventType: scoringEventTypeEnum("event_type").notNull(),
+  eventSource: varchar("event_source").notNull(), // 'time_tracking', 'shift_management', 'client_feedback', 'admin', 'system'
+  
+  // Points impact
+  pointsChange: integer("points_change").default(0),
+  pointsType: varchar("points_type"), // 'good', 'negative'
+  
+  // Score impact (before/after)
+  previousOverallScore: decimal("previous_overall_score", { precision: 5, scale: 4 }),
+  newOverallScore: decimal("new_overall_score", { precision: 5, scale: 4 }),
+  previousReliabilityScore: decimal("previous_reliability_score", { precision: 5, scale: 4 }),
+  newReliabilityScore: decimal("new_reliability_score", { precision: 5, scale: 4 }),
+  
+  // Reference to triggering entity
+  referenceId: varchar("reference_id"), // shift_id, time_entry_id, feedback_id
+  referenceType: varchar("reference_type"), // 'shift', 'time_entry', 'feedback', 'certification'
+  
+  // Context
+  metadata: jsonb("metadata"), // Additional context (e.g., minutes late, client comments)
+  triggeredBy: varchar("triggered_by").references(() => users.id, { onDelete: 'set null' }), // User who triggered (if manual)
+  isAutomatic: boolean("is_automatic").default(true),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("event_log_workspace_idx").on(table.workspaceId),
+  index("event_log_employee_idx").on(table.employeeId),
+  index("event_log_type_idx").on(table.eventType),
+  index("event_log_created_idx").on(table.createdAt),
+  index("event_log_reference_idx").on(table.referenceType, table.referenceId),
+]);
+
+export const insertEmployeeEventLogSchema = createInsertSchema(employeeEventLog).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertEmployeeEventLog = z.infer<typeof insertEmployeeEventLogSchema>;
+export type EmployeeEventLog = typeof employeeEventLog.$inferSelect;
+
+// Personality Tags Catalog (Master list per workspace)
+export const personalityTagsCatalog = pgTable("personality_tags_catalog", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  tagName: varchar("tag_name").notNull(), // e.g., 'energetic', 'calm', 'detail-oriented'
+  tagCategory: personalityTagCategoryEnum("tag_category").notNull(),
+  description: text("description"),
+  isActive: boolean("is_active").default(true),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("personality_tags_workspace_idx").on(table.workspaceId),
+  index("personality_tags_category_idx").on(table.tagCategory),
+]);
+
+export const insertPersonalityTagsCatalogSchema = createInsertSchema(personalityTagsCatalog).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertPersonalityTagsCatalog = z.infer<typeof insertPersonalityTagsCatalogSchema>;
+export type PersonalityTagsCatalog = typeof personalityTagsCatalog.$inferSelect;
+
+// Employee Personality Tags (Junction table)
+export const employeePersonalityTags = pgTable("employee_personality_tags", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
+  tagId: varchar("tag_id").notNull().references(() => personalityTagsCatalog.id, { onDelete: 'cascade' }),
+  
+  // Self-reported or verified
+  isSelfReported: boolean("is_self_reported").default(true),
+  verifiedBy: varchar("verified_by").references(() => users.id, { onDelete: 'set null' }),
+  verifiedAt: timestamp("verified_at"),
+  
+  // Strength/confidence (0.00-1.00)
+  strength: decimal("strength", { precision: 3, scale: 2 }).default("0.80"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("emp_personality_tags_workspace_idx").on(table.workspaceId),
+  index("emp_personality_tags_employee_idx").on(table.employeeId),
+  index("emp_personality_tags_tag_idx").on(table.tagId),
+]);
+
+export const insertEmployeePersonalityTagSchema = createInsertSchema(employeePersonalityTags).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertEmployeePersonalityTag = z.infer<typeof insertEmployeePersonalityTagSchema>;
+export type EmployeePersonalityTag = typeof employeePersonalityTags.$inferSelect;
+
+// Client Personality Preferences (What traits clients want for shifts)
+export const clientPersonalityPreferences = pgTable("client_personality_preferences", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  clientId: varchar("client_id").notNull().references(() => clients.id, { onDelete: 'cascade' }),
+  tagId: varchar("tag_id").notNull().references(() => personalityTagsCatalog.id, { onDelete: 'cascade' }),
+  
+  // Preference weight (how important is this trait?)
+  preferenceWeight: decimal("preference_weight", { precision: 3, scale: 2 }).default("0.50"), // 0.00-1.00
+  isRequired: boolean("is_required").default(false), // Hard requirement vs preference
+  
+  // Context (applies to specific shift types or all)
+  appliesToShiftTypes: text("applies_to_shift_types").array().default(sql`ARRAY[]::text[]`), // Empty = all shifts
+  
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("client_prefs_workspace_idx").on(table.workspaceId),
+  index("client_prefs_client_idx").on(table.clientId),
+  index("client_prefs_tag_idx").on(table.tagId),
+]);
+
+export const insertClientPersonalityPreferenceSchema = createInsertSchema(clientPersonalityPreferences).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertClientPersonalityPreference = z.infer<typeof insertClientPersonalityPreferenceSchema>;
+export type ClientPersonalityPreference = typeof clientPersonalityPreferences.$inferSelect;
+
+// Scoring Weight Profiles (Configurable weights per workspace)
+export const scoringWeightProfiles = pgTable("scoring_weight_profiles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  profileName: varchar("profile_name").notNull(),
+  description: text("description"),
+  isDefault: boolean("is_default").default(false),
+  isActive: boolean("is_active").default(true),
+  
+  // Scoring factor weights (must sum to 1.00)
+  skillsWeight: decimal("skills_weight", { precision: 4, scale: 3 }).default("0.250"),
+  certificationsWeight: decimal("certifications_weight", { precision: 4, scale: 3 }).default("0.150"),
+  performanceWeight: decimal("performance_weight", { precision: 4, scale: 3 }).default("0.150"),
+  reliabilityWeight: decimal("reliability_weight", { precision: 4, scale: 3 }).default("0.150"),
+  distanceWeight: decimal("distance_weight", { precision: 4, scale: 3 }).default("0.100"),
+  payMarginWeight: decimal("pay_margin_weight", { precision: 4, scale: 3 }).default("0.100"),
+  overtimeRiskWeight: decimal("overtime_risk_weight", { precision: 4, scale: 3 }).default("0.050"),
+  personalityLikenessWeight: decimal("personality_likeness_weight", { precision: 4, scale: 3 }).default("0.050"),
+  
+  // Point values for events
+  pointsClockInOnTime: integer("points_clock_in_on_time").default(2),
+  pointsClockInLate: integer("points_clock_in_late").default(-5),
+  pointsShiftComplete: integer("points_shift_complete").default(5),
+  pointsShiftPerfect: integer("points_shift_perfect").default(10),
+  pointsNoShow: integer("points_no_show").default(-20),
+  pointsCallOff: integer("points_call_off").default(-10),
+  pointsLateCallOff: integer("points_late_call_off").default(-15),
+  pointsPositiveFeedback: integer("points_positive_feedback").default(5),
+  pointsNegativeFeedback: integer("points_negative_feedback").default(-5),
+  
+  // Thresholds
+  lateThresholdMinutes: integer("late_threshold_minutes").default(5),
+  earlyDepartureThresholdMinutes: integer("early_departure_threshold_minutes").default(10),
+  lateCallOffThresholdHours: integer("late_call_off_threshold_hours").default(4),
+  
+  createdBy: varchar("created_by").references(() => users.id, { onDelete: 'set null' }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("scoring_weights_workspace_idx").on(table.workspaceId),
+  index("scoring_weights_default_idx").on(table.isDefault),
+]);
+
+export const insertScoringWeightProfileSchema = createInsertSchema(scoringWeightProfiles).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertScoringWeightProfile = z.infer<typeof insertScoringWeightProfileSchema>;
+export type ScoringWeightProfile = typeof scoringWeightProfiles.$inferSelect;
+
+// Pool Failure Configuration (Thresholds for Org/Global pool)
+export const poolFailureConfig = pgTable("pool_failure_config", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }).unique(),
+  
+  // Hard failure thresholds (must be met)
+  hardFailureNoLicensing: boolean("hard_failure_no_licensing").default(true),
+  hardFailureNoAvailability: boolean("hard_failure_no_availability").default(true),
+  hardFailureNoCriticalSkills: boolean("hard_failure_no_critical_skills").default(true),
+  
+  // Soft failure thresholds (optimization preferences)
+  softFailureMinScore: decimal("soft_failure_min_score", { precision: 3, scale: 2 }).default("0.60"),
+  softFailureMaxDistance: integer("soft_failure_max_distance").default(100), // miles
+  softFailureMinPersonalityMatch: decimal("soft_failure_min_personality_match", { precision: 3, scale: 2 }).default("0.40"),
+  
+  // Global pool search settings
+  globalPoolEnabled: boolean("global_pool_enabled").default(true),
+  globalPoolMaxCandidates: integer("global_pool_max_candidates").default(10),
+  globalPoolTimeoutMinutes: integer("global_pool_timeout_minutes").default(30),
+  
+  // Fallback behavior
+  fallbackToHumanDispatch: boolean("fallback_to_human_dispatch").default(true),
+  alertOnPoolFailure: boolean("alert_on_pool_failure").default(true),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("pool_failure_config_workspace_idx").on(table.workspaceId),
+]);
+
+export const insertPoolFailureConfigSchema = createInsertSchema(poolFailureConfig).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertPoolFailureConfig = z.infer<typeof insertPoolFailureConfigSchema>;
+export type PoolFailureConfig = typeof poolFailureConfig.$inferSelect;
+
+// Shift Acceptance Records (Digital acceptance audit trail)
+export const shiftAcceptanceRecords = pgTable("shift_acceptance_records", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  shiftId: varchar("shift_id").notNull().references(() => shifts.id, { onDelete: 'cascade' }),
+  employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
+  
+  // Acceptance details
+  action: varchar("action").notNull(), // 'accepted', 'rejected', 'dropped', 'reassigned'
+  
+  // Digital signature/acknowledgment
+  acceptanceMethod: varchar("acceptance_method").notNull(), // 'one_click', 'digital_signature', 'verbal_confirmation'
+  signatureHash: varchar("signature_hash"), // SHA-256 hash of acceptance data
+  ipAddress: varchar("ip_address"),
+  userAgent: text("user_agent"),
+  deviceInfo: jsonb("device_info"),
+  
+  // Shift details at time of acceptance (immutable snapshot)
+  shiftDetails: jsonb("shift_details").notNull(), // {date, time, location, client, payRate, duties}
+  
+  // Offer/Response tracking
+  offerId: varchar("offer_id").references(() => shiftOffers.id, { onDelete: 'set null' }),
+  offerSentAt: timestamp("offer_sent_at"),
+  responseReceivedAt: timestamp("response_received_at"),
+  responseTimeMinutes: integer("response_time_minutes"),
+  
+  // Status for downstream automation
+  isAcknowledged: boolean("is_acknowledged").default(true),
+  acknowledgedAt: timestamp("acknowledged_at").defaultNow(),
+  
+  // For reassignments
+  previousEmployeeId: varchar("previous_employee_id").references(() => employees.id, { onDelete: 'set null' }),
+  reassignmentReason: text("reassignment_reason"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("acceptance_records_workspace_idx").on(table.workspaceId),
+  index("acceptance_records_shift_idx").on(table.shiftId),
+  index("acceptance_records_employee_idx").on(table.employeeId),
+  index("acceptance_records_action_idx").on(table.action),
+  index("acceptance_records_created_idx").on(table.createdAt),
+]);
+
+export const insertShiftAcceptanceRecordSchema = createInsertSchema(shiftAcceptanceRecords).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertShiftAcceptanceRecord = z.infer<typeof insertShiftAcceptanceRecordSchema>;
+export type ShiftAcceptanceRecord = typeof shiftAcceptanceRecords.$inferSelect;
+
+// AI Decision Audit (Gemini decision logging)
+export const aiDecisionAudit = pgTable("ai_decision_audit", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  // Decision context
+  decisionType: varchar("decision_type").notNull(), // 'shift_assignment', 'schedule_generation', 'candidate_ranking'
+  shiftId: varchar("shift_id").references(() => shifts.id, { onDelete: 'set null' }),
+  
+  // Pool search details
+  poolSearched: schedulerPoolTypeEnum("pool_searched").notNull(),
+  orgPoolSearched: boolean("org_pool_searched").default(false),
+  globalPoolSearched: boolean("global_pool_searched").default(false),
+  poolFailureType: poolFailureTypeEnum("pool_failure_type"),
+  poolFailureReason: text("pool_failure_reason"),
+  
+  // Candidates evaluated (top 5)
+  candidatesEvaluated: integer("candidates_evaluated").default(0),
+  topCandidates: jsonb("top_candidates"), // [{employeeId, score, reasons, concerns}]
+  
+  // Final decision
+  selectedEmployeeId: varchar("selected_employee_id").references(() => employees.id, { onDelete: 'set null' }),
+  selectionReason: text("selection_reason"),
+  selectionConfidence: decimal("selection_confidence", { precision: 4, scale: 3 }),
+  
+  // Tie-breaking (if applicable)
+  tieBreakingUsed: boolean("tie_breaking_used").default(false),
+  tieBreakingMethod: varchar("tie_breaking_method"), // 'seniority', 'last_assigned', 'random'
+  
+  // Constraints
+  hardConstraintsMet: jsonb("hard_constraints_met"), // {licensing: true, availability: true}
+  softConstraintsOptimized: jsonb("soft_constraints_optimized"), // {distance: 0.85, score: 0.90}
+  constraintsViolated: jsonb("constraints_violated"), // Any soft constraints not met
+  
+  // Optimization function details
+  optimizationWeightsUsed: jsonb("optimization_weights_used"), // The weights profile used
+  calculatedFitScores: jsonb("calculated_fit_scores"), // Fit scores for top candidates
+  
+  // Gemini API details
+  geminiModelUsed: varchar("gemini_model_used"),
+  geminiTokensUsed: integer("gemini_tokens_used"),
+  geminiLatencyMs: integer("gemini_latency_ms"),
+  geminiRawResponse: text("gemini_raw_response"), // For debugging
+  
+  // Outcome tracking
+  decisionOutcome: varchar("decision_outcome"), // 'accepted', 'rejected', 'no_response', 'reassigned'
+  outcomeRecordedAt: timestamp("outcome_recorded_at"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("ai_audit_workspace_idx").on(table.workspaceId),
+  index("ai_audit_shift_idx").on(table.shiftId),
+  index("ai_audit_type_idx").on(table.decisionType),
+  index("ai_audit_created_idx").on(table.createdAt),
+  index("ai_audit_pool_idx").on(table.poolSearched),
+]);
+
+export const insertAiDecisionAuditSchema = createInsertSchema(aiDecisionAudit).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertAiDecisionAudit = z.infer<typeof insertAiDecisionAuditSchema>;
+export type AiDecisionAudit = typeof aiDecisionAudit.$inferSelect;
+
+// Scheduler Notification Events (For notification matrix)
+export const schedulerNotificationEvents = pgTable("scheduler_notification_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  // Event details
+  eventType: varchar("event_type").notNull(), // 'shift_offered', 'shift_accepted', 'shift_unfilled', 'calloff_received', 'reassignment_needed'
+  severity: varchar("severity").notNull().default("info"), // 'info', 'warning', 'critical'
+  
+  // Related entities
+  shiftId: varchar("shift_id").references(() => shifts.id, { onDelete: 'cascade' }),
+  employeeId: varchar("employee_id").references(() => employees.id, { onDelete: 'set null' }),
+  clientId: varchar("client_id").references(() => clients.id, { onDelete: 'set null' }),
+  
+  // Recipients (who should be notified)
+  recipientType: varchar("recipient_type").notNull(), // 'employee', 'org_admin', 'client', 'dispatcher'
+  recipientUserId: varchar("recipient_user_id").references(() => users.id, { onDelete: 'set null' }),
+  
+  // Notification content
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  actionUrl: text("action_url"),
+  
+  // Delivery status
+  channels: text("channels").array().default(sql`ARRAY[]::text[]`), // ['websocket', 'email', 'sms', 'push']
+  deliveredVia: text("delivered_via").array().default(sql`ARRAY[]::text[]`),
+  deliveredAt: timestamp("delivered_at"),
+  readAt: timestamp("read_at"),
+  
+  // Escalation
+  requiresAcknowledgment: boolean("requires_acknowledgment").default(false),
+  acknowledgedAt: timestamp("acknowledged_at"),
+  escalatedAt: timestamp("escalated_at"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("scheduler_notif_workspace_idx").on(table.workspaceId),
+  index("scheduler_notif_event_type_idx").on(table.eventType),
+  index("scheduler_notif_severity_idx").on(table.severity),
+  index("scheduler_notif_recipient_idx").on(table.recipientUserId),
+  index("scheduler_notif_shift_idx").on(table.shiftId),
+]);
+
+export const insertSchedulerNotificationEventSchema = createInsertSchema(schedulerNotificationEvents).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertSchedulerNotificationEvent = z.infer<typeof insertSchedulerNotificationEventSchema>;
+export type SchedulerNotificationEvent = typeof schedulerNotificationEvents.$inferSelect;

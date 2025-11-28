@@ -189,14 +189,11 @@ export async function scoreEmployeesForShift(
       where: eq(employeeSkills.employeeId, employee.id),
     });
 
-    // Load certifications
+    // Load certifications (only verified ones count for scoring)
     const certsData = await db.query.employeeCertifications.findMany({
       where: and(
         eq(employeeCertifications.employeeId, employee.id),
-        or(
-          eq(employeeCertifications.status, "verified"),
-          eq(employeeCertifications.status, "active")
-        )
+        eq(employeeCertifications.status, "verified")
       ),
     });
 
