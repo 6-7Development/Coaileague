@@ -26,18 +26,30 @@ export async function performLogout() {
     // 2. Invalidate all queries to force refetch
     await queryClient.invalidateQueries();
 
-    // 3. Call logout API in background (fire and forget)
-    fetch(LOGOUT_CONFIG.endpoint, {
+    // 3. Call logout API and WAIT for response (don't fire and forget)
+    const response = await fetch(LOGOUT_CONFIG.endpoint, {
       method: LOGOUT_CONFIG.method,
       credentials: "include",
       headers: {
         "Content-Type": "application/json",
       },
-    }).catch(err => console.error("Logout API call failed:", err));
+    });
 
-    // 4. Redirect user immediately (from centralized config)
-    // Don't wait for API - cache is already cleared
-    window.location.href = LOGOUT_CONFIG.redirectPath;
+    // Ensure API call succeeded before redirecting
+    if (!response.ok) {
+      console.warn(`Logout API returned ${response.status}`);
+    }
+
+    // 4. Clear cookies manually as backup (in case server doesn't)
+    // Some browsers need explicit cookie clearing
+    document.cookie = "connect.sid=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+    
+    // 5. Redirect user to homepage (from centralized config)
+    // Safe redirect using window.location to ensure fresh page load
+    setTimeout(() => {
+      window.location.href = LOGOUT_CONFIG.redirectPath;
+    }, 100); // Small delay to ensure cookies are cleared
+    
   } catch (error) {
     console.error(LOGOUT_CONFIG.logoutErrorMessage, error);
 
@@ -46,8 +58,13 @@ export async function performLogout() {
       queryClient.setQueryData([key], null);
     });
 
+    // Clear cookies as backup
+    document.cookie = "connect.sid=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+    
     // Force redirect to home
-    window.location.href = LOGOUT_CONFIG.redirectPath;
+    setTimeout(() => {
+      window.location.href = LOGOUT_CONFIG.redirectPath;
+    }, 100);
   }
 }
 
