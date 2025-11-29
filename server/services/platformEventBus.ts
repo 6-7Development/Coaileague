@@ -10,7 +10,7 @@
  */
 
 import { db } from '../db';
-import { platformUpdates, notifications, platformRoles, systemAuditLogs } from '@shared/schema';
+import { platformUpdates, notifications, platformRoles, systemAuditLogs, employees } from '@shared/schema';
 import { eq, and, inArray } from 'drizzle-orm';
 
 export type PlatformEventType = 
@@ -27,18 +27,23 @@ export type PlatformEventType =
 
 export type EventCategory = 'feature' | 'improvement' | 'bugfix' | 'security' | 'announcement';
 
+// Event visibility levels - must match update_visibility enum in database
+// Available: 'all', 'staff', 'supervisor', 'manager', 'admin'
+export type EventVisibility = 'all' | 'staff' | 'supervisor' | 'manager' | 'admin';
+
 export interface PlatformEvent {
   type: PlatformEventType;
   category: EventCategory;
   title: string;
   description: string;
   version?: string;
-  workspaceId?: string;
+  workspaceId?: string; // null = global/platform-wide, set = workspace-specific
   userId?: string;
   metadata?: Record<string, any>;
   priority?: number;
   isNew?: boolean;
   learnMoreUrl?: string;
+  visibility?: EventVisibility; // RBAC: who can see this update
 }
 
 export interface EventSubscriber {
@@ -111,6 +116,8 @@ class PlatformEventBus {
 
   /**
    * Store event in What's New database table
+   * - workspaceId: null = global platform update, set = workspace-specific
+   * - visibility: controls RBAC who can see the update
    */
   private async storeInWhatsNew(event: PlatformEvent): Promise<void> {
     try {
@@ -127,21 +134,26 @@ class PlatformEventBus {
         learnMoreUrl: event.learnMoreUrl,
         metadata: event.metadata,
         date: new Date(),
+        workspaceId: event.workspaceId || null, // null = global, set = tenant-scoped
+        visibility: event.visibility || 'all', // RBAC visibility control
       });
       
-      console.log(`[EventBus] Stored in What's New: ${event.title}`);
+      const scope = event.workspaceId ? `workspace:${event.workspaceId}` : 'global';
+      console.log(`[EventBus] Stored in What's New (${scope}): ${event.title}`);
     } catch (error) {
       console.error('[EventBus] Failed to store in What\'s New:', error);
     }
   }
 
   /**
-   * Create notifications for platform-wide announcements
+   * Create notifications for platform events
+   * - Global events (no workspaceId): notify platform admins
+   * - Workspace events (workspaceId set): notify workspace admins in that specific workspace
    */
   private async createNotifications(event: PlatformEvent): Promise<void> {
     try {
-      // Platform announcements go to all users with platform roles (root_admin, deputy_admin, etc.)
-      if (event.category === 'announcement' || event.category === 'security') {
+      // Global platform announcements (no workspaceId) - notify platform admins
+      if (!event.workspaceId && (event.category === 'announcement' || event.category === 'security')) {
         const adminRoles = await db.query.platformRoles.findMany({
           where: inArray(platformRoles.role, ['root_admin', 'deputy_admin', 'support_manager']),
           columns: { userId: true },
@@ -160,21 +172,56 @@ class PlatformEventBus {
             isRead: false,
           });
         }
+        console.log(`[EventBus] Notified ${adminRoles.length} platform admins`);
       }
 
-      // Workspace-specific events - create a single notification for the workspace owner
-      if (event.workspaceId && event.type !== 'announcement' && event.userId) {
-        await db.insert(notifications).values({
-          workspaceId: event.workspaceId,
-          userId: event.userId,
-          type: 'system',
-          title: event.title,
-          message: event.description,
-          actionUrl: event.learnMoreUrl,
-          relatedEntityType: event.type,
-          metadata: event.metadata,
-          isRead: false,
+      // Workspace-specific events - notify users based on visibility level
+      if (event.workspaceId) {
+        // Get all active employees in this workspace
+        const workspaceEmployees = await db.query.employees.findMany({
+          where: and(
+            eq(employees.workspaceId, event.workspaceId),
+            eq(employees.isActive, true)
+          ),
+          columns: { userId: true, workspaceRole: true },
         });
+        
+        // Map visibility to which roles should receive notifications
+        // Lower visibility levels include higher ones (admin includes org_owner + org_admin)
+        const getRecipientRoles = (visibility: string): string[] => {
+          switch (visibility) {
+            case 'admin':
+              return ['org_owner', 'org_admin'];
+            case 'manager':
+              return ['org_owner', 'org_admin', 'department_manager'];
+            case 'supervisor':
+              return ['org_owner', 'org_admin', 'department_manager', 'supervisor'];
+            case 'staff':
+            case 'all':
+            default:
+              return ['org_owner', 'org_admin', 'department_manager', 'supervisor', 'staff', 'auditor', 'contractor'];
+          }
+        };
+        
+        const recipientRoles = getRecipientRoles(event.visibility || 'all');
+        const recipients = workspaceEmployees.filter(
+          emp => emp.userId && recipientRoles.includes(emp.workspaceRole as string)
+        );
+        
+        for (const recipient of recipients) {
+          await db.insert(notifications).values({
+            workspaceId: event.workspaceId,
+            userId: recipient.userId!,
+            type: 'system',
+            title: event.title,
+            message: event.description,
+            actionUrl: event.learnMoreUrl || '/whats-new',
+            relatedEntityType: event.type,
+            metadata: { ...event.metadata, category: event.category, visibility: event.visibility },
+            isRead: false,
+          });
+        }
+        console.log(`[EventBus] Notified ${recipients.length} recipients (visibility: ${event.visibility || 'all'}) in ${event.workspaceId}`);
       }
     } catch (error) {
       console.error('[EventBus] Failed to create notifications:', error);
@@ -216,6 +263,9 @@ export const platformEventBus = new PlatformEventBus();
 /**
  * Helper function to publish platform updates from any feature
  * Use this when a feature is released, updated, or patched
+ * 
+ * @param workspaceId - null/undefined for global updates, set for workspace-specific
+ * @param visibility - 'all' | 'staff' | 'supervisor' | 'manager' | 'admin' controls RBAC
  */
 export async function publishPlatformUpdate(params: {
   type: PlatformEventType;
@@ -228,6 +278,7 @@ export async function publishPlatformUpdate(params: {
   learnMoreUrl?: string;
   priority?: number;
   metadata?: Record<string, any>;
+  visibility?: EventVisibility;
 }): Promise<void> {
   await platformEventBus.publish({
     ...params,

@@ -25,14 +25,25 @@ export interface PlatformUpdate {
   hasViewed?: boolean;
 }
 
-// Role hierarchy for RBAC filtering (lower index = higher access)
-const ROLE_HIERARCHY: Record<string, number> = {
-  'platform_staff': 0,   // Highest access
-  'admin': 1,
-  'manager': 2,
-  'supervisor': 3,
-  'staff': 4,
-  'all': 5,              // Everyone
+// Visibility levels for RBAC filtering (lower index = higher access)
+// Maps to update_visibility enum in database: 'all', 'staff', 'supervisor', 'manager', 'admin'
+const VISIBILITY_LEVELS: Record<string, number> = {
+  'admin': 1,               // Admins and above
+  'manager': 2,             // Managers and above
+  'supervisor': 3,          // Supervisors and above
+  'staff': 4,               // All staff
+  'all': 5,                 // Everyone (default)
+};
+
+// Map workspace roles to their effective visibility access level
+const WORKSPACE_ROLE_ACCESS: Record<string, number> = {
+  'org_owner': 1,           // Same as admin access
+  'org_admin': 1,           // Same as admin access
+  'department_manager': 2,  // Manager level
+  'supervisor': 3,          // Supervisor level
+  'staff': 4,               // Staff level
+  'auditor': 4,             // Staff level (read-only)
+  'contractor': 4,          // Staff level (limited)
 };
 
 const STATIC_SEED_UPDATES: PlatformUpdate[] = [
@@ -142,12 +153,17 @@ const STATIC_SEED_UPDATES: PlatformUpdate[] = [
 ];
 
 /**
- * Check if user role has access to visibility level
+ * Check if user's workspace role has access to the visibility level
+ * @param userRole - The user's workspace role (org_owner, staff, etc.)
+ * @param visibility - The visibility setting on the update (admin, staff, all, etc.)
  */
 function hasVisibilityAccess(userRole: string, visibility: string): boolean {
-  const userLevel = ROLE_HIERARCHY[userRole] ?? ROLE_HIERARCHY['staff'];
-  const requiredLevel = ROLE_HIERARCHY[visibility] ?? ROLE_HIERARCHY['all'];
-  return userLevel <= requiredLevel;
+  // Get user's access level from their workspace role
+  const userAccessLevel = WORKSPACE_ROLE_ACCESS[userRole] ?? VISIBILITY_LEVELS['staff'];
+  // Get required visibility level
+  const requiredLevel = VISIBILITY_LEVELS[visibility] ?? VISIBILITY_LEVELS['all'];
+  // User can access if their level is <= required level (lower = more access)
+  return userAccessLevel <= requiredLevel;
 }
 
 /**
@@ -184,7 +200,9 @@ export async function seedPlatformUpdates(): Promise<void> {
 }
 
 /**
- * Get updates from the database with RBAC filtering and viewed status
+ * Get updates from the database with RBAC filtering, workspace scoping, and viewed status
+ * - Global updates (workspaceId = null) are visible to everyone
+ * - Workspace-specific updates are only visible to users in that workspace
  */
 export async function getUpdates(options?: {
   limit?: number;
@@ -201,10 +219,23 @@ export async function getUpdates(options?: {
   try {
     const userRole = options?.userRole || 'staff';
     
-    // Get all updates
+    // Build query conditions
     const conditions = [];
     if (options?.category) {
       conditions.push(eq(platformUpdatesTable.category, options.category as any));
+    }
+    
+    // Workspace scoping: show global updates (null workspaceId) + user's workspace updates
+    if (options?.workspaceId) {
+      conditions.push(
+        or(
+          isNull(platformUpdatesTable.workspaceId),
+          eq(platformUpdatesTable.workspaceId, options.workspaceId)
+        )
+      );
+    } else {
+      // If no workspace provided, only show global updates
+      conditions.push(isNull(platformUpdatesTable.workspaceId));
     }
 
     const dbUpdates = await db.query.platformUpdates.findMany({
@@ -289,9 +320,9 @@ export async function markUpdateViewed(userId: string, updateId: string, viewSou
 }
 
 /**
- * Get unviewed updates count for a user
+ * Get unviewed updates count for a user (with workspace scoping)
  */
-export async function getUnviewedCount(userId: string, userRole: string = 'staff'): Promise<number> {
+export async function getUnviewedCount(userId: string, userRole: string = 'staff', workspaceId?: string): Promise<number> {
   try {
     const viewedUpdates = await db.query.userPlatformUpdateViews.findMany({
       where: eq(userPlatformUpdateViews.userId, userId),
@@ -299,10 +330,26 @@ export async function getUnviewedCount(userId: string, userRole: string = 'staff
     });
     const viewedIds = viewedUpdates.map(v => v.updateId);
     
+    // Build conditions with workspace scoping
+    const conditions = [];
+    if (viewedIds.length > 0) {
+      conditions.push(notInArray(platformUpdatesTable.id, viewedIds));
+    }
+    
+    // Workspace scoping: show global + workspace-specific
+    if (workspaceId) {
+      conditions.push(
+        or(
+          isNull(platformUpdatesTable.workspaceId),
+          eq(platformUpdatesTable.workspaceId, workspaceId)
+        )
+      );
+    } else {
+      conditions.push(isNull(platformUpdatesTable.workspaceId));
+    }
+    
     const allUpdates = await db.query.platformUpdates.findMany({
-      where: viewedIds.length > 0 
-        ? notInArray(platformUpdatesTable.id, viewedIds) 
-        : undefined,
+      where: conditions.length > 0 ? and(...conditions) : undefined,
     });
     
     // Filter by RBAC
@@ -313,14 +360,27 @@ export async function getUnviewedCount(userId: string, userRole: string = 'staff
   }
 }
 
-export async function getLatestUpdates(count: number = 5, userId?: string, userRole?: string): Promise<PlatformUpdate[]> {
-  return getUpdates({ limit: count, userId, userRole });
+export async function getLatestUpdates(count: number = 5, userId?: string, userRole?: string, workspaceId?: string): Promise<PlatformUpdate[]> {
+  return getUpdates({ limit: count, userId, userRole, workspaceId });
 }
 
-export async function getNewFeatures(userId?: string, userRole?: string): Promise<PlatformUpdate[]> {
+export async function getNewFeatures(userId?: string, userRole?: string, workspaceId?: string): Promise<PlatformUpdate[]> {
   try {
+    // Build conditions with workspace scoping
+    const conditions = [eq(platformUpdatesTable.isNew, true)];
+    if (workspaceId) {
+      conditions.push(
+        or(
+          isNull(platformUpdatesTable.workspaceId),
+          eq(platformUpdatesTable.workspaceId, workspaceId)
+        ) as any
+      );
+    } else {
+      conditions.push(isNull(platformUpdatesTable.workspaceId));
+    }
+    
     const updates = await db.query.platformUpdates.findMany({
-      where: eq(platformUpdatesTable.isNew, true),
+      where: and(...conditions),
       orderBy: [sql`COALESCE(${platformUpdatesTable.priority}, 999) ASC`, desc(platformUpdatesTable.date)],
     });
     
@@ -444,7 +504,7 @@ export async function getUpdateStats(userRole: string = 'staff') {
   }
 }
 
-export async function addUpdate(update: Omit<PlatformUpdate, 'id'> & { visibility?: string }): Promise<PlatformUpdate> {
+export async function addUpdate(update: Omit<PlatformUpdate, 'id'> & { visibility?: string; workspaceId?: string }): Promise<PlatformUpdate> {
   const id = `${update.title.toLowerCase().replace(/\s+/g, '-')}-${update.date}`;
   
   try {
@@ -459,6 +519,7 @@ export async function addUpdate(update: Omit<PlatformUpdate, 'id'> & { visibilit
       priority: update.priority,
       learnMoreUrl: update.learnMoreUrl,
       visibility: (update.visibility as any) || 'all',
+      workspaceId: update.workspaceId || null, // null = global, set = workspace-specific
       date: new Date(update.date),
     });
     
