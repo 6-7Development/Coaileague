@@ -187,7 +187,13 @@ export default function Pricing() {
                     : "bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-2 border-gray-300 dark:border-gray-600 hover:border-blue-400 hover:bg-gray-50 dark:hover:bg-gray-700"
                 }`}
                 variant={tier.popular ? "default" : "outline"}
-                onClick={() => window.location.href = tier.cta === "Contact Sales" ? "/contact" : "/api/login"}
+                onClick={() => {
+                  if (tier.cta === "Contact Sales") {
+                    window.location.href = "/contact";
+                  } else {
+                    window.location.href = `/register?tier=${tier.name.toLowerCase()}`;
+                  }
+                }}
                 data-testid={`button-${tier.name.toLowerCase().replace(/\s+/g, "-")}-cta`}
               >
                 {tier.cta}
