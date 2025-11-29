@@ -1,13 +1,9 @@
 import express, { type Request, Response, NextFunction } from "express";
-import session from "express-session";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-import pgSession from "connect-pg-simple";
 import { pool } from "./db"; // Assuming 'pool' is your PostgreSQL client connection pool
 import { monitoringService } from "./monitoring";
 import { startAutonomousScheduler } from "./services/autonomousScheduler";
-
-const PgStore = pgSession(session);
 
 const app = express();
 app.use(express.json());
@@ -80,36 +76,8 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(session({
-  secret: process.env.SESSION_SECRET || 'your-secret-key-change-in-production',
-  resave: false,
-  saveUninitialized: false,
-  store: new PgStore({
-    pool,
-    tableName: 'sessions',
-    createTableIfMissing: true,
-  }),
-  cookie: {
-    secure: process.env.NODE_ENV === 'production',
-    httpOnly: true,
-    maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-    sameSite: 'lax',
-  },
-  name: 'wfos.sid', // Custom session name
-}));
-
-// Session error handler with retry mechanism
-app.use((err: any, req: any, res: any, next: any) => {
-  if (err && (err.code === 'SESSION_ERROR' || err.message?.includes('session'))) {
-    console.error('Session error:', err);
-    res.clearCookie('wfos.sid');
-    return res.status(401).json({ 
-      message: 'Session expired, please login again',
-      sessionError: true 
-    });
-  }
-  next(err);
-});
+// Session middleware and authentication will be set up by registerRoutes/setupAuth
+// DO NOT set up session middleware here - it's handled in routes.ts via setupAuth
 
 // Graceful session cleanup on server shutdown
 process.on('SIGTERM', () => {

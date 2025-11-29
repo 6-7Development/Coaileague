@@ -35,6 +35,7 @@ import { gamificationRouter } from "./gamification-api"; // Employee Engagement 
 import schedulerRouter from "./routes/schedulerRoutes"; // CoAIleague Autonomous Scheduler API
 import { automationRouter } from "./routes/automation"; // Core Automation (Scheduling, Invoicing, Payroll)
 import { migrationRouter } from "./routes/migration"; // Data Migration from External Platforms
+import { registerHealthRoutes } from "./routes/health"; // Health check monitoring
 import { auditContextMiddleware } from "./middleware/audit";
 import { 
   apiLimiter, 
@@ -414,6 +415,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Audit logging middleware (captures request context for all authenticated requests)
   app.use(auditContextMiddleware);
+  registerHealthRoutes(app, requireAuth);
 
   // ============================================================================
   // NOTIFICATIONS & FEATURE UPDATES

@@ -46,8 +46,39 @@ export function ServiceHealthProvider({ children, enablePolling = true }: Servic
     isLoading,
     error,
     refetch,
+    status,
+    dataUpdatedAt,
   } = useQuery<HealthSummary>({
     queryKey: ['/api/health/summary'],
+    // Explicit queryFn to ensure health data is fetched correctly
+    queryFn: async () => {
+      try {
+        const response = await fetch('/api/health/summary', {
+          credentials: 'include',
+        });
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('[ServiceHealth] Health endpoint returned non-ok status:', {
+            status: response.status,
+            statusText: response.statusText,
+            body: errorText,
+          });
+          throw new Error(`Health check failed: ${response.status} ${response.statusText}`);
+        }
+        
+        const data: HealthSummary = await response.json();
+        console.log('[ServiceHealth] Successfully fetched health summary:', {
+          overall: data.overall,
+          timestamp: data.timestamp,
+          serviceCount: data.services.length,
+        });
+        return data;
+      } catch (err) {
+        console.error('[ServiceHealth] Failed to fetch health summary:', err instanceof Error ? err.message : String(err));
+        throw err;
+      }
+    },
     // Smart refetch interval based on health status
     refetchInterval: (query) => {
       if (!enablePolling) {
@@ -56,18 +87,37 @@ export function ServiceHealthProvider({ children, enablePolling = true }: Servic
       }
       
       const data = query.state.data;
+      const queryStatus = query.state.status;
+      const queryError = query.state.error;
+      
       if (!data) {
-        console.log('[ServiceHealth] No data yet, polling every 30s');
+        if (queryError) {
+          console.error('[ServiceHealth] Query error - No data yet', {
+            error: queryError instanceof Error ? queryError.message : String(queryError),
+            status: queryStatus,
+          });
+        } else {
+          console.log('[ServiceHealth] No data yet, polling every 30s', {
+            status: queryStatus,
+            fetching: query.state.fetchStatus,
+          });
+        }
         return 30000; // 30s default
       }
       
       // If any service is down or degraded, poll more frequently
       if (data.overall === 'down' || data.overall === 'degraded') {
-        console.log('[ServiceHealth] System degraded/down, polling every 5s');
+        console.log('[ServiceHealth] System degraded/down, polling every 5s', {
+          overall: data.overall,
+          services: data.services.map(s => ({ service: s.service, status: s.status })),
+        });
         return 5000; // 5s for failures
       }
       
-      console.log('[ServiceHealth] System operational, polling every 30s');
+      console.log('[ServiceHealth] System operational, polling every 30s', {
+        overall: data.overall,
+        operationalCount: data.operationalServicesCount,
+      });
       return 30000; // 30s for healthy
     },
     // TanStack Query v5 requires staleTime to be a number, not a callback
@@ -77,12 +127,30 @@ export function ServiceHealthProvider({ children, enablePolling = true }: Servic
     retry: 3,
   });
 
+  // Log errors and data issues
+  if (error) {
+    console.error('[ServiceHealth] Query failed with error:', {
+      errorMessage: error instanceof Error ? error.message : String(error),
+      status,
+      dataUpdatedAt,
+    });
+  }
+
+  // Validate data structure when received
+  if (healthSummary && (!healthSummary.overall || !Array.isArray(healthSummary.services))) {
+    console.error('[ServiceHealth] Invalid health summary structure received:', healthSummary);
+  }
+
   // Determine if platform is healthy based on critical services
   const isHealthy = healthSummary?.overall === 'operational' || healthSummary?.overall === 'degraded';
 
   // Get individual service health from summary
   const getServiceHealth = (serviceKey: string): ServiceHealth | undefined => {
-    return healthSummary?.services.find((s) => s.service === serviceKey);
+    if (!healthSummary?.services) {
+      console.warn(`[ServiceHealth] Attempted to get service '${serviceKey}' health but services array is undefined`);
+      return undefined;
+    }
+    return healthSummary.services.find((s) => s.service === serviceKey);
   };
 
   // Incident reporting mutation
