@@ -58,7 +58,7 @@ export default function Landing() {
       <section className="relative overflow-x-hidden border-b bg-gradient-to-b from-background via-background to-muted/20">
         <div className="responsive-container responsive-spacing-y">
           <div className="max-w-6xl mx-auto w-full">
-            <div className="grid lg:grid-cols-2 gap-6 sm:gap-8 lg:gap-12 items-center">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 lg:gap-12 items-center">
               {/* Left: Sales Copy */}
               <div className="space-y-4 sm:space-y-6 w-full max-w-full min-w-0">
                 <Badge variant="outline" className="text-xs font-normal px-3 sm:px-4 py-1.5 inline-flex">
@@ -172,7 +172,7 @@ export default function Landing() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8 sm:mb-12">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8 sm:mb-12">
             {[
               { icon: CalendarClock, title: "Smart Scheduling", desc: "AI creates optimized schedules matching skills, availability, and workload" },
               { icon: DollarSign, title: "Auto Payroll", desc: "Calculate wages, deductions, and generate payments automatically" },
@@ -233,7 +233,7 @@ export default function Landing() {
 
           <div className="space-y-12 sm:space-y-16 lg:space-y-20 max-w-6xl mx-auto w-full">
             {/* Time Visual */}
-            <div className="grid lg:grid-cols-2 gap-8 sm:gap-10 lg:gap-12 items-center">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-10 lg:gap-12 items-center">
               <div className="space-y-3 sm:space-y-4 max-w-full">
                 <Badge variant="outline" className="inline-flex">
                   <Clock className="h-3 w-3 mr-1 shrink-0" />
@@ -264,7 +264,7 @@ export default function Landing() {
                 </Button>
               </div>
               <div className="relative w-full max-w-full">
-                <div className="aspect-[4/3] rounded-lg sm:rounded-xl border-2 bg-card overflow-hidden shadow-2xl w-full">
+                <div className="aspect-square sm:aspect-[4/3] rounded-lg sm:rounded-xl border-2 bg-card overflow-hidden shadow-2xl w-full">
                   {/* REAL Time Tracking Interface */}
                   <TimeTrackingPreview />
                 </div>
@@ -276,7 +276,7 @@ export default function Landing() {
             </div>
 
             {/* AI Scheduling Visual */}
-            <div className="grid lg:grid-cols-2 gap-8 sm:gap-10 lg:gap-12 items-center">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-10 lg:gap-12 items-center">
               <div className="lg:order-2 space-y-3 sm:space-y-4 max-w-full">
                 <Badge variant="outline" className="inline-flex">
                   <CalendarClock className="h-3 w-3 mr-1 shrink-0" />
@@ -308,7 +308,7 @@ export default function Landing() {
                 </Button>
               </div>
               <div className="lg:order-1 relative w-full max-w-full">
-                <div className="aspect-[4/3] rounded-lg sm:rounded-xl border-2 bg-card overflow-hidden shadow-2xl w-full">
+                <div className="aspect-square sm:aspect-[4/3] rounded-lg sm:rounded-xl border-2 bg-card overflow-hidden shadow-2xl w-full">
                   {/* REAL Schedule Interface */}
                   <SchedulePreview />
                 </div>
@@ -320,7 +320,7 @@ export default function Landing() {
             </div>
 
             {/* Analytics Visual */}
-            <div className="grid lg:grid-cols-2 gap-8 sm:gap-10 lg:gap-12 items-center">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-10 lg:gap-12 items-center">
               <div className="space-y-3 sm:space-y-4 max-w-full">
                 <Badge variant="outline" className="inline-flex">
                   <BarChart3 className="h-3 w-3 mr-1 shrink-0" />
@@ -351,7 +351,7 @@ export default function Landing() {
                 </Button>
               </div>
               <div className="relative w-full max-w-full">
-                <div className="aspect-[4/3] rounded-lg sm:rounded-xl border-2 bg-card overflow-hidden shadow-2xl w-full">
+                <div className="aspect-square sm:aspect-[4/3] rounded-lg sm:rounded-xl border-2 bg-card overflow-hidden shadow-2xl w-full">
                   {/* REAL Analytics Dashboard */}
                   <DashboardPreview />
                 </div>
@@ -381,7 +381,7 @@ export default function Landing() {
             </p>
           </div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
               {
                 icon: CalendarClock,
@@ -572,7 +572,7 @@ export default function Landing() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
             {[
               {
                 tier: "Starter",
