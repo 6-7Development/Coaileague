@@ -50,66 +50,66 @@ export default function Homepage() {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background overflow-x-hidden w-full">
       {/* Universal Header */}
       <UniversalHeader variant="public" />
 
       {/* Hero Section - Enhanced */}
-      <section className="pt-24 pb-20 px-6 bg-gradient-to-br from-slate-50 via-blue-50 to-blue-50 relative overflow-hidden">
+      <section className="pt-12 sm:pt-24 pb-12 sm:pb-20 px-3 sm:px-6 bg-gradient-to-br from-slate-50 via-blue-50 to-blue-50 relative overflow-hidden">
         {/* Background decoration */}
         <div className="absolute top-0 right-0 w-1/2 h-full opacity-10">
           <div className="absolute top-20 right-20 w-72 h-72 bg-blue-500 rounded-full blur-3xl"></div>
           <div className="absolute bottom-20 right-40 w-96 h-96 bg-blue-500 rounded-full blur-3xl"></div>
         </div>
 
-        <div className="max-w-7xl mx-auto relative z-10">
-          <div className="grid md:grid-cols-2 gap-12 items-center">
+        <div className="max-w-7xl mx-auto relative z-10 px-0">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 md:gap-12 items-center">
             {/* Left Column - Content */}
             <div>
               <div className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-100 to-blue-100 text-blue-700 px-4 py-2 rounded-full text-sm font-semibold mb-6 shadow-md">
                 <Cpu className="w-4 h-4" />
                 CoAIleague AI Brain — Autonomous Workforce Intelligence
               </div>
-              <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight">
+              <h1 className="text-2xl sm:text-3xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-4 sm:mb-6 leading-tight break-words">
                 Replace $100K+ in
                 <br />
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-blue-600 to-blue-600">
                   Administrative Salaries
                 </span>
               </h1>
-              <p className="text-xl text-gray-700 mb-6 leading-relaxed">
+              <p className="text-sm sm:text-base md:text-lg lg:text-xl text-gray-700 mb-6 leading-relaxed">
                 Let <strong className="text-gray-900">CoAIleague AI Brain</strong> autonomously handle your scheduling, payroll processing, and client invoicing. 
                 <strong className="text-blue-600"> Save hundreds of thousands annually</strong> on HR and admin staff.
               </p>
               
               {/* ROI Calculator Style Box */}
-              <div className="bg-gradient-to-br from-blue-50 to-blue-50 border-2 border-blue-200 rounded-xl p-6 shadow-lg mb-8">
-                <div className="flex items-center gap-2 mb-4">
-                  <DollarSign className="w-5 h-5 text-blue-600" />
-                  <span className="font-bold text-gray-900">Typical Annual Savings</span>
+              <div className="bg-gradient-to-br from-blue-50 to-blue-50 border-2 border-blue-200 rounded-xl p-4 sm:p-6 shadow-lg mb-6 sm:mb-8 w-full overflow-x-hidden">
+                <div className="flex items-center gap-2 mb-3 sm:mb-4">
+                  <DollarSign className="w-4 sm:w-5 h-4 sm:h-5 text-blue-600 shrink-0" />
+                  <span className="font-bold text-sm sm:text-base text-gray-900 truncate">Typical Annual Savings</span>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <div className="text-3xl font-bold text-blue-600 mb-1">$140K+</div>
-                    <div className="text-sm text-gray-600">Eliminated salary costs</div>
-                    <div className="text-xs text-gray-500 mt-1">2-3 admin roles at $60K avg</div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                  <div className="min-w-0">
+                    <div className="text-2xl sm:text-3xl font-bold text-blue-600 mb-1 break-words">$140K+</div>
+                    <div className="text-xs sm:text-sm text-gray-600 break-words">Eliminated salary costs</div>
+                    <div className="text-xs text-gray-500 mt-1 break-words">2-3 admin roles at $60K avg</div>
                   </div>
-                  <div>
-                    <div className="text-3xl font-bold text-blue-600 mb-1">$50K+</div>
-                    <div className="text-sm text-gray-600">Reduced overtime waste</div>
-                    <div className="text-xs text-gray-500 mt-1">Smarter scheduling & allocation</div>
+                  <div className="min-w-0">
+                    <div className="text-2xl sm:text-3xl font-bold text-blue-600 mb-1 break-words">$50K+</div>
+                    <div className="text-xs sm:text-sm text-gray-600 break-words">Reduced overtime waste</div>
+                    <div className="text-xs text-gray-500 mt-1 break-words">Smarter scheduling & allocation</div>
                   </div>
                 </div>
               </div>
 
-              <div className="flex flex-wrap gap-4 mb-8">
-                <Link href="/pricing" className="px-8 py-4 bg-gradient-to-r from-blue-600 to-blue-600 text-white rounded-xl font-bold hover:from-blue-700 hover:to-blue-700 transition-all shadow-lg hover:shadow-xl flex items-center gap-2" data-testid="button-calculate-savings">
-                  Calculate Your Savings
-                  <ArrowRight className="w-5 h-5" />
+              <div className="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4 mb-6 sm:mb-8">
+                <Link href="/pricing" className="px-4 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-blue-600 to-blue-600 text-white rounded-xl font-bold hover:from-blue-700 hover:to-blue-700 transition-all shadow-lg hover:shadow-xl flex items-center justify-center sm:justify-start gap-2 text-sm sm:text-base min-h-[44px]" data-testid="button-calculate-savings">
+                  Calculate Savings
+                  <ArrowRight className="w-4 sm:w-5 h-4 sm:h-5 shrink-0" />
                 </Link>
-                <Link href="/support" className="px-8 py-4 bg-white text-gray-900 rounded-xl font-semibold hover:bg-gray-50 transition-all border-2 border-gray-200 flex items-center gap-2 shadow-md" data-testid="button-see-demo">
-                  <MessageSquare className="w-5 h-5" />
-                  Chat with AI Brain
+                <Link href="/support" className="px-4 sm:px-8 py-3 sm:py-4 bg-white text-gray-900 rounded-xl font-semibold hover:bg-gray-50 transition-all border-2 border-gray-200 flex items-center justify-center sm:justify-start gap-2 shadow-md text-sm sm:text-base min-h-[44px]" data-testid="button-see-demo">
+                  <MessageSquare className="w-4 sm:w-5 h-4 sm:h-5 shrink-0" />
+                  Chat with AI
                 </Link>
               </div>
 
