@@ -59,3 +59,16 @@ The system employs a multi-tenant architecture with robust RBAC security and mul
   - Routes and configurations: routes.ts, websocket.ts, chatServer.ts, platformConfig.ts
   - Log messages updated to use [HelpAI] prefix for consistency
   - Note: File names (helpos-*.ts) and database column names (enable_helpos_bot) retained for backward compatibility
+- **Comprehensive Gap Analysis (Nov 29, 2025):** Created detailed GAP_ANALYSIS.md documenting:
+  - **P0 Critical Gaps (Payroll Compliance)**: YTD wage base tracking, state tax tables (50 states), SUTA/FUTA, Additional Medicare Tax (>$200k), local withholding, pre-tax deductions, tax jurisdiction handling, FLSA weighted overtime
+  - **P1 High Priority (Finance/Integration Blockers)**: Multi-currency support, QuickBooks OAuth, Gusto OAuth, email retry mechanism, employer ratings, composite scores, historical trends
+  - **P2 Medium Priority**: WebSocket commands, automation metrics, mock data replacement
+  - **Analysis Scope**: 87 backend services, 220+ frontend routes, 145+ database tables, 14,079-line schema
+  - **Effort Estimate**: P0 = 4-6 weeks, P1 = 3-4 weeks (1-2 developers)
+  - See `docs/GAP_ANALYSIS.md` for full remediation roadmap with ownership and exit criteria
+
+## Known Gaps & Technical Debt
+- **Payroll Compliance (P0)**: State/SUTA/FUTA tax tables simplified, YTD wage tracking needed, Additional Medicare Tax threshold missing, FLSA weighted OT incomplete
+- **Data Features (P1)**: Employer ratings and composite scores not wired to APIs
+- **Integrations (P1)**: QuickBooks and Gusto OAuth not configured (blocks finance/HR rollout)
+- **Mock Data (P2)**: Platform admin metrics (response times, SLA) use placeholder values
