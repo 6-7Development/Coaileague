@@ -168,8 +168,19 @@ router.post("/api/auth/register", async (req, res) => {
       newUser.firstName || undefined
     );
 
-    // Auto-login after registration
+    // Auto-login after registration - CRITICAL: explicitly save session to database immediately
     req.session.userId = newUser.id;
+    await new Promise<void>((resolve, reject) => {
+      req.session.save((err) => {
+        if (err) {
+          console.error('[Registration] Session save error:', err);
+          reject(err);
+        } else {
+          console.log('[Registration] Session persisted to database for user', newUser.id);
+          resolve();
+        }
+      });
+    });
 
     res.status(201).json({
       message: "Registration successful",
@@ -270,8 +281,19 @@ router.post("/api/auth/login", async (req, res) => {
     
     const activePlatformRole = userPlatformRoles.find(pr => !pr.revokedAt);
 
-    // Create session
+    // Create session - CRITICAL: explicitly save session to database immediately
     req.session.userId = user.id;
+    await new Promise<void>((resolve, reject) => {
+      req.session.save((err) => {
+        if (err) {
+          console.error('[Login] Session save error:', err);
+          reject(err);
+        } else {
+          console.log('[Login] Session persisted to database for user', user.id);
+          resolve();
+        }
+      });
+    });
 
     res.json({
       message: "Login successful",

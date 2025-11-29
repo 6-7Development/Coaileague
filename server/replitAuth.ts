@@ -26,22 +26,59 @@ const getOidcConfig = memoize(
 export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
   const pgStore = connectPg(session);
+  
+  // Validate SESSION_SECRET is set
+  const sessionSecret = process.env.SESSION_SECRET;
+  if (!sessionSecret) {
+    console.warn('⚠️ WARNING: SESSION_SECRET environment variable is not set! Sessions may not persist.');
+    console.warn('   Sessions will use default secret and will be lost on server restart.');
+  } else {
+    console.log('[Session] SESSION_SECRET is configured');
+  }
+  
+  // Validate DATABASE_URL is set
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl) {
+    throw new Error('DATABASE_URL must be set for session storage');
+  }
+  console.log('[Session] Initializing PostgreSQL session store');
+  
   const sessionStore = new pgStore({
-    conString: process.env.DATABASE_URL,
-    createTableIfMissing: false,
+    conString: databaseUrl,
+    createTableIfMissing: true, // FIXED: Should create table if missing
     ttl: sessionTtl,
     tableName: "sessions",
+    // Debug events
+    errorLog: (err: Error) => {
+      console.error('[Session Store Error]:', err.message);
+    },
   });
+  
+  // Add event listeners for debugging
+  sessionStore.on('connect', () => {
+    console.log('[Session Store] Connected to database');
+  });
+  sessionStore.on('disconnect', () => {
+    console.log('[Session Store] Disconnected from database');
+  });
+  sessionStore.on('error', (err: Error) => {
+    console.error('[Session Store] Error:', err.message);
+  });
+  
+  console.log('[Session] Session store configured - TTL:', Math.round(sessionTtl / 1000 / 60 / 60 / 24), 'days');
+  
   return session({
-    secret: process.env.SESSION_SECRET!,
+    secret: sessionSecret || 'session-secret-fallback-insecure',
     store: sessionStore,
     resave: false,
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: true,
+      secure: process.env.NODE_ENV === 'production',
       maxAge: sessionTtl,
+      sameSite: 'lax', // More compatible than 'strict'
     },
+    name: 'connect.sid', // Standard name for express-session
   });
 }
 
@@ -68,8 +105,48 @@ async function upsertUser(
 }
 
 export async function setupAuth(app: Express) {
+  console.log('[Auth] Initializing authentication system');
   app.set("trust proxy", 1);
+  
+  // Setup session middleware with request logging
+  console.log('[Auth] Setting up session middleware');
+  app.use((req, res, next) => {
+    // Log session creation and retrieval
+    if (!req.session) {
+      console.log('[Session] Creating new session');
+    }
+    
+    // Track session lifecycle
+    const originalSessionSave = req.session?.save || (() => {});
+    if (req.session?.save) {
+      req.session.save = function(callback) {
+        console.log('[Session] Saving session:', {
+          sessionId: req.sessionID,
+          userId: (req.session as any)?.userId,
+          timestamp: new Date().toISOString(),
+        });
+        return originalSessionSave.call(this, callback);
+      };
+    }
+    
+    res.on('finish', () => {
+      if (req.session?.userId) {
+        console.log('[Session] Request completed with active session:', {
+          sessionId: req.sessionID,
+          userId: (req.session as any)?.userId,
+          method: req.method,
+          path: req.path,
+          status: res.statusCode,
+        });
+      }
+    });
+    
+    next();
+  });
+  
   app.use(getSession());
+  
+  console.log('[Auth] Initializing Passport.js');
   app.use(passport.initialize());
   app.use(passport.session());
 
