@@ -187,11 +187,154 @@ Phase 4: International Support (Week 7-8) - NOT STARTED
 - Consider blended rate calculations for tipped employees
 - Add support for fluctuating workweek calculations
 
-### 4.5 Remaining Recommendations (P1 Items)
-1. Implement multi-currency support for international payroll
-2. Configure QuickBooks OAuth for accounting sync
-3. Configure Gusto OAuth for HR/payroll sync
-4. Enhance historical trend tracking for engagement metrics
+### 4.5 P1 Implementation Phases (Detailed Breakdown)
+
+#### Phase 4A: Multi-Currency Support (5-7 days)
+**Owner: Backend Team | Priority: P1 | Blocks: International Payroll**
+
+```
+Sprint Tasks:
+├── Day 1-2: Currency Infrastructure
+│   ├── [ ] Add currency field to employees, invoices, payroll tables
+│   ├── [ ] Create exchange_rates table with daily rate storage
+│   ├── [ ] Integrate real-time exchange rate API (Open Exchange Rates or Fixer.io)
+│   └── [ ] Add EXCHANGE_RATE_API_KEY secret management
+│
+├── Day 3-4: Payroll Currency Conversion
+│   ├── [ ] Modify payrollAutomation.ts to support currency conversion
+│   ├── [ ] Add base currency setting per workspace (USD default)
+│   ├── [ ] Implement gross-to-net calculation in local currency
+│   ├── [ ] Store original currency + converted USD equivalent
+│   └── [ ] Add currency display formatting per locale
+│
+├── Day 5-6: Invoice & Billing Currency
+│   ├── [ ] Update billos.ts for multi-currency invoicing
+│   ├── [ ] Add currency selector in invoice creation UI
+│   ├── [ ] Implement Stripe multi-currency payment collection
+│   └── [ ] Add currency reconciliation for reporting
+│
+└── Day 7: Testing & Edge Cases
+    ├── [ ] Test currency conversion accuracy (rounding rules)
+    ├── [ ] Verify exchange rate fallback for API downtime
+    └── [ ] Validate multi-currency payroll reports
+```
+
+**Exit Criteria:** International employees can be paid in local currency with accurate conversion
+
+---
+
+#### Phase 4B: QuickBooks OAuth Integration (3-5 days)
+**Owner: Backend Team | Priority: P1 | Blocks: Accounting Sync**
+
+```
+Sprint Tasks:
+├── Day 1: OAuth Setup
+│   ├── [ ] Register app in QuickBooks Developer portal
+│   ├── [ ] Configure QUICKBOOKS_CLIENT_ID secret
+│   ├── [ ] Configure QUICKBOOKS_CLIENT_SECRET secret
+│   ├── [ ] Add QUICKBOOKS_REDIRECT_URI environment variable
+│   └── [ ] Implement /api/integrations/quickbooks/connect endpoint
+│
+├── Day 2: OAuth Flow Implementation
+│   ├── [ ] Create /api/integrations/quickbooks/callback handler
+│   ├── [ ] Store access_token and refresh_token in encrypted storage
+│   ├── [ ] Implement token refresh mechanism (tokens expire in 1 hour)
+│   ├── [ ] Add workspace-level QuickBooks connection status
+│   └── [ ] Build disconnect/revoke flow
+│
+├── Day 3: Chart of Accounts Sync
+│   ├── [ ] Fetch accounts from QuickBooks API
+│   ├── [ ] Map CoAIleague expense categories to QB accounts
+│   ├── [ ] Create sync job for account changes
+│   └── [ ] Store account mapping in database
+│
+├── Day 4: Invoice Sync
+│   ├── [ ] Push invoices to QuickBooks on creation
+│   ├── [ ] Sync payment status from QuickBooks
+│   ├── [ ] Handle invoice modifications and voids
+│   └── [ ] Add sync status to invoice records
+│
+└── Day 5: Testing & Error Handling
+    ├── [ ] Test OAuth flow with sandbox credentials
+    ├── [ ] Implement retry logic for API failures
+    ├── [ ] Add sync error logging and alerts
+    └── [ ] Build admin UI for connection management
+```
+
+**Exit Criteria:** Invoices automatically sync to QuickBooks with payment reconciliation
+
+---
+
+#### Phase 4C: Gusto OAuth Integration (3-5 days)
+**Owner: Backend Team | Priority: P1 | Blocks: HR/Payroll Sync**
+
+```
+Sprint Tasks:
+├── Day 1: Partner Program & OAuth Setup
+│   ├── [ ] Apply for Gusto Partner Program (may take 1-2 weeks approval)
+│   ├── [ ] Configure GUSTO_CLIENT_ID secret
+│   ├── [ ] Configure GUSTO_CLIENT_SECRET secret
+│   ├── [ ] Add GUSTO_REDIRECT_URI environment variable
+│   └── [ ] Implement /api/integrations/gusto/connect endpoint
+│
+├── Day 2: OAuth Flow Implementation
+│   ├── [ ] Create /api/integrations/gusto/callback handler
+│   ├── [ ] Store tokens with encryption (AES-256-GCM)
+│   ├── [ ] Implement token refresh (tokens expire in 2 hours)
+│   ├── [ ] Add company selector for multi-company accounts
+│   └── [ ] Build disconnect flow with data cleanup
+│
+├── Day 3: Employee Sync (Gusto → CoAIleague)
+│   ├── [ ] Fetch employees from Gusto API
+│   ├── [ ] Map Gusto employee fields to CoAIleague schema
+│   ├── [ ] Handle onboarding status sync
+│   ├── [ ] Sync compensation and pay schedule
+│   └── [ ] Create scheduled sync job (daily)
+│
+├── Day 4: Payroll Export (CoAIleague → Gusto)
+│   ├── [ ] Export time entries in Gusto payroll format
+│   ├── [ ] Map CoAIleague pay types to Gusto earning types
+│   ├── [ ] Handle deductions and reimbursements
+│   └── [ ] Submit payroll data for processing
+│
+└── Day 5: Testing & Bidirectional Sync
+    ├── [ ] Test with Gusto sandbox environment
+    ├── [ ] Verify employee data accuracy
+    ├── [ ] Test payroll export with sample data
+    ├── [ ] Add conflict resolution for concurrent edits
+    └── [ ] Build sync dashboard UI
+```
+
+**Exit Criteria:** Employees sync from Gusto; time entries export for payroll processing
+
+---
+
+#### Phase 4D: Historical Trend Enhancement (2-3 days)
+**Owner: Analytics Team | Priority: P1 | Blocks: EngagementOS Analytics**
+
+```
+Sprint Tasks:
+├── Day 1: Data Collection Enhancement
+│   ├── [ ] Add daily snapshot job for engagement metrics
+│   ├── [ ] Store time-series data in engagementScoreHistory table
+│   ├── [ ] Track score changes with delta calculations
+│   └── [ ] Add trend direction indicators (improving/declining/stable)
+│
+├── Day 2: Analytics API Enhancement
+│   ├── [ ] Create /api/analytics/trends/:employeeId endpoint
+│   ├── [ ] Add time range filtering (7d, 30d, 90d, 1y)
+│   ├── [ ] Calculate moving averages for smoothing
+│   ├── [ ] Add comparative analysis (vs team, vs department)
+│   └── [ ] Implement percentile rankings
+│
+└── Day 3: Visualization & Alerts
+    ├── [ ] Build trend charts in engagement dashboard
+    ├── [ ] Add threshold-based alerts for declining scores
+    ├── [ ] Create manager notification for at-risk employees
+    └── [ ] Add export functionality for trend reports
+```
+
+**Exit Criteria:** Engagement trends visible with historical comparisons and alerts
 
 ---
 
@@ -301,11 +444,120 @@ Analytics Data Service:
 └── Comment: "Replace mock analytics with real operational data"
 ```
 
-### 7.5 Recommendations
-1. Implement real response time tracking from ticket data
-2. Calculate SLA compliance from actual ticket resolution times
-3. Integrate real customer satisfaction from survey data
-4. Replace monitoring mock with actual service health metrics
+### 7.5 P2 Implementation Phases (Detailed Breakdown)
+
+#### Phase 5A: WebSocket Command Completion (2-3 days)
+**Owner: Backend Team | Priority: P2 | Impact: Feature Completeness**
+
+```
+Sprint Tasks:
+├── Day 1: Command Audit & Implementation
+│   ├── [ ] Audit websocket.ts for "not yet implemented" responses
+│   ├── [ ] Implement /topic command for room topic changes
+│   ├── [ ] Implement /mode command for room mode settings
+│   ├── [ ] Implement /invite command for user invitations
+│   └── [ ] Add command documentation to API docs
+│
+├── Day 2: Advanced Commands
+│   ├── [ ] Implement /transfer command for ticket handoff
+│   ├── [ ] Implement /history command for message retrieval
+│   ├── [ ] Add /status command for user presence
+│   └── [ ] Implement /broadcast for org-wide announcements
+│
+└── Day 3: Testing & Documentation
+    ├── [ ] Unit tests for each command
+    ├── [ ] Integration tests with ChatServerHub
+    ├── [ ] Update command reference documentation
+    └── [ ] Add command autocomplete to chat UI
+```
+
+**Exit Criteria:** All IRCX-style commands functional with documentation
+
+---
+
+#### Phase 5B: Automation Metrics Tracking (2-3 days)
+**Owner: DevOps Team | Priority: P2 | Impact: Observability**
+
+```
+Sprint Tasks:
+├── Day 1: Telemetry Collection
+│   ├── [ ] Add duration tracking to payrollAutomation.ts
+│   ├── [ ] Track billable hours processing time
+│   ├── [ ] Measure invoice generation latency
+│   ├── [ ] Log AI scheduling generation duration
+│   └── [ ] Store metrics in automationMetrics table
+│
+├── Day 2: Metrics API & Storage
+│   ├── [ ] Create /api/admin/automation-metrics endpoint
+│   ├── [ ] Add time-series aggregation (hourly, daily)
+│   ├── [ ] Calculate success/failure rates per job
+│   ├── [ ] Track items processed per automation run
+│   └── [ ] Add anomaly detection for slow runs
+│
+└── Day 3: Dashboard & Alerts
+    ├── [ ] Build automation metrics dashboard
+    ├── [ ] Add charts for processing trends
+    ├── [ ] Create alerts for automation failures
+    ├── [ ] Add email notification for critical failures
+    └── [ ] Implement SLA breach warnings
+```
+
+**Exit Criteria:** Full visibility into automation job performance with alerting
+
+---
+
+#### Phase 5C: Mock Data Replacement (2-3 days)
+**Owner: Backend Team | Priority: P2 | Impact: Dashboard Accuracy**
+
+```
+Sprint Tasks:
+├── Day 1: Platform Admin Metrics
+│   ├── [ ] Calculate avgResponseTime from ticket timestamps
+│   │   └── Formula: AVG(first_response_at - created_at) from support_tickets
+│   ├── [ ] Calculate slaCompliance from resolution times
+│   │   └── Formula: COUNT(resolved_within_sla) / COUNT(total) * 100
+│   ├── [ ] Calculate customerSatisfaction from survey responses
+│   │   └── Formula: AVG(satisfaction_rating) from post_ticket_surveys
+│   └── [ ] Replace hardcoded values in platformAdmin.ts
+│
+├── Day 2: Monitoring Service Metrics
+│   ├── [ ] Implement real latency tracking for API endpoints
+│   ├── [ ] Add database query duration monitoring
+│   ├── [ ] Track WebSocket message latency
+│   ├── [ ] Measure external API call times (Stripe, Gemini)
+│   └── [ ] Store metrics in service_health_metrics table
+│
+└── Day 3: Analytics Data Service
+    ├── [ ] Replace mock analytics with real operational data
+    ├── [ ] Calculate conversion rates from signup funnel
+    ├── [ ] Track feature usage from analytics events
+    ├── [ ] Add engagement metrics from user sessions
+    └── [ ] Update analytics dashboard components
+```
+
+**Exit Criteria:** All dashboard metrics derived from real data
+
+---
+
+#### Phase 5D: Industry Benchmarking Enhancement (1-2 days)
+**Owner: Analytics Team | Priority: P2 | Impact: Competitive Analysis**
+
+```
+Sprint Tasks:
+├── Day 1: Benchmark Data Import
+│   ├── [ ] Create industry_benchmarks table
+│   ├── [ ] Import benchmark data by industry code (NAICS)
+│   ├── [ ] Add benchmark categories (turnover, engagement, productivity)
+│   └── [ ] Create admin UI for benchmark management
+│
+└── Day 2: Comparative Analysis
+    ├── [ ] Update engagementCalculations.ts with real benchmarks
+    ├── [ ] Add percentile ranking vs industry
+    ├── [ ] Create benchmark comparison charts
+    └── [ ] Add benchmark trends over time
+```
+
+**Exit Criteria:** Engagement scores compared against industry-specific benchmarks
 
 ---
 
@@ -375,29 +627,29 @@ Analytics Data Service:
 | Gap ID | Description | Impact | Status |
 |--------|-------------|--------|--------|
 | PAY-001 | YTD wage base tracking | SS wage cap violation | **DONE** |
-| PAY-002 | State tax tables (full brackets) | Incorrect withholding | Remaining |
-| PAY-003 | Pre-tax deductions (401k, HSA) | Incorrect net pay | Remaining |
-| PAY-005 | Tax jurisdiction handling | Multi-state compliance | Remaining |
+| PAY-002 | State tax tables (full brackets) | Incorrect withholding | **DONE** |
+| PAY-003 | Pre-tax deductions (401k, HSA) | Incorrect net pay | **DONE** |
+| PAY-005 | Tax jurisdiction handling | Multi-state compliance | **DONE** |
 | PAY-007 | SUTA rates per state | Unemployment tax errors | **DONE** |
 | PAY-008 | FUTA calculations | Federal unemployment errors | **DONE** |
 | PAY-009 | Additional Medicare Tax (>$200k) | High earner compliance | **DONE** |
 | PAY-010 | Local/city withholding | NYC, Philly, etc. errors | **DONE** |
 | PAY-011 | FLSA weighted overtime | Multi-role OT calculation | **DONE** |
 
-**P0 Completed: 6/9 items | Remaining Effort: 2-3 weeks (1 developer)**
+**P0 Completed: 9/9 items | Status: ALL COMPLETE**
 
 ### P1 - High Priority (Fix Within 30 Days) - Finance & Integration Blockers
 | Gap ID | Description | Impact | Status |
 |--------|-------------|--------|--------|
-| PAY-004 | Multi-currency support | International blocked | Remaining |
+| PAY-004 | Multi-currency support | International blocked | Not Started |
 | PAY-006 | Email retry mechanism | Lost notifications | **DONE** |
-| INT-001 | QuickBooks OAuth | Accounting sync blocked | Remaining |
-| INT-002 | Gusto OAuth | HR/payroll sync blocked | Remaining |
-| DB-001 | Employer ratings | Feature incomplete | Remaining |
-| DB-002 | Composite scores | Analytics incomplete | Remaining |
-| DB-003 | Historical trends | EngagementOS incomplete | Remaining |
+| INT-001 | QuickBooks OAuth | Accounting sync blocked | Not Started |
+| INT-002 | Gusto OAuth | HR/payroll sync blocked | Not Started |
+| DB-001 | Employer ratings | Feature incomplete | **DONE** |
+| DB-002 | Composite scores | Analytics incomplete | **DONE** |
+| DB-003 | Historical trends | EngagementOS incomplete | Partial |
 
-**P1 Completed: 1/7 items | Remaining Effort: 2-3 weeks (1-2 developers)**
+**P1 Completed: 4/7 items | Remaining: 3 items (13-18 days)**
 
 ### P2 - Medium Priority (Fix Within 60 Days) - Quality & Observability
 | Gap ID | Description | Impact | Effort |
@@ -416,42 +668,75 @@ Analytics Data Service:
 
 ---
 
-## 11. Recommended Remediation Roadmap (Updated)
+## 11. Recommended Remediation Roadmap (Updated Nov 29, 2025)
 
 ### Sprint 1 (Week 1-2): Federal Tax Compliance [P0] - **COMPLETED**
-**Owner: Payroll Team Lead**
-- [x] PAY-001: Implement YTD wage accumulator for Social Security ($168,600 limit) - **DONE**
-- [x] PAY-008: Implement FUTA calculations (6% on first $7,000 with 5.4% state credit) - **DONE**
-- [x] PAY-009: Add Additional Medicare Tax threshold tracking (0.9% > $200k) - **DONE**
-- [x] PAY-007: Implement SUTA rates for all 50 states + DC with experience rating - **DONE**
-- [x] PAY-010: Add local withholding (NYC, Philadelphia, Cleveland, Detroit, etc.) - **DONE**
+**Owner: Payroll Team Lead | Status: 100% Complete**
+- [x] PAY-001: YTD wage accumulator for Social Security ($168,600 limit) - **DONE**
+- [x] PAY-008: FUTA calculations (6% on first $7,000 with 5.4% state credit) - **DONE**
+- [x] PAY-009: Additional Medicare Tax threshold tracking (0.9% > $200k) - **DONE**
+- [x] PAY-007: SUTA rates for all 50 states + DC with experience rating - **DONE**
+- [x] PAY-010: Local withholding (NYC, Philadelphia, Cleveland, Detroit, etc.) - **DONE**
 - [x] PAY-011: FLSA weighted average overtime for multi-rate employees - **DONE**
 - **Exit Criteria**: Federal payroll compliant with IRS requirements - **MET**
 
-### Sprint 2 (Week 3-4): State & Local Tax Refinement [P0]
-**Owner: Payroll Team Lead**
-- [ ] PAY-002: Expand state income tax tables with full progressive brackets (50 states + DC)
-- [ ] PAY-005: Handle multi-state employees and reciprocal agreements
-- **Exit Criteria**: Multi-state payroll runs correctly across all jurisdictions
+### Sprint 2 (Week 3-4): State & Local Tax Refinement [P0] - **COMPLETED**
+**Owner: Payroll Team Lead | Status: 100% Complete**
+- [x] PAY-002: State income tax tables with full progressive brackets (50 states + DC) - **DONE**
+- [x] PAY-005: Multi-state employees with reciprocal agreements (15+ state pairs) - **DONE**
+- **Exit Criteria**: Multi-state payroll runs correctly across all jurisdictions - **MET**
 
-### Sprint 3 (Week 5-6): Pre-tax Deductions & Data Features [P0 + P1]
-**Owner: Payroll Team Lead + Backend Team**
-- [ ] PAY-003: Implement 401(k), HSA, FSA deductions with annual limits integration
-- [ ] DB-001/DB-002: Wire employer ratings and composite scores APIs
-- [x] PAY-006: Implement email retry with exponential backoff - **DONE** (Already existed)
-- **Exit Criteria**: Complete payroll calculation with all deduction types
+### Sprint 3 (Week 5-6): Pre-tax Deductions & Data Features [P0 + P1] - **COMPLETED**
+**Owner: Payroll Team Lead + Backend Team | Status: 100% Complete**
+- [x] PAY-003: 401(k), HSA, FSA deductions with IRS 2024 annual limits - **DONE**
+- [x] DB-001: Employer ratings API (/api/engagement/employer-ratings) - **DONE** (Already existed)
+- [x] DB-002: Composite scores service (compositeScoresService.ts) - **DONE** (Already existed)
+- [x] PAY-006: Email retry with exponential backoff - **DONE** (Already existed)
+- **Exit Criteria**: Complete payroll calculation with all deduction types - **MET**
 
-### Sprint 4 (Week 7-8): Integrations & International [P1]
-**Owner: Backend Team**
-- [ ] INT-001: Complete QuickBooks OAuth and chart of accounts sync
-- [ ] INT-002: Complete Gusto OAuth and bidirectional sync
-- [ ] PAY-004: Implement multi-currency with real-time exchange rates
-- [ ] DB-003: Add historical trend data collection for EngagementOS
+### Sprint 4 (Week 7-8): Integrations & International [P1] - **NOT STARTED**
+**Owner: Backend Team | Status: 0% Complete | Effort: 13-18 days**
+- [ ] Phase 4A: Multi-currency support (5-7 days) - See Section 4.5
+- [ ] Phase 4B: QuickBooks OAuth integration (3-5 days) - See Section 4.5
+- [ ] Phase 4C: Gusto OAuth integration (3-5 days) - See Section 4.5
+- [ ] Phase 4D: Historical trend enhancement (2-3 days) - See Section 4.5
 - **Exit Criteria**: Finance integrations operational, international payroll enabled
+
+### Sprint 5 (Week 9-10): Quality & Observability [P2] - **NOT STARTED**
+**Owner: DevOps + Backend Team | Status: 0% Complete | Effort: 7-11 days**
+- [ ] Phase 5A: WebSocket command completion (2-3 days) - See Section 7.5
+- [ ] Phase 5B: Automation metrics tracking (2-3 days) - See Section 7.5
+- [ ] Phase 5C: Mock data replacement (2-3 days) - See Section 7.5
+- [ ] Phase 5D: Industry benchmarking enhancement (1-2 days) - See Section 7.5
+- **Exit Criteria**: Full observability, accurate dashboards, complete feature set
+
+### Sprint 6 (Week 11-12): Mobile & UX Improvements [P2] - **NOT STARTED**
+**Owner: Frontend Team | Status: 0% Complete | Effort: 5-7 days**
+- [ ] Mobile-responsive grids across all 220+ pages
+- [ ] Table horizontal scroll on mobile devices
+- [ ] Typography scaling for small screens
+- [ ] Touch-friendly interaction targets (WCAG compliant)
+- **Exit Criteria**: Full mobile experience across all pages
 
 ---
 
-## 12. Appendix
+## 12. Effort Summary
+
+| Sprint | Focus | Status | Days | Owner |
+|--------|-------|--------|------|-------|
+| Sprint 1 | Federal Tax Compliance | **COMPLETE** | 10 | Payroll |
+| Sprint 2 | State/Local Tax | **COMPLETE** | 10 | Payroll |
+| Sprint 3 | Pre-tax Deductions | **COMPLETE** | 10 | Payroll + Backend |
+| Sprint 4 | Integrations | Not Started | 13-18 | Backend |
+| Sprint 5 | Observability | Not Started | 7-11 | DevOps + Backend |
+| Sprint 6 | Mobile UX | Not Started | 5-7 | Frontend |
+
+**Total Completed: 30 days (Sprints 1-3)**
+**Total Remaining: 25-36 days (Sprints 4-6)**
+
+---
+
+## 13. Appendix
 
 ### A. Files Analyzed
 - server/services/ChatServerHub.ts
