@@ -3014,9 +3014,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Map tiers to platform fees (transaction-based revenue model)
       const tierConfig: Record<string, { fee: number; name: string; price: number }> = {
-        professional: { fee: 10, name: "Professional", price: 799 },
-        enterprise: { fee: 5, name: "Enterprise", price: 2999 },
-        fortune500: { fee: 2, name: "Fortune 500", price: 7999 },
+        free: { fee: 0, name: "Free Trial", price: 0 },
+        starter: { fee: 3, name: "Starter", price: 4999 },
+        professional: { fee: 3, name: "Professional", price: 9999 },
+        enterprise: { fee: 2, name: "Enterprise", price: 17999 },
       };
 
       if (!tierConfig[tier]) {

@@ -42,3 +42,25 @@ The system employs a multi-tenant architecture with robust RBAC security and mul
 - **WebSocket**: Enables real-time notifications.
 - **Google Cloud Storage (GCS)**: Used for file management.
 - **PostgreSQL**: The primary relational database for data storage.
+### Phase 4 Implementation - Tier Upgrade System (COMPLETE)
+**Date:** November 29, 2025
+
+**Features Completed:**
+- ✅ Updated workspace upgrade endpoint (`/api/workspace/upgrade`) to use BILLING config tiers:
+  - Free: $0/mo (no platform fee)
+  - Starter: $4,999/mo (3% platform fee)
+  - Professional: $9,999/mo (3% platform fee)
+  - Enterprise: $17,999/mo (2% platform fee)
+- ✅ Integrated with billing page component (already present at `client/src/pages/billing.tsx`)
+- ✅ Free trial subscription creation working (30-day trials for free tier)
+- ✅ Pricing page CTAs now route directly to registration with tier parameter
+- ✅ Stripe price configurations in place and ready for use
+
+**Remaining for Phase 5:**
+- Stripe webhook completion for subscription state sync
+- Email automation triggers (Resend integration)
+- Usage tracking and overage calculations
+- Trial expiration warnings (scheduled job)
+- Upgrade confirmation emails
+
+**Deployment Status:** App running successfully, all critical tier infrastructure in place
