@@ -108,22 +108,22 @@ export default function Pricing() {
   ];
 
   return (
-    <div className="min-h-screen bg-background overflow-x-hidden">
+    <div className="min-h-screen bg-background overflow-x-hidden w-full">
       {/* Universal Header */}
       <UniversalHeader variant="public" />
 
       {/* Pricing Hero */}
-      <section className="pt-16 sm:pt-24 pb-8 sm:pb-16 px-3 sm:px-6 bg-gradient-to-br from-slate-50 via-blue-50 to-blue-50 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800">
-        <div className="container mx-auto max-w-7xl">
-        <div className="text-center space-y-3 sm:space-y-4 mb-8 sm:mb-12">
-          <Badge className="bg-gradient-to-r from-blue-100 to-blue-100 text-blue-700 border-blue-200 mb-2 shadow-md dark:bg-blue-900/50 dark:text-blue-300 dark:border-blue-700">
-            <Sparkles className="h-3 w-3 mr-1 shrink-0" />
-            <span className="truncate">Enterprise-Grade ROI</span>
+      <section className="pt-10 sm:pt-16 md:pt-24 pb-8 sm:pb-12 md:pb-16 px-3 sm:px-4 md:px-6 bg-gradient-to-br from-slate-50 via-blue-50 to-blue-50 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 overflow-x-hidden">
+        <div className="container mx-auto max-w-7xl px-0 w-full">
+        <div className="text-center space-y-2 sm:space-y-3 md:space-y-4 mb-6 sm:mb-8 md:mb-12">
+          <Badge className="bg-gradient-to-r from-blue-100 to-blue-100 text-blue-700 border-blue-200 mb-2 shadow-md dark:bg-blue-900/50 dark:text-blue-300 dark:border-blue-700 inline-block text-xs sm:text-sm px-2 sm:px-3">
+            <Sparkles className="h-3 w-3 mr-1 shrink-0 inline" />
+            <span className="truncate inline">Enterprise-Grade ROI</span>
           </Badge>
-          <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight text-gray-900 dark:text-gray-100 px-2">
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-blue-600 to-blue-600 break-words">Replace $250K-$430K</span> in Administrative Salaries
+          <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-5xl font-bold tracking-tight text-gray-900 dark:text-gray-100 px-2 sm:px-3 break-words">
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-blue-600 to-blue-600">Replace $250K-$430K</span> in Administrative Salaries
           </h1>
-          <p className="text-sm sm:text-base lg:text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto px-2">
+          <p className="text-xs sm:text-sm md:text-base lg:text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto px-2 sm:px-3 break-words">
             Pay once per month. Save $192K-$216K annually in net savings. CoAIleague replaces 3-5 high-end administrative positions with AI automation.
           </p>
         </div>
