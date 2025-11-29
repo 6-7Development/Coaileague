@@ -349,7 +349,7 @@ export default function Chatrooms() {
   const joinedCount = (roomsData?.rooms || []).filter((r: ChatRoom) => r.isParticipant).length;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pb-24 sm:pb-6">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
         
         <div className="mb-4 sm:mb-6 flex items-start gap-3">
