@@ -1661,8 +1661,8 @@ export function setupWebSocket(server: Server) {
                     senderName: 'Server',
                     senderType: 'system',
                     message: wasConnected 
-                      ? `✅ ${staffDisplayName} (${staffRoleName}) removed ${targetUserDisplayName} from chat. Reason: ${reason}`
-                      : `⚠️ Command executed: ${staffDisplayName} (${staffRoleName}) attempted to kick ${targetUserDisplayName} (user not currently connected). Reason: ${reason}`,
+                      ? `${staffDisplayName} (${staffRoleName}) removed ${targetUserDisplayName} from chat. Reason: ${reason}`
+                      : `Kick command executed by ${staffDisplayName}. Note: ${targetUserDisplayName} was not connected to this room.`,
                     messageType: 'text',
                     isSystemMessage: true,
                   });
@@ -2735,7 +2735,7 @@ export function setupWebSocket(server: Server) {
                   commandId: payload.commandId,
                   action: 'silence_user',
                   success: false,
-                  message: '✗ Permission denied - Staff role required',
+                  message: 'Permission denied - Staff role required',
                   errorType: 'PERMISSION_DENIED',
                 }));
               }
@@ -2785,7 +2785,7 @@ export function setupWebSocket(server: Server) {
                   commandId: payload.commandId,
                   action: 'silence_user',
                   success: false,
-                  message: '✗ Conversation not found',
+                  message: 'Conversation not found',
                   errorType: 'NOT_FOUND',
                 }));
               }
@@ -2806,7 +2806,7 @@ export function setupWebSocket(server: Server) {
             const reason = payload.reason || 'Chat violation';
             const silenceMessage = createSystemMessage(
               ws.conversationId,
-              `🔇 ${targetUserName} has been silenced for ${duration} minutes by ${ws.userName}. Reason: ${reason}`
+              `${targetUserName} has been silenced for ${duration} minutes by ${ws.userName}. Reason: ${reason}`
             );
 
             // Save and broadcast the silence message FIRST
@@ -2832,7 +2832,7 @@ export function setupWebSocket(server: Server) {
               }
             });
 
-            console.log(`🔇 ${targetUserName} silenced by ${ws.userName} for ${duration} minutes - Reason: ${reason}`);
+            console.log(`[HelpAI] ${targetUserName} silenced by ${ws.userName} for ${duration} minutes - Reason: ${reason}`);
 
             // ===================================================================
             // AUDITOS™ - Log the moderation action for compliance tracking
@@ -2916,7 +2916,7 @@ export function setupWebSocket(server: Server) {
                   commandId: payload.commandId,
                   action: 'give_voice',
                   success: false,
-                  message: '✗ Permission denied - Staff role required',
+                  message: 'Permission denied - Staff role required',
                   errorType: 'PERMISSION_DENIED',
                 }));
               }
@@ -2964,7 +2964,7 @@ export function setupWebSocket(server: Server) {
                   commandId: payload.commandId,
                   action: 'give_voice',
                   success: false,
-                  message: '✗ Conversation not found',
+                  message: 'Conversation not found',
                   errorType: 'NOT_FOUND',
                 }));
               }
