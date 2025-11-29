@@ -1845,7 +1845,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`✅ Credits initialized: ${subscriptionTier} tier allocation`);
 
       // 5. Create Stripe subscription if paid tier
-      if (subscriptionTier !== 'free') {
+      if (subscriptionTier === 'free') {
+        const trialStart = new Date();
+        const trialEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+        await db.insert(subscriptions).values({ workspaceId: workspace.id, plan: 'free', status: 'trial', trialStartedAt: trialStart, trialEndsAt: trialEnd, maxEmployees: 5, basePrice: 0, createdAt: new Date() });
+        console.log(`✅ Free trial subscription created: 30 days`);
+      } else if (subscriptionTier !== 'free') {
         const subscriptionResult = await subscriptionManager.createSubscription({
           workspaceId: workspace.id,
           tier: subscriptionTier as any,

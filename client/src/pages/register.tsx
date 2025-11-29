@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,12 +14,22 @@ export default function Register() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [subscriptionTier, setSubscriptionTier] = useState<string>('free');
   const [formData, setFormData] = useState({
     email: "",
     password: "",
     firstName: "",
     lastName: "",
   });
+
+  // Read tier from URL params
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tier = params.get('tier');
+    if (tier && ['free', 'starter', 'professional', 'enterprise'].includes(tier)) {
+      setSubscriptionTier(tier);
+    }
+  }, []);
 
   // Password strength validation
   const validatePassword = (password: string) => {
@@ -57,7 +67,11 @@ export default function Register() {
       const response = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          companyName: formData.firstName + " " + formData.lastName + " Org",
+          subscriptionTier,
+        }),
       });
 
       const data = await response.json();
