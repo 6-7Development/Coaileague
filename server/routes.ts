@@ -29657,333 +29657,334 @@ app.post("/api/alerts/test", requireAuth, mutationLimiter, async (req: Authentic
   }
 });
 
+
+  // ============================================================================
+  // USER FEEDBACK PORTAL - Feature Requests, Bug Reports, and Suggestions
+  // ============================================================================
+  
+  /**
+   * POST /api/feedback
+   * Submit new feedback (bug report, feature request, improvement, general)
+   */
+  app.post("/api/feedback", requireAuth, mutationLimiter, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { title, description, type, priority, category, attachmentUrls } = req.body;
+      
+      if (!title || !description || !type) {
+        return res.status(400).json({ success: false, error: "Title, description, and type are required" });
+      }
+      
+      const validTypes = ['bug', 'feature_request', 'improvement', 'general', 'question'];
+      if (!validTypes.includes(type)) {
+        return res.status(400).json({ success: false, error: "Invalid feedback type" });
+      }
+      
+      const validPriorities = ['low', 'medium', 'high', 'critical'];
+      if (priority && !validPriorities.includes(priority)) {
+        return res.status(400).json({ success: false, error: "Invalid priority level" });
+      }
+      
+      const feedback = await storage.createFeedback({
+        workspaceId: req.workspaceId!,
+        userId: req.userId!,
+        title,
+        description,
+        type,
+        priority: priority || 'medium',
+        category: category || null,
+        attachmentUrls: attachmentUrls || [],
+      });
+      
+      res.status(201).json({ success: true, data: feedback });
+    } catch (error: any) {
+      console.error("Error creating feedback:", error);
+      res.status(500).json({ success: false, error: error.message || "Failed to create feedback" });
+    }
+  });
+  
+  /**
+   * GET /api/feedback
+   * List feedback with filtering and sorting
+   */
+  app.get("/api/feedback", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { type, status, priority, sortBy, sortOrder, limit, offset, myFeedback } = req.query;
+      
+      const filters: any = {
+        workspaceId: req.workspaceId!,
+      };
+      
+      if (type) filters.type = type as string;
+      if (status) filters.status = status as string;
+      if (priority) filters.priority = priority as string;
+      if (sortBy) filters.sortBy = sortBy as string;
+      if (sortOrder) filters.sortOrder = sortOrder as 'asc' | 'desc';
+      if (limit) filters.limit = parseInt(limit as string, 10);
+      if (offset) filters.offset = parseInt(offset as string, 10);
+      if (myFeedback === 'true') filters.userId = req.userId!;
+      
+      const feedbackList = await storage.getFeedbackList(filters);
+      
+      const feedbackWithUserVotes = await Promise.all(
+        feedbackList.map(async (fb) => {
+          const userVote = await storage.getUserFeedbackVote(fb.id, req.userId!);
+          return { ...fb, userVote: userVote?.voteType || null };
+        })
+      );
+      
+      res.json({ success: true, data: feedbackWithUserVotes });
+    } catch (error: any) {
+      console.error("Error fetching feedback:", error);
+      res.status(500).json({ success: false, error: error.message || "Failed to fetch feedback" });
+    }
+  });
+  
+  /**
+   * GET /api/feedback/:id
+   * Get feedback detail with comments
+   */
+  app.get("/api/feedback/:id", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { id } = req.params;
+      
+      const feedback = await storage.getFeedback(id);
+      if (!feedback) {
+        return res.status(404).json({ success: false, error: "Feedback not found" });
+      }
+      
+      if (feedback.workspaceId !== req.workspaceId) {
+        return res.status(403).json({ success: false, error: "Access denied" });
+      }
+      
+      const comments = await storage.getFeedbackComments(id);
+      const userVote = await storage.getUserFeedbackVote(id, req.userId!);
+      
+      res.json({ 
+        success: true, 
+        data: { 
+          ...feedback, 
+          comments,
+          userVote: userVote?.voteType || null 
+        } 
+      });
+    } catch (error: any) {
+      console.error("Error fetching feedback detail:", error);
+      res.status(500).json({ success: false, error: error.message || "Failed to fetch feedback" });
+    }
+  });
+  
+  /**
+   * PATCH /api/feedback/:id
+   * Update feedback (only owner can update title/description)
+   */
+  app.patch("/api/feedback/:id", requireAuth, mutationLimiter, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { id } = req.params;
+      const { title, description, type, priority, category } = req.body;
+      
+      const feedback = await storage.getFeedback(id);
+      if (!feedback) {
+        return res.status(404).json({ success: false, error: "Feedback not found" });
+      }
+      
+      if (feedback.workspaceId !== req.workspaceId) {
+        return res.status(403).json({ success: false, error: "Access denied" });
+      }
+      
+      if (feedback.userId !== req.userId) {
+        return res.status(403).json({ success: false, error: "Only the author can edit this feedback" });
+      }
+      
+      const updateData: any = {};
+      if (title) updateData.title = title;
+      if (description) updateData.description = description;
+      if (type) updateData.type = type;
+      if (priority) updateData.priority = priority;
+      if (category !== undefined) updateData.category = category;
+      
+      const updated = await storage.updateFeedback(id, updateData);
+      res.json({ success: true, data: updated });
+    } catch (error: any) {
+      console.error("Error updating feedback:", error);
+      res.status(500).json({ success: false, error: error.message || "Failed to update feedback" });
+    }
+  });
+  
+  /**
+   * PATCH /api/feedback/:id/status
+   * Update feedback status (admin only)
+   */
+  app.patch("/api/feedback/:id/status", requireAuth, mutationLimiter, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { id } = req.params;
+      const { status, note } = req.body;
+      
+      const validStatuses = ['submitted', 'under_review', 'planned', 'in_progress', 'completed', 'declined', 'duplicate'];
+      if (!status || !validStatuses.includes(status)) {
+        return res.status(400).json({ success: false, error: "Invalid status" });
+      }
+      
+      const feedback = await storage.getFeedback(id);
+      if (!feedback) {
+        return res.status(404).json({ success: false, error: "Feedback not found" });
+      }
+      
+      if (feedback.workspaceId !== req.workspaceId) {
+        return res.status(403).json({ success: false, error: "Access denied" });
+      }
+      
+      const updated = await storage.updateFeedbackStatus(id, status, req.userId!, note);
+      res.json({ success: true, data: updated });
+    } catch (error: any) {
+      console.error("Error updating feedback status:", error);
+      res.status(500).json({ success: false, error: error.message || "Failed to update status" });
+    }
+  });
+  
+  /**
+   * POST /api/feedback/:id/vote
+   * Upvote or downvote feedback
+   */
+  app.post("/api/feedback/:id/vote", requireAuth, mutationLimiter, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { id } = req.params;
+      const { voteType } = req.body;
+      
+      if (!voteType || !['up', 'down'].includes(voteType)) {
+        return res.status(400).json({ success: false, error: "Invalid vote type. Use 'up' or 'down'" });
+      }
+      
+      const feedback = await storage.getFeedback(id);
+      if (!feedback) {
+        return res.status(404).json({ success: false, error: "Feedback not found" });
+      }
+      
+      if (feedback.workspaceId !== req.workspaceId) {
+        return res.status(403).json({ success: false, error: "Access denied" });
+      }
+      
+      const result = await storage.voteFeedback(id, req.userId!, voteType);
+      res.json({ success: true, data: result });
+    } catch (error: any) {
+      console.error("Error voting on feedback:", error);
+      res.status(500).json({ success: false, error: error.message || "Failed to vote" });
+    }
+  });
+  
+  /**
+   * POST /api/feedback/:id/comments
+   * Add a comment to feedback
+   */
+  app.post("/api/feedback/:id/comments", requireAuth, mutationLimiter, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { id } = req.params;
+      const { content, parentId } = req.body;
+      
+      if (!content || content.trim().length === 0) {
+        return res.status(400).json({ success: false, error: "Comment content is required" });
+      }
+      
+      const feedback = await storage.getFeedback(id);
+      if (!feedback) {
+        return res.status(404).json({ success: false, error: "Feedback not found" });
+      }
+      
+      if (feedback.workspaceId !== req.workspaceId) {
+        return res.status(403).json({ success: false, error: "Access denied" });
+      }
+      
+      const comment = await storage.createFeedbackComment({
+        feedbackId: id,
+        userId: req.userId!,
+        content: content.trim(),
+        parentId: parentId || null,
+      });
+      
+      res.status(201).json({ success: true, data: comment });
+    } catch (error: any) {
+      console.error("Error adding comment:", error);
+      res.status(500).json({ success: false, error: error.message || "Failed to add comment" });
+    }
+  });
+  
+  /**
+   * GET /api/feedback/:id/comments
+   * Get comments for a feedback item
+   */
+  app.get("/api/feedback/:id/comments", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { id } = req.params;
+      
+      const feedback = await storage.getFeedback(id);
+      if (!feedback) {
+        return res.status(404).json({ success: false, error: "Feedback not found" });
+      }
+      
+      if (feedback.workspaceId !== req.workspaceId) {
+        return res.status(403).json({ success: false, error: "Access denied" });
+      }
+      
+      const comments = await storage.getFeedbackComments(id);
+      res.json({ success: true, data: comments });
+    } catch (error: any) {
+      console.error("Error fetching comments:", error);
+      res.status(500).json({ success: false, error: error.message || "Failed to fetch comments" });
+    }
+  });
+  
+  /**
+   * DELETE /api/feedback/:id/comments/:commentId
+   * Delete a comment (only author can delete)
+   */
+  app.delete("/api/feedback/:id/comments/:commentId", requireAuth, mutationLimiter, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { id, commentId } = req.params;
+      
+      const feedback = await storage.getFeedback(id);
+      if (!feedback) {
+        return res.status(404).json({ success: false, error: "Feedback not found" });
+      }
+      
+      if (feedback.workspaceId !== req.workspaceId) {
+        return res.status(403).json({ success: false, error: "Access denied" });
+      }
+      
+      await storage.deleteFeedbackComment(commentId);
+      res.json({ success: true, message: "Comment deleted" });
+    } catch (error: any) {
+      console.error("Error deleting comment:", error);
+      res.status(500).json({ success: false, error: error.message || "Failed to delete comment" });
+    }
+  });
+  
+  /**
+   * DELETE /api/feedback/:id
+   * Delete feedback (only author can delete)
+   */
+  app.delete("/api/feedback/:id", requireAuth, mutationLimiter, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { id } = req.params;
+      
+      const feedback = await storage.getFeedback(id);
+      if (!feedback) {
+        return res.status(404).json({ success: false, error: "Feedback not found" });
+      }
+      
+      if (feedback.workspaceId !== req.workspaceId) {
+        return res.status(403).json({ success: false, error: "Access denied" });
+      }
+      
+      if (feedback.userId !== req.userId) {
+        return res.status(403).json({ success: false, error: "Only the author can delete this feedback" });
+      }
+      
+      await storage.deleteFeedback(id);
+      res.json({ success: true, message: "Feedback deleted" });
+    } catch (error: any) {
+      console.error("Error deleting feedback:", error);
+      res.status(500).json({ success: false, error: error.message || "Failed to delete feedback" });
+    }
+  });
+
   return server;
 }
-
-// ============================================================================
-// USER FEEDBACK PORTAL - Feature Requests, Bug Reports, and Suggestions
-// ============================================================================
-
-/**
- * POST /api/feedback
- * Submit new feedback (bug report, feature request, improvement, general)
- */
-app.post("/api/feedback", requireAuth, mutationLimiter, async (req: AuthenticatedRequest, res) => {
-  try {
-    const { title, description, type, priority, category, attachmentUrls } = req.body;
-    
-    if (!title || !description || !type) {
-      return res.status(400).json({ success: false, error: "Title, description, and type are required" });
-    }
-    
-    const validTypes = ['bug', 'feature_request', 'improvement', 'general', 'question'];
-    if (!validTypes.includes(type)) {
-      return res.status(400).json({ success: false, error: "Invalid feedback type" });
-    }
-    
-    const validPriorities = ['low', 'medium', 'high', 'critical'];
-    if (priority && !validPriorities.includes(priority)) {
-      return res.status(400).json({ success: false, error: "Invalid priority level" });
-    }
-    
-    const feedback = await storage.createFeedback({
-      workspaceId: req.workspaceId!,
-      userId: req.userId!,
-      title,
-      description,
-      type,
-      priority: priority || 'medium',
-      category: category || null,
-      attachmentUrls: attachmentUrls || [],
-    });
-    
-    res.status(201).json({ success: true, data: feedback });
-  } catch (error: any) {
-    console.error("Error creating feedback:", error);
-    res.status(500).json({ success: false, error: error.message || "Failed to create feedback" });
-  }
-});
-
-/**
- * GET /api/feedback
- * List feedback with filtering and sorting
- */
-app.get("/api/feedback", requireAuth, async (req: AuthenticatedRequest, res) => {
-  try {
-    const { type, status, priority, sortBy, sortOrder, limit, offset, myFeedback } = req.query;
-    
-    const filters: any = {
-      workspaceId: req.workspaceId!,
-    };
-    
-    if (type) filters.type = type as string;
-    if (status) filters.status = status as string;
-    if (priority) filters.priority = priority as string;
-    if (sortBy) filters.sortBy = sortBy as string;
-    if (sortOrder) filters.sortOrder = sortOrder as 'asc' | 'desc';
-    if (limit) filters.limit = parseInt(limit as string, 10);
-    if (offset) filters.offset = parseInt(offset as string, 10);
-    if (myFeedback === 'true') filters.userId = req.userId!;
-    
-    const feedbackList = await storage.getFeedbackList(filters);
-    
-    const feedbackWithUserVotes = await Promise.all(
-      feedbackList.map(async (fb) => {
-        const userVote = await storage.getUserFeedbackVote(fb.id, req.userId!);
-        return { ...fb, userVote: userVote?.voteType || null };
-      })
-    );
-    
-    res.json({ success: true, data: feedbackWithUserVotes });
-  } catch (error: any) {
-    console.error("Error fetching feedback:", error);
-    res.status(500).json({ success: false, error: error.message || "Failed to fetch feedback" });
-  }
-});
-
-/**
- * GET /api/feedback/:id
- * Get feedback detail with comments
- */
-app.get("/api/feedback/:id", requireAuth, async (req: AuthenticatedRequest, res) => {
-  try {
-    const { id } = req.params;
-    
-    const feedback = await storage.getFeedback(id);
-    if (!feedback) {
-      return res.status(404).json({ success: false, error: "Feedback not found" });
-    }
-    
-    if (feedback.workspaceId !== req.workspaceId) {
-      return res.status(403).json({ success: false, error: "Access denied" });
-    }
-    
-    const comments = await storage.getFeedbackComments(id);
-    const userVote = await storage.getUserFeedbackVote(id, req.userId!);
-    
-    res.json({ 
-      success: true, 
-      data: { 
-        ...feedback, 
-        comments,
-        userVote: userVote?.voteType || null 
-      } 
-    });
-  } catch (error: any) {
-    console.error("Error fetching feedback detail:", error);
-    res.status(500).json({ success: false, error: error.message || "Failed to fetch feedback" });
-  }
-});
-
-/**
- * PATCH /api/feedback/:id
- * Update feedback (only owner can update title/description)
- */
-app.patch("/api/feedback/:id", requireAuth, mutationLimiter, async (req: AuthenticatedRequest, res) => {
-  try {
-    const { id } = req.params;
-    const { title, description, type, priority, category } = req.body;
-    
-    const feedback = await storage.getFeedback(id);
-    if (!feedback) {
-      return res.status(404).json({ success: false, error: "Feedback not found" });
-    }
-    
-    if (feedback.workspaceId !== req.workspaceId) {
-      return res.status(403).json({ success: false, error: "Access denied" });
-    }
-    
-    if (feedback.userId !== req.userId) {
-      return res.status(403).json({ success: false, error: "Only the author can edit this feedback" });
-    }
-    
-    const updateData: any = {};
-    if (title) updateData.title = title;
-    if (description) updateData.description = description;
-    if (type) updateData.type = type;
-    if (priority) updateData.priority = priority;
-    if (category !== undefined) updateData.category = category;
-    
-    const updated = await storage.updateFeedback(id, updateData);
-    res.json({ success: true, data: updated });
-  } catch (error: any) {
-    console.error("Error updating feedback:", error);
-    res.status(500).json({ success: false, error: error.message || "Failed to update feedback" });
-  }
-});
-
-/**
- * PATCH /api/feedback/:id/status
- * Update feedback status (admin only)
- */
-app.patch("/api/feedback/:id/status", requireAuth, mutationLimiter, async (req: AuthenticatedRequest, res) => {
-  try {
-    const { id } = req.params;
-    const { status, note } = req.body;
-    
-    const validStatuses = ['submitted', 'under_review', 'planned', 'in_progress', 'completed', 'declined', 'duplicate'];
-    if (!status || !validStatuses.includes(status)) {
-      return res.status(400).json({ success: false, error: "Invalid status" });
-    }
-    
-    const feedback = await storage.getFeedback(id);
-    if (!feedback) {
-      return res.status(404).json({ success: false, error: "Feedback not found" });
-    }
-    
-    if (feedback.workspaceId !== req.workspaceId) {
-      return res.status(403).json({ success: false, error: "Access denied" });
-    }
-    
-    const updated = await storage.updateFeedbackStatus(id, status, req.userId!, note);
-    res.json({ success: true, data: updated });
-  } catch (error: any) {
-    console.error("Error updating feedback status:", error);
-    res.status(500).json({ success: false, error: error.message || "Failed to update status" });
-  }
-});
-
-/**
- * POST /api/feedback/:id/vote
- * Upvote or downvote feedback
- */
-app.post("/api/feedback/:id/vote", requireAuth, mutationLimiter, async (req: AuthenticatedRequest, res) => {
-  try {
-    const { id } = req.params;
-    const { voteType } = req.body;
-    
-    if (!voteType || !['up', 'down'].includes(voteType)) {
-      return res.status(400).json({ success: false, error: "Invalid vote type. Use 'up' or 'down'" });
-    }
-    
-    const feedback = await storage.getFeedback(id);
-    if (!feedback) {
-      return res.status(404).json({ success: false, error: "Feedback not found" });
-    }
-    
-    if (feedback.workspaceId !== req.workspaceId) {
-      return res.status(403).json({ success: false, error: "Access denied" });
-    }
-    
-    const result = await storage.voteFeedback(id, req.userId!, voteType);
-    res.json({ success: true, data: result });
-  } catch (error: any) {
-    console.error("Error voting on feedback:", error);
-    res.status(500).json({ success: false, error: error.message || "Failed to vote" });
-  }
-});
-
-/**
- * POST /api/feedback/:id/comments
- * Add a comment to feedback
- */
-app.post("/api/feedback/:id/comments", requireAuth, mutationLimiter, async (req: AuthenticatedRequest, res) => {
-  try {
-    const { id } = req.params;
-    const { content, parentId } = req.body;
-    
-    if (!content || content.trim().length === 0) {
-      return res.status(400).json({ success: false, error: "Comment content is required" });
-    }
-    
-    const feedback = await storage.getFeedback(id);
-    if (!feedback) {
-      return res.status(404).json({ success: false, error: "Feedback not found" });
-    }
-    
-    if (feedback.workspaceId !== req.workspaceId) {
-      return res.status(403).json({ success: false, error: "Access denied" });
-    }
-    
-    const comment = await storage.createFeedbackComment({
-      feedbackId: id,
-      userId: req.userId!,
-      content: content.trim(),
-      parentId: parentId || null,
-    });
-    
-    res.status(201).json({ success: true, data: comment });
-  } catch (error: any) {
-    console.error("Error adding comment:", error);
-    res.status(500).json({ success: false, error: error.message || "Failed to add comment" });
-  }
-});
-
-/**
- * GET /api/feedback/:id/comments
- * Get comments for a feedback item
- */
-app.get("/api/feedback/:id/comments", requireAuth, async (req: AuthenticatedRequest, res) => {
-  try {
-    const { id } = req.params;
-    
-    const feedback = await storage.getFeedback(id);
-    if (!feedback) {
-      return res.status(404).json({ success: false, error: "Feedback not found" });
-    }
-    
-    if (feedback.workspaceId !== req.workspaceId) {
-      return res.status(403).json({ success: false, error: "Access denied" });
-    }
-    
-    const comments = await storage.getFeedbackComments(id);
-    res.json({ success: true, data: comments });
-  } catch (error: any) {
-    console.error("Error fetching comments:", error);
-    res.status(500).json({ success: false, error: error.message || "Failed to fetch comments" });
-  }
-});
-
-/**
- * DELETE /api/feedback/:id/comments/:commentId
- * Delete a comment (only author can delete)
- */
-app.delete("/api/feedback/:id/comments/:commentId", requireAuth, mutationLimiter, async (req: AuthenticatedRequest, res) => {
-  try {
-    const { id, commentId } = req.params;
-    
-    const feedback = await storage.getFeedback(id);
-    if (!feedback) {
-      return res.status(404).json({ success: false, error: "Feedback not found" });
-    }
-    
-    if (feedback.workspaceId !== req.workspaceId) {
-      return res.status(403).json({ success: false, error: "Access denied" });
-    }
-    
-    await storage.deleteFeedbackComment(commentId);
-    res.json({ success: true, message: "Comment deleted" });
-  } catch (error: any) {
-    console.error("Error deleting comment:", error);
-    res.status(500).json({ success: false, error: error.message || "Failed to delete comment" });
-  }
-});
-
-/**
- * DELETE /api/feedback/:id
- * Delete feedback (only author can delete)
- */
-app.delete("/api/feedback/:id", requireAuth, mutationLimiter, async (req: AuthenticatedRequest, res) => {
-  try {
-    const { id } = req.params;
-    
-    const feedback = await storage.getFeedback(id);
-    if (!feedback) {
-      return res.status(404).json({ success: false, error: "Feedback not found" });
-    }
-    
-    if (feedback.workspaceId !== req.workspaceId) {
-      return res.status(403).json({ success: false, error: "Access denied" });
-    }
-    
-    if (feedback.userId !== req.userId) {
-      return res.status(403).json({ success: false, error: "Only the author can delete this feedback" });
-    }
-    
-    await storage.deleteFeedback(id);
-    res.json({ success: true, message: "Feedback deleted" });
-  } catch (error: any) {
-    console.error("Error deleting feedback:", error);
-    res.status(500).json({ success: false, error: error.message || "Failed to delete feedback" });
-  }
-});
