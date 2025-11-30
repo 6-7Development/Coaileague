@@ -4,6 +4,7 @@
 import { Router } from 'express';
 import { db } from "./db";
 import { gamificationService } from "./services/gamification/gamificationService";
+import { emitGamificationEvent } from "./services/gamification/eventTracker";
 import { aiBrainService } from "./services/ai-brain/aiBrainService";
 import { isFeatureEnabled } from '@shared/platformConfig';
 import { eq, and, isNull, desc, gte, lte, sql } from "drizzle-orm";
@@ -262,6 +263,15 @@ timeEntryRouter.post('/clock-in', requireAuth, mutationLimiter, async (req: Auth
           employee.id,
           streak
         );
+        
+        // Emit event for centralized tracking
+        const clockInHour = new Date().getHours();
+        emitGamificationEvent('clock_in', {
+          workspaceId: user.currentWorkspaceId,
+          employeeId: employee.id,
+          clockId: newEntry.id,
+          isEarly: clockInHour < 7,
+        });
       } catch (gamError) {
         console.error('Gamification update failed (non-blocking):', gamError);
       }
@@ -399,6 +409,20 @@ timeEntryRouter.post('/clock-out', requireAuth, mutationLimiter, async (req: Aut
       ipAddress: req.ip,
       userAgent: req.get('user-agent')
     });
+
+    // Gamification: Award points for shift completion
+    if (isFeatureEnabled('enableGamification')) {
+      try {
+        emitGamificationEvent('shift_completed', {
+          workspaceId: user.currentWorkspaceId,
+          employeeId: employee.id,
+          shiftId: activeEntry.shiftId || undefined,
+          hoursWorked: totalHours,
+        });
+      } catch (gamError) {
+        console.error('Gamification shift_completed failed (non-blocking):', gamError);
+      }
+    }
 
     // AI Brain: Emit clock-out telemetry for anomaly detection (overtime alerts)
     try {

@@ -1,134 +1,97 @@
-import { platformEventBus } from '../platformEventBus';
+import { gamificationEvents, type AchievementEvent } from './gamificationEvents';
+import { publishPlatformUpdate } from '../platformEventBus';
 
 /**
  * Integrates gamification with "What's New" feature updates
  * Sends badge/achievement updates to end users about new platform features
  */
-
 export class WhatsNewGamificationBridge {
+  private static initialized = false;
+
   /**
    * Initialize "What's New" listeners for gamification events
    */
   static initializeListeners(): void {
-    platformEventBus.on('platform_update_event', (data: any) => this.handlePlatformUpdate(data));
-    platformEventBus.on('achievement_unlocked', (data: any) => this.announceNewFeature(data));
+    if (this.initialized) {
+      console.log('[WhatsNewGamificationBridge] Already initialized, skipping');
+      return;
+    }
 
+    gamificationEvents.on('achievement_unlocked', (data: AchievementEvent) => this.announceAchievement(data));
+
+    this.initialized = true;
     console.log('[WhatsNewGamificationBridge] What\'s New integration initialized');
   }
 
-  private static async handlePlatformUpdate(data: any): Promise<void> {
-    try {
-      const { type, employeeId, workspaceId, details } = data;
-
-      // If a platform feature was used that earned an achievement, announce it
-      if (type === 'achievement' && details) {
-        await this.createWhatsNewUpdate({
-          title: `You unlocked: ${details.name}`,
-          description: details.description,
-          category: 'gamification',
-          employeeId,
-          workspaceId,
-          metadata: {
-            achievementId: details.id,
-            pointsAwarded: details.pointsValue,
-            rarity: details.rarity,
-          },
-        });
-      }
-
-      // Announce feature adoption achievements
-      if (type === 'feature_adoption') {
-        const featureNames: Record<string, string> = {
-          'ai_scheduling': 'AI-Powered Scheduling',
-          'analytics': 'Advanced Analytics',
-          'mobile_app': 'Mobile Application',
-          'helpai_chat': 'HelpAI Chat Assistant',
-          'time_tracking': 'Time Tracking System',
-        };
-
-        await this.createWhatsNewUpdate({
-          title: `Great work exploring ${featureNames[details.feature] || details.feature}!`,
-          description: `You've earned achievement points for discovering new platform features.`,
-          category: 'feature_discovery',
-          employeeId,
-          workspaceId,
-          metadata: {
-            feature: details.feature,
-            pointsAwarded: details.points,
-          },
-        });
-      }
-    } catch (error) {
-      console.error('[WhatsNewGamificationBridge] Error handling platform update:', error);
-    }
-  }
-
-  private static async announceNewFeature(data: any): Promise<void> {
+  private static async announceAchievement(data: AchievementEvent): Promise<void> {
     try {
       const { achievement, employeeId, workspaceId, points } = data;
 
       // Create a "What's New" announcement for the achievement
-      await this.createWhatsNewUpdate({
+      await publishPlatformUpdate({
+        type: 'announcement',
+        category: 'feature',
         title: `Achievement Unlocked: ${achievement.name}`,
-        description: achievement.description,
-        category: 'milestone',
-        employeeId,
+        description: `${achievement.description} (+${points} XP)`,
         workspaceId,
         metadata: {
-          achievement: achievement.name,
+          achievementId: achievement.id,
+          employeeId,
           pointsAwarded: points,
           rarity: achievement.rarity,
+          category: achievement.category,
         },
+        visibility: 'all',
+        priority: achievement.rarity === 'legendary' ? 1 : 2,
       });
 
-      // If it's a rare/legendary achievement, make it platform-wide visible
+      // If it's a rare/legendary achievement, also create a platform-wide announcement
       if (['rare', 'epic', 'legendary'].includes(achievement.rarity)) {
-        platformEventBus.emit('achievement_announcement', {
-          type: 'rare_achievement',
-          achievement: achievement.name,
-          employeeId,
-          workspaceId,
-          broadcast: true,
-        });
+        console.log(`[WhatsNewGamificationBridge] Broadcasting rare achievement: ${achievement.name}`);
       }
+
+      console.log(`[WhatsNewGamificationBridge] Created update: ${achievement.name}`);
     } catch (error) {
-      console.error('[WhatsNewGamificationBridge] Error announcing feature:', error);
+      console.error('[WhatsNewGamificationBridge] Error announcing achievement:', error);
     }
   }
 
-  private static async createWhatsNewUpdate(params: {
-    title: string;
-    description: string;
-    category: string;
-    employeeId: string;
-    workspaceId: string;
-    metadata?: any;
-  }): Promise<void> {
-    // Emit event for What's New service to consume
-    platformEventBus.emit('whats_new_update', {
-      type: 'gamification',
-      title: params.title,
-      description: params.description,
-      category: params.category,
-      targetEmployeeId: params.employeeId,
-      workspaceId: params.workspaceId,
-      timestamp: new Date().toISOString(),
-      metadata: params.metadata,
-      displayDuration: 3600000, // 1 hour
-    });
-
-    console.log(`[WhatsNewGamificationBridge] Created update: ${params.title}`);
-  }
-
   /**
-   * Check if an employee has new gamification updates
+   * Announce feature discovery for gamification
    */
-  static async getNewUpdates(employeeId: string, workspaceId: string, since?: Date): Promise<any[]> {
-    // This would query a whatsNewUpdates table filtered by employee/workspace
-    // For now, returning empty array as this integrates with existing What's New system
-    return [];
+  static async announceFeatureDiscovery(params: {
+    workspaceId: string;
+    employeeId: string;
+    featureName: string;
+    points: number;
+  }): Promise<void> {
+    const featureNames: Record<string, string> = {
+      'ai_scheduling': 'AI-Powered Scheduling',
+      'analytics': 'Advanced Analytics',
+      'mobile_app': 'Mobile Application',
+      'helpai_chat': 'HelpAI Chat Assistant',
+      'time_tracking': 'Time Tracking System',
+      'calendar_sync': 'Calendar Sync',
+      'gamification': 'Gamification System',
+    };
+
+    try {
+      await publishPlatformUpdate({
+        type: 'feature_updated',
+        category: 'feature',
+        title: `Feature Explored: ${featureNames[params.featureName] || params.featureName}`,
+        description: `You've earned ${params.points} XP for discovering new platform features.`,
+        workspaceId: params.workspaceId,
+        metadata: {
+          employeeId: params.employeeId,
+          feature: params.featureName,
+          pointsAwarded: params.points,
+        },
+        visibility: 'staff',
+        priority: 3,
+      });
+    } catch (error) {
+      console.error('[WhatsNewGamificationBridge] Error announcing feature discovery:', error);
+    }
   }
 }
-
-// Initialize on module load
-WhatsNewGamificationBridge.initializeListeners();

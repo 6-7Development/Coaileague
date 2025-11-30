@@ -1,4 +1,5 @@
-import { platformEventBus } from '../eventBus/platformEventBus';
+import { gamificationEvents, type MilestoneEvent, type AchievementEvent } from './gamificationEvents';
+import { publishPlatformUpdate } from '../platformEventBus';
 import { db } from '../../db';
 import { employees, employeePoints } from '@shared/schema';
 import { eq, and } from 'drizzle-orm';
@@ -7,20 +8,27 @@ import { eq, and } from 'drizzle-orm';
  * Sends gamification milestones to AI Brain for onboarding insight
  * and personalized feature recommendations
  */
-
 export class AiBrainNotifier {
+  private static initialized = false;
+
   /**
    * Initialize AI Brain listeners for gamification events
    */
   static initializeListeners(): void {
-    // Listen for gamification milestones
-    platformEventBus.on('gamification_milestone', (data: any) => this.notifyAiBrain(data));
-    platformEventBus.on('achievement_unlocked', (data: any) => this.notifyAchievement(data));
+    if (this.initialized) {
+      console.log('[AiBrainNotifier] Already initialized, skipping');
+      return;
+    }
 
+    // Listen for gamification milestones
+    gamificationEvents.on('gamification_milestone', (data: MilestoneEvent) => this.notifyAiBrain(data));
+    gamificationEvents.on('achievement_unlocked', (data: AchievementEvent) => this.notifyAchievement(data));
+
+    this.initialized = true;
     console.log('[AiBrainNotifier] AI Brain notification system initialized');
   }
 
-  private static async notifyAiBrain(data: any): Promise<void> {
+  private static async notifyAiBrain(data: MilestoneEvent): Promise<void> {
     try {
       const { type, workspaceId, employeeId, points, feature } = data;
 
@@ -46,7 +54,7 @@ export class AiBrainNotifier {
         milestone: type,
         employee: {
           id: employeeId,
-          name: `${employee.firstName} ${employee.lastName}`,
+          name: `${employee.firstName || ''} ${employee.lastName || ''}`.trim(),
           workspaceId,
         },
         stats: {
@@ -61,11 +69,15 @@ export class AiBrainNotifier {
         },
       };
 
-      // Emit to AI Brain for learning and insights
-      platformEventBus.emit('ai_brain_notification', {
-        type: 'gamification_engagement',
-        priority: this.calculatePriority(type),
-        data: payload,
+      // Publish to platform for AI Brain consumption
+      await publishPlatformUpdate({
+        type: 'ai_brain_action',
+        category: 'improvement',
+        title: `Gamification: ${type}`,
+        description: `Employee ${payload.employee.name} achieved milestone: ${type}`,
+        workspaceId,
+        metadata: payload,
+        visibility: 'staff',
       });
 
       console.log(`[AiBrainNotifier] Notified AI Brain: ${type} for ${employeeId}`);
@@ -74,37 +86,26 @@ export class AiBrainNotifier {
     }
   }
 
-  private static async notifyAchievement(data: any): Promise<void> {
+  private static async notifyAchievement(data: AchievementEvent): Promise<void> {
     try {
       const { achievement, employeeId, workspaceId, points } = data;
 
-      const payload = {
-        type: 'achievement_unlocked',
-        achievement: achievement.name,
+      // Publish achievement to platform
+      await publishPlatformUpdate({
+        type: 'announcement',
+        category: 'announcement',
+        title: `Achievement Unlocked: ${achievement.name}`,
         description: achievement.description,
-        category: achievement.category,
-        rarity: achievement.rarity,
-        employee: {
-          id: employeeId,
-          workspaceId,
-        },
-        pointsAwarded: points || 0,
-        timestamp: new Date().toISOString(),
-      };
-
-      // Emit to AI Brain for personalized recommendations
-      platformEventBus.emit('ai_brain_notification', {
-        type: 'achievement_milestone',
-        priority: 'high',
-        data: payload,
-      });
-
-      // Also emit for "What's New" feature updates
-      platformEventBus.emit('platform_update_event', {
-        type: 'achievement',
-        employeeId,
         workspaceId,
-        details: achievement,
+        metadata: {
+          achievementId: achievement.id,
+          category: achievement.category,
+          rarity: achievement.rarity,
+          employeeId,
+          pointsAwarded: points,
+        },
+        visibility: 'all',
+        priority: achievement.rarity === 'legendary' ? 1 : achievement.rarity === 'rare' ? 2 : 3,
       });
 
       console.log(`[AiBrainNotifier] Achievement notification: ${achievement.name}`);
@@ -113,7 +114,7 @@ export class AiBrainNotifier {
     }
   }
 
-  private static calculatePriority(type: string): 'low' | 'medium' | 'high' => {
+  private static calculatePriority(type: string): 'low' | 'medium' | 'high' {
     const highPriority = ['profile_complete', 'feature_adoption', 'level_up'];
     const mediumPriority = ['shift_swap', 'full_day_worked', 'early_arrival'];
     
@@ -151,6 +152,3 @@ export class AiBrainNotifier {
     }
   }
 }
-
-// Initialize on module load
-AiBrainNotifier.initializeListeners();

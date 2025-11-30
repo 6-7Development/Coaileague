@@ -111,6 +111,16 @@ process.on('SIGTERM', () => {
     // Log warning but continue - gateway initialization is not critical for server startup
   }
 
+  // Initialize Gamification Event System
+  try {
+    GamificationEventTracker.initializeEventListeners();
+    AiBrainNotifier.initializeListeners();
+    WhatsNewGamificationBridge.initializeListeners();
+    console.log('[Server] Gamification event system initialized');
+  } catch (error) {
+    console.error('[Server] Warning: Failed to initialize gamification events:', error);
+  }
+
   app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
