@@ -33,51 +33,83 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { formatDistanceToNow } from "date-fns";
 
-interface FeatureUpdate {
+interface PlatformUpdate {
   id: string;
   title: string;
   description: string;
-  category: 'new' | 'improvement' | 'fix' | 'security' | 'maintenance';
-  releaseDate: string;
+  date: string;
+  category: 'feature' | 'improvement' | 'bugfix' | 'security' | 'announcement';
+  badge?: string;
+  version?: string;
   learnMoreUrl?: string;
+  isNew?: boolean;
+  hasViewed?: boolean;
+}
+
+interface UpdatesResponse {
+  success: boolean;
+  updates: PlatformUpdate[];
+  count: number;
+}
+
+interface UnviewedCountResponse {
+  success: boolean;
+  count: number;
 }
 
 function WhatsNewHeaderBadge() {
   const [open, setOpen] = useState(false);
 
-  const { data: updates = [] } = useQuery<FeatureUpdate[]>({
-    queryKey: ['/api/feature-updates'],
+  const { data: updatesData } = useQuery<UpdatesResponse>({
+    queryKey: ['/api/whats-new/latest'],
+    staleTime: 60000,
   });
 
-  const clearAllMutation = useMutation({
-    mutationFn: async () => {
-      await apiRequest('POST', '/api/feature-updates/clear-all');
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/feature-updates'] });
-      setOpen(false);
-    },
+  const { data: unviewedData } = useQuery<UnviewedCountResponse>({
+    queryKey: ['/api/whats-new/unviewed-count'],
+    staleTime: 30000,
   });
 
-  const dismissMutation = useMutation({
+  const updates = updatesData?.updates || [];
+  const unviewedCount = unviewedData?.count || 0;
+
+  const markViewedMutation = useMutation({
     mutationFn: async (updateId: string) => {
-      await apiRequest('POST', `/api/feature-updates/${updateId}/dismiss`);
+      await apiRequest('POST', `/api/whats-new/${updateId}/viewed`, { source: 'header' });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/feature-updates'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/whats-new'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/whats-new/latest'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/whats-new/unviewed-count'] });
+    },
+  });
+
+  const markAllViewedMutation = useMutation({
+    mutationFn: async () => {
+      for (const update of updates.filter(u => !u.hasViewed)) {
+        await apiRequest('POST', `/api/whats-new/${update.id}/viewed`, { source: 'header-clear-all' });
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/whats-new'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/whats-new/latest'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/whats-new/unviewed-count'] });
+      setOpen(false);
     },
   });
 
   const getCategoryColor = (category: string) => {
     switch (category) {
-      case 'new':
+      case 'feature':
         return 'bg-cyan-500/20 text-cyan-300';
       case 'improvement':
         return 'bg-blue-500/20 text-blue-300';
-      case 'fix':
+      case 'bugfix':
         return 'bg-orange-500/20 text-orange-300';
       case 'security':
         return 'bg-red-500/20 text-red-300';
+      case 'announcement':
+        return 'bg-purple-500/20 text-purple-300';
       default:
         return 'bg-gray-500/20 text-gray-300';
     }
@@ -94,9 +126,9 @@ function WhatsNewHeaderBadge() {
           title="What's New"
         >
           <Sparkles className="h-4 w-4" />
-          {updates.length > 0 && (
+          {unviewedCount > 0 && (
             <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white flex items-center justify-center text-[10px] font-bold">
-              {updates.length > 9 ? '9+' : updates.length}
+              {unviewedCount > 9 ? '9+' : unviewedCount}
             </span>
           )}
         </Button>
@@ -107,17 +139,17 @@ function WhatsNewHeaderBadge() {
             <Sparkles className="h-5 w-5 text-purple-400" />
             <h3 className="font-semibold text-white">What's New</h3>
           </div>
-          {updates.length > 0 && (
+          {unviewedCount > 0 && (
             <Button
               variant="ghost"
               size="sm"
               className="h-6 px-2 text-xs text-slate-300 hover:text-white hover:bg-slate-800"
-              onClick={() => clearAllMutation.mutate()}
-              disabled={clearAllMutation.isPending}
+              onClick={() => markAllViewedMutation.mutate()}
+              disabled={markAllViewedMutation.isPending}
               data-testid="button-clear-all-updates-header"
             >
               <Check className="h-3 w-3 mr-1" />
-              Clear All
+              Mark All Read
             </Button>
           )}
         </div>
@@ -133,32 +165,40 @@ function WhatsNewHeaderBadge() {
           ) : (
             <div className="divide-y divide-slate-700">
               {updates.map((update) => (
-                <div key={update.id} className="p-4 space-y-2 relative group" data-testid={`update-header-${update.id}`}>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="absolute top-2 right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-white hover:bg-slate-800"
-                    onClick={() => dismissMutation.mutate(update.id)}
-                    disabled={dismissMutation.isPending}
-                    data-testid={`button-dismiss-header-${update.id}`}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                  <div className="flex items-start justify-between gap-2 pr-8">
+                <div 
+                  key={update.id} 
+                  className={`p-4 space-y-2 relative group cursor-pointer ${!update.hasViewed ? 'bg-slate-800/50' : ''}`}
+                  onClick={() => !update.hasViewed && markViewedMutation.mutate(update.id)}
+                  data-testid={`update-header-${update.id}`}
+                >
+                  {!update.hasViewed && (
+                    <div className="absolute top-4 right-4 h-2 w-2 rounded-full bg-gradient-to-r from-purple-500 to-pink-500" />
+                  )}
+                  <div className="flex items-start justify-between gap-2 pr-6">
                     <h4 className="font-medium text-sm text-white">{update.title}</h4>
+                    {update.badge && (
+                      <Badge variant="default" className="text-xs bg-primary">
+                        {update.badge}
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
                     <Badge
                       variant="secondary"
                       className={`text-xs ${getCategoryColor(update.category)}`}
                     >
                       {update.category}
                     </Badge>
+                    {update.version && (
+                      <span className="text-xs text-slate-500">v{update.version}</span>
+                    )}
                   </div>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-slate-400 line-clamp-2">
                     {update.description}
                   </p>
                   <div className="flex items-center justify-between">
                     <p className="text-xs text-slate-500">
-                      {formatDistanceToNow(new Date(update.releaseDate), { addSuffix: true })}
+                      {formatDistanceToNow(new Date(update.date), { addSuffix: true })}
                     </p>
                     {update.learnMoreUrl && (
                       <a
@@ -166,6 +206,7 @@ function WhatsNewHeaderBadge() {
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-xs text-cyan-400 hover:underline flex items-center gap-1"
+                        onClick={(e) => e.stopPropagation()}
                         data-testid={`link-learn-more-header-${update.id}`}
                       >
                         Learn more
@@ -178,6 +219,14 @@ function WhatsNewHeaderBadge() {
             </div>
           )}
         </ScrollArea>
+        <Separator className="bg-slate-700" />
+        <div className="p-3">
+          <Link href="/updates">
+            <Button variant="outline" size="sm" className="w-full border-slate-600 text-slate-300 hover:bg-slate-800" data-testid="button-view-all-updates-header">
+              View All Updates
+            </Button>
+          </Link>
+        </div>
       </PopoverContent>
     </Popover>
   );
