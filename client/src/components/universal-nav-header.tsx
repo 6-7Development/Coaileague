@@ -4,9 +4,10 @@
  * Matches Fortune 500 professional aesthetic with CoAIleague branding
  */
 
-import { Menu, ChevronDown, ChevronRight, GraduationCap, Search, Monitor, AlertCircle, Calendar, Clock, MessageSquare, Sparkles, Check, X, ExternalLink } from "lucide-react";
+import { Menu, ChevronDown, ChevronRight, GraduationCap, Search, Monitor, AlertCircle, Calendar, Clock, MessageSquare, Sparkles, Check, X, ExternalLink, LogOut, Settings, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { useWorkspaceAccess } from "@/hooks/useWorkspaceAccess";
 import { useAuth } from "@/hooks/useAuth";
 import { useState, useEffect } from "react";
@@ -547,13 +548,48 @@ export function UniversalNavHeader() {
             <NotificationsCenter />
           </div>
 
-          {/* User Initials Display */}
-          <div 
-            className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0"
-            data-testid="display-user-initials"
-          >
-            <span className="text-sm font-bold">{getInitials(user?.firstName, user?.lastName)}</span>
-          </div>
+          {/* User Menu Dropdown - Desktop Only */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon"
+                className="h-9 w-9 rounded-full bg-white/20 hover:bg-white/30 flex-shrink-0"
+                data-testid="button-user-menu"
+                title="User Menu"
+              >
+                <span className="text-sm font-bold">{getInitials(user?.firstName, user?.lastName)}</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48 bg-slate-900 border-slate-700">
+              <div className="px-2 py-1.5">
+                <p className="text-sm font-semibold text-white">{user?.firstName} {user?.lastName}</p>
+                <p className="text-xs text-slate-400">{user?.email}</p>
+              </div>
+              <DropdownMenuSeparator className="bg-slate-700" />
+              <Link href="/profile">
+                <DropdownMenuItem className="cursor-pointer text-slate-300 hover:text-white hover:bg-slate-800">
+                  <User className="h-4 w-4 mr-2" />
+                  Profile
+                </DropdownMenuItem>
+              </Link>
+              <Link href="/settings">
+                <DropdownMenuItem className="cursor-pointer text-slate-300 hover:text-white hover:bg-slate-800">
+                  <Settings className="h-4 w-4 mr-2" />
+                  Settings
+                </DropdownMenuItem>
+              </Link>
+              <DropdownMenuSeparator className="bg-slate-700" />
+              <DropdownMenuItem 
+                className="cursor-pointer text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                onClick={handleLogout}
+                data-testid="button-logout-desktop-menu"
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Sign Out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
