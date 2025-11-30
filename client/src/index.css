@@ -155,6 +155,197 @@
   animation: bellRing 0.8s ease-in-out infinite;
 }
 
+/* ============================================================================
+   SPLAT & PARTICLE ANIMATIONS - Professional Burst Effects
+   ============================================================================ */
+
+@keyframes splatBurst {
+  0% {
+    transform: scale(0) translate(0, 0);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) translate(var(--tx), var(--ty));
+    opacity: 0;
+  }
+}
+
+@keyframes particleExplode {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--tx), var(--ty)) scale(0);
+    opacity: 0;
+  }
+}
+
+@keyframes splatPop {
+  0% {
+    transform: scale(0);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes confetti {
+  0% {
+    transform: translateY(0) rotate(0deg) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(var(--ty)) rotate(360deg) scale(0);
+    opacity: 0;
+  }
+}
+
+@keyframes radiusBurst {
+  0% {
+    r: 0;
+    opacity: 1;
+  }
+  100% {
+    r: 50px;
+    opacity: 0;
+  }
+}
+
+@keyframes dotExplode {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(calc(cos(var(--angle)) * 80px), calc(sin(var(--angle)) * 80px)) scale(0);
+    opacity: 0;
+  }
+}
+
+/* Splat Particle Classes - Use for badge animations */
+
+.animate-splat-burst {
+  animation: splatBurst 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.animate-particle-explode {
+  animation: particleExplode 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.animate-splat-pop {
+  animation: splatPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.animate-confetti-pop {
+  animation: confetti 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+.animate-splat-1 {
+  --tx: 60px;
+  --ty: -40px;
+  animation: splatBurst 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.animate-splat-2 {
+  --tx: -60px;
+  --ty: -40px;
+  animation: splatBurst 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) 0.05s forwards;
+}
+
+.animate-splat-3 {
+  --tx: 40px;
+  --ty: 60px;
+  animation: splatBurst 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s forwards;
+}
+
+.animate-splat-4 {
+  --tx: -40px;
+  --ty: 60px;
+  animation: splatBurst 0.75s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s forwards;
+}
+
+.animate-splat-5 {
+  --tx: 0px;
+  --ty: -80px;
+  animation: splatBurst 0.68s cubic-bezier(0.34, 1.56, 0.64, 1) 0.08s forwards;
+}
+
+/* Ripple effect for new notification */
+@keyframes ripple {
+  0% {
+    box-shadow: 0 0 0 0 rgba(168, 85, 247, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 12px rgba(168, 85, 247, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(168, 85, 247, 0);
+  }
+}
+
+.animate-ripple {
+  animation: ripple 0.6s ease-out;
+}
+
+.animate-ripple-continuous {
+  animation: ripple 2s ease-out infinite;
+}
+
+/* Twinkle effect */
+@keyframes twinkle {
+  0%, 100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.animate-twinkle {
+  animation: twinkle 1.5s ease-in-out infinite;
+}
+
+/* Bounce with splat */
+@keyframes bounceSplat {
+  0%, 100% {
+    transform: scale(1);
+  }
+  25% {
+    transform: scale(0.95) translateY(-2px);
+  }
+  50% {
+    transform: scale(1.1) translateY(-4px);
+  }
+  75% {
+    transform: scale(0.98) translateY(-1px);
+  }
+}
+
+.animate-bounce-splat {
+  animation: bounceSplat 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Shimmer effect for new items */
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+.animate-shimmer {
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
+
 /* CRITICAL: Block all loading overlays on public routes - absolute priority */
 body[data-public-route="true"] [data-testid*="loader"],
 body[data-public-route="true"] [data-testid*="loading"],
