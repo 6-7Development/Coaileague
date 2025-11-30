@@ -233,6 +233,11 @@ export const workspaces = pgTable("workspaces", {
   defaultTaxRate: decimal("default_tax_rate", { precision: 5, scale: 4 }).default("0.08875"), // Default 8.875%
   taxJurisdiction: varchar("tax_jurisdiction"), // State/country for tax lookup
   
+  // Labor Law Jurisdiction (Break Scheduling Compliance)
+  laborLawJurisdiction: varchar("labor_law_jurisdiction").default('US-FEDERAL'), // State/country code for break rules (e.g., 'CA', 'NY', 'TX', 'US-FEDERAL')
+  autoBreakSchedulingEnabled: boolean("auto_break_scheduling_enabled").default(true), // Enable automatic break scheduling
+  breakComplianceAlerts: boolean("break_compliance_alerts").default(true), // Send alerts for compliance violations
+  
   // Industry Benchmarking (Gap #5)
   industry: varchar("industry"), // For benchmark comparisons
   companySize: varchar("company_size"), // 'small', 'medium', 'large', 'enterprise'
@@ -1510,6 +1515,121 @@ export const insertShiftSchema = createInsertSchema(shifts).omit({
 export type InsertShift = z.infer<typeof insertShiftSchema>;
 export type Shift = typeof shifts.$inferSelect;
 
+// ============================================================================
+// RECURRING SHIFT PATTERNS - Phase 2B Advanced Scheduling
+// ============================================================================
+
+export const recurrencePatternEnum = pgEnum('recurrence_pattern', ['daily', 'weekly', 'biweekly', 'monthly']);
+export const dayOfWeekEnum = pgEnum('day_of_week', ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']);
+
+export const recurringShiftPatterns = pgTable("recurring_shift_patterns", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  // Template details
+  employeeId: varchar("employee_id").references(() => employees.id, { onDelete: 'set null' }),
+  clientId: varchar("client_id").references(() => clients.id, { onDelete: 'set null' }),
+  title: varchar("title").notNull(),
+  description: text("description"),
+  category: shiftCategoryEnum("category").default("general"),
+  
+  // Time configuration
+  startTimeOfDay: varchar("start_time_of_day").notNull(), // 'HH:mm' format
+  endTimeOfDay: varchar("end_time_of_day").notNull(), // 'HH:mm' format
+  daysOfWeek: text("days_of_week").array().notNull(), // ['monday', 'wednesday', 'friday']
+  recurrencePattern: recurrencePatternEnum("recurrence_pattern").notNull().default('weekly'),
+  
+  // Date range
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date"), // null = indefinite
+  skipDates: timestamp("skip_dates").array(), // Holidays, exceptions
+  
+  // Billing
+  billableToClient: boolean("billable_to_client").default(true),
+  hourlyRateOverride: decimal("hourly_rate_override", { precision: 10, scale: 2 }),
+  
+  // Status & metadata
+  isActive: boolean("is_active").default(true),
+  lastGeneratedDate: timestamp("last_generated_date"), // Track last shift generation
+  shiftsGenerated: integer("shifts_generated").default(0), // Count of shifts created
+  createdBy: varchar("created_by").references(() => users.id),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_recurring_patterns_workspace").on(table.workspaceId, table.isActive),
+  index("idx_recurring_patterns_employee").on(table.employeeId),
+]);
+
+export const insertRecurringShiftPatternSchema = createInsertSchema(recurringShiftPatterns).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  lastGeneratedDate: true,
+  shiftsGenerated: true,
+});
+
+export type InsertRecurringShiftPattern = z.infer<typeof insertRecurringShiftPatternSchema>;
+export type RecurringShiftPattern = typeof recurringShiftPatterns.$inferSelect;
+
+// ============================================================================
+// SHIFT SWAP REQUESTS - Phase 2B Advanced Scheduling
+// ============================================================================
+
+export const swapRequestStatusEnum = pgEnum('swap_request_status', ['pending', 'approved', 'rejected', 'cancelled', 'expired']);
+
+export const shiftSwapRequests = pgTable("shift_swap_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  shiftId: varchar("shift_id").notNull().references(() => shifts.id, { onDelete: 'cascade' }),
+  
+  // Requester (employee who wants to give up the shift)
+  requesterId: varchar("requester_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
+  
+  // Target employee (who will take the shift, null = open for anyone)
+  targetEmployeeId: varchar("target_employee_id").references(() => employees.id, { onDelete: 'set null' }),
+  
+  // Request details
+  reason: text("reason"),
+  status: swapRequestStatusEnum("status").notNull().default('pending'),
+  
+  // Manager response
+  respondedBy: varchar("responded_by").references(() => users.id),
+  responseMessage: text("response_message"),
+  respondedAt: timestamp("responded_at"),
+  
+  // AI suggestions
+  aiSuggestedEmployees: jsonb("ai_suggested_employees").$type<Array<{
+    employeeId: string;
+    employeeName: string;
+    score: number;
+    reasons: string[];
+  }>>(),
+  aiProcessedAt: timestamp("ai_processed_at"),
+  
+  // Expiration
+  expiresAt: timestamp("expires_at"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_swap_requests_workspace").on(table.workspaceId, table.status),
+  index("idx_swap_requests_shift").on(table.shiftId),
+  index("idx_swap_requests_requester").on(table.requesterId),
+]);
+
+export const insertShiftSwapRequestSchema = createInsertSchema(shiftSwapRequests).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  respondedAt: true,
+  aiProcessedAt: true,
+  aiSuggestedEmployees: true,
+});
+
+export type InsertShiftSwapRequest = z.infer<typeof insertShiftSwapRequestSchema>;
+export type ShiftSwapRequest = typeof shiftSwapRequests.$inferSelect;
+
 // Shift Acknowledgments (Post Orders & Special Orders)
 export const shiftAcknowledgmentTypeEnum = pgEnum('shift_acknowledgment_type', ['post_order', 'special_order', 'safety_notice', 'site_instruction']);
 
@@ -2655,6 +2775,51 @@ export const shiftsRelations = relations(shifts, ({ one, many }) => ({
   }),
   timeEntries: many(timeEntries),
   shiftOrders: many(shiftOrders),
+  swapRequests: many(shiftSwapRequests),
+}));
+
+export const recurringShiftPatternsRelations = relations(recurringShiftPatterns, ({ one }) => ({
+  workspace: one(workspaces, {
+    fields: [recurringShiftPatterns.workspaceId],
+    references: [workspaces.id],
+  }),
+  employee: one(employees, {
+    fields: [recurringShiftPatterns.employeeId],
+    references: [employees.id],
+  }),
+  client: one(clients, {
+    fields: [recurringShiftPatterns.clientId],
+    references: [clients.id],
+  }),
+  createdByUser: one(users, {
+    fields: [recurringShiftPatterns.createdBy],
+    references: [users.id],
+  }),
+}));
+
+export const shiftSwapRequestsRelations = relations(shiftSwapRequests, ({ one }) => ({
+  workspace: one(workspaces, {
+    fields: [shiftSwapRequests.workspaceId],
+    references: [workspaces.id],
+  }),
+  shift: one(shifts, {
+    fields: [shiftSwapRequests.shiftId],
+    references: [shifts.id],
+  }),
+  requester: one(employees, {
+    fields: [shiftSwapRequests.requesterId],
+    references: [employees.id],
+    relationName: 'swapRequester',
+  }),
+  targetEmployee: one(employees, {
+    fields: [shiftSwapRequests.targetEmployeeId],
+    references: [employees.id],
+    relationName: 'swapTarget',
+  }),
+  respondedByUser: one(users, {
+    fields: [shiftSwapRequests.respondedBy],
+    references: [users.id],
+  }),
 }));
 
 export const timeEntriesRelations = relations(timeEntries, ({ one, many }) => ({
@@ -8945,6 +9110,9 @@ export const employeeAvailability = pgTable("employee_availability", {
   startTime: varchar("start_time").notNull(), // "09:00" format
   endTime: varchar("end_time").notNull(), // "17:00" format
   
+  // Recurring vs one-time availability
+  isRecurring: boolean("is_recurring").default(true), // true = repeats weekly, false = single occurrence
+  
   status: availabilityStatusEnum("status").default('available'),
   
   // Metadata
@@ -9627,6 +9795,19 @@ export const digestFrequencyEnum = pgEnum('digest_frequency', [
   'never',      // Disable all notifications
 ]);
 
+// Shift reminder timing enum
+export const shiftReminderTimingEnum = pgEnum('shift_reminder_timing', [
+  '15min',    // 15 minutes before
+  '30min',    // 30 minutes before
+  '1hour',    // 1 hour before
+  '2hours',   // 2 hours before
+  '4hours',   // 4 hours before
+  '12hours',  // 12 hours before (half day)
+  '24hours',  // 24 hours before
+  '48hours',  // 48 hours before
+  'custom',   // Custom minutes set in shiftReminderCustomMinutes
+]);
+
 // User Notification Preferences - Control how users receive notifications
 export const userNotificationPreferences = pgTable("user_notification_preferences", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -9640,10 +9821,37 @@ export const userNotificationPreferences = pgTable("user_notification_preference
   // Notification type filters (which types to include in digests)
   enabledTypes: jsonb("enabled_types").$type<string[]>().default(sql`'[]'::jsonb`), // Empty = all types
   
-  // Delivery preferences
+  // Delivery channel preferences
   preferEmail: boolean("prefer_email").default(false), // Also send digest via email
+  enableEmail: boolean("enable_email").default(true), // Enable email notifications
+  enableSms: boolean("enable_sms").default(false), // Enable SMS notifications (requires Twilio)
+  enablePush: boolean("enable_push").default(true), // Enable push/in-app notifications
+  
+  // SMS configuration
+  smsPhoneNumber: varchar("sms_phone_number"), // User's phone number for SMS
+  smsVerified: boolean("sms_verified").default(false), // Whether phone is verified
+  smsOptOut: boolean("sms_opt_out").default(false), // User opted out of SMS
+  
+  // Shift reminder settings
+  enableShiftReminders: boolean("enable_shift_reminders").default(true), // Enable shift reminders
+  shiftReminderTiming: shiftReminderTimingEnum("shift_reminder_timing").default('1hour'), // When to send reminder
+  shiftReminderCustomMinutes: integer("shift_reminder_custom_minutes"), // Custom minutes if timing='custom'
+  shiftReminderChannels: jsonb("shift_reminder_channels").$type<string[]>().default(sql`'["push", "email"]'::jsonb`), // Channels: push, email, sms
+  
+  // Schedule change notifications
+  enableScheduleChangeNotifications: boolean("enable_schedule_change_notifications").default(true),
+  scheduleChangeChannels: jsonb("schedule_change_channels").$type<string[]>().default(sql`'["push", "email"]'::jsonb`),
+  
+  // Approval notifications
+  enableApprovalNotifications: boolean("enable_approval_notifications").default(true),
+  approvalNotificationChannels: jsonb("approval_notification_channels").$type<string[]>().default(sql`'["push", "email"]'::jsonb`),
+  
+  // Quiet hours
   quietHoursStart: integer("quiet_hours_start"), // 0-23 hour (null = disabled)
   quietHoursEnd: integer("quiet_hours_end"), // 0-23 hour
+  
+  // AI optimization
+  aiOptimizedTiming: boolean("ai_optimized_timing").default(false), // Let AI learn best reminder times
   
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -9706,12 +9914,42 @@ export type NotificationDigest = typeof notificationDigests.$inferSelect;
 
 // Update Notification Preferences Schema - Partial update for user preferences
 export const updateNotificationPreferencesSchema = z.object({
+  // Digest settings
   digestFrequency: z.enum(['realtime', '15min', '1hour', '4hours', 'daily', 'never']).optional(),
   enableAiSummarization: z.boolean().optional(),
   enabledTypes: z.array(z.string()).optional(),
+  
+  // Delivery channel preferences
   preferEmail: z.boolean().optional(),
+  enableEmail: z.boolean().optional(),
+  enableSms: z.boolean().optional(),
+  enablePush: z.boolean().optional(),
+  
+  // SMS configuration
+  smsPhoneNumber: z.string().nullable().optional(),
+  smsVerified: z.boolean().optional(),
+  smsOptOut: z.boolean().optional(),
+  
+  // Shift reminder settings
+  enableShiftReminders: z.boolean().optional(),
+  shiftReminderTiming: z.enum(['15min', '30min', '1hour', '2hours', '4hours', '12hours', '24hours', '48hours', 'custom']).optional(),
+  shiftReminderCustomMinutes: z.number().int().min(5).max(10080).nullable().optional(), // 5 min to 7 days
+  shiftReminderChannels: z.array(z.enum(['push', 'email', 'sms'])).optional(),
+  
+  // Schedule change notifications
+  enableScheduleChangeNotifications: z.boolean().optional(),
+  scheduleChangeChannels: z.array(z.enum(['push', 'email', 'sms'])).optional(),
+  
+  // Approval notifications
+  enableApprovalNotifications: z.boolean().optional(),
+  approvalNotificationChannels: z.array(z.enum(['push', 'email', 'sms'])).optional(),
+  
+  // Quiet hours
   quietHoursStart: z.number().int().min(0).max(23).nullable().optional(),
   quietHoursEnd: z.number().int().min(0).max(23).nullable().optional(),
+  
+  // AI optimization
+  aiOptimizedTiming: z.boolean().optional(),
 });
 
 export type UpdateNotificationPreferences = z.infer<typeof updateNotificationPreferencesSchema>;
@@ -14178,3 +14416,275 @@ export const insertRoomAnalyticsTimeseriesSchema = createInsertSchema(roomAnalyt
 
 export type InsertRoomAnalyticsTimeseries = z.infer<typeof insertRoomAnalyticsTimeseriesSchema>;
 export type RoomAnalyticsTimeseries = typeof roomAnalyticsTimeseries.$inferSelect;
+
+// ============================================================================
+// CALENDAR SUBSCRIPTIONS - Token-Based iCal Subscription URLs
+// ============================================================================
+
+export const calendarSubscriptions = pgTable("calendar_subscriptions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  employeeId: varchar("employee_id").references(() => employees.id, { onDelete: 'cascade' }),
+  userId: varchar("user_id").references(() => users.id, { onDelete: 'cascade' }),
+  
+  // Unique subscription token (URL-safe, cryptographically secure)
+  subscriptionToken: varchar("subscription_token").notNull().unique(),
+  
+  // Subscription type
+  subscriptionType: varchar("subscription_type").notNull().default('shifts'), // 'shifts', 'timesheets', 'all'
+  
+  // Filter settings (what to include in the calendar)
+  includeShifts: boolean("include_shifts").default(true),
+  includeTimesheets: boolean("include_timesheets").default(false),
+  includePendingShifts: boolean("include_pending_shifts").default(true),
+  includeCancelledShifts: boolean("include_cancelled_shifts").default(false),
+  
+  // Date range settings
+  daysBack: integer("days_back").default(30), // Include events from X days ago
+  daysForward: integer("days_forward").default(90), // Include events up to X days in future
+  
+  // Refresh settings
+  refreshIntervalMinutes: integer("refresh_interval_minutes").default(15), // How often external apps should refresh
+  lastAccessedAt: timestamp("last_accessed_at"), // Track subscription usage
+  accessCount: integer("access_count").default(0), // Total number of times accessed
+  
+  // Status
+  isActive: boolean("is_active").default(true),
+  expiresAt: timestamp("expires_at"), // Optional expiry date for security
+  
+  // Metadata
+  name: varchar("name"), // User-friendly name like "My Work Schedule"
+  createdByIp: varchar("created_by_ip"),
+  lastAccessedFromIp: varchar("last_accessed_from_ip"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("calendar_subscriptions_workspace_idx").on(table.workspaceId),
+  index("calendar_subscriptions_employee_idx").on(table.employeeId),
+  index("calendar_subscriptions_user_idx").on(table.userId),
+  index("calendar_subscriptions_token_idx").on(table.subscriptionToken),
+  index("calendar_subscriptions_active_idx").on(table.isActive),
+]);
+
+export const insertCalendarSubscriptionSchema = createInsertSchema(calendarSubscriptions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  accessCount: true,
+  lastAccessedAt: true,
+});
+
+export type InsertCalendarSubscription = z.infer<typeof insertCalendarSubscriptionSchema>;
+export type CalendarSubscription = typeof calendarSubscriptions.$inferSelect;
+
+// ============================================================================
+// CALENDAR IMPORTS - Track imported calendar events
+// ============================================================================
+
+export const calendarImports = pgTable("calendar_imports", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  
+  // Import source
+  fileName: varchar("file_name"),
+  fileSize: integer("file_size"),
+  sourceType: varchar("source_type").notNull().default('file'), // 'file', 'google', 'outlook', 'apple'
+  sourceUrl: text("source_url"), // For URL-based imports
+  
+  // Import results
+  status: varchar("status").notNull().default('pending'), // 'pending', 'processing', 'completed', 'failed'
+  totalEvents: integer("total_events").default(0), // Total events in the file
+  eventsImported: integer("events_imported").default(0), // Successfully imported
+  eventsSkipped: integer("events_skipped").default(0), // Skipped (duplicates, conflicts)
+  eventsFailed: integer("events_failed").default(0), // Failed to import
+  
+  // Conflict handling
+  conflictsDetected: integer("conflicts_detected").default(0), // Number of conflicts found
+  conflictResolution: varchar("conflict_resolution").default('skip'), // 'skip', 'overwrite', 'merge', 'ask'
+  
+  // Error handling
+  errorMessage: text("error_message"),
+  errorDetails: jsonb("error_details"),
+  
+  // Processing times
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+  
+  // Imported data reference
+  importedShiftIds: text("imported_shift_ids").array(), // Array of created shift IDs
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("calendar_imports_workspace_idx").on(table.workspaceId),
+  index("calendar_imports_user_idx").on(table.userId),
+  index("calendar_imports_status_idx").on(table.status),
+  index("calendar_imports_created_idx").on(table.createdAt),
+]);
+
+export const insertCalendarImportSchema = createInsertSchema(calendarImports).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertCalendarImport = z.infer<typeof insertCalendarImportSchema>;
+export type CalendarImport = typeof calendarImports.$inferSelect;
+
+// ============================================================================
+// LABOR LAW RULES - Break Scheduling Compliance by Jurisdiction
+// ============================================================================
+
+export const laborLawRules = pgTable("labor_law_rules", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Jurisdiction identification
+  jurisdiction: varchar("jurisdiction").notNull().unique(), // State/country code (e.g., 'CA', 'NY', 'US-FEDERAL')
+  jurisdictionName: varchar("jurisdiction_name").notNull(), // Full name (e.g., "California", "New York")
+  country: varchar("country").default('US'), // Country code (ISO 3166-1 alpha-2)
+  
+  // Rest Break Rules (short breaks - typically 10-15 minutes)
+  restBreakEnabled: boolean("rest_break_enabled").default(true),
+  restBreakMinShiftHours: decimal("rest_break_min_shift_hours", { precision: 4, scale: 2 }).default("4.00"), // Shift length before rest break required
+  restBreakDurationMinutes: integer("rest_break_duration_minutes").default(10), // Duration in minutes
+  restBreakIsPaid: boolean("rest_break_is_paid").default(true), // Whether rest breaks are paid
+  restBreakFrequencyHours: decimal("rest_break_frequency_hours", { precision: 4, scale: 2 }).default("4.00"), // One break per X hours
+  
+  // Meal Break Rules (longer breaks - typically 30-60 minutes)
+  mealBreakEnabled: boolean("meal_break_enabled").default(true),
+  mealBreakMinShiftHours: decimal("meal_break_min_shift_hours", { precision: 4, scale: 2 }).default("5.00"), // Shift length before meal break required
+  mealBreakDurationMinutes: integer("meal_break_duration_minutes").default(30), // Duration in minutes
+  mealBreakIsPaid: boolean("meal_break_is_paid").default(false), // Whether meal breaks are paid
+  mealBreakMaxDelayHours: decimal("meal_break_max_delay_hours", { precision: 4, scale: 2 }).default("5.00"), // Must take meal break before X hours of work
+  mealBreakSecondThresholdHours: decimal("meal_break_second_threshold_hours", { precision: 4, scale: 2 }).default("10.00"), // When second meal break required
+  
+  // Additional Rules
+  minorBreakRulesEnabled: boolean("minor_break_rules_enabled").default(false), // Different rules for minors (<18)
+  minorRestBreakFrequencyHours: decimal("minor_rest_break_frequency_hours", { precision: 4, scale: 2 }),
+  minorMealBreakMaxDelayHours: decimal("minor_meal_break_max_delay_hours", { precision: 4, scale: 2 }),
+  
+  // Waiver Rules
+  mealBreakWaiverAllowed: boolean("meal_break_waiver_allowed").default(false), // Can employee waive meal break?
+  mealBreakWaiverMaxShiftHours: decimal("meal_break_waiver_max_shift_hours", { precision: 4, scale: 2 }).default("6.00"), // Max shift for waiver
+  
+  // Penalty Information
+  breakViolationPenalty: text("break_violation_penalty"), // Description of penalty for violations
+  penaltyPerViolation: decimal("penalty_per_violation", { precision: 10, scale: 2 }), // Dollar amount per violation
+  
+  // Source and Notes
+  legalReference: text("legal_reference"), // Citation (e.g., "California Labor Code Section 512")
+  effectiveDate: timestamp("effective_date"), // When these rules became effective
+  notes: text("notes"), // Additional context
+  
+  // System flags
+  isActive: boolean("is_active").default(true), // Can be deprecated without deleting
+  isDefault: boolean("is_default").default(false), // Default fallback rule (US-FEDERAL)
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("labor_law_rules_jurisdiction_idx").on(table.jurisdiction),
+  index("labor_law_rules_country_idx").on(table.country),
+  index("labor_law_rules_active_idx").on(table.isActive),
+]);
+
+export const insertLaborLawRuleSchema = createInsertSchema(laborLawRules).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertLaborLawRule = z.infer<typeof insertLaborLawRuleSchema>;
+export type LaborLawRule = typeof laborLawRules.$inferSelect;
+
+// ============================================================================
+// SCHEDULED BREAKS - Auto-scheduled breaks for shifts based on labor laws
+// ============================================================================
+
+export const scheduledBreaks = pgTable("scheduled_breaks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  shiftId: varchar("shift_id").references(() => shifts.id, { onDelete: 'cascade' }),
+  employeeId: varchar("employee_id").references(() => employees.id, { onDelete: 'cascade' }),
+  
+  // Break Details
+  breakType: breakTypeEnum("break_type").notNull().default('rest'), // 'meal' or 'rest'
+  scheduledStart: timestamp("scheduled_start").notNull(),
+  scheduledEnd: timestamp("scheduled_end").notNull(),
+  durationMinutes: integer("duration_minutes").notNull(),
+  isPaid: boolean("is_paid").default(false),
+  
+  // Compliance Tracking
+  laborLawRuleId: varchar("labor_law_rule_id").references(() => laborLawRules.id, { onDelete: 'set null' }),
+  jurisdiction: varchar("jurisdiction"), // Cached for reference
+  isRequired: boolean("is_required").default(true), // Required by law vs optional
+  complianceStatus: varchar("compliance_status").default('scheduled'), // 'scheduled', 'taken', 'skipped', 'waived', 'late'
+  
+  // Actual Break Tracking
+  actualStart: timestamp("actual_start"),
+  actualEnd: timestamp("actual_end"),
+  actualDurationMinutes: integer("actual_duration_minutes"),
+  waiverSigned: boolean("waiver_signed").default(false),
+  waiverSignedAt: timestamp("waiver_signed_at"),
+  
+  // AI Optimization
+  aiOptimized: boolean("ai_optimized").default(false), // Was timing optimized by AI?
+  coverageScore: decimal("coverage_score", { precision: 5, scale: 2 }), // How well coverage was maintained
+  aiNotes: text("ai_notes"), // AI explanation for timing choice
+  
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("scheduled_breaks_workspace_idx").on(table.workspaceId),
+  index("scheduled_breaks_shift_idx").on(table.shiftId),
+  index("scheduled_breaks_employee_idx").on(table.employeeId),
+  index("scheduled_breaks_scheduled_start_idx").on(table.scheduledStart),
+  index("scheduled_breaks_compliance_idx").on(table.complianceStatus),
+]);
+
+export const insertScheduledBreakSchema = createInsertSchema(scheduledBreaks).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  scheduledStart: z.string().or(z.date()),
+  scheduledEnd: z.string().or(z.date()),
+});
+
+export type InsertScheduledBreak = z.infer<typeof insertScheduledBreakSchema>;
+export type ScheduledBreak = typeof scheduledBreaks.$inferSelect;
+
+// ============================================================================  
+// CALENDAR SYNC EVENTS - AI Brain Integration for calendar operations
+// ============================================================================
+
+export const calendarSyncEvents = pgTable("calendar_sync_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  userId: varchar("user_id").references(() => users.id),
+  
+  // Event type
+  eventType: varchar("event_type").notNull(), // 'export', 'import', 'subscribe', 'unsubscribe', 'sync_error', 'conflict_detected'
+  
+  // Related entities
+  subscriptionId: varchar("subscription_id").references(() => calendarSubscriptions.id, { onDelete: 'set null' }),
+  importId: varchar("import_id").references(() => calendarImports.id, { onDelete: 'set null' }),
+  
+  // Event details
+  description: text("description"),
+  metadata: jsonb("metadata"), // Additional event-specific data
+  
+  // AI Brain tracking
+  aiBrainProcessed: boolean("ai_brain_processed").default(false),
+  aiBrainJobId: varchar("ai_brain_job_id"),
+  aiSuggestions: jsonb("ai_suggestions"), // AI-generated suggestions based on event
+  
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("calendar_sync_events_workspace_idx").on(table.workspaceId),
+  index("calendar_sync_events_type_idx").on(table.eventType),
+  index("calendar_sync_events_created_idx").on(table.createdAt),
+]);

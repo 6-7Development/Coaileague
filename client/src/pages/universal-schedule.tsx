@@ -37,9 +37,9 @@ import {
   Calendar, Clock, Users, Edit2, Trash2, Copy, ChevronLeft, ChevronRight, Plus, Download,
   Bot, CheckCircle, AlertCircle, BarChart3, Play, X, Camera, MessageSquare, FileText,
   CheckSquare, MapPin, Menu, Sparkles, Zap, Bell, Settings, Shield, UserCheck, XCircle,
-  PauseCircle, Send, AlertTriangle
+  PauseCircle, Send, AlertTriangle, Repeat, ArrowRightLeft, CalendarDays, CopyPlus
 } from 'lucide-react';
-import type { Shift, Employee, Client, ShiftOrder } from '@shared/schema';
+import type { Shift, Employee, Client, ShiftOrder, RecurringShiftPattern, ShiftSwapRequest } from '@shared/schema';
 import ScheduleMobileFirst from '@/pages/schedule-mobile-first';
 import { WorkspaceLayout } from '@/components/workspace-layout';
 
@@ -97,7 +97,22 @@ interface ShiftFormData {
   isOpenShift: boolean;
   clientId: string;
   location: string;
+  isRecurring: boolean;
+  recurrencePattern: 'daily' | 'weekly' | 'biweekly' | 'monthly';
+  daysOfWeek: string[];
+  endDate: string;
 }
+
+type DayOfWeek = 'sunday' | 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday';
+const DAYS_OF_WEEK: { value: DayOfWeek; label: string }[] = [
+  { value: 'monday', label: 'Mon' },
+  { value: 'tuesday', label: 'Tue' },
+  { value: 'wednesday', label: 'Wed' },
+  { value: 'thursday', label: 'Thu' },
+  { value: 'friday', label: 'Fri' },
+  { value: 'saturday', label: 'Sat' },
+  { value: 'sunday', label: 'Sun' },
+];
 
 // Draggable Employee Component (Memoized for performance)
 const DraggableEmployee = ({ employee, isSelected, onSelect, getEmployeeColor }: {
@@ -292,8 +307,21 @@ export default function UniversalSchedule() {
     postOrders: [],
     isOpenShift: false,
     clientId: '',
-    location: ''
+    location: '',
+    isRecurring: false,
+    recurrencePattern: 'weekly',
+    daysOfWeek: [],
+    endDate: '',
   });
+  
+  // Advanced scheduling states
+  const [showSwapModal, setShowSwapModal] = useState(false);
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+  const [selectedShiftForAction, setSelectedShiftForAction] = useState<Shift | null>(null);
+  const [duplicateTargetDate, setDuplicateTargetDate] = useState('');
+  const [duplicateTargetEmployee, setDuplicateTargetEmployee] = useState<string | null>(null);
+  const [swapReason, setSwapReason] = useState('');
+  const [swapTargetEmployee, setSwapTargetEmployee] = useState<string | null>(null);
 
   const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
   const hours = Array.from({ length: 24 }, (_, i) => i);
@@ -427,13 +455,167 @@ export default function UniversalSchedule() {
       postOrders: [],
       isOpenShift: false,
       clientId: '',
-      location: ''
+      location: '',
+      isRecurring: false,
+      recurrencePattern: 'weekly',
+      daysOfWeek: [days[dayIndex].toLowerCase()],
+      endDate: '',
     });
     setShowShiftModal(true);
   };
+  
+  // Duplicate shift mutation
+  const duplicateShiftMutation = useMutation({
+    mutationFn: async ({ shiftId, targetDate, targetEmployeeId }: { shiftId: string; targetDate: string; targetEmployeeId?: string }) => {
+      return await apiRequest('POST', `/api/scheduling/shifts/${shiftId}/duplicate`, {
+        targetDate,
+        targetEmployeeId,
+        copyNotes: true,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/shifts'] });
+      setShowDuplicateModal(false);
+      setSelectedShiftForAction(null);
+      toast({
+        title: 'Shift duplicated',
+        description: 'The shift has been copied to the new date',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: 'destructive',
+        title: 'Failed to duplicate shift',
+        description: error.message,
+      });
+    }
+  });
+
+  // Request swap mutation
+  const requestSwapMutation = useMutation({
+    mutationFn: async ({ shiftId, reason, targetEmployeeId }: { shiftId: string; reason: string; targetEmployeeId?: string }) => {
+      return await apiRequest('POST', `/api/scheduling/shifts/${shiftId}/swap-request`, {
+        reason,
+        targetEmployeeId,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/shifts'] });
+      setShowSwapModal(false);
+      setSelectedShiftForAction(null);
+      setSwapReason('');
+      setSwapTargetEmployee(null);
+      toast({
+        title: 'Swap requested',
+        description: 'Your shift swap request has been submitted for approval',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: 'destructive',
+        title: 'Failed to request swap',
+        description: error.message,
+      });
+    }
+  });
+  
+  // Create recurring pattern mutation
+  const createRecurringMutation = useMutation({
+    mutationFn: async (data: any) => {
+      return await apiRequest('POST', '/api/scheduling/recurring', data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/shifts'] });
+      setShowShiftModal(false);
+      toast({
+        title: 'Recurring shifts created',
+        description: 'Shifts have been generated according to the pattern',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: 'destructive',
+        title: 'Failed to create recurring shifts',
+        description: error.message,
+      });
+    }
+  });
+  
+  // Duplicate week mutation
+  const duplicateWeekMutation = useMutation({
+    mutationFn: async ({ sourceWeekStart, targetWeekStart }: { sourceWeekStart: string; targetWeekStart: string }) => {
+      return await apiRequest('POST', '/api/scheduling/duplicate-week', {
+        sourceWeekStart,
+        targetWeekStart,
+        skipExisting: true,
+      });
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/shifts'] });
+      toast({
+        title: 'Week duplicated',
+        description: `Copied ${data?.copiedShifts || 0} shifts to the next week`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: 'destructive',
+        title: 'Failed to duplicate week',
+        description: error.message,
+      });
+    }
+  });
+  
+  const handleDuplicateShift = (shift: Shift) => {
+    setSelectedShiftForAction(shift);
+    const nextDay = new Date(shift.startTime);
+    nextDay.setDate(nextDay.getDate() + 7);
+    setDuplicateTargetDate(nextDay.toISOString().split('T')[0]);
+    setDuplicateTargetEmployee(shift.employeeId);
+    setShowDuplicateModal(true);
+  };
+  
+  const handleSwapShift = (shift: Shift) => {
+    setSelectedShiftForAction(shift);
+    setSwapReason('');
+    setSwapTargetEmployee(null);
+    setShowSwapModal(true);
+  };
+  
+  const handleDuplicateWeek = () => {
+    const nextWeekStart = new Date(weekStart);
+    nextWeekStart.setDate(nextWeekStart.getDate() + 7);
+    duplicateWeekMutation.mutate({
+      sourceWeekStart: weekStart.toISOString(),
+      targetWeekStart: nextWeekStart.toISOString(),
+    });
+  };
 
   const handleCreateShift = () => {
-    createShiftMutation.mutate(shiftForm);
+    if (shiftForm.isRecurring) {
+      const clockInDate = new Date(weekStart);
+      clockInDate.setDate(clockInDate.getDate() + modalPosition.day);
+      
+      const endDate = shiftForm.endDate 
+        ? new Date(shiftForm.endDate) 
+        : new Date(clockInDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+      
+      createRecurringMutation.mutate({
+        employeeId: shiftForm.isOpenShift ? null : shiftForm.employeeId,
+        clientId: shiftForm.clientId || null,
+        title: shiftForm.position,
+        description: shiftForm.notes,
+        startTimeOfDay: shiftForm.clockIn,
+        endTimeOfDay: shiftForm.clockOut,
+        daysOfWeek: shiftForm.daysOfWeek,
+        recurrencePattern: shiftForm.recurrencePattern,
+        startDate: clockInDate.toISOString(),
+        endDate: endDate.toISOString(),
+        generateShifts: true,
+      });
+    } else {
+      createShiftMutation.mutate(shiftForm);
+    }
   };
 
   const handleAIFillOpenShift = (shiftId: string) => {
@@ -957,13 +1139,36 @@ export default function UniversalSchedule() {
 
                             {/* Hover actions */}
                             <div className="absolute top-1 right-1 hidden group-hover:flex space-x-1">
-                              <Button variant="secondary" size="icon" className="h-6 w-6">
+                              <Button variant="secondary" size="icon" className="h-6 w-6" title="Edit shift">
                                 <Edit2 className="w-3 h-3" />
                               </Button>
-                              <Button variant="secondary" size="icon" className="h-6 w-6">
-                                <Copy className="w-3 h-3" />
+                              <Button 
+                                variant="secondary" 
+                                size="icon" 
+                                className="h-6 w-6" 
+                                title="Duplicate shift"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDuplicateShift(shift);
+                                }}
+                                data-testid={`button-duplicate-${shift.id}`}
+                              >
+                                <CopyPlus className="w-3 h-3" />
                               </Button>
-                              <Button variant="destructive" size="icon" className="h-6 w-6">
+                              <Button 
+                                variant="secondary" 
+                                size="icon" 
+                                className="h-6 w-6" 
+                                title="Request swap"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleSwapShift(shift);
+                                }}
+                                data-testid={`button-swap-${shift.id}`}
+                              >
+                                <ArrowRightLeft className="w-3 h-3" />
+                              </Button>
+                              <Button variant="destructive" size="icon" className="h-6 w-6" title="Delete shift">
                                 <Trash2 className="w-3 h-3" />
                               </Button>
                             </div>
@@ -1019,6 +1224,17 @@ export default function UniversalSchedule() {
             >
               <Play className="w-4 h-4 mr-2" />
               Generate AI Schedule for Next Week
+            </Button>
+            
+            <Button
+              variant="outline"
+              className="w-full mt-2"
+              onClick={handleDuplicateWeek}
+              disabled={duplicateWeekMutation.isPending}
+              data-testid="button-duplicate-week"
+            >
+              <CalendarDays className="w-4 h-4 mr-2" />
+              {duplicateWeekMutation.isPending ? 'Duplicating...' : 'Duplicate Week to Next Week'}
             </Button>
           </div>
         </div>
@@ -1153,6 +1369,86 @@ export default function UniversalSchedule() {
               />
             </div>
 
+            {/* Recurring Shift Toggle */}
+            <div className="flex items-center gap-2 p-2 rounded-md bg-muted/50 border-dashed border border-muted-foreground/20">
+              <Checkbox
+                id="recurring-shift"
+                checked={shiftForm.isRecurring}
+                onCheckedChange={(checked) =>
+                  setShiftForm(prev => ({ ...prev, isRecurring: checked as boolean }))
+                }
+                data-testid="checkbox-recurring"
+              />
+              <Label htmlFor="recurring-shift" className="flex items-center gap-1.5 text-sm cursor-pointer">
+                <Repeat className="w-3.5 h-3.5 text-blue-600" />
+                <span className="font-medium">Make Recurring</span>
+                <span className="text-xs text-muted-foreground ml-1">(repeating shifts)</span>
+              </Label>
+            </div>
+            
+            {/* Recurring Options */}
+            {shiftForm.isRecurring && (
+              <div className="space-y-3 p-3 rounded-md bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200/50 dark:border-blue-800/50">
+                <div className="space-y-1.5">
+                  <Label className="text-sm">Repeat Pattern</Label>
+                  <Select 
+                    value={shiftForm.recurrencePattern} 
+                    onValueChange={(value: 'daily' | 'weekly' | 'biweekly' | 'monthly') =>
+                      setShiftForm(prev => ({ ...prev, recurrencePattern: value }))
+                    }
+                  >
+                    <SelectTrigger data-testid="select-recurrence">
+                      <SelectValue placeholder="Select pattern" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="daily">Daily</SelectItem>
+                      <SelectItem value="weekly">Weekly</SelectItem>
+                      <SelectItem value="biweekly">Every 2 Weeks</SelectItem>
+                      <SelectItem value="monthly">Monthly</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-1.5">
+                  <Label className="text-sm">Days of Week</Label>
+                  <div className="flex flex-wrap gap-1">
+                    {DAYS_OF_WEEK.map((day) => (
+                      <Button
+                        key={day.value}
+                        type="button"
+                        variant={shiftForm.daysOfWeek.includes(day.value) ? 'default' : 'outline'}
+                        size="sm"
+                        className="h-7 px-2 text-xs"
+                        onClick={() => {
+                          setShiftForm(prev => ({
+                            ...prev,
+                            daysOfWeek: prev.daysOfWeek.includes(day.value)
+                              ? prev.daysOfWeek.filter(d => d !== day.value)
+                              : [...prev.daysOfWeek, day.value]
+                          }));
+                        }}
+                        data-testid={`day-${day.value}`}
+                      >
+                        {day.label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+                
+                <div className="space-y-1.5">
+                  <Label htmlFor="end-date" className="text-sm">End Date (optional)</Label>
+                  <Input
+                    id="end-date"
+                    type="date"
+                    value={shiftForm.endDate}
+                    onChange={(e) => setShiftForm(prev => ({ ...prev, endDate: e.target.value }))}
+                    data-testid="input-end-date"
+                  />
+                  <p className="text-xs text-muted-foreground">Leave empty for 30-day default</p>
+                </div>
+              </div>
+            )}
+            
             {/* Post Orders - Collapsible */}
             <div className="space-y-1.5">
               <Label className="text-sm">Post Orders</Label>
@@ -1202,11 +1498,165 @@ export default function UniversalSchedule() {
             </Button>
             <Button
               onClick={handleCreateShift}
-              disabled={createShiftMutation.isPending || (!shiftForm.isOpenShift && !shiftForm.employeeId) || !shiftForm.position}
+              disabled={(createShiftMutation.isPending || createRecurringMutation.isPending) || (!shiftForm.isOpenShift && !shiftForm.employeeId) || !shiftForm.position || (shiftForm.isRecurring && shiftForm.daysOfWeek.length === 0)}
               className="bg-gradient-to-r from-[#3b82f6] to-[#22d3ee] hover:from-[#2563eb] hover:to-[#06b6d4]"
               data-testid="button-create-shift"
             >
-              {createShiftMutation.isPending ? 'Creating...' : 'Create Shift'}
+              {createShiftMutation.isPending || createRecurringMutation.isPending ? 'Creating...' : shiftForm.isRecurring ? 'Create Recurring Shifts' : 'Create Shift'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Duplicate Shift Modal */}
+      <Dialog open={showDuplicateModal} onOpenChange={setShowDuplicateModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CopyPlus className="w-5 h-5 text-blue-600" />
+              Duplicate Shift
+            </DialogTitle>
+            <DialogDescription>
+              Copy this shift to another date
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedShiftForAction && (
+            <div className="space-y-4">
+              <div className="p-3 bg-muted/50 rounded-lg text-sm">
+                <div className="font-medium">{selectedShiftForAction.title}</div>
+                <div className="text-muted-foreground">
+                  {new Date(selectedShiftForAction.startTime).toLocaleDateString()} at {new Date(selectedShiftForAction.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </div>
+              </div>
+              
+              <div className="space-y-1.5">
+                <Label htmlFor="target-date">Target Date</Label>
+                <Input
+                  id="target-date"
+                  type="date"
+                  value={duplicateTargetDate}
+                  onChange={(e) => setDuplicateTargetDate(e.target.value)}
+                  data-testid="input-duplicate-date"
+                />
+              </div>
+              
+              <div className="space-y-1.5">
+                <Label htmlFor="target-employee">Assign to Employee (optional)</Label>
+                <Select value={duplicateTargetEmployee || ''} onValueChange={setDuplicateTargetEmployee}>
+                  <SelectTrigger id="target-employee" data-testid="select-duplicate-employee">
+                    <SelectValue placeholder="Same employee" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_keep">Keep same employee</SelectItem>
+                    {employees.map(emp => (
+                      <SelectItem key={emp.id} value={emp.id}>
+                        {emp.firstName} {emp.lastName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDuplicateModal(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (selectedShiftForAction && duplicateTargetDate) {
+                  duplicateShiftMutation.mutate({
+                    shiftId: selectedShiftForAction.id,
+                    targetDate: duplicateTargetDate,
+                    targetEmployeeId: duplicateTargetEmployee === '_keep' ? undefined : duplicateTargetEmployee || undefined,
+                  });
+                }
+              }}
+              disabled={duplicateShiftMutation.isPending || !duplicateTargetDate}
+              className="bg-gradient-to-r from-[#3b82f6] to-[#22d3ee]"
+              data-testid="button-confirm-duplicate"
+            >
+              {duplicateShiftMutation.isPending ? 'Duplicating...' : 'Duplicate Shift'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Swap Request Modal */}
+      <Dialog open={showSwapModal} onOpenChange={setShowSwapModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ArrowRightLeft className="w-5 h-5 text-orange-600" />
+              Request Shift Swap
+            </DialogTitle>
+            <DialogDescription>
+              Request to swap this shift with another employee
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedShiftForAction && (
+            <div className="space-y-4">
+              <div className="p-3 bg-muted/50 rounded-lg text-sm">
+                <div className="font-medium">{selectedShiftForAction.title}</div>
+                <div className="text-muted-foreground">
+                  {new Date(selectedShiftForAction.startTime).toLocaleDateString()} at {new Date(selectedShiftForAction.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </div>
+              </div>
+              
+              <div className="space-y-1.5">
+                <Label htmlFor="swap-reason">Reason for Swap</Label>
+                <Textarea
+                  id="swap-reason"
+                  value={swapReason}
+                  onChange={(e) => setSwapReason(e.target.value)}
+                  placeholder="Why do you need to swap this shift?"
+                  className="min-h-[80px]"
+                  data-testid="textarea-swap-reason"
+                />
+              </div>
+              
+              <div className="space-y-1.5">
+                <Label htmlFor="swap-target">Preferred Swap With (optional)</Label>
+                <Select value={swapTargetEmployee || ''} onValueChange={setSwapTargetEmployee}>
+                  <SelectTrigger id="swap-target" data-testid="select-swap-target">
+                    <SelectValue placeholder="Anyone available" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_any">Anyone available</SelectItem>
+                    {employees.filter(emp => emp.id !== selectedShiftForAction.employeeId).map(emp => (
+                      <SelectItem key={emp.id} value={emp.id}>
+                        {emp.firstName} {emp.lastName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">Manager approval required</p>
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowSwapModal(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (selectedShiftForAction) {
+                  requestSwapMutation.mutate({
+                    shiftId: selectedShiftForAction.id,
+                    reason: swapReason,
+                    targetEmployeeId: swapTargetEmployee === '_any' ? undefined : swapTargetEmployee || undefined,
+                  });
+                }
+              }}
+              disabled={requestSwapMutation.isPending}
+              className="bg-gradient-to-r from-orange-500 to-amber-500"
+              data-testid="button-confirm-swap"
+            >
+              {requestSwapMutation.isPending ? 'Requesting...' : 'Request Swap'}
             </Button>
           </DialogFooter>
         </DialogContent>

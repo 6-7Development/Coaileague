@@ -953,6 +953,67 @@ export default function TimeTracking() {
           {/* Timesheet View */}
           {view === 'timesheet' && (
             <div className="space-y-4">
+              {/* Weekly Summary Card */}
+              <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-xl shadow-lg p-6 text-white">
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                  <div>
+                    <h2 className="text-2xl font-bold mb-2">Weekly Timesheet Summary</h2>
+                    <p className="text-blue-100">
+                      {format(startOfWeek(new Date()), 'MMM d')} - {format(endOfWeek(new Date()), 'MMM d, yyyy')}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-3">
+                    <a
+                      href={`/api/timesheets/export/csv?startDate=${startOfWeek(new Date()).toISOString()}&endDate=${endOfWeek(new Date()).toISOString()}`}
+                      className="inline-flex items-center px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg transition-colors"
+                      data-testid="button-export-csv"
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      Export CSV
+                    </a>
+                    <a
+                      href={`/api/timesheets/export/pdf?startDate=${startOfWeek(new Date()).toISOString()}&endDate=${endOfWeek(new Date()).toISOString()}`}
+                      className="inline-flex items-center px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg transition-colors"
+                      data-testid="button-export-pdf"
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      Export PDF
+                    </a>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mt-6">
+                  <div className="bg-white bg-opacity-10 rounded-lg p-4">
+                    <p className="text-sm text-blue-100 mb-1">Total Hours</p>
+                    <p className="text-3xl font-bold">
+                      {filteredTimeEntries.reduce((sum, e) => sum + (e.totalHours ? parseFloat(e.totalHours.toString()) : 0), 0).toFixed(1)}h
+                    </p>
+                  </div>
+                  <div className="bg-white bg-opacity-10 rounded-lg p-4">
+                    <p className="text-sm text-blue-100 mb-1">Regular Hours</p>
+                    <p className="text-3xl font-bold">
+                      {Math.min(40, filteredTimeEntries.reduce((sum, e) => sum + (e.totalHours ? parseFloat(e.totalHours.toString()) : 0), 0)).toFixed(1)}h
+                    </p>
+                  </div>
+                  <div className="bg-white bg-opacity-10 rounded-lg p-4">
+                    <p className="text-sm text-blue-100 mb-1">Overtime Hours</p>
+                    <p className="text-3xl font-bold">
+                      {Math.max(0, filteredTimeEntries.reduce((sum, e) => sum + (e.totalHours ? parseFloat(e.totalHours.toString()) : 0), 0) - 40).toFixed(1)}h
+                    </p>
+                  </div>
+                  <div className="bg-white bg-opacity-10 rounded-lg p-4">
+                    <p className="text-sm text-blue-100 mb-1">Entries</p>
+                    <p className="text-3xl font-bold">{filteredTimeEntries.length}</p>
+                  </div>
+                  <div className="bg-white bg-opacity-10 rounded-lg p-4">
+                    <p className="text-sm text-blue-100 mb-1">Approved</p>
+                    <p className="text-3xl font-bold">
+                      {filteredTimeEntries.filter(e => e.status === 'approved').length}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               {/* Filters */}
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-3">

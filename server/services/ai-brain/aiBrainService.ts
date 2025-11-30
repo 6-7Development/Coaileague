@@ -38,6 +38,7 @@ import {
 import { eq, and, desc, sql, gte, lte, count, or, ilike, isNull } from 'drizzle-orm';
 import { geminiClient } from './providers/geminiClient';
 import { ChatServerHub } from '../ChatServerHub';
+import { platformFeatureRegistry, type PlatformFeature, type FeatureCapability } from './platformFeatureRegistry';
 import crypto from 'crypto';
 
 // Define typed input interfaces for each skill
@@ -80,6 +81,23 @@ interface PlatformRecommendationInput {
   userNeed: string;
   currentPlan?: string;
   currentUsage?: any;
+}
+
+interface PlatformAwarenessInput {
+  query: string;
+  queryType?: 'help' | 'troubleshoot' | 'feature_info' | 'how_to';
+  context?: {
+    currentFeature?: string;
+    symptoms?: string[];
+    userRole?: 'employee' | 'manager' | 'admin' | 'owner';
+  };
+}
+
+interface IssueDiagnosisInput {
+  description: string;
+  symptoms: string[];
+  affectedFeature?: string;
+  context?: Record<string, any>;
 }
 
 export interface EnqueueJobRequest {
@@ -258,6 +276,20 @@ export class AIBrainService {
             output = faqResult.output;
             tokensUsed = faqResult.tokensUsed;
             confidenceScore = 0.95;
+            break;
+
+          case 'platform_awareness':
+            const awarenessResult = await this.executePlatformAwareness(job, input as PlatformAwarenessInput);
+            output = awarenessResult.output;
+            tokensUsed = awarenessResult.tokensUsed;
+            confidenceScore = awarenessResult.confidence;
+            break;
+
+          case 'issue_diagnosis':
+            const diagnosisResult = await this.executeIssueDiagnosis(job, input as IssueDiagnosisInput);
+            output = diagnosisResult.output;
+            tokensUsed = diagnosisResult.tokensUsed;
+            confidenceScore = diagnosisResult.confidence;
             break;
 
           default:
@@ -1346,6 +1378,266 @@ ${JSON.stringify(contextData, null, 2)}`;
   }
 
   /**
+   * NEW: Platform Awareness - Answer questions about any platform feature
+   */
+  private async executePlatformAwareness(job: AiBrainJob, input: PlatformAwarenessInput): Promise<{ output: any; tokensUsed: number; confidence: number }> {
+    const { query, queryType = 'help', context } = input;
+
+    // Search for relevant features based on the query
+    const relevantFeatures = platformFeatureRegistry.searchFeatures(query);
+    const capabilityHelp = platformFeatureRegistry.findCapabilityHelp(query);
+
+    // Build context about relevant features
+    let featureContext = '';
+    if (relevantFeatures.length > 0) {
+      featureContext = relevantFeatures.slice(0, 3).map(f => {
+        const caps = f.capabilities.map(c => `  - ${c.name}: ${c.description}${c.howTo ? `\n    How to: ${c.howTo}` : ''}`).join('\n');
+        const issues = f.commonIssues.map(i => `  - ${i.issue}: ${i.solution}`).join('\n');
+        return `### ${f.name} (${f.category})\n${f.description}\n\nCapabilities:\n${caps}${issues ? `\n\nCommon Issues:\n${issues}` : ''}`;
+      }).join('\n\n');
+    }
+
+    // If we found a specific capability match, highlight it
+    let directAnswer = '';
+    if (capabilityHelp) {
+      const { feature, capability } = capabilityHelp;
+      directAnswer = `**Direct match found: ${capability.name} (${feature.name})**\n${capability.description}\n`;
+      if (capability.howTo) {
+        directAnswer += `\nHow to use: ${capability.howTo}\n`;
+      }
+      if (capability.troubleshooting && capability.troubleshooting.length > 0) {
+        directAnswer += `\nTroubleshooting tips:\n${capability.troubleshooting.map(t => `- ${t}`).join('\n')}`;
+      }
+    }
+
+    // If troubleshooting, check for common issues
+    let troubleshootingInfo = '';
+    if (queryType === 'troubleshoot' && context?.symptoms) {
+      const matchingIssues = platformFeatureRegistry.diagnoseIssue(context.symptoms);
+      if (matchingIssues.length > 0) {
+        troubleshootingInfo = `\n\n### Potential Solutions:\n${matchingIssues.map(i => 
+          `**${i.issue}**\nSolution: ${i.solution}${i.preventiveMeasures ? `\nPrevention: ${i.preventiveMeasures.join(', ')}` : ''}`
+        ).join('\n\n')}`;
+      }
+    }
+
+    const systemPrompt = `You are CoAIleague Platform Expert, an AI assistant with comprehensive knowledge of all platform features.
+
+Your role is to help users and support agents understand how to use the CoAIleague workforce management platform effectively.
+
+${directAnswer ? `DIRECT MATCH FOUND - Use this as the primary answer:\n${directAnswer}\n\n` : ''}
+${featureContext ? `RELEVANT PLATFORM FEATURES:\n${featureContext}\n\n` : ''}
+${troubleshootingInfo ? `TROUBLESHOOTING INFORMATION:\n${troubleshootingInfo}\n\n` : ''}
+
+GUIDELINES:
+1. Be specific and actionable in your responses
+2. Reference the exact feature names and capabilities when helpful
+3. For "how to" questions, provide step-by-step instructions
+4. For troubleshooting, suggest specific solutions and preventive measures
+5. If the user needs a feature not currently available, mention it clearly
+6. Always maintain a helpful, professional tone
+7. If you're not sure, recommend contacting support rather than guessing
+
+${context?.userRole ? `User role: ${context.userRole} - tailor response to their access level` : ''}
+${context?.currentFeature ? `User is currently using: ${context.currentFeature}` : ''}`;
+
+    const response = await geminiClient.generate({
+      workspaceId: job.workspaceId || undefined,
+      userId: job.userId || undefined,
+      featureKey: 'platform_awareness',
+      systemPrompt,
+      userMessage: query,
+      temperature: 0.4
+    });
+
+    // Determine confidence based on whether we found relevant features
+    let confidence = 0.7;
+    if (capabilityHelp) {
+      confidence = 0.95;
+    } else if (relevantFeatures.length > 0) {
+      confidence = 0.85;
+    }
+
+    return {
+      output: {
+        response: response.text,
+        matchedFeatures: relevantFeatures.slice(0, 5).map(f => ({
+          id: f.id,
+          name: f.name,
+          category: f.category,
+          description: f.description
+        })),
+        directMatch: capabilityHelp ? {
+          feature: capabilityHelp.feature.name,
+          capability: capabilityHelp.capability.name,
+          howTo: capabilityHelp.capability.howTo
+        } : null,
+        queryType,
+        timestamp: new Date().toISOString()
+      },
+      tokensUsed: response.tokensUsed,
+      confidence
+    };
+  }
+
+  /**
+   * NEW: Issue Diagnosis - AI diagnoses user issues based on symptoms
+   */
+  private async executeIssueDiagnosis(job: AiBrainJob, input: IssueDiagnosisInput): Promise<{ output: any; tokensUsed: number; confidence: number }> {
+    const { description, symptoms, affectedFeature, context } = input;
+
+    // Find matching issues from the platform registry
+    const allSymptoms = [...symptoms];
+    if (description) {
+      allSymptoms.push(...description.split(' ').filter(w => w.length > 3));
+    }
+    
+    const matchingIssues = platformFeatureRegistry.diagnoseIssue(allSymptoms);
+    
+    // If affected feature is specified, get detailed info
+    let featureDetails = '';
+    if (affectedFeature) {
+      const feature = platformFeatureRegistry.getFeature(affectedFeature);
+      if (feature) {
+        featureDetails = `\n\nAFFECTED FEATURE DETAILS:\n${feature.name} - ${feature.description}\n`;
+        featureDetails += `Common issues for this feature:\n`;
+        featureDetails += feature.commonIssues.map(i => 
+          `- ${i.issue}\n  Symptoms: ${i.symptoms.join(', ')}\n  Solution: ${i.solution}`
+        ).join('\n');
+      }
+    }
+
+    const systemPrompt = `You are CoAIleague Support Diagnostic AI, an expert at identifying and resolving platform issues.
+
+Analyze the user's issue and provide a diagnosis with recommended solutions.
+
+${matchingIssues.length > 0 ? `KNOWN MATCHING ISSUES:\n${matchingIssues.map(i => 
+  `Issue: ${i.issue}\nSymptoms: ${i.symptoms.join(', ')}\nSolution: ${i.solution}${i.preventiveMeasures ? `\nPrevention: ${i.preventiveMeasures.join(', ')}` : ''}`
+).join('\n\n')}\n\n` : ''}
+
+${featureDetails}
+
+DIAGNOSTIC GUIDELINES:
+1. Identify the most likely root cause
+2. Provide step-by-step troubleshooting instructions
+3. Suggest preventive measures for the future
+4. If the issue might be a bug, recommend reporting it
+5. Estimate severity: low, medium, high, critical
+6. Indicate if human support escalation is needed
+
+Return a structured diagnosis including:
+- Primary diagnosis
+- Confidence level
+- Recommended actions
+- Need for human escalation (yes/no)`;
+
+    const userMessage = `User Issue Report:
+Description: ${description}
+Symptoms: ${symptoms.join(', ')}
+${affectedFeature ? `Affected Feature: ${affectedFeature}` : ''}
+${context ? `Additional Context: ${JSON.stringify(context)}` : ''}`;
+
+    const response = await geminiClient.generate({
+      workspaceId: job.workspaceId || undefined,
+      userId: job.userId || undefined,
+      featureKey: 'issue_diagnosis',
+      systemPrompt,
+      userMessage,
+      temperature: 0.3
+    });
+
+    // Parse structured response if possible
+    let diagnosis = {
+      description: response.text,
+      matchedKnownIssues: matchingIssues.slice(0, 3),
+      severity: 'medium',
+      requiresEscalation: false
+    };
+
+    try {
+      const jsonMatch = response.text.match(/```(?:json)?\s*([\s\S]*?)```/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[1].trim());
+        diagnosis = { ...diagnosis, ...parsed };
+      }
+    } catch {
+      // Use default diagnosis structure
+    }
+
+    const confidence = matchingIssues.length > 0 ? 0.85 : 0.7;
+
+    return {
+      output: {
+        diagnosis,
+        affectedFeature,
+        symptomsAnalyzed: symptoms,
+        knownIssuesMatched: matchingIssues.length,
+        timestamp: new Date().toISOString()
+      },
+      tokensUsed: response.tokensUsed,
+      confidence
+    };
+  }
+
+  /**
+   * Get platform feature information for support agents
+   */
+  getPlatformInfo(): { features: PlatformFeature[]; categories: string[] } {
+    return {
+      features: platformFeatureRegistry.getAllFeatures(),
+      categories: platformFeatureRegistry.getCategories() as string[]
+    };
+  }
+
+  /**
+   * Search platform features by query
+   */
+  searchPlatformFeatures(query: string): PlatformFeature[] {
+    return platformFeatureRegistry.searchFeatures(query);
+  }
+
+  /**
+   * Get feature status for a workspace
+   */
+  async getFeatureStatus(workspaceId: string): Promise<Array<{ feature: PlatformFeature; enabled: boolean }>> {
+    // Get workspace settings to determine which features are enabled
+    const [workspace] = await db
+      .select()
+      .from(workspaces)
+      .where(eq(workspaces.id, workspaceId))
+      .limit(1);
+
+    const workspaceSettings = (workspace?.settings as Record<string, boolean>) || {};
+    return platformFeatureRegistry.getFeatureStatus(workspaceSettings);
+  }
+
+  /**
+   * Record feature usage event for learning
+   */
+  async recordFeatureEvent(event: {
+    workspaceId: string;
+    userId?: string;
+    featureId: string;
+    eventType: 'view' | 'use' | 'error' | 'help_request';
+    metadata?: Record<string, any>;
+  }): Promise<void> {
+    const { workspaceId, userId, featureId, eventType, metadata } = event;
+    
+    await this.recordEvent({
+      eventType: `feature_${eventType}`,
+      feature: featureId,
+      payload: {
+        workspaceId,
+        userId,
+        featureId,
+        eventType,
+        metadata,
+        timestamp: new Date().toISOString()
+      }
+    });
+  }
+
+  /**
    * Enrich employee/org data with human-readable external IDs
    */
   private async enrichWithExternalIds(data: any, workspaceId?: string): Promise<any> {
@@ -1588,7 +1880,9 @@ ${JSON.stringify(contextData, null, 2)}`;
       'intelligenceos_prediction',
       'business_insight',
       'platform_recommendation',
-      'faq_update'
+      'faq_update',
+      'platform_awareness',
+      'issue_diagnosis'
     ];
   }
 }
