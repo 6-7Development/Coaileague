@@ -125,12 +125,21 @@ export function WhatsNewBadge() {
           data-testid="button-whats-new"
           title="What's New"
         >
-          <div className="relative">
+          <div className="relative inline-flex">
             <Sparkles className="h-4 w-4 animate-sparkles-combined" />
             {unviewedCount > 0 && (
-              <span className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white flex items-center justify-center text-[10px] font-bold animate-badge-glow">
-                {unviewedCount > 9 ? '9+' : unviewedCount}
-              </span>
+              <>
+                {/* Splat particles on badge */}
+                <span className="absolute -top-2 -right-2 h-2 w-2 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 animate-splat-1" />
+                <span className="absolute -top-2 -right-2 h-2 w-2 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 animate-splat-2" />
+                <span className="absolute -top-2 -right-2 h-2 w-2 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 animate-splat-3" />
+                <span className="absolute -top-2 -right-2 h-2 w-2 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 animate-splat-4" />
+                
+                {/* Main badge with ripple */}
+                <span className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white flex items-center justify-center text-[10px] font-bold animate-badge-glow animate-ripple">
+                  {unviewedCount > 9 ? '9+' : unviewedCount}
+                </span>
+              </>
             )}
           </div>
         </Button>

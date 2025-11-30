@@ -134,9 +134,18 @@ export function NotificationsCenter() {
         <Button variant="ghost" size="icon" className="relative h-10 w-10 rounded-xl hover-elevate active-elevate-2" data-testid="button-notifications">
           <Bell className={`h-5 w-5 ${unreadCount > 0 ? 'animate-bell-ring-continuous' : ''}`} />
           {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 h-5 min-w-5 px-1 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center text-[10px] font-semibold animate-badge-pulse">
-              {unreadCount > 9 ? '9+' : unreadCount}
-            </span>
+            <div className="absolute -top-1 -right-1">
+              {/* Splat particles around badge */}
+              <span className="absolute h-2 w-2 rounded-full bg-destructive animate-splat-1" style={{ top: '-2px', right: '-2px' }} />
+              <span className="absolute h-2 w-2 rounded-full bg-destructive animate-splat-2" style={{ top: '-2px', right: '-2px' }} />
+              <span className="absolute h-2 w-2 rounded-full bg-destructive animate-splat-3" style={{ top: '-2px', right: '-2px' }} />
+              <span className="absolute h-2 w-2 rounded-full bg-destructive animate-splat-4" style={{ top: '-2px', right: '-2px' }} />
+              
+              {/* Main badge with ripple */}
+              <span className="absolute h-5 min-w-5 px-1 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center text-[10px] font-semibold animate-badge-pulse animate-ripple-continuous">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            </div>
           )}
         </Button>
       </PopoverTrigger>
