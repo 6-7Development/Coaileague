@@ -126,7 +126,17 @@ export function WhatsNewBadge() {
           title="What's New"
         >
           <div className="relative inline-flex">
-            <Sparkles className="h-4 w-4 animate-sparkles-combined" />
+            {/* Life Movement Overlay - Animated aura and particles */}
+            <div className="absolute inset-0 rounded-full animate-pulsing-halo opacity-75" style={{ width: '1em', height: '1em' }} />
+            <div className="absolute inset-0 animate-glow-aura" style={{ width: '1em', height: '1em', borderRadius: '50%' }} />
+            
+            {/* Orbiting particles around icon */}
+            <span className="absolute h-1 w-1 rounded-full bg-purple-400 animate-orbit-particle" style={{ top: '50%', left: '50%', marginTop: '-2px', marginLeft: '-2px' }} />
+            <span className="absolute h-1 w-1 rounded-full bg-pink-400 animate-orbit-particle" style={{ top: '50%', left: '50%', marginTop: '-2px', marginLeft: '-2px', animationDelay: '1s' }} />
+            
+            {/* Main sparkles icon with energy pulse */}
+            <Sparkles className="h-4 w-4 animate-sparkles-combined animate-energy-pulse relative z-10" />
+            
             {unviewedCount > 0 && (
               <>
                 {/* Splat particles on badge */}
