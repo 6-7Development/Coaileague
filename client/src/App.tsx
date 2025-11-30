@@ -149,7 +149,7 @@ import { OnboardingWizard } from "@/components/onboarding-wizard";
 import { HeaderBillboard } from "@/components/header-billboard";
 import { WorkspaceSwitcher } from "@/components/workspace-switcher";
 import { PageBreadcrumb } from "@/components/page-breadcrumb";
-import { UniversalNavHeader } from "@/components/universal-nav-header";
+import { WhatsNewBadge } from "@/components/whats-new-badge";
 import { NotificationsCenter } from "@/components/notifications-center";
 import { WorkspaceTabsNav } from "@/components/workspace-tabs-nav";
 
@@ -459,16 +459,8 @@ function AppContent() {
                     </a>
                   </div>
                   <div className="flex items-center gap-2">
-                    {/* What's New Badge - Sparkles icon */}
-                    <Button 
-                      variant="ghost" 
-                      size="icon"
-                      className="h-9 w-9 relative hover:bg-white/10"
-                      data-testid="button-whats-new"
-                      title="What's New"
-                    >
-                      <Sparkles className="h-4 w-4" />
-                    </Button>
+                    {/* What's New Badge - Sparkles icon with unread count */}
+                    <WhatsNewBadge />
                     {/* Notifications Bell */}
                     <NotificationsCenter />
                     {/* User Menu Dropdown */}
