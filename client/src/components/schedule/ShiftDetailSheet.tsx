@@ -1,6 +1,7 @@
 /**
  * ShiftDetailSheet - Compact shift details popup
  * Polished professional design matching Sling-style UI
+ * Enhanced with swap and duplicate functionality
  */
 
 import { format } from 'date-fns';
@@ -27,6 +28,9 @@ import {
   DollarSign,
   FileText,
   X,
+  Copy,
+  ArrowRightLeft,
+  Repeat,
 } from 'lucide-react';
 import { LogoMark } from '@/components/ui/logo-mark';
 import type { Shift, Employee, Client } from '@shared/schema';
@@ -41,6 +45,8 @@ interface ShiftDetailSheetProps {
   onEdit?: (shift: Shift) => void;
   onDelete?: (shift: Shift) => void;
   onClaimShift?: (shift: Shift) => void;
+  onDuplicate?: (shift: Shift) => void;
+  onRequestSwap?: (shift: Shift) => void;
 }
 
 export function ShiftDetailSheet({
@@ -53,6 +59,8 @@ export function ShiftDetailSheet({
   onEdit,
   onDelete,
   onClaimShift,
+  onDuplicate,
+  onRequestSwap,
 }: ShiftDetailSheetProps) {
   if (!shift) return null;
 
@@ -203,58 +211,92 @@ export function ShiftDetailSheet({
             )}
           </div>
 
-          <DrawerFooter className="flex-row gap-2 pt-2 pb-4 px-4 border-t">
-            {isOpenShift && onClaimShift && (
-              <Button
-                className="flex-1 h-9 bg-emerald-600 hover:bg-emerald-700"
-                onClick={() => {
-                  onClaimShift(shift);
-                  onOpenChange(false);
-                }}
-                data-testid="button-claim-shift"
-              >
-                <UserPlus className="w-4 h-4 mr-1.5" />
-                Claim
-              </Button>
-            )}
-
-            {canEdit && onEdit && (
-              <Button
-                variant="outline"
-                className="flex-1 h-9"
-                onClick={() => {
-                  onEdit(shift);
-                  onOpenChange(false);
-                }}
-                data-testid="button-edit-shift"
-              >
-                <Edit2 className="w-4 h-4 mr-1.5" />
-                Edit
-              </Button>
-            )}
-
-            {canEdit && onDelete && (
-              <Button
-                variant="destructive"
-                size="icon"
-                className="h-9 w-9"
-                onClick={() => {
-                  onDelete(shift);
-                  onOpenChange(false);
-                }}
-                data-testid="button-delete-shift"
-              >
-                <Trash2 className="w-4 h-4" />
-              </Button>
-            )}
-
-            {!canEdit && !isOpenShift && (
-              <DrawerClose asChild>
-                <Button variant="outline" className="flex-1 h-9">
-                  Close
+          <DrawerFooter className="flex-col gap-2 pt-2 pb-4 px-4 border-t">
+            <div className="flex gap-2 w-full">
+              {isOpenShift && onClaimShift && (
+                <Button
+                  className="flex-1 h-9 bg-emerald-600 hover:bg-emerald-700"
+                  onClick={() => {
+                    onClaimShift(shift);
+                    onOpenChange(false);
+                  }}
+                  data-testid="button-claim-shift"
+                >
+                  <UserPlus className="w-4 h-4 mr-1.5" />
+                  Claim
                 </Button>
-              </DrawerClose>
-            )}
+              )}
+
+              {canEdit && onEdit && (
+                <Button
+                  variant="outline"
+                  className="flex-1 h-9"
+                  onClick={() => {
+                    onEdit(shift);
+                    onOpenChange(false);
+                  }}
+                  data-testid="button-edit-shift"
+                >
+                  <Edit2 className="w-4 h-4 mr-1.5" />
+                  Edit
+                </Button>
+              )}
+
+              {canEdit && onDelete && (
+                <Button
+                  variant="destructive"
+                  size="icon"
+                  className="h-9"
+                  onClick={() => {
+                    onDelete(shift);
+                    onOpenChange(false);
+                  }}
+                  data-testid="button-delete-shift"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
+
+            <div className="flex gap-2 w-full">
+              {onDuplicate && canEdit && (
+                <Button
+                  variant="secondary"
+                  className="flex-1 h-9"
+                  onClick={() => {
+                    onDuplicate(shift);
+                    onOpenChange(false);
+                  }}
+                  data-testid="button-duplicate-shift"
+                >
+                  <Copy className="w-4 h-4 mr-1.5" />
+                  Duplicate
+                </Button>
+              )}
+
+              {onRequestSwap && !isOpenShift && employee && (
+                <Button
+                  variant="secondary"
+                  className="flex-1 h-9"
+                  onClick={() => {
+                    onRequestSwap(shift);
+                    onOpenChange(false);
+                  }}
+                  data-testid="button-swap-shift"
+                >
+                  <ArrowRightLeft className="w-4 h-4 mr-1.5" />
+                  Swap
+                </Button>
+              )}
+
+              {!canEdit && !isOpenShift && !onRequestSwap && (
+                <DrawerClose asChild>
+                  <Button variant="outline" className="flex-1 h-9">
+                    Close
+                  </Button>
+                </DrawerClose>
+              )}
+            </div>
           </DrawerFooter>
         </div>
       </DrawerContent>

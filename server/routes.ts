@@ -36,6 +36,7 @@ import schedulerRouter from "./routes/schedulerRoutes"; // CoAIleague Autonomous
 import { automationRouter } from "./routes/automation"; // Core Automation (Scheduling, Invoicing, Payroll)
 import { migrationRouter } from "./routes/migration"; // Data Migration from External Platforms
 import { registerHealthRoutes } from "./routes/health"; // Health check monitoring
+import { registerSearchRoutes } from "./routes/searchRoutes"; // AI-Powered Intelligent Search
 import { auditContextMiddleware } from "./middleware/audit";
 import { 
   apiLimiter, 
@@ -435,6 +436,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Audit logging middleware (captures request context for all authenticated requests)
   app.use(auditContextMiddleware);
   registerHealthRoutes(app, requireAuth);
+  registerSearchRoutes(app, requireAuth); // AI-Powered Search
 
   // ============================================================================
   // NOTIFICATIONS & FEATURE UPDATES

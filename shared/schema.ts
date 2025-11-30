@@ -1630,6 +1630,50 @@ export const insertShiftSwapRequestSchema = createInsertSchema(shiftSwapRequests
 export type InsertShiftSwapRequest = z.infer<typeof insertShiftSwapRequestSchema>;
 export type ShiftSwapRequest = typeof shiftSwapRequests.$inferSelect;
 
+// ============================================================================
+// SCHEDULE TEMPLATES - Phase 2B Advanced Scheduling
+// ============================================================================
+
+export const scheduleTemplates = pgTable("schedule_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  // Template info
+  name: varchar("name").notNull(),
+  description: text("description"),
+  
+  // Shift patterns stored as JSON array
+  shiftPatterns: jsonb("shift_patterns").$type<Array<{
+    title?: string;
+    employeeId?: string;
+    clientId?: string;
+    location?: string;
+    description?: string;
+    startTimeOffset: number; // Minutes from midnight
+    endTimeOffset: number; // Minutes from midnight
+    dayOfWeek?: number; // 0-6
+  }>>(),
+  
+  // Metadata
+  createdBy: varchar("created_by").references(() => users.id),
+  usageCount: integer("usage_count").default(0),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_schedule_templates_workspace").on(table.workspaceId),
+]);
+
+export const insertScheduleTemplateSchema = createInsertSchema(scheduleTemplates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  usageCount: true,
+});
+
+export type InsertScheduleTemplate = z.infer<typeof insertScheduleTemplateSchema>;
+export type ScheduleTemplate = typeof scheduleTemplates.$inferSelect;
+
 // Shift Acknowledgments (Post Orders & Special Orders)
 export const shiftAcknowledgmentTypeEnum = pgEnum('shift_acknowledgment_type', ['post_order', 'special_order', 'safety_notice', 'site_instruction']);
 

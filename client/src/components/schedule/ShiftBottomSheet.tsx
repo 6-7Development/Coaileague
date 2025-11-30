@@ -1,13 +1,14 @@
 /**
  * ShiftBottomSheet - Compact professional shift creation/editing
  * Sling-inspired design with tight spacing and polished UI
+ * Enhanced with recurring shift pattern support
  */
 
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { format } from 'date-fns';
+import { format, addDays, addWeeks, addMonths } from 'date-fns';
 import {
   Drawer,
   DrawerClose,
@@ -30,6 +31,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -37,9 +39,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, Clock, User, Briefcase, MapPin, FileText, Sparkles, X } from 'lucide-react';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+import { Loader2, Clock, User, Briefcase, MapPin, FileText, Sparkles, X, Repeat, ChevronDown, Calendar } from 'lucide-react';
 import { LogoMark } from '@/components/ui/logo-mark';
 import type { Employee, Client, Shift } from '@shared/schema';
+
+const DAYS_OF_WEEK = [
+  { value: 'sunday', label: 'Sun', fullLabel: 'Sunday' },
+  { value: 'monday', label: 'Mon', fullLabel: 'Monday' },
+  { value: 'tuesday', label: 'Tue', fullLabel: 'Tuesday' },
+  { value: 'wednesday', label: 'Wed', fullLabel: 'Wednesday' },
+  { value: 'thursday', label: 'Thu', fullLabel: 'Thursday' },
+  { value: 'friday', label: 'Fri', fullLabel: 'Friday' },
+  { value: 'saturday', label: 'Sat', fullLabel: 'Saturday' },
+];
 
 const shiftFormSchema = z.object({
   employeeId: z.string().optional(),
@@ -50,6 +67,10 @@ const shiftFormSchema = z.object({
   endTime: z.string().min(1, "End time required"),
   notes: z.string().optional(),
   isOpenShift: z.boolean().default(false),
+  isRecurring: z.boolean().default(false),
+  recurrencePattern: z.enum(['daily', 'weekly', 'biweekly', 'monthly']).optional(),
+  daysOfWeek: z.array(z.string()).optional(),
+  recurrenceEndDate: z.string().optional(),
 });
 
 type ShiftFormData = z.infer<typeof shiftFormSchema>;
@@ -79,6 +100,9 @@ export function ShiftBottomSheet({
 }: ShiftBottomSheetProps) {
   const [isOpenShift, setIsOpenShift] = useState(false);
   
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurrenceOpen, setRecurrenceOpen] = useState(false);
+  
   const form = useForm<ShiftFormData>({
     resolver: zodResolver(shiftFormSchema),
     defaultValues: {
@@ -90,6 +114,10 @@ export function ShiftBottomSheet({
       endTime: '17:00',
       notes: '',
       isOpenShift: false,
+      isRecurring: false,
+      recurrencePattern: 'weekly',
+      daysOfWeek: [],
+      recurrenceEndDate: '',
     },
   });
 
@@ -99,6 +127,8 @@ export function ShiftBottomSheet({
       const end = new Date(editingShift.endTime);
       const isOpen = !editingShift.employeeId;
       setIsOpenShift(isOpen);
+      setIsRecurring(false);
+      setRecurrenceOpen(false);
       form.reset({
         employeeId: editingShift.employeeId || '',
         title: editingShift.title || '',
@@ -108,9 +138,16 @@ export function ShiftBottomSheet({
         endTime: format(end, 'HH:mm'),
         notes: editingShift.description || '',
         isOpenShift: isOpen,
+        isRecurring: false,
+        recurrencePattern: 'weekly',
+        daysOfWeek: [],
+        recurrenceEndDate: '',
       });
     } else if (selectedEmployee) {
       setIsOpenShift(false);
+      setIsRecurring(false);
+      setRecurrenceOpen(false);
+      const dayName = DAYS_OF_WEEK[selectedDate.getDay()].value;
       form.reset({
         employeeId: selectedEmployee.id,
         title: selectedEmployee.role || '',
@@ -120,9 +157,16 @@ export function ShiftBottomSheet({
         endTime: '17:00',
         notes: '',
         isOpenShift: false,
+        isRecurring: false,
+        recurrencePattern: 'weekly',
+        daysOfWeek: [dayName],
+        recurrenceEndDate: format(addMonths(selectedDate, 1), 'yyyy-MM-dd'),
       });
     } else {
       setIsOpenShift(false);
+      setIsRecurring(false);
+      setRecurrenceOpen(false);
+      const dayName = DAYS_OF_WEEK[selectedDate.getDay()].value;
       form.reset({
         employeeId: '',
         title: '',
@@ -132,9 +176,13 @@ export function ShiftBottomSheet({
         endTime: '17:00',
         notes: '',
         isOpenShift: false,
+        isRecurring: false,
+        recurrencePattern: 'weekly',
+        daysOfWeek: [dayName],
+        recurrenceEndDate: format(addMonths(selectedDate, 1), 'yyyy-MM-dd'),
       });
     }
-  }, [editingShift, selectedEmployee, form, open]);
+  }, [editingShift, selectedEmployee, form, open, selectedDate]);
 
   const handleSubmit = async (data: ShiftFormData) => {
     const [startHours, startMinutes] = data.startTime.split(':');
@@ -150,15 +198,35 @@ export function ShiftBottomSheet({
       endTime.setDate(endTime.getDate() + 1);
     }
 
-    await onSubmit({
-      ...data,
-      employeeId: isOpenShift ? null : (data.employeeId || null),
-      description: data.notes,
-      location: data.location,
-      startTime: startTime.toISOString(),
-      endTime: endTime.toISOString(),
-      status: 'scheduled',
-    });
+    if (isRecurring && data.daysOfWeek && data.daysOfWeek.length > 0) {
+      await onSubmit({
+        isRecurring: true,
+        employeeId: isOpenShift ? null : (data.employeeId || null),
+        clientId: data.clientId || null,
+        title: data.title,
+        description: data.notes,
+        location: data.location,
+        startTimeOfDay: data.startTime,
+        endTimeOfDay: data.endTime,
+        daysOfWeek: data.daysOfWeek,
+        recurrencePattern: data.recurrencePattern || 'weekly',
+        startDate: selectedDate.toISOString(),
+        endDate: data.recurrenceEndDate || null,
+        generateShifts: true,
+        billableToClient: true,
+        status: 'scheduled',
+      });
+    } else {
+      await onSubmit({
+        ...data,
+        employeeId: isOpenShift ? null : (data.employeeId || null),
+        description: data.notes,
+        location: data.location,
+        startTime: startTime.toISOString(),
+        endTime: endTime.toISOString(),
+        status: 'scheduled',
+      });
+    }
   };
 
   return (
@@ -383,6 +451,142 @@ export function ShiftBottomSheet({
                   </FormItem>
                 )}
               />
+
+              {!editingShift && (
+                <Collapsible
+                  open={recurrenceOpen}
+                  onOpenChange={setRecurrenceOpen}
+                  className="border rounded-lg overflow-hidden"
+                >
+                  <CollapsibleTrigger asChild>
+                    <button
+                      type="button"
+                      className="flex items-center justify-between w-full p-2.5 hover:bg-muted/50 transition-colors"
+                      data-testid="button-toggle-recurrence"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Repeat className="h-4 w-4 text-primary" />
+                        <span className="text-sm font-medium">Recurring Shift</span>
+                        {isRecurring && (
+                          <Badge variant="secondary" className="text-xs">
+                            Active
+                          </Badge>
+                        )}
+                      </div>
+                      <ChevronDown className={`h-4 w-4 transition-transform ${recurrenceOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <div className="px-2.5 pb-2.5 space-y-3 border-t bg-muted/30">
+                      <div className="flex items-center justify-between pt-2.5">
+                        <Label htmlFor="recurring-switch" className="text-sm font-medium cursor-pointer">
+                          Enable recurring shift
+                        </Label>
+                        <Switch
+                          id="recurring-switch"
+                          checked={isRecurring}
+                          onCheckedChange={(checked) => {
+                            setIsRecurring(checked);
+                            form.setValue('isRecurring', checked);
+                          }}
+                          data-testid="switch-recurring"
+                        />
+                      </div>
+
+                      {isRecurring && (
+                        <>
+                          <FormField
+                            control={form.control}
+                            name="recurrencePattern"
+                            render={({ field }) => (
+                              <FormItem className="space-y-1">
+                                <FormLabel className="text-xs font-medium">
+                                  Repeat Pattern
+                                </FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                  <FormControl>
+                                    <SelectTrigger className="h-9 text-sm" data-testid="select-recurrence-pattern">
+                                      <SelectValue placeholder="Select pattern" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    <SelectItem value="daily">Daily</SelectItem>
+                                    <SelectItem value="weekly">Weekly</SelectItem>
+                                    <SelectItem value="biweekly">Bi-weekly</SelectItem>
+                                    <SelectItem value="monthly">Monthly</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage className="text-xs" />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name="daysOfWeek"
+                            render={({ field }) => (
+                              <FormItem className="space-y-1">
+                                <FormLabel className="text-xs font-medium">
+                                  Days of Week
+                                </FormLabel>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {DAYS_OF_WEEK.map((day) => {
+                                    const isSelected = field.value?.includes(day.value);
+                                    return (
+                                      <button
+                                        key={day.value}
+                                        type="button"
+                                        onClick={() => {
+                                          const current = field.value || [];
+                                          const updated = isSelected
+                                            ? current.filter(d => d !== day.value)
+                                            : [...current, day.value];
+                                          field.onChange(updated);
+                                        }}
+                                        className={`px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                                          isSelected
+                                            ? 'bg-primary text-primary-foreground'
+                                            : 'bg-muted hover:bg-muted/80'
+                                        }`}
+                                        data-testid={`day-button-${day.value}`}
+                                      >
+                                        {day.label}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                                <FormMessage className="text-xs" />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name="recurrenceEndDate"
+                            render={({ field }) => (
+                              <FormItem className="space-y-1">
+                                <FormLabel className="text-xs font-medium flex items-center gap-1.5">
+                                  <Calendar className="h-3 w-3" />
+                                  End Date
+                                </FormLabel>
+                                <FormControl>
+                                  <Input 
+                                    type="date" 
+                                    {...field} 
+                                    className="h-9 text-sm"
+                                    data-testid="input-recurrence-end" 
+                                  />
+                                </FormControl>
+                                <FormMessage className="text-xs" />
+                              </FormItem>
+                            )}
+                          />
+                        </>
+                      )}
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              )}
 
               <DrawerFooter className="px-0 pt-3 pb-0">
                 <div className="flex gap-2">

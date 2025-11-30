@@ -7,7 +7,7 @@
 import { format } from 'date-fns';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, Clock, Edit2, Trash2, Plus, ChevronRight, Calendar, Coffee, AlertTriangle } from 'lucide-react';
+import { MapPin, Clock, Edit2, Trash2, Plus, ChevronRight, Calendar, Coffee, AlertTriangle, Copy, ArrowRightLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -33,6 +33,8 @@ interface EmployeeShiftCardProps {
   onDeleteShift?: (shift: Shift) => void;
   onAddShift?: (employee: Employee) => void;
   onViewShift?: (shift: Shift) => void;
+  onDuplicateShift?: (shift: Shift) => void;
+  onSwapShift?: (shift: Shift) => void;
   canEdit: boolean;
   showBreakCompliance?: boolean;
 }
@@ -62,6 +64,8 @@ export function EmployeeShiftCard({
   onDeleteShift,
   onAddShift,
   onViewShift,
+  onDuplicateShift,
+  onSwapShift,
   canEdit,
   showBreakCompliance = true,
 }: EmployeeShiftCardProps) {
@@ -123,6 +127,8 @@ export function EmployeeShiftCard({
               onView={onViewShift ? () => onViewShift(shift) : undefined}
               onEdit={canEdit && onEditShift ? () => onEditShift(shift) : undefined}
               onDelete={canEdit && onDeleteShift ? () => onDeleteShift(shift) : undefined}
+              onDuplicate={canEdit && onDuplicateShift ? () => onDuplicateShift(shift) : undefined}
+              onSwap={onSwapShift ? () => onSwapShift(shift) : undefined}
               canEdit={canEdit}
               showBreakCompliance={showBreakCompliance}
             />
@@ -139,11 +145,13 @@ interface ShiftBlockProps {
   onView?: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
+  onDuplicate?: () => void;
+  onSwap?: () => void;
   canEdit: boolean;
   showBreakCompliance?: boolean;
 }
 
-function ShiftBlock({ shift, role, onView, onEdit, onDelete, canEdit, showBreakCompliance = true }: ShiftBlockProps) {
+function ShiftBlock({ shift, role, onView, onEdit, onDelete, onDuplicate, onSwap, canEdit, showBreakCompliance = true }: ShiftBlockProps) {
   const start = new Date(shift.startTime);
   const end = new Date(shift.endTime);
   const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
@@ -265,10 +273,42 @@ function ShiftBlock({ shift, role, onView, onEdit, onDelete, canEdit, showBreakC
         </div>
       )}
       
-      {/* Edit/Delete Buttons - Only for managers */}
-      {canEdit && (onEdit || onDelete) && (
+      {/* Action Buttons */}
+      {(canEdit || onSwap) && (
         <div className="absolute bottom-2 right-2 flex gap-1.5">
-          {onEdit && (
+          {onSwap && !isOpen && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-7 w-7 bg-white/20 hover:bg-white/30 text-current border-0"
+                  onClick={(e) => { e.stopPropagation(); onSwap(); }}
+                  data-testid={`button-swap-shift-${shift.id}`}
+                >
+                  <ArrowRightLeft className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top">Request Swap</TooltipContent>
+            </Tooltip>
+          )}
+          {canEdit && onDuplicate && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-7 w-7 bg-white/20 hover:bg-white/30 text-current border-0"
+                  onClick={(e) => { e.stopPropagation(); onDuplicate(); }}
+                  data-testid={`button-duplicate-shift-${shift.id}`}
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top">Duplicate</TooltipContent>
+            </Tooltip>
+          )}
+          {canEdit && onEdit && (
             <Button
               size="icon"
               variant="ghost"
@@ -279,7 +319,7 @@ function ShiftBlock({ shift, role, onView, onEdit, onDelete, canEdit, showBreakC
               <Edit2 className="h-3.5 w-3.5" />
             </Button>
           )}
-          {onDelete && (
+          {canEdit && onDelete && (
             <Button
               size="icon"
               variant="ghost"

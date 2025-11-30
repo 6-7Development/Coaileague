@@ -1,6 +1,7 @@
 /**
  * Mobile-First Schedule - Complete redesign with proper popups and role-based views
  * Features: Week stats, day tabs, employee shift cards, shift detail popup, AI FAB, manager tools
+ * Enhanced with recurring shifts, shift swapping, templates, and duplication
  */
 
 import { useState, useMemo } from 'react';
@@ -21,11 +22,13 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Sparkles, Plus, ChevronLeft, ChevronRight, 
   Calendar, Users, Clock, BarChart3, CheckCircle,
-  AlertCircle, CalendarDays
+  AlertCircle, CalendarDays, ArrowRightLeft, LayoutTemplate
 } from 'lucide-react';
 import { EmployeeShiftCard } from '@/components/schedule/EmployeeShiftCard';
 import { ShiftBottomSheet } from '@/components/schedule/ShiftBottomSheet';
 import { ShiftDetailSheet } from '@/components/schedule/ShiftDetailSheet';
+import { ShiftSwapDrawer } from '@/components/schedule/ShiftSwapDrawer';
+import { ScheduleTemplates } from '@/components/schedule/ScheduleTemplates';
 import { ApprovalsDrawer } from '@/components/mobile/schedule/ApprovalsDrawer';
 import { ReportsSheet } from '@/components/mobile/schedule/ReportsSheet';
 import type { Shift, Employee, Client } from '@shared/schema';
@@ -53,6 +56,9 @@ export default function ScheduleMobileFirst() {
   const [viewMode, setViewMode] = useState<'my' | 'full'>('full');
   const [showApprovals, setShowApprovals] = useState(false);
   const [showReports, setShowReports] = useState(false);
+  const [showSwaps, setShowSwaps] = useState(false);
+  const [showTemplates, setShowTemplates] = useState(false);
+  const [swapShift, setSwapShift] = useState<Shift | null>(null);
   
   // Shift detail popup state
   const [selectedShift, setSelectedShift] = useState<Shift | null>(null);
@@ -256,6 +262,65 @@ export default function ScheduleMobileFirst() {
     }
   };
 
+  const handleDuplicateShift = async (shift: Shift) => {
+    try {
+      const nextDay = addDays(new Date(shift.startTime), 1);
+      const startTime = new Date(nextDay);
+      const endTime = new Date(nextDay);
+      const originalStart = new Date(shift.startTime);
+      const originalEnd = new Date(shift.endTime);
+      
+      startTime.setHours(originalStart.getHours(), originalStart.getMinutes(), 0, 0);
+      endTime.setHours(originalEnd.getHours(), originalEnd.getMinutes(), 0, 0);
+
+      await apiRequest('POST', '/api/shifts', {
+        title: shift.title,
+        employeeId: shift.employeeId,
+        clientId: shift.clientId,
+        location: shift.location,
+        description: shift.description,
+        startTime: startTime.toISOString(),
+        endTime: endTime.toISOString(),
+        status: 'scheduled',
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/shifts'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/schedules/week/stats'] });
+      toast({ title: "Shift duplicated to next day" });
+    } catch (error) {
+      toast({ 
+        title: "Failed to duplicate shift", 
+        variant: "destructive" 
+      });
+    }
+  };
+
+  const handleRequestSwap = (shift: Shift) => {
+    setSwapShift(shift);
+    setShowSwaps(true);
+  };
+
+  const handleApplyTemplate = async (templateShifts: Partial<Shift>[]) => {
+    try {
+      for (const shift of templateShifts) {
+        await apiRequest('POST', '/api/shifts', {
+          ...shift,
+          status: 'scheduled',
+        });
+      }
+      queryClient.invalidateQueries({ queryKey: ['/api/shifts'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/schedules/week/stats'] });
+      toast({ 
+        title: "Template applied", 
+        description: `${templateShifts.length} shifts created` 
+      });
+    } catch (error) {
+      toast({ 
+        title: "Failed to apply template", 
+        variant: "destructive" 
+      });
+    }
+  };
+
   // Find employee and client for selected shift
   const selectedShiftEmployee = selectedShift?.employeeId 
     ? employees.find(e => e.id === selectedShift.employeeId)
@@ -376,48 +441,73 @@ export default function ScheduleMobileFirst() {
         </Tabs>
       </div>
 
-      {/* Manager Quick Actions */}
-      {isManagerOrSupervisor && (
-        <div className="bg-muted/50 border-b px-3 py-2">
-          <div className="flex gap-2 overflow-x-auto">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowApprovals(true)}
-              className="flex-shrink-0 gap-1.5"
-              data-testid="button-approvals"
-            >
-              <Clock className="h-4 w-4 text-amber-600" />
-              Approvals
-              {pendingShifts.length > 0 && (
-                <Badge variant="destructive" className="ml-1 text-xs px-1.5">
-                  {pendingShifts.length}
-                </Badge>
-              )}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowReports(true)}
-              className="flex-shrink-0 gap-1.5"
-              data-testid="button-reports"
-            >
-              <BarChart3 className="h-4 w-4 text-blue-600" />
-              Reports
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setLocation('/employees')}
-              className="flex-shrink-0 gap-1.5"
-              data-testid="button-team"
-            >
-              <Users className="h-4 w-4 text-green-600" />
-              Team
-            </Button>
-          </div>
+      {/* Quick Actions */}
+      <div className="bg-muted/50 border-b px-3 py-2">
+        <div className="flex gap-2 overflow-x-auto">
+          {isManagerOrSupervisor && (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowApprovals(true)}
+                className="flex-shrink-0 gap-1.5"
+                data-testid="button-approvals"
+              >
+                <Clock className="h-4 w-4 text-amber-600" />
+                Approvals
+                {pendingShifts.length > 0 && (
+                  <Badge variant="destructive" className="ml-1 text-xs px-1.5">
+                    {pendingShifts.length}
+                  </Badge>
+                )}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowTemplates(true)}
+                className="flex-shrink-0 gap-1.5"
+                data-testid="button-templates"
+              >
+                <LayoutTemplate className="h-4 w-4 text-purple-600" />
+                Templates
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowReports(true)}
+                className="flex-shrink-0 gap-1.5"
+                data-testid="button-reports"
+              >
+                <BarChart3 className="h-4 w-4 text-blue-600" />
+                Reports
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setLocation('/employees')}
+                className="flex-shrink-0 gap-1.5"
+                data-testid="button-team"
+              >
+                <Users className="h-4 w-4 text-green-600" />
+                Team
+              </Button>
+            </>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setSwapShift(null);
+              setShowSwaps(true);
+            }}
+            className="flex-shrink-0 gap-1.5"
+            data-testid="button-swaps"
+          >
+            <ArrowRightLeft className="h-4 w-4 text-cyan-600" />
+            Swaps
+          </Button>
         </div>
-      )}
+      </div>
 
       {/* Shift Cards - Scrollable */}
       <ScrollArea className="flex-1">
@@ -524,6 +614,8 @@ export default function ScheduleMobileFirst() {
                   onEditShift={handleEditShift}
                   onDeleteShift={handleDeleteShift}
                   onAddShift={handleAddShift}
+                  onDuplicateShift={handleDuplicateShift}
+                  onSwapShift={handleRequestSwap}
                   canEdit={canEdit}
                 />
               ))}
@@ -582,6 +674,8 @@ export default function ScheduleMobileFirst() {
         onEdit={handleEditShift}
         onDelete={handleDeleteShift}
         onClaimShift={currentEmployee?.id ? handleClaimShift : undefined}
+        onDuplicate={canEdit ? handleDuplicateShift : undefined}
+        onRequestSwap={handleRequestSwap}
       />
 
       {/* Shift Creation/Edit Sheet */}
@@ -614,6 +708,27 @@ export default function ScheduleMobileFirst() {
           onOpenChange={setShowReports}
           shifts={shifts}
           employees={employees}
+        />
+      )}
+
+      {/* Shift Swap Drawer */}
+      <ShiftSwapDrawer
+        open={showSwaps}
+        onOpenChange={setShowSwaps}
+        shift={swapShift}
+        employees={employees}
+        currentUserId={currentEmployee?.id}
+        isManager={isManagerOrSupervisor}
+      />
+
+      {/* Schedule Templates Drawer */}
+      {isManagerOrSupervisor && (
+        <ScheduleTemplates
+          open={showTemplates}
+          onOpenChange={setShowTemplates}
+          currentShifts={dayShifts}
+          selectedDate={selectedDate}
+          onApplyTemplate={handleApplyTemplate}
         />
       )}
     </div>
