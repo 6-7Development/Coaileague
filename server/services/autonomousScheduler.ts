@@ -1596,6 +1596,24 @@ export function startAutonomousScheduler() {
   console.log('   Schedule: 0 8 * * * (daily 8 AM)');
   console.log('   Alerts HR 30 days before certification expiry\n');
 
+  // Shift Reminder Automation - Every 5 minutes to process reminders based on user preferences
+  cron.schedule("*/5 * * * *", () => {
+    (async () => {
+      try {
+        const { processShiftReminders } = await import('./shiftRemindersService');
+        const result = await processShiftReminders();
+        if (result.processed > 0) {
+          console.log(`[ShiftReminders] Processed ${result.processed} reminders - Success: ${result.successful}, Failed: ${result.failed}`);
+        }
+      } catch (error) {
+        console.error('[ShiftReminders] Error processing shift reminders:', error);
+      }
+    })();
+  });
+  console.log('✅ Shift Reminder Automation:');
+  console.log('   Schedule: */5 * * * * (every 5 minutes)');
+  console.log('   Sends shift reminders based on user preferences\n');
+
   isSchedulerRunning = true;
 
   console.log('╔════════════════════════════════════════════════╗');
@@ -1615,4 +1633,5 @@ export const manualTriggers = {
   wsConnectionCleanup: runWebSocketConnectionCleanup,
   compliance: checkExpiringCertifications,
   creditReset: resetMonthlyCredits,
+  shiftReminders: async () => { const { processShiftReminders } = await import('./shiftRemindersService'); return processShiftReminders(); },
 };

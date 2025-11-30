@@ -11,6 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { 
   Plus, 
   Search,
@@ -26,6 +28,9 @@ import {
   Eye,
   Download,
   XCircle,
+  Calendar,
+  Users,
+  TrendingUp,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -95,6 +100,37 @@ export default function Invoices() {
     platformFeeAmount: number;
     total: number;
   } | null>(null);
+  
+  const [isGenerateFromHoursOpen, setIsGenerateFromHoursOpen] = useState(false);
+  const [hoursFormData, setHoursFormData] = useState({
+    clientId: "",
+    startDate: "",
+    endDate: "",
+    taxRate: "8.875",
+    hourlyRateOverride: "",
+    notes: "",
+    dueInDays: "30",
+    groupByEmployee: false,
+  });
+  const [hoursPreview, setHoursPreview] = useState<{
+    entries: Array<{
+      id: string;
+      employeeName: string;
+      date: string;
+      hours: number;
+      rate: number;
+      amount: number;
+    }>;
+    summary: {
+      totalHours: number;
+      totalAmount: number;
+      byClient: Record<string, { name: string; hours: number; amount: number; count: number }>;
+    };
+  } | null>(null);
+  
+  const [isSendDialogOpen, setIsSendDialogOpen] = useState(false);
+  const [sendingInvoice, setSendingInvoice] = useState<{ id: string; number: string } | null>(null);
+  const [customEmailMessage, setCustomEmailMessage] = useState("");
 
   const { data: invoices = [], isLoading } = useQuery<Invoice[]>({
     queryKey: ["/api/invoices"],
@@ -450,6 +486,153 @@ export default function Invoices() {
     },
   });
 
+  const { data: uninvoicedHours, isLoading: loadingUninvoiced, refetch: refetchUninvoiced } = useQuery<{
+    entries: Array<{
+      id: string;
+      employeeName: string;
+      date: string;
+      hours: number;
+      rate: number;
+      amount: number;
+      clientName: string;
+    }>;
+    summary: {
+      totalHours: number;
+      totalAmount: number;
+      byClient: Record<string, { name: string; hours: number; amount: number; count: number }>;
+    };
+  }>({
+    queryKey: ["/api/timesheet-invoice/uninvoiced", hoursFormData.clientId],
+    enabled: isGenerateFromHoursOpen,
+  });
+
+  const generateFromHoursMutation = useMutation({
+    mutationFn: async (data: any) => {
+      return await apiRequest("POST", "/api/timesheet-invoice/generate-from-hours", data);
+    },
+    onSuccess: (result: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/timesheet-invoice/uninvoiced"] });
+      toast({
+        title: "Invoice Generated",
+        description: `Invoice ${result.invoice?.invoiceNumber || ''} created successfully from ${result.summary?.entriesCount || 0} time entries`,
+      });
+      setIsGenerateFromHoursOpen(false);
+      setHoursFormData({
+        clientId: "",
+        startDate: "",
+        endDate: "",
+        taxRate: "8.875",
+        hourlyRateOverride: "",
+        notes: "",
+        dueInDays: "30",
+        groupByEmployee: false,
+      });
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: error.message || "Failed to generate invoice from hours",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const sendWithEmailMutation = useMutation({
+    mutationFn: async ({ invoiceId, customMessage }: { invoiceId: string; customMessage?: string }) => {
+      return await apiRequest("POST", `/api/timesheet-invoice/${invoiceId}/send-email`, { customMessage });
+    },
+    onSuccess: (result: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+      toast({
+        title: "Invoice Sent",
+        description: result.message || "Invoice sent successfully with PDF attachment",
+      });
+      setIsSendDialogOpen(false);
+      setSendingInvoice(null);
+      setCustomEmailMessage("");
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Send Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleGenerateFromHours = () => {
+    if (!hoursFormData.clientId || !hoursFormData.startDate || !hoursFormData.endDate) {
+      toast({
+        title: "Validation Error",
+        description: "Please select a client and date range",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    generateFromHoursMutation.mutate({
+      clientId: hoursFormData.clientId,
+      startDate: new Date(hoursFormData.startDate).toISOString(),
+      endDate: new Date(hoursFormData.endDate).toISOString(),
+      taxRate: parseFloat(hoursFormData.taxRate) || 0,
+      hourlyRateOverride: hoursFormData.hourlyRateOverride ? parseFloat(hoursFormData.hourlyRateOverride) : undefined,
+      notes: hoursFormData.notes || undefined,
+      dueInDays: parseInt(hoursFormData.dueInDays) || 30,
+      groupByEmployee: hoursFormData.groupByEmployee,
+    });
+  };
+
+  const handleSendWithEmail = () => {
+    if (!sendingInvoice) return;
+    sendWithEmailMutation.mutate({
+      invoiceId: sendingInvoice.id,
+      customMessage: customEmailMessage || undefined,
+    });
+  };
+
+  const handleDownloadPdf = async (invoiceId: string, invoiceNumber: string) => {
+    try {
+      const response = await fetch(`/api/timesheet-invoice/${invoiceId}/pdf`, {
+        credentials: 'include',
+      });
+      if (!response.ok) throw new Error('Failed to download PDF');
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `invoice-${invoiceNumber}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error: any) {
+      toast({
+        title: "Download Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const openSendDialog = (invoice: Invoice) => {
+    setSendingInvoice({ id: invoice.id, number: invoice.invoiceNumber });
+    setCustomEmailMessage("");
+    setIsSendDialogOpen(true);
+  };
+
   return (
     <WorkspaceLayout maxWidth="7xl">
       <div className="w-full">
@@ -686,6 +869,231 @@ export default function Invoices() {
                     data-testid="button-confirm-invoice"
                   >
                     {generateInvoiceMutation.isPending ? "Creating..." : "Confirm & Create Invoice"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* Generate from Hours Dialog */}
+            <Dialog open={isGenerateFromHoursOpen} onOpenChange={setIsGenerateFromHoursOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" data-testid="button-generate-from-hours">
+                  <Calendar className="mr-2 h-4 w-4" />
+                  Generate from Hours
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <TrendingUp className="h-5 w-5" />
+                    Generate Invoice from Tracked Hours
+                  </DialogTitle>
+                  <DialogDescription>
+                    Create an invoice from approved time entries within a date range
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-6 py-4">
+                  <div className="grid grid-cols-2 gap-4 mobile-cols-1">
+                    <div className="space-y-2">
+                      <Label>Client *</Label>
+                      <Select 
+                        value={hoursFormData.clientId} 
+                        onValueChange={(value) => setHoursFormData({ ...hoursFormData, clientId: value })}
+                      >
+                        <SelectTrigger data-testid="select-hours-client">
+                          <SelectValue placeholder="Select client" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {clients.map((client) => (
+                            <SelectItem key={client.id} value={client.id}>
+                              {client.companyName || `${client.firstName} ${client.lastName}`}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Due in Days</Label>
+                      <Select 
+                        value={hoursFormData.dueInDays} 
+                        onValueChange={(value) => setHoursFormData({ ...hoursFormData, dueInDays: value })}
+                      >
+                        <SelectTrigger data-testid="select-hours-due">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="7">7 days</SelectItem>
+                          <SelectItem value="14">14 days</SelectItem>
+                          <SelectItem value="30">30 days (Net 30)</SelectItem>
+                          <SelectItem value="45">45 days</SelectItem>
+                          <SelectItem value="60">60 days (Net 60)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 mobile-cols-1">
+                    <div className="space-y-2">
+                      <Label>Start Date *</Label>
+                      <Input
+                        type="date"
+                        value={hoursFormData.startDate}
+                        onChange={(e) => setHoursFormData({ ...hoursFormData, startDate: e.target.value })}
+                        data-testid="input-hours-start"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>End Date *</Label>
+                      <Input
+                        type="date"
+                        value={hoursFormData.endDate}
+                        onChange={(e) => setHoursFormData({ ...hoursFormData, endDate: e.target.value })}
+                        data-testid="input-hours-end"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 mobile-cols-1">
+                    <div className="space-y-2">
+                      <Label>Tax Rate (%)</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={hoursFormData.taxRate}
+                        onChange={(e) => setHoursFormData({ ...hoursFormData, taxRate: e.target.value })}
+                        placeholder="8.875"
+                        data-testid="input-hours-tax"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Hourly Rate Override (optional)</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={hoursFormData.hourlyRateOverride}
+                        onChange={(e) => setHoursFormData({ ...hoursFormData, hourlyRateOverride: e.target.value })}
+                        placeholder="Use entry rates"
+                        data-testid="input-hours-rate"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-3 p-3 bg-muted/50 rounded-md">
+                    <Switch
+                      checked={hoursFormData.groupByEmployee}
+                      onCheckedChange={(checked) => setHoursFormData({ ...hoursFormData, groupByEmployee: checked })}
+                      data-testid="switch-group-employee"
+                    />
+                    <div>
+                      <Label className="font-medium">Group by Employee</Label>
+                      <p className="text-xs text-muted-foreground">Consolidate time entries by employee instead of individual entries</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Notes (optional)</Label>
+                    <Textarea
+                      value={hoursFormData.notes}
+                      onChange={(e) => setHoursFormData({ ...hoursFormData, notes: e.target.value })}
+                      placeholder="Add notes to appear on the invoice..."
+                      className="min-h-[80px]"
+                      data-testid="input-hours-notes"
+                    />
+                  </div>
+
+                  {hoursFormData.clientId && uninvoicedHours && (
+                    <div className="space-y-3 p-4 border rounded-lg bg-muted/30">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-medium flex items-center gap-2">
+                          <Users className="h-4 w-4" />
+                          Unbilled Hours Preview
+                        </h4>
+                        <Badge variant="secondary">
+                          {uninvoicedHours.entries?.length || 0} entries
+                        </Badge>
+                      </div>
+                      
+                      {loadingUninvoiced ? (
+                        <div className="space-y-2">
+                          <Skeleton className="h-4 w-full" />
+                          <Skeleton className="h-4 w-3/4" />
+                        </div>
+                      ) : uninvoicedHours.entries?.length === 0 ? (
+                        <p className="text-sm text-muted-foreground py-4 text-center">
+                          No unbilled time entries found for this client
+                        </p>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-4 mobile-cols-1">
+                          <Card className="bg-background">
+                            <CardContent className="p-4">
+                              <div className="text-2xl font-bold">{uninvoicedHours.summary?.totalHours?.toFixed(2) || 0}</div>
+                              <p className="text-sm text-muted-foreground">Total Hours</p>
+                            </CardContent>
+                          </Card>
+                          <Card className="bg-background">
+                            <CardContent className="p-4">
+                              <div className="text-2xl font-bold">${uninvoicedHours.summary?.totalAmount?.toFixed(2) || 0}</div>
+                              <p className="text-sm text-muted-foreground">Estimated Total</p>
+                            </CardContent>
+                          </Card>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsGenerateFromHoursOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleGenerateFromHours}
+                    disabled={generateFromHoursMutation.isPending || !hoursFormData.clientId || !hoursFormData.startDate || !hoursFormData.endDate}
+                    data-testid="button-generate-hours-submit"
+                  >
+                    {generateFromHoursMutation.isPending ? "Generating..." : "Generate Invoice"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* Send Invoice with Email Dialog */}
+            <Dialog open={isSendDialogOpen} onOpenChange={setIsSendDialogOpen}>
+              <DialogContent className="max-w-lg">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <Send className="h-5 w-5" />
+                    Send Invoice {sendingInvoice?.number}
+                  </DialogTitle>
+                  <DialogDescription>
+                    Send the invoice to the client via email with PDF attachment
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label>Custom Message (optional)</Label>
+                    <Textarea
+                      value={customEmailMessage}
+                      onChange={(e) => setCustomEmailMessage(e.target.value)}
+                      placeholder="Add a personal message to the client..."
+                      className="min-h-[100px]"
+                      data-testid="input-send-message"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      The invoice PDF will be attached automatically
+                    </p>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsSendDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleSendWithEmail}
+                    disabled={sendWithEmailMutation.isPending}
+                    data-testid="button-send-email-submit"
+                  >
+                    <Mail className="mr-2 h-4 w-4" />
+                    {sendWithEmailMutation.isPending ? "Sending..." : "Send with PDF"}
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -1084,15 +1492,17 @@ export default function Invoices() {
                           </DropdownMenuItem>
                           {invoice.status === 'draft' && (
                             <DropdownMenuItem 
-                              onClick={() => sendEmailMutation.mutate(invoice.id)}
-                              disabled={sendEmailMutation.isPending}
+                              onClick={() => openSendDialog(invoice)}
                               data-testid={`menu-send-${invoice.id}`}
                             >
                               <Send className="h-4 w-4 mr-2" />
-                              Send Invoice
+                              Send with Email
                             </DropdownMenuItem>
                           )}
-                          <DropdownMenuItem data-testid={`menu-download-${invoice.id}`}>
+                          <DropdownMenuItem 
+                            onClick={() => handleDownloadPdf(invoice.id, invoice.invoiceNumber)}
+                            data-testid={`menu-download-${invoice.id}`}
+                          >
                             <Download className="h-4 w-4 mr-2" />
                             Download PDF
                           </DropdownMenuItem>

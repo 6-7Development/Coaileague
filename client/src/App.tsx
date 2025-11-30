@@ -115,6 +115,7 @@ import GrowthFamilyPage from "@/pages/os-family-growth";
 import PlatformFamilyPage from "@/pages/os-family-platform";
 import Profile from "@/pages/profile";
 import Unavailability from "@/pages/unavailability";
+import AvailabilityPage from "@/pages/availability";
 import CreateOrg from "@/pages/create-org";
 import Updates from "@/pages/updates";
 import Help from "@/pages/help";
@@ -359,6 +360,7 @@ function AppContent() {
               {/* User Menu Routes */}
               <Route path="/profile" component={Profile} />
               <Route path="/unavailability" component={Unavailability} />
+              <Route path="/availability" component={AvailabilityPage} />
               <Route path="/create-org" component={CreateOrg} />
               <Route path="/updates" component={Updates} />
               <Route path="/help" component={Help} />

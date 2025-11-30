@@ -58,7 +58,9 @@ aiBrainRouter.get('/skills', isAuthenticated, async (req: Request, res: Response
         intelligenceos_prediction: 'Predictive analytics and forecasting',
         business_insight: 'Business insights for sales, finance, operations, automation, growth',
         platform_recommendation: 'Platform feature recommendations based on user needs',
-        faq_update: 'Create or update FAQ entries'
+        faq_update: 'Create or update FAQ entries',
+        platform_awareness: 'Answer questions about any platform feature with contextual help',
+        issue_diagnosis: 'AI diagnoses user issues based on symptoms and description'
       }
     });
   } catch (error: any) {
@@ -826,5 +828,205 @@ aiBrainRouter.get('/learning/stats', isAuthenticated, async (req: Request, res: 
   } catch (error: any) {
     console.error('Error getting learning stats:', error);
     res.status(500).json({ error: 'Failed to get learning stats' });
+  }
+});
+
+// ============================================================================
+// SUPPORT AGENT TOOLS - Platform Awareness Endpoints
+// ============================================================================
+
+/**
+ * GET /api/ai-brain/platform-info - Get platform feature documentation for support agents
+ */
+aiBrainRouter.get('/platform-info', isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    const { category, search } = req.query;
+    const platformInfo = aiBrainService.getPlatformInfo();
+    
+    let features = platformInfo.features;
+    
+    if (category && typeof category === 'string') {
+      features = features.filter(f => f.category === category);
+    }
+    
+    if (search && typeof search === 'string') {
+      features = aiBrainService.searchPlatformFeatures(search);
+    }
+    
+    res.json({
+      features,
+      categories: platformInfo.categories,
+      totalFeatures: platformInfo.features.length,
+      filteredCount: features.length
+    });
+  } catch (error: any) {
+    console.error('Error getting platform info:', error);
+    res.status(500).json({ error: 'Failed to get platform info' });
+  }
+});
+
+/**
+ * POST /api/ai-brain/diagnose - AI diagnoses user issue based on description
+ */
+aiBrainRouter.post('/diagnose', isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    const authReq = req as AuthenticatedRequest;
+    const { description, symptoms, affectedFeature, context } = req.body;
+    
+    if (!description) {
+      return res.status(400).json({ error: 'description is required' });
+    }
+    
+    const result = await aiBrainService.enqueueJob({
+      workspaceId: authReq.user?.currentWorkspaceId,
+      userId: authReq.user?.id,
+      skill: 'issue_diagnosis',
+      input: {
+        description,
+        symptoms: symptoms || [],
+        affectedFeature,
+        context
+      },
+      priority: 'high'
+    });
+    
+    res.json(result);
+  } catch (error: any) {
+    console.error('Error diagnosing issue:', error);
+    res.status(500).json({ error: 'Failed to diagnose issue' });
+  }
+});
+
+/**
+ * GET /api/ai-brain/feature-status - Check if features are enabled for workspace
+ */
+aiBrainRouter.get('/feature-status', isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    const authReq = req as AuthenticatedRequest;
+    const workspaceId = authReq.user?.currentWorkspaceId;
+    
+    if (!workspaceId) {
+      return res.status(400).json({ error: 'Workspace required' });
+    }
+    
+    const featureStatus = await aiBrainService.getFeatureStatus(workspaceId);
+    
+    const enabledFeatures = featureStatus.filter(f => f.enabled);
+    const disabledFeatures = featureStatus.filter(f => !f.enabled);
+    
+    res.json({
+      workspaceId,
+      features: featureStatus.map(({ feature, enabled }) => ({
+        id: feature.id,
+        name: feature.name,
+        category: feature.category,
+        enabled,
+        requiredTier: feature.requiredTier
+      })),
+      summary: {
+        total: featureStatus.length,
+        enabled: enabledFeatures.length,
+        disabled: disabledFeatures.length
+      }
+    });
+  } catch (error: any) {
+    console.error('Error getting feature status:', error);
+    res.status(500).json({ error: 'Failed to get feature status' });
+  }
+});
+
+/**
+ * POST /api/ai-brain/platform-awareness - Ask AI about platform features
+ */
+aiBrainRouter.post('/platform-awareness', isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    const authReq = req as AuthenticatedRequest;
+    const { query, queryType, context } = req.body;
+    
+    if (!query) {
+      return res.status(400).json({ error: 'query is required' });
+    }
+    
+    const result = await aiBrainService.enqueueJob({
+      workspaceId: authReq.user?.currentWorkspaceId,
+      userId: authReq.user?.id,
+      skill: 'platform_awareness',
+      input: {
+        query,
+        queryType: queryType || 'help',
+        context: {
+          ...context,
+          userRole: authReq.user?.role
+        }
+      },
+      priority: 'high'
+    });
+    
+    res.json(result);
+  } catch (error: any) {
+    console.error('Error in platform awareness:', error);
+    res.status(500).json({ error: 'Failed to process platform awareness query' });
+  }
+});
+
+/**
+ * POST /api/ai-brain/feature-event - Record feature usage for learning
+ */
+aiBrainRouter.post('/feature-event', isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    const authReq = req as AuthenticatedRequest;
+    const { featureId, eventType, metadata } = req.body;
+    
+    if (!featureId || !eventType) {
+      return res.status(400).json({ error: 'featureId and eventType are required' });
+    }
+    
+    const workspaceId = authReq.user?.currentWorkspaceId;
+    if (!workspaceId) {
+      return res.status(400).json({ error: 'Workspace required' });
+    }
+    
+    await aiBrainService.recordFeatureEvent({
+      workspaceId,
+      userId: authReq.user?.id,
+      featureId,
+      eventType,
+      metadata
+    });
+    
+    res.json({ 
+      success: true,
+      message: 'Feature event recorded' 
+    });
+  } catch (error: any) {
+    console.error('Error recording feature event:', error);
+    res.status(500).json({ error: 'Failed to record feature event' });
+  }
+});
+
+/**
+ * GET /api/ai-brain/feature/:featureId - Get detailed info about a specific feature
+ */
+aiBrainRouter.get('/feature/:featureId', isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    const { featureId } = req.params;
+    const platformInfo = aiBrainService.getPlatformInfo();
+    
+    const feature = platformInfo.features.find(f => f.id === featureId);
+    
+    if (!feature) {
+      return res.status(404).json({ error: 'Feature not found' });
+    }
+    
+    res.json({
+      feature,
+      relatedFeatures: platformInfo.features
+        .filter(f => f.id !== featureId && f.category === feature.category)
+        .slice(0, 3)
+        .map(f => ({ id: f.id, name: f.name, description: f.description }))
+    });
+  } catch (error: any) {
+    console.error('Error getting feature details:', error);
+    res.status(500).json({ error: 'Failed to get feature details' });
   }
 });

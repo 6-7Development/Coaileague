@@ -1,13 +1,27 @@
 /**
- * Calendar Export/Import Service
- * Handles ICS export and Google Calendar integration
+ * Calendar Export/Import Service - Phase 2E
+ * Handles ICS export, token-based subscriptions, and iCal import
  */
 
 import { db } from '../db';
-import { shifts, employees, clients } from '@shared/schema';
-import { eq, and, gte, lte } from 'drizzle-orm';
+import { 
+  shifts, 
+  employees, 
+  clients, 
+  calendarSubscriptions,
+  calendarImports,
+  calendarSyncEvents,
+  type CalendarSubscription,
+  type InsertCalendarSubscription,
+  type InsertCalendarImport,
+  type Shift
+} from '@shared/schema';
+import { eq, and, gte, lte, or, sql } from 'drizzle-orm';
 import { isFeatureEnabled } from '@shared/platformConfig';
-import { format, addHours, parseISO } from 'date-fns';
+import { format, addHours, parseISO, subDays, addDays } from 'date-fns';
+import crypto from 'crypto';
+import icalGenerator from 'ical-generator';
+import nodeIcal from 'node-ical';
 
 interface CalendarEvent {
   uid: string;
@@ -18,6 +32,33 @@ interface CalendarEvent {
   end: Date;
   allDay?: boolean;
   reminder?: number;
+  status?: string;
+  categories?: string[];
+}
+
+interface ImportResult {
+  success: boolean;
+  totalEvents: number;
+  eventsImported: number;
+  eventsSkipped: number;
+  eventsFailed: number;
+  conflictsDetected: number;
+  errors: string[];
+  importedShiftIds: string[];
+}
+
+interface ConflictInfo {
+  existingShiftId: string;
+  existingShift: {
+    title: string;
+    startTime: Date;
+    endTime: Date;
+  };
+  importedEvent: {
+    title: string;
+    startTime: Date;
+    endTime: Date;
+  };
 }
 
 function escapeICSText(text: string): string {
@@ -36,58 +77,164 @@ function formatICSDate(date: Date, allDay?: boolean): string {
 }
 
 export function generateICS(events: CalendarEvent[], calendarName: string = 'CoAIleague Schedule'): string {
-  const lines: string[] = [
-    'BEGIN:VCALENDAR',
-    'VERSION:2.0',
-    'PRODID:-//CoAIleague//Workforce Management//EN',
-    `X-WR-CALNAME:${escapeICSText(calendarName)}`,
-    'CALSCALE:GREGORIAN',
-    'METHOD:PUBLISH',
-  ];
+  const calendar = icalGenerator({
+    name: calendarName,
+    prodId: { company: 'CoAIleague', product: 'Workforce Management' },
+    timezone: 'UTC',
+  });
 
   for (const event of events) {
-    lines.push('BEGIN:VEVENT');
-    lines.push(`UID:${event.uid}`);
-    lines.push(`DTSTAMP:${formatICSDate(new Date())}`);
-    
-    if (event.allDay) {
-      lines.push(`DTSTART;VALUE=DATE:${formatICSDate(event.start, true)}`);
-      lines.push(`DTEND;VALUE=DATE:${formatICSDate(event.end, true)}`);
-    } else {
-      lines.push(`DTSTART:${formatICSDate(event.start)}`);
-      lines.push(`DTEND:${formatICSDate(event.end)}`);
-    }
-    
-    lines.push(`SUMMARY:${escapeICSText(event.title)}`);
-    
-    if (event.description) {
-      lines.push(`DESCRIPTION:${escapeICSText(event.description)}`);
-    }
-    
-    if (event.location) {
-      lines.push(`LOCATION:${escapeICSText(event.location)}`);
-    }
-    
+    const icalEvent = calendar.createEvent({
+      id: event.uid,
+      start: event.start,
+      end: event.end,
+      summary: event.title,
+      description: event.description,
+      location: event.location,
+      allDay: event.allDay,
+    });
+
     if (event.reminder && event.reminder > 0) {
-      lines.push('BEGIN:VALARM');
-      lines.push('ACTION:DISPLAY');
-      lines.push(`DESCRIPTION:Reminder: ${escapeICSText(event.title)}`);
-      lines.push(`TRIGGER:-PT${event.reminder}M`);
-      lines.push('END:VALARM');
+      icalEvent.createAlarm({
+        type: 'display',
+        trigger: event.reminder * 60,
+      });
     }
-    
-    lines.push('END:VEVENT');
+
+    if (event.categories && event.categories.length > 0) {
+      icalEvent.categories(event.categories.map(c => ({ name: c })));
+    }
   }
 
-  lines.push('END:VCALENDAR');
-  return lines.join('\r\n');
+  return calendar.toString();
+}
+
+export function generateSecureToken(): string {
+  return crypto.randomBytes(32).toString('base64url');
+}
+
+export async function createCalendarSubscription(
+  workspaceId: string,
+  userId: string,
+  employeeId?: string,
+  options?: Partial<InsertCalendarSubscription>
+): Promise<CalendarSubscription> {
+  const token = generateSecureToken();
+  
+  const [subscription] = await db.insert(calendarSubscriptions).values({
+    workspaceId,
+    userId,
+    employeeId: employeeId || null,
+    subscriptionToken: token,
+    subscriptionType: options?.subscriptionType || 'shifts',
+    includeShifts: options?.includeShifts ?? true,
+    includeTimesheets: options?.includeTimesheets ?? false,
+    includePendingShifts: options?.includePendingShifts ?? true,
+    includeCancelledShifts: options?.includeCancelledShifts ?? false,
+    daysBack: options?.daysBack ?? 30,
+    daysForward: options?.daysForward ?? 90,
+    refreshIntervalMinutes: options?.refreshIntervalMinutes ?? 15,
+    name: options?.name || 'My Work Schedule',
+    isActive: true,
+    createdByIp: options?.createdByIp,
+  }).returning();
+
+  await db.insert(calendarSyncEvents).values({
+    workspaceId,
+    userId,
+    eventType: 'subscribe',
+    subscriptionId: subscription.id,
+    description: `Calendar subscription created: ${subscription.name}`,
+    metadata: { subscriptionType: subscription.subscriptionType },
+  });
+
+  return subscription;
+}
+
+export async function validateSubscriptionToken(token: string): Promise<CalendarSubscription | null> {
+  const subscription = await db.query.calendarSubscriptions.findFirst({
+    where: and(
+      eq(calendarSubscriptions.subscriptionToken, token),
+      eq(calendarSubscriptions.isActive, true)
+    ),
+  });
+
+  if (!subscription) return null;
+
+  if (subscription.expiresAt && new Date(subscription.expiresAt) < new Date()) {
+    return null;
+  }
+
+  await db.update(calendarSubscriptions)
+    .set({
+      lastAccessedAt: new Date(),
+      accessCount: sql`${calendarSubscriptions.accessCount} + 1`,
+    })
+    .where(eq(calendarSubscriptions.id, subscription.id));
+
+  return subscription;
+}
+
+export async function revokeSubscription(subscriptionId: string, userId: string): Promise<boolean> {
+  const [subscription] = await db.update(calendarSubscriptions)
+    .set({ isActive: false, updatedAt: new Date() })
+    .where(and(
+      eq(calendarSubscriptions.id, subscriptionId),
+      eq(calendarSubscriptions.userId, userId)
+    ))
+    .returning();
+
+  if (subscription) {
+    await db.insert(calendarSyncEvents).values({
+      workspaceId: subscription.workspaceId,
+      userId,
+      eventType: 'unsubscribe',
+      subscriptionId: subscription.id,
+      description: `Calendar subscription revoked: ${subscription.name}`,
+    });
+  }
+
+  return !!subscription;
+}
+
+export async function getUserSubscriptions(userId: string, workspaceId: string): Promise<CalendarSubscription[]> {
+  return db.query.calendarSubscriptions.findMany({
+    where: and(
+      eq(calendarSubscriptions.userId, userId),
+      eq(calendarSubscriptions.workspaceId, workspaceId),
+      eq(calendarSubscriptions.isActive, true)
+    ),
+  });
+}
+
+export async function regenerateSubscriptionToken(subscriptionId: string, userId: string): Promise<CalendarSubscription | null> {
+  const newToken = generateSecureToken();
+  
+  const [subscription] = await db.update(calendarSubscriptions)
+    .set({ 
+      subscriptionToken: newToken, 
+      updatedAt: new Date(),
+      accessCount: 0,
+      lastAccessedAt: null,
+    })
+    .where(and(
+      eq(calendarSubscriptions.id, subscriptionId),
+      eq(calendarSubscriptions.userId, userId)
+    ))
+    .returning();
+
+  return subscription || null;
 }
 
 export async function exportScheduleToICS(
   workspaceId: string,
   employeeId?: string,
   startDate?: Date,
-  endDate?: Date
+  endDate?: Date,
+  options?: {
+    includePendingShifts?: boolean;
+    includeCancelledShifts?: boolean;
+  }
 ): Promise<string> {
   if (!isFeatureEnabled('enableCalendarExport')) {
     throw new Error('Calendar export is not enabled');
@@ -96,47 +243,63 @@ export async function exportScheduleToICS(
   const start = startDate || new Date();
   const end = endDate || new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
 
-  const filters = [
-    eq(shifts.workspaceId, workspaceId),
-    gte(shifts.startTime, start),
-    lte(shifts.startTime, end),
-  ];
-
-  if (employeeId) {
-    filters.push(eq(shifts.employeeId, employeeId));
+  const statusFilters = ['published', 'scheduled', 'in_progress', 'completed'];
+  if (options?.includePendingShifts !== false) {
+    statusFilters.push('draft');
   }
 
-  const scheduleShifts = await db.query.shifts.findMany({
-    where: and(...filters),
-    with: {
-      employee: true,
-      client: true,
-    },
+  let query = db
+    .select()
+    .from(shifts)
+    .leftJoin(employees, eq(shifts.employeeId, employees.id))
+    .leftJoin(clients, eq(shifts.clientId, clients.id))
+    .where(and(
+      eq(shifts.workspaceId, workspaceId),
+      gte(shifts.startTime, start),
+      lte(shifts.startTime, end),
+      employeeId ? eq(shifts.employeeId, employeeId) : undefined
+    ));
+
+  const scheduleShifts = await query;
+
+  const filteredShifts = scheduleShifts.filter(row => {
+    const status = row.shifts.status;
+    if (!options?.includeCancelledShifts && status === 'cancelled') return false;
+    return statusFilters.includes(status || 'draft');
   });
 
-  const events: CalendarEvent[] = scheduleShifts.map(shift => {
+  const events: CalendarEvent[] = filteredShifts.map(row => {
+    const shift = row.shifts;
+    const employee = row.employees;
+    const client = row.clients;
+    
     const startDateTime = new Date(shift.startTime);
     const endDateTime = new Date(shift.endTime);
 
-    const employeeName = shift.employee 
-      ? `${shift.employee.firstName} ${shift.employee.lastName}`
+    const employeeName = employee 
+      ? `${employee.firstName} ${employee.lastName}`
       : 'Unassigned';
     
-    const clientName = shift.client?.companyName || '';
+    const clientName = client?.companyName || '';
+    
+    const descriptionParts = [];
+    if (shift.title) descriptionParts.push(`Shift: ${shift.title}`);
+    if (shift.description) descriptionParts.push(shift.description);
+    if (shift.status) descriptionParts.push(`Status: ${shift.status}`);
+    if (client?.address) descriptionParts.push(`Address: ${client.address}`);
     
     return {
       uid: `shift-${shift.id}@coaileague.com`,
       title: employeeId 
         ? `Work Shift${clientName ? ` - ${clientName}` : ''}`
         : `${employeeName}${clientName ? ` @ ${clientName}` : ''}`,
-      description: [
-        shift.title ? `Shift: ${shift.title}` : '',
-        shift.description || '',
-      ].filter(Boolean).join('\\n'),
+      description: descriptionParts.join('\n'),
       location: clientName || undefined,
       start: startDateTime,
       end: endDateTime,
       reminder: 30,
+      status: shift.status,
+      categories: shift.category ? [shift.category] : undefined,
     };
   });
 
@@ -182,6 +345,220 @@ export async function exportTimesheetsToICS(
   return generateICS(events, 'CoAIleague Time Entries');
 }
 
+export async function exportBySubscriptionToken(token: string, clientIp?: string): Promise<string | null> {
+  const subscription = await validateSubscriptionToken(token);
+  if (!subscription) return null;
+
+  if (clientIp) {
+    await db.update(calendarSubscriptions)
+      .set({ lastAccessedFromIp: clientIp })
+      .where(eq(calendarSubscriptions.id, subscription.id));
+  }
+
+  const startDate = subDays(new Date(), subscription.daysBack || 30);
+  const endDate = addDays(new Date(), subscription.daysForward || 90);
+
+  return exportScheduleToICS(
+    subscription.workspaceId,
+    subscription.employeeId || undefined,
+    startDate,
+    endDate,
+    {
+      includePendingShifts: subscription.includePendingShifts || false,
+      includeCancelledShifts: subscription.includeCancelledShifts || false,
+    }
+  );
+}
+
+async function detectConflicts(
+  workspaceId: string,
+  employeeId: string | null,
+  startTime: Date,
+  endTime: Date
+): Promise<Shift[]> {
+  if (!employeeId) return [];
+
+  const conflicts = await db.query.shifts.findMany({
+    where: and(
+      eq(shifts.workspaceId, workspaceId),
+      eq(shifts.employeeId, employeeId),
+      or(
+        and(gte(shifts.startTime, startTime), lte(shifts.startTime, endTime)),
+        and(gte(shifts.endTime, startTime), lte(shifts.endTime, endTime)),
+        and(lte(shifts.startTime, startTime), gte(shifts.endTime, endTime))
+      )
+    ),
+  });
+
+  return conflicts;
+}
+
+export async function importICalFile(
+  workspaceId: string,
+  userId: string,
+  fileContent: string,
+  options?: {
+    fileName?: string;
+    fileSize?: number;
+    conflictResolution?: 'skip' | 'overwrite' | 'merge';
+    defaultEmployeeId?: string;
+  }
+): Promise<ImportResult> {
+  const result: ImportResult = {
+    success: false,
+    totalEvents: 0,
+    eventsImported: 0,
+    eventsSkipped: 0,
+    eventsFailed: 0,
+    conflictsDetected: 0,
+    errors: [],
+    importedShiftIds: [],
+  };
+
+  const [importRecord] = await db.insert(calendarImports).values({
+    workspaceId,
+    userId,
+    fileName: options?.fileName,
+    fileSize: options?.fileSize,
+    sourceType: 'file',
+    status: 'processing',
+    conflictResolution: options?.conflictResolution || 'skip',
+    startedAt: new Date(),
+  }).returning();
+
+  try {
+    const parsedCal = await nodeIcal.async.parseICS(fileContent);
+    
+    const events = Object.values(parsedCal).filter(
+      (item): item is nodeIcal.VEvent => item.type === 'VEVENT'
+    );
+
+    result.totalEvents = events.length;
+
+    for (const event of events) {
+      try {
+        if (!event.start || !event.end) {
+          result.eventsSkipped++;
+          result.errors.push(`Event "${event.summary}" skipped: missing start or end time`);
+          continue;
+        }
+
+        const startTime = new Date(event.start);
+        const endTime = new Date(event.end);
+
+        if (isNaN(startTime.getTime()) || isNaN(endTime.getTime())) {
+          result.eventsSkipped++;
+          result.errors.push(`Event "${event.summary}" skipped: invalid date format`);
+          continue;
+        }
+
+        const employeeId = options?.defaultEmployeeId || null;
+        const conflicts = await detectConflicts(workspaceId, employeeId, startTime, endTime);
+
+        if (conflicts.length > 0) {
+          result.conflictsDetected += conflicts.length;
+          
+          if (options?.conflictResolution === 'skip') {
+            result.eventsSkipped++;
+            continue;
+          }
+          
+          if (options?.conflictResolution === 'overwrite') {
+            for (const conflict of conflicts) {
+              await db.delete(shifts).where(eq(shifts.id, conflict.id));
+            }
+          }
+        }
+
+        const [newShift] = await db.insert(shifts).values({
+          workspaceId,
+          employeeId,
+          title: event.summary || 'Imported Event',
+          description: event.description || `Imported from: ${options?.fileName || 'iCal file'}`,
+          startTime,
+          endTime,
+          status: 'draft',
+          aiGenerated: false,
+        }).returning();
+
+        result.importedShiftIds.push(newShift.id);
+        result.eventsImported++;
+
+      } catch (eventError: any) {
+        result.eventsFailed++;
+        result.errors.push(`Failed to import event "${event.summary}": ${eventError.message}`);
+      }
+    }
+
+    result.success = result.eventsImported > 0;
+
+    await db.update(calendarImports)
+      .set({
+        status: result.success ? 'completed' : 'failed',
+        totalEvents: result.totalEvents,
+        eventsImported: result.eventsImported,
+        eventsSkipped: result.eventsSkipped,
+        eventsFailed: result.eventsFailed,
+        conflictsDetected: result.conflictsDetected,
+        completedAt: new Date(),
+        importedShiftIds: result.importedShiftIds,
+        errorMessage: result.errors.length > 0 ? result.errors[0] : null,
+        errorDetails: result.errors.length > 0 ? { errors: result.errors } : null,
+      })
+      .where(eq(calendarImports.id, importRecord.id));
+
+    await db.insert(calendarSyncEvents).values({
+      workspaceId,
+      userId,
+      eventType: 'import',
+      importId: importRecord.id,
+      description: `Calendar import ${result.success ? 'completed' : 'failed'}: ${result.eventsImported}/${result.totalEvents} events`,
+      metadata: {
+        fileName: options?.fileName,
+        eventsImported: result.eventsImported,
+        eventsSkipped: result.eventsSkipped,
+        conflictsDetected: result.conflictsDetected,
+      },
+    });
+
+  } catch (parseError: any) {
+    result.errors.push(`Failed to parse iCal file: ${parseError.message}`);
+    
+    await db.update(calendarImports)
+      .set({
+        status: 'failed',
+        completedAt: new Date(),
+        errorMessage: parseError.message,
+      })
+      .where(eq(calendarImports.id, importRecord.id));
+
+    await db.insert(calendarSyncEvents).values({
+      workspaceId,
+      userId,
+      eventType: 'sync_error',
+      importId: importRecord.id,
+      description: `Calendar import failed: ${parseError.message}`,
+    });
+  }
+
+  return result;
+}
+
+export async function getImportHistory(
+  workspaceId: string,
+  userId?: string,
+  limit: number = 10
+) {
+  return db.query.calendarImports.findMany({
+    where: and(
+      eq(calendarImports.workspaceId, workspaceId),
+      userId ? eq(calendarImports.userId, userId) : undefined
+    ),
+    orderBy: (imports, { desc }) => [desc(imports.createdAt)],
+    limit,
+  });
+}
+
 export function generateGoogleCalendarLink(event: CalendarEvent): string {
   const params = new URLSearchParams({
     action: 'TEMPLATE',
@@ -201,29 +578,39 @@ export function generateGoogleCalendarLink(event: CalendarEvent): string {
 
 export interface CalendarSubscriptionInfo {
   icsUrl: string;
+  webcalUrl: string;
   googleCalendarSubscribeUrl: string;
   outlookSubscribeUrl: string;
+  appleCalendarUrl: string;
+  refreshInterval: number;
 }
 
 export function generateCalendarSubscriptionUrls(
   baseUrl: string,
-  workspaceId: string,
-  employeeId?: string,
-  token?: string
+  token: string,
+  subscriptionName: string = 'CoAIleague Schedule'
 ): CalendarSubscriptionInfo {
-  const icsPath = employeeId 
-    ? `/api/calendar/employee/${employeeId}/schedule.ics`
-    : `/api/calendar/workspace/${workspaceId}/schedule.ics`;
-  
-  const icsUrl = token 
-    ? `${baseUrl}${icsPath}?token=${token}`
-    : `${baseUrl}${icsPath}`;
-
+  const icsUrl = `${baseUrl}/api/calendar/subscribe/${token}`;
   const webcalUrl = icsUrl.replace('https://', 'webcal://').replace('http://', 'webcal://');
+  const encodedName = encodeURIComponent(subscriptionName);
 
   return {
     icsUrl,
+    webcalUrl,
     googleCalendarSubscribeUrl: `https://calendar.google.com/calendar/r?cid=${encodeURIComponent(webcalUrl)}`,
-    outlookSubscribeUrl: `https://outlook.live.com/owa/?path=/calendar/action/compose&rru=addsubscription&url=${encodeURIComponent(icsUrl)}&name=CoAIleague%20Schedule`,
+    outlookSubscribeUrl: `https://outlook.live.com/owa/?path=/calendar/action/compose&rru=addsubscription&url=${encodeURIComponent(icsUrl)}&name=${encodedName}`,
+    appleCalendarUrl: webcalUrl,
+    refreshInterval: 15,
   };
+}
+
+export async function getSyncEvents(
+  workspaceId: string,
+  limit: number = 50
+) {
+  return db.query.calendarSyncEvents.findMany({
+    where: eq(calendarSyncEvents.workspaceId, workspaceId),
+    orderBy: (events, { desc }) => [desc(events.createdAt)],
+    limit,
+  });
 }

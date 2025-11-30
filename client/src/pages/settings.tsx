@@ -26,6 +26,23 @@ import {
   FileText,
   Clock,
   Zap,
+  Phone,
+  Mail,
+  MessageSquare,
+  Check,
+  AlertCircle,
+  Calendar,
+  Download,
+  Upload,
+  Link2,
+  Copy,
+  RefreshCw,
+  Trash2,
+  ExternalLink,
+  Scale,
+  Coffee,
+  AlertTriangle,
+  MapPin,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -61,6 +78,23 @@ export default function Settings() {
   const [scheduleCustomDays, setScheduleCustomDays] = useState<number | undefined>();
   const [scheduleAdvanceNoticeDays, setScheduleAdvanceNoticeDays] = useState<number>(7);
   
+  // Break compliance settings state
+  const [laborLawJurisdiction, setLaborLawJurisdiction] = useState<string>("US-FEDERAL");
+  const [autoBreakSchedulingEnabled, setAutoBreakSchedulingEnabled] = useState<boolean>(true);
+  const [breakComplianceAlerts, setBreakComplianceAlerts] = useState<boolean>(true);
+  
+  // Notification preferences state
+  const [enableEmail, setEnableEmail] = useState<boolean>(true);
+  const [enableSms, setEnableSms] = useState<boolean>(false);
+  const [enablePush, setEnablePush] = useState<boolean>(true);
+  const [enableShiftReminders, setEnableShiftReminders] = useState<boolean>(true);
+  const [shiftReminderTiming, setShiftReminderTiming] = useState<string>('1hour');
+  const [shiftReminderCustomMinutes, setShiftReminderCustomMinutes] = useState<number>(60);
+  const [shiftReminderChannels, setShiftReminderChannels] = useState<string[]>(['email', 'push']);
+  const [smsPhoneNumber, setSmsPhoneNumber] = useState<string>('');
+  const [smsVerified, setSmsVerified] = useState<boolean>(false);
+  const [testingSmS, setTestingSms] = useState<boolean>(false);
+  
   // Track original values to detect changes
   const [originalValues, setOriginalValues] = useState<any>({});
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -76,6 +110,208 @@ export default function Settings() {
     queryKey: ['/api/business-categories'],
     enabled: isAuthenticated,
   });
+
+  // Fetch notification preferences
+  const { data: notificationPrefs, isLoading: prefsLoading } = useQuery<any>({
+    queryKey: ['/api/notifications/preferences'],
+    enabled: isAuthenticated,
+  });
+
+  // Fetch SMS status
+  const { data: smsStatus } = useQuery<any>({
+    queryKey: ['/api/notifications/sms-status'],
+    enabled: isAuthenticated,
+  });
+
+  // Fetch reminder options
+  const { data: reminderOptions } = useQuery<any>({
+    queryKey: ['/api/notifications/reminder-options'],
+    enabled: isAuthenticated,
+  });
+
+  // Fetch labor law rules for jurisdiction selector
+  const { data: laborLawRules } = useQuery<any[]>({
+    queryKey: ['/api/breaks/rules'],
+    enabled: isAuthenticated,
+  });
+
+  // Fetch current workspace jurisdiction rules
+  const { data: workspaceBreakRules } = useQuery<any>({
+    queryKey: ['/api/breaks/rules/workspace'],
+    enabled: isAuthenticated,
+  });
+
+  // Update break compliance settings mutation
+  const updateBreakComplianceMutation = useMutation({
+    mutationFn: async (data: { 
+      laborLawJurisdiction: string; 
+      autoBreakSchedulingEnabled: boolean; 
+      breakComplianceAlerts: boolean; 
+    }) => {
+      const response = await fetch('/api/breaks/jurisdiction', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to update break compliance settings');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/workspace'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/breaks/rules/workspace'] });
+      toast({
+        title: "Success",
+        description: "Break compliance settings updated successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update break compliance settings",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update notification preferences mutation
+  const updateNotificationPrefsMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const response = await fetch('/api/notifications/preferences', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+        credentials: 'include',
+      });
+      if (!response.ok) throw new Error('Failed to update notification preferences');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/notifications/preferences'] });
+      toast({
+        title: "Success",
+        description: "Notification preferences updated successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update notification preferences",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Test SMS mutation
+  const testSmsMutation = useMutation({
+    mutationFn: async (phoneNumber: string) => {
+      const response = await fetch('/api/notifications/test-sms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phoneNumber }),
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to send test SMS');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Test SMS sent successfully! Check your phone.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send test SMS",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Verify phone number mutation
+  const verifyPhoneMutation = useMutation({
+    mutationFn: async (phoneNumber: string) => {
+      const response = await fetch('/api/notifications/verify-phone', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phoneNumber }),
+        credentials: 'include',
+      });
+      if (!response.ok) throw new Error('Failed to verify phone number');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/notifications/preferences'] });
+      setSmsVerified(true);
+      toast({
+        title: "Success",
+        description: "Phone number verified successfully",
+      });
+    },
+  });
+
+  // Load notification preferences when data is available
+  useEffect(() => {
+    if (notificationPrefs) {
+      setEnableEmail(notificationPrefs.enableEmail ?? true);
+      setEnableSms(notificationPrefs.enableSms ?? false);
+      setEnablePush(notificationPrefs.enablePush ?? true);
+      setEnableShiftReminders(notificationPrefs.enableShiftReminders ?? true);
+      setShiftReminderTiming(notificationPrefs.shiftReminderTiming ?? '1hour');
+      setShiftReminderCustomMinutes(notificationPrefs.shiftReminderCustomMinutes ?? 60);
+      setShiftReminderChannels(notificationPrefs.shiftReminderChannels ?? ['email', 'push']);
+      setSmsPhoneNumber(notificationPrefs.smsPhoneNumber ?? '');
+      setSmsVerified(notificationPrefs.smsVerified ?? false);
+    }
+  }, [notificationPrefs]);
+
+  // Handle notification preferences save
+  const handleSaveNotificationPrefs = () => {
+    updateNotificationPrefsMutation.mutate({
+      enableEmail,
+      enableSms,
+      enablePush,
+      enableShiftReminders,
+      shiftReminderTiming,
+      shiftReminderCustomMinutes: shiftReminderTiming === 'custom' ? shiftReminderCustomMinutes : null,
+      shiftReminderChannels,
+      smsPhoneNumber: enableSms ? smsPhoneNumber : null,
+    });
+  };
+
+  // Handle test SMS
+  const handleTestSms = () => {
+    if (!smsPhoneNumber) {
+      toast({
+        title: "Error",
+        description: "Please enter a phone number first",
+        variant: "destructive",
+      });
+      return;
+    }
+    setTestingSms(true);
+    testSmsMutation.mutate(smsPhoneNumber, {
+      onSettled: () => setTestingSms(false),
+    });
+  };
+
+  // Toggle channel in array
+  const toggleChannel = (channel: string) => {
+    if (shiftReminderChannels.includes(channel)) {
+      if (shiftReminderChannels.length > 1) {
+        setShiftReminderChannels(shiftReminderChannels.filter(c => c !== channel));
+      }
+    } else {
+      setShiftReminderChannels([...shiftReminderChannels, channel]);
+    }
+  };
 
   // Update workspace mutation
   const updateWorkspaceMutation = useMutation({
@@ -248,6 +484,10 @@ export default function Settings() {
         scheduleGenerationInterval: ws.scheduleGenerationInterval || "weekly",
         scheduleCustomDays: ws.scheduleCustomDays || undefined,
         scheduleAdvanceNoticeDays: ws.scheduleAdvanceNoticeDays || 7,
+        // Break compliance settings
+        laborLawJurisdiction: ws.laborLawJurisdiction || "US-FEDERAL",
+        autoBreakSchedulingEnabled: ws.autoBreakSchedulingEnabled ?? true,
+        breakComplianceAlerts: ws.breakComplianceAlerts ?? true,
       };
       setSelectedCategory(values.businessCategory);
       setWorkspaceName(values.name);
@@ -263,6 +503,11 @@ export default function Settings() {
       setInvoiceCustomDays(values.invoiceCustomDays);
       setAutoPayrollEnabled(values.autoPayrollEnabled);
       setPayrollSchedule(values.payrollSchedule);
+      
+      // Break compliance settings
+      setLaborLawJurisdiction(values.laborLawJurisdiction);
+      setAutoBreakSchedulingEnabled(values.autoBreakSchedulingEnabled);
+      setBreakComplianceAlerts(values.breakComplianceAlerts);
       setPayrollCustomDays(values.payrollCustomDays);
       setAutoSchedulingEnabled(values.autoSchedulingEnabled);
       setScheduleGenerationInterval(values.scheduleGenerationInterval);
@@ -355,6 +600,14 @@ export default function Settings() {
       scheduleCustomDays: scheduleGenerationInterval === 'custom' ? scheduleCustomDays : undefined,
       scheduleAdvanceNoticeDays,
       scheduleGenerationDay: 0,
+    });
+  };
+
+  const handleSaveBreakCompliance = async () => {
+    await updateBreakComplianceMutation.mutateAsync({
+      laborLawJurisdiction,
+      autoBreakSchedulingEnabled,
+      breakComplianceAlerts,
     });
   };
 
@@ -616,51 +869,219 @@ export default function Settings() {
             <div className="flex items-center gap-3">
               <Bell className="h-5 w-5 text-primary" />
               <div>
-                <CardTitle>Notifications</CardTitle>
-                <CardDescription>Configure email and SMS alerts</CardDescription>
+                <CardTitle>Notification Preferences</CardTitle>
+                <CardDescription>Configure how you receive notifications via email, SMS, and in-app</CardDescription>
               </div>
             </div>
           </CardHeader>
-          <CardContent className="space-y-4 mobile-compact-p">
-            <div className="flex items-center justify-between mobile-flex-col mobile-gap-3">
-              <div>
-                <p className="text-sm font-medium">Invoice Reminders</p>
-                <p className="text-xs text-muted-foreground">
-                  Send automatic reminders for overdue invoices
-                </p>
+          <CardContent className="space-y-6 mobile-compact-p">
+            {/* Notification Channels */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-semibold">Notification Channels</h3>
+              <div className="flex items-center justify-between mobile-flex-col mobile-gap-3">
+                <div className="flex items-center gap-2">
+                  <Mail className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">Email Notifications</p>
+                    <p className="text-xs text-muted-foreground">Receive notifications via email</p>
+                  </div>
+                </div>
+                <Switch 
+                  checked={enableEmail} 
+                  onCheckedChange={setEnableEmail}
+                  data-testid="switch-enable-email"
+                />
               </div>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => toast({ 
-                  title: "Success", 
-                  description: "Invoice reminders enabled successfully" 
-                })}
-                data-testid="button-toggle-reminders"
-              >
-                Enable
-              </Button>
+              <div className="flex items-center justify-between mobile-flex-col mobile-gap-3">
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">In-App Notifications</p>
+                    <p className="text-xs text-muted-foreground">Receive push notifications in the app</p>
+                  </div>
+                </div>
+                <Switch 
+                  checked={enablePush} 
+                  onCheckedChange={setEnablePush}
+                  data-testid="switch-enable-push"
+                />
+              </div>
+              <div className="flex items-center justify-between mobile-flex-col mobile-gap-3">
+                <div className="flex items-center gap-2">
+                  <Phone className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">SMS Notifications</p>
+                    <p className="text-xs text-muted-foreground">
+                      Receive text messages for important alerts
+                      {!smsStatus?.configured && (
+                        <span className="ml-2 text-yellow-600">(Twilio not configured)</span>
+                      )}
+                    </p>
+                  </div>
+                </div>
+                <Switch 
+                  checked={enableSms} 
+                  onCheckedChange={setEnableSms}
+                  disabled={!smsStatus?.configured}
+                  data-testid="switch-enable-sms"
+                />
+              </div>
+              
+              {/* SMS Phone Number */}
+              {enableSms && smsStatus?.configured && (
+                <div className="space-y-2 pl-6">
+                  <Label htmlFor="smsPhoneNumber">Phone Number for SMS</Label>
+                  <div className="flex gap-2">
+                    <Input 
+                      id="smsPhoneNumber"
+                      type="tel"
+                      placeholder="+1 (555) 123-4567"
+                      value={smsPhoneNumber}
+                      onChange={(e) => setSmsPhoneNumber(e.target.value)}
+                      className="flex-1"
+                      data-testid="input-sms-phone"
+                    />
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={handleTestSms}
+                      disabled={testingSmS || !smsPhoneNumber}
+                      data-testid="button-test-sms"
+                    >
+                      {testingSmS ? 'Sending...' : 'Test SMS'}
+                    </Button>
+                  </div>
+                  {smsVerified ? (
+                    <div className="flex items-center gap-1 text-xs text-green-600">
+                      <Check className="h-3 w-3" /> Phone verified
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      Send a test message to verify your phone number
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
+
             <Separator />
-            <div className="flex items-center justify-between mobile-flex-col mobile-gap-3">
-              <div>
-                <p className="text-sm font-medium">Shift Notifications</p>
-                <p className="text-xs text-muted-foreground">
-                  Notify employees of new shifts via email
-                </p>
+            
+            {/* Shift Reminders */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between mobile-flex-col mobile-gap-3">
+                <div>
+                  <h3 className="text-sm font-semibold">Shift Reminders</h3>
+                  <p className="text-xs text-muted-foreground">Get reminded before your shifts start</p>
+                </div>
+                <Switch 
+                  checked={enableShiftReminders} 
+                  onCheckedChange={setEnableShiftReminders}
+                  data-testid="switch-enable-shift-reminders"
+                />
               </div>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => toast({ 
-                  title: "Success", 
-                  description: "Shift notifications enabled successfully" 
-                })}
-                data-testid="button-toggle-shift-notifications"
-              >
-                Enable
-              </Button>
+              
+              {enableShiftReminders && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="shiftReminderTiming">Reminder Timing</Label>
+                    <Select 
+                      value={shiftReminderTiming} 
+                      onValueChange={setShiftReminderTiming}
+                    >
+                      <SelectTrigger id="shiftReminderTiming" data-testid="select-reminder-timing">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {reminderOptions?.timingOptions?.map((option: any) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        )) || (
+                          <>
+                            <SelectItem value="15min">15 minutes before</SelectItem>
+                            <SelectItem value="30min">30 minutes before</SelectItem>
+                            <SelectItem value="1hour">1 hour before</SelectItem>
+                            <SelectItem value="2hours">2 hours before</SelectItem>
+                            <SelectItem value="4hours">4 hours before</SelectItem>
+                            <SelectItem value="12hours">12 hours before</SelectItem>
+                            <SelectItem value="24hours">24 hours before</SelectItem>
+                            <SelectItem value="48hours">48 hours before</SelectItem>
+                            <SelectItem value="custom">Custom</SelectItem>
+                          </>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  {shiftReminderTiming === 'custom' && (
+                    <div className="space-y-2">
+                      <Label htmlFor="customMinutes">Custom Minutes Before</Label>
+                      <Input 
+                        id="customMinutes"
+                        type="number"
+                        min={5}
+                        max={10080}
+                        value={shiftReminderCustomMinutes}
+                        onChange={(e) => setShiftReminderCustomMinutes(parseInt(e.target.value) || 60)}
+                        data-testid="input-custom-minutes"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Enter minutes (5 min to 7 days)
+                      </p>
+                    </div>
+                  )}
+                  
+                  <div className="space-y-2">
+                    <Label>Reminder Channels</Label>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        variant={shiftReminderChannels.includes('push') ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => toggleChannel('push')}
+                        disabled={!enablePush}
+                        data-testid="button-channel-push"
+                      >
+                        <MessageSquare className="h-4 w-4 mr-1" />
+                        In-App
+                      </Button>
+                      <Button
+                        variant={shiftReminderChannels.includes('email') ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => toggleChannel('email')}
+                        disabled={!enableEmail}
+                        data-testid="button-channel-email"
+                      >
+                        <Mail className="h-4 w-4 mr-1" />
+                        Email
+                      </Button>
+                      <Button
+                        variant={shiftReminderChannels.includes('sms') ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => toggleChannel('sms')}
+                        disabled={!enableSms || !smsStatus?.configured}
+                        data-testid="button-channel-sms"
+                      >
+                        <Phone className="h-4 w-4 mr-1" />
+                        SMS
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Select which channels to use for shift reminders
+                    </p>
+                  </div>
+                </>
+              )}
             </div>
+
+            <Separator />
+            
+            <Button 
+              onClick={handleSaveNotificationPrefs}
+              disabled={updateNotificationPrefsMutation.isPending}
+              data-testid="button-save-notifications"
+            >
+              {updateNotificationPrefsMutation.isPending ? 'Saving...' : 'Save Notification Settings'}
+            </Button>
           </CardContent>
         </Card>
 
@@ -697,6 +1118,9 @@ export default function Settings() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Calendar Integration */}
+        <CalendarIntegrationCard />
 
         {/* Automation Settings */}
         <Card data-testid="card-automation-settings">
@@ -904,6 +1328,160 @@ export default function Settings() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Break Compliance Settings */}
+        <Card data-testid="card-break-compliance">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <Scale className="h-5 w-5 text-primary" />
+              <div>
+                <CardTitle>Break Compliance Settings</CardTitle>
+                <CardDescription>Configure automatic break scheduling based on local labor laws</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-6 mobile-compact-p">
+            {/* Jurisdiction Selector */}
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="laborLawJurisdiction">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-muted-foreground" />
+                    Labor Law Jurisdiction
+                  </div>
+                </Label>
+                <Select 
+                  value={laborLawJurisdiction} 
+                  onValueChange={setLaborLawJurisdiction}
+                  disabled={updateBreakComplianceMutation.isPending}
+                >
+                  <SelectTrigger id="laborLawJurisdiction" data-testid="select-jurisdiction">
+                    <SelectValue placeholder="Select jurisdiction" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="US-FEDERAL">
+                      <div className="flex flex-col">
+                        <span className="font-medium">US Federal (FLSA)</span>
+                        <span className="text-xs text-muted-foreground">Federal minimum standards</span>
+                      </div>
+                    </SelectItem>
+                    {laborLawRules?.filter((rule: any) => rule.jurisdiction !== 'US-FEDERAL').map((rule: any) => (
+                      <SelectItem key={rule.jurisdiction} value={rule.jurisdiction}>
+                        <div className="flex flex-col">
+                          <span className="font-medium">{rule.jurisdictionName}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {rule.mealBreakEnabled ? `${rule.mealBreakDurationMinutes} min meal break` : 'No meal break required'}
+                            {rule.restBreakEnabled ? `, ${rule.restBreakDurationMinutes} min rest break` : ''}
+                          </span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Select the state or jurisdiction whose labor laws apply to your workplace
+                </p>
+              </div>
+
+              {/* Current Jurisdiction Rules Display */}
+              {workspaceBreakRules && (
+                <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+                  <h4 className="text-sm font-semibold flex items-center gap-2">
+                    <Coffee className="h-4 w-4" />
+                    Current Break Rules: {workspaceBreakRules.jurisdictionName}
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                    {workspaceBreakRules.mealBreakEnabled && (
+                      <div className="flex items-start gap-2">
+                        <Badge variant="secondary" className="text-xs">Meal</Badge>
+                        <span className="text-muted-foreground">
+                          {workspaceBreakRules.mealBreakDurationMinutes} min 
+                          {workspaceBreakRules.mealBreakIsPaid ? ' (paid)' : ' (unpaid)'}
+                          {' '}for {workspaceBreakRules.mealBreakMinShiftHours}+ hour shifts
+                        </span>
+                      </div>
+                    )}
+                    {workspaceBreakRules.restBreakEnabled && (
+                      <div className="flex items-start gap-2">
+                        <Badge variant="outline" className="text-xs">Rest</Badge>
+                        <span className="text-muted-foreground">
+                          {workspaceBreakRules.restBreakDurationMinutes} min 
+                          {workspaceBreakRules.restBreakIsPaid ? ' (paid)' : ' (unpaid)'}
+                          {' '}every {workspaceBreakRules.restBreakFrequencyHours} hours
+                        </span>
+                      </div>
+                    )}
+                    {!workspaceBreakRules.mealBreakEnabled && !workspaceBreakRules.restBreakEnabled && (
+                      <div className="col-span-2 text-muted-foreground">
+                        No mandatory break requirements for adult employees in this jurisdiction.
+                        {workspaceBreakRules.notes && <p className="mt-1 text-xs">{workspaceBreakRules.notes}</p>}
+                      </div>
+                    )}
+                  </div>
+                  {workspaceBreakRules.legalReference && (
+                    <p className="text-xs text-muted-foreground border-t pt-2 mt-2">
+                      Reference: {workspaceBreakRules.legalReference}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <Separator />
+
+            {/* Auto Break Scheduling */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between mobile-flex-col mobile-gap-3">
+                <div className="flex items-center gap-2">
+                  <Coffee className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">Automatic Break Scheduling</p>
+                    <p className="text-xs text-muted-foreground">
+                      Automatically add required breaks to shifts based on jurisdiction rules
+                    </p>
+                  </div>
+                </div>
+                <Switch 
+                  checked={autoBreakSchedulingEnabled} 
+                  onCheckedChange={setAutoBreakSchedulingEnabled}
+                  disabled={updateBreakComplianceMutation.isPending}
+                  data-testid="switch-auto-break-scheduling"
+                />
+              </div>
+            </div>
+
+            {/* Compliance Alerts */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between mobile-flex-col mobile-gap-3">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">Break Compliance Alerts</p>
+                    <p className="text-xs text-muted-foreground">
+                      Show warnings when shifts don't have required breaks scheduled
+                    </p>
+                  </div>
+                </div>
+                <Switch 
+                  checked={breakComplianceAlerts} 
+                  onCheckedChange={setBreakComplianceAlerts}
+                  disabled={updateBreakComplianceMutation.isPending}
+                  data-testid="switch-break-compliance-alerts"
+                />
+              </div>
+            </div>
+
+            <Separator />
+
+            <Button 
+              onClick={handleSaveBreakCompliance}
+              disabled={updateBreakComplianceMutation.isPending}
+              data-testid="button-save-break-compliance"
+            >
+              {updateBreakComplianceMutation.isPending ? 'Saving...' : 'Save Break Compliance Settings'}
+            </Button>
+          </CardContent>
+        </Card>
       </div>
   );
 
@@ -919,5 +1497,421 @@ export default function Settings() {
     <WorkspaceLayout maxWidth="7xl">
       {pageContent}
     </WorkspaceLayout>
+  );
+}
+
+function CalendarIntegrationCard() {
+  const { toast } = useToast();
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useState<HTMLInputElement | null>(null);
+
+  const { data: calendarStatus } = useQuery<{
+    enabled: boolean;
+    importEnabled: boolean;
+    googleCalendarEnabled: boolean;
+    subscriptionCount: number;
+    features: {
+      tokenBasedSubscriptions: boolean;
+      icalImport: boolean;
+      conflictDetection: boolean;
+      aiIntegration: boolean;
+    };
+  }>({
+    queryKey: ['/api/calendar/status'],
+  });
+
+  const { data: subscriptions, refetch: refetchSubscriptions } = useQuery<{
+    success: boolean;
+    subscriptions: Array<{
+      id: string;
+      name: string;
+      subscriptionType: string;
+      token: string;
+      lastAccessedAt: string | null;
+      accessCount: number;
+      createdAt: string;
+      urls: {
+        icsUrl: string;
+        webcalUrl: string;
+        googleCalendarSubscribeUrl: string;
+        outlookSubscribeUrl: string;
+        appleCalendarUrl: string;
+        refreshInterval: number;
+      };
+    }>;
+  }>({
+    queryKey: ['/api/calendar/subscriptions'],
+    enabled: !!calendarStatus?.enabled,
+  });
+
+  const createSubscriptionMutation = useMutation({
+    mutationFn: async (data: { name: string }) => {
+      return apiRequest('/api/calendar/subscriptions', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/calendar/subscriptions'] });
+      toast({
+        title: "Success",
+        description: "Calendar subscription created successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create subscription",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteSubscriptionMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest(`/api/calendar/subscriptions/${id}`, {
+        method: 'DELETE',
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/calendar/subscriptions'] });
+      toast({
+        title: "Success",
+        description: "Subscription revoked successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to revoke subscription",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const regenerateTokenMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest(`/api/calendar/subscriptions/${id}/regenerate`, {
+        method: 'POST',
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/calendar/subscriptions'] });
+      toast({
+        title: "Success",
+        description: "Subscription URL regenerated",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to regenerate token",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleExportCalendar = async () => {
+    try {
+      const response = await fetch('/api/calendar/export/ical', {
+        credentials: 'include',
+      });
+      
+      if (!response.ok) throw new Error('Failed to export calendar');
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `schedule-${new Date().toISOString().split('T')[0]}.ics`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      toast({
+        title: "Success",
+        description: "Calendar exported successfully",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to export calendar",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleImportCalendar = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setImporting(true);
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('conflictResolution', 'skip');
+
+    try {
+      const response = await fetch('/api/calendar/import/ical', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) throw new Error(data.error || 'Failed to import calendar');
+
+      toast({
+        title: data.success ? "Import Complete" : "Import Failed",
+        description: data.message || `Imported ${data.result?.eventsImported || 0} events`,
+        variant: data.success ? "default" : "destructive",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to import calendar",
+        variant: "destructive",
+      });
+    } finally {
+      setImporting(false);
+      if (event.target) {
+        event.target.value = '';
+      }
+    }
+  };
+
+  const copyToClipboard = async (text: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast({
+        title: "Copied",
+        description: `${label} copied to clipboard`,
+      });
+    } catch {
+      toast({
+        title: "Error",
+        description: "Failed to copy to clipboard",
+        variant: "destructive",
+      });
+    }
+  };
+
+  if (!calendarStatus?.enabled) {
+    return (
+      <Card data-testid="card-calendar-integration">
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <Calendar className="h-5 w-5 text-muted-foreground" />
+            <div>
+              <CardTitle className="text-muted-foreground">Calendar Integration</CardTitle>
+              <CardDescription>Calendar export/import is not enabled for this workspace</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+      </Card>
+    );
+  }
+
+  return (
+    <Card data-testid="card-calendar-integration">
+      <CardHeader>
+        <div className="flex items-center gap-3">
+          <Calendar className="h-5 w-5 text-primary" />
+          <div>
+            <CardTitle>Calendar Integration</CardTitle>
+            <CardDescription>Export your schedule to external calendar apps or import events</CardDescription>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-6 mobile-compact-p">
+        {/* Export Section */}
+        <div className="space-y-4">
+          <h3 className="text-sm font-semibold flex items-center gap-2">
+            <Download className="h-4 w-4" />
+            Export Calendar
+          </h3>
+          <p className="text-xs text-muted-foreground">
+            Download your schedule as an iCal file to import into Google Calendar, Apple Calendar, or Outlook.
+          </p>
+          <Button
+            onClick={handleExportCalendar}
+            variant="outline"
+            className="w-full sm:w-auto"
+            data-testid="button-export-calendar"
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Export Schedule (.ics)
+          </Button>
+        </div>
+
+        <Separator />
+
+        {/* Subscription URLs Section */}
+        <div className="space-y-4">
+          <h3 className="text-sm font-semibold flex items-center gap-2">
+            <Link2 className="h-4 w-4" />
+            Calendar Subscription
+          </h3>
+          <p className="text-xs text-muted-foreground">
+            Subscribe to your schedule in external calendar apps. Changes will automatically sync.
+          </p>
+
+          {subscriptions?.subscriptions && subscriptions.subscriptions.length > 0 ? (
+            <div className="space-y-3">
+              {subscriptions.subscriptions.map((sub) => (
+                <div 
+                  key={sub.id} 
+                  className="p-3 rounded-lg border bg-muted/30 space-y-2"
+                  data-testid={`subscription-${sub.id}`}
+                >
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <span className="font-medium text-sm">{sub.name}</span>
+                    <div className="flex items-center gap-1">
+                      <Badge variant="secondary" className="text-xs">
+                        {sub.accessCount} syncs
+                      </Badge>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => regenerateTokenMutation.mutate(sub.id)}
+                        disabled={regenerateTokenMutation.isPending}
+                        data-testid={`button-regenerate-${sub.id}`}
+                      >
+                        <RefreshCw className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => deleteSubscriptionMutation.mutate(sub.id)}
+                        disabled={deleteSubscriptionMutation.isPending}
+                        data-testid={`button-delete-${sub.id}`}
+                      >
+                        <Trash2 className="h-3 w-3 text-destructive" />
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => copyToClipboard(sub.urls.icsUrl, 'iCal URL')}
+                      data-testid={`button-copy-ical-${sub.id}`}
+                    >
+                      <Copy className="h-3 w-3 mr-1" />
+                      Copy URL
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => window.open(sub.urls.googleCalendarSubscribeUrl, '_blank')}
+                      data-testid={`button-google-${sub.id}`}
+                    >
+                      <ExternalLink className="h-3 w-3 mr-1" />
+                      Google Calendar
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => window.open(sub.urls.outlookSubscribeUrl, '_blank')}
+                      data-testid={`button-outlook-${sub.id}`}
+                    >
+                      <ExternalLink className="h-3 w-3 mr-1" />
+                      Outlook
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => window.open(sub.urls.appleCalendarUrl, '_blank')}
+                      data-testid={`button-apple-${sub.id}`}
+                    >
+                      <ExternalLink className="h-3 w-3 mr-1" />
+                      Apple Calendar
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-4 text-muted-foreground text-sm">
+              No active subscriptions. Create one to sync with external calendars.
+            </div>
+          )}
+
+          <Button
+            onClick={() => createSubscriptionMutation.mutate({ name: 'My Work Schedule' })}
+            disabled={createSubscriptionMutation.isPending}
+            variant="outline"
+            className="w-full sm:w-auto"
+            data-testid="button-create-subscription"
+          >
+            <Link2 className="h-4 w-4 mr-2" />
+            {createSubscriptionMutation.isPending ? 'Creating...' : 'Create Subscription URL'}
+          </Button>
+        </div>
+
+        {calendarStatus?.importEnabled && (
+          <>
+            <Separator />
+
+            {/* Import Section */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-semibold flex items-center gap-2">
+                <Upload className="h-4 w-4" />
+                Import Calendar
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Import events from an iCal file (.ics) to create shifts. Conflicts with existing shifts will be skipped.
+              </p>
+              <div className="flex items-center gap-2">
+                <input
+                  type="file"
+                  accept=".ics,.ical,text/calendar"
+                  onChange={handleImportCalendar}
+                  disabled={importing}
+                  className="hidden"
+                  id="calendar-import-input"
+                  data-testid="input-import-file"
+                />
+                <Button
+                  variant="outline"
+                  disabled={importing}
+                  onClick={() => document.getElementById('calendar-import-input')?.click()}
+                  className="w-full sm:w-auto"
+                  data-testid="button-import-calendar"
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  {importing ? 'Importing...' : 'Import from File (.ics)'}
+                </Button>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Features Info */}
+        <div className="pt-2">
+          <div className="flex flex-wrap gap-2">
+            {calendarStatus?.features?.tokenBasedSubscriptions && (
+              <Badge variant="secondary" className="text-xs">
+                <Check className="h-3 w-3 mr-1" />
+                Secure Subscriptions
+              </Badge>
+            )}
+            {calendarStatus?.features?.conflictDetection && (
+              <Badge variant="secondary" className="text-xs">
+                <Check className="h-3 w-3 mr-1" />
+                Conflict Detection
+              </Badge>
+            )}
+            {calendarStatus?.features?.aiIntegration && (
+              <Badge variant="secondary" className="text-xs">
+                <Check className="h-3 w-3 mr-1" />
+                AI Sync Tracking
+              </Badge>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

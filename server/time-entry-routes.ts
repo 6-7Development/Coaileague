@@ -4,9 +4,10 @@
 import { Router } from 'express';
 import { db } from "./db";
 import { gamificationService } from "./services/gamification/gamificationService";
+import { aiBrainService } from "./services/ai-brain/aiBrainService";
 import { isFeatureEnabled } from '@shared/platformConfig';
 import { eq, and, isNull, desc, gte, lte, sql } from "drizzle-orm";
-import { startOfWeek, endOfWeek, subDays } from "date-fns";
+import { startOfWeek, endOfWeek, subDays, differenceInMinutes } from "date-fns";
 import './types';
 import { 
   timeEntries,
@@ -266,6 +267,29 @@ timeEntryRouter.post('/clock-in', requireAuth, mutationLimiter, async (req: Auth
       }
     }
 
+    // AI Brain: Emit clock-in telemetry for anomaly detection
+    try {
+      await aiBrainService.enqueueJob({
+        workspaceId: user.currentWorkspaceId,
+        userId: user.id,
+        skill: 'time_anomaly_detection',
+        input: {
+          action: 'clock_in',
+          employeeId: employee.id,
+          employeeName: `${employee.firstName} ${employee.lastName}`,
+          clockInTime: clockInTime.toISOString(),
+          latitude: latitude || null,
+          longitude: longitude || null,
+          dayOfWeek: clockInTime.getDay(),
+          hourOfDay: clockInTime.getHours(),
+          shiftId: shiftId || null,
+        },
+        priority: 'low',
+      });
+    } catch (aiError) {
+      console.error('[TimeTracking] AI Brain telemetry failed (non-blocking):', aiError);
+    }
+
     res.status(201).json({ 
       message: 'Clocked in successfully',
       timeEntry: newEntry 
@@ -375,6 +399,38 @@ timeEntryRouter.post('/clock-out', requireAuth, mutationLimiter, async (req: Aut
       ipAddress: req.ip,
       userAgent: req.get('user-agent')
     });
+
+    // AI Brain: Emit clock-out telemetry for anomaly detection (overtime alerts)
+    try {
+      const shiftDurationMinutes = differenceInMinutes(clockOutTime, new Date(activeEntry.clockIn));
+      const isOvertime = totalHours > 8;
+      const isExtendedShift = totalHours > 10;
+      
+      await aiBrainService.enqueueJob({
+        workspaceId: user.currentWorkspaceId,
+        userId: user.id,
+        skill: 'time_anomaly_detection',
+        input: {
+          action: 'clock_out',
+          employeeId: employee.id,
+          employeeName: `${employee.firstName} ${employee.lastName}`,
+          timeEntryId: activeEntry.id,
+          clockInTime: new Date(activeEntry.clockIn).toISOString(),
+          clockOutTime: clockOutTime.toISOString(),
+          totalHours,
+          shiftDurationMinutes,
+          isOvertime,
+          isExtendedShift,
+          latitude: latitude || null,
+          longitude: longitude || null,
+          dayOfWeek: clockOutTime.getDay(),
+          hourOfDay: clockOutTime.getHours(),
+        },
+        priority: isExtendedShift ? 'high' : (isOvertime ? 'normal' : 'low'),
+      });
+    } catch (aiError) {
+      console.error('[TimeTracking] AI Brain telemetry failed (non-blocking):', aiError);
+    }
 
     res.json({ 
       message: 'Clocked out successfully',

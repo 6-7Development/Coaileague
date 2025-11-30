@@ -1,5 +1,5 @@
 /**
- * Advanced Scheduling API Routes
+ * Advanced Scheduling API Routes - Phase 2B
  * Recurring shifts, shift swapping, and schedule management
  */
 
@@ -8,19 +8,31 @@ import { requireAuth } from '../auth';
 import { requireWorkspaceRole, requireManager } from '../rbac';
 import { 
   generateRecurringShifts,
+  createRecurringPattern,
+  getRecurringPatterns,
+  getRecurringPatternById,
+  deleteRecurringPattern,
+  updateRecurringPattern,
   requestShiftSwap,
-  respondToShiftSwap,
-  getSwapRequests,
+  approveShiftSwap,
+  rejectShiftSwap,
   cancelSwapRequest,
+  getSwapRequests,
+  getSwapRequestById,
   getAvailableEmployeesForSwap,
+  getAISuggestedSwapEmployees,
+  updateSwapRequestWithAISuggestions,
+  duplicateShift,
+  duplicateWeekSchedule,
   copyWeekSchedule,
+  detectRecurringConflicts,
   RecurrencePattern,
   DayOfWeek
 } from '../services/advancedSchedulingService';
 import { isFeatureEnabled } from '@shared/platformConfig';
 import '../types';
 import { db } from '../db';
-import { employees } from '@shared/schema';
+import { employees, shifts } from '@shared/schema';
 import { eq, and } from 'drizzle-orm';
 
 export const advancedSchedulingRouter = Router();
@@ -35,6 +47,277 @@ async function getEmployeeId(userId: string, workspaceId: string): Promise<strin
   return employee?.id || null;
 }
 
+// ============================================================================
+// RECURRING SHIFT PATTERNS
+// ============================================================================
+
+advancedSchedulingRouter.post('/recurring', requireAuth, requireWorkspaceRole(['org_owner', 'org_admin', 'manager']), async (req: Request, res: Response) => {
+  try {
+    const user = req.user;
+    const workspaceId = user?.currentWorkspaceId;
+    
+    if (!workspaceId) {
+      return res.status(400).json({ error: 'No workspace selected' });
+    }
+
+    const {
+      employeeId,
+      clientId,
+      title,
+      description,
+      category,
+      startTimeOfDay,
+      endTimeOfDay,
+      daysOfWeek,
+      recurrencePattern,
+      startDate,
+      endDate,
+      skipDates,
+      billableToClient,
+      hourlyRateOverride,
+      generateShifts,
+    } = req.body;
+
+    if (!title || !startTimeOfDay || !endTimeOfDay || !daysOfWeek || !startDate) {
+      return res.status(400).json({ error: 'Missing required fields: title, startTimeOfDay, endTimeOfDay, daysOfWeek, startDate' });
+    }
+
+    const pattern = await createRecurringPattern({
+      workspaceId,
+      employeeId: employeeId || null,
+      clientId: clientId || null,
+      title,
+      description: description || null,
+      category: category || 'general',
+      startTimeOfDay,
+      endTimeOfDay,
+      daysOfWeek: daysOfWeek as DayOfWeek[],
+      recurrencePattern: (recurrencePattern as RecurrencePattern) || 'weekly',
+      startDate: new Date(startDate),
+      endDate: endDate ? new Date(endDate) : null,
+      skipDates: skipDates ? skipDates.map((d: string) => new Date(d)) : null,
+      billableToClient: billableToClient ?? true,
+      hourlyRateOverride: hourlyRateOverride ? hourlyRateOverride.toString() : null,
+      createdBy: user?.id,
+      isActive: true,
+    });
+
+    let generatedShifts = null;
+    if (generateShifts !== false) {
+      const generateEndDate = endDate ? new Date(endDate) : new Date();
+      if (!endDate) {
+        generateEndDate.setMonth(generateEndDate.getMonth() + 1);
+      }
+      
+      generatedShifts = await generateRecurringShifts({
+        template: {
+          workspaceId,
+          employeeId,
+          clientId,
+          title,
+          description,
+          category,
+          startTimeOfDay,
+          endTimeOfDay,
+          daysOfWeek: daysOfWeek as DayOfWeek[],
+          recurrencePattern: (recurrencePattern as RecurrencePattern) || 'weekly',
+          billableToClient,
+          hourlyRateOverride: hourlyRateOverride ? Number(hourlyRateOverride) : undefined,
+        },
+        startDate: new Date(startDate),
+        endDate: generateEndDate,
+        skipDates: skipDates ? skipDates.map((d: string) => new Date(d)) : undefined,
+        patternId: pattern.id,
+      });
+    }
+
+    res.json({
+      success: true,
+      pattern,
+      generatedShifts,
+    });
+  } catch (error: any) {
+    console.error('[AdvancedScheduling] Create recurring pattern error:', error);
+    res.status(500).json({ error: error.message || 'Failed to create recurring pattern' });
+  }
+});
+
+advancedSchedulingRouter.get('/recurring', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const user = req.user;
+    const workspaceId = user?.currentWorkspaceId;
+    
+    if (!workspaceId) {
+      return res.status(400).json({ error: 'No workspace selected' });
+    }
+
+    const activeOnly = req.query.activeOnly !== 'false';
+    const employeeId = req.query.employeeId as string | undefined;
+
+    const patterns = await getRecurringPatterns(workspaceId, { activeOnly, employeeId });
+
+    res.json({
+      success: true,
+      patterns,
+    });
+  } catch (error: any) {
+    console.error('[AdvancedScheduling] Get recurring patterns error:', error);
+    res.status(500).json({ error: error.message || 'Failed to get patterns' });
+  }
+});
+
+advancedSchedulingRouter.get('/recurring/:patternId', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const user = req.user;
+    const workspaceId = user?.currentWorkspaceId;
+    
+    if (!workspaceId) {
+      return res.status(400).json({ error: 'No workspace selected' });
+    }
+
+    const { patternId } = req.params;
+    const pattern = await getRecurringPatternById(patternId, workspaceId);
+
+    if (!pattern) {
+      return res.status(404).json({ error: 'Pattern not found' });
+    }
+
+    res.json({
+      success: true,
+      pattern,
+    });
+  } catch (error: any) {
+    console.error('[AdvancedScheduling] Get recurring pattern error:', error);
+    res.status(500).json({ error: error.message || 'Failed to get pattern' });
+  }
+});
+
+advancedSchedulingRouter.patch('/recurring/:patternId', requireAuth, requireWorkspaceRole(['org_owner', 'org_admin', 'manager']), async (req: Request, res: Response) => {
+  try {
+    const user = req.user;
+    const workspaceId = user?.currentWorkspaceId;
+    
+    if (!workspaceId) {
+      return res.status(400).json({ error: 'No workspace selected' });
+    }
+
+    const { patternId } = req.params;
+    const updates = req.body;
+
+    const pattern = await updateRecurringPattern(patternId, workspaceId, updates);
+
+    res.json({
+      success: true,
+      pattern,
+    });
+  } catch (error: any) {
+    console.error('[AdvancedScheduling] Update recurring pattern error:', error);
+    res.status(500).json({ error: error.message || 'Failed to update pattern' });
+  }
+});
+
+advancedSchedulingRouter.delete('/recurring/:patternId', requireAuth, requireWorkspaceRole(['org_owner', 'org_admin', 'manager']), async (req: Request, res: Response) => {
+  try {
+    const user = req.user;
+    const workspaceId = user?.currentWorkspaceId;
+    
+    if (!workspaceId) {
+      return res.status(400).json({ error: 'No workspace selected' });
+    }
+
+    const { patternId } = req.params;
+    const deleteFutureShifts = req.query.deleteFutureShifts === 'true';
+
+    const result = await deleteRecurringPattern(patternId, workspaceId, { deleteFutureShifts });
+
+    res.json({
+      success: true,
+      ...result,
+    });
+  } catch (error: any) {
+    console.error('[AdvancedScheduling] Delete recurring pattern error:', error);
+    res.status(500).json({ error: error.message || 'Failed to delete pattern' });
+  }
+});
+
+advancedSchedulingRouter.post('/recurring/:patternId/generate', requireAuth, requireWorkspaceRole(['org_owner', 'org_admin', 'manager']), async (req: Request, res: Response) => {
+  try {
+    const user = req.user;
+    const workspaceId = user?.currentWorkspaceId;
+    
+    if (!workspaceId) {
+      return res.status(400).json({ error: 'No workspace selected' });
+    }
+
+    const { patternId } = req.params;
+    const { startDate, endDate, skipDates } = req.body;
+
+    const pattern = await getRecurringPatternById(patternId, workspaceId);
+    if (!pattern) {
+      return res.status(404).json({ error: 'Pattern not found' });
+    }
+
+    const result = await generateRecurringShifts({
+      template: {
+        workspaceId,
+        employeeId: pattern.employeeId || undefined,
+        clientId: pattern.clientId || undefined,
+        title: pattern.title,
+        description: pattern.description || undefined,
+        category: pattern.category || 'general',
+        startTimeOfDay: pattern.startTimeOfDay,
+        endTimeOfDay: pattern.endTimeOfDay,
+        daysOfWeek: pattern.daysOfWeek as DayOfWeek[],
+        recurrencePattern: pattern.recurrencePattern as RecurrencePattern,
+        billableToClient: pattern.billableToClient ?? true,
+        hourlyRateOverride: pattern.hourlyRateOverride ? Number(pattern.hourlyRateOverride) : undefined,
+      },
+      startDate: new Date(startDate || pattern.startDate),
+      endDate: new Date(endDate || pattern.endDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)),
+      skipDates: skipDates ? skipDates.map((d: string) => new Date(d)) : undefined,
+      patternId,
+    });
+
+    res.json({
+      success: true,
+      ...result,
+    });
+  } catch (error: any) {
+    console.error('[AdvancedScheduling] Generate shifts from pattern error:', error);
+    res.status(500).json({ error: error.message || 'Failed to generate shifts' });
+  }
+});
+
+advancedSchedulingRouter.get('/recurring/:patternId/conflicts', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const user = req.user;
+    const workspaceId = user?.currentWorkspaceId;
+    
+    if (!workspaceId) {
+      return res.status(400).json({ error: 'No workspace selected' });
+    }
+
+    const { patternId } = req.params;
+    const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
+    const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
+
+    const conflicts = await detectRecurringConflicts(
+      workspaceId,
+      patternId,
+      startDate && endDate ? { start: startDate, end: endDate } : undefined
+    );
+
+    res.json({
+      success: true,
+      conflicts,
+    });
+  } catch (error: any) {
+    console.error('[AdvancedScheduling] Detect conflicts error:', error);
+    res.status(500).json({ error: error.message || 'Failed to detect conflicts' });
+  }
+});
+
+// Legacy route for backwards compatibility
 advancedSchedulingRouter.post('/recurring/generate', requireAuth, requireWorkspaceRole(['org_owner', 'org_admin']), async (req: Request, res: Response) => {
   try {
     const user = req.user;
@@ -95,6 +378,241 @@ advancedSchedulingRouter.post('/recurring/generate', requireAuth, requireWorkspa
   }
 });
 
+// ============================================================================
+// SHIFT SWAP REQUESTS
+// ============================================================================
+
+advancedSchedulingRouter.post('/shifts/:shiftId/swap-request', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const user = req.user;
+    const workspaceId = user?.currentWorkspaceId;
+    const userId = user?.id;
+    
+    if (!workspaceId || !userId) {
+      return res.status(400).json({ error: 'No workspace selected' });
+    }
+
+    const employeeId = await getEmployeeId(userId, workspaceId);
+    if (!employeeId) {
+      return res.status(400).json({ error: 'No employee profile linked' });
+    }
+
+    const { shiftId } = req.params;
+    const { targetEmployeeId, reason } = req.body;
+
+    const swapRequest = await requestShiftSwap(
+      workspaceId,
+      shiftId,
+      employeeId,
+      targetEmployeeId,
+      reason
+    );
+
+    const suggestionsUpdated = await updateSwapRequestWithAISuggestions(swapRequest.id, workspaceId);
+
+    res.json({
+      success: true,
+      swapRequest: suggestionsUpdated,
+    });
+  } catch (error: any) {
+    console.error('[AdvancedScheduling] Request swap error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+advancedSchedulingRouter.get('/swap-requests', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const user = req.user;
+    const workspaceId = user?.currentWorkspaceId;
+    const userId = user?.id;
+    
+    if (!workspaceId || !userId) {
+      return res.status(400).json({ error: 'No workspace selected' });
+    }
+
+    const status = req.query.status as 'pending' | 'approved' | 'rejected' | 'cancelled' | 'expired' | undefined;
+    const employeeIdFilter = req.query.employeeId as string | undefined;
+    
+    const employeeId = await getEmployeeId(userId, workspaceId);
+
+    const requests = await getSwapRequests(workspaceId, {
+      employeeId: employeeIdFilter || undefined,
+      status,
+    });
+
+    res.json({
+      success: true,
+      requests,
+    });
+  } catch (error: any) {
+    console.error('[AdvancedScheduling] Get swap requests error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+advancedSchedulingRouter.get('/swap-requests/:swapId', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const user = req.user;
+    const workspaceId = user?.currentWorkspaceId;
+    
+    if (!workspaceId) {
+      return res.status(400).json({ error: 'No workspace selected' });
+    }
+
+    const { swapId } = req.params;
+    const swapRequest = await getSwapRequestById(swapId, workspaceId);
+
+    if (!swapRequest) {
+      return res.status(404).json({ error: 'Swap request not found' });
+    }
+
+    res.json({
+      success: true,
+      swapRequest,
+    });
+  } catch (error: any) {
+    console.error('[AdvancedScheduling] Get swap request error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+advancedSchedulingRouter.post('/swap-requests/:swapId/approve', requireAuth, requireWorkspaceRole(['org_owner', 'org_admin', 'manager']), async (req: Request, res: Response) => {
+  try {
+    const user = req.user;
+    const workspaceId = user?.currentWorkspaceId;
+    const userId = user?.id;
+    
+    if (!workspaceId || !userId) {
+      return res.status(400).json({ error: 'No workspace selected' });
+    }
+
+    const { swapId } = req.params;
+    const { targetEmployeeId, responseMessage } = req.body;
+
+    const swapRequest = await approveShiftSwap(
+      workspaceId,
+      swapId,
+      userId,
+      targetEmployeeId,
+      responseMessage
+    );
+
+    res.json({
+      success: true,
+      swapRequest,
+    });
+  } catch (error: any) {
+    console.error('[AdvancedScheduling] Approve swap error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+advancedSchedulingRouter.post('/swap-requests/:swapId/reject', requireAuth, requireWorkspaceRole(['org_owner', 'org_admin', 'manager']), async (req: Request, res: Response) => {
+  try {
+    const user = req.user;
+    const workspaceId = user?.currentWorkspaceId;
+    const userId = user?.id;
+    
+    if (!workspaceId || !userId) {
+      return res.status(400).json({ error: 'No workspace selected' });
+    }
+
+    const { swapId } = req.params;
+    const { responseMessage } = req.body;
+
+    const swapRequest = await rejectShiftSwap(
+      workspaceId,
+      swapId,
+      userId,
+      responseMessage
+    );
+
+    res.json({
+      success: true,
+      swapRequest,
+    });
+  } catch (error: any) {
+    console.error('[AdvancedScheduling] Reject swap error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+advancedSchedulingRouter.post('/swap-requests/:swapId/cancel', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const user = req.user;
+    const workspaceId = user?.currentWorkspaceId;
+    const userId = user?.id;
+    
+    if (!workspaceId || !userId) {
+      return res.status(400).json({ error: 'No workspace selected' });
+    }
+
+    const employeeId = await getEmployeeId(userId, workspaceId);
+    if (!employeeId) {
+      return res.status(400).json({ error: 'No employee profile linked' });
+    }
+
+    const { swapId } = req.params;
+
+    const swapRequest = await cancelSwapRequest(workspaceId, swapId, employeeId);
+
+    res.json({
+      success: true,
+      swapRequest,
+    });
+  } catch (error: any) {
+    console.error('[AdvancedScheduling] Cancel swap error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+advancedSchedulingRouter.get('/shifts/:shiftId/available-employees', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const user = req.user;
+    const workspaceId = user?.currentWorkspaceId;
+    
+    if (!workspaceId) {
+      return res.status(400).json({ error: 'No workspace selected' });
+    }
+
+    const { shiftId } = req.params;
+
+    const availableEmployees = await getAvailableEmployeesForSwap(workspaceId, shiftId);
+
+    res.json({
+      success: true,
+      employees: availableEmployees,
+    });
+  } catch (error: any) {
+    console.error('[AdvancedScheduling] Get available employees error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+advancedSchedulingRouter.get('/shifts/:shiftId/ai-suggestions', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const user = req.user;
+    const workspaceId = user?.currentWorkspaceId;
+    
+    if (!workspaceId) {
+      return res.status(400).json({ error: 'No workspace selected' });
+    }
+
+    const { shiftId } = req.params;
+
+    const suggestions = await getAISuggestedSwapEmployees(workspaceId, shiftId);
+
+    res.json({
+      success: true,
+      suggestions,
+    });
+  } catch (error: any) {
+    console.error('[AdvancedScheduling] Get AI suggestions error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Legacy swap routes for backwards compatibility
 advancedSchedulingRouter.post('/swap/request', requireAuth, async (req: Request, res: Response) => {
   try {
     const user = req.user;
@@ -144,25 +662,19 @@ advancedSchedulingRouter.post('/swap/:swapId/respond', requireAuth, async (req: 
       return res.status(400).json({ error: 'No workspace selected' });
     }
 
-    const employeeId = await getEmployeeId(userId, workspaceId);
-    if (!employeeId) {
-      return res.status(400).json({ error: 'No employee profile linked' });
-    }
-
     const { swapId } = req.params;
-    const { approved, responseMessage } = req.body;
+    const { approved, responseMessage, targetEmployeeId } = req.body;
 
     if (typeof approved !== 'boolean') {
       return res.status(400).json({ error: 'Approved status is required' });
     }
 
-    const swapRequest = await respondToShiftSwap(
-      workspaceId,
-      swapId,
-      employeeId,
-      approved,
-      responseMessage
-    );
+    let swapRequest;
+    if (approved) {
+      swapRequest = await approveShiftSwap(workspaceId, swapId, userId, targetEmployeeId, responseMessage);
+    } else {
+      swapRequest = await rejectShiftSwap(workspaceId, swapId, userId, responseMessage);
+    }
 
     res.json({
       success: true,
@@ -185,11 +697,11 @@ advancedSchedulingRouter.get('/swap/requests', requireAuth, async (req: Request,
     }
 
     const employeeId = await getEmployeeId(userId, workspaceId);
-    const status = req.query.status as string | undefined;
+    const status = req.query.status as 'pending' | 'approved' | 'rejected' | 'cancelled' | 'expired' | undefined;
 
     const requests = await getSwapRequests(workspaceId, {
       employeeId: employeeId || undefined,
-      status: status as any,
+      status,
     });
 
     res.json({
@@ -242,14 +754,82 @@ advancedSchedulingRouter.get('/swap/:shiftId/available-employees', requireAuth, 
 
     const { shiftId } = req.params;
 
-    const employees = await getAvailableEmployeesForSwap(workspaceId, shiftId);
+    const availableEmployees = await getAvailableEmployeesForSwap(workspaceId, shiftId);
 
     res.json({
       success: true,
-      employees,
+      employees: availableEmployees,
     });
   } catch (error: any) {
     console.error('[AdvancedScheduling] Get available employees error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================================================
+// SHIFT DUPLICATION
+// ============================================================================
+
+advancedSchedulingRouter.post('/shifts/:shiftId/duplicate', requireAuth, requireWorkspaceRole(['org_owner', 'org_admin', 'manager']), async (req: Request, res: Response) => {
+  try {
+    const user = req.user;
+    const workspaceId = user?.currentWorkspaceId;
+    
+    if (!workspaceId) {
+      return res.status(400).json({ error: 'No workspace selected' });
+    }
+
+    const { shiftId } = req.params;
+    const { targetDate, targetEmployeeId, copyNotes } = req.body;
+
+    if (!targetDate) {
+      return res.status(400).json({ error: 'Target date is required' });
+    }
+
+    const newShift = await duplicateShift(workspaceId, shiftId, {
+      targetDate: new Date(targetDate),
+      targetEmployeeId,
+      copyNotes: copyNotes !== false,
+    });
+
+    res.json({
+      success: true,
+      shift: newShift,
+    });
+  } catch (error: any) {
+    console.error('[AdvancedScheduling] Duplicate shift error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+advancedSchedulingRouter.post('/duplicate-week', requireAuth, requireWorkspaceRole(['org_owner', 'org_admin', 'manager']), async (req: Request, res: Response) => {
+  try {
+    const user = req.user;
+    const workspaceId = user?.currentWorkspaceId;
+    
+    if (!workspaceId) {
+      return res.status(400).json({ error: 'No workspace selected' });
+    }
+
+    const { sourceWeekStart, targetWeekStart, employeeId, skipExisting } = req.body;
+
+    if (!sourceWeekStart || !targetWeekStart) {
+      return res.status(400).json({ error: 'Source and target week dates are required' });
+    }
+
+    const result = await duplicateWeekSchedule(
+      workspaceId,
+      new Date(sourceWeekStart),
+      new Date(targetWeekStart),
+      { employeeId, skipExisting: skipExisting !== false }
+    );
+
+    res.json({
+      success: true,
+      ...result,
+    });
+  } catch (error: any) {
+    console.error('[AdvancedScheduling] Duplicate week error:', error);
     res.status(500).json({ error: error.message });
   }
 });

@@ -1,25 +1,40 @@
 /**
  * EmployeeShiftCard - Employee with their shifts displayed as gradient cards
  * Mobile-first with tap-to-view-details support
+ * Includes break visualization and compliance indicators
  */
 
 import { format } from 'date-fns';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, Clock, Edit2, Trash2, Plus, ChevronRight, Calendar } from 'lucide-react';
+import { MapPin, Clock, Edit2, Trash2, Plus, ChevronRight, Calendar, Coffee, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import type { Employee, Shift } from '@shared/schema';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import type { Employee, Shift, ScheduledBreak } from '@shared/schema';
+
+interface ShiftWithBreaks extends Shift {
+  scheduledBreaks?: ScheduledBreak[];
+  breakCompliance?: {
+    isCompliant: boolean;
+    missingBreaks?: Array<{
+      type: 'meal' | 'rest';
+      durationMinutes: number;
+      reason: string;
+    }>;
+  };
+}
 
 interface EmployeeShiftCardProps {
   employee: Employee;
-  shifts: Shift[];
+  shifts: ShiftWithBreaks[];
   weeklyHours: number;
   onEditShift?: (shift: Shift) => void;
   onDeleteShift?: (shift: Shift) => void;
   onAddShift?: (employee: Employee) => void;
   onViewShift?: (shift: Shift) => void;
   canEdit: boolean;
+  showBreakCompliance?: boolean;
 }
 
 const roleGradients: Record<string, string> = {
@@ -48,6 +63,7 @@ export function EmployeeShiftCard({
   onAddShift,
   onViewShift,
   canEdit,
+  showBreakCompliance = true,
 }: EmployeeShiftCardProps) {
   const role = employee.role || 'Employee';
 
@@ -108,6 +124,7 @@ export function EmployeeShiftCard({
               onEdit={canEdit && onEditShift ? () => onEditShift(shift) : undefined}
               onDelete={canEdit && onDeleteShift ? () => onDeleteShift(shift) : undefined}
               canEdit={canEdit}
+              showBreakCompliance={showBreakCompliance}
             />
           ))
         )}
@@ -117,15 +134,16 @@ export function EmployeeShiftCard({
 }
 
 interface ShiftBlockProps {
-  shift: Shift;
+  shift: ShiftWithBreaks;
   role: string;
   onView?: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
   canEdit: boolean;
+  showBreakCompliance?: boolean;
 }
 
-function ShiftBlock({ shift, role, onView, onEdit, onDelete, canEdit }: ShiftBlockProps) {
+function ShiftBlock({ shift, role, onView, onEdit, onDelete, canEdit, showBreakCompliance = true }: ShiftBlockProps) {
   const start = new Date(shift.startTime);
   const end = new Date(shift.endTime);
   const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
@@ -135,6 +153,10 @@ function ShiftBlock({ shift, role, onView, onEdit, onDelete, canEdit }: ShiftBlo
   const isOpen = !shift.employeeId;
   const isPending = shift.status === 'draft';
   const isToday = format(start, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
+  
+  const hasScheduledBreaks = shift.scheduledBreaks && shift.scheduledBreaks.length > 0;
+  const isCompliant = shift.breakCompliance?.isCompliant ?? true;
+  const missingBreaks = shift.breakCompliance?.missingBreaks || [];
 
   const handleClick = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('button')) return;
@@ -167,10 +189,58 @@ function ShiftBlock({ shift, role, onView, onEdit, onDelete, canEdit }: ShiftBlo
           <Clock className="h-3.5 w-3.5" />
           <span>{hours.toFixed(1)} hrs</span>
         </div>
+        
+        {/* Break Indicator */}
+        {showBreakCompliance && hasScheduledBreaks && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center gap-1" data-testid={`break-indicator-${shift.id}`}>
+                <Coffee className="h-3.5 w-3.5" />
+                <span>{shift.scheduledBreaks?.length} break{shift.scheduledBreaks?.length !== 1 ? 's' : ''}</span>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="max-w-[200px]">
+              <div className="text-xs space-y-1">
+                {shift.scheduledBreaks?.map((brk, idx) => (
+                  <div key={idx} className="flex items-center gap-1">
+                    <span className="capitalize">{brk.breakType}:</span>
+                    <span>{brk.durationMinutes} min</span>
+                    {brk.isPaid && <Badge variant="secondary" className="text-[10px] px-1 py-0">Paid</Badge>}
+                  </div>
+                ))}
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        )}
       </div>
       
       {/* Status Badges - Top Right */}
       <div className="absolute top-2 right-2 flex gap-1.5">
+        {/* Compliance Warning Badge */}
+        {showBreakCompliance && !isCompliant && missingBreaks.length > 0 && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge 
+                className="bg-red-500/80 backdrop-blur-md border-red-400/50 text-white text-xs px-2 py-0.5 cursor-help"
+                data-testid={`compliance-warning-${shift.id}`}
+              >
+                <AlertTriangle className="h-3 w-3 mr-1" />
+                Break
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="max-w-[250px]">
+              <div className="text-xs space-y-1">
+                <div className="font-semibold text-red-500">Missing Required Breaks:</div>
+                {missingBreaks.map((brk, idx) => (
+                  <div key={idx} className="text-muted-foreground">
+                    {brk.durationMinutes} min {brk.type} break - {brk.reason}
+                  </div>
+                ))}
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        )}
+        
         {isOpen && (
           <Badge className="bg-white/25 backdrop-blur-md border-white/30 text-xs px-2 py-0.5">
             OPEN
