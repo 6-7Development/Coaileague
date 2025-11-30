@@ -124,10 +124,10 @@ export function WhatsNewBadge() {
           className="justify-start gap-2 h-9 w-full relative"
           data-testid="button-whats-new"
         >
-          <Sparkles className="h-4 w-4" />
+          <Sparkles className={`h-4 w-4 ${unviewedCount > 0 ? 'animate-sparkles-combined' : ''}`} />
           <span className="text-xs">What's New</span>
           {unviewedCount > 0 && (
-            <span className="ml-auto h-5 w-5 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white flex items-center justify-center text-xs font-medium">
+            <span className="ml-auto h-5 w-5 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white flex items-center justify-center text-xs font-medium animate-badge-glow">
               {unviewedCount > 9 ? '9+' : unviewedCount}
             </span>
           )}
