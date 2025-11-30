@@ -6,6 +6,8 @@
 import { Router, Request, Response } from 'express';
 import { requireAuth } from '../auth';
 import { requireWorkspaceRole, requireManager } from '../rbac';
+import { emitGamificationEvent } from '../services/gamification/eventTracker';
+import { isFeatureEnabled as isGamificationEnabled } from '@shared/platformConfig';
 import { 
   generateRecurringShifts,
   createRecurringPattern,
@@ -496,6 +498,26 @@ advancedSchedulingRouter.post('/swap-requests/:swapId/approve', requireAuth, req
       targetEmployeeId,
       responseMessage
     );
+
+    // Gamification: Award points for shift swap participation
+    if (isGamificationEnabled('enableGamification') && swapRequest) {
+      try {
+        // Award points to both employees involved in the swap
+        const requesterId = swapRequest.requestingEmployeeId;
+        const accepterId = swapRequest.targetEmployeeId;
+        
+        if (requesterId) {
+          emitGamificationEvent('shift_swapped', {
+            workspaceId,
+            employeeId: requesterId,
+            swapId,
+            swappedWith: accepterId || undefined,
+          });
+        }
+      } catch (gamError) {
+        console.error('[AdvancedScheduling] Gamification shift_swapped failed (non-blocking):', gamError);
+      }
+    }
 
     res.json({
       success: true,

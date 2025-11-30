@@ -1,5 +1,13 @@
 import { gamificationService } from './gamificationService';
-import { platformEventBus } from '../platformEventBus';
+import { 
+  gamificationEvents, 
+  emitGamificationEvent,
+  type ClockInEvent,
+  type ShiftEvent,
+  type ApprovalEvent,
+  type FeatureEvent,
+  type MilestoneEvent
+} from './gamificationEvents';
 import { db } from '../../db';
 import { employees } from '@shared/schema';
 import { eq, and } from 'drizzle-orm';
@@ -8,34 +16,42 @@ import { eq, and } from 'drizzle-orm';
  * Event-driven gamification system
  * Hooks into platform events to award badges and points
  */
-
 export class GamificationEventTracker {
+  private static initialized = false;
+
   /**
    * Initialize event listeners for all gamification triggers
    */
   static initializeEventListeners(): void {
+    if (this.initialized) {
+      console.log('[GamificationEventTracker] Already initialized, skipping');
+      return;
+    }
+
     // Time tracking events
-    platformEventBus.on('clock_in', (data) => this.handleClockIn(data));
-    platformEventBus.on('shift_completed', (data) => this.handleShiftCompleted(data));
-    platformEventBus.on('timesheet_approved', (data) => this.handleTimesheetApproved(data));
+    gamificationEvents.on('clock_in', (data: ClockInEvent) => this.handleClockIn(data));
+    gamificationEvents.on('clock_out', (data: ClockInEvent) => this.handleClockOut(data));
+    gamificationEvents.on('shift_completed', (data: ShiftEvent) => this.handleShiftCompleted(data));
+    gamificationEvents.on('timesheet_approved', (data: ApprovalEvent) => this.handleTimesheetApproved(data));
 
     // Scheduling events
-    platformEventBus.on('shift_accepted', (data) => this.handleShiftAccepted(data));
-    platformEventBus.on('shift_swapped', (data) => this.handleShiftSwapped(data));
-    platformEventBus.on('schedule_viewed', (data) => this.handleScheduleViewed(data));
+    gamificationEvents.on('shift_accepted', (data: ShiftEvent) => this.handleShiftAccepted(data));
+    gamificationEvents.on('shift_swapped', (data: ShiftEvent) => this.handleShiftSwapped(data));
+    gamificationEvents.on('schedule_viewed', (data: ShiftEvent) => this.handleScheduleViewed(data));
 
     // Approval events
-    platformEventBus.on('expense_approved', (data) => this.handleExpenseApproved(data));
-    platformEventBus.on('request_approved', (data) => this.handleRequestApproved(data));
+    gamificationEvents.on('expense_approved', (data: ApprovalEvent) => this.handleExpenseApproved(data));
+    gamificationEvents.on('request_approved', (data: ApprovalEvent) => this.handleRequestApproved(data));
 
     // Platform events
-    platformEventBus.on('feature_used', (data) => this.handleFeatureUsed(data));
-    platformEventBus.on('profile_completed', (data) => this.handleProfileCompleted(data));
+    gamificationEvents.on('feature_used', (data: FeatureEvent) => this.handleFeatureUsed(data));
+    gamificationEvents.on('profile_completed', (data: ApprovalEvent) => this.handleProfileCompleted(data));
 
+    this.initialized = true;
     console.log('[GamificationEventTracker] Event listeners initialized');
   }
 
-  private static async handleClockIn(data: { workspaceId: string; employeeId: string; clockId?: string; isEarly?: boolean }): Promise<void> {
+  private static async handleClockIn(data: ClockInEvent): Promise<void> {
     try {
       const { workspaceId, employeeId, isEarly } = data;
       
@@ -61,24 +77,44 @@ export class GamificationEventTracker {
         });
 
         // Notify AI brain of early arrival pattern
-        platformEventBus.emit('gamification_milestone', {
+        emitGamificationEvent('gamification_milestone', {
           type: 'early_arrival',
           workspaceId,
           employeeId,
           points: 10,
         });
       }
+
+      console.log(`[Gamification] Clock-in points awarded to ${employeeId}`);
     } catch (error) {
       console.error('[GamificationEventTracker] Error handling clock_in:', error);
     }
   }
 
-  private static async handleShiftCompleted(data: any): Promise<void> {
+  private static async handleClockOut(data: ClockInEvent): Promise<void> {
+    try {
+      const { workspaceId, employeeId } = data;
+      
+      await gamificationService.awardPoints({
+        workspaceId,
+        employeeId,
+        points: 3,
+        transactionType: 'clock_out',
+        referenceId: data.clockId,
+        referenceType: 'clock_entry',
+        description: 'Clocked out for the day',
+      });
+    } catch (error) {
+      console.error('[GamificationEventTracker] Error handling clock_out:', error);
+    }
+  }
+
+  private static async handleShiftCompleted(data: ShiftEvent): Promise<void> {
     try {
       const { workspaceId, employeeId, hoursWorked } = data;
       
       // Award points based on hours
-      const points = Math.min(Math.floor(hoursWorked * 2), 50);
+      const points = Math.min(Math.floor((hoursWorked || 0) * 2), 50);
       await gamificationService.awardPoints({
         workspaceId,
         employeeId,
@@ -90,8 +126,8 @@ export class GamificationEventTracker {
       });
 
       // Check for milestone achievements
-      if (hoursWorked >= 8) {
-        platformEventBus.emit('gamification_milestone', {
+      if (hoursWorked && hoursWorked >= 8) {
+        emitGamificationEvent('gamification_milestone', {
           type: 'full_day_worked',
           workspaceId,
           employeeId,
@@ -103,16 +139,18 @@ export class GamificationEventTracker {
     }
   }
 
-  private static async handleTimesheetApproved(data: any): Promise<void> {
+  private static async handleTimesheetApproved(data: ApprovalEvent): Promise<void> {
     try {
       const { workspaceId, employeeId } = data;
       
+      if (!employeeId) return;
+
       await gamificationService.awardPoints({
         workspaceId,
         employeeId,
         points: 15,
         transactionType: 'timesheet_approved',
-        referenceId: data.timesheetId,
+        referenceId: data.referenceId,
         referenceType: 'timesheet',
         description: 'Timesheet approved',
       });
@@ -121,7 +159,7 @@ export class GamificationEventTracker {
     }
   }
 
-  private static async handleShiftAccepted(data: any): Promise<void> {
+  private static async handleShiftAccepted(data: ShiftEvent): Promise<void> {
     try {
       const { workspaceId, employeeId } = data;
       
@@ -139,7 +177,7 @@ export class GamificationEventTracker {
     }
   }
 
-  private static async handleShiftSwapped(data: any): Promise<void> {
+  private static async handleShiftSwapped(data: ShiftEvent): Promise<void> {
     try {
       const { workspaceId, employeeId, swappedWith } = data;
       
@@ -167,7 +205,7 @@ export class GamificationEventTracker {
         });
       }
 
-      platformEventBus.emit('gamification_milestone', {
+      emitGamificationEvent('gamification_milestone', {
         type: 'shift_swap',
         workspaceId,
         employeeId,
@@ -178,7 +216,7 @@ export class GamificationEventTracker {
     }
   }
 
-  private static async handleScheduleViewed(data: any): Promise<void> {
+  private static async handleScheduleViewed(data: ShiftEvent): Promise<void> {
     try {
       const { workspaceId, employeeId } = data;
       
@@ -188,7 +226,6 @@ export class GamificationEventTracker {
         employeeId,
         points: 2,
         transactionType: 'schedule_viewed',
-        referenceId: data.viewId,
         referenceType: 'schedule_view',
         description: 'Viewed schedule',
       });
@@ -197,7 +234,7 @@ export class GamificationEventTracker {
     }
   }
 
-  private static async handleExpenseApproved(data: any): Promise<void> {
+  private static async handleExpenseApproved(data: ApprovalEvent): Promise<void> {
     try {
       const { workspaceId, approverId } = data;
       
@@ -207,7 +244,7 @@ export class GamificationEventTracker {
           employeeId: approverId,
           points: 5,
           transactionType: 'expense_approved',
-          referenceId: data.expenseId,
+          referenceId: data.referenceId,
           referenceType: 'expense',
           description: 'Approved an expense',
         });
@@ -217,7 +254,7 @@ export class GamificationEventTracker {
     }
   }
 
-  private static async handleRequestApproved(data: any): Promise<void> {
+  private static async handleRequestApproved(data: ApprovalEvent): Promise<void> {
     try {
       const { workspaceId, approverId } = data;
       
@@ -227,7 +264,7 @@ export class GamificationEventTracker {
           employeeId: approverId,
           points: 10,
           transactionType: 'request_approved',
-          referenceId: data.requestId,
+          referenceId: data.referenceId,
           referenceType: 'request',
           description: 'Processed a request',
         });
@@ -237,7 +274,7 @@ export class GamificationEventTracker {
     }
   }
 
-  private static async handleFeatureUsed(data: any): Promise<void> {
+  private static async handleFeatureUsed(data: FeatureEvent): Promise<void> {
     try {
       const { workspaceId, userId, featureName } = data;
       
@@ -258,6 +295,9 @@ export class GamificationEventTracker {
         'ai_scheduling': 20,
         'mobile_app': 5,
         'helpai_chat': 10,
+        'gamification': 5,
+        'calendar_sync': 10,
+        'time_tracking': 5,
       };
 
       const points = pointMap[featureName] || 5;
@@ -272,22 +312,26 @@ export class GamificationEventTracker {
         description: `Used ${featureName} feature`,
       });
 
-      platformEventBus.emit('gamification_milestone', {
+      emitGamificationEvent('gamification_milestone', {
         type: 'feature_adoption',
         workspaceId,
         employeeId: employee.id,
         feature: featureName,
         points,
       });
+
+      console.log(`[Gamification] Feature use points (${points}) awarded for ${featureName}`);
     } catch (error) {
       console.error('[GamificationEventTracker] Error handling feature_used:', error);
     }
   }
 
-  private static async handleProfileCompleted(data: any): Promise<void> {
+  private static async handleProfileCompleted(data: ApprovalEvent): Promise<void> {
     try {
       const { workspaceId, employeeId } = data;
       
+      if (!employeeId) return;
+
       await gamificationService.awardPoints({
         workspaceId,
         employeeId,
@@ -298,7 +342,7 @@ export class GamificationEventTracker {
         description: 'Completed profile setup',
       });
 
-      platformEventBus.emit('gamification_milestone', {
+      emitGamificationEvent('gamification_milestone', {
         type: 'profile_complete',
         workspaceId,
         employeeId,
@@ -310,5 +354,5 @@ export class GamificationEventTracker {
   }
 }
 
-// Initialize on module load
-GamificationEventTracker.initializeEventListeners();
+// Export function to trigger gamification events from endpoints
+export { emitGamificationEvent } from './gamificationEvents';
