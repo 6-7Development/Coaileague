@@ -89,17 +89,25 @@ export function AnimatedNotificationBell({
             ))}
 
           {showSparkles && (
-            <button
+            <div
               onClick={(e) => {
                 e.stopPropagation();
                 handleClearNotifications();
               }}
-              className="absolute -bottom-1 -right-1 bg-destructive rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover-elevate"
+              className="absolute -bottom-1 -right-1 bg-destructive rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover-elevate cursor-pointer"
+              role="button"
+              tabIndex={0}
               aria-label="Clear notifications"
               data-testid="button-clear-notifications"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  handleClearNotifications();
+                }
+              }}
             >
               <X className="h-2.5 w-2.5 text-white" />
-            </button>
+            </div>
           )}
         </div>
       </button>
