@@ -274,8 +274,8 @@ export class AIBrainService {
         
         await db.update(aiBrainJobs)
           .set({
-            status: 'timeout',
-            error: error.message,
+            status: 'failed',
+            error: `Timeout after ${JOB_TIMEOUT_MS}ms: ${error.message}`,
             executionTimeMs: executionTime,
             completedAt: new Date()
           })
@@ -334,7 +334,7 @@ export class AIBrainService {
       
       ChatServerHub.emitAIAction({
         conversationId: job.conversationId,
-        workspaceId: job.workspaceId,
+        workspaceId: job.workspaceId || undefined,
         actionType,
         title: `AI ${skillLabel}: ${finalStatus === 'requires_approval' ? 'Needs Review' : 'Complete'}`,
         description: finalStatus === 'requires_approval'
