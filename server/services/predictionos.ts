@@ -22,13 +22,17 @@ import {
 import OpenAI from "openai";
 
 // Validate OpenAI API key at startup
-if (!process.env.OPENAI_API_KEY) {
+const OPENAI_KEY = process.env.OPENAI_API_KEY;
+const isPredictionOSEnabled = !!OPENAI_KEY;
+
+if (!isPredictionOSEnabled) {
   console.warn("⚠️ OPENAI_API_KEY not found. PredictionOS™ AI features disabled.");
 }
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || "DUMMY_KEY_DISABLED",
-});
+// Only initialize OpenAI client if API key is available
+const openai = isPredictionOSEnabled ? new OpenAI({
+  apiKey: OPENAI_KEY,
+}) : null;
 
 export class PredictionOSEngine {
   /**
@@ -165,7 +169,7 @@ RESPOND IN THIS EXACT JSON FORMAT:
 }`;
 
     // Check if OpenAI is available
-    if (!process.env.OPENAI_API_KEY) {
+    if (!isPredictionOSEnabled || !openai) {
       console.warn("PredictionOS™: Falling back to heuristic analysis (OpenAI API key not configured)");
       return this.fallbackTurnoverAnalysis(
         avgHoursPerMonth,
@@ -176,7 +180,7 @@ RESPOND IN THIS EXACT JSON FORMAT:
     }
 
     try {
-      const completion = await openai.chat.completions.create({
+      const completion = await openai!.chat.completions.create({
         model: "gpt-4o",
         messages: [
           {
@@ -342,8 +346,14 @@ RESPOND IN THIS EXACT JSON FORMAT:
   "recommendations": "<3 specific cost-saving recommendations, newline separated>"
 }`;
 
+    // Check if OpenAI is available
+    if (!isPredictionOSEnabled || !openai) {
+      console.warn("PredictionOS™: Falling back to heuristic cost analysis (OpenAI API key not configured)");
+      return this.fallbackCostVarianceAnalysis(budgetedCost, proposedShifts);
+    }
+
     try {
-      const completion = await openai.chat.completions.create({
+      const completion = await openai!.chat.completions.create({
         model: "gpt-4o",
         messages: [
           {
@@ -558,6 +568,50 @@ RESPOND IN THIS EXACT JSON FORMAT:
       riskFactors,
       recommendations: "Increase engagement through regular check-ins and career development discussions.",
       confidenceScore: 65, // Lower confidence for heuristic
+    };
+  }
+  
+  private static fallbackCostVarianceAnalysis(
+    budgetedCost: number,
+    proposedShifts: any[]
+  ): {
+    budgetedCost: number;
+    predictedCost: number;
+    variancePercentage: number;
+    exceeds10Percent: boolean;
+    riskLevel: string;
+    riskFactors: Record<string, number>;
+    recommendations: string;
+    problematicShifts: string[];
+  } {
+    // Simple heuristic-based cost variance prediction
+    // Assume typical 5% overtime/inefficiency variance
+    const baseVariance = 0.05;
+    const shiftCount = proposedShifts.length;
+    
+    // More shifts = potentially more variance
+    const shiftMultiplier = shiftCount > 10 ? 1.2 : shiftCount > 5 ? 1.1 : 1.0;
+    const estimatedVariance = baseVariance * shiftMultiplier;
+    
+    const predictedCost = budgetedCost * (1 + estimatedVariance);
+    const variancePercentage = estimatedVariance * 100;
+    const exceeds10Percent = variancePercentage > 10;
+    
+    const riskLevel = variancePercentage < 5 ? 'acceptable' : variancePercentage < 10 ? 'warning' : 'critical';
+    
+    return {
+      budgetedCost,
+      predictedCost,
+      variancePercentage,
+      exceeds10Percent,
+      riskLevel,
+      riskFactors: {
+        overtime_potential: 0.5,
+        schedule_efficiency: 0.3,
+        break_compliance: 0.2,
+      },
+      recommendations: "Monitor overtime hours closely. Consider staggering shift start times to reduce overlap inefficiencies.",
+      problematicShifts: [],
     };
   }
 }
