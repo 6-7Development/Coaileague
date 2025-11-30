@@ -15085,6 +15085,85 @@ Keep it professional, actionable, and under 250 words.`;
     }
   });
 
+  // Get priority queue - real-time support queue based on subscription tier and wait time
+  app.get('/api/support/priority-queue', requirePlatformStaff, async (req: AuthenticatedRequest, res) => {
+    try {
+      // Get open support tickets with workspace and user info
+      const tickets = await db.query.supportTickets.findMany({
+        where: and(
+          eq(supportTickets.status, 'open'),
+          isNull(supportTickets.resolvedAt)
+        ),
+        with: {
+          workspace: true,
+        },
+        orderBy: (tickets, { asc }) => [asc(tickets.createdAt)],
+      });
+
+      // Calculate priority for each ticket
+      const tierWeights: Record<string, number> = {
+        'elite': 50,
+        'enterprise': 40,
+        'professional': 25,
+        'starter': 15,
+        'free': 10,
+        'trial': 10,
+      };
+
+      const priorityUsers = tickets.map((ticket) => {
+        const workspace = ticket.workspace;
+        const tier = (workspace?.subscriptionTier || 'free').toLowerCase();
+        const tierWeight = tierWeights[tier] || 10;
+        const isVIP = workspace?.isVip || false;
+        const vipBonus = isVIP ? 25 : 0;
+        
+        // Calculate wait time in minutes
+        const createdAt = new Date(ticket.createdAt);
+        const now = new Date();
+        const waitTimeMs = now.getTime() - createdAt.getTime();
+        const waitTime = Math.floor(waitTimeMs / (1000 * 60));
+        const waitTimeBonus = Math.min(waitTime, 25);
+        
+        const priorityScore = tierWeight + vipBonus + waitTimeBonus;
+        
+        // Map tier to our display tiers
+        let displayTier: 'elite' | 'enterprise' | 'professional' | 'free' = 'free';
+        if (tier === 'elite') displayTier = 'elite';
+        else if (tier === 'enterprise') displayTier = 'enterprise';
+        else if (tier === 'professional' || tier === 'starter') displayTier = 'professional';
+        
+        return {
+          id: ticket.id,
+          name: ticket.customerName || `${workspace?.name || 'Anonymous'} User`,
+          email: ticket.customerEmail || 'No email provided',
+          tier: displayTier,
+          vipStatus: isVIP,
+          priorityScore,
+          waitTime,
+          reason: ticket.subject || 'Support request',
+          ticketId: ticket.id,
+        };
+      });
+
+      // Sort by priority score (highest first)
+      priorityUsers.sort((a, b) => b.priorityScore - a.priorityScore);
+
+      // Calculate tier counts
+      const tierCounts = {
+        elite: priorityUsers.filter(u => u.tier === 'elite').length,
+        enterprise: priorityUsers.filter(u => u.tier === 'enterprise').length,
+        professional: priorityUsers.filter(u => u.tier === 'professional').length,
+        free: priorityUsers.filter(u => u.tier === 'free').length,
+      };
+
+      res.json({ users: priorityUsers, tierCounts });
+    } catch (error) {
+      console.error("Error fetching priority queue:", error);
+      res.status(500).json({ message: "Failed to fetch priority queue" });
+    }
+  });
+
+
   // Assign escalated ticket to platform staff
   app.patch('/api/support/escalated/:id/assign', requireAuth, requirePlatformStaff, async (req: AuthenticatedRequest, res) => {
     try {

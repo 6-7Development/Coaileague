@@ -1,12 +1,14 @@
 /**
  * Priority Manager Panel - VIP and tier-based user prioritization
  * Shows who gets help first based on subscription tier and VIP status
+ * Uses REAL data from support tickets and workspace subscriptions
  */
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
   DialogContent,
@@ -16,8 +18,9 @@ import {
 } from "@/components/ui/dialog";
 import {
   Crown, Star, Sparkles, TrendingUp, Users, Clock,
-  Award, Zap, ArrowUp, ArrowRight, Shield
+  Award, Zap, ArrowUp, ArrowRight, Shield, AlertCircle
 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 
 interface PriorityUser {
   id: string;
@@ -28,6 +31,7 @@ interface PriorityUser {
   priorityScore: number;
   waitTime: number;
   reason: string;
+  ticketId?: string;
   avatar?: string;
 }
 
@@ -38,68 +42,14 @@ interface PriorityManagerPanelProps {
 
 export function PriorityManagerPanel({ isOpen, onClose }: PriorityManagerPanelProps) {
   
-  const mockPriorityUsers: PriorityUser[] = [
-    {
-      id: '1',
-      name: 'Victoria Sterling',
-      email: 'victoria@enterprise.com',
-      tier: 'elite',
-      vipStatus: true,
-      priorityScore: 100,
-      waitTime: 0,
-      reason: 'Elite tier + VIP status + Critical issue',
-    },
-    {
-      id: '2',
-      name: 'Marcus Chen',
-      email: 'mchen@bigcorp.com',
-      tier: 'enterprise',
-      vipStatus: true,
-      priorityScore: 95,
-      waitTime: 2,
-      reason: 'Enterprise tier + VIP flag',
-    },
-    {
-      id: '3',
-      name: 'Rachel Foster',
-      email: 'rfoster@company.net',
-      tier: 'enterprise',
-      vipStatus: false,
-      priorityScore: 85,
-      waitTime: 5,
-      reason: 'Enterprise tier subscriber',
-    },
-    {
-      id: '4',
-      name: 'David Park',
-      email: 'dpark@business.io',
-      tier: 'professional',
-      vipStatus: true,
-      priorityScore: 75,
-      waitTime: 8,
-      reason: 'Professional tier + VIP status',
-    },
-    {
-      id: '5',
-      name: 'Sarah Mitchell',
-      email: 'sarah@startup.com',
-      tier: 'professional',
-      vipStatus: false,
-      priorityScore: 60,
-      waitTime: 12,
-      reason: 'Professional subscriber',
-    },
-    {
-      id: '6',
-      name: 'Tom Anderson',
-      email: 'tom@email.com',
-      tier: 'free',
-      vipStatus: false,
-      priorityScore: 30,
-      waitTime: 25,
-      reason: 'Free tier - standard queue',
-    },
-  ];
+  const { data: queueData, isLoading, error } = useQuery<{ users: PriorityUser[], tierCounts: Record<string, number> }>({
+    queryKey: ['/api/support/priority-queue'],
+    enabled: isOpen,
+    refetchInterval: 30000,
+  });
+
+  const priorityUsers = queueData?.users || [];
+  const tierCounts = queueData?.tierCounts || { elite: 0, enterprise: 0, professional: 0, free: 0 };
 
   const getTierInfo = (tier: PriorityUser['tier']) => {
     const tiers = {
@@ -158,7 +108,7 @@ export function PriorityManagerPanel({ isOpen, onClose }: PriorityManagerPanelPr
               {(['elite', 'enterprise', 'professional', 'free'] as const).map((tier) => {
                 const info = getTierInfo(tier);
                 const TierIcon = info.icon;
-                const count = mockPriorityUsers.filter(u => u.tier === tier).length;
+                const count = tierCounts[tier] || 0;
                 
                 return (
                   <Card key={tier} className="overflow-hidden">
@@ -169,7 +119,7 @@ export function PriorityManagerPanel({ isOpen, onClose }: PriorityManagerPanelPr
                           <span className="font-bold text-sm uppercase">{tier}</span>
                         </div>
                         <Badge variant="secondary" className="bg-white/20 text-inherit border-0">
-                          {count}
+                          {isLoading ? <Skeleton className="h-4 w-4" /> : count}
                         </Badge>
                       </div>
                       <div className="mt-2 flex items-center justify-between text-xs opacity-90">
@@ -200,83 +150,110 @@ export function PriorityManagerPanel({ isOpen, onClose }: PriorityManagerPanelPr
               </CardHeader>
               <CardContent>
                 <ScrollArea className="max-h-[50vh]">
-                  <div className="space-y-2">
-                    {mockPriorityUsers.map((user, index) => {
-                      const tierInfo = getTierInfo(user.tier);
-                      const TierIcon = tierInfo.icon;
-                      
-                      return (
-                        <div
-                          key={user.id}
-                          className="p-3 rounded-lg border border-slate-200 dark:border-slate-800 hover-elevate active-elevate-2 transition-all"
-                          data-testid={`priority-user-${user.id}`}
-                        >
+                  {isLoading ? (
+                    <div className="space-y-2">
+                      {[1, 2, 3].map((i) => (
+                        <div key={i} className="p-3 rounded-lg border border-slate-200 dark:border-slate-800">
                           <div className="flex items-center gap-4">
-                            {/* Position */}
-                            <div className="flex-shrink-0 flex flex-col items-center">
-                              <div className={`text-2xl font-bold ${getPriorityColor(user.priorityScore)}`}>
-                                #{index + 1}
-                              </div>
-                              <div className="text-xs text-muted-foreground">
-                                {user.priorityScore}
-                              </div>
+                            <Skeleton className="h-12 w-12 rounded-lg" />
+                            <div className="flex-1">
+                              <Skeleton className="h-4 w-32 mb-2" />
+                              <Skeleton className="h-3 w-48" />
                             </div>
-
-                            {/* Tier Badge */}
-                            <div className="flex-shrink-0">
-                              <div className={`w-12 h-12 rounded-lg ${tierInfo.color} flex items-center justify-center relative`}>
-                                <TierIcon className="w-6 h-6" />
-                                {user.vipStatus && (
-                                  <Sparkles className="w-3 h-3 absolute -top-1 -right-1 text-blue-400" />
-                                )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : error ? (
+                    <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+                      <AlertCircle className="w-8 h-8 mb-2" />
+                      <p className="text-sm">Failed to load priority queue</p>
+                    </div>
+                  ) : priorityUsers.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+                      <Users className="w-8 h-8 mb-2" />
+                      <p className="text-sm">No users currently waiting in queue</p>
+                      <p className="text-xs mt-1">Queue updates in real-time when support requests arrive</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {priorityUsers.map((user, index) => {
+                        const tierInfo = getTierInfo(user.tier);
+                        const TierIcon = tierInfo.icon;
+                        
+                        return (
+                          <div
+                            key={user.id}
+                            className="p-3 rounded-lg border border-slate-200 dark:border-slate-800 hover-elevate active-elevate-2 transition-all"
+                            data-testid={`priority-user-${user.id}`}
+                          >
+                            <div className="flex items-center gap-4">
+                              {/* Position */}
+                              <div className="flex-shrink-0 flex flex-col items-center">
+                                <div className={`text-2xl font-bold ${getPriorityColor(user.priorityScore)}`}>
+                                  #{index + 1}
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  {user.priorityScore}
+                                </div>
                               </div>
-                            </div>
 
-                            {/* User Info */}
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1">
-                                <h3 className="font-semibold text-sm truncate">{user.name}</h3>
-                                {user.vipStatus && (
-                                  <Badge className="bg-blue-100 text-blue-900 dark:bg-blue-900/30 dark:text-blue-100 text-[10px] px-1.5 py-0">
-                                    VIP
+                              {/* Tier Badge */}
+                              <div className="flex-shrink-0">
+                                <div className={`w-12 h-12 rounded-lg ${tierInfo.color} flex items-center justify-center relative`}>
+                                  <TierIcon className="w-6 h-6" />
+                                  {user.vipStatus && (
+                                    <Sparkles className="w-3 h-3 absolute -top-1 -right-1 text-blue-400" />
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* User Info */}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <h3 className="font-semibold text-sm truncate">{user.name}</h3>
+                                  {user.vipStatus && (
+                                    <Badge className="bg-blue-100 text-blue-900 dark:bg-blue-900/30 dark:text-blue-100 text-[10px] px-1.5 py-0">
+                                      VIP
+                                    </Badge>
+                                  )}
+                                </div>
+                                <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                                <p className="text-xs text-muted-foreground mt-1">{user.reason}</p>
+                              </div>
+
+                              {/* Wait Time & SLA */}
+                              <div className="flex-shrink-0 text-right">
+                                <div className="flex items-center gap-1 justify-end mb-1">
+                                  <Clock className="w-3 h-3" />
+                                  <span className="text-sm font-medium">{user.waitTime}m</span>
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  SLA: {tierInfo.sla}
+                                </div>
+                                {user.waitTime > parseInt(tierInfo.sla.match(/\d+/)?.[0] || '30') && (
+                                  <Badge variant="destructive" className="text-[10px] mt-1">
+                                    SLA breach
                                   </Badge>
                                 )}
                               </div>
-                              <p className="text-xs text-muted-foreground truncate">{user.email}</p>
-                              <p className="text-xs text-muted-foreground mt-1">{user.reason}</p>
-                            </div>
 
-                            {/* Wait Time & SLA */}
-                            <div className="flex-shrink-0 text-right">
-                              <div className="flex items-center gap-1 justify-end mb-1">
-                                <Clock className="w-3 h-3" />
-                                <span className="text-sm font-medium">{user.waitTime}m</span>
-                              </div>
-                              <div className="text-xs text-muted-foreground">
-                                SLA: {tierInfo.sla}
-                              </div>
-                              {user.waitTime > parseInt(tierInfo.sla.match(/\d+/)?.[0] || '30') && (
-                                <Badge variant="destructive" className="text-[10px] mt-1">
-                                  SLA breach
-                                </Badge>
-                              )}
+                              {/* Action */}
+                              <Button
+                                size="sm"
+                                variant="default"
+                                className="flex-shrink-0"
+                                data-testid={`action-help-${user.id}`}
+                              >
+                                <Zap className="w-3.5 h-3.5 mr-1" />
+                                Help Now
+                              </Button>
                             </div>
-
-                            {/* Action */}
-                            <Button
-                              size="sm"
-                              variant="default"
-                              className="flex-shrink-0"
-                              data-testid={`action-help-${user.id}`}
-                            >
-                              <Zap className="w-3.5 h-3.5 mr-1" />
-                              Help Now
-                            </Button>
                           </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </ScrollArea>
               </CardContent>
             </Card>
@@ -323,9 +300,9 @@ export function PriorityManagerPanel({ isOpen, onClose }: PriorityManagerPanelPr
         {/* Footer */}
         <div className="flex items-center justify-between pt-3 border-t border-slate-200 dark:border-slate-800">
           <div className="text-xs text-muted-foreground">
-            {mockPriorityUsers.length} users in priority queue
+            {priorityUsers.length} users in priority queue
           </div>
-          <Button size="sm" variant="outline" onClick={onClose}>
+          <Button size="sm" variant="outline" onClick={onClose} data-testid="button-close-priority">
             Close
           </Button>
         </div>
