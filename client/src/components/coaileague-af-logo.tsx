@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import { logoConfig, getLogoSize } from "@/config/logoConfig";
+import { Sparkles } from "lucide-react";
 
 interface CoAIleagueAFLogoProps {
   size?: "sm" | "md" | "lg" | "xl" | "hero";
@@ -9,7 +10,8 @@ interface CoAIleagueAFLogoProps {
 }
 
 /**
- * CoAIleague Gradient Logo - Professional gradient badge with brand text
+ * CoAIleague Gradient Logo - Professional AI-themed gradient badge
+ * Uses Sparkles icon instead of text for cleaner branding
  */
 export function CoAIleagueAFLogo({
   size = "md",
@@ -19,13 +21,13 @@ export function CoAIleagueAFLogo({
 }: CoAIleagueAFLogoProps) {
   const sizeConfig = getLogoSize(size);
 
-  // Gradient circle - no AF letters
-  const GradientBadge = () => (
-    <div className="w-full h-full rounded-full bg-gradient-to-br from-blue-400 via-blue-500 to-blue-600 flex items-center justify-center shadow-lg">
-      <div className="absolute inset-0 rounded-full opacity-50 bg-gradient-to-tr from-blue-300 to-transparent blur-xl" />
-      <span className="relative text-white font-black text-xs">CO</span>
-    </div>
-  );
+  const iconSizes = {
+    sm: "h-3 w-3",
+    md: "h-4 w-4",
+    lg: "h-5 w-5",
+    xl: "h-6 w-6",
+    hero: "h-8 w-8",
+  };
 
   if (variant === "wordmark") {
     return (
@@ -46,16 +48,16 @@ export function CoAIleagueAFLogo({
         className={cn(
           "relative inline-flex items-center justify-center",
           "rounded-full",
-          "bg-gradient-to-br from-blue-400 via-blue-500 to-blue-600",
-          "shadow-lg border border-blue-300/30",
-          "group hover:shadow-xl hover:shadow-blue-500/30 transition-shadow",
+          "bg-gradient-to-br from-teal-400 via-cyan-500 to-blue-600",
+          "shadow-lg border border-cyan-300/30",
+          "group hover:shadow-xl hover:shadow-cyan-500/30 transition-shadow",
           sizeConfig.container,
           className
         )}
       >
-        <div className="absolute inset-0 opacity-0 group-hover:opacity-40 bg-gradient-to-tr from-blue-300 to-transparent transition-opacity duration-500 rounded-full blur-lg" />
+        <div className="absolute inset-0 opacity-0 group-hover:opacity-40 bg-gradient-to-tr from-cyan-300 to-transparent transition-opacity duration-500 rounded-full blur-lg" />
         <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-white/20 to-transparent opacity-40" />
-        <span className="relative text-white font-black text-xs md:text-sm z-10">CO</span>
+        <Sparkles className={cn("relative text-white z-10", iconSizes[size])} />
       </div>
     );
   }
@@ -67,15 +69,15 @@ export function CoAIleagueAFLogo({
         className={cn(
           "relative inline-flex items-center justify-center shrink-0",
           "rounded-full",
-          "bg-gradient-to-br from-blue-400 via-blue-500 to-blue-600",
-          "shadow-lg border border-blue-300/30",
-          "group hover:shadow-xl hover:shadow-blue-500/30 transition-all",
+          "bg-gradient-to-br from-teal-400 via-cyan-500 to-blue-600",
+          "shadow-lg border border-cyan-300/30",
+          "group hover:shadow-xl hover:shadow-cyan-500/30 transition-all",
           sizeConfig.container,
         )}
       >
-        <div className="absolute inset-0 opacity-0 group-hover:opacity-40 bg-gradient-to-tr from-blue-300 to-transparent transition-opacity duration-500 rounded-full blur-lg" />
+        <div className="absolute inset-0 opacity-0 group-hover:opacity-40 bg-gradient-to-tr from-cyan-300 to-transparent transition-opacity duration-500 rounded-full blur-lg" />
         <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-white/20 to-transparent opacity-40" />
-        <span className="relative text-white font-black text-xs md:text-sm z-10">CO</span>
+        <Sparkles className={cn("relative text-white z-10", iconSizes[size])} />
       </div>
 
       <div className="flex flex-col gap-0.5 min-w-0">
