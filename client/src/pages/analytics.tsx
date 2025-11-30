@@ -3,7 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { 
   DollarSign, Clock, Users, UserCheck, TrendingUp, TrendingDown, 
   FileText, BarChart3, Download, FileSpreadsheet, Calendar, 
-  Activity, Target, AlertCircle, ChevronDown, Lightbulb, Award
+  Activity, Target, AlertCircle, ChevronDown, Lightbulb, Award,
+  Brain, Sparkles, Zap, AlertTriangle, ArrowUpRight, ArrowDownRight, Minus
 } from "lucide-react";
 import { CoAIleagueAFLogo } from "@/components/coaileague-af-logo";
 import { CalendarHeatmap } from "@/components/calendar-heatmap";
@@ -111,8 +112,28 @@ interface EmployeePerformanceMetrics {
   topPerformers: EmployeePerformance[];
 }
 
+interface Anomaly {
+  type: 'hours' | 'revenue' | 'attendance' | 'scheduling';
+  severity: 'low' | 'medium' | 'high';
+  description: string;
+  metric: string;
+  deviation: number;
+}
+
+interface Forecast {
+  metric: string;
+  currentValue: number;
+  projectedValue: number;
+  trend: 'up' | 'down' | 'stable';
+  confidence: number;
+  period: string;
+}
+
 interface InsightsData {
   insights: string[];
+  recommendations: string[];
+  anomalies: Anomaly[];
+  forecasts: Forecast[];
 }
 
 const DATE_PRESETS = [
@@ -290,6 +311,178 @@ function LoadingSkeleton() {
   );
 }
 
+function AIInsightsPanel({ 
+  insights, 
+  recommendations, 
+  anomalies, 
+  forecasts,
+  isLoading 
+}: { 
+  insights: string[]; 
+  recommendations: string[];
+  anomalies: Anomaly[];
+  forecasts: Forecast[];
+  isLoading: boolean;
+}) {
+  if (isLoading) {
+    return (
+      <Card className="backdrop-blur-xl bg-gradient-to-br from-purple-500/10 to-blue-500/5 border border-purple-500/20">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Brain className="w-5 h-5 text-purple-500 animate-pulse" />
+            <CardTitle>AI-Powered Insights</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-3/4" />
+          <Skeleton className="h-4 w-5/6" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const hasContent = insights.length > 0 || recommendations.length > 0 || anomalies.length > 0 || forecasts.length > 0;
+
+  if (!hasContent) {
+    return (
+      <Card className="backdrop-blur-xl bg-gradient-to-br from-purple-500/10 to-blue-500/5 border border-purple-500/20">
+        <CardContent className="p-8 text-center">
+          <Brain className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+          <p className="text-muted-foreground">No AI insights available yet. Add more data to enable intelligent analysis.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {(insights.length > 0 || recommendations.length > 0) && (
+        <Card className="backdrop-blur-xl bg-gradient-to-br from-purple-500/10 to-blue-500/5 border border-purple-500/20">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Brain className="w-5 h-5 text-purple-500" />
+              <CardTitle>AI-Powered Insights</CardTitle>
+            </div>
+            <CardDescription>Intelligent analysis of your business metrics</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {insights.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                  <Sparkles className="w-4 h-4" />
+                  <span>Key Insights</span>
+                </div>
+                <div className="space-y-2">
+                  {insights.slice(0, 5).map((insight, i) => (
+                    <div key={i} className="flex items-start gap-2 p-3 bg-muted/30 rounded-lg">
+                      <Lightbulb className="w-4 h-4 mt-0.5 text-yellow-500 flex-shrink-0" />
+                      <p className="text-sm">{insight}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {recommendations.length > 0 && (
+              <div className="space-y-2 pt-2 border-t">
+                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                  <Zap className="w-4 h-4" />
+                  <span>Recommendations</span>
+                </div>
+                <div className="space-y-2">
+                  {recommendations.slice(0, 4).map((rec, i) => (
+                    <div key={i} className="flex items-start gap-2 p-3 bg-green-500/10 rounded-lg border border-green-500/20">
+                      <Target className="w-4 h-4 mt-0.5 text-green-500 flex-shrink-0" />
+                      <p className="text-sm">{rec}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="space-y-6">
+        {anomalies.length > 0 && (
+          <Card className="backdrop-blur-xl bg-gradient-to-br from-orange-500/10 to-red-500/5 border border-orange-500/20">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-orange-500" />
+                <CardTitle>Anomalies Detected</CardTitle>
+              </div>
+              <CardDescription>Areas requiring attention</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {anomalies.slice(0, 5).map((anomaly, i) => (
+                <div 
+                  key={i} 
+                  className={`flex items-start gap-3 p-3 rounded-lg ${
+                    anomaly.severity === 'high' ? 'bg-red-500/10 border border-red-500/20' :
+                    anomaly.severity === 'medium' ? 'bg-orange-500/10 border border-orange-500/20' :
+                    'bg-yellow-500/10 border border-yellow-500/20'
+                  }`}
+                >
+                  <Badge 
+                    variant={anomaly.severity === 'high' ? 'destructive' : 'secondary'}
+                    className="flex-shrink-0"
+                  >
+                    {anomaly.severity}
+                  </Badge>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium capitalize">{anomaly.type}</p>
+                    <p className="text-sm text-muted-foreground">{anomaly.description}</p>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+
+        {forecasts.length > 0 && (
+          <Card className="backdrop-blur-xl bg-gradient-to-br from-cyan-500/10 to-blue-500/5 border border-cyan-500/20">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-cyan-500" />
+                <CardTitle>Forecasts</CardTitle>
+              </div>
+              <CardDescription>Projected trends for next period</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {forecasts.slice(0, 4).map((forecast, i) => (
+                <div key={i} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    {forecast.trend === 'up' ? (
+                      <ArrowUpRight className="w-4 h-4 text-green-500" />
+                    ) : forecast.trend === 'down' ? (
+                      <ArrowDownRight className="w-4 h-4 text-red-500" />
+                    ) : (
+                      <Minus className="w-4 h-4 text-muted-foreground" />
+                    )}
+                    <span className="text-sm font-medium">{forecast.metric}</span>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-medium">
+                      {forecast.metric.includes('Rate') 
+                        ? `${forecast.projectedValue.toFixed(1)}%`
+                        : forecast.metric.includes('Revenue') || forecast.metric.includes('$')
+                          ? `$${forecast.projectedValue.toLocaleString()}`
+                          : forecast.projectedValue.toLocaleString('en-US', { maximumFractionDigits: 1 })}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {forecast.confidence}% confidence
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function Analytics() {
   const { toast } = useToast();
   const [period, setPeriod] = useState('last_30_days');
@@ -344,7 +537,7 @@ export default function Analytics() {
     enabled: activeTab === 'employees' || activeTab === 'overview'
   });
 
-  const { data: insightsData } = useQuery<{ data: InsightsData }>({
+  const { data: insightsData, isLoading: insightsLoading } = useQuery<{ data: InsightsData }>({
     queryKey: ['/api/analytics/insights', period],
     queryFn: async () => {
       const res = await fetch(`/api/analytics/insights?period=${period}`);
@@ -406,6 +599,9 @@ export default function Analytics() {
 
   const isLoading = dashboardLoading && activeTab === 'overview';
   const insights = insightsData?.data?.insights || [];
+  const recommendations = insightsData?.data?.recommendations || [];
+  const anomalies = insightsData?.data?.anomalies || [];
+  const forecasts = insightsData?.data?.forecasts || [];
 
   return (
     <div className="min-h-screen bg-background">
@@ -464,27 +660,6 @@ export default function Analytics() {
             </CardContent>
           </Card>
         </div>
-
-        {insights.length > 0 && (
-          <Card className="mb-6 border-cyan-500/20 bg-cyan-500/5">
-            <CardContent className="p-4">
-              <div className="flex items-start gap-3">
-                <Lightbulb className="w-5 h-5 text-cyan-500 mt-0.5" />
-                <div className="flex-1">
-                  <h3 className="font-medium text-foreground mb-2">AI Insights</h3>
-                  <ul className="space-y-1">
-                    {insights.slice(0, 3).map((insight, i) => (
-                      <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
-                        <span className="w-1 h-1 rounded-full bg-cyan-500 mt-2 flex-shrink-0" />
-                        {insight}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
@@ -686,6 +861,14 @@ export default function Analytics() {
                     </Card>
                   </div>
                 )}
+
+                <AIInsightsPanel
+                  insights={insights}
+                  recommendations={recommendations}
+                  anomalies={anomalies}
+                  forecasts={forecasts}
+                  isLoading={insightsLoading}
+                />
               </>
             ) : (
               <Card>

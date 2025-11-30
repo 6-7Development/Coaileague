@@ -14,6 +14,7 @@ import { CoAIleagueLogo } from "@/components/coailleague-logo";
 import { performLogout } from "@/lib/logoutHandler";
 import { AnimatedNotificationBell } from "@/components/animated-notification-bell";
 import { WhatsNewBadge } from "@/components/whats-new-badge";
+import { AISearchTrigger } from "@/components/ai-search";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -152,6 +153,7 @@ export function UniversalHeader({ variant = "public" }: UniversalHeaderProps) {
                     <>
                       {showNotificationFeatures && (
                         <div className={`flex items-center ${HEADER_SPACING.mobileIconGap}`}>
+                          <AISearchTrigger />
                           <WhatsNewBadge />
                           <AnimatedNotificationBell
                             hasNotifications={true}
@@ -304,6 +306,7 @@ export function UniversalHeader({ variant = "public" }: UniversalHeaderProps) {
           ) : (
             // WORKSPACE NAVIGATION
             <div className="flex items-center gap-3">
+              <AISearchTrigger />
               <Button
                 variant="ghost"
                 size="sm"

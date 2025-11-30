@@ -21,11 +21,179 @@ import {
 } from '../services/timesheetInvoiceService';
 import { db } from '../db';
 import { invoices, invoiceLineItems, clients, workspaces } from '@shared/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, gte, lte, desc, or } from 'drizzle-orm';
 import { format } from 'date-fns';
 import '../types';
 
 export const timesheetInvoiceRouter = Router();
+
+// ============================================================================
+// LIST ALL INVOICES WITH FILTERS
+// ============================================================================
+
+timesheetInvoiceRouter.get('/', requireAuth, requireManager, async (req: Request, res: Response) => {
+  try {
+    const user = req.user;
+    const workspaceId = user?.currentWorkspaceId;
+    
+    if (!workspaceId) {
+      return res.status(400).json({ success: false, error: 'No workspace selected' });
+    }
+
+    const { clientId, status, startDate, endDate } = req.query;
+
+    const conditions = [eq(invoices.workspaceId, workspaceId)];
+
+    if (clientId && typeof clientId === 'string') {
+      conditions.push(eq(invoices.clientId, clientId));
+    }
+
+    if (status && typeof status === 'string') {
+      if (status === 'overdue') {
+        const now = new Date();
+        conditions.push(
+          or(
+            eq(invoices.status, 'overdue'),
+            and(eq(invoices.status, 'sent'), lte(invoices.dueDate, now))
+          ) as any
+        );
+      } else {
+        conditions.push(eq(invoices.status, status as any));
+      }
+    }
+
+    if (startDate && typeof startDate === 'string') {
+      conditions.push(gte(invoices.issueDate, new Date(startDate)));
+    }
+
+    if (endDate && typeof endDate === 'string') {
+      conditions.push(lte(invoices.issueDate, new Date(endDate)));
+    }
+
+    const invoiceList = await db.query.invoices.findMany({
+      where: and(...conditions),
+      with: {
+        client: true,
+      },
+      orderBy: [desc(invoices.createdAt)],
+    });
+
+    const data = invoiceList.map(inv => ({
+      id: inv.id,
+      invoiceNumber: inv.invoiceNumber,
+      issueDate: inv.issueDate,
+      dueDate: inv.dueDate,
+      subtotal: inv.subtotal,
+      taxRate: inv.taxRate,
+      taxAmount: inv.taxAmount,
+      total: inv.total,
+      status: inv.status,
+      paidAt: inv.paidAt,
+      amountPaid: inv.amountPaid,
+      sentAt: inv.sentAt,
+      clientId: inv.clientId,
+      clientName: inv.client 
+        ? (inv.client.companyName || `${inv.client.firstName || ''} ${inv.client.lastName || ''}`.trim())
+        : 'Unknown Client',
+      clientEmail: inv.client?.email,
+      notes: inv.notes,
+      createdAt: inv.createdAt,
+    }));
+
+    res.json({
+      success: true,
+      data,
+    });
+  } catch (error: any) {
+    console.error('[TimesheetInvoice] List error:', error);
+    res.status(500).json({ success: false, error: error.message || 'Failed to list invoices' });
+  }
+});
+
+// ============================================================================
+// GET INVOICE DETAIL WITH LINE ITEMS
+// ============================================================================
+
+timesheetInvoiceRouter.get('/:invoiceId', requireAuth, requireManager, async (req: Request, res: Response) => {
+  try {
+    const user = req.user;
+    const workspaceId = user?.currentWorkspaceId;
+    
+    if (!workspaceId) {
+      return res.status(400).json({ success: false, error: 'No workspace selected' });
+    }
+
+    const { invoiceId } = req.params;
+
+    const invoice = await db.query.invoices.findFirst({
+      where: and(eq(invoices.id, invoiceId), eq(invoices.workspaceId, workspaceId)),
+      with: {
+        client: true,
+      },
+    });
+
+    if (!invoice) {
+      return res.status(404).json({ success: false, error: 'Invoice not found' });
+    }
+
+    const lineItems = await db.select().from(invoiceLineItems)
+      .where(eq(invoiceLineItems.invoiceId, invoiceId));
+
+    const workspace = await db.query.workspaces.findFirst({
+      where: eq(workspaces.id, workspaceId),
+    });
+
+    const data = {
+      id: invoice.id,
+      invoiceNumber: invoice.invoiceNumber,
+      issueDate: invoice.issueDate,
+      dueDate: invoice.dueDate,
+      subtotal: invoice.subtotal,
+      taxRate: invoice.taxRate,
+      taxAmount: invoice.taxAmount,
+      total: invoice.total,
+      status: invoice.status,
+      paidAt: invoice.paidAt,
+      amountPaid: invoice.amountPaid,
+      sentAt: invoice.sentAt,
+      notes: invoice.notes,
+      paymentIntentId: invoice.paymentIntentId,
+      client: invoice.client ? {
+        id: invoice.client.id,
+        firstName: invoice.client.firstName,
+        lastName: invoice.client.lastName,
+        companyName: invoice.client.companyName,
+        email: invoice.client.email,
+        phone: invoice.client.phone,
+        address: invoice.client.address,
+      } : null,
+      workspace: workspace ? {
+        id: workspace.id,
+        name: workspace.name,
+        companyName: workspace.companyName,
+        address: workspace.address,
+        phone: workspace.phone,
+      } : null,
+      lineItems: lineItems.map(li => ({
+        id: li.id,
+        description: li.description,
+        quantity: li.quantity,
+        unitPrice: li.unitPrice,
+        amount: li.amount,
+        timeEntryId: li.timeEntryId,
+      })),
+      createdAt: invoice.createdAt,
+    };
+
+    res.json({
+      success: true,
+      data,
+    });
+  } catch (error: any) {
+    console.error('[TimesheetInvoice] Detail error:', error);
+    res.status(500).json({ success: false, error: error.message || 'Failed to get invoice detail' });
+  }
+});
 
 timesheetInvoiceRouter.post('/generate', requireAuth, requireWorkspaceRole(['org_owner', 'org_admin']), async (req: Request, res: Response) => {
   try {

@@ -34,7 +34,7 @@ import {
 import { isFeatureEnabled } from '@shared/platformConfig';
 import '../types';
 import { db } from '../db';
-import { employees, shifts } from '@shared/schema';
+import { employees, shifts, scheduleTemplates } from '@shared/schema';
 import { eq, and } from 'drizzle-orm';
 
 export const advancedSchedulingRouter = Router();
@@ -884,6 +884,211 @@ advancedSchedulingRouter.post('/copy-week', requireAuth, requireWorkspaceRole(['
     });
   } catch (error: any) {
     console.error('[AdvancedScheduling] Copy week error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================================================
+// SCHEDULE TEMPLATES
+// ============================================================================
+
+advancedSchedulingRouter.get('/templates', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const user = req.user;
+    const workspaceId = user?.currentWorkspaceId;
+    
+    if (!workspaceId) {
+      return res.status(400).json({ error: 'No workspace selected' });
+    }
+
+    const templates = await db.query.scheduleTemplates.findMany({
+      where: eq(scheduleTemplates.workspaceId, workspaceId),
+      orderBy: (scheduleTemplates, { desc }) => [desc(scheduleTemplates.createdAt)],
+    });
+
+    res.json(templates);
+  } catch (error: any) {
+    console.error('[AdvancedScheduling] Get templates error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+advancedSchedulingRouter.post('/templates', requireAuth, requireWorkspaceRole(['org_owner', 'org_admin', 'manager']), async (req: Request, res: Response) => {
+  try {
+    const user = req.user;
+    const workspaceId = user?.currentWorkspaceId;
+    const userId = user?.id;
+    
+    if (!workspaceId || !userId) {
+      return res.status(400).json({ error: 'No workspace selected' });
+    }
+
+    const { name, description, shifts } = req.body;
+
+    if (!name || !shifts || !Array.isArray(shifts)) {
+      return res.status(400).json({ error: 'Name and shifts array are required' });
+    }
+
+    const [template] = await db.insert(scheduleTemplates).values({
+      workspaceId,
+      name,
+      description: description || null,
+      shiftPatterns: shifts,
+      createdBy: userId,
+    }).returning();
+
+    res.json({
+      success: true,
+      template,
+    });
+  } catch (error: any) {
+    console.error('[AdvancedScheduling] Create template error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+advancedSchedulingRouter.get('/templates/:templateId', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const user = req.user;
+    const workspaceId = user?.currentWorkspaceId;
+    
+    if (!workspaceId) {
+      return res.status(400).json({ error: 'No workspace selected' });
+    }
+
+    const { templateId } = req.params;
+
+    const template = await db.query.scheduleTemplates.findFirst({
+      where: and(
+        eq(scheduleTemplates.id, templateId),
+        eq(scheduleTemplates.workspaceId, workspaceId)
+      ),
+    });
+
+    if (!template) {
+      return res.status(404).json({ error: 'Template not found' });
+    }
+
+    res.json({
+      success: true,
+      template,
+    });
+  } catch (error: any) {
+    console.error('[AdvancedScheduling] Get template error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+advancedSchedulingRouter.delete('/templates/:templateId', requireAuth, requireWorkspaceRole(['org_owner', 'org_admin', 'manager']), async (req: Request, res: Response) => {
+  try {
+    const user = req.user;
+    const workspaceId = user?.currentWorkspaceId;
+    
+    if (!workspaceId) {
+      return res.status(400).json({ error: 'No workspace selected' });
+    }
+
+    const { templateId } = req.params;
+
+    const [deleted] = await db.delete(scheduleTemplates)
+      .where(and(
+        eq(scheduleTemplates.id, templateId),
+        eq(scheduleTemplates.workspaceId, workspaceId)
+      ))
+      .returning();
+
+    if (!deleted) {
+      return res.status(404).json({ error: 'Template not found' });
+    }
+
+    res.json({
+      success: true,
+      message: 'Template deleted',
+    });
+  } catch (error: any) {
+    console.error('[AdvancedScheduling] Delete template error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+advancedSchedulingRouter.patch('/templates/:templateId', requireAuth, requireWorkspaceRole(['org_owner', 'org_admin', 'manager']), async (req: Request, res: Response) => {
+  try {
+    const user = req.user;
+    const workspaceId = user?.currentWorkspaceId;
+    
+    if (!workspaceId) {
+      return res.status(400).json({ error: 'No workspace selected' });
+    }
+
+    const { templateId } = req.params;
+    const { name, description, shifts } = req.body;
+
+    const updates: any = { updatedAt: new Date() };
+    if (name) updates.name = name;
+    if (description !== undefined) updates.description = description || null;
+    if (shifts) updates.shiftPatterns = shifts;
+
+    const [updated] = await db.update(scheduleTemplates)
+      .set(updates)
+      .where(and(
+        eq(scheduleTemplates.id, templateId),
+        eq(scheduleTemplates.workspaceId, workspaceId)
+      ))
+      .returning();
+
+    if (!updated) {
+      return res.status(404).json({ error: 'Template not found' });
+    }
+
+    res.json({
+      success: true,
+      template: updated,
+    });
+  } catch (error: any) {
+    console.error('[AdvancedScheduling] Update template error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+advancedSchedulingRouter.post('/templates/:templateId/apply', requireAuth, requireWorkspaceRole(['org_owner', 'org_admin', 'manager']), async (req: Request, res: Response) => {
+  try {
+    const user = req.user;
+    const workspaceId = user?.currentWorkspaceId;
+    
+    if (!workspaceId) {
+      return res.status(400).json({ error: 'No workspace selected' });
+    }
+
+    const { templateId } = req.params;
+    const { targetDate } = req.body;
+
+    if (!targetDate) {
+      return res.status(400).json({ error: 'Target date is required' });
+    }
+
+    const template = await db.query.scheduleTemplates.findFirst({
+      where: and(
+        eq(scheduleTemplates.id, templateId),
+        eq(scheduleTemplates.workspaceId, workspaceId)
+      ),
+    });
+
+    if (!template) {
+      return res.status(404).json({ error: 'Template not found' });
+    }
+
+    // Increment usage count
+    await db.update(scheduleTemplates)
+      .set({ usageCount: (template.usageCount || 0) + 1 })
+      .where(eq(scheduleTemplates.id, templateId));
+
+    res.json({
+      success: true,
+      template,
+      message: 'Template applied - shifts should be created by the frontend',
+    });
+  } catch (error: any) {
+    console.error('[AdvancedScheduling] Apply template error:', error);
     res.status(500).json({ error: error.message });
   }
 });

@@ -6,6 +6,151 @@ import '../types';
 export function registerAnalyticsRoutes(app: Express, requireAuth: any, readLimiter: any) {
   const analyticsRouter = Router();
 
+  analyticsRouter.get("/employee-performance", requireAuth, readLimiter, async (req: Request, res: Response) => {
+    try {
+      const workspaceId = (req.user as any)?.currentWorkspaceId;
+      if (!workspaceId) return res.status(400).json({ success: false, error: 'No workspace selected' });
+      const { period = 'last_30_days', startDate, endDate } = req.query;
+      const { advancedAnalyticsService } = await import("../services/advancedAnalyticsService");
+      const performance = await advancedAnalyticsService.getEmployeePerformanceMetrics(
+        workspaceId,
+        period as string,
+        startDate ? new Date(startDate as string) : undefined,
+        endDate ? new Date(endDate as string) : undefined
+      );
+      res.json({ success: true, data: performance });
+    } catch (error: any) {
+      console.error('Error fetching employee performance:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  analyticsRouter.get("/time-metrics", requireAuth, readLimiter, async (req: Request, res: Response) => {
+    try {
+      const workspaceId = (req.user as any)?.currentWorkspaceId;
+      if (!workspaceId) return res.status(400).json({ success: false, error: 'No workspace selected' });
+      const { period = 'last_30_days', startDate, endDate } = req.query;
+      const { advancedAnalyticsService } = await import("../services/advancedAnalyticsService");
+      const timeUsage = await advancedAnalyticsService.getTimeUsageMetrics(
+        workspaceId,
+        period as string,
+        startDate ? new Date(startDate as string) : undefined,
+        endDate ? new Date(endDate as string) : undefined
+      );
+      const billableHours = timeUsage.byClient.reduce((sum, c) => sum + c.totalHours, 0);
+      const billableRevenue = timeUsage.byClient.reduce((sum, c) => sum + c.revenue, 0);
+      res.json({ 
+        success: true, 
+        data: {
+          ...timeUsage,
+          billableHours,
+          billableRevenue,
+          nonBillableHours: timeUsage.totalHours - billableHours,
+          averageHourlyRate: billableHours > 0 ? billableRevenue / billableHours : 0
+        }
+      });
+    } catch (error: any) {
+      console.error('Error fetching time metrics:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  analyticsRouter.get("/revenue-metrics", requireAuth, readLimiter, async (req: Request, res: Response) => {
+    try {
+      const workspaceId = (req.user as any)?.currentWorkspaceId;
+      if (!workspaceId) return res.status(400).json({ success: false, error: 'No workspace selected' });
+      const { period = 'last_30_days', startDate, endDate } = req.query;
+      const { advancedAnalyticsService } = await import("../services/advancedAnalyticsService");
+      const revenue = await advancedAnalyticsService.getRevenueMetrics(
+        workspaceId,
+        period as string,
+        startDate ? new Date(startDate as string) : undefined,
+        endDate ? new Date(endDate as string) : undefined
+      );
+      res.json({ success: true, data: revenue });
+    } catch (error: any) {
+      console.error('Error fetching revenue metrics:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  analyticsRouter.get("/scheduling-metrics", requireAuth, readLimiter, async (req: Request, res: Response) => {
+    try {
+      const workspaceId = (req.user as any)?.currentWorkspaceId;
+      if (!workspaceId) return res.status(400).json({ success: false, error: 'No workspace selected' });
+      const { period = 'last_30_days', startDate, endDate } = req.query;
+      const { advancedAnalyticsService } = await import("../services/advancedAnalyticsService");
+      const scheduling = await advancedAnalyticsService.getSchedulingMetrics(
+        workspaceId,
+        period as string,
+        startDate ? new Date(startDate as string) : undefined,
+        endDate ? new Date(endDate as string) : undefined
+      );
+      const gaps = scheduling.totalShifts - scheduling.completedShifts - scheduling.cancelledShifts;
+      res.json({ 
+        success: true, 
+        data: {
+          ...scheduling,
+          schedulingGaps: gaps > 0 ? gaps : 0,
+          efficiency: scheduling.totalShifts > 0 
+            ? Math.round((scheduling.completedShifts / scheduling.totalShifts) * 100) 
+            : 0
+        }
+      });
+    } catch (error: any) {
+      console.error('Error fetching scheduling metrics:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  analyticsRouter.get("/trends", requireAuth, readLimiter, async (req: Request, res: Response) => {
+    try {
+      const workspaceId = (req.user as any)?.currentWorkspaceId;
+      if (!workspaceId) return res.status(400).json({ success: false, error: 'No workspace selected' });
+      const { period = 'last_30_days', startDate, endDate } = req.query;
+      const { advancedAnalyticsService } = await import("../services/advancedAnalyticsService");
+      const dashboard = await advancedAnalyticsService.getDashboardMetrics(
+        workspaceId,
+        period as string,
+        startDate ? new Date(startDate as string) : undefined,
+        endDate ? new Date(endDate as string) : undefined
+      );
+      res.json({ 
+        success: true, 
+        data: {
+          trends: dashboard.trends,
+          comparison: dashboard.comparison,
+          period
+        }
+      });
+    } catch (error: any) {
+      console.error('Error fetching trends:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  analyticsRouter.get("/insights", requireAuth, readLimiter, async (req: Request, res: Response) => {
+    try {
+      const workspaceId = (req.user as any)?.currentWorkspaceId;
+      if (!workspaceId) return res.status(400).json({ success: false, error: 'No workspace selected' });
+      const { period = 'last_30_days' } = req.query;
+      const { analyticsAIService } = await import("../services/analyticsAIService");
+      const insights = await analyticsAIService.generateInsights(workspaceId, period as string);
+      res.json({ success: true, data: insights });
+    } catch (error: any) {
+      console.error('Error generating AI insights:', error);
+      res.status(500).json({ 
+        success: true, 
+        data: { 
+          insights: [],
+          recommendations: [],
+          anomalies: [],
+          forecasts: []
+        }
+      });
+    }
+  });
+
   analyticsRouter.get("/summary", requireAuth, readLimiter, async (req: Request, res: Response) => {
     try {
       const workspaceId = (req.user as any)?.currentWorkspaceId;
