@@ -43,6 +43,25 @@ export async function resolveWorkspaceForUser(userId: string, requestedWorkspace
   employeeId: string | null;
   error?: string;
 }> {
+  // Root user always gets org_owner access to the default workspace
+  if (userId === 'root-user-00000000') {
+    // Get or find the default workspace for root
+    const [workspace] = await db.select().from(workspaces).limit(1);
+    if (workspace) {
+      const employee = await db.query.employees.findFirst({
+        where: and(
+          eq(employees.userId, userId),
+          eq(employees.workspaceId, workspace.id)
+        ),
+      });
+      return {
+        workspaceId: requestedWorkspaceId || workspace.id,
+        role: 'org_owner',
+        employeeId: employee?.id || null,
+      };
+    }
+  }
+
   // If workspaceId is explicitly provided, validate user has access to it
   if (requestedWorkspaceId) {
     // Check if user owns this workspace

@@ -1,4 +1,4 @@
-import { Bell, ChevronRight } from "lucide-react";
+import { Bell, ChevronRight, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
@@ -68,26 +68,38 @@ export function PolishedPageHeader({
             {actions}
             
             {showAlerts && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="relative bg-slate-700/50 hover:bg-slate-600/50 text-white border border-slate-600/50"
-                onClick={() => setLocation('/notifications')}
-                data-testid="button-notifications"
-              >
-                <Bell size={18} />
-                {unreadCount > 0 && (
-                  <Badge 
-                    variant="destructive" 
-                    className="absolute -top-1 -right-1 h-5 min-w-[20px] px-1.5 text-xs font-bold"
-                  >
-                    {unreadCount > 99 ? '99+' : unreadCount}
-                  </Badge>
-                )}
-                <span className="ml-2 hidden sm:inline">
-                  {unreadCount > 0 ? `${unreadCount} New Alert${unreadCount === 1 ? '' : 's'}` : 'Alerts'}
-                </span>
-              </Button>
+              <>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="bg-slate-700/50 hover:bg-slate-600/50 text-white border border-slate-600/50"
+                  onClick={() => setLocation('/whats-new')}
+                  data-testid="button-whats-new"
+                  title="What's New"
+                >
+                  <Sparkles size={18} />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="relative bg-slate-700/50 hover:bg-slate-600/50 text-white border border-slate-600/50"
+                  onClick={() => setLocation('/notifications')}
+                  data-testid="button-notifications"
+                >
+                  <Bell size={18} />
+                  {unreadCount > 0 && (
+                    <Badge 
+                      variant="destructive" 
+                      className="absolute -top-1 -right-1 h-5 min-w-[20px] px-1.5 text-xs font-bold"
+                    >
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </Badge>
+                  )}
+                  <span className="ml-2 hidden sm:inline">
+                    {unreadCount > 0 ? `${unreadCount} New Alert${unreadCount === 1 ? '' : 's'}` : 'Alerts'}
+                  </span>
+                </Button>
+              </>
             )}
           </div>
         </div>
