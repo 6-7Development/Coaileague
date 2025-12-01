@@ -832,6 +832,105 @@ supportCommandRouter.get('/status', requireSupportRole, async (req: Authenticate
 });
 
 /**
+ * POST /api/support/command/test/platform-downtime-countdown
+ * Send a test platform downtime notification with 30-second countdown simulation
+ * This broadcasts live countdown updates to all connected clients
+ */
+supportCommandRouter.post('/test/platform-downtime-countdown', requireSupportRole, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    // Send initial system message about platform going down
+    broadcastForceRefresh('system_message', {
+      action: 'platform_downtime_alert',
+      message: 'Platform maintenance in progress. System will be down for updates.',
+      severity: 'error',
+      duration: 35000,
+      dismissible: false,
+      countdown: 30,
+      timestamp: new Date().toISOString(),
+      sender: 'system',
+    });
+
+    // Create a system notification for all users
+    const allUsers = await db.select({ 
+      id: users.id, 
+      currentWorkspace: users.currentWorkspace 
+    }).from(users);
+
+    for (const user of allUsers) {
+      await db.insert(notifications).values({
+        workspaceId: user.currentWorkspace || 'coaileague-platform-workspace',
+        userId: user.id,
+        type: 'system',
+        title: 'Platform Maintenance',
+        message: 'CoAIleague platform is going down for maintenance. Countdown: 30 seconds',
+        priority: 'critical',
+        isRead: false,
+        metadata: { 
+          testCountdown: true, 
+          pushedBy: req.user?.id,
+          countdownSeconds: 30,
+        },
+      });
+    }
+
+    // Broadcast force refresh for notifications
+    broadcastForceRefresh('notifications', {
+      action: 'platform_downtime',
+      count: allUsers.length,
+    });
+
+    // Start the countdown simulation - send updates every second for 30 seconds
+    let secondsRemaining = 30;
+    const countdownInterval = setInterval(async () => {
+      secondsRemaining--;
+      
+      broadcastForceRefresh('system_message', {
+        action: 'countdown_update',
+        message: `Platform going down in ${secondsRemaining} second${secondsRemaining === 1 ? '' : 's'}...`,
+        severity: 'error',
+        countdown: secondsRemaining,
+        timestamp: new Date().toISOString(),
+      });
+
+      console.log(`[TestCountdown] Seconds remaining: ${secondsRemaining}`);
+
+      if (secondsRemaining <= 0) {
+        clearInterval(countdownInterval);
+        
+        // Final message - platform is down
+        broadcastForceRefresh('system_message', {
+          action: 'platform_down',
+          message: 'Platform is now down for maintenance',
+          severity: 'error',
+          duration: 0,
+          dismissible: false,
+          timestamp: new Date().toISOString(),
+        });
+
+        console.log('[TestCountdown] Countdown complete - platform down message sent');
+      }
+    }, 1000);
+
+    await logSupportAction(req.user?.id || 'unknown', 'test_platform_downtime_countdown', {
+      totalUsers: allUsers.length,
+      countdownSeconds: 30,
+      testType: 'simulation',
+    });
+
+    res.json({
+      success: true,
+      message: 'Platform downtime countdown test started',
+      notificationsCreated: allUsers.length,
+      countdownSeconds: 30,
+      startTime: new Date().toISOString(),
+    });
+  } catch (error: any) {
+    console.error('[SupportConsole] Platform downtime countdown test error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
  * Log support staff actions for audit trail
  */
 async function logSupportAction(userId: string, action: string, details: Record<string, any>) {
