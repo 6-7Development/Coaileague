@@ -307,6 +307,29 @@ export function getLiveConnectionStats() {
 // Track active connections by conversation ID (module-level for export access)
 const conversationClients = new Map<string, Set<WebSocketClient>>();
 
+// Global broadcast function for force-refresh events (used by support command console)
+let globalWSS: WebSocketServer | null = null;
+
+export function broadcastToAllClients(message: any) {
+  if (!globalWSS) {
+    console.warn('[WebSocket] Global WSS not initialized for broadcast');
+    return 0;
+  }
+  
+  let count = 0;
+  const payload = typeof message === 'string' ? message : JSON.stringify(message);
+  
+  globalWSS.clients.forEach((client) => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(payload);
+      count++;
+    }
+  });
+  
+  console.log(`[WebSocket] Broadcast sent to ${count} clients`);
+  return count;
+}
+
 // =============================================================================
 // SECURITY: MULTI-DIMENSIONAL RATE LIMITING (User + IP + Session)
 // =============================================================================
@@ -517,12 +540,13 @@ export function getLiveRoomConnections() {
 }
 
 export function setupWebSocket(server: Server) {
-  const wss = new WebSocketServer({ 
+  const wss = new WebSocketServer({
     server,
     path: '/ws/chat',
     clientTracking: true,
     maxPayload: 10 * 1024 * 1024, // 10MB max payload
   });
+  globalWSS = wss; // Set global reference for force-broadcast
   
   // Track connections subscribed to shift updates by workspace ID
   const shiftUpdateClients = new Map<string, Set<WebSocketClient>>();

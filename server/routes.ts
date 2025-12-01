@@ -82,6 +82,7 @@ import emailRouter from "./routes/emails";
 import { calendarRouter } from "./routes/calendarRoutes";
 import { smsRouter } from "./routes/smsRoutes";
 import { whatsNewRouter } from "./routes/whatsNewRoutes";
+import { supportCommandRouter } from "./routes/support-command-console";
 import { onboardingRouter } from "./routes/onboardingRoutes";
 import { timesheetReportRouter } from "./routes/timesheetReportRoutes";
 import { timesheetInvoiceRouter } from "./routes/timesheetInvoiceRoutes";
@@ -2225,6 +2226,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register What's New routes (Platform updates feed)
   app.use("/api/whats-new", whatsNewRouter);
+  // Register Support Command Console routes (Force-push updates for support staff)
+  app.use("/api/support/command", supportCommandRouter);
 
   // Register Onboarding Pipeline routes (tasks, progress, rewards)
   app.use("/api/onboarding", onboardingRouter);
