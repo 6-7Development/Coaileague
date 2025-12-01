@@ -540,8 +540,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           alerts: alertsMarked 
         } 
       });
-      console.error('Error marking all notifications as read:', error);
     } catch (error) {
+      console.error('Error marking all notifications as read:', error);
       res.status(500).json({ message: 'Failed to mark notifications as read' });
     }
   });
@@ -645,7 +645,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Mark all notifications as read
+  // Delete notification
+  app.delete('/api/notifications/:id', requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user!.id;
+      const { id } = req.params;
       
       // Delete notification (storage will verify ownership)
       const deleted = await storage.deleteNotification(id, userId);
