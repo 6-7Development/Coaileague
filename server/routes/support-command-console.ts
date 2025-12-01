@@ -18,7 +18,7 @@ import { animationControlService, type AnimationCommand } from '../services/anim
 
 export const supportCommandRouter = Router();
 
-const SUPPORT_ROLES = ['root_admin', 'deputy_admin', 'sysop', 'support_manager', 'support_agent'];
+const SUPPORT_ROLES = ['root_admin', 'deputy_admin', 'sysop', 'support_manager', 'support_agent', 'Bot'];
 
 function requireSupportRole(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   const userRole = req.platformRole || 'none';
@@ -833,11 +833,14 @@ supportCommandRouter.get('/status', requireSupportRole, async (req: Authenticate
 
 /**
  * POST /api/support/command/test/platform-downtime-countdown
- * Send a test platform downtime notification with 30-second countdown simulation
+ * Send a test platform downtime notification with 30-second countdown simulation via HelpAI
  * This broadcasts live countdown updates to all connected clients
  */
 supportCommandRouter.post('/test/platform-downtime-countdown', requireSupportRole, async (req: AuthenticatedRequest, res: Response) => {
   try {
+    // Identify the sender - HelpAI bot or support staff
+    const senderName = req.user?.email?.includes('helpai') || req.platformRole === 'Bot' ? 'HelpAI' : 'Support';
+    
     // Send initial system message about platform going down
     broadcastForceRefresh('system_message', {
       action: 'platform_downtime_alert',
@@ -847,36 +850,55 @@ supportCommandRouter.post('/test/platform-downtime-countdown', requireSupportRol
       dismissible: false,
       countdown: 30,
       timestamp: new Date().toISOString(),
-      sender: 'system',
+      sender: senderName,
+      senderBrand: 'HelpAI',
     });
 
-    // Create a system notification for all users
-    const allUsers = await db.select({ 
-      id: users.id, 
-      currentWorkspace: users.currentWorkspace 
-    }).from(users);
+    // Get all users and create notifications
+    let allUsers: Array<{id: string; currentWorkspace: string | null}> = [];
+    try {
+      allUsers = await db.select({ 
+        id: users.id, 
+        currentWorkspace: users.currentWorkspace 
+      }).from(users);
+    } catch (error) {
+      console.warn('[TestCountdown] Could not fetch users:', error);
+      allUsers = [];
+    }
 
-    for (const user of allUsers) {
-      await db.insert(notifications).values({
+    // Create system notification for each user
+    if (allUsers.length > 0) {
+      const notificationInserts = allUsers.map(user => ({
         workspaceId: user.currentWorkspace || 'coaileague-platform-workspace',
         userId: user.id,
-        type: 'system',
-        title: 'Platform Maintenance',
+        type: 'system' as const,
+        title: '🤖 HelpAI System Alert - Platform Maintenance',
         message: 'CoAIleague platform is going down for maintenance. Countdown: 30 seconds',
-        priority: 'critical',
+        priority: 'critical' as const,
         isRead: false,
+        actionUrl: '/notifications' as string,
         metadata: { 
           testCountdown: true, 
           pushedBy: req.user?.id,
           countdownSeconds: 30,
+          sender: senderName,
+          brand: 'HelpAI',
         },
-      });
+      }));
+      
+      // Insert all notifications at once
+      try {
+        await db.insert(notifications).values(notificationInserts);
+      } catch (insertError) {
+        console.error('[TestCountdown] Notification insert failed:', insertError);
+      }
     }
 
     // Broadcast force refresh for notifications
     broadcastForceRefresh('notifications', {
       action: 'platform_downtime',
       count: allUsers.length,
+      sender: 'HelpAI',
     });
 
     // Start the countdown simulation - send updates every second for 30 seconds
@@ -890,9 +912,11 @@ supportCommandRouter.post('/test/platform-downtime-countdown', requireSupportRol
         severity: 'error',
         countdown: secondsRemaining,
         timestamp: new Date().toISOString(),
+        sender: 'HelpAI',
+        senderBrand: 'HelpAI',
       });
 
-      console.log(`[TestCountdown] Seconds remaining: ${secondsRemaining}`);
+      console.log(`[HelpAI Maintenance] Seconds remaining: ${secondsRemaining}`);
 
       if (secondsRemaining <= 0) {
         clearInterval(countdownInterval);
@@ -905,9 +929,11 @@ supportCommandRouter.post('/test/platform-downtime-countdown', requireSupportRol
           duration: 0,
           dismissible: false,
           timestamp: new Date().toISOString(),
+          sender: 'HelpAI',
+          senderBrand: 'HelpAI',
         });
 
-        console.log('[TestCountdown] Countdown complete - platform down message sent');
+        console.log('[HelpAI Maintenance] Countdown complete - platform down');
       }
     }, 1000);
 
