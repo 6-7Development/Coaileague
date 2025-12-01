@@ -237,7 +237,7 @@ export function NotificationsPopover() {
         </div>
       </PopoverTrigger>
       <PopoverContent 
-        className="w-[400px] p-0" 
+        className="w-[calc(100vw-1.5rem)] sm:w-[400px] max-w-[400px] p-0" 
         align="end"
         sideOffset={8}
       >
@@ -266,7 +266,7 @@ export function NotificationsPopover() {
           )}
         </div>
 
-        <ScrollArea className="max-h-[450px]">
+        <ScrollArea className="h-[60vh] sm:h-[450px] max-h-[calc(100vh-12rem)]">
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
