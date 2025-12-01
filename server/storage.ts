@@ -6331,7 +6331,8 @@ export class DatabaseStorage implements IStorage {
       )
       .where(
         or(
-          eq(platformUpdates.visibility, 'global'),
+          eq(platformUpdates.visibility, 'all'),
+          isNull(platformUpdates.workspaceId),
           eq(platformUpdates.workspaceId, workspaceId)
         )
       )
@@ -6372,7 +6373,8 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           or(
-            eq(platformUpdates.visibility, 'global'),
+            eq(platformUpdates.visibility, 'all'),
+            isNull(platformUpdates.workspaceId),
             eq(platformUpdates.workspaceId, workspaceId)
           ),
           sql`${userPlatformUpdateViews.viewedAt} IS NULL`
