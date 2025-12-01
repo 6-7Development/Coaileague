@@ -108,10 +108,23 @@ class AIBrainFileSystemTools {
   }
 
   private validatePath(filePath: string): { valid: boolean; error?: string; isReadOnly?: boolean } {
+    if (path.isAbsolute(filePath)) {
+      return { valid: false, error: 'Absolute paths are not allowed' };
+    }
+    
     const normalizedPath = path.normalize(filePath).replace(/\\/g, '/');
     
     if (normalizedPath.includes('..')) {
       return { valid: false, error: 'Path traversal not allowed' };
+    }
+    
+    if (normalizedPath.startsWith('/') || normalizedPath.startsWith('\\')) {
+      return { valid: false, error: 'Paths starting with / or \\ are not allowed' };
+    }
+
+    const resolvedPath = path.resolve(WORKSPACE_ROOT, normalizedPath);
+    if (!resolvedPath.startsWith(WORKSPACE_ROOT)) {
+      return { valid: false, error: 'Path escapes workspace root' };
     }
 
     for (const protectedPath of PROTECTED_PATHS) {
@@ -126,12 +139,29 @@ class AIBrainFileSystemTools {
 
   private validateExtension(filePath: string, forWrite: boolean = false): boolean {
     const ext = path.extname(filePath).toLowerCase();
-    if (!ext) return true;
+    if (!ext) {
+      return !forWrite;
+    }
     return ALLOWED_EXTENSIONS.includes(ext);
   }
 
   private getFullPath(relativePath: string): string {
-    return path.join(WORKSPACE_ROOT, relativePath);
+    if (path.isAbsolute(relativePath)) {
+      throw new Error('Absolute paths are not allowed');
+    }
+    
+    const normalized = path.normalize(relativePath).replace(/\\/g, '/');
+    if (normalized.startsWith('..') || normalized.startsWith('/')) {
+      throw new Error('Invalid path: must be relative to workspace');
+    }
+    
+    const fullPath = path.resolve(WORKSPACE_ROOT, normalized);
+    
+    if (!fullPath.startsWith(WORKSPACE_ROOT)) {
+      throw new Error('Path escapes workspace root');
+    }
+    
+    return fullPath;
   }
 
   private async logAction(
@@ -290,14 +320,25 @@ class AIBrainFileSystemTools {
     userId: string = 'ai-brain'
   ): Promise<FileSystemResult<{ matchCount: number; newContent: string }>> {
     try {
+      const validation = this.validatePath(filePath);
+      if (!validation.valid) {
+        return { success: false, error: validation.error, path: filePath };
+      }
+      if (validation.isReadOnly) {
+        return { success: false, error: 'File is read-only', path: filePath };
+      }
+      
+      if (!this.validateExtension(filePath, true)) {
+        return { 
+          success: false, 
+          error: 'Cannot edit files without extension or with disallowed extension', 
+          path: filePath 
+        };
+      }
+      
       const readResult = await this.readFile(filePath, {}, userId);
       if (!readResult.success || !readResult.data) {
         return { success: false, error: readResult.error, path: filePath };
-      }
-
-      const validation = this.validatePath(filePath);
-      if (validation.isReadOnly) {
-        return { success: false, error: 'File is read-only', path: filePath };
       }
 
       let content = readResult.data;
@@ -369,6 +410,14 @@ class AIBrainFileSystemTools {
       }
       if (validation.isReadOnly) {
         return { success: false, error: 'Cannot delete read-only file', path: filePath };
+      }
+      
+      if (!this.validateExtension(filePath, true)) {
+        return { 
+          success: false, 
+          error: 'Cannot delete files without extension or with disallowed extension', 
+          path: filePath 
+        };
       }
 
       const fullPath = this.getFullPath(filePath);

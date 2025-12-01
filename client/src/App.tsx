@@ -148,6 +148,7 @@ import AdminTicketReviews from "@/pages/admin-ticket-reviews";
 import AutomationAuditLog from "@/pages/automation-audit-log";
 import AutomationSettings from "@/pages/automation-settings";
 import AIBrainDashboard from "@/pages/ai-brain-dashboard";
+import SupportAIConsole from "@/pages/support-ai-console";
 import SystemHealth from "@/pages/system-health";
 import { FloatingSupportChat } from "@/components/floating-support-chat";
 import { ReenableChatButton } from "@/components/reenable-chat-button";
@@ -595,6 +596,7 @@ function AppContent() {
                 <Route path="/ai/command-center" component={AICommandCenter} />
                 <Route path="/support/console" component={SupportCommandConsole} />
                 <Route path="/ai/brain" component={AIBrainDashboard} />
+                <Route path="/support/ai-console" component={SupportAIConsole} />
                 <Route path="/system-health">
                   <PlatformAdminRoute>
                     <SystemHealth />
