@@ -45,7 +45,9 @@ The system employs a multi-tenant architecture with robust RBAC security and mul
 - **Notification System:** Platform updates from AI brain, support staff maintenance alerts, real-time WebSocket delivery, user notification history tracking.
 - **Support Command Console:** Force-push updates system for support staff with 6 command endpoints and real-time WebSocket broadcast.
 - **AI Brain Code Editor:** Staged code editing system with approval workflow, integrated with HelpAI orchestrator, and automatic What's New notifications.
-- **AI Brain Master Orchestrator:** Central orchestration hub coordinating 28 actions across various categories, connecting Gemini AI to all platform services, and executing workflow chains with authorization validation and audit logging.
+- **AI Brain Master Orchestrator:** Central orchestration hub coordinating 61 actions across 12 categories (scheduling, payroll, compliance, escalation, analytics, notifications, automation, employee lifecycle, health checks, user assistance, file system, workflows, test runner), connecting Gemini AI to all platform services, and executing workflow chains with authorization validation and audit logging.
+- **AI Brain File System Tools:** Comprehensive file access with read (line ranges), write/create, edit (search/replace), delete, list (recursive), search (regex), diff generation, and metadata retrieval. Protected paths (node_modules, .git, .env), allowed extensions only, and path traversal prevention.
+- **AI Brain Code Editor API:** Full staged code editing workflow with 11 endpoints: stage, stage-batch, pending, change details, approve, reject, apply, rollback, read file, list files, and AI-request. Integrated with What's New notifications and WebSocket broadcasts.
 - **AI Brain Authorization Service:** Role-based permission model with a 9-level role hierarchy and category-specific permission matrix, validating support staff credentials and logging all authorization checks.
 - **AI Brain Platform Change Monitor:** Autonomous service scanning the platform for changes, generating AI-summarized notifications with severity classification, and broadcasting them to users.
 
@@ -56,6 +58,25 @@ The system employs a multi-tenant architecture with robust RBAC security and mul
 - **Audit Logging:** Comprehensive audit logging with a 365-day retention policy.
 - **Security:** AES-256-GCM encryption, PBKDF2-SHA256 key derivation, RBAC, per-org credential isolation, and credential expiry warnings.
 - **Unified Config Registry:** Single source of truth at `shared/config/registry.ts` with Zod validation.
+
+### Consolidation Report (Dec 2025 Audit)
+**Identified Dead Code:**
+- `server/services/sentimentAnalysis.ts` - Exports `analyzeReviewSentiment` but never imported. Uses Gemini for review sentiment with persistence but redundant with `sentimentAnalyzer.ts`.
+
+**Consolidation Candidates (Future Work):**
+- **AI Bot Services:** `aiBot.ts` (OpenAI, minimal usage in queueReminderJob) and `helpai/helpAIBotService.ts` (Gemini, comprehensive) - Could merge into single unified service.
+- **Sentiment Analysis:** `sentimentAnalysis.ts` and `sentimentAnalyzer.ts` - Similar functionality, different AI backends.
+- **Notification Services:** 4 services with overlapping concerns (notificationService, aiNotificationService, universalNotificationEngine, notificationDigestService) - Could benefit from facade pattern.
+
+**Properly Separated (Not Duplicates):**
+- `oauth/gusto.ts` vs `partners/gusto.ts` - Correct separation (OAuth flow vs API operations)
+- `oauth/quickbooks.ts` vs `partners/quickbooks.ts` - Correct separation
+- Analytics services serve different purposes (data, AI insights, stats, owner analytics)
+
+**Files with LSP Warnings (Non-Blocking):**
+- `server/routes/ownerAnalytics.ts` - 6 type annotation warnings (runtime works)
+- `server/services/partners/gusto.ts` - 20 diagnostics (requires Gusto API keys)
+- `server/services/analyticsStats.ts` - 1 diagnostic
 
 ### External Dependencies
 - **Stripe**: Payment processing, payroll, and financial integrations.

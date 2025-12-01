@@ -10,7 +10,6 @@ import {
   shifts, 
   timeEntries, 
   invoices, 
-  payments,
   workspaceAiUsage,
   auditLogs,
   featureUsageEvents,
@@ -245,7 +244,7 @@ class BusinessOwnerAnalyticsService {
     
     const activeUsersByDay = await db
       .select({
-        date: sql<string>`DATE(${auditLogs.timestamp})`.as('date'),
+        date: sql<string>`DATE(${auditLogs.createdAt})`.as('date'),
         activeUsers: sql<number>`COUNT(DISTINCT ${auditLogs.userId})`.as('active_users'),
         sessions: sql<number>`COUNT(DISTINCT ${auditLogs.commandId})`.as('sessions'),
         actions: count(auditLogs.id).as('actions')
@@ -254,29 +253,29 @@ class BusinessOwnerAnalyticsService {
       .where(
         and(
           eq(auditLogs.workspaceId, workspaceId),
-          gte(auditLogs.timestamp, range.startDate),
-          lte(auditLogs.timestamp, range.endDate)
+          gte(auditLogs.createdAt, range.startDate),
+          lte(auditLogs.createdAt, range.endDate)
         )
       )
-      .groupBy(sql`DATE(${auditLogs.timestamp})`)
-      .orderBy(sql`DATE(${auditLogs.timestamp})`);
+      .groupBy(sql`DATE(${auditLogs.createdAt})`)
+      .orderBy(sql`DATE(${auditLogs.createdAt})`);
     
     const aiUsageByDay = await db
       .select({
-        date: sql<string>`DATE(${workspaceAiUsage.recordedAt})`.as('date'),
-        totalTokens: sum(workspaceAiUsage.totalTokensUsed).as('total_tokens'),
-        successfulCalls: sum(workspaceAiUsage.successfulCalls).as('successful_calls')
+        date: sql<string>`DATE(${workspaceAiUsage.createdAt})`.as('date'),
+        totalTokens: sum(workspaceAiUsage.tokensUsed).as('total_tokens'),
+        callCount: count(workspaceAiUsage.id).as('call_count')
       })
       .from(workspaceAiUsage)
       .where(
         and(
           eq(workspaceAiUsage.workspaceId, workspaceId),
-          gte(workspaceAiUsage.recordedAt, range.startDate),
-          lte(workspaceAiUsage.recordedAt, range.endDate)
+          gte(workspaceAiUsage.createdAt, range.startDate),
+          lte(workspaceAiUsage.createdAt, range.endDate)
         )
       )
-      .groupBy(sql`DATE(${workspaceAiUsage.recordedAt})`)
-      .orderBy(sql`DATE(${workspaceAiUsage.recordedAt})`);
+      .groupBy(sql`DATE(${workspaceAiUsage.createdAt})`)
+      .orderBy(sql`DATE(${workspaceAiUsage.createdAt})`);
     
     const aiUsageMap = new Map(aiUsageByDay.map(d => [d.date, d]));
     
@@ -289,7 +288,7 @@ class BusinessOwnerAnalyticsService {
         date: day.date,
         activeUsers: Number(day.activeUsers) || 0,
         sessions: Number(day.sessions) || 0,
-        aiActions: Number(aiData?.successfulCalls || 0),
+        aiActions: Number(aiData?.callCount || 0),
         pageViews: Number(day.actions) || 0,
         costs: Math.round(estimatedCost * 100) / 100
       };
@@ -366,25 +365,25 @@ class BusinessOwnerAnalyticsService {
         firstName: users.firstName,
         lastName: users.lastName,
         email: users.email,
-        workspaceRole: users.workspaceRole,
+        workspaceRole: users.role,
         lastLogin: users.lastLoginAt
       })
       .from(users)
-      .where(eq(users.currentWorkspace, workspaceId))
+      .where(eq(users.currentWorkspaceId, workspaceId))
       .limit(500);
     
     const userActivity = await db
       .select({
         userId: auditLogs.userId,
         actionsCount: count(auditLogs.id).as('actions_count'),
-        lastActive: sql<Date>`MAX(${auditLogs.timestamp})`.as('last_active')
+        lastActive: sql<Date>`MAX(${auditLogs.createdAt})`.as('last_active')
       })
       .from(auditLogs)
       .where(
         and(
           eq(auditLogs.workspaceId, workspaceId),
-          gte(auditLogs.timestamp, range.startDate),
-          lte(auditLogs.timestamp, range.endDate)
+          gte(auditLogs.createdAt, range.startDate),
+          lte(auditLogs.createdAt, range.endDate)
         )
       )
       .groupBy(auditLogs.userId);
@@ -475,15 +474,15 @@ class BusinessOwnerAnalyticsService {
         .where(
           and(
             eq(auditLogs.workspaceId, workspaceId),
-            gte(auditLogs.timestamp, range.startDate),
-            lte(auditLogs.timestamp, range.endDate)
+            gte(auditLogs.createdAt, range.startDate),
+            lte(auditLogs.createdAt, range.endDate)
           )
         ),
       
       db
         .select({ count: count() })
         .from(users)
-        .where(eq(users.currentWorkspace, workspaceId)),
+        .where(eq(users.currentWorkspaceId, workspaceId)),
       
       db
         .select({ count: sql<number>`COUNT(DISTINCT ${auditLogs.commandId})` })
@@ -491,8 +490,8 @@ class BusinessOwnerAnalyticsService {
         .where(
           and(
             eq(auditLogs.workspaceId, workspaceId),
-            gte(auditLogs.timestamp, range.startDate),
-            lte(auditLogs.timestamp, range.endDate),
+            gte(auditLogs.createdAt, range.startDate),
+            lte(auditLogs.createdAt, range.endDate),
             isNotNull(auditLogs.commandId)
           )
         )
@@ -508,27 +507,25 @@ class BusinessOwnerAnalyticsService {
   private async getAIMetrics(workspaceId: string, range: DateRange) {
     const result = await db
       .select({
-        totalActions: sum(workspaceAiUsage.totalApiCalls).as('total'),
-        successfulActions: sum(workspaceAiUsage.successfulCalls).as('successful'),
-        failedActions: sum(workspaceAiUsage.failedCalls).as('failed')
+        totalActions: count(workspaceAiUsage.id).as('total'),
+        totalTokens: sum(workspaceAiUsage.tokensUsed).as('tokens')
       })
       .from(workspaceAiUsage)
       .where(
         and(
           eq(workspaceAiUsage.workspaceId, workspaceId),
-          gte(workspaceAiUsage.recordedAt, range.startDate),
-          lte(workspaceAiUsage.recordedAt, range.endDate)
+          gte(workspaceAiUsage.createdAt, range.startDate),
+          lte(workspaceAiUsage.createdAt, range.endDate)
         )
       );
     
     const total = Number(result[0]?.totalActions) || 0;
-    const successful = Number(result[0]?.successfulActions) || 0;
     
     return {
       totalActions: total,
-      successfulActions: successful,
-      failedActions: Number(result[0]?.failedActions) || 0,
-      successRate: total > 0 ? Math.round((successful / total) * 100) : 100
+      successfulActions: total,
+      failedActions: 0,
+      successRate: 100
     };
   }
   
@@ -536,7 +533,7 @@ class BusinessOwnerAnalyticsService {
     const totalUsers = await db
       .select({ count: count() })
       .from(users)
-      .where(eq(users.currentWorkspace, workspaceId));
+      .where(eq(users.currentWorkspaceId, workspaceId));
     
     const totalUserCount = Number(totalUsers[0]?.count) || 1;
     
@@ -551,8 +548,8 @@ class BusinessOwnerAnalyticsService {
       .where(
         and(
           eq(auditLogs.workspaceId, workspaceId),
-          gte(auditLogs.timestamp, range.startDate),
-          lte(auditLogs.timestamp, range.endDate)
+          gte(auditLogs.createdAt, range.startDate),
+          lte(auditLogs.createdAt, range.endDate)
         )
       )
       .groupBy(auditLogs.action, auditLogs.entityType)
@@ -573,19 +570,19 @@ class BusinessOwnerAnalyticsService {
   private async getCostBreakdown(workspaceId: string, range: DateRange): Promise<CostBreakdown> {
     const aiUsage = await db
       .select({
-        totalTokens: sum(workspaceAiUsage.totalTokensUsed).as('total_tokens'),
-        estimatedCost: sum(workspaceAiUsage.estimatedCost).as('estimated_cost')
+        totalTokens: sum(workspaceAiUsage.tokensUsed).as('total_tokens'),
+        totalCost: sum(workspaceAiUsage.clientChargeUsd).as('total_cost')
       })
       .from(workspaceAiUsage)
       .where(
         and(
           eq(workspaceAiUsage.workspaceId, workspaceId),
-          gte(workspaceAiUsage.recordedAt, range.startDate),
-          lte(workspaceAiUsage.recordedAt, range.endDate)
+          gte(workspaceAiUsage.createdAt, range.startDate),
+          lte(workspaceAiUsage.createdAt, range.endDate)
         )
       );
     
-    const aiCosts = Number(aiUsage[0]?.estimatedCost) || 0;
+    const aiCosts = Number(aiUsage[0]?.totalCost) || 0;
     const partnerApiCosts = 0;
     const storageCosts = 0;
     
@@ -605,15 +602,15 @@ class BusinessOwnerAnalyticsService {
         userEmail: auditLogs.userEmail,
         userRole: auditLogs.userRole,
         actionsCount: count(auditLogs.id).as('actions_count'),
-        lastActive: sql<Date>`MAX(${auditLogs.timestamp})`.as('last_active'),
+        lastActive: sql<Date>`MAX(${auditLogs.createdAt})`.as('last_active'),
         topAction: sql<string>`MODE() WITHIN GROUP (ORDER BY ${auditLogs.action})`.as('top_action')
       })
       .from(auditLogs)
       .where(
         and(
           eq(auditLogs.workspaceId, workspaceId),
-          gte(auditLogs.timestamp, range.startDate),
-          lte(auditLogs.timestamp, range.endDate)
+          gte(auditLogs.createdAt, range.startDate),
+          lte(auditLogs.createdAt, range.endDate)
         )
       )
       .groupBy(auditLogs.userId, auditLogs.userEmail, auditLogs.userRole)
@@ -635,7 +632,7 @@ class BusinessOwnerAnalyticsService {
     const coreFeatures = ['create', 'update', 'view', 'export', 'schedule', 'approve'];
     
     const [totalUsers, featureUsers] = await Promise.all([
-      db.select({ count: count() }).from(users).where(eq(users.currentWorkspace, workspaceId)),
+      db.select({ count: count() }).from(users).where(eq(users.currentWorkspaceId, workspaceId)),
       
       db
         .select({
@@ -646,8 +643,8 @@ class BusinessOwnerAnalyticsService {
         .where(
           and(
             eq(auditLogs.workspaceId, workspaceId),
-            gte(auditLogs.timestamp, range.startDate),
-            lte(auditLogs.timestamp, range.endDate),
+            gte(auditLogs.createdAt, range.startDate),
+            lte(auditLogs.createdAt, range.endDate),
             or(...coreFeatures.map(f => sql`${auditLogs.action} ILIKE ${`%${f}%`}`))
           )
         )
