@@ -32,6 +32,7 @@ export interface SuggestedChange {
   tags: string[];
   notes: string; // Instructions for AI on when/why to use this
   estimatedImpact: 'low' | 'medium' | 'high';
+  autoApprovable?: boolean; // If true, AI can auto-approve this trusted change
 }
 
 export const SUGGESTED_CHANGES: Record<string, SuggestedChange> = {
@@ -59,6 +60,7 @@ export const SUGGESTED_CHANGES: Record<string, SuggestedChange> = {
     tags: ['ui-sync', 'notifications', 'cache'],
     notes: 'Use when mark all read mutation is not updating the UI. Solution: call queryClient.setQueryData() in onSuccess before invalidateQueries().',
     estimatedImpact: 'low',
+    autoApprovable: true,
   },
 
   'fix-mark-all-read-notifications': {
@@ -81,6 +83,7 @@ export const SUGGESTED_CHANGES: Record<string, SuggestedChange> = {
     tags: ['ui-sync', 'notifications', 'cache'],
     notes: 'Use when notifications mark all read is not working. Solution: same as what\'s new - setQueryData before invalidate.',
     estimatedImpact: 'low',
+    autoApprovable: true,
   },
 
   'fix-api-response-status': {
@@ -104,6 +107,7 @@ export const SUGGESTED_CHANGES: Record<string, SuggestedChange> = {
     tags: ['api', 'http-status'],
     notes: 'Use when API endpoints return 200 OK but should return different status codes (201 Created, 204 No Content, etc).',
     estimatedImpact: 'low',
+    autoApprovable: true,
   },
 
   // ============================================================================
@@ -131,6 +135,7 @@ export const SUGGESTED_CHANGES: Record<string, SuggestedChange> = {
     tags: ['config', 'features'],
     notes: 'Use to enable disabled features. Requires workflow restart to take effect.',
     estimatedImpact: 'medium',
+    autoApprovable: true,
   },
 
   'disable-feature-flag': {
@@ -154,6 +159,7 @@ export const SUGGESTED_CHANGES: Record<string, SuggestedChange> = {
     tags: ['config', 'features'],
     notes: 'Use to disable problematic features temporarily. Requires workflow restart.',
     estimatedImpact: 'medium',
+    autoApprovable: true,
   },
 
   'update-error-message': {
@@ -176,6 +182,7 @@ export const SUGGESTED_CHANGES: Record<string, SuggestedChange> = {
     tags: ['messages', 'ux'],
     notes: 'Use to update user-facing error messages. Store in config/registry.ts instead of hardcoding.',
     estimatedImpact: 'low',
+    autoApprovable: true,
   },
 
   // ============================================================================
@@ -229,6 +236,7 @@ export const SUGGESTED_CHANGES: Record<string, SuggestedChange> = {
     tags: ['email', 'notifications'],
     notes: 'Use to create new email notification types. Define template with variables and HTML.',
     estimatedImpact: 'medium',
+    autoApprovable: true,
   },
 
   // ============================================================================
@@ -286,6 +294,7 @@ export const SUGGESTED_CHANGES: Record<string, SuggestedChange> = {
     tags: ['performance', 'cache', 'react-query'],
     notes: 'Use to optimize frontend data fetching. Set appropriate staleTime to reduce API calls.',
     estimatedImpact: 'medium',
+    autoApprovable: true,
   },
 };
 
