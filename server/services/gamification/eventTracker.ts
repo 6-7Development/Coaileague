@@ -6,7 +6,11 @@ import {
   type ShiftEvent,
   type ApprovalEvent,
   type FeatureEvent,
-  type MilestoneEvent
+  type MilestoneEvent,
+  type OnboardingEvent,
+  type TutorialEvent,
+  type MigrationEvent,
+  type OrgSetupEvent
 } from './gamificationEvents';
 import { db } from '../../db';
 import { employees } from '@shared/schema';
@@ -46,6 +50,23 @@ export class GamificationEventTracker {
     // Platform events
     gamificationEvents.on('feature_used', (data: FeatureEvent) => this.handleFeatureUsed(data));
     gamificationEvents.on('profile_completed', (data: ApprovalEvent) => this.handleProfileCompleted(data));
+
+    // Onboarding & Tutorial events
+    gamificationEvents.on('onboarding_step_completed', (data: OnboardingEvent) => this.handleOnboardingStepCompleted(data));
+    gamificationEvents.on('onboarding_completed', (data: OnboardingEvent) => this.handleOnboardingCompleted(data));
+    gamificationEvents.on('tutorial_step_completed', (data: TutorialEvent) => this.handleTutorialStepCompleted(data));
+    gamificationEvents.on('tutorial_completed', (data: TutorialEvent) => this.handleTutorialCompleted(data));
+
+    // Migration events
+    gamificationEvents.on('migration_started', (data: MigrationEvent) => this.handleMigrationStarted(data));
+    gamificationEvents.on('migration_document_uploaded', (data: MigrationEvent) => this.handleMigrationDocumentUploaded(data));
+    gamificationEvents.on('migration_data_imported', (data: MigrationEvent) => this.handleMigrationDataImported(data));
+    gamificationEvents.on('migration_completed', (data: MigrationEvent) => this.handleMigrationCompleted(data));
+
+    // Org setup events
+    gamificationEvents.on('org_setup_started', (data: OrgSetupEvent) => this.handleOrgSetupStarted(data));
+    gamificationEvents.on('org_setup_step_completed', (data: OrgSetupEvent) => this.handleOrgSetupStepCompleted(data));
+    gamificationEvents.on('org_ready_to_work', (data: OrgSetupEvent) => this.handleOrgReadyToWork(data));
 
     this.initialized = true;
     console.log('[GamificationEventTracker] Event listeners initialized');
@@ -350,6 +371,376 @@ export class GamificationEventTracker {
       });
     } catch (error) {
       console.error('[GamificationEventTracker] Error handling profile_completed:', error);
+    }
+  }
+
+  // ==================== ONBOARDING & TUTORIAL HANDLERS ====================
+
+  private static async handleOnboardingStepCompleted(data: OnboardingEvent): Promise<void> {
+    try {
+      const { workspaceId, employeeId, stepName, stepNumber, totalSteps } = data;
+      
+      const points = 25; // Points per onboarding step
+      await gamificationService.awardPoints({
+        workspaceId,
+        employeeId,
+        points,
+        transactionType: 'onboarding_step',
+        referenceId: data.stepId,
+        referenceType: 'onboarding',
+        description: `Completed onboarding step: ${stepName || `Step ${stepNumber}`}`,
+      });
+
+      console.log(`[Gamification] Onboarding step ${stepNumber}/${totalSteps} completed for ${employeeId}`);
+
+      emitGamificationEvent('gamification_milestone', {
+        type: 'onboarding_progress',
+        workspaceId,
+        employeeId,
+        points,
+        feature: `onboarding_step_${stepNumber}`,
+      });
+    } catch (error) {
+      console.error('[GamificationEventTracker] Error handling onboarding_step_completed:', error);
+    }
+  }
+
+  private static async handleOnboardingCompleted(data: OnboardingEvent): Promise<void> {
+    try {
+      const { workspaceId, employeeId } = data;
+      
+      const points = 200; // Bonus for completing all onboarding
+      await gamificationService.awardPoints({
+        workspaceId,
+        employeeId,
+        points,
+        transactionType: 'onboarding_completed',
+        referenceId: employeeId,
+        referenceType: 'onboarding',
+        description: 'Completed all onboarding steps - Welcome aboard!',
+      });
+
+      console.log(`[Gamification] Onboarding completed for ${employeeId} - 200 bonus points awarded!`);
+
+      emitGamificationEvent('gamification_milestone', {
+        type: 'onboarding_complete',
+        workspaceId,
+        employeeId,
+        points,
+      });
+    } catch (error) {
+      console.error('[GamificationEventTracker] Error handling onboarding_completed:', error);
+    }
+  }
+
+  private static async handleTutorialStepCompleted(data: TutorialEvent): Promise<void> {
+    try {
+      const { workspaceId, userId, tutorialName, stepNumber, totalSteps } = data;
+      
+      // Get employee record
+      const [employee] = await db.select()
+        .from(employees)
+        .where(and(
+          eq(employees.userId, userId),
+          eq(employees.workspaceId, workspaceId)
+        ))
+        .limit(1);
+
+      if (!employee) return;
+
+      const points = 10; // Points per tutorial step
+      await gamificationService.awardPoints({
+        workspaceId,
+        employeeId: employee.id,
+        points,
+        transactionType: 'tutorial_step',
+        referenceId: data.tutorialId,
+        referenceType: 'tutorial',
+        description: `Completed tutorial step: ${tutorialName} (${stepNumber}/${totalSteps})`,
+      });
+
+      console.log(`[Gamification] Tutorial step ${stepNumber}/${totalSteps} completed for ${userId}`);
+    } catch (error) {
+      console.error('[GamificationEventTracker] Error handling tutorial_step_completed:', error);
+    }
+  }
+
+  private static async handleTutorialCompleted(data: TutorialEvent): Promise<void> {
+    try {
+      const { workspaceId, userId, tutorialName, tutorialId } = data;
+      
+      // Get employee record
+      const [employee] = await db.select()
+        .from(employees)
+        .where(and(
+          eq(employees.userId, userId),
+          eq(employees.workspaceId, workspaceId)
+        ))
+        .limit(1);
+
+      if (!employee) return;
+
+      const points = 50; // Bonus for completing a tutorial
+      await gamificationService.awardPoints({
+        workspaceId,
+        employeeId: employee.id,
+        points,
+        transactionType: 'tutorial_completed',
+        referenceId: tutorialId,
+        referenceType: 'tutorial',
+        description: `Mastered tutorial: ${tutorialName}`,
+      });
+
+      console.log(`[Gamification] Tutorial "${tutorialName}" completed by ${userId} - 50 bonus points!`);
+
+      emitGamificationEvent('gamification_milestone', {
+        type: 'tutorial_mastered',
+        workspaceId,
+        employeeId: employee.id,
+        points,
+        feature: tutorialName,
+      });
+    } catch (error) {
+      console.error('[GamificationEventTracker] Error handling tutorial_completed:', error);
+    }
+  }
+
+  // ==================== MIGRATION HANDLERS ====================
+
+  private static async handleMigrationStarted(data: MigrationEvent): Promise<void> {
+    try {
+      const { workspaceId, userId } = data;
+      if (!userId) return;
+
+      // Get employee record
+      const [employee] = await db.select()
+        .from(employees)
+        .where(and(
+          eq(employees.userId, userId),
+          eq(employees.workspaceId, workspaceId)
+        ))
+        .limit(1);
+
+      if (!employee) return;
+
+      const points = 25;
+      await gamificationService.awardPoints({
+        workspaceId,
+        employeeId: employee.id,
+        points,
+        transactionType: 'migration_started',
+        referenceId: data.migrationJobId,
+        referenceType: 'migration',
+        description: 'Started data migration journey',
+      });
+
+      console.log(`[Gamification] Migration started by ${userId}`);
+    } catch (error) {
+      console.error('[GamificationEventTracker] Error handling migration_started:', error);
+    }
+  }
+
+  private static async handleMigrationDocumentUploaded(data: MigrationEvent): Promise<void> {
+    try {
+      const { workspaceId, userId, documentType } = data;
+      if (!userId) return;
+
+      const [employee] = await db.select()
+        .from(employees)
+        .where(and(
+          eq(employees.userId, userId),
+          eq(employees.workspaceId, workspaceId)
+        ))
+        .limit(1);
+
+      if (!employee) return;
+
+      const points = 15;
+      await gamificationService.awardPoints({
+        workspaceId,
+        employeeId: employee.id,
+        points,
+        transactionType: 'migration_upload',
+        referenceId: data.migrationJobId,
+        referenceType: 'migration',
+        description: `Uploaded ${documentType || 'document'} for migration`,
+      });
+    } catch (error) {
+      console.error('[GamificationEventTracker] Error handling migration_document_uploaded:', error);
+    }
+  }
+
+  private static async handleMigrationDataImported(data: MigrationEvent): Promise<void> {
+    try {
+      const { workspaceId, userId, recordCount, documentType } = data;
+      if (!userId) return;
+
+      const [employee] = await db.select()
+        .from(employees)
+        .where(and(
+          eq(employees.userId, userId),
+          eq(employees.workspaceId, workspaceId)
+        ))
+        .limit(1);
+
+      if (!employee) return;
+
+      // Points based on number of records imported
+      const points = Math.min(Math.floor((recordCount || 1) * 2), 100);
+      await gamificationService.awardPoints({
+        workspaceId,
+        employeeId: employee.id,
+        points,
+        transactionType: 'migration_import',
+        referenceId: data.migrationJobId,
+        referenceType: 'migration',
+        description: `Imported ${recordCount} ${documentType || 'records'}`,
+      });
+
+      console.log(`[Gamification] Imported ${recordCount} records for ${userId} - ${points} points`);
+    } catch (error) {
+      console.error('[GamificationEventTracker] Error handling migration_data_imported:', error);
+    }
+  }
+
+  private static async handleMigrationCompleted(data: MigrationEvent): Promise<void> {
+    try {
+      const { workspaceId, userId } = data;
+      if (!userId) return;
+
+      const [employee] = await db.select()
+        .from(employees)
+        .where(and(
+          eq(employees.userId, userId),
+          eq(employees.workspaceId, workspaceId)
+        ))
+        .limit(1);
+
+      if (!employee) return;
+
+      const points = 250;
+      await gamificationService.awardPoints({
+        workspaceId,
+        employeeId: employee.id,
+        points,
+        transactionType: 'migration_completed',
+        referenceId: data.migrationJobId,
+        referenceType: 'migration',
+        description: 'Data migration completed successfully!',
+      });
+
+      console.log(`[Gamification] Migration completed by ${userId} - 250 bonus points!`);
+
+      emitGamificationEvent('gamification_milestone', {
+        type: 'migration_complete',
+        workspaceId,
+        employeeId: employee.id,
+        points,
+      });
+    } catch (error) {
+      console.error('[GamificationEventTracker] Error handling migration_completed:', error);
+    }
+  }
+
+  // ==================== ORG SETUP HANDLERS ====================
+
+  private static async handleOrgSetupStarted(data: OrgSetupEvent): Promise<void> {
+    try {
+      const { workspaceId, userId, setupPhase } = data;
+      if (!userId) return;
+
+      const [employee] = await db.select()
+        .from(employees)
+        .where(and(
+          eq(employees.userId, userId),
+          eq(employees.workspaceId, workspaceId)
+        ))
+        .limit(1);
+
+      if (!employee) return;
+
+      const points = 50;
+      await gamificationService.awardPoints({
+        workspaceId,
+        employeeId: employee.id,
+        points,
+        transactionType: 'org_setup_started',
+        referenceType: 'org_setup',
+        description: `Started organization setup: ${setupPhase}`,
+      });
+
+      console.log(`[Gamification] Org setup started by ${userId}`);
+    } catch (error) {
+      console.error('[GamificationEventTracker] Error handling org_setup_started:', error);
+    }
+  }
+
+  private static async handleOrgSetupStepCompleted(data: OrgSetupEvent): Promise<void> {
+    try {
+      const { workspaceId, userId, setupPhase, progress } = data;
+      if (!userId) return;
+
+      const [employee] = await db.select()
+        .from(employees)
+        .where(and(
+          eq(employees.userId, userId),
+          eq(employees.workspaceId, workspaceId)
+        ))
+        .limit(1);
+
+      if (!employee) return;
+
+      const points = 30;
+      await gamificationService.awardPoints({
+        workspaceId,
+        employeeId: employee.id,
+        points,
+        transactionType: 'org_setup_step',
+        referenceType: 'org_setup',
+        description: `Completed setup phase: ${setupPhase} (${progress || 0}% complete)`,
+      });
+
+      console.log(`[Gamification] Org setup step "${setupPhase}" completed - ${progress}%`);
+    } catch (error) {
+      console.error('[GamificationEventTracker] Error handling org_setup_step_completed:', error);
+    }
+  }
+
+  private static async handleOrgReadyToWork(data: OrgSetupEvent): Promise<void> {
+    try {
+      const { workspaceId, userId } = data;
+      if (!userId) return;
+
+      const [employee] = await db.select()
+        .from(employees)
+        .where(and(
+          eq(employees.userId, userId),
+          eq(employees.workspaceId, workspaceId)
+        ))
+        .limit(1);
+
+      if (!employee) return;
+
+      const points = 500;
+      await gamificationService.awardPoints({
+        workspaceId,
+        employeeId: employee.id,
+        points,
+        transactionType: 'org_ready',
+        referenceType: 'org_setup',
+        description: 'Organization is fully set up and ready to work!',
+      });
+
+      console.log(`[Gamification] Organization ready to work! ${userId} awarded 500 points!`);
+
+      emitGamificationEvent('gamification_milestone', {
+        type: 'org_launch',
+        workspaceId,
+        employeeId: employee.id,
+        points,
+      });
+    } catch (error) {
+      console.error('[GamificationEventTracker] Error handling org_ready_to_work:', error);
     }
   }
 }
