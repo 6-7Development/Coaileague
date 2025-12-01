@@ -477,21 +477,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           totalUnread: mappedUpdates.length,
         });
       }
-
-    try {
-      const authReq = req as AuthenticatedRequest;
-      const userId = authReq.user?.id;
-      
-      // For unauthenticated users, return success (frontend handles localStorage)
-      if (!userId) {
-        return res.json({ success: true, markedRead: { platformUpdates: 0, notifications: 0, alerts: 0 } });
-      }
-      
       // Get user's workspace
       const workspace = await storage.getWorkspaceByOwnerId(userId);
       const member = await storage.getWorkspaceMemberByUserId(userId);
       const workspaceId = workspace?.id || member?.workspaceId;
-      
+
       if (!workspaceId) {
         return res.json({
           platformUpdates: [],
