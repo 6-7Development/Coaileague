@@ -14,6 +14,7 @@ import fs from "fs";
 import path from "path";
 import { publishPlatformUpdate } from "../platformEventBus";
 import { getDetailedHealthReport } from "../healthService";
+import { broadcastNotificationToUser } from "../../websocket";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
@@ -402,7 +403,7 @@ Keep the tone positive and professional. Focus on user benefits.`;
         }));
 
       if (notificationValues.length > 0) {
-        await db.insert(notifications).values(notificationValues);
+        const createdNotifications = await db.insert(notifications).values(notificationValues).returning();
         
         await db
           .update(platformChangeEvents)
@@ -411,6 +412,16 @@ Keep the tone positive and professional. Focus on user benefits.`;
             notificationCount: notificationValues.length,
           })
           .where(eq(platformChangeEvents.id, changeEventId));
+
+        // CRITICAL: Broadcast notifications to all connected WebSocket clients
+        // This ensures real-time delivery to users watching the notification bell
+        for (const notification of createdNotifications) {
+          broadcastNotificationToUser(
+            notification.workspaceId,
+            notification.userId,
+            notification
+          );
+        }
       }
 
       await publishPlatformUpdate({
