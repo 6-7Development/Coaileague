@@ -4,14 +4,16 @@ import {
   platformChangeEvents, 
   platformUpdates,
   notifications,
-  users
+  users,
+  workspaces
 } from "@shared/schema";
-import { eq, desc, isNull, and, sql } from "drizzle-orm";
+import { eq, desc, isNull, and, sql, isNotNull } from "drizzle-orm";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import crypto from "crypto";
 import fs from "fs";
 import path from "path";
-import { platformEventBus } from "../platformEventBus";
+import { publishPlatformUpdate } from "../platformEventBus";
+import { getDetailedHealthReport } from "../healthService";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
@@ -173,10 +175,7 @@ class PlatformChangeMonitorService {
     
     let healthStatus: Record<string, any> = {};
     try {
-      const healthModule = await import('../healthService');
-      if (healthModule.healthService) {
-        healthStatus = await healthModule.healthService.getHealthSummary();
-      }
+      healthStatus = await getDetailedHealthReport();
     } catch (e) {
       healthStatus = { status: 'unknown' };
     }
@@ -357,32 +356,57 @@ Keep the tone positive and professional. Focus on user benefits.`;
     actionRequired: string | null;
   }): Promise<number> {
     try {
-      const allUsers = await db.select({ id: users.id }).from(users);
+      const allUsers = await db
+        .select({ 
+          id: users.id, 
+          workspaceId: users.currentWorkspaceId 
+        })
+        .from(users)
+        .where(isNotNull(users.currentWorkspaceId));
       
       if (allUsers.length === 0) {
-        console.log('[PlatformChangeMonitor] No users to notify');
+        console.log('[PlatformChangeMonitor] No users with workspaces to notify');
+        
+        await publishPlatformUpdate({
+          type: 'feature_updated',
+          title: summary.title,
+          description: summary.summary,
+          category: 'improvement',
+          visibility: 'all',
+        });
+        
         return 0;
       }
 
-      const notificationValues = allUsers.map(user => ({
-        userId: user.id,
-        type: 'platform_update' as const,
-        message: summary.summary,
+      const notificationValues = allUsers
+        .filter(user => user.workspaceId)
+        .map(user => ({
+          userId: user.id,
+          workspaceId: user.workspaceId!,
+          type: 'system' as const,
+          message: summary.summary,
+          title: summary.title,
+          metadata: {
+            changeEventId,
+            requiresAction: summary.requiresAction,
+            actionRequired: summary.actionRequired,
+          },
+        }));
+
+      if (notificationValues.length > 0) {
+        await db.insert(notifications).values(notificationValues);
+      }
+
+      await publishPlatformUpdate({
+        type: 'feature_updated',
         title: summary.title,
-        data: {
+        description: summary.summary,
+        category: 'improvement',
+        visibility: 'all',
+        metadata: {
           changeEventId,
-          requiresAction: summary.requiresAction,
-          actionRequired: summary.actionRequired,
+          notifiedCount: allUsers.length,
         },
-      }));
-
-      await db.insert(notifications).values(notificationValues);
-
-      platformEventBus.emit('platform:change:detected', {
-        title: summary.title,
-        summary: summary.summary,
-        changeEventId,
-        notifiedCount: allUsers.length,
       });
 
       console.log(`[PlatformChangeMonitor] Notified ${allUsers.length} users about platform change`);

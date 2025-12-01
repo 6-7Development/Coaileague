@@ -29,6 +29,7 @@ import { withCredits } from './billing/creditWrapper';
 import { sendMonitoringAlert } from './externalMonitoring';
 import { checkDatabase, checkChatWebSocket, checkStripe } from './healthCheck';
 import { checkExpiringCertifications } from './complianceAlertService';
+import { platformChangeMonitor } from './ai-brain/platformChangeMonitor';
 
 // ============================================================================
 // IDEMPOTENCY FINGERPRINTING
@@ -1614,6 +1615,24 @@ export function startAutonomousScheduler() {
   console.log('   Schedule: */5 * * * * (every 5 minutes)');
   console.log('   Sends shift reminders based on user preferences\n');
 
+  // Platform Change Monitor - Every 15 minutes
+  cron.schedule("*/15 * * * *", () => {
+    console.log(`🧠 [AI BRAIN] Platform change scan triggered at ${new Date().toISOString()}`);
+    (async () => {
+      try {
+        const result = await platformChangeMonitor.scanPlatform('scheduled');
+        if (result.changesDetected > 0) {
+          console.log(`🧠 [AI BRAIN] Platform scan complete: ${result.changesDetected} changes detected, ${result.notificationsSent} notifications sent`);
+        }
+      } catch (error) {
+        console.error('[PlatformChangeMonitor] Scheduled scan error:', error);
+      }
+    })();
+  });
+  console.log('✅ AI Brain Platform Change Monitor:');
+  console.log('   Schedule: */15 * * * * (every 15 minutes)');
+  console.log('   Scans platform for changes and notifies all users\n');
+
   isSchedulerRunning = true;
 
   console.log('╔════════════════════════════════════════════════╗');
@@ -1634,4 +1653,5 @@ export const manualTriggers = {
   compliance: checkExpiringCertifications,
   creditReset: resetMonthlyCredits,
   shiftReminders: async () => { const { processShiftReminders } = await import('./shiftRemindersService'); return processShiftReminders(); },
+  platformScan: async () => platformChangeMonitor.triggerManualScan(),
 };
