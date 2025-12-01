@@ -16,6 +16,9 @@ import { helpaiOrchestrator, type ActionRequest, type ActionResult, type ActionH
 import { platformEventBus, publishPlatformUpdate } from '../platformEventBus';
 import { AIBrainService } from './aiBrainService';
 import { aiBrainAuthorizationService } from './aiBrainAuthorizationService';
+import { aiBrainFileSystemTools } from './aiBrainFileSystemTools';
+import { aiBrainWorkflowExecutor } from './aiBrainWorkflowExecutor';
+import { aiBrainTestRunner } from './aiBrainTestRunner';
 import { aiNotificationService } from '../aiNotificationService';
 import { broadcastNotificationToUser, broadcastUserScopedNotification, broadcastToAllClients } from '../../websocket';
 import { db } from '../../db';
@@ -380,6 +383,9 @@ class AIBrainMasterOrchestrator {
     await this.registerEmployeeLifecycleActions();
     await this.registerHealthCheckActions();
     await this.registerUserAssistanceActions();
+    this.registerFileSystemActions();
+    this.registerWorkflowActions();
+    this.registerTestRunnerActions();
     
     // Subscribe to platform events
     this.subscribeToEvents();
@@ -2187,6 +2193,684 @@ class AIBrainMasterOrchestrator {
     });
 
     console.log('[AI Brain Master Orchestrator] Registered user assistance actions');
+  }
+
+  // ============================================================================
+  // FILE SYSTEM TOOLS - AI Brain file access capabilities
+  // ============================================================================
+
+  private registerFileSystemActions(): void {
+    // File Read Action
+    helpaiOrchestrator.registerAction({
+      actionId: 'filesystem.read',
+      name: 'Read File',
+      category: 'system',
+      description: 'Read file contents with optional line range',
+      requiredRoles: ['support_agent', 'support_manager', 'sysop', 'deputy_admin', 'root_admin'],
+      handler: async (request: ActionRequest) => {
+        const startTime = Date.now();
+        const { filePath, startLine, endLine } = request.payload || {};
+        
+        try {
+          const result = await aiBrainFileSystemTools.readFile(
+            filePath,
+            { startLine, endLine },
+            request.userId
+          );
+          
+          return {
+            success: result.success,
+            actionId: request.actionId,
+            message: result.success ? `Read ${filePath}` : result.error,
+            data: result.success ? { content: result.data, metadata: result.metadata } : undefined,
+            executionTimeMs: Date.now() - startTime
+          };
+        } catch (error: any) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: error.message,
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+      }
+    });
+
+    // File Write Action
+    helpaiOrchestrator.registerAction({
+      actionId: 'filesystem.write',
+      name: 'Write File',
+      category: 'system',
+      description: 'Write content to a file',
+      requiredRoles: ['support_manager', 'sysop', 'deputy_admin', 'root_admin'],
+      handler: async (request: ActionRequest) => {
+        const startTime = Date.now();
+        const { filePath, content, createDirectories, backup } = request.payload || {};
+        
+        try {
+          const result = await aiBrainFileSystemTools.writeFile(
+            filePath,
+            content,
+            { createDirectories, backup },
+            request.userId
+          );
+          
+          return {
+            success: result.success,
+            actionId: request.actionId,
+            message: result.success ? `Wrote to ${filePath}` : result.error,
+            data: result.success ? { metadata: result.metadata } : undefined,
+            executionTimeMs: Date.now() - startTime
+          };
+        } catch (error: any) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: error.message,
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+      }
+    });
+
+    // File Edit Action
+    helpaiOrchestrator.registerAction({
+      actionId: 'filesystem.edit',
+      name: 'Edit File',
+      category: 'system',
+      description: 'Search and replace content in a file',
+      requiredRoles: ['support_manager', 'sysop', 'deputy_admin', 'root_admin'],
+      handler: async (request: ActionRequest) => {
+        const startTime = Date.now();
+        const { filePath, searchPattern, replacement, all, regex } = request.payload || {};
+        
+        try {
+          const result = await aiBrainFileSystemTools.editFile(
+            filePath,
+            searchPattern,
+            replacement,
+            { all, regex },
+            request.userId
+          );
+          
+          return {
+            success: result.success,
+            actionId: request.actionId,
+            message: result.success 
+              ? `Edited ${filePath} (${result.data?.matchCount} replacements)` 
+              : result.error,
+            data: result.success ? result.data : undefined,
+            executionTimeMs: Date.now() - startTime
+          };
+        } catch (error: any) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: error.message,
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+      }
+    });
+
+    // File Delete Action
+    helpaiOrchestrator.registerAction({
+      actionId: 'filesystem.delete',
+      name: 'Delete File',
+      category: 'system',
+      description: 'Delete a file (moves to backup)',
+      requiredRoles: ['sysop', 'deputy_admin', 'root_admin'],
+      handler: async (request: ActionRequest) => {
+        const startTime = Date.now();
+        const { filePath } = request.payload || {};
+        
+        try {
+          const result = await aiBrainFileSystemTools.deleteFile(filePath, request.userId);
+          
+          return {
+            success: result.success,
+            actionId: request.actionId,
+            message: result.success ? `Deleted ${filePath}` : result.error,
+            executionTimeMs: Date.now() - startTime
+          };
+        } catch (error: any) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: error.message,
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+      }
+    });
+
+    // Directory List Action
+    helpaiOrchestrator.registerAction({
+      actionId: 'filesystem.list',
+      name: 'List Directory',
+      category: 'system',
+      description: 'List directory contents with filtering options',
+      requiredRoles: ['support_agent', 'support_manager', 'sysop', 'deputy_admin', 'root_admin'],
+      handler: async (request: ActionRequest) => {
+        const startTime = Date.now();
+        const { dirPath, recursive, maxDepth, filePattern, excludePatterns } = request.payload || {};
+        
+        try {
+          const result = await aiBrainFileSystemTools.listDirectory(
+            dirPath || '.',
+            { recursive, maxDepth, filePattern, excludePatterns },
+            request.userId
+          );
+          
+          return {
+            success: result.success,
+            actionId: request.actionId,
+            message: result.success 
+              ? `Listed ${result.data?.length} entries in ${dirPath || '.'}` 
+              : result.error,
+            data: result.success ? { entries: result.data } : undefined,
+            executionTimeMs: Date.now() - startTime
+          };
+        } catch (error: any) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: error.message,
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+      }
+    });
+
+    // File Search Action
+    helpaiOrchestrator.registerAction({
+      actionId: 'filesystem.search',
+      name: 'Search Files',
+      category: 'system',
+      description: 'Search for patterns across files',
+      requiredRoles: ['support_agent', 'support_manager', 'sysop', 'deputy_admin', 'root_admin'],
+      handler: async (request: ActionRequest) => {
+        const startTime = Date.now();
+        const { searchPath, pattern, filePattern, caseSensitive, maxResults } = request.payload || {};
+        
+        try {
+          const result = await aiBrainFileSystemTools.searchFiles(
+            searchPath || '.',
+            { pattern, filePattern, caseSensitive, maxResults, includeLineNumbers: true },
+            request.userId
+          );
+          
+          return {
+            success: result.success,
+            actionId: request.actionId,
+            message: result.success 
+              ? `Found ${result.data?.length} matches` 
+              : result.error,
+            data: result.success ? { matches: result.data } : undefined,
+            executionTimeMs: Date.now() - startTime
+          };
+        } catch (error: any) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: error.message,
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+      }
+    });
+
+    // File Diff Action
+    helpaiOrchestrator.registerAction({
+      actionId: 'filesystem.diff',
+      name: 'Generate Diff',
+      category: 'system',
+      description: 'Generate diff between files or file and content',
+      requiredRoles: ['support_agent', 'support_manager', 'sysop', 'deputy_admin', 'root_admin'],
+      handler: async (request: ActionRequest) => {
+        const startTime = Date.now();
+        const { file1, file2OrContent, isContent } = request.payload || {};
+        
+        try {
+          const result = await aiBrainFileSystemTools.generateDiff(
+            file1,
+            file2OrContent,
+            isContent,
+            request.userId
+          );
+          
+          return {
+            success: result.success,
+            actionId: request.actionId,
+            message: result.success ? 'Diff generated' : result.error,
+            data: result.success ? { diff: result.data } : undefined,
+            executionTimeMs: Date.now() - startTime
+          };
+        } catch (error: any) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: error.message,
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+      }
+    });
+
+    console.log('[AI Brain Master Orchestrator] Registered file system actions');
+  }
+
+  // ============================================================================
+  // WORKFLOW EXECUTOR - Step-based workflow execution
+  // ============================================================================
+
+  private registerWorkflowActions(): void {
+    // Register Workflow Action
+    helpaiOrchestrator.registerAction({
+      actionId: 'workflow.register',
+      name: 'Register Workflow',
+      category: 'automation',
+      description: 'Register a new workflow definition',
+      requiredRoles: ['sysop', 'deputy_admin', 'root_admin'],
+      handler: async (request: ActionRequest) => {
+        const startTime = Date.now();
+        const { workflow } = request.payload || {};
+        
+        try {
+          aiBrainWorkflowExecutor.registerWorkflow(workflow);
+          
+          return {
+            success: true,
+            actionId: request.actionId,
+            message: `Workflow registered: ${workflow.id}`,
+            data: { workflowId: workflow.id, stepCount: workflow.steps.length },
+            executionTimeMs: Date.now() - startTime
+          };
+        } catch (error: any) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: error.message,
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+      }
+    });
+
+    // Execute Workflow Action
+    helpaiOrchestrator.registerAction({
+      actionId: 'workflow.execute',
+      name: 'Execute Workflow',
+      category: 'automation',
+      description: 'Execute a registered workflow',
+      requiredRoles: ['support_manager', 'sysop', 'deputy_admin', 'root_admin'],
+      handler: async (request: ActionRequest) => {
+        const startTime = Date.now();
+        const { workflowId, context } = request.payload || {};
+        
+        try {
+          const execution = await aiBrainWorkflowExecutor.executeWorkflow(
+            workflowId,
+            request.userId,
+            context || {}
+          );
+          
+          return {
+            success: execution.status === 'completed',
+            actionId: request.actionId,
+            message: `Workflow ${execution.status}: ${execution.executionId}`,
+            data: {
+              executionId: execution.executionId,
+              status: execution.status,
+              stepResults: execution.stepResults.map(r => ({
+                stepId: r.stepId,
+                status: r.status,
+                duration: r.duration,
+                error: r.error
+              }))
+            },
+            executionTimeMs: Date.now() - startTime
+          };
+        } catch (error: any) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: error.message,
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+      }
+    });
+
+    // List Workflows Action
+    helpaiOrchestrator.registerAction({
+      actionId: 'workflow.list',
+      name: 'List Workflows',
+      category: 'automation',
+      description: 'List all registered workflows',
+      requiredRoles: ['support_agent', 'support_manager', 'sysop', 'deputy_admin', 'root_admin'],
+      handler: async (request: ActionRequest) => {
+        const startTime = Date.now();
+        
+        try {
+          const workflows = aiBrainWorkflowExecutor.listWorkflows();
+          
+          return {
+            success: true,
+            actionId: request.actionId,
+            message: `Found ${workflows.length} workflows`,
+            data: { 
+              workflows: workflows.map(w => ({
+                id: w.id,
+                name: w.name,
+                description: w.description,
+                stepCount: w.steps.length
+              }))
+            },
+            executionTimeMs: Date.now() - startTime
+          };
+        } catch (error: any) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: error.message,
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+      }
+    });
+
+    // List Executions Action
+    helpaiOrchestrator.registerAction({
+      actionId: 'workflow.executions',
+      name: 'List Workflow Executions',
+      category: 'automation',
+      description: 'List recent workflow executions',
+      requiredRoles: ['support_agent', 'support_manager', 'sysop', 'deputy_admin', 'root_admin'],
+      handler: async (request: ActionRequest) => {
+        const startTime = Date.now();
+        
+        try {
+          const executions = aiBrainWorkflowExecutor.listExecutions();
+          
+          return {
+            success: true,
+            actionId: request.actionId,
+            message: `Found ${executions.length} executions`,
+            data: { 
+              executions: executions.map(e => ({
+                executionId: e.executionId,
+                workflowId: e.workflowId,
+                status: e.status,
+                startedAt: e.startedAt,
+                completedAt: e.completedAt,
+                requestedBy: e.requestedBy
+              }))
+            },
+            executionTimeMs: Date.now() - startTime
+          };
+        } catch (error: any) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: error.message,
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+      }
+    });
+
+    // Create Quick Workflow Action
+    helpaiOrchestrator.registerAction({
+      actionId: 'workflow.quick',
+      name: 'Create Quick Workflow',
+      category: 'automation',
+      description: 'Create and optionally execute a quick workflow',
+      requiredRoles: ['support_manager', 'sysop', 'deputy_admin', 'root_admin'],
+      handler: async (request: ActionRequest) => {
+        const startTime = Date.now();
+        const { name, steps, execute } = request.payload || {};
+        
+        try {
+          const workflow = aiBrainWorkflowExecutor.createQuickWorkflow(name, steps);
+          
+          let execution = null;
+          if (execute) {
+            execution = await aiBrainWorkflowExecutor.executeWorkflow(
+              workflow.id,
+              request.userId,
+              {}
+            );
+          }
+          
+          return {
+            success: true,
+            actionId: request.actionId,
+            message: execute 
+              ? `Quick workflow executed: ${execution?.status}` 
+              : `Quick workflow created: ${workflow.id}`,
+            data: { 
+              workflowId: workflow.id,
+              execution: execution ? {
+                executionId: execution.executionId,
+                status: execution.status
+              } : undefined
+            },
+            executionTimeMs: Date.now() - startTime
+          };
+        } catch (error: any) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: error.message,
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+      }
+    });
+
+    console.log('[AI Brain Master Orchestrator] Registered workflow actions');
+  }
+
+  // ============================================================================
+  // TEST RUNNER - Platform diagnostic testing
+  // ============================================================================
+
+  private registerTestRunnerActions(): void {
+    // Run Single Test Action
+    helpaiOrchestrator.registerAction({
+      actionId: 'test.run',
+      name: 'Run Test',
+      category: 'health',
+      description: 'Run a single diagnostic test',
+      requiredRoles: ['support_agent', 'support_manager', 'sysop', 'deputy_admin', 'root_admin'],
+      handler: async (request: ActionRequest) => {
+        const startTime = Date.now();
+        const { testId } = request.payload || {};
+        
+        try {
+          const result = await aiBrainTestRunner.runTest(testId, request.userId);
+          
+          return {
+            success: result.status === 'passed',
+            actionId: request.actionId,
+            message: `Test ${result.status}: ${result.testName}`,
+            data: result,
+            executionTimeMs: Date.now() - startTime
+          };
+        } catch (error: any) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: error.message,
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+      }
+    });
+
+    // Run All Tests Action
+    helpaiOrchestrator.registerAction({
+      actionId: 'test.run_all',
+      name: 'Run All Tests',
+      category: 'health',
+      description: 'Run all registered diagnostic tests',
+      requiredRoles: ['support_manager', 'sysop', 'deputy_admin', 'root_admin'],
+      handler: async (request: ActionRequest) => {
+        const startTime = Date.now();
+        
+        try {
+          const result = await aiBrainTestRunner.runAllTests(request.userId);
+          
+          return {
+            success: result.summary.failed === 0 && result.summary.errors === 0,
+            actionId: request.actionId,
+            message: `Tests complete: ${result.summary.passed}/${result.summary.total} passed (${result.summary.passRate}%)`,
+            data: {
+              suiteId: result.suiteId,
+              summary: result.summary,
+              duration: result.duration,
+              results: result.results.map(r => ({
+                testId: r.testId,
+                testName: r.testName,
+                status: r.status,
+                duration: r.duration,
+                error: r.error
+              }))
+            },
+            executionTimeMs: Date.now() - startTime
+          };
+        } catch (error: any) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: error.message,
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+      }
+    });
+
+    // Run Tests By Category Action
+    helpaiOrchestrator.registerAction({
+      actionId: 'test.run_category',
+      name: 'Run Tests By Category',
+      category: 'health',
+      description: 'Run all tests in a specific category',
+      requiredRoles: ['support_agent', 'support_manager', 'sysop', 'deputy_admin', 'root_admin'],
+      handler: async (request: ActionRequest) => {
+        const startTime = Date.now();
+        const { category } = request.payload || {};
+        
+        try {
+          const result = await aiBrainTestRunner.runTestsByCategory(category, request.userId);
+          
+          return {
+            success: result.summary.failed === 0 && result.summary.errors === 0,
+            actionId: request.actionId,
+            message: `${category} tests: ${result.summary.passed}/${result.summary.total} passed`,
+            data: {
+              suiteId: result.suiteId,
+              category,
+              summary: result.summary,
+              results: result.results.map(r => ({
+                testId: r.testId,
+                status: r.status,
+                error: r.error
+              }))
+            },
+            executionTimeMs: Date.now() - startTime
+          };
+        } catch (error: any) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: error.message,
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+      }
+    });
+
+    // List Tests Action
+    helpaiOrchestrator.registerAction({
+      actionId: 'test.list',
+      name: 'List Tests',
+      category: 'health',
+      description: 'List all registered diagnostic tests',
+      requiredRoles: ['support_agent', 'support_manager', 'sysop', 'deputy_admin', 'root_admin'],
+      handler: async (request: ActionRequest) => {
+        const startTime = Date.now();
+        
+        try {
+          const tests = aiBrainTestRunner.listTests();
+          
+          return {
+            success: true,
+            actionId: request.actionId,
+            message: `Found ${tests.length} tests`,
+            data: { 
+              tests: tests.map(t => ({
+                id: t.id,
+                name: t.name,
+                category: t.category,
+                severity: t.severity,
+                enabled: t.enabled !== false
+              }))
+            },
+            executionTimeMs: Date.now() - startTime
+          };
+        } catch (error: any) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: error.message,
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+      }
+    });
+
+    // Get Test Suite Results Action
+    helpaiOrchestrator.registerAction({
+      actionId: 'test.results',
+      name: 'Get Test Results',
+      category: 'health',
+      description: 'Get results from recent test suites',
+      requiredRoles: ['support_agent', 'support_manager', 'sysop', 'deputy_admin', 'root_admin'],
+      handler: async (request: ActionRequest) => {
+        const startTime = Date.now();
+        
+        try {
+          const suites = aiBrainTestRunner.listSuiteResults();
+          
+          return {
+            success: true,
+            actionId: request.actionId,
+            message: `Found ${suites.length} test suite results`,
+            data: { 
+              suites: suites.slice(0, 10).map(s => ({
+                suiteId: s.suiteId,
+                suiteName: s.suiteName,
+                startedAt: s.startedAt,
+                duration: s.duration,
+                summary: s.summary
+              }))
+            },
+            executionTimeMs: Date.now() - startTime
+          };
+        } catch (error: any) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: error.message,
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+      }
+    });
+
+    console.log('[AI Brain Master Orchestrator] Registered test runner actions');
   }
 
   // ============================================================================
