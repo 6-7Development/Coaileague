@@ -30,6 +30,7 @@ import { DemoBanner } from "@/components/demo-banner";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { GlobalErrorBoundary } from "@/components/errors/GlobalErrorBoundary";
 import { ServiceHealthProvider } from "@/contexts/ServiceHealthContext";
+import { ForceRefreshProvider } from "@/contexts/ForceRefreshProvider";
 import { CommandPalette } from "@/components/command-palette";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsMobile, ResponsiveAppFrame } from "@/hooks/use-mobile";
@@ -733,6 +734,7 @@ export default function App() {
     <GlobalErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <ServiceHealthProvider>
+          <ForceRefreshProvider>
           <UniversalLoadingGateProvider>
             <OverlayControllerProvider>
               <ThemeProvider defaultTheme="light">
@@ -751,6 +753,7 @@ export default function App() {
               </ThemeProvider>
             </OverlayControllerProvider>
           </UniversalLoadingGateProvider>
+        </ForceRefreshProvider>
         </ServiceHealthProvider>
       </QueryClientProvider>
     </GlobalErrorBoundary>

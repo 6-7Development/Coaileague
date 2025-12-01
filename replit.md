@@ -66,7 +66,8 @@ The system employs a multi-tenant architecture with robust RBAC security and mul
 - **Break Compliance:** 50-state labor law configuration, auto-scheduling, compliance checking.
 - **AI Brain Platform Awareness:** 100+ features registry across 4 feature families (Communication, Operations, Growth, Platform), natural language feature discovery, diagnostic endpoints for support agents.
 - **Automation Jobs:** 11 scheduled jobs (billing, scheduling, payroll, reminders, compliance, email).
-- **Notification System (NEW):** Platform updates from AI brain, support staff maintenance alerts, real-time WebSocket delivery, user notification history tracking.
+- **Notification System:** Platform updates from AI brain, support staff maintenance alerts, real-time WebSocket delivery, user notification history tracking.
+- **Support Command Console (NEW):** Force-push updates system for support staff with 6 command endpoints (force-whats-new, force-notification, force-sync, broadcast-message, maintenance-mode, invalidate-cache), real-time WebSocket broadcast to all clients, React Query cache invalidation via ForceRefreshProvider, AI Brain audit logging, and SupportCommandPanel UI in chatrooms page.
 
 **System Design Choices:**
 - **Modularity:** Composed of 87 backend service modules and 220+ frontend routes.

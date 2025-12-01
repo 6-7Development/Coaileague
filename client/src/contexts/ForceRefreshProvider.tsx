@@ -1,0 +1,175 @@
+/**
+ * Force Refresh Provider - Listens for WebSocket force-refresh events
+ * Wraps the app to automatically invalidate React Query caches when
+ * support staff push updates via the command console.
+ */
+
+import { useEffect, useRef, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useToast } from '@/hooks/use-toast';
+
+interface ForceRefreshEvent {
+  type: 'force_refresh';
+  refreshType: string;
+  payload: {
+    action: string;
+    message?: string;
+    severity?: 'info' | 'warning' | 'error' | 'success';
+    duration?: number;
+    cacheKeys?: string[];
+    title?: string;
+    enabled?: boolean;
+  };
+  timestamp: string;
+}
+
+export function ForceRefreshProvider({ children }: { children: React.ReactNode }) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const wsRef = useRef<WebSocket | null>(null);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleForceRefresh = useCallback((event: ForceRefreshEvent) => {
+    const { refreshType, payload } = event;
+    
+    console.log('[ForceRefresh] Received:', refreshType, payload);
+
+    switch (refreshType) {
+      case 'whats_new':
+        queryClient.invalidateQueries({ queryKey: ['/api/whats-new'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/whats-new/unviewed-count'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/whats-new/latest'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/whats-new/new-features'] });
+        
+        if (payload.title) {
+          toast({
+            title: 'New Update Available',
+            description: payload.title,
+            duration: 5000,
+          });
+        }
+        break;
+
+      case 'notifications':
+        queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/notifications/unread-count'] });
+        
+        if (payload.title) {
+          toast({
+            title: 'New Notification',
+            description: payload.title,
+            duration: 5000,
+          });
+        }
+        break;
+
+      case 'health':
+        queryClient.invalidateQueries({ queryKey: ['/api/health'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/health/summary'] });
+        break;
+
+      case 'system_message':
+        if (payload.message) {
+          toast({
+            title: 'System Message',
+            description: payload.message,
+            variant: payload.severity === 'error' ? 'destructive' : 'default',
+            duration: payload.duration || 10000,
+          });
+        }
+        break;
+
+      case 'maintenance':
+        if (payload.message) {
+          toast({
+            title: payload.enabled ? 'Maintenance Mode' : 'Maintenance Complete',
+            description: payload.message,
+            variant: payload.enabled ? 'destructive' : 'default',
+            duration: 15000,
+          });
+        }
+        break;
+
+      case 'cache_invalidation':
+        if (payload.cacheKeys && Array.isArray(payload.cacheKeys)) {
+          for (const key of payload.cacheKeys) {
+            queryClient.invalidateQueries({ queryKey: [key] });
+          }
+        } else {
+          queryClient.invalidateQueries();
+        }
+        break;
+    }
+  }, [queryClient, toast]);
+
+  const connect = useCallback(() => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      return;
+    }
+
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/ws/chat`;
+    
+    try {
+      wsRef.current = new WebSocket(wsUrl);
+
+      wsRef.current.onopen = () => {
+        console.log('[ForceRefresh] WebSocket connected');
+        wsRef.current?.send(JSON.stringify({ type: 'join_platform_updates' }));
+      };
+
+      wsRef.current.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          
+          if (data.type === 'force_refresh') {
+            handleForceRefresh(data as ForceRefreshEvent);
+          }
+          
+          if (data.type === 'platform_event' && data.payload) {
+            const payload = data.payload;
+            if (payload.type?.startsWith('feature_') || payload.type === 'announcement') {
+              handleForceRefresh({
+                type: 'force_refresh',
+                refreshType: 'whats_new',
+                payload: { action: 'new_update', title: payload.title },
+                timestamp: new Date().toISOString(),
+              });
+            }
+          }
+        } catch (error) {
+          console.error('[ForceRefresh] Parse error:', error);
+        }
+      };
+
+      wsRef.current.onclose = () => {
+        console.log('[ForceRefresh] WebSocket closed, reconnecting...');
+        reconnectTimeoutRef.current = setTimeout(() => connect(), 5000);
+      };
+
+      wsRef.current.onerror = (error) => {
+        console.error('[ForceRefresh] WebSocket error:', error);
+      };
+    } catch (error) {
+      console.error('[ForceRefresh] Connection error:', error);
+      reconnectTimeoutRef.current = setTimeout(() => connect(), 5000);
+    }
+  }, [handleForceRefresh]);
+
+  useEffect(() => {
+    connect();
+
+    return () => {
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+    };
+  }, [connect]);
+
+  return <>{children}</>;
+}
+
+export default ForceRefreshProvider;
