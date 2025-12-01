@@ -27,7 +27,21 @@ export type GamificationEventType =
   | 'feature_used'
   | 'profile_completed'
   | 'gamification_milestone'
-  | 'achievement_unlocked';
+  | 'achievement_unlocked'
+  // Onboarding & Tutorial Events
+  | 'onboarding_step_completed'
+  | 'onboarding_completed'
+  | 'tutorial_step_completed'
+  | 'tutorial_completed'
+  // Migration Events
+  | 'migration_started'
+  | 'migration_document_uploaded'
+  | 'migration_data_imported'
+  | 'migration_completed'
+  // Org Setup Events
+  | 'org_setup_started'
+  | 'org_setup_step_completed'
+  | 'org_ready_to_work';
 
 export interface ClockInEvent {
   workspaceId: string;
@@ -80,12 +94,54 @@ export interface AchievementEvent {
   points: number;
 }
 
+export interface OnboardingEvent {
+  workspaceId: string;
+  employeeId: string;
+  userId?: string;
+  stepId?: string;
+  stepName?: string;
+  stepNumber?: number;
+  totalSteps?: number;
+  isComplete?: boolean;
+}
+
+export interface TutorialEvent {
+  workspaceId: string;
+  userId: string;
+  employeeId?: string;
+  tutorialId: string;
+  tutorialName: string;
+  stepId?: string;
+  stepNumber?: number;
+  totalSteps?: number;
+  isComplete?: boolean;
+}
+
+export interface MigrationEvent {
+  workspaceId: string;
+  userId?: string;
+  employeeId?: string;
+  documentType?: string;
+  recordCount?: number;
+  migrationJobId?: string;
+  phase?: 'started' | 'upload' | 'import' | 'completed';
+}
+
+export interface OrgSetupEvent {
+  workspaceId: string;
+  userId?: string;
+  employeeId?: string;
+  setupPhase: string;
+  progress?: number;
+  isComplete?: boolean;
+}
+
 /**
  * Emit a gamification event
  */
 export function emitGamificationEvent(
   event: GamificationEventType, 
-  data: ClockInEvent | ShiftEvent | ApprovalEvent | FeatureEvent | MilestoneEvent | AchievementEvent
+  data: ClockInEvent | ShiftEvent | ApprovalEvent | FeatureEvent | MilestoneEvent | AchievementEvent | OnboardingEvent | TutorialEvent | MigrationEvent | OrgSetupEvent
 ): void {
   gamificationEvents.emit(event, data);
 }
