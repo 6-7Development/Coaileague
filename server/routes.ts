@@ -30284,6 +30284,76 @@ app.post("/api/alerts/test", requireAuth, mutationLimiter, async (req: Authentic
     }
   });
 
+  // ============================================================================
+  // AUTONOMOUS WORKFLOW - AI Brain autonomous execution
+  // ============================================================================
+
+  /**
+   * POST /api/ai-brain/workflow/execute
+   * Execute autonomous workflow for a suggested change
+   * Body: { suggestionId, includeRelated? }
+   */
+  app.post("/api/ai-brain/workflow/execute", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { autonomousWorkflowService } = await import("./services/ai-brain/autonomousWorkflowService");
+      const { suggestionId, includeRelated } = req.body;
+
+      if (!suggestionId) {
+        return res.status(400).json({ success: false, error: "suggestionId required" });
+      }
+
+      const result = await autonomousWorkflowService.executeWorkflow(
+        suggestionId,
+        req.userId!,
+        includeRelated !== false
+      );
+
+      res.json({ success: result.success, data: result });
+    } catch (error: any) {
+      console.error("Error executing workflow:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  /**
+   * POST /api/ai-brain/workflow/high-priority-fixes
+   * Execute all high-priority bugfixes autonomously
+   */
+  app.post("/api/ai-brain/workflow/high-priority-fixes", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { autonomousWorkflowService } = await import("./services/ai-brain/autonomousWorkflowService");
+      const result = await autonomousWorkflowService.executeHighPriorityFixes(req.userId!);
+
+      res.json({ success: true, data: result });
+    } catch (error: any) {
+      console.error("Error executing high-priority fixes:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  /**
+   * POST /api/ai-brain/workflow/search-and-fix
+   * Search for suggestions for an issue type and execute workflow
+   * Body: { issueType }
+   */
+  app.post("/api/ai-brain/workflow/search-and-fix", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { autonomousWorkflowService } = await import("./services/ai-brain/autonomousWorkflowService");
+      const { issueType } = req.body;
+
+      if (!issueType) {
+        return res.status(400).json({ success: false, error: "issueType required" });
+      }
+
+      const result = await autonomousWorkflowService.searchAndExecuteForIssue(issueType, req.userId!);
+
+      res.json({ success: !!result, data: result });
+    } catch (error: any) {
+      console.error("Error searching and fixing:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
   return server;
 }
 
