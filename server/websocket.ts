@@ -310,6 +310,38 @@ const conversationClients = new Map<string, Set<WebSocketClient>>();
 // Global broadcast function for force-refresh events (used by support command console)
 let globalWSS: WebSocketServer | null = null;
 
+// Global broadcaster for notifications
+let globalBroadcaster: any = null;
+
+export function setGlobalBroadcaster(broadcaster: any) {
+  globalBroadcaster = broadcaster;
+}
+
+export function broadcastNotificationToUser(
+  workspaceId: string,
+  userId: string,
+  notification: any
+) {
+  if (!globalBroadcaster) {
+    console.warn('[WebSocket] Global broadcaster not initialized for notification');
+    return false;
+  }
+  
+  try {
+    globalBroadcaster.broadcastNotification(
+      workspaceId,
+      userId,
+      'notification_new',
+      notification,
+      undefined
+    );
+    return true;
+  } catch (err) {
+    console.warn('[WebSocket] Failed to broadcast notification:', err);
+    return false;
+  }
+}
+
 export function broadcastToAllClients(message: any) {
   if (!globalWSS) {
     console.warn('[WebSocket] Global WSS not initialized for broadcast');
@@ -4440,4 +4472,14 @@ export function setupWebSocket(server: Server) {
       console.log(`[WebSocket] Platform update sent to ${clientCount} clients`);
     },
   };
+
+  // Export the broadcaster globally for other services to use
+  const broadcasterObj = {
+    broadcastNotification,
+    broadcastShiftUpdate,
+    broadcastPlatformUpdate,
+  };
+  setGlobalBroadcaster(broadcasterObj);
+
+  return { wss, ...broadcasterObj };
 }
