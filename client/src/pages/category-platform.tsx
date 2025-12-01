@@ -7,11 +7,11 @@ import { Badge } from "@/components/ui/badge";
 export default function PlatformFamilyPage() {
   const modules = [
     {
-      name: "AI Diagnostics™",
+      name: "AI Diagnostics",
       icon: Activity,
       description: "Platform staff diagnostics with user search, account management, and impersonation controls",
       features: ["User Diagnostics", "Account Management", "Impersonation", "Audit Logs"],
-      url: "/query-os",
+      url: "/diagnostics",
       color: "from-red-500 to-blue-500",
       adminOnly: true
     },
@@ -61,7 +61,7 @@ export default function PlatformFamilyPage() {
             </div>
           </div>
           <h1 className="text-4xl md:text-6xl font-black bg-gradient-to-r from-red-400 via-orange-400 to-blue-400 bg-clip-text text-transparent">
-            Platform & Control OS
+            Platform & Control
           </h1>
           <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
             Enterprise-grade platform administration, diagnostics, and integration management for complete control

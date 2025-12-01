@@ -101,19 +101,19 @@ import FileGrievance from "@/pages/file-grievance";
 import ReviewDisputes from "@/pages/review-disputes";
 import PayrollDeductions from "@/pages/payroll-deductions";
 import PayrollGarnishments from "@/pages/payroll-garnishments";
-import AICommunications from "@/pages/comm-os";
-import AICommunicationsOnboarding from "@/pages/comm-os-onboarding";
-import AIDiagnostics from "@/pages/query-os";
+import Communications from "@/pages/communications";
+import CommunicationsOnboarding from "@/pages/communications-onboarding";
+import Diagnostics from "@/pages/diagnostics";
 import PrivateMessages from "@/pages/private-messages";
-import AITraining from "@/pages/training-os";
-import AIBudgeting from "@/pages/budget-os";
-import AIIntegrations from "@/pages/integration-os";
-import AIRecords from "@/pages/record-os";
-import AIAnalytics from "@/pages/insight-os";
-import CommunicationFamilyPage from "@/pages/os-family-communication";
-import OperationsFamilyPage from "@/pages/os-family-operations";
-import GrowthFamilyPage from "@/pages/os-family-growth";
-import PlatformFamilyPage from "@/pages/os-family-platform";
+import Training from "@/pages/training-os";
+import Budgeting from "@/pages/budgeting";
+import AIIntegrations from "@/pages/ai-integrations";
+import Records from "@/pages/records";
+import Insights from "@/pages/insights";
+import CommunicationFamilyPage from "@/pages/category-communication";
+import OperationsFamilyPage from "@/pages/category-operations";
+import GrowthFamilyPage from "@/pages/category-growth";
+import PlatformFamilyPage from "@/pages/category-platform";
 import Profile from "@/pages/profile";
 import Unavailability from "@/pages/unavailability";
 import AvailabilityPage from "@/pages/availability";
@@ -345,21 +345,32 @@ function AppContent() {
               <Route path="/review-disputes" component={ReviewDisputes} />
               <Route path="/payroll/deductions" component={PayrollDeductions} />
               <Route path="/payroll/garnishments" component={PayrollGarnishments} />
-              <Route path="/comm-os" component={AICommunications} />
-              <Route path="/comm-os/onboarding" component={AICommunicationsOnboarding} />
-              <Route path="/query-os" component={AIDiagnostics} />
+              <Route path="/communications" component={Communications} />
+              <Route path="/communications/onboarding" component={CommunicationsOnboarding} />
+              <Route path="/diagnostics" component={Diagnostics} />
               <Route path="/messages" component={PrivateMessages} />
-              <Route path="/training" component={AITraining} />
-              <Route path="/budget" component={AIBudgeting} />
-              <Route path="/integrations" component={AIIntegrations} />
-              <Route path="/search" component={AIRecords} />
-              <Route path="/insights" component={AIAnalytics} />
+              <Route path="/training" component={Training} />
+              <Route path="/budgeting" component={Budgeting} />
+              <Route path="/ai-integrations" component={AIIntegrations} />
+              <Route path="/records" component={Records} />
+              <Route path="/insights" component={Insights} />
 
-              {/* OS Family Showcase Pages */}
-              <Route path="/os-family/communication" component={CommunicationFamilyPage} />
-              <Route path="/os-family/operations" component={OperationsFamilyPage} />
-              <Route path="/os-family/growth" component={GrowthFamilyPage} />
-              <Route path="/os-family/platform" component={PlatformFamilyPage} />
+              {/* Feature Category Pages */}
+              <Route path="/category/communication" component={CommunicationFamilyPage} />
+              <Route path="/category/operations" component={OperationsFamilyPage} />
+              <Route path="/category/growth" component={GrowthFamilyPage} />
+              <Route path="/category/platform" component={PlatformFamilyPage} />
+              
+              {/* Legacy OS route redirects */}
+              <Route path="/comm-os"><Redirect to="/communications" /></Route>
+              <Route path="/query-os"><Redirect to="/diagnostics" /></Route>
+              <Route path="/budget-os"><Redirect to="/budgeting" /></Route>
+              <Route path="/record-os"><Redirect to="/records" /></Route>
+              <Route path="/insight-os"><Redirect to="/insights" /></Route>
+              <Route path="/os-family/communication"><Redirect to="/category/communication" /></Route>
+              <Route path="/os-family/operations"><Redirect to="/category/operations" /></Route>
+              <Route path="/os-family/growth"><Redirect to="/category/growth" /></Route>
+              <Route path="/os-family/platform"><Redirect to="/category/platform" /></Route>
 
               {/* User Menu Routes */}
               <Route path="/profile" component={Profile} />
@@ -609,21 +620,32 @@ function AppContent() {
                 <Route path="/my-audit-record" component={MyAuditRecord} />
                 <Route path="/file-grievance" component={FileGrievance} />
                 <Route path="/review-disputes" component={ReviewDisputes} />
-                <Route path="/comm-os" component={AICommunications} />
-                <Route path="/comm-os/onboarding" component={AICommunicationsOnboarding} />
-                <Route path="/query-os" component={AIDiagnostics} />
+                <Route path="/communications" component={Communications} />
+                <Route path="/communications/onboarding" component={CommunicationsOnboarding} />
+                <Route path="/diagnostics" component={Diagnostics} />
                 <Route path="/messages" component={PrivateMessages} />
-                <Route path="/training" component={AITraining} />
-                <Route path="/budget" component={AIBudgeting} />
-                <Route path="/integrations" component={AIIntegrations} />
-                <Route path="/search" component={AIRecords} />
-                <Route path="/insights" component={AIAnalytics} />
+                <Route path="/training" component={Training} />
+                <Route path="/budgeting" component={Budgeting} />
+                <Route path="/ai-integrations" component={AIIntegrations} />
+                <Route path="/records" component={Records} />
+                <Route path="/insights" component={Insights} />
 
-                {/* OS Family Showcase Pages */}
-                <Route path="/os-family/communication" component={CommunicationFamilyPage} />
-                <Route path="/os-family/operations" component={OperationsFamilyPage} />
-                <Route path="/os-family/growth" component={GrowthFamilyPage} />
-                <Route path="/os-family/platform" component={PlatformFamilyPage} />
+                {/* Feature Category Pages */}
+                <Route path="/category/communication" component={CommunicationFamilyPage} />
+                <Route path="/category/operations" component={OperationsFamilyPage} />
+                <Route path="/category/growth" component={GrowthFamilyPage} />
+                <Route path="/category/platform" component={PlatformFamilyPage} />
+                
+                {/* Legacy OS route redirects */}
+                <Route path="/comm-os"><Redirect to="/communications" /></Route>
+                <Route path="/query-os"><Redirect to="/diagnostics" /></Route>
+                <Route path="/budget-os"><Redirect to="/budgeting" /></Route>
+                <Route path="/record-os"><Redirect to="/records" /></Route>
+                <Route path="/insight-os"><Redirect to="/insights" /></Route>
+                <Route path="/os-family/communication"><Redirect to="/category/communication" /></Route>
+                <Route path="/os-family/operations"><Redirect to="/category/operations" /></Route>
+                <Route path="/os-family/growth"><Redirect to="/category/growth" /></Route>
+                <Route path="/os-family/platform"><Redirect to="/category/platform" /></Route>
 
                 {/* User Menu Routes */}
                 <Route path="/profile" component={Profile} />

@@ -516,7 +516,7 @@ export const osModules: OSModule[] = [
     ],
   },
   {
-    id: 'comm-os',
+    id: 'communications',
     name: 'AI Communications',
     description: 'Unified Communications Platform',
     icon: MessagesSquare,
@@ -525,9 +525,9 @@ export const osModules: OSModule[] = [
     familyId: 'people',
     routes: [
       {
-        id: 'comm-os-dashboard',
+        id: 'communications-dashboard',
         label: 'AI Communications',
-        href: '/comm-os',
+        href: '/communications',
         icon: MessagesSquare,
         description: 'Communication hub dashboard',
         capabilities: ['view_messages'],
