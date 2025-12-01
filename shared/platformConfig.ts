@@ -648,13 +648,13 @@ export const HELPAI = {
   // Platform Knowledge for AI Context
   platformKnowledge: {
     products: [
-      { name: "TrackOS", description: "Time tracking and clock-in/out" },
-      { name: "ScheduleOS", description: "AI-powered scheduling" },
-      { name: "PayrollOS", description: "Automated payroll processing" },
-      { name: "BillOS", description: "Automated invoicing with Stripe" },
-      { name: "HireOS", description: "Employee onboarding workflows" },
-      { name: "ReportOS", description: "Report templates and submissions" },
-      { name: "AnalyticsOS", description: "Business insights dashboards" },
+      { name: "Time Tracking", description: "Time tracking and clock-in/out" },
+      { name: "AI Scheduling", description: "AI-powered scheduling" },
+      { name: "AI Payroll", description: "Automated payroll processing" },
+      { name: "Billing Platform", description: "Automated invoicing with Stripe" },
+      { name: "Employee Onboarding", description: "Employee onboarding workflows" },
+      { name: "Reports & Forms", description: "Report templates and submissions" },
+      { name: "Business Analytics", description: "Business insights dashboards" },
       { name: "HelpAI", description: "AI-powered support assistant" },
     ],
     capabilities: [
