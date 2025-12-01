@@ -340,13 +340,12 @@ router.get(
     const authReq = req as AuthenticatedRequest;
     try {
       const workspaceId = authReq.workspaceId;
-      const userId = authReq.user?.id;
+      // Try multiple sources for userId (session, user object, request)
+      const userId = authReq.user?.id || (req as any).session?.userId || authReq.user?.email;
 
       // Allow platform-level access even without workspace context
       // When no workspace, only return platform-wide support rooms
-      const hasPlatformAccess = !!userId;
-      
-      if (!hasPlatformAccess) {
+      if (!userId) {
         return res.status(401).json({ error: "Authentication required" });
       }
 
