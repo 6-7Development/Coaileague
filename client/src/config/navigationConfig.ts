@@ -111,25 +111,25 @@ export const navConfig = {
     helpDesk: "/helpdesk",
   },
 
-  // AI/OS Routes
+  // AI & Automation Routes
   ai: {
-    communications: "/comm-os",
-    communicationsOnboarding: "/comm-os-onboarding",
-    diagnostics: "/query-os",
-    training: "/training-os",
-    budgeting: "/budget-os",
-    integrations: "/integration-os",
-    records: "/record-os",
-    analytics: "/insight-os",
+    communications: "/communications",
+    communicationsOnboarding: "/communications/onboarding",
+    diagnostics: "/diagnostics",
+    training: "/training",
+    budgeting: "/budgeting",
+    integrations: "/integrations",
+    records: "/records",
+    insights: "/insights",
     commandCenter: "/ai-command-center",
   },
 
-  // OS Families
-  osFamily: {
-    communication: "/os-family-communication",
-    operations: "/os-family-operations",
-    growth: "/os-family-growth",
-    platform: "/os-family-platform",
+  // Feature Families (Category Pages)
+  families: {
+    communication: "/category/communication",
+    operations: "/category/operations",
+    growth: "/category/growth",
+    platform: "/category/platform",
   },
 
   // Manager/Leadership Routes

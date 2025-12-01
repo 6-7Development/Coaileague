@@ -16,7 +16,12 @@ const routeLabels: Record<string, string> = {
   "/expenses": "Expenses",
   "/payroll": "Payroll",
   "/my-paychecks": "My Paychecks",
-  "/comm-os": "Communication",
+  "/communications": "Communications",
+  "/diagnostics": "Diagnostics",
+  "/training": "Training",
+  "/budgeting": "Budgeting",
+  "/records": "Records",
+  "/insights": "Insights",
   "/chat": "Help Desk",
   "/admin-command-center": "Admin Command Center",
   "/platform-admin": "Platform Admin",
@@ -27,6 +32,10 @@ const routeLabels: Record<string, string> = {
   "/role-management": "Role Management",
   "/manager-dashboard": "Manager Dashboard",
   "/org-support": "Support Tickets",
+  "/category/communication": "Communication",
+  "/category/operations": "Operations",
+  "/category/growth": "Growth",
+  "/category/platform": "Platform",
 };
 
 export function PageBreadcrumb() {

@@ -52,14 +52,14 @@ const onboardingSteps: OnboardingStep[] = [
   {
     id: "communication-family",
     family: "communication",
-    title: "Communication & Collaboration OS",
+    title: "Communication & Collaboration",
     description: "Connect your team with real-time messaging and support tools",
     icon: MessageSquare,
-    url: "/os-family/communication",
+    url: "/category/communication",
     features: [
-      "CommunicationOS™ - Organization-wide chatrooms",
+      "AI Communications - Organization-wide chatrooms",
       "Private Messages - Secure DMs with purple 'whispered' badges",
-      "SupportOS™ HelpDesk - Live customer support chat"
+      "HelpDesk - Live customer support chat"
     ]
   },
   {
@@ -94,14 +94,14 @@ const onboardingSteps: OnboardingStep[] = [
   {
     id: "operations-family",
     family: "operations",
-    title: "Workforce Operations OS",
+    title: "Workforce Operations",
     description: "Automate daily operations with scheduling, time tracking, and payroll",
     icon: Calendar,
-    url: "/os-family/operations",
+    url: "/category/operations",
     features: [
-      "AI Scheduling™ - AI-powered smart scheduling",
+      "AI Scheduling - AI-powered smart scheduling",
       "Time Platform - Geofencing and mobile clock-in",
-      "AI Payroll™ - Automated payroll processing",
+      "AI Payroll - Automated payroll processing",
       "Billing Platform - Invoice generation and tracking"
     ]
   },
@@ -137,15 +137,15 @@ const onboardingSteps: OnboardingStep[] = [
   {
     id: "growth-family",
     family: "growth",
-    title: "Growth & Intelligence OS",
+    title: "Growth & Intelligence",
     description: "Scale with AI-powered recruitment, analytics, and engagement tools",
     icon: Briefcase,
-    url: "/os-family/growth",
+    url: "/category/growth",
     features: [
-      "AI Hiring™ - Recruitment workflow automation",
-      "EngagementOS™ - Employee engagement analytics",
-      "AnalyticsOS™ - Predictive workforce insights",
-      "ReportOS™ - Automated compliance reports"
+      "AI Hiring - Recruitment workflow automation",
+      "Engagement - Employee engagement analytics",
+      "Analytics - Predictive workforce insights",
+      "Reports - Automated compliance reports"
     ]
   },
   {
@@ -180,21 +180,21 @@ const onboardingSteps: OnboardingStep[] = [
   {
     id: "platform-family",
     family: "platform",
-    title: "Platform & Control OS",
+    title: "Platform & Control",
     description: "Enterprise administration, integrations, and diagnostics",
     icon: Activity,
-    url: "/os-family/platform",
+    url: "/category/platform",
     features: [
-      "AI Diagnostics™ - User diagnostics and troubleshooting",
-      "AI Integrations™ - Connect external services",
-      "AI Budgeting™ - Budget planning and control",
+      "Diagnostics - User diagnostics and troubleshooting",
+      "Integrations - Connect external services",
+      "Budgeting - Budget planning and control",
       "Command Center - Platform administration"
     ]
   },
   {
-    id: "integration-os",
+    id: "integrations",
     family: "platform",
-    title: "AI Integrations™ - External Services",
+    title: "AI Integrations - External Services",
     description: "Connect to QuickBooks, Salesforce, Slack, and 50+ platforms",
     icon: Zap,
     url: "/integrations",
@@ -206,12 +206,12 @@ const onboardingSteps: OnboardingStep[] = [
     ]
   },
   {
-    id: "query-os",
+    id: "diagnostics",
     family: "platform",
-    title: "AI Diagnostics™ - User Diagnostics",
+    title: "AI Diagnostics - User Diagnostics",
     description: "Platform staff diagnostics for troubleshooting and support (Admin Only)",
     icon: Activity,
-    url: "/query-os",
+    url: "/diagnostics",
     features: [
       "User search and account management",
       "Impersonation controls (admin)",

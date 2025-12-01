@@ -117,9 +117,9 @@ export function useLastDashboardRoute() {
  */
 export const FEATURE_ROUTES = {
   chat: {
-    desktop: '/comm-os',
+    desktop: '/communications',
     mobile: '/private-messages',
-    tablet: '/comm-os'
+    tablet: '/communications'
   },
   helpdesk: {
     desktop: '/chat',

@@ -148,7 +148,7 @@ export const quickActionsRegistry: QuickAction[] = [
     icon: MessageSquare,
     color: 'text-blue-400',
     category: 'support',
-    desktopPath: '/comm-os', // Desktop: Full AI Communications
+    desktopPath: '/communications', // Desktop: Full AI Communications
     mobilePath: '/private-messages', // Mobile: Mobile-optimized chat
     requiresAuth: true,
     testId: 'quick-chat',
@@ -361,7 +361,7 @@ export const quickActionsRegistry: QuickAction[] = [
     icon: GraduationCap,
     color: 'text-blue-500',
     category: 'core',
-    desktopPath: '/training-os',
+    desktopPath: '/training',
     requiresAuth: true,
     testId: 'quick-training',
     description: 'Employee training and development'
@@ -383,7 +383,7 @@ export const quickActionsRegistry: QuickAction[] = [
     icon: Grid3x3,
     color: 'text-slate-400',
     category: 'core',
-    desktopPath: '/os-family-platform',
+    desktopPath: '/category/platform',
     requiresAuth: true,
     testId: 'quick-all',
     description: 'View all CoAIleague features'

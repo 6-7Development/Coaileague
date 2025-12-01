@@ -306,7 +306,7 @@ export default function Communications() {
             </div>
             <Button 
               className="w-full"
-              onClick={() => window.location.href = '/comm-os/onboarding'}
+              onClick={() => window.location.href = '/communications/onboarding'}
               data-testid="button-start-onboarding"
             >
               <PlusCircle className="w-4 h-4 mr-2" />
