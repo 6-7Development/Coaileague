@@ -10,6 +10,8 @@ import { AiBrainNotifier } from "./services/gamification/aiBrainNotifier";
 import { WhatsNewGamificationBridge } from "./services/gamification/whatsNewIntegration";
 import { initializeNotifications } from "./services/notificationInit";
 import { aiBrainMasterOrchestrator } from "./services/ai-brain/aiBrainMasterOrchestrator";
+import { platformEventBus } from "./services/platformEventBus";
+import { handlePlatformChangeEvent } from "./services/aiNotificationService";
 
 const app = express();
 app.use(express.json());
@@ -118,6 +120,29 @@ process.on('SIGTERM', () => {
     GamificationEventTracker.initializeEventListeners();
     AiBrainNotifier.initializeListeners();
     WhatsNewGamificationBridge.initializeListeners();
+    
+    // Subscribe to platform changes to create What's New notifications
+    platformEventBus.subscribe('announcement', {
+      name: 'PlatformChangeNotificationListener',
+      handler: handlePlatformChangeEvent,
+    });
+    platformEventBus.subscribe('feature_released', {
+      name: 'PlatformChangeNotificationListener',
+      handler: handlePlatformChangeEvent,
+    });
+    platformEventBus.subscribe('feature_updated', {
+      name: 'PlatformChangeNotificationListener',
+      handler: handlePlatformChangeEvent,
+    });
+    platformEventBus.subscribe('bugfix_deployed', {
+      name: 'PlatformChangeNotificationListener',
+      handler: handlePlatformChangeEvent,
+    });
+    platformEventBus.subscribe('security_patch', {
+      name: 'PlatformChangeNotificationListener',
+      handler: handlePlatformChangeEvent,
+    });
+    
     console.log('[Server] Gamification event system initialized');
   } catch (error) {
     console.error('[Server] Warning: Failed to initialize gamification events:', error);

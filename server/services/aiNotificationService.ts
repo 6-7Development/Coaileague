@@ -373,6 +373,45 @@ export async function notifySystemIssue(
   });
 }
 
+/**
+ * Event listener for platform changes - converts AI Brain events into What's New notifications
+ */
+export async function handlePlatformChangeEvent(event: any): Promise<void> {
+  try {
+    const eventType = event.type;
+    const title = event.title;
+    const description = event.description;
+    const category = event.category || 'announcement';
+    
+    // Only create updates for actual platform changes
+    if (!title || !['feature_released', 'feature_updated', 'bugfix_deployed', 'security_patch', 'announcement'].includes(eventType)) {
+      return;
+    }
+    
+    // Generate platform update which creates a What's New record
+    const result = await generatePlatformUpdate({
+      title,
+      description,
+      category: category as any,
+      workspaceId: event.workspaceId,
+      priority: event.priority || 2,
+      learnMoreUrl: event.learnMoreUrl,
+      metadata: {
+        ...event.metadata,
+        eventType,
+        sourceAIBrain: true,
+        detectedAt: new Date().toISOString(),
+      },
+    });
+    
+    if (result) {
+      console.log(`[AINotification] Platform update created for: ${title}`);
+    }
+  } catch (error) {
+    console.error('[AINotification] Failed to handle platform change event:', error);
+  }
+}
+
 export const aiNotificationService = {
   generatePlatformUpdate,
   pushAIInsight,
@@ -384,6 +423,7 @@ export const aiNotificationService = {
   acknowledgeMaintenanceAlert,
   notifyAutomationComplete,
   notifySystemIssue,
+  handlePlatformChangeEvent,
 };
 
 export default aiNotificationService;
