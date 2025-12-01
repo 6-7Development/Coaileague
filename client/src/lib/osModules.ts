@@ -345,7 +345,7 @@ export const osModules: OSModule[] = [
     ],
   },
   {
-    id: 'bill-os',
+    id: 'billing-platform',
     name: 'Billing Platform',
     description: 'Administrative Billing & Financial Management',
     icon: Wallet,
@@ -354,8 +354,8 @@ export const osModules: OSModule[] = [
     familyId: 'executive',
     routes: [
       {
-        id: 'payroll-os',
-        label: 'AI Payroll™',
+        id: 'ai-payroll',
+        label: 'AI Payroll',
         href: '/payroll',
         icon: Wallet,
         description: 'FLSA-compliant payroll processing',
@@ -366,7 +366,7 @@ export const osModules: OSModule[] = [
         order: 2,
       },
       {
-        id: 'bill-os-invoices',
+        id: 'billing-invoices',
         label: 'Billing Platform',
         href: '/invoices',
         icon: FileCheck2,
@@ -377,7 +377,7 @@ export const osModules: OSModule[] = [
         order: 3,
       },
       {
-        id: 'bill-os-integrations',
+        id: 'billing-integrations',
         label: 'Integrations',
         href: '/integrations',
         icon: Zap,
@@ -693,12 +693,12 @@ export const platformSupportModule: OSModule = {
 const curatedWorkspaceRoutesForPlatformStaff: string[] = [
   'schedule',            // AI Scheduling - verify schedule automation
   'payroll',             // AI Payroll - verify payroll processing
-  'bill-os-invoices',    // Billing Platform Invoices - verify invoice generation
+  'billing-invoices',    // Billing Platform Invoices - verify invoice generation
   'time-tracking',       // Time Platform - verify time tracking
   'employees',           // Employee management
   'clients',             // Client management
   'analytics',           // Analytics - insights and reporting
-  'bill-os-integrations', // Integrations - QuickBooks/Gusto monitoring
+  'billing-integrations', // Integrations - QuickBooks/Gusto monitoring
 ];
 
 /**
