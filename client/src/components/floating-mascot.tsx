@@ -783,6 +783,9 @@ const FloatingMascot = memo(function FloatingMascot({
       const physics = physicsRef.current;
       if (physics) {
         physics.setBounds(mascotSize, mascotSize);
+        // CRITICAL: Set body radius to match actual rendered star size for proper collision
+        const actualStarSize = mascotSize * trinityConfig.starSizeMultiplier;
+        physics.setBodyRadius(actualStarSize);
         physics.setTargetPositions([
           { x: x1 - center, y: y1 - center },
           { x: x2 - center, y: y2 - center },

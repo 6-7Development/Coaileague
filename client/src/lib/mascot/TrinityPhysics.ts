@@ -32,12 +32,12 @@ export interface TrinityPhysicsConfig {
 // FULLY INDEPENDENT STARS - Maximum separation, no visual overlap possible
 // CONFIG SYNCED WITH TRINITY_STAR_CONFIG in mascotConfig.ts
 const DEFAULT_CONFIG: TrinityPhysicsConfig = {
-  repulsionStrength: 10.0,      // VERY strong repulsion - 3RD STAR NEVER HIDES
-  springStrength: 0.02,         // Very weak spring - maximum independence
-  dampening: 0.70,              // Lower dampening for more dynamic floating
-  minDistance: 45,              // LARGE minimum gap - ALL 3 STARS VISIBLE
-  maxSpeed: 4,                  // Controlled speed for smooth independent motion
-  bounceElasticity: 0.85        // Very bouncy for immediate separation
+  repulsionStrength: 15.0,      // MAXIMUM repulsion - 3RD STAR ALWAYS VISIBLE
+  springStrength: 0.015,        // Very weak spring - maximum independence
+  dampening: 0.65,              // Lower dampening for more dynamic floating
+  minDistance: 60,              // LARGE minimum gap - ALL 3 STARS VISIBLE
+  maxSpeed: 5,                  // Faster speed for quick separation
+  bounceElasticity: 0.9         // Very bouncy for immediate separation
 };
 
 export class TrinityPhysics {
@@ -49,16 +49,16 @@ export class TrinityPhysics {
     this.config = { ...DEFAULT_CONFIG, ...config };
     this.bounds = { width: 100, height: 100, centerX: 50, centerY: 50 };
     
-    // Initialize 3 Trinity bodies with 120° offset positions - WIDER spread to prevent overlap
-    // Use minDistance as guide for initial spread - ensures all 3 stars start separated
-    const initRadius = Math.max(25, this.config.minDistance * 0.6);
+    // Initialize 3 Trinity bodies with 120° offset positions - MAXIMUM spread to prevent overlap
+    // Use minDistance as guide for initial spread - ensures all 3 stars start FULLY separated
+    const initRadius = Math.max(35, this.config.minDistance * 0.7);
     const angles = [0, (Math.PI * 2) / 3, (Math.PI * 4) / 3];
     this.bodies = angles.map((angle, i) => ({
       x: Math.cos(angle) * initRadius,
       y: Math.sin(angle) * initRadius,
       vx: 0,
       vy: 0,
-      radius: 15,  // Larger radius for better collision detection - PREVENTS 3RD STAR HIDING
+      radius: 20,  // Default radius - will be updated by setBodyRadius() to match actual star size
       mass: 1,
       targetX: Math.cos(angle) * initRadius,
       targetY: Math.sin(angle) * initRadius
@@ -70,6 +70,17 @@ export class TrinityPhysics {
     this.bounds.height = height;
     this.bounds.centerX = width / 2;
     this.bounds.centerY = height / 2;
+  }
+  
+  // CRITICAL: Set body radius to match actual rendered star size
+  // This ensures collision detection works properly and 3rd star doesn't hide
+  setBodyRadius(starRadius: number) {
+    const safeRadius = Math.max(starRadius, 10);
+    for (const body of this.bodies) {
+      body.radius = safeRadius;
+    }
+    // Also update minDistance to be at least 2x the star diameter
+    this.config.minDistance = Math.max(this.config.minDistance, safeRadius * 3);
   }
 
   setTargetPositions(positions: { x: number; y: number }[]) {
