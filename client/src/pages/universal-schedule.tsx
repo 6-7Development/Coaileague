@@ -575,6 +575,16 @@ export default function UniversalSchedule() {
     setShowDuplicateModal(true);
   };
   
+  const handleQuickDuplicate = (shift: Shift) => {
+    const nextWeek = new Date(shift.startTime);
+    nextWeek.setDate(nextWeek.getDate() + 7);
+    duplicateShiftMutation.mutate({
+      shiftId: shift.id,
+      targetDate: nextWeek.toISOString().split('T')[0],
+      targetEmployeeId: shift.employeeId || undefined,
+    });
+  };
+  
   const handleSwapShift = (shift: Shift) => {
     setSelectedShiftForAction(shift);
     setSwapReason('');
