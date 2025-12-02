@@ -48,32 +48,22 @@ export function useMascotMouseFollow(
 ) {
   const mergedConfig = { ...DEFAULT_CONFIG, ...config };
   
-  const [state, setState] = useState<MouseFollowState>({
-    mousePosition: { x: window.innerWidth / 2, y: window.innerHeight / 2 },
-    isFollowing: false,
-    targetInfluence: { x: 0, y: 0 },
-    lastActivityTime: Date.now(),
-  });
-  
-  const stateRef = useRef(state);
-  stateRef.current = state;
+  // Use separate state for boolean and refs for position objects to prevent re-render loops
+  const [isFollowing, setIsFollowing] = useState(false);
+  const mousePositionRef = useRef({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+  const targetInfluenceRef = useRef({ x: 0, y: 0 });
+  const lastActivityTimeRef = useRef(Date.now());
   
   const currentPositionRef = useRef(currentPosition);
   currentPositionRef.current = currentPosition;
   
   const handleMouseMove = useCallback((e: MouseEvent) => {
-    setState(prev => ({
-      ...prev,
-      mousePosition: { x: e.clientX, y: e.clientY },
-      lastActivityTime: Date.now(),
-    }));
+    mousePositionRef.current = { x: e.clientX, y: e.clientY };
+    lastActivityTimeRef.current = Date.now();
   }, []);
   
   const handleMouseActivity = useCallback(() => {
-    setState(prev => ({
-      ...prev,
-      lastActivityTime: Date.now(),
-    }));
+    lastActivityTimeRef.current = Date.now();
   }, []);
   
   useEffect(() => {
@@ -92,17 +82,15 @@ export function useMascotMouseFollow(
   
   useEffect(() => {
     if (!mergedConfig.enabled || isDragging || isRoaming) {
-      setState(prev => ({
-        ...prev,
-        isFollowing: false,
-        targetInfluence: { x: 0, y: 0 },
-      }));
+      setIsFollowing(false);
+      targetInfluenceRef.current = { x: 0, y: 0 };
       return;
     }
     
     const calculateInfluence = () => {
       const current = currentPositionRef.current;
-      const { mousePosition, lastActivityTime } = stateRef.current;
+      const mousePosition = mousePositionRef.current;
+      const lastActivityTime = lastActivityTimeRef.current;
       
       const mascotCenterX = window.innerWidth - current.x - bubbleSize / 2;
       const mascotCenterY = window.innerHeight - current.y - bubbleSize / 2;
@@ -115,11 +103,8 @@ export function useMascotMouseFollow(
       const isIdle = timeSinceActivity > mergedConfig.idleThreshold;
       
       if (!isIdle || distance < 50 || distance > mergedConfig.followDistance * 2) {
-        setState(prev => ({
-          ...prev,
-          isFollowing: false,
-          targetInfluence: { x: 0, y: 0 },
-        }));
+        setIsFollowing(false);
+        targetInfluenceRef.current = { x: 0, y: 0 };
         return;
       }
       
@@ -129,25 +114,23 @@ export function useMascotMouseFollow(
       const influenceX = Math.min(mergedConfig.maxMoveSpeed, (dx / distance) * attraction * 10);
       const influenceY = Math.min(mergedConfig.maxMoveSpeed, (dy / distance) * attraction * 10);
       
-      setState(prev => ({
-        ...prev,
-        isFollowing: Math.abs(influenceX) > 0.1 || Math.abs(influenceY) > 0.1,
-        targetInfluence: { x: -influenceX, y: -influenceY },
-      }));
+      const shouldFollow = Math.abs(influenceX) > 0.1 || Math.abs(influenceY) > 0.1;
+      setIsFollowing(shouldFollow);
+      targetInfluenceRef.current = { x: -influenceX, y: -influenceY };
     };
     
     const intervalId = setInterval(calculateInfluence, 100);
     
     return () => clearInterval(intervalId);
-  }, [mergedConfig, bubbleSize, isDragging, isRoaming]);
+  }, [mergedConfig.enabled, mergedConfig.idleThreshold, mergedConfig.followDistance, mergedConfig.attractionStrength, mergedConfig.maxMoveSpeed, bubbleSize, isDragging, isRoaming]);
   
   return {
-    mousePosition: state.mousePosition,
-    isFollowing: state.isFollowing,
-    targetInfluence: state.targetInfluence,
+    mousePosition: mousePositionRef.current,
+    isFollowing,
+    targetInfluence: targetInfluenceRef.current,
     getMouseDistance: useCallback(() => {
       const current = currentPositionRef.current;
-      const { mousePosition } = stateRef.current;
+      const mousePosition = mousePositionRef.current;
       
       const mascotCenterX = window.innerWidth - current.x - bubbleSize / 2;
       const mascotCenterY = window.innerHeight - current.y - bubbleSize / 2;
