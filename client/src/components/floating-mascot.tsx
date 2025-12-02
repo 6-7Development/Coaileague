@@ -381,16 +381,8 @@ const FloatingMascot = memo(function FloatingMascot({
       const radius = mascotSize * 0.48;
 
       ctx.clearRect(0, 0, mascotSize, mascotSize);
-
-      ctx.globalAlpha = 0.15;
-      const gradient = ctx.createRadialGradient(center, center, 0, center, center, radius * 2);
-      gradient.addColorStop(0, colors.glow);
-      gradient.addColorStop(0.5, 'rgba(244, 193, 93, 0.2)'); // Gold accent
-      gradient.addColorStop(1, 'transparent');
-      ctx.fillStyle = gradient;
-      ctx.beginPath();
-      ctx.arc(center, center, radius * 2, 0, Math.PI * 2);
-      ctx.fill();
+      
+      // No central glow - each star has its own individual glow only
       ctx.globalAlpha = 1;
 
       const twins = twinsRef.current;
@@ -533,46 +525,30 @@ const FloatingMascot = memo(function FloatingMascot({
         twins[2].y = y3;
       }
 
-      twins.forEach((twin, i) => {
-        twin.trail.unshift({ x: twin.x, y: twin.y, opacity: 1 });
-        if (twin.trail.length > 8) twin.trail.pop();
-        
-        twin.trail.forEach((point, j) => {
-          const trailOpacity = (1 - j / twin.trail.length) * 0.4;
-          const trailSize = 6 * (1 - j / twin.trail.length);
-          
-          ctx.beginPath();
-          ctx.arc(point.x, point.y, trailSize, 0, Math.PI * 2);
-          ctx.fillStyle = twin.color;
-          ctx.globalAlpha = trailOpacity;
-          ctx.fill();
-        });
-        ctx.globalAlpha = 1;
-      });
-
-      // Stars are grouped invisibly by physics system - no visible connecting lines
+      // No trails - stars float cleanly without any visual connections
+      ctx.globalAlpha = 1;
 
       // Trinity branding: "Co" on cyan, "AI" on purple, "L" on gold - spells "CoAIL"
       const brandingLabels = ['Co', 'AI', 'L'];
       const brandingColors = ['#a855f7', '#38bdf8', '#38bdf8'];
       
       twins.forEach((twin, index) => {
-        // Even smaller stars for absolutely no overlap - pure separation
-        const starSize = mascotSize * 0.09;
+        // Compact stars - sized to never overlap at max radius
+        const starSize = mascotSize * 0.08;
         const innerSize = starSize * 0.55;
         const rimWidth = starSize * 0.09;
         
-        // Outer glow halo
+        // Minimal glow halo - tight around each star, no overlap
         const haloGradient = ctx.createRadialGradient(
-          twin.x, twin.y, starSize * 0.5,
-          twin.x, twin.y, starSize * 1.8
+          twin.x, twin.y, starSize * 0.3,
+          twin.x, twin.y, starSize * 1.2
         );
-        haloGradient.addColorStop(0, `${twin.color}40`);
-        haloGradient.addColorStop(0.5, `${twin.color}15`);
+        haloGradient.addColorStop(0, `${twin.color}30`);
+        haloGradient.addColorStop(0.6, `${twin.color}10`);
         haloGradient.addColorStop(1, 'transparent');
         
         ctx.beginPath();
-        ctx.arc(twin.x, twin.y, starSize * 1.8, 0, Math.PI * 2);
+        ctx.arc(twin.x, twin.y, starSize * 1.2, 0, Math.PI * 2);
         ctx.fillStyle = haloGradient;
         ctx.fill();
         
