@@ -419,7 +419,7 @@ const FloatingMascot = memo(function FloatingMascot({
 
     // Frame budget tracking for adaptive quality
     let frameSkipCounter = 0;
-    const targetFrameInterval = 1000 / qualitySettings.targetFPS;
+    let isOverBudget = false;
     
     const animate = () => {
       const now = performance.now();
@@ -433,27 +433,37 @@ const FloatingMascot = memo(function FloatingMascot({
         perf.frameTimes.shift();
       }
       
-      // Calculate average FPS every 30 frames
+      // Frame budget guard: detect if we're over budget (frame time > 20ms = <50 FPS)
+      const FRAME_BUDGET_MS = 20;
+      const FRAME_BUDGET_RECOVER_MS = 12;
+      isOverBudget = frameTime > FRAME_BUDGET_MS;
+      if (frameTime < FRAME_BUDGET_RECOVER_MS) {
+        isOverBudget = false;
+      }
+      
+      // Calculate average FPS every 30 frames and adapt quality tier
       if (perf.frameTimes.length >= 30) {
         const avgFrameTime = perf.frameTimes.reduce((a, b) => a + b, 0) / perf.frameTimes.length;
         perf.avgFPS = 1000 / avgFrameTime;
         
-        // Adaptive quality: downgrade if FPS is too low
+        // Adaptive quality: downgrade if FPS is too low, upgrade if recovered
         if (PERFORMANCE_CONFIG.enableAdaptiveQuality) {
           const timeSinceLastMeasure = now - perf.lastMeasurement;
           if (timeSinceLastMeasure > PERFORMANCE_CONFIG.measurementWindow) {
             perf.lastMeasurement = now;
             
             if (perf.avgFPS < PERFORMANCE_CONFIG.qualityDowngradeThreshold && qualityTier !== 'low') {
+              console.log(`[Mascot] Quality downgrade: ${qualityTier} -> ${qualityTier === 'high' ? 'medium' : 'low'} (FPS: ${perf.avgFPS.toFixed(1)})`);
               setQualityTier(prev => prev === 'high' ? 'medium' : 'low');
             } else if (perf.avgFPS > PERFORMANCE_CONFIG.qualityUpgradeThreshold && qualityTier !== 'high') {
+              console.log(`[Mascot] Quality upgrade: ${qualityTier} -> ${qualityTier === 'low' ? 'medium' : 'high'} (FPS: ${perf.avgFPS.toFixed(1)})`);
               setQualityTier(prev => prev === 'low' ? 'medium' : 'high');
             }
           }
         }
       }
       
-      // Idle throttling: reduce FPS when mascot is idle
+      // Idle throttling: reduce FPS when mascot is idle for 5+ seconds
       if (currentMode === 'IDLE' && !isDragging && !isHovered) {
         if (!perf.idleStartTime) {
           perf.idleStartTime = now;
@@ -465,7 +475,7 @@ const FloatingMascot = memo(function FloatingMascot({
         perf.isIdle = false;
       }
       
-      // Skip frames when idle to save battery
+      // Skip frames when idle to save battery (~15 FPS instead of 60)
       if (perf.isIdle) {
         frameSkipCounter++;
         const idleFrameSkip = Math.floor(60 / PERFORMANCE_CONFIG.idleTargetFPS);
@@ -476,7 +486,15 @@ const FloatingMascot = memo(function FloatingMascot({
         frameSkipCounter = 0;
       }
       
-      timeRef.current += 0.02 * qualitySettings.animationSmoothing;
+      // Apply frame budget reduction: use lower quality settings when over budget
+      const effectiveSettings = isOverBudget ? {
+        ...qualitySettings,
+        particleCount: Math.floor(qualitySettings.particleCount * 0.5),
+        glowRadius: qualitySettings.glowRadius * 0.7,
+        enableBlur: false
+      } : qualitySettings;
+      
+      timeRef.current += 0.02 * effectiveSettings.animationSmoothing;
       const t = timeRef.current;
       const center = mascotSize / 2;
       // MAXIMUM orbit radius for clear visual separation between stars - force far apart
