@@ -538,7 +538,7 @@ export const GeminiAgentMascot = memo(function GeminiAgentMascot({
 
   // Mini mode: Clean bubble display without overlays - zoomed in on animation
   if (mini) {
-    const bubbleSize = size || 70;
+    const bubbleSize = size || 120;
     return (
       <div 
         className={`relative rounded-full overflow-hidden ${className}`}
@@ -554,7 +554,7 @@ export const GeminiAgentMascot = memo(function GeminiAgentMascot({
           style={{ 
             width: bubbleSize, 
             height: bubbleSize,
-            transform: 'scale(1.3)',
+            transform: 'scale(1.6)',
             transformOrigin: 'center',
           }}
         >
@@ -571,8 +571,8 @@ export const GeminiAgentMascot = memo(function GeminiAgentMascot({
         <div 
           className="absolute inset-0 rounded-full pointer-events-none"
           style={{
-            boxShadow: `inset 0 0 15px rgba(${hexToRgb(color)}, 0.4), 0 0 12px rgba(${hexToRgb(color)}, 0.3)`,
-            border: `1.5px solid rgba(${hexToRgb(color)}, 0.5)`
+            boxShadow: `inset 0 0 20px rgba(${hexToRgb(color)}, 0.5), 0 0 15px rgba(${hexToRgb(color)}, 0.4)`,
+            border: `2px solid rgba(${hexToRgb(color)}, 0.6)`
           }}
         />
       </div>
