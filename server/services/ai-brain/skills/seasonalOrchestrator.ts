@@ -23,6 +23,36 @@ export type EffectType =
 
 export type EffectCadence = 'fast' | 'medium' | 'slow' | 'variable';
 
+// Ornament directive types for AI Brain control
+export type OrnamentType = 'ball' | 'star' | 'light' | 'snowflake' | 'sleigh';
+export type OrnamentAnimation = 'twinkle' | 'sway' | 'bounce' | 'glow' | 'spin' | 'float';
+export type PlacementZone = 'corners' | 'header' | 'inline' | 'overlay' | 'sidebar';
+
+export interface OrnamentProfile {
+  type: OrnamentType;
+  baseHue: string;
+  metallic: boolean;
+  sizeRange: { min: number; max: number };
+  animationSet: OrnamentAnimation[];
+  pattern?: 'solid' | 'stripe' | 'dots' | 'swirl';
+}
+
+export interface PlacementRule {
+  zone: PlacementZone;
+  density: 'sparse' | 'medium' | 'dense';
+  maxCount: number;
+  avoidZones?: Array<{ x: number; y: number; width: number; height: number }>;
+}
+
+export interface OrnamentDirective {
+  profiles: OrnamentProfile[];
+  placements: PlacementRule[];
+  spawnRate: number; // ornaments per second
+  decayRate: number; // how fast ornaments fade (0-1)
+  syncWithSantaFlyover: boolean;
+  globalIntensity: number; // 0-2 multiplier
+}
+
 export interface SeasonalProfile {
   seasonId: SeasonId;
   holidayName: string | null;
@@ -175,6 +205,182 @@ const SEASONAL_THOUGHTS: Record<SeasonId, string[]> = {
     "What's the plan?",
   ],
 };
+
+// Ornament directives for each season - AI Brain orchestrated
+const SEASONAL_ORNAMENT_DIRECTIVES: Record<SeasonId, OrnamentDirective> = {
+  christmas: {
+    profiles: [
+      { type: 'ball', baseHue: '#c41e3a', metallic: true, sizeRange: { min: 28, max: 45 }, animationSet: ['twinkle', 'sway', 'bounce'], pattern: 'stripe' },
+      { type: 'ball', baseHue: '#165b33', metallic: true, sizeRange: { min: 25, max: 40 }, animationSet: ['twinkle', 'float'], pattern: 'dots' },
+      { type: 'ball', baseHue: '#ffd700', metallic: true, sizeRange: { min: 30, max: 48 }, animationSet: ['glow', 'bounce'], pattern: 'solid' },
+      { type: 'star', baseHue: '#ffd700', metallic: true, sizeRange: { min: 25, max: 40 }, animationSet: ['twinkle', 'glow', 'spin'] },
+      { type: 'light', baseHue: '#ff0000', metallic: false, sizeRange: { min: 18, max: 24 }, animationSet: ['twinkle', 'glow'] },
+      { type: 'light', baseHue: '#00ff00', metallic: false, sizeRange: { min: 18, max: 24 }, animationSet: ['twinkle', 'glow'] },
+      { type: 'light', baseHue: '#0000ff', metallic: false, sizeRange: { min: 18, max: 24 }, animationSet: ['twinkle', 'glow'] },
+      { type: 'snowflake', baseHue: '#ffffff', metallic: false, sizeRange: { min: 15, max: 35 }, animationSet: ['float', 'spin'] },
+    ],
+    placements: [
+      { zone: 'corners', density: 'medium', maxCount: 20 },
+      { zone: 'header', density: 'dense', maxCount: 24 },
+    ],
+    spawnRate: 0.3,
+    decayRate: 0.02,
+    syncWithSantaFlyover: true,
+    globalIntensity: 1.0,
+  },
+  winter: {
+    profiles: [
+      { type: 'snowflake', baseHue: '#ffffff', metallic: false, sizeRange: { min: 12, max: 30 }, animationSet: ['float', 'spin'] },
+      { type: 'ball', baseHue: '#a5d8ff', metallic: true, sizeRange: { min: 25, max: 38 }, animationSet: ['twinkle', 'sway'], pattern: 'solid' },
+      { type: 'star', baseHue: '#e7f5ff', metallic: true, sizeRange: { min: 20, max: 35 }, animationSet: ['twinkle', 'glow'] },
+    ],
+    placements: [
+      { zone: 'corners', density: 'sparse', maxCount: 12 },
+    ],
+    spawnRate: 0.2,
+    decayRate: 0.03,
+    syncWithSantaFlyover: false,
+    globalIntensity: 0.7,
+  },
+  newYear: {
+    profiles: [
+      { type: 'star', baseHue: '#ffd700', metallic: true, sizeRange: { min: 30, max: 50 }, animationSet: ['twinkle', 'glow', 'spin'] },
+      { type: 'star', baseHue: '#c0c0c0', metallic: true, sizeRange: { min: 25, max: 45 }, animationSet: ['twinkle', 'glow'] },
+      { type: 'ball', baseHue: '#ffd700', metallic: true, sizeRange: { min: 28, max: 42 }, animationSet: ['bounce', 'glow'], pattern: 'swirl' },
+    ],
+    placements: [
+      { zone: 'corners', density: 'medium', maxCount: 16 },
+      { zone: 'header', density: 'sparse', maxCount: 10 },
+    ],
+    spawnRate: 0.5,
+    decayRate: 0.04,
+    syncWithSantaFlyover: false,
+    globalIntensity: 1.2,
+  },
+  valentines: {
+    profiles: [
+      { type: 'ball', baseHue: '#ff69b4', metallic: true, sizeRange: { min: 22, max: 35 }, animationSet: ['float', 'twinkle'], pattern: 'dots' },
+      { type: 'ball', baseHue: '#ff1493', metallic: true, sizeRange: { min: 25, max: 38 }, animationSet: ['bounce', 'glow'], pattern: 'solid' },
+      { type: 'star', baseHue: '#ffb6c1', metallic: false, sizeRange: { min: 20, max: 32 }, animationSet: ['twinkle', 'float'] },
+    ],
+    placements: [
+      { zone: 'corners', density: 'sparse', maxCount: 10 },
+    ],
+    spawnRate: 0.15,
+    decayRate: 0.02,
+    syncWithSantaFlyover: false,
+    globalIntensity: 0.6,
+  },
+  spring: {
+    profiles: [
+      { type: 'ball', baseHue: '#98fb98', metallic: false, sizeRange: { min: 20, max: 32 }, animationSet: ['float', 'sway'], pattern: 'dots' },
+      { type: 'star', baseHue: '#ff69b4', metallic: false, sizeRange: { min: 18, max: 28 }, animationSet: ['twinkle', 'float'] },
+    ],
+    placements: [
+      { zone: 'corners', density: 'sparse', maxCount: 8 },
+    ],
+    spawnRate: 0.1,
+    decayRate: 0.02,
+    syncWithSantaFlyover: false,
+    globalIntensity: 0.5,
+  },
+  easter: {
+    profiles: [
+      { type: 'ball', baseHue: '#e6e6fa', metallic: false, sizeRange: { min: 22, max: 35 }, animationSet: ['bounce', 'float'], pattern: 'stripe' },
+      { type: 'ball', baseHue: '#dda0dd', metallic: false, sizeRange: { min: 20, max: 32 }, animationSet: ['sway', 'twinkle'], pattern: 'dots' },
+      { type: 'ball', baseHue: '#98fb98', metallic: false, sizeRange: { min: 18, max: 30 }, animationSet: ['bounce', 'float'], pattern: 'solid' },
+    ],
+    placements: [
+      { zone: 'corners', density: 'medium', maxCount: 12 },
+    ],
+    spawnRate: 0.15,
+    decayRate: 0.02,
+    syncWithSantaFlyover: false,
+    globalIntensity: 0.6,
+  },
+  summer: {
+    profiles: [
+      { type: 'star', baseHue: '#ffd700', metallic: true, sizeRange: { min: 25, max: 40 }, animationSet: ['glow', 'twinkle'] },
+    ],
+    placements: [
+      { zone: 'corners', density: 'sparse', maxCount: 6 },
+    ],
+    spawnRate: 0.05,
+    decayRate: 0.01,
+    syncWithSantaFlyover: false,
+    globalIntensity: 0.4,
+  },
+  fall: {
+    profiles: [
+      { type: 'ball', baseHue: '#d2691e', metallic: true, sizeRange: { min: 22, max: 36 }, animationSet: ['sway', 'float'], pattern: 'solid' },
+      { type: 'ball', baseHue: '#ff8c00', metallic: true, sizeRange: { min: 20, max: 34 }, animationSet: ['bounce', 'sway'], pattern: 'stripe' },
+    ],
+    placements: [
+      { zone: 'corners', density: 'sparse', maxCount: 10 },
+    ],
+    spawnRate: 0.1,
+    decayRate: 0.02,
+    syncWithSantaFlyover: false,
+    globalIntensity: 0.5,
+  },
+  halloween: {
+    profiles: [
+      { type: 'ball', baseHue: '#ff6600', metallic: true, sizeRange: { min: 28, max: 45 }, animationSet: ['glow', 'bounce'], pattern: 'swirl' },
+      { type: 'ball', baseHue: '#800080', metallic: true, sizeRange: { min: 25, max: 40 }, animationSet: ['twinkle', 'float'], pattern: 'dots' },
+      { type: 'star', baseHue: '#00ff00', metallic: false, sizeRange: { min: 20, max: 35 }, animationSet: ['glow', 'spin'] },
+    ],
+    placements: [
+      { zone: 'corners', density: 'medium', maxCount: 14 },
+    ],
+    spawnRate: 0.2,
+    decayRate: 0.025,
+    syncWithSantaFlyover: false,
+    globalIntensity: 0.8,
+  },
+  thanksgiving: {
+    profiles: [
+      { type: 'ball', baseHue: '#8b4513', metallic: true, sizeRange: { min: 24, max: 38 }, animationSet: ['sway', 'float'], pattern: 'solid' },
+      { type: 'ball', baseHue: '#d2691e', metallic: true, sizeRange: { min: 22, max: 36 }, animationSet: ['bounce', 'sway'], pattern: 'stripe' },
+      { type: 'star', baseHue: '#ffd700', metallic: true, sizeRange: { min: 22, max: 35 }, animationSet: ['twinkle', 'glow'] },
+    ],
+    placements: [
+      { zone: 'corners', density: 'sparse', maxCount: 10 },
+    ],
+    spawnRate: 0.12,
+    decayRate: 0.02,
+    syncWithSantaFlyover: false,
+    globalIntensity: 0.6,
+  },
+  default: {
+    profiles: [],
+    placements: [],
+    spawnRate: 0,
+    decayRate: 0,
+    syncWithSantaFlyover: false,
+    globalIntensity: 0,
+  },
+};
+
+// Get ornament directive for a season
+export function getOrnamentDirective(seasonId: SeasonId): OrnamentDirective {
+  return SEASONAL_ORNAMENT_DIRECTIVES[seasonId] || SEASONAL_ORNAMENT_DIRECTIVES.default;
+}
+
+// Update ornament directive with intensity multiplier
+export function getModifiedOrnamentDirective(seasonId: SeasonId): OrnamentDirective {
+  const base = getOrnamentDirective(seasonId);
+  const multiplier = supportOverrides.intensityMultiplier || 1.0;
+  
+  return {
+    ...base,
+    globalIntensity: base.globalIntensity * multiplier,
+    spawnRate: base.spawnRate * multiplier,
+    placements: base.placements.map(p => ({
+      ...p,
+      maxCount: Math.round(p.maxCount * multiplier),
+    })),
+  };
+}
 
 function isDateInRange(date: Date, startMonth: number, startDay: number, endMonth: number, endDay: number): boolean {
   const month = date.getMonth() + 1;
