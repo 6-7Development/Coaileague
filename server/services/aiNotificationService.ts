@@ -412,6 +412,98 @@ export async function handlePlatformChangeEvent(event: any): Promise<void> {
   }
 }
 
+/**
+ * Get welcome summary for new users - shows top 3 platform updates with AI summary
+ */
+export async function getNewUserWelcomeSummary(
+  userId: string,
+  workspaceId?: string
+): Promise<{
+  updates: Array<{
+    id: string;
+    title: string;
+    description: string;
+    category: string;
+    learnMoreUrl?: string;
+  }>;
+  aiSummary: string;
+  welcomeMessage: string;
+}> {
+  try {
+    // Get top 3 most important updates (by priority, then date)
+    const updates = await db.select({
+      id: platformUpdates.id,
+      title: platformUpdates.title,
+      description: platformUpdates.description,
+      category: platformUpdates.category,
+      priority: platformUpdates.priority,
+      learnMoreUrl: platformUpdates.learnMoreUrl,
+    })
+    .from(platformUpdates)
+    .where(
+      or(
+        eq(platformUpdates.visibility, "all"),
+        workspaceId ? eq(platformUpdates.workspaceId, workspaceId) : sql`false`
+      )
+    )
+    .orderBy(desc(platformUpdates.priority), desc(platformUpdates.date))
+    .limit(3);
+
+    // Format updates for return
+    const formattedUpdates = updates.map(u => ({
+      id: u.id,
+      title: u.title,
+      description: u.description || '',
+      category: u.category || 'announcement',
+      learnMoreUrl: u.learnMoreUrl || undefined,
+    }));
+
+    // Generate AI summary
+    let aiSummary = "Welcome to CoAIleague! Here are the latest platform highlights.";
+    let welcomeMessage = "We're excited to have you on board!";
+    
+    try {
+      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+      const updateTitles = updates.map(u => u.title).join(", ");
+      
+      const prompt = `You are CoAIleague's friendly AI assistant. Create a brief, warm welcome message (max 2 sentences) for a new user, mentioning these platform highlights: ${updateTitles}. Be encouraging and helpful.`;
+      
+      const result = await model.generateContent(prompt);
+      const response = result.response.text().trim();
+      if (response && response.length < 300) {
+        welcomeMessage = response;
+      }
+    } catch (error) {
+      console.log("[AINotification] Welcome summary AI enhancement skipped:", error);
+    }
+
+    return {
+      updates: formattedUpdates,
+      aiSummary,
+      welcomeMessage,
+    };
+  } catch (error) {
+    console.error("[AINotification] Failed to get new user welcome summary:", error);
+    return {
+      updates: [],
+      aiSummary: "Welcome to CoAIleague!",
+      welcomeMessage: "Explore our workforce management features to get started.",
+    };
+  }
+}
+
+/**
+ * Mark updates as viewed for a new user after showing welcome summary
+ */
+export async function markWelcomeUpdatesViewed(
+  userId: string,
+  updateIds: string[]
+): Promise<void> {
+  for (const updateId of updateIds) {
+    await markUpdateViewed(userId, updateId);
+  }
+}
+
 export const aiNotificationService = {
   generatePlatformUpdate,
   pushAIInsight,
@@ -424,6 +516,8 @@ export const aiNotificationService = {
   notifyAutomationComplete,
   notifySystemIssue,
   handlePlatformChangeEvent,
+  getNewUserWelcomeSummary,
+  markWelcomeUpdatesViewed,
 };
 
 export default aiNotificationService;

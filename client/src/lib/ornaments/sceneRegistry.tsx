@@ -18,6 +18,7 @@ import {
   ORNAMENT_KEYFRAMES,
   type OrnamentPalette,
 } from './primitives';
+import { ornamentExclusionScanner, type ExclusionZone } from './OrnamentExclusionScanner';
 
 // Scene configuration types (aligned with server/services/ai-brain/skills/seasonalOrchestrator.ts)
 export type OrnamentType = 'ball' | 'star' | 'light' | 'snowflake' | 'sleigh' | 'giftBox' | 'candyCane' | 'wreath' | 'bow';
@@ -105,15 +106,16 @@ const TABLET_THRESHOLD = 1024;
 
 // Grid-aligned corner positions for polished, non-jumbled look
 // Uses deterministic placement based on index for consistency
+// NOTE: Bottom-right corner is SKIPPED to avoid mascot area
 const CORNER_GRID_POSITIONS = [
-  // Top-left corner: diagonal arrangement tucked into corner
-  [{ x: 8, y: 8 }, { x: 28, y: 18 }, { x: 12, y: 38 }],
-  // Top-right corner: mirror of top-left
-  [{ x: -8, y: 8 }, { x: -28, y: 18 }, { x: -12, y: 38 }],
-  // Bottom-left corner: inverted
-  [{ x: 8, y: -8 }, { x: 28, y: -18 }, { x: 12, y: -38 }],
-  // Bottom-right corner: inverted mirror
-  [{ x: -8, y: -8 }, { x: -28, y: -18 }, { x: -12, y: -38 }],
+  // Top-left corner: SKIP - too close to logo area
+  [],
+  // Top-right corner: SKIP - too close to CTA/login buttons
+  [],
+  // Bottom-left corner: safe zone for ornaments
+  [{ x: 12, y: -12 }, { x: 35, y: -25 }],
+  // Bottom-right corner: SKIP - mascot lives here
+  [],
 ];
 
 // Fixed ornament configurations for each position (no randomness in rendering)
@@ -236,7 +238,7 @@ const CornerClusterScene = memo(function CornerClusterScene() {
             <FacetedStar
               color={orn.color}
               size={orn.size}
-              points={orn.points}
+              points={orn.points as 5 | 6 | 8}
               glow
               animation={orn.animation}
             />
@@ -247,10 +249,12 @@ const CornerClusterScene = memo(function CornerClusterScene() {
   );
 });
 
-// Header garland scene - lights across the top
+// Header garland scene - lights across the top with smart exclusion zones
 const HeaderGarlandScene = memo(function HeaderGarlandScene() {
   const { seasonId } = useSeasonalTheme();
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
+  const [safePositions, setSafePositions] = useState<number[]>([]);
+  const [exclusionZones, setExclusionZones] = useState<ExclusionZone[]>([]);
   
   useEffect(() => {
     injectKeyframes();
@@ -259,28 +263,76 @@ const HeaderGarlandScene = memo(function HeaderGarlandScene() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
   
+  // Subscribe to exclusion zone updates from the centralized scanner
+  useEffect(() => {
+    const unsubscribe = ornamentExclusionScanner.subscribe((zones) => {
+      setExclusionZones(zones);
+    });
+    
+    // Initial scan
+    ornamentExclusionScanner.scan();
+    
+    return unsubscribe;
+  }, []);
+  
+  // Calculate safe light positions based on exclusion zones
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    const lightSpacing = 100;
+    const lightSize = 20;
+    const safe: number[] = [];
+    const viewportWidth = window.innerWidth;
+    
+    for (let x = 50; x < viewportWidth - 50; x += lightSpacing) {
+      // Check if this position overlaps with any exclusion zone
+      const isBlocked = exclusionZones.some(zone => {
+        const zoneLeft = zone.rect.left - zone.padding;
+        const zoneRight = zone.rect.right + zone.padding;
+        return x >= zoneLeft - lightSize/2 && x <= zoneRight + lightSize/2;
+      });
+      
+      if (!isBlocked) {
+        safe.push(x);
+      }
+    }
+    
+    // Limit to max 8 lights for cleaner aesthetic
+    setSafePositions(safe.slice(0, 8));
+  }, [exclusionZones, windowWidth]);
+  
   // Skip header garland on mobile for clean look
   const isMobile = windowWidth < MOBILE_THRESHOLD;
   const isChristmas = seasonId === 'christmas';
-  if (!isChristmas || isMobile) return null;
+  if (!isChristmas || isMobile || safePositions.length === 0) return null;
   
   const palette = getPalette(seasonId);
-  // Reduce light density for polished look
-  const lightCount = Math.ceil(windowWidth / 80);
   
   return (
     <div
       className="fixed top-0 left-0 right-0 pointer-events-none overflow-hidden"
-      style={{ zIndex: 9995, height: 50 }}
+      style={{ zIndex: 9994, height: 50 }}
       data-testid="header-garland"
     >
-      <LightString
-        colors={palette.primary}
-        count={lightCount}
-        spacing={50}
-        droop={12}
-        animated
-      />
+      {/* Individual lights at safe positions only - avoiding UI elements */}
+      {safePositions.map((x, i) => (
+        <div
+          key={`light-${i}`}
+          className="absolute"
+          style={{
+            left: x,
+            top: 8,
+            transform: 'translateX(-50%)',
+          }}
+        >
+          <ChristmasLight
+            color={palette.primary[i % palette.primary.length]}
+            size={16}
+            lit
+            animation="glow"
+          />
+        </div>
+      ))}
     </div>
   );
 });

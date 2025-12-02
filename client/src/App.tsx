@@ -44,7 +44,7 @@ import { useTransition } from "@/contexts/transition-context";
 import { showLogoutTransition } from "@/lib/transition-utils";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { CoAIleagueLogo } from "@/components/coailleague-logo";
-import { MagicFloatingText } from "@/components/mascot/MagicFloatingText";
+import { MascotThoughtBubble } from "@/components/mascot/MascotThoughtBubble";
 import NotFound from "@/pages/not-found";
 // import Landing from "@/pages/landing";
 import Homepage from "@/pages/homepage";
@@ -466,7 +466,7 @@ function MascotRenderer() {
         />
         
         {currentThought && (
-          <MagicFloatingText
+          <MascotThoughtBubble
             thought={currentThought}
             mascotPosition={{ x: position.x, y: position.y }}
             mascotSize={bubbleSize}
