@@ -547,10 +547,12 @@ const FloatingMascot = memo(function FloatingMascot({
             <motion.div
               className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 px-2 py-0.5 rounded-full text-[9px] font-bold tracking-wide uppercase whitespace-nowrap"
               style={{
-                background: `linear-gradient(135deg, ${MODE_COLORS[currentMode].primary}40, ${MODE_COLORS[currentMode].secondary}40)`,
-                color: MODE_COLORS[currentMode].primary,
-                backdropFilter: 'blur(8px)',
-                border: `1px solid ${MODE_COLORS[currentMode].primary}30`
+                background: `linear-gradient(135deg, ${MODE_COLORS[currentMode].primary}25, ${MODE_COLORS[currentMode].secondary}25)`,
+                color: '#ffffff',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                border: `1px solid ${MODE_COLORS[currentMode].primary}40`,
+                textShadow: `0 0 6px ${MODE_COLORS[currentMode].primary}`
               }}
               initial={{ opacity: 0, y: -5 }}
               animate={{ opacity: 1, y: 0 }}
@@ -578,12 +580,14 @@ const FloatingMascot = memo(function FloatingMascot({
             transition={{ type: 'spring', stiffness: 400, damping: 25 }}
           >
             <div
-              className="relative px-3 py-2 rounded-xl text-xs font-medium shadow-lg"
+              className="relative px-3 py-2 rounded-xl text-xs font-medium shadow-xl"
               style={{
-                background: 'rgba(15, 23, 42, 0.95)',
-                backdropFilter: 'blur(12px)',
-                border: `1px solid ${MODE_COLORS[currentMode].primary}40`,
-                color: '#f1f5f9'
+                background: 'rgba(15, 23, 42, 0.25)',
+                backdropFilter: 'blur(16px)',
+                WebkitBackdropFilter: 'blur(16px)',
+                border: `1.5px solid ${MODE_COLORS[currentMode].primary}50`,
+                color: '#ffffff',
+                textShadow: '0 1px 3px rgba(0,0,0,0.5), 0 0 8px rgba(168, 85, 247, 0.3)'
               }}
             >
               <div
@@ -591,7 +595,7 @@ const FloatingMascot = memo(function FloatingMascot({
                 style={{
                   borderTop: '6px solid transparent',
                   borderBottom: '6px solid transparent',
-                  borderRight: '8px solid rgba(15, 23, 42, 0.95)'
+                  borderRight: `8px solid rgba(15, 23, 42, 0.25)`
                 }}
               />
               {currentEmote?.expression || currentThought}

@@ -658,26 +658,28 @@ export const CoAITwinMascot = memo(function CoAITwinMascot({
 
       <div className="absolute bottom-0 left-0 w-full p-4 pointer-events-none"
         style={{
-          background: 'linear-gradient(to top, rgba(2, 6, 23, 1) 30%, rgba(2, 6, 23, 0.8) 70%, transparent)'
+          background: 'linear-gradient(to top, rgba(2, 6, 23, 0.4) 30%, rgba(2, 6, 23, 0.2) 70%, transparent)'
         }}
       >
         <div className="flex justify-center mb-3">
           <div
-            className="text-[11px] font-bold tracking-[2px] uppercase px-5 py-2 rounded-full backdrop-blur-xl flex items-center gap-2.5"
+            className="text-[11px] font-bold tracking-[2px] uppercase px-5 py-2 rounded-full flex items-center gap-2.5"
             style={{
-              color,
-              background: `rgba(${hexToRgb(color)}, 0.1)`,
-              border: `1px solid rgba(${hexToRgb(color)}, 0.2)`,
-              boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
-              textShadow: `0 0 10px rgba(${hexToRgb(color)}, 0.5)`
+              color: '#ffffff',
+              background: `rgba(${hexToRgb(color)}, 0.15)`,
+              border: `1px solid rgba(${hexToRgb(color)}, 0.3)`,
+              backdropFilter: 'blur(12px)',
+              WebkitBackdropFilter: 'blur(12px)',
+              boxShadow: `0 4px 20px rgba(0,0,0,0.2), 0 0 15px rgba(${hexToRgb(color)}, 0.2)`,
+              textShadow: `0 0 10px rgba(${hexToRgb(color)}, 0.6), 0 1px 2px rgba(0,0,0,0.5)`
             }}
             data-testid="mascot-status-badge"
           >
             <span
               className="w-1.5 h-1.5 rounded-full animate-pulse"
               style={{
-                background: 'currentColor',
-                boxShadow: '0 0 8px currentColor'
+                background: color,
+                boxShadow: `0 0 8px ${color}`
               }}
             />
             <span>CO-AI {label.toUpperCase()}</span>
@@ -689,8 +691,14 @@ export const CoAITwinMascot = memo(function CoAITwinMascot({
             <select
               value={mode}
               onChange={(e) => handleModeChange(e.target.value as MascotMode)}
-              className="w-full appearance-none bg-slate-800/60 border border-white/10 text-white px-5 py-3.5 rounded-xl text-sm font-semibold tracking-wide cursor-pointer backdrop-blur-xl transition-all focus:outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-400/20"
-              style={{ boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)' }}
+              className="w-full appearance-none border text-white px-5 py-3.5 rounded-xl text-sm font-semibold tracking-wide cursor-pointer transition-all focus:outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-400/20"
+              style={{ 
+                background: 'rgba(30, 41, 59, 0.3)',
+                borderColor: 'rgba(255, 255, 255, 0.15)',
+                backdropFilter: 'blur(16px)',
+                WebkitBackdropFilter: 'blur(16px)',
+                boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)' 
+              }}
               data-testid="mascot-mode-select"
             >
               <option value="IDLE">IDLE (Waiting)</option>
