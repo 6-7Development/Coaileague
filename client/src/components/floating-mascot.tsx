@@ -544,16 +544,30 @@ const FloatingMascot = memo(function FloatingMascot({
         ctx.globalAlpha = 1;
       });
 
-      // Draw connecting triangle between trinity stars
+      // Draw three separate connecting lines between trinity stars
+      // Each pair has its own line so they appear independently connected
       ctx.globalAlpha = 0.25;
       ctx.strokeStyle = colors.glow;
       ctx.lineWidth = 1;
+      
+      // Line 1: Co (cyan) to AI (purple)
       ctx.beginPath();
       ctx.moveTo(twins[0].x, twins[0].y);
       ctx.lineTo(twins[1].x, twins[1].y);
-      ctx.lineTo(twins[2].x, twins[2].y);
-      ctx.closePath();
       ctx.stroke();
+      
+      // Line 2: AI (purple) to NX (gold)
+      ctx.beginPath();
+      ctx.moveTo(twins[1].x, twins[1].y);
+      ctx.lineTo(twins[2].x, twins[2].y);
+      ctx.stroke();
+      
+      // Line 3: NX (gold) to Co (cyan)
+      ctx.beginPath();
+      ctx.moveTo(twins[2].x, twins[2].y);
+      ctx.lineTo(twins[0].x, twins[0].y);
+      ctx.stroke();
+      
       ctx.globalAlpha = 1;
 
       // Trinity branding: "Co" on cyan, "AI" on purple, "NX" on gold
