@@ -22,10 +22,7 @@ interface Position {
 
 interface RoamingState {
   isRoaming: boolean;
-  targetPosition: Position | null;
-  progress: number;
   currentEffect: TransportEffect | null;
-  effectConfig: TransportEffectConfig | null;
 }
 
 function lerp(a: number, b: number, t: number): number {
@@ -60,10 +57,7 @@ export function useMascotRoaming(
   const { roaming } = MASCOT_CONFIG;
   const [state, setState] = useState<RoamingState>({
     isRoaming: false,
-    targetPosition: null,
-    progress: 0,
     currentEffect: null,
-    effectConfig: null,
   });
   
   const roamingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -76,8 +70,12 @@ export function useMascotRoaming(
   const lastThoughtTimeRef = useRef<number>(0);
   const isInitializedRef = useRef<boolean>(false);
   const currentPositionRef = useRef<Position>(currentPosition);
+  const targetPositionRef = useRef<Position | null>(null);
+  const effectConfigRef = useRef<TransportEffectConfig | null>(null);
+  const setPositionRef = useRef(setPosition);
   
   currentPositionRef.current = currentPosition;
+  setPositionRef.current = setPosition;
   
   const triggerThoughtWithCooldown = useCallback((message: string) => {
     const now = Date.now();
@@ -133,12 +131,11 @@ export function useMascotRoaming(
       cancelAnimationFrame(animationRef.current);
       animationRef.current = null;
     }
+    targetPositionRef.current = null;
+    effectConfigRef.current = null;
     setState({
       isRoaming: false,
-      targetPosition: null,
-      progress: 0,
       currentEffect: null,
-      effectConfig: null,
     });
   }, []);
   
@@ -153,21 +150,19 @@ export function useMascotRoaming(
       if (!lastDragStateRef.current && roaming.enabled) {
         const target = findSafeDestination();
         startPositionRef.current = { ...currentPositionRef.current };
+        targetPositionRef.current = target;
         animationStartTimeRef.current = performance.now();
         isActiveRef.current = true;
         
-        // Select a random transport effect
         let selectedEffect: TransportEffectConfig | null = null;
         if (roaming.transportEffects?.enabled && roaming.transportEffects.effects.length > 0) {
           selectedEffect = selectRandomEffect(roaming.transportEffects.effects);
         }
+        effectConfigRef.current = selectedEffect;
         
         setState({
           isRoaming: true,
-          targetPosition: target,
-          progress: 0,
           currentEffect: selectedEffect?.type || null,
-          effectConfig: selectedEffect,
         });
         
         if (Math.random() > 0.7) {
@@ -212,40 +207,37 @@ export function useMascotRoaming(
   }, [roaming.enabled]);
   
   useEffect(() => {
-    if (!state.isRoaming || !state.targetPosition || isDragging) return;
+    if (!state.isRoaming || !targetPositionRef.current || isDragging) return;
     
-    // Use effect-specific duration or default
-    const moveDuration = state.effectConfig?.duration || roaming.moveDuration;
+    const moveDuration = effectConfigRef.current?.duration || roaming.moveDuration;
+    const currentEffect = state.currentEffect;
+    const targetPos = targetPositionRef.current;
+    const startPos = { ...startPositionRef.current };
     
     const animate = (currentTime: number) => {
       const elapsed = currentTime - animationStartTimeRef.current;
       const progress = Math.min(elapsed / moveDuration, 1);
       
-      // Apply easing based on transport effect
       let easedProgress: number;
-      switch (state.currentEffect) {
+      switch (currentEffect) {
         case 'zap':
-          // Quick snap with ease-out
           easedProgress = 1 - Math.pow(1 - progress, 3);
           break;
         case 'dash':
-          // Fast start, smooth end
           easedProgress = progress < 0.3 ? progress * 2 : 0.6 + (progress - 0.3) * 0.57;
           break;
         case 'float':
-          // Gentle wave motion
           easedProgress = progress + Math.sin(progress * Math.PI * 2) * 0.05;
           break;
         case 'glide':
         default:
-          // Smooth ease-in-out
           easedProgress = easeInOutCubic(progress);
       }
       
-      const newX = lerp(startPositionRef.current.x, state.targetPosition!.x, easedProgress);
-      const newY = lerp(startPositionRef.current.y, state.targetPosition!.y, easedProgress);
+      const newX = lerp(startPos.x, targetPos.x, easedProgress);
+      const newY = lerp(startPos.y, targetPos.y, easedProgress);
       
-      setPosition({ x: newX, y: newY });
+      setPositionRef.current({ x: newX, y: newY });
       
       if (progress < 1) {
         animationRef.current = requestAnimationFrame(animate);
@@ -267,7 +259,7 @@ export function useMascotRoaming(
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [state.isRoaming, state.targetPosition, state.currentEffect, state.effectConfig, isDragging, roaming.moveDuration, roaming.reactions.reachedDestination, setPosition, stopRoaming, scheduleNextRoam, triggerThoughtWithCooldown]);
+  }, [state.isRoaming, state.currentEffect, isDragging, roaming.moveDuration, roaming.reactions.reachedDestination, stopRoaming, scheduleNextRoam, triggerThoughtWithCooldown]);
   
   useEffect(() => {
     const wasDragging = lastDragStateRef.current;
@@ -307,29 +299,27 @@ export function useMascotRoaming(
   
   return {
     isRoaming: state.isRoaming,
-    targetPosition: state.targetPosition,
+    targetPosition: targetPositionRef.current,
     currentEffect: state.currentEffect,
-    effectConfig: state.effectConfig,
+    effectConfig: effectConfigRef.current,
     triggerRoam: useCallback(() => {
       if (!roaming.enabled || isDragging || isActiveRef.current) return;
       
       const target = findSafeDestination();
       startPositionRef.current = { ...currentPositionRef.current };
+      targetPositionRef.current = target;
       animationStartTimeRef.current = performance.now();
       isActiveRef.current = true;
       
-      // Select a random transport effect
       let selectedEffect: TransportEffectConfig | null = null;
       if (roaming.transportEffects?.enabled && roaming.transportEffects.effects.length > 0) {
         selectedEffect = selectRandomEffect(roaming.transportEffects.effects);
       }
+      effectConfigRef.current = selectedEffect;
       
       setState({
         isRoaming: true,
-        targetPosition: target,
-        progress: 0,
         currentEffect: selectedEffect?.type || null,
-        effectConfig: selectedEffect,
       });
     }, [roaming.enabled, roaming.transportEffects, isDragging, findSafeDestination]),
   };

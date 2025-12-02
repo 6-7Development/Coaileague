@@ -246,8 +246,8 @@ function MascotRenderer() {
   const [location] = useLocation();
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [currentThought, setCurrentThought] = useState<Thought | null>(null);
-  const [floatOffset, setFloatOffset] = useState({ x: 0, y: 0 });
-  const [dragVelocity, setDragVelocity] = useState(0);
+  const floatOffsetRef = useRef({ x: 0, y: 0 });
+  const dragVelocityRef = useRef(0);
   const [thoughtBubbleTheme, setThoughtBubbleTheme] = useState<ThoughtBubbleTheme>(getCurrentThoughtBubbleTheme());
   const lastPosRef = useRef({ x: 0, y: 0, time: 0 });
   const floatTimeRef = useRef(0);
@@ -367,17 +367,20 @@ function MascotRenderer() {
         cancelAnimationFrame(floatAnimRef.current);
         floatAnimRef.current = null;
       }
-      setFloatOffset({ x: 0, y: 0 });
+      floatOffsetRef.current = { x: 0, y: 0 };
+      if (mascotContainerRef.current) {
+        mascotContainerRef.current.style.transform = '';
+      }
       return;
     }
     
     const animate = () => {
       floatTimeRef.current += 16;
       const { amplitude, frequency } = MASCOT_CONFIG.floatMotion;
-      setFloatOffset({
+      floatOffsetRef.current = {
         x: Math.sin(floatTimeRef.current * frequency) * amplitude.x,
         y: Math.sin(floatTimeRef.current * frequency * 1.3) * amplitude.y,
-      });
+      };
       floatAnimRef.current = requestAnimationFrame(animate);
     };
     
@@ -388,7 +391,6 @@ function MascotRenderer() {
   }, [isDragging]);
   
   // Track drag velocity using refs to avoid infinite loops
-  const dragVelocityRef = useRef(0);
   const lastEmoteTriggerRef = useRef(0);
   const prevDraggingRef = useRef(false);
   
@@ -411,13 +413,12 @@ function MascotRenderer() {
       if (dragVelocityRef.current > 0) {
         thoughtManager.triggerReaction('drag_end', dragVelocityRef.current);
         dragVelocityRef.current = 0;
-        setDragVelocity(0);
         triggerEmoteRef.current?.('happy');
       }
     }
   }, [isDragging]);
   
-  // Track position during drag using a separate effect
+  // Track position during drag using a separate effect - no state updates to prevent loops
   useEffect(() => {
     if (!isDragging) return;
     
@@ -428,7 +429,6 @@ function MascotRenderer() {
     const velocity = Math.sqrt(dx * dx + dy * dy) / dt * 16;
     
     dragVelocityRef.current = velocity;
-    setDragVelocity(velocity);
     lastPosRef.current = { x: position.x, y: position.y, time: now };
     
     // Debounce emote triggers during drag
@@ -490,8 +490,8 @@ function MascotRenderer() {
   
   if (!MASCOT_CONFIG.enabled || shouldHideMascot(location)) return null;
   
-  const effectiveX = position.x + (isDragging ? 0 : floatOffset.x + targetInfluence.x);
-  const effectiveY = position.y + (isDragging ? 0 : floatOffset.y + targetInfluence.y);
+  const effectiveX = position.x + (isDragging ? 0 : floatOffsetRef.current.x + targetInfluence.x);
+  const effectiveY = position.y + (isDragging ? 0 : floatOffsetRef.current.y + targetInfluence.y);
   
   return (
     <div 
