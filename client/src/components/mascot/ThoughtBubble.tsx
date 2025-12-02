@@ -151,13 +151,14 @@ export function ThoughtBubble({
     };
   }, [thought?.id, thought?.text, thought?.expiresAt]);
   
-  // Calculate responsive sizes
+  // Calculate responsive sizes with auto-sizing
   const sizes = useMemo(() => ({
     fontSize: isMobile ? '0.75rem' : '0.875rem',
-    maxWidth: isMobile ? '140px' : '220px',
-    padding: isMobile ? '6px 10px' : '8px 14px',
+    maxWidth: isMobile ? 'clamp(120px, 45vw, 180px)' : 'clamp(160px, 35vw, 280px)',
+    minWidth: isMobile ? '80px' : '100px',
+    padding: isMobile ? '8px 12px' : '10px 16px',
     iconSize: isMobile ? '1rem' : '1.25rem',
-    borderRadius: isMobile ? '12px' : '16px',
+    borderRadius: isMobile ? '14px' : '18px',
   }), [isMobile]);
   
   // Get enter animation styles
@@ -331,20 +332,23 @@ export function ThoughtBubble({
         data-exit-animation={exitAnimRef.current}
         data-enter-animation={enterAnimRef.current}
       >
-        {/* Glassmorphism bubble container with high contrast */}
+        {/* Glassmorphism bubble container - clear transparent with blur */}
         <div
           style={{
-            background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.92) 0%, rgba(30, 41, 59, 0.95) 100%)',
-            backdropFilter: 'blur(12px)',
-            WebkitBackdropFilter: 'blur(12px)',
+            background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%)',
+            backdropFilter: 'blur(16px) saturate(180%)',
+            WebkitBackdropFilter: 'blur(16px) saturate(180%)',
             borderRadius: sizes.borderRadius,
             padding: sizes.padding,
             maxWidth: sizes.maxWidth,
-            border: '1px solid rgba(255, 255, 255, 0.2)',
+            minWidth: sizes.minWidth,
+            width: 'max-content',
+            border: '1px solid rgba(255, 255, 255, 0.25)',
             boxShadow: `
-              0 4px 24px rgba(0, 0, 0, 0.35),
-              0 2px 8px rgba(0, 0, 0, 0.2),
-              inset 0 1px 0 rgba(255, 255, 255, 0.15)
+              0 8px 32px rgba(0, 0, 0, 0.15),
+              0 2px 8px rgba(0, 0, 0, 0.1),
+              inset 0 1px 0 rgba(255, 255, 255, 0.2),
+              inset 0 -1px 0 rgba(0, 0, 0, 0.05)
             `,
           }}
         >
@@ -371,15 +375,17 @@ export function ThoughtBubble({
             <span
               style={{
                 fontSize: sizes.fontSize,
-                fontWeight: 700,
-                color: '#ffffff',
+                fontWeight: 600,
+                color: '#1a1a2e',
                 textShadow: `
-                  0 1px 2px rgba(0, 0, 0, 0.6),
-                  0 0 10px rgba(0, 0, 0, 0.4)
+                  0 0 8px rgba(255, 255, 255, 0.9),
+                  0 0 16px rgba(255, 255, 255, 0.6),
+                  0 1px 2px rgba(255, 255, 255, 0.8)
                 `,
-                lineHeight: 1.4,
-                letterSpacing: '0.02em',
+                lineHeight: 1.5,
+                letterSpacing: '0.01em',
                 wordBreak: 'break-word',
+                whiteSpace: 'normal',
               }}
             >
               {renderText()}

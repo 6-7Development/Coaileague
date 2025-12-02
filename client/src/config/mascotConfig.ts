@@ -271,8 +271,8 @@ export const EMOTE_CONFIGS: Record<EmoteType, EmoteConfig> = {
     type: 'happy',
     duration: 3000,
     starBehavior: {
-      purple: { scale: 1.1, wobble: 0.8, glow: 0.6, speed: 1.3 },
-      cyan: { scale: 1.1, wobble: 0.8, glow: 0.6, speed: 1.3 },
+      purple: { scale: 1.25, wobble: 1.2, glow: 0.85, speed: 1.6 },
+      cyan: { scale: 1.25, wobble: 1.2, glow: 0.85, speed: 1.6 },
     },
     particleEffect: 'sparkle',
   },
@@ -280,8 +280,8 @@ export const EMOTE_CONFIGS: Record<EmoteType, EmoteConfig> = {
     type: 'excited',
     duration: 4000,
     starBehavior: {
-      purple: { scale: 1.2, wobble: 1.5, glow: 0.8, speed: 2 },
-      cyan: { scale: 1.2, wobble: 1.5, glow: 0.8, speed: 2 },
+      purple: { scale: 1.4, wobble: 2.2, glow: 1.0, speed: 2.5 },
+      cyan: { scale: 1.4, wobble: 2.2, glow: 1.0, speed: 2.5 },
     },
     particleEffect: 'stars',
   },
@@ -289,8 +289,8 @@ export const EMOTE_CONFIGS: Record<EmoteType, EmoteConfig> = {
     type: 'curious',
     duration: 2500,
     starBehavior: {
-      purple: { scale: 0.9, wobble: 0.3, glow: 0.5, speed: 0.7 },
-      cyan: { scale: 1.15, wobble: 0.6, glow: 0.7, speed: 1.2 },
+      purple: { scale: 0.85, wobble: 0.5, glow: 0.65, speed: 0.8 },
+      cyan: { scale: 1.3, wobble: 0.9, glow: 0.85, speed: 1.4 },
     },
     particleEffect: 'question',
   },
@@ -314,8 +314,8 @@ export const EMOTE_CONFIGS: Record<EmoteType, EmoteConfig> = {
     type: 'surprised',
     duration: 1500,
     starBehavior: {
-      purple: { scale: 1.3, wobble: 2, glow: 0.9, speed: 2.5 },
-      cyan: { scale: 1.3, wobble: 2, glow: 0.9, speed: 2.5 },
+      purple: { scale: 1.5, wobble: 2.8, glow: 1.0, speed: 3.0 },
+      cyan: { scale: 1.5, wobble: 2.8, glow: 1.0, speed: 3.0 },
     },
     particleEffect: 'exclaim',
   },
@@ -1028,20 +1028,20 @@ export const MASCOT_CONFIG: MascotConfig = {
   
   roaming: {
     enabled: true,
-    interval: { min: 12000, max: 30000 },
-    moveDuration: 2500,
-    pauseDuration: { min: 8000, max: 20000 },
-    boundsPadding: 150,
+    interval: { min: 6000, max: 15000 },
+    moveDuration: 1600,
+    pauseDuration: { min: 5000, max: 12000 },
+    boundsPadding: 120,
     avoidEdges: true,
     preferCorners: false,
     transportEffects: {
       enabled: true,
       randomizeEffect: true,
       effects: [
-        { type: 'glide', duration: 2200, trailEnabled: true, sparkleEnabled: false, glowColor: '#38bdf8' },
-        { type: 'zap', duration: 400, trailEnabled: false, sparkleEnabled: true, glowColor: '#a855f7' },
-        { type: 'float', duration: 3000, trailEnabled: false, sparkleEnabled: false, glowColor: '#38bdf8' },
-        { type: 'dash', duration: 900, trailEnabled: true, sparkleEnabled: true, glowColor: '#a855f7' },
+        { type: 'glide', duration: 1400, trailEnabled: true, sparkleEnabled: true, glowColor: '#38bdf8' },
+        { type: 'zap', duration: 350, trailEnabled: true, sparkleEnabled: true, glowColor: '#a855f7' },
+        { type: 'float', duration: 2000, trailEnabled: true, sparkleEnabled: true, glowColor: '#38bdf8' },
+        { type: 'dash', duration: 700, trailEnabled: true, sparkleEnabled: true, glowColor: '#a855f7' },
       ],
     },
     reactions: {
