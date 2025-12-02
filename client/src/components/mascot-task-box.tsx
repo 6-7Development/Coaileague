@@ -240,19 +240,28 @@ export function MascotTaskBox({
   
   return (
     <div 
-      className={`absolute px-4 py-3 rounded-xl border-2 ${priorityBorder} bg-gradient-to-br from-slate-900/95 to-slate-800/95 text-slate-100 shadow-2xl animate-in fade-in slide-in-from-bottom-2 duration-300 backdrop-blur-xl`}
+      className={`absolute px-4 py-3 rounded-xl border-2 ${priorityBorder} text-slate-100 shadow-2xl animate-in fade-in slide-in-from-bottom-2 duration-300`}
       style={{
         ...bubblePlacement.position,
         width: `${TASK_BOX_CONFIG.boxWidth}px`,
         maxWidth: '90vw',
         opacity: bubblePlacement.opacity,
         zIndex: 10001,
+        background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.35), rgba(30, 41, 59, 0.35))',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
       }}
       data-testid="mascot-task-box"
     >
       <div className="flex items-start gap-3">
-        <div className={`flex-shrink-0 p-2 rounded-lg bg-gradient-to-br from-slate-700 to-slate-800 border border-slate-600`}>
-          <TaskIcon className="w-4 h-4 text-emerald-400" />
+        <div 
+          className="flex-shrink-0 p-2 rounded-lg border"
+          style={{
+            background: 'rgba(100, 116, 139, 0.2)',
+            borderColor: 'rgba(148, 163, 184, 0.3)'
+          }}
+        >
+          <TaskIcon className="w-4 h-4 text-emerald-400" style={{ filter: 'drop-shadow(0 0 4px rgba(52, 211, 153, 0.4))' }} />
         </div>
         
         <div className="flex-1 min-w-0">
