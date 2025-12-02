@@ -308,50 +308,142 @@ class PlatformChangeMonitorService {
     try {
       const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
       
-      const prompt = `You are the AI Brain for CoAIleague, a workforce management platform.
+      // Build context-rich details for different module types
+      const moduleContext = this.buildModuleContext(change.affectedModules);
+      const impactAnalysis = this.analyzeImpact(change);
       
-A platform change has been detected. Summarize it for end users in a friendly, professional way.
+      const prompt = `You are the AI Brain for CoAIleague, a Fortune 500-grade workforce management platform.
 
-Change Details:
-- Type: ${change.type}
-- Severity: ${change.severity}
-- Affected Modules: ${change.affectedModules.join(', ') || 'general platform'}
-- Affected Files: ${change.affectedFiles.join(', ')}
-- Raw Info: ${change.rawDiff}
+CRITICAL: Generate SPECIFIC, UNIQUE summaries - NOT generic. Each update must be different and actionable.
 
-Respond in JSON format:
+Change Analysis:
+- Change Type: ${change.type.replace(/_/g, ' ').toUpperCase()}
+- Severity Level: ${change.severity}
+- Affected Systems: ${change.affectedModules.join(', ') || 'Core Platform Systems'}
+- Modified Components: ${change.affectedFiles.join(', ')}
+- Impact Analysis: ${impactAnalysis}
+- Module Context: ${moduleContext}
+
+Your task - Create a detailed, specific platform update announcement:
+
+TITLE REQUIREMENTS:
+- Max 70 characters
+- Be specific about WHAT changed (not "Platform Update")
+- Include the module affected if applicable
+- Examples: "AI Scheduling Optimization Released", "Security Patch: Session Management", "New Mobile Calendar Sync"
+
+SUMMARY REQUIREMENTS:
+- 3-4 sentences, NOT generic
+- Explain WHAT specifically was changed
+- Explain WHY it matters to users
+- Highlight the BUSINESS IMPACT
+- If bug fix: Explain what issue was resolved and who was affected
+- If feature: Explain the use case and expected benefit
+- If enhancement: Explain the improvement and performance gains
+- Include specific numbers/metrics if applicable (e.g., "20% faster", "reduces manual work by 15 hours/week")
+
+TECHNICAL DETAILS REQUIREMENTS:
+- For support staff and developers
+- List specific components modified
+- Note database/schema changes if any
+- Mention affected APIs or services
+- Include rollout plan if phased
+
+Action Required:
+- Set to true ONLY if users must take action
+- Provide clear, concise action steps if needed
+
+Respond ONLY with valid JSON (no markdown, no explanations):
 {
-  "title": "Brief title (max 60 chars, no technical jargon)",
-  "summary": "User-friendly summary of what changed and how it helps them (2-3 sentences)",
-  "technicalDetails": "Technical summary for support staff",
-  "requiresAction": false,
-  "actionRequired": null
-}
-
-Keep the tone positive and professional. Focus on user benefits.`;
+  "title": "Specific module change title (NOT generic)",
+  "summary": "Detailed 3-4 sentence summary explaining what, why, and impact",
+  "technicalDetails": "Specific technical changes and affected components",
+  "requiresAction": boolean,
+  "actionRequired": "Clear action steps if required, otherwise null"
+}`;
 
       const result = await model.generateContent(prompt);
       const text = result.response.text();
       
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      // Extract JSON with better error handling
+      const cleanText = text.replace(/[\x00-\x1F\x7F]/g, '');
+      const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
+      
       if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
-        return {
-          title: parsed.title || 'Platform Update',
-          summary: parsed.summary || 'The platform has been updated with improvements.',
-          technicalDetails: parsed.technicalDetails || change.rawDiff,
-          requiresAction: parsed.requiresAction || false,
-          actionRequired: parsed.actionRequired || null,
-        };
+        try {
+          const parsed = JSON.parse(jsonMatch[0]);
+          return {
+            title: parsed.title?.substring(0, 70) || `${change.affectedModules[0] || 'Platform'} ${change.type.replace(/_/g, ' ')}`,
+            summary: parsed.summary || this.generateFallbackSummary(change),
+            technicalDetails: parsed.technicalDetails || change.rawDiff,
+            requiresAction: parsed.requiresAction === true,
+            actionRequired: parsed.actionRequired || null,
+          };
+        } catch (parseError) {
+          console.error('[PlatformChangeMonitor] JSON parse error:', parseError);
+        }
       }
     } catch (error) {
       console.error('[PlatformChangeMonitor] AI summary generation failed:', error);
     }
 
+    return this.generateFallbackResponse(change);
+  }
+
+  private buildModuleContext(modules: string[]): string {
+    const contexts: Record<string, string> = {
+      scheduling: 'Affects shift creation, scheduling, calendar management, and employee availability',
+      payroll: 'Impacts payroll processing, wage calculations, invoicing, and financial reporting',
+      chat: 'Affects messaging, HelpDesk, support tickets, and real-time communications',
+      notifications: 'Impacts alerts, reminders, email delivery, and user notifications',
+      analytics: 'Affects reporting, dashboards, insights, and business intelligence',
+      ai_brain: 'Impacts automation, AI processing, platform orchestration, and autonomous operations',
+      authentication: 'Affects login, security, session management, and user access control',
+      invoicing: 'Impacts invoice generation, billing, payment processing, and financial records',
+    };
+    
+    return modules.map(m => contexts[m] || `Affects ${m} functionality`).join('. ');
+  }
+
+  private analyzeImpact(change: DetectedChange): string {
+    if (change.type === 'security_fix') {
+      return 'Security-critical. All users affected. No user action required - automatic deployment.';
+    }
+    if (change.type === 'feature_added') {
+      return 'New capability available. Enhances workflow efficiency and user experience.';
+    }
+    if (change.type === 'bug_fixed') {
+      return 'Resolution to reported issue. Improves platform stability and reliability.';
+    }
+    if (change.type === 'enhancement') {
+      return 'Performance or usability improvement. Makes existing features more efficient.';
+    }
+    return `${change.severity} priority update to platform systems.`;
+  }
+
+  private generateFallbackSummary(change: DetectedChange): string {
+    const moduleList = change.affectedModules.join(', ') || 'core platform';
+    const typeDesc = change.type.replace(/_/g, ' ');
+    
+    switch (change.type) {
+      case 'bug_fixed':
+        return `We've resolved a critical issue affecting the ${moduleList}. This update improves platform stability and ensures smoother operations for all users. No action required on your end.`;
+      case 'feature_added':
+        return `New feature now available for ${moduleList}. This enhancement streamlines workflows and saves time on routine tasks. Check the updates tab for details on how to use it.`;
+      case 'security_fix':
+        return `Important security update deployed to strengthen system protection. This ensures your data and operations remain secure. The update is automatic with no user action needed.`;
+      case 'enhancement':
+        return `We've optimized the ${moduleList} for better performance and reliability. Users can expect faster operations and improved user experience across these systems.`;
+      default:
+        return `Platform ${typeDesc} affecting ${moduleList}. This update improves system reliability and user experience. Learn more in the details page.`;
+    }
+  }
+
+  private generateFallbackResponse(change: DetectedChange) {
     return {
-      title: `Platform ${change.type.replace('_', ' ')}`,
-      summary: `The platform has received a ${change.severity} update affecting ${change.affectedModules.join(', ') || 'core functionality'}.`,
-      technicalDetails: change.rawDiff,
+      title: `${change.affectedModules[0]?.charAt(0).toUpperCase()}${change.affectedModules[0]?.slice(1) || 'Platform'} ${change.type.replace(/_/g, ' ')}`,
+      summary: this.generateFallbackSummary(change),
+      technicalDetails: `Modified: ${change.affectedFiles.join(', ')}. Severity: ${change.severity}. Type: ${change.type}`,
       requiresAction: false,
       actionRequired: null,
     };
