@@ -66,6 +66,7 @@ interface GeminiAgentMascotProps {
   showControls?: boolean;
   onModeChange?: (mode: MascotMode) => void;
   size?: number; // Size in pixels (default 400)
+  mini?: boolean; // Compact mode for bubble display - no overlays
 }
 
 const MODE_COLORS: Record<MascotMode, string> = {
@@ -491,7 +492,9 @@ export const GeminiAgentMascot = memo(function GeminiAgentMascot({
   mode = 'IDLE',
   className = '',
   showControls = false,
-  onModeChange
+  onModeChange,
+  size,
+  mini = false
 }: GeminiAgentMascotProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -533,6 +536,42 @@ export const GeminiAgentMascot = memo(function GeminiAgentMascot({
   const color = MODE_COLORS[mode];
   const label = MODE_LABELS[mode];
 
+  // Mini mode: Clean bubble display without overlays
+  if (mini) {
+    const bubbleSize = size || 100;
+    return (
+      <div 
+        className={`relative rounded-full overflow-hidden ${className}`}
+        style={{ 
+          width: bubbleSize, 
+          height: bubbleSize,
+          background: 'radial-gradient(circle at 30% 30%, #1e293b, #020617)'
+        }}
+      >
+        <div 
+          ref={containerRef} 
+          className="w-full h-full"
+          style={{ width: bubbleSize, height: bubbleSize }}
+        >
+          <canvas
+            ref={canvasRef}
+            className="w-full h-full touch-none"
+            style={{ width: bubbleSize, height: bubbleSize }}
+            data-testid="gemini-mascot-canvas-mini"
+          />
+        </div>
+        <div 
+          className="absolute inset-0 rounded-full pointer-events-none"
+          style={{
+            boxShadow: `inset 0 0 20px rgba(${hexToRgb(color)}, 0.3), 0 0 15px rgba(${hexToRgb(color)}, 0.2)`,
+            border: `2px solid rgba(${hexToRgb(color)}, 0.4)`
+          }}
+        />
+      </div>
+    );
+  }
+
+  // Full mode: With status badge and optional controls
   return (
     <div className={`relative bg-[#020617] ${className}`}>
       <div ref={containerRef} className="w-full h-full">

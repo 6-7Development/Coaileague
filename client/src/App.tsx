@@ -164,7 +164,7 @@ import { FloatingSupportChat } from "@/components/floating-support-chat";
 import { GeminiAgentMascot } from "@/components/gemini-agent-mascot";
 import { useMascotMode } from "@/hooks/use-mascot-mode";
 
-// Dynamic Mascot Renderer - Small bubble that follows user everywhere
+// Dynamic Mascot Renderer - AI-connected bubble that follows user everywhere
 function MascotRenderer() {
   const { currentMode } = useMascotMode();
   const [location] = useLocation();
@@ -177,11 +177,7 @@ function MascotRenderer() {
   
   return (
     <div className="fixed bottom-6 right-6 z-40 pointer-events-none select-none">
-      <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-primary/50 bg-background/80 backdrop-blur-sm shadow-lg">
-        <div className="w-full h-full flex items-center justify-center">
-          <GeminiAgentMascot mode={currentMode} size={80} />
-        </div>
-      </div>
+      <GeminiAgentMascot mode={currentMode} size={100} mini />
     </div>
   );
 }
