@@ -834,9 +834,10 @@ export default function App() {
                         <AppContent />
                         <FloatingSupportChat />
                         <ReenableChatButton />
-                        <MascotRenderer />
                         <Toaster />
                       </ResponsiveAppFrame>
+                      {/* Mascot globally visible on ALL pages (public and authenticated) */}
+                      <MascotRenderer />
                     </UniversalAnimationProvider>
                   </TooltipProvider>
                   </TransitionProvider>
