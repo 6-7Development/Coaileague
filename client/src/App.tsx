@@ -161,6 +161,26 @@ import { PageBreadcrumb } from "@/components/page-breadcrumb";
 import { NotificationsPopover } from "@/components/notifications-popover";
 import { WorkspaceTabsNav } from "@/components/workspace-tabs-nav";
 import { FloatingSupportChat } from "@/components/floating-support-chat";
+import { GeminiAgentMascot } from "@/components/gemini-agent-mascot";
+import { useMascotMode } from "@/hooks/use-mascot-mode";
+
+// Dynamic Mascot Renderer - Displays on all public pages and workspaces
+function MascotRenderer() {
+  const { currentMode } = useMascotMode();
+  const [location] = useLocation();
+  
+  // Hide mascot on specific pages
+  const hideMascotPages = ['/mascot-demo', '/login', '/register'];
+  const shouldHideMascot = hideMascotPages.some(page => location.startsWith(page));
+  
+  if (shouldHideMascot) return null;
+  
+  return (
+    <div className="fixed bottom-4 right-4 z-40 pointer-events-none">
+      <GeminiAgentMascot mode={currentMode} />
+    </div>
+  );
+}
 
 // Compact top-right utility cluster - Fortune 500 aesthetic
 function AppUtilityCluster({ setLocation }: any) {
@@ -762,6 +782,7 @@ export default function App() {
                         <AppContent />
                         <FloatingSupportChat />
                         <ReenableChatButton />
+                        <MascotRenderer />
                         <Toaster />
                       </ResponsiveAppFrame>
                     </UniversalAnimationProvider>
