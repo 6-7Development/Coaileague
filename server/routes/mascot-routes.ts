@@ -17,8 +17,8 @@
 
 import { Router } from 'express';
 import { db } from '../db';
-import { helposFaqs, workspaces, employees, shifts, notifications } from '@shared/schema';
-import { eq, desc, and, gte, count, sql } from 'drizzle-orm';
+import { helposFaqs, workspaces, employees, shifts, notifications, users, employeeCertifications, timeOffRequests, shiftSwapRequests } from '@shared/schema';
+import { eq, desc, and, gte, lte, count, sql } from 'drizzle-orm';
 import { geminiClient } from '../services/ai-brain/providers/geminiClient';
 import { requireAuth } from '../auth';
 import { broadcastToAllClients } from '../websocket';
@@ -721,6 +721,324 @@ router.get('/emote-cycles', async (_req, res) => {
       }
     };
   }, {});
+  
+  if (result.success) {
+    res.json(result.data);
+  } else {
+    res.status(500).json({ error: result.error, reportedToSupport: result.reportedToSupport });
+  }
+});
+
+/**
+ * GET /api/mascot/personalized-greeting
+ * Get AI-powered personalized greeting based on user's org context
+ * Returns custom greeting, pending issues, action items, and mood
+ * Protected - requires authentication
+ * Wrapped with AI Brain authority chain
+ */
+router.get('/personalized-greeting', requireAuth, async (req, res) => {
+  const userId = (req as any).user?.id;
+  const workspaceId = (req as any).session?.activeWorkspaceId;
+  
+  const result = await executeMascotAction('mascot.personalized_greeting', async () => {
+    // Gather comprehensive user and org context
+    let context: Record<string, any> = {
+      user: null,
+      workspace: null,
+      pendingIssues: [],
+      upcomingShifts: [],
+      recentActivity: [],
+      certificationAlerts: [],
+      payrollStatus: null,
+      unreadNotifications: 0,
+      teamStats: null
+    };
+    
+    try {
+      // Get user info
+      const [user] = await db.select({
+        id: users.id,
+        username: users.username,
+        email: users.email,
+        displayName: users.displayName,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        role: users.role
+      }).from(users).where(eq(users.id, userId)).limit(1);
+      context.user = user;
+      
+      // Get workspace info
+      if (workspaceId) {
+        const [workspace] = await db.select().from(workspaces).where(eq(workspaces.id, workspaceId)).limit(1);
+        context.workspace = workspace;
+        
+        // Get unread notifications count
+        const unreadResult = await db.select({ count: count() })
+          .from(notifications)
+          .where(and(
+            eq(notifications.userId, userId),
+            eq(notifications.isRead, false)
+          ));
+        context.unreadNotifications = unreadResult[0]?.count || 0;
+        
+        // Get upcoming shifts (next 7 days)
+        const sevenDaysFromNow = new Date();
+        sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
+        const upcomingShifts = await db.select({
+          id: shifts.id,
+          startTime: shifts.startTime,
+          endTime: shifts.endTime,
+          status: shifts.status
+        })
+          .from(shifts)
+          .where(and(
+            eq(shifts.workspaceId, workspaceId),
+            gte(shifts.startTime, new Date()),
+            lte(shifts.startTime, sevenDaysFromNow)
+          ))
+          .limit(5);
+        context.upcomingShifts = upcomingShifts;
+        
+        // Get certification alerts (expiring within 30 days)
+        const thirtyDaysFromNow = new Date();
+        thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+        const certAlerts = await db.select({
+          id: employeeCertifications.id,
+          name: employeeCertifications.certificationName,
+          expiryDate: employeeCertifications.expirationDate
+        })
+          .from(employeeCertifications)
+          .where(and(
+            eq(employeeCertifications.workspaceId, workspaceId),
+            lte(employeeCertifications.expirationDate, thirtyDaysFromNow),
+            gte(employeeCertifications.expirationDate, new Date())
+          ))
+          .limit(5);
+        context.certificationAlerts = certAlerts;
+        
+        // Get team size
+        const teamCount = await db.select({ count: count() })
+          .from(employees)
+          .where(eq(employees.workspaceId, workspaceId));
+        context.teamStats = { employeeCount: teamCount[0]?.count || 0 };
+        
+        // Get pending time-off requests
+        const pendingTimeOff = await db.select({ count: count() })
+          .from(timeOffRequests)
+          .where(and(
+            eq(timeOffRequests.workspaceId, workspaceId),
+            eq(timeOffRequests.status, 'pending')
+          ));
+        if ((pendingTimeOff[0]?.count || 0) > 0) {
+          context.pendingIssues.push({
+            type: 'time_off',
+            count: pendingTimeOff[0]?.count,
+            message: `${pendingTimeOff[0]?.count} pending time-off requests need review`
+          });
+        }
+        
+        // Get pending shift swaps
+        const pendingSwaps = await db.select({ count: count() })
+          .from(shiftSwapRequests)
+          .where(and(
+            eq(shiftSwapRequests.workspaceId, workspaceId),
+            eq(shiftSwapRequests.status, 'pending')
+          ));
+        if ((pendingSwaps[0]?.count || 0) > 0) {
+          context.pendingIssues.push({
+            type: 'shift_swap',
+            count: pendingSwaps[0]?.count,
+            message: `${pendingSwaps[0]?.count} shift swap requests waiting`
+          });
+        }
+      }
+    } catch (e) {
+      console.log('[PersonalizedGreeting] Context gathering error:', e);
+    }
+    
+    // Generate AI-powered greeting
+    const userName = context.user?.firstName || context.user?.displayName || context.user?.username || 'there';
+    const orgName = context.workspace?.name || 'your organization';
+    const hour = new Date().getHours();
+    const timeOfDay = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
+    
+    const systemPrompt = `You are CoAI, the friendly AI mascot for CoAIleague workforce management platform.
+Generate a warm, personalized greeting for the user based on their context.
+
+User: ${userName}
+Organization: ${orgName}
+Time: ${timeOfDay}
+Unread Notifications: ${context.unreadNotifications}
+Team Size: ${context.teamStats?.employeeCount || 0}
+Upcoming Shifts: ${context.upcomingShifts?.length || 0}
+Certification Alerts: ${context.certificationAlerts?.length || 0}
+Pending Issues: ${context.pendingIssues?.length || 0}
+
+Respond with JSON:
+{
+  "greeting": "Brief warm greeting (max 15 words)",
+  "insight": "One helpful observation about their org (max 20 words)",
+  "actionSuggestion": "One suggested action if any issues exist (max 15 words, or null)",
+  "mood": "happy|helpful|alert|celebratory",
+  "emote": "sparkle|hearts|question|exclaim|stars"
+}
+
+Be concise, friendly, and genuinely helpful.`;
+
+    try {
+      const response = await geminiClient.generate({
+        workspaceId,
+        userId,
+        featureKey: 'mascot_personalized_greeting',
+        systemPrompt,
+        userMessage: 'Generate a personalized greeting for this user right now.',
+        temperature: 0.8,
+        maxTokens: 200
+      });
+      
+      const jsonMatch = response.text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const aiResponse = JSON.parse(jsonMatch[0]);
+        return {
+          ...aiResponse,
+          context: {
+            userName,
+            orgName,
+            timeOfDay,
+            unreadNotifications: context.unreadNotifications,
+            pendingIssues: context.pendingIssues,
+            certificationAlerts: context.certificationAlerts?.length || 0,
+            upcomingShifts: context.upcomingShifts?.length || 0,
+            teamSize: context.teamStats?.employeeCount || 0
+          },
+          timestamp: new Date().toISOString()
+        };
+      }
+    } catch (e) {
+      console.log('[PersonalizedGreeting] AI generation error:', e);
+    }
+    
+    // Fallback greeting
+    const hasIssues = context.pendingIssues.length > 0;
+    return {
+      greeting: `Good ${timeOfDay}, ${userName}!`,
+      insight: context.unreadNotifications > 0 
+        ? `You have ${context.unreadNotifications} unread notifications.`
+        : `${orgName} is running smoothly today.`,
+      actionSuggestion: hasIssues ? context.pendingIssues[0]?.message : null,
+      mood: hasIssues ? 'alert' : 'happy',
+      emote: hasIssues ? 'exclaim' : 'sparkle',
+      context: {
+        userName,
+        orgName,
+        timeOfDay,
+        unreadNotifications: context.unreadNotifications,
+        pendingIssues: context.pendingIssues,
+        certificationAlerts: context.certificationAlerts?.length || 0,
+        upcomingShifts: context.upcomingShifts?.length || 0,
+        teamSize: context.teamStats?.employeeCount || 0
+      },
+      timestamp: new Date().toISOString()
+    };
+  }, { userId, workspaceId });
+  
+  if (result.success) {
+    res.json(result.data);
+  } else {
+    res.status(500).json({ error: result.error, reportedToSupport: result.reportedToSupport });
+  }
+});
+
+/**
+ * GET /api/mascot/org-insights
+ * Get AI-powered insights about the user's organization
+ * Returns actionable insights, trends, and recommendations
+ * Protected - requires authentication
+ */
+router.get('/org-insights', requireAuth, async (req, res) => {
+  const userId = (req as any).user?.id;
+  const workspaceId = (req as any).session?.activeWorkspaceId;
+  
+  if (!workspaceId) {
+    return res.status(400).json({ error: 'Workspace context required' });
+  }
+  
+  const result = await executeMascotAction('mascot.org_insights', async () => {
+    // Gather org metrics
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    
+    const [workspace] = await db.select().from(workspaces).where(eq(workspaces.id, workspaceId)).limit(1);
+    
+    const employeeCount = await db.select({ count: count() })
+      .from(employees)
+      .where(eq(employees.workspaceId, workspaceId));
+    
+    const shiftCount = await db.select({ count: count() })
+      .from(shifts)
+      .where(and(
+        eq(shifts.workspaceId, workspaceId),
+        gte(shifts.startTime, thirtyDaysAgo)
+      ));
+    
+    const pendingRequests = await db.select({ count: count() })
+      .from(timeOffRequests)
+      .where(and(
+        eq(timeOffRequests.workspaceId, workspaceId),
+        eq(timeOffRequests.status, 'pending')
+      ));
+    
+    const systemPrompt = `You are CoAI, providing organizational insights for ${workspace?.name || 'this organization'}.
+
+Metrics:
+- Team Size: ${employeeCount[0]?.count || 0} employees
+- Recent Shifts: ${shiftCount[0]?.count || 0} in last 30 days
+- Pending Requests: ${pendingRequests[0]?.count || 0}
+
+Provide 3 brief, actionable insights in JSON format:
+{
+  "insights": [
+    {"title": "Brief title", "description": "One sentence insight", "priority": "high|medium|low", "category": "scheduling|compliance|efficiency|team"}
+  ],
+  "overallHealth": "excellent|good|needs_attention|critical",
+  "topRecommendation": "One key action to take (max 20 words)"
+}`;
+
+    const response = await geminiClient.generate({
+      workspaceId,
+      userId,
+      featureKey: 'mascot_org_insights',
+      systemPrompt,
+      userMessage: 'Analyze this organization and provide insights.',
+      temperature: 0.7,
+      maxTokens: 300
+    });
+    
+    const jsonMatch = response.text.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      return {
+        ...JSON.parse(jsonMatch[0]),
+        metrics: {
+          teamSize: employeeCount[0]?.count || 0,
+          recentShifts: shiftCount[0]?.count || 0,
+          pendingRequests: pendingRequests[0]?.count || 0
+        },
+        timestamp: new Date().toISOString()
+      };
+    }
+    
+    return {
+      insights: [{ title: 'Review pending items', description: 'Check your pending requests and notifications', priority: 'medium', category: 'efficiency' }],
+      overallHealth: 'good',
+      topRecommendation: 'Keep up the great work managing your team!',
+      metrics: {
+        teamSize: employeeCount[0]?.count || 0,
+        recentShifts: shiftCount[0]?.count || 0,
+        pendingRequests: pendingRequests[0]?.count || 0
+      },
+      timestamp: new Date().toISOString()
+    };
+  }, { userId, workspaceId });
   
   if (result.success) {
     res.json(result.data);
