@@ -163,21 +163,73 @@ import { WorkspaceTabsNav } from "@/components/workspace-tabs-nav";
 import { FloatingSupportChat } from "@/components/floating-support-chat";
 import { GeminiAgentMascot } from "@/components/gemini-agent-mascot";
 import { useMascotMode } from "@/hooks/use-mascot-mode";
+import { useMascotPosition } from "@/hooks/use-mascot-position";
+import { Maximize2, Minimize2, RotateCcw } from "lucide-react";
 
-// Dynamic Mascot Renderer - AI-connected bubble that follows user everywhere
+// Dynamic Draggable Mascot Renderer - AI-connected bubble that follows user everywhere
 function MascotRenderer() {
   const { currentMode } = useMascotMode();
   const [location] = useLocation();
+  const { position, isExpanded, isDragging, toggleExpanded, resetPosition, dragHandlers } = useMascotPosition(isExpanded ? 180 : 80);
   
-  // Hide mascot on specific pages
+  // Hide mascot only on demo and auth pages
   const hideMascotPages = ['/mascot-demo', '/login', '/register'];
   const shouldHideMascot = hideMascotPages.some(page => location.startsWith(page));
   
   if (shouldHideMascot) return null;
+
+  const bubbleSize = isExpanded ? 180 : 80;
   
   return (
-    <div className="fixed bottom-6 right-6 z-40 pointer-events-none select-none">
-      <GeminiAgentMascot mode={currentMode} size={120} mini />
+    <div 
+      className={`fixed z-50 select-none transition-transform duration-150 ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+      style={{ 
+        bottom: -position.y,
+        right: -position.x,
+      }}
+      data-testid="mascot-container"
+    >
+      <div 
+        className="relative group"
+        {...dragHandlers}
+      >
+        <GeminiAgentMascot 
+          mode={currentMode} 
+          variant={isExpanded ? 'expanded' : 'mini'}
+          size={bubbleSize}
+        />
+        
+        <div 
+          className={`absolute -top-1 -right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-auto ${isDragging ? 'hidden' : ''}`}
+        >
+          <button
+            onClick={(e) => { e.stopPropagation(); toggleExpanded(); }}
+            className="w-5 h-5 rounded-full bg-slate-800/90 border border-slate-600/50 flex items-center justify-center hover:bg-slate-700 transition-colors"
+            title={isExpanded ? "Minimize" : "Expand"}
+            data-testid="button-mascot-toggle-size"
+          >
+            {isExpanded ? (
+              <Minimize2 className="w-2.5 h-2.5 text-slate-300" />
+            ) : (
+              <Maximize2 className="w-2.5 h-2.5 text-slate-300" />
+            )}
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); resetPosition(); }}
+            className="w-5 h-5 rounded-full bg-slate-800/90 border border-slate-600/50 flex items-center justify-center hover:bg-slate-700 transition-colors"
+            title="Reset position"
+            data-testid="button-mascot-reset-position"
+          >
+            <RotateCcw className="w-2.5 h-2.5 text-slate-300" />
+          </button>
+        </div>
+        
+        <div 
+          className={`absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap px-2 py-1 rounded bg-slate-900/95 border border-slate-700/50 text-[10px] text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none ${isDragging ? 'hidden' : ''}`}
+        >
+          Drag to move
+        </div>
+      </div>
     </div>
   );
 }

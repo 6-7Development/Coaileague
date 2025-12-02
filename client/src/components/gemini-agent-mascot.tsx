@@ -60,6 +60,8 @@ interface Shockwave {
   color: string;
 }
 
+type MascotVariant = 'mini' | 'expanded' | 'full';
+
 interface GeminiAgentMascotProps {
   mode?: MascotMode;
   className?: string;
@@ -67,6 +69,7 @@ interface GeminiAgentMascotProps {
   onModeChange?: (mode: MascotMode) => void;
   size?: number; // Size in pixels (default 400)
   mini?: boolean; // Compact mode for bubble display - no overlays
+  variant?: MascotVariant; // mini (80px bubble), expanded (180px), full (original)
 }
 
 const MODE_COLORS: Record<MascotMode, string> = {
@@ -536,9 +539,12 @@ export const GeminiAgentMascot = memo(function GeminiAgentMascot({
   const color = MODE_COLORS[mode];
   const label = MODE_LABELS[mode];
 
-  // Mini mode: Clean bubble display without overlays - zoomed in on animation
-  if (mini) {
-    const bubbleSize = size || 120;
+  // Determine which variant to render
+  const effectiveVariant: MascotVariant = variant || (mini ? 'mini' : 'full');
+
+  // Mini mode: Small 80px bubble for corner placement
+  if (effectiveVariant === 'mini') {
+    const bubbleSize = size || 80;
     return (
       <div 
         className={`relative rounded-full overflow-hidden ${className}`}
@@ -554,7 +560,7 @@ export const GeminiAgentMascot = memo(function GeminiAgentMascot({
           style={{ 
             width: bubbleSize, 
             height: bubbleSize,
-            transform: 'scale(1.6)',
+            transform: 'scale(2.2)',
             transformOrigin: 'center',
           }}
         >
@@ -571,10 +577,69 @@ export const GeminiAgentMascot = memo(function GeminiAgentMascot({
         <div 
           className="absolute inset-0 rounded-full pointer-events-none"
           style={{
-            boxShadow: `inset 0 0 20px rgba(${hexToRgb(color)}, 0.5), 0 0 15px rgba(${hexToRgb(color)}, 0.4)`,
+            boxShadow: `inset 0 0 15px rgba(${hexToRgb(color)}, 0.5), 0 0 12px rgba(${hexToRgb(color)}, 0.4)`,
+            border: `1.5px solid rgba(${hexToRgb(color)}, 0.6)`
+          }}
+        />
+      </div>
+    );
+  }
+
+  // Expanded mode: Larger 180px bubble for detailed view
+  if (effectiveVariant === 'expanded') {
+    const bubbleSize = size || 180;
+    return (
+      <div 
+        className={`relative rounded-full overflow-hidden ${className}`}
+        style={{ 
+          width: bubbleSize, 
+          height: bubbleSize,
+          background: 'radial-gradient(circle at 35% 35%, #0f172a, #020617)'
+        }}
+      >
+        <div 
+          ref={containerRef} 
+          className="w-full h-full"
+          style={{ 
+            width: bubbleSize, 
+            height: bubbleSize,
+            transform: 'scale(1.4)',
+            transformOrigin: 'center',
+          }}
+        >
+          <canvas
+            ref={canvasRef}
+            className="w-full h-full touch-none"
+            style={{ 
+              width: bubbleSize, 
+              height: bubbleSize
+            }}
+            data-testid="gemini-mascot-canvas-expanded"
+          />
+        </div>
+        <div 
+          className="absolute inset-0 rounded-full pointer-events-none"
+          style={{
+            boxShadow: `inset 0 0 25px rgba(${hexToRgb(color)}, 0.5), 0 0 20px rgba(${hexToRgb(color)}, 0.4)`,
             border: `2px solid rgba(${hexToRgb(color)}, 0.6)`
           }}
         />
+        <div 
+          className="absolute bottom-2 left-0 right-0 flex justify-center pointer-events-none"
+        >
+          <div
+            className="text-[9px] font-bold tracking-[1.5px] uppercase px-3 py-1 rounded-full backdrop-blur-xl"
+            style={{
+              color,
+              background: `rgba(${hexToRgb(color)}, 0.15)`,
+              border: `1px solid rgba(${hexToRgb(color)}, 0.3)`,
+              textShadow: `0 0 8px rgba(${hexToRgb(color)}, 0.5)`
+            }}
+            data-testid="mascot-expanded-label"
+          >
+            {label}
+          </div>
+        </div>
       </div>
     );
   }
@@ -645,3 +710,4 @@ export const GeminiAgentMascot = memo(function GeminiAgentMascot({
 });
 
 export { MODE_COLORS, MODE_LABELS };
+export type { MascotVariant };
