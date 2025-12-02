@@ -1,4 +1,6 @@
 import { cn } from "@/lib/utils";
+import { useState, useEffect, useMemo } from "react";
+import { getCurrentHoliday } from "@/config/mascotConfig";
 
 interface CoAIleagueLogoProps {
   width?: number | string;
@@ -8,6 +10,7 @@ interface CoAIleagueLogoProps {
   className?: string;
   onlyIcon?: boolean;
   variant?: "light" | "dark" | "auto";
+  enableSeasonalEffects?: boolean;
 }
 
 /**
@@ -23,7 +26,40 @@ export function CoAIleagueLogo({
   className,
   onlyIcon = false,
   variant = "auto",
+  enableSeasonalEffects = true,
 }: CoAIleagueLogoProps) {
+  const [isChristmas, setIsChristmas] = useState(false);
+  const [glowPhase, setGlowPhase] = useState(0);
+
+  // Detect Christmas season
+  useEffect(() => {
+    if (!enableSeasonalEffects) return;
+    
+    const holiday = getCurrentHoliday();
+    setIsChristmas(holiday?.key === 'christmas');
+  }, [enableSeasonalEffects]);
+
+  // Animate glow colors for Christmas
+  useEffect(() => {
+    if (!isChristmas) return;
+    
+    const interval = setInterval(() => {
+      setGlowPhase(prev => (prev + 1) % 3);
+    }, 1500); // Cycle every 1.5 seconds
+    
+    return () => clearInterval(interval);
+  }, [isChristmas]);
+
+  // Christmas glow colors - red, green, blue (memoized to compute once per render)
+  const christmasGlow = useMemo(() => {
+    const colors = [
+      { color: '#ff3333', glow: 'drop-shadow(0 0 8px #ff3333) drop-shadow(0 0 16px #ff333366)' }, // Red
+      { color: '#22c55e', glow: 'drop-shadow(0 0 8px #22c55e) drop-shadow(0 0 16px #22c55e66)' }, // Green  
+      { color: '#3b82f6', glow: 'drop-shadow(0 0 8px #3b82f6) drop-shadow(0 0 16px #3b82f666)' }, // Blue
+    ];
+    return colors[glowPhase];
+  }, [glowPhase]);
+
   // Auto-scale logo dimensions for better mobile visibility
   const scaledWidth = typeof width === 'number' ? Math.max(width, 40) : width;
   const scaledHeight = typeof height === 'number' ? Math.max(height, 40) : height;
@@ -121,7 +157,13 @@ export function CoAIleagueLogo({
             letterSpacing="-0.5"
           >
             <tspan fill={colors.textAccent}>Co</tspan>
-            <tspan fill={colors.textPrimary}>AI</tspan>
+            <tspan 
+              fill={isChristmas ? christmasGlow.color : colors.textPrimary}
+              style={{
+                filter: isChristmas ? christmasGlow.glow : 'none',
+                transition: 'fill 0.5s ease, filter 0.5s ease',
+              }}
+            >AI</tspan>
             <tspan fill={colors.textAccent}>league</tspan>
           </text>
           <text

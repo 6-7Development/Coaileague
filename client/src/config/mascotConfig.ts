@@ -1231,8 +1231,8 @@ export const MASCOT_CONFIG: MascotConfig = {
   
   thoughts: {
     enabled: true,
-    displayDuration: 4000,
-    rotateInterval: 8000,
+    displayDuration: 6000, // Longer display time for readability
+    rotateInterval: 15000, // Slower rotation - less interruption
     emoticons: {
       IDLE: '✨',
       SEARCHING: '🔍',
@@ -1248,18 +1248,69 @@ export const MASCOT_CONFIG: MascotConfig = {
       HOLIDAY: '🎄',
     },
     defaultThoughts: {
-      IDLE: ['Hmm?', 'Ready to help!', 'What next?', 'Standing by...', 'I see you working hard!'],
-      SEARCHING: ['Searching...', 'Looking for it...', 'Scanning the data...'],
-      THINKING: ['Processing...', 'Let me think...', 'Analyzing...', 'Hmm, interesting...'],
-      ANALYZING: ['Examining data...', 'Breaking it down...', 'Computing insights...'],
-      CODING: ['Writing code...', 'Debugging...', 'Compiling...', 'Building magic...'],
-      LISTENING: ["I'm listening...", 'Tell me more...', 'Got it...', 'I hear you!'],
-      UPLOADING: ['Sending...', 'Uploading...', 'Processing files...'],
-      SUCCESS: ['All done!', 'Perfect!', 'Nailed it!', 'You rock!'],
-      ERROR: ['Oops!', 'Something went wrong', 'Let me help fix this...'],
-      CELEBRATING: ['Amazing!', 'You did it!', 'Party time!', 'Woohoo!'],
-      ADVISING: ['Pro tip:', 'Did you know?', 'Quick advice:', 'Heres an idea!'],
-      HOLIDAY: ['Festive vibes!', 'Celebrate!', 'Special day!'],
+      IDLE: [
+        "Hey! I'm here if you need anything.",
+        "Taking a quick break? Good for you!",
+        "I noticed you're doing great work today.",
+        "Need help with something? Just let me know!",
+        "Your workforce dashboard is looking good.",
+      ],
+      SEARCHING: [
+        "Looking through your records now...",
+        "Searching for what you need...",
+        "Scanning your data - one moment!",
+      ],
+      THINKING: [
+        "Let me think about the best approach...",
+        "Processing your request...",
+        "Analyzing this for you...",
+        "Interesting question - working on it!",
+      ],
+      ANALYZING: [
+        "Examining your workforce data...",
+        "Breaking down the numbers...",
+        "Finding insights for you...",
+      ],
+      CODING: [
+        "Making some improvements...",
+        "Optimizing things behind the scenes...",
+        "Building something helpful...",
+      ],
+      LISTENING: [
+        "I'm listening - tell me more!",
+        "Got it, continue when you're ready.",
+        "I hear you! What else?",
+      ],
+      UPLOADING: [
+        "Sending your data securely...",
+        "Almost there - uploading now...",
+        "Processing your files...",
+      ],
+      SUCCESS: [
+        "All done! That went smoothly.",
+        "Perfect! Everything worked great.",
+        "Nice work! Task completed.",
+      ],
+      ERROR: [
+        "Hmm, something didn't work. Let me help.",
+        "Don't worry - we can fix this together.",
+        "Ran into an issue. I'll help sort it out.",
+      ],
+      CELEBRATING: [
+        "Amazing job! Keep it up!",
+        "You're crushing it today!",
+        "That deserves a celebration!",
+      ],
+      ADVISING: [
+        "Quick tip: Try the keyboard shortcuts for faster navigation.",
+        "Did you know you can customize your dashboard?",
+        "Pro tip: Check the analytics for workforce insights.",
+      ],
+      HOLIDAY: [
+        "Happy holidays from the team!",
+        "Wishing you a wonderful season!",
+        "Enjoy the festive spirit!",
+      ],
     },
   },
   

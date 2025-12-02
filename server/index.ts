@@ -12,6 +12,7 @@ import { initializeNotifications } from "./services/notificationInit";
 import { aiBrainMasterOrchestrator } from "./services/ai-brain/aiBrainMasterOrchestrator";
 import { platformEventBus } from "./services/platformEventBus";
 import { handlePlatformChangeEvent } from "./services/aiNotificationService";
+import { startNotificationCleanupScheduler } from "./services/notificationCleanupService";
 
 const app = express();
 app.use(express.json());
@@ -154,6 +155,14 @@ process.on('SIGTERM', () => {
     console.log('[Server] AI notification system initialized');
   } catch (error) {
     console.error('[Server] Warning: Failed to initialize notifications:', error);
+  }
+
+  // Start notification cleanup scheduler (removes old notifications daily)
+  try {
+    startNotificationCleanupScheduler();
+    console.log('[Server] Notification cleanup scheduler started');
+  } catch (error) {
+    console.error('[Server] Warning: Failed to start notification cleanup scheduler:', error);
   }
 
   // Initialize AI Brain Master Orchestrator - connects Gemini to ALL services
