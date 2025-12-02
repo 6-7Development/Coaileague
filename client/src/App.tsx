@@ -182,7 +182,7 @@ function MascotRenderer() {
   
   return (
     <div 
-      className={`fixed z-50 select-none transition-transform duration-150 ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+      className={`fixed z-[9999] select-none transition-transform duration-150 ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
       style={{ 
         bottom: position.y,
         right: position.x,
