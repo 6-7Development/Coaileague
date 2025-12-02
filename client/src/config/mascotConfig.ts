@@ -151,14 +151,14 @@ export interface TrinityStarConfig {
 }
 
 export const TRINITY_STAR_CONFIG: TrinityStarConfig = {
-  orbitRadiusMultiplier: 0.7,        // 70% of mascot size for wider orbit - PREVENTS MERGING
-  minOrbitRadius: 50,                // At least 50px orbit radius - ENSURES SEPARATION
-  starSizeMultiplier: 0.10,          // 10% of mascot size - VISIBLE STARS
-  glowRadiusMultiplier: 0.4,         // Moderate glow - 40% of star size
-  minDistance: 45,                   // Large gap between stars - NO MERGING
-  individualFloatAmplitude: 4,       // Each star floats +/- 4px independently
-  repulsionStrength: 10.0,           // Very strong push-apart force - PREVENTS 3RD STAR HIDING
-  springStrength: 0.02,              // Very weak pull-together for maximum independence
+  orbitRadiusMultiplier: 0.85,       // 85% of mascot size for VERY wide orbit - MAXIMUM SEPARATION
+  minOrbitRadius: 60,                // At least 60px orbit radius - FORCES SEPARATION
+  starSizeMultiplier: 0.085,         // 8.5% of mascot size - compact but visible
+  glowRadiusMultiplier: 0.3,         // Tight glow - 30% of star size (no overlap)
+  minDistance: 60,                   // LARGE gap between stars - 3RD STAR ALWAYS VISIBLE
+  individualFloatAmplitude: 3,       // Each star floats +/- 3px independently
+  repulsionStrength: 15.0,           // MAXIMUM repulsion force - PREVENTS 3RD STAR HIDING
+  springStrength: 0.015,             // Very weak pull-together for maximum independence
 };
 
 // ============================================================================
