@@ -168,6 +168,7 @@ import { MascotTaskBox } from "@/components/mascot-task-box";
 import { useMascotMode } from "@/hooks/use-mascot-mode";
 import { useMascotPosition } from "@/hooks/use-mascot-position";
 import { useMascotRoaming } from "@/hooks/use-mascot-roaming";
+import { useMascotMouseFollow } from "@/hooks/use-mascot-mouse-follow";
 import { useSmartBubblePlacement, getArrowStyles } from "@/hooks/use-smart-bubble-placement";
 import MASCOT_CONFIG, { 
   shouldHideMascot, 
@@ -287,6 +288,14 @@ function MascotRenderer() {
     isDragging,
     isExpanded
   );
+  
+  const { isFollowing, targetInfluence, getMouseDistance } = useMascotMouseFollow(
+    position,
+    bubbleSize,
+    isDragging,
+    isRoaming
+  );
+  
   const zoomScale = isDragging ? MASCOT_CONFIG.floatMotion.dragZoomScale : 1;
   
   // Transport effect visual styling
@@ -402,6 +411,13 @@ function MascotRenderer() {
     }
   }, [isRoaming, triggerEmote]);
   
+  // Trigger emotes when following mouse
+  useEffect(() => {
+    if (isFollowing && !isRoaming && !isDragging) {
+      triggerEmote('curious');
+    }
+  }, [isFollowing, isRoaming, isDragging, triggerEmote]);
+  
   // Trigger emotes based on page navigation
   useEffect(() => {
     triggerByContext('navigate');
@@ -417,8 +433,8 @@ function MascotRenderer() {
   
   if (!MASCOT_CONFIG.enabled || shouldHideMascot(location)) return null;
   
-  const effectiveX = position.x + (isDragging ? 0 : floatOffset.x);
-  const effectiveY = position.y + (isDragging ? 0 : floatOffset.y);
+  const effectiveX = position.x + (isDragging ? 0 : floatOffset.x + targetInfluence.x);
+  const effectiveY = position.y + (isDragging ? 0 : floatOffset.y + targetInfluence.y);
   
   return (
     <div 
