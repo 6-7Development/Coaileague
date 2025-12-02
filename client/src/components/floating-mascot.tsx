@@ -352,10 +352,15 @@ const FloatingMascot = memo(function FloatingMascot({
     }
   }, [holidayDirective]);
   
-  // Trinity Physics for collision detection - uses tuned defaults from TrinityPhysics.ts
+  // Trinity Physics for collision detection with scaled minDistance based on mascot size
+  const sizes = getDeviceSizes();
+  const mascotSize = sizes.bubble;
+  
   const physicsRef = useRef<TrinityPhysics | null>(null);
   if (!physicsRef.current) {
-    physicsRef.current = new TrinityPhysics();
+    // Scale minDistance with mascotSize to prevent visual overlap at any size
+    const scaledMinDistance = Math.max(22, mascotSize * 0.2);
+    physicsRef.current = new TrinityPhysics({ minDistance: scaledMinDistance });
   }
 
   const [currentMode, setCurrentMode] = useState<MascotMode>(mode);
@@ -379,9 +384,6 @@ const FloatingMascot = memo(function FloatingMascot({
     idleStartTime: null
   });
   const lastFrameTimeRef = useRef(performance.now());
-  
-  const sizes = getDeviceSizes();
-  const mascotSize = sizes.bubble;
 
   const posX = useMotionValue(initialPosition?.x ?? window.innerWidth - mascotSize - 20);
   const posY = useMotionValue(initialPosition?.y ?? window.innerHeight - mascotSize - 100);
@@ -497,8 +499,9 @@ const FloatingMascot = memo(function FloatingMascot({
       timeRef.current += 0.02 * effectiveSettings.animationSmoothing;
       const t = timeRef.current;
       const center = mascotSize / 2;
-      // MAXIMUM orbit radius for clear visual separation between stars - force far apart
-      const radius = mascotSize * 0.48;
+      // MAXIMUM orbit radius for GUARANTEED visual separation - stars CANNOT merge
+      // Using 0.55 ensures even with glow halos, stars remain distinct
+      const radius = Math.max(mascotSize * 0.55, 35);
 
       ctx.clearRect(0, 0, mascotSize, mascotSize);
       
@@ -652,28 +655,36 @@ const FloatingMascot = memo(function FloatingMascot({
       const brandingLabels = ['Co', 'AI', 'L'];
       const brandingColors = ['#a855f7', '#38bdf8', '#38bdf8'];
       
-      // Quality-aware star rendering with crisp edges
+      // Quality-aware star rendering with crisp edges - REDUCED GLOW to prevent merging
       const qs = qualitySettings;
       
+      // Reset composite operation to prevent additive blending between stars
+      ctx.globalCompositeOperation = 'source-over';
+      
       twins.forEach((twin, index) => {
-        // Crisp star sizing - slightly larger for better visibility on mobile
-        const starSize = mascotSize * 0.08;
+        // Crisp star sizing - balanced for visibility without overlap
+        const starSize = mascotSize * 0.07; // Slightly smaller body
         const innerSize = starSize * 0.45;
         
-        // Quality-aware glow halo - reduced on lower tiers for performance
+        // CAPPED glow halo - maximum 0.5x star size to prevent overlap
+        const maxGlowRadius = starSize * 0.5; // Cap at 50% of star size
+        const actualGlowRadius = Math.min(starSize * qs.glowBlurRadius, maxGlowRadius);
+        
+        // Quality-aware glow halo - reduced alpha for subtle glow without merging
         if (qs.haloAlpha > 0) {
+          const cappedAlpha = Math.min(qs.haloAlpha, 0.4); // Cap alpha at 0.4
           const haloGradient = ctx.createRadialGradient(
             twin.x, twin.y, 0,
-            twin.x, twin.y, starSize * qs.glowBlurRadius
+            twin.x, twin.y, actualGlowRadius
           );
-          const haloAlphaHex = Math.round(qs.haloAlpha * 255).toString(16).padStart(2, '0');
-          const haloFadeHex = Math.round(qs.haloAlpha * 0.3 * 255).toString(16).padStart(2, '0');
+          const haloAlphaHex = Math.round(cappedAlpha * 255).toString(16).padStart(2, '0');
+          const haloFadeHex = Math.round(cappedAlpha * 0.25 * 255).toString(16).padStart(2, '0');
           haloGradient.addColorStop(0, `${twin.color}${haloAlphaHex}`);
-          haloGradient.addColorStop(0.6, `${twin.color}${haloFadeHex}`);
+          haloGradient.addColorStop(0.5, `${twin.color}${haloFadeHex}`);
           haloGradient.addColorStop(1, 'transparent');
           
           ctx.beginPath();
-          ctx.arc(twin.x, twin.y, starSize * qs.glowBlurRadius, 0, Math.PI * 2);
+          ctx.arc(twin.x, twin.y, actualGlowRadius, 0, Math.PI * 2);
           ctx.fillStyle = haloGradient;
           ctx.fill();
         }
