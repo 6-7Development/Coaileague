@@ -46,7 +46,9 @@ interface ShiftDetailSheetProps {
   onDelete?: (shift: Shift) => void;
   onClaimShift?: (shift: Shift) => void;
   onDuplicate?: (shift: Shift) => void;
+  onQuickDuplicate?: (shift: Shift) => void;
   onRequestSwap?: (shift: Shift) => void;
+  quickDuplicatePending?: boolean;
 }
 
 export function ShiftDetailSheet({
@@ -60,7 +62,9 @@ export function ShiftDetailSheet({
   onDelete,
   onClaimShift,
   onDuplicate,
+  onQuickDuplicate,
   onRequestSwap,
+  quickDuplicatePending,
 }: ShiftDetailSheetProps) {
   if (!shift) return null;
 
@@ -181,10 +185,10 @@ export function ShiftDetailSheet({
               )}
             </div>
 
-            {(shift.location || client?.address) && (
+            {(client?.address || shift.location) && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <MapPin className="w-3.5 h-3.5 shrink-0" />
-                <span className="truncate">{shift.location || client?.address}</span>
+                <span className="truncate">{client?.address || shift.location}</span>
               </div>
             )}
 
@@ -259,6 +263,21 @@ export function ShiftDetailSheet({
             </div>
 
             <div className="flex gap-2 w-full">
+              {onQuickDuplicate && canEdit && (
+                <Button
+                  className="flex-1 h-9 bg-gradient-to-r from-[#a855f7] to-[#38bdf8] text-white hover:opacity-90"
+                  onClick={() => {
+                    onQuickDuplicate(shift);
+                    onOpenChange(false);
+                  }}
+                  disabled={quickDuplicatePending}
+                  data-testid="button-quick-duplicate-shift"
+                >
+                  <Repeat className="w-4 h-4 mr-1.5" />
+                  {quickDuplicatePending ? 'Duplicating...' : 'Quick Copy +7d'}
+                </Button>
+              )}
+
               {onDuplicate && canEdit && (
                 <Button
                   variant="secondary"
@@ -270,7 +289,7 @@ export function ShiftDetailSheet({
                   data-testid="button-duplicate-shift"
                 >
                   <Copy className="w-4 h-4 mr-1.5" />
-                  Duplicate
+                  Options
                 </Button>
               )}
 

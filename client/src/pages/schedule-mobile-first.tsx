@@ -294,6 +294,42 @@ export default function ScheduleMobileFirst() {
       });
     }
   };
+  
+  const [isQuickDuplicating, setIsQuickDuplicating] = useState(false);
+  
+  const handleQuickDuplicate = async (shift: Shift) => {
+    setIsQuickDuplicating(true);
+    try {
+      const nextWeek = addDays(new Date(shift.startTime), 7);
+      const startTime = new Date(nextWeek);
+      const endTime = new Date(nextWeek);
+      const originalStart = new Date(shift.startTime);
+      const originalEnd = new Date(shift.endTime);
+      
+      startTime.setHours(originalStart.getHours(), originalStart.getMinutes(), 0, 0);
+      endTime.setHours(originalEnd.getHours(), originalEnd.getMinutes(), 0, 0);
+
+      await apiRequest('POST', '/api/shifts', {
+        title: shift.title,
+        employeeId: shift.employeeId,
+        clientId: shift.clientId,
+        description: shift.description,
+        startTime: startTime.toISOString(),
+        endTime: endTime.toISOString(),
+        status: 'scheduled',
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/shifts'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/schedules/week/stats'] });
+      toast({ title: "Shift copied to next week" });
+    } catch (error) {
+      toast({ 
+        title: "Failed to copy shift", 
+        variant: "destructive" 
+      });
+    } finally {
+      setIsQuickDuplicating(false);
+    }
+  };
 
   const handleRequestSwap = (shift: Shift) => {
     setSwapShift(shift);
@@ -686,6 +722,8 @@ export default function ScheduleMobileFirst() {
         onDelete={handleDeleteShift}
         onClaimShift={currentEmployee?.id ? handleClaimShift : undefined}
         onDuplicate={canEdit ? handleDuplicateShift : undefined}
+        onQuickDuplicate={canEdit ? handleQuickDuplicate : undefined}
+        quickDuplicatePending={isQuickDuplicating}
         onRequestSwap={handleRequestSwap}
       />
 
