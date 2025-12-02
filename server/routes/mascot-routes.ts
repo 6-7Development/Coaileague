@@ -27,7 +27,9 @@ import {
   registerSeasonalManager,
   unregisterSeasonalManager,
   getActiveManagers,
-  type SeasonalCommand
+  getModifiedOrnamentDirective,
+  type SeasonalCommand,
+  type OrnamentDirective
 } from '../services/ai-brain/skills/seasonalOrchestrator';
 
 const router = Router();
@@ -857,6 +859,39 @@ router.get('/seasonal/managers', requireAuth, (req, res) => {
     res.status(500).json({ 
       success: false,
       error: 'Failed to get managers'
+    });
+  }
+});
+
+/**
+ * GET /api/mascot/seasonal/ornaments
+ * Get AI Brain orchestrated ornament directives for current season
+ * Public endpoint - used by frontend ornament scenes
+ */
+router.get('/seasonal/ornaments', (req, res) => {
+  try {
+    const seasonId = getCurrentSeasonId();
+    const directive = getModifiedOrnamentDirective(seasonId);
+    
+    res.json({
+      success: true,
+      seasonId,
+      directive,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error('[Seasonal] Get ornaments error:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to get ornament directives',
+      directive: {
+        profiles: [],
+        placements: [],
+        spawnRate: 0,
+        decayRate: 0,
+        syncWithSantaFlyover: false,
+        globalIntensity: 0,
+      }
     });
   }
 });
