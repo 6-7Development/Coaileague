@@ -103,7 +103,27 @@ function getPalette(seasonId: SeasonId): Palette {
 const MOBILE_THRESHOLD = 768;
 const TABLET_THRESHOLD = 1024;
 
-// Corner cluster scene - ornaments in corners of the viewport
+// Grid-aligned corner positions for polished, non-jumbled look
+// Uses deterministic placement based on index for consistency
+const CORNER_GRID_POSITIONS = [
+  // Top-left corner: diagonal arrangement tucked into corner
+  [{ x: 8, y: 8 }, { x: 28, y: 18 }, { x: 12, y: 38 }],
+  // Top-right corner: mirror of top-left
+  [{ x: -8, y: 8 }, { x: -28, y: 18 }, { x: -12, y: 38 }],
+  // Bottom-left corner: inverted
+  [{ x: 8, y: -8 }, { x: 28, y: -18 }, { x: 12, y: -38 }],
+  // Bottom-right corner: inverted mirror
+  [{ x: -8, y: -8 }, { x: -28, y: -18 }, { x: -12, y: -38 }],
+];
+
+// Fixed ornament configurations for each position (no randomness in rendering)
+const ORNAMENT_CONFIGS = [
+  { type: 'ball' as const, pattern: 'stripe' as const, animation: 'sway' as const, points: 5 },
+  { type: 'star' as const, pattern: 'solid' as const, animation: 'twinkle' as const, points: 6 },
+  { type: 'ball' as const, pattern: 'dots' as const, animation: 'float' as const, points: 5 },
+];
+
+// Corner cluster scene - ornaments in corners of the viewport with grid-aligned placement
 const CornerClusterScene = memo(function CornerClusterScene() {
   const { seasonId } = useSeasonalTheme();
   const { enabled, density } = useSeasonalOrnaments();
@@ -116,7 +136,7 @@ const CornerClusterScene = memo(function CornerClusterScene() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
   
-  // Skip dense ornaments on mobile for clean polished look
+  // Skip on mobile for clean polished look
   const isMobile = windowSize.w < MOBILE_THRESHOLD;
   const isTablet = windowSize.w < TABLET_THRESHOLD;
   
@@ -125,10 +145,12 @@ const CornerClusterScene = memo(function CornerClusterScene() {
     if (!enabled || seasonId === 'default' || isMobile) return [];
     
     const palette = getPalette(seasonId);
-    // Reduce count on tablet, normal on desktop
-    const baseDensity = isTablet ? Math.max(1, Math.floor((density === 'dense' ? 5 : density === 'medium' ? 3 : 2) * 0.5)) : (density === 'dense' ? 3 : density === 'medium' ? 2 : 1);
-    const perCorner = baseDensity;
-    const cornerSize = isTablet ? 80 : 100;
+    // Determine count per corner based on density
+    const perCorner = density === 'dense' ? 3 : density === 'medium' ? 2 : 1;
+    // Scale for tablet
+    const sizeScale = isTablet ? 0.85 : 1;
+    const posScale = isTablet ? 0.8 : 1;
+    
     const result: Array<{
       id: string;
       type: 'ball' | 'star';
@@ -139,35 +161,44 @@ const CornerClusterScene = memo(function CornerClusterScene() {
       metallic: boolean;
       pattern: 'solid' | 'stripe' | 'dots' | 'swirl';
       animation: 'twinkle' | 'sway' | 'bounce' | 'float';
+      points: number;
       delay: number;
     }> = [];
     
-    const corners = [
-      { baseX: 10, baseY: 10 },
-      { baseX: windowSize.w - cornerSize - 10, baseY: 10 },
-      { baseX: 10, baseY: windowSize.h - cornerSize - 70 },
-      { baseX: windowSize.w - cornerSize - 10, baseY: windowSize.h - cornerSize - 70 },
-    ];
+    const colors = [...palette.primary, ...palette.metallic];
     
-    const patterns: ('solid' | 'stripe' | 'dots' | 'swirl')[] = ['solid', 'stripe', 'dots', 'swirl'];
-    const animations: ('twinkle' | 'sway' | 'bounce' | 'float')[] = ['twinkle', 'sway', 'bounce', 'float'];
-    
-    corners.forEach((corner, cornerIndex) => {
-      for (let i = 0; i < perCorner; i++) {
-        const isStar = Math.random() > 0.7;
-        const colors = [...palette.primary, ...palette.metallic];
+    // Process each corner with grid-aligned positions
+    CORNER_GRID_POSITIONS.forEach((positions, cornerIndex) => {
+      const isRight = cornerIndex === 1 || cornerIndex === 3;
+      const isBottom = cornerIndex === 2 || cornerIndex === 3;
+      
+      for (let i = 0; i < Math.min(perCorner, positions.length); i++) {
+        const gridPos = positions[i];
+        const config = ORNAMENT_CONFIGS[i % ORNAMENT_CONFIGS.length];
+        
+        // Calculate absolute position from corner
+        const x = isRight 
+          ? windowSize.w + (gridPos.x * posScale)
+          : (gridPos.x * posScale);
+        const y = isBottom
+          ? windowSize.h + (gridPos.y * posScale)
+          : (gridPos.y * posScale);
+        
+        // Use deterministic color based on position
+        const colorIndex = (cornerIndex + i) % colors.length;
         
         result.push({
           id: `corner-${cornerIndex}-${i}`,
-          type: isStar ? 'star' : 'ball',
-          x: corner.baseX + Math.random() * (cornerSize - 40),
-          y: corner.baseY + Math.random() * (cornerSize - 40),
-          color: colors[Math.floor(Math.random() * colors.length)],
-          size: isTablet ? 20 + Math.random() * 12 : 24 + Math.random() * 14,
-          metallic: Math.random() > 0.5,
-          pattern: patterns[Math.floor(Math.random() * patterns.length)],
-          animation: animations[Math.floor(Math.random() * animations.length)],
-          delay: cornerIndex * 0.3 + i * 0.15,
+          type: config.type,
+          x,
+          y,
+          color: colors[colorIndex],
+          size: (22 + i * 4) * sizeScale,
+          metallic: i % 2 === 0,
+          pattern: config.pattern,
+          animation: config.animation,
+          points: config.points,
+          delay: cornerIndex * 0.2 + i * 0.1,
         });
       }
     });
@@ -205,7 +236,7 @@ const CornerClusterScene = memo(function CornerClusterScene() {
             <FacetedStar
               color={orn.color}
               size={orn.size}
-              points={Math.random() > 0.5 ? 5 : 6}
+              points={orn.points}
               glow
               animation={orn.animation}
             />
