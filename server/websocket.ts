@@ -184,7 +184,6 @@ function createSystemMessage(
     sentimentScore: null,
     sentimentConfidence: null,
     urgencyLevel: null,
-    sentimentKeywords: null,
     sentimentAnalyzedAt: null,
     
     // Timestamps
@@ -641,7 +640,7 @@ async function revalidateUserAuth(ws: WebSocketClient): Promise<{
     }
     
     // Get current platform role from database
-    const role = await storage.getUserPlatformRole(ws.userId).catch(() => null);
+    const role = await storage.getUserPlatformRole(ws.userId).catch(() => undefined);
     const isStaff = hasPlatformWideAccess(role);
     
     return {
@@ -979,7 +978,7 @@ export function setupWebSocket(server: Server) {
               }) : 'User';
 
               // Determine user type and set initial status
-              platformRole = await storage.getUserPlatformRole(effectiveUserId).catch(() => null);
+              platformRole = await storage.getUserPlatformRole(effectiveUserId).catch(() => undefined);
               isStaff = hasPlatformWideAccess(platformRole);
               
               if (isStaff) {
@@ -1153,7 +1152,7 @@ export function setupWebSocket(server: Server) {
                 const clientArray = Array.from(clients);
                 for (const client of clientArray) {
                   if (client.userId && client.readyState === WebSocket.OPEN) {
-                    const userRole = await storage.getUserPlatformRole(client.userId);
+                    const userRole = await storage.getUserPlatformRole(client.userId) || undefined;
                     const isClientStaff = hasPlatformWideAccess(userRole);
                     
                     // SYNC FIX: Use formatUserDisplayNameForChat for consistency with messages
@@ -1242,7 +1241,7 @@ export function setupWebSocket(server: Server) {
             // HELPDESK ANNOUNCEMENTS: System + HelpAI (only if user is joining for the first time)
             if (isMainRoom && !userAlreadyInRoom) {
               try {
-                const announcePlatformRole = await storage.getUserPlatformRole(payload.userId);
+                const announcePlatformRole = await storage.getUserPlatformRole(payload.userId) || undefined;
                 const isAnnounceStaff = hasPlatformWideAccess(announcePlatformRole);
                 
                 // 1. SYSTEM announcement (IRC-style): User joined
@@ -1501,7 +1500,7 @@ export function setupWebSocket(server: Server) {
               // Check if user has permission for staff commands
               const commandDef = COMMAND_REGISTRY[parsedCommand.command];
               if (commandDef.requiresStaff) {
-                const cmdPlatformRole = await storage.getUserPlatformRole(ws.userId);
+                const cmdPlatformRole = await storage.getUserPlatformRole(ws.userId) || undefined;
                 const isCmdStaff = hasPlatformWideAccess(cmdPlatformRole);
                 if (!isCmdStaff) {
                   ws.send(JSON.stringify({
@@ -2234,7 +2233,7 @@ export function setupWebSocket(server: Server) {
                 }
                 
                 case 'help': {
-                  const helpPlatformRole = await storage.getUserPlatformRole(ws.userId);
+                  const helpPlatformRole = await storage.getUserPlatformRole(ws.userId) || undefined;
                   const isHelpStaff = hasPlatformWideAccess(helpPlatformRole);
                   const helpText = getHelpText(isHelpStaff);
                   
@@ -2876,7 +2875,7 @@ export function setupWebSocket(server: Server) {
                   
                   ChatServerHub.emitSentimentAlert({
                     conversationId: ws.conversationId,
-                    workspaceId: ws.workspaceId,
+                    workspaceId: ws.workspaceId || '',
                     messageId: savedMessage.id,
                     userId: ws.userId,
                     userName: displayName,
@@ -2954,6 +2953,9 @@ export function setupWebSocket(server: Server) {
               });
             }
             
+            // Get conversation info for notification context
+            const notifConversation = ws.conversationId ? await storage.getChatConversation(ws.conversationId) : null;
+            
             // Broadcast notification to all notification-subscribed users not in this conversation
             notificationClients.forEach((userClients, notifWorkspaceId) => {
               userClients.forEach((userClient, userId) => {
@@ -2972,7 +2974,7 @@ export function setupWebSocket(server: Server) {
                     userClient.send(JSON.stringify({
                       type: 'new_chatroom_message',
                       chatroomId: ws.conversationId,
-                      chatroomName: conversation?.subject || 'Chat',
+                      chatroomName: notifConversation?.subject || 'Chat',
                       senderName: displayName,
                       messagePreview: sanitizedMessage.substring(0, 50) + (sanitizedMessage.length > 50 ? '...' : ''),
                       timestamp: new Date().toISOString(),
@@ -2991,7 +2993,7 @@ export function setupWebSocket(server: Server) {
             if (ws.conversationId === MAIN_ROOM_ID && shouldBotRespond(payload.message)) {
               try {
                 // Determine if user is staff (subscriber)
-                const botPlatformRole = await storage.getUserPlatformRole(ws.userId);
+                const botPlatformRole = await storage.getUserPlatformRole(ws.userId) || undefined;
                 const isSubscriber = hasPlatformWideAccess(botPlatformRole);
                 
                 // Get conversation history (last 5 messages for context)
@@ -3130,7 +3132,7 @@ export function setupWebSocket(server: Server) {
             }
 
             // SECURITY: Only platform staff (root_admin, deputy admins, support managers) can kick users
-            const kickerRole = await storage.getUserPlatformRole(ws.userId).catch(() => null);
+            const kickerRole = await storage.getUserPlatformRole(ws.userId).catch(() => undefined);
             const canKick = hasPlatformWideAccess(kickerRole);
             
             if (!canKick) {
@@ -3456,7 +3458,7 @@ export function setupWebSocket(server: Server) {
             }
 
             // SECURITY: Only platform staff can silence users
-            const silencerRole = await storage.getUserPlatformRole(ws.userId).catch(() => null);
+            const silencerRole = await storage.getUserPlatformRole(ws.userId).catch(() => undefined);
             const canSilence = hasPlatformWideAccess(silencerRole);
             
             if (!canSilence) {
@@ -3637,7 +3639,7 @@ export function setupWebSocket(server: Server) {
             }
 
             // SECURITY: Only platform staff can give voice
-            const voiceStaffRole = await storage.getUserPlatformRole(ws.userId).catch(() => null);
+            const voiceStaffRole = await storage.getUserPlatformRole(ws.userId).catch(() => undefined);
             const canGiveVoice = hasPlatformWideAccess(voiceStaffRole);
             
             if (!canGiveVoice) {
@@ -3760,7 +3762,7 @@ export function setupWebSocket(server: Server) {
                 commandId: payload.commandId || null, // IRC-style command tracking
                 userId: ws.userId,
                 userEmail: staffInfo?.email || ws.userName || 'unknown',
-                userRole: staffRole || 'unknown',
+                userRole: voiceStaffRole || 'unknown',
                 action: 'give_voice',
                 actionDescription: `${staffDisplayName} unmuted ${targetUserName}`,
                 entityType: 'user',
