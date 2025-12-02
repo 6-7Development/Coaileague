@@ -255,31 +255,268 @@ class CoAITwinEngine {
   }
 
   private spawnEmoteParticles(effect: string) {
-    const count = effect === 'confetti' ? 20 : effect === 'zzz' ? 3 : 8;
+    let count: number;
+    let particleConfig: { angle: number; speed: number; char: string; vx: number; vy: number }[] = [];
     
-    for (let i = 0; i < count; i++) {
-      const angle = (Math.PI * 2 / count) * i + Math.random() * 0.5;
-      const speed = 1.5 + Math.random() * 2;
-      
-      let char = '';
-      switch (effect) {
-        case 'sparkle': char = '✨'; break;
-        case 'hearts': char = '❤️'; break;
-        case 'stars': char = '⭐'; break;
-        case 'confetti': char = ['🎊', '🎉', '✨', '💫'][Math.floor(Math.random() * 4)]; break;
-        case 'zzz': char = 'Z'; break;
-        case 'question': char = '?'; break;
-        case 'exclaim': char = '!'; break;
-      }
-      
+    switch (effect) {
+      case 'confetti':
+      case 'confetti_shower':
+        count = 25;
+        for (let i = 0; i < count; i++) {
+          const angle = (Math.PI * 2 / count) * i + Math.random() * 0.5;
+          const speed = 2 + Math.random() * 3;
+          particleConfig.push({
+            angle,
+            speed,
+            char: ['*', '+', 'o', '.', '~'][Math.floor(Math.random() * 5)],
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed - 1.5,
+          });
+        }
+        break;
+        
+      case 'sparkle':
+      case 'sparkle_burst':
+        count = 16;
+        for (let i = 0; i < count; i++) {
+          const angle = (Math.PI * 2 / count) * i;
+          const speed = 2.5 + Math.random() * 2;
+          particleConfig.push({
+            angle,
+            speed,
+            char: '*',
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+          });
+        }
+        this.spawnShockwave('#fbbf24');
+        break;
+        
+      case 'stars':
+      case 'star_spiral':
+        count = 12;
+        for (let i = 0; i < count; i++) {
+          const spiralAngle = (Math.PI * 2 / count) * i + (i * 0.2);
+          const speed = 1.5 + (i * 0.15);
+          particleConfig.push({
+            angle: spiralAngle,
+            speed,
+            char: ['*', '+', 'x'][i % 3],
+            vx: Math.cos(spiralAngle) * speed,
+            vy: Math.sin(spiralAngle) * speed,
+          });
+        }
+        break;
+        
+      case 'hearts':
+      case 'heart_float':
+        count = 10;
+        for (let i = 0; i < count; i++) {
+          const angle = (Math.PI * 2 / count) * i - Math.PI / 2;
+          const speed = 1 + Math.random() * 1.5;
+          particleConfig.push({
+            angle,
+            speed,
+            char: '<3',
+            vx: Math.cos(angle) * speed * 0.5,
+            vy: -speed - Math.random() * 0.5,
+          });
+        }
+        break;
+        
+      case 'wave_ripple':
+        count = 8;
+        for (let i = 0; i < count; i++) {
+          const angle = (Math.PI * 2 / count) * i;
+          const speed = 1.2;
+          particleConfig.push({
+            angle,
+            speed,
+            char: '~',
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+          });
+        }
+        this.spawnShockwave('#38bdf8');
+        break;
+        
+      case 'energy_pulse':
+        count = 12;
+        for (let i = 0; i < count; i++) {
+          const angle = (Math.PI * 2 / count) * i;
+          const speed = 3 + Math.random() * 2;
+          particleConfig.push({
+            angle,
+            speed,
+            char: '^',
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+          });
+        }
+        this.spawnShockwave('#a855f7');
+        break;
+        
+      case 'rainbow_arc':
+        count = 7;
+        for (let i = 0; i < count; i++) {
+          const angle = (-Math.PI / 2) + (Math.PI / 8) * (i - 3);
+          const speed = 2.5;
+          particleConfig.push({
+            angle,
+            speed,
+            char: ['R', 'O', 'Y', 'G', 'B', 'I', 'V'][i],
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+          });
+        }
+        break;
+        
+      case 'lightning_flash':
+        count = 6;
+        for (let i = 0; i < count; i++) {
+          const angle = (Math.PI * 2 / count) * i;
+          const speed = 4 + Math.random() * 2;
+          particleConfig.push({
+            angle,
+            speed,
+            char: '/',
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+          });
+        }
+        this.spawnShockwave('#fbbf24');
+        this.state.shake = 8;
+        break;
+        
+      case 'bubble_pop':
+        count = 12;
+        for (let i = 0; i < count; i++) {
+          const angle = (Math.PI * 2 / count) * i;
+          const speed = 2 + Math.random();
+          particleConfig.push({
+            angle,
+            speed,
+            char: 'o',
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed - 0.5,
+          });
+        }
+        this.spawnShockwave('#38bdf8');
+        break;
+        
+      case 'fire_burst':
+        count = 15;
+        for (let i = 0; i < count; i++) {
+          const angle = (Math.PI * 2 / count) * i;
+          const speed = 2.5 + Math.random() * 2;
+          particleConfig.push({
+            angle,
+            speed,
+            char: ['^', '*', '.'][Math.floor(Math.random() * 3)],
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed - 1,
+          });
+        }
+        this.spawnShockwave('#f97316');
+        this.state.shake = 5;
+        break;
+        
+      case 'ice_crystals':
+        count = 10;
+        for (let i = 0; i < count; i++) {
+          const angle = (Math.PI * 2 / count) * i;
+          const speed = 1.5 + Math.random();
+          particleConfig.push({
+            angle,
+            speed,
+            char: ['+', 'x', '*'][Math.floor(Math.random() * 3)],
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+          });
+        }
+        this.spawnShockwave('#67e8f9');
+        break;
+        
+      case 'leaf_scatter':
+        count = 10;
+        for (let i = 0; i < count; i++) {
+          const angle = (Math.PI * 2 / count) * i;
+          const speed = 1.5 + Math.random();
+          particleConfig.push({
+            angle,
+            speed,
+            char: ['~', '-', '\\'][Math.floor(Math.random() * 3)],
+            vx: Math.cos(angle) * speed + (Math.random() - 0.5),
+            vy: Math.sin(angle) * speed + 0.5,
+          });
+        }
+        break;
+        
+      case 'zzz':
+        count = 3;
+        for (let i = 0; i < count; i++) {
+          particleConfig.push({
+            angle: -Math.PI / 4 + (i * 0.2),
+            speed: 0.5,
+            char: 'Z',
+            vx: 0.3 + i * 0.2,
+            vy: -1 - i * 0.3,
+          });
+        }
+        break;
+        
+      case 'question':
+        count = 3;
+        for (let i = 0; i < count; i++) {
+          const angle = -Math.PI / 2 + (i - 1) * 0.3;
+          particleConfig.push({
+            angle,
+            speed: 1.5,
+            char: '?',
+            vx: Math.cos(angle) * 1.5,
+            vy: Math.sin(angle) * 1.5 - 1,
+          });
+        }
+        break;
+        
+      case 'exclaim':
+        count = 5;
+        for (let i = 0; i < count; i++) {
+          const angle = (Math.PI * 2 / count) * i;
+          particleConfig.push({
+            angle,
+            speed: 2,
+            char: '!',
+            vx: Math.cos(angle) * 2,
+            vy: Math.sin(angle) * 2,
+          });
+        }
+        break;
+        
+      default:
+        count = 8;
+        for (let i = 0; i < count; i++) {
+          const angle = (Math.PI * 2 / count) * i + Math.random() * 0.5;
+          const speed = 1.5 + Math.random() * 2;
+          particleConfig.push({
+            angle,
+            speed,
+            char: '*',
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+          });
+        }
+    }
+    
+    for (const config of particleConfig) {
       this.emoteParticles.push({
         x: 0,
         y: 0,
-        vx: Math.cos(angle) * speed * (effect === 'zzz' ? 0.3 : 1),
-        vy: Math.sin(angle) * speed * (effect === 'zzz' ? -1 : 1) - (effect === 'zzz' ? 1 : 0),
+        vx: config.vx,
+        vy: config.vy,
         life: 1.0,
         type: effect,
-        char,
+        char: config.char,
       });
     }
   }

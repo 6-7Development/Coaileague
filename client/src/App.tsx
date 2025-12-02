@@ -178,6 +178,7 @@ import MASCOT_CONFIG, {
 } from "@/config/mascotConfig";
 import { thoughtManager, type Thought } from "@/lib/mascot/ThoughtManager";
 import { useMascotAIIntegration } from "@/hooks/use-mascot-ai";
+import { useMascotObserver } from "@/hooks/use-mascot-observer";
 import { useMascotEmotes, setGlobalEmoteTrigger } from "@/hooks/use-mascot-emotes";
 import { Maximize2, Minimize2, RotateCcw } from "lucide-react";
 
@@ -236,6 +237,7 @@ function MascotRenderer() {
   // Get workspace ID from user's active workspace (may be undefined for guests)
   const workspaceId = (user as any)?.activeWorkspaceId || (user as any)?.workspaceId;
   useMascotAIIntegration(workspaceId);
+  useMascotObserver(true);
   const currentMode = useMascotMode();
   const [location] = useLocation();
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -393,13 +395,13 @@ function MascotRenderer() {
   // Trigger emotes based on roaming state
   useEffect(() => {
     if (isRoaming) {
-      triggerEmote('playful');
+      triggerEmote('excited');
     }
   }, [isRoaming, triggerEmote]);
   
   // Trigger emotes based on page navigation
   useEffect(() => {
-    triggerByContext('navigate', location);
+    triggerByContext('navigate');
   }, [location, triggerByContext]);
   
   const handleTap = useCallback((e: React.MouseEvent | React.TouchEvent) => {
