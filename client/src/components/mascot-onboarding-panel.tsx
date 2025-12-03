@@ -195,11 +195,10 @@ export function MascotOnboardingPanel({
   const totalPoints = steps.reduce((sum, s) => sum + s.points, 0);
 
   useEffect(() => {
-    if (progress && !progress.isCompleted) {
-      const timer = setTimeout(() => {
-        thoughtManager.triggerOnboardingReminder(completedCount, totalSteps);
-      }, 5000);
-      return () => clearTimeout(timer);
+    if (progress) {
+      // Update mascot's onboarding progress tracking
+      // This enables persistent reminders until completion, then advisor mode
+      thoughtManager.updateOnboardingProgress(completedCount, totalSteps);
     }
   }, [progress?.isCompleted, completedCount, totalSteps]);
 

@@ -61,6 +61,10 @@ export interface ThoughtManagerState {
   // User tracking for personalized greetings
   user: UserInfo | null;
   lastGreetedUserId: string | null;
+  // Onboarding tracking for persistent reminders
+  onboardingProgress: { completed: number; total: number } | null;
+  isOnboardingComplete: boolean;
+  advisorMode: boolean;
 }
 
 type ThoughtListener = (thought: Thought | null) => void;
@@ -70,6 +74,9 @@ class ThoughtManager {
   private listeners: Set<ThoughtListener> = new Set();
   private rotationTimer: ReturnType<typeof setInterval> | null = null;
   private displayTimer: ReturnType<typeof setTimeout> | null = null;
+  
+  private onboardingReminderTimer: ReturnType<typeof setInterval> | null = null;
+  private initialReminderTimeout: ReturnType<typeof setTimeout> | null = null;
   
   constructor() {
     const holiday = getCurrentHoliday();
@@ -87,6 +94,9 @@ class ThoughtManager {
       promoRotationTimer: null,
       user: null,
       lastGreetedUserId: null,
+      onboardingProgress: null,
+      isOnboardingComplete: false,
+      advisorMode: false,
     };
   }
   
@@ -376,6 +386,23 @@ class ThoughtManager {
     const previousUserId = this.state.user?.id;
     this.state.user = user;
     
+    // Clean up onboarding reminders when user logs out
+    if (!user) {
+      this.stopPersistentReminders();
+      this.state.onboardingProgress = null;
+      this.state.isOnboardingComplete = false;
+      this.state.advisorMode = false;
+      return;
+    }
+    
+    // Reset onboarding state when switching users
+    if (previousUserId && user.id !== previousUserId) {
+      this.stopPersistentReminders();
+      this.state.onboardingProgress = null;
+      this.state.isOnboardingComplete = false;
+      this.state.advisorMode = false;
+    }
+    
     // Trigger personalized greeting when:
     // 1. User logs in for the first time this session
     // 2. User switches to a different account (hasn't been greeted yet)
@@ -459,14 +486,143 @@ class ThoughtManager {
   }
   
   // ============================================================================
-  // ONBOARDING REMINDERS
+  // ONBOARDING REMINDERS & ADVISOR MODE
   // ============================================================================
+  
+  /**
+   * Update onboarding progress and trigger appropriate mode
+   */
+  updateOnboardingProgress(completedSteps: number, totalSteps: number): void {
+    const wasComplete = this.state.isOnboardingComplete;
+    const isNowComplete = completedSteps >= totalSteps;
+    
+    this.state.onboardingProgress = { completed: completedSteps, total: totalSteps };
+    this.state.isOnboardingComplete = isNowComplete;
+    
+    // Switch to advisor mode when onboarding completes
+    if (!wasComplete && isNowComplete) {
+      this.state.advisorMode = true;
+      this.stopPersistentReminders();
+      this.triggerOnboardingComplete();
+    } else if (!isNowComplete && !this.onboardingReminderTimer) {
+      // Start persistent reminders if not complete and timer not running
+      this.startPersistentReminders();
+    }
+  }
+  
+  /**
+   * Start persistent onboarding reminders (every 45 seconds until complete)
+   */
+  startPersistentReminders(): void {
+    if (this.onboardingReminderTimer) return;
+    if (this.state.isOnboardingComplete) return;
+    if (this.state.advisorMode) return;
+    if (!this.state.user) return;
+    
+    // Trigger first reminder after 10 seconds (store handle for cleanup)
+    this.initialReminderTimeout = setTimeout(() => {
+      // Guard against late firing after mode transition
+      if (!this.state.isOnboardingComplete && !this.state.advisorMode && this.state.onboardingProgress) {
+        this.triggerOnboardingReminder(
+          this.state.onboardingProgress.completed,
+          this.state.onboardingProgress.total
+        );
+      }
+      this.initialReminderTimeout = null;
+    }, 10000);
+    
+    // Then every 45 seconds
+    this.onboardingReminderTimer = setInterval(() => {
+      if (!this.state.isOnboardingComplete && !this.state.advisorMode && this.state.onboardingProgress) {
+        this.triggerOnboardingReminder(
+          this.state.onboardingProgress.completed,
+          this.state.onboardingProgress.total
+        );
+      }
+    }, 45000);
+  }
+  
+  /**
+   * Stop persistent reminders (called when onboarding completes or user logs out)
+   */
+  stopPersistentReminders(): void {
+    // Clear the initial 10s timeout if still pending
+    if (this.initialReminderTimeout) {
+      clearTimeout(this.initialReminderTimeout);
+      this.initialReminderTimeout = null;
+    }
+    // Clear the interval timer
+    if (this.onboardingReminderTimer) {
+      clearInterval(this.onboardingReminderTimer);
+      this.onboardingReminderTimer = null;
+    }
+  }
+  
+  /**
+   * Trigger onboarding completion celebration
+   */
+  private triggerOnboardingComplete(): void {
+    const displayName = this.getUserDisplayName();
+    
+    const celebrations = [
+      `Congratulations ${displayName}! All setup complete. Your automation is unlocked!`,
+      `${displayName}, you're all set! Enjoy full platform access and your 10% discount.`,
+      `Setup complete! I'm now your AI advisor, ${displayName}. Tap me for tips anytime!`,
+      `Amazing work, ${displayName}! All features unlocked. Let's make magic happen!`,
+    ];
+    
+    const text = celebrations[Math.floor(Math.random() * celebrations.length)];
+    const thought = this.createThought(text, 'ADVISING', 'default', 'high');
+    this.showThought(thought);
+    
+    // Start advisor mode tips after a short delay
+    setTimeout(() => this.startAdvisorMode(), 30000);
+  }
+  
+  /**
+   * Start advisor mode - periodic tips and insights
+   */
+  startAdvisorMode(): void {
+    this.state.advisorMode = true;
+  }
+  
+  /**
+   * Trigger an advisor tip (for completed onboarding users)
+   */
+  triggerAdvisorTip(): void {
+    if (!this.state.user || !this.state.advisorMode) return;
+    
+    const displayName = this.getUserDisplayName();
+    
+    const tips = [
+      `Pro tip, ${displayName}: Use AI scheduling to save 8+ hours per week!`,
+      `${displayName}, check out Analytics for insights on your workforce efficiency.`,
+      `Need a hand? I can help with payroll, scheduling, or invoicing anytime.`,
+      `${displayName}, your team's performance data is ready in the Dashboard!`,
+      `Quick tip: Set up shift reminders to reduce no-shows by 40%.`,
+      `${displayName}, have you explored our compliance automation? It's a game-changer!`,
+      `Try the AI-powered schedule optimizer - it learns from your patterns!`,
+      `${displayName}, remember you can chat with me anytime for help or insights.`,
+      `New feature alert: Real-time notifications keep you updated on everything!`,
+      `${displayName}, your invoice automation is ready - just add clients to get started.`,
+    ];
+    
+    const text = tips[Math.floor(Math.random() * tips.length)];
+    const thought = this.createThought(text, 'ADVISING', 'default', 'low');
+    this.queueThought(thought);
+  }
   
   /**
    * Trigger an onboarding reminder based on progress
    */
   triggerOnboardingReminder(completedSteps: number, totalSteps: number): void {
     if (!this.state.user) return;
+    
+    // Don't remind if already complete
+    if (this.state.isOnboardingComplete) {
+      this.triggerAdvisorTip();
+      return;
+    }
     
     const displayName = this.getUserDisplayName();
     const remaining = totalSteps - completedSteps;
@@ -479,25 +635,26 @@ class ThoughtManager {
         `Hey ${displayName}! Let's get your organization set up. I'll guide you through!`,
         `${displayName}, ready to unlock automation? Just ${totalSteps} quick steps to go!`,
         `Welcome ${displayName}! Complete your setup to unlock all features + a 10% discount.`,
+        `${displayName}, tap me to start your setup journey - I'll help every step!`,
       ];
     } else if (progressPercent < 50) {
       reminders = [
         `Nice start, ${displayName}! ${remaining} more steps to unlock automation.`,
         `You're ${progressPercent}% done, ${displayName}! Keep going for that 10% discount.`,
         `${displayName}, tap me for help with your next setup step!`,
+        `Great progress! ${remaining} steps left to unlock AI features, ${displayName}.`,
       ];
     } else if (progressPercent < 100) {
       reminders = [
         `Almost there, ${displayName}! Just ${remaining} steps to full automation access.`,
         `${progressPercent}% complete! Your 10% discount is waiting, ${displayName}.`,
         `So close, ${displayName}! Finish setup to unlock AI-powered features.`,
+        `${displayName}, you're ${progressPercent}% there! Let's finish this together.`,
       ];
     } else {
-      reminders = [
-        `Congratulations ${displayName}! All setup complete. Your automation is unlocked!`,
-        `${displayName}, you're all set! Enjoy full platform access and your 10% discount.`,
-        `Setup complete! I'm here to help you get the most out of CoAIleague, ${displayName}.`,
-      ];
+      // 100% complete - this shouldn't happen but handle it
+      this.triggerOnboardingComplete();
+      return;
     }
     
     const text = reminders[Math.floor(Math.random() * reminders.length)];
@@ -531,7 +688,10 @@ class ThoughtManager {
     
     this.rotationTimer = setInterval(() => {
       if (!this.state.currentThought && this.state.queue.length === 0) {
-        if (this.state.isHoliday && this.state.currentHoliday && Math.random() > 0.7) {
+        // Prioritize advisor tips for users who completed onboarding (30% chance)
+        if (this.state.advisorMode && this.state.isOnboardingComplete && Math.random() < 0.3) {
+          this.triggerAdvisorTip();
+        } else if (this.state.isHoliday && this.state.currentHoliday && Math.random() > 0.7) {
           const thoughts = this.state.currentHoliday.thoughts;
           const text = thoughts[Math.floor(Math.random() * thoughts.length)];
           const thought = this.createThought(text, 'HOLIDAY', 'holiday', 'low');
