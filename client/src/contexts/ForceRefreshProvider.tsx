@@ -143,6 +143,52 @@ export function ForceRefreshProvider({ children }: { children: React.ReactNode }
             handleForceRefresh(data as ForceRefreshEvent);
           }
           
+          // Handle LIVE platform updates (What's New)
+          if (data.type === 'platform_update' && data.update) {
+            console.log('[ForceRefresh] LIVE platform update:', data.update.title);
+            const update = data.update;
+            
+            // Insert directly into cache for immediate display
+            queryClient.setQueryData(["/api/notifications/combined"], (oldData: any) => {
+              if (!oldData) return oldData;
+              const newUpdate = {
+                id: `live-${Date.now()}`,
+                title: update.title,
+                description: update.endUserSummary || update.description,
+                category: update.category,
+                version: update.version,
+                badge: update.badge || 'NEW',
+                isNew: true,
+                isViewed: false,
+                createdAt: data.timestamp || new Date().toISOString(),
+                // Enhanced metadata
+                detailedCategory: update.detailedCategory,
+                sourceType: update.sourceType,
+                sourceName: update.sourceName,
+                endUserSummary: update.endUserSummary,
+                brokenDescription: update.brokenDescription,
+                impactDescription: update.impactDescription,
+              };
+              return {
+                ...oldData,
+                platformUpdates: [newUpdate, ...(oldData.platformUpdates || [])],
+                unreadPlatformUpdates: (oldData.unreadPlatformUpdates || 0) + 1,
+                totalUnread: (oldData.totalUnread || 0) + 1,
+              };
+            });
+            
+            // Also invalidate whats-new queries
+            queryClient.invalidateQueries({ queryKey: ['/api/whats-new'] });
+            queryClient.invalidateQueries({ queryKey: ['/api/whats-new/latest'] });
+            
+            // Show toast
+            toast({
+              title: 'New Update Available',
+              description: update.title,
+              duration: 5000,
+            });
+          }
+          
           if (data.type === 'platform_event' && data.payload) {
             const payload = data.payload;
             if (payload.type?.startsWith('feature_') || payload.type === 'announcement') {

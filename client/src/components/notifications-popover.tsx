@@ -152,12 +152,14 @@ export function NotificationsPopover() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const { isMobile } = useMobile();
 
+  // WebSocket delivers live updates now - polling is just a fallback
+  // Live updates insert directly into cache via use-notification-websocket hook
   const { data, isLoading, refetch } = useQuery<NotificationsData>({
     queryKey: ["/api/notifications/combined"],
     enabled: true,
-    staleTime: 2000,
-    refetchInterval: 3000,
-    refetchIntervalInBackground: true,
+    staleTime: 10000, // 10 seconds - trust WebSocket for fresh data
+    refetchInterval: 30000, // 30 seconds fallback instead of 3 seconds
+    refetchIntervalInBackground: false, // Only poll when visible
   });
 
   useEffect(() => {

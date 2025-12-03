@@ -21,7 +21,10 @@ const ALL_MODES: MascotMode[] = [
   'LISTENING',
   'UPLOADING',
   'SUCCESS',
-  'ERROR'
+  'ERROR',
+  'CELEBRATING',
+  'ADVISING',
+  'HOLIDAY'
 ];
 
 export default function MascotDemoPage() {
@@ -264,7 +267,10 @@ function getModeDescription(mode: MascotMode): string {
     LISTENING: 'Vertical audio waveform movement, representing voice/audio input processing.',
     UPLOADING: 'Spiral upward motion with particle streams falling, representing data transfer.',
     SUCCESS: 'Twins merge to center with celebration particles, representing task completion.',
-    ERROR: 'Erratic shaking with red tint, representing system fault or error state.'
+    ERROR: 'Erratic shaking with red tint, representing system fault or error state.',
+    CELEBRATING: 'Extra celebratory confetti-like bursts with pulsing orbital motion.',
+    ADVISING: 'Professional smooth orbit emanating wisdom particles.',
+    HOLIDAY: 'Festive bouncy movement with joyful colorful particles.'
   };
   return descriptions[mode];
 }

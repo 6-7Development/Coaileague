@@ -4643,9 +4643,11 @@ export function setupWebSocket(server: Server) {
         return;
       }
 
-      // Sanitize notification payload if present
+      // Sanitize notification payload if present - include enhanced metadata for end users
       let sanitizedNotification = undefined;
       if (notification) {
+        // Extract enhanced fields from metadata for live display
+        const metadata = notification.metadata || {};
         sanitizedNotification = {
           id: notification.id,
           type: notification.type,
@@ -4654,7 +4656,16 @@ export function setupWebSocket(server: Server) {
           isRead: notification.isRead,
           actionUrl: notification.actionUrl,
           createdAt: notification.createdAt,
-          // Explicitly exclude: metadata, relatedEntityId, createdBy
+          // Enhanced metadata fields for end-user display
+          detailedCategory: metadata.detailedCategory || notification.detailedCategory,
+          sourceType: metadata.sourceType || notification.sourceType,
+          sourceName: metadata.sourceName || notification.sourceName,
+          endUserSummary: metadata.endUserSummary || notification.endUserSummary,
+          brokenDescription: metadata.brokenDescription || notification.brokenDescription,
+          impactDescription: metadata.impactDescription || notification.impactDescription,
+          // Also include the badge if present
+          badge: metadata.badge || notification.badge,
+          category: metadata.category || notification.category,
         };
       }
 
@@ -4770,12 +4781,30 @@ export function setupWebSocket(server: Server) {
       priority?: number;
       learnMoreUrl?: string;
       metadata?: any;
+      // Enhanced fields for end-user display
+      detailedCategory?: string;
+      sourceType?: string;
+      sourceName?: string;
+      endUserSummary?: string;
+      brokenDescription?: string;
+      impactDescription?: string;
+      badge?: string;
     }) => {
+      // Extract enhanced metadata for live display
+      const enhancedMetadata = update.metadata || {};
       const payload = JSON.stringify({
         type: 'platform_update',
         update: {
           ...update,
           isNew: true,
+          // Ensure enhanced fields are included at top level for frontend consumption
+          detailedCategory: update.detailedCategory || enhancedMetadata.detailedCategory,
+          sourceType: update.sourceType || enhancedMetadata.sourceType,
+          sourceName: update.sourceName || enhancedMetadata.sourceName,
+          endUserSummary: update.endUserSummary || enhancedMetadata.endUserSummary,
+          brokenDescription: update.brokenDescription || enhancedMetadata.brokenDescription,
+          impactDescription: update.impactDescription || enhancedMetadata.impactDescription,
+          badge: update.badge || enhancedMetadata.badge,
         },
         timestamp: new Date().toISOString(),
       });

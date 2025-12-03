@@ -489,7 +489,8 @@ const SantaFlyoverScene = memo(function SantaFlyoverScene() {
     };
     
     const scheduleNextFlyover = () => {
-      const delay = 30000 + Math.random() * 60000;
+      // PERFORMANCE: Reduced frequency from 30-60s to 90-180s
+      const delay = 90000 + Math.random() * 90000;
       
       const timeout = window.setTimeout(() => {
         setDirection(Math.random() > 0.5 ? 'ltr' : 'rtl');
