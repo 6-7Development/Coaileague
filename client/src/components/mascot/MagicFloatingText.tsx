@@ -182,6 +182,24 @@ export function MagicFloatingText({
   const timersRef = useRef<number[]>([]);
   const animFrameRef = useRef<number | null>(null);
   
+  // Animated ellipsis for action states (thinking... coding... etc.)
+  const [dotCount, setDotCount] = useState(0);
+  const isActionState = thought?.isActionState || thought?.source === 'action';
+  
+  // Cycle through ellipsis dots (0 → 1 → 2 → 3 → 0...) for action states
+  useEffect(() => {
+    if (!isActionState || !isActive) {
+      setDotCount(0);
+      return;
+    }
+    
+    const intervalId = setInterval(() => {
+      setDotCount(prev => (prev + 1) % 4); // 0, 1, 2, 3, 0, 1...
+    }, 450); // Cycle every 450ms for natural typing feel
+    
+    return () => clearInterval(intervalId);
+  }, [isActionState, isActive]);
+  
   // Choose color palette based on thought type or random
   const colorPalette = useMemo(() => {
     const palettes = Object.values(LETTER_COLORS);
@@ -534,6 +552,29 @@ export function MagicFloatingText({
               {letter.char}
             </span>
           ))}
+          
+          {/* Animated ellipsis for action states (thinking... coding... etc.) */}
+          {isActionState && letters.some(l => l.isVisible) && (
+            <span
+              style={{
+                display: 'inline-block',
+                color: letters[letters.length - 1]?.color || '#a855f7',
+                fontSize,
+                fontWeight: 800,
+                textShadow: `
+                  0 1px 2px rgba(0,0,0,0.35),
+                  0 0 4px ${letters[letters.length - 1]?.glowColor || '#a855f7'}50
+                `,
+                letterSpacing: '0.1em',
+                lineHeight: 1.5,
+                minWidth: '1.2em',
+                textAlign: 'left',
+              }}
+              data-testid="action-state-ellipsis"
+            >
+              {'.'.repeat(dotCount)}
+            </span>
+          )}
         </div>
         
         {/* CTA button for promo thoughts */}

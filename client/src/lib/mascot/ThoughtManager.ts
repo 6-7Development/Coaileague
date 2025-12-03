@@ -18,6 +18,7 @@ import {
   getEmoticon,
   isPublicPage,
   getRandomPromoThought,
+  getActionText,
   PUBLIC_PAGE_PROMO_CONFIG,
   type HolidayConfig,
   type InteractionType,
@@ -30,12 +31,14 @@ export interface Thought {
   emoticon: string;
   mode: MascotMode;
   priority: 'low' | 'normal' | 'high' | 'urgent';
-  source: 'default' | 'reaction' | 'holiday' | 'ai' | 'task' | 'promo';
+  source: 'default' | 'reaction' | 'holiday' | 'ai' | 'task' | 'promo' | 'action';
   expiresAt: number;
   // Promotional thought extras
   ctaText?: string;          // Call-to-action button text
   ctaLink?: string;          // Navigation link for CTA
   showDiscount?: boolean;    // Show 10% discount badge
+  // Action state extras - for animated ellipsis display
+  isActionState?: boolean;   // True for action indicators like "thinking..." "coding..."
 }
 
 // User info for personalized greetings
@@ -193,6 +196,79 @@ class ThoughtManager {
       const thought = this.createThought(text, mode, 'default', 'normal');
       this.queueThought(thought);
     }
+  }
+  
+  /**
+   * Trigger an action state indicator like "thinking..." "coding..." "automating..."
+   * Shows dynamic activity with animated ellipsis in the thought bubble.
+   * Action states are high priority and replace existing action states.
+   */
+  triggerActionState(mode: MascotMode, customText?: string): void {
+    // Get appropriate action text with seasonal override
+    const holidayKey = this.state.currentHoliday?.key || null;
+    const actionText = customText || getActionText(mode, holidayKey);
+    
+    // If already showing same action state, just refresh expiry
+    if (
+      this.state.currentThought?.source === 'action' &&
+      this.state.currentThought?.mode === mode &&
+      this.state.currentThought?.text === actionText
+    ) {
+      // Extend the expiry time
+      this.state.currentThought.expiresAt = Date.now() + MASCOT_CONFIG.thoughts.displayDuration;
+      return;
+    }
+    
+    // Create action state thought with special flag for ellipsis animation
+    const actionThought: Thought = {
+      id: `action-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      text: actionText,
+      emoticon: getEmoticon(mode),
+      mode,
+      priority: 'high',
+      source: 'action',
+      expiresAt: Date.now() + MASCOT_CONFIG.thoughts.displayDuration,
+      isActionState: true, // Flag for MagicFloatingText to animate ellipsis
+    };
+    
+    // Show immediately, replacing any existing thought
+    if (this.displayTimer) {
+      clearTimeout(this.displayTimer);
+    }
+    
+    this.state.currentThought = actionThought;
+    this.state.history.push(actionThought);
+    if (this.state.history.length > 50) {
+      this.state.history.shift();
+    }
+    
+    this.notify();
+    
+    // Set timer to clear after display duration
+    this.displayTimer = setTimeout(() => {
+      this.clearThought();
+    }, MASCOT_CONFIG.thoughts.displayDuration);
+  }
+  
+  /**
+   * Stop showing action state indicator and clear the thought
+   */
+  stopActionState(): void {
+    if (this.state.currentThought?.source === 'action') {
+      if (this.displayTimer) {
+        clearTimeout(this.displayTimer);
+        this.displayTimer = null;
+      }
+      this.state.currentThought = null;
+      this.notify();
+    }
+  }
+  
+  /**
+   * Check if currently showing an action state
+   */
+  isShowingActionState(): boolean {
+    return this.state.currentThought?.source === 'action';
   }
   
   triggerReaction(interactionType: InteractionType, velocity?: number): void {

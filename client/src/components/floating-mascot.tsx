@@ -37,6 +37,7 @@ import { TrinityPhysics, MotionPattern, MOTION_PATTERNS } from '@/lib/mascot/Tri
 import { StatusEmoteEffects } from '@/lib/mascot/StatusEmoteEffects';
 import { useSeasonalTheme } from '@/context/SeasonalThemeContext';
 import { useQuery } from '@tanstack/react-query';
+import { useMascotActionStates } from '@/hooks/use-mascot-action-states';
 
 // Performance monitoring for adaptive quality
 interface PerformanceMetrics {
@@ -377,6 +378,10 @@ const FloatingMascot = memo(function FloatingMascot({
   }
 
   const [currentMode, setCurrentMode] = useState<MascotMode>(mode);
+  
+  // Trigger action state indicators when mode changes (thinking... coding... etc.)
+  useMascotActionStates({ mode: currentMode, enabled: !disabled });
+  
   const [isDragging, setIsDragging] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [currentEmote, setCurrentEmote] = useState<Emote | null>(null);

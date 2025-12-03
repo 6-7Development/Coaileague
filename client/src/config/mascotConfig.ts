@@ -698,6 +698,87 @@ export const THOUGHT_BUBBLE_BOUNDARY_CONFIG = {
   backdropBlur: 2, // minimal blur in pixels
 };
 
+// ============================================================================
+// ACTION STATE TEXT CONFIGURATION
+// Maps MascotMode to action indicator text shown in thought bubble
+// These show dynamic activity like "thinking..." "coding..." etc.
+// ============================================================================
+
+export const ACTION_STATE_TEXT: Record<MascotMode, string> = {
+  IDLE: 'chilling',
+  SEARCHING: 'observing',
+  THINKING: 'thinking',
+  ANALYZING: 'analyzing data',
+  CODING: 'coding',
+  LISTENING: 'listening',
+  UPLOADING: 'automating',
+  SUCCESS: 'done',
+  ERROR: 'oops',
+  CELEBRATING: 'celebrating',
+  ADVISING: 'talking to AI brain',
+  HOLIDAY: 'celebrating',
+  GREETING: 'waving hello',
+};
+
+// Seasonal action state overrides - used during specific holidays
+export const SEASONAL_ACTION_TEXT: Partial<Record<HolidayKey, Record<MascotMode, string>>> = {
+  christmas: {
+    IDLE: 'flying through snow',
+    SEARCHING: 'searching for gifts',
+    THINKING: 'dreaming of snow',
+    ANALYZING: 'checking the nice list',
+    CODING: 'wrapping code presents',
+    LISTENING: 'listening for sleigh bells',
+    UPLOADING: 'delivering presents',
+    SUCCESS: 'ho ho ho',
+    ERROR: 'lost in the snow',
+    CELEBRATING: 'jingle belling',
+    ADVISING: 'talking to Santa AI',
+    HOLIDAY: 'spreading holiday cheer',
+    GREETING: 'merry greetings',
+  },
+  halloween: {
+    IDLE: 'lurking in shadows',
+    SEARCHING: 'hunting for candy',
+    THINKING: 'conjuring spells',
+    ANALYZING: 'reading fortunes',
+    CODING: 'brewing potions',
+    LISTENING: 'hearing whispers',
+    UPLOADING: 'summoning spirits',
+    SUCCESS: 'trick or treat',
+    ERROR: 'curse failed',
+    CELEBRATING: 'haunting happily',
+    ADVISING: 'consulting the spirits',
+    HOLIDAY: 'spooky vibes',
+    GREETING: 'boo',
+  },
+  valentines: {
+    IDLE: 'feeling the love',
+    SEARCHING: 'looking for hearts',
+    THINKING: 'daydreaming',
+    ANALYZING: 'measuring love',
+    CODING: 'writing love letters',
+    LISTENING: 'hearing heartbeats',
+    UPLOADING: 'sending valentines',
+    SUCCESS: 'love wins',
+    ERROR: 'heartbroken',
+    CELEBRATING: 'spreading love',
+    ADVISING: 'cupid consulting',
+    HOLIDAY: 'loving life',
+    GREETING: 'xoxo',
+  },
+};
+
+// Get action text for a mode, with seasonal override support
+export function getActionText(mode: MascotMode, holidayKey?: HolidayKey | null): string {
+  // Check for seasonal override first
+  if (holidayKey && SEASONAL_ACTION_TEXT[holidayKey]?.[mode]) {
+    return SEASONAL_ACTION_TEXT[holidayKey][mode]!;
+  }
+  // Fall back to default action text
+  return ACTION_STATE_TEXT[mode] || 'working';
+}
+
 export interface ThoughtBubbleStyle {
   background: string;
   backdropBlur: string;
