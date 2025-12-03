@@ -8,7 +8,8 @@ export type WorkspaceRole = 'org_owner' | 'org_admin' | 'department_manager' | '
 export type PlatformRole = 'root_admin' | 'deputy_admin' | 'sysop' | 'support_manager' | 'support_agent' | 'compliance_officer' | 'Bot' | 'none';
 
 // Platform-level roles that have platform-wide access (bypass workspace requirements)
-export const PLATFORM_WIDE_ROLES: PlatformRole[] = ['root_admin', 'deputy_admin', 'sysop', 'support_manager', 'support_agent', 'Bot'];
+// Note: compliance_officer added for consistency with isPlatformStaff()
+export const PLATFORM_WIDE_ROLES: PlatformRole[] = ['root_admin', 'deputy_admin', 'sysop', 'support_manager', 'support_agent', 'compliance_officer', 'Bot'];
 
 // Check if a platform role has platform-wide access (bypasses workspace requirements)
 export function hasPlatformWideAccess(platformRole?: PlatformRole | string): boolean {
@@ -207,7 +208,14 @@ export const requireEmployee = requireWorkspaceRole(['org_owner', 'department_ma
 // Leaders Hub - Organization Leaders (Owner/Manager only) for self-service admin
 export const requireLeader = requireWorkspaceRole(['org_owner', 'department_manager']);
 
+// Auditor access - Read-only access for compliance/auditing purposes
+export const requireAuditor = requireWorkspaceRole(['org_owner', 'department_manager', 'org_admin', 'auditor']);
+
+// Contractor access - Limited access for external contractors
+export const requireContractor = requireWorkspaceRole(['org_owner', 'department_manager', 'supervisor', 'staff', 'contractor']);
+
 // Hybrid guard: Allows EITHER workspace managers/owners OR platform staff (for diagnostics)
+// Uses hasPlatformWideAccess for consistent platform role handling across all guards
 export const requireManagerOrPlatformStaff: RequestHandler = async (req, res, next) => {
   const authReq = req as AuthenticatedRequest;
   
@@ -220,7 +228,8 @@ export const requireManagerOrPlatformStaff: RequestHandler = async (req, res, ne
   // Check platform role first - platform staff get full access for diagnostics
   const platformRole = await getUserPlatformRole(userId);
   
-  if (platformRole === 'root_admin' || platformRole === 'sysop' || platformRole === 'support_manager') {
+  // Use hasPlatformWideAccess for consistent role bypass across all guards
+  if (hasPlatformWideAccess(platformRole)) {
     authReq.platformRole = platformRole;
     
     // Platform staff can optionally specify workspace via query/body for POST/PATCH operations
@@ -261,6 +270,7 @@ export const requireManagerOrPlatformStaff: RequestHandler = async (req, res, ne
  * Middleware to attach workspace ID to request for ALL authenticated users
  * Unlike requireManagerOrPlatformStaff, this doesn't check role - just resolves workspace
  * Use this for endpoints that need workspace scoping but don't require manager permissions
+ * Uses hasPlatformWideAccess for consistent platform role handling across all guards
  */
 export const attachWorkspaceId: RequestHandler = async (req, res, next) => {
   const authReq = req as AuthenticatedRequest;
@@ -272,9 +282,10 @@ export const attachWorkspaceId: RequestHandler = async (req, res, next) => {
   const userId = authReq.user.id;
   
   // Check platform role first - platform staff can specify workspace via query
+  // Use hasPlatformWideAccess for consistent role bypass across all guards
   const platformRole = await getUserPlatformRole(userId);
   
-  if (platformRole === 'root_admin' || platformRole === 'sysop' || platformRole === 'support_manager') {
+  if (hasPlatformWideAccess(platformRole)) {
     authReq.platformRole = platformRole;
     
     // Platform staff can specify workspace via query/body
