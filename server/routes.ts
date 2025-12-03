@@ -121,6 +121,7 @@ import { documentExtractionService } from "./services/documentExtraction";
 import { notificationEngine } from "./services/universalNotificationEngine";
 import { issueDetectionService } from "./services/issueDetectionService";
 import { aiNotificationService } from "./services/aiNotificationService";
+import { notificationStateManager } from "./services/notificationStateManager";
 import aiBrainConfig from "@shared/config/aiBrainGuardrails";
 import { approveDispute, rejectDispute, getPendingDisputes, getDisputesAssignedToUser } from "./services/timeEntryDisputeService";
 import { addDeduction, addGarnishment, applyDeductionsAndGarnishments, calculateTotalDeductions, calculateTotalGarnishments } from "./services/payrollDeductionService";
@@ -414,6 +415,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // - Platform staff role verification for administrative controls
   const { broadcastShiftUpdate, broadcastNotification, broadcastPlatformUpdate } = setupWebSocket(server);
   
+  
+  // Register notification broadcast function with state manager for real-time count updates
+  notificationStateManager.setBroadcastFunction(broadcastNotification);
   // Wire platform event bus to WebSocket for real-time updates
   const { platformEventBus } = await import("./services/platformEventBus");
   platformEventBus.setWebSocketHandler((event) => {
@@ -714,6 +718,120 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error acknowledging maintenance alert:', error);
       res.status(500).json({ message: 'Failed to acknowledge alert' });
+    }
+  });
+
+
+  // ============================================================================
+  // UNIFIED NOTIFICATION STATE MANAGEMENT ROUTES
+  // ============================================================================
+
+  // Get unified unread counts (notifications + platform updates)
+  app.get('/api/notifications/unread-counts', async (req, res) => {
+    try {
+      const authReq = req as AuthenticatedRequest;
+      const userId = authReq.user?.id;
+      
+      if (!userId) {
+        return res.json({ 
+          notifications: 0, 
+          platformUpdates: 0, 
+          total: 0,
+          lastUpdated: new Date().toISOString()
+        });
+      }
+      
+      const workspace = await storage.getWorkspaceByOwnerId(userId);
+      const member = await storage.getWorkspaceMemberByUserId(userId);
+      const workspaceId = workspace?.id || member?.workspaceId;
+      const workspaceRole = authReq.workspaceRole || 'staff';
+      
+      const counts = await notificationStateManager.getUnreadCounts(userId, workspaceId, workspaceRole);
+      
+      res.json(counts);
+    } catch (error) {
+      console.error('Error getting unread counts:', error);
+      res.status(500).json({ message: 'Failed to get unread counts' });
+    }
+  });
+
+  // Mark individual notification as read
+  app.post('/api/notifications/:id/mark-read', requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user!.id;
+      const { id: notificationId } = req.params;
+      
+      const workspace = await storage.getWorkspaceByOwnerId(userId);
+      const member = await storage.getWorkspaceMemberByUserId(userId);
+      const workspaceId = workspace?.id || member?.workspaceId;
+      
+      const result = await notificationStateManager.markNotificationAsRead(notificationId, userId, workspaceId);
+      
+      if (result.success) {
+        res.json({ 
+          success: true, 
+          counts: result.newCounts 
+        });
+      } else {
+        res.status(500).json({ message: 'Failed to mark notification as read' });
+      }
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+      res.status(500).json({ message: 'Failed to mark notification as read' });
+    }
+  });
+
+  // Mark platform update as viewed
+  app.post('/api/platform-updates/:id/mark-viewed', requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user!.id;
+      const { id: updateId } = req.params;
+      const { viewSource } = req.body;
+      
+      const workspace = await storage.getWorkspaceByOwnerId(userId);
+      const member = await storage.getWorkspaceMemberByUserId(userId);
+      const workspaceId = workspace?.id || member?.workspaceId;
+      
+      const result = await notificationStateManager.markPlatformUpdateAsViewed(
+        updateId, 
+        userId, 
+        viewSource || 'feed',
+        workspaceId
+      );
+      
+      if (result.success) {
+        res.json({ 
+          success: true, 
+          counts: result.newCounts 
+        });
+      } else {
+        res.status(500).json({ message: 'Failed to mark update as viewed' });
+      }
+    } catch (error) {
+      console.error('Error marking platform update as viewed:', error);
+      res.status(500).json({ message: 'Failed to mark update as viewed' });
+    }
+  });
+
+  // Sync notification counts (force refresh from database)
+  app.post('/api/notifications/sync-counts', requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user!.id;
+      
+      const workspace = await storage.getWorkspaceByOwnerId(userId);
+      const member = await storage.getWorkspaceMemberByUserId(userId);
+      const workspaceId = workspace?.id || member?.workspaceId;
+      const workspaceRole = req.workspaceRole || 'staff';
+      
+      const counts = await notificationStateManager.syncCountsForUser(userId, workspaceId, workspaceRole);
+      
+      res.json({ 
+        success: true, 
+        counts 
+      });
+    } catch (error) {
+      console.error('Error syncing notification counts:', error);
+      res.status(500).json({ message: 'Failed to sync counts' });
     }
   });
 

@@ -256,8 +256,21 @@ export function useNotificationWebSocket(userId: string | undefined, workspaceId
               if (data.unreadCount !== undefined) {
                 setUnreadCount(data.unreadCount);
               }
+              // Dispatch event for useNotificationState hook
+              const countUpdateEvent = new CustomEvent('notification_count_updated', {
+                detail: {
+                  counts: (data as any).notification?.counts || {
+                    notifications: (data as any).notification?.notifications || 0,
+                    platformUpdates: (data as any).notification?.platformUpdates || 0,
+                    total: data.unreadCount || 0,
+                    lastUpdated: new Date().toISOString(),
+                  },
+                },
+              });
+              window.dispatchEvent(countUpdateEvent);
               // Refresh combined data to get accurate counts
               queryClient.invalidateQueries({ queryKey: ["/api/notifications/combined"] });
+              queryClient.invalidateQueries({ queryKey: ["/api/notifications/unread-counts"] });
               break;
 
             case 'error':
