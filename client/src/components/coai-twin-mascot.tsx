@@ -28,8 +28,8 @@ import { statusEmoteEffects, StatusEmoteEffects, STATUS_COLORS } from '@/lib/mas
 import { emoteMorphingEngine, EmoteMorphingEngine, EmoteName, EmotePhase, EMOTE_FORMATIONS } from '@/lib/mascot/EmoteMorphingEngine';
 import { EmoteTransitionRenderer, WarpPhase, WarpColors } from '@/lib/mascot/EmoteTransitionRenderer';
 import { GrabSlingMechanics, GrabEvent, SlingResult } from '@/lib/mascot/GrabSlingMechanics';
-import { WarpMutationOverlay } from '@/components/mascot/WarpMutationOverlay';
-import { MutationFlashOverlay } from '@/components/mascot/MutationFlashOverlay';
+// REMOVED: WarpMutationOverlay and MutationFlashOverlay - caused visible borders and sickening glow effects
+// Physical geometry morphing now handles all mutations through MODE_GEOMETRY_CONFIG
 
 export type MascotMode = 
   | 'IDLE' 
@@ -46,15 +46,31 @@ export type MascotMode =
   | 'HOLIDAY'
   | 'GREETING';
 
+// Geometry state for Target-Seek LERP morphing
+interface TwinGeometry {
+  points: number;           // Current point count (can be fractional during morph)
+  innerRatio: number;       // Current inner radius ratio
+  twist: number;            // Current twist amount
+  axialStretchX: number;    // Current X axis stretch
+  axialStretchY: number;    // Current Y axis stretch
+  noiseAmp: number;         // Current noise amplitude
+  noiseFreq: number;        // Current noise frequency
+  roundness: number;        // Current roundness (0=sharp, 1=curved)
+  swirl: number;            // Current spiral effect
+}
+
 interface Twin {
   id: number;
   x: number;
   y: number;
   trail: { x: number; y: number; life: number }[];
   color: string;
-  targetColor: string;  // Target color for smooth lerping during mutations
+  targetColor: string;      // Target color for smooth lerping during mutations
   angle: number;
-  currentScale: number; // Smoothly lerped scale to prevent size glitches
+  currentScale: number;     // Smoothly lerped scale to prevent size glitches
+  // Target-Seek geometry morphing fields
+  geometry: TwinGeometry;   // Current geometry state (lerped toward target each frame)
+  targetGeometry: TwinGeometry; // Target geometry (set on mode change)
 }
 
 interface Particle {
@@ -155,20 +171,21 @@ interface ModeVisualConfig {
   bubbleGradient: string;  // Gradient for thought bubble theming
 }
 
+// REDUCED GLOW VALUES - No more sickening light show! Focus on physical geometry morphing
 export const MODE_VISUAL_CONFIG: Record<MascotMode, ModeVisualConfig> = {
-  IDLE: { scale: 1.0, glow: 0.4, distortion: 0, pulseSpeed: 0.5, trailLength: 15, bubbleGradient: 'from-sky-500/20 to-purple-500/20' },
-  SEARCHING: { scale: 1.4, glow: 0.85, distortion: 0.3, pulseSpeed: 1.5, trailLength: 25, bubbleGradient: 'from-emerald-500/30 to-teal-500/20' },
-  THINKING: { scale: 1.6, glow: 0.95, distortion: 0.4, pulseSpeed: 2.0, trailLength: 30, bubbleGradient: 'from-purple-500/30 to-indigo-500/20' },
-  ANALYZING: { scale: 1.35, glow: 0.75, distortion: 0.35, pulseSpeed: 1.3, trailLength: 20, bubbleGradient: 'from-indigo-500/30 to-blue-500/20' },
-  CODING: { scale: 1.25, glow: 0.65, distortion: 0.25, pulseSpeed: 1.0, trailLength: 18, bubbleGradient: 'from-green-500/30 to-emerald-500/20' },
-  LISTENING: { scale: 1.5, glow: 0.9, distortion: 0.3, pulseSpeed: 1.6, trailLength: 22, bubbleGradient: 'from-amber-500/30 to-yellow-500/20' },
-  UPLOADING: { scale: 1.3, glow: 0.8, distortion: 0.4, pulseSpeed: 1.8, trailLength: 28, bubbleGradient: 'from-cyan-500/30 to-sky-500/20' },
-  SUCCESS: { scale: 1.8, glow: 1.0, distortion: 0.2, pulseSpeed: 0.8, trailLength: 12, bubbleGradient: 'from-pink-500/30 to-rose-500/20' },
-  ERROR: { scale: 0.7, glow: 1.0, distortion: 0.7, pulseSpeed: 3.0, trailLength: 10, bubbleGradient: 'from-red-500/40 to-rose-600/30' },
-  CELEBRATING: { scale: 1.7, glow: 1.0, distortion: 0.25, pulseSpeed: 1.2, trailLength: 20, bubbleGradient: 'from-amber-500/30 to-yellow-400/20' },
-  ADVISING: { scale: 1.3, glow: 0.7, distortion: 0.15, pulseSpeed: 0.9, trailLength: 18, bubbleGradient: 'from-emerald-500/25 to-green-500/15' },
-  HOLIDAY: { scale: 1.5, glow: 0.95, distortion: 0.3, pulseSpeed: 1.1, trailLength: 22, bubbleGradient: 'from-red-500/30 to-green-500/20' },
-  GREETING: { scale: 1.4, glow: 0.8, distortion: 0.2, pulseSpeed: 1.0, trailLength: 16, bubbleGradient: 'from-pink-500/25 to-purple-500/15' }
+  IDLE: { scale: 1.0, glow: 0.0, distortion: 0, pulseSpeed: 0.5, trailLength: 15, bubbleGradient: 'from-sky-500/20 to-purple-500/20' },
+  SEARCHING: { scale: 1.4, glow: 0.0, distortion: 0, pulseSpeed: 1.5, trailLength: 25, bubbleGradient: 'from-emerald-500/30 to-teal-500/20' },
+  THINKING: { scale: 1.6, glow: 0.0, distortion: 0, pulseSpeed: 2.0, trailLength: 30, bubbleGradient: 'from-purple-500/30 to-indigo-500/20' },
+  ANALYZING: { scale: 1.35, glow: 0.0, distortion: 0, pulseSpeed: 1.3, trailLength: 20, bubbleGradient: 'from-indigo-500/30 to-blue-500/20' },
+  CODING: { scale: 1.25, glow: 0.0, distortion: 0, pulseSpeed: 1.0, trailLength: 18, bubbleGradient: 'from-green-500/30 to-emerald-500/20' },
+  LISTENING: { scale: 1.5, glow: 0.0, distortion: 0, pulseSpeed: 1.6, trailLength: 22, bubbleGradient: 'from-amber-500/30 to-yellow-500/20' },
+  UPLOADING: { scale: 1.3, glow: 0.0, distortion: 0, pulseSpeed: 1.8, trailLength: 28, bubbleGradient: 'from-cyan-500/30 to-sky-500/20' },
+  SUCCESS: { scale: 1.8, glow: 0.0, distortion: 0, pulseSpeed: 0.8, trailLength: 12, bubbleGradient: 'from-pink-500/30 to-rose-500/20' },
+  ERROR: { scale: 0.7, glow: 0.0, distortion: 0, pulseSpeed: 3.0, trailLength: 10, bubbleGradient: 'from-red-500/40 to-rose-600/30' },
+  CELEBRATING: { scale: 1.7, glow: 0.0, distortion: 0, pulseSpeed: 1.2, trailLength: 20, bubbleGradient: 'from-amber-500/30 to-yellow-400/20' },
+  ADVISING: { scale: 1.3, glow: 0.0, distortion: 0, pulseSpeed: 0.9, trailLength: 18, bubbleGradient: 'from-emerald-500/25 to-green-500/15' },
+  HOLIDAY: { scale: 1.5, glow: 0.0, distortion: 0, pulseSpeed: 1.1, trailLength: 22, bubbleGradient: 'from-red-500/30 to-green-500/20' },
+  GREETING: { scale: 1.4, glow: 0.0, distortion: 0, pulseSpeed: 1.0, trailLength: 16, bubbleGradient: 'from-pink-500/25 to-purple-500/15' }
 };
 
 // PHYSICAL GEOMETRY MORPHING - changes the actual shape of stars per mode
@@ -280,11 +297,39 @@ class CoAITwinEngine {
   // Each star has currentScale initialized to BASE_STAR_SCALE (1.0) for smooth size transitions
   private static readonly BASE_STAR_SCALE = 1.0;
   private static readonly SCALE_LERP_SPEED = 0.12; // Smooth lerp factor for scale transitions
+  private static readonly GEOMETRY_LERP_SPEED = 0.08; // Smooth lerp for geometry morphing (per frame)
+  
+  // Default geometry for IDLE mode (5-pointed star)
+  private static createDefaultGeometry(): TwinGeometry {
+    return {
+      points: 5,
+      innerRatio: 0.4,
+      twist: 0,
+      axialStretchX: 1,
+      axialStretchY: 1,
+      noiseAmp: 0.05,
+      noiseFreq: 1,
+      roundness: 0.3,
+      swirl: 0
+    };
+  }
   
   private twins: Twin[] = [
-    { id: 0, x: 0, y: 0, trail: [], color: '#38bdf8', targetColor: '#38bdf8', angle: 0, currentScale: 1.0 },                    // Cyan - "Co"
-    { id: 1, x: 0, y: 0, trail: [], color: '#a855f7', targetColor: '#a855f7', angle: (Math.PI * 2) / 3, currentScale: 1.0 },    // Purple - "AI"  
-    { id: 2, x: 0, y: 0, trail: [], color: '#f4c15d', targetColor: '#f4c15d', angle: (Math.PI * 4) / 3, currentScale: 1.0 }     // Gold - "L"
+    { 
+      id: 0, x: 0, y: 0, trail: [], color: '#38bdf8', targetColor: '#38bdf8', angle: 0, currentScale: 1.0,
+      geometry: CoAITwinEngine.createDefaultGeometry(),
+      targetGeometry: CoAITwinEngine.createDefaultGeometry()
+    }, // Cyan - "Co"
+    { 
+      id: 1, x: 0, y: 0, trail: [], color: '#a855f7', targetColor: '#a855f7', angle: (Math.PI * 2) / 3, currentScale: 1.0,
+      geometry: CoAITwinEngine.createDefaultGeometry(),
+      targetGeometry: CoAITwinEngine.createDefaultGeometry()
+    }, // Purple - "AI"  
+    { 
+      id: 2, x: 0, y: 0, trail: [], color: '#f4c15d', targetColor: '#f4c15d', angle: (Math.PI * 4) / 3, currentScale: 1.0,
+      geometry: CoAITwinEngine.createDefaultGeometry(),
+      targetGeometry: CoAITwinEngine.createDefaultGeometry()
+    }  // Gold - "L"
   ];
 
   private particles: Particle[] = [];
@@ -694,7 +739,23 @@ class CoAITwinEngine {
       this.warpColors = { primary: color, secondary: '#ffffff', accent: '#f4c15d' };
     }
     
-    // 3. TRIGGER MUTATION: Start mutation intensity for visual effects
+    // 3. SET TARGET GEOMETRY for physical shape morphing (Target-Seek pattern)
+    const targetGeo = MODE_GEOMETRY_CONFIG[mode];
+    this.twins.forEach(t => {
+      t.targetGeometry = {
+        points: targetGeo.points,
+        innerRatio: targetGeo.innerRatio,
+        twist: targetGeo.twist,
+        axialStretchX: targetGeo.axialStretch.x,
+        axialStretchY: targetGeo.axialStretch.y,
+        noiseAmp: targetGeo.noiseAmp,
+        noiseFreq: targetGeo.noiseFreq,
+        roundness: targetGeo.roundness,
+        swirl: targetGeo.swirl
+      };
+    });
+    
+    // 4. TRIGGER MUTATION: Start mutation intensity for chaos phase
     this.state.mutation = 1.0;
     this.spawnShockwave(color);
     
@@ -1065,6 +1126,11 @@ class CoAITwinEngine {
     }
   }
 
+  // Linear interpolation for smooth numeric transitions (Target-Seek pattern)
+  private lerp(start: number, end: number, amount: number): number {
+    return (1 - amount) * start + amount * end;
+  }
+
   // Linear interpolation for smooth color transitions during mutations
   // With validation to prevent corrupted color values
   private lerpColor(colorA: string, colorB: string, amount: number): string {
@@ -1214,6 +1280,19 @@ class CoAITwinEngine {
     this.twins.forEach((t, i) => {
       // COLOR MORPHING: Smooth lerp toward target color during mutations
       t.color = this.lerpColor(t.color, t.targetColor, 0.05);
+      
+      // GEOMETRY MORPHING: LERP each geometry property toward target (Target-Seek pattern)
+      // This creates smooth physical shape transformations (e.g., star → square → circle)
+      const geoLerp = CoAITwinEngine.GEOMETRY_LERP_SPEED;
+      t.geometry.points = this.lerp(t.geometry.points, t.targetGeometry.points, geoLerp);
+      t.geometry.innerRatio = this.lerp(t.geometry.innerRatio, t.targetGeometry.innerRatio, geoLerp);
+      t.geometry.twist = this.lerp(t.geometry.twist, t.targetGeometry.twist, geoLerp);
+      t.geometry.axialStretchX = this.lerp(t.geometry.axialStretchX, t.targetGeometry.axialStretchX, geoLerp);
+      t.geometry.axialStretchY = this.lerp(t.geometry.axialStretchY, t.targetGeometry.axialStretchY, geoLerp);
+      t.geometry.noiseAmp = this.lerp(t.geometry.noiseAmp, t.targetGeometry.noiseAmp, geoLerp);
+      t.geometry.noiseFreq = this.lerp(t.geometry.noiseFreq, t.targetGeometry.noiseFreq, geoLerp);
+      t.geometry.roundness = this.lerp(t.geometry.roundness, t.targetGeometry.roundness, geoLerp);
+      t.geometry.swirl = this.lerp(t.geometry.swirl, t.targetGeometry.swirl, geoLerp);
       
       let tx = 0, ty = 0;
       const starAngle = i * TRINITY_OFFSET;  // 0°, 120°, 240° for each star
@@ -1368,27 +1447,8 @@ class CoAITwinEngine {
 
     this.ctx.translate(cx, cy);
     
-    // CHROMATIC ABERRATION (RGB shift) during mutation - 8px max shift (from Gemini Agent)
-    if (this.state.mutation > 0.05) {
-      const shift = this.state.mutation * 8;  // 8px max shift per reference
-      const aberrationAlpha = Math.min(0.35, this.state.mutation * 0.4);
-      
-      // Red channel shift (left)
-      this.ctx.save();
-      this.ctx.globalCompositeOperation = 'screen';
-      this.ctx.globalAlpha = aberrationAlpha;
-      this.ctx.translate(-shift, 0);
-      this.drawMutationGhostStars('#ff3333');
-      this.ctx.restore();
-      
-      // Blue channel shift (right)  
-      this.ctx.save();
-      this.ctx.globalCompositeOperation = 'screen';
-      this.ctx.globalAlpha = aberrationAlpha;
-      this.ctx.translate(shift, 0);
-      this.drawMutationGhostStars('#3333ff');
-      this.ctx.restore();
-    }
+    // CHROMATIC ABERRATION DISABLED - causes visual discomfort
+    // Physical geometry morphing now handles mutations instead of light effects
     
     // Draw transition renderer effects (background layer)
     this.transitionRenderer.render(this.ctx, 0, 0);
@@ -1417,24 +1477,11 @@ class CoAITwinEngine {
         this.transitionRenderer.addTrailPoint(t.x, t.y, twinIndex);
       }
       
-      // DRAMATIC glow layer - scales with mode and mutation
-      const glowIntensity = modeGlow + (this.state.mutation * 0.3); // Extra glow during transition
-      if (glowIntensity > 0.1) {
-        const glowSize = 35 * s * 0.005 * morphScale * (1 + glowIntensity * 0.8);
-        const gradient = this.ctx.createRadialGradient(t.x, t.y, 0, t.x, t.y, glowSize);
-        const rgb = this.hexToRgb(t.color);
-        gradient.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${glowIntensity * 0.45})`);
-        gradient.addColorStop(0.4, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${glowIntensity * 0.25})`);
-        gradient.addColorStop(0.7, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${glowIntensity * 0.1})`);
-        gradient.addColorStop(1, 'transparent');
-        this.ctx.fillStyle = gradient;
-        this.ctx.beginPath();
-        this.ctx.arc(t.x, t.y, glowSize, 0, Math.PI * 2);
-        this.ctx.fill();
-      }
+      // NO GLOW LAYER - Physical geometry morphing handles visual changes
+      // The star shape itself changes (point count, inner ratio, etc.)
       
       this.ctx.globalAlpha = 1.0;
-      // Apply DRAMATIC mode-based scale to star rendering
+      // Draw morphing star with physical geometry changes
       this.drawStar(t.x, t.y, 15 * s * 0.005 * morphScale, 4.5 * s * 0.005 * morphScale, t.color, twinIndex);
     });
 
@@ -1446,23 +1493,8 @@ class CoAITwinEngine {
       this.drawGrabIndicator();
     }
     
-    // DIGITAL GLITCH LINES during mutation - intensity-gated with falloff
-    if (this.state.mutation > 0.15) {
-      // Primary glitch line - appears when mutation is moderate
-      const glitchOpacity = Math.min(0.25, this.state.mutation * 0.2);
-      this.ctx.fillStyle = `rgba(255, 255, 255, ${glitchOpacity})`;
-      const glitchY = (Math.random() - 0.5) * h;
-      const glitchH = Math.random() * (12 * this.state.mutation) + 2;
-      this.ctx.fillRect(-w / 2, glitchY, w, glitchH);
-      
-      // Secondary glitch line - only at high mutation intensity
-      if (this.state.mutation > 0.4) {
-        this.ctx.fillStyle = `rgba(255, 255, 255, ${this.state.mutation * 0.06})`;
-        const glitch2Y = (Math.random() - 0.5) * h;
-        const glitch2H = Math.random() * 6 + 1;
-        this.ctx.fillRect(-w / 2, glitch2Y, w, glitch2H);
-      }
-    }
+    // GLITCH LINES DISABLED - Physical geometry morphing handles mutation visuals
+    // No more sickening light effects - the stars actually change shape
 
     this.ctx.restore();
   }
@@ -1494,27 +1526,17 @@ class CoAITwinEngine {
     const feedback = this.grabMechanics.getVisualFeedback();
     if (!feedback.isHolding) return;
     
-    // Draw pulsing grab ring around mascot
+    // Draw subtle grab ring around mascot - NO glow
     const pulse = Math.sin(this.state.time * 0.15) * 0.3 + 0.7;
     const radius = 40 * pulse;
     
     this.ctx.beginPath();
     this.ctx.arc(this.dragOffsetX, this.dragOffsetY, radius, 0, Math.PI * 2);
-    this.ctx.strokeStyle = `rgba(34, 197, 94, ${0.6 * pulse})`;
-    this.ctx.lineWidth = 3;
+    this.ctx.strokeStyle = `rgba(34, 197, 94, ${0.4 * pulse})`;
+    this.ctx.lineWidth = 2;
     this.ctx.stroke();
     
-    // Inner glow
-    const gradient = this.ctx.createRadialGradient(
-      this.dragOffsetX, this.dragOffsetY, 0,
-      this.dragOffsetX, this.dragOffsetY, radius
-    );
-    gradient.addColorStop(0, `rgba(34, 197, 94, ${0.2 * pulse})`);
-    gradient.addColorStop(1, 'rgba(34, 197, 94, 0)');
-    this.ctx.fillStyle = gradient;
-    this.ctx.beginPath();
-    this.ctx.arc(this.dragOffsetX, this.dragOffsetY, radius, 0, Math.PI * 2);
-    this.ctx.fill();
+    // REMOVED inner glow gradient - no more sickening glow effects
   }
 
   private drawStar(x: number, y: number, outerR: number, innerR: number, color: string, twinIndex: number = 0) {
@@ -1548,58 +1570,61 @@ class CoAITwinEngine {
     const drawX = x + wobbleX + morphState.offsetX;
     const drawY = y + wobbleY + morphState.offsetY;
     
-    // ====== PHYSICAL GEOMETRY MORPHING ======
-    const geo = MODE_GEOMETRY_CONFIG[this.state.mode];
+    // ====== PHYSICAL GEOMETRY MORPHING using Target-Seek LERP ======
+    // Use twin.geometry (which is lerped toward targetGeometry each frame) NOT static MODE_GEOMETRY_CONFIG
+    const geo = twin?.geometry || CoAITwinEngine.createDefaultGeometry();
     const visualConfig = MODE_VISUAL_CONFIG[this.state.mode];
     
-    // Calculate morphed radii with geometry config
+    // Calculate morphed radii with current (lerped) geometry - supports fractional point counts
     const scaledOuterR = outerR * scale;
     const scaledInnerR = scaledOuterR * geo.innerRatio;
     
-    // Morph rotation with twist
+    // Morph rotation with twist (uses lerped twist value)
     const baseRotation = morphState.rotation - (this.state.time * 0.05 * speed);
     const twistOffset = geo.twist * Math.sin(this.state.time * 0.1);
     
-    // Generate morphed star path with variable geometry
+    // Generate morphed star path with variable geometry (supports fractional points!)
     const generateMorphPath = (radiusOffset: number = 0): { x: number; y: number }[] => {
-      const points: { x: number; y: number }[] = [];
-      const numPoints = geo.points;
-      const angleStep = (Math.PI * 2) / numPoints;
+      const pointsArr: { x: number; y: number }[] = [];
+      // Use fractional point count for smooth morphing between shapes
+      const numPoints = Math.max(3, geo.points); // Allow fractional, but at least 3
+      const intPoints = Math.floor(numPoints);
+      const fracPart = numPoints - intPoints;
+      const angleStep = (Math.PI * 2) / intPoints;
       
-      for (let i = 0; i < numPoints; i++) {
-        // Skip segments for cracked effect (ERROR mode)
-        if (geo.skipSegments.includes(i)) continue;
-        
+      for (let i = 0; i < intPoints; i++) {
         const baseAngle = i * angleStep + baseRotation + (twistOffset * i);
         
-        // Apply noise to vertex positions
+        // Apply noise to vertex positions (uses lerped noise values)
         const noiseX = geo.noiseAmp * Math.sin(this.state.time * geo.noiseFreq + i * 3.7 + twinIndex) * scaledOuterR;
         const noiseY = geo.noiseAmp * Math.cos(this.state.time * geo.noiseFreq * 1.3 + i * 2.3 + twinIndex) * scaledOuterR;
         
-        // Apply swirl (spiral arm effect)
-        const swirlRadius = geo.swirl > 0 ? (1 + geo.swirl * (i / numPoints)) : 1;
+        // Apply swirl (spiral arm effect) - uses lerped swirl value
+        const swirlRadius = geo.swirl > 0 ? (1 + geo.swirl * (i / intPoints)) : 1;
         
-        // Calculate outer point with axial stretch
+        // Calculate outer point with axial stretch (lerped values)
         const outerRadius = (scaledOuterR + radiusOffset) * swirlRadius;
-        const outerX = Math.cos(baseAngle) * outerRadius * geo.axialStretch.x + noiseX;
-        const outerY = Math.sin(baseAngle) * outerRadius * geo.axialStretch.y + noiseY;
-        points.push({ x: drawX + outerX, y: drawY + outerY });
+        const outerX = Math.cos(baseAngle) * outerRadius * geo.axialStretchX + noiseX;
+        const outerY = Math.sin(baseAngle) * outerRadius * geo.axialStretchY + noiseY;
+        pointsArr.push({ x: drawX + outerX, y: drawY + outerY });
         
-        // Calculate inner point (valley between spikes)
+        // Calculate inner point (valley between spikes) - lerped inner ratio
         const innerAngle = baseAngle + angleStep / 2;
         const innerRadius = scaledInnerR + radiusOffset * 0.5;
         const innerNoiseX = geo.noiseAmp * 0.5 * Math.sin(this.state.time * geo.noiseFreq + i * 5.1) * scaledInnerR;
         const innerNoiseY = geo.noiseAmp * 0.5 * Math.cos(this.state.time * geo.noiseFreq + i * 4.3) * scaledInnerR;
-        const innerX = Math.cos(innerAngle) * innerRadius * geo.axialStretch.x + innerNoiseX;
-        const innerY = Math.sin(innerAngle) * innerRadius * geo.axialStretch.y + innerNoiseY;
-        points.push({ x: drawX + innerX, y: drawY + innerY });
+        const innerX = Math.cos(innerAngle) * innerRadius * geo.axialStretchX + innerNoiseX;
+        const innerY = Math.sin(innerAngle) * innerRadius * geo.axialStretchY + innerNoiseY;
+        pointsArr.push({ x: drawX + innerX, y: drawY + innerY });
         
-        // Add sub-spikes between main points (for THINKING, CELEBRATING, ADVISING, HOLIDAY)
-        if (geo.subSpikes && i < numPoints - 1) {
-          const subAngle = baseAngle + angleStep * 0.25;
-          const subRadius = scaledOuterR * 0.4;
-          const subX = Math.cos(subAngle) * subRadius * geo.axialStretch.x;
-          const subY = Math.sin(subAngle) * subRadius * geo.axialStretch.y;
+        // Blend in partial point for fractional morphing (e.g., 4.5 points = 4 full + 50% of 5th)
+        if (fracPart > 0.1 && i === intPoints - 1) {
+          const partialAngle = (i + 1) * angleStep + baseRotation + (twistOffset * (i + 1));
+          const partialRadius = scaledOuterR * fracPart;
+          const partialX = Math.cos(partialAngle) * partialRadius * geo.axialStretchX;
+          const partialY = Math.sin(partialAngle) * partialRadius * geo.axialStretchY;
+          pointsArr.push({ x: drawX + partialX, y: drawY + partialY });
+        }
           points.push({ x: drawX + subX, y: drawY + subY });
         }
       }
@@ -1650,9 +1675,9 @@ class CoAITwinEngine {
     drawMorphPath(outlinePath);
     this.ctx.stroke();
     
-    // Draw colored fill with glow
+    // Draw colored fill - MINIMAL shadow for slight depth only
     this.ctx.fillStyle = color;
-    this.ctx.shadowBlur = 20 + (glow * 40) + (visualConfig.distortion * 20);
+    this.ctx.shadowBlur = 8; // Reduced from 20+ to minimal shadow
     this.ctx.shadowColor = color;
     drawMorphPath(morphPath);
     this.ctx.fill();
@@ -2056,15 +2081,7 @@ export const CoAITwinMascot = memo(function CoAITwinMascot({
             }}
             data-testid="coai-twin-mascot-canvas-mini"
           />
-          <WarpMutationOverlay
-            phase={warpIntensity > 0 ? 'peak' : warpState.phase}
-            intensity={warpIntensity > 0 ? warpIntensity : warpState.intensity}
-            colors={warpState.colors}
-            size={bubbleSize}
-          />
-          <MutationFlashOverlay
-            isActive={warpState.phase === 'enter' || warpState.phase === 'peak'}
-          />
+          {/* OVERLAYS REMOVED - Physical geometry morphing handles mutations */}
         </div>
       </div>
     );
@@ -2083,41 +2100,16 @@ export const CoAITwinMascot = memo(function CoAITwinMascot({
         }}
         data-mascot-variant="expanded"
         data-mascot-mode={mode}
-        data-warp-active={warpState.phase !== 'idle'}
-        data-chromatic={chromaticAberration}
-        data-glitch={glitchEffect}
       >
-        {/* SVG filters for visual effects */}
-        <svg className="absolute w-0 h-0" aria-hidden="true">
-          <defs>
-            <filter id="chromatic-aberration-exp" x="-20%" y="-20%" width="140%" height="140%">
-              <feColorMatrix type="matrix" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" result="red" />
-              <feOffset in="red" dx="3" dy="0" result="red-shifted" />
-              <feColorMatrix type="matrix" in="SourceGraphic" values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0" result="green" />
-              <feColorMatrix type="matrix" in="SourceGraphic" values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0" result="blue" />
-              <feOffset in="blue" dx="-3" dy="0" result="blue-shifted" />
-              <feBlend mode="screen" in="red-shifted" in2="green" result="red-green" />
-              <feBlend mode="screen" in="red-green" in2="blue-shifted" />
-            </filter>
-            <filter id="glitch-effect-exp" x="-10%" y="-10%" width="120%" height="120%">
-              <feTurbulence type="fractalNoise" baseFrequency="0.015" numOctaves="1" result="noise" seed="0">
-                <animate attributeName="seed" from="0" to="100" dur="0.4s" repeatCount="indefinite" />
-              </feTurbulence>
-              <feDisplacementMap in="SourceGraphic" in2="noise" scale="8" xChannelSelector="R" yChannelSelector="G" />
-            </filter>
-          </defs>
-        </svg>
-        
         <div 
           ref={containerRef} 
-          className={`w-full h-full pointer-events-none relative ${glitchClass} ${chromaticClass}`}
+          className="w-full h-full pointer-events-none relative"
           style={{ 
             width: bubbleSize, 
             height: bubbleSize,
-            transform: `scale(1.4) ${warpIntensity > 0 ? `rotate(${warpIntensity * 5}deg)` : ''}`,
+            transform: 'scale(1.4)',
             transformOrigin: 'center',
-            filter: chromaticAberration ? 'url(#chromatic-aberration-exp)' : glitchEffect ? 'url(#glitch-effect-exp)' : showcaseFilter,
-            transition: 'filter 0.3s ease-out, transform 0.3s ease-out',
+            transition: 'transform 0.3s ease-out',
           }}
         >
           <canvas
@@ -2130,15 +2122,7 @@ export const CoAITwinMascot = memo(function CoAITwinMascot({
             }}
             data-testid="coai-twin-mascot-canvas-expanded"
           />
-          <WarpMutationOverlay
-            phase={warpIntensity > 0 ? 'peak' : warpState.phase}
-            intensity={warpIntensity > 0 ? warpIntensity : warpState.intensity}
-            colors={warpState.colors}
-            size={bubbleSize}
-          />
-          <MutationFlashOverlay
-            isActive={warpState.phase === 'enter' || warpState.phase === 'peak'}
-          />
+          {/* OVERLAYS REMOVED - Physical geometry morphing handles mutations */}
         </div>
       </div>
     );
@@ -2152,7 +2136,6 @@ export const CoAITwinMascot = memo(function CoAITwinMascot({
       style={{ background: 'transparent' }}
       data-mascot-variant="full"
       data-mascot-mode={mode}
-      data-warp-active={warpState.phase !== 'idle'}
     >
       <div ref={containerRef} className="w-full h-full relative" style={{ background: 'transparent' }}>
         <canvas
@@ -2161,15 +2144,7 @@ export const CoAITwinMascot = memo(function CoAITwinMascot({
           style={{ background: 'transparent' }}
           data-testid="coai-twin-mascot-canvas"
         />
-        <WarpMutationOverlay
-          phase={warpState.phase}
-          intensity={warpState.intensity}
-          colors={warpState.colors}
-          size={fullSize}
-        />
-        <MutationFlashOverlay
-          isActive={warpState.phase === 'enter' || warpState.phase === 'peak'}
-        />
+        {/* OVERLAYS REMOVED - Physical geometry morphing handles mutations */}
       </div>
 
       <div className="absolute bottom-0 left-0 w-full p-4 pointer-events-none"
