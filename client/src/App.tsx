@@ -182,6 +182,7 @@ import { useMascotAIIntegration } from "@/hooks/use-mascot-ai";
 import { useMascotObserver } from "@/hooks/use-mascot-observer";
 import { useMascotEmotes, setGlobalEmoteTrigger } from "@/hooks/use-mascot-emotes";
 import { useMascotShowcase } from "@/hooks/use-mascot-showcase";
+import { useCreditAwareness } from "@/hooks/use-credit-awareness";
 import { Maximize2, Minimize2, RotateCcw } from "lucide-react";
 
 function MascotRenderer() {
@@ -189,6 +190,7 @@ function MascotRenderer() {
   const workspaceId = (user as any)?.activeWorkspaceId || (user as any)?.workspaceId;
   useMascotAIIntegration(workspaceId);
   useMascotObserver(true);
+  useCreditAwareness(); // Business Buddy credit awareness for low balance warnings
   const baseMode = useMascotMode();
   
   // Apply HOLIDAY mode during Christmas season when mascot is idle
