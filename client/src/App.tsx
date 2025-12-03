@@ -328,6 +328,20 @@ function MascotRenderer() {
     thoughtManager.setCurrentPath(location);
   }, [location]);
   
+  // Track user changes for personalized greetings
+  useEffect(() => {
+    if (user) {
+      thoughtManager.setUser({
+        id: (user as any).id,
+        firstName: (user as any).firstName,
+        lastName: (user as any).lastName,
+        email: (user as any).email,
+      });
+    } else {
+      thoughtManager.setUser(null);
+    }
+  }, [user]);
+  
   // Guard mode thought trigger to prevent infinite loops - only trigger when mode actually changes
   const prevModeRef = useRef<string | null>(null);
   useEffect(() => {

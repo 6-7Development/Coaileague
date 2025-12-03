@@ -27,7 +27,8 @@ export type MascotMode =
   | 'ERROR'
   | 'CELEBRATING'
   | 'ADVISING'
-  | 'HOLIDAY';
+  | 'HOLIDAY'
+  | 'GREETING';
 
 export type InteractionType = 
   | 'drag_start' 
@@ -1464,6 +1465,7 @@ export const MASCOT_CONFIG: MascotConfig = {
       CELEBRATING: '🎉',
       ADVISING: '💡',
       HOLIDAY: '🎄',
+      GREETING: '👋',
     },
     defaultThoughts: {
       IDLE: [
@@ -1528,6 +1530,13 @@ export const MASCOT_CONFIG: MascotConfig = {
         "Happy holidays from the team!",
         "Wishing you a wonderful season!",
         "Enjoy the festive spirit!",
+      ],
+      GREETING: [
+        "Welcome! I'm Trinity, your AI business buddy.",
+        "Great to see you! Tap me anytime for help.",
+        "Hey there! Ready to make today productive?",
+        "Hello! I'm here to help with scheduling, payroll, and more.",
+        "Welcome back! What can I help you with?",
       ],
     },
   },
