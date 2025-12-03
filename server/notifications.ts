@@ -1,5 +1,6 @@
 import { IStorage } from './storage';
 import { emailService } from './services/emailService';
+import { notificationStateManager } from './services/notificationStateManager';
 
 interface NotificationHelperContext {
   storage: IStorage;
@@ -86,6 +87,9 @@ async function createAndBroadcastNotification(
     const unreadCount = await storage.getUnreadNotificationCount(params.userId, params.workspaceId);
     broadcastNotification(params.workspaceId, params.userId, 'notification_new', notification, unreadCount);
   }
+
+  // Also notify the NotificationStateManager for unified count tracking
+  await notificationStateManager.onNewNotification(params.userId, params.workspaceId, notification);
 
   return notification;
 }
