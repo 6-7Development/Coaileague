@@ -50,6 +50,7 @@ interface Twin {
   trail: { x: number; y: number; life: number }[];
   color: string;
   angle: number;
+  currentScale: number; // Smoothly lerped scale to prevent size glitches
 }
 
 interface Particle {
@@ -154,10 +155,14 @@ class CoAITwinEngine {
   private emoteParticles: { x: number; y: number; vx: number; vy: number; life: number; type: string; char?: string }[] = [];
 
   // Trinity Stars: Co (cyan), AI (purple), L (gold) - 120° offset for triangular formation - spells "CoAIL"
+  // Each star has currentScale initialized to BASE_STAR_SCALE (1.0) for smooth size transitions
+  private static readonly BASE_STAR_SCALE = 1.0;
+  private static readonly SCALE_LERP_SPEED = 0.12; // Smooth lerp factor for scale transitions
+  
   private twins: Twin[] = [
-    { id: 0, x: 0, y: 0, trail: [], color: '#38bdf8', angle: 0 },                    // Cyan - "Co"
-    { id: 1, x: 0, y: 0, trail: [], color: '#a855f7', angle: (Math.PI * 2) / 3 },    // Purple - "AI"  
-    { id: 2, x: 0, y: 0, trail: [], color: '#f4c15d', angle: (Math.PI * 4) / 3 }     // Gold - "L"
+    { id: 0, x: 0, y: 0, trail: [], color: '#38bdf8', angle: 0, currentScale: 1.0 },                    // Cyan - "Co"
+    { id: 1, x: 0, y: 0, trail: [], color: '#a855f7', angle: (Math.PI * 2) / 3, currentScale: 1.0 },    // Purple - "AI"  
+    { id: 2, x: 0, y: 0, trail: [], color: '#f4c15d', angle: (Math.PI * 4) / 3, currentScale: 1.0 }     // Gold - "L"
   ];
 
   private particles: Particle[] = [];
@@ -333,6 +338,11 @@ class CoAITwinEngine {
       goldBehavior: { scale: 1, wobble: 0.5, glow: 0.5, speed: 1 },
       particleEffect: undefined
     };
+    
+    // Reset all twin scales to base scale to prevent size glitches
+    this.twins.forEach(twin => {
+      twin.currentScale = CoAITwinEngine.BASE_STAR_SCALE;
+    });
   }
   
   setEmoteCallback(callback: (emote: EmoteName) => void): void {
@@ -1078,8 +1088,21 @@ class CoAITwinEngine {
     const behaviors = [this.emoteState.cyanBehavior, this.emoteState.purpleBehavior, this.emoteState.goldBehavior];
     const behavior = behaviors[twinIndex] || behaviors[0];
     
-    // Blend behavior with morph state
-    const scale = behavior.scale * morphState.scale;
+    // Calculate target scale from behavior and morph state
+    const targetScale = behavior.scale * morphState.scale;
+    
+    // Get current twin and smoothly lerp its scale toward target
+    const twin = this.twins[twinIndex];
+    if (twin) {
+      // Smooth lerp to prevent size glitches during state transitions
+      twin.currentScale = twin.currentScale + (targetScale - twin.currentScale) * CoAITwinEngine.SCALE_LERP_SPEED;
+      
+      // Clamp to prevent extreme values
+      twin.currentScale = Math.max(0.5, Math.min(twin.currentScale, 2.0));
+    }
+    
+    // Use smoothly interpolated scale instead of raw target
+    const scale = twin?.currentScale ?? targetScale;
     const wobble = behavior.wobble * morphState.wobbleAmount;
     const glow = Math.max(behavior.glow, morphState.glowIntensity);
     const speed = behavior.speed * morphState.wobbleSpeed;
