@@ -190,6 +190,46 @@ export function useMascotEmotes(): EmoteManager {
     return () => clearInterval(interval);
   }, [triggerEmote]); // Removed state.current - now uses ref
   
+  // PERIODIC RANDOM EMOTE AUTO-CYCLING
+  // Triggers random ambient emotes every 20-40 seconds for liveliness
+  useEffect(() => {
+    const AMBIENT_EMOTES: EmoteType[] = [
+      'curious', 'happy', 'thinking', 'helpful', 'nodding', 'waving', 'proud'
+    ];
+    
+    const triggerRandomEmote = () => {
+      // Only trigger if currently neutral and not transitioning
+      if (currentEmoteRef.current === 'neutral' && !state.isTransitioning) {
+        const randomEmote = AMBIENT_EMOTES[Math.floor(Math.random() * AMBIENT_EMOTES.length)];
+        triggerEmote(randomEmote);
+      }
+    };
+    
+    // Initial delay of 5-10 seconds before first random emote
+    const initialDelay = 5000 + Math.random() * 5000;
+    let timeoutId: NodeJS.Timeout;
+    let intervalId: NodeJS.Timeout;
+    
+    timeoutId = setTimeout(() => {
+      triggerRandomEmote();
+      
+      // Then trigger every 25-45 seconds with jitter
+      const scheduleNext = () => {
+        const nextDelay = 25000 + Math.random() * 20000; // 25-45s
+        intervalId = setTimeout(() => {
+          triggerRandomEmote();
+          scheduleNext();
+        }, nextDelay);
+      };
+      scheduleNext();
+    }, initialDelay);
+    
+    return () => {
+      clearTimeout(timeoutId);
+      clearTimeout(intervalId);
+    };
+  }, [triggerEmote, state.isTransitioning]);
+  
   // Cleanup
   useEffect(() => {
     return () => {

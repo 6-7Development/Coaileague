@@ -88,22 +88,40 @@ const generateLetterStates = (text: string, colorPalette: string[]): LetterState
 };
 
 // Calculate position to keep bubble anchored directly above mascot
+// mascotPos is in BOTTOM-RIGHT coordinates (distance from bottom-right corner)
 const calculateAnchoredPosition = (
   mascotPos: { x: number; y: number },
   mascotSize: number,
   isMobile: boolean
 ): React.CSSProperties => {
-  // Use centralized config for boundary settings
   const config = THOUGHT_BUBBLE_BOUNDARY_CONFIG;
   const bubbleWidth = isMobile ? config.mobileMaxWidth : config.maxWidth;
   
-  // Always position directly above the mascot, centered
+  // Convert bottom-right coords to actual screen position
+  const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 400;
+  const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 800;
+  
+  // Mascot center in screen coordinates
+  const mascotCenterX = viewportWidth - mascotPos.x - (mascotSize / 2);
+  const mascotTopY = viewportHeight - mascotPos.y - mascotSize;
+  
+  // Position bubble ABOVE mascot with small gap (offsetAbove reduced for closeness)
+  const bubbleBottomY = mascotTopY - 8; // 8px gap above mascot
+  
+  // Center bubble horizontally on mascot
+  let bubbleLeftX = mascotCenterX - (bubbleWidth / 2);
+  
+  // Clamp to viewport bounds with padding
+  const padding = 10;
+  bubbleLeftX = Math.max(padding, Math.min(bubbleLeftX, viewportWidth - bubbleWidth - padding));
+  const bubbleTop = Math.max(padding, bubbleBottomY - 60); // Estimate bubble height ~60px
+  
   return {
     position: 'fixed',
-    bottom: mascotPos.y + mascotSize + config.offsetAbove,
-    right: mascotPos.x - (bubbleWidth / 2) + (mascotSize / 2),
+    top: bubbleTop,
+    left: bubbleLeftX,
     maxWidth: bubbleWidth,
-    minWidth: isMobile ? 120 : 150,
+    minWidth: isMobile ? 100 : 120,
   };
 };
 
