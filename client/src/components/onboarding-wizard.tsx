@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Link } from "wouter";
 import { CoAIleagueLogo } from "@/components/coailleague-logo";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface OnboardingStep {
   id: string;
@@ -347,57 +348,107 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
         </div>
 
         {/* Step Content */}
-        <Card className="border-2">
-          <CardContent className="pt-6 space-y-4">
-            {/* Screenshot Placeholder */}
-            {currentStep.screenshot && (
-              <div className="aspect-video bg-muted rounded-lg flex items-center justify-center border-2 border-dashed">
-                <span className="text-muted-foreground">Screenshot: {currentStep.screenshot}</span>
-              </div>
-            )}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={currentStep.id}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
+          >
+            <Card className="border-2">
+              <CardContent className="pt-6 space-y-4">
+                {/* Screenshot Placeholder */}
+                {currentStep.screenshot && (
+                  <motion.div 
+                    className="aspect-video bg-muted rounded-lg flex items-center justify-center border-2 border-dashed"
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.1, duration: 0.3 }}
+                  >
+                    <span className="text-muted-foreground">Screenshot: {currentStep.screenshot}</span>
+                  </motion.div>
+                )}
 
-            {/* Features List */}
-            <div className="space-y-3">
-              {currentStep.features.map((feature, index) => (
-                <div key={index} className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
-                  <CheckCircle2 className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-                  <span className="text-sm font-medium">{feature}</span>
+                {/* Features List */}
+                <div className="space-y-3">
+                  {currentStep.features.map((feature, index) => (
+                    <motion.div 
+                      key={index} 
+                      className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted/70 transition-colors"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.1 + index * 0.08, duration: 0.25, ease: "easeOut" }}
+                    >
+                      <motion.div
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{ delay: 0.2 + index * 0.08, type: "spring", stiffness: 400 }}
+                      >
+                        <CheckCircle2 className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+                      </motion.div>
+                      <span className="text-sm font-medium">{feature}</span>
+                    </motion.div>
+                  ))}
                 </div>
-              ))}
-            </div>
 
-            {/* Launch Module Button */}
-            {currentStep.url && (
-              <Link href={currentStep.url}>
-                <Button className="w-full" variant="outline" onClick={onClose} data-testid={`button-launch-${currentStep.id}`}>
-                  Launch {currentStep.title.split(" ")[0]}
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </Link>
-            )}
-          </CardContent>
-        </Card>
+                {/* Launch Module Button */}
+                {currentStep.url && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 + currentStep.features.length * 0.08, duration: 0.25 }}
+                  >
+                    <Link href={currentStep.url}>
+                      <Button className="w-full group" variant="outline" onClick={onClose} data-testid={`button-launch-${currentStep.id}`}>
+                        Launch {currentStep.title.split(" ")[0]}
+                        <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                      </Button>
+                    </Link>
+                  </motion.div>
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
+        </AnimatePresence>
 
         {/* Family Progress Pills */}
         {currentStepIndex > 1 && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-            <div className="text-center p-2 rounded-lg bg-blue-500/10 border border-blue-500/20">
-              <div className="text-xs font-bold text-blue-400">Communication</div>
-              <div className="text-lg font-black">{getFamilyProgress("communication")}%</div>
-            </div>
-            <div className="text-center p-2 rounded-lg bg-indigo-500/10 border border-indigo-500/20">
-              <div className="text-xs font-bold text-blue-700 dark:text-blue-400">Operations</div>
-              <div className="text-lg font-black">{getFamilyProgress("operations")}%</div>
-            </div>
-            <div className="text-center p-2 rounded-lg bg-violet-500/10 border border-violet-500/20">
-              <div className="text-xs font-bold text-blue-700 dark:text-blue-400">Growth</div>
-              <div className="text-lg font-black">{getFamilyProgress("growth")}%</div>
-            </div>
-            <div className="text-center p-2 rounded-lg bg-red-500/10 border border-red-500/20">
-              <div className="text-xs font-bold text-red-400">Platform</div>
-              <div className="text-lg font-black">{getFamilyProgress("platform")}%</div>
-            </div>
-          </div>
+          <motion.div 
+            className="grid grid-cols-2 md:grid-cols-4 gap-2"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            {[
+              { name: "Communication", key: "communication" as const, color: "blue" },
+              { name: "Operations", key: "operations" as const, color: "indigo" },
+              { name: "Growth", key: "growth" as const, color: "violet" },
+              { name: "Platform", key: "platform" as const, color: "red" }
+            ].map((family, idx) => (
+              <motion.div 
+                key={family.key}
+                className={`text-center p-2 rounded-lg bg-${family.color}-500/10 border border-${family.color}-500/20 hover:bg-${family.color}-500/20 transition-colors`}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: idx * 0.08 }}
+                whileHover={{ scale: 1.02 }}
+              >
+                <div className={`text-xs font-bold ${family.color === 'red' ? 'text-red-400' : 'text-blue-700 dark:text-blue-400'}`}>
+                  {family.name}
+                </div>
+                <motion.div 
+                  className="text-lg font-black"
+                  key={getFamilyProgress(family.key)}
+                  initial={{ scale: 1.2, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ type: "spring", stiffness: 300 }}
+                >
+                  {getFamilyProgress(family.key)}%
+                </motion.div>
+              </motion.div>
+            ))}
+          </motion.div>
         )}
 
         {/* Navigation Buttons */}

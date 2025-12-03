@@ -1283,8 +1283,48 @@ class CoAITwinEngine {
     this.ctx.globalAlpha = 1.0;
   }
 
+  // Performance constants
+  private static readonly MAX_PARTICLES = 100;
+  private static readonly MAX_EMOTE_PARTICLES = 50;
+  private static readonly MAX_TRAIL_LENGTH = 20;
+  private static readonly TARGET_FRAME_TIME = 16.67; // 60fps
+  
   private animate = () => {
     if (!this.isRunning) return;
+    
+    // Skip animation when tab is hidden to save CPU
+    if (typeof document !== 'undefined' && document.hidden) {
+      this.animationFrameId = requestAnimationFrame(this.animate);
+      return;
+    }
+    
+    // Delta-based frame limiting
+    const now = performance.now();
+    const delta = now - this.lastFrameTime;
+    
+    // Skip frame if too soon (throttle to ~60fps)
+    if (delta < CoAITwinEngine.TARGET_FRAME_TIME * 0.8) {
+      this.animationFrameId = requestAnimationFrame(this.animate);
+      return;
+    }
+    
+    this.lastFrameTime = now;
+    
+    // Enforce particle caps to prevent memory bloat
+    if (this.particles.length > CoAITwinEngine.MAX_PARTICLES) {
+      this.particles = this.particles.slice(-CoAITwinEngine.MAX_PARTICLES);
+    }
+    if (this.emoteParticles.length > CoAITwinEngine.MAX_EMOTE_PARTICLES) {
+      this.emoteParticles = this.emoteParticles.slice(-CoAITwinEngine.MAX_EMOTE_PARTICLES);
+    }
+    
+    // Enforce trail caps
+    for (const twin of this.twins) {
+      if (twin.trail.length > CoAITwinEngine.MAX_TRAIL_LENGTH) {
+        twin.trail = twin.trail.slice(-CoAITwinEngine.MAX_TRAIL_LENGTH);
+      }
+    }
+    
     this.update();
     this.draw();
     this.animationFrameId = requestAnimationFrame(this.animate);

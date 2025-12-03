@@ -14,6 +14,13 @@ import { useSeasonalTheme } from '@/hooks/use-seasonal-theme';
 import { SeasonalTheme, ThemeDecorations } from '@/config/seasonalThemes';
 import { cn } from '@/lib/utils';
 
+// Christmas color palette for alternating AI letter glow
+const CHRISTMAS_COLORS = {
+  red: { color: '#dc2626', glow: '0 0 6px #dc2626, 0 0 12px #dc262650' },
+  green: { color: '#16a34a', glow: '0 0 6px #16a34a, 0 0 12px #16a34a50' },
+  gold: { color: '#eab308', glow: '0 0 6px #eab308, 0 0 12px #eab30850' },
+};
+
 interface AnimatedWordLogoProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';
   themeOverride?: SeasonalTheme;
@@ -456,13 +463,37 @@ export const AnimatedWordLogo = memo(function AnimatedWordLogo({
   const engineRef = useRef<DecorationEngine | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [hoveredLetter, setHoveredLetter] = useState<number | null>(null);
+  const [glowPhase, setGlowPhase] = useState(0);
   
   const { theme, config, prefersReducedMotion } = useSeasonalTheme({
     override: themeOverride,
     respectReducedMotion: true
   });
   
+  const isChristmas = theme === 'christmas';
   const sizeConfig = SIZES[size];
+  
+  // Animate Christmas glow colors with alternating pattern
+  useEffect(() => {
+    if (!isChristmas) return;
+    
+    const interval = setInterval(() => {
+      setGlowPhase(prev => (prev + 1) % 4);
+    }, 1800);
+    
+    return () => clearInterval(interval);
+  }, [isChristmas]);
+  
+  // Get Christmas glow for A and I letters (alternating)
+  const getChristmasGlow = useMemo(() => {
+    const colorSequence = [
+      [CHRISTMAS_COLORS.red, CHRISTMAS_COLORS.green],
+      [CHRISTMAS_COLORS.green, CHRISTMAS_COLORS.gold],
+      [CHRISTMAS_COLORS.gold, CHRISTMAS_COLORS.red],
+      [CHRISTMAS_COLORS.red, CHRISTMAS_COLORS.green],
+    ];
+    return colorSequence[glowPhase];
+  }, [glowPhase]);
   
   // Initialize decoration engine
   useEffect(() => {
@@ -579,33 +610,47 @@ export const AnimatedWordLogo = memo(function AnimatedWordLogo({
       
       {/* Word mark */}
       <div className="flex items-baseline relative">
-        {letters.map(({ char, index, isAccent, delay }) => (
-          <span
-            key={index}
-            className={cn(
-              "font-black transition-all duration-300 cursor-default select-none",
-              interactive && "hover:scale-110 hover:-translate-y-1",
-              prefersReducedMotion ? '' : getAnimationClass(config.letterEffects.animation)
-            )}
-            style={{
-              fontSize: sizeConfig.fontSize,
-              background: isAccent 
-                ? `linear-gradient(135deg, ${config.letterEffects.gradient.join(', ')})`
-                : undefined,
-              WebkitBackgroundClip: isAccent ? 'text' : undefined,
-              WebkitTextFillColor: isAccent ? 'transparent' : undefined,
-              color: isAccent ? undefined : 'currentColor',
-              textShadow: hoveredLetter === index ? config.letterEffects.shadow : undefined,
-              animationDelay: `${delay}s`,
-              animationDuration: '2s'
-            }}
-            onMouseEnter={() => interactive && setHoveredLetter(index)}
-            onMouseLeave={() => setHoveredLetter(null)}
-            data-testid={`logo-letter-${index}`}
-          >
-            {char}
-          </span>
-        ))}
+        {letters.map(({ char, index, isAccent, delay }) => {
+          // Christmas: A (index 2) and I (index 3) get alternating glow colors
+          const isA = index === 2;
+          const isI = index === 3;
+          const christmasStyle = isChristmas && (isA || isI) ? {
+            color: isA ? getChristmasGlow[0].color : getChristmasGlow[1].color,
+            textShadow: isA ? getChristmasGlow[0].glow : getChristmasGlow[1].glow,
+            transition: 'color 0.6s ease, text-shadow 0.6s ease',
+          } : {};
+          
+          return (
+            <span
+              key={index}
+              className={cn(
+                "font-black transition-all duration-300 cursor-default select-none",
+                interactive && "hover:scale-110 hover:-translate-y-1",
+                prefersReducedMotion ? '' : getAnimationClass(config.letterEffects.animation)
+              )}
+              style={{
+                fontSize: sizeConfig.fontSize,
+                background: (isAccent && !isChristmas)
+                  ? `linear-gradient(135deg, ${config.letterEffects.gradient.join(', ')})`
+                  : undefined,
+                WebkitBackgroundClip: (isAccent && !isChristmas) ? 'text' : undefined,
+                WebkitTextFillColor: (isAccent && !isChristmas) ? 'transparent' : undefined,
+                color: (isAccent && !isChristmas) ? undefined : (isChristmas && isAccent) ? christmasStyle.color : 'currentColor',
+                textShadow: (isChristmas && isAccent) 
+                  ? christmasStyle.textShadow 
+                  : (hoveredLetter === index ? config.letterEffects.shadow : undefined),
+                animationDelay: `${delay}s`,
+                animationDuration: '2s',
+                ...christmasStyle,
+              }}
+              onMouseEnter={() => interactive && setHoveredLetter(index)}
+              onMouseLeave={() => setHoveredLetter(null)}
+              data-testid={`logo-letter-${index}`}
+            >
+              {char}
+            </span>
+          );
+        })}
         
         {/* Trademark */}
         <span 

@@ -39,23 +39,35 @@ export function CoAIleagueLogo({
     setIsChristmas(holiday?.key === 'christmas');
   }, [enableSeasonalEffects]);
 
-  // Animate glow colors for Christmas
+  // Animate glow colors for Christmas - smooth continuous animation
   useEffect(() => {
     if (!isChristmas) return;
     
     const interval = setInterval(() => {
-      setGlowPhase(prev => (prev + 1) % 3);
-    }, 1500); // Cycle every 1.5 seconds
+      setGlowPhase(prev => (prev + 1) % 4);
+    }, 1800); // Slower, more elegant cycling
     
     return () => clearInterval(interval);
   }, [isChristmas]);
 
-  // Christmas glow colors - red, green, blue (memoized to compute once per render)
-  const christmasGlow = useMemo(() => {
+  // Christmas glow colors - alternating per letter for A and I
+  // Uses 4 phases for smooth transitions: red/green, green/gold, gold/red, red/green...
+  const christmasGlowA = useMemo(() => {
     const colors = [
-      { color: '#ff3333', glow: 'drop-shadow(0 0 8px #ff3333) drop-shadow(0 0 16px #ff333366)' }, // Red
-      { color: '#22c55e', glow: 'drop-shadow(0 0 8px #22c55e) drop-shadow(0 0 16px #22c55e66)' }, // Green  
-      { color: '#3b82f6', glow: 'drop-shadow(0 0 8px #3b82f6) drop-shadow(0 0 16px #3b82f666)' }, // Blue
+      { color: '#dc2626', glow: 'drop-shadow(0 0 6px #dc2626) drop-shadow(0 0 12px #dc262650)' }, // Red
+      { color: '#16a34a', glow: 'drop-shadow(0 0 6px #16a34a) drop-shadow(0 0 12px #16a34a50)' }, // Green
+      { color: '#eab308', glow: 'drop-shadow(0 0 6px #eab308) drop-shadow(0 0 12px #eab30850)' }, // Gold
+      { color: '#dc2626', glow: 'drop-shadow(0 0 6px #dc2626) drop-shadow(0 0 12px #dc262650)' }, // Red
+    ];
+    return colors[glowPhase];
+  }, [glowPhase]);
+
+  const christmasGlowI = useMemo(() => {
+    const colors = [
+      { color: '#16a34a', glow: 'drop-shadow(0 0 6px #16a34a) drop-shadow(0 0 12px #16a34a50)' }, // Green
+      { color: '#eab308', glow: 'drop-shadow(0 0 6px #eab308) drop-shadow(0 0 12px #eab30850)' }, // Gold
+      { color: '#dc2626', glow: 'drop-shadow(0 0 6px #dc2626) drop-shadow(0 0 12px #dc262650)' }, // Red
+      { color: '#16a34a', glow: 'drop-shadow(0 0 6px #16a34a) drop-shadow(0 0 12px #16a34a50)' }, // Green
     ];
     return colors[glowPhase];
   }, [glowPhase]);
@@ -158,12 +170,19 @@ export function CoAIleagueLogo({
           >
             <tspan fill={colors.textAccent}>Co</tspan>
             <tspan 
-              fill={isChristmas ? christmasGlow.color : colors.textPrimary}
+              fill={isChristmas ? christmasGlowA.color : colors.textPrimary}
               style={{
-                filter: isChristmas ? christmasGlow.glow : 'none',
-                transition: 'fill 0.5s ease, filter 0.5s ease',
+                filter: isChristmas ? christmasGlowA.glow : 'none',
+                transition: 'fill 0.6s ease, filter 0.6s ease',
               }}
-            >AI</tspan>
+            >A</tspan>
+            <tspan 
+              fill={isChristmas ? christmasGlowI.color : colors.textPrimary}
+              style={{
+                filter: isChristmas ? christmasGlowI.glow : 'none',
+                transition: 'fill 0.6s ease, filter 0.6s ease',
+              }}
+            >I</tspan>
             <tspan fill={colors.textAccent}>league</tspan>
           </text>
           <text
