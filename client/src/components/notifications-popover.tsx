@@ -296,38 +296,35 @@ export function NotificationsPopover() {
   const rawMaintenanceAlerts = data?.maintenanceAlerts || [];
   const rawNotifications = data?.notifications || [];
   
-  // Show all platform updates but mark locally acknowledged ones as viewed
+  // Show all platform updates - don't filter by localStorage
   // This prevents "No updates yet" when user has acknowledged previous updates
-  const filteredPlatformUpdates = rawPlatformUpdates.map(u => ({
-    ...u,
-    isViewed: u.isViewed || acknowledgedIds.has(u.id) // Mark as viewed if locally acknowledged
-  }));
+  const filteredPlatformUpdates = rawPlatformUpdates;
   const filteredMaintenanceAlerts = rawMaintenanceAlerts.filter(a => !acknowledgedAlertIds.has(a.id));
   const filteredNotifications = rawNotifications.filter(n => !acknowledgedIds.has(n.id));
   
-  // Use API's pre-computed counts as baseline when data is available
-  // This ensures counts show immediately when cache is available
+  // Use API's pre-computed counts as baseline
   const apiUnreadPlatformUpdates = data?.unreadPlatformUpdates ?? 0;
   const apiUnreadNotifications = data?.unreadNotifications ?? 0;
   const apiUnreadAlerts = data?.unreadAlerts ?? 0;
   const apiTotalUnread = data?.totalUnread ?? 0;
   
-  // For display in tabs, compute from filtered data (excludes locally acknowledged)
-  const unreadPlatformUpdates = filteredPlatformUpdates.filter(u => !u.isViewed).length;
+  // For display in tabs, use API counts
+  const unreadPlatformUpdates = apiUnreadPlatformUpdates;
   const unreadAlerts = filteredMaintenanceAlerts.filter(a => !a.isAcknowledged).length;
   
-  // Use WebSocket count for notifications only (more accurate real-time data)
-  // Fall back to API count, then to calculated count
+  // For notifications: WebSocket is real-time source of truth
+  // The WebSocket count includes all user notifications, not just what's in the popover
   const calculatedNotificationCount = filteredNotifications.filter(n => !n.isRead).length;
   const unreadNotifications = isConnected && wsUnreadCount > 0 
     ? wsUnreadCount 
     : (apiUnreadNotifications > 0 ? apiUnreadNotifications : calculatedNotificationCount);
   
-  // Total unread: Use API total when loading, otherwise compute from components
-  // This ensures the badge shows correct count immediately from cache
-  const totalUnread = data 
-    ? (unreadPlatformUpdates + unreadNotifications + unreadAlerts)
-    : (isConnected && wsUnreadCount > 0 ? wsUnreadCount : apiTotalUnread);
+  // Total unread: WebSocket count is most accurate for notifications
+  // Combine WebSocket notification count with API's platform updates and alerts
+  // This ensures badge shows real-time count from WebSocket
+  const totalUnread = isConnected && wsUnreadCount > 0
+    ? wsUnreadCount + unreadPlatformUpdates + unreadAlerts
+    : (apiTotalUnread > 0 ? apiTotalUnread : (unreadPlatformUpdates + unreadNotifications + unreadAlerts));
 
   const unviewedUpdates = filteredPlatformUpdates.filter(u => !u.isViewed);
   const allUnviewedSelected = unviewedUpdates.length > 0 && selectedIds.size === unviewedUpdates.length;
