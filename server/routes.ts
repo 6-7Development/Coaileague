@@ -506,13 +506,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Get platform updates (What's New) with user read state
-      const platformUpdatesData = await storage.getPlatformUpdatesWithReadState(userId, workspaceId, 20);
-      const unreadPlatformUpdates = platformUpdatesData.filter(u => !u.isViewed).length;
+      // Get platform updates with user read state - fetch more for display (50 items)
+      const platformUpdatesData = await storage.getPlatformUpdatesWithReadState(userId, workspaceId, 50);
       
-      // Get notifications
-      const notifications = await storage.getNotificationsByUser(userId, workspaceId, 20);
-      const unreadNotifications = notifications.filter(n => !n.isRead).length;
+      // Get TRUE unread count for platform updates (count all unviewed, not just fetched)
+      const { getUnviewedCount } = await import('./services/whatsNewService');
+      const workspaceRole = authReq.workspaceRole || 'staff';
+      const trueUnreadPlatformUpdates = await getUnviewedCount(userId, workspaceRole);
+      
+      // Get notifications - fetch more for display (50 items)
+      const notifications = await storage.getAllNotificationsForUser(userId, workspaceId, 50);
+      
+      // Get TRUE unread notification count
+      const trueUnreadNotifications = await storage.getTotalUnreadCountForUser(userId, workspaceId);
       
       // Get active maintenance alerts
       const maintenanceAlerts = await aiNotificationService.getActiveMaintenanceAlerts(workspaceId);
@@ -522,13 +528,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         platformUpdates: platformUpdatesData,
         maintenanceAlerts,
         notifications,
-        unreadPlatformUpdates,
-        unreadNotifications,
+        unreadPlatformUpdates: trueUnreadPlatformUpdates,
+        unreadNotifications: trueUnreadNotifications,
         unreadAlerts,
-        totalUnread: unreadPlatformUpdates + unreadNotifications + unreadAlerts,
+        totalUnread: trueUnreadPlatformUpdates + trueUnreadNotifications + unreadAlerts,
       });
     } catch (error) {
-      console.error('Error fetching combined notifications:', error);
       res.status(500).json({ message: 'Failed to fetch notifications' });
     }
   });
