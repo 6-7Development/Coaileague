@@ -38,6 +38,14 @@ export interface Thought {
   showDiscount?: boolean;    // Show 10% discount badge
 }
 
+// User info for personalized greetings
+export interface UserInfo {
+  id: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  email?: string | null;
+}
+
 export interface ThoughtManagerState {
   currentThought: Thought | null;
   queue: Thought[];
@@ -50,6 +58,9 @@ export interface ThoughtManagerState {
   currentPath: string;
   isOnPublicPage: boolean;
   promoRotationTimer: ReturnType<typeof setInterval> | null;
+  // User tracking for personalized greetings
+  user: UserInfo | null;
+  lastGreetedUserId: string | null;
 }
 
 type ThoughtListener = (thought: Thought | null) => void;
@@ -74,6 +85,8 @@ class ThoughtManager {
       currentPath,
       isOnPublicPage: isPublicPage(currentPath),
       promoRotationTimer: null,
+      user: null,
+      lastGreetedUserId: null,
     };
   }
   
@@ -350,6 +363,99 @@ class ThoughtManager {
    */
   isOnPublicPage(): boolean {
     return this.state.isOnPublicPage;
+  }
+  
+  // ============================================================================
+  // PERSONALIZED USER GREETINGS
+  // ============================================================================
+  
+  /**
+   * Set the current user and trigger personalized greeting
+   */
+  setUser(user: UserInfo | null): void {
+    const previousUserId = this.state.user?.id;
+    this.state.user = user;
+    
+    // Trigger personalized greeting when:
+    // 1. User logs in for the first time this session
+    // 2. User switches to a different account (hasn't been greeted yet)
+    if (user && user.id !== this.state.lastGreetedUserId) {
+      const userId = user.id;
+      setTimeout(() => {
+        // Verify user is still the same at trigger time to prevent stale greetings
+        if (this.state.user?.id === userId && this.state.lastGreetedUserId !== userId) {
+          this.state.lastGreetedUserId = userId;
+          this.triggerPersonalizedGreeting();
+        }
+      }, 1500);
+    }
+  }
+  
+  /**
+   * Get user's display name (first name or email prefix)
+   */
+  private getUserDisplayName(): string {
+    if (!this.state.user) return 'there';
+    
+    if (this.state.user.firstName) {
+      return this.state.user.firstName;
+    }
+    
+    if (this.state.user.email) {
+      return this.state.user.email.split('@')[0];
+    }
+    
+    return 'there';
+  }
+  
+  /**
+   * Trigger a personalized greeting for the logged-in user
+   */
+  triggerPersonalizedGreeting(): void {
+    if (!this.state.user) return;
+    
+    const displayName = this.getUserDisplayName();
+    const hour = new Date().getHours();
+    
+    // Time-based greeting
+    let timeGreeting: string;
+    if (hour >= 5 && hour < 12) {
+      timeGreeting = 'Good morning';
+    } else if (hour >= 12 && hour < 17) {
+      timeGreeting = 'Good afternoon';
+    } else if (hour >= 17 && hour < 21) {
+      timeGreeting = 'Good evening';
+    } else {
+      timeGreeting = 'Working late';
+    }
+    
+    // Personalized greetings with name
+    const greetings = [
+      `${timeGreeting}, ${displayName}! Ready to get things done?`,
+      `Hey ${displayName}! I'm Trinity, your AI business buddy.`,
+      `Welcome back, ${displayName}! What can I help with today?`,
+      `Hi ${displayName}! Tap me anytime for help or insights.`,
+      `${timeGreeting}, ${displayName}! Let's make today productive.`,
+    ];
+    
+    // Holiday-aware personalized greeting
+    if (this.state.isHoliday && this.state.currentHoliday) {
+      greetings.push(
+        `${this.state.currentHoliday.greeting} ${displayName}!`,
+        `Hey ${displayName}! ${this.state.currentHoliday.greeting}`
+      );
+    }
+    
+    const text = greetings[Math.floor(Math.random() * greetings.length)];
+    const thought = this.createThought(text, 'GREETING' as MascotMode, 'default', 'high');
+    this.showThought(thought);
+  }
+  
+  /**
+   * Get the current user info
+   */
+  getUser(): UserInfo | null {
+    return this.state.user;
   }
   
   startRotation(): void {
