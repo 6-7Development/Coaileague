@@ -458,6 +458,70 @@ class ThoughtManager {
     return this.state.user;
   }
   
+  // ============================================================================
+  // ONBOARDING REMINDERS
+  // ============================================================================
+  
+  /**
+   * Trigger an onboarding reminder based on progress
+   */
+  triggerOnboardingReminder(completedSteps: number, totalSteps: number): void {
+    if (!this.state.user) return;
+    
+    const displayName = this.getUserDisplayName();
+    const remaining = totalSteps - completedSteps;
+    const progressPercent = Math.round((completedSteps / totalSteps) * 100);
+    
+    let reminders: string[];
+    
+    if (completedSteps === 0) {
+      reminders = [
+        `Hey ${displayName}! Let's get your organization set up. I'll guide you through!`,
+        `${displayName}, ready to unlock automation? Just ${totalSteps} quick steps to go!`,
+        `Welcome ${displayName}! Complete your setup to unlock all features + a 10% discount.`,
+      ];
+    } else if (progressPercent < 50) {
+      reminders = [
+        `Nice start, ${displayName}! ${remaining} more steps to unlock automation.`,
+        `You're ${progressPercent}% done, ${displayName}! Keep going for that 10% discount.`,
+        `${displayName}, tap me for help with your next setup step!`,
+      ];
+    } else if (progressPercent < 100) {
+      reminders = [
+        `Almost there, ${displayName}! Just ${remaining} steps to full automation access.`,
+        `${progressPercent}% complete! Your 10% discount is waiting, ${displayName}.`,
+        `So close, ${displayName}! Finish setup to unlock AI-powered features.`,
+      ];
+    } else {
+      reminders = [
+        `Congratulations ${displayName}! All setup complete. Your automation is unlocked!`,
+        `${displayName}, you're all set! Enjoy full platform access and your 10% discount.`,
+        `Setup complete! I'm here to help you get the most out of CoAIleague, ${displayName}.`,
+      ];
+    }
+    
+    const text = reminders[Math.floor(Math.random() * reminders.length)];
+    const thought = this.createThought(text, 'ADVISING', 'default', 'normal');
+    this.queueThought(thought);
+  }
+  
+  /**
+   * Trigger a specific step guidance message
+   */
+  triggerStepGuidance(stepName: string, stepDescription: string): void {
+    const displayName = this.getUserDisplayName();
+    
+    const guidance = [
+      `Let's work on "${stepName}", ${displayName}! ${stepDescription}`,
+      `Next up: ${stepName}. ${stepDescription}`,
+      `Time for ${stepName}! I'll help you through this, ${displayName}.`,
+    ];
+    
+    const text = guidance[Math.floor(Math.random() * guidance.length)];
+    const thought = this.createThought(text, 'ADVISING', 'default', 'high');
+    this.showThought(thought);
+  }
+  
   startRotation(): void {
     if (this.rotationTimer) return;
     
