@@ -468,7 +468,7 @@ function MascotRenderer() {
         {currentThought && (
           <MagicFloatingText
             thought={currentThought}
-            mascotPosition={{ x: position.x, y: position.y }}
+            mascotPosition={{ x: effectiveX, y: effectiveY }}
             mascotSize={bubbleSize}
             isMobile={isMobile}
           />

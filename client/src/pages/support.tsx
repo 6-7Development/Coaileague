@@ -93,6 +93,10 @@ export default function Support() {
 
   const faqs = [
     {
+      question: "What is the CoAI buddy and how do I use it?",
+      answer: "CoAI is your intelligent AI assistant represented by three floating stars (Co/cyan, AI/purple, LE/gold) visible on every page. It proactively offers helpful tips, answers your questions, and learns from your usage patterns. Just watch for the colorful floating messages near the mascot - they provide contextual guidance based on what you're doing. CoAI monitors platform health, suggests optimizations, and connects you to HelpAI for deeper conversations.",
+    },
+    {
       question: "How do I get started with CoAIleague?",
       answer: "Getting started is simple: 1) Sign up for a free trial, 2) Create your workspace and invite your first employee, 3) Set up your clients and schedule your first shift, 4) Start tracking time and generating invoices. Our interactive demo walks you through each step, or schedule a personalized onboarding session with our team.",
     },

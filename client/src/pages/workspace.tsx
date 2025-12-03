@@ -128,6 +128,30 @@ export default function Workspace() {
         </div>
       )}
 
+      {/* CoAI Buddy Info Card */}
+      <Card className="mb-8 bg-gradient-to-r from-cyan-50 to-purple-50 dark:from-cyan-950/20 dark:to-purple-950/20 border-cyan-200 dark:border-cyan-800">
+        <CardContent className="pt-6">
+          <div className="flex items-start gap-4">
+            <div className="p-3 rounded-full bg-gradient-to-br from-cyan-500 via-purple-500 to-amber-500 shrink-0">
+              <MessageSquare className="h-6 w-6 text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-semibold text-lg mb-1" data-testid="text-coai-buddy-title">Meet Your CoAI Buddy</h3>
+              <p className="text-sm text-muted-foreground mb-2" data-testid="text-coai-buddy-desc">
+                Look for the three floating stars (Co/cyan, AI/purple, LE/gold) on every page. CoAI offers helpful tips, 
+                answers questions, learns from your usage patterns, and provides contextual guidance. It monitors platform 
+                health and celebrates holidays with seasonal themes!
+              </p>
+              <div className="flex flex-wrap gap-2 text-xs">
+                <span className="px-2 py-1 rounded-full bg-cyan-100 dark:bg-cyan-900 text-cyan-700 dark:text-cyan-300">Proactive Tips</span>
+                <span className="px-2 py-1 rounded-full bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300">Learns Your Patterns</span>
+                <span className="px-2 py-1 rounded-full bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300">Seasonal Themes</span>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Feature Grid */}
       <div>
         <h2 className="text-xl font-semibold mb-4">Your Tools</h2>
