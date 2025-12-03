@@ -48,6 +48,17 @@ const WORKSPACE_ROLE_ACCESS: Record<string, number> = {
 
 const STATIC_SEED_UPDATES: PlatformUpdate[] = [
   {
+    id: 'coai-buddy-mascot-2025-12-03',
+    title: 'Meet CoAI - Your Intelligent Platform Buddy',
+    description: 'CoAI is your new AI companion represented by three floating stars (Co/cyan, AI/purple, LE/gold). It proactively offers tips, answers questions, and learns from your usage. CoAI monitors platform health, suggests optimizations, celebrates holidays with seasonal themes, and provides contextual guidance on every page. Look for the colorful floating messages near your mascot!',
+    date: '2025-12-03',
+    category: 'feature',
+    badge: 'NEW',
+    version: '2.2.0',
+    isNew: true,
+    priority: 1,
+  },
+  {
     id: 'sms-notifications-2025-11-28',
     title: 'SMS Notifications',
     description: 'Receive shift reminders, schedule changes, and approval notifications via SMS. Connect your Twilio account to enable text message alerts for your entire team.',
@@ -56,7 +67,7 @@ const STATIC_SEED_UPDATES: PlatformUpdate[] = [
     badge: 'NEW',
     version: '2.1.0',
     isNew: true,
-    priority: 1,
+    priority: 2,
   },
   {
     id: 'calendar-sync-2025-11-28',

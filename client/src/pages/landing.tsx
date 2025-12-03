@@ -176,12 +176,13 @@ export default function Landing() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8 sm:mb-12">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6 mb-8 sm:mb-12">
             {[
               { icon: CalendarClock, title: "Smart Scheduling", desc: "AI creates optimized schedules matching skills, availability, and workload" },
               { icon: DollarSign, title: "Auto Payroll", desc: "Calculate wages, deductions, and generate payments automatically" },
               { icon: FileText, title: "Invoice Generation", desc: "Create and send client invoices based on completed work" },
               { icon: Shield, title: "Compliance Monitoring", desc: "Track regulations and flag issues before they become problems" },
+              { icon: Headphones, title: "CoAI Buddy", desc: "Your AI assistant offers tips, answers questions, and learns from your usage patterns" },
             ].map((feature) => (
               <Card key={feature.title} className="p-4 sm:p-6 hover-elevate">
                 <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-3 sm:mb-4">

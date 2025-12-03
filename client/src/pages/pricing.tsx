@@ -389,6 +389,10 @@ export default function Pricing() {
           <div className="space-y-3 sm:space-y-4">
             {[
               {
+                q: "What is the CoAI buddy and what does it do?",
+                a: "CoAI is your intelligent AI assistant that lives on every page. It proactively offers tips, answers questions, and learns from your usage patterns to provide personalized guidance. CoAI monitors platform health, suggests optimizations, and can help with scheduling, payroll, and compliance questions. It's like having an expert consultant available 24/7.",
+              },
+              {
                 q: "Why is CoAIleague priced so much higher than other workforce management tools?",
                 a: "Because we replace entire positions, not just software. Traditional tools like When I Work or Deputy cost $2-5/employee but still require a payroll specialist ($90K/yr), billing coordinator ($85K/yr), and scheduler ($77K/yr). CoAIleague eliminates these salaries entirely through AI automation. At $4,999-$17,999/month, you save $192K-$216K annually in NET savings—more than paying for itself.",
               },
