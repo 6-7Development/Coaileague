@@ -429,7 +429,7 @@ router.get('/holiday', async (_req, res) => {
       { key: 'summer', name: 'Summer', startMonth: 6, startDay: 21, endMonth: 8, endDay: 31 },
       { key: 'halloween', name: 'Halloween', startMonth: 10, startDay: 25, endMonth: 11, endDay: 1 },
       { key: 'thanksgiving', name: 'Thanksgiving', startMonth: 11, startDay: 20, endMonth: 11, endDay: 28 },
-      { key: 'christmas', name: 'Christmas', startMonth: 12, startDay: 20, endMonth: 12, endDay: 26 },
+      { key: 'christmas', name: 'Christmas', startMonth: 12, startDay: 1, endMonth: 12, endDay: 26 },
     ];
     
     for (const holiday of holidays) {

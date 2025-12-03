@@ -372,8 +372,9 @@ export class EmoteTransitionRenderer {
       ctx.lineWidth = wave.thickness;
       ctx.stroke();
       
-      // Inner glow
-      const gradient = ctx.createRadialGradient(0, 0, wave.radius - 2, 0, 0, wave.radius + 2);
+      // Inner glow - ensure radius is always positive
+      const innerRadius = Math.max(0, wave.radius - 2);
+      const gradient = ctx.createRadialGradient(0, 0, innerRadius, 0, 0, wave.radius + 2);
       gradient.addColorStop(0, this.colorWithAlpha(wave.color, 0));
       gradient.addColorStop(0.5, this.colorWithAlpha(wave.color, wave.opacity * 0.3));
       gradient.addColorStop(1, this.colorWithAlpha(wave.color, 0));
