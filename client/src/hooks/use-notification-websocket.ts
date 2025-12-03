@@ -2,9 +2,46 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 
+interface EnhancedNotification {
+  id: string;
+  type: string;
+  title: string;
+  message: string;
+  isRead: boolean;
+  actionUrl?: string;
+  createdAt: string;
+  // Enhanced metadata fields for end-user display
+  detailedCategory?: string;
+  sourceType?: string;
+  sourceName?: string;
+  endUserSummary?: string;
+  brokenDescription?: string;
+  impactDescription?: string;
+  badge?: string;
+  category?: string;
+}
+
+interface PlatformUpdate {
+  type: string;
+  category: string;
+  title: string;
+  description: string;
+  version?: string;
+  isNew?: boolean;
+  // Enhanced metadata fields
+  detailedCategory?: string;
+  sourceType?: string;
+  sourceName?: string;
+  endUserSummary?: string;
+  brokenDescription?: string;
+  impactDescription?: string;
+  badge?: string;
+}
+
 interface NotificationWebSocketMessage {
-  type: 'notification_new' | 'notification_read' | 'notification_count_updated' | 'notifications_subscribed' | 'error';
-  notification?: any;
+  type: 'notification_new' | 'notification_read' | 'notification_count_updated' | 'notifications_subscribed' | 'platform_update' | 'error';
+  notification?: EnhancedNotification;
+  update?: PlatformUpdate;
   unreadCount?: number;
   timestamp?: string;
   workspaceId?: string;
@@ -94,20 +131,86 @@ export function useNotificationWebSocket(userId: string | undefined, workspaceId
               break;
 
             case 'notification_new':
-              console.log('🔔 New notification received:', data.notification?.title);
-              // Invalidate notifications query to refetch data
-              queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+              console.log('🔔 New notification received (LIVE):', data.notification?.title);
+              
+              // LIVE UPDATE: Insert notification directly into cache
+              if (data.notification) {
+                queryClient.setQueryData(["/api/notifications/combined"], (oldData: any) => {
+                  if (!oldData) return oldData;
+                  const newNotification = {
+                    ...data.notification,
+                    isRead: false,
+                    createdAt: data.timestamp || new Date().toISOString(),
+                  };
+                  return {
+                    ...oldData,
+                    notifications: [newNotification, ...(oldData.notifications || [])],
+                    unreadNotifications: (oldData.unreadNotifications || 0) + 1,
+                    totalUnread: (oldData.totalUnread || 0) + 1,
+                  };
+                });
+                
+                // Also invalidate to ensure sync
+                queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+              }
               
               // Update unread count
               if (data.unreadCount !== undefined) {
                 setUnreadCount(data.unreadCount);
               }
               
-              // Show toast notification
+              // Show toast notification with enhanced info
               if (data.notification) {
+                const description = data.notification.endUserSummary || data.notification.message;
                 toast({
                   title: data.notification.title,
-                  description: data.notification.message,
+                  description,
+                  variant: "info" as any,
+                });
+              }
+              break;
+
+            case 'platform_update':
+              console.log('📣 Platform update received (LIVE):', data.update?.title);
+              
+              // LIVE UPDATE: Insert platform update directly into What's New cache
+              if (data.update) {
+                queryClient.setQueryData(["/api/notifications/combined"], (oldData: any) => {
+                  if (!oldData) return oldData;
+                  const newUpdate = {
+                    id: `live-${Date.now()}`,
+                    title: data.update!.title,
+                    description: data.update!.endUserSummary || data.update!.description,
+                    category: data.update!.category,
+                    version: data.update!.version,
+                    badge: data.update!.badge || 'NEW',
+                    isNew: true,
+                    isViewed: false,
+                    createdAt: data.timestamp || new Date().toISOString(),
+                    // Enhanced metadata
+                    detailedCategory: data.update!.detailedCategory,
+                    sourceType: data.update!.sourceType,
+                    sourceName: data.update!.sourceName,
+                    endUserSummary: data.update!.endUserSummary,
+                    brokenDescription: data.update!.brokenDescription,
+                    impactDescription: data.update!.impactDescription,
+                  };
+                  return {
+                    ...oldData,
+                    platformUpdates: [newUpdate, ...(oldData.platformUpdates || [])],
+                    unreadPlatformUpdates: (oldData.unreadPlatformUpdates || 0) + 1,
+                    totalUnread: (oldData.totalUnread || 0) + 1,
+                  };
+                });
+                
+                // Also invalidate to ensure sync
+                queryClient.invalidateQueries({ queryKey: ["/api/whats-new"] });
+                queryClient.invalidateQueries({ queryKey: ["/api/whats-new/latest"] });
+                
+                // Show toast for platform update
+                toast({
+                  title: "New Update Available",
+                  description: data.update.title,
                   variant: "info" as any,
                 });
               }
@@ -116,6 +219,7 @@ export function useNotificationWebSocket(userId: string | undefined, workspaceId
             case 'notification_read':
               console.log('📖 Notification marked as read');
               queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+              queryClient.invalidateQueries({ queryKey: ["/api/notifications/combined"] });
               if (data.unreadCount !== undefined) {
                 setUnreadCount(data.unreadCount);
               }
@@ -126,6 +230,8 @@ export function useNotificationWebSocket(userId: string | undefined, workspaceId
               if (data.unreadCount !== undefined) {
                 setUnreadCount(data.unreadCount);
               }
+              // Refresh combined data to get accurate counts
+              queryClient.invalidateQueries({ queryKey: ["/api/notifications/combined"] });
               break;
 
             case 'error':
