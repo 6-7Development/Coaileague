@@ -59,10 +59,15 @@ The system employs a multi-tenant architecture with RBAC security and isolation,
 **System Design Choices:**
 - **Modularity:** Composed of 87 backend service modules and 220+ frontend routes.
 - **Type Safety:** 100% LSP clean with zero compilation warnings.
-- **Automation:** Features 10 scheduled autonomous jobs.
+- **Automation:** Features 12 scheduled autonomous jobs.
 - **Audit Logging:** Comprehensive audit logging with a 365-day retention policy.
 - **Security:** AES-256-GCM encryption, PBKDF2-SHA256 key derivation, RBAC, per-org credential isolation, and credential expiry warnings.
 - **Unified Config Registry:** Single source of truth at `shared/config/registry.ts` with Zod validation.
+
+**RBAC Role Hierarchy:**
+- **Platform Roles (8 levels):** root_admin, deputy_admin, sysop, support_manager, support_agent, compliance_officer, Bot, none
+- **Workspace Roles (7 levels):** org_owner, org_admin, department_manager, supervisor, staff, auditor, contractor
+- **Guards Available:** requireOwner, requireManager, requireHRManager, requireSupervisor, requireEmployee, requireLeader, requireAuditor, requireContractor, requirePlatformAdmin, requirePlatformStaff, requireManagerOrPlatformStaff, attachWorkspaceId
 
 ### External Dependencies
 - **Stripe**: Payment processing, payroll, and financial integrations.
