@@ -21,6 +21,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AnimatedNotificationBell } from "./animated-notification-bell";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useMobile } from "@/hooks/use-mobile";
+import { useAuth } from "@/hooks/useAuth";
+import { useNotificationWebSocket } from "@/hooks/use-notification-websocket";
 
 interface PlatformUpdate {
   id: string;
@@ -151,22 +153,41 @@ export function NotificationsPopover() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const scrollRef = useRef<HTMLDivElement>(null);
   const { isMobile } = useMobile();
+  
+  // Get user context for WebSocket and filtering
+  const { user } = useAuth();
+  const userId = (user as any)?.id;
+  const workspaceId = (user as any)?.activeWorkspaceId || (user as any)?.workspaceId;
+  
+  // Connect to WebSocket for real-time notification updates
+  // This syncs notifications in real-time and updates the cache directly
+  const { isConnected, unreadCount: wsUnreadCount } = useNotificationWebSocket(userId, workspaceId);
 
   // WebSocket delivers live updates now - polling is just a fallback
   // Live updates insert directly into cache via use-notification-websocket hook
   const { data, isLoading, refetch } = useQuery<NotificationsData>({
     queryKey: ["/api/notifications/combined"],
-    enabled: true,
+    enabled: !!user, // Only fetch when user is authenticated
     staleTime: 10000, // 10 seconds - trust WebSocket for fresh data
-    refetchInterval: 30000, // 30 seconds fallback instead of 3 seconds
+    refetchInterval: isConnected ? 60000 : 15000, // Slower polling when WS is connected
     refetchIntervalInBackground: false, // Only poll when visible
   });
 
   useEffect(() => {
+    if (open) {
+      // Refresh data when popover opens
+      refetch();
+      if (scrollRef.current) {
+        scrollRef.current.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    }
+  }, [open, refetch]);
+  
+  useEffect(() => {
     if (open && scrollRef.current) {
       scrollRef.current.scrollTo({ top: 0, behavior: "smooth" });
     }
-  }, [open, activeTab]);
+  }, [activeTab]);
 
   const markAsReadMutation = useMutation({
     mutationFn: async (notificationId: string) => {
@@ -274,8 +295,16 @@ export function NotificationsPopover() {
   const filteredNotifications = rawNotifications.filter(n => !acknowledgedIds.has(n.id));
   
   const unreadPlatformUpdates = filteredPlatformUpdates.filter(u => !u.isViewed).length;
-  const unreadNotifications = filteredNotifications.filter(n => !n.isRead).length;
   const unreadAlerts = filteredMaintenanceAlerts.filter(a => !a.isAcknowledged).length;
+  
+  // Use WebSocket count for notifications only (more accurate real-time data)
+  // Fall back to calculated count from data when WS is not connected
+  const calculatedNotificationCount = filteredNotifications.filter(n => !n.isRead).length;
+  const unreadNotifications = isConnected && wsUnreadCount !== undefined 
+    ? wsUnreadCount 
+    : calculatedNotificationCount;
+  
+  // Total unread includes platform updates + notifications + alerts
   const totalUnread = unreadPlatformUpdates + unreadNotifications + unreadAlerts;
 
   const unviewedUpdates = filteredPlatformUpdates.filter(u => !u.isViewed);
