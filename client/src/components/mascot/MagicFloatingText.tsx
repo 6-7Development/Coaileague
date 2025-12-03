@@ -35,14 +35,8 @@ const LETTER_EXIT_ANIMATIONS = [
   'dissolve', 'sparkleOut', 'driftAway', 'burstOut', 'slideOut', 'glitchOut'
 ];
 
-// Font variations for letters
-const FONT_STYLES = [
-  { fontWeight: 400, fontStyle: 'normal' },
-  { fontWeight: 500, fontStyle: 'normal' },
-  { fontWeight: 600, fontStyle: 'normal' },
-  { fontWeight: 700, fontStyle: 'normal' },
-  { fontWeight: 800, fontStyle: 'normal' },
-];
+// Universal font style for mascot - consistent and readable
+const MASCOT_FONT_STYLE = { fontWeight: 600, fontStyle: 'normal' };
 
 interface LetterState {
   char: string;
@@ -78,15 +72,15 @@ const generateLetterStates = (text: string, colorPalette: string[]): LetterState
       char,
       color: baseColor,
       glowColor: baseColor,
-      scale: 0.9 + Math.random() * 0.3, // 0.9-1.2
-      rotation: (Math.random() - 0.5) * 8, // -4 to 4 degrees
+      scale: 0.95 + Math.random() * 0.1, // 0.95-1.05 (subtle variation)
+      rotation: (Math.random() - 0.5) * 4, // -2 to 2 degrees (subtle)
       enterAnim: pickRandom(LETTER_ENTER_ANIMATIONS),
       exitAnim: pickRandom(LETTER_EXIT_ANIMATIONS),
-      fontStyle: pickRandom(FONT_STYLES),
-      delay: index * 35 + Math.random() * 20, // Staggered appear
+      fontStyle: MASCOT_FONT_STYLE, // Universal consistent font
+      delay: index * 40 + Math.random() * 15, // Staggered appear
       isVisible: false,
       isExiting: false,
-      offsetX: (Math.random() - 0.5) * 2,
+      offsetX: (Math.random() - 0.5) * 1.5,
       offsetY: (Math.random() - 0.5) * 2,
     };
   });
@@ -195,7 +189,7 @@ export function MagicFloatingText({
   const [letters, setLetters] = useState<LetterState[]>([]);
   const [isActive, setIsActive] = useState(false);
   const lastThoughtIdRef = useRef<string | null>(null);
-  const timersRef = useRef<NodeJS.Timeout[]>([]);
+  const timersRef = useRef<number[]>([]);
   
   // Choose color palette based on thought type or random
   const colorPalette = useMemo(() => {
@@ -229,7 +223,7 @@ export function MagicFloatingText({
       
       // Stagger letter appearances
       newLetters.forEach((letter, index) => {
-        const timer = setTimeout(() => {
+        const timer = window.setTimeout(() => {
           setLetters(prev => prev.map((l, i) => 
             i === index ? { ...l, isVisible: true } : l
           ));
@@ -237,16 +231,19 @@ export function MagicFloatingText({
         timersRef.current.push(timer);
       });
       
-      // Calculate duration
+      // Calculate duration - longer for better readability
       const now = Date.now();
-      const duration = thought.expiresAt ? Math.max(thought.expiresAt - now, 2500) : 4000;
-      const exitStartTime = Math.max(duration - 1200, 1000);
+      const textLength = thought.text.length;
+      const baseDuration = 5000; // 5 seconds minimum
+      const readingTime = Math.max(baseDuration, textLength * 80); // 80ms per character
+      const duration = thought.expiresAt ? Math.max(thought.expiresAt - now, readingTime) : Math.min(readingTime, 10000);
+      const exitStartTime = Math.max(duration - 1500, 2000);
       
       // Start exit animations with stagger
-      const exitTimer = setTimeout(() => {
+      const exitTimer = window.setTimeout(() => {
         newLetters.forEach((_, index) => {
           const exitDelay = index * 40 + Math.random() * 60;
-          const timer = setTimeout(() => {
+          const timer = window.setTimeout(() => {
             setLetters(prev => prev.map((l, i) => 
               i === index ? { ...l, isExiting: true } : l
             ));
@@ -257,11 +254,11 @@ export function MagicFloatingText({
       timersRef.current.push(exitTimer);
       
       // Hide completely after duration
-      const hideTimer = setTimeout(() => {
+      const hideTimer = window.setTimeout(() => {
         setIsActive(false);
         setLetters([]);
         lastThoughtIdRef.current = null;
-      }, duration + 500);
+      }, duration + 800);
       timersRef.current.push(hideTimer);
       
     } else if (!thought) {
