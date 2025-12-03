@@ -178,31 +178,36 @@ function hasVisibilityAccess(userRole: string, visibility: string): boolean {
 }
 
 /**
- * Seed the database with static updates (idempotent - won't duplicate)
+ * Seed the database with static updates - ONLY if database is completely empty
+ * This prevents re-seeding old data that was intentionally cleared
  */
 export async function seedPlatformUpdates(): Promise<void> {
   try {
-    for (const update of STATIC_SEED_UPDATES) {
-      const existing = await db.query.platformUpdates.findFirst({
-        where: eq(platformUpdatesTable.id, update.id),
+    // Check if there are ANY platform updates - if so, skip seeding entirely
+    const existingCount = await db.query.platformUpdates.findFirst({});
+    
+    if (existingCount) {
+      console.log('[WhatsNew] Platform updates already exist, skipping seed');
+      return;
+    }
+    
+    // Only seed if the database is truly empty - seed first 3 only
+    const seedUpdates = STATIC_SEED_UPDATES.slice(0, 3);
+    for (const update of seedUpdates) {
+      await db.insert(platformUpdatesTable).values({
+        id: update.id,
+        title: update.title,
+        description: update.description,
+        category: update.category,
+        badge: update.badge,
+        version: update.version,
+        isNew: update.isNew ?? false,
+        priority: update.priority,
+        learnMoreUrl: update.learnMoreUrl,
+        visibility: 'all',
+        date: new Date(update.date),
       });
-      
-      if (!existing) {
-        await db.insert(platformUpdatesTable).values({
-          id: update.id,
-          title: update.title,
-          description: update.description,
-          category: update.category,
-          badge: update.badge,
-          version: update.version,
-          isNew: update.isNew ?? false,
-          priority: update.priority,
-          learnMoreUrl: update.learnMoreUrl,
-          visibility: 'all',
-          date: new Date(update.date),
-        });
-        console.log(`[WhatsNew] Seeded update: ${update.title}`);
-      }
+      console.log(`[WhatsNew] Seeded update: ${update.title}`);
     }
     console.log('[WhatsNew] Platform updates seeding complete');
   } catch (error) {

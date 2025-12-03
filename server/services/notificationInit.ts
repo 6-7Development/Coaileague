@@ -50,32 +50,55 @@ export async function initializeNotifications(): Promise<void> {
   console.log("[NotificationInit] Checking for initial platform updates...");
   
   try {
+    // Check if there are ANY platform updates - if so, skip seeding entirely
+    const existingCount = await db.select({ count: sql<number>`count(*)` })
+      .from(platformUpdates);
+    
+    if (existingCount[0]?.count > 0) {
+      console.log("[NotificationInit] Platform updates already exist, skipping seed");
+      return;
+    }
+    
+    // Only seed if the database is truly empty
     for (const update of INITIAL_UPDATES) {
-      const existing = await db.select({ id: platformUpdates.id })
-        .from(platformUpdates)
-        .where(eq(platformUpdates.id, update.id))
-        .limit(1);
-      
-      if (existing.length === 0) {
-        await db.insert(platformUpdates).values({
-          id: update.id,
-          title: update.title,
-          description: update.description,
-          category: update.category,
-          priority: update.priority,
-          isNew: true,
-          visibility: "all",
-          learnMoreUrl: update.learnMoreUrl,
-          date: new Date(),
-          metadata: { source: "system-init", version: "1.0.0" },
-        });
-        console.log(`[NotificationInit] Created update: ${update.title}`);
-      }
+      await db.insert(platformUpdates).values({
+        id: update.id,
+        title: update.title,
+        description: update.description,
+        category: update.category,
+        priority: update.priority,
+        isNew: true,
+        visibility: "all",
+        learnMoreUrl: update.learnMoreUrl,
+        date: new Date(),
+        metadata: { source: "system-init", version: "1.0.0" },
+      });
+      console.log(`[NotificationInit] Created update: ${update.title}`);
     }
     
     console.log("[NotificationInit] Initial updates seeded successfully");
   } catch (error) {
     console.error("[NotificationInit] Failed to seed updates:", error);
+  }
+}
+
+// Cleanup old platform updates, keeping only the most recent 3
+export async function cleanupOldPlatformUpdates(): Promise<number> {
+  try {
+    const result = await db.execute(sql`
+      DELETE FROM platform_updates 
+      WHERE id NOT IN (
+        SELECT id FROM platform_updates ORDER BY created_at DESC LIMIT 3
+      )
+    `);
+    const deleted = result.rowCount || 0;
+    if (deleted > 0) {
+      console.log(`[NotificationInit] Cleaned up ${deleted} old platform updates`);
+    }
+    return deleted;
+  } catch (error) {
+    console.error("[NotificationInit] Failed to cleanup updates:", error);
+    return 0;
   }
 }
 
