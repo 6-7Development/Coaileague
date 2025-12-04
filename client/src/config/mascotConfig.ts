@@ -1,18 +1,29 @@
 /**
- * Universal Mascot Configuration
+ * Trinity Configuration - Your Business Success Partner
  * 
- * Central configuration for the CoAI Twin mascot system.
- * Edit this file to change mascot behavior platform-wide.
+ * Central configuration for Trinity, your dedicated business success guide.
+ * Edit this file to change Trinity's behavior platform-wide.
  * NO page-by-page changes required - all settings flow from here.
  * 
+ * Who is Trinity?
+ * Trinity is your organization's intelligent business companion - a three-star
+ * constellation that guides org creators and leaders toward business success.
+ * She understands workforce management, scheduling, payroll, and team dynamics.
+ * 
  * Features:
- * - AI-powered smart assistant connected to Gemini AI brain
- * - Live FAQ data pulling
+ * - Business insights and growth recommendations
+ * - Task generation for things you need to accomplish
+ * - Live FAQ and help integration
  * - Self-resizing based on device/screen
- * - Holiday-aware thought monologues
+ * - Holiday-aware personality and greetings
  * - Contextual reactions (movement, taps, drag)
- * - Business growth advice and task creation
- * - Gamification guidance
+ * - Gamification and achievement guidance
+ * 
+ * Access Control:
+ * Trinity is available exclusively for:
+ * - Organization creators (org_owner)
+ * - Root administrators (root_admin, deputy_admin, sysop)
+ * - Support roles (support_manager, support_agent)
  */
 
 export type MascotMode = 
@@ -1304,7 +1315,21 @@ export const MASCOT_CONFIG: MascotConfig = {
   
   hiddenRoutes: [
     '/mascot-demo',
+    '/chat',
+    '/helpdesk',
+    '/timesheet',
+    '/payroll',
+    '/invoicing',
+    '/schedule',
+    '/settings',
+    '/admin',
+    '/time-clock',
   ],
+  
+  allowedRoles: {
+    platform: ['root_admin', 'deputy_admin', 'sysop', 'support_manager', 'support_agent'],
+    workspace: ['org_owner'],
+  },
   
   idleModeRoutes: [
     '/',
@@ -1643,11 +1668,12 @@ export const MASCOT_CONFIG: MascotConfig = {
         "Happy holidays to you and your team!",
       ],
       GREETING: [
-        "Welcome! I'm Trinity, your AI business buddy.",
+        "Welcome! I'm Trinity, your business success partner.",
         "Good to see you! Click me anytime for help.",
         "Hello! Ready to make today productive together?",
         "Hi there! I can help with scheduling, payroll, and more.",
-        "Welcome back! How can I assist you today?",
+        "Welcome back! What can we accomplish today?",
+        "I'm Trinity - three stars, one mission: your success!",
       ],
     },
   },
@@ -1661,6 +1687,30 @@ export const MASCOT_CONFIG: MascotConfig = {
 
 export function shouldHideMascot(pathname: string): boolean {
   return MASCOT_CONFIG.hiddenRoutes.some(route => pathname.startsWith(route));
+}
+
+export interface TrinityAccessContext {
+  platformRole?: string | null;
+  workspaceRole?: string | null;
+  isOrgOwner?: boolean;
+}
+
+export function canAccessTrinity(context: TrinityAccessContext): boolean {
+  const { platformRole, workspaceRole, isOrgOwner } = context;
+  
+  if (platformRole && MASCOT_CONFIG.allowedRoles.platform.includes(platformRole)) {
+    return true;
+  }
+  
+  if (workspaceRole && MASCOT_CONFIG.allowedRoles.workspace.includes(workspaceRole)) {
+    return true;
+  }
+  
+  if (isOrgOwner) {
+    return true;
+  }
+  
+  return false;
 }
 
 export function getMascotMode(pathname: string, aiState?: string): MascotMode {

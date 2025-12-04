@@ -175,7 +175,8 @@ import MASCOT_CONFIG, {
   shouldHideMascot, 
   getDeviceSizes, 
   getCurrentHoliday, 
-  EMOTE_CONFIGS 
+  EMOTE_CONFIGS,
+  canAccessTrinity 
 } from "@/config/mascotConfig";
 import { thoughtManager, type Thought } from "@/lib/mascot/ThoughtManager";
 import { useMascotAIIntegration } from "@/hooks/use-mascot-ai";
@@ -574,7 +575,16 @@ function MascotRenderer() {
     }
   }, [isDragging, isDemo, allowedModes]);
   
-  if (!MASCOT_CONFIG.enabled || shouldHideMascot(location)) return null;
+  const hasTrinityAccess = useMemo(() => {
+    if (!user) return false;
+    return canAccessTrinity({
+      platformRole: (user as any)?.platformRole,
+      workspaceRole: (user as any)?.role,
+      isOrgOwner: (user as any)?.isOrgOwner || (user as any)?.role === 'org_owner',
+    });
+  }, [user]);
+  
+  if (!MASCOT_CONFIG.enabled || shouldHideMascot(location) || !hasTrinityAccess) return null;
   
   const effectiveX = position.x + (isDragging ? 0 : floatOffsetRef.current.x + targetInfluence.x);
   const effectiveY = position.y + (isDragging ? 0 : floatOffsetRef.current.y + targetInfluence.y);
