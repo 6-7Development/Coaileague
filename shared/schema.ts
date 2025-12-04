@@ -3228,7 +3228,10 @@ export const onboardingStepEnum = pgEnum('onboarding_step', [
   'document_upload', 'work_availability', 'certifications', 'acknowledgements', 'completed'
 ]);
 
-// Onboarding Invites
+// Invite Status Enum for tracking invitation lifecycle
+export const inviteStatusEnum = pgEnum('invite_status', ['sent', 'opened', 'accepted', 'expired', 'revoked']);
+
+// Onboarding Invites - Enhanced with tracking fields
 export const onboardingInvites = pgTable("onboarding_invites", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
@@ -3237,24 +3240,45 @@ export const onboardingInvites = pgTable("onboarding_invites", {
   email: varchar("email").notNull(),
   firstName: varchar("first_name").notNull(),
   lastName: varchar("last_name").notNull(),
+  role: varchar("role"), // Job title/role for the invited employee
+  workspaceRole: workspaceRoleEnum("workspace_role").default("staff"), // Permission level
 
   inviteToken: varchar("invite_token").notNull().unique(),
   expiresAt: timestamp("expires_at").notNull(),
 
+  // Enhanced tracking fields
+  status: inviteStatusEnum("status").default("sent").notNull(),
+  openedAt: timestamp("opened_at"), // When invite link was first clicked
   acceptedAt: timestamp("accepted_at"),
   isUsed: boolean("is_used").default(false),
+  
+  // Resend tracking
+  resentCount: integer("resent_count").default(0),
+  lastResentAt: timestamp("last_resent_at"),
+  
+  // Notification preferences
+  sendEmailOnCreate: boolean("send_email_on_create").default(true),
+  reminderSentAt: timestamp("reminder_sent_at"),
 
   sentBy: varchar("sent_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
-});
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  workspaceIdx: index("onboarding_invites_workspace_idx").on(table.workspaceId),
+  emailIdx: index("onboarding_invites_email_idx").on(table.email),
+  statusIdx: index("onboarding_invites_status_idx").on(table.status),
+  tokenIdx: index("onboarding_invites_token_idx").on(table.inviteToken),
+}));
 
 export const insertOnboardingInviteSchema = createInsertSchema(onboardingInvites).omit({
   id: true,
   createdAt: true,
+  updatedAt: true,
 });
 
 export type InsertOnboardingInvite = z.infer<typeof insertOnboardingInviteSchema>;
 export type OnboardingInvite = typeof onboardingInvites.$inferSelect;
+export type InviteStatus = 'sent' | 'opened' | 'accepted' | 'expired' | 'revoked';
 
 // Onboarding Applications
 export const onboardingApplications = pgTable("onboarding_applications", {

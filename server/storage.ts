@@ -1778,10 +1778,117 @@ export class DatabaseStorage implements IStorage {
   async updateOnboardingInvite(id: string, data: Partial<InsertOnboardingInvite>): Promise<OnboardingInvite | undefined> {
     const [updated] = await db
       .update(onboardingInvites)
-      .set(data)
+      .set({ ...data, updatedAt: new Date() })
       .where(eq(onboardingInvites.id, id))
       .returning();
     return updated;
+  }
+
+  async markInviteOpened(id: string): Promise<OnboardingInvite | undefined> {
+    const [updated] = await db
+      .update(onboardingInvites)
+      .set({ 
+        status: 'opened' as any,
+        openedAt: new Date(),
+        updatedAt: new Date()
+      })
+      .where(eq(onboardingInvites.id, id))
+      .returning();
+    return updated;
+  }
+
+  async markInviteAccepted(id: string): Promise<OnboardingInvite | undefined> {
+    const [updated] = await db
+      .update(onboardingInvites)
+      .set({ 
+        status: 'accepted' as any,
+        acceptedAt: new Date(),
+        isUsed: true,
+        updatedAt: new Date()
+      })
+      .where(eq(onboardingInvites.id, id))
+      .returning();
+    return updated;
+  }
+
+  async resendInvite(id: string, newToken: string, newExpiresAt: Date): Promise<OnboardingInvite | undefined> {
+    const [invite] = await db.select().from(onboardingInvites).where(eq(onboardingInvites.id, id));
+    if (!invite) return undefined;
+    
+    const [updated] = await db
+      .update(onboardingInvites)
+      .set({ 
+        inviteToken: newToken,
+        expiresAt: newExpiresAt,
+        status: 'sent' as any,
+        resentCount: (invite.resentCount || 0) + 1,
+        lastResentAt: new Date(),
+        updatedAt: new Date()
+      })
+      .where(eq(onboardingInvites.id, id))
+      .returning();
+    return updated;
+  }
+
+  async revokeInvite(id: string): Promise<OnboardingInvite | undefined> {
+    const [updated] = await db
+      .update(onboardingInvites)
+      .set({ 
+        status: 'revoked' as any,
+        updatedAt: new Date()
+      })
+      .where(eq(onboardingInvites.id, id))
+      .returning();
+    return updated;
+  }
+
+  async getInvitesByStatus(workspaceId: string, status: string): Promise<OnboardingInvite[]> {
+    return await db
+      .select()
+      .from(onboardingInvites)
+      .where(
+        and(
+          eq(onboardingInvites.workspaceId, workspaceId),
+          eq(onboardingInvites.status, status as any)
+        )
+      )
+      .orderBy(desc(onboardingInvites.createdAt));
+  }
+
+  async getExpiredInvites(): Promise<OnboardingInvite[]> {
+    return await db
+      .select()
+      .from(onboardingInvites)
+      .where(
+        and(
+          eq(onboardingInvites.status, 'sent' as any),
+          sql`${onboardingInvites.expiresAt} < NOW()`
+        )
+      );
+  }
+
+  async markExpiredInvites(): Promise<number> {
+    const result = await db
+      .update(onboardingInvites)
+      .set({ 
+        status: 'expired' as any,
+        updatedAt: new Date()
+      })
+      .where(
+        and(
+          or(
+            eq(onboardingInvites.status, 'sent' as any),
+            eq(onboardingInvites.status, 'opened' as any)
+          ),
+          sql`${onboardingInvites.expiresAt} < NOW()`
+        )
+      );
+    return result.rowCount || 0;
+  }
+
+  async getInviteById(id: string): Promise<OnboardingInvite | undefined> {
+    const [invite] = await db.select().from(onboardingInvites).where(eq(onboardingInvites.id, id));
+    return invite;
   }
   
   // ============================================================================
