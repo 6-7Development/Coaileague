@@ -6,8 +6,8 @@
  */
 
 import { db } from '../../db';
-import { systemAuditLogs, users } from '@shared/schema';
-import { eq } from 'drizzle-orm';
+import { systemAuditLogs, users, governanceApprovals } from '@shared/schema';
+import { eq, and, lt, desc } from 'drizzle-orm';
 
 export const ROLE_HIERARCHY: Record<string, number> = {
   'none': 0,
@@ -229,21 +229,6 @@ class AIBrainAuthorizationService {
     'ai_brain_override': { description: 'Override AI Brain restrictions', minApprovalRole: 'root_admin', requiresSecondApproval: true },
   };
 
-  private pendingApprovals: Map<string, {
-    id: string;
-    actionType: string;
-    requesterId: string;
-    requesterRole: string;
-    targetEntity: string;
-    parameters: Record<string, any>;
-    reason: string;
-    requestedAt: Date;
-    expiresAt: Date;
-    status: 'pending' | 'approved' | 'rejected' | 'expired';
-    approvals: Array<{ userId: string; role: string; approvedAt: Date }>;
-    requiredApprovals: number;
-  }> = new Map();
-
   isDestructiveAction(actionType: string): boolean {
     return actionType in AIBrainAuthorizationService.DESTRUCTIVE_ACTIONS;
   }
@@ -274,112 +259,175 @@ class AIBrainAuthorizationService {
       return { approved: true, reason: 'Auto-approved: Requester has sufficient authority' };
     }
 
-    const approvalId = `approval_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const now = new Date();
-    const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000); // 24 hour expiry
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
-    this.pendingApprovals.set(approvalId, {
-      id: approvalId,
-      actionType: data.actionType,
-      requesterId: data.requesterId,
-      requesterRole: data.requesterRole,
-      targetEntity: data.targetEntity,
-      parameters: data.parameters,
-      reason: data.reason,
-      requestedAt: now,
-      expiresAt,
-      status: 'pending',
-      approvals: [],
-      requiredApprovals: actionDetails.requiresSecondApproval ? 2 : 1,
-    });
+    try {
+      const [approval] = await db.insert(governanceApprovals).values({
+        actionType: data.actionType,
+        requesterId: data.requesterId,
+        requesterRole: data.requesterRole,
+        targetEntity: data.targetEntity,
+        parameters: data.parameters,
+        reason: data.reason,
+        status: 'pending',
+        requiredApprovals: actionDetails.requiresSecondApproval ? 2 : 1,
+        approvals: [],
+        expiresAt,
+      }).returning();
 
-    await this.logApprovalAction(data.requesterId, data.actionType, 'pending', `Approval requested for ${actionDetails.description}`);
+      await this.logApprovalAction(data.requesterId, data.actionType, 'pending', `Approval requested for ${actionDetails.description}`);
 
-    console.log(`[GovernanceGate] Approval requested: ${approvalId} for ${data.actionType}`);
+      console.log(`[GovernanceGate] Approval requested: ${approval.id} for ${data.actionType} (DB persisted)`);
 
-    return { 
-      approved: false, 
-      approvalId, 
-      reason: `Approval required from ${actionDetails.minApprovalRole} or higher. ${actionDetails.requiresSecondApproval ? 'Second approval required.' : ''}`
-    };
+      return { 
+        approved: false, 
+        approvalId: approval.id, 
+        reason: `Approval required from ${actionDetails.minApprovalRole} or higher. ${actionDetails.requiresSecondApproval ? 'Second approval required.' : ''}`
+      };
+    } catch (error) {
+      console.error('[GovernanceGate] Failed to persist approval:', error);
+      return { approved: false, reason: 'Failed to create approval request' };
+    }
   }
 
   async approveDestructiveAction(approvalId: string, approverId: string, approverRole: string): Promise<{ success: boolean; fullyApproved: boolean; reason: string }> {
-    const approval = this.pendingApprovals.get(approvalId);
-    
-    if (!approval) {
-      return { success: false, fullyApproved: false, reason: 'Approval request not found' };
+    try {
+      const [approval] = await db.select().from(governanceApprovals).where(eq(governanceApprovals.id, approvalId)).limit(1);
+      
+      if (!approval) {
+        return { success: false, fullyApproved: false, reason: 'Approval request not found' };
+      }
+
+      if (approval.status !== 'pending') {
+        return { success: false, fullyApproved: false, reason: `Approval already ${approval.status}` };
+      }
+
+      if (new Date() > approval.expiresAt) {
+        await db.update(governanceApprovals).set({ status: 'expired', updatedAt: new Date() }).where(eq(governanceApprovals.id, approvalId));
+        return { success: false, fullyApproved: false, reason: 'Approval request has expired' };
+      }
+
+      if (approval.requesterId === approverId) {
+        return { success: false, fullyApproved: false, reason: 'Cannot approve your own request' };
+      }
+
+      const actionDetails = AIBrainAuthorizationService.DESTRUCTIVE_ACTIONS[approval.actionType];
+      const approverLevel = ROLE_HIERARCHY[approverRole] || 0;
+      const minApprovalLevel = ROLE_HIERARCHY[actionDetails?.minApprovalRole || 'root_admin'] || 0;
+
+      if (approverLevel < minApprovalLevel) {
+        return { success: false, fullyApproved: false, reason: `Insufficient authority. Requires ${actionDetails?.minApprovalRole}` };
+      }
+
+      const existingApprovals = (approval.approvals as Array<{ userId: string; role: string; approvedAt: string }>) || [];
+      
+      if (existingApprovals.some(a => a.userId === approverId)) {
+        return { success: false, fullyApproved: false, reason: 'Already approved by this user' };
+      }
+
+      const updatedApprovals = [...existingApprovals, {
+        userId: approverId,
+        role: approverRole,
+        approvedAt: new Date().toISOString(),
+      }];
+
+      const fullyApproved = updatedApprovals.length >= approval.requiredApprovals;
+      
+      await db.update(governanceApprovals).set({ 
+        approvals: updatedApprovals,
+        status: fullyApproved ? 'approved' : 'pending',
+        updatedAt: new Date(),
+      }).where(eq(governanceApprovals.id, approvalId));
+
+      if (fullyApproved) {
+        console.log(`[GovernanceGate] Action ${approvalId} FULLY APPROVED (DB persisted)`);
+      }
+
+      await this.logApprovalAction(approverId, approval.actionType, fullyApproved ? 'approved' : 'partial_approval', 
+        `${updatedApprovals.length}/${approval.requiredApprovals} approvals received`);
+
+      return { 
+        success: true, 
+        fullyApproved, 
+        reason: fullyApproved ? 'Action fully approved and ready to execute' : `${updatedApprovals.length}/${approval.requiredApprovals} approvals received`
+      };
+    } catch (error) {
+      console.error('[GovernanceGate] Approval failed:', error);
+      return { success: false, fullyApproved: false, reason: 'Database error during approval' };
     }
-
-    if (approval.status !== 'pending') {
-      return { success: false, fullyApproved: false, reason: `Approval already ${approval.status}` };
-    }
-
-    if (new Date() > approval.expiresAt) {
-      approval.status = 'expired';
-      return { success: false, fullyApproved: false, reason: 'Approval request has expired' };
-    }
-
-    if (approval.requesterId === approverId) {
-      return { success: false, fullyApproved: false, reason: 'Cannot approve your own request' };
-    }
-
-    const actionDetails = AIBrainAuthorizationService.DESTRUCTIVE_ACTIONS[approval.actionType];
-    const approverLevel = ROLE_HIERARCHY[approverRole] || 0;
-    const minApprovalLevel = ROLE_HIERARCHY[actionDetails?.minApprovalRole || 'root_admin'] || 0;
-
-    if (approverLevel < minApprovalLevel) {
-      return { success: false, fullyApproved: false, reason: `Insufficient authority. Requires ${actionDetails?.minApprovalRole}` };
-    }
-
-    if (approval.approvals.some(a => a.userId === approverId)) {
-      return { success: false, fullyApproved: false, reason: 'Already approved by this user' };
-    }
-
-    approval.approvals.push({
-      userId: approverId,
-      role: approverRole,
-      approvedAt: new Date(),
-    });
-
-    const fullyApproved = approval.approvals.length >= approval.requiredApprovals;
-    
-    if (fullyApproved) {
-      approval.status = 'approved';
-      console.log(`[GovernanceGate] Action ${approvalId} FULLY APPROVED`);
-    }
-
-    await this.logApprovalAction(approverId, approval.actionType, fullyApproved ? 'approved' : 'partial_approval', 
-      `${approval.approvals.length}/${approval.requiredApprovals} approvals received`);
-
-    return { 
-      success: true, 
-      fullyApproved, 
-      reason: fullyApproved ? 'Action fully approved and ready to execute' : `${approval.approvals.length}/${approval.requiredApprovals} approvals received`
-    };
   }
 
   async rejectDestructiveAction(approvalId: string, rejecterId: string, rejectorRole: string, reason: string): Promise<{ success: boolean; message: string }> {
-    const approval = this.pendingApprovals.get(approvalId);
-    
-    if (!approval) {
-      return { success: false, message: 'Approval request not found' };
+    try {
+      const [approval] = await db.select().from(governanceApprovals).where(eq(governanceApprovals.id, approvalId)).limit(1);
+      
+      if (!approval) {
+        return { success: false, message: 'Approval request not found' };
+      }
+
+      if (approval.status !== 'pending') {
+        return { success: false, message: `Approval already ${approval.status}` };
+      }
+
+      await db.update(governanceApprovals).set({ 
+        status: 'rejected',
+        rejectedBy: rejecterId,
+        rejectionReason: reason,
+        updatedAt: new Date(),
+      }).where(eq(governanceApprovals.id, approvalId));
+      
+      await this.logApprovalAction(rejecterId, approval.actionType, 'rejected', reason);
+
+      console.log(`[GovernanceGate] Action ${approvalId} REJECTED by ${rejecterId} (DB persisted)`);
+
+      return { success: true, message: `Action rejected: ${reason}` };
+    } catch (error) {
+      console.error('[GovernanceGate] Rejection failed:', error);
+      return { success: false, message: 'Database error during rejection' };
     }
-
-    if (approval.status !== 'pending') {
-      return { success: false, message: `Approval already ${approval.status}` };
-    }
-
-    approval.status = 'rejected';
-    
-    await this.logApprovalAction(rejecterId, approval.actionType, 'rejected', reason);
-
-    console.log(`[GovernanceGate] Action ${approvalId} REJECTED by ${rejecterId}`);
-
-    return { success: true, message: `Action rejected: ${reason}` };
   }
 
-  getPendingApprovals(): Array<{
+  async markApprovalExecuted(approvalId: string, executorId: string): Promise<boolean> {
+    try {
+      await db.update(governanceApprovals).set({ 
+        status: 'executed',
+        executedBy: executorId,
+        executedAt: new Date(),
+        updatedAt: new Date(),
+      }).where(eq(governanceApprovals.id, approvalId));
+      
+      console.log(`[GovernanceGate] Action ${approvalId} marked as EXECUTED`);
+      return true;
+    } catch (error) {
+      console.error('[GovernanceGate] Failed to mark executed:', error);
+      return false;
+    }
+  }
+
+  async isApprovalValid(approvalId: string): Promise<{ valid: boolean; approval?: any; reason?: string }> {
+    try {
+      const [approval] = await db.select().from(governanceApprovals).where(eq(governanceApprovals.id, approvalId)).limit(1);
+      
+      if (!approval) {
+        return { valid: false, reason: 'Approval not found' };
+      }
+
+      if (approval.status !== 'approved') {
+        return { valid: false, reason: `Approval status is ${approval.status}, not approved` };
+      }
+
+      if (new Date() > approval.expiresAt) {
+        await db.update(governanceApprovals).set({ status: 'expired', updatedAt: new Date() }).where(eq(governanceApprovals.id, approvalId));
+        return { valid: false, reason: 'Approval has expired' };
+      }
+
+      return { valid: true, approval };
+    } catch (error) {
+      return { valid: false, reason: 'Database error checking approval' };
+    }
+  }
+
+  async getPendingApprovals(): Promise<Array<{
     id: string;
     actionType: string;
     description: string;
@@ -391,43 +439,61 @@ class AIBrainAuthorizationService {
     expiresAt: Date;
     approvalsReceived: number;
     requiredApprovals: number;
-  }> {
-    const pending: any[] = [];
-    const now = new Date();
-    
-    this.pendingApprovals.forEach((approval, id) => {
-      if (approval.status === 'pending' && now < approval.expiresAt) {
+  }>> {
+    try {
+      const now = new Date();
+      
+      const approvals = await db.select().from(governanceApprovals)
+        .where(and(
+          eq(governanceApprovals.status, 'pending'),
+          lt(now, governanceApprovals.expiresAt)
+        ))
+        .orderBy(desc(governanceApprovals.createdAt));
+      
+      return approvals.map(approval => {
         const actionDetails = AIBrainAuthorizationService.DESTRUCTIVE_ACTIONS[approval.actionType];
-        pending.push({
-          id,
+        const approvalsArray = (approval.approvals as Array<any>) || [];
+        
+        return {
+          id: approval.id,
           actionType: approval.actionType,
           description: actionDetails?.description || 'Unknown action',
           requesterId: approval.requesterId,
           requesterRole: approval.requesterRole,
           targetEntity: approval.targetEntity,
-          reason: approval.reason,
-          requestedAt: approval.requestedAt,
+          reason: approval.reason || '',
+          requestedAt: approval.createdAt!,
           expiresAt: approval.expiresAt,
-          approvalsReceived: approval.approvals.length,
+          approvalsReceived: approvalsArray.length,
           requiredApprovals: approval.requiredApprovals,
-        });
-      }
-    });
-    
-    return pending;
+        };
+      });
+    } catch (error) {
+      console.error('[GovernanceGate] Failed to fetch pending approvals:', error);
+      return [];
+    }
   }
 
-  getApprovalStatus(approvalId: string): { found: boolean; status?: string; approvals?: number; required?: number } {
-    const approval = this.pendingApprovals.get(approvalId);
-    if (!approval) {
+  async getApprovalStatus(approvalId: string): Promise<{ found: boolean; status?: string; approvals?: number; required?: number }> {
+    try {
+      const [approval] = await db.select().from(governanceApprovals).where(eq(governanceApprovals.id, approvalId)).limit(1);
+      
+      if (!approval) {
+        return { found: false };
+      }
+      
+      const approvalsArray = (approval.approvals as Array<any>) || [];
+      
+      return {
+        found: true,
+        status: approval.status,
+        approvals: approvalsArray.length,
+        required: approval.requiredApprovals,
+      };
+    } catch (error) {
+      console.error('[GovernanceGate] Failed to get approval status:', error);
       return { found: false };
     }
-    return {
-      found: true,
-      status: approval.status,
-      approvals: approval.approvals.length,
-      required: approval.requiredApprovals,
-    };
   }
 
   private async logApprovalAction(userId: string, actionType: string, status: string, details: string): Promise<void> {
@@ -448,19 +514,65 @@ class AIBrainAuthorizationService {
     }
   }
 
-  cleanupExpiredApprovals(): number {
-    const now = new Date();
-    let cleaned = 0;
+  async cleanupExpiredApprovals(): Promise<number> {
+    try {
+      const now = new Date();
+      
+      const result = await db.update(governanceApprovals)
+        .set({ 
+          status: 'expired',
+          updatedAt: now,
+        })
+        .where(and(
+          eq(governanceApprovals.status, 'pending'),
+          lt(governanceApprovals.expiresAt, now)
+        ));
+      
+      console.log(`[GovernanceGate] Cleaned up expired approvals (DB persisted)`);
+      return 0;
+    } catch (error) {
+      console.error('[GovernanceGate] Failed to cleanup expired approvals:', error);
+      return 0;
+    }
+  }
+
+  async requireApprovalForExecution(actionType: string, approvalId?: string): Promise<{ 
+    canExecute: boolean; 
+    reason: string;
+    approval?: any;
+  }> {
+    if (!this.isDestructiveAction(actionType)) {
+      return { canExecute: true, reason: 'Action does not require approval gate' };
+    }
+
+    if (!approvalId) {
+      return { 
+        canExecute: false, 
+        reason: `Destructive action "${actionType}" requires governance approval before execution` 
+      };
+    }
+
+    const validationResult = await this.isApprovalValid(approvalId);
     
-    this.pendingApprovals.forEach((approval, id) => {
-      if (approval.status === 'pending' && now > approval.expiresAt) {
-        approval.status = 'expired';
-        cleaned++;
-      }
-    });
-    
-    console.log(`[GovernanceGate] Cleaned up ${cleaned} expired approvals`);
-    return cleaned;
+    if (!validationResult.valid) {
+      return { 
+        canExecute: false, 
+        reason: validationResult.reason || 'Invalid approval' 
+      };
+    }
+
+    if (validationResult.approval?.actionType !== actionType) {
+      return { 
+        canExecute: false, 
+        reason: `Approval is for "${validationResult.approval?.actionType}", not "${actionType}"` 
+      };
+    }
+
+    return { 
+      canExecute: true, 
+      reason: 'Approval valid, action can proceed',
+      approval: validationResult.approval
+    };
   }
 }
 

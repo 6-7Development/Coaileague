@@ -3,12 +3,14 @@
  * RBAC-aware, dynamic notification system for all workspace events
  * Sends notifications through multiple channels with role-based filtering
  * Now uses database persistence instead of in-memory storage
+ * LIVE UPDATES: Broadcasts via WebSocket for real-time delivery
  */
 
 import { db } from '../db';
 import { notifications, users, employees } from '@shared/schema';
 import { eq, and, desc, inArray, isNull, or } from 'drizzle-orm';
 import aiBrainConfig from "@shared/config/aiBrainGuardrails";
+import { broadcastToWorkspace, broadcastNotificationToUser } from '../websocket';
 
 export interface NotificationPayload {
   workspaceId: string;
@@ -67,6 +69,17 @@ export class UniversalNotificationEngine {
         
         notificationIds.push(notification.id);
         recipientCount = 1;
+        
+        // LIVE UPDATE: Broadcast via WebSocket for real-time delivery
+        broadcastNotificationToUser(payload.userId, payload.workspaceId, 'new_notification', {
+          id: notification.id,
+          type: payload.type,
+          title: payload.title,
+          message: payload.message,
+          severity: payload.severity || 'info',
+          actionUrl: payload.actionUrl,
+          createdAt: notification.createdAt,
+        });
       } else if (payload.targetRoles && payload.targetRoles.length > 0) {
         // RBAC: Send to all users with specified roles in workspace
         const workspaceEmployees = await db.query.employees.findMany({
@@ -103,6 +116,17 @@ export class UniversalNotificationEngine {
             
             notificationIds.push(notification.id);
             recipientCount++;
+            
+            // LIVE UPDATE: Broadcast via WebSocket for real-time delivery
+            broadcastNotificationToUser(emp.userId, payload.workspaceId, 'new_notification', {
+              id: notification.id,
+              type: payload.type,
+              title: payload.title,
+              message: payload.message,
+              severity: payload.severity || 'info',
+              actionUrl: payload.actionUrl,
+              createdAt: notification.createdAt,
+            });
           }
         }
       } else {
@@ -136,11 +160,31 @@ export class UniversalNotificationEngine {
             
             notificationIds.push(notification.id);
             recipientCount++;
+            
+            // LIVE UPDATE: Broadcast via WebSocket for real-time delivery
+            broadcastNotificationToUser(emp.userId, payload.workspaceId, 'new_notification', {
+              id: notification.id,
+              type: payload.type,
+              title: payload.title,
+              message: payload.message,
+              severity: payload.severity || 'info',
+              actionUrl: payload.actionUrl,
+              createdAt: notification.createdAt,
+            });
           }
         }
       }
 
-      console.log(`[UniversalNotificationEngine] Notification sent: ${payload.title} to ${recipientCount} recipients (${notificationRule.channels.join(", ")})`);
+      // Also broadcast workspace-wide notification event for UI refresh
+      broadcastToWorkspace(payload.workspaceId, {
+        type: 'notification_count_updated',
+        action: 'new_notifications',
+        count: recipientCount,
+        title: payload.title,
+        timestamp: new Date().toISOString(),
+      });
+
+      console.log(`[UniversalNotificationEngine] Notification sent: ${payload.title} to ${recipientCount} recipients (${notificationRule.channels.join(", ")}) + WebSocket broadcast`);
 
       return {
         success: true,
@@ -184,9 +228,11 @@ export class UniversalNotificationEngine {
       );
 
       let recipientCount = 0;
+      const workspacesNotified = new Set<string>();
+      
       for (const admin of admins) {
         if (admin.userId && admin.workspaceId) {
-          await db.insert(notifications).values({
+          const [notification] = await db.insert(notifications).values({
             workspaceId: admin.workspaceId,
             userId: admin.userId,
             type: 'system' as any,
@@ -199,12 +245,36 @@ export class UniversalNotificationEngine {
               platformNotification: true,
             },
             isRead: false,
-          });
+          }).returning();
+          
           recipientCount++;
+          
+          // LIVE UPDATE: Broadcast to each user
+          broadcastNotificationToUser(admin.userId, admin.workspaceId, 'new_notification', {
+            id: notification.id,
+            type: 'platform_update',
+            title: payload.title,
+            message: payload.message,
+            severity: payload.severity || 'info',
+            actionUrl: payload.actionUrl || '/whats-new',
+            createdAt: notification.createdAt,
+          });
+          
+          workspacesNotified.add(admin.workspaceId);
         }
       }
+      
+      // Broadcast count update to all affected workspaces
+      for (const wsId of workspacesNotified) {
+        broadcastToWorkspace(wsId, {
+          type: 'notification_count_updated',
+          action: 'platform_notification',
+          title: payload.title,
+          timestamp: new Date().toISOString(),
+        });
+      }
 
-      console.log(`[UniversalNotificationEngine] Platform notification sent to ${recipientCount} admins`);
+      console.log(`[UniversalNotificationEngine] Platform notification sent to ${recipientCount} admins across ${workspacesNotified.size} workspaces + WebSocket broadcast`);
 
       return {
         success: true,
