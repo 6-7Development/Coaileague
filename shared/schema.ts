@@ -4188,6 +4188,46 @@ export const systemAuditLogs = pgTable("system_audit_logs", {
 export type SystemAuditLog = typeof systemAuditLogs.$inferSelect;
 
 // ============================================================================
+// AI BRAIN GOVERNANCE APPROVAL GATES
+// Persistent storage for destructive action approvals - survives restarts
+// ============================================================================
+
+export const approvalStatusEnum = pgEnum('approval_status', ['pending', 'approved', 'rejected', 'expired', 'executed']);
+
+export const governanceApprovals = pgTable("governance_approvals", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  actionType: varchar("action_type").notNull(),
+  requesterId: varchar("requester_id").notNull().references(() => users.id),
+  requesterRole: varchar("requester_role").notNull(),
+  targetEntity: varchar("target_entity").notNull(),
+  parameters: jsonb("parameters").default({}),
+  reason: text("reason"),
+  status: approvalStatusEnum("status").default("pending").notNull(),
+  requiredApprovals: integer("required_approvals").default(1).notNull(),
+  approvals: jsonb("approvals").default([]),
+  expiresAt: timestamp("expires_at").notNull(),
+  executedAt: timestamp("executed_at"),
+  executedBy: varchar("executed_by").references(() => users.id),
+  rejectedBy: varchar("rejected_by").references(() => users.id),
+  rejectionReason: text("rejection_reason"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  statusIdx: index("governance_approvals_status_idx").on(table.status),
+  requesterIdx: index("governance_approvals_requester_idx").on(table.requesterId),
+  expiryIdx: index("governance_approvals_expiry_idx").on(table.expiresAt),
+}));
+
+export const insertGovernanceApprovalSchema = createInsertSchema(governanceApprovals).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertGovernanceApproval = z.infer<typeof insertGovernanceApprovalSchema>;
+export type GovernanceApproval = typeof governanceApprovals.$inferSelect;
+
+// ============================================================================
 // ENTERPRISE FEATURES - Resignation & Notice System
 // ============================================================================
 
