@@ -1578,7 +1578,15 @@ export const shifts = pgTable("shifts", {
 
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  index("shifts_workspace_idx").on(table.workspaceId),
+  index("shifts_employee_idx").on(table.employeeId),
+  index("shifts_client_idx").on(table.clientId),
+  index("shifts_time_range_idx").on(table.workspaceId, table.startTime, table.endTime),
+  index("shifts_status_idx").on(table.status),
+  index("shifts_created_at_idx").on(table.createdAt),
+  index("shifts_ai_generated_idx").on(table.aiGenerated),
+]);
 
 // ============================================================================
 // CUSTOM SCHEDULER INTERVALS TABLE - Phase 2 Critical Blocker
@@ -2176,7 +2184,16 @@ export const timeEntries = pgTable("time_entries", {
 
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  index("time_entries_workspace_idx").on(table.workspaceId),
+  index("time_entries_employee_idx").on(table.employeeId),
+  index("time_entries_shift_idx").on(table.shiftId),
+  index("time_entries_client_idx").on(table.clientId),
+  index("time_entries_status_idx").on(table.status),
+  index("time_entries_clock_in_idx").on(table.clockIn),
+  index("time_entries_invoice_idx").on(table.invoiceId),
+  index("time_entries_workspace_employee_idx").on(table.workspaceId, table.employeeId, table.clockIn),
+]);
 
 export const insertTimeEntrySchema = createInsertSchema(timeEntries).omit({
   id: true,
@@ -2445,7 +2462,14 @@ export const invoices = pgTable("invoices", {
 
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  index("invoices_workspace_idx").on(table.workspaceId),
+  index("invoices_client_idx").on(table.clientId),
+  index("invoices_status_idx").on(table.status),
+  index("invoices_due_date_idx").on(table.dueDate),
+  index("invoices_workspace_status_idx").on(table.workspaceId, table.status),
+  index("invoices_created_at_idx").on(table.createdAt),
+]);
 
 export const insertInvoiceSchema = createInsertSchema(invoices).omit({
   id: true,
