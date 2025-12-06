@@ -622,11 +622,11 @@ export const QUALITY_TIERS: Record<QualityTier, QualitySettings> = {
 export const PERFORMANCE_CONFIG: PerformanceConfig = {
   enableAdaptiveQuality: true,
   frameBudgetMs: 16.67, // 60 FPS target
-  idleThrottleDelay: 5000, // 5 seconds of idle before throttling
-  idleTargetFPS: 15,
+  idleThrottleDelay: 3000, // 3 seconds of idle before throttling (faster throttle)
+  idleTargetFPS: 12, // Lower idle FPS for better battery life
   qualityUpgradeThreshold: 55, // FPS threshold to upgrade quality
-  qualityDowngradeThreshold: 35, // FPS threshold to downgrade quality
-  measurementWindow: 3000, // 3 seconds of measurement before tier change
+  qualityDowngradeThreshold: 30, // More aggressive downgrade threshold for mobile
+  measurementWindow: 2000, // 2 seconds - faster tier adaptation
 };
 
 // Device detection helper for initial quality tier
@@ -1288,19 +1288,19 @@ export const MASCOT_CONFIG: MascotConfig = {
   enabled: true,
   
   desktop: {
-    bubble: 80,
-    defaultSize: 80,
-    expandedSize: 120,
-    minSize: 70,
-    maxSize: 140,
+    bubble: 100,
+    defaultSize: 100,
+    expandedSize: 140,
+    minSize: 85,
+    maxSize: 160,
   },
   
   mobile: {
-    bubble: 45,
-    defaultSize: 45,
-    expandedSize: 70,
-    minSize: 40,
-    maxSize: 85,
+    bubble: 50,
+    defaultSize: 50,
+    expandedSize: 75,
+    minSize: 42,
+    maxSize: 90,
   },
   
   defaultPosition: {
