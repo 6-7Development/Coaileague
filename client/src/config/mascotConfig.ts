@@ -1248,8 +1248,12 @@ export interface MascotConfig {
     tasks: string;
   };
   hiddenRoutes: string[];
+  allowedRoles: {
+    platform: string[];
+    workspace: string[];
+  };
   idleModeRoutes: string[];
-  publicPageRoutes: string[];  // Public pages for promo mode
+  publicPageRoutes: string[];
   defaultMode: MascotMode;
   colors: {
     primary: string;
@@ -1288,19 +1292,19 @@ export const MASCOT_CONFIG: MascotConfig = {
   enabled: true,
   
   desktop: {
-    bubble: 100,
-    defaultSize: 100,
-    expandedSize: 140,
-    minSize: 85,
-    maxSize: 160,
+    bubble: 180,
+    defaultSize: 180,
+    expandedSize: 220,
+    minSize: 150,
+    maxSize: 260,
   },
   
   mobile: {
-    bubble: 50,
-    defaultSize: 50,
-    expandedSize: 75,
-    minSize: 42,
-    maxSize: 90,
+    bubble: 70,
+    defaultSize: 70,
+    expandedSize: 90,
+    minSize: 60,
+    maxSize: 100,
   },
   
   defaultPosition: {

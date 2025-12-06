@@ -244,10 +244,10 @@ const CYCLE_MODES: MascotMode[] = [
 ];
 
 const RESPONSIVE_SIZES = {
-  mobile: 90,
+  mobile: 70,
   tablet: 120,
-  desktop: 140,
-  demo: 180,
+  desktop: 180,
+  demo: 220,
 };
 
 interface DataParticle {
