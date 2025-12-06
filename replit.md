@@ -89,10 +89,17 @@ The system employs a multi-tenant architecture with RBAC security and isolation,
 - **Twilio**: SMS notifications.
 ### Recent Changes (December 2025)
 - **AI Brain Orchestration Infrastructure:** Complete durable workflow execution system with PostgreSQL-backed persistence:
-  - Created 4 new database tables: orchestration_runs, orchestration_run_steps, commitment_ledger, workflow_artifacts with proper indexing.
-  - Implemented 7 orchestration services: WorkflowLedger, CommitmentManager, SupervisoryAgent, SchedulerCoordinator, RealTimeBridge, ContextResolver, OrchestrationBridge.
+  - Created 5 new database tables: orchestration_runs, orchestration_run_steps, commitment_ledger, workflow_artifacts, service_control_states with proper indexing.
+  - Implemented 8 orchestration services: WorkflowLedger, CommitmentManager, SupervisoryAgent, SchedulerCoordinator, RealTimeBridge, ContextResolver, OrchestrationBridge, ServiceControlManager.
   - Added 10+ event listeners bridging aiBrainEvents to WebSocket broadcasts and PlatformEventBus for real-time notifications.
   - Services auto-start on server boot with automatic stalled workflow recovery.
+- **AI Brain Service Control System:** Complete pause/resume system for orchestration services with persistent state:
+  - ServiceControlManager with database-backed persistence ensuring paused services remain paused across restarts.
+  - API endpoints: /api/ai-brain/control/services, /api/ai-brain/control/pause, /api/ai-brain/control/resume, /api/ai-brain/control/health.
+  - RBAC-protected with platform staff guards (support_agent+).
+  - Real-time WebSocket broadcasting of service state changes to connected clients.
+- **Control Tower Orchestration Card:** AI Brain Orchestration status card in 4-column grid showing health, active workflows, and quick service toggles.
+- **Support Console Orchestration Tab:** Full service control panel for platform staff with pause/resume buttons and test alert functionality.
 - **AI Brain Master Orchestrator:** Now 69 actions registered across 12 categories (up from 65).
 - **Notification System Cleanup:** Removed 90+ orphan code blocks from server/routes.ts that were causing undefined variable errors.
 - **Real-time Updates Restored:** WebSocket notification broadcasts work correctly without mid-request crashes.
