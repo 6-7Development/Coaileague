@@ -673,7 +673,12 @@ class HelpaiActionOrchestrator {
   }
 
   /**
-   * Execute an action through the orchestrator
+   * Execute an action through the orchestrator with AI-powered reasoning
+   * 
+   * Flow:
+   * 1. Pre-action: Trinity (via AI Analytics Engine) evaluates the action
+   * 2. Execute: Run the actual action handler
+   * 3. Post-action: Trinity analyzes outcomes and generates insights
    */
   async executeAction(request: ActionRequest): Promise<ActionResult> {
     const startTime = Date.now();
@@ -713,6 +718,48 @@ class HelpaiActionOrchestrator {
       };
     }
 
+    // ============================================================================
+    // TRINITY AI INTEGRATION - Pre-Action Reasoning
+    // ============================================================================
+    let preActionDecision = null;
+    try {
+      const { aiAnalyticsEngine } = await import('../ai-brain/aiAnalyticsEngine');
+      
+      if (aiAnalyticsEngine.isAvailable() && !request.isTestMode) {
+        const actionContext = {
+          category: handler.category as any,
+          workspaceId: request.workspaceId,
+          userId: request.userId,
+          actionName: handler.name,
+          actionPayload: request.payload || {},
+          timestamp: new Date(),
+        };
+        
+        // Only run pre-action for high-value actions (not test/health check)
+        const skipPreAction = ['test', 'health_check'].includes(handler.category);
+        if (!skipPreAction) {
+          preActionDecision = await aiAnalyticsEngine.evaluatePreAction(actionContext);
+          
+          if (preActionDecision && !preActionDecision.shouldProceed) {
+            console.log(`[HelpAI Orchestrator] Trinity blocked action: ${handler.name} - ${preActionDecision.rationale}`);
+            return {
+              success: false,
+              actionId: request.actionId,
+              message: `Action blocked by Trinity: ${preActionDecision.recommendation}`,
+              data: { trinityDecision: preActionDecision },
+              executionTimeMs: Date.now() - startTime
+            };
+          }
+          
+          if (preActionDecision) {
+            console.log(`[HelpAI Orchestrator] Trinity approved: ${handler.name} (confidence: ${preActionDecision.confidence})`);
+          }
+        }
+      }
+    } catch (aiError) {
+      console.warn('[HelpAI Orchestrator] Trinity pre-action check failed (continuing):', aiError);
+    }
+
     // Execute the action
     try {
       const result = await handler.handler(request);
@@ -722,6 +769,45 @@ class HelpaiActionOrchestrator {
       
       // Emit platform event
       await this.emitActionEvent(request, result);
+
+      // ============================================================================
+      // TRINITY AI INTEGRATION - Post-Action Analysis
+      // ============================================================================
+      try {
+        const { aiAnalyticsEngine } = await import('../ai-brain/aiAnalyticsEngine');
+        
+        if (aiAnalyticsEngine.isAvailable() && !request.isTestMode) {
+          const skipPostAction = ['test', 'health_check'].includes(handler.category);
+          if (!skipPostAction) {
+            const actionContext = {
+              category: handler.category as any,
+              workspaceId: request.workspaceId,
+              userId: request.userId,
+              actionName: handler.name,
+              actionPayload: request.payload || {},
+              timestamp: new Date(),
+            };
+            
+            // Fire and forget - don't block the response
+            aiAnalyticsEngine.analyzePostAction(actionContext, {
+              success: result.success,
+              data: result.data,
+              error: result.success ? undefined : result.message,
+            }).catch(err => console.warn('[HelpAI Orchestrator] Trinity post-action analysis failed:', err));
+          }
+        }
+      } catch (postAiError) {
+        console.warn('[HelpAI Orchestrator] Trinity post-action check failed:', postAiError);
+      }
+
+      // Enhance result with Trinity decision if available
+      if (preActionDecision) {
+        result.data = {
+          ...result.data,
+          trinityInsight: preActionDecision.recommendation,
+          trinityConfidence: preActionDecision.confidence,
+        };
+      }
 
       return result;
     } catch (error: any) {
