@@ -82,12 +82,12 @@ export interface AvoidanceConfig {
 
 // Responsive sizes matching Trinity component - breakpoint-based detection
 function getResponsiveMascotSize(): number {
-  if (typeof window === 'undefined') return 140;
+  if (typeof window === 'undefined') return 180;
   const width = window.innerWidth;
-  // Match Trinity's RESPONSIVE_SIZES: mobile: 90, tablet: 120, desktop: 140
-  if (width < 768) return 90;      // mobile
-  if (width < 1024) return 120;    // tablet  
-  return 140;                       // desktop
+  // Match Trinity's MASCOT_CONFIG: mobile: 70, tablet: 120, desktop: 180
+  if (width < 768) return 70;       // mobile
+  if (width < 1024) return 120;     // tablet  
+  return 180;                        // desktop (larger, more visible)
 }
 
 // Screen size category for padding (touch needs more space)
@@ -207,7 +207,7 @@ class UIAvoidanceSystem {
     const newConfig = getDefaultConfig();
     this.config = { ...this.config, ...newConfig };
     // Force rescan with new sizes
-    this.scanUIElements();
+    this.scanElements();
     this.generateHeatmap();
   }
   
