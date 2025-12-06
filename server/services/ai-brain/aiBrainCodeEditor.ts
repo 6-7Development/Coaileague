@@ -482,9 +482,11 @@ class AIBrainCodeEditorService {
         for (const role of supportRoles) {
           await db.insert(notifications).values({
             userId: role.userId,
-            type: 'code_change',
+            type: 'ai_action_completed',
             title: `Code Change Applied: ${change.title}`,
             message: `Platform code change "${change.title}" has been applied. File: ${change.filePath}`,
+            scope: 'user',
+            category: 'system',
             actionUrl: '/dashboard',
             relatedEntityType: 'code_change',
             relatedEntityId: changeId,

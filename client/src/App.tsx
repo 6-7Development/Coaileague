@@ -170,6 +170,7 @@ import { FloatingSupportChat } from "@/components/floating-support-chat";
 import { CoAITwinMascot } from "@/components/coai-twin-mascot";
 import TrinityRedesign from "@/components/trinity-redesign";
 import { CompactBubble } from "@/components/mascot/CompactBubble";
+import { FestiveDialogueBubble } from "@/components/mascot/FestiveDialogueBubble";
 import { MascotTaskBox } from "@/components/mascot-task-box";
 import { useMascotMode } from "@/hooks/use-mascot-mode";
 import { useAIActivity } from "@/hooks/use-ai-activity";
@@ -617,8 +618,15 @@ function MascotRenderer() {
         </div>
       </div>
       
-      {/* Compact polished dialogue bubble - minimal and non-intrusive */}
-      {currentThought && (
+      {/* Dialogue bubble - uses festive version during any holiday season */}
+      {currentThought && holiday && holiday.key !== 'default' ? (
+        <FestiveDialogueBubble
+          thought={currentThought}
+          mascotPosition={{ x: effectiveX, y: effectiveY }}
+          mascotSize={bubbleSize}
+          isMobile={isMobile}
+        />
+      ) : currentThought ? (
         <CompactBubble
           thought={currentThought}
           mascotPosition={{ x: effectiveX, y: effectiveY }}
@@ -626,7 +634,7 @@ function MascotRenderer() {
           mode={currentMode}
           onDismiss={() => setCurrentThought(null)}
         />
-      )}
+      ) : null}
     </>
   );
 }
