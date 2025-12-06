@@ -234,6 +234,167 @@ const emailTemplates = {
       </div>
     `
   }),
+
+  newMemberWelcome: (data: {
+    firstName: string;
+    onboardingUrl: string;
+  }) => ({
+    subject: 'Welcome to CoAIleague - Your Workforce Intelligence Platform',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="text-align: center; padding: 30px 0; background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%); border-radius: 8px 8px 0 0;">
+          <h1 style="color: white; margin: 0; font-size: 28px;">Welcome to CoAIleague!</h1>
+          <p style="color: #e0e7ff; margin: 10px 0 0 0;">AI-Powered Workforce Intelligence</p>
+        </div>
+        <div style="padding: 30px; background-color: #f9fafb; border-radius: 0 0 8px 8px;">
+          <p style="font-size: 16px;">Hello ${data.firstName},</p>
+          <p>Welcome to CoAIleague! We're excited to have you join our platform. Your account is now active and ready for you to explore.</p>
+          
+          <div style="background-color: white; padding: 20px; border-radius: 8px; margin: 25px 0; border: 1px solid #e5e7eb;">
+            <h3 style="color: #1f2937; margin: 0 0 15px 0;">Meet Trinity - Your AI Assistant</h3>
+            <p style="margin: 0; color: #4b5563;">Look for the twin-star mascot in the corner of your screen. Trinity is your intelligent guide who will help you navigate the platform, answer questions, and provide personalized recommendations.</p>
+          </div>
+          
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${data.onboardingUrl}" 
+               style="background-color: #2563eb; color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block; font-size: 16px;">
+              Start Your Onboarding
+            </a>
+          </div>
+          
+          <p style="color: #6b7280; font-size: 14px; margin-top: 30px; text-align: center;">
+            Need help? Chat with Trinity or contact our support team anytime.<br>
+            This is an automated welcome from CoAIleague.
+          </p>
+        </div>
+      </div>
+    `
+  }),
+
+  employeeInvitation: (data: {
+    firstName: string;
+    inviterName: string;
+    workspaceName: string;
+    roleName: string;
+    joinUrl: string;
+    expiresIn: string;
+  }) => ({
+    subject: `You're Invited to Join ${data.workspaceName} on CoAIleague`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #2563eb;">You've Been Invited!</h2>
+        <p>Hello ${data.firstName},</p>
+        <p><strong>${data.inviterName}</strong> has invited you to join <strong>${data.workspaceName}</strong> on CoAIleague as a <strong>${data.roleName}</strong>.</p>
+        
+        <div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <p style="margin: 5px 0;"><strong>Organization:</strong> ${data.workspaceName}</p>
+          <p style="margin: 5px 0;"><strong>Your Role:</strong> ${data.roleName}</p>
+          <p style="margin: 5px 0;"><strong>Invited By:</strong> ${data.inviterName}</p>
+        </div>
+        
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${data.joinUrl}" 
+             style="background-color: #16a34a; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: 600; display: inline-block;">
+            Accept Invitation & Join
+          </a>
+        </div>
+        
+        <div style="background-color: #fef3c7; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b;">
+          <p style="margin: 0; font-size: 14px; color: #92400e;">
+            <strong>Note:</strong> This invitation expires in ${data.expiresIn}. Please accept before it expires.
+          </p>
+        </div>
+        
+        <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">
+          If you did not expect this invitation or have questions, please contact ${data.inviterName} directly.<br>
+          This is an automated invitation from CoAIleague.
+        </p>
+      </div>
+    `
+  }),
+
+  supportRoleBriefing: (data: {
+    firstName: string;
+    roleName: string;
+    dashboardUrl: string;
+    capabilities: string[];
+  }) => ({
+    subject: `Your CoAIleague Support Role: ${data.roleName}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background-color: #7c3aed; padding: 20px; border-radius: 8px 8px 0 0;">
+          <h2 style="color: white; margin: 0;">Support Team Role Assignment</h2>
+        </div>
+        <div style="padding: 25px; background-color: #faf5ff; border-radius: 0 0 8px 8px;">
+          <p>Hello ${data.firstName},</p>
+          <p>You have been assigned the <strong>${data.roleName}</strong> role in the CoAIleague support system. This gives you access to platform-wide support tools and capabilities.</p>
+          
+          <div style="background-color: white; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #e9d5ff;">
+            <h3 style="color: #7c3aed; margin: 0 0 15px 0;">Your Capabilities:</h3>
+            <ul style="margin: 0; padding-left: 20px; color: #4b5563;">
+              ${data.capabilities.map(cap => `<li style="margin: 8px 0;">${cap}</li>`).join('')}
+            </ul>
+          </div>
+          
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${data.dashboardUrl}" 
+               style="background-color: #7c3aed; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: 600; display: inline-block;">
+              Access Support Dashboard
+            </a>
+          </div>
+          
+          <div style="background-color: #f3e8ff; padding: 15px; border-radius: 8px; margin: 20px 0;">
+            <p style="margin: 0; font-size: 14px; color: #6b21a8;">
+              <strong>Tip:</strong> Use HelpAI chat to get AI-powered assistance with support tickets and user inquiries.
+            </p>
+          </div>
+          
+          <p style="color: #6b7280; font-size: 14px; margin-top: 20px;">
+            This is an automated notification from CoAIleague Platform Administration.
+          </p>
+        </div>
+      </div>
+    `
+  }),
+
+  onboardingComplete: (data: {
+    firstName: string;
+    workspaceName: string;
+    dashboardUrl: string;
+    completedTasks: number;
+  }) => ({
+    subject: `Onboarding Complete - Welcome to ${data.workspaceName}!`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="text-align: center; padding: 30px 0; background: linear-gradient(135deg, #16a34a 0%, #22c55e 100%); border-radius: 8px 8px 0 0;">
+          <h1 style="color: white; margin: 0; font-size: 32px;">Congratulations!</h1>
+          <p style="color: #dcfce7; margin: 10px 0 0 0; font-size: 18px;">You've completed your onboarding</p>
+        </div>
+        <div style="padding: 30px; background-color: #f0fdf4; border-radius: 0 0 8px 8px;">
+          <p style="font-size: 16px;">Hello ${data.firstName},</p>
+          <p>You've successfully completed all ${data.completedTasks} onboarding tasks for <strong>${data.workspaceName}</strong>. You're now ready to use all the features of CoAIleague!</p>
+          
+          <div style="background-color: white; padding: 20px; border-radius: 8px; margin: 25px 0; border: 1px solid #bbf7d0; text-align: center;">
+            <p style="font-size: 48px; margin: 0;">&#127881;</p>
+            <h3 style="color: #15803d; margin: 10px 0;">All Set!</h3>
+            <p style="margin: 0; color: #4b5563;">Your account is fully configured and ready to go.</p>
+          </div>
+          
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${data.dashboardUrl}" 
+               style="background-color: #16a34a; color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block; font-size: 16px;">
+              Go to Dashboard
+            </a>
+          </div>
+          
+          <p style="color: #6b7280; font-size: 14px; margin-top: 30px; text-align: center;">
+            Need help? Trinity is always available to assist you.<br>
+            This is an automated message from CoAIleague.
+          </p>
+        </div>
+      </div>
+    `
+  }),
 };
 
 // ============================================================================
@@ -715,6 +876,129 @@ export class EmailService {
       'client_welcome',
       workspaceId,
       undefined
+    );
+  }
+
+  /**
+   * Send new member welcome email
+   * Sent when a user first signs up for the platform
+   */
+  async sendNewMemberWelcome(
+    userId: string,
+    email: string,
+    firstName: string
+  ): Promise<EmailResult> {
+    const onboardingUrl = `${getAppBaseUrl()}/onboarding`;
+    
+    const template = emailTemplates.newMemberWelcome({
+      firstName: firstName || 'there',
+      onboardingUrl,
+    });
+
+    return this.sendEmail(
+      email,
+      template.subject,
+      template.html,
+      'new_member_welcome',
+      undefined,
+      userId
+    );
+  }
+
+  /**
+   * Send employee invitation email
+   * Sent when an employee is invited to join a workspace
+   */
+  async sendEmployeeInvitation(
+    workspaceId: string,
+    email: string,
+    inviteToken: string,
+    data: {
+      firstName: string;
+      inviterName: string;
+      workspaceName: string;
+      roleName: string;
+      expiresInDays?: number;
+    }
+  ): Promise<EmailResult> {
+    const joinUrl = `${getAppBaseUrl()}/accept-invite?token=${inviteToken}`;
+    
+    const template = emailTemplates.employeeInvitation({
+      firstName: data.firstName || 'there',
+      inviterName: data.inviterName,
+      workspaceName: data.workspaceName,
+      roleName: data.roleName || 'Team Member',
+      joinUrl,
+      expiresIn: `${data.expiresInDays || 7} days`,
+    });
+
+    return this.sendEmail(
+      email,
+      template.subject,
+      template.html,
+      'employee_invitation',
+      workspaceId
+    );
+  }
+
+  /**
+   * Send support role briefing email
+   * Sent when a user is assigned a platform support role
+   */
+  async sendSupportRoleBriefing(
+    userId: string,
+    email: string,
+    firstName: string,
+    roleName: string,
+    capabilities: string[]
+  ): Promise<EmailResult> {
+    const dashboardUrl = `${getAppBaseUrl()}/platform-admin`;
+    
+    const template = emailTemplates.supportRoleBriefing({
+      firstName: firstName || 'Support Team Member',
+      roleName,
+      dashboardUrl,
+      capabilities,
+    });
+
+    return this.sendEmail(
+      email,
+      template.subject,
+      template.html,
+      'support_role_briefing',
+      undefined,
+      userId
+    );
+  }
+
+  /**
+   * Send onboarding completion celebration email
+   * Sent when a user completes all onboarding tasks
+   */
+  async sendOnboardingComplete(
+    workspaceId: string,
+    userId: string,
+    email: string,
+    firstName: string,
+    workspaceName: string,
+    completedTasks: number
+  ): Promise<EmailResult> {
+    const dashboardUrl = `${getAppBaseUrl()}/dashboard`;
+    
+    const template = emailTemplates.onboardingComplete({
+      firstName: firstName || 'there',
+      workspaceName: workspaceName || 'Your Organization',
+      dashboardUrl,
+      completedTasks,
+    });
+
+    return this.sendEmail(
+      email,
+      template.subject,
+      template.html,
+      'onboarding_complete',
+      workspaceId,
+      userId
     );
   }
 }
