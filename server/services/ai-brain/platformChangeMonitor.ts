@@ -451,16 +451,46 @@ Respond ONLY with valid JSON (no markdown, no explanations):
     }
   }
   
+  // Valid platform_update_category enum values from shared/schema.ts
+  private static readonly VALID_CATEGORIES = ['feature', 'improvement', 'bugfix', 'security', 'announcement'] as const;
+
   private mapToDetailedCategory(changeType: string): string {
+    // Maps internal change types to valid platform_update_category enum values
+    // Valid enum values: 'feature', 'improvement', 'bugfix', 'security', 'announcement'
     const mapping: Record<string, string> = {
       'feature_added': 'feature',
       'bug_fixed': 'bugfix',
-      'hotpatch': 'hotpatch',
+      'hotpatch': 'bugfix',  // Hotpatches are urgent bug fixes
       'enhancement': 'improvement',
       'security_fix': 'security',
       'update': 'improvement',
     };
     return mapping[changeType] || 'improvement';
+  }
+
+  // Sanitizes any category string to a valid enum value
+  private sanitizeCategory(category: string | undefined): 'feature' | 'improvement' | 'bugfix' | 'security' | 'announcement' {
+    if (!category) return 'announcement';
+    
+    // Direct match to valid enum value
+    if (PlatformChangeMonitorService.VALID_CATEGORIES.includes(category as any)) {
+      return category as any;
+    }
+    
+    // Map detailed categories to valid enum values
+    const categoryMapping: Record<string, 'feature' | 'improvement' | 'bugfix' | 'security' | 'announcement'> = {
+      'hotpatch': 'bugfix',
+      'service': 'feature',
+      'bot_automation': 'feature',
+      'deprecation': 'announcement',
+      'integration': 'feature',
+      'ui_update': 'improvement',
+      'backend_update': 'improvement',
+      'performance': 'improvement',
+      'documentation': 'announcement',
+    };
+    
+    return categoryMapping[category] || 'announcement';
   }
 
   private buildModuleContext(modules: string[]): string {
@@ -617,7 +647,7 @@ Respond ONLY with valid JSON (no markdown, no explanations):
         type: 'announcement',
         title: summary.title,
         description: summary.endUserSummary || summary.summary,
-        category: summary.detailedCategory as any || 'announcement',
+        category: this.sanitizeCategory(summary.detailedCategory),
         visibility: 'all',
         priority: 1, // 1=high, 2=normal, 3=low
         metadata: {

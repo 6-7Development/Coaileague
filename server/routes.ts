@@ -715,7 +715,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = authReq.user?.id;
       
       if (!userId) {
-        return res.json({ success: true, acknowledged: 0, counts: { unread: 0, uncleared: 0 } });
+        return res.json({ success: true, acknowledged: 0, platformUpdatesMarked: 0, counts: { unread: 0, uncleared: 0 } });
       }
       
       const workspace = await storage.getWorkspaceByOwnerId(userId);
@@ -723,11 +723,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const workspaceId = workspace?.id || member?.workspaceId;
       
       if (!workspaceId) {
-        return res.json({ success: true, acknowledged: 0, counts: { unread: 0, uncleared: 0 } });
+        return res.json({ success: true, acknowledged: 0, platformUpdatesMarked: 0, counts: { unread: 0, uncleared: 0 } });
       }
       
-      // Acknowledge all uncleared notifications
+      // Acknowledge all uncleared notifications AND mark platform updates as viewed
       const acknowledged = await storage.acknowledgeAllNotifications(userId, workspaceId);
+      const platformUpdatesMarked = await storage.markAllPlatformUpdatesAsViewed(userId, workspaceId);
       
       // Get updated counts
       const counts = await storage.getUnreadAndUnclearedCount(userId, workspaceId);
@@ -735,6 +736,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // WebSocket broadcast for real-time sync
       broadcastNotification(workspaceId, userId, 'notification_acknowledged_all', { 
         acknowledged,
+        platformUpdatesMarked,
         unreadCount: counts.unread,
         unclearedCount: counts.uncleared
       }, counts.unread);
@@ -743,12 +745,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         counts: { notifications: counts.unread, platformUpdates: 0, total: counts.unread, lastUpdated: new Date().toISOString() }, 
         source: 'acknowledge_all' 
       }, counts.unread);
+      broadcastNotification(workspaceId, userId, 'whats_new_cleared', { count: 0 }, 0);
       
-      console.log("[Acknowledge All] User " + userId + " acknowledged " + acknowledged + " notifications");
+      console.log("[Acknowledge All] User " + userId + " acknowledged " + acknowledged + " notifications and " + platformUpdatesMarked + " platform updates");
       
       res.json({ 
         success: true, 
         acknowledged,
+        platformUpdatesMarked,
         counts: { unread: counts.unread, uncleared: counts.uncleared }
       });
     } catch (error) {

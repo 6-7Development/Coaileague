@@ -14,6 +14,34 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 type UpdateCategory = "feature" | "improvement" | "bugfix" | "security" | "announcement";
 type AlertSeverity = "info" | "warning" | "critical";
 
+// Valid platform_update_category enum values
+const VALID_CATEGORIES: UpdateCategory[] = ['feature', 'improvement', 'bugfix', 'security', 'announcement'];
+
+// Sanitizes any category string to a valid enum value
+function sanitizeCategory(category: string | undefined): UpdateCategory {
+  if (!category) return 'announcement';
+  
+  // Direct match to valid enum value
+  if (VALID_CATEGORIES.includes(category as UpdateCategory)) {
+    return category as UpdateCategory;
+  }
+  
+  // Map detailed/invalid categories to valid enum values
+  const categoryMapping: Record<string, UpdateCategory> = {
+    'hotpatch': 'bugfix',
+    'service': 'feature',
+    'bot_automation': 'feature',
+    'deprecation': 'announcement',
+    'integration': 'feature',
+    'ui_update': 'improvement',
+    'backend_update': 'improvement',
+    'performance': 'improvement',
+    'documentation': 'announcement',
+  };
+  
+  return categoryMapping[category] || 'announcement';
+}
+
 interface AIInsightData {
   title: string;
   description: string;
@@ -381,7 +409,8 @@ export async function handlePlatformChangeEvent(event: any): Promise<void> {
     const eventType = event.type;
     const title = event.title;
     const description = event.description;
-    const category = event.category || 'announcement';
+    // Sanitize category to ensure it's a valid enum value
+    const category = sanitizeCategory(event.category);
     
     // Only create updates for actual platform changes
     if (!title || !['feature_released', 'feature_updated', 'bugfix_deployed', 'security_patch', 'announcement'].includes(eventType)) {
@@ -392,7 +421,7 @@ export async function handlePlatformChangeEvent(event: any): Promise<void> {
     const result = await generatePlatformUpdate({
       title,
       description,
-      category: category as any,
+      category,
       workspaceId: event.workspaceId,
       priority: event.priority || 2,
       learnMoreUrl: event.learnMoreUrl,
