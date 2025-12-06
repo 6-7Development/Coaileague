@@ -45,6 +45,7 @@ import { showLogoutTransition } from "@/lib/transition-utils";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { CoAIleagueLogo } from "@/components/coailleague-logo";
 import { MagicFloatingText } from "@/components/mascot/MagicFloatingText";
+import { FestiveDialogueBubble } from "@/components/mascot/FestiveDialogueBubble";
 import NotFound from "@/pages/not-found";
 // import Landing from "@/pages/landing";
 import Homepage from "@/pages/homepage";
@@ -612,9 +613,17 @@ function MascotRenderer() {
         </div>
       </div>
       
-      {/* MagicFloatingText MUST be OUTSIDE the transformed container for correct fixed positioning */}
-      {/* This ensures bubbles anchor correctly to mascot regardless of container transforms */}
-      {currentThought && (
+      {/* Dialogue bubbles MUST be OUTSIDE the transformed container for correct fixed positioning */}
+      {/* Use FestiveDialogueBubble for HOLIDAY mode, MagicFloatingText for other modes */}
+      {currentThought && currentMode === 'HOLIDAY' && (
+        <FestiveDialogueBubble
+          thought={currentThought}
+          mascotPosition={{ x: effectiveX, y: effectiveY }}
+          mascotSize={bubbleSize}
+          isMobile={isMobile}
+        />
+      )}
+      {currentThought && currentMode !== 'HOLIDAY' && (
         <MagicFloatingText
           thought={currentThought}
           mascotPosition={{ x: effectiveX, y: effectiveY }}
