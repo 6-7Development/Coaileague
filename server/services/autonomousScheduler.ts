@@ -31,6 +31,70 @@ import { checkDatabase, checkChatWebSocket, checkStripe } from './healthCheck';
 import { checkExpiringCertifications } from './complianceAlertService';
 import { platformChangeMonitor } from './ai-brain/platformChangeMonitor';
 import { runAllMaintenanceJobs, maintenanceConfig } from './databaseMaintenance';
+import { platformEventBus, PlatformEvent, EventCategory, EventVisibility } from './platformEventBus';
+
+// ============================================================================
+// AI BRAIN INTEGRATION - Automation Event Emission
+// ============================================================================
+
+interface AutomationEventData {
+  jobName: string;
+  category: 'billing' | 'scheduling' | 'payroll' | 'compliance' | 'maintenance' | 'notification';
+  success: boolean;
+  recordsProcessed?: number;
+  duration?: number;
+  details?: Record<string, any>;
+  workspaceId?: string;
+}
+
+async function emitAutomationEvent(data: AutomationEventData) {
+  const categoryToEventCategory: Record<string, EventCategory> = {
+    billing: 'feature',
+    scheduling: 'feature',
+    payroll: 'feature',
+    compliance: 'announcement',
+    maintenance: 'improvement',
+    notification: 'announcement',
+  };
+
+  const categoryToVisibility: Record<string, EventVisibility> = {
+    billing: 'manager',
+    scheduling: 'staff',
+    payroll: 'manager',
+    compliance: 'manager',
+    maintenance: 'admin',
+    notification: 'all',
+  };
+
+  const event: PlatformEvent = {
+    type: 'automation_completed',
+    category: categoryToEventCategory[data.category] || 'feature',
+    title: `${data.jobName} ${data.success ? 'Completed' : 'Failed'}`,
+    description: data.success 
+      ? `Automation job "${data.jobName}" completed successfully${data.recordsProcessed ? ` - ${data.recordsProcessed} records processed` : ''}${data.duration ? ` in ${data.duration}ms` : ''}`
+      : `Automation job "${data.jobName}" failed`,
+    workspaceId: data.workspaceId,
+    metadata: {
+      jobName: data.jobName,
+      category: data.category,
+      success: data.success,
+      recordsProcessed: data.recordsProcessed,
+      duration: data.duration,
+      timestamp: new Date().toISOString(),
+      ...data.details,
+      audience: data.category === 'maintenance' ? 'staff' : 'all',
+      severity: data.success ? 'low' : 'high',
+    },
+    visibility: categoryToVisibility[data.category] || 'manager',
+  };
+
+  try {
+    await platformEventBus.publish(event);
+    console.log(`[AI BRAIN] Automation event emitted: ${data.jobName}`);
+  } catch (error) {
+    console.error(`[AI BRAIN] Failed to emit automation event: ${error}`);
+  }
+}
 
 // ============================================================================
 // IDEMPOTENCY FINGERPRINTING
@@ -1497,7 +1561,24 @@ export function startAutonomousScheduler() {
   if (SCHEDULER_CONFIG.invoicing.enabled) {
     cron.schedule(SCHEDULER_CONFIG.invoicing.schedule, () => {
       console.log(`🕐 [CRON EXECUTING] Invoice generation triggered at ${new Date().toISOString()}`);
-      runNightlyInvoiceGeneration();
+      const startTime = Date.now();
+      runNightlyInvoiceGeneration()
+        .then(() => {
+          emitAutomationEvent({
+            jobName: 'Smart Billing (BillOS)',
+            category: 'billing',
+            success: true,
+            duration: Date.now() - startTime,
+          });
+        })
+        .catch((err) => {
+          emitAutomationEvent({
+            jobName: 'Smart Billing (BillOS)',
+            category: 'billing',
+            success: false,
+            details: { error: err.message },
+          });
+        });
     });
     console.log('✅ Smart Billing Automation:');
     console.log(`   Schedule: ${SCHEDULER_CONFIG.invoicing.schedule} (daily 2 AM)`);
@@ -1508,7 +1589,24 @@ export function startAutonomousScheduler() {
   if (SCHEDULER_CONFIG.scheduling.enabled) {
     cron.schedule(SCHEDULER_CONFIG.scheduling.schedule, () => {
       console.log(`🕐 [CRON EXECUTING] Schedule generation triggered at ${new Date().toISOString()}`);
-      runWeeklyScheduleGeneration();
+      const startTime = Date.now();
+      runWeeklyScheduleGeneration()
+        .then(() => {
+          emitAutomationEvent({
+            jobName: 'AI Schedule Generation (OperationsOS)',
+            category: 'scheduling',
+            success: true,
+            duration: Date.now() - startTime,
+          });
+        })
+        .catch((err) => {
+          emitAutomationEvent({
+            jobName: 'AI Schedule Generation (OperationsOS)',
+            category: 'scheduling',
+            success: false,
+            details: { error: err.message },
+          });
+        });
     });
     console.log('✅ AI Scheduling Automation:');
     console.log(`   Schedule: ${SCHEDULER_CONFIG.scheduling.schedule} (daily 11 PM)`);
@@ -1519,7 +1617,24 @@ export function startAutonomousScheduler() {
   if (SCHEDULER_CONFIG.payroll.enabled) {
     cron.schedule(SCHEDULER_CONFIG.payroll.schedule, () => {
       console.log(`🕐 [CRON EXECUTING] Payroll processing triggered at ${new Date().toISOString()}`);
-      runAutomaticPayrollProcessing();
+      const startTime = Date.now();
+      runAutomaticPayrollProcessing()
+        .then(() => {
+          emitAutomationEvent({
+            jobName: 'Automatic Payroll Processing',
+            category: 'payroll',
+            success: true,
+            duration: Date.now() - startTime,
+          });
+        })
+        .catch((err) => {
+          emitAutomationEvent({
+            jobName: 'Automatic Payroll Processing',
+            category: 'payroll',
+            success: false,
+            details: { error: err.message },
+          });
+        });
     });
     console.log('✅ Auto Payroll Automation:');
     console.log(`   Schedule: ${SCHEDULER_CONFIG.payroll.schedule} (daily 3 AM)`);
@@ -1595,7 +1710,26 @@ export function startAutonomousScheduler() {
   // Compliance Alert Job - Daily at 8 AM
   cron.schedule('0 8 * * *', () => {
     console.log(`🕐 [CRON EXECUTING] Compliance check triggered at ${new Date().toISOString()}`);
-    checkExpiringCertifications().catch(err => console.error('Compliance check error:', err));
+    const startTime = Date.now();
+    checkExpiringCertifications()
+      .then((result) => {
+        emitAutomationEvent({
+          jobName: 'Compliance Certification Check',
+          category: 'compliance',
+          success: true,
+          duration: Date.now() - startTime,
+          recordsProcessed: result?.alertsSent || 0,
+        });
+      })
+      .catch(err => {
+        console.error('Compliance check error:', err);
+        emitAutomationEvent({
+          jobName: 'Compliance Certification Check',
+          category: 'compliance',
+          success: false,
+          details: { error: err.message },
+        });
+      });
   });
   console.log('✅ Compliance Alert Automation:');
   console.log('   Schedule: 0 8 * * * (daily 8 AM)');
@@ -1728,13 +1862,34 @@ export function startAutonomousScheduler() {
   // Database Maintenance - Weekly on Sundays at 3 AM
   cron.schedule(maintenanceConfig.schedule, () => {
     console.log(`🧹 [DB MAINTENANCE] Scheduled maintenance triggered at ${new Date().toISOString()}`);
+    const startTime = Date.now();
     (async () => {
       try {
         const results = await runAllMaintenanceJobs();
         const successCount = results.filter(r => r.success).length;
+        const totalRecords = results.reduce((sum, r) => sum + r.recordsProcessed, 0);
         console.log(`🧹 [DB MAINTENANCE] Complete: ${successCount}/${results.length} jobs successful`);
-      } catch (error) {
+        
+        await emitAutomationEvent({
+          jobName: 'Database Maintenance',
+          category: 'maintenance',
+          success: successCount === results.length,
+          duration: Date.now() - startTime,
+          recordsProcessed: totalRecords,
+          details: {
+            jobsRun: results.length,
+            jobsSuccessful: successCount,
+            results: results.map(r => ({ job: r.job, success: r.success, records: r.recordsProcessed })),
+          },
+        });
+      } catch (error: any) {
         console.error('🧹 [DB MAINTENANCE] ❌ Maintenance error:', error);
+        await emitAutomationEvent({
+          jobName: 'Database Maintenance',
+          category: 'maintenance',
+          success: false,
+          details: { error: error.message },
+        });
       }
     })();
   });
