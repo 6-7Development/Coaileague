@@ -474,9 +474,9 @@ export function NotificationsPopover() {
                   </span>
                 </div>
               )}
-              {filteredPlatformUpdates.length > 0 ? (
+              {unviewedUpdates.length > 0 ? (
                 <div className="divide-y">
-                  {filteredPlatformUpdates.map((update) => {
+                  {unviewedUpdates.map((update) => {
                     const detailedCat = update.metadata?.detailedCategory || update.category;
                     const config = categoryConfig[detailedCat] || categoryConfig.announcement;
                     const IconComponent = config.icon;
