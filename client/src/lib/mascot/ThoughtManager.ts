@@ -109,10 +109,24 @@ export interface ThoughtManagerState {
 
 type ThoughtListener = (thought: Thought | null) => void;
 
+// Calculate reading time based on text length (average reading speed: ~200 words/min for casual reading)
+// Minimum 6 seconds, maximum 30 seconds
+function calculateReadingTime(text: string): number {
+  const words = text.split(/\s+/).length;
+  const averageReadingWPM = 150; // Slower for comprehension
+  const baseTimeMs = (words / averageReadingWPM) * 60 * 1000;
+  const minTime = 6000; // 6 seconds minimum
+  const maxTime = 30000; // 30 seconds maximum
+  // Add extra time for punctuation (pauses)
+  const punctuationPauses = (text.match(/[.!?,;:]/g) || []).length * 200;
+  return Math.min(maxTime, Math.max(minTime, baseTimeMs + punctuationPauses + 2000));
+}
+
 class ThoughtManager {
   private state: ThoughtManagerState;
   private listeners: Set<ThoughtListener> = new Set();
   private rotationTimer: ReturnType<typeof setInterval> | null = null;
+  private rotationStartupTimer: ReturnType<typeof setTimeout> | null = null; // Guards against duplicate starts
   private displayTimer: ReturnType<typeof setTimeout> | null = null;
   
   private onboardingReminderTimer: ReturnType<typeof setInterval> | null = null;
@@ -183,9 +197,13 @@ class ThoughtManager {
     
     this.notify();
     
+    // Use dynamic reading time based on text length instead of fixed duration
+    const displayTime = calculateReadingTime(thought.text);
+    thought.expiresAt = Date.now() + displayTime;
+    
     this.displayTimer = setTimeout(() => {
       this.clearThought();
-    }, MASCOT_CONFIG.thoughts.displayDuration);
+    }, displayTime);
   }
   
   showSimpleThought(options: {
@@ -215,7 +233,10 @@ class ThoughtManager {
     
     this.notify();
     
-    const displayDuration = options.duration || MASCOT_CONFIG.thoughts.displayDuration;
+    // Use provided duration or calculate based on text length
+    const displayDuration = options.duration || calculateReadingTime(options.text);
+    thought.expiresAt = Date.now() + displayDuration;
+    
     this.displayTimer = setTimeout(() => {
       this.clearThought();
     }, displayDuration);
@@ -535,12 +556,14 @@ class ThoughtManager {
     const previousUserId = this.state.user?.id;
     this.state.user = user;
     
-    // Clean up onboarding reminders when user logs out
+    // Clean up when user logs out
     if (!user) {
       this.stopPersistentReminders();
+      this.stopRotation(); // Stop thought rotation
       this.state.onboardingProgress = null;
       this.state.isOnboardingComplete = false;
       this.state.advisorMode = false;
+      this.state.lastGreetedUserId = null; // Reset so next user gets greeted
       return;
     }
     
@@ -569,6 +592,11 @@ class ThoughtManager {
           }
         }
       }, 1500);
+    }
+    
+    // Start thought rotation when user is set and context exists
+    if (user && this.state.trinityContext && !this.rotationTimer) {
+      this.startPersonaAwareRotation();
     }
   }
   
@@ -656,6 +684,169 @@ class ThoughtManager {
           this.triggerRoleAwareGreeting();
         }
       }, 1000);
+    }
+    
+    // Start thought rotation when we have a valid context and user
+    if (context && this.state.user && !this.rotationTimer) {
+      this.startPersonaAwareRotation();
+    }
+    
+    // Stop rotation if context is cleared
+    if (!context && this.rotationTimer) {
+      this.stopRotation();
+    }
+  }
+  
+  /**
+   * Start persona-aware thought rotation
+   * Generates contextual thoughts based on user's role and subscription
+   */
+  private startPersonaAwareRotation(): void {
+    // Guard against duplicate starts during startup delay
+    if (this.rotationTimer || this.rotationStartupTimer) return;
+    
+    // Initial greeting delay - set timer immediately to prevent duplicate calls
+    this.rotationStartupTimer = setTimeout(() => {
+      // Clear startup timer reference
+      this.rotationStartupTimer = null;
+      
+      // Don't start if already stopped (e.g., user logged out during delay)
+      if (!this.state.user || !this.state.trinityContext) {
+        return;
+      }
+      
+      // Start the rotation loop
+      this.rotationTimer = setInterval(() => {
+        // Don't generate new thought if one is showing or queue has items
+        if (this.state.currentThought || this.state.queue.length > 0) {
+          return;
+        }
+        
+        // Generate persona-appropriate thought
+        this.generatePersonaThought();
+      }, MASCOT_CONFIG.thoughts.rotateInterval);
+    }, 5000); // 5 second delay after initial greeting
+  }
+  
+  /**
+   * Generate a thought based on current persona context
+   * Attempts to fetch from AI first (10% of the time), falls back to local pools
+   */
+  private generatePersonaThought(): void {
+    const ctx = this.state.trinityContext;
+    const displayName = this.getUserDisplayName() || 'there';
+    
+    // 10% chance to try fetching AI-generated thought from server
+    if (Math.random() < 0.1) {
+      this.fetchAIThought().then(aiThought => {
+        if (aiThought) {
+          const thought = this.createThought(aiThought, 'ADVISING', 'ai', 'normal');
+          this.queueThought(thought);
+        } else {
+          // Fallback to local thought
+          this.generateLocalThought(ctx, displayName);
+        }
+      }).catch(() => {
+        // On error, use local thought
+        this.generateLocalThought(ctx, displayName);
+      });
+      return;
+    }
+    
+    // Use local thought pools
+    this.generateLocalThought(ctx, displayName);
+  }
+  
+  /**
+   * Generate a thought from local persona-specific pools
+   */
+  private generateLocalThought(ctx: TrinityPersonaContext | null, displayName: string): void {
+    let thoughtPool: string[];
+    
+    if (ctx?.isRootAdmin || ctx?.isPlatformStaff) {
+      thoughtPool = [
+        `Platform metrics looking good today, ${displayName}.`,
+        `All systems operational. Need to review anything?`,
+        `I'm monitoring the platform. Want a status update?`,
+        `Ready to assist with platform operations.`,
+        `How can I help you manage the platform today?`,
+      ];
+    } else if (ctx?.isSupportRole) {
+      thoughtPool = [
+        `Any users need help today, ${displayName}?`,
+        `Support queue is ready. I'll help you stay efficient.`,
+        `I can help you draft responses or find solutions.`,
+        `Need help with a tricky ticket?`,
+        `Let's help some users today!`,
+      ];
+    } else if (ctx?.hasTrinityPro) {
+      thoughtPool = [
+        `${displayName}, I've analyzed your recent data. Want insights?`,
+        `I noticed some trends in your workforce patterns.`,
+        `Pro tip: I can help optimize your scheduling.`,
+        `Ready for your daily intelligence briefing?`,
+        `Your AI advisor is here. What shall we work on?`,
+        `I can generate reports or analyze performance data.`,
+      ];
+    } else if (ctx?.hasBusinessBuddy || ctx?.isOrgOwner) {
+      thoughtPool = [
+        `How's business going, ${displayName}?`,
+        `Need help with workforce planning?`,
+        `I can help you optimize scheduling efficiency.`,
+        `Want to review your team's performance?`,
+        `Let's make your organization even better!`,
+        `Ready to tackle today's challenges together?`,
+      ];
+    } else if (ctx?.isManager) {
+      thoughtPool = [
+        `Your team schedule looks good, ${displayName}.`,
+        `Any shifts need adjusting today?`,
+        `I can help you manage time-off requests.`,
+        `Need help with team coordination?`,
+        `Ready to help with scheduling!`,
+      ];
+    } else {
+      // Standard user thoughts
+      thoughtPool = [
+        `Hey ${displayName}, need any help?`,
+        `I'm here if you have questions!`,
+        `Tap me anytime for assistance.`,
+        `How's your day going?`,
+        `Need help with anything?`,
+      ];
+    }
+    
+    // Add occasional holiday flair
+    if (this.state.isHoliday && this.state.currentHoliday && Math.random() > 0.7) {
+      const holidayThoughts = this.state.currentHoliday.thoughts;
+      thoughtPool = [...thoughtPool, ...holidayThoughts];
+    }
+    
+    const text = thoughtPool[Math.floor(Math.random() * thoughtPool.length)];
+    const thought = this.createThought(text, 'IDLE', 'ai', 'low');
+    this.queueThought(thought);
+  }
+  
+  /**
+   * Fetch an AI-generated thought from the server
+   */
+  private async fetchAIThought(): Promise<string | null> {
+    try {
+      const response = await fetch('/api/trinity/thought', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ trigger: 'idle_rotation' }),
+      });
+      
+      if (!response.ok) {
+        return null;
+      }
+      
+      const data = await response.json();
+      return data.success && data.thought ? data.thought : null;
+    } catch {
+      return null;
     }
   }
   
@@ -1124,6 +1315,10 @@ class ThoughtManager {
   }
   
   stopRotation(): void {
+    if (this.rotationStartupTimer) {
+      clearTimeout(this.rotationStartupTimer);
+      this.rotationStartupTimer = null;
+    }
     if (this.rotationTimer) {
       clearInterval(this.rotationTimer);
       this.rotationTimer = null;
