@@ -7831,7 +7831,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { enabled, workspaceId } = req.body;
       const userId = req.user.claims.sub;
-      const workspaceId = req.body.workspaceId;
       
       if (!workspaceId) {
         return res.status(400).json({ message: "workspaceId is required" });
@@ -12226,6 +12225,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { applicationId } = req.params;
       const { workspaceId } = req.query;
 
+      if (!workspaceId) {
         return res.status(400).json({ message: "Workspace ID is required" });
       }
 
@@ -12259,6 +12259,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { applicationId } = req.params;
       const { workspaceId } = req.query;
 
+      if (!workspaceId) {
         return res.status(400).json({ message: "Workspace ID is required" });
       }
 
@@ -12434,6 +12435,7 @@ ${application.email}`,
       const { workspaceId } = req.query;
       const { signedByName, applicationId } = req.body;
 
+      if (!workspaceId) {
         return res.status(400).json({ message: "Workspace ID is required" });
       }
 
@@ -17676,6 +17678,7 @@ Summary:`;
   app.get('/api/audit-logs', requireAuth, requireProfessional, attachWorkspaceId, async (req: AuthenticatedRequest, res) => {
     try {
       const workspaceId = req.workspaceId;
+      if (!workspaceId) {
         return res.status(400).json({ message: "Workspace ID required" });
       }
 
@@ -19333,6 +19336,7 @@ Summary:`;
       // PUBLIC ACCESS: Guests can access chat but AI features require workspace for billing
       // Workspace users get AI assistance (billed), guests get human support only
       const workspaceId = req.user?.workspaceId;
+      if (!workspaceId) {
         // Gracefully disable AI for guests instead of blocking chat access
         return res.status(200).json({ 
           message: "AI features are available to workspace members only. A human support agent will assist you shortly.",
@@ -27641,6 +27645,7 @@ Respond with valid JSON array only.`
   app.get('/api/comm-os/onboarding-status', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const workspaceId = req.workspaceId;
+      if (!workspaceId) {
         return res.status(400).json({ message: "No workspace found" });
       }
 
@@ -27667,6 +27672,7 @@ Respond with valid JSON array only.`
         return res.status(401).json({ message: 'Unauthorized' });
       }
       const workspaceId = req.workspaceId;
+      if (!workspaceId) {
         return res.status(400).json({ message: "No workspace found" });
       }
 
@@ -27904,7 +27910,7 @@ Respond with valid JSON array only.`
         return res.status(401).json({ message: 'Unauthorized' });
       }
       const workspaceId = req.workspaceId;
-
+      if (!workspaceId) {
         return res.status(400).json({ message: "No workspace found" });
       }
 
@@ -27940,6 +27946,7 @@ Respond with valid JSON array only.`
   app.post('/api/private-messages/upload', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const workspaceId = req.workspaceId;
+      if (!workspaceId) {
         return res.status(400).json({ message: "No workspace found" });
       }
 
@@ -28002,6 +28009,7 @@ Respond with valid JSON array only.`
       const workspaceId = req.workspaceId;
       const { recipientId, message, attachmentUrl, attachmentName } = req.body;
 
+      if (!workspaceId) {
         return res.status(400).json({ message: "No workspace found" });
       }
 
@@ -28045,6 +28053,7 @@ Respond with valid JSON array only.`
       const workspaceId = req.workspaceId;
       const { recipientId } = req.body;
 
+      if (!workspaceId) {
         return res.status(400).json({ message: "No workspace found" });
       }
 
@@ -28088,6 +28097,7 @@ Respond with valid JSON array only.`
       const workspaceId = req.workspaceId;
       const query = req.query.q as string;
 
+      if (!workspaceId) {
         return res.status(400).json({ message: "No workspace found" });
       }
 
@@ -28120,6 +28130,7 @@ Respond with valid JSON array only.`
       const workspaceId = req.workspaceId;
       const { conversationId, investigationReason, caseNumber } = req.body;
 
+      if (!workspaceId) {
         return res.status(400).json({ message: "No workspace found" });
       }
 
@@ -28148,7 +28159,7 @@ Respond with valid JSON array only.`
   app.get('/api/dm-audit/requests', requireAuth, requireOwner, async (req: AuthenticatedRequest, res) => {
     try {
       const workspaceId = req.workspaceId;
-
+      if (!workspaceId) {
         return res.status(400).json({ message: "No workspace found" });
       }
 
@@ -28527,6 +28538,7 @@ Respond with valid JSON array only.`
   app.get('/api/oversight', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const workspaceId = req.user!.currentWorkspaceId;
+      if (!workspaceId) {
         return res.status(400).json({ message: "No workspace selected" });
       }
 
@@ -28554,6 +28566,7 @@ Respond with valid JSON array only.`
   app.get('/api/oversight/stats', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const workspaceId = req.user!.currentWorkspaceId;
+      if (!workspaceId) {
         return res.status(400).json({ message: "No workspace selected" });
       }
 
@@ -28595,6 +28608,7 @@ Respond with valid JSON array only.`
   app.patch('/api/oversight/:id/approve', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const workspaceId = req.user!.currentWorkspaceId;
+      if (!workspaceId) {
         return res.status(400).json({ message: "No workspace selected" });
       }
 
@@ -28662,6 +28676,7 @@ Respond with valid JSON array only.`
   app.patch('/api/oversight/:id/reject', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const workspaceId = req.user!.currentWorkspaceId;
+      if (!workspaceId) {
         return res.status(400).json({ message: "No workspace selected" });
       }
 
