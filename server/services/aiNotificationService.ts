@@ -353,6 +353,62 @@ export async function acknowledgeMaintenanceAlert(
   }
 }
 
+// Acknowledge ALL active maintenance alerts for a user (used by clear-all)
+export async function acknowledgeAllMaintenanceAlerts(
+  userId: string,
+  workspaceId?: string
+): Promise<number> {
+  try {
+    // Get all active/scheduled alerts (don't filter by workspace - user can see all)
+    const activeAlerts = await db.select({ id: maintenanceAlerts.id })
+      .from(maintenanceAlerts)
+      .where(
+        or(
+          eq(maintenanceAlerts.status, 'scheduled'),
+          eq(maintenanceAlerts.status, 'in_progress')
+        )
+      );
+    
+    if (activeAlerts.length === 0) {
+      return 0;
+    }
+    
+    let acknowledged = 0;
+    for (const alert of activeAlerts) {
+      // Check if already acknowledged
+      const existing = await db.select()
+        .from(maintenanceAcknowledgments)
+        .where(
+          and(
+            eq(maintenanceAcknowledgments.alertId, alert.id),
+            eq(maintenanceAcknowledgments.userId, userId)
+          )
+        )
+        .limit(1);
+      
+      if (existing.length === 0) {
+        await db.insert(maintenanceAcknowledgments).values({
+          alertId: alert.id,
+          userId,
+        });
+        
+        await db.update(maintenanceAlerts)
+          .set({ 
+            acknowledgedByCount: sql`${maintenanceAlerts.acknowledgedByCount} + 1`
+          })
+          .where(eq(maintenanceAlerts.id, alert.id));
+        
+        acknowledged++;
+      }
+    }
+    
+    return acknowledged;
+  } catch (error) {
+    console.error("[AINotification] Failed to acknowledge all alerts:", error);
+    return 0;
+  }
+}
+
 export async function notifyAutomationComplete(
   type: "scheduling" | "invoicing" | "payroll",
   workspaceId: string,
@@ -542,6 +598,7 @@ export const aiNotificationService = {
   createMaintenanceAlert,
   getActiveMaintenanceAlerts,
   acknowledgeMaintenanceAlert,
+  acknowledgeAllMaintenanceAlerts,
   notifyAutomationComplete,
   notifySystemIssue,
   handlePlatformChangeEvent,

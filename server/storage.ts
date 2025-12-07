@@ -815,7 +815,7 @@ export interface IStorage {
   // ========================================================================
   getPlatformUpdatesWithReadState(userId: string, workspaceId: string, limit?: number): Promise<Array<PlatformUpdate & { isViewed: boolean }>>;
   markPlatformUpdateAsViewed(userId: string, updateId: string): Promise<void>;
-  markAllPlatformUpdatesAsViewed(userId: string, workspaceId: string): Promise<number>;
+  markAllPlatformUpdatesAsViewed(userId: string, workspaceId?: string): Promise<number>;
   createPlatformUpdate(update: InsertPlatformUpdate): Promise<PlatformUpdate>;
 
   // ========================================================================
@@ -6661,8 +6661,8 @@ export class DatabaseStorage implements IStorage {
       .onConflictDoNothing();
   }
 
-  async markAllPlatformUpdatesAsViewed(userId: string, workspaceId: string): Promise<number> {
-    // Get all unviewed platform updates for this user/workspace
+  async markAllPlatformUpdatesAsViewed(userId: string, workspaceId?: string): Promise<number> {
+    // Get all unviewed platform updates for this user (no workspace filter - clear ALL)
     const unviewedUpdates = await db
       .select({ id: platformUpdates.id })
       .from(platformUpdates)
@@ -6674,14 +6674,7 @@ export class DatabaseStorage implements IStorage {
         )
       )
       .where(
-        and(
-          or(
-            eq(platformUpdates.visibility, 'all'),
-            isNull(platformUpdates.workspaceId),
-            eq(platformUpdates.workspaceId, workspaceId)
-          ),
-          sql`${userPlatformUpdateViews.viewedAt} IS NULL`
-        )
+        sql`${userPlatformUpdateViews.viewedAt} IS NULL`
       );
 
     if (unviewedUpdates.length === 0) return 0;

@@ -706,14 +706,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Mark all platform updates as viewed
-      const platformUpdatesMarked = await storage.markAllPlatformUpdatesAsViewed(userId, workspaceId || "");
+      const platformUpdatesMarked = await storage.markAllPlatformUpdatesAsViewed(userId); // Don't filter by workspace - clear ALL
 
       // Acknowledge all notifications
       const acknowledged = await storage.acknowledgeAllNotifications(userId); // Don't filter by workspace - clear ALL user notifications
 
       // Also acknowledge maintenance alerts
       const { aiNotificationService } = await import("./services/aiNotificationService");
-      const alertsAcknowledged = await aiNotificationService.acknowledgeAllMaintenanceAlerts(userId, workspaceId || "");
+      const alertsAcknowledged = await aiNotificationService.acknowledgeAllMaintenanceAlerts(userId); // Don't filter by workspace - clear ALL
 
       res.json({
         success: true,
