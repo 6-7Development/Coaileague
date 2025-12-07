@@ -161,7 +161,7 @@ export function NotificationsPopover() {
   
   // Connect to WebSocket for real-time notification updates
   // This syncs notifications in real-time and updates the cache directly
-  const { isConnected, unreadCount: wsUnreadCount } = useNotificationWebSocket(userId, workspaceId);
+  const { isConnected } = useNotificationWebSocket(userId, workspaceId);
 
   // Get cached data for initial render to prevent showing 0 on cold start
   const cachedData = queryClient.getQueryData<NotificationsData>(["/api/notifications/combined"]);
@@ -291,29 +291,12 @@ export function NotificationsPopover() {
   // Filter to only show unread/uncleared notifications
   const filteredNotifications = rawNotifications.filter((n: any) => !n.isRead && !n.clearedAt);
   
-  // Use API's pre-computed counts as baseline
-  const apiUnreadPlatformUpdates = data?.unreadPlatformUpdates ?? 0;
-  const apiUnreadNotifications = data?.unreadNotifications ?? 0;
-  const apiUnreadAlerts = data?.unreadAlerts ?? 0;
-  const apiTotalUnread = data?.totalUnread ?? 0;
-  
-  // For display in tabs, use API counts
-  const unreadPlatformUpdates = apiUnreadPlatformUpdates;
-  const unreadAlerts = filteredMaintenanceAlerts.filter(a => !a.isAcknowledged).length;
-  
-  // For notifications: WebSocket is real-time source of truth
-  // The WebSocket count includes all user notifications, not just what's in the popover
-  const calculatedNotificationCount = filteredNotifications.filter(n => !n.isRead).length;
-  const unreadNotifications = isConnected && wsUnreadCount > 0 
-    ? wsUnreadCount 
-    : (apiUnreadNotifications > 0 ? apiUnreadNotifications : calculatedNotificationCount);
-  
-  // Total unread: WebSocket count is most accurate for notifications
-  // Combine WebSocket notification count with API's platform updates and alerts
-  // This ensures badge shows real-time count from WebSocket
-  const totalUnread = isConnected && wsUnreadCount > 0
-    ? wsUnreadCount + unreadPlatformUpdates + unreadAlerts
-    : (apiTotalUnread > 0 ? apiTotalUnread : (unreadPlatformUpdates + unreadNotifications + unreadAlerts));
+  // SIMPLIFIED: Server is the single source of truth for all counts
+  // This eliminates race conditions between WebSocket state and server state
+  const unreadPlatformUpdates = data?.unreadPlatformUpdates ?? 0;
+  const unreadNotifications = data?.unreadNotifications ?? 0;
+  const unreadAlerts = data?.unreadAlerts ?? 0;
+  const totalUnread = data?.totalUnread ?? 0;
 
   const unviewedUpdates = filteredPlatformUpdates.filter(u => !u.isViewed);
   const allUnviewedSelected = unviewedUpdates.length > 0 && selectedIds.size === unviewedUpdates.length;
