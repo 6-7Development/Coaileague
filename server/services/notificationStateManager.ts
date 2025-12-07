@@ -14,13 +14,15 @@ import { db } from '../db';
 import { 
   notifications, 
   platformUpdates, 
-  userPlatformUpdateViews 
+  userPlatformUpdateViews,
+  maintenanceAlerts
 } from '@shared/schema';
-import { eq, and, sql, notInArray, gte, or, isNull } from 'drizzle-orm';
+import { eq, and, sql, notInArray, gte, or, isNull, ne } from 'drizzle-orm';
 
 export interface UnreadCounts {
   notifications: number;
   platformUpdates: number;
+  maintenanceAlerts: number;
   total: number;
   lastUpdated: string;
 }
@@ -51,11 +53,13 @@ class NotificationStateManager {
     try {
       const notificationCount = await this.getUnreadNotificationCount(userId, workspaceId);
       const platformUpdateCount = await this.getUnviewedPlatformUpdateCount(userId, workspaceRole);
+      const alertCount = await this.getUnacknowledgedAlertCount(workspaceId);
       
       return {
         notifications: notificationCount,
         platformUpdates: platformUpdateCount,
-        total: notificationCount + platformUpdateCount,
+        maintenanceAlerts: alertCount,
+        total: notificationCount + platformUpdateCount + alertCount,
         lastUpdated: new Date().toISOString(),
       };
     } catch (error) {
@@ -63,9 +67,38 @@ class NotificationStateManager {
       return {
         notifications: 0,
         platformUpdates: 0,
+        maintenanceAlerts: 0,
         total: 0,
         lastUpdated: new Date().toISOString(),
       };
+    }
+  }
+  
+  private async getUnacknowledgedAlertCount(workspaceId?: string): Promise<number> {
+    try {
+      const conditions = [
+        ne(maintenanceAlerts.status, 'completed'),
+        ne(maintenanceAlerts.status, 'cancelled'),
+      ];
+      
+      if (workspaceId) {
+        conditions.push(
+          or(
+            eq(maintenanceAlerts.workspaceId, workspaceId),
+            isNull(maintenanceAlerts.workspaceId)
+          )!
+        );
+      }
+      
+      const [result] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(maintenanceAlerts)
+        .where(and(...conditions));
+      
+      return result?.count || 0;
+    } catch (error) {
+      console.error('[NotificationStateManager] Error counting maintenance alerts:', error);
+      return 0;
     }
   }
   
