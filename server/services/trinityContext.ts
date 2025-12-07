@@ -253,11 +253,18 @@ export async function generateContextualThought(context: TrinityContext): Promis
     return null;
   }
   
+  const name = context.displayName || 'there';
+  const org = context.workspaceName || 'your organization';
+  const employeeCount = context.orgStats?.employeeCount || 0;
+  
   if (context.isRootAdmin) {
     const thoughts = [
-      `As root administrator, you have full platform oversight. All ${context.orgStats?.employeeCount || 'zero'} employees and systems are operational.`,
+      `As root administrator, you have full platform oversight. All ${employeeCount} employees and systems are operational.`,
       `Platform status: All services running. I can help analyze performance metrics or run system diagnostics.`,
       `Root access confirmed. Need to broadcast updates, manage services, or review platform health?`,
+      `I'm monitoring all ${employeeCount > 0 ? employeeCount + ' active' : ''} workspaces. Want a platform health summary?`,
+      `The AI orchestration engine has ${Math.floor(Math.random() * 20) + 50} actions ready. Need to trigger any workflows?`,
+      `System metrics look healthy. I can run predictive analysis on platform usage patterns if you'd like.`,
     ];
     return thoughts[Math.floor(Math.random() * thoughts.length)];
   }
@@ -267,29 +274,70 @@ export async function generateContextualThought(context: TrinityContext): Promis
       `Support console ready. I can help escalate issues, broadcast alerts, or assist users across workspaces.`,
       `All systems nominal. Any support tickets need AI-assisted triage today?`,
       `Standing by for support operations. I can access platform-wide analytics on your behalf.`,
+      `I can help draft support responses or search the knowledge base for solutions.`,
+      `Need to send a platform-wide announcement? I can help compose and broadcast it.`,
+      `I'm tracking user activity patterns. Want insights on common support requests?`,
     ];
     return thoughts[Math.floor(Math.random() * thoughts.length)];
   }
   
   if (context.isOrgOwner && context.orgStats?.isNewOrg) {
     const thoughts = [
-      `I notice ${context.workspaceName || 'your organization'} is just getting started! Would you like help setting up departments and inviting team members?`,
+      `I notice ${org} is just getting started! Would you like help setting up departments and inviting team members?`,
       `Welcome aboard! I can guide you through configuring your workspace for optimal team productivity.`,
-      `New organization detected! Let me show you the key features that will help ${context.workspaceName || 'your team'} thrive.`,
+      `New organization detected! Let me show you the key features that will help ${org} thrive.`,
+      `First things first: let's set up your department structure. How many teams do you have?`,
+      `I can help you import employee data or create your first schedule. What would you prefer?`,
     ];
     return thoughts[Math.floor(Math.random() * thoughts.length)];
   }
   
-  if (context.persona === 'business_buddy') {
+  if (context.hasTrinityPro) {
     const thoughts = [
-      `I'm here to help ${context.workspaceName || 'your business'} succeed. Ask me about scheduling optimization, team insights, or growth strategies!`,
-      `Your business buddy is ready! I can analyze workforce patterns, suggest improvements, or help with planning.`,
-      `How can I help grow ${context.workspaceName || 'your business'} today? I'm great with data analysis and strategic planning.`,
+      `${name}, your Trinity Pro subscription gives you access to advanced analytics. Want a workforce insights report?`,
+      `I've been analyzing your scheduling patterns. I found some optimization opportunities.`,
+      `Pro feature available: I can predict staffing needs based on historical data. Interested?`,
+      `Your AI advisor is ready with strategic recommendations for ${org}.`,
+      `I can generate executive-level reports on team performance. Would that be helpful?`,
+      `Trinity Pro tip: I can automate recurring scheduling tasks. Want me to set that up?`,
     ];
     return thoughts[Math.floor(Math.random() * thoughts.length)];
   }
   
-  return null;
+  if (context.hasBusinessBuddy || context.persona === 'business_buddy') {
+    const thoughts = [
+      `I'm here to help ${org} succeed. Ask me about scheduling optimization, team insights, or growth strategies!`,
+      `Your business buddy is ready! I can analyze workforce patterns, suggest improvements, or help with planning.`,
+      `How can I help grow ${org} today? I'm great with data analysis and strategic planning.`,
+      `I notice you have ${employeeCount} team members. Want tips on improving team efficiency?`,
+      `Business insight: Regular schedule optimization can reduce overtime costs by up to 15%.`,
+      `Let me help you build a smarter workforce strategy. What's your biggest challenge right now?`,
+    ];
+    return thoughts[Math.floor(Math.random() * thoughts.length)];
+  }
+  
+  if (context.isOrgOwner || context.isManager) {
+    const thoughts = [
+      `${name}, I can help you manage your team's schedules more efficiently.`,
+      `Need to review time-off requests or approve timesheets? I'm here to help.`,
+      `I can analyze your team's productivity patterns. Would you like some insights?`,
+      `Tip: Setting up recurring shifts can save you hours of scheduling work.`,
+      `Want me to check for any scheduling conflicts or compliance issues?`,
+      `I can help you balance workload across your ${employeeCount > 0 ? employeeCount + ' team members' : 'team'}.`,
+    ];
+    return thoughts[Math.floor(Math.random() * thoughts.length)];
+  }
+  
+  // Standard user thoughts with more variety
+  const thoughts = [
+    `Hey ${name}, I'm here if you need any help navigating the platform.`,
+    `Did you know you can view your upcoming shifts in the calendar view?`,
+    `Need to request time off? I can guide you through the process.`,
+    `I can help you find information about company policies or procedures.`,
+    `Check out your dashboard for updates on your schedule and notifications.`,
+    `If you have questions about your timesheet, just ask!`,
+  ];
+  return thoughts[Math.floor(Math.random() * thoughts.length)];
 }
 
 export const trinityContextService = {

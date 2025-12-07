@@ -730,14 +730,14 @@ class ThoughtManager {
   
   /**
    * Generate a thought based on current persona context
-   * Attempts to fetch from AI first (10% of the time), falls back to local pools
+   * Attempts to fetch from AI first (60% of the time), falls back to local pools
    */
   private generatePersonaThought(): void {
     const ctx = this.state.trinityContext;
     const displayName = this.getUserDisplayName() || 'there';
     
-    // 10% chance to try fetching AI-generated thought from server
-    if (Math.random() < 0.1) {
+    // 60% chance to try fetching AI-generated thought from server
+    if (Math.random() < 0.6) {
       this.fetchAIThought().then(aiThought => {
         if (aiThought) {
           const thought = this.createThought(aiThought, 'ADVISING', 'ai', 'normal');
