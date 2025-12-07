@@ -60,6 +60,27 @@ export interface CreditStatus {
   tier: string;
 }
 
+// Trinity context for role-aware persona selection
+export interface TrinityPersonaContext {
+  platformRole: string;
+  isPlatformStaff: boolean;
+  isRootAdmin: boolean;
+  isSupportRole: boolean;
+  workspaceRole?: string;
+  isOrgOwner: boolean;
+  isManager: boolean;
+  subscriptionTier: 'free' | 'starter' | 'professional' | 'enterprise';
+  hasTrinityPro: boolean;
+  hasBusinessBuddy: boolean;
+  orgStats?: {
+    employeeCount: number;
+    departmentCount: number;
+    isNewOrg: boolean;
+  };
+  persona: 'executive_advisor' | 'support_partner' | 'business_buddy' | 'onboarding_guide' | 'standard';
+  greeting?: string;
+}
+
 export interface ThoughtManagerState {
   currentThought: Thought | null;
   queue: Thought[];
@@ -82,6 +103,8 @@ export interface ThoughtManagerState {
   // Credit awareness for Business Buddy
   creditStatus: CreditStatus | null;
   lastCreditWarningAt: number | null;
+  // Trinity role-aware persona context
+  trinityContext: TrinityPersonaContext | null;
 }
 
 type ThoughtListener = (thought: Thought | null) => void;
@@ -116,6 +139,7 @@ class ThoughtManager {
       advisorMode: false,
       creditStatus: null,
       lastCreditWarningAt: null,
+      trinityContext: null,
     };
   }
   
@@ -537,7 +561,12 @@ class ThoughtManager {
         // Verify user is still the same at trigger time to prevent stale greetings
         if (this.state.user?.id === userId && this.state.lastGreetedUserId !== userId) {
           this.state.lastGreetedUserId = userId;
-          this.triggerPersonalizedGreeting();
+          // Use role-aware greeting if context is available, otherwise use standard
+          if (this.state.trinityContext) {
+            this.triggerRoleAwareGreeting();
+          } else {
+            this.triggerPersonalizedGreeting();
+          }
         }
       }, 1500);
     }
@@ -608,6 +637,153 @@ class ThoughtManager {
    */
   getUser(): UserInfo | null {
     return this.state.user;
+  }
+  
+  // ============================================================================
+  // TRINITY ROLE-AWARE CONTEXT
+  // ============================================================================
+  
+  /**
+   * Set Trinity context for role-aware persona and greetings
+   */
+  setTrinityContext(context: TrinityPersonaContext | null): void {
+    this.state.trinityContext = context;
+    
+    // If context includes a custom greeting, show it
+    if (context?.greeting && this.state.user && !this.state.lastGreetedUserId) {
+      setTimeout(() => {
+        if (this.state.trinityContext && this.state.user) {
+          this.triggerRoleAwareGreeting();
+        }
+      }, 1000);
+    }
+  }
+  
+  /**
+   * Get current Trinity context
+   */
+  getTrinityContext(): TrinityPersonaContext | null {
+    return this.state.trinityContext;
+  }
+  
+  /**
+   * Trigger role-aware greeting based on Trinity context
+   * Safe fallback to standard greeting if context is missing
+   */
+  triggerRoleAwareGreeting(): void {
+    // Guard: require user to be set
+    if (!this.state.user) {
+      return;
+    }
+    
+    const ctx = this.state.trinityContext;
+    const displayName = this.getUserDisplayName() || 'there';
+    const hour = new Date().getHours();
+    
+    let timeGreeting: string;
+    if (hour >= 5 && hour < 12) {
+      timeGreeting = 'Good morning';
+    } else if (hour >= 12 && hour < 17) {
+      timeGreeting = 'Good afternoon';
+    } else if (hour >= 17 && hour < 21) {
+      timeGreeting = 'Good evening';
+    } else {
+      timeGreeting = 'Working late';
+    }
+    
+    // Standard fallback greetings (always available)
+    const standardGreetings = [
+      `${timeGreeting}, ${displayName}! I'm Trinity, here to help!`,
+      `Hey ${displayName}! Tap me anytime for assistance.`,
+      `${timeGreeting}, ${displayName}! Ready to get things done?`,
+      `Welcome back, ${displayName}! What can I help with today?`,
+    ];
+    
+    let greeting: string;
+    
+    // If no context, use standard greeting
+    if (!ctx) {
+      greeting = standardGreetings[Math.floor(Math.random() * standardGreetings.length)];
+    }
+    // Root admin persona
+    else if (ctx.isRootAdmin) {
+      const rootGreetings = [
+        `${timeGreeting}, ${displayName}. Platform systems nominal. Ready for executive review.`,
+        `Welcome back, Commander ${displayName}. All services operational.`,
+        `${timeGreeting}, ${displayName}. Root access confirmed. What shall we oversee?`,
+        `Hey ${displayName}! Platform running smoothly. 69 actions at your command.`,
+      ];
+      greeting = rootGreetings[Math.floor(Math.random() * rootGreetings.length)];
+    }
+    // Support role persona
+    else if (ctx.isSupportRole) {
+      const supportGreetings = [
+        `${timeGreeting}, ${displayName}! Support console ready. How can I assist?`,
+        `Hey ${displayName}! Trinity Support Mode active. Let's help some users!`,
+        `${timeGreeting}, ${displayName}. Support dashboard synced. Ready for tickets?`,
+        `Welcome ${displayName}! I'll help you help others today.`,
+      ];
+      greeting = supportGreetings[Math.floor(Math.random() * supportGreetings.length)];
+    }
+    // Other platform staff persona
+    else if (ctx.isPlatformStaff) {
+      const staffGreetings = [
+        `${timeGreeting}, ${displayName}! Platform staff access confirmed.`,
+        `Hey ${displayName}! Ready to manage the platform together?`,
+        `${timeGreeting}, ${displayName}. Full platform access enabled.`,
+      ];
+      greeting = staffGreetings[Math.floor(Math.random() * staffGreetings.length)];
+    }
+    // Organization owner / Business Buddy persona
+    else if (ctx.isOrgOwner || ctx.persona === 'business_buddy') {
+      const ownerGreetings = [
+        `${timeGreeting}, ${displayName}! I'm your business buddy. Let's grow your org!`,
+        `Hey ${displayName}! Ready to optimize your workforce today?`,
+        `${timeGreeting}, ${displayName}! Your org dashboard awaits. What's on the agenda?`,
+        `Welcome back, ${displayName}! Let's make today productive for your team.`,
+      ];
+      greeting = ownerGreetings[Math.floor(Math.random() * ownerGreetings.length)];
+    }
+    // New org / onboarding persona
+    else if (ctx.persona === 'onboarding_guide' || ctx.orgStats?.isNewOrg) {
+      const onboardingGreetings = [
+        `${timeGreeting}, ${displayName}! I'm Trinity, your setup guide. Let's get started!`,
+        `Hey ${displayName}! Welcome aboard. I'll help you set everything up.`,
+        `${timeGreeting}, ${displayName}! Ready to unlock the full platform? I'll guide you!`,
+      ];
+      greeting = onboardingGreetings[Math.floor(Math.random() * onboardingGreetings.length)];
+    }
+    // Manager persona
+    else if (ctx.isManager) {
+      const managerGreetings = [
+        `${timeGreeting}, ${displayName}! Team management at your fingertips.`,
+        `Hey ${displayName}! Ready to coordinate your team today?`,
+        `${timeGreeting}, ${displayName}! Your schedule and team status are ready.`,
+      ];
+      greeting = managerGreetings[Math.floor(Math.random() * managerGreetings.length)];
+    }
+    // Default fallback for any other case
+    else {
+      greeting = standardGreetings[Math.floor(Math.random() * standardGreetings.length)];
+    }
+    
+    // Holiday override for festive flair (50% chance)
+    if (this.state.isHoliday && this.state.currentHoliday && Math.random() > 0.5) {
+      greeting = `${this.state.currentHoliday.greeting} ${displayName}!`;
+    }
+    
+    // Final safety check: ensure greeting is a valid string
+    if (!greeting || typeof greeting !== 'string') {
+      greeting = `Hello, ${displayName}! I'm Trinity, here to help!`;
+    }
+    
+    const thought = this.createThought(greeting, 'GREETING' as MascotMode, 'default', 'high');
+    this.showThought(thought);
+    
+    // Mark user as greeted after successful greeting
+    if (this.state.user?.id) {
+      this.state.lastGreetedUserId = this.state.user.id;
+    }
   }
   
   // ============================================================================
