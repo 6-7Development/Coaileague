@@ -6623,7 +6623,7 @@ export class DatabaseStorage implements IStorage {
     const result = await db.execute(sql`
       SELECT 
         p.*,
-        CASE WHEN v.id IS NOT NULL THEN true ELSE false END as is_viewed
+        v.id as view_id
       FROM platform_updates p
       LEFT JOIN user_platform_update_views v 
         ON v.update_id = p.id 
@@ -6635,7 +6635,16 @@ export class DatabaseStorage implements IStorage {
       LIMIT ${limit}
     `);
     
-    // Map raw SQL result to typed objects
+    // Debug: log second row to see view_id value (first may be newest without view)
+    if (result.rows.length > 1) {
+      const secondRow = result.rows[1] as any;
+      console.error('[ERROR_DEBUG getPlatformUpdatesWithReadState] Second row keys:', Object.keys(secondRow));
+      console.error('[ERROR_DEBUG getPlatformUpdatesWithReadState] Second row view_id:', secondRow.view_id, 'type:', typeof secondRow.view_id);
+      console.error('[ERROR_DEBUG getPlatformUpdatesWithReadState] Second row id:', secondRow.id);
+    }
+    
+    // Map raw SQL result to typed objects - isViewed = true if view_id exists (check for truthy value)
+    // Note: view_id comes from LEFT JOIN and will be a string if record exists, null/undefined otherwise
     return (result.rows as any[]).map(row => ({
       id: row.id,
       title: row.title,
@@ -6649,7 +6658,7 @@ export class DatabaseStorage implements IStorage {
       visibility: row.visibility,
       workspaceId: row.workspace_id,
       createdAt: row.created_at,
-      isViewed: row.is_viewed === true || row.is_viewed === 't',
+      isViewed: row.view_id !== null && row.view_id !== undefined && row.view_id !== '',
     }));
   }
 

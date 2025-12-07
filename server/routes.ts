@@ -524,7 +524,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Get platform updates with user read state - fetch more for display (50 items)
+      console.log('[Notifications Combined] Fetching for user:', userId, 'workspace:', workspaceId);
       const platformUpdatesData = await storage.getPlatformUpdatesWithReadState(userId, workspaceId, 50);
+      console.log('[Notifications Combined] First item isViewed:', platformUpdatesData[0]?.isViewed);
       
       // Get unread count directly from storage (single source of truth)
       const trueUnreadPlatformUpdates = await storage.getUnreadPlatformUpdatesCount(userId, workspaceId);
@@ -2416,6 +2418,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error('[AutoTicket] Failed:', error);
     }
   }
+
+  // DEBUG: Test endpoint to analyze view_id values from SQL
+  app.get("/api/debug/view-id-test", async (req, res) => {
+    try {
+      const result = await db.execute(sql`
+        SELECT p.id, v.id as view_id, v.user_id
+        FROM platform_updates p
+        LEFT JOIN user_platform_update_views v ON v.update_id = p.id AND v.user_id = 'root-user-00000000'
+        ORDER BY p.created_at DESC LIMIT 5
+      `);
+      const rows = (result.rows as any[]).map(r => ({
+        id: r.id?.substring(0, 40),
+        view_id: r.view_id,
+        view_id_type: typeof r.view_id,
+        is_truthy: !!r.view_id,
+        keys: Object.keys(r)
+      }));
+      res.json(rows);
+    } catch (e) { res.status(500).json({ error: String(e) }); }
+  });
 
   // Health check endpoint with comprehensive service monitoring
   app.get('/api/health', async (req, res) => {
