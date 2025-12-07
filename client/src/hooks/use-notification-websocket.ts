@@ -139,33 +139,16 @@ export function useNotificationWebSocket(userId: string | undefined, workspaceId
             case 'notification_new':
               console.log('🔔 New notification received (LIVE):', data.notification?.title);
               
-              // LIVE UPDATE: Insert notification directly into cache
-              if (data.notification) {
-                queryClient.setQueryData(["/api/notifications/combined"], (oldData: any) => {
-                  if (!oldData) return oldData;
-                  const newNotification = {
-                    ...data.notification,
-                    isRead: false,
-                    createdAt: data.timestamp || new Date().toISOString(),
-                  };
-                  return {
-                    ...oldData,
-                    notifications: [newNotification, ...(oldData.notifications || [])],
-                    unreadNotifications: (oldData.unreadNotifications || 0) + 1,
-                    totalUnread: (oldData.totalUnread || 0) + 1,
-                  };
-                });
-                
-                // Also invalidate to ensure sync
-                queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
-              }
+              // SIMPLIFIED: Just invalidate queries - server is source of truth
+              queryClient.invalidateQueries({ queryKey: ["/api/notifications/combined"] });
+              queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
               
-              // Update unread count
+              // Update unread count from server
               if (data.unreadCount !== undefined) {
                 setUnreadCount(data.unreadCount);
               }
               
-              // Show toast notification with enhanced info
+              // Show toast notification
               if (data.notification) {
                 const description = data.notification.endUserSummary || data.notification.message;
                 toast({
@@ -179,44 +162,15 @@ export function useNotificationWebSocket(userId: string | undefined, workspaceId
             case 'platform_update':
               console.log('📣 Platform update received (LIVE):', data.update?.title);
               
-              // LIVE UPDATE: Insert platform update directly into What's New cache
+              // SIMPLIFIED: Just invalidate queries - server is source of truth for isViewed state
+              // This prevents race conditions where we inject isViewed:false before server refetch
               if (data.update) {
-                queryClient.setQueryData(["/api/notifications/combined"], (oldData: any) => {
-                  if (!oldData) return oldData;
-                  const newUpdate = {
-                    id: `live-${Date.now()}`,
-                    title: data.update!.title,
-                    description: data.update!.endUserSummary || data.update!.description,
-                    category: data.update!.category,
-                    version: data.update!.version,
-                    badge: data.update!.badge || 'NEW',
-                    isNew: true,
-                    isViewed: false,
-                    createdAt: data.timestamp || new Date().toISOString(),
-                    // Enhanced metadata
-                    detailedCategory: data.update!.detailedCategory,
-                    sourceType: data.update!.sourceType,
-                    sourceName: data.update!.sourceName,
-                    endUserSummary: data.update!.endUserSummary,
-                    brokenDescription: data.update!.brokenDescription,
-                    impactDescription: data.update!.impactDescription,
-                  };
-                  return {
-                    ...oldData,
-                    platformUpdates: [newUpdate, ...(oldData.platformUpdates || [])],
-                    unreadPlatformUpdates: (oldData.unreadPlatformUpdates || 0) + 1,
-                    totalUnread: (oldData.totalUnread || 0) + 1,
-                  };
-                });
-                
-                // Also invalidate to ensure sync - include all notification and whats-new endpoints
                 queryClient.invalidateQueries({ queryKey: ["/api/notifications/combined"] });
                 queryClient.invalidateQueries({ queryKey: ["/api/whats-new"] });
                 queryClient.invalidateQueries({ queryKey: ["/api/whats-new/latest"] });
                 queryClient.invalidateQueries({ queryKey: ["/api/whats-new/unviewed-count"] });
-                queryClient.invalidateQueries({ queryKey: ["/api/whats-new/new-features"] });
                 
-                // Dispatch event for WhatsNewBadge and NotificationsPopover components
+                // Dispatch event for WhatsNewBadge component
                 window.dispatchEvent(new CustomEvent('platform_update', { detail: data.update }));
                 
                 // Show toast for platform update
