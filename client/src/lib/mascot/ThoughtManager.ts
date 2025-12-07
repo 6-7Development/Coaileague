@@ -105,6 +105,9 @@ export interface ThoughtManagerState {
   lastCreditWarningAt: number | null;
   // Trinity role-aware persona context
   trinityContext: TrinityPersonaContext | null;
+  // Demo mode tier tracking for upgrade nudges
+  businessBuddyTier: 'PUBLIC_DEMO' | 'LOGGED_IN_FREE' | 'BUSINESS_BUDDY';
+  lastUpgradeNudgeAt: number | null;
 }
 
 type ThoughtListener = (thought: Thought | null) => void;
@@ -154,6 +157,8 @@ class ThoughtManager {
       creditStatus: null,
       lastCreditWarningAt: null,
       trinityContext: null,
+      businessBuddyTier: 'PUBLIC_DEMO',
+      lastUpgradeNudgeAt: null,
     };
   }
   
@@ -822,6 +827,12 @@ class ThoughtManager {
       thoughtPool = [...thoughtPool, ...holidayThoughts];
     }
     
+    // For LOGGED_IN_FREE users: 20% chance to show upgrade nudge instead
+    if (this.shouldShowUpgradeNudge() && Math.random() < 0.2) {
+      this.triggerUpgradeNudge();
+      return;
+    }
+    
     const text = thoughtPool[Math.floor(Math.random() * thoughtPool.length)];
     const thought = this.createThought(text, 'IDLE', 'ai', 'low');
     this.queueThought(thought);
@@ -855,6 +866,230 @@ class ThoughtManager {
    */
   getTrinityContext(): TrinityPersonaContext | null {
     return this.state.trinityContext;
+  }
+  
+  // ============================================================================
+  // DEMO MODE & UPGRADE NUDGES
+  // ============================================================================
+  
+  /**
+   * Set Business Buddy tier for demo mode awareness
+   * Integrates upgrade nudges for LOGGED_IN_FREE users
+   */
+  setBusinessBuddyTier(tier: 'PUBLIC_DEMO' | 'LOGGED_IN_FREE' | 'BUSINESS_BUDDY'): void {
+    this.state.businessBuddyTier = tier;
+  }
+  
+  /**
+   * Get current Business Buddy tier
+   */
+  getBusinessBuddyTier(): 'PUBLIC_DEMO' | 'LOGGED_IN_FREE' | 'BUSINESS_BUDDY' {
+    return this.state.businessBuddyTier;
+  }
+  
+  /**
+   * Check if user should see upgrade nudges (LOGGED_IN_FREE users only)
+   */
+  shouldShowUpgradeNudge(): boolean {
+    return this.state.businessBuddyTier === 'LOGGED_IN_FREE';
+  }
+  
+  /**
+   * Trigger an upgrade suggestion thought for LOGGED_IN_FREE users
+   * Called periodically during thought rotation for non-subscribers
+   */
+  triggerUpgradeNudge(): void {
+    // Only show for logged-in free users, not on public pages
+    if (this.state.businessBuddyTier !== 'LOGGED_IN_FREE' || this.state.isOnPublicPage) {
+      return;
+    }
+    
+    // Rate limit: max once per 5 minutes
+    const now = Date.now();
+    const MIN_NUDGE_INTERVAL = 5 * 60 * 1000; // 5 minutes
+    if (this.state.lastUpgradeNudgeAt && (now - this.state.lastUpgradeNudgeAt) < MIN_NUDGE_INTERVAL) {
+      return;
+    }
+    
+    const displayName = this.getUserDisplayName();
+    
+    const upgradeNudges = [
+      `${displayName}, I could analyze your schedules and suggest optimizations with Business Buddy!`,
+      `Want me to help with real-time workforce insights? Upgrade to Business Buddy!`,
+      `${displayName}, Business Buddy unlocks AI-powered scheduling and analytics.`,
+      `I have lots of smart features waiting for you! Check out Business Buddy add-on.`,
+      `${displayName}, upgrade to Business Buddy for personalized AI business advice!`,
+      `Unlock my full potential! Business Buddy gives you AI scheduling and insights.`,
+      `Psst! Business Buddy subscribers get priority AI responses and deep analytics.`,
+      `${displayName}, I can do so much more as your Business Buddy!`,
+    ];
+    
+    const text = upgradeNudges[Math.floor(Math.random() * upgradeNudges.length)];
+    const thought = this.createThought(text, 'ADVISING', 'upgrade_nudge', 'normal');
+    thought.ctaText = 'View Plans';
+    thought.ctaLink = '/subscription';
+    
+    this.queueThought(thought);
+    this.state.lastUpgradeNudgeAt = now;
+  }
+  
+  /**
+   * Trigger a subtle upgrade hint (less aggressive than nudge)
+   * Shown when user tries to access a premium feature
+   */
+  triggerUpgradeHint(featureName: string): void {
+    if (this.state.businessBuddyTier === 'BUSINESS_BUDDY') {
+      return;
+    }
+    
+    const hints = [
+      `"${featureName}" is a Business Buddy feature. Want to unlock it?`,
+      `That's a premium feature! Business Buddy subscribers can use ${featureName}.`,
+      `${featureName} requires Business Buddy. Upgrade to access!`,
+    ];
+    
+    const text = hints[Math.floor(Math.random() * hints.length)];
+    const thought = this.createThought(text, 'ADVISING', 'upgrade_hint', 'high');
+    thought.ctaText = 'Learn More';
+    thought.ctaLink = '/subscription';
+    
+    this.showThought(thought);
+  }
+  
+  // ============================================================================
+  // DIAGNOSTIC MODE FOR SUPPORT ROLES
+  // ============================================================================
+  
+  /**
+   * Check if current user is in diagnostic mode (support/root roles)
+   */
+  isDiagnosticMode(): boolean {
+    const ctx = this.state.trinityContext;
+    return ctx?.isRootAdmin || ctx?.isPlatformStaff || ctx?.isSupportRole || false;
+  }
+  
+  /**
+   * Trigger a diagnostic alert for platform issues
+   * Only visible to support/root roles
+   */
+  triggerDiagnosticAlert(issue: {
+    severity: 'info' | 'warning' | 'error' | 'critical';
+    title: string;
+    description: string;
+    suggestedAction?: string;
+    actionLink?: string;
+  }): void {
+    // Only show to support/root roles
+    if (!this.isDiagnosticMode()) {
+      return;
+    }
+    
+    const displayName = this.getUserDisplayName();
+    const severityEmoji = {
+      info: 'Info',
+      warning: 'Warning',
+      error: 'Error',
+      critical: 'Critical'
+    }[issue.severity];
+    
+    const priority: 'low' | 'normal' | 'high' | 'urgent' = 
+      issue.severity === 'critical' ? 'urgent' :
+      issue.severity === 'error' ? 'high' :
+      issue.severity === 'warning' ? 'normal' : 'low';
+    
+    const text = `${severityEmoji}: ${issue.title}. ${issue.description}`;
+    const thought = this.createThought(text, 'ANALYZING', 'ai', priority);
+    
+    if (issue.suggestedAction) {
+      thought.ctaText = issue.suggestedAction;
+      thought.ctaLink = issue.actionLink || '/support-console';
+    }
+    
+    this.queueThought(thought);
+  }
+  
+  /**
+   * Trigger a hotfix suggestion for support roles
+   * Displays the suggested fix with one-click action
+   */
+  triggerHotfixSuggestion(suggestion: {
+    id: string;
+    title: string;
+    description: string;
+    actionCode: string;
+    confidence: number;
+    riskLevel: 'low' | 'medium' | 'high';
+  }): void {
+    // Only show to support/root roles
+    if (!this.isDiagnosticMode()) {
+      return;
+    }
+    
+    const displayName = this.getUserDisplayName();
+    const riskLabel = suggestion.riskLevel === 'high' ? 'High risk' : 
+                      suggestion.riskLevel === 'medium' ? 'Medium risk' : 'Low risk';
+    
+    const confidencePercent = Math.round(suggestion.confidence * 100);
+    
+    const text = `${displayName}, I detected an issue and have a suggested fix: "${suggestion.title}" (${confidencePercent}% confidence, ${riskLabel}). Want me to apply it?`;
+    const thought = this.createThought(text, 'ANALYZING', 'ai', 'high');
+    thought.ctaText = 'View Fix';
+    thought.ctaLink = `/support-console?tab=fixes&highlight=${suggestion.id}`;
+    
+    this.showThought(thought);
+  }
+  
+  /**
+   * Trigger platform health status update for support roles
+   */
+  triggerPlatformHealthUpdate(status: 'healthy' | 'degraded' | 'critical', message: string): void {
+    // Only show to support/root roles
+    if (!this.isDiagnosticMode()) {
+      return;
+    }
+    
+    const displayName = this.getUserDisplayName();
+    
+    let text: string;
+    let priority: 'low' | 'normal' | 'high' | 'urgent';
+    
+    if (status === 'healthy') {
+      text = `${displayName}, all platform systems are running smoothly. No issues detected.`;
+      priority = 'low';
+    } else if (status === 'degraded') {
+      text = `${displayName}, platform performance is degraded: ${message}. Monitoring closely.`;
+      priority = 'normal';
+    } else {
+      text = `${displayName}, critical platform issue detected: ${message}. Immediate attention required!`;
+      priority = 'urgent';
+    }
+    
+    const thought = this.createThought(text, 'ANALYZING', 'ai', priority);
+    thought.ctaText = 'View Health';
+    thought.ctaLink = '/support-console?tab=orchestration';
+    
+    if (status === 'critical') {
+      this.showThought(thought);
+    } else {
+      this.queueThought(thought);
+    }
+  }
+  
+  /**
+   * Trigger workflow issue detection notification
+   */
+  triggerWorkflowIssue(workflowId: string, workflowName: string, issue: string): void {
+    if (!this.isDiagnosticMode()) {
+      return;
+    }
+    
+    const displayName = this.getUserDisplayName();
+    const text = `${displayName}, workflow "${workflowName}" has an issue: ${issue}. I can suggest fixes.`;
+    const thought = this.createThought(text, 'ANALYZING', 'ai', 'high');
+    thought.ctaText = 'Investigate';
+    thought.ctaLink = `/support-console?tab=fixes&workflow=${workflowId}`;
+    
+    this.queueThought(thought);
   }
   
   /**
