@@ -1,6 +1,11 @@
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Bell, AlertTriangle, Info, Wrench, Check, Clock, X, Sparkles, MessageSquare } from "lucide-react";
+import { 
+  Bell, AlertTriangle, Info, Wrench, Check, Clock, X, Sparkles, MessageSquare,
+  Bot, Code, Zap, Settings, Users, Globe, FileText, Shield, TrendingUp, 
+  Server, Layout, Database, CreditCard, Calendar, RefreshCw, XCircle, 
+  CheckCircle, DollarSign, type LucideIcon
+} from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import {
   Popover,
@@ -23,6 +28,19 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/hooks/useAuth";
 import { useNotificationWebSocket } from "@/hooks/use-notification-websocket";
+import { 
+  SEVERITY_CONFIG, 
+  CATEGORY_CONFIG, 
+  getSeverityConfig, 
+  getCategoryConfig 
+} from "@shared/config/notificationConfig";
+
+const ICON_MAP: Record<string, LucideIcon> = {
+  Info, AlertTriangle, Wrench, Check, Sparkles, MessageSquare,
+  Bot, Code, Zap, Settings, Users, Globe, FileText, Shield, 
+  TrendingUp, Server, Layout, Database, CreditCard, Calendar, 
+  RefreshCw, XCircle, CheckCircle, DollarSign, Clock, Bell, X
+};
 
 interface PlatformUpdate {
   id: string;
@@ -89,46 +107,28 @@ interface NotificationsData {
   totalUnread: number;
 }
 
-const severityConfig = {
-  info: {
-    icon: Info,
-    color: "text-blue-500",
-    bg: "bg-blue-50 dark:bg-blue-950/30",
-    badge: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
-  },
-  warning: {
-    icon: AlertTriangle,
-    color: "text-amber-500",
-    bg: "bg-amber-50 dark:bg-amber-950/30",
-    badge: "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300",
-  },
-  critical: {
-    icon: AlertTriangle,
-    color: "text-red-500",
-    bg: "bg-red-50 dark:bg-red-950/30",
-    badge: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
-  },
-};
+function getIconComponent(iconName: string): LucideIcon {
+  return ICON_MAP[iconName] || Info;
+}
 
-import { Bot, Code, Zap, Settings, Users, Globe, FileText, Shield, TrendingUp, Server, Layout, Database } from "lucide-react";
+function getSeverityStyles(severity: string) {
+  const config = getSeverityConfig(severity);
+  return {
+    icon: getIconComponent(config.iconName),
+    color: config.color,
+    bg: config.bg,
+    badge: config.badge,
+  };
+}
 
-const categoryConfig: Record<string, { icon: typeof Sparkles; color: string; label: string }> = {
-  feature: { icon: Sparkles, color: "text-purple-500", label: "New Feature" },
-  improvement: { icon: Check, color: "text-green-500", label: "Improvement" },
-  fix: { icon: Wrench, color: "text-blue-500", label: "Fix" },
-  bugfix: { icon: Wrench, color: "text-blue-500", label: "Bug Fix" },
-  security: { icon: Shield, color: "text-red-500", label: "Security" },
-  announcement: { icon: MessageSquare, color: "text-amber-500", label: "Announcement" },
-  service: { icon: Server, color: "text-cyan-500", label: "Service Update" },
-  bot_automation: { icon: Bot, color: "text-violet-500", label: "Bot Automation" },
-  deprecation: { icon: AlertTriangle, color: "text-orange-500", label: "Deprecation" },
-  hotpatch: { icon: Zap, color: "text-yellow-500", label: "Hotpatch" },
-  integration: { icon: Globe, color: "text-teal-500", label: "Integration" },
-  ui_update: { icon: Layout, color: "text-pink-500", label: "UI Update" },
-  backend_update: { icon: Database, color: "text-slate-500", label: "Backend" },
-  performance: { icon: TrendingUp, color: "text-emerald-500", label: "Performance" },
-  documentation: { icon: FileText, color: "text-gray-500", label: "Documentation" },
-};
+function getCategoryStyles(category: string) {
+  const config = getCategoryConfig(category);
+  return {
+    icon: getIconComponent(config.iconName),
+    color: config.color,
+    label: config.label,
+  };
+}
 
 const sourceTypeLabels: Record<string, { icon: typeof Bot; label: string }> = {
   system: { icon: Settings, label: "System" },
@@ -480,7 +480,7 @@ export function NotificationsPopover() {
                 <div className="divide-y">
                   {unviewedUpdates.map((update) => {
                     const detailedCat = update.metadata?.detailedCategory || update.category;
-                    const config = categoryConfig[detailedCat] || categoryConfig.announcement;
+                    const config = getCategoryStyles(detailedCat);
                     const IconComponent = config.icon;
                     const sourceType = update.metadata?.sourceType;
                     const sourceName = update.metadata?.sourceName;
@@ -581,7 +581,7 @@ export function NotificationsPopover() {
                 <div className="divide-y">
                   {filteredNotifications.map((notification) => {
                     const detailedCat = notification.metadata?.detailedCategory;
-                    const config = detailedCat ? categoryConfig[detailedCat] : null;
+                    const config = detailedCat ? getCategoryStyles(detailedCat) : null;
                     const IconComponent = config?.icon || Bell;
                     const iconColor = config?.color || "text-primary";
                     const sourceType = notification.metadata?.sourceType;
@@ -687,7 +687,7 @@ export function NotificationsPopover() {
               {filteredMaintenanceAlerts.length > 0 ? (
                 <div className="divide-y">
                   {filteredMaintenanceAlerts.map((alert) => {
-                    const config = severityConfig[alert.severity] || severityConfig.info;
+                    const config = getSeverityStyles(alert.severity);
                     const SeverityIcon = config.icon;
                     return (
                       <div
