@@ -464,6 +464,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Combined notifications endpoint - returns platform updates, notifications, and maintenance alerts
   app.get('/api/notifications/combined', async (req, res) => {
+    // Prevent caching to ensure fresh data after mutations
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
     try {
       const authReq = req as AuthenticatedRequest;
       const userId = authReq.user?.id;
