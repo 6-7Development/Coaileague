@@ -37,7 +37,10 @@ export function useMascotPosition(bubbleSize: number = 80, isMobile: boolean = f
         const parsed = JSON.parse(savedPosition);
         const minPos = 16;
         const maxX = window.innerWidth - bubbleSize - 16;
-        const maxY = window.innerHeight - bubbleSize - 16;
+        // Header exclusion zone: Keep mascot away from top area with header controls
+        const HEADER_HEIGHT = 64;
+        const HEADER_MARGIN = 24;
+        const maxY = window.innerHeight - HEADER_HEIGHT - bubbleSize - HEADER_MARGIN;
         
         if (typeof parsed.x === 'number' && typeof parsed.y === 'number' &&
             parsed.x >= minPos && parsed.x <= maxX &&
@@ -85,7 +88,13 @@ export function useMascotPosition(bubbleSize: number = 80, isMobile: boolean = f
     const newY = dragStart.current.posY - deltaY;
 
     const maxX = window.innerWidth - bubbleSize - 16;
-    const maxY = window.innerHeight - bubbleSize - 16;
+    
+    // Header exclusion zone: Prevent dragging mascot into top area where header controls are
+    // Header height (~64px) + margin (24px) = minimum distance from top
+    const HEADER_HEIGHT = 64;
+    const HEADER_MARGIN = 24;
+    // Max bottom value (higher bottom = closer to top, so we cap how high it can go)
+    const maxY = window.innerHeight - HEADER_HEIGHT - bubbleSize - HEADER_MARGIN;
 
     const clampedX = Math.max(16, Math.min(newX, maxX));
     const clampedY = Math.max(16, Math.min(newY, maxY));

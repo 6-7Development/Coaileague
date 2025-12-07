@@ -576,7 +576,17 @@ function MascotRenderer() {
   if (!MASCOT_CONFIG.enabled || shouldHideMascot(location)) return null;
   
   const effectiveX = position.x + (isDragging ? 0 : floatOffsetRef.current.x + targetInfluence.x);
-  const effectiveY = position.y + (isDragging ? 0 : floatOffsetRef.current.y + targetInfluence.y);
+  const rawEffectiveY = position.y + (isDragging ? 0 : floatOffsetRef.current.y + targetInfluence.y);
+  
+  // Header exclusion zone: Keep mascot away from top-right header area (notification bell, search, etc.)
+  // The header is ~64px tall, plus we need margin for the mascot size + buffer
+  const HEADER_HEIGHT = 64;
+  const HEADER_EXCLUSION_MARGIN = 24;
+  const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 800;
+  // Maximum bottom value allowed (keeps mascot below header)
+  // When bottom = maxY, the mascot top edge is at headerHeight + margin from viewport top
+  const maxBottomY = viewportHeight - HEADER_HEIGHT - bubbleSize - HEADER_EXCLUSION_MARGIN;
+  const effectiveY = Math.min(rawEffectiveY, maxBottomY);
   
   return (
     <>
