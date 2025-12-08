@@ -32,6 +32,7 @@ import {
   type InsertWorkspaceAutomationPolicy,
 } from '@shared/schema';
 import { trinityMemoryService } from './trinityMemoryService';
+import { TTLCache } from './cacheUtils';
 
 // ============================================================================
 // TYPES
@@ -119,15 +120,19 @@ const DEFAULT_HIGH_RISK_CATEGORIES = [
 
 class AutomationGovernanceService {
   private static instance: AutomationGovernanceService;
-  private policyCache: Map<string, WorkspaceAutomationPolicy> = new Map();
-  private consentCache: Map<string, UserAutomationConsent[]> = new Map();
-  private cacheTimeout = 5 * 60 * 1000; // 5 minutes
+  private policyCache = new TTLCache<string, WorkspaceAutomationPolicy>(5 * 60 * 1000, 100);
+  private consentCache = new TTLCache<string, UserAutomationConsent[]>(5 * 60 * 1000, 200);
 
   static getInstance(): AutomationGovernanceService {
     if (!this.instance) {
       this.instance = new AutomationGovernanceService();
     }
     return this.instance;
+  }
+
+  shutdown(): void {
+    this.policyCache.shutdown();
+    this.consentCache.shutdown();
   }
 
   // ============================================================================
@@ -151,7 +156,6 @@ class AutomationGovernanceService {
 
       if (existing) {
         this.policyCache.set(workspaceId, existing);
-        setTimeout(() => this.policyCache.delete(workspaceId), this.cacheTimeout);
         return existing;
       }
 
@@ -168,7 +172,6 @@ class AutomationGovernanceService {
         .returning();
 
       this.policyCache.set(workspaceId, newPolicy);
-      setTimeout(() => this.policyCache.delete(workspaceId), this.cacheTimeout);
       return newPolicy;
     } catch (error) {
       console.error('[AutomationGovernance] Error getting policy:', error);
