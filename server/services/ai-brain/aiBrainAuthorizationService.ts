@@ -36,6 +36,7 @@ export const AI_BRAIN_AUTHORITY_ROLES: Record<string, string[]> = {
   'health': ['support_manager', 'sysop', 'deputy_admin', 'root_admin'],
   'user_assistance': ['employee', 'manager', 'support_agent', 'support_manager', 'sysop', 'deputy_admin', 'root_admin'],
   'system': ['sysop', 'deputy_admin', 'root_admin'],
+  'session_checkpoint': ['support_agent', 'support_manager', 'sysop', 'deputy_admin', 'root_admin'],
 };
 
 export interface AuthorizationContext {
