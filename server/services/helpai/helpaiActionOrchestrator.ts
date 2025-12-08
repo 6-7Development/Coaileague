@@ -42,7 +42,10 @@ export type ActionCategory =
   | 'health'
   | 'user_assistance'
   | 'lifecycle'
-  | 'escalation';
+  | 'escalation'
+  | 'session_checkpoint'
+  | 'security'
+  | 'memory';
 
 export type ActionPriority = 'low' | 'normal' | 'high' | 'critical';
 
@@ -325,8 +328,8 @@ class HelpaiActionOrchestrator {
 
         // Broadcast via centralized WebSocket service
         if (request.workspaceId) {
-          broadcastNotificationToUser(targetUserId, request.workspaceId, 'new_notification', {
-            notification,
+          broadcastNotificationToUser(request.workspaceId, targetUserId, {
+            ...notification,
             source: 'helpai_orchestrator',
             timestamp: new Date().toISOString()
           });
@@ -511,7 +514,8 @@ class HelpaiActionOrchestrator {
 
         // Broadcast notification cleared event via centralized WebSocket
         if (workspaceId) {
-          broadcastNotificationToUser(targetUserId, workspaceId, 'notification_cleared_all', {
+          broadcastNotificationToUser(workspaceId, targetUserId, {
+            type: 'notification_cleared_all',
             cleared: { notifications: result.length, alerts: alertsCleared },
             unreadCount: 0,
             unclearedCount: 0,
@@ -1398,6 +1402,9 @@ class HelpaiActionOrchestrator {
       'user_assistance': { eventType: 'feature_updated', category: 'improvement', visibility: 'all', titlePrefix: 'AI Assistant' },
       'lifecycle': { eventType: 'automation_completed', category: 'feature', visibility: 'manager', titlePrefix: 'Employee Lifecycle' },
       'escalation': { eventType: 'automation_completed', category: 'announcement', visibility: 'manager', titlePrefix: 'Escalation' },
+      'session_checkpoint': { eventType: 'automation_completed', category: 'feature', visibility: 'admin', titlePrefix: 'Session' },
+      'security': { eventType: 'automation_completed', category: 'announcement', visibility: 'admin', titlePrefix: 'Security' },
+      'memory': { eventType: 'automation_completed', category: 'feature', visibility: 'admin', titlePrefix: 'AI Memory' },
     };
 
     const policy = EVENT_POLICY[request.category] || EVENT_POLICY['system'];

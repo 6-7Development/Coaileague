@@ -4122,11 +4122,11 @@ class AIBrainMasterOrchestrator {
               workspace: ws ? {
                 id: ws.id,
                 name: ws.name,
-                category: ws.category,
-                plan: ws.plan,
-                status: ws.status,
-                isDemo: ws.isDemo,
-                settings: ws.settings,
+                businessCategory: ws.businessCategory,
+                subscriptionTier: ws.subscriptionTier,
+                subscriptionStatus: ws.subscriptionStatus,
+                isSuspended: ws.isSuspended,
+                isFrozen: ws.isFrozen,
               } : null,
               activeCheckpoint: activeCheckpoint ? {
                 id: activeCheckpoint.id,
@@ -4316,7 +4316,7 @@ class AIBrainMasterOrchestrator {
             success: result.success,
             actionId: request.actionId,
             message: result.success ? 'Elevation issued successfully' : result.error || 'Elevation failed',
-            data: result.elevation ? { elevationId: result.elevation.id } : undefined,
+            data: result.elevationId ? { elevationId: result.elevationId } : undefined,
             executionTimeMs: Date.now() - startTime
           };
         } catch (error: any) {
