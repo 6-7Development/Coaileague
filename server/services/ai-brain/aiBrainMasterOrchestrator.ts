@@ -3336,13 +3336,15 @@ class AIBrainMasterOrchestrator {
   /**
    * Execute a single action and notify about the result
    * This is the main entry point for AI Brain action execution with notifications
+   * Includes FeatureGate checks for credit consumption and access control
    */
   async executeActionWithNotification(
     actionId: string,
     payload: Record<string, any>,
     userId: string,
     userRole: string,
-    workspaceId?: string
+    workspaceId?: string,
+    sessionId?: string
   ): Promise<ActionResult> {
     const request: ActionRequest = {
       actionId,
@@ -3361,6 +3363,62 @@ class AIBrainMasterOrchestrator {
     const actionName = action?.name || actionId;
 
     try {
+      // Check FeatureGate if workspace is provided (credits/access control)
+      if (workspaceId) {
+        const { featureGateService } = await import('../billing/featureGateService');
+        
+        // Map action categories to feature keys
+        const featureKey = this.mapActionToFeatureKey(actionId);
+        
+        if (featureKey) {
+          const gateResult = await featureGateService.canUseFeature(
+            featureKey,
+            workspaceId,
+            userId,
+            sessionId
+          );
+
+          if (!gateResult.allowed) {
+            console.log(`[AI Brain Orchestrator] Feature gate blocked: ${actionId} for workspace ${workspaceId}. Reason: ${gateResult.reason}`);
+            return {
+              success: false,
+              actionId,
+              message: gateResult.reason || 'Feature access denied',
+              data: {
+                featureGateBlocked: true,
+                requiredAction: gateResult.requiredAction,
+                creditsRequired: gateResult.creditsRequired,
+                currentBalance: gateResult.currentBalance
+              },
+              executionTimeMs: 0
+            };
+          }
+
+          // Consume credits for the action (bypassed for support roles)
+          const consumeResult = await featureGateService.consumeCreditsForFeature(
+            featureKey,
+            workspaceId,
+            userId,
+            sessionId,
+            actionId
+          );
+
+          if (!consumeResult.success) {
+            console.log(`[AI Brain Orchestrator] Credit consumption failed: ${consumeResult.error}`);
+            return {
+              success: false,
+              actionId,
+              message: consumeResult.error || 'Failed to consume credits',
+              data: { creditDeductionFailed: true },
+              executionTimeMs: 0
+            };
+          }
+
+          // Add credits used to request metadata for logging
+          (request as any).creditsUsed = consumeResult.creditsUsed;
+        }
+      }
+
       const result = await helpaiOrchestrator.executeAction(request);
       
       // Always notify about action completion
@@ -3379,6 +3437,57 @@ class AIBrainMasterOrchestrator {
 
       return errorResult;
     }
+  }
+
+  /**
+   * Map action IDs to feature keys for credit consumption
+   */
+  private mapActionToFeatureKey(actionId: string): string | null {
+    const actionToFeatureMap: Record<string, string> = {
+      // Trinity commands
+      'trinity.quick_command': 'trinity_quick_commands',
+      'trinity.execute': 'trinity_quick_commands',
+      // Scheduling
+      'scheduling.auto_schedule': 'ai_scheduling',
+      'scheduling.optimize': 'ai_scheduling',
+      'scheduling.generate': 'ai_scheduling',
+      // Document extraction
+      'expense.extract_receipt': 'document_extraction',
+      'document.extract': 'document_extraction',
+      // Sentiment analysis
+      'analytics.sentiment': 'sentiment_analysis',
+      'sentiment.analyze': 'sentiment_analysis',
+      // AI Reports
+      'analytics.generate_report': 'ai_reporting',
+      'reports.ai_generate': 'ai_reporting',
+      // Automation
+      'automation.execute': 'automation_engine',
+      'workflow.run': 'automation_engine',
+      // HelpAI
+      'helpai.chat': 'helpai_chat',
+      'helpai.query': 'helpai_chat'
+    };
+
+    // Check for exact match first
+    if (actionToFeatureMap[actionId]) {
+      return actionToFeatureMap[actionId];
+    }
+
+    // Check for prefix match (e.g., 'scheduling.*' -> 'ai_scheduling')
+    const category = actionId.split('.')[0];
+    const categoryToFeatureMap: Record<string, string> = {
+      'trinity': 'trinity_quick_commands',
+      'scheduling': 'ai_scheduling',
+      'expense': 'document_extraction',
+      'document': 'document_extraction',
+      'sentiment': 'sentiment_analysis',
+      'analytics': 'ai_reporting',
+      'automation': 'automation_engine',
+      'workflow': 'automation_engine',
+      'helpai': 'helpai_chat'
+    };
+
+    return categoryToFeatureMap[category] || null;
   }
   // ============================================================================
   // EXPENSE CATEGORIZATION ACTIONS
