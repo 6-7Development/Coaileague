@@ -20,13 +20,12 @@ import {
   trinityConversationTurns,
   knowledgeGapLogs,
   type TrinityConversationSession,
-  type TrinityConversationTurn,
   type InsertTrinityConversationSession,
   type InsertTrinityConversationTurn,
-  type InsertKnowledgeGapLog,
   type KnowledgeGapLog,
 } from '@shared/schema';
 import { trinityMemoryService } from './trinityMemoryService';
+import { TTLCache } from './cacheUtils';
 
 // ============================================================================
 // TYPES
@@ -159,10 +158,16 @@ const SENSITIVE_FIELDS = [
   'cvv', 'pin', 'privateKey', 'private_key', 'sessionSecret', 'encryptionKey'
 ];
 
+const SESSION_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
 class TrinityContextManager {
   private static instance: TrinityContextManager;
-  private activeSessionsCache: Map<string, ConversationContext> = new Map();
-  private sessionTimeout = 30 * 60 * 1000; // 30 minutes
+  private sessionsCache = new TTLCache<string, ConversationContext>(SESSION_TTL_MS, 50);
+  private readonly sessionTimeout = SESSION_TTL_MS;
+
+  shutdown(): void {
+    this.sessionsCache.shutdown();
+  }
 
   // SECURITY: Sanitize data before persistent storage
   private sanitizeForStorage(data: any, depth = 0): any {
@@ -203,7 +208,7 @@ class TrinityContextManager {
     const cacheKey = `${userId}:${workspaceId || 'global'}`;
     
     // Check cache first
-    const cached = this.activeSessionsCache.get(cacheKey);
+    const cached = this.sessionsCache.get(cacheKey);
     if (cached) {
       return cached;
     }
@@ -230,7 +235,7 @@ class TrinityContextManager {
         
         if (!isExpired) {
           const context = await this.loadSessionContext(existingSession);
-          this.activeSessionsCache.set(cacheKey, context);
+          this.sessionsCache.set(cacheKey, context);
           return context;
         } else {
           // Mark old session as ended
@@ -266,7 +271,7 @@ class TrinityContextManager {
         .returning();
 
       const context = this.createEmptyContext(newSession);
-      this.activeSessionsCache.set(cacheKey, context);
+      this.sessionsCache.set(cacheKey, context);
       return context;
     } catch (error) {
       console.error('[TrinityContextManager] Error getting/creating session:', error);
@@ -424,7 +429,7 @@ class TrinityContextManager {
       // Update cache if exists (also use sanitized values)
       const cacheKey = await this.getCacheKeyForSession(sessionId);
       if (cacheKey) {
-        const cached = this.activeSessionsCache.get(cacheKey);
+        const cached = this.sessionsCache.get(cacheKey);
         if (cached) {
           cached.turns.push({
             turnNumber,
@@ -462,7 +467,7 @@ class TrinityContextManager {
   }
 
   private async getCacheKeyForSession(sessionId: string): Promise<string | null> {
-    for (const [key, context] of this.activeSessionsCache.entries()) {
+    for (const [key, context] of this.sessionsCache.entries()) {
       if (context.sessionId === sessionId) {
         return key;
       }
@@ -977,9 +982,9 @@ class TrinityContextManager {
         .where(eq(trinityConversationSessions.id, sessionId));
 
       // Remove from cache
-      for (const [key, context] of this.activeSessionsCache.entries()) {
+      for (const [key, context] of this.sessionsCache.entries()) {
         if (context.sessionId === sessionId) {
-          this.activeSessionsCache.delete(key);
+          this.sessionsCache.delete(key);
           break;
         }
       }
@@ -992,7 +997,7 @@ class TrinityContextManager {
   }
 
   clearCache(): void {
-    this.activeSessionsCache.clear();
+    this.sessionsCache.clear();
   }
 }
 

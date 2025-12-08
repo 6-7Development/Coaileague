@@ -12,16 +12,14 @@
  */
 
 import { db } from '../../db';
-import { eq, and, desc, gte, sql, or, like, inArray } from 'drizzle-orm';
-import {
-  trinityConversationSessions,
-  trinityConversationTurns,
-  knowledgeGapLogs,
-  automationActionLedger,
-  systemAuditLogs,
-  users,
-  workspaces,
-} from '@shared/schema';
+import { eq, and, desc, gte, sql, inArray } from 'drizzle-orm';
+import { trinityConversationSessions, knowledgeGapLogs, automationActionLedger } from '@shared/schema';
+import { TTLCache } from './cacheUtils';
+
+// Type aliases for DB records
+type SessionRecord = typeof trinityConversationSessions.$inferSelect;
+type LedgerRecord = typeof automationActionLedger.$inferSelect;
+type GapRecord = typeof knowledgeGapLogs.$inferSelect;
 
 // ============================================================================
 // TYPES
@@ -136,9 +134,9 @@ export interface SharedInsight {
 
 class TrinityMemoryService {
   private static instance: TrinityMemoryService;
-  private userProfileCache: Map<string, UserMemoryProfile> = new Map();
+  private profileCache = new TTLCache<string, UserMemoryProfile>(10 * 60 * 1000, 100);
   private sharedInsights: SharedInsight[] = [];
-  private cacheTimeout = 10 * 60 * 1000; // 10 minutes
+  private readonly maxInsights = 200;
 
   static getInstance(): TrinityMemoryService {
     if (!this.instance) {
@@ -147,21 +145,23 @@ class TrinityMemoryService {
     return this.instance;
   }
 
+  shutdown(): void {
+    this.profileCache.shutdown();
+    this.sharedInsights = [];
+  }
+
   // ============================================================================
   // USER MEMORY PROFILE
   // ============================================================================
 
   async getUserMemoryProfile(userId: string, workspaceId?: string): Promise<UserMemoryProfile> {
     const cacheKey = `${userId}:${workspaceId || 'global'}`;
-    const cached = this.userProfileCache.get(cacheKey);
-    
-    if (cached && Date.now() - cached.lastUpdated.getTime() < this.cacheTimeout) {
-      return cached;
-    }
+    const cached = this.profileCache.get(cacheKey);
+    if (cached) return cached;
 
     try {
       const profile = await this.buildUserProfile(userId, workspaceId);
-      this.userProfileCache.set(cacheKey, profile);
+      this.profileCache.set(cacheKey, profile);
       return profile;
     } catch (error) {
       console.error('[TrinityMemoryService] Error building user profile:', error);
@@ -226,7 +226,7 @@ class TrinityMemoryService {
     };
   }
 
-  private inferPreferences(sessions: any[]): UserPreferences {
+  private inferPreferences(sessions: SessionRecord[]): UserPreferences {
     // Analyze session data to infer user preferences
     const toolsUsed: string[] = [];
     let technicalTermCount = 0;
@@ -268,7 +268,7 @@ class TrinityMemoryService {
     };
   }
 
-  private detectPatterns(sessions: any[]): InteractionPattern[] {
+  private detectPatterns(sessions: SessionRecord[]): InteractionPattern[] {
     const patterns: InteractionPattern[] = [];
 
     // Time of day pattern
@@ -314,7 +314,7 @@ class TrinityMemoryService {
     return patterns;
   }
 
-  private analyzeTopics(sessions: any[], knowledgeGaps: any[]): TopicFrequency[] {
+  private analyzeTopics(sessions: SessionRecord[], knowledgeGaps: GapRecord[]): TopicFrequency[] {
     const topicMap: Map<string, TopicFrequency> = new Map();
 
     // Analyze knowledge gaps for topic extraction
@@ -352,7 +352,7 @@ class TrinityMemoryService {
     return categoryMap[gapType] || 'other';
   }
 
-  private extractIssues(knowledgeGaps: any[], automationOutcomes: any[]): IssueRecord[] {
+  private extractIssues(knowledgeGaps: GapRecord[], automationOutcomes: LedgerRecord[]): IssueRecord[] {
     const issues: IssueRecord[] = [];
 
     // Extract from knowledge gaps
@@ -389,7 +389,7 @@ class TrinityMemoryService {
     return issues.slice(0, 20);
   }
 
-  private calculateToolUsage(automationOutcomes: any[]): ToolUsageStats[] {
+  private calculateToolUsage(automationOutcomes: LedgerRecord[]): ToolUsageStats[] {
     const toolStats: Map<string, ToolUsageStats> = new Map();
 
     for (const outcome of automationOutcomes) {
@@ -420,7 +420,7 @@ class TrinityMemoryService {
       .sort((a, b) => b.usageCount - a.usageCount);
   }
 
-  private generateInsights(sessions: any[], automationOutcomes: any[], knowledgeGaps: any[]): LearningInsight[] {
+  private generateInsights(sessions: SessionRecord[], automationOutcomes: LedgerRecord[], knowledgeGaps: GapRecord[]): LearningInsight[] {
     const insights: LearningInsight[] = [];
 
     // Insight: Frequent tool usage pattern
