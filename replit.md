@@ -67,6 +67,7 @@ The system features a multi-tenant architecture with RBAC security and isolation
 - **AI Tool Capability Catalog:** Workspace-scoped tool registry with success metrics, health signals, and usage statistics.
 - **Cross-Bot Knowledge Sharing:** Shared insights system enabling AI components to learn from each other.
 - **Experience Feedback Loop:** Automation outcomes feed back into confidence models and agent learning.
+- **AI Brain Workboard:** Central job queue system for AI orchestration that receives user requests (voice, chat, API, automation), routes through SubagentSupervisor to 8 specialized agents (Scheduling, Payroll, Billing, HR, Analytics, Support, Compliance, TimeTracking), tracks task lifecycle (pending → analyzing → assigned → in_progress → completed/failed), deducts Trinity credits, and sends completion notifications via Trinity, email, or WebSocket. REST API with submit, list, get, cancel, retry, and stats endpoints.
 
 **System Design Choices:**
 - **Modularity:** 87 backend service modules and 220+ frontend routes.
