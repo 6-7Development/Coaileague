@@ -73,6 +73,13 @@ The system employs a multi-tenant architecture with RBAC security and isolation,
 - End-users grant tool-specific consent (tracked in user_automation_consents)
 - All consents persisted with version tracking and audit timestamps
 
+**Automation Governance API Security:**
+- **Workspace Isolation:** All governance routes validate workspace membership via checkWorkspaceAccess helper
+- **RBAC Enforcement:** Policy updates and org consent require org_owner or org_admin role
+- **Input Validation:** Allowedfields whitelist and string length limits prevent privilege escalation
+- **Data Sanitization:** TrinityContextManager.sanitizeForStorage() redacts passwords, tokens, API keys, SSNs, credit cards before persistence
+- **Bot Bypass Constraints:** Automation jobs require org owner consent and waiver acceptance even with elevated bypass
+
 **System Design Choices:**
 - **Modularity:** Composed of 87 backend service modules and 220+ frontend routes.
 - **Type Safety:** 100% LSP clean with zero compilation warnings.
