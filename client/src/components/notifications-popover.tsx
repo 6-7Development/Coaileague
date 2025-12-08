@@ -6,7 +6,7 @@ import {
   Server, Layout, Database, CreditCard, Calendar, RefreshCw, XCircle, 
   CheckCircle, DollarSign, type LucideIcon
 } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, parseISO, isValid } from "date-fns";
 import {
   Popover,
   PopoverContent,
@@ -146,6 +146,28 @@ const statusLabels: Record<string, string> = {
   completed: "Completed",
   cancelled: "Cancelled",
 };
+
+function safeFormatTimestamp(timestamp: string | undefined): string {
+  if (!timestamp) return "";
+  
+  try {
+    let date: Date;
+    
+    if (timestamp.includes('T') || timestamp.includes('Z') || timestamp.includes('+')) {
+      date = parseISO(timestamp);
+    } else {
+      date = new Date(timestamp + 'Z');
+    }
+    
+    if (!isValid(date) || date.getTime() > Date.now() + 86400000) {
+      return "recently";
+    }
+    
+    return formatDistanceToNow(date, { addSuffix: true });
+  } catch {
+    return "recently";
+  }
+}
 
 export function NotificationsPopover() {
   const [open, setOpen] = useState(false);
@@ -409,14 +431,13 @@ export function NotificationsPopover() {
         </div>
       </div>
 
-      <div 
-        ref={scrollRef}
-        className="flex-1 min-h-0 overflow-y-auto overscroll-contain"
+      <ScrollArea 
+        className="flex-1 min-h-0"
         style={{ 
-          maxHeight: isMobile ? 'calc(80vh - 180px)' : '420px',
-          WebkitOverflowScrolling: 'touch'
+          height: isMobile ? 'calc(80vh - 160px)' : 'min(70vh, 420px)',
         }}
       >
+        <div ref={scrollRef} className="overscroll-contain">
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
@@ -541,7 +562,7 @@ export function NotificationsPopover() {
                                 <span className="text-[10px] text-muted-foreground font-mono">v{update.version}</span>
                               )}
                               <span className="text-[10px] text-muted-foreground">
-                                {formatDistanceToNow(new Date(update.createdAt), { addSuffix: true })}
+                                {safeFormatTimestamp(update.createdAt)}
                               </span>
                             </div>
                             {(update.metadata?.brokenDescription || update.metadata?.impactDescription) && (
@@ -634,7 +655,7 @@ export function NotificationsPopover() {
                                 </Badge>
                               )}
                               <span className="text-[10px] text-muted-foreground">
-                                {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
+                                {safeFormatTimestamp(notification.createdAt)}
                               </span>
                             </div>
                             {(notification.metadata?.brokenDescription || notification.metadata?.impactDescription) && (
@@ -716,7 +737,7 @@ export function NotificationsPopover() {
                             </p>
                             <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
                               <Clock className="h-3.5 w-3.5" />
-                              <span>{formatDistanceToNow(new Date(update.createdAt), { addSuffix: true })}</span>
+                              <span>{safeFormatTimestamp(update.createdAt)}</span>
                             </div>
                           </div>
                           {!update.isViewed && (
@@ -802,7 +823,8 @@ export function NotificationsPopover() {
             </TabsContent>
           </Tabs>
         )}
-      </div>
+        </div>
+      </ScrollArea>
 
       <div className="border-t bg-muted/20">
         <div className="p-3">
