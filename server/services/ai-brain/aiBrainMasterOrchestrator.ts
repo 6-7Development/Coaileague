@@ -391,6 +391,7 @@ class AIBrainMasterOrchestrator {
     this.registerOnboardingAssistantActions();
     this.registerExpenseCategorizationActions();
     this.registerDynamicPricingActions();
+    await this.registerSessionCheckpointActions();
     
     // Subscribe to platform events
     this.subscribeToEvents();
@@ -3808,6 +3809,273 @@ class AIBrainMasterOrchestrator {
     });
 
     console.log('[AI Brain Master Orchestrator] Registered dynamic pricing actions');
+  }
+
+  // ============================================================================
+  // SESSION CHECKPOINT & ROLLBACK ORCHESTRATION
+  // ============================================================================
+
+  private async registerSessionCheckpointActions(): Promise<void> {
+    const { sessionCheckpointService } = await import('../session/sessionCheckpointService');
+
+    helpaiOrchestrator.registerAction({
+      actionId: 'session.get_recoverable',
+      name: 'Get Recoverable Checkpoints',
+      category: 'session_checkpoint',
+      description: 'Trinity retrieves recoverable session checkpoints for a user to restore their workflow state',
+      requiredRoles: ['support_agent', 'support_manager', 'sysop', 'deputy_admin', 'root_admin'],
+      handler: async (request: ActionRequest) => {
+        const startTime = Date.now();
+        const { targetUserId } = request.payload || {};
+        
+        try {
+          const userId = targetUserId || request.userId!;
+          const checkpoints = await sessionCheckpointService.getRecoverableCheckpoints(userId);
+          
+          return {
+            success: true,
+            actionId: request.actionId,
+            message: `Found ${checkpoints.length} recoverable checkpoints for user`,
+            data: { 
+              checkpoints: checkpoints.map(cp => ({
+                id: cp.id,
+                phaseKey: cp.phaseKey,
+                pageRoute: cp.pageRoute,
+                contextSummary: cp.contextSummary,
+                savedAt: cp.savedAt,
+                payloadVersion: cp.payloadVersion,
+              })),
+              hasRecoverable: checkpoints.length > 0
+            },
+            executionTimeMs: Date.now() - startTime
+          };
+        } catch (error: any) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: error.message,
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+      }
+    });
+
+    helpaiOrchestrator.registerAction({
+      actionId: 'session.rollback_to_checkpoint',
+      name: 'Rollback to Session Checkpoint',
+      category: 'session_checkpoint',
+      description: 'Trinity initiates a rollback to restore user to a previous stable checkpoint',
+      requiredRoles: ['support_agent', 'support_manager', 'sysop', 'deputy_admin', 'root_admin'],
+      handler: async (request: ActionRequest) => {
+        const startTime = Date.now();
+        const { targetUserId, checkpointId, newSessionId, reason } = request.payload || {};
+        
+        try {
+          const userId = targetUserId || request.userId!;
+          
+          if (!checkpointId) {
+            return {
+              success: false,
+              actionId: request.actionId,
+              message: 'checkpointId is required for rollback',
+              executionTimeMs: Date.now() - startTime
+            };
+          }
+          
+          const requestId = await sessionCheckpointService.createRecoveryRequest(
+            userId,
+            checkpointId,
+            newSessionId || `trinity-recovery-${Date.now()}`,
+            'ai_brain_initiated'
+          );
+          
+          await this.notifyUser(
+            userId,
+            request.workspaceId,
+            'Session Recovery Available',
+            reason || 'Trinity has prepared a recovery point for your previous work session',
+            'info',
+            request.actionId
+          );
+          
+          return {
+            success: true,
+            actionId: request.actionId,
+            message: 'Session rollback initiated, user notified',
+            data: { requestId, checkpointId, userId },
+            executionTimeMs: Date.now() - startTime,
+            notificationSent: true
+          };
+        } catch (error: any) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: error.message,
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+      }
+    });
+
+    helpaiOrchestrator.registerAction({
+      actionId: 'session.complete_recovery',
+      name: 'Complete Session Recovery',
+      category: 'session_checkpoint',
+      description: 'Trinity completes a session recovery and restores user state',
+      requiredRoles: ['support_agent', 'support_manager', 'sysop', 'deputy_admin', 'root_admin'],
+      handler: async (request: ActionRequest) => {
+        const startTime = Date.now();
+        const { recoveryRequestId, newSessionId, userFeedback } = request.payload || {};
+        
+        try {
+          if (!recoveryRequestId || !newSessionId) {
+            return {
+              success: false,
+              actionId: request.actionId,
+              message: 'recoveryRequestId and newSessionId are required',
+              executionTimeMs: Date.now() - startTime
+            };
+          }
+          
+          const checkpoint = await sessionCheckpointService.completeRecovery(
+            recoveryRequestId,
+            newSessionId,
+            userFeedback
+          );
+          
+          if (!checkpoint) {
+            return {
+              success: false,
+              actionId: request.actionId,
+              message: 'Recovery request not found or already processed',
+              executionTimeMs: Date.now() - startTime
+            };
+          }
+          
+          await this.notifyUser(
+            checkpoint.userId,
+            request.workspaceId,
+            'Session Restored',
+            `Your work on "${checkpoint.phaseKey}" has been restored successfully`,
+            'success',
+            request.actionId
+          );
+          
+          return {
+            success: true,
+            actionId: request.actionId,
+            message: 'Session recovery completed successfully',
+            data: { 
+              checkpointId: checkpoint.id,
+              phaseKey: checkpoint.phaseKey,
+              pageRoute: checkpoint.pageRoute,
+              recoveredPayload: checkpoint.payload
+            },
+            executionTimeMs: Date.now() - startTime,
+            notificationSent: true
+          };
+        } catch (error: any) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: error.message,
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+      }
+    });
+
+    helpaiOrchestrator.registerAction({
+      actionId: 'session.get_context_for_automation',
+      name: 'Get Trinity Context for Automation',
+      category: 'session_checkpoint',
+      description: 'Trinity retrieves business context, org type, and user goals to inform automation decisions',
+      requiredRoles: ['support_agent', 'support_manager', 'sysop', 'deputy_admin', 'root_admin'],
+      handler: async (request: ActionRequest) => {
+        const startTime = Date.now();
+        const { targetUserId, targetWorkspaceId } = request.payload || {};
+        
+        try {
+          const wsId = targetWorkspaceId || request.workspaceId!;
+          const userId = targetUserId || request.userId!;
+          
+          const workspace = await db.select().from(workspaces).where(eq(workspaces.id, wsId)).limit(1);
+          const activeCheckpoint = await sessionCheckpointService.getActiveCheckpoint(userId);
+          
+          const ws = workspace[0];
+          
+          return {
+            success: true,
+            actionId: request.actionId,
+            message: 'Trinity context retrieved for automation',
+            data: {
+              workspace: ws ? {
+                id: ws.id,
+                name: ws.name,
+                category: ws.category,
+                plan: ws.plan,
+                status: ws.status,
+                isDemo: ws.isDemo,
+                settings: ws.settings,
+              } : null,
+              activeCheckpoint: activeCheckpoint ? {
+                id: activeCheckpoint.id,
+                phaseKey: activeCheckpoint.phaseKey,
+                pageRoute: activeCheckpoint.pageRoute,
+                contextSummary: activeCheckpoint.contextSummary,
+                lastSaved: activeCheckpoint.savedAt,
+              } : null,
+              automationContext: {
+                canProcessPayroll: !!ws,
+                canGenerateInvoices: !!ws,
+                canCreateSchedules: !!ws,
+                userHasActiveWork: !!activeCheckpoint,
+              }
+            },
+            executionTimeMs: Date.now() - startTime
+          };
+        } catch (error: any) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: error.message,
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+      }
+    });
+
+    helpaiOrchestrator.registerAction({
+      actionId: 'session.cleanup_expired',
+      name: 'Cleanup Expired Checkpoints',
+      category: 'session_checkpoint',
+      description: 'Trinity cleans up expired session checkpoints to maintain storage efficiency',
+      requiredRoles: ['sysop', 'deputy_admin', 'root_admin'],
+      handler: async (request: ActionRequest) => {
+        const startTime = Date.now();
+        
+        try {
+          const cleanedCount = await sessionCheckpointService.cleanupExpiredCheckpoints();
+          
+          return {
+            success: true,
+            actionId: request.actionId,
+            message: `Cleaned up ${cleanedCount} expired checkpoints`,
+            data: { cleanedCount },
+            executionTimeMs: Date.now() - startTime
+          };
+        } catch (error: any) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: error.message,
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+      }
+    });
+
+    console.log('[AI Brain Master Orchestrator] Registered session checkpoint actions');
   }
 }
 
