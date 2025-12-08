@@ -16823,3 +16823,254 @@ export const insertSessionRecoveryRequestSchema = createInsertSchema(sessionReco
 });
 export type InsertSessionRecoveryRequest = z.infer<typeof insertSessionRecoveryRequestSchema>;
 export type SessionRecoveryRequest = typeof sessionRecoveryRequests.$inferSelect;
+
+// ============================================================================
+// AI BRAIN SUBAGENT ORCHESTRATION SYSTEM
+// Specialized subagents for each domain with Dr. Holmes diagnostic capabilities
+// ============================================================================
+
+// Subagent domain categories
+export const subagentDomainEnum = pgEnum('subagent_domain', [
+  'scheduling',      // Shift management, availability, calendar sync
+  'payroll',         // Pay runs, deductions, tax calculations
+  'invoicing',       // Invoice generation, billing, client payments
+  'compliance',      // Certifications, labor law, break enforcement
+  'notifications',   // Alert routing, email, SMS, WebSocket
+  'analytics',       // Metrics, reports, KPI tracking
+  'gamification',    // Achievements, points, leaderboards
+  'communication',   // Chat, helpdesk, support tickets
+  'health',          // System monitoring, performance checks
+  'testing',         // Automated tests, validation
+  'deployment',      // Code commits, releases, migrations
+  'recovery',        // Session recovery, rollback, checkpoints
+  'orchestration',   // Workflow coordination, chain execution
+  'security',        // RBAC, audit, access control
+]);
+
+// Subagent execution status
+export const subagentStatusEnum = pgEnum('subagent_status', [
+  'idle',
+  'preparing',
+  'executing',
+  'validating',
+  'escalating',
+  'completed',
+  'failed',
+  'derailed',
+]);
+
+// AI Subagent Definitions - Registry of specialized subagents
+export const aiSubagentDefinitions = pgTable("ai_subagent_definitions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Identity
+  name: varchar("name", { length: 100 }).notNull().unique(),
+  domain: subagentDomainEnum("domain").notNull(),
+  description: text("description").notNull(),
+  
+  // Capabilities
+  capabilities: jsonb("capabilities").notNull(), // Array of action IDs this subagent handles
+  requiredTools: jsonb("required_tools"), // Tools this subagent needs access to
+  escalationPolicy: jsonb("escalation_policy"), // When/how to escalate to Trinity
+  
+  // Dr. Holmes Diagnostic Configuration
+  diagnosticWorkflow: jsonb("diagnostic_workflow"), // Triage steps: diagnose → fix → validate → report
+  knownPatterns: jsonb("known_patterns"), // Patterns this subagent can recognize
+  fixStrategies: jsonb("fix_strategies"), // Auto-fix strategies for common issues
+  
+  // Execution Parameters
+  maxRetries: integer("max_retries").default(3),
+  timeoutMs: integer("timeout_ms").default(30000),
+  confidenceThreshold: doublePrecision("confidence_threshold").default(0.7), // Min confidence to auto-execute
+  requiresApproval: boolean("requires_approval").default(false), // Always require human approval
+  
+  // RBAC
+  allowedRoles: jsonb("allowed_roles"), // Platform roles that can trigger this subagent
+  bypassAuthFor: jsonb("bypass_auth_for"), // Roles that bypass approval for this subagent
+  
+  // Status
+  isActive: boolean("is_active").default(true),
+  version: varchar("version", { length: 20 }).default("1.0.0"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("subagent_definitions_domain_idx").on(table.domain),
+  index("subagent_definitions_active_idx").on(table.isActive),
+]);
+
+export const insertAiSubagentDefinitionSchema = createInsertSchema(aiSubagentDefinitions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertAiSubagentDefinition = z.infer<typeof insertAiSubagentDefinitionSchema>;
+export type AiSubagentDefinition = typeof aiSubagentDefinitions.$inferSelect;
+
+// Trinity Access Control - Per-workspace/page/feature RBAC with bypass controls
+export const trinityAccessControl = pgTable("trinity_access_control", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  // What is being controlled
+  resourceType: varchar("resource_type", { length: 50 }).notNull(), // 'page', 'feature', 'tool', 'mascot', 'subagent'
+  resourceId: varchar("resource_id", { length: 200 }).notNull(), // Unique identifier for the resource
+  resourceName: varchar("resource_name", { length: 200 }), // Human-readable name
+  
+  // Access Settings
+  isEnabled: boolean("is_enabled").default(true), // Master toggle for this resource
+  allowedRoles: jsonb("allowed_roles"), // Roles that can access (null = all roles)
+  deniedRoles: jsonb("denied_roles"), // Roles explicitly denied
+  
+  // Approval Settings
+  requiresApproval: boolean("requires_approval").default(false),
+  approvalRoles: jsonb("approval_roles"), // Roles that can approve
+  autoApproveFor: jsonb("auto_approve_for"), // Roles that get auto-approval
+  
+  // Trinity AI Settings
+  trinityCanAssist: boolean("trinity_can_assist").default(true), // Trinity can help with this resource
+  trinityCanAutoFix: boolean("trinity_can_auto_fix").default(false), // Trinity can auto-fix issues
+  aiToolsEnabled: boolean("ai_tools_enabled").default(true), // AI Brain tools available
+  mascotVisible: boolean("mascot_visible").default(true), // CoAI mascot shows on this page
+  
+  // Audit
+  configuredBy: varchar("configured_by").references(() => users.id, { onDelete: 'set null' }),
+  configuredAt: timestamp("configured_at").defaultNow(),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("trinity_access_workspace_idx").on(table.workspaceId),
+  index("trinity_access_resource_idx").on(table.resourceType, table.resourceId),
+  uniqueIndex("trinity_access_unique_idx").on(table.workspaceId, table.resourceType, table.resourceId),
+]);
+
+export const insertTrinityAccessControlSchema = createInsertSchema(trinityAccessControl).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertTrinityAccessControl = z.infer<typeof insertTrinityAccessControlSchema>;
+export type TrinityAccessControl = typeof trinityAccessControl.$inferSelect;
+
+// Subagent Telemetry - Health monitoring and execution tracking
+export const subagentTelemetry = pgTable("subagent_telemetry", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  subagentId: varchar("subagent_id").references(() => aiSubagentDefinitions.id, { onDelete: 'cascade' }),
+  workspaceId: varchar("workspace_id").references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  // Execution Context
+  executionId: varchar("execution_id", { length: 100 }).notNull(), // Unique execution trace ID
+  actionId: varchar("action_id", { length: 200 }), // Specific action being executed
+  userId: varchar("user_id").references(() => users.id, { onDelete: 'set null' }),
+  
+  // Status Tracking
+  status: subagentStatusEnum("status").notNull(),
+  phase: varchar("phase", { length: 50 }), // 'prepare', 'execute', 'validate', 'escalate'
+  
+  // Execution Metrics
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+  durationMs: integer("duration_ms"),
+  retryCount: integer("retry_count").default(0),
+  
+  // Diagnostic Data (Dr. Holmes)
+  diagnosticResults: jsonb("diagnostic_results"), // What was diagnosed
+  fixAttempted: boolean("fix_attempted").default(false),
+  fixSucceeded: boolean("fix_succeeded"),
+  fixDetails: jsonb("fix_details"), // What fix was applied
+  
+  // Health Signals
+  confidenceScore: doublePrecision("confidence_score"), // 0-1
+  riskLevel: varchar("risk_level", { length: 20 }), // 'low', 'medium', 'high', 'critical'
+  requiresEscalation: boolean("requires_escalation").default(false),
+  escalationReason: text("escalation_reason"),
+  
+  // Error Tracking
+  errorCode: varchar("error_code", { length: 50 }),
+  errorMessage: text("error_message"),
+  errorStack: text("error_stack"),
+  
+  // Input/Output
+  inputPayload: jsonb("input_payload"),
+  outputPayload: jsonb("output_payload"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("subagent_telemetry_subagent_idx").on(table.subagentId),
+  index("subagent_telemetry_workspace_idx").on(table.workspaceId),
+  index("subagent_telemetry_execution_idx").on(table.executionId),
+  index("subagent_telemetry_status_idx").on(table.status),
+  index("subagent_telemetry_created_idx").on(table.createdAt),
+]);
+
+export const insertSubagentTelemetrySchema = createInsertSchema(subagentTelemetry).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertSubagentTelemetry = z.infer<typeof insertSubagentTelemetrySchema>;
+export type SubagentTelemetry = typeof subagentTelemetry.$inferSelect;
+
+// Support Interventions - Derailment tracking with approval workflow
+export const supportInterventions = pgTable("support_interventions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  // Triggering Context
+  subagentId: varchar("subagent_id").references(() => aiSubagentDefinitions.id, { onDelete: 'set null' }),
+  telemetryId: varchar("telemetry_id").references(() => subagentTelemetry.id, { onDelete: 'set null' }),
+  checkpointId: varchar("checkpoint_id").references(() => sessionCheckpoints.id, { onDelete: 'set null' }),
+  
+  // Derailment Details
+  derailmentType: varchar("derailment_type", { length: 50 }).notNull(), // 'repeated_failure', 'high_risk', 'user_complaint', 'system_anomaly'
+  severity: varchar("severity", { length: 20 }).notNull(), // 'low', 'medium', 'high', 'critical'
+  description: text("description").notNull(),
+  diagnosticSummary: text("diagnostic_summary"), // AI-generated summary of what went wrong
+  
+  // Affected Users/Context
+  affectedUserId: varchar("affected_user_id").references(() => users.id, { onDelete: 'set null' }),
+  affectedFeature: varchar("affected_feature", { length: 200 }),
+  impactAssessment: jsonb("impact_assessment"), // Scope of impact
+  
+  // Proposed Fix
+  proposedFix: jsonb("proposed_fix"), // What Trinity suggests
+  fixConfidence: doublePrecision("fix_confidence"), // 0-1
+  alternativeFixes: jsonb("alternative_fixes"), // Other options
+  
+  // Approval Workflow
+  status: varchar("status", { length: 30 }).default("pending"), // 'pending', 'approved', 'rejected', 'auto_fixed', 'escalated', 'resolved'
+  requestedAt: timestamp("requested_at").defaultNow(),
+  
+  // Approval Details
+  approvedBy: varchar("approved_by").references(() => users.id, { onDelete: 'set null' }),
+  approvedAt: timestamp("approved_at"),
+  rejectedBy: varchar("rejected_by").references(() => users.id, { onDelete: 'set null' }),
+  rejectedAt: timestamp("rejected_at"),
+  rejectionReason: text("rejection_reason"),
+  
+  // Resolution
+  resolvedAt: timestamp("resolved_at"),
+  resolutionMethod: varchar("resolution_method", { length: 50 }), // 'auto_fix', 'manual_fix', 'rollback', 'escalated_to_engineering'
+  resolutionNotes: text("resolution_notes"),
+  resolutionOutcome: jsonb("resolution_outcome"),
+  
+  // Linked Governance Approval
+  governanceApprovalId: varchar("governance_approval_id").references(() => governanceApprovals.id, { onDelete: 'set null' }),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("support_interventions_workspace_idx").on(table.workspaceId),
+  index("support_interventions_subagent_idx").on(table.subagentId),
+  index("support_interventions_status_idx").on(table.status),
+  index("support_interventions_severity_idx").on(table.severity),
+  index("support_interventions_created_idx").on(table.createdAt),
+]);
+
+export const insertSupportInterventionSchema = createInsertSchema(supportInterventions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertSupportIntervention = z.infer<typeof insertSupportInterventionSchema>;
+export type SupportIntervention = typeof supportInterventions.$inferSelect;
