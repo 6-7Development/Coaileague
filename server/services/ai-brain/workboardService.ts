@@ -71,7 +71,7 @@ class WorkboardService {
    */
   async submitTask(submission: WorkboardSubmission): Promise<AiWorkboardTask> {
     const executionMode = submission.executionMode || 'normal';
-    const isFastMode = executionMode === 'trinity_fast';
+    let isFastMode = executionMode === 'trinity_fast';
 
     console.log('[WorkboardService] Submitting new task:', {
       workspaceId: submission.workspaceId,
@@ -82,15 +82,22 @@ class WorkboardService {
       fastModeRequestedBy: submission.fastModeRequestedBy
     });
 
-    // Pre-authorize credits for fast mode
+    // Pre-authorize credits for fast mode using estimated tokens from metadata
     let fastModeCredits = 0;
+    const estimatedTokens = (submission.requestMetadata as any)?.estimatedTokens || 50; // Default estimate
+    
     if (isFastMode) {
-      const creditCheck = await this.checkFastModeCredits(submission.workspaceId);
+      // Calculate required credits with 2x multiplier for fast mode
+      const requiredCredits = Math.ceil(estimatedTokens * FAST_MODE_CONFIG.creditMultiplier);
+      const creditCheck = await this.checkFastModeCredits(submission.workspaceId, requiredCredits);
+      
       if (!creditCheck.hasCredits) {
-        console.log('[WorkboardService] Insufficient credits for fast mode, falling back to normal');
+        console.log('[WorkboardService] Insufficient credits for fast mode, need', requiredCredits, 'have', creditCheck.balance);
         submission.executionMode = 'normal';
+        isFastMode = false; // Recompute after fallback
       } else {
-        fastModeCredits = Math.ceil(10 * FAST_MODE_CONFIG.creditMultiplier); // Estimated base cost
+        fastModeCredits = requiredCredits;
+        console.log('[WorkboardService] Fast mode pre-authorized:', fastModeCredits, 'credits');
       }
     }
 
@@ -150,7 +157,7 @@ class WorkboardService {
   /**
    * Check if workspace has sufficient credits for fast mode
    */
-  private async checkFastModeCredits(workspaceId: string): Promise<{ hasCredits: boolean; balance: number }> {
+  private async checkFastModeCredits(workspaceId: string, requiredCredits?: number): Promise<{ hasCredits: boolean; balance: number }> {
     try {
       const [credits] = await db.select()
         .from(trinityCredits)
@@ -158,8 +165,11 @@ class WorkboardService {
         .limit(1);
 
       const balance = credits?.balance || 0;
-      const hasCredits = balance >= FAST_MODE_CONFIG.minCreditsRequired;
+      // Use requiredCredits if provided, otherwise use minimum threshold
+      const minRequired = requiredCredits ?? FAST_MODE_CONFIG.minCreditsRequired;
+      const hasCredits = balance >= minRequired;
 
+      console.log('[WorkboardService] Credit check:', { workspaceId, balance, required: minRequired, hasCredits });
       return { hasCredits, balance };
     } catch (error) {
       console.error('[WorkboardService] Credit check error:', error);

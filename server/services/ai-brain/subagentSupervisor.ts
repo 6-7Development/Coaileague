@@ -1687,6 +1687,7 @@ class SubagentSupervisor {
     transcript: string;
     userId: string;
     workspaceId?: string;
+    executionMode?: 'normal' | 'trinity_fast';
     context: {
       source: string;
       timestamp: string;
@@ -1696,8 +1697,9 @@ class SubagentSupervisor {
     assignedAgent: string;
     estimatedTokens: number;
     confidence: number;
+    executionMode: 'normal' | 'trinity_fast';
   }> {
-    const { transcript, userId, workspaceId, context } = params;
+    const { transcript, userId, workspaceId, executionMode = 'normal', context } = params;
     
     console.log('[SubagentSupervisor] Routing voice command:', { 
       transcriptLength: transcript.length,
@@ -1750,10 +1752,16 @@ class SubagentSupervisor {
       platform: context.platform
     });
 
+    // Apply 2x multiplier for fast mode
+    const finalEstimatedTokens = executionMode === 'trinity_fast' 
+      ? Math.ceil(estimatedTokens * 2)
+      : estimatedTokens;
+
     return {
       assignedAgent,
-      estimatedTokens,
-      confidence
+      estimatedTokens: finalEstimatedTokens,
+      confidence,
+      executionMode
     };
   }
 
