@@ -299,6 +299,61 @@ const DEFAULT_SUBAGENTS: Omit<InsertAiSubagentDefinition, 'id' | 'createdAt' | '
     isActive: true,
     version: '1.0.0',
   },
+  {
+    name: 'ElevatedSessionGuardian',
+    domain: 'security',
+    description: 'Manages elevated session authentication for support roles and AI services. Monitors session health, auto-heals failures, and creates support tickets when intervention needed.',
+    capabilities: [
+      'session.elevate',
+      'session.validate',
+      'session.revoke',
+      'session.diagnose',
+      'session.auto_heal',
+      'session.report_anomaly',
+      'session.create_ticket'
+    ],
+    requiredTools: ['hmac_signer', 'session_validator', 'telemetry_emitter', 'ticket_creator', 'notification_broadcaster'],
+    escalationPolicy: { 
+      maxRetries: 3, 
+      escalateOn: ['signature_invalid', 'elevation_rejected', 'locked_account_bypass_attempt', 'repeated_failure'],
+      alwaysNotify: true,
+      notifyRoles: ['root_admin', 'deputy_admin', 'sysop', 'support_manager']
+    },
+    diagnosticWorkflow: {
+      diagnose: ['verify_hmac_signature', 'check_ttl_expiry', 'validate_user_lock_status', 'audit_elevation_history', 'scan_anomaly_patterns'],
+      fix: ['revoke_stale_elevation', 'regenerate_signature', 'clear_expired_sessions', 'auto_cleanup', 'notify_affected_user'],
+      validate: ['verify_elevation_restored', 'confirm_session_healthy', 'check_no_pending_anomalies'],
+      report: ['generate_session_health_report', 'log_to_audit', 'broadcast_to_trinity', 'create_support_ticket_if_unresolved']
+    },
+    knownPatterns: [
+      'hmac_signature_mismatch',
+      'idle_timeout_exceeded',
+      'absolute_timeout_exceeded',
+      'locked_account_detected',
+      'elevation_rate_limit_hit',
+      'concurrent_elevation_conflict',
+      'ai_service_elevation_failed',
+      'session_drift_detected'
+    ],
+    fixStrategies: {
+      hmac_signature_mismatch: 'revoke_and_reissue',
+      idle_timeout_exceeded: 'prompt_reauthentication',
+      absolute_timeout_exceeded: 'force_revoke_and_notify',
+      locked_account_detected: 'revoke_all_elevations_for_user',
+      elevation_rate_limit_hit: 'queue_and_retry',
+      concurrent_elevation_conflict: 'keep_most_recent',
+      ai_service_elevation_failed: 'retry_with_diagnostics',
+      session_drift_detected: 'resync_session_state'
+    },
+    maxRetries: 3,
+    timeoutMs: 20000,
+    confidenceThreshold: 0.9,
+    requiresApproval: false,
+    allowedRoles: ['root_admin', 'deputy_admin', 'sysop', 'support_manager', 'support_agent', 'Bot'],
+    bypassAuthFor: ['root_admin', 'deputy_admin', 'Bot'],
+    isActive: true,
+    version: '1.0.0',
+  },
 ];
 
 // ============================================================================
