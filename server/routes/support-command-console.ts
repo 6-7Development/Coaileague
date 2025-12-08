@@ -44,6 +44,40 @@ function broadcastForceRefresh(type: string, payload: any) {
 }
 
 /**
+ * GET /api/support/command/test-broadcast
+ * Debug endpoint to test WebSocket broadcast to all tabs
+ * NOTE: Uses session auth - requires being logged in as support staff
+ */
+supportCommandRouter.get('/test-broadcast', requireSupportRole, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const testMessage = {
+      type: 'force_refresh',
+      refreshType: 'test_broadcast',
+      payload: {
+        action: 'test',
+        message: `Test broadcast at ${new Date().toLocaleTimeString()}`,
+        timestamp: new Date().toISOString(),
+        sender: req.user?.id || 'system',
+      },
+    };
+    
+    const count = broadcastToAllClients(testMessage);
+    
+    console.log(`[SupportConsole] Test broadcast sent to ${count} clients`);
+    
+    res.json({
+      success: true,
+      message: `Test broadcast sent to ${count} connected clients`,
+      clientCount: count,
+      payload: testMessage,
+    });
+  } catch (error: any) {
+    console.error('[SupportConsole] Test broadcast error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
  * POST /api/support/command/force-whats-new
  * Force push a new What's New update to all clients
  */
