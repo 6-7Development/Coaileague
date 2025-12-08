@@ -206,23 +206,84 @@ export interface ChatResponseTimingConfig {
 
 export const CHAT_RESPONSE_TIMING: ChatResponseTimingConfig = {
   typingDelay: {
-    mobile: 1200,   // Show typing indicator longer on mobile
-    desktop: 800,
+    mobile: 1500,   // Show typing indicator longer on mobile - builds anticipation
+    desktop: 900,
   },
   charactersPerSecond: {
-    mobile: 25,     // Slower typing on mobile - easier to follow
-    desktop: 45,
+    mobile: 20,     // Very slow typing on mobile - easy to read animations
+    desktop: 40,
   },
   minDisplayTime: {
-    mobile: 4000,   // Keep responses visible longer on mobile
-    desktop: 2500,
+    mobile: 5000,   // Keep responses visible 5s on mobile
+    desktop: 3000,
   },
   bubbleGap: {
-    mobile: 800,    // Longer pause between bubbles on mobile
-    desktop: 400,
+    mobile: 1000,   // 1 second pause between bubbles on mobile
+    desktop: 500,
   },
   typewriterEnabled: true,
 };
+
+// ============================================================================
+// CHAT BUBBLE VISUAL CONFIGURATION (AI Brain editable)
+// Styling and animation settings for Trinity chat bubbles
+// ============================================================================
+
+export interface ChatBubbleVisualConfig {
+  // Bubble sizing
+  maxWidth: {
+    mobile: string;
+    desktop: string;
+  };
+  padding: {
+    mobile: string;
+    desktop: string;
+  };
+  fontSize: {
+    mobile: string;
+    desktop: string;
+  };
+  // Animation settings
+  fadeInDuration: number;
+  slideDistance: number;
+  // Visual effects
+  glassmorphism: boolean;
+  borderGlow: boolean;
+  shadowIntensity: 'subtle' | 'medium' | 'strong';
+}
+
+export const CHAT_BUBBLE_VISUALS: ChatBubbleVisualConfig = {
+  maxWidth: {
+    mobile: '85vw',    // Wide bubbles on mobile for readability
+    desktop: '320px',
+  },
+  padding: {
+    mobile: '14px 18px',  // Generous padding on mobile
+    desktop: '12px 16px',
+  },
+  fontSize: {
+    mobile: '15px',    // Slightly larger text on mobile
+    desktop: '14px',
+  },
+  fadeInDuration: 300,
+  slideDistance: 12,
+  glassmorphism: true,
+  borderGlow: true,
+  shadowIntensity: 'medium',
+};
+
+export function getChatBubbleStyle(isMobile: boolean) {
+  return {
+    maxWidth: isMobile ? CHAT_BUBBLE_VISUALS.maxWidth.mobile : CHAT_BUBBLE_VISUALS.maxWidth.desktop,
+    padding: isMobile ? CHAT_BUBBLE_VISUALS.padding.mobile : CHAT_BUBBLE_VISUALS.padding.desktop,
+    fontSize: isMobile ? CHAT_BUBBLE_VISUALS.fontSize.mobile : CHAT_BUBBLE_VISUALS.fontSize.desktop,
+    fadeInDuration: CHAT_BUBBLE_VISUALS.fadeInDuration,
+    slideDistance: CHAT_BUBBLE_VISUALS.slideDistance,
+    glassmorphism: CHAT_BUBBLE_VISUALS.glassmorphism,
+    borderGlow: CHAT_BUBBLE_VISUALS.borderGlow,
+    shadowIntensity: CHAT_BUBBLE_VISUALS.shadowIntensity,
+  };
+}
 
 export function getChatTiming(isMobile: boolean): {
   typingDelay: number;
@@ -1413,11 +1474,11 @@ export const MASCOT_CONFIG: MascotConfig = {
   },
   
   mobile: {
-    bubble: 100,       // Increased from 70 for better visibility
-    defaultSize: 100,  // Increased from 70 - more usable on small screens
-    expandedSize: 130, // Increased from 90 for better tap targets
-    minSize: 85,       // Increased from 60
-    maxSize: 150,      // Increased from 100 for better readability
+    bubble: 130,       // Large bubble for easy reading on small screens
+    defaultSize: 130,  // 130px - highly visible on mobile, easy to tap
+    expandedSize: 160, // Expanded for chat/interaction mode
+    minSize: 110,      // Never too small to see animations
+    maxSize: 180,      // Cap for very small screens
   },
   
   defaultPosition: {

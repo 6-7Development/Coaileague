@@ -74,6 +74,20 @@ The system employs a multi-tenant architecture with RBAC security and isolation,
 - **Platform Roles (8 levels):** root_admin, deputy_admin, sysop, support_manager, support_agent, compliance_officer, Bot, none
 - **Workspace Roles (7 levels):** org_owner, org_admin, department_manager, supervisor, staff, auditor, contractor
 
+**AI/Automation Bypass Pattern:**
+- **Principle:** All AI features (Trinity, HelpAI, subagents, bots, automation services) receive elevated session bypass once authenticated to avoid auth issues and workflow interruptions.
+- **Implementation:** `elevatedSessionService.ts` issues HMAC-signed elevation tokens for Bot role and AI services.
+- **Eligible Services:** Trinity, HelpAI, subagents, automation jobs, scheduled cron tasks, AI Brain orchestrator.
+- **Bypass Scope:** Standard RBAC checks, rate limits on internal actions, repeated auth verification during automated workflows.
+- **Regular Users:** Org users do NOT receive bypass - they use standard RBAC and subscription tier controls.
+- **Tracking:** AI Brain Master Orchestrator tracks all elevated actions for subscriber-agent reporting and audit compliance.
+
+**Trinity Mobile Configuration:**
+- **Mobile Size:** 130px default (highly visible, easy to tap)
+- **Chat Bubble Timing:** Human-paced with 1.5s typing delay, 20 chars/sec on mobile
+- **Visual Config:** Glassmorphism, border glow, 85vw max width on mobile
+- **AI Brain Tracking:** All Trinity interactions logged via AI Brain for subscriber agent analysis
+
 ### External Dependencies
 - **Stripe**: Payment processing, payroll, and financial integrations.
 - **Resend**: Email delivery and notification workflows.
