@@ -99,6 +99,16 @@ export function ForceRefreshProvider({ children }: { children: React.ReactNode }
           queryClient.invalidateQueries();
         }
         break;
+
+      case 'test_broadcast':
+        // Test broadcast - show toast to confirm receipt
+        toast({
+          title: 'Broadcast Test Received',
+          description: payload.message || 'WebSocket broadcast working!',
+          duration: 5000,
+        });
+        console.log('[ForceRefresh] Test broadcast received:', payload);
+        break;
     }
   }, [queryClient, toast]);
 
