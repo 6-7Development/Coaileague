@@ -279,7 +279,7 @@ const SnowfallEngine = memo(function SnowfallEngine() {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [enabled, dimensions, intensity, accumulation, createSnowflake, updatePhase, updateSpeedCycle, cycleDurations]);
+  }, [enabled, dimensions, snowConfig.intensity, accumulation, createSnowflake, updatePhase, updateSpeedCycle, cycleDurations]);
   
   if (!enabled) return null;
   
