@@ -2006,27 +2006,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Import subagent supervisor for task routing
       const { subagentSupervisor } = await import('./services/ai-brain/subagentSupervisor');
       
-      // Create a voice command task for the workboard
-      const voiceTask = {
-        id: crypto.randomUUID(),
-        type: 'voice_command',
-        source: source || 'mobile_trinity',
-        transcript: transcript.trim(),
-        userId,
-        workspaceId,
-        status: 'pending',
-        createdAt: new Date(timestamp || Date.now()),
-        metadata: {
-          platform: 'mobile',
-          inputMethod: 'voice',
-        }
-      };
+      // Voice command will be submitted to workboard service for proper task tracking
 
+      // Validate execution mode
+      const validExecutionMode = executionMode === 'trinity_fast' ? 'trinity_fast' : 'normal';
+      const isFastMode = validExecutionMode === 'trinity_fast';
+      
+      console.log('[VoiceCommand] Processing with execution mode:', validExecutionMode);
+      
       // Route through SubagentSupervisor to determine appropriate subagent
       const routingResult = await subagentSupervisor.routeVoiceCommand({
         transcript: transcript.trim(),
         userId,
         workspaceId,
+        executionMode: validExecutionMode,
         context: {
           source,
           timestamp,
@@ -2034,45 +2027,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
 
-      // Deduct credits for voice command processing
-      let creditDeducted = false;
-      if (workspaceId) {
-        try {
-          const [credits] = await db.select().from(trinityCredits).where(eq(trinityCredits.workspaceId, workspaceId)).limit(1);
-          
-          if (credits && credits.balance >= routingResult.estimatedTokens) {
-            // Deduct credits
-            await db.update(trinityCredits)
-              .set({ 
-                balance: sql`${trinityCredits.balance} - ${routingResult.estimatedTokens}`,
-                lifetimeUsed: sql`${trinityCredits.lifetimeUsed} + ${routingResult.estimatedTokens}`,
-                updatedAt: new Date()
-              })
-              .where(eq(trinityCredits.workspaceId, workspaceId));
-            
-            // Record transaction
-            await db.insert(trinityCreditTransactions).values({
-              workspaceId,
-              userId,
-              type: 'deduction',
-              amount: routingResult.estimatedTokens,
-              description: `Voice command: ${transcript.trim().substring(0, 50)}`,
-              featureKey: 'voice_command',
-              metadata: {
-                taskId: voiceTask.id,
-                assignedAgent: routingResult.assignedAgent
-              }
-            });
-            
-            creditDeducted = true;
-            console.log('[VoiceCommand] Deducted credits:', routingResult.estimatedTokens);
-          } else {
-            console.log('[VoiceCommand] Insufficient credits or no credit record:', workspaceId);
-          }
-        } catch (creditError) {
-          console.error('[VoiceCommand] Credit deduction failed:', creditError);
-        }
-      }
+      // Note: Credits are deducted by workboardService when task executes in fast mode
 
       // Log the voice command for analytics
       await storage.createAuditLog({
@@ -2089,23 +2044,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
 
+      // Submit to workboard for proper task tracking and execution
+      const { workboardService } = await import('./services/ai-brain/workboardService');
+      
+      const workboardTask = await workboardService.submitTask({
+        workspaceId: workspaceId || '',
+        userId,
+        requestType: 'voice_command',
+        requestContent: transcript.trim(),
+        priority: isFastMode ? 'high' : 'normal',
+        executionMode: validExecutionMode,
+        fastModeRequestedBy: 'voice',
+        notifyVia: ['websocket'],
+        requestMetadata: {
+          source: source || 'mobile_trinity',
+          platform: 'mobile',
+          inputMethod: 'voice',
+          assignedAgent: routingResult.assignedAgent,
+          estimatedTokens: routingResult.estimatedTokens,
+          confidence: routingResult.confidence
+        }
+      });
+
       // Emit event for real-time UI update
       const { eventBus } = await import('./services/eventBus');
       eventBus.emit('voice_command_received', {
         userId,
         workspaceId,
-        taskId: voiceTask.id,
-        status: 'processing',
-        assignedAgent: routingResult.assignedAgent
+        taskId: workboardTask.id,
+        status: 'pending',
+        assignedAgent: routingResult.assignedAgent,
+        executionMode: validExecutionMode
       });
 
       res.json({
         success: true,
-        taskId: voiceTask.id,
+        taskId: workboardTask.id,
         status: 'queued',
         assignedAgent: routingResult.assignedAgent,
         estimatedTokens: routingResult.estimatedTokens,
-        message: `Command received and assigned to ${routingResult.assignedAgent} for processing.`
+        executionMode: validExecutionMode,
+        isFastMode,
+        message: `Command received and assigned to ${routingResult.assignedAgent} for processing${isFastMode ? ' (Fast Mode)' : ''}.`
       });
 
     } catch (error: any) {
