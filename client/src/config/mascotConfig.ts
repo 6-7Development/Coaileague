@@ -127,6 +127,119 @@ export interface AIConfig {
   businessAdviceCategories: string[];
 }
 
+// ============================================================================
+// VOICE COMMAND CONFIGURATION (AI Brain editable)
+// Settings for voice control integration with Trinity
+// ============================================================================
+
+export interface VoiceCommandConfig {
+  enabled: boolean;
+  mobileEnabled: boolean;        // Enable voice on mobile specifically
+  wakeWord: string;              // Wake word to activate Trinity ("Hey Trinity")
+  listenTimeout: number;         // How long to listen after wake word (ms)
+  visualFeedback: boolean;       // Show visual indicator when listening
+  hapticFeedback: boolean;       // Vibrate on mobile when listening starts
+  commands: {
+    openChat: string[];          // Phrases to open chat
+    closeChat: string[];         // Phrases to close chat
+    readNotifications: string[]; // Phrases to read notifications
+    navigateTo: string[];        // Phrases to navigate (followed by destination)
+    askQuestion: string[];       // Phrases to ask Trinity a question
+    cancel: string[];            // Phrases to cancel current action
+  };
+  responseSpeed: {
+    mobile: 'slow' | 'medium' | 'fast';   // Human-paced responses on mobile
+    desktop: 'slow' | 'medium' | 'fast';
+  };
+}
+
+export const VOICE_COMMAND_CONFIG: VoiceCommandConfig = {
+  enabled: true,
+  mobileEnabled: true,
+  wakeWord: 'Hey Trinity',
+  listenTimeout: 5000,           // 5 seconds to speak after wake word
+  visualFeedback: true,
+  hapticFeedback: true,
+  commands: {
+    openChat: ['open chat', 'start chat', 'chat with me', 'talk to me'],
+    closeChat: ['close chat', 'end chat', 'goodbye', 'bye'],
+    readNotifications: ['read notifications', 'what\'s new', 'any updates'],
+    navigateTo: ['go to', 'navigate to', 'open', 'show me'],
+    askQuestion: ['tell me about', 'what is', 'how do I', 'explain'],
+    cancel: ['cancel', 'stop', 'never mind', 'forget it'],
+  },
+  responseSpeed: {
+    mobile: 'slow',    // Human-paced for mobile - easier to read
+    desktop: 'medium',
+  },
+};
+
+// ============================================================================
+// CHAT RESPONSE TIMING CONFIGURATION (AI Brain editable)
+// Human-paced response timing for natural conversation feel
+// ============================================================================
+
+export interface ChatResponseTimingConfig {
+  // Typing indicator timing (ms)
+  typingDelay: {
+    mobile: number;
+    desktop: number;
+  };
+  // Characters revealed per second (typewriter effect)
+  charactersPerSecond: {
+    mobile: number;
+    desktop: number;
+  };
+  // Minimum display time for responses (ms)
+  minDisplayTime: {
+    mobile: number;
+    desktop: number;
+  };
+  // Pause between response bubbles (ms)
+  bubbleGap: {
+    mobile: number;
+    desktop: number;
+  };
+  // Enable typewriter effect
+  typewriterEnabled: boolean;
+}
+
+export const CHAT_RESPONSE_TIMING: ChatResponseTimingConfig = {
+  typingDelay: {
+    mobile: 1200,   // Show typing indicator longer on mobile
+    desktop: 800,
+  },
+  charactersPerSecond: {
+    mobile: 25,     // Slower typing on mobile - easier to follow
+    desktop: 45,
+  },
+  minDisplayTime: {
+    mobile: 4000,   // Keep responses visible longer on mobile
+    desktop: 2500,
+  },
+  bubbleGap: {
+    mobile: 800,    // Longer pause between bubbles on mobile
+    desktop: 400,
+  },
+  typewriterEnabled: true,
+};
+
+export function getChatTiming(isMobile: boolean): {
+  typingDelay: number;
+  charactersPerSecond: number;
+  minDisplayTime: number;
+  bubbleGap: number;
+  typewriterEnabled: boolean;
+} {
+  return {
+    typingDelay: isMobile ? CHAT_RESPONSE_TIMING.typingDelay.mobile : CHAT_RESPONSE_TIMING.typingDelay.desktop,
+    charactersPerSecond: isMobile ? CHAT_RESPONSE_TIMING.charactersPerSecond.mobile : CHAT_RESPONSE_TIMING.charactersPerSecond.desktop,
+    minDisplayTime: isMobile ? CHAT_RESPONSE_TIMING.minDisplayTime.mobile : CHAT_RESPONSE_TIMING.minDisplayTime.desktop,
+    bubbleGap: isMobile ? CHAT_RESPONSE_TIMING.bubbleGap.mobile : CHAT_RESPONSE_TIMING.bubbleGap.desktop,
+    typewriterEnabled: CHAT_RESPONSE_TIMING.typewriterEnabled,
+  };
+}
+
 export interface TaskTemplate {
   id: string;
   title: string;
@@ -1300,11 +1413,11 @@ export const MASCOT_CONFIG: MascotConfig = {
   },
   
   mobile: {
-    bubble: 70,
-    defaultSize: 70,
-    expandedSize: 90,
-    minSize: 60,
-    maxSize: 100,
+    bubble: 100,       // Increased from 70 for better visibility
+    defaultSize: 100,  // Increased from 70 - more usable on small screens
+    expandedSize: 130, // Increased from 90 for better tap targets
+    minSize: 85,       // Increased from 60
+    maxSize: 150,      // Increased from 100 for better readability
   },
   
   defaultPosition: {
