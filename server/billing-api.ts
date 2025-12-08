@@ -1154,3 +1154,233 @@ billingRouter.post('/webhooks/stripe', async (req, res) => {
     res.status(200).json({ error: 'Processed with errors' });
   }
 });
+
+// ============================================================================
+// TRINITY CREDITS SYSTEM ENDPOINTS
+// ============================================================================
+
+import { creditsLedgerService } from './services/billing/creditsLedgerService';
+import { featureGateService } from './services/billing/featureGateService';
+
+/**
+ * Get Trinity credits status for workspace
+ */
+billingRouter.get('/trinity-credits/status', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const workspaceId = req.currentWorkspaceId;
+    if (!workspaceId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const status = await creditsLedgerService.getCreditStatus(workspaceId);
+    res.json({ success: true, ...status });
+  } catch (error: any) {
+    console.error('Failed to get credit status:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Get available credit packages
+ */
+billingRouter.get('/trinity-credits/packages', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const workspaceId = req.currentWorkspaceId;
+    if (!workspaceId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { workspaces } = await import('@shared/schema');
+    const [workspace] = await db.select().from(workspaces)
+      .where(eq(workspaces.id, workspaceId))
+      .limit(1);
+
+    const packages = await creditsLedgerService.getAvailablePackages(
+      workspace?.subscriptionTier || 'free'
+    );
+    res.json({ success: true, packages });
+  } catch (error: any) {
+    console.error('Failed to get credit packages:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Get credit transaction history
+ */
+billingRouter.get('/trinity-credits/transactions', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const workspaceId = req.currentWorkspaceId;
+    if (!workspaceId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const limit = parseInt(req.query.limit as string) || 50;
+    const offset = parseInt(req.query.offset as string) || 0;
+
+    const transactions = await creditsLedgerService.getTransactionHistory(
+      workspaceId,
+      limit,
+      offset
+    );
+    res.json({ success: true, transactions });
+  } catch (error: any) {
+    console.error('Failed to get transactions:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Purchase credits with Stripe
+ */
+billingRouter.post('/trinity-credits/purchase', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const workspaceId = req.currentWorkspaceId;
+    const userId = req.user?.id || req.session?.userId;
+    if (!workspaceId || !userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const input = z.object({
+      packageId: z.string(),
+      stripePaymentIntentId: z.string().optional(),
+    }).parse(req.body);
+
+    // For now, directly add credits (in production, this would verify Stripe payment first)
+    const result = await creditsLedgerService.purchaseCredits(
+      workspaceId,
+      input.packageId,
+      userId,
+      input.stripePaymentIntentId || 'direct_purchase'
+    );
+
+    res.json(result);
+  } catch (error: any) {
+    console.error('Failed to purchase credits:', error);
+    res.status(400).json({ error: error.message });
+  }
+});
+
+/**
+ * Redeem an unlock code
+ */
+billingRouter.post('/trinity-credits/redeem-code', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const workspaceId = req.currentWorkspaceId;
+    const userId = req.user?.id || req.session?.userId;
+    if (!workspaceId || !userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const input = z.object({
+      code: z.string().min(4),
+    }).parse(req.body);
+
+    const result = await creditsLedgerService.redeemUnlockCode(
+      workspaceId,
+      input.code,
+      userId
+    );
+
+    res.json(result);
+  } catch (error: any) {
+    console.error('Failed to redeem code:', error);
+    res.status(400).json({ error: error.message });
+  }
+});
+
+/**
+ * Check if feature is accessible
+ */
+billingRouter.get('/feature-gate/:featureKey', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const workspaceId = req.currentWorkspaceId;
+    const userId = req.user?.id || req.session?.userId;
+    if (!workspaceId || !userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { featureKey } = req.params;
+    const sessionId = req.sessionID;
+
+    const result = await featureGateService.canUseFeature(
+      featureKey,
+      workspaceId,
+      userId,
+      sessionId
+    );
+
+    res.json({ featureKey, ...result });
+  } catch (error: any) {
+    console.error('Failed to check feature gate:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Get all feature states for workspace
+ */
+billingRouter.get('/feature-states', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const workspaceId = req.currentWorkspaceId;
+    if (!workspaceId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const states = await featureGateService.getWorkspaceFeatureStates(workspaceId);
+    const definitions = featureGateService.getFeatureDefinitions();
+
+    res.json({ success: true, states, definitions });
+  } catch (error: any) {
+    console.error('Failed to get feature states:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Admin: Generate unlock code (support/admin only)
+ */
+billingRouter.post('/trinity-credits/generate-code', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = req.user?.id || req.session?.userId;
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // Check if user is support role
+    const { users } = await import('@shared/schema');
+    const [user] = await db.select().from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    const supportRoles = ['root_admin', 'deputy_admin', 'sysop', 'support_manager', 'support_agent'];
+    if (!user || !supportRoles.includes((user as any).platformRole || '')) {
+      return res.status(403).json({ error: 'Forbidden: Support role required' });
+    }
+
+    const input = z.object({
+      codeType: z.enum(['credits', 'feature_unlock', 'trial_extension', 'addon_activation']),
+      credits: z.number().optional(),
+      featureKey: z.string().optional(),
+      addonKey: z.string().optional(),
+      daysValid: z.number().optional(),
+      workspaceId: z.string().optional(),
+      maxRedemptions: z.number().optional(),
+    }).parse(req.body);
+
+    const code = await creditsLedgerService.generateUnlockCode(
+      input.codeType,
+      userId,
+      input
+    );
+
+    if (!code) {
+      return res.status(500).json({ error: 'Failed to generate code' });
+    }
+
+    res.json({ success: true, code: code.code, unlockCode: code });
+  } catch (error: any) {
+    console.error('Failed to generate code:', error);
+    res.status(400).json({ error: error.message });
+  }
+});
