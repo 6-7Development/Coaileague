@@ -60,6 +60,34 @@ export interface CreditStatus {
   tier: string;
 }
 
+// Org intelligence for enriched Trinity context
+export interface OrgIntelligence {
+  automationReadiness: {
+    score: number;
+    level: 'hand_held' | 'graduated' | 'full_automation';
+    canGraduate: boolean;
+    topIssues: string[];
+    recommendations: string[];
+  } | null;
+  workboardStats: {
+    pendingTasks: number;
+    completedToday: number;
+    failedToday: number;
+    avgCompletionTimeMs: number;
+  } | null;
+  notificationSummary: {
+    unreadCount: number;
+    urgentCount: number;
+    categories: { type: string; count: number }[];
+  } | null;
+  businessMetrics: {
+    invoicesPendingCount: number;
+    invoicesOverdueCount: number;
+    recentActivityScore: number;
+  } | null;
+  priorityInsights: string[];
+}
+
 // Trinity context for role-aware persona selection
 export interface TrinityPersonaContext {
   platformRole: string;
@@ -77,6 +105,7 @@ export interface TrinityPersonaContext {
     departmentCount: number;
     isNewOrg: boolean;
   };
+  orgIntelligence?: OrgIntelligence;
   persona: 'executive_advisor' | 'support_partner' | 'business_buddy' | 'onboarding_guide' | 'standard';
   greeting?: string;
 }
@@ -864,10 +893,81 @@ class ThoughtManager {
   /**
    * Generate a thought from local persona-specific pools
    * Uses comprehensive business expertise across growth, operations, admin, sales, invoicing, payroll, and scheduling
+   * Prioritizes live org intelligence data when available
    */
   private generateLocalThought(ctx: TrinityPersonaContext | null, displayName: string): void {
     let thoughtPool: string[];
     
+    // Priority 1: Use live org intelligence insights if available
+    const intel = ctx?.orgIntelligence;
+    if (intel?.priorityInsights?.length) {
+      // 70% chance to surface priority insights
+      if (Math.random() < 0.7) {
+        const insight = intel.priorityInsights[0];
+        const thought = this.createThought(
+          `${displayName}, ${insight}`,
+          'ADVISING',
+          'ai',
+          'high'
+        );
+        this.queueThought(thought);
+        return;
+      }
+    }
+    
+    // Priority 2: Data-driven insights from org intelligence
+    const dataThoughts: string[] = [];
+    if (intel?.automationReadiness) {
+      const ar = intel.automationReadiness;
+      if (ar.canGraduate) {
+        dataThoughts.push(`${displayName}, your org is ready to graduate to ${ar.level === 'hand_held' ? 'Graduated' : 'Full Automation'} mode!`);
+      }
+      if (ar.score >= 80) {
+        dataThoughts.push(`Automation confidence is ${ar.score}%. Your AI assistants are performing well.`);
+      } else if (ar.score < 50) {
+        dataThoughts.push(`Automation score is ${ar.score}%. Let's work on building confidence.`);
+      }
+      if (ar.recommendations?.length > 0) {
+        dataThoughts.push(ar.recommendations[0]);
+      }
+    }
+    if (intel?.workboardStats) {
+      const wb = intel.workboardStats;
+      if (wb.pendingTasks > 5) {
+        dataThoughts.push(`${wb.pendingTasks} tasks pending in your AI workboard.`);
+      }
+      if (wb.completedToday > 0) {
+        dataThoughts.push(`${wb.completedToday} AI tasks completed today. Great progress!`);
+      }
+    }
+    if (intel?.notificationSummary) {
+      const ns = intel.notificationSummary;
+      if (ns.unreadCount > 10) {
+        dataThoughts.push(`You have ${ns.unreadCount} unread notifications to review.`);
+      }
+      if (ns.urgentCount > 0) {
+        dataThoughts.push(`${ns.urgentCount} urgent notifications need your attention.`);
+      }
+    }
+    if (intel?.businessMetrics) {
+      const bm = intel.businessMetrics;
+      if (bm.invoicesOverdueCount > 0) {
+        dataThoughts.push(`${bm.invoicesOverdueCount} overdue invoice(s) need follow-up.`);
+      }
+      if (bm.invoicesPendingCount > 3) {
+        dataThoughts.push(`${bm.invoicesPendingCount} invoices awaiting payment.`);
+      }
+    }
+    
+    // 50% chance to use data-driven thoughts when available
+    if (dataThoughts.length > 0 && Math.random() < 0.5) {
+      const text = dataThoughts[Math.floor(Math.random() * dataThoughts.length)];
+      const thought = this.createThought(text, 'ADVISING', 'ai', 'normal');
+      this.queueThought(thought);
+      return;
+    }
+    
+    // Fallback to persona-based thought pools
     if (ctx?.isRootAdmin || ctx?.isPlatformStaff) {
       thoughtPool = [
         `${displayName}, platform metrics are within normal parameters.`,

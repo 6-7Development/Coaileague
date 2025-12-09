@@ -29,6 +29,7 @@ function buildPersonaContext(context: TrinityContext): TrinityPersonaContext {
     hasTrinityPro: context.hasTrinityPro,
     hasBusinessBuddy: context.hasBusinessBuddy,
     orgStats: context.orgStats,
+    orgIntelligence: context.orgIntelligence,
     persona: context.persona,
     greeting: context.greeting,
   };
