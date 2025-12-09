@@ -78,6 +78,7 @@ export interface SubagentExecutionResult {
   interventionId?: string;
   durationMs: number;
   confidenceScore: number;
+  retriesUsed?: number; // UPGRADE 2: Track self-correction retries
 }
 
 export interface DiagnosticResult {
@@ -889,25 +890,57 @@ class SubagentSupervisor {
         }
       }
 
-      // PHASE 3: VALIDATE
-      await this.updateTelemetryPhase(telemetryId, 'validating', 'validate');
-      const validateResult = await this.validatePhase(context, subagent, executeResult);
-      if (!validateResult.success) {
-        const diagnostics = await this.runDiagnostics(context, subagent, new Error(validateResult.error || 'Validation failed'));
-        return await this.handlePhaseFailure(telemetryId, 'validate', validateResult.error, context, subagent, startTime, diagnostics);
+      // PHASE 3: VALIDATE with SELF-CORRECTION LOOP (Upgrade 2)
+      // If Supervisor says NEEDS_REVISION, feed feedback back to SubAgent (max 3 retries)
+      const maxRetries = subagent.maxRetries || 3;
+      let retryCount = 0;
+      let currentResult = executeResult;
+      let validationPassed = false;
+
+      while (retryCount < maxRetries && !validationPassed) {
+        await this.updateTelemetryPhase(telemetryId, 'validating', 'validate');
+        const validateResult = await this.validatePhase(context, subagent, currentResult);
+        
+        if (validateResult.success) {
+          validationPassed = true;
+        } else {
+          retryCount++;
+          console.log(`[SubagentSupervisor] NEEDS_REVISION: ${subagent.name} retry ${retryCount}/${maxRetries}`);
+          
+          if (retryCount >= maxRetries) {
+            const diagnostics = await this.runDiagnostics(context, subagent, new Error(validateResult.error || 'Validation failed after retries'));
+            return await this.handlePhaseFailure(telemetryId, 'validate', validateResult.error, context, subagent, startTime, diagnostics);
+          }
+
+          // SELF-CORRECTION: Feed supervisor feedback back into the subagent
+          await this.updateTelemetryPhase(telemetryId, 'retrying', 'execute');
+          try {
+            const feedbackParams = {
+              ...parameters,
+              _supervisorFeedback: validateResult.error,
+              _retryAttempt: retryCount,
+              _previousResult: currentResult
+            };
+            currentResult = await actionHandler(feedbackParams);
+          } catch (retryError) {
+            const diagnostics = await this.runDiagnostics(context, subagent, retryError);
+            return await this.handlePhaseFailure(telemetryId, 'execute', retryError, context, subagent, startTime, diagnostics);
+          }
+        }
       }
 
       // PHASE 4: COMPLETE
-      await this.completeTelemetry(telemetryId, 'completed', executeResult, Date.now() - startTime);
+      await this.completeTelemetry(telemetryId, 'completed', currentResult, Date.now() - startTime);
       this.activeExecutions.delete(executionId);
 
       return {
         success: true,
         phase: 'validate',
         status: 'completed',
-        result: executeResult,
+        result: currentResult,
         durationMs: Date.now() - startTime,
         confidenceScore: 1.0,
+        retriesUsed: retryCount,
       };
 
     } catch (error: any) {
