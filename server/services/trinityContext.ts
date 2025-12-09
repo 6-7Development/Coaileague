@@ -7,6 +7,7 @@
  * - Subscription tier and add-on entitlements
  * - Organization topology and structure
  * - Support staff affiliation
+ * - Org intelligence: automation readiness, gamification, FAST mode, notifications
  */
 
 import { db } from '../db';
@@ -17,9 +18,40 @@ import {
   workspaceAddons,
   billingAddons,
   subscriptions,
+  invoices,
+  aiWorkboardTasks,
+  notifications,
 } from '@shared/schema';
-import { eq, and, count } from 'drizzle-orm';
+import { eq, and, count, gte, sql } from 'drizzle-orm';
 import { getUserPlatformRole, type PlatformRole, type WorkspaceRole } from '../rbac';
+import { subagentConfidenceMonitor } from './ai-brain/subagentConfidenceMonitor';
+
+export interface OrgIntelligence {
+  automationReadiness: {
+    score: number;
+    level: 'hand_held' | 'graduated' | 'full_automation';
+    canGraduate: boolean;
+    topIssues: string[];
+    recommendations: string[];
+  } | null;
+  workboardStats: {
+    pendingTasks: number;
+    completedToday: number;
+    failedToday: number;
+    avgCompletionTimeMs: number;
+  } | null;
+  notificationSummary: {
+    unreadCount: number;
+    urgentCount: number;
+    categories: { type: string; count: number }[];
+  } | null;
+  businessMetrics: {
+    invoicesPendingCount: number;
+    invoicesOverdueCount: number;
+    recentActivityScore: number;
+  } | null;
+  priorityInsights: string[];
+}
 
 export interface TrinityContext {
   userId: string;
@@ -50,6 +82,8 @@ export interface TrinityContext {
     isNewOrg: boolean;
   };
   
+  orgIntelligence?: OrgIntelligence;
+  
   trinityAccessReason: 'platform_staff' | 'org_owner' | 'addon_subscriber' | 'trial' | 'none';
   trinityAccessLevel: 'full' | 'basic' | 'none';
   
@@ -59,6 +93,144 @@ export interface TrinityContext {
 
 const PLATFORM_STAFF_ROLES: PlatformRole[] = ['root_admin', 'deputy_admin', 'sysop', 'support_manager', 'support_agent'];
 const MANAGER_ROLES: WorkspaceRole[] = ['org_owner', 'org_admin', 'department_manager', 'supervisor'];
+
+async function gatherOrgIntelligence(workspaceId: string, userId: string): Promise<OrgIntelligence> {
+  const priorityInsights: string[] = [];
+  
+  let automationReadiness: OrgIntelligence['automationReadiness'] = null;
+  let workboardStats: OrgIntelligence['workboardStats'] = null;
+  let notificationSummary: OrgIntelligence['notificationSummary'] = null;
+  let businessMetrics: OrgIntelligence['businessMetrics'] = null;
+  
+  try {
+    const monitoringSummary = await subagentConfidenceMonitor.getTrinityMonitoringSummary(workspaceId);
+    automationReadiness = {
+      score: monitoringSummary.orgScore,
+      level: monitoringSummary.level as 'hand_held' | 'graduated' | 'full_automation',
+      canGraduate: monitoringSummary.canGraduate,
+      topIssues: monitoringSummary.topIssues,
+      recommendations: monitoringSummary.recommendations,
+    };
+    
+    if (monitoringSummary.canGraduate) {
+      priorityInsights.push(`Your org is ready to graduate to ${monitoringSummary.level === 'hand_held' ? 'graduated' : 'full automation'} mode!`);
+    }
+    if (monitoringSummary.topIssues.length > 0) {
+      priorityInsights.push(`Automation alert: ${monitoringSummary.topIssues[0]}`);
+    }
+  } catch {
+  }
+  
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const [pending] = await db
+      .select({ count: count() })
+      .from(aiWorkboardTasks)
+      .where(and(
+        eq(aiWorkboardTasks.workspaceId, workspaceId),
+        eq(aiWorkboardTasks.status, 'pending')
+      ));
+    
+    const [completedToday] = await db
+      .select({ count: count() })
+      .from(aiWorkboardTasks)
+      .where(and(
+        eq(aiWorkboardTasks.workspaceId, workspaceId),
+        eq(aiWorkboardTasks.status, 'completed'),
+        gte(aiWorkboardTasks.completedAt, today)
+      ));
+    
+    const [failedToday] = await db
+      .select({ count: count() })
+      .from(aiWorkboardTasks)
+      .where(and(
+        eq(aiWorkboardTasks.workspaceId, workspaceId),
+        eq(aiWorkboardTasks.status, 'failed'),
+        gte(aiWorkboardTasks.updatedAt, today)
+      ));
+    
+    workboardStats = {
+      pendingTasks: pending?.count || 0,
+      completedToday: completedToday?.count || 0,
+      failedToday: failedToday?.count || 0,
+      avgCompletionTimeMs: 0,
+    };
+    
+    if (workboardStats.pendingTasks > 5) {
+      priorityInsights.push(`${workboardStats.pendingTasks} AI tasks pending in queue`);
+    }
+    if (workboardStats.failedToday > 0) {
+      priorityInsights.push(`${workboardStats.failedToday} task(s) failed today - review recommended`);
+    }
+    if (workboardStats.completedToday > 0) {
+      priorityInsights.push(`${workboardStats.completedToday} AI task(s) completed today`);
+    }
+  } catch {
+  }
+  
+  try {
+    const [unread] = await db
+      .select({ count: count() })
+      .from(notifications)
+      .where(and(
+        eq(notifications.userId, userId),
+        eq(notifications.isRead, false)
+      ));
+    
+    notificationSummary = {
+      unreadCount: unread?.count || 0,
+      urgentCount: 0,
+      categories: [],
+    };
+    
+    if (notificationSummary.unreadCount > 10) {
+      priorityInsights.push(`${notificationSummary.unreadCount} unread notifications`);
+    }
+  } catch {
+  }
+  
+  try {
+    const [sentInvoices] = await db
+      .select({ count: count() })
+      .from(invoices)
+      .where(and(
+        eq(invoices.workspaceId, workspaceId),
+        sql`${invoices.status} = 'sent'`
+      ));
+    
+    const [overdueInvoices] = await db
+      .select({ count: count() })
+      .from(invoices)
+      .where(and(
+        eq(invoices.workspaceId, workspaceId),
+        sql`${invoices.status} = 'overdue'`
+      ));
+    
+    businessMetrics = {
+      invoicesPendingCount: sentInvoices?.count || 0,
+      invoicesOverdueCount: overdueInvoices?.count || 0,
+      recentActivityScore: 0,
+    };
+    
+    if (businessMetrics.invoicesOverdueCount > 0) {
+      priorityInsights.unshift(`${businessMetrics.invoicesOverdueCount} overdue invoice(s) need attention`);
+    }
+    if (businessMetrics.invoicesPendingCount > 3) {
+      priorityInsights.push(`${businessMetrics.invoicesPendingCount} pending invoices to process`);
+    }
+  } catch {
+  }
+  
+  return {
+    automationReadiness,
+    workboardStats,
+    notificationSummary,
+    businessMetrics,
+    priorityInsights: priorityInsights.slice(0, 5),
+  };
+}
 
 export async function resolveTrinityContext(userId: string, workspaceId?: string): Promise<TrinityContext> {
   const [user] = await db.select().from(users).where(eq(users.id, userId));
@@ -186,6 +358,14 @@ export async function resolveTrinityContext(userId: string, workspaceId?: string
     greeting = `Hello ${user.firstName || 'there'}! I'm Trinity, ready to help with your team management needs.`;
   }
   
+  let orgIntelligence: OrgIntelligence | undefined;
+  if (effectiveWorkspaceId && (isOrgOwner || isManager || isPlatformStaff || hasTrinityPro || hasBusinessBuddy)) {
+    try {
+      orgIntelligence = await gatherOrgIntelligence(effectiveWorkspaceId, userId);
+    } catch {
+    }
+  }
+  
   return {
     userId,
     username: user.email?.split('@')[0] || 'User',
@@ -210,6 +390,7 @@ export async function resolveTrinityContext(userId: string, workspaceId?: string
     activeAddons,
     
     orgStats,
+    orgIntelligence,
     
     trinityAccessReason,
     trinityAccessLevel,
@@ -256,18 +437,40 @@ export async function generateContextualThought(context: TrinityContext): Promis
   const name = context.displayName || 'there';
   const org = context.workspaceName || 'your organization';
   const employeeCount = context.orgStats?.employeeCount || 0;
+  const intel = context.orgIntelligence;
+  
+  if (intel?.priorityInsights && intel.priorityInsights.length > 0 && Math.random() < 0.5) {
+    const insight = intel.priorityInsights[Math.floor(Math.random() * intel.priorityInsights.length)];
+    return `${name}, ${insight}`;
+  }
+  
+  if (intel?.automationReadiness && Math.random() < 0.3) {
+    const auto = intel.automationReadiness;
+    if (auto.canGraduate) {
+      return `${name}, your automation readiness is at ${auto.score}% - ready to graduate to the next level!`;
+    }
+    if (auto.recommendations.length > 0) {
+      return `${name}, AI recommendation: ${auto.recommendations[0]}`;
+    }
+  }
+  
+  if (intel?.workboardStats && intel.workboardStats.completedToday > 0 && Math.random() < 0.25) {
+    return `${name}, ${intel.workboardStats.completedToday} AI tasks completed today. ${intel.workboardStats.pendingTasks > 0 ? `${intel.workboardStats.pendingTasks} still pending.` : 'Queue is clear!'}`;
+  }
+  
+  if (intel?.businessMetrics?.invoicesOverdueCount && intel.businessMetrics.invoicesOverdueCount > 0 && Math.random() < 0.35) {
+    return `${name}, you have ${intel.businessMetrics.invoicesOverdueCount} overdue invoice(s) that need attention.`;
+  }
   
   // Try to get health insight for platform staff
   if (context.isRootAdmin || context.isSupportRole) {
     try {
       const { platformHealthMonitor } = await import('./ai-brain/platformHealthMonitor');
       const healthInsight = await platformHealthMonitor.getTrinityHealthInsight();
-      // 40% chance to show health insight, 60% show regular thought
       if (Math.random() < 0.4 && healthInsight) {
         return healthInsight;
       }
     } catch {
-      // Fall through to regular thoughts if health monitor unavailable
     }
   }
   

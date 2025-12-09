@@ -11,6 +11,33 @@
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from './useAuth';
 
+interface OrgIntelligence {
+  automationReadiness: {
+    score: number;
+    level: 'hand_held' | 'graduated' | 'full_automation';
+    canGraduate: boolean;
+    topIssues: string[];
+    recommendations: string[];
+  } | null;
+  workboardStats: {
+    pendingTasks: number;
+    completedToday: number;
+    failedToday: number;
+    avgCompletionTimeMs: number;
+  } | null;
+  notificationSummary: {
+    unreadCount: number;
+    urgentCount: number;
+    categories: { type: string; count: number }[];
+  } | null;
+  businessMetrics: {
+    invoicesPendingCount: number;
+    invoicesOverdueCount: number;
+    recentActivityScore: number;
+  } | null;
+  priorityInsights: string[];
+}
+
 export interface TrinityContext {
   userId: string;
   username: string;
@@ -39,6 +66,8 @@ export interface TrinityContext {
     departmentCount: number;
     isNewOrg: boolean;
   };
+  
+  orgIntelligence?: OrgIntelligence;
   
   trinityAccessReason: 'platform_staff' | 'org_owner' | 'addon_subscriber' | 'trial' | 'none';
   trinityAccessLevel: 'full' | 'basic' | 'none';
