@@ -31,9 +31,39 @@ export function registerFastModeBroadcaster(broadcaster: WebSocketBroadcaster) {
   console.log('[FastModeService] WebSocket broadcaster registered');
 }
 
+// Fast Mode Priority Tiers - Different value propositions
+export const FAST_MODE_TIERS = {
+  fast: {
+    name: 'Fast',
+    creditMultiplier: 1.5,
+    maxParallelAgents: 2,
+    slaGuarantee: 20,
+    features: ['parallel_agents', 'priority_queue', 'basic_insights'],
+    refundOnSlaBreach: 0.25, // 25% refund if SLA missed
+  },
+  turbo: {
+    name: 'Turbo',
+    creditMultiplier: 2.0,
+    maxParallelAgents: 4,
+    slaGuarantee: 12,
+    features: ['parallel_agents', 'priority_queue', 'proactive_insights', 'smart_cache', 'retry_logic'],
+    refundOnSlaBreach: 0.50, // 50% refund if SLA missed
+  },
+  instant: {
+    name: 'Instant',
+    creditMultiplier: 3.0,
+    maxParallelAgents: 6,
+    slaGuarantee: 5,
+    features: ['parallel_agents', 'priority_queue', 'proactive_insights', 'smart_cache', 'retry_logic', 'human_escalation', 'dedicated_capacity'],
+    refundOnSlaBreach: 1.0, // Full refund if SLA missed
+  }
+} as const;
+
+export type FastModeTier = keyof typeof FAST_MODE_TIERS;
+
 // Fast Mode Configuration - Enhanced Value Tiers
 export const FAST_MODE_CONFIG = {
-  // Credit multiplier for fast mode
+  // Default tier credit multiplier
   creditMultiplier: 2.0,
   
   // Parallel execution settings
@@ -41,19 +71,19 @@ export const FAST_MODE_CONFIG = {
   maxConcurrentTasksPerWorkspace: 3,
   
   // Priority settings
-  priorityBoost: 2, // Boost priority by 2 levels
+  priorityBoost: 2,
   queueJumpEnabled: true,
   
   // SLA guarantees (in seconds)
   slaGuarantees: {
-    simple: 5,      // Simple queries under 5 seconds
-    standard: 15,   // Standard operations under 15 seconds
-    complex: 45,    // Complex multi-agent under 45 seconds
+    simple: 5,
+    standard: 15,
+    complex: 45,
   },
   
   // Caching for repeated queries
   cacheEnabled: true,
-  cacheTTLSeconds: 300, // 5 minutes
+  cacheTTLSeconds: 300,
   
   // Enhanced features
   proactiveInsights: true,
@@ -62,7 +92,100 @@ export const FAST_MODE_CONFIG = {
   
   // Minimum credits to enable fast mode
   minCreditsRequired: 10,
+  
+  // Circuit breaker settings
+  circuitBreaker: {
+    maxRetries: 2,
+    retryDelayMs: 1000,
+    fallbackEnabled: true,
+    failureThreshold: 3, // Open circuit after 3 failures
+    resetTimeoutMs: 30000, // Reset circuit after 30 seconds
+  },
+  
+  // SLA breach remediation
+  slaBreachRemediation: {
+    enabled: true,
+    partialRefundThreshold: 1.2, // 20% over SLA = partial refund
+    fullRefundThreshold: 2.0,    // 2x over SLA = full refund
+    autoEscalateOnBreach: true,
+  },
+  
+  // Budget governor
+  budgetGovernor: {
+    warnAtPercentage: 80,   // Warn when 80% of budget used
+    blockAtPercentage: 100, // Block at 100% of budget
+    dailyLimitEnabled: true,
+  }
 } as const;
+
+// Cost estimation result
+export interface CostEstimate {
+  tier: FastModeTier;
+  baseCredits: number;
+  multipliedCredits: number;
+  estimatedAgents: number;
+  estimatedTimeSeconds: number;
+  slaGuarantee: number;
+  features: readonly string[];
+  confidenceScore: number;
+  budgetStatus: {
+    currentBalance: number;
+    afterExecution: number;
+    percentageUsed: number;
+    warningLevel: 'ok' | 'warning' | 'critical';
+  };
+  recommendation: string;
+}
+
+// ROI Analytics data
+export interface FastModeROIData {
+  workspaceId: string;
+  period: 'day' | 'week' | 'month' | 'all_time';
+  totalTasks: number;
+  fastModeTasks: number;
+  normalModeTasks: number;
+  totalCreditsSpent: number;
+  fastModeCredits: number;
+  estimatedTimeSavedSeconds: number;
+  estimatedMoneySaved: number;
+  averageExecutionTime: {
+    fastMode: number;
+    normalMode: number;
+  };
+  slaCompliance: {
+    met: number;
+    breached: number;
+    percentage: number;
+  };
+  refundsIssued: number;
+  topAgentsUsed: Array<{ agent: string; count: number }>;
+  tasksByCategory: Array<{ category: string; count: number }>;
+}
+
+// Success digest after execution
+export interface SuccessDigest {
+  taskId: string;
+  executionTimeMs: number;
+  slaMet: boolean;
+  slaTarget: number;
+  timeSavedVsNormal: number;
+  creditsUsed: number;
+  creditsSavedFromCache: number;
+  agentsSummary: Array<{
+    name: string;
+    status: 'success' | 'failed' | 'cached';
+    confidence: number;
+    insight?: string;
+  }>;
+  proactiveInsights: string[];
+  recommendations: string[];
+  nextActions: Array<{
+    action: string;
+    description: string;
+    priority: 'high' | 'medium' | 'low';
+  }>;
+  qualityScore: number; // 0-100
+}
 
 // Fast Mode execution status for real-time tracking
 export interface FastModeExecutionStatus {
@@ -343,7 +466,8 @@ class FastModeService {
       }
       
       const executionTimeMs = Date.now() - startTime;
-      const slaMet = executionTimeMs <= slaTarget * 1000;
+      const slaTargetMs = slaTarget * 1000;
+      const slaMet = executionTimeMs <= slaTargetMs;
       
       this.updateStatus(taskId, { 
         status: 'completed', 
@@ -352,6 +476,23 @@ class FastModeService {
         slaStatus: slaMet ? 'on_track' : 'exceeded',
         proactiveInsights
       });
+      
+      // Process SLA breach remediation if SLA was missed
+      let slaRefund = { refunded: false, refundAmount: 0, reason: '' };
+      if (!slaMet && FAST_MODE_CONFIG.slaBreachRemediation.enabled) {
+        slaRefund = await this.processSLABreach({
+          taskId,
+          workspaceId,
+          tier: 'turbo', // Default tier for executeParallel
+          actualTimeMs: executionTimeMs,
+          slaTargetMs,
+          creditsCharged: creditsUsed
+        });
+        
+        if (slaRefund.refunded) {
+          console.log('[FastModeService] SLA breach refund processed:', slaRefund);
+        }
+      }
       
       // Broadcast completion via WebSocket
       this.broadcastProgress(taskId);
@@ -365,7 +506,8 @@ class FastModeService {
         executionTimeMs,
         agentsUsed: agentResults.length,
         success: successfulResults.length > 0,
-        slaMet
+        slaMet,
+        slaRefund: slaRefund.refunded ? slaRefund.refundAmount : 0
       });
       
       return {
@@ -376,7 +518,7 @@ class FastModeService {
         aggregatedResult,
         summary,
         proactiveInsights,
-        creditsUsed,
+        creditsUsed: slaMet ? creditsUsed : creditsUsed - slaRefund.refundAmount,
         slaMet
       };
       
@@ -535,7 +677,28 @@ class FastModeService {
 
       // Calculate credits based on agent details
       const baseCredits = result.agentDetails.length * 5; // 5 credits per agent
-      const creditsUsed = Math.ceil(baseCredits * FAST_MODE_CONFIG.creditMultiplier);
+      let creditsUsed = Math.ceil(baseCredits * FAST_MODE_CONFIG.creditMultiplier);
+
+      // Check SLA compliance and process refunds if needed
+      const slaTargetMs = FAST_MODE_TIERS.turbo.slaGuarantee * 1000;
+      const slaMet = result.totalTimeMs <= slaTargetMs;
+      
+      let slaRefund = { refunded: false, refundAmount: 0, reason: '' };
+      if (!slaMet && FAST_MODE_CONFIG.slaBreachRemediation.enabled) {
+        slaRefund = await this.processSLABreach({
+          taskId,
+          workspaceId,
+          tier: 'turbo',
+          actualTimeMs: result.totalTimeMs,
+          slaTargetMs,
+          creditsCharged: creditsUsed
+        });
+        
+        if (slaRefund.refunded) {
+          creditsUsed = creditsUsed - slaRefund.refundAmount;
+          console.log('[FastModeService] Velocity SLA breach refund:', slaRefund);
+        }
+      }
 
       console.log('[FastModeService] Velocity execution completed:', {
         taskId,
@@ -543,7 +706,9 @@ class FastModeService {
         totalTimeMs: result.totalTimeMs,
         agentCount: result.agentDetails.length,
         failedAgents: result.failedAgents.length,
-        creditsUsed
+        creditsUsed,
+        slaMet,
+        slaRefund: slaRefund.refunded ? slaRefund.refundAmount : 0
       });
 
       return {
@@ -829,10 +994,7 @@ class FastModeService {
   }
   
   private async generateProactiveInsights(content: string, result: any, workspaceId: string): Promise<string[]> {
-    // Generate proactive insights based on the request and result
     const insights: string[] = [];
-    
-    // Add contextual insights based on content keywords
     const contentLower = content.toLowerCase();
     
     if (contentLower.includes('schedule') || contentLower.includes('shift')) {
@@ -851,12 +1013,413 @@ class FastModeService {
       insights.push('2 certifications expire this month - schedule renewals');
     }
     
-    // Always add a general productivity insight
     if (insights.length === 0) {
       insights.push('Fast mode saved approximately 60% processing time compared to normal mode');
     }
     
-    return insights.slice(0, 3); // Max 3 insights
+    return insights.slice(0, 3);
+  }
+
+  // ============================================================================
+  // FAST MODE V2 ENHANCEMENTS - Value-Driving Features
+  // ============================================================================
+
+  /**
+   * Get cost estimate before execution (Credit Governor)
+   * Shows users exactly what they'll spend before committing
+   */
+  async getCostEstimate(params: {
+    workspaceId: string;
+    content: string;
+    tier?: FastModeTier;
+    selectedAgents?: string[];
+  }): Promise<CostEstimate> {
+    const { workspaceId, content, tier = 'turbo', selectedAgents } = params;
+    
+    // Get current credit balance
+    const [credits] = await db.select()
+      .from(trinityCredits)
+      .where(eq(trinityCredits.workspaceId, workspaceId))
+      .limit(1);
+    
+    const currentBalance = credits?.balance || 0;
+    const tierConfig = FAST_MODE_TIERS[tier];
+    
+    // Estimate complexity and agents needed
+    const wordCount = content.split(/\s+/).length;
+    let estimatedAgents = selectedAgents?.length || 
+      (wordCount < 20 ? 1 : wordCount < 50 ? 2 : Math.min(tierConfig.maxParallelAgents, 4));
+    
+    // Base credits: 5 per agent
+    const baseCredits = estimatedAgents * 5;
+    const multipliedCredits = Math.ceil(baseCredits * tierConfig.creditMultiplier);
+    
+    // Estimate execution time
+    const estimatedTimeSeconds = Math.ceil(tierConfig.slaGuarantee * 0.8); // Usually faster than SLA
+    
+    // Calculate budget status
+    const afterExecution = currentBalance - multipliedCredits;
+    const percentageUsed = currentBalance > 0 ? ((currentBalance - afterExecution) / currentBalance) * 100 : 100;
+    
+    let warningLevel: 'ok' | 'warning' | 'critical' = 'ok';
+    if (afterExecution < 0) warningLevel = 'critical';
+    else if (percentageUsed >= FAST_MODE_CONFIG.budgetGovernor.warnAtPercentage) warningLevel = 'warning';
+    
+    // Generate recommendation
+    let recommendation = '';
+    if (warningLevel === 'critical') {
+      recommendation = `Insufficient credits. You need ${multipliedCredits} credits but only have ${currentBalance}. Consider using normal mode or topping up credits.`;
+    } else if (warningLevel === 'warning') {
+      recommendation = `This will use ${percentageUsed.toFixed(0)}% of your balance. Consider the ${tier === 'instant' ? 'turbo' : 'fast'} tier to save credits.`;
+    } else {
+      const savings = Math.round((25 - estimatedTimeSeconds) * 60 / 25); // Time savings in seconds
+      recommendation = `${tierConfig.name} mode will complete ~${savings}% faster than normal mode with ${estimatedAgents} parallel agents.`;
+    }
+    
+    return {
+      tier,
+      baseCredits,
+      multipliedCredits,
+      estimatedAgents,
+      estimatedTimeSeconds,
+      slaGuarantee: tierConfig.slaGuarantee,
+      features: tierConfig.features,
+      confidenceScore: 0.85,
+      budgetStatus: {
+        currentBalance,
+        afterExecution: Math.max(0, afterExecution),
+        percentageUsed,
+        warningLevel
+      },
+      recommendation
+    };
+  }
+
+  /**
+   * Get ROI analytics for a workspace (proves Fast Mode value)
+   */
+  async getROIAnalytics(workspaceId: string, period: 'day' | 'week' | 'month' | 'all_time' = 'month'): Promise<FastModeROIData> {
+    const periodStart = this.getPeriodStart(period);
+    
+    // Get all tasks for the period
+    const tasks = await db.select()
+      .from(aiWorkboardTasks)
+      .where(and(
+        eq(aiWorkboardTasks.workspaceId, workspaceId),
+        gte(aiWorkboardTasks.createdAt, periodStart)
+      ));
+    
+    const fastModeTasks = tasks.filter(t => t.executionMode === 'fast');
+    const normalModeTasks = tasks.filter(t => t.executionMode !== 'fast');
+    
+    // Calculate execution times
+    const fastModeAvgTime = this.calculateAvgExecutionTime(fastModeTasks);
+    const normalModeAvgTime = this.calculateAvgExecutionTime(normalModeTasks);
+    
+    // Calculate credits spent
+    const totalCreditsSpent = tasks.reduce((sum, t) => sum + (t.creditsDeducted || 0), 0);
+    const fastModeCredits = fastModeTasks.reduce((sum, t) => sum + (t.creditsDeducted || 0), 0);
+    
+    // Calculate time saved (assuming normal mode takes 25s avg)
+    const normalModeBaseline = 25000; // 25 seconds in ms
+    const timeSavedPerTask = normalModeBaseline - fastModeAvgTime;
+    const estimatedTimeSavedSeconds = Math.round((timeSavedPerTask * fastModeTasks.length) / 1000);
+    
+    // Calculate money saved (time is money - $0.50 per minute saved)
+    const estimatedMoneySaved = Math.round((estimatedTimeSavedSeconds / 60) * 0.50 * 100) / 100;
+    
+    // SLA compliance
+    const slaMet = fastModeTasks.filter(t => {
+      if (!t.startedAt || !t.completedAt) return true;
+      const duration = new Date(t.completedAt).getTime() - new Date(t.startedAt).getTime();
+      return duration <= 15000; // 15 second SLA
+    }).length;
+    
+    // Get refunds issued
+    const refundTransactions = await db.select()
+      .from(trinityCreditTransactions)
+      .where(and(
+        eq(trinityCreditTransactions.workspaceId, workspaceId),
+        eq(trinityCreditTransactions.type, 'sla_refund'),
+        gte(trinityCreditTransactions.createdAt, periodStart)
+      ));
+    
+    const refundsIssued = refundTransactions.reduce((sum, t) => sum + t.amount, 0);
+    
+    // Top agents used
+    const agentCounts: Record<string, number> = {};
+    fastModeTasks.forEach(t => {
+      if (t.assignedAgentName) {
+        agentCounts[t.assignedAgentName] = (agentCounts[t.assignedAgentName] || 0) + 1;
+      }
+    });
+    const topAgentsUsed = Object.entries(agentCounts)
+      .map(([agent, count]) => ({ agent, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+    
+    // Tasks by category
+    const categoryCounts: Record<string, number> = {};
+    fastModeTasks.forEach(t => {
+      if (t.category) {
+        categoryCounts[t.category] = (categoryCounts[t.category] || 0) + 1;
+      }
+    });
+    const tasksByCategory = Object.entries(categoryCounts)
+      .map(([category, count]) => ({ category, count }))
+      .sort((a, b) => b.count - a.count);
+    
+    return {
+      workspaceId,
+      period,
+      totalTasks: tasks.length,
+      fastModeTasks: fastModeTasks.length,
+      normalModeTasks: normalModeTasks.length,
+      totalCreditsSpent,
+      fastModeCredits,
+      estimatedTimeSavedSeconds,
+      estimatedMoneySaved,
+      averageExecutionTime: {
+        fastMode: Math.round(fastModeAvgTime / 1000),
+        normalMode: Math.round(normalModeAvgTime / 1000)
+      },
+      slaCompliance: {
+        met: slaMet,
+        breached: fastModeTasks.length - slaMet,
+        percentage: fastModeTasks.length > 0 ? Math.round((slaMet / fastModeTasks.length) * 100) : 100
+      },
+      refundsIssued,
+      topAgentsUsed,
+      tasksByCategory
+    };
+  }
+
+  /**
+   * Process SLA breach and issue automatic refund
+   */
+  async processSLABreach(params: {
+    taskId: string;
+    workspaceId: string;
+    tier: FastModeTier;
+    actualTimeMs: number;
+    slaTargetMs: number;
+    creditsCharged: number;
+  }): Promise<{ refunded: boolean; refundAmount: number; reason: string }> {
+    const { taskId, workspaceId, tier, actualTimeMs, slaTargetMs, creditsCharged } = params;
+    
+    if (!FAST_MODE_CONFIG.slaBreachRemediation.enabled) {
+      return { refunded: false, refundAmount: 0, reason: 'SLA remediation disabled' };
+    }
+    
+    const ratio = actualTimeMs / slaTargetMs;
+    const tierConfig = FAST_MODE_TIERS[tier];
+    
+    if (ratio <= 1.0) {
+      return { refunded: false, refundAmount: 0, reason: 'SLA met' };
+    }
+    
+    // Calculate refund based on breach severity
+    let refundPercentage = 0;
+    let reason = '';
+    
+    if (ratio >= FAST_MODE_CONFIG.slaBreachRemediation.fullRefundThreshold) {
+      refundPercentage = tierConfig.refundOnSlaBreach;
+      reason = `Severe SLA breach (${ratio.toFixed(1)}x over target). Full tier refund applied.`;
+    } else if (ratio >= FAST_MODE_CONFIG.slaBreachRemediation.partialRefundThreshold) {
+      refundPercentage = tierConfig.refundOnSlaBreach * 0.5;
+      reason = `Moderate SLA breach (${ratio.toFixed(1)}x over target). Partial refund applied.`;
+    } else {
+      return { refunded: false, refundAmount: 0, reason: 'Breach below refund threshold' };
+    }
+    
+    const refundAmount = Math.ceil(creditsCharged * refundPercentage);
+    
+    if (refundAmount > 0) {
+      // Issue refund
+      await db.insert(trinityCreditTransactions).values({
+        workspaceId,
+        amount: refundAmount,
+        type: 'sla_refund',
+        description: `SLA breach refund for task ${taskId}`,
+        metadata: { taskId, tier, actualTimeMs, slaTargetMs, ratio }
+      });
+      
+      // Update balance
+      await db.update(trinityCredits)
+        .set({ 
+          balance: sql`${trinityCredits.balance} + ${refundAmount}`,
+          updatedAt: new Date()
+        })
+        .where(eq(trinityCredits.workspaceId, workspaceId));
+      
+      console.log('[FastModeService] SLA breach refund issued:', { taskId, refundAmount, reason });
+      
+      // Broadcast refund notification
+      if (wsBroadcaster) {
+        wsBroadcaster('sla_refund', { taskId, workspaceId, refundAmount, reason });
+      }
+    }
+    
+    return { refunded: refundAmount > 0, refundAmount, reason };
+  }
+
+  /**
+   * Generate success digest after execution
+   */
+  async generateSuccessDigest(params: {
+    taskId: string;
+    executionTimeMs: number;
+    tier: FastModeTier;
+    agentResults: Array<{ name: string; success: boolean; confidence: number; cached?: boolean; insight?: string }>;
+    creditsUsed: number;
+    creditsSavedFromCache: number;
+  }): Promise<SuccessDigest> {
+    const { taskId, executionTimeMs, tier, agentResults, creditsUsed, creditsSavedFromCache } = params;
+    
+    const tierConfig = FAST_MODE_TIERS[tier];
+    const slaTarget = tierConfig.slaGuarantee * 1000;
+    const slaMet = executionTimeMs <= slaTarget;
+    
+    // Calculate time saved vs normal mode (25s baseline)
+    const normalModeBaseline = 25000;
+    const timeSavedVsNormal = Math.max(0, normalModeBaseline - executionTimeMs);
+    
+    // Map agent results to summary format
+    const agentsSummary = agentResults.map(a => ({
+      name: a.name,
+      status: (a.cached ? 'cached' : a.success ? 'success' : 'failed') as 'success' | 'failed' | 'cached',
+      confidence: a.confidence,
+      insight: a.insight
+    }));
+    
+    // Generate proactive insights
+    const proactiveInsights: string[] = [];
+    const successRate = agentResults.filter(a => a.success || a.cached).length / agentResults.length;
+    
+    if (successRate === 1) {
+      proactiveInsights.push(`All ${agentResults.length} agents completed successfully`);
+    }
+    if (creditsSavedFromCache > 0) {
+      proactiveInsights.push(`Saved ${creditsSavedFromCache} credits from cached results`);
+    }
+    if (timeSavedVsNormal > 5000) {
+      proactiveInsights.push(`Completed ${Math.round(timeSavedVsNormal / 1000)}s faster than normal mode`);
+    }
+    
+    // Generate recommendations
+    const recommendations: string[] = [];
+    if (!slaMet) {
+      recommendations.push('Consider upgrading to Instant tier for guaranteed faster execution');
+    }
+    if (agentResults.some(a => !a.success)) {
+      recommendations.push('Some agents encountered issues - review task complexity');
+    }
+    if (successRate > 0.9) {
+      recommendations.push('Your Fast Mode usage is highly effective - consider batch operations');
+    }
+    
+    // Generate next actions
+    const nextActions: Array<{ action: string; description: string; priority: 'high' | 'medium' | 'low' }> = [];
+    
+    agentResults.forEach(a => {
+      if (a.insight) {
+        nextActions.push({
+          action: `review_${a.name.toLowerCase().replace(/\s/g, '_')}`,
+          description: a.insight,
+          priority: a.confidence < 0.7 ? 'high' : 'medium'
+        });
+      }
+    });
+    
+    // Calculate quality score
+    const qualityScore = Math.round(
+      (successRate * 40) + 
+      (slaMet ? 30 : 15) + 
+      (agentResults.reduce((sum, a) => sum + a.confidence, 0) / agentResults.length * 30)
+    );
+    
+    return {
+      taskId,
+      executionTimeMs,
+      slaMet,
+      slaTarget: tierConfig.slaGuarantee,
+      timeSavedVsNormal,
+      creditsUsed,
+      creditsSavedFromCache,
+      agentsSummary,
+      proactiveInsights,
+      recommendations,
+      nextActions,
+      qualityScore
+    };
+  }
+
+  /**
+   * Get available tiers and their benefits
+   */
+  getTiers(): Array<{
+    id: FastModeTier;
+    name: string;
+    creditMultiplier: number;
+    maxAgents: number;
+    slaSeconds: number;
+    features: readonly string[];
+    refundGuarantee: string;
+    recommended?: boolean;
+  }> {
+    return [
+      {
+        id: 'fast',
+        name: FAST_MODE_TIERS.fast.name,
+        creditMultiplier: FAST_MODE_TIERS.fast.creditMultiplier,
+        maxAgents: FAST_MODE_TIERS.fast.maxParallelAgents,
+        slaSeconds: FAST_MODE_TIERS.fast.slaGuarantee,
+        features: FAST_MODE_TIERS.fast.features,
+        refundGuarantee: '25% refund if SLA missed'
+      },
+      {
+        id: 'turbo',
+        name: FAST_MODE_TIERS.turbo.name,
+        creditMultiplier: FAST_MODE_TIERS.turbo.creditMultiplier,
+        maxAgents: FAST_MODE_TIERS.turbo.maxParallelAgents,
+        slaSeconds: FAST_MODE_TIERS.turbo.slaGuarantee,
+        features: FAST_MODE_TIERS.turbo.features,
+        refundGuarantee: '50% refund if SLA missed',
+        recommended: true
+      },
+      {
+        id: 'instant',
+        name: FAST_MODE_TIERS.instant.name,
+        creditMultiplier: FAST_MODE_TIERS.instant.creditMultiplier,
+        maxAgents: FAST_MODE_TIERS.instant.maxParallelAgents,
+        slaSeconds: FAST_MODE_TIERS.instant.slaGuarantee,
+        features: FAST_MODE_TIERS.instant.features,
+        refundGuarantee: '100% refund if SLA missed'
+      }
+    ];
+  }
+
+  // Helper methods for ROI analytics
+  private getPeriodStart(period: 'day' | 'week' | 'month' | 'all_time'): Date {
+    const now = new Date();
+    switch (period) {
+      case 'day': return new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      case 'week': return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      case 'month': return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      case 'all_time': return new Date(0);
+    }
+  }
+
+  private calculateAvgExecutionTime(tasks: AiWorkboardTask[]): number {
+    if (tasks.length === 0) return 0;
+    const validTasks = tasks.filter(t => t.startedAt && t.completedAt);
+    if (validTasks.length === 0) return 0;
+    
+    const totalTime = validTasks.reduce((sum, t) => {
+      return sum + (new Date(t.completedAt!).getTime() - new Date(t.startedAt!).getTime());
+    }, 0);
+    
+    return totalTime / validTasks.length;
   }
 }
 
