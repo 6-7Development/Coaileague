@@ -6,6 +6,7 @@
  */
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GEMINI_MODELS, ANTI_YAP_PRESETS } from './ai-brain/providers/geminiClient';
 import { usageMeteringService } from './billing/usageMetering';
 import { aiGuardRails, type AIRequestContext } from './aiGuardRails';
 import type { Shift, Employee } from '@shared/schema';
@@ -106,7 +107,13 @@ export async function scheduleSmartAI(request: ScheduleSmartRequest): Promise<Sc
     'schedule_generation'
   );
 
-  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+  const model = genAI.getGenerativeModel({ 
+    model: GEMINI_MODELS.ORCHESTRATOR,
+    generationConfig: {
+      maxOutputTokens: ANTI_YAP_PRESETS.orchestrator.maxTokens,
+      temperature: ANTI_YAP_PRESETS.orchestrator.temperature,
+    }
+  });
 
   // Build context for Gemini
   const shiftsContext = request.openShifts.map((shift, idx) => ({

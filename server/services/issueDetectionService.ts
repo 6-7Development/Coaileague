@@ -7,6 +7,7 @@
 import aiBrainConfig from "@shared/config/aiBrainGuardrails";
 import { notificationEngine } from "./universalNotificationEngine";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GEMINI_MODELS, ANTI_YAP_PRESETS } from './ai-brain/providers/geminiClient';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
@@ -201,7 +202,13 @@ export class IssueDetectionService {
     const baseResult = await this.detectIssues(workspaceId, documentType, extractedData, documentId);
 
     try {
-      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+      const model = genAI.getGenerativeModel({ 
+        model: GEMINI_MODELS.SUPERVISOR,
+        generationConfig: {
+          maxOutputTokens: ANTI_YAP_PRESETS.supervisor.maxTokens,
+          temperature: ANTI_YAP_PRESETS.supervisor.temperature,
+        }
+      });
 
       const prompt = `
         Analyze this extracted ${documentType} data for potential issues or anomalies that might indicate data quality problems:

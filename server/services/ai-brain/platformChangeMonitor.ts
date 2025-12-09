@@ -9,6 +9,7 @@ import {
 } from "@shared/schema";
 import { eq, desc, isNull, and, sql, isNotNull } from "drizzle-orm";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GEMINI_MODELS, ANTI_YAP_PRESETS } from './providers/geminiClient';
 import crypto from "crypto";
 import fs from "fs";
 import path from "path";
@@ -327,7 +328,13 @@ class PlatformChangeMonitorService {
     sourceName: string;
   }> {
     try {
-      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+      const model = genAI.getGenerativeModel({ 
+        model: GEMINI_MODELS.DIAGNOSTICS,
+        generationConfig: {
+          maxOutputTokens: ANTI_YAP_PRESETS.diagnostics.maxTokens,
+          temperature: ANTI_YAP_PRESETS.diagnostics.temperature,
+        }
+      });
       
       // Build context-rich details for different module types
       const moduleContext = this.buildModuleContext(change.affectedModules);

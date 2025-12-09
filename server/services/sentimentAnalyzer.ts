@@ -5,6 +5,7 @@
  */
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GEMINI_MODELS, ANTI_YAP_PRESETS } from './ai-brain/providers/geminiClient';
 import { aiGuardRails, type AIRequestContext } from "./aiGuardRails";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
@@ -48,7 +49,13 @@ export async function analyzeSentiment(
   }
 
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const model = genAI.getGenerativeModel({ 
+      model: GEMINI_MODELS.SIMPLE,
+      generationConfig: {
+        maxOutputTokens: ANTI_YAP_PRESETS.simple.maxTokens,
+        temperature: ANTI_YAP_PRESETS.simple.temperature,
+      }
+    });
 
     const prompt = `Analyze the sentiment and urgency of this dispute/complaint message. 
     

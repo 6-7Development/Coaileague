@@ -6,6 +6,7 @@
  */
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GEMINI_MODELS, ANTI_YAP_PRESETS } from '../ai-brain/providers/geminiClient';
 import type { HelposAiSession, InsertHelposAiSession, InsertHelposAiTranscriptEntry } from '@shared/schema';
 import type { IStorage } from '../../storage';
 import { usageMeteringService } from '../billing/usageMetering';
@@ -27,7 +28,7 @@ class GeminiProvider implements AIProvider {
   constructor() {
     const apiKey = process.env.GEMINI_API_KEY;
     this.genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
-    this.model = 'gemini-2.0-flash-exp'; // Cost-effective, fast, and intelligent
+    this.model = GEMINI_MODELS.HELLOS; // Tier 2: Conversational AI with anti-yap config
   }
 
   async chat(messages: Array<{ role: string; content: string }>, options: { maxTokens?: number; workspaceId?: string; userId?: string } = {}): Promise<{ content: string; tokensUsed: number }> {

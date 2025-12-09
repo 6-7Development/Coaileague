@@ -4,6 +4,7 @@
  */
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GEMINI_MODELS, ANTI_YAP_PRESETS } from './ai-brain/providers/geminiClient';
 import { aiActivityService } from './aiActivityService';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
@@ -60,7 +61,13 @@ export async function getAiResponse(
 
     aiActivityService.startThinking('HelpAI', { workspaceId, userId, message: 'Processing your question...' });
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+    const model = genAI.getGenerativeModel({ 
+      model: GEMINI_MODELS.HELLOS,
+      generationConfig: {
+        maxOutputTokens: ANTI_YAP_PRESETS.helpai.maxTokens,
+        temperature: ANTI_YAP_PRESETS.helpai.temperature,
+      }
+    });
 
     // Build system prompt
     const systemPrompt = `You are HelpAI, an AI assistant for CoAIleague - an AI-powered workforce management platform.

@@ -12,6 +12,7 @@
  */
 
 import { GoogleGenerativeAI, GenerativeModel } from "@google/generative-ai";
+import { GEMINI_MODELS, ANTI_YAP_PRESETS } from './providers/geminiClient';
 import { db } from '../../db';
 import { eq, and, sql, gte, desc, avg, count, sum } from 'drizzle-orm';
 import {
@@ -99,7 +100,13 @@ class AIDynamicPricingService {
       }
 
       const genAI = new GoogleGenerativeAI(apiKey);
-      this.model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+      this.model = genAI.getGenerativeModel({ 
+        model: GEMINI_MODELS.DIAGNOSTICS,
+        generationConfig: {
+          maxOutputTokens: ANTI_YAP_PRESETS.diagnostics.maxTokens,
+          temperature: ANTI_YAP_PRESETS.diagnostics.temperature,
+        }
+      });
       this.initialized = true;
       console.log('[AIDynamicPricing] Service initialized');
     } catch (error: any) {

@@ -137,6 +137,22 @@ export const ANTI_YAP_PRESETS = {
     thinkingLevel: 'none' as ThinkingLevel,
     systemPromptSuffix: 'One sentence maximum. Facts only.',
   },
+  
+  // Notification generation: Brief but informative
+  notification: {
+    maxTokens: 200,
+    temperature: 0.4,
+    thinkingLevel: 'none' as ThinkingLevel,
+    systemPromptSuffix: 'Create a brief, clear notification message. 2-3 sentences max.',
+  },
+  
+  // Search/Lookup: Quick, factual summaries
+  lookup: {
+    maxTokens: 150,
+    temperature: 0.3,
+    thinkingLevel: 'none' as ThinkingLevel,
+    systemPromptSuffix: 'Summarize findings briefly. Focus on the most relevant result.',
+  },
 } as const;
 
 export type AntiYapPreset = keyof typeof ANTI_YAP_PRESETS;

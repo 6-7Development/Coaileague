@@ -10,6 +10,7 @@
  */
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GEMINI_MODELS, ANTI_YAP_PRESETS } from './ai-brain/providers/geminiClient';
 import { db } from '../db';
 import { chatMessages } from '@shared/schema';
 import { eq } from 'drizzle-orm';
@@ -40,7 +41,13 @@ export async function analyzeChatMessageSentiment(
   }
 ): Promise<ChatSentimentAnalysisResult> {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const model = genAI.getGenerativeModel({ 
+      model: GEMINI_MODELS.SUPERVISOR,
+      generationConfig: {
+        maxOutputTokens: ANTI_YAP_PRESETS.supervisor.maxTokens,
+        temperature: ANTI_YAP_PRESETS.supervisor.temperature,
+      }
+    });
 
     // Build context for analysis
     const contextStr = context?.conversationContext 

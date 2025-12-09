@@ -21,6 +21,7 @@ import {
 } from '@shared/schema';
 import { eq, and, gte, lte, inArray, isNull } from 'drizzle-orm';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GEMINI_MODELS, ANTI_YAP_PRESETS } from './ai-brain/providers/geminiClient';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
@@ -126,7 +127,13 @@ function getTimeWindow(frequency: string): number {
  */
 async function generateAiSummary(batch: DigestBatch): Promise<{ summary: string; confidence: number }> {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+    const model = genAI.getGenerativeModel({ 
+      model: GEMINI_MODELS.NOTIFICATION,
+      generationConfig: {
+        maxOutputTokens: ANTI_YAP_PRESETS.notification.maxTokens,
+        temperature: ANTI_YAP_PRESETS.notification.temperature,
+      }
+    });
 
     const notificationList = batch.notifications.map((n, idx) => 
       `${idx + 1}. [${n.type}] ${n.title}: ${n.message}`

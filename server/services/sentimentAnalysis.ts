@@ -5,12 +5,19 @@
  */
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GEMINI_MODELS, ANTI_YAP_PRESETS } from './ai-brain/providers/geminiClient';
 import { db } from '../db';
 import { supportTickets, disputes, sentimentHistory } from '@shared/schema';
 import { eq, and, desc } from 'drizzle-orm';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+const model = genAI.getGenerativeModel({ 
+  model: GEMINI_MODELS.SIMPLE,
+  generationConfig: {
+    maxOutputTokens: ANTI_YAP_PRESETS.simple.maxTokens,
+    temperature: ANTI_YAP_PRESETS.simple.temperature,
+  }
+});
 
 export interface SentimentResult {
   score: number; // -1 (negative) to 1 (positive)

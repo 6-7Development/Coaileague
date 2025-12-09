@@ -5,6 +5,7 @@
  */
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GEMINI_MODELS, ANTI_YAP_PRESETS } from './ai-brain/providers/geminiClient';
 import { db } from "../db";
 import { workspaces } from "@shared/schema";
 import { eq } from "drizzle-orm";
@@ -41,7 +42,13 @@ export async function extractDocumentData(
   fileMimeType: string
 ): Promise<ExtractedData> {
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const model = genAI.getGenerativeModel({ 
+      model: GEMINI_MODELS.SUPERVISOR,
+      generationConfig: {
+        maxOutputTokens: ANTI_YAP_PRESETS.supervisor.maxTokens,
+        temperature: ANTI_YAP_PRESETS.supervisor.temperature,
+      }
+    });
 
     // Define extraction prompts by document type
     const extractionPrompts: Record<string, string> = {
