@@ -8,6 +8,7 @@ import {
 } from "@shared/schema";
 import { eq, and, or, desc, isNull, sql, lt } from "drizzle-orm";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GEMINI_MODELS, ANTI_YAP_PRESETS } from './ai-brain/providers/geminiClient';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
@@ -122,7 +123,13 @@ export async function generatePlatformUpdate(data: AIInsightData): Promise<{ id:
   let enhancedDescription = data.description;
   
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+    const model = genAI.getGenerativeModel({ 
+      model: GEMINI_MODELS.NOTIFICATION,
+      generationConfig: {
+        maxOutputTokens: ANTI_YAP_PRESETS.notification.maxTokens,
+        temperature: ANTI_YAP_PRESETS.notification.temperature,
+      }
+    });
     const prompt = `You are CoAIleague's AI brain. Rewrite this platform update description to be engaging, clear, and professional for end users. Keep it under 200 characters.
 
 Original: ${data.description}
@@ -548,7 +555,13 @@ export async function getNewUserWelcomeSummary(
     let welcomeMessage = "We're excited to have you on board!";
     
     try {
-      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+      const model = genAI.getGenerativeModel({ 
+        model: GEMINI_MODELS.NOTIFICATION,
+        generationConfig: {
+          maxOutputTokens: ANTI_YAP_PRESETS.notification.maxTokens,
+          temperature: ANTI_YAP_PRESETS.notification.temperature,
+        }
+      });
       const updateTitles = updates.map(u => u.title).join(", ");
       
       const prompt = `You are CoAIleague's friendly AI assistant. Create a brief, warm welcome message (max 2 sentences) for a new user, mentioning these platform highlights: ${updateTitles}. Be encouraging and helpful.`;

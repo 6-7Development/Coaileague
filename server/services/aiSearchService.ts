@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GEMINI_MODELS, ANTI_YAP_PRESETS } from './ai-brain/providers/geminiClient';
 import { db } from "../db";
 import { employees, clients, shifts, invoices, timeEntries } from "@shared/schema";
 import { eq, or, ilike, and, desc, sql } from "drizzle-orm";
@@ -326,7 +327,13 @@ async function generateAISummary(query: string, results: SearchResult[]): Promis
   if (!genAI || results.length === 0) return undefined;
   
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+    const model = genAI.getGenerativeModel({ 
+      model: GEMINI_MODELS.LOOKUP,
+      generationConfig: {
+        maxOutputTokens: ANTI_YAP_PRESETS.lookup.maxTokens,
+        temperature: ANTI_YAP_PRESETS.lookup.temperature,
+      }
+    });
     
     const resultsSummary = results.slice(0, 5).map(r => 
       `- ${r.type}: ${r.title} (${r.subtitle})`

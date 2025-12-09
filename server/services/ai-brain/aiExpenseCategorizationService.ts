@@ -12,6 +12,7 @@
  */
 
 import { GoogleGenerativeAI, GenerativeModel } from "@google/generative-ai";
+import { GEMINI_MODELS, ANTI_YAP_PRESETS } from './providers/geminiClient';
 import { db } from '../../db';
 import { eq, and, isNull, desc, sql, gte, lte } from 'drizzle-orm';
 import {
@@ -78,8 +79,20 @@ class AIExpenseCategorizationService {
       }
 
       const genAI = new GoogleGenerativeAI(apiKey);
-      this.model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-      this.visionModel = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+      this.model = genAI.getGenerativeModel({ 
+        model: GEMINI_MODELS.SUPERVISOR,
+        generationConfig: {
+          maxOutputTokens: ANTI_YAP_PRESETS.supervisor.maxTokens,
+          temperature: ANTI_YAP_PRESETS.supervisor.temperature,
+        }
+      });
+      this.visionModel = genAI.getGenerativeModel({ 
+        model: GEMINI_MODELS.SUPERVISOR,
+        generationConfig: {
+          maxOutputTokens: ANTI_YAP_PRESETS.supervisor.maxTokens,
+          temperature: ANTI_YAP_PRESETS.supervisor.temperature,
+        }
+      });
       this.initialized = true;
       console.log('[AIExpenseCategorization] Service initialized');
     } catch (error: any) {

@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GEMINI_MODELS, ANTI_YAP_PRESETS } from './ai-brain/providers/geminiClient';
 import { advancedAnalyticsService } from "./advancedAnalyticsService";
 
 const apiKey = process.env.GEMINI_API_KEY;
@@ -51,7 +52,13 @@ async function generateInsights(workspaceId: string, period: string): Promise<An
     }
 
     try {
-      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+      const model = genAI.getGenerativeModel({ 
+        model: GEMINI_MODELS.DIAGNOSTICS,
+        generationConfig: {
+          maxOutputTokens: ANTI_YAP_PRESETS.diagnostics.maxTokens,
+          temperature: ANTI_YAP_PRESETS.diagnostics.temperature,
+        }
+      });
       
       const prompt = `You are an AI business analyst for a workforce management platform. Analyze the following business metrics and provide actionable insights.
 

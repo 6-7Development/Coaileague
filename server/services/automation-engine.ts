@@ -34,9 +34,16 @@ import {
   type ValidatedPayrollDecision,
 } from './automation-schemas';
 
-// Initialize Gemini AI
+// Initialize Gemini AI with tiered model architecture
+import { GEMINI_MODELS, ANTI_YAP_PRESETS } from './ai-brain/providers/geminiClient';
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+const model = genAI.getGenerativeModel({ 
+  model: GEMINI_MODELS.ORCHESTRATOR,
+  generationConfig: {
+    maxOutputTokens: ANTI_YAP_PRESETS.orchestrator.maxTokens,
+    temperature: ANTI_YAP_PRESETS.orchestrator.temperature,
+  }
+});
 
 export interface GeminiResponse<T = any> {
   decision: T;

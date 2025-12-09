@@ -15,6 +15,7 @@
  */
 
 import { GoogleGenerativeAI, GenerativeModel } from "@google/generative-ai";
+import { GEMINI_MODELS, ANTI_YAP_PRESETS } from './providers/geminiClient';
 import { usageMeteringService } from '../billing/usageMetering';
 import { db } from '../../db';
 import { eq, desc, count } from 'drizzle-orm';
@@ -315,7 +316,13 @@ class GeminiClientWrapper {
     const apiKey = process.env.GEMINI_API_KEY;
     if (apiKey) {
       this.genAI = new GoogleGenerativeAI(apiKey);
-      this.model = this.genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+      this.model = this.genAI.getGenerativeModel({ 
+        model: GEMINI_MODELS.DIAGNOSTICS,
+        generationConfig: {
+          maxOutputTokens: ANTI_YAP_PRESETS.diagnostics.maxTokens,
+          temperature: ANTI_YAP_PRESETS.diagnostics.temperature,
+        }
+      });
     } else {
       console.warn('[GeminiClientWrapper] GEMINI_API_KEY not found');
       this.genAI = null;
