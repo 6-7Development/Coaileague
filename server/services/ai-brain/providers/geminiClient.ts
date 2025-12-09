@@ -663,6 +663,7 @@ async function executeUpdateFaq(
 export class UnifiedGeminiClient {
   private model: GenerativeModel | null;
   private toolsModel: GenerativeModel | null;
+  private jsonModel: GenerativeModel | null; // UPGRADE 1: JSON Mode for structured output
 
   constructor() {
     this.model = genAI ? genAI.getGenerativeModel({ 
@@ -673,6 +674,54 @@ export class UnifiedGeminiClient {
       model: "gemini-2.0-flash-exp",
       tools: [{ functionDeclarations: AI_BRAIN_TOOLS }]
     }) : null;
+
+    // UPGRADE 1: JSON Mode model for structured agent output
+    // Agents like PayrollPro, ScheduleMaster return clean JSON data
+    this.jsonModel = genAI ? genAI.getGenerativeModel({
+      model: "gemini-2.0-flash-exp",
+      generationConfig: {
+        responseMimeType: "application/json"
+      }
+    }) : null;
+  }
+
+  /**
+   * Generate structured JSON output for agent tasks
+   * Use this for agents that need to return data for database updates
+   */
+  async generateJSON<T = any>(request: GeminiRequest & { jsonSchema?: string }): Promise<{ data: T | null; tokensUsed: number; error?: string }> {
+    if (!this.jsonModel) {
+      return { data: null, tokensUsed: 0, error: "JSON model not available" };
+    }
+
+    const requestContext: AIRequestContext = {
+      workspaceId: request.workspaceId || 'unknown',
+      userId: request.userId || 'unknown',
+      organizationId: 'platform',
+      requestId: Math.random().toString(36).substring(7),
+      timestamp: new Date(),
+      operation: request.featureKey
+    };
+
+    try {
+      const schemaInstruction = request.jsonSchema 
+        ? `\n\nRespond with valid JSON matching this schema: ${request.jsonSchema}` 
+        : '\n\nRespond with valid JSON only.';
+      
+      const result = await this.jsonModel.generateContent(request.systemPrompt + schemaInstruction + "\n\nUser: " + request.userMessage);
+      const response = result.response;
+      const text = response.text();
+      const tokensUsed = (response.usageMetadata?.promptTokenCount || 0) + (response.usageMetadata?.candidatesTokenCount || 0);
+
+      try {
+        const data = JSON.parse(text) as T;
+        return { data, tokensUsed };
+      } catch {
+        return { data: null, tokensUsed, error: "Failed to parse JSON response" };
+      }
+    } catch (error: any) {
+      return { data: null, tokensUsed: 0, error: error.message };
+    }
   }
 
   /**
