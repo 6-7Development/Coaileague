@@ -46,10 +46,13 @@ interface PlatformDiagnostics {
   totalUsers: number;
   recentErrors: number;
   subagentHealth: { healthy: number; degraded: number; critical: number };
-  fastModeStats: { successRate: number; avgDuration: number; slaBreeches: number };
+  fastModeStats: { successRate: number; avgDuration: number; slaBreeches: number; totalExecutions: number };
   upgradeOpportunities: { workspaceId: string; workspaceName: string; reason: string }[];
   engagementAlerts: { type: string; message: string; priority: 'low' | 'medium' | 'high' }[];
   pendingNotificationSuggestions: number;
+  supportTicketBacklog: { open: number; urgent: number; avgAgeHours: number };
+  trialExpirations: { workspaceId: string; workspaceName: string; daysLeft: number }[];
+  churnRiskCount: number;
 }
 
 export interface TrinityContext {

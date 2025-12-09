@@ -95,10 +95,13 @@ export interface PlatformDiagnostics {
   totalUsers: number;
   recentErrors: number;
   subagentHealth: { healthy: number; degraded: number; critical: number };
-  fastModeStats: { successRate: number; avgDuration: number; slaBreeches: number };
+  fastModeStats: { successRate: number; avgDuration: number; slaBreeches: number; totalExecutions: number };
   upgradeOpportunities: { workspaceId: string; workspaceName: string; reason: string }[];
   engagementAlerts: { type: string; message: string; priority: 'low' | 'medium' | 'high' }[];
   pendingNotificationSuggestions: number;
+  supportTicketBacklog: { open: number; urgent: number; avgAgeHours: number };
+  trialExpirations: { workspaceId: string; workspaceName: string; daysLeft: number }[];
+  churnRiskCount: number;
 }
 
 // Trinity context for role-aware persona selection
@@ -1026,6 +1029,50 @@ class ThoughtManager {
         }
         if (diag.subagentHealth.critical > 0) {
           thoughtPool.push(`${displayName}, ${diag.subagentHealth.critical} subagent(s) need immediate attention - confidence critically low.`);
+        }
+        
+        // Support ticket backlog - NEW
+        if (diag.supportTicketBacklog) {
+          if (diag.supportTicketBacklog.urgent > 0) {
+            thoughtPool.push(`${displayName}, ${diag.supportTicketBacklog.urgent} urgent support tickets need immediate attention.`);
+          }
+          if (diag.supportTicketBacklog.open > 10) {
+            thoughtPool.push(`Support queue has ${diag.supportTicketBacklog.open} open tickets. Want me to prioritize them?`);
+          }
+        }
+        
+        // Trial expirations - NEW
+        if (diag.trialExpirations && diag.trialExpirations.length > 0) {
+          const urgent = diag.trialExpirations.filter(t => t.daysLeft <= 3);
+          if (urgent.length > 0) {
+            thoughtPool.push(`${displayName}, ${urgent.length} trial(s) expiring within 3 days - conversion opportunity!`);
+            thoughtPool.push(`${urgent[0].workspaceName} trial expires in ${urgent[0].daysLeft} day(s). Shall I draft an outreach?`);
+          }
+        }
+        
+        // Churn risk - NEW
+        if (diag.churnRiskCount > 0) {
+          thoughtPool.push(`${displayName}, ${diag.churnRiskCount} workspace(s) showing churn risk - low activity for 30+ days.`);
+          thoughtPool.push(`I've identified ${diag.churnRiskCount} inactive accounts. Want me to suggest re-engagement strategies?`);
+        }
+        
+        // FAST mode performance - NEW
+        if (diag.fastModeStats && diag.fastModeStats.totalExecutions > 0) {
+          if (diag.fastModeStats.successRate < 90) {
+            thoughtPool.push(`${displayName}, FAST mode success rate is ${diag.fastModeStats.successRate}% - below target. Investigating patterns.`);
+          }
+          if (diag.fastModeStats.slaBreeches > 5) {
+            thoughtPool.push(`${diag.fastModeStats.slaBreeches} FAST mode SLA breaches this week. Credit refunds may be due.`);
+          }
+          if (diag.fastModeStats.successRate >= 95) {
+            thoughtPool.push(`FAST mode running at ${diag.fastModeStats.successRate}% success across ${diag.fastModeStats.totalExecutions} executions this week.`);
+          }
+        }
+        
+        // Pending notification suggestions - NEW
+        if (diag.pendingNotificationSuggestions > 0) {
+          thoughtPool.push(`${displayName}, ${diag.pendingNotificationSuggestions} notification suggestion(s) awaiting approval in the System tab.`);
+          thoughtPool.push(`I've drafted ${diag.pendingNotificationSuggestions} platform notification(s). Check the System tab to review and approve.`);
         }
       }
       

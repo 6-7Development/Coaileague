@@ -21,10 +21,16 @@ import {
   invoices,
   aiWorkboardTasks,
   notifications,
+  supportTickets,
+  aiSuggestions,
 } from '@shared/schema';
-import { eq, and, count, gte, sql } from 'drizzle-orm';
+import { eq, and, count, gte, lte, sql, desc } from 'drizzle-orm';
 import { getUserPlatformRole, type PlatformRole, type WorkspaceRole } from '../rbac';
 import { subagentConfidenceMonitor } from './ai-brain/subagentConfidenceMonitor';
+
+// Platform diagnostics cache with 5-minute TTL
+let diagnosticsCache: { data: PlatformDiagnostics; timestamp: number } | null = null;
+const DIAGNOSTICS_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 export interface OrgIntelligence {
   automationReadiness: {
@@ -59,10 +65,13 @@ export interface PlatformDiagnostics {
   totalUsers: number;
   recentErrors: number;
   subagentHealth: { healthy: number; degraded: number; critical: number };
-  fastModeStats: { successRate: number; avgDuration: number; slaBreeches: number };
+  fastModeStats: { successRate: number; avgDuration: number; slaBreeches: number; totalExecutions: number };
   upgradeOpportunities: { workspaceId: string; workspaceName: string; reason: string }[];
   engagementAlerts: { type: string; message: string; priority: 'low' | 'medium' | 'high' }[];
   pendingNotificationSuggestions: number;
+  supportTicketBacklog: { open: number; urgent: number; avgAgeHours: number };
+  trialExpirations: { workspaceId: string; workspaceName: string; daysLeft: number }[];
+  churnRiskCount: number;
 }
 
 export interface TrinityContext {
@@ -470,18 +479,28 @@ function getAnonymousContext(): TrinityContext {
 /**
  * Gather platform-wide diagnostics for Guru mode
  * Analyzes platform health, engagement opportunities, and upgrade candidates
+ * Uses 5-minute caching to reduce database load
  */
 async function gatherPlatformDiagnostics(): Promise<PlatformDiagnostics> {
+  // Return cached data if still valid
+  if (diagnosticsCache && Date.now() - diagnosticsCache.timestamp < DIAGNOSTICS_CACHE_TTL) {
+    return diagnosticsCache.data;
+  }
+  
   const upgradeOpportunities: PlatformDiagnostics['upgradeOpportunities'] = [];
   const engagementAlerts: PlatformDiagnostics['engagementAlerts'] = [];
+  const trialExpirations: PlatformDiagnostics['trialExpirations'] = [];
   
   let activeWorkspaces = 0;
   let totalUsers = 0;
   let recentErrors = 0;
+  let churnRiskCount = 0;
   let overallHealth: PlatformDiagnostics['overallHealth'] = 'healthy';
+  const supportTicketBacklog = { open: 0, urgent: 0, avgAgeHours: 0 };
+  const fastModeStats = { successRate: 0, avgDuration: 0, slaBreeches: 0, totalExecutions: 0 };
   
   try {
-    // Count active workspaces (using subscriptionStatus as activity indicator)
+    // Count active workspaces
     const [wsCount] = await db
       .select({ count: count() })
       .from(workspaces)
@@ -494,7 +513,7 @@ async function gatherPlatformDiagnostics(): Promise<PlatformDiagnostics> {
       .from(users);
     totalUsers = userCount?.count || 0;
     
-    // Find upgrade opportunities - workspaces on free tier with high activity
+    // Find upgrade opportunities - free tier with high activity
     const freeWorkspaces = await db
       .select({
         id: workspaces.id,
@@ -523,7 +542,7 @@ async function gatherPlatformDiagnostics(): Promise<PlatformDiagnostics> {
       }
     }
     
-    // Find engagement alerts - workspaces with low recent activity
+    // Find engagement alerts - inactive workspaces
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     
@@ -538,6 +557,8 @@ async function gatherPlatformDiagnostics(): Promise<PlatformDiagnostics> {
         sql`${workspaces.updatedAt} < ${thirtyDaysAgo}`
       ))
       .limit(10);
+    
+    churnRiskCount = inactiveWorkspaces.length;
     
     for (const ws of inactiveWorkspaces) {
       engagementAlerts.push({
@@ -577,14 +598,101 @@ async function gatherPlatformDiagnostics(): Promise<PlatformDiagnostics> {
       });
     }
     
+    // Support ticket backlog
+    const [openTickets] = await db
+      .select({ count: count() })
+      .from(supportTickets)
+      .where(eq(supportTickets.status, 'open'));
+    supportTicketBacklog.open = openTickets?.count || 0;
+    
+    const [urgentTickets] = await db
+      .select({ count: count() })
+      .from(supportTickets)
+      .where(and(
+        eq(supportTickets.status, 'open'),
+        eq(supportTickets.priority, 'urgent')
+      ));
+    supportTicketBacklog.urgent = urgentTickets?.count || 0;
+    
+    if (supportTicketBacklog.urgent > 5) {
+      engagementAlerts.push({
+        type: 'urgent_tickets',
+        message: `${supportTicketBacklog.urgent} urgent support tickets awaiting response`,
+        priority: 'high',
+      });
+    }
+    
+    // Trial expirations in next 7 days
+    const sevenDaysFromNow = new Date();
+    sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
+    
+    const expiringTrials = await db
+      .select({
+        id: subscriptions.workspaceId,
+        name: workspaces.name,
+        trialEndsAt: subscriptions.trialEndsAt,
+      })
+      .from(subscriptions)
+      .innerJoin(workspaces, eq(workspaces.id, subscriptions.workspaceId))
+      .where(and(
+        eq(subscriptions.status, 'trial'),
+        lte(subscriptions.trialEndsAt, sevenDaysFromNow),
+        gte(subscriptions.trialEndsAt, new Date())
+      ))
+      .limit(10);
+    
+    for (const trial of expiringTrials) {
+      if (trial.trialEndsAt) {
+        const daysLeft = Math.ceil((trial.trialEndsAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+        trialExpirations.push({
+          workspaceId: trial.id || '',
+          workspaceName: trial.name || 'Unknown',
+          daysLeft,
+        });
+        
+        if (daysLeft <= 3) {
+          engagementAlerts.push({
+            type: 'trial_expiring',
+            message: `${trial.name || 'Workspace'} trial expires in ${daysLeft} day(s) - conversion opportunity`,
+            priority: daysLeft <= 1 ? 'high' : 'medium',
+          });
+        }
+      }
+    }
+    
+    // FAST mode stats from recent AI workboard tasks
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    
+    const recentTasks = await db
+      .select({
+        status: aiWorkboardTasks.status,
+        durationMs: sql<number>`EXTRACT(EPOCH FROM (${aiWorkboardTasks.completedAt} - ${aiWorkboardTasks.createdAt})) * 1000`,
+      })
+      .from(aiWorkboardTasks)
+      .where(and(
+        gte(aiWorkboardTasks.createdAt, sevenDaysAgo),
+        sql`${aiWorkboardTasks.completedAt} IS NOT NULL`
+      ))
+      .limit(100);
+    
+    if (recentTasks.length > 0) {
+      const completed = recentTasks.filter(t => t.status === 'completed').length;
+      fastModeStats.totalExecutions = recentTasks.length;
+      fastModeStats.successRate = Math.round((completed / recentTasks.length) * 100);
+      fastModeStats.avgDuration = Math.round(
+        recentTasks.reduce((sum, t) => sum + (t.durationMs || 0), 0) / recentTasks.length
+      );
+      // Count tasks taking > 30s as SLA breaches
+      fastModeStats.slaBreeches = recentTasks.filter(t => (t.durationMs || 0) > 30000).length;
+    }
+    
   } catch {
   }
   
   // Estimate subagent health from org readiness scores
   const subagentHealth = { healthy: 8, degraded: 0, critical: 0 };
-  const fastModeStats = { successRate: 95, avgDuration: 2500, slaBreeches: 0 };
   
-  // Check a sample of org readiness to estimate platform-wide health
   try {
     const sampleWorkspaces = await db
       .select({ id: workspaces.id })
@@ -607,7 +715,22 @@ async function gatherPlatformDiagnostics(): Promise<PlatformDiagnostics> {
   } catch {
   }
   
-  return {
+  // Count pending notification suggestions from trinity_guru
+  let pendingNotificationSuggestions = 0;
+  try {
+    const [suggestionCount] = await db
+      .select({ count: count() })
+      .from(aiSuggestions)
+      .where(and(
+        eq(aiSuggestions.suggestionType, 'platform_notification'),
+        eq(aiSuggestions.sourceSystem, 'trinity_guru'),
+        eq(aiSuggestions.status, 'pending')
+      ));
+    pendingNotificationSuggestions = suggestionCount?.count || 0;
+  } catch {
+  }
+  
+  const result: PlatformDiagnostics = {
     overallHealth,
     activeWorkspaces,
     totalUsers,
@@ -616,8 +739,122 @@ async function gatherPlatformDiagnostics(): Promise<PlatformDiagnostics> {
     fastModeStats,
     upgradeOpportunities,
     engagementAlerts,
-    pendingNotificationSuggestions: 0,
+    pendingNotificationSuggestions,
+    supportTicketBacklog,
+    trialExpirations,
+    churnRiskCount,
   };
+  
+  // Cache the result
+  diagnosticsCache = { data: result, timestamp: Date.now() };
+  
+  return result;
+}
+
+/**
+ * Create a notification suggestion from Trinity Guru mode
+ * These are queued for approval in the System tab
+ */
+export async function createNotificationSuggestion(params: {
+  title: string;
+  description: string;
+  suggestedAction?: string;
+  estimatedImpact?: string;
+  priority?: 'low' | 'normal' | 'high' | 'urgent';
+  targetType?: string;
+  targetId?: string;
+}): Promise<{ success: boolean; suggestionId?: string; error?: string }> {
+  try {
+    // Use a platform-level workspace ID for global suggestions
+    const [result] = await db
+      .insert(aiSuggestions)
+      .values({
+        workspaceId: 'ops-workspace-00000000',
+        suggestionType: 'platform_notification',
+        sourceSystem: 'trinity_guru',
+        title: params.title,
+        description: params.description,
+        suggestedAction: params.suggestedAction || 'Send notification to affected users',
+        estimatedImpact: params.estimatedImpact || 'Improved user engagement and platform awareness',
+        priority: params.priority || 'normal',
+        targetType: params.targetType || 'platform',
+        targetId: params.targetId,
+        status: 'pending',
+        confidenceScore: 85,
+      })
+      .returning({ id: aiSuggestions.id });
+    
+    // Invalidate cache so next fetch shows updated count
+    diagnosticsCache = null;
+    
+    return { success: true, suggestionId: result.id };
+  } catch (err) {
+    return { success: false, error: String(err) };
+  }
+}
+
+/**
+ * Get pending notification suggestions for System tab approval
+ */
+export async function getPendingNotificationSuggestions(limit = 20): Promise<{
+  suggestions: Array<{
+    id: string;
+    title: string;
+    description: string;
+    suggestedAction: string | null;
+    priority: string | null;
+    createdAt: Date | null;
+  }>;
+}> {
+  try {
+    const suggestions = await db
+      .select({
+        id: aiSuggestions.id,
+        title: aiSuggestions.title,
+        description: aiSuggestions.description,
+        suggestedAction: aiSuggestions.suggestedAction,
+        priority: aiSuggestions.priority,
+        createdAt: aiSuggestions.createdAt,
+      })
+      .from(aiSuggestions)
+      .where(and(
+        eq(aiSuggestions.suggestionType, 'platform_notification'),
+        eq(aiSuggestions.sourceSystem, 'trinity_guru'),
+        eq(aiSuggestions.status, 'pending')
+      ))
+      .orderBy(desc(aiSuggestions.createdAt))
+      .limit(limit);
+    
+    return { suggestions };
+  } catch {
+    return { suggestions: [] };
+  }
+}
+
+/**
+ * Approve or reject a notification suggestion
+ */
+export async function handleNotificationSuggestion(
+  suggestionId: string,
+  action: 'approve' | 'reject',
+  approvedBy: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    await db
+      .update(aiSuggestions)
+      .set({
+        status: action === 'approve' ? 'accepted' : 'rejected',
+        updatedAt: new Date(),
+      })
+      .where(eq(aiSuggestions.id, suggestionId));
+    
+    // Invalidate cache
+    diagnosticsCache = null;
+    
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: String(err) };
+  }
 }
 
 export async function generateContextualThought(context: TrinityContext): Promise<string | null> {
