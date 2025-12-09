@@ -288,3 +288,221 @@ onboardingRouter.post('/events', ensureOnboardingEnabled, requireWorkspace, asyn
     res.status(500).json({ error: error.message });
   }
 });
+
+// ============================================================================
+// AI DATA MIGRATION ENDPOINTS
+// ============================================================================
+
+import { onboardingOrchestrator, type OnboardingSource } from '../services/ai-brain/subagents/onboardingOrchestrator';
+import { dataMigrationAgent } from '../services/ai-brain/subagents/dataMigrationAgent';
+import { gamificationActivationAgent } from '../services/ai-brain/subagents/gamificationActivationAgent';
+
+const dataImportSourceSchema = z.object({
+  type: z.enum(['pdf', 'excel', 'csv', 'manual', 'bulk_text']),
+  fileContent: z.string().optional(),
+  fileName: z.string().optional(),
+  data: z.array(z.record(z.any())).optional(),
+  headers: z.array(z.string()).optional(),
+  formData: z.record(z.any()).optional(),
+  extractionType: z.enum(['employees', 'teams', 'schedules', 'auto']).optional(),
+});
+
+const aiOnboardingSchema = z.object({
+  sources: z.array(dataImportSourceSchema).optional(),
+  options: z.object({
+    skipGamification: z.boolean().optional(),
+    skipDataMigration: z.boolean().optional(),
+    validateOnly: z.boolean().optional(),
+    unlockBasicAutomation: z.boolean().optional(),
+  }).optional(),
+});
+
+onboardingRouter.post('/ai/start', ensureOnboardingEnabled, requireWorkspace, async (req: any, res) => {
+  try {
+    const { sources, options } = aiOnboardingSchema.parse(req.body);
+    const userId = req.session?.userId;
+    
+    if (!userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const result = await onboardingOrchestrator.runOnboarding({
+      workspaceId: req.workspaceId,
+      userId,
+      sources: sources as OnboardingSource[],
+      options,
+    });
+
+    res.json({
+      success: result.success,
+      data: result,
+    });
+  } catch (error: any) {
+    console.error('[Onboarding] AI onboarding error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+onboardingRouter.get('/ai/status', ensureOnboardingEnabled, requireWorkspace, async (req: any, res) => {
+  try {
+    const status = await onboardingOrchestrator.getOnboardingStatus(req.workspaceId);
+
+    res.json({
+      success: true,
+      data: status,
+    });
+  } catch (error: any) {
+    console.error('[Onboarding] Status error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+const extractDataSchema = z.object({
+  source: dataImportSourceSchema,
+});
+
+onboardingRouter.post('/ai/extract', ensureOnboardingEnabled, requireWorkspace, async (req: any, res) => {
+  try {
+    const { source } = extractDataSchema.parse(req.body);
+    
+    let extracted;
+    switch (source.type) {
+      case 'pdf':
+        if (!source.fileContent || !source.fileName) {
+          return res.status(400).json({ error: 'PDF requires fileContent and fileName' });
+        }
+        extracted = await dataMigrationAgent.extractFromPdf({
+          workspaceId: req.workspaceId,
+          fileContent: source.fileContent,
+          fileName: source.fileName,
+          extractionType: source.extractionType || 'auto',
+        });
+        break;
+      case 'excel':
+      case 'csv':
+        if (!source.data || !source.headers) {
+          return res.status(400).json({ error: 'Spreadsheet requires data and headers' });
+        }
+        extracted = await dataMigrationAgent.extractFromSpreadsheet({
+          workspaceId: req.workspaceId,
+          data: source.data,
+          headers: source.headers,
+          extractionType: source.extractionType || 'auto',
+        });
+        break;
+      case 'manual':
+      case 'bulk_text':
+        if (!source.formData) {
+          return res.status(400).json({ error: 'Manual entry requires formData' });
+        }
+        extracted = await dataMigrationAgent.parseManualEntry({
+          workspaceId: req.workspaceId,
+          formData: source.formData,
+          entryType: source.type === 'bulk_text' ? 'bulk_text' : 'employee',
+        });
+        break;
+      default:
+        return res.status(400).json({ error: 'Invalid source type' });
+    }
+
+    const validation = await dataMigrationAgent.validateData({
+      workspaceId: req.workspaceId,
+      data: extracted,
+    });
+
+    res.json({
+      success: true,
+      data: {
+        extracted,
+        validation,
+      },
+    });
+  } catch (error: any) {
+    console.error('[Onboarding] Extract error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+const importDataSchema = z.object({
+  data: z.object({
+    employees: z.array(z.any()).optional(),
+    teams: z.array(z.any()).optional(),
+    schedules: z.array(z.any()).optional(),
+  }),
+  skipDuplicates: z.boolean().optional(),
+});
+
+onboardingRouter.post('/ai/import', ensureOnboardingEnabled, requireWorkspace, async (req: any, res) => {
+  try {
+    const { data, skipDuplicates } = importDataSchema.parse(req.body);
+    const userId = req.session?.userId;
+    
+    if (!userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const result = await dataMigrationAgent.importData({
+      workspaceId: req.workspaceId,
+      userId,
+      data: {
+        employees: data.employees || [],
+        teams: data.teams || [],
+        schedules: data.schedules || [],
+        confidence: 1,
+        warnings: [],
+        errors: [],
+      },
+      skipDuplicates: skipDuplicates ?? true,
+    });
+
+    res.json({
+      success: result.success,
+      data: result,
+    });
+  } catch (error: any) {
+    console.error('[Onboarding] Import error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+onboardingRouter.post('/ai/gamification/activate', ensureOnboardingEnabled, requireWorkspace, async (req: any, res) => {
+  try {
+    const userId = req.session?.userId;
+    
+    if (!userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const result = await gamificationActivationAgent.activateForOrg({
+      workspaceId: req.workspaceId,
+      userId,
+      options: {
+        includeStarterBadges: true,
+        initializeAllEmployees: true,
+        unlockBasicAutomation: true,
+      },
+    });
+
+    res.json({
+      success: result.success,
+      data: result,
+    });
+  } catch (error: any) {
+    console.error('[Onboarding] Gamification activation error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+onboardingRouter.get('/ai/automation-gates', ensureOnboardingEnabled, requireWorkspace, async (req: any, res) => {
+  try {
+    const status = await gamificationActivationAgent.getAutomationGateStatus(req.workspaceId);
+
+    res.json({
+      success: true,
+      data: status,
+    });
+  } catch (error: any) {
+    console.error('[Onboarding] Automation gates error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});

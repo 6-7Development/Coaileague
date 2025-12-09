@@ -343,6 +343,49 @@ export const SUBAGENT_REGISTRY: SubagentDefinition[] = [
     isActive: true,
     config: { maxRetries: 2, timeoutMs: 60000, confidenceThreshold: 0.85, requiresApproval: true },
   },
+  
+  // ONBOARDING TIER - New organization setup specialists
+  {
+    id: 'data-migration-agent',
+    name: 'DataMigrationAgent',
+    domain: 'onboarding',
+    tier: 'executor',
+    description: 'Extracts and migrates data from PDFs, Excel, CSV, and manual entry for new org setup',
+    capabilities: [
+      'onboarding.extract_pdf',
+      'onboarding.extract_excel',
+      'onboarding.extract_csv',
+      'onboarding.parse_manual_entry',
+      'onboarding.map_to_schema',
+      'onboarding.validate_data',
+      'onboarding.import_employees',
+      'onboarding.import_departments',
+      'onboarding.import_schedules',
+    ],
+    allowedRoles: [...ROLE_GROUPS.PLATFORM_OPS, 'org_owner', 'org_admin', 'Bot'],
+    bypassRoles: ['root_admin', 'deputy_admin', 'Bot'],
+    isActive: true,
+    config: { maxRetries: 3, timeoutMs: 120000, confidenceThreshold: 0.7, requiresApproval: false },
+  },
+  {
+    id: 'gamification-activation-agent',
+    name: 'GamificationActivationAgent',
+    domain: 'gamification',
+    tier: 'executor',
+    description: 'Universally activates gamification system during org onboarding to unlock automation requirements',
+    capabilities: [
+      'gamification.activate_for_org',
+      'gamification.setup_achievements',
+      'gamification.configure_points',
+      'gamification.enable_leaderboards',
+      'gamification.unlock_automation_gates',
+      'gamification.assign_starter_badges',
+    ],
+    allowedRoles: [...ROLE_GROUPS.PLATFORM_OPS, 'org_owner', 'org_admin', 'Bot'],
+    bypassRoles: ['root_admin', 'deputy_admin', 'Bot'],
+    isActive: true,
+    config: { maxRetries: 2, timeoutMs: 30000, confidenceThreshold: 0.8, requiresApproval: false },
+  },
 ];
 
 // ============================================================================
