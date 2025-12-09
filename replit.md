@@ -52,6 +52,7 @@ The system features a multi-tenant architecture with RBAC security and isolation
 - **AI Brain Code Editor:** Staged code editing with approval workflow and HelpAI integration.
 - **AI Brain Master Orchestrator:** Central hub coordinating 93 actions across 16 categories, connecting Gemini AI to platform services.
 - **SubagentSupervisor:** Manages 23 specialized domain subagents with diagnostic workflow, RBAC, and escalation policies. Uses consolidated `shared/config/orchestration.ts` for tiered agent definitions (strategy, router, executor).
+- **Trinity Fast Mode:** Premium execution mode with 2x credit multiplier enabling parallel subagent execution (4 agents simultaneously), 60% faster execution times, guaranteed 15-second SLA, smart caching for repeated queries, proactive AI insights, and real-time progress tracking. Toggle via UI (`FastModeToggle` component) or keyboard shortcut (Ctrl+Shift+F). Metrics tracked via `executionMode` column in workboard tasks table.
 - **Unified RBAC System:** Centralized role-based access control via `shared/config/rbac.ts` with `resolveAccessContext()` helper, capability matrix, and role groups (PLATFORM_ADMINS, SUPPORT_TEAM, AI_SERVICES, WORKSPACE_MANAGERS).
 - **AI Expense Categorization:** Receipt OCR via Gemini Vision, intelligent categorization, and spending pattern analysis.
 - **AI Dynamic Pricing:** Client-specific pricing analysis, reports, and bulk rate adjustment simulations.
