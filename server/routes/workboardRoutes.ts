@@ -398,7 +398,109 @@ export function registerWorkboardRoutes(app: Router, requireAuth: (req: any, res
     }
   });
 
+  // ============================================================================
+  // FAST MODE V2 ENHANCEMENT ROUTES
+  // ============================================================================
+
+  /**
+   * Get cost estimate before execution (Credit Governor)
+   * Shows users exactly what they'll spend before committing
+   */
+  app.post('/api/ai-brain/fast-mode/estimate', requireAuth, async (req: any, res: any) => {
+    try {
+      const { content, tier, selectedAgents } = req.body;
+      const workspaceId = req.workspaceId || req.user?.currentWorkspaceId;
+
+      if (!workspaceId) {
+        return res.status(400).json({ error: 'Workspace context required' });
+      }
+
+      if (!content) {
+        return res.status(400).json({ error: 'Content is required for estimation' });
+      }
+
+      const estimate = await fastModeService.getCostEstimate({
+        workspaceId,
+        content,
+        tier: tier || 'turbo',
+        selectedAgents
+      });
+
+      res.json(estimate);
+    } catch (error: any) {
+      console.error('[FastMode] Cost estimate error:', error);
+      res.status(500).json({ error: 'Failed to get cost estimate', message: error.message });
+    }
+  });
+
+  /**
+   * Get ROI analytics for workspace (proves Fast Mode value)
+   */
+  app.get('/api/ai-brain/fast-mode/roi', requireAuth, async (req: any, res: any) => {
+    try {
+      const workspaceId = req.workspaceId || req.user?.currentWorkspaceId;
+      const { period } = req.query;
+
+      if (!workspaceId) {
+        return res.status(400).json({ error: 'Workspace context required' });
+      }
+
+      const validPeriods = ['day', 'week', 'month', 'all_time'];
+      const selectedPeriod = validPeriods.includes(period as string) 
+        ? period as 'day' | 'week' | 'month' | 'all_time'
+        : 'month';
+
+      const roi = await fastModeService.getROIAnalytics(workspaceId, selectedPeriod);
+
+      res.json(roi);
+    } catch (error: any) {
+      console.error('[FastMode] ROI analytics error:', error);
+      res.status(500).json({ error: 'Failed to get ROI analytics', message: error.message });
+    }
+  });
+
+  /**
+   * Get available Fast Mode tiers and their benefits
+   */
+  app.get('/api/ai-brain/fast-mode/tiers', requireAuth, async (req: any, res: any) => {
+    try {
+      const tiers = fastModeService.getTiers();
+      res.json({ tiers });
+    } catch (error: any) {
+      console.error('[FastMode] Tiers error:', error);
+      res.status(500).json({ error: 'Failed to get tiers', message: error.message });
+    }
+  });
+
+  /**
+   * Generate success digest for a completed task
+   */
+  app.post('/api/ai-brain/fast-mode/digest', requireAuth, async (req: any, res: any) => {
+    try {
+      const { taskId, executionTimeMs, tier, agentResults, creditsUsed, creditsSavedFromCache } = req.body;
+
+      if (!taskId) {
+        return res.status(400).json({ error: 'Task ID is required' });
+      }
+
+      const digest = await fastModeService.generateSuccessDigest({
+        taskId,
+        executionTimeMs: executionTimeMs || 0,
+        tier: tier || 'turbo',
+        agentResults: agentResults || [],
+        creditsUsed: creditsUsed || 0,
+        creditsSavedFromCache: creditsSavedFromCache || 0
+      });
+
+      res.json(digest);
+    } catch (error: any) {
+      console.error('[FastMode] Digest generation error:', error);
+      res.status(500).json({ error: 'Failed to generate digest', message: error.message });
+    }
+  });
+
   console.log('[WorkboardRoutes] AI Brain Workboard routes registered');
   console.log('[WorkboardRoutes] Fast Mode routes registered');
   console.log('[WorkboardRoutes] Velocity Engine routes registered');
+  console.log('[WorkboardRoutes] Fast Mode V2 enhancement routes registered');
 }
