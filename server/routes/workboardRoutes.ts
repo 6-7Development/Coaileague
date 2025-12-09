@@ -6,6 +6,7 @@
 
 import { Router } from 'express';
 import { workboardService } from '../services/ai-brain/workboardService';
+import { fastModeService, FAST_MODE_CONFIG } from '../services/ai-brain/fastModeService';
 
 export function registerWorkboardRoutes(app: Router, requireAuth: (req: any, res: any, next: any) => void) {
   /**
@@ -234,5 +235,104 @@ export function registerWorkboardRoutes(app: Router, requireAuth: (req: any, res
     }
   });
 
+  // ============================================
+  // FAST MODE ROUTES
+  // ============================================
+
+  /**
+   * Check if workspace can use Fast Mode
+   */
+  app.get('/api/ai-brain/fast-mode/status', requireAuth, async (req: any, res: any) => {
+    try {
+      const workspaceId = req.workspaceId || req.user?.currentWorkspaceId;
+
+      if (!workspaceId) {
+        return res.status(400).json({ error: 'Workspace context required' });
+      }
+
+      const canUse = await fastModeService.canUseFastMode(workspaceId, 10);
+      
+      res.json({
+        canUse: canUse.canUse,
+        reason: canUse.reason,
+        creditBalance: canUse.creditBalance,
+        activeTasks: canUse.activeTasks,
+        maxConcurrent: canUse.maxConcurrent,
+        config: {
+          creditMultiplier: FAST_MODE_CONFIG.creditMultiplier,
+          maxParallelAgents: FAST_MODE_CONFIG.maxParallelAgents,
+          slaGuarantees: FAST_MODE_CONFIG.slaGuarantees
+        }
+      });
+    } catch (error: any) {
+      console.error('[FastMode] Status error:', error);
+      res.status(500).json({ error: 'Failed to check fast mode status', message: error.message });
+    }
+  });
+
+  /**
+   * Get active Fast Mode tasks for workspace
+   */
+  app.get('/api/ai-brain/fast-mode/active', requireAuth, async (req: any, res: any) => {
+    try {
+      const workspaceId = req.workspaceId || req.user?.currentWorkspaceId;
+
+      if (!workspaceId) {
+        return res.status(400).json({ error: 'Workspace context required' });
+      }
+
+      const activeTasks = fastModeService.getActiveTasksForWorkspace(workspaceId);
+      
+      res.json({
+        tasks: activeTasks,
+        count: activeTasks.length
+      });
+    } catch (error: any) {
+      console.error('[FastMode] Active tasks error:', error);
+      res.status(500).json({ error: 'Failed to fetch active tasks', message: error.message });
+    }
+  });
+
+  /**
+   * Get Fast Mode execution status for a specific task
+   */
+  app.get('/api/ai-brain/fast-mode/task/:taskId', requireAuth, async (req: any, res: any) => {
+    try {
+      const { taskId } = req.params;
+      
+      const status = fastModeService.getExecutionStatus(taskId);
+      
+      if (!status) {
+        return res.status(404).json({ error: 'Task not found or not in fast mode' });
+      }
+      
+      res.json({ status });
+    } catch (error: any) {
+      console.error('[FastMode] Task status error:', error);
+      res.status(500).json({ error: 'Failed to fetch task status', message: error.message });
+    }
+  });
+
+  /**
+   * Get Fast Mode value comparison for display
+   */
+  app.get('/api/ai-brain/fast-mode/value', requireAuth, async (req: any, res: any) => {
+    try {
+      const workspaceId = req.workspaceId || req.user?.currentWorkspaceId;
+
+      if (!workspaceId) {
+        return res.status(400).json({ error: 'Workspace context required' });
+      }
+
+      const comparison = await fastModeService.getValueComparison(workspaceId);
+      
+      res.json(comparison);
+    } catch (error: any) {
+      console.error('[FastMode] Value comparison error:', error);
+      res.status(500).json({ error: 'Failed to fetch value comparison', message: error.message });
+    }
+  });
+
   console.log('[WorkboardRoutes] AI Brain Workboard routes registered');
+  console.log('[WorkboardRoutes] Fast Mode routes registered');
 }
