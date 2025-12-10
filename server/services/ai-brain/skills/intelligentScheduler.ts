@@ -452,8 +452,8 @@ export class IntelligentSchedulerSkill extends BaseSkill {
           firstName: contractorPool.firstName,
           lastName: contractorPool.lastName,
           isActive: contractorPool.isActive,
-          city: contractorPool.city,
-          state: contractorPool.state,
+          homeLatitude: contractorPool.homeLatitude,
+          homeLongitude: contractorPool.homeLongitude,
         })
         .from(contractorPool)
         .where(eq(contractorPool.isActive, true))
@@ -488,10 +488,10 @@ export class IntelligentSchedulerSkill extends BaseSkill {
       for (const contractor of activeContractors) {
         const contractorSkillSet = skillsByContractor[contractor.id] || [];
         
-        // Contractor location
+        // Use actual contractor location if available, fallback to estimated
         const homeLocation = {
-          lat: params.shiftLocation.lat + (Math.random() - 0.5) * 0.15,
-          lng: params.shiftLocation.lng + (Math.random() - 0.5) * 0.15,
+          lat: contractor.homeLatitude ? parseFloat(contractor.homeLatitude) : params.shiftLocation.lat + (Math.random() - 0.5) * 0.15,
+          lng: contractor.homeLongitude ? parseFloat(contractor.homeLongitude) : params.shiftLocation.lng + (Math.random() - 0.5) * 0.15,
         };
 
         candidates.push({

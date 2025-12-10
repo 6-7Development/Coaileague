@@ -15,6 +15,7 @@ import { handlePlatformChangeEvent } from "./services/aiNotificationService";
 import { startNotificationCleanupScheduler } from "./services/notificationCleanupService";
 import { initializeOrchestrationServices, setOrchestrationWebSocketBroadcaster } from "./services/ai-brain/orchestrationBridge";
 import { broadcastToWorkspace } from "./websocket";
+import { initializeSkillsSystem } from "./services/ai-brain/skills/skill-loader";
 
 const app = express();
 app.use(express.json());
@@ -188,6 +189,14 @@ process.on('SIGTERM', () => {
     console.log('[Server] AI Brain Orchestration services initialized');
   } catch (error) {
     console.error('[Server] Warning: Failed to initialize orchestration services:', error);
+  }
+
+  // Initialize AI Brain Skills System (revenue-critical skills: payroll, invoicing, scheduling)
+  try {
+    await initializeSkillsSystem();
+    console.log('[Server] AI Brain Skills System initialized');
+  } catch (error) {
+    console.error('[Server] Warning: Failed to initialize AI Brain Skills System:', error);
   }
 
   // Initialize Seasonal Subagent - AI-powered holiday theming

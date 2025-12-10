@@ -2,6 +2,20 @@ import { skillRegistry } from './skill-registry';
 import type { BaseSkill } from './base-skill';
 import * as fs from 'fs';
 import * as path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+// ES module equivalent of __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Direct imports for revenue-critical skills (not directory-based)
+import { payrollValidationSkill } from './payrollValidation';
+import { invoiceReconciliationSkill } from './invoiceReconciliation';
+import IntelligentSchedulerSkill from './intelligentScheduler';
+
+// Create instances of revenue-critical skills
+const intelligentSchedulerSkill = new IntelligentSchedulerSkill();
 
 /**
  * Skill Loader - Automatically discovers and loads skills from skills directory
@@ -181,7 +195,32 @@ export async function initializeSkillsSystem(): Promise<void> {
   console.log('╚════════════════════════════════════════════════╝\n');
 
   try {
-    // Load all skills
+    // CRITICAL: Register revenue-critical skills first (payroll, invoicing, scheduling)
+    // These are core value proposition skills and must always be available
+    console.log('[SkillLoader] Registering revenue-critical skills...');
+    
+    try {
+      await skillRegistry.register(payrollValidationSkill);
+      console.log('  ✅ PayrollValidationSkill registered');
+    } catch (e: any) {
+      console.warn('  ⚠️  PayrollValidationSkill skipped:', e.message);
+    }
+    
+    try {
+      await skillRegistry.register(invoiceReconciliationSkill);
+      console.log('  ✅ InvoiceReconciliationSkill registered');
+    } catch (e: any) {
+      console.warn('  ⚠️  InvoiceReconciliationSkill skipped:', e.message);
+    }
+    
+    try {
+      await skillRegistry.register(intelligentSchedulerSkill);
+      console.log('  ✅ IntelligentSchedulerSkill registered');
+    } catch (e: any) {
+      console.warn('  ⚠️  IntelligentSchedulerSkill skipped:', e.message);
+    }
+    
+    // Load directory-based skills
     const loadedCount = await skillLoader.loadAllSkills();
 
     // Watch for changes in development
@@ -193,8 +232,9 @@ export async function initializeSkillsSystem(): Promise<void> {
     const health = await skillRegistry.getHealth();
 
     console.log('\n╔════════════════════════════════════════════════╗');
-    console.log(`║  ✅ AI BRAIN SKILLS: ${loadedCount} LOADED                ║`);
+    console.log(`║  ✅ AI BRAIN SKILLS: ${loadedCount + 3} LOADED              ║`);
     console.log(`║  ✅ HEALTHY: ${health.healthySkills}/${health.totalSkills}                           ║`);
+    console.log(`║  💰 REVENUE-CRITICAL: 3 (payroll, invoice, sched)║`);
     if (health.unhealthySkills.length > 0) {
       console.log(`║  ⚠️  UNHEALTHY: ${health.unhealthySkills.join(', ')}  ║`);
     }
