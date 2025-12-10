@@ -460,12 +460,33 @@ export function isCategoryInTab(category: string, tab: NotificationTab): boolean
 }
 
 /**
+ * Valid database enum values for platform_update_category
+ * IMPORTANT: Keep this in sync with platformUpdateCategoryEnum in shared/schema.ts
+ */
+export const VALID_DB_CATEGORIES = [
+  'feature',
+  'improvement', 
+  'bugfix',
+  'security',
+  'announcement',
+  'maintenance',
+  'diagnostic',
+  'support',
+  'ai_brain',
+  'error',
+] as const;
+
+/**
  * Get all categories for a specific tab
+ * Only returns categories that are valid database enum values
  */
 export function getCategoriesForTab(tab: NotificationTab): string[] {
-  return Object.entries(TAB_ROUTING)
+  const categories = Object.entries(TAB_ROUTING)
     .filter(([_, t]) => t === tab)
     .map(([category]) => category);
+  
+  // Filter to only include valid database enum values to prevent PostgreSQL errors
+  return categories.filter(cat => VALID_DB_CATEGORIES.includes(cat as any));
 }
 
 /**
