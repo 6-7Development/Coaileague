@@ -129,7 +129,7 @@ class AIBrainTestRunner {
       run: async () => {
         const start = Date.now();
         try {
-          const result = await db.execute('SELECT 1 as test');
+          const result = await db.execute(sql`SELECT 1 as test`);
           return {
             testId: 'db-connectivity',
             testName: 'Database Connectivity',
@@ -588,9 +588,9 @@ class AIBrainTestRunner {
         workspaceId: 'coaileague-platform-workspace',
         userId: triggeredBy,
         action: `ai_brain_test:${result.status}`,
-        targetType: 'test',
-        targetId: result.testId,
-        details: {
+        entityType: 'test',
+        entityId: result.testId,
+        metadata: {
           testName: result.testName,
           status: result.status,
           severity: result.severity,
@@ -612,9 +612,9 @@ class AIBrainTestRunner {
         workspaceId: 'coaileague-platform-workspace',
         userId: result.triggeredBy,
         action: 'ai_brain_test:suite_completed',
-        targetType: 'test_suite',
-        targetId: result.suiteId,
-        details: {
+        entityType: 'test_suite',
+        entityId: result.suiteId,
+        metadata: {
           suiteName: result.suiteName,
           duration: result.duration,
           summary: result.summary,
