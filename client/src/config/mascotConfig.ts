@@ -1768,8 +1768,8 @@ export const MASCOT_CONFIG: MascotConfig = {
   
   thoughts: {
     enabled: true,
-    displayDuration: 15000, // 15 seconds - comfortable reading time
-    rotateInterval: 10000, // 10 seconds between auto thoughts - keeps Trinity active and engaging
+    displayDuration: 18000, // 18 seconds - comfortable reading time (user feedback: was too fast)
+    rotateInterval: 25000, // 25 seconds between auto thoughts - reduced frequency to avoid overwhelming users
     emoticons: {
       IDLE: '✨',
       SEARCHING: '🔍',

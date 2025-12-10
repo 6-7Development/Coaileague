@@ -159,17 +159,17 @@ export interface ThoughtManagerState {
 
 type ThoughtListener = (thought: Thought | null) => void;
 
-// Calculate reading time based on text length (average reading speed: ~200 words/min for casual reading)
-// Minimum 6 seconds, maximum 30 seconds
+// Calculate reading time based on text length (average reading speed: ~150 words/min for comfortable reading)
+// Minimum 12 seconds (user feedback: 6s was too fast), maximum 45 seconds for long AI thoughts
 function calculateReadingTime(text: string): number {
   const words = text.split(/\s+/).length;
-  const averageReadingWPM = 150; // Slower for comprehension
+  const averageReadingWPM = 120; // Even slower for casual users to comfortably read
   const baseTimeMs = (words / averageReadingWPM) * 60 * 1000;
-  const minTime = 6000; // 6 seconds minimum
-  const maxTime = 30000; // 30 seconds maximum
-  // Add extra time for punctuation (pauses)
-  const punctuationPauses = (text.match(/[.!?,;:]/g) || []).length * 200;
-  return Math.min(maxTime, Math.max(minTime, baseTimeMs + punctuationPauses + 2000));
+  const minTime = 12000; // 12 seconds minimum - comfortable reading time
+  const maxTime = 45000; // 45 seconds maximum for long AI-generated thoughts
+  // Add extra time for punctuation (pauses) and complex sentences
+  const punctuationPauses = (text.match(/[.!?,;:]/g) || []).length * 300;
+  return Math.min(maxTime, Math.max(minTime, baseTimeMs + punctuationPauses + 3000));
 }
 
 class ThoughtManager {

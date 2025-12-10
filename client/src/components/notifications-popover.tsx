@@ -378,6 +378,8 @@ export function NotificationsPopover() {
       queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
       queryClient.invalidateQueries({ queryKey: ["/api/whats-new"] });
       queryClient.invalidateQueries({ queryKey: ["/api/notifications/onboarding-digest"] });
+      // Invalidate Trinity context so mascot gets fresh notification counts
+      queryClient.invalidateQueries({ queryKey: ["/api/trinity/context"] });
     },
     onError: (err) => {
       console.error('[Clear Tab] Error:', err);
@@ -424,6 +426,8 @@ export function NotificationsPopover() {
       queryClient.invalidateQueries({ queryKey: ["/api/whats-new/latest"] });
       queryClient.invalidateQueries({ queryKey: ["/api/whats-new/unviewed-count"] });
       queryClient.invalidateQueries({ queryKey: ["/api/notifications/onboarding-digest"] });
+      // Invalidate Trinity context so mascot gets fresh notification counts instantly
+      queryClient.invalidateQueries({ queryKey: ["/api/trinity/context"] });
     },
     onError: (err, _, context) => {
       console.error('[Clear All] Error:', err);
