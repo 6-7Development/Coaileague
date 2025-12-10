@@ -169,6 +169,7 @@ import { NotificationsPopover } from "@/components/notifications-popover";
 import { WorkspaceTabsNav } from "@/components/workspace-tabs-nav";
 import { FloatingSupportChat } from "@/components/floating-support-chat";
 import { CoAITwinMascot } from "@/components/coai-twin-mascot";
+import { SetupGuidePanel } from "@/components/setup-guide-panel";
 import TrinityRedesign from "@/components/trinity-redesign";
 import { CompactBubble } from "@/components/mascot/CompactBubble";
 import { FestiveDialogueBubble } from "@/components/mascot/FestiveDialogueBubble";
@@ -1314,6 +1315,10 @@ export default function App() {
                         </ResponsiveAppFrame>
                         {/* Seasonal effects layer - snowfall, ornaments, etc. */}
                         <SeasonalEffectsLayer />
+                        {/* Floating Setup Guide - RBAC-aware onboarding panel (positioned bottom-right) */}
+                        <div className="fixed bottom-6 right-6 z-[70]">
+                          <SetupGuidePanel />
+                        </div>
                         {/* CoAI Twin Mascot - UNIVERSAL visibility on ALL pages including public/guest routes */}
                         <MascotRenderer />
                       </SeasonalThemeProvider>
