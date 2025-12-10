@@ -380,10 +380,19 @@ export function NotificationsPopover() {
   // Tab-specific clear mutation
   const clearTabMutation = useMutation({
     mutationFn: async (tab: 'updates' | 'notifications' | 'maintenance') => {
-      const response = await apiRequest("POST", `/api/notifications/clear-tab/${tab}`);
-      return response.json();
+      console.log('[Clear Tab] Starting clear for tab:', tab);
+      try {
+        const response = await apiRequest("POST", `/api/notifications/clear-tab/${tab}`);
+        const data = await response.json();
+        console.log('[Clear Tab] Success:', data);
+        return data;
+      } catch (e) {
+        console.error('[Clear Tab] API error:', e instanceof Error ? e.message : e);
+        throw e;
+      }
     },
-    onSuccess: () => {
+    onSuccess: (data, tab) => {
+      console.log('[Clear Tab] Mutation success, invalidating queries for tab:', tab);
       queryClient.invalidateQueries({ queryKey: ["/api/notifications/combined"] });
       queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
       queryClient.invalidateQueries({ queryKey: ["/api/whats-new"] });
@@ -391,8 +400,8 @@ export function NotificationsPopover() {
       // Invalidate Trinity context so mascot gets fresh notification counts
       queryClient.invalidateQueries({ queryKey: ["/api/trinity/context"] });
     },
-    onError: (err) => {
-      console.error('[Clear Tab] Error:', err);
+    onError: (err: Error) => {
+      console.error('[Clear Tab] Mutation error:', err.message || String(err));
     },
   });
 
