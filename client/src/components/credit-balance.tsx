@@ -43,13 +43,13 @@ export function CreditBalanceCard({ onBuyCredits }: { onBuyCredits?: () => void 
   const workspaceId = user?.currentWorkspaceId || accessData?.workspaceId;
   
   const { data: balance, isLoading, error } = useQuery<CreditBalance>({
-    queryKey: ['/api/credits/balance', workspaceId],
+    queryKey: ['/api/credits/balance'],
     enabled: !!workspaceId,
     retry: 1,
   });
 
   const { data: usage } = useQuery<CreditUsageBreakdown[]>({
-    queryKey: ['/api/credits/usage-breakdown', workspaceId],
+    queryKey: ['/api/credits/usage-breakdown'],
     enabled: !!workspaceId,
     retry: 1,
   });
