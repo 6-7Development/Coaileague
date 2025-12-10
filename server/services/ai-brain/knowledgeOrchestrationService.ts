@@ -332,8 +332,8 @@ USER CONTEXT:
 AVAILABLE DOMAINS: scheduling, payroll, employees, clients, compliance, analytics, automation, gamification, billing, onboarding, platform
 
 AVAILABLE MODEL TIERS:
-- BRAIN (gemini-3-pro): Complex reasoning, diagnostics, multi-step planning
-- ORCHESTRATOR (gemini-3-pro): Workflow automation, function calling
+- BRAIN (gemini-3-pro-preview): Complex reasoning, diagnostics, multi-step planning
+- ORCHESTRATOR (gemini-3-pro-preview): Workflow automation, function calling
 - CONVERSATIONAL (gemini-2.5-flash): Chat, quick responses, Trinity thoughts
 - SIMPLE (gemini-1.5-flash-8b): Quick lookups, status checks
 
