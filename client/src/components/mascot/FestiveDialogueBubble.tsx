@@ -9,7 +9,7 @@
  * - Canvas-based crisp animations (no blur/glow)
  */
 
-import { useState, useEffect, useRef, useCallback, memo } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef, useCallback, memo } from 'react';
 import type { Thought } from '@/lib/mascot/ThoughtManager';
 
 interface FestiveDialogueBubbleProps {
@@ -230,26 +230,55 @@ export const FestiveDialogueBubble = memo(function FestiveDialogueBubble({
     ctx.restore();
   }, [fontSize]);
   
+  // Stage 1: Activate bubble when new thought arrives OR deactivate when cleared
   useEffect(() => {
-    if (!thought || thought.id === lastThoughtIdRef.current) return;
+    // Handle thought being cleared - reset isActive to prevent Stage 2 crash
+    if (!thought) {
+      if (isActive && phaseRef.current !== 'exiting' && phaseRef.current !== 'done') {
+        // Thought cleared while bubble was active - let it exit gracefully
+        phaseRef.current = 'exiting';
+        exitStartTimeRef.current = performance.now();
+      }
+      return;
+    }
+    
+    // Skip if same thought
+    if (thought.id === lastThoughtIdRef.current) return;
     
     lastThoughtIdRef.current = thought.id;
     phaseRef.current = 'entering';
     startTimeRef.current = 0;
     exitStartTimeRef.current = 0;
+    bubbleDimensionsRef.current = { width: 0, height: 0 }; // Reset for new thought
+    lettersRef.current = []; // Clear letters for new thought
     setIsActive(true);
+  }, [thought, isActive]);
+  
+  // Stage 2: Initialize canvas AFTER it mounts (useLayoutEffect runs after DOM update)
+  useLayoutEffect(() => {
+    // Robust guard: verify thought and thought.text exist before proceeding
+    if (!isActive || !thought || !thought.text) {
+      return;
+    }
     
     const canvas = canvasRef.current;
     if (!canvas) return;
     
+    // Skip if dimensions already calculated for this thought
+    if (bubbleDimensionsRef.current.width > 0 && lettersRef.current.length > 0) return;
+    
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+    
+    // Capture thought.text at this point to avoid race conditions
+    const thoughtText = thought.text;
+    if (!thoughtText) return;
     
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     dprRef.current = dpr;
     
     ctx.font = `bold ${fontSize}px 'Inter', 'Segoe UI', system-ui, sans-serif`;
-    const words = thought.text.split(' ');
+    const words = thoughtText.split(' ');
     const lines: string[] = [];
     let currentLine = '';
     const maxTextWidth = maxWidth - (innerPadding * 2) - (frameWidth * 2);
@@ -395,7 +424,7 @@ export const FestiveDialogueBubble = memo(function FestiveDialogueBubble({
         cancelAnimationFrame(animFrameRef.current);
       }
     };
-  }, [thought?.id, thought?.text, fontSize, lineHeight, innerPadding, frameWidth, maxWidth, drawFrame, drawLetter]);
+  }, [isActive, thought?.id, thought?.text, fontSize, lineHeight, innerPadding, frameWidth, maxWidth, drawFrame, drawLetter]);
   
   useEffect(() => {
     if (!isActive || !containerRef.current) return;
@@ -408,15 +437,6 @@ export const FestiveDialogueBubble = memo(function FestiveDialogueBubble({
     containerRef.current.style.top = `${pos.top}px`;
     containerRef.current.style.left = `${pos.left}px`;
   }, [isActive, mascotPosition, mascotSize, isMobile, bubbleDimensionsReady]);
-  
-  // Debug: trace why bubble might not be visible
-  console.log('[FestiveBubble] Render check:', { 
-    isActive, 
-    hasThought: !!thought, 
-    thoughtId: thought?.id,
-    dims: bubbleDimensionsRef.current,
-    phase: phaseRef.current
-  });
   
   if (!isActive || !thought) return null;
   

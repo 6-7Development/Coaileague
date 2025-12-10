@@ -118,8 +118,9 @@ export function useTrinityContext(workspaceId?: string) {
   const query = useQuery<TrinityContextResponse>({
     queryKey: ['/api/trinity/context', workspaceId],
     enabled: !!user && !authLoading,
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
+    staleTime: 30 * 1000, // 30 seconds - refresh frequently for live notification counts
+    refetchOnWindowFocus: true, // Sync when user returns to tab
+    refetchInterval: 60 * 1000, // Also refetch every 60 seconds in background
   });
   
   // Wire automation events to ThoughtManager

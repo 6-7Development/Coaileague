@@ -1501,50 +1501,65 @@ Guidelines:
     }
 
     try {
-      const config = ANTI_YAP_PRESETS.mascot;
+      // MODE-SPECIFIC TOKEN LIMITS: Lower for chit-chat, higher for technical modes
+      // This reduces costs for casual conversations while maintaining quality for business/guru modes
+      const modeTokenLimits: Record<string, number> = {
+        demo: 80,      // Ultra-brief for demo/chit-chat - just friendly hellos
+        business: 120, // Slightly more for business advice  
+        guru: 200,     // More detailed for technical diagnostics
+      };
+      const modeTemperatures: Record<string, number> = {
+        demo: 0.5,     // More predictable for chit-chat
+        business: 0.6, // Balanced for business advice
+        guru: 0.4,     // More precise for technical info
+      };
+      
+      const maxTokens = modeTokenLimits[request.mode || 'demo'] || 80;
+      const temperature = modeTemperatures[request.mode || 'demo'] || 0.5;
+      
       const model = genAI.getGenerativeModel({ 
         model: GEMINI_MODELS.CONVERSATIONAL 
       });
 
-      // Build persona-aware system prompt
-      const modeDescriptions: Record<string, string> = {
-        demo: 'You are showcasing CoAIleague platform capabilities to a potential customer.',
-        business: 'You are advising a business owner using the platform for workforce management.',
-        guru: 'You are assisting platform staff with system diagnostics and administration.',
+      // Build persona-aware system prompt - CONCISE for each mode
+      const modePrompts: Record<string, { role: string; style: string }> = {
+        demo: {
+          role: 'friendly platform guide giving a quick tip',
+          style: 'One SHORT sentence. Be warm and welcoming. Focus on one helpful suggestion.',
+        },
+        business: {
+          role: 'business advisor helping with workforce management',
+          style: 'One to two brief sentences. Be actionable and data-focused. Mention specific metrics when available.',
+        },
+        guru: {
+          role: 'technical expert assisting platform staff with diagnostics',
+          style: 'Two sentences max. Be precise and technical. Include system status when relevant.',
+        },
       };
-
-      const modeContext = modeDescriptions[request.mode || 'demo'];
+      
+      const modeConfig = modePrompts[request.mode || 'demo'];
       const greeting = request.displayName ? `${request.displayName}` : 'there';
 
-      const systemPrompt = `You are Trinity, the friendly and insightful AI mascot of CoAIleague, an AI-powered workforce management platform.
+      // STREAMLINED PROMPT - reduced token usage
+      const systemPrompt = `You are Trinity, CoAIleague's AI assistant. Role: ${modeConfig.role}.
 
-Your personality:
-- Warm, helpful, and genuinely interested in the user's success
-- Confident but not arrogant - you're a trusted advisor, not a know-it-all
-- Occasionally witty but always professional
-- You speak directly to the user by name when provided
-
-Current mode: ${modeContext}
-
-CRITICAL RULES:
-- Maximum 1-2 short sentences
-- Be specific and actionable when possible
+RULES:
+- ${modeConfig.style}
+- Address ${greeting} directly
 - Never use emojis
-- Never start with "I" - address the user directly
-- Vary your language - don't repeat the same phrases
-- ${config.systemPromptSuffix}`;
+- Never start with "I"
+- Be concise - every word counts`;
 
-      const userPrompt = `Generate a single contextual thought for ${greeting} based on this context:
-${request.context}
+      const userPrompt = `Context: ${request.context}
 
-Your response should feel natural, like a quick aside from a helpful colleague. One thought only.`;
+Generate ONE thought for ${greeting}:`;
 
       const result = await model.generateContent({
         contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
         systemInstruction: systemPrompt,
         generationConfig: {
-          maxOutputTokens: config.maxTokens,
-          temperature: config.temperature,
+          maxOutputTokens: maxTokens,
+          temperature: temperature,
         },
       });
 

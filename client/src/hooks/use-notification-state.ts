@@ -62,6 +62,8 @@ export function useNotificationState(userId: string | undefined, workspaceId: st
       queryClient.setQueryData(['/api/notifications/unread-counts'], data.counts);
       queryClient.invalidateQueries({ queryKey: ['/api/notifications/combined'] });
       queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
+      // Sync Trinity with fresh notification counts
+      queryClient.invalidateQueries({ queryKey: ['/api/trinity/context'] });
     },
   });
 
@@ -87,6 +89,8 @@ export function useNotificationState(userId: string | undefined, workspaceId: st
       queryClient.invalidateQueries({ queryKey: ['/api/notifications/combined'] });
       queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
       queryClient.invalidateQueries({ queryKey: ['/api/whats-new'] });
+      // Sync Trinity with fresh notification counts instantly
+      queryClient.invalidateQueries({ queryKey: ['/api/trinity/context'] });
     },
   });
 
