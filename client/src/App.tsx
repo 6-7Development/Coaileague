@@ -95,8 +95,6 @@ import HRPTO from "@/pages/hr-pto";
 import HRTerminations from "@/pages/hr-terminations";
 import HelpDesk from "@/pages/HelpDesk";
 // import SalesPortal from "@/pages/sales-portal";
-import LogoShowcase from "@/pages/logo-showcase";
-import MascotDemo from "@/pages/mascot-demo";
 import Chatrooms from "@/pages/chatrooms";
 import PayrollDashboard from "@/pages/payroll-dashboard";
 import HelpAIOrchestration from "@/pages/helpai-orchestration";
@@ -307,7 +305,7 @@ function MascotRenderer() {
   const PUBLIC_ROUTES = useMemo(() => new Set([
     "/", "/login", "/register", "/pricing", "/contact", "/support",
     "/terms", "/privacy", "/chat", "/mobile-chat", "/live-chat",
-    "/helpdesk5", "/support/chat", "/logo-showcase", "/mascot-demo"
+    "/helpdesk5", "/support/chat"
   ]), []);
   
   const isPublicPage = PUBLIC_ROUTES.has(location) || 
@@ -745,8 +743,6 @@ function AppContent() {
     "/live-chat",
     "/helpdesk5",
     "/support/chat",
-    "/logo-showcase",
-    "/mascot-demo",
     "/error-403",
     "/error-404",
     "/error-500",
@@ -777,8 +773,6 @@ function AppContent() {
         
         <Route path="/helpdesk5"><Redirect to="/chat" /></Route>
         <Route path="/support/chat"><Redirect to="/chat" /></Route>
-        <Route path="/logo-showcase" component={LogoShowcase} />
-        <Route path="/mascot-demo" component={MascotDemo} />
         <Route path="/onboarding/:token" component={OnboardingPage} />
         <Route path="/pay-invoice/:id" component={PayInvoice} />
         
@@ -1003,8 +997,6 @@ function AppContent() {
               <Route path="/support/chat"><Redirect to="/chat" /></Route>
               <Route path="/live-chat"><Redirect to="/chat" /></Route>
               <Route path="/helpdesk5"><Redirect to="/chat" /></Route>
-              <Route path="/logo-showcase" component={LogoShowcase} />
-              <Route path="/mascot-demo" component={MascotDemo} />
               <Route path="/support" component={Support} />
               
               {/* Error pages */}
@@ -1277,8 +1269,6 @@ function AppContent() {
                 <Route path="/support/chat"><Redirect to="/chat" /></Route>
                 <Route path="/live-chat"><Redirect to="/chat" /></Route>
                 <Route path="/helpdesk5"><Redirect to="/chat" /></Route>
-                <Route path="/logo-showcase" component={LogoShowcase} />
-                <Route path="/mascot-demo" component={MascotDemo} />
                 <Route path="/support" component={Support} />
                 
                 {/* Error pages */}
