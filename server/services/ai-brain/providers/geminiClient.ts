@@ -41,34 +41,32 @@ const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
 // ============================================================================
 
 /**
- * GEMINI MODEL TIERS - Upgraded to Gemini 3 Pro
+ * GEMINI MODEL TIERS - Gemini 3 Pro Preview Configuration
  * 
- * Tier 0 (Brain): Gemini 3 Pro - Ultimate intelligence for AI Brain orchestration
+ * Tier 0 (Brain): Gemini 3 Pro Preview - Ultimate intelligence for AI Brain orchestration
  * Tier 1 (Pro): Complex reasoning, diagnostics, orchestration, code analysis
  * Tier 2 (Flash): Conversational agents, Trinity thoughts, supervisors  
  * Tier 3 (Lite): Simple status checks, quick lookups, routine tasks
  * 
  * Model selection rationale:
- * - gemini-3-pro: Ultimate AI Brain intelligence with native tool use, 1M context, Deep Think
- * - gemini-2.5-pro: Pro model for complex analysis when Gemini 3 fallback needed
+ * - gemini-3-pro-preview: Ultimate AI Brain intelligence with 1M context, Deep Think
+ * - gemini-2.5-pro: Fallback pro model for rate limits
  * - gemini-2.5-flash: Fast flash model for conversational AI and supervisors
  * - gemini-2.0-flash-exp: Experimental flash for creative mascot thoughts
  * - gemini-1.5-flash-8b: Lightweight for simple/fast tasks
  * 
  * Gemini 3 Pro Features:
- * - 1501 Elo on LMArena (top leaderboard)
- * - 50%+ improvement over Gemini 2.5 Pro on coding
- * - Native tool use for multi-step agentic tasks
- * - Advanced planning across large tool sets
  * - 1M token context window
- * - Deep Think mode for complex reasoning
+ * - thinking_level parameter (low/high) for reasoning depth
+ * - Multimodal: text, images, video, audio, code, PDFs
+ * - Advanced agentic capabilities
  */
 export const GEMINI_MODELS = {
-  // Tier 0: AI Brain - Ultimate intelligence (Gemini 3 Pro)
-  BRAIN: 'gemini-3-pro',                // AI Brain master intelligence
-  ORCHESTRATOR: 'gemini-3-pro',         // Master orchestration, function calling
-  ARCHITECT: 'gemini-3-pro',            // Deep code analysis and diagnostics  
-  DIAGNOSTICS: 'gemini-3-pro',          // System health and debugging
+  // Tier 0: AI Brain - Ultimate intelligence (Gemini 3 Pro Preview)
+  BRAIN: 'gemini-3-pro-preview',        // AI Brain master intelligence
+  ORCHESTRATOR: 'gemini-3-pro-preview', // Master orchestration, function calling
+  ARCHITECT: 'gemini-3-pro-preview',    // Deep code analysis and diagnostics  
+  DIAGNOSTICS: 'gemini-3-pro-preview',  // System health and debugging
   
   // Tier 1: Pro-level reasoning (fallback/specialized tasks)
   PRO_FALLBACK: 'gemini-2.5-pro',       // Fallback for Gemini 3 rate limits
