@@ -101,7 +101,9 @@ export const FestiveDialogueBubble = memo(function FestiveDialogueBubble({
   const phaseRef = useRef<AnimPhase>('done');
   const startTimeRef = useRef<number>(0);
   const exitStartTimeRef = useRef<number>(0);
+  // Use ref for animation loop (avoids stale closure) + state to trigger position effect
   const bubbleDimensionsRef = useRef<{ width: number; height: number }>({ width: 0, height: 0 });
+  const [bubbleDimensionsReady, setBubbleDimensionsReady] = useState(0); // Increment to trigger position update
   const dprRef = useRef<number>(2);
   
   const fontSize = isMobile ? 11 : 13;
@@ -269,6 +271,7 @@ export const FestiveDialogueBubble = memo(function FestiveDialogueBubble({
     const bubbleHeight = textHeight + (innerPadding * 2) + (frameWidth * 2);
     
     bubbleDimensionsRef.current = { width: bubbleWidth, height: bubbleHeight };
+    setBubbleDimensionsReady(n => n + 1); // Trigger position effect
     
     canvas.width = Math.ceil(bubbleWidth * dpr);
     canvas.height = Math.ceil(bubbleHeight * dpr);
@@ -404,7 +407,7 @@ export const FestiveDialogueBubble = memo(function FestiveDialogueBubble({
     
     containerRef.current.style.top = `${pos.top}px`;
     containerRef.current.style.left = `${pos.left}px`;
-  }, [isActive, mascotPosition, mascotSize, isMobile]);
+  }, [isActive, mascotPosition, mascotSize, isMobile, bubbleDimensionsReady]);
   
   if (!isActive || !thought) return null;
   
