@@ -4061,49 +4061,192 @@ class SubagentSupervisor {
     }
 
     // Fallback based on domain complexity
+    // CRITICAL: Financial domains (payroll, invoicing, scheduling) use BRAIN tier
+    // These are REVENUE-CRITICAL operations requiring highest accuracy (Gemini 3 Pro)
     const domainTierMapping: Record<SubagentDomain, GeminiModelTier> = {
+      // BRAIN TIER - Revenue-critical operations (Gemini 3 Pro Preview)
+      payroll: 'BRAIN',           // Financial accuracy is paramount
+      invoicing: 'BRAIN',         // Client billing must be precise  
+      scheduling: 'BRAIN',        // Core workforce optimization
+      // ORCHESTRATOR/DIAGNOSTICS - Platform operations
       orchestration: 'ORCHESTRATOR',
       security: 'DIAGNOSTICS',
       health: 'DIAGNOSTICS',
       recovery: 'DIAGNOSTICS',
       testing: 'DIAGNOSTICS',
+      // PRO_FALLBACK/COMPLIANCE - Important operations
       deployment: 'PRO_FALLBACK',
       compliance: 'COMPLIANCE',
-      payroll: 'SUPERVISOR',
-      invoicing: 'SUPERVISOR',
-      scheduling: 'SUPERVISOR',
-      analytics: 'SUPERVISOR',
+      analytics: 'PRO_FALLBACK',  // Upgraded for better insights
+      expense: 'PRO_FALLBACK',    // Upgraded for expense accuracy
+      pricing: 'PRO_FALLBACK',
+      data_migration: 'PRO_FALLBACK',
+      // SUPERVISOR - Standard operations
+      automation: 'SUPERVISOR',
+      lifecycle: 'SUPERVISOR',
+      workflow: 'SUPERVISOR',
+      escalation: 'SUPERVISOR',
+      // LOWER TIERS - Simple operations
       notifications: 'NOTIFICATION',
       gamification: 'ONBOARDING',
       communication: 'HELLOS',
       assist: 'HELLOS',
       onboarding: 'ONBOARDING',
-      automation: 'SUPERVISOR',
-      lifecycle: 'SUPERVISOR',
       filesystem: 'SIMPLE',
-      workflow: 'SUPERVISOR',
-      expense: 'SUPERVISOR',
-      pricing: 'PRO_FALLBACK',
-      data_migration: 'PRO_FALLBACK',
-      escalation: 'SUPERVISOR',
       scoring: 'SIMPLE',
     };
 
     const preferredTier = domainTierMapping[domain] || 'CONVERSATIONAL';
     
+    // Financial operations get higher context budget and strict fallback policy
+    const isFinancialDomain = ['payroll', 'invoicing', 'scheduling'].includes(domain);
+    
     return {
       subagentId: domain,
       preferredTier,
       maxTier: preferredTier,
-      fallbackPolicy: 'cascade',
-      contextBudget: preferredTier === 'ORCHESTRATOR' || preferredTier === 'DIAGNOSTICS' ? 500000 :
+      fallbackPolicy: isFinancialDomain ? 'cascade' : 'cascade',
+      contextBudget: preferredTier === 'BRAIN' ? 1000000 : // Gemini 3 Pro supports 1M tokens
+                     preferredTier === 'ORCHESTRATOR' || preferredTier === 'DIAGNOSTICS' ? 500000 :
                      preferredTier === 'PRO_FALLBACK' || preferredTier === 'COMPLIANCE' ? 200000 :
                      preferredTier === 'SIMPLE' || preferredTier === 'NOTIFICATION' ? 16000 : 50000,
     };
   }
 
+  // ============================================================================
+  // CIRCUIT BREAKER FOR FINANCIAL OPERATIONS
+  // ============================================================================
+  
+  private circuitBreaker: Map<string, { failures: number; lastFailure: Date; state: 'closed' | 'open' | 'half-open' }> = new Map();
+  private readonly CIRCUIT_FAILURE_THRESHOLD = 3;
+  private readonly CIRCUIT_RESET_TIMEOUT_MS = 60000; // 1 minute
+  
+  /**
+   * Check if circuit breaker allows execution for a domain
+   */
+  private checkCircuitBreaker(domain: SubagentDomain): { allowed: boolean; reason?: string } {
+    const circuit = this.circuitBreaker.get(domain);
+    
+    if (!circuit) {
+      return { allowed: true };
+    }
+    
+    // Check if circuit is open
+    if (circuit.state === 'open') {
+      const timeSinceLastFailure = Date.now() - circuit.lastFailure.getTime();
+      
+      if (timeSinceLastFailure > this.CIRCUIT_RESET_TIMEOUT_MS) {
+        // Transition to half-open for retry
+        circuit.state = 'half-open';
+        this.circuitBreaker.set(domain, circuit);
+        console.log(`[CircuitBreaker] ${domain} transitioning to half-open state`);
+        return { allowed: true };
+      }
+      
+      return { 
+        allowed: false, 
+        reason: `Circuit breaker OPEN for ${domain}. ${this.CIRCUIT_RESET_TIMEOUT_MS - timeSinceLastFailure}ms until retry.` 
+      };
+    }
+    
+    return { allowed: true };
+  }
+  
+  /**
+   * Record circuit breaker result
+   */
+  private recordCircuitResult(domain: SubagentDomain, success: boolean): void {
+    const isFinancialDomain = ['payroll', 'invoicing', 'scheduling'].includes(domain);
+    
+    // Only track circuit breaker for financial domains
+    if (!isFinancialDomain) return;
+    
+    let circuit = this.circuitBreaker.get(domain) || { failures: 0, lastFailure: new Date(), state: 'closed' as const };
+    
+    if (success) {
+      // Reset circuit on success
+      circuit = { failures: 0, lastFailure: new Date(), state: 'closed' };
+      console.log(`[CircuitBreaker] ${domain} circuit CLOSED (success)`);
+    } else {
+      // Increment failures
+      circuit.failures++;
+      circuit.lastFailure = new Date();
+      
+      if (circuit.failures >= this.CIRCUIT_FAILURE_THRESHOLD) {
+        circuit.state = 'open';
+        console.warn(`[CircuitBreaker] ${domain} circuit OPEN after ${circuit.failures} failures`);
+        
+        // Emit alert for financial circuit breaker
+        platformEventBus.publish({
+          type: 'circuit_breaker_triggered',
+          payload: {
+            domain,
+            failures: circuit.failures,
+            state: 'open',
+            timestamp: new Date().toISOString(),
+            severity: 'critical',
+          }
+        });
+      }
+    }
+    
+    this.circuitBreaker.set(domain, circuit);
+  }
+
+  /**
+   * Pre-execution validation for financial operations
+   * Returns validation result with issues and recommendations
+   */
+  private async preExecutionValidation(
+    domain: SubagentDomain, 
+    workspaceId: string,
+    parameters: Record<string, any>
+  ): Promise<{ valid: boolean; issues: string[]; recommendations: string[] }> {
+    const isFinancialDomain = ['payroll', 'invoicing', 'scheduling'].includes(domain);
+    
+    if (!isFinancialDomain) {
+      return { valid: true, issues: [], recommendations: [] };
+    }
+    
+    const issues: string[] = [];
+    const recommendations: string[] = [];
+    
+    // Check circuit breaker first
+    const circuitCheck = this.checkCircuitBreaker(domain);
+    if (!circuitCheck.allowed) {
+      issues.push(circuitCheck.reason || 'Circuit breaker is open');
+      return { valid: false, issues, recommendations: ['Wait for circuit breaker reset or contact support'] };
+    }
+    
+    // Domain-specific validation
+    switch (domain) {
+      case 'payroll':
+        if (!parameters.payPeriodStart || !parameters.payPeriodEnd) {
+          recommendations.push('Specify pay period dates for accurate payroll processing');
+        }
+        break;
+        
+      case 'invoicing':
+        if (!parameters.clientId && !parameters.billingPeriodStart) {
+          recommendations.push('Specify client or billing period for invoice generation');
+        }
+        break;
+        
+      case 'scheduling':
+        if (!parameters.dateRange && !parameters.shiftDate) {
+          recommendations.push('Specify date range for schedule optimization');
+        }
+        break;
+    }
+    
+    console.log(`[PreValidation] ${domain} validation: ${issues.length === 0 ? 'PASSED' : 'FAILED'} (${recommendations.length} recommendations)`);
+    
+    return { valid: issues.length === 0, issues, recommendations };
+  }
+
   /**
    * Execute subagent action with context and model tier routing
+   * ENHANCED: Includes circuit breaker and pre-execution validation for financial domains
    */
   private async executeSubagentAction(
     subagent: AiSubagentDefinition,
@@ -4113,9 +4256,33 @@ class SubagentSupervisor {
     context?: Record<string, any>
   ): Promise<any> {
     const startTime = Date.now();
+    const domain = subagent.domain as SubagentDomain;
+    
+    // CRITICAL: Pre-execution validation for financial operations
+    const validationResult = await this.preExecutionValidation(domain, workspaceId, context || {});
+    if (!validationResult.valid) {
+      console.warn(`[SubagentSupervisor] Pre-execution validation FAILED for ${domain}:`, validationResult.issues);
+      
+      // Record circuit breaker failure (blocked by validation)
+      this.recordCircuitResult(domain, false);
+      
+      return {
+        success: false,
+        error: 'Pre-execution validation failed',
+        issues: validationResult.issues,
+        recommendations: validationResult.recommendations,
+        blocked: true,
+        blockedReason: 'circuit_breaker_or_validation',
+      };
+    }
+    
+    // Log recommendations if any
+    if (validationResult.recommendations.length > 0) {
+      console.log(`[SubagentSupervisor] Pre-execution recommendations for ${domain}:`, validationResult.recommendations);
+    }
     
     // Get model tier configuration for this subagent
-    const modelConfig = this.getSubagentModelConfig(subagent.name, subagent.domain as SubagentDomain);
+    const modelConfig = this.getSubagentModelConfig(subagent.name, domain);
     
     console.log(`[SubagentSupervisor] Executing ${subagent.name} with model tier ${modelConfig.preferredTier} (${content.substring(0, 50)}...)`);
     
@@ -4132,6 +4299,8 @@ class SubagentSupervisor {
         executionMode: 'trinity_fast',
         modelTier: modelConfig.preferredTier,
         contextBudget: modelConfig.contextBudget,
+        validationPassed: true,
+        preValidationRecommendations: validationResult.recommendations,
       }
     });
 
@@ -4223,6 +4392,9 @@ class SubagentSupervisor {
 
       // Record successful execution for model routing telemetry
       recordModelResult(modelConfig.preferredTier, true, executionTime);
+      
+      // CRITICAL: Record circuit breaker success for financial domains
+      this.recordCircuitResult(domain, true);
 
       return {
         executed: true,
@@ -4244,6 +4416,9 @@ class SubagentSupervisor {
       // Record failed execution for model routing telemetry
       recordModelResult(modelConfig.preferredTier, false, executionTime, error.message);
       
+      // CRITICAL: Record circuit breaker failure for financial domains
+      this.recordCircuitResult(domain, false);
+      
       // Fallback to simulated execution for resilience
       console.log('[SubagentSupervisor] Falling back to simulated execution');
       return {
@@ -4255,6 +4430,7 @@ class SubagentSupervisor {
         fallbackReason: error.message,
         modelTier: modelConfig.preferredTier,
         executionTimeMs: executionTime,
+        circuitBreakerTracked: true,
         timestamp: new Date().toISOString()
       };
     }

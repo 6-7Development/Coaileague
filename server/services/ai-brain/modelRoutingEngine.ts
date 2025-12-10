@@ -81,8 +81,14 @@ export interface SubagentModelConfig {
 }
 
 // Domain complexity scoring rules
+// CRITICAL: Payroll, Invoicing, Scheduling are REVENUE-CRITICAL operations
+// They use BRAIN tier (Gemini 3 Pro) for maximum accuracy and reliability
 const DOMAIN_COMPLEXITY: Record<string, 'low' | 'medium' | 'high' | 'critical'> = {
-  // Critical - requires Gemini 3 Pro
+  // Critical - requires Gemini 3 Pro (BRAIN tier)
+  // These are REVENUE-GENERATING operations - highest priority
+  'payroll': 'critical',           // Financial accuracy is paramount
+  'invoicing': 'critical',         // Client billing must be precise
+  'scheduling': 'critical',        // Core workforce optimization
   'orchestration': 'critical',
   'diagnostics': 'critical',
   'code-analysis': 'critical',
@@ -91,18 +97,19 @@ const DOMAIN_COMPLEXITY: Record<string, 'low' | 'medium' | 'high' | 'critical'> 
   'deep-think': 'critical',
   'vibe-coding': 'critical',
   'generate-ui': 'critical',
+  'financial-analysis': 'critical', // Upgraded from high
   
   // High - prefers Pro but can use Flash
   'compliance': 'high',
-  'financial-analysis': 'high',
   'strategic-planning': 'high',
   'data-migration': 'high',
   'fact-check': 'high',
   'context-memory': 'high',
+  'expense': 'high',               // Expense categorization
+  'analytics': 'high',             // Business intelligence
   
   // Medium - Flash models work well
   'conversation': 'medium',
-  'scheduling': 'medium',
   'reporting': 'medium',
   'onboarding': 'medium',
   'support': 'medium',
