@@ -506,3 +506,166 @@ onboardingRouter.get('/ai/automation-gates', ensureOnboardingEnabled, requireWor
     res.status(500).json({ error: error.message });
   }
 });
+
+/**
+ * GET /api/onboarding/setup-guide
+ * Returns compact, grouped setup guide data for the floating panel
+ * Includes Trinity AI tips and RBAC-filtered tasks
+ */
+onboardingRouter.get('/setup-guide', ensureOnboardingEnabled, requireWorkspace, async (req: any, res) => {
+  try {
+    const workspaceId = req.workspaceId;
+    const userId = req.session?.userId;
+    const userRole = req.session?.platformRole || req.session?.workspaceRole || 'employee';
+    
+    const progress = await onboardingPipelineService.getProgress(workspaceId);
+    
+    const roleHierarchy: Record<string, number> = {
+      root_admin: 100, deputy_admin: 90, sysop: 80, support: 70, auditor: 60,
+      billing_admin: 55, business_owner: 50, org_admin: 45, manager: 40,
+      supervisor: 30, team_lead: 25, employee: 10, contractor: 5, guest: 1
+    };
+    const userRoleLevel = roleHierarchy[userRole] || 10;
+    
+    const normalizeRule = (rule: string) => rule.replace(/\s+/g, '');
+    
+    const getTaskInfo = (validationRule: string, href: string, requiredRoleLevel: number) => {
+      const normalizedRule = normalizeRule(validationRule);
+      const task = progress.tasks?.find(t => 
+        t.validationRule && normalizeRule(t.validationRule) === normalizedRule
+      );
+      if (!task) return null;
+      return {
+        id: task.id,
+        title: task.title,
+        isCompleted: task.status === 'completed',
+        href,
+        points: task.points || 10,
+        requiredRoleLevel,
+      };
+    };
+    
+    const sectionDefs = [
+      {
+        id: 'organization',
+        title: 'Set up Organization',
+        icon: 'organization' as const,
+        requiredRoleLevel: 40,
+        trinityTip: 'Complete your company profile to unlock personalized AI recommendations.',
+        taskRules: [
+          { rule: 'company_profile_complete', href: '/settings', roleLevel: 40 },
+        ]
+      },
+      {
+        id: 'billing',
+        title: 'Set up Billing',
+        icon: 'billing' as const,
+        requiredRoleLevel: 50,
+        trinityTip: 'Adding a payment method unlocks your 10% new customer discount.',
+        taskRules: [
+          { rule: 'billing_configured', href: '/billing', roleLevel: 50 },
+        ]
+      },
+      {
+        id: 'team',
+        title: 'Build Your Team',
+        icon: 'team' as const,
+        requiredRoleLevel: 30,
+        trinityTip: 'Invite your first team member to unlock collaborative features.',
+        taskRules: [
+          { rule: 'employee_count >= 1', href: '/employees', roleLevel: 30 },
+          { rule: 'team_member_invited', href: '/employees', roleLevel: 30 },
+        ]
+      },
+      {
+        id: 'scheduling',
+        title: 'Configure Scheduling',
+        icon: 'scheduling' as const,
+        requiredRoleLevel: 25,
+        trinityTip: 'Set up your first schedule to see AI-powered shift optimization.',
+        taskRules: [
+          { rule: 'shift_count >= 1', href: '/schedule', roleLevel: 25 },
+          { rule: 'ai_scheduler_used', href: '/schedule', roleLevel: 25 },
+        ]
+      },
+    ];
+    
+    const sections = sectionDefs.map(section => ({
+      ...section,
+      tasks: section.taskRules
+        .map(tr => getTaskInfo(tr.rule, tr.href, tr.roleLevel))
+        .filter((t): t is NonNullable<typeof t> => t !== null),
+    })).filter(s => s.tasks.length > 0);
+    
+    const filteredSections = sections
+      .filter(section => userRoleLevel >= section.requiredRoleLevel)
+      .map(section => ({
+        ...section,
+        tasks: section.tasks.filter(task => userRoleLevel >= (task.requiredRoleLevel || 0))
+      }))
+      .filter(section => section.tasks.length > 0);
+    
+    const allTasks = filteredSections.flatMap(s => s.tasks);
+    const totalTasks = allTasks.length;
+    const completedTasks = allTasks.filter(t => t.isCompleted).length;
+    const completionPercent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+    
+    const greetings = [
+      `Welcome! Let's get your workspace set up.`,
+      `You're ${completionPercent}% complete - keep going!`,
+      `A few more steps to unlock full platform access.`,
+      `Great progress! Trinity is ready to help.`,
+    ];
+    const trinityGreeting = completionPercent >= 100 
+      ? `All set! You've unlocked the full CoAIleague experience.`
+      : greetings[Math.min(Math.floor(completionPercent / 25), greetings.length - 1)];
+    
+    res.json({
+      sections: filteredSections,
+      totalTasks,
+      completedTasks,
+      completionPercent,
+      trinityGreeting,
+    });
+  } catch (error: any) {
+    console.error('[Onboarding] Setup guide error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/onboarding/complete-task/:taskId
+ * Quick task completion for setup guide panel
+ */
+onboardingRouter.post('/complete-task/:taskId', ensureOnboardingEnabled, requireWorkspace, async (req: any, res) => {
+  try {
+    const { taskId } = req.params;
+    const userId = req.session?.userId;
+    
+    const taskMapping: Record<string, string> = {
+      'company_profile': 'step1CompanyInfo',
+      'enable_billing': 'step2BillingInfo',
+      'set_roles': 'step3RolesPermissions',
+      'invite_employee': 'step4InviteEmployees',
+      'add_client': 'step5AddCustomers',
+      'connect_integration': 'step7SetupIntegrations',
+    };
+    
+    const mappedTaskId = taskMapping[taskId] || taskId;
+    
+    const progress = await onboardingPipelineService.completeTask(
+      req.workspaceId,
+      mappedTaskId,
+      userId
+    );
+    
+    res.json({
+      success: true,
+      message: 'Task completed',
+      data: progress,
+    });
+  } catch (error: any) {
+    console.error('[Onboarding] Complete task error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
