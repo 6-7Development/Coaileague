@@ -100,6 +100,12 @@ export function SetupGuidePanel({
   const [isOpen, setIsOpen] = useState(defaultExpanded);
   const [expandedSections, setExpandedSections] = useState<string[]>([]);
   const [completingTaskId, setCompletingTaskId] = useState<string | null>(null);
+  const [isDismissed, setIsDismissed] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('setup-guide-dismissed') === 'true';
+    }
+    return false;
+  });
   const { user } = useAuth();
   const workspaceId = (user as any)?.activeWorkspaceId || (user as any)?.workspaceId;
   const { context: trinityContext } = useTrinityContext(workspaceId);
@@ -134,23 +140,62 @@ export function SetupGuidePanel({
     },
   });
 
+  const handleDismissComplete = () => {
+    localStorage.setItem('setup-guide-dismissed', 'true');
+    setIsDismissed(true);
+  };
+
   if (isLoading && !guideData) {
     return null;
   }
 
-  if (!guideData || guideData.completionPercent >= 100) {
+  if (!guideData) {
     return null;
   }
 
+  if (isDismissed) {
+    return null;
+  }
+
+  const isComplete = guideData.completionPercent >= 100;
   const incompleteSections = guideData.sections.filter(
     (s) => s.tasks.some((t) => !t.isCompleted)
   );
 
-  if (incompleteSections.length === 0) {
+  if (!isComplete && incompleteSections.length === 0) {
     return null;
   }
 
-  const panelContent = (
+  const completedPanelContent = (
+    <div className="flex flex-col h-full">
+      <div className="flex items-center justify-between px-4 py-3 border-b shrink-0">
+        <span className="text-sm font-semibold">Setup complete</span>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7"
+          onClick={handleDismissComplete}
+          data-testid="button-dismiss-complete"
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+      <div className="p-6 text-center">
+        <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center">
+          <CheckCircle2 className="h-8 w-8 text-primary" />
+        </div>
+        <h3 className="text-lg font-semibold mb-2">You're all set!</h3>
+        <p className="text-sm text-muted-foreground mb-4">
+          Your workspace is fully configured. Trinity AI is ready to help you manage your workforce.
+        </p>
+        <Button onClick={handleDismissComplete} className="w-full" data-testid="button-got-it">
+          Got it
+        </Button>
+      </div>
+    </div>
+  );
+
+  const panelContent = isComplete ? completedPanelContent : (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between px-4 py-3 border-b shrink-0">
         <span className="text-sm font-semibold">Setup guide</span>

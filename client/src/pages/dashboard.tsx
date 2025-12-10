@@ -36,7 +36,6 @@ import { ResponsiveLoading } from "@/components/loading-indicators";
 import { MetricTile } from "@/components/metric-tile";
 import { CreditBalanceCard } from "@/components/credit-balance";
 import { PendingApprovalsBanner } from "@/components/pending-approvals-banner";
-import { MascotOnboardingPanel } from "@/components/mascot-onboarding-panel";
 
 interface Notification {
   id: string;
@@ -513,11 +512,6 @@ export default function Dashboard() {
             </CardHeader>
           </Card>
 
-          {/* Organization Setup Progress - Mascot-led onboarding */}
-          <section className="mb-4">
-            <MascotOnboardingPanel variant="minimal" showReward={false} />
-          </section>
-
           {/* Support & Help Desk */}
           <section className="rounded-2xl bg-white/95 backdrop-blur-sm border-2 border-gray-200 shadow-md p-4 mb-4">
             <div className="text-xs tracking-wide text-blue-600 font-semibold mb-3 uppercase">
@@ -621,11 +615,6 @@ export default function Dashboard() {
         {/* Pending Shift Approvals Banner */}
         <ResponsiveSection>
           <PendingApprovalsBanner />
-        </ResponsiveSection>
-
-        {/* Organization Onboarding Checklist - Mascot-led setup */}
-        <ResponsiveSection>
-          <MascotOnboardingPanel variant="card" showReward={true} />
         </ResponsiveSection>
 
         {/* Workspace Health Status - Simple visual indicator */}
