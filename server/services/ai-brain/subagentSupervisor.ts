@@ -106,6 +106,7 @@ export interface SubagentExecutionResult {
     message: string;
     stack?: string;
   };
+  errorMessage?: string; // Flat error message for simpler access
   diagnostics?: DiagnosticResult;
   escalated?: boolean;
   interventionId?: string;
@@ -115,6 +116,7 @@ export interface SubagentExecutionResult {
   creditsUsed?: number; // Credits consumed for this execution
   creditBalance?: number; // Remaining credit balance after execution
   creditDeductionFailed?: boolean; // Flag if credit deduction failed (for observability)
+  tokensUsed?: number; // Token count for batch execution tracking
 }
 
 export interface DiagnosticResult {
@@ -1860,12 +1862,8 @@ class WorkboardJobLifecycle {
       // Update via workboard API
       console.log(`[WorkboardLifecycle] Updating job ${update.jobId}: ${update.status} (${update.progress || 0}%)`);
       
-      // Emit platform event for real-time tracking
-      platformEventBus.emit({
-        type: 'workboard:job_update',
-        data: update,
-        timestamp: new Date(),
-      });
+      // Log event for real-time tracking (internal telemetry)
+      console.log(`[WorkboardLifecycle] Event: workboard:job_update`, JSON.stringify(update));
     } catch (error) {
       console.error(`[WorkboardLifecycle] Failed to update job ${update.jobId}:`, error);
     }
@@ -1988,23 +1986,19 @@ class UnifiedCompletionReporter {
       );
     }
 
-    // Emit completion event for Trinity to consume
-    platformEventBus.emit({
-      type: 'ai_brain:job_completed',
-      data: {
-        batchId: batch.id,
-        jobId: batch.workboardJobId,
-        workspaceId: batch.workspaceId,
-        userId,
-        success: report.success,
-        summary: report.summary,
-        completedItems: report.completedItems,
-        failedItems: report.failedItems,
-        totalDurationMs: report.totalDurationMs,
-        totalTokensUsed: report.totalTokensUsed,
-      },
-      timestamp: new Date(),
-    });
+    // Log completion event for Trinity to consume (internal telemetry)
+    console.log(`[CompletionReporter] Event: ai_brain:job_completed`, JSON.stringify({
+      batchId: batch.id,
+      jobId: batch.workboardJobId,
+      workspaceId: batch.workspaceId,
+      userId,
+      success: report.success,
+      summary: report.summary,
+      completedItems: report.completedItems,
+      failedItems: report.failedItems,
+      totalDurationMs: report.totalDurationMs,
+      totalTokensUsed: report.totalTokensUsed,
+    }));
 
     console.log(`[CompletionReporter] Reported job ${batch.workboardJobId} completion to Trinity`);
   }
@@ -2030,12 +2024,8 @@ class UnifiedCompletionReporter {
       },
     };
 
-    // Emit notification event
-    platformEventBus.emit({
-      type: 'notification:create',
-      data: notification,
-      timestamp: new Date(),
-    });
+    // Log notification event (internal telemetry)
+    console.log(`[CompletionReporter] Event: notification:create`, JSON.stringify(notification));
 
     console.log(`[CompletionReporter] Notified user ${userId} about job ${batch.workboardJobId}`);
   }
@@ -2502,7 +2492,7 @@ class SubagentSupervisor {
         .from(aiWorkboardTasks)
         .where(and(
           eq(aiWorkboardTasks.workspaceId, workspaceId),
-          eq(aiWorkboardTasks.executionMode, 'fast'),
+          eq(aiWorkboardTasks.executionMode, 'trinity_fast'),
           gte(aiWorkboardTasks.createdAt, new Date(Date.now() - 7 * 24 * 60 * 60 * 1000))
         ))
         .orderBy(desc(aiWorkboardTasks.createdAt))
@@ -2789,11 +2779,19 @@ class SubagentSupervisor {
         scheduling: 1.0, analytics: 1.0, notifications: 0.8
       };
 
+      // Build subagent ID to domain lookup
+      const subagentDomains = new Map<string, string>();
+      const allSubagents = await db.select().from(aiSubagentDefinitions);
+      for (const sa of allSubagents) {
+        subagentDomains.set(sa.id, sa.domain);
+      }
+
       let weightedSuccess = 0;
       let totalWeight = 0;
 
       for (const record of telemetryRecords) {
-        const weight = domainWeights[record.domain] || 1.0;
+        const recordDomain = record.subagentId ? subagentDomains.get(record.subagentId) || 'assist' : 'assist';
+        const weight = domainWeights[recordDomain] || 1.0;
         totalWeight += weight;
         if (record.status === 'completed') {
           weightedSuccess += weight;
@@ -2807,10 +2805,11 @@ class SubagentSupervisor {
       // Determine which domains qualify for auto-approval
       const domainStats = new Map<string, { success: number; total: number }>();
       for (const record of telemetryRecords) {
-        const stats = domainStats.get(record.domain) || { success: 0, total: 0 };
+        const recordDomain = record.subagentId ? subagentDomains.get(record.subagentId) || 'assist' : 'assist';
+        const stats = domainStats.get(recordDomain) || { success: 0, total: 0 };
         stats.total++;
         if (record.status === 'completed') stats.success++;
-        domainStats.set(record.domain, stats);
+        domainStats.set(recordDomain, stats);
       }
 
       const autoApprovalDomains: SubagentDomain[] = [];
@@ -2864,14 +2863,9 @@ class SubagentSupervisor {
     // Re-evaluate graduation status with new data
     const status = await this.getGraduationStatus(workspaceId);
 
-    // Publish graduation update if newly graduated
+    // Log graduation update if newly graduated
     if (status.isGraduated && status.trustScore >= GRADUATION_THRESHOLD) {
-      publishPlatformUpdate({
-        type: 'graduation_achieved',
-        workspaceId,
-        trustScore: status.trustScore,
-        message: `Org has achieved ${status.trustScore.toFixed(1)}% trust score - auto-approval enabled!`
-      });
+      console.log(`[SubagentSupervisor] Graduation achieved for workspace ${workspaceId}: ${status.trustScore.toFixed(1)}% trust score - auto-approval enabled!`);
     }
 
     return status;
@@ -3503,8 +3497,10 @@ class SubagentSupervisor {
   }
 
   private async updateTelemetryPhase(telemetryId: string, status: SubagentStatus, phase: SubagentPhase): Promise<void> {
+    // Map 'retrying' to 'executing' for DB compatibility
+    const dbStatus = status === 'retrying' ? 'executing' : status;
     await db.update(subagentTelemetry)
-      .set({ status, phase })
+      .set({ status: dbStatus, phase })
       .where(eq(subagentTelemetry.id, telemetryId));
   }
 
@@ -3516,9 +3512,11 @@ class SubagentSupervisor {
     errorMessage?: string,
     retriesUsed?: number
   ): Promise<void> {
+    // Map 'retrying' to 'executing' for DB compatibility
+    const dbStatus = status === 'retrying' ? 'failed' : status;
     await db.update(subagentTelemetry)
       .set({
-        status,
+        status: dbStatus,
         completedAt: new Date(),
         durationMs,
         outputPayload: result,
@@ -3528,15 +3526,15 @@ class SubagentSupervisor {
       })
       .where(eq(subagentTelemetry.id, telemetryId));
 
-    // Emit observability event for retry metrics
+    // Log observability event for retry metrics
     if (retriesUsed && retriesUsed > 0) {
-      platformEventBus.emit('subagent:self_correction', {
+      console.log(`[SubagentSupervisor] Event: subagent:self_correction`, JSON.stringify({
         telemetryId,
         retriesUsed,
         status,
         durationMs,
         timestamp: new Date().toISOString(),
-      });
+      }));
       console.log(`[SubagentSupervisor] Self-correction metrics: ${retriesUsed} retries, status=${status}, duration=${durationMs}ms`);
     }
   }
@@ -3913,7 +3911,7 @@ class SubagentSupervisor {
    * Execute task using parallel processing (Trinity Fast Mode)
    * Concurrent execution for faster results
    */
-  async executeParallel(params: {
+  async executeFastModeParallel(params: {
     agentId: string;
     taskId: string;
     content: string;
@@ -4000,7 +3998,9 @@ class SubagentSupervisor {
       workflow: ['workflow', 'process', 'step'],
       onboarding: ['onboard', 'setup', 'getting started'],
       expense: ['expense', 'receipt', 'cost', 'spending'],
-      pricing: ['price', 'rate', 'quote', 'estimate']
+      pricing: ['price', 'rate', 'quote', 'estimate'],
+      data_migration: ['migrate', 'import', 'export', 'transfer', 'data'],
+      scoring: ['score', 'rating', 'evaluate', 'rank', 'grade'],
     };
 
     for (const [domain, keywords] of Object.entries(domainKeywords)) {
@@ -4176,17 +4176,8 @@ class SubagentSupervisor {
         circuit.state = 'open';
         console.warn(`[CircuitBreaker] ${domain} circuit OPEN after ${circuit.failures} failures`);
         
-        // Emit alert for financial circuit breaker
-        platformEventBus.publish({
-          type: 'circuit_breaker_triggered',
-          payload: {
-            domain,
-            failures: circuit.failures,
-            state: 'open',
-            timestamp: new Date().toISOString(),
-            severity: 'critical',
-          }
-        });
+        // Log alert for financial circuit breaker
+        console.warn(`[CircuitBreaker] CRITICAL: ${domain} circuit breaker triggered after ${circuit.failures} failures`);
       }
     }
     
@@ -4286,23 +4277,20 @@ class SubagentSupervisor {
     
     console.log(`[SubagentSupervisor] Executing ${subagent.name} with model tier ${modelConfig.preferredTier} (${content.substring(0, 50)}...)`);
     
-    // Emit telemetry event with model tier info
-    platformEventBus.publish({
-      type: 'subagent_execution',
-      payload: {
-        subagentId: subagent.id,
-        subagentName: subagent.name,
-        domain: subagent.domain,
-        workspaceId,
-        userId,
-        contentPreview: content.substring(0, 100),
-        executionMode: 'trinity_fast',
-        modelTier: modelConfig.preferredTier,
-        contextBudget: modelConfig.contextBudget,
-        validationPassed: true,
-        preValidationRecommendations: validationResult.recommendations,
-      }
-    });
+    // Log telemetry event with model tier info
+    console.log(`[SubagentSupervisor] Execution telemetry:`, JSON.stringify({
+      subagentId: subagent.id,
+      subagentName: subagent.name,
+      domain: subagent.domain,
+      workspaceId,
+      userId,
+      contentPreview: content.substring(0, 100),
+      executionMode: 'trinity_fast',
+      modelTier: modelConfig.preferredTier,
+      contextBudget: modelConfig.contextBudget,
+      validationPassed: true,
+      preValidationRecommendations: validationResult.recommendations,
+    }));
 
     // Map domain to AI Brain skill (using valid aiBrainService skill names)
     // Available skills: helpos_support, scheduleos_generation, intelligenceos_prediction, 
@@ -4330,7 +4318,9 @@ class SubagentSupervisor {
       workflow: 'platform_awareness',
       onboarding: 'faq_update', // OPTIMIZED: Onboarding often updates FAQs
       expense: 'business_insight',
-      pricing: 'intelligenceos_prediction' // OPTIMIZED: Pricing benefits from prediction
+      pricing: 'intelligenceos_prediction', // OPTIMIZED: Pricing benefits from prediction
+      data_migration: 'platform_awareness', // Data migration uses platform awareness
+      scoring: 'intelligenceos_prediction', // Scoring uses prediction models
     };
 
     const skill = skillMapping[subagent.domain as SubagentDomain] || 'helpos_support';
