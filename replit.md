@@ -42,7 +42,7 @@ The system features a multi-tenant architecture with RBAC security and isolation
 - **Notification System:** Configuration-driven notifications for platform updates, support alerts, and real-time user history.
 - **Support Command Console:** Force-push updates system for support staff.
 - **AI Brain Code Editor:** Staged code editing with approval workflow and HelpAI integration.
-- **AI Brain Master Orchestrator:** Central hub coordinating 93 actions across 16 categories, connecting Gemini AI to platform services.
+- **AI Brain Master Orchestrator:** Central hub coordinating 114 actions across 16 categories, connecting Gemini AI to platform services with architect-grade execution capabilities.
 - **SubagentSupervisor:** Manages 23 specialized domain subagents with diagnostic workflow, RBAC, and escalation policies. Uses consolidated configuration for tiered agent definitions.
 - **SubagentConfidenceMonitor:** Monitors subagent performance, maintains persistent confidence scores, and calculates org-level automation readiness.
 - **Trinity Fast Mode v2:** Premium parallel execution with three tiers offering faster SLA, credit governance, and ROI analytics.
@@ -77,6 +77,9 @@ The system features a multi-tenant architecture with RBAC security and isolation
 - **Advanced Credit Analytics Dashboard:** Executive-level analytics for business owners with credit summaries, usage breakdowns, trends, AI task analytics, ROI metrics, and transaction history.
 - **SeasonalSubagent:** Autonomous AI-powered holiday theming orchestrator. Monitors calendar for 7 holidays (Christmas, New Year, Valentine's, Easter, Independence Day, Halloween, Thanksgiving), generates creative themes using Gemini AI, applies CSS hotswaps without restart, auto-rollback after expiry, and hit detection for safe zones.
 - **ServiceOrchestrationWatchdog:** Platform service orchestration monitor detecting "rebel" (unmanaged) and "orphan" (stopped heartbeating) services. Tracks 31+ expected services, publishes alerts via event bus, proposes hotpatch/hotswap remediation, and uses AI analysis for recommendations.
+- **TrinityExecutionFabric:** Architect-grade execution engine with 4-layer pipeline (Plan→Prepare→Execute→Validate), reasoning chain support, test runner integration, file operations, and commit validation for autonomous platform operations.
+- **PlatformIntentRouter:** Intelligent routing system directing all platform operations through AI Brain orchestration. Features priority/risk assessment, handler selection (execution_fabric/subagent/direct/queued), telemetry collection, and retry logic.
+- **TrinitySentinel:** Continuous self-healing monitoring service with health scoring, automated anomaly detection, alert management, and remediation workflows for model routing, subagents, credit usage, and execution pipelines.
 - **SeasonalDecorator Component:** Frontend React component consuming seasonal theme API, injecting CSS variables, rendering snow/confetti/banner decorations with AnimatePresence, pointer-events-none for click-through, and forced dark mode during holidays.
 
 **System Design Choices:**

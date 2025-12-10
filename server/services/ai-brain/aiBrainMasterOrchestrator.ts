@@ -395,6 +395,7 @@ class AIBrainMasterOrchestrator {
     await this.registerElevatedSessionGuardianActions();
     this.registerMemoryAndGovernanceActions();
     await this.registerGemini3ToolActions();
+    await this.registerArchitectGradeActions();
     
     // Subscribe to platform events
     this.subscribeToEvents();
@@ -5566,6 +5567,375 @@ Provide your analysis in the following format:
     });
 
     console.log('[AI Brain Master Orchestrator] Registered 5 Gemini 3 reasoning tool actions');
+  }
+
+  // ============================================================================
+  // ARCHITECT-GRADE EXECUTION & MONITORING ACTIONS
+  // ============================================================================
+
+  private async registerArchitectGradeActions(): Promise<void> {
+    // Import execution fabric and sentinel
+    const { trinityExecutionFabric } = await import('./trinityExecutionFabric');
+    const { trinitySentinel } = await import('./trinitySentinel');
+    const { platformIntentRouter } = await import('./platformIntentRouter');
+
+    // Execution Fabric Actions
+    helpaiOrchestrator.registerAction({
+      actionId: 'execution.plan_workflow',
+      name: 'Plan Workflow',
+      category: 'automation',
+      description: 'Use AI to create an execution plan for a complex task',
+      requiredRoles: ['admin', 'super_admin'],
+      handler: async (request: ActionRequest) => {
+        const startTime = Date.now();
+        const payload = request.payload || {};
+        const task = payload.task || payload.query;
+        
+        if (!task) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: 'Missing required parameter: task or query',
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+        
+        try {
+          const result = await trinityExecutionFabric.executeWithPipeline(
+            task,
+            request.workspaceId,
+            request.userId
+          );
+          return {
+            success: true,
+            actionId: request.actionId,
+            message: 'Workflow planned and executed',
+            data: result,
+            executionTimeMs: Date.now() - startTime
+          };
+        } catch (error: any) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: `Workflow planning failed: ${error.message}`,
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+      }
+    });
+
+    helpaiOrchestrator.registerAction({
+      actionId: 'execution.run_tests',
+      name: 'Run Platform Tests',
+      category: 'health',
+      description: 'Execute platform health and integration tests',
+      requiredRoles: ['admin', 'super_admin'],
+      handler: async (request: ActionRequest) => {
+        const startTime = Date.now();
+        const payload = request.payload || {};
+        
+        try {
+          const testResults = await trinityExecutionFabric.runTests(
+            payload.category || 'all',
+            payload.testIds
+          );
+          return {
+            success: true,
+            actionId: request.actionId,
+            message: `Tests completed: ${testResults.passed}/${testResults.total} passed`,
+            data: testResults,
+            executionTimeMs: Date.now() - startTime
+          };
+        } catch (error: any) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: `Test execution failed: ${error.message}`,
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+      }
+    });
+
+    helpaiOrchestrator.registerAction({
+      actionId: 'execution.file_operation',
+      name: 'File Operation',
+      category: 'system',
+      description: 'Perform secure file operations (read/write/edit/search)',
+      requiredRoles: ['admin', 'super_admin'],
+      handler: async (request: ActionRequest) => {
+        const startTime = Date.now();
+        const payload = request.payload || {};
+        const { operation, path, content, oldContent, newContent, pattern } = payload;
+        
+        if (!operation) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: 'Missing required parameter: operation (read/write/edit/search)',
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+        
+        if (!path && operation !== 'search') {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: 'Missing required parameter: path',
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+        
+        try {
+          let result: any;
+          switch (operation) {
+            case 'read':
+              result = await trinityExecutionFabric.readFile(path);
+              break;
+            case 'write':
+              result = await trinityExecutionFabric.writeFile(path, content || '');
+              break;
+            case 'edit':
+              result = await trinityExecutionFabric.editFile(path, oldContent || '', newContent || '');
+              break;
+            case 'search':
+              result = await trinityExecutionFabric.searchFiles(pattern || '', path);
+              break;
+            default:
+              throw new Error(`Unknown file operation: ${operation}`);
+          }
+          return {
+            success: true,
+            actionId: request.actionId,
+            message: `File operation '${operation}' completed`,
+            data: result,
+            executionTimeMs: Date.now() - startTime
+          };
+        } catch (error: any) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: `File operation failed: ${error.message}`,
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+      }
+    });
+
+    // Platform Intent Routing Actions
+    helpaiOrchestrator.registerAction({
+      actionId: 'routing.submit_intent',
+      name: 'Submit Platform Intent',
+      category: 'automation',
+      description: 'Submit an intent to be routed through AI Brain orchestration',
+      requiredRoles: ['employee', 'manager', 'admin', 'super_admin'],
+      handler: async (request: ActionRequest) => {
+        const startTime = Date.now();
+        const payload = request.payload || {};
+        const intent = payload.intent || payload.query;
+        
+        if (!intent) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: 'Missing required parameter: intent or query',
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+        
+        try {
+          const result = await platformIntentRouter.routeIntent({
+            intent,
+            source: payload.source || 'api',
+            userId: request.userId,
+            workspaceId: request.workspaceId,
+            category: payload.category,
+            priority: payload.priority || 'normal',
+            metadata: payload.metadata
+          });
+          return {
+            success: true,
+            actionId: request.actionId,
+            message: 'Intent routed successfully',
+            data: result,
+            executionTimeMs: Date.now() - startTime
+          };
+        } catch (error: any) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: `Intent routing failed: ${error.message}`,
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+      }
+    });
+
+    helpaiOrchestrator.registerAction({
+      actionId: 'routing.get_telemetry',
+      name: 'Get Routing Telemetry',
+      category: 'analytics',
+      description: 'Get telemetry data from the platform intent router',
+      requiredRoles: ['admin', 'super_admin'],
+      handler: async (request: ActionRequest) => {
+        const startTime = Date.now();
+        try {
+          const telemetry = platformIntentRouter.getTelemetryBuffer();
+          const metrics = platformIntentRouter.getMetrics();
+          return {
+            success: true,
+            actionId: request.actionId,
+            message: 'Telemetry retrieved',
+            data: { telemetry, metrics },
+            executionTimeMs: Date.now() - startTime
+          };
+        } catch (error: any) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: `Telemetry retrieval failed: ${error.message}`,
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+      }
+    });
+
+    // Sentinel Monitoring Actions
+    helpaiOrchestrator.registerAction({
+      actionId: 'sentinel.get_status',
+      name: 'Get Sentinel Status',
+      category: 'health',
+      description: 'Get the current status of the Trinity Sentinel monitoring system',
+      requiredRoles: ['admin', 'super_admin'],
+      handler: async (request: ActionRequest) => {
+        const startTime = Date.now();
+        try {
+          const status = trinitySentinel.getStatus();
+          return {
+            success: true,
+            actionId: request.actionId,
+            message: 'Sentinel status retrieved',
+            data: status,
+            executionTimeMs: Date.now() - startTime
+          };
+        } catch (error: any) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: `Status retrieval failed: ${error.message}`,
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+      }
+    });
+
+    helpaiOrchestrator.registerAction({
+      actionId: 'sentinel.get_alerts',
+      name: 'Get Sentinel Alerts',
+      category: 'health',
+      description: 'Get active alerts from the Trinity Sentinel',
+      requiredRoles: ['admin', 'super_admin'],
+      handler: async (request: ActionRequest) => {
+        const startTime = Date.now();
+        try {
+          const alerts = trinitySentinel.getActiveAlerts();
+          return {
+            success: true,
+            actionId: request.actionId,
+            message: `Retrieved ${alerts.length} active alerts`,
+            data: { alerts, count: alerts.length },
+            executionTimeMs: Date.now() - startTime
+          };
+        } catch (error: any) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: `Alert retrieval failed: ${error.message}`,
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+      }
+    });
+
+    helpaiOrchestrator.registerAction({
+      actionId: 'sentinel.acknowledge_alert',
+      name: 'Acknowledge Alert',
+      category: 'health',
+      description: 'Acknowledge and optionally resolve a Sentinel alert',
+      requiredRoles: ['admin', 'super_admin'],
+      handler: async (request: ActionRequest) => {
+        const startTime = Date.now();
+        const payload = request.payload || {};
+        const { alertId, resolution } = payload;
+        
+        if (!alertId) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: 'Missing required parameter: alertId',
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+        
+        try {
+          const result = trinitySentinel.acknowledgeAlert(alertId, request.userId, resolution);
+          return {
+            success: result,
+            actionId: request.actionId,
+            message: result ? 'Alert acknowledged' : 'Alert not found',
+            executionTimeMs: Date.now() - startTime
+          };
+        } catch (error: any) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: `Alert acknowledgment failed: ${error.message}`,
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+      }
+    });
+
+    helpaiOrchestrator.registerAction({
+      actionId: 'sentinel.trigger_remediation',
+      name: 'Trigger Remediation',
+      category: 'automation',
+      description: 'Trigger self-healing remediation for a specific alert or issue',
+      requiredRoles: ['admin', 'super_admin'],
+      handler: async (request: ActionRequest) => {
+        const startTime = Date.now();
+        const payload = request.payload || {};
+        const { alertId, remediationType } = payload;
+        
+        if (!alertId) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: 'Missing required parameter: alertId',
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+        
+        try {
+          await trinitySentinel.triggerRemediation(alertId, remediationType);
+          return {
+            success: true,
+            actionId: request.actionId,
+            message: 'Remediation triggered',
+            executionTimeMs: Date.now() - startTime
+          };
+        } catch (error: any) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: `Remediation failed: ${error.message}`,
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+      }
+    });
+
+    console.log('[AI Brain Master Orchestrator] Registered 10 architect-grade execution actions');
   }
 }
 
