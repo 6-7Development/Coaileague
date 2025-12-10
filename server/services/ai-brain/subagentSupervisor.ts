@@ -36,6 +36,8 @@ import { aiBrainAuthorizationService, AI_BRAIN_AUTHORITY_ROLES } from './aiBrain
 import { aiBrainService } from './aiBrainService';
 import { creditManager, CREDIT_COSTS } from '../billing/creditManager';
 import { subagentConfidenceMonitor } from './subagentConfidenceMonitor';
+import { modelRoutingEngine, getSubagentModelConfigs, recordModelResult, SubagentModelConfig } from './modelRoutingEngine';
+import { GeminiModelTier } from './providers/geminiClient';
 import crypto from 'crypto';
 
 // Domain-to-credit-feature mapping for cost estimation
@@ -4047,7 +4049,61 @@ class SubagentSupervisor {
   }
 
   /**
-   * Execute subagent action with context
+   * Get model tier configuration for a subagent
+   */
+  private getSubagentModelConfig(subagentName: string, domain: SubagentDomain): SubagentModelConfig {
+    const configs = getSubagentModelConfigs();
+    
+    // Try to find exact match by subagent ID (domain-based naming)
+    const domainConfig = configs.find(c => c.subagentId === domain);
+    if (domainConfig) {
+      return domainConfig;
+    }
+
+    // Fallback based on domain complexity
+    const domainTierMapping: Record<SubagentDomain, GeminiModelTier> = {
+      orchestration: 'ORCHESTRATOR',
+      security: 'DIAGNOSTICS',
+      health: 'DIAGNOSTICS',
+      recovery: 'DIAGNOSTICS',
+      testing: 'DIAGNOSTICS',
+      deployment: 'PRO_FALLBACK',
+      compliance: 'COMPLIANCE',
+      payroll: 'SUPERVISOR',
+      invoicing: 'SUPERVISOR',
+      scheduling: 'SUPERVISOR',
+      analytics: 'SUPERVISOR',
+      notifications: 'NOTIFICATION',
+      gamification: 'ONBOARDING',
+      communication: 'HELLOS',
+      assist: 'HELLOS',
+      onboarding: 'ONBOARDING',
+      automation: 'SUPERVISOR',
+      lifecycle: 'SUPERVISOR',
+      filesystem: 'SIMPLE',
+      workflow: 'SUPERVISOR',
+      expense: 'SUPERVISOR',
+      pricing: 'PRO_FALLBACK',
+      data_migration: 'PRO_FALLBACK',
+      escalation: 'SUPERVISOR',
+      scoring: 'SIMPLE',
+    };
+
+    const preferredTier = domainTierMapping[domain] || 'CONVERSATIONAL';
+    
+    return {
+      subagentId: domain,
+      preferredTier,
+      maxTier: preferredTier,
+      fallbackPolicy: 'cascade',
+      contextBudget: preferredTier === 'ORCHESTRATOR' || preferredTier === 'DIAGNOSTICS' ? 500000 :
+                     preferredTier === 'PRO_FALLBACK' || preferredTier === 'COMPLIANCE' ? 200000 :
+                     preferredTier === 'SIMPLE' || preferredTier === 'NOTIFICATION' ? 16000 : 50000,
+    };
+  }
+
+  /**
+   * Execute subagent action with context and model tier routing
    */
   private async executeSubagentAction(
     subagent: AiSubagentDefinition,
@@ -4056,9 +4112,14 @@ class SubagentSupervisor {
     userId: string,
     context?: Record<string, any>
   ): Promise<any> {
-    console.log('[SubagentSupervisor] Executing AI Brain action:', subagent.name, 'for', content.substring(0, 50));
+    const startTime = Date.now();
     
-    // Emit telemetry event
+    // Get model tier configuration for this subagent
+    const modelConfig = this.getSubagentModelConfig(subagent.name, subagent.domain as SubagentDomain);
+    
+    console.log(`[SubagentSupervisor] Executing ${subagent.name} with model tier ${modelConfig.preferredTier} (${content.substring(0, 50)}...)`);
+    
+    // Emit telemetry event with model tier info
     platformEventBus.publish({
       type: 'subagent_execution',
       payload: {
@@ -4068,7 +4129,9 @@ class SubagentSupervisor {
         workspaceId,
         userId,
         contentPreview: content.substring(0, 100),
-        executionMode: 'trinity_fast'
+        executionMode: 'trinity_fast',
+        modelTier: modelConfig.preferredTier,
+        contextBudget: modelConfig.contextBudget,
       }
     });
 
@@ -4155,7 +4218,11 @@ class SubagentSupervisor {
         priority: 'high'
       });
 
-      console.log('[SubagentSupervisor] AI Brain execution completed:', result.status);
+      const executionTime = Date.now() - startTime;
+      console.log(`[SubagentSupervisor] AI Brain execution completed: ${result.status} (${executionTime}ms, tier: ${modelConfig.preferredTier})`);
+
+      // Record successful execution for model routing telemetry
+      recordModelResult(modelConfig.preferredTier, true, executionTime);
 
       return {
         executed: true,
@@ -4165,10 +4232,17 @@ class SubagentSupervisor {
         status: result.status,
         output: result.output,
         tokensUsed: (result as any).tokensUsed || 0,
+        modelTier: modelConfig.preferredTier,
+        contextBudget: modelConfig.contextBudget,
+        executionTimeMs: executionTime,
         timestamp: new Date().toISOString()
       };
     } catch (error: any) {
-      console.error('[SubagentSupervisor] AI Brain execution failed:', error.message);
+      const executionTime = Date.now() - startTime;
+      console.error(`[SubagentSupervisor] AI Brain execution failed (${executionTime}ms, tier: ${modelConfig.preferredTier}):`, error.message);
+      
+      // Record failed execution for model routing telemetry
+      recordModelResult(modelConfig.preferredTier, false, executionTime, error.message);
       
       // Fallback to simulated execution for resilience
       console.log('[SubagentSupervisor] Falling back to simulated execution');
@@ -4179,6 +4253,8 @@ class SubagentSupervisor {
         status: 'simulated',
         output: { message: `${subagent.name} processed: ${content.substring(0, 100)}` },
         fallbackReason: error.message,
+        modelTier: modelConfig.preferredTier,
+        executionTimeMs: executionTime,
         timestamp: new Date().toISOString()
       };
     }
