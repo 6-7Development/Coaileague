@@ -1,11 +1,16 @@
 /**
  * Notification Service - Automated notification creation and delivery
  * Creates and sends notifications to users for various platform events
+ * 
+ * Enhanced with:
+ * - Trinity AI welcome messages for new users
+ * - Auto-cleanup: System messages limited to 3 max to avoid screen overload
+ * - Onboarding digest: Last 3 What's New + system updates summarized
  */
 
 import { db } from '../db';
-import { notifications, users } from '@shared/schema';
-import { eq, and } from 'drizzle-orm';
+import { notifications, users, platformUpdates } from '@shared/schema';
+import { eq, and, desc, isNull, inArray, sql } from 'drizzle-orm';
 
 interface CreateNotificationParams {
   workspaceId: string;
@@ -302,4 +307,217 @@ export async function sendPayrollProcessedNotification(
     relatedEntityId: userId,
     metadata: { period, amount },
   });
+}
+
+// ============================================================================
+// TRINITY WELCOME & ONBOARDING SYSTEM
+// ============================================================================
+
+/**
+ * Trinity welcome message templates - AI-generated feel without API cost
+ * Each message is crafted to feel personal and helpful
+ */
+const TRINITY_WELCOME_MESSAGES = [
+  {
+    greeting: "Welcome aboard!",
+    message: "I'm Trinity, your AI assistant here at CoAIleague. I've been looking forward to meeting you! Together, we'll make managing your workforce feel effortless. I can help with scheduling, approvals, analytics, and so much more. Just look for my mascot in the corner whenever you need guidance!",
+    tip: "Pro tip: Try clicking on me anytime to ask questions or get quick insights about your dashboard.",
+  },
+  {
+    greeting: "Hello, new friend!",
+    message: "I'm Trinity, your dedicated AI companion at CoAIleague. Think of me as your intelligent co-pilot for workforce management. I learn from your preferences and can automate repetitive tasks, catch scheduling conflicts, and even predict potential issues before they happen.",
+    tip: "Getting started: Head to your Dashboard to see an overview of your workspace, or explore the Schedule page to set up your first shifts.",
+  },
+  {
+    greeting: "Welcome to CoAIleague!",
+    message: "Hi there! I'm Trinity, the AI brain powering your workforce experience. My job is to make your job easier. From intelligent scheduling to real-time insights, I'm here to help you work smarter, not harder. The best teams use AI to amplify their capabilities - and that's exactly what we'll do together!",
+    tip: "Quick start: Check out the Onboarding Wizard in the sidebar to set up your team step-by-step.",
+  },
+];
+
+/**
+ * Get a random Trinity welcome message for variety
+ */
+function getTrinityWelcomeContent() {
+  const index = Math.floor(Math.random() * TRINITY_WELCOME_MESSAGES.length);
+  return TRINITY_WELCOME_MESSAGES[index];
+}
+
+/**
+ * Send personalized Trinity welcome notification to new users
+ * This creates a warm, AI-driven welcome experience
+ */
+export async function sendTrinityWelcomeNotification(
+  workspaceId: string,
+  userId: string,
+  userName?: string
+) {
+  const content = getTrinityWelcomeContent();
+  const personalGreeting = userName ? `${content.greeting} ${userName}!` : `${content.greeting}`;
+  
+  return createNotification({
+    workspaceId,
+    userId,
+    type: 'trinity_welcome',
+    title: personalGreeting,
+    message: content.message,
+    actionUrl: '/dashboard',
+    relatedEntityType: 'onboarding',
+    relatedEntityId: 'trinity_welcome',
+    metadata: { 
+      isTrinityMessage: true,
+      tip: content.tip,
+      userName,
+      welcomeType: 'new_user',
+    },
+  });
+}
+
+/**
+ * Get onboarding digest for new users
+ * Returns last 3 What's New items + last 3 system updates summarized
+ */
+export async function getOnboardingDigest(userId: string): Promise<{
+  trinityWelcome: {
+    greeting: string;
+    message: string;
+    tip: string;
+  };
+  recentWhatsNew: Array<{
+    id: string;
+    title: string;
+    description: string;
+    category: string;
+    createdAt: Date | null;
+  }>;
+  recentSystemUpdates: Array<{
+    id: string;
+    title: string;
+    description: string;
+    category: string;
+    createdAt: Date | null;
+  }>;
+  isFirstLogin: boolean;
+}> {
+  // Get Trinity welcome content
+  const trinityWelcome = getTrinityWelcomeContent();
+  
+  // Get last 3 What's New items (features, improvements)
+  // Using valid enum values: feature, improvement
+  const whatsNewCategories = ['feature', 'improvement'] as const;
+  const recentWhatsNew = await db
+    .select({
+      id: platformUpdates.id,
+      title: platformUpdates.title,
+      description: platformUpdates.description,
+      category: platformUpdates.category,
+      createdAt: platformUpdates.createdAt,
+    })
+    .from(platformUpdates)
+    .where(inArray(platformUpdates.category, [...whatsNewCategories]))
+    .orderBy(desc(platformUpdates.createdAt))
+    .limit(3);
+  
+  // Get last 3 system updates (security, bugfix, maintenance)
+  // Using valid enum values: security, bugfix, maintenance
+  const systemCategories = ['security', 'bugfix', 'maintenance'] as const;
+  const recentSystemUpdates = await db
+    .select({
+      id: platformUpdates.id,
+      title: platformUpdates.title,
+      description: platformUpdates.description,
+      category: platformUpdates.category,
+      createdAt: platformUpdates.createdAt,
+    })
+    .from(platformUpdates)
+    .where(inArray(platformUpdates.category, [...systemCategories]))
+    .orderBy(desc(platformUpdates.createdAt))
+    .limit(3);
+  
+  // Check if this is user's first login (no read notifications)
+  const existingNotifications = await db
+    .select({ id: notifications.id })
+    .from(notifications)
+    .where(eq(notifications.userId, userId))
+    .limit(1);
+  
+  const isFirstLogin = existingNotifications.length === 0;
+  
+  return {
+    trinityWelcome,
+    recentWhatsNew,
+    recentSystemUpdates,
+    isFirstLogin,
+  };
+}
+
+/**
+ * Auto-cleanup system notifications
+ * Limits visible system messages to 3 per user to avoid screen overload
+ * Marks excess as cleared (auto-dismissed)
+ */
+export async function autoCleanupSystemNotifications(userId: string, maxVisible: number = 3): Promise<number> {
+  try {
+    // Get all uncleared system-type notifications for user, ordered by newest first
+    const systemTypes = ['system_update', 'platform_update', 'maintenance', 'security_patch'];
+    
+    const allSystemNotifications = await db
+      .select({ id: notifications.id, createdAt: notifications.createdAt })
+      .from(notifications)
+      .where(
+        and(
+          eq(notifications.userId, userId),
+          isNull(notifications.clearedAt)
+        )
+      )
+      .orderBy(desc(notifications.createdAt));
+    
+    // If more than maxVisible, mark older ones as cleared
+    if (allSystemNotifications.length > maxVisible) {
+      const toClean = allSystemNotifications.slice(maxVisible);
+      const idsToClean = toClean.map(n => n.id);
+      
+      await db
+        .update(notifications)
+        .set({ clearedAt: new Date() })
+        .where(inArray(notifications.id, idsToClean));
+      
+      console.log(`[NotificationCleanup] Auto-cleared ${idsToClean.length} old notifications for user ${userId}`);
+      return idsToClean.length;
+    }
+    
+    return 0;
+  } catch (error) {
+    console.error('[NotificationCleanup] Error during auto-cleanup:', error);
+    return 0;
+  }
+}
+
+/**
+ * Clear old system notifications for all users (scheduled job)
+ * Keeps only last 3 system notifications per user
+ */
+export async function cleanupAllUsersSystemNotifications(maxVisiblePerUser: number = 3): Promise<number> {
+  try {
+    // Get distinct user IDs with uncleared notifications
+    const usersWithNotifications = await db
+      .selectDistinct({ userId: notifications.userId })
+      .from(notifications)
+      .where(isNull(notifications.clearedAt));
+    
+    let totalCleaned = 0;
+    for (const { userId } of usersWithNotifications) {
+      const cleaned = await autoCleanupSystemNotifications(userId, maxVisiblePerUser);
+      totalCleaned += cleaned;
+    }
+    
+    if (totalCleaned > 0) {
+      console.log(`[NotificationCleanup] Scheduled cleanup: cleared ${totalCleaned} notifications across ${usersWithNotifications.length} users`);
+    }
+    
+    return totalCleaned;
+  } catch (error) {
+    console.error('[NotificationCleanup] Scheduled cleanup error:', error);
+    return 0;
+  }
 }

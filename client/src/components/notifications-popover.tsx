@@ -203,6 +203,19 @@ export function NotificationsPopover() {
   // Use fetched data, falling back to cached data for immediate display
   const data = fetchedData || cachedData;
 
+  // Fetch onboarding digest with Trinity welcome for new users
+  const { data: onboardingDigest } = useQuery<{
+    success: boolean;
+    trinityWelcome: { greeting: string; message: string; tip: string };
+    recentWhatsNew: Array<{ id: string; title: string; description: string; category: string; createdAt: string }>;
+    recentSystemUpdates: Array<{ id: string; title: string; description: string; category: string; createdAt: string }>;
+    isFirstLogin: boolean;
+  }>({
+    queryKey: ["/api/notifications/onboarding-digest"],
+    enabled: !!user,
+    staleTime: 300000, // 5 minutes - welcome message doesn't change often
+  });
+
   // Track if this is the first open to prevent scroll reset on every render
   const hasOpenedRef = useRef(false);
   
@@ -350,6 +363,7 @@ export function NotificationsPopover() {
       queryClient.invalidateQueries({ queryKey: ["/api/notifications/combined"] });
       queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
       queryClient.invalidateQueries({ queryKey: ["/api/whats-new"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications/onboarding-digest"] });
     },
     onError: (err) => {
       console.error('[Clear Tab] Error:', err);
@@ -395,6 +409,7 @@ export function NotificationsPopover() {
       queryClient.invalidateQueries({ queryKey: ["/api/whats-new"] });
       queryClient.invalidateQueries({ queryKey: ["/api/whats-new/latest"] });
       queryClient.invalidateQueries({ queryKey: ["/api/whats-new/unviewed-count"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications/onboarding-digest"] });
     },
     onError: (err, _, context) => {
       console.error('[Clear All] Error:', err);
@@ -748,12 +763,41 @@ export function NotificationsPopover() {
                   })}
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-                  <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mb-4">
-                    <Bell className="h-8 w-8 opacity-50" />
-                  </div>
-                  <span className="text-sm font-medium">No notifications</span>
-                  <span className="text-xs mt-1">You're all caught up!</span>
+                <div className="flex flex-col items-center justify-center py-8 px-4">
+                  {onboardingDigest?.trinityWelcome ? (
+                    <div className="w-full max-w-sm">
+                      <div className="relative bg-gradient-to-br from-primary/10 via-purple-500/10 to-pink-500/10 rounded-2xl p-5 border border-primary/20 shadow-sm">
+                        <div className="absolute -top-3 -right-3 w-12 h-12 rounded-full bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center shadow-lg">
+                          <Bot className="h-6 w-6 text-white" />
+                        </div>
+                        <div className="flex items-center gap-2 mb-3">
+                          <Sparkles className="h-4 w-4 text-primary" />
+                          <span className="text-sm font-semibold text-primary">Trinity AI</span>
+                        </div>
+                        <h3 className="text-base font-bold mb-2">{onboardingDigest.trinityWelcome.greeting}</h3>
+                        <p className="text-sm text-muted-foreground leading-relaxed mb-3">
+                          {onboardingDigest.trinityWelcome.message}
+                        </p>
+                        <div className="flex items-start gap-2 p-3 bg-background/60 rounded-lg border border-border/50">
+                          <Zap className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+                          <p className="text-xs text-muted-foreground">
+                            {onboardingDigest.trinityWelcome.tip}
+                          </p>
+                        </div>
+                      </div>
+                      <p className="text-center text-xs text-muted-foreground mt-4">
+                        Alerts about your account will appear here
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="text-center">
+                      <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mb-4 mx-auto">
+                        <Bell className="h-8 w-8 opacity-50" />
+                      </div>
+                      <span className="text-sm font-medium text-muted-foreground">No notifications</span>
+                      <p className="text-xs text-muted-foreground mt-1">You're all caught up!</p>
+                    </div>
+                  )}
                 </div>
               )}
             </TabsContent>

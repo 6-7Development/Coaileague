@@ -754,6 +754,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+
+  // Onboarding digest endpoint - Trinity welcome + last 3 What's New + system updates for new users
+  app.get("/api/notifications/onboarding-digest", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const { getOnboardingDigest, autoCleanupSystemNotifications } = await import('./services/notificationService');
+      
+      // Get the onboarding digest with Trinity welcome
+      const digest = await getOnboardingDigest(userId);
+      
+      // Auto-cleanup old notifications (limit to 3 visible)
+      await autoCleanupSystemNotifications(userId, 3);
+      
+      res.json({
+        success: true,
+        ...digest,
+      });
+    } catch (error) {
+      console.error("Error fetching onboarding digest:", error);
+      res.status(500).json({ message: "Failed to fetch onboarding digest" });
+    }
+  });
+
+  // Send Trinity welcome notification to a user
+  app.post("/api/notifications/trinity-welcome", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user?.id;
+      const workspaceId = req.workspaceId || req.user?.defaultWorkspaceId;
+      const { userName } = req.body;
+
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const { sendTrinityWelcomeNotification } = await import('./services/notificationService');
+      
+      const notification = await sendTrinityWelcomeNotification(
+        workspaceId || 'coaileague-platform-workspace',
+        userId,
+        userName
+      );
+
+      // Broadcast via WebSocket
+      if (workspaceId) {
+        broadcastNotification(workspaceId, userId, 'trinity_welcome', notification);
+      }
+
+      res.json({
+        success: true,
+        notification,
+      });
+    } catch (error) {
+      console.error("Error sending Trinity welcome:", error);
+      res.status(500).json({ message: "Failed to send Trinity welcome" });
+    }
+  });
   // Tab-specific clear endpoint - clears notifications for a specific tab only
   app.post("/api/notifications/clear-tab/:tab", requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
