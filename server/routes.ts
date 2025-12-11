@@ -870,6 +870,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Notification system diagnostics (AI Brain Trinity orchestrated)
+  app.get("/api/notifications/diagnostics", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const authReq = req as AuthenticatedRequest;
+      const userId = authReq.user?.id;
+      const workspaceId = authReq.workspaceId || authReq.user?.defaultWorkspaceId;
+
+      const { notificationDiagnostics } = await import("./services/ai-brain/notificationDiagnostics");
+      const result = await notificationDiagnostics.handleRequest(userId, workspaceId);
+
+      console.log(`[NotificationDiagnostics] Diagnostic run for user ${userId}:`, result.diagnostic.overallHealth);
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error running notification diagnostics:", error);
+      res.status(500).json({ 
+        success: false, 
+        error: error.message || "Failed to run diagnostics" 
+      });
+    }
+  });
+
   // Acknowledge a single notification
   app.post("/api/notifications/acknowledge/:id", requireAuth, async (req: AuthenticatedRequest, res) => {
     try {

@@ -399,6 +399,59 @@ export function NotificationsPopover() {
       console.log('[Clear Tab] Success:', data);
       return data;
     },
+    onMutate: async (tab) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["/api/notifications/combined"] });
+      
+      // Snapshot the previous value
+      const previousData = queryClient.getQueryData(["/api/notifications/combined"]);
+      
+      // Optimistically update to hide items immediately
+      queryClient.setQueryData(["/api/notifications/combined"], (oldData: any) => {
+        if (!oldData) return oldData;
+        
+        if (tab === 'updates') {
+          return {
+            ...oldData,
+            platformUpdates: oldData.platformUpdates?.map((u: any) => 
+              u.category !== 'maintenance' && u.category !== 'security_patch' 
+                ? { ...u, isViewed: true } 
+                : u
+            ) || [],
+          };
+        } else if (tab === 'notifications') {
+          return {
+            ...oldData,
+            notifications: oldData.notifications?.map((n: any) => ({ ...n, isRead: true })) || [],
+          };
+        } else if (tab === 'system') {
+          return {
+            ...oldData,
+            maintenanceAlerts: oldData.maintenanceAlerts?.map((a: any) => ({ ...a, isAcknowledged: true })) || [],
+            platformUpdates: oldData.platformUpdates?.map((u: any) => 
+              u.category === 'maintenance' || u.category === 'security_patch'
+                ? { ...u, isViewed: true }
+                : u
+            ) || [],
+          };
+        }
+        return oldData;
+      });
+      
+      return { previousData };
+    },
+    onError: (err: Error, tab, context: any) => {
+      // Rollback on error
+      if (context?.previousData) {
+        queryClient.setQueryData(["/api/notifications/combined"], context.previousData);
+      }
+      console.error('[Clear Tab] Mutation error:', err.message || String(err));
+      toast({
+        title: "Failed to clear",
+        description: err.message || "Something went wrong. Please try again.",
+        variant: "destructive",
+      });
+    },
     onSuccess: (data, tab) => {
       console.log('[Clear Tab] Mutation success, invalidating queries for tab:', tab);
       queryClient.invalidateQueries({ queryKey: ["/api/notifications/combined"] });
@@ -417,14 +470,6 @@ export function NotificationsPopover() {
       toast({
         title: "Cleared successfully",
         description: `All ${tabLabels[tab] || tab} items have been acknowledged.`,
-      });
-    },
-    onError: (err: Error) => {
-      console.error('[Clear Tab] Mutation error:', err.message || String(err));
-      toast({
-        title: "Failed to clear",
-        description: err.message || "Something went wrong. Please try again.",
-        variant: "destructive",
       });
     },
   });
