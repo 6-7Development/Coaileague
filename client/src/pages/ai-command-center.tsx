@@ -203,7 +203,7 @@ export default function AICommandCenter() {
                       </div>
                       <div className="text-right">
                         <div className="text-sm text-gray-600">Model</div>
-                        <div className="font-medium text-gray-900">Gemini 2.0 Flash Exp</div>
+                        <div className="font-medium text-gray-900">Trinity AI Engine</div>
                       </div>
                     </div>
                   )}

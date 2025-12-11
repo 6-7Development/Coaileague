@@ -119,7 +119,7 @@ export default function AIBrainDashboard() {
             <CardHeader>
               <CardTitle>Document Extraction Workflow</CardTitle>
               <CardDescription>
-                Upload business documents for AI-powered data extraction using Gemini Vision
+                Upload business documents for AI-powered data extraction using Trinity Vision
               </CardDescription>
             </CardHeader>
             <CardContent>

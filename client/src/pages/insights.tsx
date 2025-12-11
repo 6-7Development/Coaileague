@@ -83,7 +83,7 @@ export default function Insights() {
       queryClient.invalidateQueries({ queryKey: ['/api/insights'] });
       toast({
         title: data.aiPowered ? "AI Insights Generated" : "Insights Generated",
-        description: `Generated ${data.count} new insights${data.aiPowered ? ' using Gemini 2.0' : ''}`,
+        description: `Generated ${data.count} new insights${data.aiPowered ? ' using Trinity AI' : ''}`,
       });
     },
     onError: () => {
