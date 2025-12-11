@@ -23,6 +23,7 @@ import { aiNotificationService } from '../aiNotificationService';
 import { aiExpenseCategorizationService } from './aiExpenseCategorizationService';
 import { aiDynamicPricingService } from './aiDynamicPricingService';
 import { broadcastNotificationToUser, broadcastUserScopedNotification, broadcastToAllClients } from '../../websocket';
+import { registerUACPActions } from "../uacp/uacpOrchestrationActions";
 import { db } from '../../db';
 import { eq, desc, and, gte, sql, isNotNull } from 'drizzle-orm';
 import {
@@ -396,6 +397,7 @@ class AIBrainMasterOrchestrator {
     this.registerMemoryAndGovernanceActions();
     await this.registerGemini3ToolActions();
     await this.registerArchitectGradeActions();
+    registerUACPActions(helpaiOrchestrator); // UACP Access Control Actions
     
     // Subscribe to platform events
     this.subscribeToEvents();
