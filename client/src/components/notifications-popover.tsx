@@ -185,6 +185,8 @@ export function NotificationsPopover() {
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("updates");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectedAlertIds, setSelectedAlertIds] = useState<Set<string>>(new Set());
+  const [selectedSystemIds, setSelectedSystemIds] = useState<Set<string>>(new Set());
   const scrollRef = useRef<HTMLDivElement>(null);
   const { isMobile } = useMobile();
   const { toast } = useToast();
@@ -325,6 +327,90 @@ export function NotificationsPopover() {
     }
   });
 
+  // Bulk acknowledge for My Alerts tab
+  const acknowledgeSelectedAlertsMutation = useMutation({
+    mutationFn: async () => {
+      const idsToAcknowledge = Array.from(selectedAlertIds);
+      if (idsToAcknowledge.length === 0) return { success: true };
+      
+      // Mark each selected notification as read
+      const promises = idsToAcknowledge.map(id => 
+        apiRequest("POST", `/api/notifications/acknowledge/${id}`)
+      );
+      await Promise.all(promises);
+      return { success: true, count: idsToAcknowledge.length };
+    },
+    onSuccess: () => {
+      setSelectedAlertIds(new Set());
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications/combined"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/trinity/context"] });
+      toast({
+        title: "Acknowledged",
+        description: "Selected alerts have been acknowledged.",
+      });
+      setTimeout(() => refetch(), 100);
+    },
+    onError: (error) => {
+      console.error('[Notifications] Error acknowledging alerts:', error);
+      setSelectedAlertIds(new Set());
+      toast({
+        title: "Error",
+        description: "Failed to acknowledge alerts. Please try again.",
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Bulk acknowledge for System tab
+  const acknowledgeSelectedSystemMutation = useMutation({
+    mutationFn: async () => {
+      const idsToAcknowledge = Array.from(selectedSystemIds);
+      if (idsToAcknowledge.length === 0) return { success: true };
+      
+      // Separate system updates from maintenance alerts
+      const systemUpdateIds = idsToAcknowledge.filter(id => 
+        unviewedSystemUpdates.some(u => u.id === id)
+      );
+      const maintenanceAlertIds = idsToAcknowledge.filter(id => 
+        unacknowledgedAlerts.some(a => a.id === id)
+      );
+      
+      // Mark system updates as viewed
+      const updatePromises = systemUpdateIds.map(id => 
+        apiRequest("POST", `/api/platform-updates/${id}/mark-viewed`)
+      );
+      
+      // Acknowledge maintenance alerts
+      const alertPromises = maintenanceAlertIds.map(id => 
+        apiRequest("POST", `/api/maintenance-alerts/${id}/acknowledge`)
+      );
+      
+      await Promise.all([...updatePromises, ...alertPromises]);
+      return { success: true, count: idsToAcknowledge.length };
+    },
+    onSuccess: () => {
+      setSelectedSystemIds(new Set());
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications/combined"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/whats-new"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/trinity/context"] });
+      toast({
+        title: "Acknowledged",
+        description: "Selected system items have been acknowledged.",
+      });
+      setTimeout(() => refetch(), 100);
+    },
+    onError: (error) => {
+      console.error('[Notifications] Error acknowledging system items:', error);
+      setSelectedSystemIds(new Set());
+      toast({
+        title: "Error",
+        description: "Failed to acknowledge system items. Please try again.",
+        variant: "destructive",
+      });
+    }
+  });
+
   // Data extraction and filtering - must be defined before toggle functions
   const rawPlatformUpdates = data?.platformUpdates || [];
   const rawMaintenanceAlerts = data?.maintenanceAlerts || [];
@@ -366,6 +452,9 @@ export function NotificationsPopover() {
   const totalUnread = data?.totalUnread ?? 0;
 
   const allUnviewedSelected = unviewedUpdates.length > 0 && selectedIds.size === unviewedUpdates.length;
+  const allAlertsSelected = filteredNotifications.length > 0 && selectedAlertIds.size === filteredNotifications.length;
+  const allSystemSelected = (unviewedSystemUpdates.length + unacknowledgedAlerts.length) > 0 && 
+    selectedSystemIds.size === (unviewedSystemUpdates.length + unacknowledgedAlerts.length);
 
   const toggleSelectUpdate = (updateId: string) => {
     const newSelected = new Set(selectedIds);
@@ -382,6 +471,45 @@ export function NotificationsPopover() {
       setSelectedIds(new Set());
     } else {
       setSelectedIds(new Set(unviewedUpdates.map(u => u.id)));
+    }
+  };
+
+  // My Alerts tab selection
+  const toggleSelectAlert = (alertId: string) => {
+    const newSelected = new Set(selectedAlertIds);
+    if (newSelected.has(alertId)) {
+      newSelected.delete(alertId);
+    } else {
+      newSelected.add(alertId);
+    }
+    setSelectedAlertIds(newSelected);
+  };
+
+  const toggleSelectAllAlerts = () => {
+    if (selectedAlertIds.size === filteredNotifications.length) {
+      setSelectedAlertIds(new Set());
+    } else {
+      setSelectedAlertIds(new Set(filteredNotifications.map((n: any) => n.id)));
+    }
+  };
+
+  // System tab selection
+  const toggleSelectSystem = (id: string) => {
+    const newSelected = new Set(selectedSystemIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedSystemIds(newSelected);
+  };
+
+  const toggleSelectAllSystem = () => {
+    const allIds = [...unviewedSystemUpdates.map(u => u.id), ...unacknowledgedAlerts.map(a => a.id)];
+    if (selectedSystemIds.size === allIds.length) {
+      setSelectedSystemIds(new Set());
+    } else {
+      setSelectedSystemIds(new Set(allIds));
     }
   };
 
@@ -464,7 +592,7 @@ export function NotificationsPopover() {
       // Toast feedback for user
       const tabLabels: Record<string, string> = {
         updates: "What's New",
-        notifications: "Alerts", 
+        notifications: "My Alerts", 
         system: "System"
       };
       toast({
@@ -620,7 +748,7 @@ export function NotificationsPopover() {
                   className="text-xs font-medium relative data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-sm rounded-md transition-all" 
                   data-testid="tab-notifications"
                 >
-                  Alerts
+                  My Alerts
                   {unreadNotifications > 0 && (
                     <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center shadow-sm">
                       {unreadNotifications > 9 ? '9+' : unreadNotifications}
@@ -773,20 +901,44 @@ export function NotificationsPopover() {
             <TabsContent value="notifications" className="mt-0 flex-1 min-h-0 overflow-y-auto overscroll-contain focus-visible:outline-none data-[state=inactive]:hidden">
               {filteredNotifications.length > 0 && (
                 <div className="px-4 py-3 flex items-center justify-between border-b bg-muted/30">
-                  <span className="text-xs text-muted-foreground">
-                    {filteredNotifications.filter(n => !n.isRead).length} unread alerts
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-xs h-7 px-2"
-                    onClick={() => clearTabMutation.mutate('notifications')}
-                    disabled={clearTabMutation.isPending}
-                    data-testid="button-clear-notifications-tab"
-                  >
-                    <X className="h-3 w-3 mr-1" />
-                    Clear All
-                  </Button>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={toggleSelectAllAlerts}
+                      className="flex items-center justify-center w-5 h-5 rounded border-2 border-muted-foreground/30 hover:border-primary transition-colors"
+                      data-testid="button-select-all-alerts"
+                    >
+                      {allAlertsSelected && <Check className="h-3 w-3 text-primary" />}
+                    </button>
+                    <span className="text-xs text-muted-foreground">
+                      {selectedAlertIds.size === 0 ? 'Select to acknowledge' : `${selectedAlertIds.size} of ${filteredNotifications.length} selected`}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {selectedAlertIds.size > 0 && (
+                      <Button
+                        variant="default"
+                        size="sm"
+                        className="text-xs h-7 px-2"
+                        onClick={() => acknowledgeSelectedAlertsMutation.mutate()}
+                        disabled={acknowledgeSelectedAlertsMutation.isPending}
+                        data-testid="button-acknowledge-selected-alerts"
+                      >
+                        <Check className="h-3 w-3 mr-1" />
+                        Acknowledge ({selectedAlertIds.size})
+                      </Button>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs h-7 px-2"
+                      onClick={() => clearTabMutation.mutate('notifications')}
+                      disabled={clearTabMutation.isPending}
+                      data-testid="button-clear-notifications-tab"
+                    >
+                      <X className="h-3 w-3 mr-1" />
+                      Clear All
+                    </Button>
+                  </div>
                 </div>
               )}
               {filteredNotifications.length > 0 ? (
@@ -803,18 +955,22 @@ export function NotificationsPopover() {
                     return (
                       <div
                         key={notification.id}
-                        className={`px-4 py-4 hover:bg-muted/40 transition-colors cursor-pointer ${!notification.isRead ? 'bg-primary/5' : 'opacity-70'}`}
-                        onClick={() => {
-                          if (!notification.isRead) {
-                            markAsReadMutation.mutate(notification.id);
-                          }
-                          if (notification.actionUrl) {
-                            window.location.href = notification.actionUrl;
-                          }
-                        }}
+                        className={`px-4 py-4 hover:bg-muted/40 transition-colors ${!notification.isRead ? 'bg-primary/5' : 'opacity-70'}`}
                         data-testid={`notification-item-${notification.id}`}
                       >
                         <div className="flex gap-3">
+                          {!notification.isRead && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleSelectAlert(notification.id);
+                              }}
+                              className="flex items-center justify-center w-5 h-5 rounded border-2 border-muted-foreground/30 hover:border-primary mt-0.5 flex-shrink-0 transition-colors"
+                              data-testid={`checkbox-alert-${notification.id}`}
+                            >
+                              {selectedAlertIds.has(notification.id) && <Check className="h-3 w-3 text-primary" />}
+                            </button>
+                          )}
                           <div className={`shrink-0 ${iconColor} mt-0.5`}>
                             <div className="w-8 h-8 rounded-full bg-current/10 flex items-center justify-center">
                               <IconComponent className="h-4 w-4" />
@@ -930,20 +1086,44 @@ export function NotificationsPopover() {
             <TabsContent value="system" className="mt-0 flex-1 min-h-0 overflow-y-auto overscroll-contain focus-visible:outline-none data-[state=inactive]:hidden">
               {(unacknowledgedAlerts.length > 0 || unviewedSystemUpdates.length > 0) && (
                 <div className="px-4 py-3 flex items-center justify-between border-b bg-amber-500/10">
-                  <span className="text-xs text-muted-foreground">
-                    {unacknowledgedAlerts.length + unviewedSystemUpdates.length} unread system alerts
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-xs h-7 px-2"
-                    onClick={() => clearTabMutation.mutate('system')}
-                    disabled={clearTabMutation.isPending}
-                    data-testid="button-clear-system-tab"
-                  >
-                    <X className="h-3 w-3 mr-1" />
-                    Clear All
-                  </Button>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={toggleSelectAllSystem}
+                      className="flex items-center justify-center w-5 h-5 rounded border-2 border-muted-foreground/30 hover:border-primary transition-colors"
+                      data-testid="button-select-all-system"
+                    >
+                      {allSystemSelected && <Check className="h-3 w-3 text-primary" />}
+                    </button>
+                    <span className="text-xs text-muted-foreground">
+                      {selectedSystemIds.size === 0 ? 'Select to acknowledge' : `${selectedSystemIds.size} of ${unacknowledgedAlerts.length + unviewedSystemUpdates.length} selected`}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {selectedSystemIds.size > 0 && (
+                      <Button
+                        variant="default"
+                        size="sm"
+                        className="text-xs h-7 px-2"
+                        onClick={() => acknowledgeSelectedSystemMutation.mutate()}
+                        disabled={acknowledgeSelectedSystemMutation.isPending}
+                        data-testid="button-acknowledge-selected-system"
+                      >
+                        <Check className="h-3 w-3 mr-1" />
+                        Acknowledge ({selectedSystemIds.size})
+                      </Button>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs h-7 px-2"
+                      onClick={() => clearTabMutation.mutate('system')}
+                      disabled={clearTabMutation.isPending}
+                      data-testid="button-clear-system-tab"
+                    >
+                      <X className="h-3 w-3 mr-1" />
+                      Clear All
+                    </Button>
+                  </div>
                 </div>
               )}
               {(unacknowledgedAlerts.length > 0 || unviewedSystemUpdates.length > 0) ? (
@@ -958,6 +1138,18 @@ export function NotificationsPopover() {
                         data-testid={`system-update-${update.id}`}
                       >
                         <div className="flex gap-3">
+                          {!update.isViewed && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleSelectSystem(update.id);
+                              }}
+                              className="flex items-center justify-center w-5 h-5 rounded border-2 border-muted-foreground/30 hover:border-primary mt-0.5 flex-shrink-0 transition-colors"
+                              data-testid={`checkbox-system-update-${update.id}`}
+                            >
+                              {selectedSystemIds.has(update.id) && <Check className="h-3 w-3 text-primary" />}
+                            </button>
+                          )}
                           <div className={`shrink-0 ${catStyles.color} mt-0.5`}>
                             <div className="w-8 h-8 rounded-full bg-current/10 flex items-center justify-center">
                               <CategoryIcon className="h-4 w-4" />
@@ -1010,6 +1202,18 @@ export function NotificationsPopover() {
                         data-testid={`alert-item-${alert.id}`}
                       >
                         <div className="flex gap-3">
+                          {!alert.isAcknowledged && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleSelectSystem(alert.id);
+                              }}
+                              className="flex items-center justify-center w-5 h-5 rounded border-2 border-muted-foreground/30 hover:border-primary mt-0.5 flex-shrink-0 transition-colors"
+                              data-testid={`checkbox-system-alert-${alert.id}`}
+                            >
+                              {selectedSystemIds.has(alert.id) && <Check className="h-3 w-3 text-primary" />}
+                            </button>
+                          )}
                           <div className={`shrink-0 ${config.color} mt-0.5`}>
                             <div className="w-8 h-8 rounded-full bg-current/10 flex items-center justify-center">
                               <SeverityIcon className="h-4 w-4" />

@@ -554,8 +554,8 @@ export const NOTIFICATION_COPY = {
   },
   tabs: {
     all: "All",
-    updates: "Updates",
-    alerts: "Alerts",
+    updates: "What's New",
+    alerts: "My Alerts",
     system: "System",
   },
   actions: {
