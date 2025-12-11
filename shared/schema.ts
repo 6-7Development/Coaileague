@@ -18099,3 +18099,230 @@ export const insertVisualQaFindingSchema = createInsertSchema(visualQaFindings).
 });
 export type InsertVisualQaFinding = z.infer<typeof insertVisualQaFindingSchema>;
 export type VisualQaFinding = typeof visualQaFindings.$inferSelect;
+
+// ============================================================================
+// UNIVERSAL ACCESS CONTROL PANEL (UACP) - ABAC SYSTEM
+// Fortune 500-grade Dynamic Attribute-Based Access Control
+// ============================================================================
+
+// Entity types for UACP
+export const entityTypeEnum = pgEnum("entity_type", [
+  "human", // Regular user
+  "bot", // Automated bot
+  "subagent", // AI subagent
+  "trinity", // Trinity AI orchestrator
+  "service", // Platform service
+  "external", // External integration
+]);
+
+// Agent identity status
+export const agentStatusEnum = pgEnum("agent_status", [
+  "active",
+  "suspended",
+  "revoked",
+  "pending_approval",
+  "maintenance",
+]);
+
+// Policy effect
+export const policyEffectEnum = pgEnum("policy_effect", [
+  "allow",
+  "deny",
+  "require_approval",
+]);
+
+// Agent Identities - Non-human entities with full identity management
+export const agentIdentities = pgTable("agent_identities", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Identity
+  agentId: varchar("agent_id", { length: 100 }).notNull().unique(), // e.g., "trinity-orchestrator", "subagent-payroll-001"
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  entityType: entityTypeEnum("entity_type").notNull().default("bot"),
+  
+  // Workspace isolation
+  workspaceId: varchar("workspace_id").references(() => workspaces.id, { onDelete: 'cascade' }),
+  isGlobal: boolean("is_global").default(false), // Platform-wide agents like Trinity
+  
+  // Authorization
+  status: agentStatusEnum("status").notNull().default("active"),
+  role: varchar("role", { length: 50 }), // Base RBAC role
+  permissions: text("permissions").array(), // Explicit permissions
+  deniedPermissions: text("denied_permissions").array(), // Explicit denials
+  
+  // Mission & Context
+  missionObjective: text("mission_objective"), // Current assigned task/objective
+  riskProfile: varchar("risk_profile", { length: 20 }).default("low"), // 'low', 'medium', 'high', 'critical'
+  maxAutonomyLevel: integer("max_autonomy_level").default(3), // 1-5 scale
+  
+  // Token management
+  tokenExpiryMinutes: integer("token_expiry_minutes").default(15), // Short-lived tokens
+  lastTokenIssuedAt: timestamp("last_token_issued_at"),
+  tokenCount24h: integer("token_count_24h").default(0), // Track authentication frequency
+  
+  // Tool access control
+  allowedTools: text("allowed_tools").array(), // Explicit tool allowlist
+  deniedTools: text("denied_tools").array(), // Explicit tool denylist
+  allowedDomains: text("allowed_domains").array(), // AI Brain domains
+  
+  // Rate limiting
+  requestsPerMinute: integer("requests_per_minute").default(60),
+  requestsPerHour: integer("requests_per_hour").default(1000),
+  currentMinuteRequests: integer("current_minute_requests").default(0),
+  currentHourRequests: integer("current_hour_requests").default(0),
+  lastRequestAt: timestamp("last_request_at"),
+  
+  // Audit trail
+  createdBy: varchar("created_by").references(() => users.id, { onDelete: 'set null' }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  lastActiveAt: timestamp("last_active_at"),
+  suspendedAt: timestamp("suspended_at"),
+  suspendedBy: varchar("suspended_by").references(() => users.id, { onDelete: 'set null' }),
+  suspensionReason: text("suspension_reason"),
+}, (table) => [
+  index("agent_identities_workspace_idx").on(table.workspaceId),
+  index("agent_identities_status_idx").on(table.status),
+  index("agent_identities_type_idx").on(table.entityType),
+  index("agent_identities_agent_id_idx").on(table.agentId),
+]);
+
+export const insertAgentIdentitySchema = createInsertSchema(agentIdentities).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertAgentIdentity = z.infer<typeof insertAgentIdentitySchema>;
+export type AgentIdentity = typeof agentIdentities.$inferSelect;
+
+// Entity Attributes - Dynamic ABAC attributes for users and agents
+export const entityAttributes = pgTable("entity_attributes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Entity reference (can be user or agent)
+  entityType: entityTypeEnum("entity_type").notNull(),
+  entityId: varchar("entity_id", { length: 255 }).notNull(), // User ID or Agent ID
+  workspaceId: varchar("workspace_id").references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  // Attribute definition
+  attributeName: varchar("attribute_name", { length: 100 }).notNull(),
+  attributeValue: text("attribute_value").notNull(),
+  attributeType: varchar("attribute_type", { length: 50 }).default("string"), // 'string', 'number', 'boolean', 'json', 'array'
+  
+  // Metadata
+  source: varchar("source", { length: 50 }).default("manual"), // 'manual', 'auto', 'derived', 'external'
+  expiresAt: timestamp("expires_at"), // For time-limited attributes
+  isActive: boolean("is_active").default(true),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  createdBy: varchar("created_by").references(() => users.id, { onDelete: 'set null' }),
+}, (table) => [
+  index("entity_attributes_entity_idx").on(table.entityType, table.entityId),
+  index("entity_attributes_workspace_idx").on(table.workspaceId),
+  index("entity_attributes_name_idx").on(table.attributeName),
+  uniqueIndex("entity_attributes_unique").on(table.entityType, table.entityId, table.attributeName, table.workspaceId),
+]);
+
+export const insertEntityAttributeSchema = createInsertSchema(entityAttributes).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertEntityAttribute = z.infer<typeof insertEntityAttributeSchema>;
+export type EntityAttribute = typeof entityAttributes.$inferSelect;
+
+// Access Policies - ABAC policy rules
+export const accessPolicies = pgTable("access_policies", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Policy identification
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  workspaceId: varchar("workspace_id").references(() => workspaces.id, { onDelete: 'cascade' }),
+  isGlobal: boolean("is_global").default(false), // Platform-wide policy
+  
+  // Policy definition
+  effect: policyEffectEnum("effect").notNull().default("deny"),
+  priority: integer("priority").default(100), // Lower = higher priority
+  
+  // Subject conditions (WHO)
+  subjectConditions: jsonb("subject_conditions").notNull().default('{}'), // JSON rules for entity matching
+  // e.g., { "entityType": "human", "role": ["manager", "admin"], "department": "finance" }
+  
+  // Resource conditions (WHAT)
+  resourceType: varchar("resource_type", { length: 100 }).notNull(), // 'action', 'domain', 'endpoint', 'data'
+  resourcePattern: varchar("resource_pattern", { length: 500 }).notNull(), // Pattern or specific resource
+  
+  // Context conditions (WHEN/WHERE)
+  contextConditions: jsonb("context_conditions").default('{}'), // Time, location, device, risk
+  // e.g., { "timeOfDay": "business_hours", "deviceType": ["desktop", "mobile"], "riskScore": { "max": 50 } }
+  
+  // Action constraints
+  actions: text("actions").array(), // ['read', 'write', 'delete', 'execute']
+  maxTransactionAmount: decimal("max_transaction_amount", { precision: 15, scale: 2 }), // Financial limit
+  
+  // Status
+  isActive: boolean("is_active").default(true),
+  validFrom: timestamp("valid_from"),
+  validUntil: timestamp("valid_until"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  createdBy: varchar("created_by").references(() => users.id, { onDelete: 'set null' }),
+}, (table) => [
+  index("access_policies_workspace_idx").on(table.workspaceId),
+  index("access_policies_resource_idx").on(table.resourceType, table.resourcePattern),
+  index("access_policies_priority_idx").on(table.priority),
+  index("access_policies_active_idx").on(table.isActive),
+]);
+
+export const insertAccessPolicySchema = createInsertSchema(accessPolicies).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertAccessPolicy = z.infer<typeof insertAccessPolicySchema>;
+export type AccessPolicy = typeof accessPolicies.$inferSelect;
+
+// Access Control Events - Real-time audit trail for access changes
+export const accessControlEvents = pgTable("access_control_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Event identification
+  eventType: varchar("event_type", { length: 50 }).notNull(), // 'role_changed', 'permission_granted', 'access_suspended', etc.
+  priority: varchar("priority", { length: 20 }).default("normal"), // 'low', 'normal', 'high', 'critical'
+  
+  // Actor (who made the change)
+  actorType: entityTypeEnum("actor_type").notNull(),
+  actorId: varchar("actor_id", { length: 255 }).notNull(),
+  actorRole: varchar("actor_role", { length: 50 }),
+  
+  // Target (who was affected)
+  targetType: entityTypeEnum("target_type").notNull(),
+  targetId: varchar("target_id", { length: 255 }).notNull(),
+  workspaceId: varchar("workspace_id").references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  // Change details
+  changeDetails: jsonb("change_details").notNull(), // Full change record
+  previousState: jsonb("previous_state"), // State before change
+  newState: jsonb("new_state"), // State after change
+  
+  // Policy enforcement
+  policyId: varchar("policy_id").references(() => accessPolicies.id, { onDelete: 'set null' }),
+  enforcementResult: varchar("enforcement_result", { length: 50 }), // 'allowed', 'denied', 'pending_approval'
+  
+  // Propagation tracking
+  propagated: boolean("propagated").default(false),
+  propagatedAt: timestamp("propagated_at"),
+  propagationTargets: text("propagation_targets").array(), // Services that received the event
+  
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("access_control_events_type_idx").on(table.eventType),
+  index("access_control_events_actor_idx").on(table.actorType, table.actorId),
+  index("access_control_events_target_idx").on(table.targetType, table.targetId),
+  index("access_control_events_workspace_idx").on(table.workspaceId),
+  index("access_control_events_created_idx").on(table.createdAt),
+]);

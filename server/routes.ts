@@ -100,6 +100,7 @@ import aiBrainControlRouter from "./routes/aiBrainControlRoutes";
 import subagentRouter from "./routes/subagentRoutes";
 import codeEditorRouter from "./routes/code-editor";
 import vqaRouter from "./routes/vqaRoutes"; // Visual QA (AI Brain Eyes)
+import uacpRouter from "./routes/uacpRoutes"; // Universal Access Control Panel (UACP)
 import { onboardingRouter } from "./routes/onboardingRoutes";
 import { onboardingAssistantRouter } from "./routes/onboarding-assistant-routes";
 import { timesheetReportRouter } from "./routes/timesheetReportRoutes";
@@ -3100,6 +3101,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/quick-fixes", quickFixRouter); // Quick Fix System
   app.use("/api/device", deviceLoaderRouter); // Universal Device Loader
   app.use("/api/vqa", requireAuth, vqaRouter); // Visual QA (AI Brain Eyes)
+  app.use("/api/uacp", requireAuth, uacpRouter); // Universal Access Control Panel (UACP)
   // ============================================================================
   // AUTH ROUTES
   // ============================================================================
