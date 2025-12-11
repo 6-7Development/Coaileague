@@ -531,7 +531,7 @@ export function NotificationsPopover() {
           <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
         </div>
       ) : (
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col flex-1 min-h-0">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col flex-1 min-h-0 overflow-hidden">
           <div className="shrink-0 bg-background border-b">
             <TabsList className="grid w-full grid-cols-3 h-12 p-1.5 bg-transparent gap-1">
                 <TabsTrigger 
@@ -577,11 +577,9 @@ export function NotificationsPopover() {
             className="flex-1 min-h-0 overflow-y-auto overscroll-contain"
             ref={scrollRef}
             style={{ 
-              height: isMobile ? 'calc(85vh - 180px)' : '380px',
-              maxHeight: isMobile ? 'calc(85vh - 180px)' : '380px',
+              maxHeight: isMobile ? 'calc(85vh - 180px)' : '350px',
             }}
           >
-            <div>
             <TabsContent value="updates" className="mt-0 focus-visible:outline-none" forceMount={activeTab === 'updates' ? true : undefined}>
               {unviewedUpdates.length > 0 && (
                 <div className="px-4 py-3 flex items-center justify-between border-b bg-muted/30">
@@ -1041,7 +1039,6 @@ export function NotificationsPopover() {
               )}
             </TabsContent>
             <div className="pb-4" />
-            </div>
           </div>
         </Tabs>
       )}
