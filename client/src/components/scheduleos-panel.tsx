@@ -193,7 +193,7 @@ export function AISchedulingPanel({ weekStartDate, onScheduleGenerated }: AISche
           )}
 
           <p className="text-xs text-muted-foreground text-center">
-            Powered by Gemini 2.0 • All schedules require employee acknowledgment
+            Powered by Trinity AI • All schedules require employee acknowledgment
           </p>
         </CardContent>
       </Card>
@@ -373,7 +373,7 @@ export function AISchedulingPanel({ weekStartDate, onScheduleGenerated }: AISche
         </Button>
 
         <p className="text-xs text-muted-foreground text-center">
-          Powered by Gemini 2.0 • Payment required after trial • AI costs apply
+          Powered by Trinity AI • Payment required after trial • AI costs apply
         </p>
       </CardContent>
     </Card>

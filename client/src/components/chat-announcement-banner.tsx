@@ -214,7 +214,7 @@ export function ChatAnnouncementBanner({
       },
       {
         id: '4',
-        text: 'AI-Powered Support - Instant answers with Gemini 2.0 HelpAI',
+        text: 'AI-Powered Support - Instant answers with Trinity AI',
         type: 'promo',
         link: '/features',
         icon: 'zap'

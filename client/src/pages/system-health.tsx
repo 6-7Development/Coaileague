@@ -116,13 +116,13 @@ const SERVICE_ICONS: Record<string, typeof Database> = {
 };
 
 const SERVICE_LABELS: Record<string, string> = {
-  database: "Database",
-  chat_websocket: "Chat WebSocket",
-  gemini_ai: "Gemini AI",
-  object_storage: "Object Storage",
-  stripe: "Stripe Payments",
-  email: "Email (Resend)",
-  health_check_total: "Health Check Total",
+  database: "Data Storage",
+  chat_websocket: "Real-time Chat",
+  gemini_ai: "Trinity AI",
+  object_storage: "File Storage",
+  stripe: "Payment Processing",
+  email: "Email Notifications",
+  health_check_total: "System Monitoring",
 };
 
 function StatusIndicator({ status }: { status: "operational" | "degraded" | "down" }) {

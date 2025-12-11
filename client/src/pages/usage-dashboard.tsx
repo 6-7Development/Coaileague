@@ -284,7 +284,7 @@ export default function UsageDashboard() {
                       <Cpu className="h-5 w-5 text-primary" />
                       AI Brain Usage
                     </CardTitle>
-                    <CardDescription>Google Gemini 2.0 Flash token consumption</CardDescription>
+                    <CardDescription>Trinity AI processing usage</CardDescription>
                   </div>
                   <CheckCircle2 className="h-6 w-6 text-green-500" />
                 </div>
@@ -383,7 +383,7 @@ export default function UsageDashboard() {
               <AlertDescription>
                 CoAIleague tracks all AI and partner API usage with complete transparency. 
                 Costs are billed monthly based on your subscription tier markup ({Math.round(summary.markupRate * 100)}% for {summary.workspaceTier} tier). 
-                Base costs reflect actual consumption from Google Gemini, QuickBooks, Gusto, and Stripe.
+                Base costs reflect actual consumption from Trinity AI, QuickBooks, Gusto, and Stripe.
               </AlertDescription>
             </Alert>
           </>
