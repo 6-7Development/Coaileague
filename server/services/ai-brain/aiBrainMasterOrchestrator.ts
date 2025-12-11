@@ -29,6 +29,7 @@ import { registerTrinityCodeOpsActions } from "./trinityCodeOpsActions";
 import { registerScheduleLiveNotifierActions } from "./scheduleLiveNotifierActions";
 import { registerTrinityWorkOrderActions } from "./trinityWorkOrderActions";
 import { registerCognitiveBrainActions } from "./cognitiveBrainActions";
+import { registerIntegrationBrainActions } from "./integrationBrainActions";
 import { db } from '../../db';
 import { eq, desc, and, gte, sql, isNotNull } from 'drizzle-orm';
 import {
@@ -408,6 +409,7 @@ class AIBrainMasterOrchestrator {
     registerScheduleLiveNotifierActions(); // Real-time schedule notification actions
     registerTrinityWorkOrderActions(); // Trinity Work Order System (intake, decompose, execute, summarize)
     registerCognitiveBrainActions(); // Cognitive Brain: API integrations, Knowledge Graph, A2A, Reinforcement Learning
+    registerIntegrationBrainActions(); // Integration Management: Workspace integrations, API keys, Partner management
     
     // Subscribe to platform events
     this.subscribeToEvents();

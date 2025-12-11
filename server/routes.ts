@@ -101,6 +101,7 @@ import subagentRouter from "./routes/subagentRoutes";
 import codeEditorRouter from "./routes/code-editor";
 import vqaRouter from "./routes/vqaRoutes"; // Visual QA (AI Brain Eyes)
 import uacpRouter from "./routes/uacpRoutes"; // Universal Access Control Panel (UACP)
+import { integrationRoutes, partnerRoutes } from "./routes/integrationManagementRoutes"; // Workspace Integration & Partner Management
 import bugRemediationRouter from "./routes/bugRemediation"; // Bug Report AI Analysis & Auto-Fix
 import { onboardingRouter } from "./routes/onboardingRoutes";
 import { onboardingAssistantRouter } from "./routes/onboarding-assistant-routes";
@@ -3104,6 +3105,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/device", deviceLoaderRouter); // Universal Device Loader
   app.use("/api/vqa", requireAuth, vqaRouter); // Visual QA (AI Brain Eyes)
   app.use("/api/uacp", requireAuth, uacpRouter); // Universal Access Control Panel (UACP)
+  app.use("/api/workspace/integrations", requireAuth, integrationRoutes); // Workspace Integration Management
+  app.use("/api/admin/partners", requirePlatformStaff, partnerRoutes); // Partner Catalog Management (Support Roles)
   // ============================================================================
   // AUTH ROUTES
   // ============================================================================
