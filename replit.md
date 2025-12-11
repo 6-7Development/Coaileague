@@ -15,16 +15,14 @@ The system features a multi-tenant architecture with RBAC security and isolation
 **UI/UX Decisions:**
 - **Responsive Design:** WCAG compliant mobile design with typography scaling.
 - **Unified Pages:** Consolidated sales, marketing, and pricing pages driven by configuration.
-- **Notification Widgets:** `WhatsNewBadge` and `NotificationBell` with distinct animations.
 - **Universal Animation System:** Canvas-based visual effects with 6 modes and seasonal themes.
 - **CoAI Twin Mascot:** An AI-powered interactive mascot providing global AI-driven insights.
 - **Animated Word Logo:** A Google Doodle-style seasonal animated word logo system with 11 variations.
 
 **Technical Implementations:**
-- **AI Brain Services:** AI capabilities for document extraction, issue detection, autonomous scheduling, and HelpAI orchestration. Uses 4-tier Gemini architecture: Tier 0 (BRAIN) = Gemini 3 Pro for deep diagnostics/orchestration; Tier 1 (PRO) = Gemini 2.5 Pro for compliance; Tier 2 (FLASH) = Gemini 2.5 Flash for conversational/supervisors; Tier 3 (LITE) = Gemini 1.5 Flash 8B for quick lookups/notifications.
-- **Universal Diagnostic Orchestrator:** 7 specialized domain subagents (notifications, scheduling, payroll, compliance, analytics, security, system health) with Gemini 3 Pro for root cause analysis, hotpatch suggestions, and RBAC-controlled execution with two-code approval for destructive operations.
-- **Universal Chat (HelpAI):** A unified AI chatbot routing all interactions through HelpAI Orchestration.
-- **Gemini Function Calling:** 8-step workflow with multi-turn conversation support for FAQ, support tickets, and business insights.
+- **AI Brain Services:** AI capabilities for document extraction, issue detection, autonomous scheduling, and HelpAI orchestration, utilizing a 4-tier Gemini architecture (Gemini 3 Pro, 2.5 Pro, 2.5 Flash, 1.5 Flash 8B).
+- **Universal Diagnostic Orchestrator:** 7 specialized domain subagents with Gemini 3 Pro for root cause analysis and hotpatch suggestions.
+- **Universal Chat (HelpAI):** A unified AI chatbot routing interactions through HelpAI Orchestration.
 - **Financials:** Real Stripe integration for payments, payroll, invoicing, and tax.
 - **Email Automation:** Resend integration with per-email billing and templates.
 - **Notifications:** WebSocket for real-time notifications and Resend for email.
@@ -35,58 +33,52 @@ The system features a multi-tenant architecture with RBAC security and isolation
 - **Time Tracking:** Clock-in/out, timesheet reports, AI anomaly detection, and approvals.
 - **Client Billing:** Invoice generation from tracked hours, PDF export, and email.
 - **Advanced Scheduling:** Recurring shifts, swapping, and one-click duplication.
-- **Analytics Dashboard:** Metrics endpoints for time, revenue, scheduling, and performance with AI insights and heat map visualizations.
+- **Analytics Dashboard:** Metrics endpoints with AI insights and heat map visualizations.
 - **Break Compliance:** 50-state labor law configuration, auto-scheduling, and compliance checking.
 - **AI Brain Platform Awareness:** Registry of 100+ features, natural language feature discovery, and diagnostic endpoints.
 - **Automation Jobs:** 14 scheduled jobs for billing, scheduling, payroll, reminders, daily digest emails, and maintenance.
-- **Daily Digest Email Service:** Automated morning digest emails sent at 7 AM with personalized content including upcoming shifts, pending approvals, compliance alerts, and weekly hours summary per employee.
-- **Interactive Onboarding Tour:** Step-by-step guided tour component with 11 steps covering dashboard, scheduling, time tracking, employees, invoicing, analytics, Trinity AI, notifications, and settings. Progress tracked via localStorage with ability to restart.
-- **Feedback Form with Screenshot Capture:** User feedback submission system with bug reports, feature requests, and questions. Supports screen capture via browser API and image upload alternatives.
-- **Web Push Notifications:** Browser push notification system with VAPID key support, subscription management API, service worker handling, and specialized alerts for shifts, approvals, and compliance expiration.
+- **Daily Digest Email Service:** Automated morning digest emails with personalized content.
+- **Interactive Onboarding Tour:** Step-by-step guided tour component with progress tracking.
+- **Feedback Form with Screenshot Capture:** User feedback submission system with bug reports, feature requests, and screen capture.
+- **Web Push Notifications:** Browser push notification system for specialized alerts.
 - **AI Brain Platform Change Monitor:** Autonomous service scanning for AI-summarized change notifications.
 - **Notification System:** Configuration-driven notifications for platform updates, support alerts, and real-time user history.
-- **Support Command Console:** Force-push updates system for support staff.
-- **AI Brain Code Editor:** Staged code editing with approval workflow and HelpAI integration.
-- **AI Brain Master Orchestrator:** Central hub coordinating 114 actions across 16 categories, connecting Gemini AI to platform services with architect-grade execution capabilities.
-- **SubagentSupervisor:** Manages 23 specialized domain subagents with diagnostic workflow, RBAC, and escalation policies. Uses consolidated configuration for tiered agent definitions.
-- **SubagentConfidenceMonitor:** Monitors subagent performance, maintains persistent confidence scores, and calculates org-level automation readiness.
-- **Trinity Fast Mode v2:** Premium parallel execution with three tiers offering faster SLA, credit governance, and ROI analytics.
+- **AI Brain Master Orchestrator:** Central hub coordinating 136+ actions across 16 categories, connecting Gemini AI to platform services with architect-grade execution capabilities, including 12 autonomous orchestration tool actions.
+- **SubagentSupervisor:** Manages 23 specialized domain subagents with diagnostic workflow, RBAC, and escalation policies.
+- **Trinity Fast Mode v2:** Premium parallel execution with three tiers for faster SLA and ROI analytics.
 - **AI Expense Categorization:** Receipt OCR via Gemini Vision, intelligent categorization, and spending pattern analysis.
-- **AI Dynamic Pricing:** Client-specific pricing analysis, reports, and bulk rate adjustment simulations.
-- **AI Brain File System Tools:** Comprehensive and secure file access with various operations.
+- **AI Dynamic Pricing:** Client-specific pricing analysis and bulk rate adjustment simulations.
 - **AI Brain Authorization Service:** Role-based permission model with a 9-level hierarchy.
 - **AI Brain Orchestration Infrastructure:** Durable workflow execution with persistence and multi-agent coordination.
-- **Elevated Session Authentication:** HMAC-signed session elevation for support roles and AI services with TTL expiry and audit logging.
-- **ElevatedSessionGuardian Subagent:** AI-powered security subagent for session anomaly detection and self-healing.
+- **Elevated Session Authentication:** HMAC-signed session elevation for support roles and AI services.
 - **Automation Governance System:** Confidence-driven execution gates across three tiers with consent tracking and audit trails.
-- **TrinityContextManager:** Multi-turn conversation memory with context building, knowledge gap detection, and human escalation.
-- **TrinityMemoryService:** Long-term memory persistence for AI learning, user/workspace profiles, interaction pattern detection, and memory optimization with token-aware context window management.
-- **SessionSyncService:** Real-time multi-device synchronization ensuring mobile and desktop clients see the same data. Features user connection tracking, workspace-scoped event broadcasting, and TanStack Query cache invalidation.
-- **ToolCapabilityRegistry:** Centralized registry for AI Brain subagent tools with health checking, permission validation, usage analytics, and telemetry integration.
-- **Trinity Org Intelligence:** Real-time org awareness system providing Trinity with live business metrics.
-- **ThoughtManager Automation Integration:** Real-time WebSocket subscription for automation events.
-- **Trinity 3-Mode System:** Explicit operational modes: Demo, Business Pro, and Guru, with enhanced `PlatformDiagnostics` for Guru mode.
-- **Guru Mode Notification Workflow:** Trinity Guru can propose and manage platform notifications.
-- **Swarm Commander Service:** "God Mode" control center for AI agent orchestration with visualization, loop detection, conflict resolution, budget monitoring, forensic replay, and ROI dashboard.
-- **Crisis Management Protocol:** Fortune 500-grade incident response system with four protocols: RED-SHIELD/Lockdown, BLACKOUT, Make It Right, and NUCLEAR.
+- **TrinityContextManager:** Multi-turn conversation memory with context building and human escalation.
+- **TrinityMemoryService:** Long-term memory persistence for AI learning and user/workspace profiles.
+- **SessionSyncService:** Real-time multi-device synchronization using WebSocket and TanStack Query.
+- **ToolCapabilityRegistry:** Centralized registry for AI Brain subagent tools with health checking and usage analytics.
+- **Trinity Org Intelligence:** Real-time organizational awareness system providing Trinity with live business metrics.
+- **Trinity 3-Mode System:** Explicit operational modes: Demo, Business Pro, and Guru.
+- **Swarm Commander Service:** "God Mode" control center for AI agent orchestration with visualization, conflict resolution, and budget monitoring.
+- **Crisis Management Protocol:** Fortune 500-grade incident response system with four protocols.
 - **Empire Mode (Trinity Pro CSO Upgrade):** Transforms Trinity to Chief Strategy Officer with GrowthStrategist, Blue Dot Protocol, and Holistic Growth Engine.
 - **AI Tool Capability Catalog:** Workspace-scoped tool registry with metrics and usage statistics.
 - **Cross-Bot Knowledge Sharing:** Shared insights system enabling AI components to learn from each other.
 - **Experience Feedback Loop:** Automation outcomes feed back into confidence models and agent learning.
-- **AI Brain Workboard:** Central job queue system for AI orchestration, routing user requests to specialized agents, tracking task lifecycle, and managing Trinity credits.
-- **AI Brain Knowledge Orchestration Service:** Advanced knowledge management and intelligent routing using Gemini 3 Pro. Features knowledge graph management, intelligent query routing to optimal model tiers, context enrichment, learning pipeline for continuous improvement, cross-domain reasoning chains, domain expert mapping, and integration with HelpAI Action Orchestrator for automated learning from all platform actions.
-- **Data Migration Subagent (Enhanced):** Enterprise-grade AI agent for new org onboarding with a 5-step workflow.
-- **Gamification Activation Subagent:** Universal activation agent for gamification during org onboarding.
-- **Onboarding Orchestrator (Enhanced):** Coordinates parallel execution of DataMigrationAgent and GamificationActivationAgent during new org creation. Now includes workspace-isolated Trinity AI initialization with tier-based personas (onboarding_guide, business_buddy, support_partner, executive_advisor) and capabilities, Trinity welcome notifications, end-to-end testing workflows, and workflow diagnostics.
-- **SubagentBanker:** AI Brain credit pre-authorization and ledger management system implementing subscriber-pays-all model.
-- **AICreditGateway:** Centralized billing enforcement for all AI operations. Classifies requests into tiers (CHIT_CHAT=FREE, BUSINESS_LIGHT/STANDARD/HEAVY=PAID). Free features include: trinity_thought, trinity_chat, trinity_insight, mascot_ask, mascot_advice, mascot_insight, helpai_chat, guest_demo. Paid features include: ai_scheduling (25 credits), ai_payroll_processing (15), ai_invoice_generation (15), ai_analytics_report (12), ai_chat_query (5 for business queries).
-- **Advanced Credit Analytics Dashboard:** Executive-level analytics for business owners with credit summaries, usage breakdowns, trends, AI task analytics, ROI metrics, and transaction history.
-- **SeasonalSubagent:** Autonomous AI-powered holiday theming orchestrator. Monitors calendar for 7 holidays (Christmas, New Year, Valentine's, Easter, Independence Day, Halloween, Thanksgiving), generates creative themes using Gemini AI, applies CSS hotswaps without restart, auto-rollback after expiry, and hit detection for safe zones.
-- **ServiceOrchestrationWatchdog:** Platform service orchestration monitor detecting "rebel" (unmanaged) and "orphan" (stopped heartbeating) services. Tracks 31+ expected services, publishes alerts via event bus, proposes hotpatch/hotswap remediation, and uses AI analysis for recommendations.
-- **TrinityExecutionFabric:** Architect-grade execution engine with 4-layer pipeline (Plan→Prepare→Execute→Validate), reasoning chain support, test runner integration, file operations, and commit validation for autonomous platform operations.
-- **PlatformIntentRouter:** Intelligent routing system directing all platform operations through AI Brain orchestration. Features priority/risk assessment, handler selection (execution_fabric/subagent/direct/queued), telemetry collection, and retry logic.
-- **TrinitySentinel:** Continuous self-healing monitoring service with health scoring, automated anomaly detection, alert management, and remediation workflows for model routing, subagents, credit usage, and execution pipelines.
-- **SeasonalDecorator Component:** Frontend React component consuming seasonal theme API, injecting CSS variables, rendering snow/confetti/banner decorations with AnimatePresence, pointer-events-none for click-through, and forced dark mode during holidays.
+- **AI Brain Workboard:** Central job queue system for AI orchestration, routing user requests, and managing Trinity credits.
+- **AI Brain Knowledge Orchestration Service:** Advanced knowledge management and intelligent routing using Gemini 3 Pro, including knowledge graph management and learning pipelines.
+- **Onboarding Orchestrator (Enhanced):** Coordinates data migration and gamification during new org creation, including workspace-isolated Trinity AI initialization.
+- **AICreditGateway:** Centralized billing enforcement for all AI operations, classifying requests into free and paid tiers.
+- **Advanced Credit Analytics Dashboard:** Executive-level analytics for business owners with credit summaries, usage breakdowns, and ROI metrics.
+- **SeasonalSubagent:** Autonomous AI-powered holiday theming orchestrator.
+- **ServiceOrchestrationWatchdog:** Platform service orchestration monitor detecting unmanaged and stopped services, proposing remediation.
+- **TrinityExecutionFabric:** Architect-grade execution engine with a 4-layer pipeline (Plan→Prepare→Execute→Validate) for autonomous platform operations.
+- **PlatformIntentRouter:** Intelligent routing system directing all platform operations through AI Brain orchestration.
+- **TrinitySentinel:** Continuous self-healing monitoring service with health scoring and automated anomaly detection.
+- **Self-Reflection Engine:** Trinity self-critique system enabling LLM introspection on execution results.
+- **LLM-as-Judge Evaluator:** Internal evaluation subagent system for quality assessment with multi-criteria scoring.
+- **Planning Framework Service:** Structured reasoning frameworks for autonomous planning, supporting Chain-of-Thought, ReAct, and Tree-of-Thought.
+- **Adaptive Supervision Router:** Smart routing based on task complexity and risk assessment, selecting optimal model tiers and supervision levels.
+- **Behavioral Monitoring Service:** Model drift detection and anomaly tracking system, recording behavior samples and identifying anomalies.
 
 **System Design Choices:**
 - **Modularity:** 87 backend service modules and 220+ frontend routes.
@@ -101,7 +93,7 @@ The system features a multi-tenant architecture with RBAC security and isolation
 ### External Dependencies
 - **Stripe**: Payment processing, payroll, and financial integrations.
 - **Resend**: Email delivery and notification workflows.
-- **Gemini 3 Pro Preview**: Primary AI Brain intelligence for deep diagnostics, complex reasoning, and orchestration. Used by revenue-critical operations (payroll, scheduling, invoicing).
+- **Gemini 3 Pro Preview**: Primary AI Brain intelligence for deep diagnostics, complex reasoning, and orchestration.
 - **Gemini 2.5 Pro/Flash**: Secondary tiers for compliance, conversational AI, and supervisor tasks.
 - **Gemini 1.5 Flash 8B**: Lightweight tier for notifications, lookups, and simple status checks.
 - **WebSocket**: Real-time notifications.
