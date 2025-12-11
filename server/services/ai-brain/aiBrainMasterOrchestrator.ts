@@ -5938,6 +5938,523 @@ Provide your analysis in the following format:
     console.log('[AI Brain Master Orchestrator] Registered 10 architect-grade execution actions');
 
     // ============================================================================
+    // AUTONOMOUS ORCHESTRATION TOOLS
+    // Self-Reflection, LLM-Judge, Planning, Adaptive Routing, Behavioral Monitoring
+    // ============================================================================
+
+    // Import autonomous orchestration services
+    const { selfReflectionEngine } = await import('./selfReflectionEngine');
+    const { llmJudgeEvaluator, EVALUATION_TEMPLATES } = await import('./llmJudgeEvaluator');
+    const { planningFrameworkService } = await import('./planningFrameworkService');
+    const { adaptiveSupervisionRouter } = await import('./adaptiveSupervisionRouter');
+    const { behavioralMonitoringService } = await import('./behavioralMonitoringService');
+
+    // Self-Reflection Engine Actions
+    helpaiOrchestrator.registerAction({
+      actionId: 'orchestration.reflect',
+      name: 'Self-Reflect on Execution',
+      category: 'automation',
+      description: 'Analyze execution results and suggest corrections using AI self-reflection',
+      requiredRoles: ['admin', 'super_admin'],
+      handler: async (request: ActionRequest) => {
+        const startTime = Date.now();
+        const payload = request.payload || {};
+        
+        try {
+          const result = await selfReflectionEngine.reflect({
+            executionId: payload.executionId || `exec-${Date.now()}`,
+            workspaceId: request.workspaceId,
+            userId: request.userId,
+            originalIntent: payload.intent || 'Unknown intent',
+            executedSteps: payload.steps || [],
+            currentOutput: payload.output,
+            expectedSchema: payload.expectedSchema,
+          });
+          
+          return {
+            success: true,
+            actionId: request.actionId,
+            message: result.passed 
+              ? 'Reflection passed - execution is correct'
+              : `Reflection found ${result.issues.length} issues`,
+            data: result,
+            executionTimeMs: Date.now() - startTime
+          };
+        } catch (error: any) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: `Self-reflection failed: ${error.message}`,
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+      }
+    });
+
+    helpaiOrchestrator.registerAction({
+      actionId: 'orchestration.auto_correct',
+      name: 'Auto-Correct Execution',
+      category: 'automation',
+      description: 'Automatically correct execution issues based on reflection results',
+      requiredRoles: ['admin', 'super_admin'],
+      handler: async (request: ActionRequest) => {
+        const startTime = Date.now();
+        const payload = request.payload || {};
+        
+        if (!payload.reflectionResult || !payload.context) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: 'Missing required parameters: reflectionResult, context',
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+        
+        try {
+          const result = await selfReflectionEngine.autoCorrect(
+            payload.context,
+            payload.reflectionResult
+          );
+          
+          return {
+            success: result.success,
+            actionId: request.actionId,
+            message: result.success 
+              ? `Applied ${result.corrections.length} corrections`
+              : 'Auto-correction failed',
+            data: result,
+            executionTimeMs: Date.now() - startTime
+          };
+        } catch (error: any) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: `Auto-correction failed: ${error.message}`,
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+      }
+    });
+
+    // LLM-as-Judge Evaluator Actions
+    helpaiOrchestrator.registerAction({
+      actionId: 'orchestration.evaluate',
+      name: 'LLM Judge Evaluation',
+      category: 'automation',
+      description: 'Evaluate content quality using AI judge with configurable criteria',
+      requiredRoles: ['manager', 'admin', 'super_admin'],
+      handler: async (request: ActionRequest) => {
+        const startTime = Date.now();
+        const payload = request.payload || {};
+        
+        if (!payload.content) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: 'Missing required parameter: content',
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+        
+        try {
+          // Use template if specified, otherwise use provided criteria
+          const criteria = payload.template 
+            ? EVALUATION_TEMPLATES[payload.template as keyof typeof EVALUATION_TEMPLATES] 
+            : payload.criteria || EVALUATION_TEMPLATES.text_quality;
+          
+          const result = await llmJudgeEvaluator.evaluate({
+            workspaceId: request.workspaceId,
+            userId: request.userId,
+            content: payload.content,
+            contentType: payload.contentType || 'text',
+            context: payload.context,
+            criteria,
+            originalIntent: payload.intent,
+          });
+          
+          return {
+            success: true,
+            actionId: request.actionId,
+            message: `Evaluation complete: ${result.overallVerdict} (score: ${result.overallScore.toFixed(2)})`,
+            data: result,
+            executionTimeMs: Date.now() - startTime
+          };
+        } catch (error: any) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: `Evaluation failed: ${error.message}`,
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+      }
+    });
+
+    helpaiOrchestrator.registerAction({
+      actionId: 'orchestration.consensus_evaluate',
+      name: 'Consensus Evaluation',
+      category: 'automation',
+      description: 'Evaluate with multiple AI judges for high-stakes decisions',
+      requiredRoles: ['admin', 'super_admin'],
+      handler: async (request: ActionRequest) => {
+        const startTime = Date.now();
+        const payload = request.payload || {};
+        
+        try {
+          const result = await llmJudgeEvaluator.evaluateWithConsensus(
+            {
+              workspaceId: request.workspaceId,
+              userId: request.userId,
+              content: payload.content,
+              contentType: payload.contentType || 'decision',
+              context: payload.context,
+              criteria: payload.criteria || EVALUATION_TEMPLATES.decision_quality,
+            },
+            payload.judgeCount || 3
+          );
+          
+          return {
+            success: true,
+            actionId: request.actionId,
+            message: `Consensus: ${result.consensusVerdict} (agreement: ${(result.agreementLevel * 100).toFixed(0)}%)`,
+            data: result,
+            executionTimeMs: Date.now() - startTime
+          };
+        } catch (error: any) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: `Consensus evaluation failed: ${error.message}`,
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+      }
+    });
+
+    // Planning Framework Actions
+    helpaiOrchestrator.registerAction({
+      actionId: 'orchestration.create_plan',
+      name: 'Create Execution Plan',
+      category: 'automation',
+      description: 'Create structured execution plan using CoT, ReAct, or decomposition',
+      requiredRoles: ['manager', 'admin', 'super_admin'],
+      handler: async (request: ActionRequest) => {
+        const startTime = Date.now();
+        const payload = request.payload || {};
+        
+        if (!payload.goal) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: 'Missing required parameter: goal',
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+        
+        try {
+          const plan = await planningFrameworkService.createPlan({
+            workspaceId: request.workspaceId,
+            userId: request.userId,
+            goal: payload.goal,
+            constraints: payload.constraints,
+            context: payload.context,
+            framework: payload.framework || 'chain_of_thought',
+            maxSteps: payload.maxSteps || 10,
+            riskTolerance: payload.riskTolerance || 'medium',
+            availableSubagents: payload.subagents,
+          });
+          
+          return {
+            success: true,
+            actionId: request.actionId,
+            message: `Plan created: ${plan.steps.length} steps, ${plan.complexity} complexity`,
+            data: plan,
+            executionTimeMs: Date.now() - startTime
+          };
+        } catch (error: any) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: `Planning failed: ${error.message}`,
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+      }
+    });
+
+    helpaiOrchestrator.registerAction({
+      actionId: 'orchestration.validate_plan',
+      name: 'Validate Execution Plan',
+      category: 'automation',
+      description: 'Validate a plan for circular dependencies and other issues',
+      requiredRoles: ['manager', 'admin', 'super_admin'],
+      handler: async (request: ActionRequest) => {
+        const startTime = Date.now();
+        const payload = request.payload || {};
+        
+        if (!payload.planId) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: 'Missing required parameter: planId',
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+        
+        try {
+          const validation = await planningFrameworkService.validatePlan(payload.planId);
+          
+          return {
+            success: validation.valid,
+            actionId: request.actionId,
+            message: validation.valid 
+              ? 'Plan is valid' 
+              : `Plan has ${validation.issues.length} issues`,
+            data: validation,
+            executionTimeMs: Date.now() - startTime
+          };
+        } catch (error: any) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: `Validation failed: ${error.message}`,
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+      }
+    });
+
+    // Adaptive Supervision Router Actions
+    helpaiOrchestrator.registerAction({
+      actionId: 'orchestration.adaptive_route',
+      name: 'Adaptive Task Routing',
+      category: 'automation',
+      description: 'Intelligently route task based on complexity and risk assessment',
+      requiredRoles: ['employee', 'manager', 'admin', 'super_admin'],
+      handler: async (request: ActionRequest) => {
+        const startTime = Date.now();
+        const payload = request.payload || {};
+        
+        if (!payload.intent && !payload.taskType) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: 'Missing required parameter: intent or taskType',
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+        
+        try {
+          const decision = await adaptiveSupervisionRouter.route({
+            workspaceId: request.workspaceId,
+            userId: request.userId,
+            intent: payload.intent || payload.query,
+            taskType: payload.taskType || 'general',
+            payload: payload.data || {},
+            previousActions: payload.previousActions,
+            forceOrchestration: payload.forceOrchestration,
+          });
+          
+          return {
+            success: true,
+            actionId: request.actionId,
+            message: `Routed to ${decision.targetSubagent || 'orchestrator'} (${decision.routeType}, ${decision.complexity.level} complexity)`,
+            data: decision,
+            executionTimeMs: Date.now() - startTime
+          };
+        } catch (error: any) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: `Routing failed: ${error.message}`,
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+      }
+    });
+
+    helpaiOrchestrator.registerAction({
+      actionId: 'orchestration.handoff',
+      name: 'Subagent Handoff',
+      category: 'automation',
+      description: 'Transfer task from one subagent to another with bidirectional communication',
+      requiredRoles: ['admin', 'super_admin'],
+      handler: async (request: ActionRequest) => {
+        const startTime = Date.now();
+        const payload = request.payload || {};
+        
+        if (!payload.sourceSubagent || !payload.targetSubagent) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: 'Missing required parameters: sourceSubagent, targetSubagent',
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+        
+        try {
+          const result = await adaptiveSupervisionRouter.handoff({
+            sourceSubagent: payload.sourceSubagent,
+            targetSubagent: payload.targetSubagent,
+            context: payload.context || {},
+            request: payload.request || {},
+            type: payload.type || 'sync',
+            expectsResponse: payload.expectsResponse ?? true,
+            workspaceId: request.workspaceId,
+            userId: request.userId,
+          });
+          
+          return {
+            success: result.success,
+            actionId: request.actionId,
+            message: result.success 
+              ? `Handoff completed in ${result.handoffTimeMs}ms`
+              : `Handoff failed: ${result.error}`,
+            data: result,
+            executionTimeMs: Date.now() - startTime
+          };
+        } catch (error: any) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: `Handoff failed: ${error.message}`,
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+      }
+    });
+
+    // Behavioral Monitoring Actions
+    helpaiOrchestrator.registerAction({
+      actionId: 'orchestration.record_behavior',
+      name: 'Record Behavior Sample',
+      category: 'analytics',
+      description: 'Record a behavior sample for drift detection and monitoring',
+      requiredRoles: ['admin', 'super_admin'],
+      handler: async (request: ActionRequest) => {
+        const startTime = Date.now();
+        const payload = request.payload || {};
+        
+        try {
+          await behavioralMonitoringService.recordSample({
+            timestamp: new Date(),
+            subagentId: payload.subagentId || 'unknown',
+            modelTier: payload.modelTier || 'FLASH',
+            actionType: payload.actionType || 'general',
+            decisionCategory: payload.decisionCategory || 'general',
+            confidenceScore: payload.confidenceScore || 0.8,
+            responseTime: payload.responseTime || 0,
+            tokenCount: payload.tokenCount || 0,
+            outcome: payload.outcome || 'success',
+            userFeedback: payload.userFeedback,
+            workspaceId: request.workspaceId,
+            userId: request.userId,
+          });
+          
+          return {
+            success: true,
+            actionId: request.actionId,
+            message: 'Behavior sample recorded',
+            executionTimeMs: Date.now() - startTime
+          };
+        } catch (error: any) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: `Failed to record sample: ${error.message}`,
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+      }
+    });
+
+    helpaiOrchestrator.registerAction({
+      actionId: 'orchestration.get_behavioral_health',
+      name: 'Get Behavioral Health',
+      category: 'analytics',
+      description: 'Get behavioral health summary including drift and anomaly counts',
+      requiredRoles: ['admin', 'super_admin'],
+      handler: async (request: ActionRequest) => {
+        const startTime = Date.now();
+        
+        try {
+          const health = behavioralMonitoringService.getHealthSummary();
+          const recentDrifts = behavioralMonitoringService.getRecentDrifts(10);
+          const recentAnomalies = behavioralMonitoringService.getRecentAnomalies(20);
+          
+          return {
+            success: true,
+            actionId: request.actionId,
+            message: `Behavioral health: ${health.overallHealth}`,
+            data: { health, recentDrifts, recentAnomalies },
+            executionTimeMs: Date.now() - startTime
+          };
+        } catch (error: any) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: `Failed to get health: ${error.message}`,
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+      }
+    });
+
+    helpaiOrchestrator.registerAction({
+      actionId: 'orchestration.get_behavior_profile',
+      name: 'Get Behavior Profile',
+      category: 'analytics',
+      description: 'Get detailed behavioral profile for a specific subagent',
+      requiredRoles: ['admin', 'super_admin'],
+      handler: async (request: ActionRequest) => {
+        const startTime = Date.now();
+        const payload = request.payload || {};
+        
+        if (!payload.subagentId || !payload.modelTier) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: 'Missing required parameters: subagentId, modelTier',
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+        
+        try {
+          const profile = behavioralMonitoringService.getProfile(
+            payload.subagentId,
+            payload.modelTier
+          );
+          
+          if (!profile) {
+            return {
+              success: false,
+              actionId: request.actionId,
+              message: 'Profile not found - insufficient samples for baseline',
+              executionTimeMs: Date.now() - startTime
+            };
+          }
+          
+          return {
+            success: true,
+            actionId: request.actionId,
+            message: `Profile found: ${profile.sampleCount} samples, quality ${(profile.qualityScore * 100).toFixed(0)}%`,
+            data: profile,
+            executionTimeMs: Date.now() - startTime
+          };
+        } catch (error: any) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: `Failed to get profile: ${error.message}`,
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+      }
+    });
+
+    console.log('[AI Brain Master Orchestrator] Registered 12 autonomous orchestration tool actions');
+
+    // ============================================================================
     // GAMIFICATION DOMAIN ACTIONS
     // ============================================================================
 
