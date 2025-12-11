@@ -26,6 +26,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { AnimatedNotificationBell } from "./animated-notification-bell";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useMobile } from "@/hooks/use-mobile";
+import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useNotificationWebSocket } from "@/hooks/use-notification-websocket";
 import { useTrinityContext } from "@/hooks/use-trinity-context";
@@ -186,6 +187,7 @@ export function NotificationsPopover() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const scrollRef = useRef<HTMLDivElement>(null);
   const { isMobile } = useMobile();
+  const { toast } = useToast();
   
   // Get user context for WebSocket and filtering
   const { user } = useAuth();
@@ -405,9 +407,25 @@ export function NotificationsPopover() {
       queryClient.invalidateQueries({ queryKey: ["/api/notifications/onboarding-digest"] });
       // Invalidate Trinity context so mascot gets fresh notification counts
       queryClient.invalidateQueries({ queryKey: ["/api/trinity/context"] });
+      
+      // Toast feedback for user
+      const tabLabels: Record<string, string> = {
+        updates: "What's New",
+        notifications: "Alerts", 
+        system: "System"
+      };
+      toast({
+        title: "Cleared successfully",
+        description: `All ${tabLabels[tab] || tab} items have been acknowledged.`,
+      });
     },
     onError: (err: Error) => {
       console.error('[Clear Tab] Mutation error:', err.message || String(err));
+      toast({
+        title: "Failed to clear",
+        description: err.message || "Something went wrong. Please try again.",
+        variant: "destructive",
+      });
     },
   });
 
@@ -579,11 +597,7 @@ export function NotificationsPopover() {
             </TabsList>
           </div>
 
-          <div 
-            className="flex-1 min-h-0 overflow-y-auto overscroll-contain"
-            ref={scrollRef}
-          >
-            <TabsContent value="updates" className="mt-0 focus-visible:outline-none" forceMount={activeTab === 'updates' ? true : undefined}>
+            <TabsContent value="updates" className="mt-0 flex-1 min-h-0 overflow-y-auto overscroll-contain focus-visible:outline-none data-[state=inactive]:hidden" forceMount={activeTab === 'updates' ? true : undefined} ref={activeTab === 'updates' ? scrollRef : undefined}>
               {unviewedUpdates.length > 0 && (
                 <div className="px-4 py-3 flex items-center justify-between border-b bg-muted/30">
                   <div className="flex items-center gap-3">
@@ -711,7 +725,7 @@ export function NotificationsPopover() {
               )}
             </TabsContent>
 
-            <TabsContent value="notifications" className="mt-0 focus-visible:outline-none">
+            <TabsContent value="notifications" className="mt-0 flex-1 min-h-0 overflow-y-auto overscroll-contain focus-visible:outline-none data-[state=inactive]:hidden">
               {filteredNotifications.length > 0 && (
                 <div className="px-4 py-3 flex items-center justify-between border-b bg-muted/30">
                   <span className="text-xs text-muted-foreground">
@@ -868,7 +882,7 @@ export function NotificationsPopover() {
               )}
             </TabsContent>
 
-            <TabsContent value="system" className="mt-0 focus-visible:outline-none">
+            <TabsContent value="system" className="mt-0 flex-1 min-h-0 overflow-y-auto overscroll-contain focus-visible:outline-none data-[state=inactive]:hidden">
               {(unacknowledgedAlerts.length > 0 || unviewedSystemUpdates.length > 0) && (
                 <div className="px-4 py-3 flex items-center justify-between border-b bg-amber-500/10">
                   <span className="text-xs text-muted-foreground">
@@ -1042,7 +1056,6 @@ export function NotificationsPopover() {
               )}
             </TabsContent>
             <div className="pb-4" />
-          </div>
         </Tabs>
       )}
 
