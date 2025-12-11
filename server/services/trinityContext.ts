@@ -422,14 +422,20 @@ export async function resolveTrinityContext(userId: string, workspaceId?: string
   // DEMO MODE - Everyone else gets limited demo functionality
   
   let orgIntelligence: OrgIntelligence | undefined;
-  if (effectiveWorkspaceId && (isOrgOwner || isManager || isPlatformStaff || hasTrinityPro || hasBusinessBuddy)) {
+  // Platform/support staff in guru mode should NOT see business automation alerts
+  // They need platform diagnostics, not org-level business metrics
+  const shouldGatherOrgIntel = effectiveWorkspaceId && 
+    (isOrgOwner || isManager || hasTrinityPro || hasBusinessBuddy) && 
+    !isPlatformStaff; // Exclude platform staff from org intelligence
+  
+  if (shouldGatherOrgIntel) {
     try {
       orgIntelligence = await gatherOrgIntelligence(effectiveWorkspaceId, userId);
     } catch {
     }
   }
   
-  // Gather platform diagnostics for Guru mode
+  // Gather platform diagnostics for Guru mode (platform/support staff)
   let platformDiagnostics: PlatformDiagnostics | undefined;
   if (trinityMode === 'guru') {
     try {
