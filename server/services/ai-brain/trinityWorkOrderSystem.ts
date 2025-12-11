@@ -483,6 +483,27 @@ class TaskDecompositionEngine {
     const startTime = Date.now();
     console.log(`[TaskDecomposition] Decomposing work order ${workOrder.id}...`);
     
+    // For simple/trivial complexity, create a minimal task graph
+    if (workOrder.complexity === 'trivial') {
+      const tasks: TaskNode[] = [{
+        id: 'task-1',
+        workOrderId: workOrder.id,
+        title: 'Execute request',
+        description: workOrder.summary,
+        actionType: 'analyze',
+        dependsOn: [],
+        blocks: [],
+        status: 'ready', // Mark as ready immediately
+        attempts: 0,
+        maxAttempts: 3,
+        estimatedMinutes: 2,
+        confidence: 0.9,
+        createdAt: new Date(),
+      }];
+      this.taskGraphs.set(workOrder.id, tasks);
+      return tasks;
+    }
+    
     const prompt = `You are an expert task planner. Decompose this work order into atomic executable tasks.
 
 WORK ORDER:
@@ -752,36 +773,70 @@ class SolutionDiscoveryLoop {
         }
       }
 
+      // Determine success based on task completion
+      const allTasks = decomposer.getTaskGraph(workOrder.id);
+      const successfulTasks = allTasks.filter(t => t.status === 'success').length;
+      const failedTasks = allTasks.filter(t => t.status === 'failed').length;
+      const totalTasks = allTasks.length;
+      
+      attempt.success = failedTasks === 0 && successfulTasks === totalTasks;
+      console.log(`[SolutionDiscovery] Task completion: ${successfulTasks}/${totalTasks} succeeded, ${failedTasks} failed`);
+
       // Run self-reflection on the attempt
       if (attempt.tasksExecuted.length > 0) {
         onProgress?.('Running self-reflection...');
-        const reflectionResult = await selfReflectionEngine.reflect({
-          executionId: attempt.id,
-          workspaceId: workOrder.workspaceId,
-          userId: workOrder.userId,
-          originalIntent: workOrder.summary,
-          executedSteps: attempt.tasksExecuted.map(id => {
-            const task = tasks.find(t => t.id === id);
-            return {
-              stepId: id,
-              action: task?.actionType || 'unknown',
-              input: { title: task?.title },
-              output: task?.output,
-              durationMs: task?.durationMs || 0,
-              timestamp: task?.completedAt || new Date(),
-            };
-          }),
-          currentOutput: attempt.changesApplied,
-        });
-        
-        attempt.reflectionResult = reflectionResult;
-        attempt.confidenceScore = reflectionResult.confidenceScore;
-        attempt.shouldCommit = reflectionResult.passed && reflectionResult.confidenceScore >= 0.8;
-        attempt.shouldRetry = !reflectionResult.passed && attemptNumber < this.MAX_ATTEMPTS;
+        try {
+          const reflectionResult = await selfReflectionEngine.reflect({
+            executionId: attempt.id,
+            workspaceId: workOrder.workspaceId,
+            userId: workOrder.userId,
+            originalIntent: workOrder.summary,
+            executedSteps: attempt.tasksExecuted.map(id => {
+              const task = allTasks.find(t => t.id === id);
+              return {
+                stepId: id,
+                action: task?.actionType || 'unknown',
+                input: { title: task?.title },
+                output: task?.output,
+                durationMs: task?.durationMs || 0,
+                timestamp: task?.completedAt || new Date(),
+              };
+            }),
+            currentOutput: attempt.changesApplied,
+          });
+          
+          attempt.reflectionResult = reflectionResult;
+          attempt.confidenceScore = reflectionResult.confidenceScore;
+          
+          // Only allow commit if reflection passes AND no failures
+          attempt.shouldCommit = reflectionResult.passed && 
+                                 reflectionResult.confidenceScore >= 0.8 && 
+                                 failedTasks === 0;
+          attempt.shouldRetry = (!reflectionResult.passed || failedTasks > 0) && 
+                               attemptNumber < this.MAX_ATTEMPTS;
+                               
+          console.log(`[SolutionDiscovery] Reflection: ${reflectionResult.passed ? 'PASSED' : 'FAILED'}, confidence: ${(reflectionResult.confidenceScore * 100).toFixed(0)}%`);
+        } catch (reflectionError: any) {
+          console.error('[SolutionDiscovery] Reflection failed:', reflectionError.message);
+          attempt.issues.push(`Self-reflection failed: ${reflectionError.message}`);
+          attempt.confidenceScore = 0.5;
+          attempt.shouldCommit = false;
+          attempt.shouldRetry = attemptNumber < this.MAX_ATTEMPTS;
+        }
+      } else {
+        // No tasks executed - mark as failed
+        attempt.success = false;
+        attempt.confidenceScore = 0;
+        attempt.shouldCommit = false;
+        attempt.shouldRetry = attemptNumber < this.MAX_ATTEMPTS;
+        attempt.issues.push('No tasks were executed');
       }
 
     } catch (error: any) {
+      console.error('[SolutionDiscovery] Attempt error:', error.message);
       attempt.issues.push(`Attempt failed: ${error.message}`);
+      attempt.success = false;
+      attempt.shouldCommit = false;
       attempt.shouldRetry = attemptNumber < this.MAX_ATTEMPTS;
     }
 
@@ -808,6 +863,7 @@ class SolutionDiscoveryLoop {
     workOrder: WorkOrder
   ): Promise<{ success: boolean; output?: any; error?: string; changes?: ChangeRecord[] }> {
     const startTime = Date.now();
+    console.log(`[SolutionDiscovery] Executing task: ${task.title} (${task.actionType})`);
     
     switch (task.actionType) {
       case 'search_code':
@@ -817,8 +873,14 @@ class SolutionDiscoveryLoop {
             maxResults: 20,
           });
           task.durationMs = Date.now() - startTime;
-          return { success: true, output: searchResult };
+          const hasResults = searchResult.results && searchResult.results.length > 0;
+          return { 
+            success: hasResults, 
+            output: searchResult,
+            error: hasResults ? undefined : 'No matching code found',
+          };
         } catch (e: any) {
+          task.durationMs = Date.now() - startTime;
           return { success: false, error: e.message };
         }
 
@@ -826,10 +888,54 @@ class SolutionDiscoveryLoop {
         try {
           const filePath = this.extractFilePath(task.description);
           const fs = await import('fs');
+          if (!fs.default.existsSync(filePath)) {
+            task.durationMs = Date.now() - startTime;
+            return { success: false, error: `File not found: ${filePath}` };
+          }
           const content = fs.default.readFileSync(filePath, 'utf-8');
           task.durationMs = Date.now() - startTime;
-          return { success: true, output: { path: filePath, content: content.substring(0, 5000) } };
+          return { success: true, output: { path: filePath, content: content.substring(0, 5000), lineCount: content.split('\n').length } };
         } catch (e: any) {
+          task.durationMs = Date.now() - startTime;
+          return { success: false, error: e.message };
+        }
+
+      case 'write_file':
+      case 'edit_file':
+        try {
+          // For write/edit, we need to use trinityCodeOps
+          const filePath = this.extractFilePath(task.description);
+          const fs = await import('fs');
+          
+          // Get the proposed content from AI analysis
+          const editAnalysis = await aiBrainService.processRequest({
+            type: 'code_generation',
+            userId: workOrder.userId,
+            workspaceId: workOrder.workspaceId,
+            messages: [{ role: 'user', content: `Based on this task: "${task.description}"\n\nGenerate the code changes needed. Return only the code, no explanation.` }],
+            contextLevel: 'minimal',
+          });
+          
+          // Track the change (preview only - actual commit requires approval)
+          const changeRecord: ChangeRecord = {
+            id: crypto.randomUUID(),
+            file: filePath,
+            changeType: task.actionType === 'write_file' ? 'created' : 'modified',
+            diffPreview: editAnalysis.response.substring(0, 500),
+            linesAdded: editAnalysis.response.split('\n').length,
+            linesRemoved: 0,
+            canRollback: true,
+            rolledBack: false,
+          };
+          
+          task.durationMs = Date.now() - startTime;
+          return { 
+            success: true, 
+            output: { filePath, analysisComplete: true, pendingApproval: true },
+            changes: [changeRecord],
+          };
+        } catch (e: any) {
+          task.durationMs = Date.now() - startTime;
           return { success: false, error: e.message };
         }
 
@@ -844,8 +950,14 @@ class SolutionDiscoveryLoop {
             contextLevel: 'minimal',
           });
           task.durationMs = Date.now() - startTime;
-          return { success: true, output: thinkResult.response };
+          const hasOutput = thinkResult.response && thinkResult.response.length > 10;
+          return { 
+            success: hasOutput, 
+            output: thinkResult.response,
+            error: hasOutput ? undefined : 'Analysis produced no meaningful output',
+          };
         } catch (e: any) {
+          task.durationMs = Date.now() - startTime;
           return { success: false, error: e.message };
         }
 
@@ -853,26 +965,87 @@ class SolutionDiscoveryLoop {
         try {
           const testResult = await aiBrainTestRunner.runAll('Trinity Work Order');
           task.durationMs = Date.now() - startTime;
+          const passed = testResult.summary.failed === 0;
           return { 
-            success: testResult.summary.failed === 0, 
+            success: passed, 
             output: testResult.summary,
-            error: testResult.summary.failed > 0 ? `${testResult.summary.failed} tests failed` : undefined,
+            error: passed ? undefined : `${testResult.summary.failed}/${testResult.summary.total} tests failed`,
           };
         } catch (e: any) {
+          task.durationMs = Date.now() - startTime;
+          return { success: false, error: `Test execution failed: ${e.message}` };
+        }
+
+      case 'commit':
+        // Commits require explicit approval through the commit protocol
+        task.durationMs = Date.now() - startTime;
+        return { 
+          success: true, 
+          output: { status: 'pending_approval', message: 'Commit requires human approval before execution' },
+        };
+
+      case 'validate':
+        try {
+          // Run actual validation checks
+          const testResult = await aiBrainTestRunner.runCategory('api', 'Validation');
+          task.durationMs = Date.now() - startTime;
+          const passed = testResult.summary.failed === 0;
+          return { 
+            success: passed, 
+            output: testResult.summary,
+            error: passed ? undefined : `Validation failed: ${testResult.summary.failed} issues`,
+          };
+        } catch (e: any) {
+          task.durationMs = Date.now() - startTime;
           return { success: false, error: e.message };
         }
 
-      case 'validate':
+      case 'ask_user':
+        // This should trigger clarification protocol
         task.durationMs = Date.now() - startTime;
-        return { success: true, output: 'Validation passed' };
+        return { 
+          success: false, 
+          output: { requiresUserInput: true, question: task.description },
+          error: 'Waiting for user input',
+        };
+
+      case 'database_query':
+        try {
+          // Use readonly database operations only
+          const dbResult = await aiBrainService.processRequest({
+            type: 'database_analysis',
+            userId: workOrder.userId,
+            workspaceId: workOrder.workspaceId,
+            messages: [{ role: 'user', content: `Analyze database query requirements: ${task.description}` }],
+            contextLevel: 'minimal',
+          });
+          task.durationMs = Date.now() - startTime;
+          return { success: true, output: dbResult.response };
+        } catch (e: any) {
+          task.durationMs = Date.now() - startTime;
+          return { success: false, error: e.message };
+        }
 
       case 'summarize':
-        task.durationMs = Date.now() - startTime;
-        return { success: true, output: 'Summary generated' };
+        try {
+          const summaryResult = await aiBrainService.processRequest({
+            type: 'summarization',
+            userId: workOrder.userId,
+            workspaceId: workOrder.workspaceId,
+            messages: [{ role: 'user', content: `Summarize: ${task.description}` }],
+            contextLevel: 'minimal',
+          });
+          task.durationMs = Date.now() - startTime;
+          return { success: true, output: summaryResult.response };
+        } catch (e: any) {
+          task.durationMs = Date.now() - startTime;
+          return { success: false, error: e.message };
+        }
 
       default:
         task.durationMs = Date.now() - startTime;
-        return { success: true, output: `Simulated ${task.actionType}` };
+        console.warn(`[SolutionDiscovery] Unknown action type: ${task.actionType}`);
+        return { success: false, error: `Unknown action type: ${task.actionType}` };
     }
   }
 
@@ -911,8 +1084,8 @@ class ConfidentCommitProtocol {
       shouldCommit: false,
       confidenceScore: attempt.confidenceScore,
       testsPass: false,
-      reflectionPass: attempt.reflectionResult?.passed || false,
-      noRegressions: true,
+      reflectionPass: false, // Must be earned through validation
+      noRegressions: false, // Must be earned through validation
       meetsCriteria: [],
       unmetCriteria: [],
       riskAcceptable: workOrder.riskLevel !== 'critical',
@@ -920,18 +1093,57 @@ class ConfidentCommitProtocol {
       requiresHumanReview: false,
     };
 
-    // Run tests
+    // Run actual tests using AI Brain Test Runner
     try {
+      console.log('[CommitProtocol] Running test suite...');
       const testResults = await aiBrainTestRunner.runAll('Commit Validation');
       decision.testsPass = testResults.summary.failed === 0;
       
       if (!decision.testsPass) {
         decision.riskMitigations.push(`${testResults.summary.failed} tests failed - needs investigation`);
+        console.log(`[CommitProtocol] Tests FAILED: ${testResults.summary.failed}/${testResults.summary.total}`);
+      } else {
+        console.log(`[CommitProtocol] Tests PASSED: ${testResults.summary.passed}/${testResults.summary.total}`);
       }
-    } catch (error) {
+    } catch (error: any) {
+      console.error('[CommitProtocol] Test execution error:', error.message);
       decision.testsPass = false;
-      decision.riskMitigations.push('Test execution failed');
+      decision.riskMitigations.push(`Test execution failed: ${error.message}`);
     }
+
+    // Run self-reflection if not already done in attempt
+    if (!attempt.reflectionResult) {
+      try {
+        console.log('[CommitProtocol] Running self-reflection...');
+        const reflectionResult = await selfReflectionEngine.reflect({
+          executionId: attempt.id,
+          workspaceId: workOrder.workspaceId,
+          userId: workOrder.userId,
+          originalIntent: workOrder.summary,
+          executedSteps: attempt.tasksExecuted.map(id => ({
+            stepId: id,
+            action: 'executed',
+            input: {},
+            output: 'completed',
+            durationMs: 0,
+            timestamp: new Date(),
+          })),
+          currentOutput: { changesApplied: attempt.changesApplied.length },
+        });
+        decision.reflectionPass = reflectionResult.passed;
+        decision.confidenceScore = reflectionResult.confidenceScore;
+        console.log(`[CommitProtocol] Reflection ${reflectionResult.passed ? 'PASSED' : 'FAILED'}: ${(reflectionResult.confidenceScore * 100).toFixed(0)}% confidence`);
+      } catch (error: any) {
+        console.error('[CommitProtocol] Reflection error:', error.message);
+        decision.reflectionPass = false;
+        decision.riskMitigations.push(`Self-reflection failed: ${error.message}`);
+      }
+    } else {
+      decision.reflectionPass = attempt.reflectionResult.passed;
+    }
+
+    // Check for regressions based on test results
+    decision.noRegressions = decision.testsPass;
 
     // Evaluate each success criterion
     for (const criterion of workOrder.successCriteria) {
