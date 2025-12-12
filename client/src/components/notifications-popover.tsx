@@ -1032,7 +1032,7 @@ export function NotificationsPopover() {
       </div>
       
       {/* Notification List */}
-      <ScrollArea className="flex-1">
+      <div className="flex-1 min-h-0 overflow-y-auto">
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
@@ -1067,7 +1067,7 @@ export function NotificationsPopover() {
             </span>
           </div>
         )}
-      </ScrollArea>
+      </div>
       
       {/* Footer: Ask Trinity for Help - Matching Design */}
       <div className="border-t bg-background shrink-0">
