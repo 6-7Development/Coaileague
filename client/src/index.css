@@ -108,6 +108,21 @@ html, body {
   align-items: stretch !important;
 }
 
+/* Trinity Mascot - Force default cursor, never grab */
+.mascot-container,
+.mascot-container *,
+[data-mascot="container"],
+[data-mascot="trinity"],
+[data-trinity="true"],
+.trinity-container,
+.trinity-container *,
+.trinity-mascot-canvas {
+  cursor: default !important;
+  -webkit-user-drag: none !important;
+  user-drag: none !important;
+  touch-action: manipulation !important;
+}
+
 /* Chat Bubble Animations */
 @keyframes chatBubbleOpen {
   from {
