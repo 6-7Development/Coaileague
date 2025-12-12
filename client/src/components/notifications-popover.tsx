@@ -118,6 +118,70 @@ function generateTypeBasedActions(
   const title = (notif.title || '').toLowerCase();
   const message = (notif.message || '').toLowerCase();
   const type = notif.type || notif.category || '';
+  const metadata = notif.metadata || {};
+  
+  // AI Brain Workflow Order Approvals - requires human decision
+  if (metadata.workflowOrderId || title.includes('workflow order') || title.includes('work order') || type === 'workflow_order') {
+    actions.push({
+      label: 'Approve',
+      type: 'orchestration',
+      target: `workflow.approve:${metadata.workflowOrderId || notif.id}`,
+      variant: 'primary',
+    });
+    actions.push({
+      label: 'Reject',
+      type: 'orchestration',
+      target: `workflow.reject:${metadata.workflowOrderId || notif.id}`,
+      variant: 'ghost',
+    });
+    return actions; // Don't add more actions for workflow orders
+  }
+  
+  // Trinity Hotpatch Fix Approvals - AI identified and suggests fix
+  if (metadata.hotpatchId || title.includes('hotpatch') || title.includes('auto-fix') || title.includes('trinity fix') || type === 'hotpatch') {
+    actions.push({
+      label: 'Apply Fix',
+      type: 'orchestration',
+      target: `hotpatch.apply:${metadata.hotpatchId || notif.id}`,
+      variant: 'primary',
+    });
+    actions.push({
+      label: 'Review First',
+      type: 'navigate',
+      target: `/diagnostics?hotpatch=${metadata.hotpatchId || notif.id}`,
+      variant: 'secondary',
+    });
+    actions.push({
+      label: 'Skip',
+      type: 'api_call',
+      target: `/api/notifications/dismiss/${notif.id}`,
+      variant: 'ghost',
+    });
+    return actions; // Don't add more actions for hotpatch fixes
+  }
+  
+  // Trinity AI Brain Decisions requiring approval
+  if (metadata.aiBrainDecisionId || title.includes('ai decision') || title.includes('trinity suggests') || type === 'ai_decision') {
+    actions.push({
+      label: 'Approve AI Action',
+      type: 'orchestration',
+      target: `ai_brain.approve:${metadata.aiBrainDecisionId || notif.id}`,
+      variant: 'primary',
+    });
+    actions.push({
+      label: 'Modify',
+      type: 'navigate',
+      target: `/trinity-command-center?decision=${metadata.aiBrainDecisionId || notif.id}`,
+      variant: 'secondary',
+    });
+    actions.push({
+      label: 'Decline',
+      type: 'orchestration',
+      target: `ai_brain.decline:${metadata.aiBrainDecisionId || notif.id}`,
+      variant: 'ghost',
+    });
+    return actions;
+  }
   
   // Payroll-related notifications
   if (title.includes('payroll') || type.includes('payroll')) {
