@@ -96,14 +96,14 @@ export default function Contact() {
       <UniversalHeader variant="public" />
 
       {/* Contact Hero */}
-      <section className="container mx-auto px-3 sm:px-6 pt-16 sm:pt-24 pb-8 sm:pb-16 bg-gradient-to-br from-slate-50 via-blue-50 to-blue-50 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800">
+      <section className="container mx-auto px-3 sm:px-6 pt-16 sm:pt-24 pb-8 sm:pb-16 bg-gradient-to-br from-violet-50 via-indigo-50 to-purple-50 dark:from-slate-900 dark:via-violet-950/30 dark:to-slate-900">
         <div className="text-center space-y-3 sm:space-y-4 mb-8 sm:mb-12">
           <div className="flex items-center justify-center gap-2">
-            <div className="h-1 w-8 sm:w-12 bg-gradient-to-r from-blue-600 to-blue-600" />
+            <div className="h-1 w-8 sm:w-12 bg-gradient-to-r from-violet-600 to-indigo-600" />
             <span className="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 font-mono">
               Enterprise Support
             </span>
-            <div className="h-1 w-8 sm:w-12 bg-gradient-to-r from-blue-600 to-blue-600" />
+            <div className="h-1 w-8 sm:w-12 bg-gradient-to-r from-violet-600 to-indigo-600" />
           </div>
           <h1 className="text-2xl sm:text-3xl lg:text-5xl font-bold tracking-tight text-gray-900 dark:text-gray-100 px-2" data-testid="heading-contact">
             Contact Our Team
@@ -116,8 +116,8 @@ export default function Contact() {
         {/* Support Channels Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-8 sm:mb-16">
           <Card className="bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 shadow-md p-4 sm:p-6 space-y-3 sm:space-y-4" data-testid="card-email-support">
-            <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-md bg-blue-50 dark:bg-blue-950/50 flex items-center justify-center">
-              <Mail className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
+            <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-md bg-violet-50 dark:bg-violet-950/50 flex items-center justify-center">
+              <Mail className="h-5 w-5 sm:h-6 sm:w-6 text-violet-600" />
             </div>
             <div className="space-y-2">
               <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100">Email Support</h3>
@@ -127,7 +127,7 @@ export default function Contact() {
               <div className="space-y-1 pt-2">
                 <a
                   href="mailto:support@coaileague.com"
-                  className="text-xs sm:text-sm font-mono text-blue-600 hover:underline block break-all"
+                  className="text-xs sm:text-sm font-mono text-violet-600 hover:underline block break-all"
                   data-testid="link-email-support"
                 >
                   support@coaileague.com
@@ -140,8 +140,8 @@ export default function Contact() {
           </Card>
 
           <Card className="bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 shadow-md p-4 sm:p-6 space-y-3 sm:space-y-4" data-testid="card-live-chat">
-            <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-md bg-purple-50 dark:bg-purple-950/50 flex items-center justify-center">
-              <MessageSquare className="h-5 w-5 sm:h-6 sm:w-6 text-purple-600" />
+            <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-md bg-indigo-50 dark:bg-indigo-950/50 flex items-center justify-center">
+              <MessageSquare className="h-5 w-5 sm:h-6 sm:w-6 text-indigo-600" />
             </div>
             <div className="space-y-2">
               <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100">Live Chat</h3>
@@ -152,7 +152,7 @@ export default function Contact() {
                 <Link href="/chat">
                   <Button
                     size="sm"
-                    className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white min-h-[44px] shadow-md"
+                    className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white min-h-[44px] shadow-md"
                     data-testid="button-start-chat"
                     disabled={isLoadingAuth}
                   >
@@ -169,10 +169,10 @@ export default function Contact() {
         </div>
 
         {/* Support Tiers */}
-        <Card className="bg-white border-2 border-gray-200 shadow-md mb-16" data-testid="card-support-tiers">
+        <Card className="bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 shadow-md mb-16" data-testid="card-support-tiers">
           <div className="p-8 space-y-6">
             <div className="text-center space-y-2">
-              <h2 className="text-2xl font-bold text-gray-900">Enterprise Support Tiers</h2>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Enterprise Support Tiers</h2>
               <p className="text-sm text-gray-500">
                 Comprehensive support packages for businesses of all sizes
               </p>
@@ -181,56 +181,56 @@ export default function Contact() {
             <div className="grid md:grid-cols-3 gap-6">
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
-                  <HeadphonesIcon className="h-5 w-5 text-blue-600" />
-                  <h3 className="font-semibold text-gray-900">Standard Support</h3>
+                  <HeadphonesIcon className="h-5 w-5 text-violet-600" />
+                  <h3 className="font-semibold text-gray-900 dark:text-gray-100">Standard Support</h3>
                 </div>
-                <ul className="space-y-2 text-sm text-gray-600">
+                <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
                   <li className="flex items-start gap-2">
-                    <span className="text-blue-600">•</span>
+                    <span className="text-violet-600">•</span>
                     Email & chat support
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-blue-600">•</span>
+                    <span className="text-violet-600">•</span>
                     Response within 4 hours
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-blue-600">•</span>
+                    <span className="text-violet-600">•</span>
                     Knowledge base access
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-blue-600">•</span>
+                    <span className="text-violet-600">•</span>
                     Community forum
                   </li>
                 </ul>
-                <Badge className="bg-blue-50 text-blue-600 border-none">
+                <Badge className="bg-violet-50 dark:bg-violet-950/50 text-violet-600 border-none">
                   Included in Starter
                 </Badge>
               </div>
 
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
-                  <Briefcase className="h-5 w-5 text-blue-600" />
-                  <h3 className="font-semibold text-gray-900">Priority Support</h3>
+                  <Briefcase className="h-5 w-5 text-indigo-600" />
+                  <h3 className="font-semibold text-gray-900 dark:text-gray-100">Priority Support</h3>
                 </div>
-                <ul className="space-y-2 text-sm text-gray-600">
+                <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
                   <li className="flex items-start gap-2">
-                    <span className="text-blue-600">•</span>
+                    <span className="text-indigo-600">•</span>
                     Phone, email & chat support
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-blue-600">•</span>
+                    <span className="text-indigo-600">•</span>
                     Response within 1 hour
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-blue-600">•</span>
+                    <span className="text-indigo-600">•</span>
                     Dedicated support engineer
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-blue-600">•</span>
+                    <span className="text-indigo-600">•</span>
                     Quarterly business reviews
                   </li>
                 </ul>
-                <Badge className="bg-blue-50 text-blue-600 border-none">
+                <Badge className="bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 border-none">
                   Included in Professional
                 </Badge>
               </div>
@@ -238,9 +238,9 @@ export default function Contact() {
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
                   <Zap className="h-5 w-5 text-purple-600" />
-                  <h3 className="font-semibold text-gray-900">White-Glove Support</h3>
+                  <h3 className="font-semibold text-gray-900 dark:text-gray-100">White-Glove Support</h3>
                 </div>
-                <ul className="space-y-2 text-sm text-gray-600">
+                <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
                   <li className="flex items-start gap-2">
                     <span className="text-purple-600">•</span>
                     24/7 priority phone support
@@ -258,7 +258,7 @@ export default function Contact() {
                     Custom SLA & integrations
                   </li>
                 </ul>
-                <Badge className="bg-purple-50 text-purple-600 border-none">
+                <Badge className="bg-purple-50 dark:bg-purple-950/50 text-purple-600 border-none">
                   Included in Enterprise
                 </Badge>
               </div>
@@ -375,7 +375,7 @@ export default function Contact() {
                   <Button
                 type="submit"
                 disabled={submitMutation.isPending}
-                className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:bg-gradient-to-r from-blue-500 to-blue-600/90 text-white h-11"
+                className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white h-11"
                 data-testid="button-submit-contact"
               >
                 {submitMutation.isPending ? (
@@ -393,10 +393,10 @@ export default function Contact() {
                 </form>
               </>
             ) : (
-              <Card className="bg-blue-50 border-2 border-blue-200 shadow-md p-8 space-y-6" data-testid="card-success">
+              <Card className="bg-violet-50 dark:bg-violet-950/30 border-2 border-violet-200 dark:border-violet-800 shadow-md p-8 space-y-6" data-testid="card-success">
                 <div className="flex items-center gap-4">
-                  <div className="h-16 w-16 rounded-full bg-blue-100 flex items-center justify-center">
-                    <CheckCircle2 className="h-8 w-8 text-blue-600" />
+                  <div className="h-16 w-16 rounded-full bg-violet-100 dark:bg-violet-900/50 flex items-center justify-center">
+                    <CheckCircle2 className="h-8 w-8 text-violet-600" />
                   </div>
                   <div className="space-y-1">
                     <h3 className="text-2xl font-bold text-gray-900">Support Ticket Created!</h3>
@@ -409,7 +409,7 @@ export default function Contact() {
                 <div className="space-y-3 p-4 bg-white rounded-md border border-gray-200 shadow-sm">
                   <p className="text-sm font-semibold text-gray-900">Your Ticket Number:</p>
                   <div className="flex items-center justify-between gap-3">
-                    <code className="text-2xl font-bold font-mono text-blue-600" data-testid="text-ticket-number">
+                    <code className="text-2xl font-bold font-mono text-violet-600" data-testid="text-ticket-number">
                       {ticketNumber}
                     </code>
                     <Button
@@ -422,7 +422,7 @@ export default function Contact() {
                           description: "Ticket number copied to clipboard",
                         });
                       }}
-                      className="border-blue-600 text-blue-600 hover:bg-blue-50"
+                      className="border-violet-600 text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-950/50"
                       data-testid="button-copy-ticket"
                     >
                       Copy
@@ -436,7 +436,7 @@ export default function Contact() {
                 <div className="flex gap-3">
                   <Button
                     onClick={() => setLocation("/chat")}
-                    className="flex-1 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white shadow-md"
+                    className="flex-1 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-md"
                     data-testid="button-goto-chat"
                   >
                     <MessageSquare className="h-4 w-4 mr-2" />
@@ -468,42 +468,42 @@ export default function Contact() {
           </div>
 
           <div className="space-y-6">
-            <Card className="bg-white border-2 border-gray-200 shadow-md p-6 space-y-4">
+            <Card className="bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 shadow-md p-6 space-y-4">
               <div className="flex items-center gap-3">
-                <Clock className="h-5 w-5 text-blue-600" />
-                <h3 className="font-semibold text-gray-900">Business Hours</h3>
+                <Clock className="h-5 w-5 text-violet-600" />
+                <h3 className="font-semibold text-gray-900 dark:text-gray-100">Business Hours</h3>
               </div>
-              <div className="space-y-2 text-sm text-gray-600">
-                <div className="flex justify-between">
+              <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+                <div className="flex justify-between gap-2">
                   <span>Monday - Friday:</span>
                   <span className="font-mono">6:00 AM - 10:00 PM EST</span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between gap-2">
                   <span>Saturday - Sunday:</span>
                   <span className="font-mono">8:00 AM - 8:00 PM EST</span>
                 </div>
-                <div className="pt-2 border-t border-gray-200">
-                  <Badge className="bg-blue-50 text-blue-600 border-none">
+                <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
+                  <Badge className="bg-violet-50 dark:bg-violet-950/50 text-violet-600 border-none">
                     24/7 Emergency Support Available
                   </Badge>
                 </div>
               </div>
             </Card>
 
-            <Card className="bg-white border-2 border-gray-200 shadow-md p-6 space-y-4">
+            <Card className="bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 shadow-md p-6 space-y-4">
               <div className="flex items-center gap-3">
-                <Globe className="h-5 w-5 text-blue-600" />
-                <h3 className="font-semibold text-gray-900">Online Business</h3>
+                <Globe className="h-5 w-5 text-indigo-600" />
+                <h3 className="font-semibold text-gray-900 dark:text-gray-100">Online Business</h3>
               </div>
               <div className="space-y-2 text-sm">
-                <p className="text-gray-600">
+                <p className="text-gray-600 dark:text-gray-400">
                   CoAIleague is a fully online platform. All support and communications are handled digitally for maximum efficiency.
                 </p>
                 <div className="pt-2 space-y-1">
-                  <p className="text-xs font-semibold text-gray-900">General Inquiries:</p>
+                  <p className="text-xs font-semibold text-gray-900 dark:text-gray-100">General Inquiries:</p>
                   <a
                     href="mailto:support@coaileague.com"
-                    className="text-sm font-mono text-blue-600 hover:underline block"
+                    className="text-sm font-mono text-violet-600 hover:underline block"
                     data-testid="link-email-info"
                   >
                     support@coaileague.com
@@ -512,18 +512,18 @@ export default function Contact() {
               </div>
             </Card>
 
-            <Card className="bg-white border-2 border-gray-200 shadow-md p-6 space-y-2">
+            <Card className="bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 shadow-md p-6 space-y-2">
               <div className="flex items-center gap-2 mb-2">
-                <div className="h-10 w-10 rounded-md bg-blue-50 flex items-center justify-center">
-                  <Building2 className="h-5 w-5 text-blue-600" />
+                <div className="h-10 w-10 rounded-md bg-violet-50 dark:bg-violet-950/50 flex items-center justify-center">
+                  <Building2 className="h-5 w-5 text-violet-600" />
                 </div>
-                <h3 className="font-semibold text-gray-900">Enterprise Inquiries</h3>
+                <h3 className="font-semibold text-gray-900 dark:text-gray-100">Enterprise Inquiries</h3>
               </div>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
                 Managing 100+ employees? Contact our team for custom pricing and dedicated onboarding.
               </p>
               <Button
-                className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-md"
+                className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-md"
                 onClick={() => window.location.href = "mailto:support@coaileague.com"}
                 data-testid="button-enterprise-contact"
               >

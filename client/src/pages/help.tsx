@@ -1,7 +1,6 @@
-import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { HelpCircle, Book, MessageSquare, Video, FileText, Search } from "lucide-react";
+import { HelpCircle, Book, MessageSquare, Video, FileText, Search, Sparkles } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { Link } from "wouter";
@@ -69,14 +68,30 @@ export default function Help() {
   );
 
   return (
-    <div className="container mx-auto p-4 sm:p-6 max-w-6xl">
-      <PageHeader
-        title="Help Center"
-        description="Find answers and learn how to use CoAIleague"
-        align="center"
-      />
+    <div className="min-h-screen bg-background">
+      {/* Hero Section */}
+      <div className="bg-gradient-to-br from-violet-50 via-indigo-50 to-purple-50 dark:from-slate-900 dark:via-violet-950/30 dark:to-slate-900 border-b border-violet-100 dark:border-violet-900/30">
+        <div className="container mx-auto px-4 sm:px-6 py-12 sm:py-16 max-w-6xl">
+          <div className="text-center space-y-4">
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <div className="h-1 w-8 sm:w-12 bg-gradient-to-r from-violet-600 to-indigo-600" />
+              <span className="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 font-mono flex items-center gap-1.5">
+                <Sparkles className="h-3 w-3 text-violet-600" />
+                Knowledge Base
+              </span>
+              <div className="h-1 w-8 sm:w-12 bg-gradient-to-r from-violet-600 to-indigo-600" />
+            </div>
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 dark:text-gray-100" data-testid="heading-help-center">
+              Help Center
+            </h1>
+            <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+              Find answers and learn how to use CoAIleague
+            </p>
+          </div>
+        </div>
+      </div>
 
-      <div className="mt-6 space-y-6">
+      <div className="container mx-auto px-4 sm:px-6 py-8 max-w-6xl space-y-6">
         {/* Search Bar */}
         <Card>
           <CardContent className="pt-6">
@@ -97,10 +112,12 @@ export default function Help() {
         <div className="grid gap-4">
           <h2 className="text-xl font-bold">Quick Access</h2>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <Card className="hover-elevate cursor-pointer">
+            <Card className="hover-elevate cursor-pointer border-violet-100 dark:border-violet-900/30">
               <Link href="/chat">
                 <CardHeader>
-                  <MessageSquare className="h-8 w-8 text-primary mb-2" />
+                  <div className="h-10 w-10 rounded-md bg-violet-50 dark:bg-violet-950/50 flex items-center justify-center mb-2">
+                    <MessageSquare className="h-5 w-5 text-violet-600" />
+                  </div>
                   <CardTitle className="text-lg">Live Chat Support</CardTitle>
                   <CardDescription>
                     Get instant help from our support team
@@ -109,10 +126,12 @@ export default function Help() {
               </Link>
             </Card>
 
-            <Card className="hover-elevate cursor-pointer">
+            <Card className="hover-elevate cursor-pointer border-indigo-100 dark:border-indigo-900/30">
               <Link href="/updates">
                 <CardHeader>
-                  <Video className="h-8 w-8 text-primary mb-2" />
+                  <div className="h-10 w-10 rounded-md bg-indigo-50 dark:bg-indigo-950/50 flex items-center justify-center mb-2">
+                    <Video className="h-5 w-5 text-indigo-600" />
+                  </div>
                   <CardTitle className="text-lg">Product Updates</CardTitle>
                   <CardDescription>
                     See what's new in CoAIleague
@@ -121,10 +140,12 @@ export default function Help() {
               </Link>
             </Card>
 
-            <Card className="hover-elevate cursor-pointer">
+            <Card className="hover-elevate cursor-pointer border-purple-100 dark:border-purple-900/30">
               <Link href="/contact">
                 <CardHeader>
-                  <FileText className="h-8 w-8 text-primary mb-2" />
+                  <div className="h-10 w-10 rounded-md bg-purple-50 dark:bg-purple-950/50 flex items-center justify-center mb-2">
+                    <FileText className="h-5 w-5 text-purple-600" />
+                  </div>
                   <CardTitle className="text-lg">Contact Sales</CardTitle>
                   <CardDescription>
                     Questions about pricing or enterprise features
@@ -143,11 +164,13 @@ export default function Help() {
               <Card key={article.id} className="hover-elevate cursor-pointer">
                 <CardHeader>
                   <div className="flex items-start gap-4">
-                    <article.icon className="h-6 w-6 text-primary flex-shrink-0 mt-1" />
+                    <div className="h-10 w-10 rounded-md bg-violet-50 dark:bg-violet-950/50 flex items-center justify-center flex-shrink-0">
+                      <article.icon className="h-5 w-5 text-violet-600" />
+                    </div>
                     <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
                         <CardTitle className="text-lg">{article.title}</CardTitle>
-                        <span className="text-xs text-muted-foreground px-2 py-1 bg-muted rounded">
+                        <span className="text-xs text-violet-600 dark:text-violet-400 px-2 py-1 bg-violet-50 dark:bg-violet-950/50 rounded">
                           {article.category}
                         </span>
                       </div>
