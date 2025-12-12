@@ -88,23 +88,16 @@ export function FloatingSupportChat() {
   const platformRole = (employee as any)?.platformRole || null;
   const workspaceRole = employee?.workspaceRole || null;
   
-  // Hide on chat pages AND workspace pages to avoid conflicts (chat already in mobile nav)
-  const shouldHide = location.startsWith('/chat') || 
-                     location.startsWith('/org-chat') || 
-                     location.startsWith('/support/chatrooms') ||
-                     location === '/dashboard' ||
-                     location === '/schedule' ||
-                     location === '/billing' ||
-                     location === '/invoices' ||
-                     location === '/payroll' ||
-                     location === '/employees' ||
-                     location === '/clients' ||
-                     location === '/time-tracking' ||
-                     location === '/analytics' ||
-                     location === '/reports' ||
-                     location.startsWith('/employee/portal') ||
-                     location.startsWith('/auditor/portal') ||
-                     location.startsWith('/client/portal');
+  // UNIVERSAL: Hide for ALL authenticated users - this widget is ONLY for guests on public pages
+  // Authenticated users have full access to HelpDesk, org-chat, and support chatrooms via the main nav
+  const isAuthenticated = !!user;
+  
+  // Also hide on certain pages regardless of auth state
+  const isRestrictedPage = location.startsWith('/chat') || 
+                           location.startsWith('/org-chat') || 
+                           location.startsWith('/support/chatrooms');
+  
+  const shouldHide = isAuthenticated || isRestrictedPage;
   
   // SIMPLIFIED STATE - No position tracking, purely UI state
   // Trinity is ALWAYS fixed to bottom-right via CSS - no dragging on desktop
