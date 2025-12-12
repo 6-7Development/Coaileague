@@ -104,6 +104,20 @@ CoAIleague features a multi-tenant architecture with RBAC security and isolation
 - **Trinity Agent Parity Layer:** Replit Agent-equivalent autonomous coding capabilities (Plan-Execute-Reflect, Verification Loops, Confidence Scoring, Context Integration, Self-Correction) with a comprehensive workflow including planning, pre-flight verification, execution, post-validation, self-reflection, and auto-correction.
 - **Trinity Humanized Persona System:** Human-like AI communication patterns with senior engineer persona, conversational transitions, cognitive pauses, empathy expressions, and natural uncertainty acknowledgment. Uses optimized generation parameters (topP: 0.95-0.98, temperature: 1.0) for vocabulary variety while maintaining logical accuracy.
 
+## Technical Debt & Cleanup Notes (December 2025)
+
+**Notification System Audit:**
+- **Primary UNS:** `notifications-popover.tsx` - Main Universal Notification System implementation
+- **Active Utilities:** `animated-notification-bell.tsx`, `chatroom-notification-listener.tsx`, `universal-welcome-notification.tsx`, `push-notification-settings.tsx`
+- **DEAD CODE:** `live-updates-ticker.tsx` - NOT imported anywhere, can be safely removed
+- **Consolidation Candidate:** `ai-brain/notification-center.tsx` - Duplicates main UNS, only used in ai-brain-dashboard.tsx
+
+**Page Inventory (113 pages):**
+- Multiple overlapping dashboards (9 total: dashboard, manager-dashboard, root-admin-dashboard, etc.)
+- Multiple command centers (4): admin-command-center, ai-command-center, trinity-command-center, support-command-console
+- Category pages (4): category-communication, category-growth, category-operations, category-platform
+- All pages are registered in router (264 route registrations)
+
 ## External Dependencies
 - **Stripe**: Payment processing, payroll, and financial integrations.
 - **Resend**: Email delivery and notification workflows.
