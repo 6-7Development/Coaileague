@@ -18881,3 +18881,135 @@ export const insertAutomationGovernanceSchema = createInsertSchema(automationGov
 
 export type InsertAutomationGovernance = z.infer<typeof insertAutomationGovernanceSchema>;
 export type AutomationGovernance = typeof automationGovernance.$inferSelect;
+
+// ============================================================================
+// TRINITY CONTROL CONSOLE - Real-Time Cognitive Streaming
+// ============================================================================
+// Captures Trinity's thought signatures and action logs for transparent
+// AI Brain operation visibility. Enables real-time streaming of cognitive
+// process to the Control Console frontend.
+
+// Thought Signatures - The "Why" between tool calls
+export const trinityThoughtSignatures = pgTable("trinity_thought_signatures", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Session context
+  sessionId: varchar("session_id", { length: 100 }).notNull(),
+  workspaceId: varchar("workspace_id").references(() => workspaces.id, { onDelete: 'cascade' }),
+  userId: varchar("user_id").references(() => users.id, { onDelete: 'set null' }),
+  
+  // Workflow linkage
+  runId: varchar("run_id").references(() => orchestrationRuns.id, { onDelete: 'cascade' }),
+  
+  // Thought content
+  thoughtType: varchar("thought_type", { length: 50 }).notNull(), // 'reasoning', 'planning', 'diagnosis', 'reflection', 'decision', 'observation'
+  content: text("content").notNull(), // Human-readable thought
+  
+  // Context and confidence
+  context: jsonb("context"), // Additional context data
+  confidence: integer("confidence"), // 0-100 confidence in this reasoning
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("trinity_thought_session_idx").on(table.sessionId),
+  index("trinity_thought_workspace_idx").on(table.workspaceId),
+  index("trinity_thought_user_idx").on(table.userId),
+  index("trinity_thought_run_idx").on(table.runId),
+  index("trinity_thought_type_idx").on(table.thoughtType),
+  index("trinity_thought_created_idx").on(table.createdAt),
+]);
+
+export const insertTrinityThoughtSignatureSchema = createInsertSchema(trinityThoughtSignatures).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertTrinityThoughtSignature = z.infer<typeof insertTrinityThoughtSignatureSchema>;
+export type TrinityThoughtSignature = typeof trinityThoughtSignatures.$inferSelect;
+
+// Action Logs - The "What" of every tool execution
+export const trinityActionLogs = pgTable("trinity_action_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Session context
+  sessionId: varchar("session_id", { length: 100 }).notNull(),
+  workspaceId: varchar("workspace_id").references(() => workspaces.id, { onDelete: 'cascade' }),
+  userId: varchar("user_id").references(() => users.id, { onDelete: 'set null' }),
+  
+  // Workflow and thought linkage
+  runId: varchar("run_id").references(() => orchestrationRuns.id, { onDelete: 'cascade' }),
+  thoughtId: varchar("thought_id").references(() => trinityThoughtSignatures.id, { onDelete: 'set null' }),
+  
+  // Action details
+  actionType: varchar("action_type", { length: 50 }).notNull(), // 'tool_call', 'api_request', 'database_query', 'file_operation', 'ai_generation', 'notification', 'workflow_step'
+  actionName: varchar("action_name", { length: 255 }).notNull(), // e.g., 'grep', 'write_file', 'db.select', 'gemini.generate'
+  
+  // Input/Output
+  parameters: jsonb("parameters"), // Tool parameters
+  result: jsonb("result"), // Tool result
+  
+  // Status and timing
+  status: varchar("status", { length: 30 }).notNull(), // 'started', 'completed', 'failed', 'skipped'
+  durationMs: integer("duration_ms"),
+  errorMessage: text("error_message"),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("trinity_action_session_idx").on(table.sessionId),
+  index("trinity_action_workspace_idx").on(table.workspaceId),
+  index("trinity_action_user_idx").on(table.userId),
+  index("trinity_action_run_idx").on(table.runId),
+  index("trinity_action_thought_idx").on(table.thoughtId),
+  index("trinity_action_type_idx").on(table.actionType),
+  index("trinity_action_status_idx").on(table.status),
+  index("trinity_action_created_idx").on(table.createdAt),
+]);
+
+export const insertTrinityActionLogSchema = createInsertSchema(trinityActionLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertTrinityActionLog = z.infer<typeof insertTrinityActionLogSchema>;
+export type TrinityActionLog = typeof trinityActionLogs.$inferSelect;
+
+// Platform Awareness Events - What Trinity sees happening
+export const platformAwarenessEvents = pgTable("platform_awareness_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Event identification
+  eventType: varchar("event_type", { length: 100 }).notNull(),
+  source: varchar("source", { length: 100 }).notNull(), // 'api', 'webhook', 'scheduler', 'user_action', 'ai_brain'
+  
+  // Resource affected
+  resourceType: varchar("resource_type", { length: 100 }).notNull(), // 'employee', 'shift', 'invoice', 'notification', etc.
+  resourceId: varchar("resource_id", { length: 255 }),
+  workspaceId: varchar("workspace_id").references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  // Operation
+  operation: varchar("operation", { length: 30 }).notNull(), // 'create', 'update', 'delete', 'read'
+  
+  // Routing status
+  routedThroughTrinity: boolean("routed_through_trinity").default(false),
+  processedByTrinity: boolean("processed_by_trinity").default(false),
+  
+  // Metadata
+  metadata: jsonb("metadata"),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("platform_awareness_event_type_idx").on(table.eventType),
+  index("platform_awareness_source_idx").on(table.source),
+  index("platform_awareness_resource_idx").on(table.resourceType, table.resourceId),
+  index("platform_awareness_workspace_idx").on(table.workspaceId),
+  index("platform_awareness_routed_idx").on(table.routedThroughTrinity),
+  index("platform_awareness_created_idx").on(table.createdAt),
+]);
+
+export const insertPlatformAwarenessEventSchema = createInsertSchema(platformAwarenessEvents).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertPlatformAwarenessEvent = z.infer<typeof insertPlatformAwarenessEventSchema>;
+export type PlatformAwarenessEvent = typeof platformAwarenessEvents.$inferSelect;
