@@ -22,7 +22,7 @@ import crypto from 'crypto';
 // TYPES
 // ============================================================================
 
-export type SupervisorDomain = 'revenue_ops' | 'security_ops' | 'onboarding_ops';
+export type SupervisorDomain = 'revenue_ops' | 'security_ops' | 'onboarding_ops' | 'data_ops' | 'communication_ops';
 
 export interface DomainLeadSupervisor {
   id: string;
@@ -271,20 +271,126 @@ class DomainLeadSupervisorService {
       metrics: this.initMetrics(),
     });
 
-    console.log('[DomainLeadSupervisors] Initialized 3 domain lead supervisors');
+    // DataOps Lead Supervisor - Analytics, Reporting, Knowledge Management
+    this.supervisors.set('data_ops', {
+      id: 'supervisor-data-ops',
+      domain: 'data_ops',
+      name: 'DataOps Lead',
+      description: 'Manages analytics, reporting, knowledge graph, and data quality operations',
+      subagents: [
+        {
+          id: 'analytics-engine',
+          name: 'Analytics Engine',
+          role: 'Business intelligence and metrics aggregation',
+          capabilities: ['metric_aggregation', 'trend_analysis', 'report_generation', 'dashboard_data'],
+          priority: 1,
+          healthStatus: 'healthy',
+        },
+        {
+          id: 'knowledge-curator',
+          name: 'Knowledge Curator',
+          role: 'Knowledge graph management and semantic queries',
+          capabilities: ['entity_management', 'relationship_mapping', 'semantic_search', 'learning_extraction'],
+          priority: 2,
+          healthStatus: 'healthy',
+        },
+        {
+          id: 'data-quality-monitor',
+          name: 'Data Quality Monitor',
+          role: 'Data validation and integrity checking',
+          capabilities: ['schema_validation', 'anomaly_detection', 'duplicate_detection', 'consistency_check'],
+          priority: 3,
+          healthStatus: 'healthy',
+        },
+        {
+          id: 'rl-optimizer',
+          name: 'RL Optimization Agent',
+          role: 'Reinforcement learning model optimization',
+          capabilities: ['confidence_calibration', 'strategy_adaptation', 'experience_analysis', 'model_tuning'],
+          priority: 4,
+          healthStatus: 'healthy',
+        },
+      ],
+      escalationPolicy: {
+        maxRetries: 3,
+        retryDelayMs: 5000,
+        escalationThreshold: 0.65,
+        humanApprovalRequired: ['data_purge', 'model_reset', 'bulk_correction'],
+        notifyRoles: ['owner', 'admin', 'data_analyst'],
+        autoRollbackEnabled: true,
+      },
+      status: 'active',
+      metrics: this.initMetrics(),
+    });
+
+    // CommunicationOps Lead Supervisor - Notifications, Chat, Collaboration
+    this.supervisors.set('communication_ops', {
+      id: 'supervisor-communication-ops',
+      domain: 'communication_ops',
+      name: 'CommunicationOps Lead',
+      description: 'Manages notifications, chat, A2A communication, and collaboration workflows',
+      subagents: [
+        {
+          id: 'notification-orchestrator',
+          name: 'Notification Orchestrator',
+          role: 'Multi-channel notification delivery',
+          capabilities: ['email_dispatch', 'push_notification', 'sms_delivery', 'priority_routing'],
+          priority: 1,
+          healthStatus: 'healthy',
+        },
+        {
+          id: 'chat-coordinator',
+          name: 'Chat Coordinator',
+          role: 'Chat room management and message routing',
+          capabilities: ['room_management', 'message_routing', 'presence_tracking', 'thread_resolution'],
+          priority: 2,
+          healthStatus: 'healthy',
+        },
+        {
+          id: 'a2a-broker',
+          name: 'A2A Communication Broker',
+          role: 'Agent-to-agent message routing and team coordination',
+          capabilities: ['agent_messaging', 'team_formation', 'trust_evaluation', 'collaboration_protocol'],
+          priority: 3,
+          healthStatus: 'healthy',
+        },
+        {
+          id: 'escalation-manager',
+          name: 'Escalation Manager',
+          role: 'Human escalation workflows and support routing',
+          capabilities: ['escalation_routing', 'ticket_creation', 'priority_assessment', 'sla_tracking'],
+          priority: 4,
+          healthStatus: 'healthy',
+        },
+      ],
+      escalationPolicy: {
+        maxRetries: 2,
+        retryDelayMs: 3000,
+        escalationThreshold: 0.7,
+        humanApprovalRequired: ['mass_notification', 'channel_shutdown', 'agent_termination'],
+        notifyRoles: ['owner', 'admin', 'support_lead'],
+        autoRollbackEnabled: false,
+      },
+      status: 'active',
+      metrics: this.initMetrics(),
+    });
+
+    console.log('[DomainLeadSupervisors] Initialized 5 domain lead supervisors');
     console.log('[DomainLeadSupervisors] - RevenueOps: 4 subagents');
     console.log('[DomainLeadSupervisors] - SecurityOps: 4 subagents');
     console.log('[DomainLeadSupervisors] - OnboardingOps: 4 subagents');
+    console.log('[DomainLeadSupervisors] - DataOps: 4 subagents');
+    console.log('[DomainLeadSupervisors] - CommunicationOps: 4 subagents');
 
     // Emit initialization event
     platformEventBus.publish({
       type: 'domain_supervisors_initialized',
       category: 'feature',
       title: 'Domain Lead Supervisors Active',
-      description: '3 Fortune 500-grade domain supervisors initialized with 12 specialized subagents',
+      description: '5 Fortune 500-grade domain supervisors initialized with 20 specialized subagents',
       metadata: {
-        domains: ['revenue_ops', 'security_ops', 'onboarding_ops'],
-        totalSubagents: 12,
+        domains: ['revenue_ops', 'security_ops', 'onboarding_ops', 'data_ops', 'communication_ops'],
+        totalSubagents: 20,
       },
     });
   }
