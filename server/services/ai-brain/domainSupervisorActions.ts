@@ -416,6 +416,270 @@ export function registerDomainSupervisorActions(): void {
   console.log('[DomainSupervisorActions] Registered 6 OnboardingOps actions');
 
   // ============================================================================
+  // DATA OPS ACTIONS
+  // ============================================================================
+
+  helpaiOrchestrator.registerAction({
+    actionId: 'data.query_knowledge',
+    name: 'Query Knowledge Graph',
+    description: 'Semantic query across the knowledge graph',
+    category: 'analytics',
+    requiredRoles: ['manager', 'admin', 'super_admin'],
+    handler: async (request: ActionRequest): Promise<ActionResult> => {
+      const startTime = Date.now();
+      try {
+        const result = await domainLeadSupervisorService.submitTask('data_ops', 'query_knowledge', request.payload || {}, {
+          requestedBy: request.userId || 'system',
+          workspaceId: request.workspaceId,
+          priority: 'normal',
+        });
+        return { success: result.success, actionId: request.actionId, data: result.data, message: result.error || 'Knowledge query complete', executionTimeMs: Date.now() - startTime };
+      } catch (error: any) {
+        return { success: false, actionId: request.actionId, message: error.message, executionTimeMs: Date.now() - startTime };
+      }
+    },
+  });
+
+  helpaiOrchestrator.registerAction({
+    actionId: 'data.aggregate_metrics',
+    name: 'Aggregate Metrics',
+    description: 'Aggregate business metrics for analytics',
+    category: 'analytics',
+    requiredRoles: ['manager', 'admin', 'super_admin'],
+    handler: async (request: ActionRequest): Promise<ActionResult> => {
+      const startTime = Date.now();
+      try {
+        const result = await domainLeadSupervisorService.submitTask('data_ops', 'aggregate_metrics', request.payload || {}, {
+          requestedBy: request.userId || 'system',
+          workspaceId: request.workspaceId,
+          priority: 'normal',
+        });
+        return { success: result.success, actionId: request.actionId, data: result.data, message: result.error || 'Metrics aggregated', executionTimeMs: Date.now() - startTime };
+      } catch (error: any) {
+        return { success: false, actionId: request.actionId, message: error.message, executionTimeMs: Date.now() - startTime };
+      }
+    },
+  });
+
+  helpaiOrchestrator.registerAction({
+    actionId: 'data.check_quality',
+    name: 'Check Data Quality',
+    description: 'Validate data quality and integrity',
+    category: 'automation',
+    requiredRoles: ['admin', 'super_admin'],
+    handler: async (request: ActionRequest): Promise<ActionResult> => {
+      const startTime = Date.now();
+      try {
+        const result = await domainLeadSupervisorService.submitTask('data_ops', 'check_quality', request.payload || {}, {
+          requestedBy: request.userId || 'system',
+          workspaceId: request.workspaceId,
+          priority: 'normal',
+        });
+        return { success: result.success, actionId: request.actionId, data: result.data, message: result.error || 'Quality check complete', executionTimeMs: Date.now() - startTime };
+      } catch (error: any) {
+        return { success: false, actionId: request.actionId, message: error.message, executionTimeMs: Date.now() - startTime };
+      }
+    },
+  });
+
+  helpaiOrchestrator.registerAction({
+    actionId: 'data.tune_rl_model',
+    name: 'Tune RL Model',
+    description: 'Tune reinforcement learning confidence model',
+    category: 'automation',
+    requiredRoles: ['super_admin'],
+    handler: async (request: ActionRequest): Promise<ActionResult> => {
+      const startTime = Date.now();
+      try {
+        const result = await domainLeadSupervisorService.submitTask('data_ops', 'tune_rl_model', request.payload || {}, {
+          requestedBy: request.userId || 'system',
+          workspaceId: request.workspaceId,
+          priority: 'low',
+        });
+        return { success: result.success, actionId: request.actionId, data: result.data, message: result.error || 'RL model tuned', executionTimeMs: Date.now() - startTime };
+      } catch (error: any) {
+        return { success: false, actionId: request.actionId, message: error.message, executionTimeMs: Date.now() - startTime };
+      }
+    },
+  });
+
+  helpaiOrchestrator.registerAction({
+    actionId: 'data.extract_learnings',
+    name: 'Extract Learnings',
+    description: 'Extract insights from knowledge graph for agent learning',
+    category: 'analytics',
+    requiredRoles: ['admin', 'super_admin'],
+    handler: async (request: ActionRequest): Promise<ActionResult> => {
+      const startTime = Date.now();
+      try {
+        const result = await domainLeadSupervisorService.submitTask('data_ops', 'extract_learnings', request.payload || {}, {
+          requestedBy: request.userId || 'system',
+          workspaceId: request.workspaceId,
+          priority: 'normal',
+        });
+        return { success: result.success, actionId: request.actionId, data: result.data, message: result.error || 'Learnings extracted', executionTimeMs: Date.now() - startTime };
+      } catch (error: any) {
+        return { success: false, actionId: request.actionId, message: error.message, executionTimeMs: Date.now() - startTime };
+      }
+    },
+  });
+
+  helpaiOrchestrator.registerAction({
+    actionId: 'data.get_cognitive_metrics',
+    name: 'Get Cognitive System Metrics',
+    description: 'Get metrics from all cognitive subsystems (knowledge graph, A2A, RL)',
+    category: 'analytics',
+    requiredRoles: ['admin', 'super_admin'],
+    handler: async (request: ActionRequest): Promise<ActionResult> => {
+      const startTime = Date.now();
+      try {
+        const result = await domainLeadSupervisorService.submitTask('data_ops', 'get_cognitive_metrics', request.payload || {}, {
+          requestedBy: request.userId || 'system',
+          workspaceId: request.workspaceId,
+          priority: 'low',
+        });
+        return { success: result.success, actionId: request.actionId, data: result.data, message: result.error || 'Cognitive metrics retrieved', executionTimeMs: Date.now() - startTime };
+      } catch (error: any) {
+        return { success: false, actionId: request.actionId, message: error.message, executionTimeMs: Date.now() - startTime };
+      }
+    },
+  });
+
+  console.log('[DomainSupervisorActions] Registered 6 DataOps actions');
+
+  // ============================================================================
+  // COMMUNICATION OPS ACTIONS
+  // ============================================================================
+
+  helpaiOrchestrator.registerAction({
+    actionId: 'comm.send_notification',
+    name: 'Send Notification',
+    description: 'Send a notification through the unified notification system',
+    category: 'notifications',
+    requiredRoles: ['manager', 'admin', 'super_admin'],
+    handler: async (request: ActionRequest): Promise<ActionResult> => {
+      const startTime = Date.now();
+      try {
+        const result = await domainLeadSupervisorService.submitTask('communication_ops', 'send_notification', request.payload || {}, {
+          requestedBy: request.userId || 'system',
+          workspaceId: request.workspaceId,
+          priority: request.payload?.priority || 'normal',
+        });
+        return { success: result.success, actionId: request.actionId, data: result.data, message: result.error || 'Notification sent', executionTimeMs: Date.now() - startTime };
+      } catch (error: any) {
+        return { success: false, actionId: request.actionId, message: error.message, executionTimeMs: Date.now() - startTime };
+      }
+    },
+  });
+
+  helpaiOrchestrator.registerAction({
+    actionId: 'comm.broadcast_alert',
+    name: 'Broadcast Alert',
+    description: 'Broadcast a critical alert to multiple recipients',
+    category: 'notifications',
+    requiredRoles: ['admin', 'super_admin'],
+    handler: async (request: ActionRequest): Promise<ActionResult> => {
+      const startTime = Date.now();
+      try {
+        const result = await domainLeadSupervisorService.submitTask('communication_ops', 'broadcast_alert', request.payload || {}, {
+          requestedBy: request.userId || 'system',
+          workspaceId: request.workspaceId,
+          priority: 'critical',
+        });
+        return { success: result.success, actionId: request.actionId, data: result.data, message: result.error || 'Alert broadcasted', executionTimeMs: Date.now() - startTime };
+      } catch (error: any) {
+        return { success: false, actionId: request.actionId, message: error.message, executionTimeMs: Date.now() - startTime };
+      }
+    },
+  });
+
+  helpaiOrchestrator.registerAction({
+    actionId: 'comm.route_a2a_message',
+    name: 'Route A2A Message',
+    description: 'Route an agent-to-agent message',
+    category: 'automation',
+    requiredRoles: ['admin', 'super_admin'],
+    handler: async (request: ActionRequest): Promise<ActionResult> => {
+      const startTime = Date.now();
+      try {
+        const result = await domainLeadSupervisorService.submitTask('communication_ops', 'route_a2a_message', request.payload || {}, {
+          requestedBy: request.userId || 'system',
+          workspaceId: request.workspaceId,
+          priority: 'high',
+        });
+        return { success: result.success, actionId: request.actionId, data: result.data, message: result.error || 'A2A message routed', executionTimeMs: Date.now() - startTime };
+      } catch (error: any) {
+        return { success: false, actionId: request.actionId, message: error.message, executionTimeMs: Date.now() - startTime };
+      }
+    },
+  });
+
+  helpaiOrchestrator.registerAction({
+    actionId: 'comm.form_agent_team',
+    name: 'Form Agent Team',
+    description: 'Form a collaboration team of agents',
+    category: 'automation',
+    requiredRoles: ['admin', 'super_admin'],
+    handler: async (request: ActionRequest): Promise<ActionResult> => {
+      const startTime = Date.now();
+      try {
+        const result = await domainLeadSupervisorService.submitTask('communication_ops', 'form_agent_team', request.payload || {}, {
+          requestedBy: request.userId || 'system',
+          workspaceId: request.workspaceId,
+          priority: 'normal',
+        });
+        return { success: result.success, actionId: request.actionId, data: result.data, message: result.error || 'Agent team formed', executionTimeMs: Date.now() - startTime };
+      } catch (error: any) {
+        return { success: false, actionId: request.actionId, message: error.message, executionTimeMs: Date.now() - startTime };
+      }
+    },
+  });
+
+  helpaiOrchestrator.registerAction({
+    actionId: 'comm.escalate_to_human',
+    name: 'Escalate to Human',
+    description: 'Create an escalation ticket for human support',
+    category: 'support',
+    requiredRoles: ['manager', 'admin', 'super_admin'],
+    handler: async (request: ActionRequest): Promise<ActionResult> => {
+      const startTime = Date.now();
+      try {
+        const result = await domainLeadSupervisorService.submitTask('communication_ops', 'escalate_to_human', request.payload || {}, {
+          requestedBy: request.userId || 'system',
+          workspaceId: request.workspaceId,
+          priority: 'high',
+        });
+        return { success: result.success, actionId: request.actionId, data: result.data, message: result.error || 'Escalation created', executionTimeMs: Date.now() - startTime };
+      } catch (error: any) {
+        return { success: false, actionId: request.actionId, message: error.message, executionTimeMs: Date.now() - startTime };
+      }
+    },
+  });
+
+  helpaiOrchestrator.registerAction({
+    actionId: 'comm.get_channel_stats',
+    name: 'Get Channel Statistics',
+    description: 'Get statistics for all communication channels',
+    category: 'analytics',
+    requiredRoles: ['manager', 'admin', 'super_admin'],
+    handler: async (request: ActionRequest): Promise<ActionResult> => {
+      const startTime = Date.now();
+      try {
+        const result = await domainLeadSupervisorService.submitTask('communication_ops', 'get_channel_stats', request.payload || {}, {
+          requestedBy: request.userId || 'system',
+          workspaceId: request.workspaceId,
+          priority: 'low',
+        });
+        return { success: result.success, actionId: request.actionId, data: result.data, message: result.error || 'Channel stats retrieved', executionTimeMs: Date.now() - startTime };
+      } catch (error: any) {
+        return { success: false, actionId: request.actionId, message: error.message, executionTimeMs: Date.now() - startTime };
+      }
+    },
+  });
+
+  console.log('[DomainSupervisorActions] Registered 6 CommunicationOps actions');
+
+  // ============================================================================
   // ENHANCED LLM JUDGE ACTIONS
   // ============================================================================
 
@@ -613,6 +877,6 @@ export function registerDomainSupervisorActions(): void {
   });
 
   console.log('[DomainSupervisorActions] Registered 3 Supervisor Management actions');
-  console.log('[DomainSupervisorActions] Total: 27 domain-related actions registered');
-  console.log('[DomainSupervisorActions] Categories: RevenueOps (6), SecurityOps (6), OnboardingOps (6), LLM Judge (6), Management (3)');
+  console.log('[DomainSupervisorActions] Total: 39 domain-related actions registered');
+  console.log('[DomainSupervisorActions] Categories: RevenueOps (6), SecurityOps (6), OnboardingOps (6), DataOps (6), CommunicationOps (6), LLM Judge (6), Management (3)');
 }
