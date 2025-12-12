@@ -19013,3 +19013,133 @@ export const insertPlatformAwarenessEventSchema = createInsertSchema(platformAwa
 
 export type InsertPlatformAwarenessEvent = z.infer<typeof insertPlatformAwarenessEventSchema>;
 export type PlatformAwarenessEvent = typeof platformAwarenessEvents.$inferSelect;
+
+// ============================================================================
+// TRINITY PLATFORM CONSCIOUSNESS - USER & ORG CONFIDENCE TRACKING
+// ============================================================================
+
+/**
+ * Trust level progression for users interacting with Trinity
+ * - new: First interactions, learning user preferences
+ * - learning: Building understanding of user patterns
+ * - established: Reliable interaction history
+ * - expert: High confidence, can take more autonomous actions
+ */
+export const trinityTrustLevelEnum = pgEnum('trinity_trust_level', [
+  'new',
+  'learning', 
+  'established',
+  'expert'
+]);
+
+/**
+ * Trinity User Confidence Stats - Aggregated confidence tracking per user/workspace
+ * Tracks how well Trinity understands and serves each user over time
+ */
+export const trinityUserConfidenceStats = pgTable("trinity_user_confidence_stats", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  workspaceId: varchar("workspace_id").references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  // Session metrics
+  totalSessions: integer("total_sessions").default(0),
+  totalInteractions: integer("total_interactions").default(0),
+  totalToolCalls: integer("total_tool_calls").default(0),
+  successfulToolCalls: integer("successful_tool_calls").default(0),
+  
+  // Confidence tracking
+  cumulativeConfidence: decimal("cumulative_confidence", { precision: 10, scale: 4 }).default("0"),
+  averageConfidence: decimal("average_confidence", { precision: 5, scale: 4 }).default("0.5"),
+  peakConfidence: decimal("peak_confidence", { precision: 5, scale: 4 }).default("0"),
+  recentTrend: varchar("recent_trend", { length: 20 }).default("stable"), // 'improving', 'stable', 'declining'
+  
+  // Trust level progression
+  trustLevel: trinityTrustLevelEnum("trust_level").default("new"),
+  trustLevelUpdatedAt: timestamp("trust_level_updated_at"),
+  
+  // Escalation tracking
+  totalEscalations: integer("total_escalations").default(0),
+  escalationRate: decimal("escalation_rate", { precision: 5, scale: 4 }).default("0"),
+  
+  // Knowledge gap tracking
+  totalKnowledgeGaps: integer("total_knowledge_gaps").default(0),
+  resolvedKnowledgeGaps: integer("resolved_knowledge_gaps").default(0),
+  
+  // User preferences learned
+  preferredTopics: text("preferred_topics").array().default(sql`'{}'`),
+  communicationStyle: varchar("communication_style", { length: 30 }).default("balanced"), // 'concise', 'balanced', 'detailed'
+  preferredActionLevel: varchar("preferred_action_level", { length: 30 }).default("guided"), // 'manual', 'guided', 'autonomous'
+  
+  // Engagement metrics
+  avgSessionDurationMs: integer("avg_session_duration_ms"),
+  avgResponseSatisfaction: decimal("avg_response_satisfaction", { precision: 3, scale: 2 }),
+  lastActiveAt: timestamp("last_active_at"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("trinity_user_confidence_user_idx").on(table.userId),
+  index("trinity_user_confidence_workspace_idx").on(table.workspaceId),
+  index("trinity_user_confidence_trust_idx").on(table.trustLevel),
+  index("trinity_user_confidence_active_idx").on(table.lastActiveAt),
+]);
+
+export const insertTrinityUserConfidenceStatsSchema = createInsertSchema(trinityUserConfidenceStats).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertTrinityUserConfidenceStats = z.infer<typeof insertTrinityUserConfidenceStatsSchema>;
+export type TrinityUserConfidenceStats = typeof trinityUserConfidenceStats.$inferSelect;
+
+/**
+ * Trinity Org Intelligence Stats - Workspace-level aggregated insights
+ * Provides org-wide view of Trinity effectiveness and common patterns
+ */
+export const trinityOrgStats = pgTable("trinity_org_stats", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().unique().references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  // Aggregate user metrics
+  totalActiveUsers: integer("total_active_users").default(0),
+  totalUserSessions: integer("total_user_sessions").default(0),
+  totalOrgInteractions: integer("total_org_interactions").default(0),
+  
+  // Org-wide confidence
+  avgUserConfidence: decimal("avg_user_confidence", { precision: 5, scale: 4 }).default("0.5"),
+  orgHealthScore: decimal("org_health_score", { precision: 3, scale: 2 }).default("0.5"), // 0-1 health score
+  
+  // Common patterns across users
+  commonTopics: text("common_topics").array().default(sql`'{}'`),
+  commonPainPoints: text("common_pain_points").array().default(sql`'{}'`),
+  growthOpportunities: text("growth_opportunities").array().default(sql`'{}'`),
+  
+  // Business context
+  businessContext: jsonb("business_context").default(sql`'{}'::jsonb`), // Industry, size, priorities
+  trinityRelationshipLevel: varchar("trinity_relationship_level", { length: 30 }).default("onboarding"),
+  
+  // Feature adoption
+  featuresUsed: text("features_used").array().default(sql`'{}'`),
+  featureAdoptionScore: decimal("feature_adoption_score", { precision: 3, scale: 2 }).default("0"),
+  
+  // Automation metrics
+  automationSuccessRate: decimal("automation_success_rate", { precision: 5, scale: 4 }),
+  avgTaskCompletionTime: integer("avg_task_completion_time_ms"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  lastAggregatedAt: timestamp("last_aggregated_at"),
+}, (table) => [
+  index("trinity_org_stats_workspace_idx").on(table.workspaceId),
+  index("trinity_org_stats_health_idx").on(table.orgHealthScore),
+  index("trinity_org_stats_updated_idx").on(table.updatedAt),
+]);
+
+export const insertTrinityOrgStatsSchema = createInsertSchema(trinityOrgStats).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  lastAggregatedAt: true,
+});
+export type InsertTrinityOrgStats = z.infer<typeof insertTrinityOrgStatsSchema>;
+export type TrinityOrgStats = typeof trinityOrgStats.$inferSelect;
