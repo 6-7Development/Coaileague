@@ -84,6 +84,8 @@ CoAIleague features a multi-tenant architecture with RBAC security and isolation
 - **Cognitive Database Persistence:** Write-through cache pattern for all cognitive services with dedicated tables and automatic state restoration.
 - **Integration Management System:** Workspace-level API key management with encrypted credential storage, Trinity AI-powered outage analysis, and platform support role partner catalog management.
 - **Trinity Root Access System:** Trinity AI has root-level platform control equivalent to root_admin user, implemented via dual-layer authorization with Trinity bypass logic and an emergency kill-switch.
+- **Trinity Control Console:** Real-time streaming of Trinity's cognitive process including thought signatures (reasoning between tool calls), action logs (structured tool execution records), and platform awareness events. Uses SSE for live streaming with WebSocket fallback, persistent database storage for historical queries, and fire-and-forget event posting pattern for non-blocking platform awareness.
+- **Platform Awareness Helper:** Fire-and-forget database event posting system (postDatabaseEventToAIBrain) that ensures Trinity has visibility into all CRUD operations without blocking the main request flow.
 
 **System Design Choices:**
 - **Modularity:** Extensive backend service modules and frontend routes.
