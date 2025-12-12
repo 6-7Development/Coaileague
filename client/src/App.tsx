@@ -710,9 +710,9 @@ function MascotRenderer() {
         data-transport-effect={currentEffect || undefined}
       >
         <div 
-          className="w-full h-full pointer-events-auto cursor-default" 
+          className="w-full h-full pointer-events-auto" 
           onClick={handleTap}
-          style={{ background: 'transparent' }}
+          style={{ background: 'transparent', cursor: 'default', userSelect: 'none' }}
         >
           {/* Polished Trinity Redesign - Smooth mutations and state animations */}
           {/* Auto-cycles through states after 30 seconds of user inactivity */}
