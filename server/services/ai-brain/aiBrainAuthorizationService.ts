@@ -19,9 +19,23 @@ export const ROLE_HIERARCHY: Record<string, number> = {
   'sysop': 6,
   'deputy_admin': 7,
   'root_admin': 8,
+  'trinity_root': 9, // Trinity has highest authority - equivalent to root user
 };
 
 export const SUPPORT_ROLES = ['support_agent', 'support_manager', 'sysop', 'deputy_admin', 'root_admin'];
+
+// Trinity AI identity constants - grants full platform control
+export const TRINITY_AGENT_ID = 'trinity-orchestrator';
+export const TRINITY_ENTITY_TYPE = 'trinity';
+
+// Special identifiers that Trinity operates under
+export const TRINITY_SERVICE_IDENTIFIERS = [
+  'trinity-orchestrator',
+  'trinity-service',
+  'trinity',
+  'ai-brain-trinity',
+  'helpai-trinity',
+];
 
 export const AI_BRAIN_AUTHORITY_ROLES: Record<string, string[]> = {
   'scheduling': ['manager', 'support_agent', 'support_manager', 'sysop', 'deputy_admin', 'root_admin'],
@@ -57,6 +71,12 @@ export interface ActionAuthCheck {
 
 class AIBrainAuthorizationService {
   private static instance: AIBrainAuthorizationService;
+  
+  // KILL SWITCH: Emergency revocation of Trinity's root access
+  private trinityKillSwitchActive = false;
+  private trinityKillSwitchActivatedBy: string | null = null;
+  private trinityKillSwitchActivatedAt: Date | null = null;
+  private trinityKillSwitchReason: string | null = null;
 
   static getInstance(): AIBrainAuthorizationService {
     if (!this.instance) {
@@ -65,14 +85,114 @@ class AIBrainAuthorizationService {
     return this.instance;
   }
 
-  async canExecuteAction(context: AuthorizationContext, category: string, actionId: string, elevationContext?: { isElevated: boolean; platformRole?: string }): Promise<ActionAuthCheck> {
+  /**
+   * KILL SWITCH: Immediately revoke Trinity's root access
+   * Only root_admin can activate this
+   */
+  activateTrinityKillSwitch(userId: string, reason: string): { success: boolean; message: string } {
+    this.trinityKillSwitchActive = true;
+    this.trinityKillSwitchActivatedBy = userId;
+    this.trinityKillSwitchActivatedAt = new Date();
+    this.trinityKillSwitchReason = reason;
+    
+    console.log(`[KILL SWITCH] Trinity root access REVOKED by ${userId}: ${reason}`);
+    
+    return {
+      success: true,
+      message: `Trinity kill switch activated. All Trinity root operations are now blocked.`
+    };
+  }
+
+  /**
+   * Deactivate the Trinity kill switch - restore root access
+   * Only root_admin can deactivate
+   */
+  deactivateTrinityKillSwitch(userId: string): { success: boolean; message: string } {
+    const wasActive = this.trinityKillSwitchActive;
+    
+    this.trinityKillSwitchActive = false;
+    this.trinityKillSwitchActivatedBy = null;
+    this.trinityKillSwitchActivatedAt = null;
+    this.trinityKillSwitchReason = null;
+    
+    if (wasActive) {
+      console.log(`[KILL SWITCH] Trinity root access RESTORED by ${userId}`);
+    }
+    
+    return {
+      success: true,
+      message: wasActive 
+        ? 'Trinity kill switch deactivated. Trinity root access restored.'
+        : 'Trinity kill switch was not active.'
+    };
+  }
+
+  /**
+   * Check if Trinity kill switch is active
+   */
+  isTrinityKillSwitchActive(): { 
+    active: boolean; 
+    activatedBy?: string; 
+    activatedAt?: Date; 
+    reason?: string;
+  } {
+    return {
+      active: this.trinityKillSwitchActive,
+      activatedBy: this.trinityKillSwitchActivatedBy || undefined,
+      activatedAt: this.trinityKillSwitchActivatedAt || undefined,
+      reason: this.trinityKillSwitchReason || undefined,
+    };
+  }
+
+  /**
+   * Check if the given entity is Trinity AI
+   * Trinity has root-level platform control - equivalent to root user
+   */
+  isTrinityEntity(entityId: string, entityType?: string): boolean {
+    if (entityType === TRINITY_ENTITY_TYPE) return true;
+    return TRINITY_SERVICE_IDENTIFIERS.includes(entityId.toLowerCase());
+  }
+
+  /**
+   * Get Trinity's effective role for authorization
+   * Trinity always operates as root_admin equivalent
+   */
+  getTrinityEffectiveRole(): string {
+    return 'root_admin';
+  }
+
+  async canExecuteAction(context: AuthorizationContext, category: string, actionId: string, elevationContext?: { isElevated: boolean; platformRole?: string }, entityType?: string): Promise<ActionAuthCheck> {
     const requiredRoles = AI_BRAIN_AUTHORITY_ROLES[category] || [];
     
     // Check if user has elevated support session (bypasses redundant checks)
     let isAuthorized = false;
     let bypassReason = '';
     
-    if (elevationContext?.isElevated && elevationContext.platformRole) {
+    // TRINITY ROOT BYPASS: Trinity AI has full platform control
+    // BUT: Check kill switch first - if active, Trinity is blocked
+    if (this.isTrinityEntity(context.userId, entityType)) {
+      const killSwitchStatus = this.isTrinityKillSwitchActive();
+      
+      if (killSwitchStatus.active) {
+        // Kill switch is active - block Trinity operations
+        console.log(`[AIBrainAuth] KILL SWITCH ACTIVE: Trinity blocked from ${category}.${actionId}`);
+        return {
+          userId: context.userId,
+          userRole: 'trinity_root',
+          actionCategory: category,
+          actionId,
+          isAuthorized: false,
+          reason: `Trinity root access BLOCKED: Kill switch activated by ${killSwitchStatus.activatedBy} - ${killSwitchStatus.reason}`
+        };
+      }
+      
+      isAuthorized = true;
+      bypassReason = ' (Trinity root authority - full platform control)';
+      console.log(`[AIBrainAuth] Trinity root bypass for ${category}.${actionId}`);
+    }
+    
+    // Check elevated session
+    if (!isAuthorized && elevationContext?.isElevated && elevationContext.platformRole) {
       // Elevated sessions get authorization based on their platform role
       isAuthorized = requiredRoles.includes(elevationContext.platformRole);
       if (isAuthorized) {

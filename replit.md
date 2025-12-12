@@ -89,6 +89,7 @@ CoAIleague features a multi-tenant architecture with RBAC security and isolation
 - **Domain Lead Supervisors:** Specialized supervisors with escalation policies for RevenueOps, SecurityOps, OnboardingOps, DataOps, and CommunicationOps.
 - **Cognitive Database Persistence:** Write-through cache pattern for all cognitive services with dedicated tables and automatic state restoration.
 - **Integration Management System:** Workspace-level API key management with encrypted credential storage, Trinity AI-powered outage analysis, and platform support role partner catalog management.
+- **Trinity Root Access System (Dec 2025):** Trinity AI has root-level platform control equivalent to root_admin user. Implemented via dual-layer authorization (AI Brain Authorization Service + UACP Policy Decision Point) with Trinity bypass logic. Emergency kill-switch safeguard allows immediate revocation of all Trinity permissions via `aiBrainAuthorizationService.activateTrinityKillSwitch()`. Service control actions: trinity.service.list_all, trinity.service.pause, trinity.service.resume, trinity.service.clear_error, trinity.service.restart_all.
 
 **System Design Choices:**
 - **Modularity:** Extensive backend service modules and frontend routes.
