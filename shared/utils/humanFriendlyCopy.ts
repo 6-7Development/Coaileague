@@ -20,6 +20,21 @@ const TECHNICAL_TO_HUMAN: Record<string, string> = {
   'webhook': 'automatic update',
   'webhooks': 'automatic updates',
   
+  // Application structure terms (only specific technical phrases)
+  'Root Application Logic': 'Core App',
+  'root application logic': 'core app',
+  'Root Component': 'Core Feature',
+  'root component': 'core feature',
+  'Application Logic Update': 'App Improvement',
+  'application logic update': 'app improvement',
+  'React Component': 'App Feature',
+  'Vue Component': 'App Feature',
+  'Angular Component': 'App Feature',
+  'service worker': 'background helper',
+  'Service Worker': 'Background Helper',
+  'index.ts': 'main file',
+  'index.js': 'main file',
+  
   // Development terms
   'CI/CD': 'automatic updates',
   'pipeline': 'process',
@@ -96,6 +111,9 @@ const TECHNICAL_TO_HUMAN: Record<string, string> = {
 // Title rewrites - maps technical titles to friendly versions
 const TITLE_REWRITES: Record<string, string> = {
   'Client Application Root Logic Update': 'App Startup Improved',
+  'app Root Application Logic Update': 'App Startup Improved',
+  'Root Application Logic Update': 'App Startup Improved',
+  'Application Logic Update': 'App Improvement',
   'New API Routes: Workflow Data Access': 'Dashboard Loads Faster Now',
   'Core Platform Dependency & Framework Upgrade': 'System Performance Boost',
   'Database Query Optimization': 'Faster Data Loading',
@@ -108,6 +126,16 @@ const TITLE_REWRITES: Record<string, string> = {
   'Error Handling Improvement': 'Better Error Messages',
   'Security Patch Applied': 'Security Update Installed',
   'Performance Monitoring Update': 'System Health Check Improved',
+  // More common technical titles
+  'Root Component Update': 'Core App Update',
+  'Root Logic Changed': 'Core App Improved',
+  'Service Initialization': 'Feature Starting Up',
+  'Component Render Update': 'Visual Improvements',
+  'State Management Update': 'Data Handling Improved',
+  'Route Handler Update': 'Navigation Improved',
+  'Middleware Update': 'System Processing Improved',
+  'Schema Migration': 'Data Structure Update',
+  'Index File Update': 'Main App Update',
 };
 
 // Category-based message templates
