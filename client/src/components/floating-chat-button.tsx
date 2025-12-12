@@ -167,9 +167,9 @@ export function FloatingChatButton() {
           className="relative flex items-center overflow-hidden bg-[hsl(var(--cad-surface-elevated))] border border-[hsl(var(--cad-border-strong))] rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover-elevate"
           style={{ width: isHovered && !isDragging ? '16rem' : '4rem' }}
         >
-          {/* Bug Icon - always visible */}
+          {/* Bug Icon - always visible - Trinity gradient for brand consistency */}
           <div className="flex-shrink-0 w-16 h-16 flex items-center justify-center">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center">
               <Bug className="h-5 w-5 text-white" />
             </div>
           </div>
