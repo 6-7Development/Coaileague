@@ -48,10 +48,32 @@ function loadSeasonalState(): StoredSeasonalState | null {
 }
 
 const SeasonalEffectsLayer = memo(function SeasonalEffectsLayer() {
-  const { seasonId, effectsEnabled } = useSeasonalTheme();
+  const { seasonId, effectsEnabled, isLoading } = useSeasonalTheme();
   
-  // Persist seasonal state for session recovery
+  // Clear any cached seasonal state immediately when server returns 'default'
+  // This ensures seasonal theming controlled by server is respected
   useEffect(() => {
+    if (!isLoading && seasonId === 'default') {
+      const stored = loadSeasonalState();
+      if (stored) {
+        // Server says no seasonal theming - clear localStorage and restore theme
+        const htmlElement = document.documentElement;
+        if (stored.originalTheme === 'light') {
+          htmlElement.classList.remove('dark');
+        } else {
+          htmlElement.classList.add('dark');
+        }
+        localStorage.removeItem(STORAGE_KEY);
+        console.log('[Seasonal] Server disabled seasonal - restored theme:', stored.originalTheme);
+      }
+    }
+  }, [seasonId, isLoading]);
+  
+  // Only persist seasonal state if server explicitly returns a holiday (not during loading)
+  useEffect(() => {
+    // Don't save during loading - wait for server response
+    if (isLoading) return;
+    
     if (seasonId && seasonId !== 'default') {
       const currentTheme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
       const stored = loadSeasonalState();
@@ -65,24 +87,7 @@ const SeasonalEffectsLayer = memo(function SeasonalEffectsLayer() {
         console.log('[Seasonal] Saved state for', seasonId);
       }
     }
-  }, [seasonId]);
-  
-  // Restore original theme when leaving seasonal mode
-  useEffect(() => {
-    if (seasonId === 'default') {
-      const stored = loadSeasonalState();
-      if (stored && stored.originalTheme) {
-        const htmlElement = document.documentElement;
-        if (stored.originalTheme === 'light') {
-          htmlElement.classList.remove('dark');
-        } else {
-          htmlElement.classList.add('dark');
-        }
-        localStorage.removeItem(STORAGE_KEY);
-        console.log('[Seasonal] Restored original theme:', stored.originalTheme);
-      }
-    }
-  }, [seasonId]);
+  }, [seasonId, isLoading]);
   
   if (!effectsEnabled) return null;
   
