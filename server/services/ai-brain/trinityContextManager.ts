@@ -27,6 +27,7 @@ import {
 import { trinityMemoryService } from './trinityMemoryService';
 import { TTLCache } from './cacheUtils';
 import { creditManager } from '../billing/creditManager';
+import { trinityConfidenceTracker } from './trinityConfidenceTracker';
 
 // ============================================================================
 // TYPES
@@ -1061,6 +1062,17 @@ class TrinityContextManager {
           this.sessionsCache.delete(key);
           break;
         }
+      }
+
+      // Update user confidence statistics (Phase 1C: Confidence Tracking)
+      try {
+        const metrics = await trinityConfidenceTracker.extractSessionMetrics(sessionId);
+        if (metrics) {
+          await trinityConfidenceTracker.updateUserConfidenceOnSessionEnd(metrics);
+          console.log(`[TrinityContextManager] Updated confidence stats for session ${sessionId}`);
+        }
+      } catch (confidenceError) {
+        console.warn('[TrinityContextManager] Failed to update confidence stats:', confidenceError);
       }
 
       return true;
