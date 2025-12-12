@@ -10,6 +10,7 @@
  */
 
 import { geminiClient } from '../providers/geminiClient';
+import { getSeasonalSubagent } from '../seasonalSubagent';
 
 export type SeasonId = 
   | 'winter' | 'christmas' | 'newYear' | 'valentines' 
@@ -685,7 +686,7 @@ export async function runSeasonalHealthCheck(): Promise<SeasonalHealthCheck> {
 
 // Support Command Console Actions
 export interface SeasonalCommand {
-  action: 'refresh' | 'force_holiday' | 'clear_holiday' | 'toggle_effect' | 'increase_intensity' | 'decrease_intensity';
+  action: 'refresh' | 'force_holiday' | 'clear_holiday' | 'toggle_effect' | 'increase_intensity' | 'decrease_intensity' | 'force_disable' | 'force_enable';
   params?: Record<string, string | number | boolean>;
 }
 
@@ -764,6 +765,35 @@ export async function executeSeasonalCommand(command: SeasonalCommand): Promise<
         success: true,
         message: `Intensity decreased to ${supportOverrides.intensityMultiplier}x`,
       };
+    
+    case 'force_disable':
+      // Force disable all seasonal theming via AI Brain orchestration
+      try {
+        const subagent = getSeasonalSubagent();
+        const reason = command.params?.reason as string || 'Trinity/AI Brain orchestration override';
+        const result = await subagent.forceDeactivateTheme(reason);
+        supportOverrides = {}; // Clear all overrides
+        return {
+          success: result.success,
+          message: result.message,
+          newState: { seasonId: 'default', isHoliday: false },
+        };
+      } catch (error) {
+        return { success: false, message: `Failed to force disable: ${(error as Error).message}` };
+      }
+    
+    case 'force_enable':
+      // Re-enable seasonal theming via AI Brain orchestration
+      try {
+        const subagent = getSeasonalSubagent();
+        const result = await subagent.enableSeasonalTheming();
+        return {
+          success: result.success,
+          message: result.message,
+        };
+      } catch (error) {
+        return { success: false, message: `Failed to force enable: ${(error as Error).message}` };
+      }
       
     default:
       return { success: false, message: `Unknown command: ${command.action}` };
