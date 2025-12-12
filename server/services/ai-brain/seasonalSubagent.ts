@@ -261,6 +261,12 @@ export class SeasonalSubagent {
    * Check current date and apply/remove seasonal theme as needed
    */
   async checkAndApplySeasonalTheme(): Promise<void> {
+    // Skip if seasonal theming is disabled by orchestration
+    if (this.seasonalDisabled) {
+      console.log('[SeasonalSubagent] Seasonal theming is disabled - skipping auto-check');
+      return;
+    }
+    
     const now = new Date();
     const currentHoliday = this.getCurrentHoliday(now);
 
@@ -572,6 +578,68 @@ Respond with ONLY valid JSON in this exact format:
     }
 
     return await this.activateHolidayTheme(holiday);
+  }
+
+  /**
+   * Force deactivate the current theme - Trinity/AI Brain orchestration control
+   * This permanently disables seasonal theming until manually re-enabled
+   */
+  private seasonalDisabled: boolean = false;
+
+  async forceDeactivateTheme(reason?: string): Promise<{ success: boolean; message: string }> {
+    console.log(`[SeasonalSubagent] Force deactivation requested: ${reason || 'No reason provided'}`);
+    
+    // Stop the automatic checking
+    if (this.checkInterval) {
+      clearInterval(this.checkInterval);
+      this.checkInterval = null;
+    }
+    
+    // Mark as disabled
+    this.seasonalDisabled = true;
+    
+    // Deactivate current theme if any
+    if (this.activeTheme) {
+      await this.deactivateTheme();
+    }
+
+    // Publish deactivation event
+    await platformEventBus.publish({
+      type: 'announcement' as PlatformEventType,
+      category: 'announcement',
+      title: 'Seasonal Theming Disabled',
+      description: `Seasonal theming has been disabled by orchestration. Reason: ${reason || 'Manual override'}`,
+      metadata: {
+        seasonal: false,
+        disabledBy: 'orchestration',
+        reason: reason,
+      },
+    });
+
+    console.log('[SeasonalSubagent] Seasonal theming FORCE DISABLED - will not auto-activate');
+    return { success: true, message: 'Seasonal theming disabled successfully' };
+  }
+
+  /**
+   * Re-enable seasonal theming after force deactivation
+   */
+  async enableSeasonalTheming(): Promise<{ success: boolean; message: string }> {
+    this.seasonalDisabled = false;
+    
+    // Restart the automatic checking
+    if (!this.checkInterval) {
+      await this.start();
+    }
+    
+    console.log('[SeasonalSubagent] Seasonal theming re-enabled');
+    return { success: true, message: 'Seasonal theming re-enabled' };
+  }
+
+  /**
+   * Check if seasonal theming is currently disabled
+   */
+  isSeasonalDisabled(): boolean {
+    return this.seasonalDisabled;
   }
 
   /**

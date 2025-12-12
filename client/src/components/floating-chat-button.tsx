@@ -1,6 +1,32 @@
-import { Bug, X } from "lucide-react";
+import { X, Settings2 } from "lucide-react";
 import { useLocation } from "wouter";
 import { useState, useEffect, useRef } from "react";
+import { apiRequest } from "@/lib/queryClient";
+
+// Custom Bug Report Icon - matches the design spec
+function BugReportIcon({ className }: { className?: string }) {
+  return (
+    <svg 
+      className={className}
+      viewBox="0 0 24 24" 
+      fill="none" 
+      stroke="currentColor" 
+      strokeWidth="2" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+    >
+      <circle cx="12" cy="12" r="3" />
+      <path d="M12 5V3" />
+      <path d="M12 21v-2" />
+      <path d="M5 12H3" />
+      <path d="M21 12h-2" />
+      <path d="M18.36 5.64l-1.41 1.41" />
+      <path d="M7.05 16.95l-1.41 1.41" />
+      <path d="M5.64 5.64l1.41 1.41" />
+      <path d="M16.95 16.95l1.41 1.41" />
+    </svg>
+  );
+}
 
 export function FloatingChatButton() {
   const [location, setLocation] = useLocation();
@@ -167,10 +193,10 @@ export function FloatingChatButton() {
           className="relative flex items-center overflow-hidden bg-gradient-to-br from-violet-600 to-indigo-600 border border-violet-500/30 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover-elevate"
           style={{ width: isHovered && !isDragging ? '16rem' : '4rem' }}
         >
-          {/* Bug Icon - always visible - Trinity gradient for brand consistency */}
+          {/* Bug Report Icon - always visible - Trinity gradient for brand consistency */}
           <div className="flex-shrink-0 w-16 h-16 flex items-center justify-center">
             <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
-              <Bug className="h-5 w-5 text-white" />
+              <BugReportIcon className="h-5 w-5 text-white" />
             </div>
           </div>
           
