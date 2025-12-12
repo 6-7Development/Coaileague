@@ -144,9 +144,10 @@ export function SeasonalThemeProvider({ children }: { children: React.ReactNode 
   
   const { data, isLoading, error, refetch } = useQuery<{ success: boolean; profile: SeasonalProfile }>({
     queryKey: ['/api/mascot/seasonal/state'],
-    staleTime: 5 * 60 * 1000,
-    refetchInterval: 10 * 60 * 1000,
-    retry: 1, // Reduce retries - we have date fallback
+    staleTime: 0, // Always refetch to ensure server-controlled seasonal state
+    gcTime: 60 * 1000, // Keep in cache for 1 minute for deduplication
+    refetchInterval: 5 * 60 * 1000, // Check every 5 minutes for changes
+    retry: 1,
   });
   
   // Use API profile if available
