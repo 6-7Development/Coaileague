@@ -7045,6 +7045,208 @@ Provide your analysis in the following format:
 
     console.log('[AI Brain Master Orchestrator] Registered unified monitoring dashboard action');
     console.log('[AI Brain Master Orchestrator] Total new domain actions: 11 (gamification: 4, deployment: 2, recovery: 4, monitoring: 1)');
+
+    // ============================================================================
+    // TRINITY ROOT SERVICE CONTROL ACTIONS
+    // Trinity can start/stop/control ALL platform services with root authority
+    // ============================================================================
+
+    const { serviceControlManager } = await import('./serviceControl');
+
+    helpaiOrchestrator.registerAction({
+      actionId: 'trinity.service.list_all',
+      category: 'system',
+      name: 'List All Services',
+      description: 'List all platform services and their current status (Trinity root)',
+      requiredRoles: ['root_admin'],
+      handler: async (request) => {
+        const startTime = Date.now();
+        try {
+          const healthSummary = serviceControlManager.getHealthSummary();
+          return {
+            success: true,
+            actionId: request.actionId,
+            data: healthSummary,
+            message: `Platform services: ${healthSummary.runningCount} running, ${healthSummary.pausedCount} paused, ${healthSummary.errorCount} errors. Overall: ${healthSummary.overall}`,
+            executionTimeMs: Date.now() - startTime
+          };
+        } catch (error: any) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: `Failed to list services: ${error.message}`,
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+      }
+    });
+
+    helpaiOrchestrator.registerAction({
+      actionId: 'trinity.service.pause',
+      category: 'system',
+      name: 'Pause Service',
+      description: 'Pause a platform orchestration service (Trinity root)',
+      requiredRoles: ['root_admin'],
+      handler: async (request) => {
+        const startTime = Date.now();
+        try {
+          const { serviceName, reason } = request.payload || {};
+          if (!serviceName) {
+            return {
+              success: false,
+              actionId: request.actionId,
+              message: 'Missing required parameter: serviceName',
+              executionTimeMs: Date.now() - startTime
+            };
+          }
+          
+          const result = await serviceControlManager.pauseService(
+            serviceName,
+            'trinity-orchestrator',
+            reason || 'Paused by Trinity AI'
+          );
+          
+          return {
+            success: result.success,
+            actionId: request.actionId,
+            data: result,
+            message: result.message,
+            executionTimeMs: Date.now() - startTime
+          };
+        } catch (error: any) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: `Failed to pause service: ${error.message}`,
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+      }
+    });
+
+    helpaiOrchestrator.registerAction({
+      actionId: 'trinity.service.resume',
+      category: 'system',
+      name: 'Resume Service',
+      description: 'Resume a paused platform orchestration service (Trinity root)',
+      requiredRoles: ['root_admin'],
+      handler: async (request) => {
+        const startTime = Date.now();
+        try {
+          const { serviceName } = request.payload || {};
+          if (!serviceName) {
+            return {
+              success: false,
+              actionId: request.actionId,
+              message: 'Missing required parameter: serviceName',
+              executionTimeMs: Date.now() - startTime
+            };
+          }
+          
+          const result = await serviceControlManager.resumeService(
+            serviceName,
+            'trinity-orchestrator'
+          );
+          
+          return {
+            success: result.success,
+            actionId: request.actionId,
+            data: result,
+            message: result.message,
+            executionTimeMs: Date.now() - startTime
+          };
+        } catch (error: any) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: `Failed to resume service: ${error.message}`,
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+      }
+    });
+
+    helpaiOrchestrator.registerAction({
+      actionId: 'trinity.service.clear_error',
+      category: 'system',
+      name: 'Clear Service Error',
+      description: 'Clear error state on a platform service (Trinity root)',
+      requiredRoles: ['root_admin'],
+      handler: async (request) => {
+        const startTime = Date.now();
+        try {
+          const { serviceName } = request.payload || {};
+          if (!serviceName) {
+            return {
+              success: false,
+              actionId: request.actionId,
+              message: 'Missing required parameter: serviceName',
+              executionTimeMs: Date.now() - startTime
+            };
+          }
+          
+          serviceControlManager.clearServiceError(serviceName);
+          
+          return {
+            success: true,
+            actionId: request.actionId,
+            message: `Error cleared for service: ${serviceName}`,
+            executionTimeMs: Date.now() - startTime
+          };
+        } catch (error: any) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: `Failed to clear service error: ${error.message}`,
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+      }
+    });
+
+    helpaiOrchestrator.registerAction({
+      actionId: 'trinity.service.restart_all',
+      category: 'system',
+      name: 'Restart All Services',
+      description: 'Resume all paused services and clear all errors (Trinity root)',
+      requiredRoles: ['root_admin'],
+      handler: async (request) => {
+        const startTime = Date.now();
+        try {
+          const allServices = serviceControlManager.getAllServicesStatus();
+          const results: { service: string; action: string; success: boolean }[] = [];
+          
+          for (const svc of allServices) {
+            if (svc.status === 'paused') {
+              const res = await serviceControlManager.resumeService(svc.name, 'trinity-orchestrator');
+              results.push({ service: svc.name, action: 'resume', success: res.success });
+            } else if (svc.status === 'error') {
+              serviceControlManager.clearServiceError(svc.name);
+              results.push({ service: svc.name, action: 'clear_error', success: true });
+            }
+          }
+          
+          const successCount = results.filter(r => r.success).length;
+          
+          return {
+            success: true,
+            actionId: request.actionId,
+            data: { results, successCount, totalActions: results.length },
+            message: `Restarted ${successCount}/${results.length} services`,
+            executionTimeMs: Date.now() - startTime
+          };
+        } catch (error: any) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: `Failed to restart services: ${error.message}`,
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+      }
+    });
+
+    console.log('[AI Brain Master Orchestrator] Registered 5 Trinity root service control actions');
   }
 }
 

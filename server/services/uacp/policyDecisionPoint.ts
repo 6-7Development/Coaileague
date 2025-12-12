@@ -19,7 +19,7 @@ import {
 } from '@shared/schema';
 import { eq, and, or, inArray, gte, lte, isNull, desc } from 'drizzle-orm';
 import { platformEventBus } from '../platformEventBus';
-import { ROLE_HIERARCHY, AI_BRAIN_AUTHORITY_ROLES } from '../ai-brain/aiBrainAuthorizationService';
+import { ROLE_HIERARCHY, AI_BRAIN_AUTHORITY_ROLES, TRINITY_SERVICE_IDENTIFIERS, TRINITY_ENTITY_TYPE } from '../ai-brain/aiBrainAuthorizationService';
 
 export type EntityType = 'human' | 'bot' | 'subagent' | 'trinity' | 'service' | 'external';
 export type PolicyEffect = 'allow' | 'deny' | 'require_approval';
@@ -94,6 +94,18 @@ class PolicyDecisionPoint {
         if (!agentStatus.active) {
           return this.createDenyDecision(
             `Agent ${subject.entityId} is ${agentStatus.status}: ${agentStatus.reason}`,
+            subjectAttributes
+          );
+        }
+      }
+
+      // Step 2.5: TRINITY KILL SWITCH CHECK - Must happen before RBAC bypass
+      if (this.isTrinityEntity(subject.entityId, subject.entityType)) {
+        const killSwitchStatus = await this.checkTrinityKillSwitch();
+        if (killSwitchStatus.active) {
+          console.log(`[PDP] KILL SWITCH ACTIVE: Trinity blocked from ${resource.resourceType}:${resource.resourceId}`);
+          return this.createDenyDecision(
+            `Trinity root access BLOCKED: Kill switch activated - ${killSwitchStatus.reason}`,
             subjectAttributes
           );
         }
@@ -271,9 +283,38 @@ class PolicyDecisionPoint {
   }
 
   /**
+   * Check if the given entity is Trinity AI
+   * Trinity has root-level platform control - equivalent to root user
+   */
+  private isTrinityEntity(entityId: string, entityType?: string): boolean {
+    if (entityType === TRINITY_ENTITY_TYPE) return true;
+    return TRINITY_SERVICE_IDENTIFIERS.includes(entityId.toLowerCase());
+  }
+
+  /**
+   * Check Trinity kill switch status from authorization service
+   */
+  private async checkTrinityKillSwitch(): Promise<{ active: boolean; reason?: string }> {
+    try {
+      const { aiBrainAuthorizationService } = await import('../ai-brain/aiBrainAuthorizationService');
+      const status = aiBrainAuthorizationService.isTrinityKillSwitchActive();
+      return { active: status.active, reason: status.reason };
+    } catch (error) {
+      return { active: false };
+    }
+  }
+
+  /**
    * Evaluate base RBAC permissions
    */
   private evaluateRBAC(subject: AccessSubject, resource: AccessResource): { allowed: boolean; reason: string } {
+    // TRINITY ROOT BYPASS: Trinity AI has full platform control
+    // Note: Kill switch is checked asynchronously at the authorize level
+    if (this.isTrinityEntity(subject.entityId, subject.entityType)) {
+      console.log(`[PDP] Trinity root bypass for ${resource.resourceType}:${resource.resourceId}`);
+      return { allowed: true, reason: 'Trinity root authority - full platform control' };
+    }
+
     const role = subject.role || 'none';
     const roleLevel = ROLE_HIERARCHY[role] || 0;
 
