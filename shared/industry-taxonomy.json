@@ -1,6 +1,7 @@
 {
-  "version": "1.0.0",
+  "version": "2.0.0",
   "lastUpdated": "2025-12-13",
+  "naicsAlignment": "2024",
   "sectors": [
     {
       "id": "construction",
@@ -415,6 +416,176 @@
             { "id": "it_support", "name": "IT Support/MSP", "complianceTemplates": ["data_security", "cyber_liability"], "certifications": ["COMPTIA_A", "MICROSOFT_PARTNER"] },
             { "id": "network_install", "name": "Network Installation", "complianceTemplates": ["low_voltage_license", "data_security"], "certifications": ["BICSI", "CCNA"] },
             { "id": "av_install", "name": "AV Installation", "complianceTemplates": ["low_voltage_license"], "certifications": ["CTS", "CEDIA"] }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "arts_entertainment",
+      "name": "Arts, Entertainment & Recreation",
+      "description": "Performing arts, sports, museums, and recreation facilities",
+      "icon": "Music",
+      "naicsCode": "71",
+      "industryGroups": [
+        {
+          "id": "performing_arts",
+          "name": "Performing Arts & Events",
+          "description": "Live performances, concerts, and theater",
+          "subIndustries": [
+            { "id": "theater_company", "name": "Theater/Dance Company", "complianceTemplates": ["venue_safety", "copyright_licensing", "ada_compliance"], "certifications": [] },
+            { "id": "music_venue", "name": "Music Venue/Concert Hall", "complianceTemplates": ["fire_capacity", "sound_permits", "liquor_license"], "certifications": [] },
+            { "id": "event_promoter", "name": "Event Promoter/Producer", "complianceTemplates": ["event_permits", "insurance_requirements"], "certifications": [] },
+            { "id": "talent_agency", "name": "Talent/Booking Agency", "complianceTemplates": ["talent_agency_license", "contract_compliance"], "certifications": ["LICENSED_TALENT_AGENT"] },
+            { "id": "production_company", "name": "Production Company", "complianceTemplates": ["insurance_requirements", "equipment_safety"], "certifications": [] }
+          ]
+        },
+        {
+          "id": "spectator_sports",
+          "name": "Spectator Sports & Teams",
+          "description": "Professional and amateur sports organizations",
+          "subIndustries": [
+            { "id": "sports_team", "name": "Sports Team/Club", "complianceTemplates": ["athlete_safety", "youth_protection", "insurance_requirements"], "certifications": [] },
+            { "id": "sports_facility", "name": "Stadium/Sports Facility", "complianceTemplates": ["fire_capacity", "ada_compliance", "food_safety"], "certifications": [] },
+            { "id": "sports_league", "name": "Sports League/Association", "complianceTemplates": ["youth_protection", "background_check"], "certifications": [] }
+          ]
+        },
+        {
+          "id": "museums_cultural",
+          "name": "Museums & Cultural Institutions",
+          "description": "Museums, historical sites, and cultural venues",
+          "subIndustries": [
+            { "id": "museum", "name": "Museum/Art Gallery", "complianceTemplates": ["fire_safety", "ada_compliance", "artifact_handling"], "certifications": ["AAM_ACCRED"] },
+            { "id": "historical_site", "name": "Historical Site/Monument", "complianceTemplates": ["preservation_standards", "ada_compliance"], "certifications": [] },
+            { "id": "zoo_aquarium", "name": "Zoo/Aquarium", "complianceTemplates": ["usda_license", "animal_welfare", "ada_compliance"], "certifications": ["AZA_ACCRED"] },
+            { "id": "botanical_garden", "name": "Botanical Garden", "complianceTemplates": ["pesticide_license", "ada_compliance"], "certifications": [] }
+          ]
+        },
+        {
+          "id": "recreation_facilities",
+          "name": "Recreation & Fitness Facilities",
+          "description": "Gyms, sports centers, and recreational venues",
+          "subIndustries": [
+            { "id": "fitness_center", "name": "Fitness Center/Gym", "complianceTemplates": ["liability_waiver", "equipment_safety", "ada_compliance"], "certifications": [] },
+            { "id": "golf_course", "name": "Golf Course/Country Club", "complianceTemplates": ["pesticide_license", "food_safety", "liquor_license"], "certifications": [] },
+            { "id": "bowling_center", "name": "Bowling Center", "complianceTemplates": ["fire_safety", "food_safety"], "certifications": [] },
+            { "id": "skating_rink", "name": "Skating Rink", "complianceTemplates": ["liability_waiver", "fire_safety"], "certifications": [] },
+            { "id": "amusement_park", "name": "Amusement Park/Arcade", "complianceTemplates": ["ride_inspection", "fire_safety", "food_safety"], "certifications": ["ASTM_COMPLIANCE"] },
+            { "id": "water_park", "name": "Water Park/Pool Facility", "complianceTemplates": ["pool_safety", "lifeguard_requirements", "chemical_handling"], "certifications": ["CPO", "LIFEGUARD_CERT"] },
+            { "id": "recreation_center", "name": "Recreation Center", "complianceTemplates": ["fire_safety", "youth_protection", "ada_compliance"], "certifications": [] }
+          ]
+        },
+        {
+          "id": "outdoor_recreation",
+          "name": "Outdoor Recreation & Adventure",
+          "description": "Outdoor activities, camping, and adventure sports",
+          "subIndustries": [
+            { "id": "campground", "name": "Campground/RV Park", "complianceTemplates": ["fire_safety", "environmental", "health_department"], "certifications": [] },
+            { "id": "marina", "name": "Marina/Boat Rental", "complianceTemplates": ["coast_guard", "environmental", "liability"], "certifications": ["MARINA_LICENSE"] },
+            { "id": "ski_resort", "name": "Ski Resort", "complianceTemplates": ["lift_inspection", "avalanche_safety", "first_aid"], "certifications": [] },
+            { "id": "adventure_sports", "name": "Adventure Sports (Zip Lines, Climbing)", "complianceTemplates": ["liability_waiver", "equipment_inspection", "guide_training"], "certifications": ["ACCT_CERTIFIED"] },
+            { "id": "hunting_fishing", "name": "Hunting/Fishing Guide", "complianceTemplates": ["guide_license", "wildlife_regulations", "first_aid"], "certifications": ["GUIDE_LICENSE"] }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "waste_environmental",
+      "name": "Waste Management & Environmental",
+      "description": "Waste collection, recycling, and environmental remediation",
+      "icon": "Recycle",
+      "naicsCode": "562",
+      "industryGroups": [
+        {
+          "id": "waste_collection",
+          "name": "Waste Collection & Hauling",
+          "description": "Garbage, recycling, and hazardous waste collection",
+          "subIndustries": [
+            { "id": "garbage_collection", "name": "Garbage/Trash Collection", "complianceTemplates": ["dot_compliance", "osha_safety", "environmental"], "certifications": ["WASTE_HAULER_LICENSE"] },
+            { "id": "recycling_collection", "name": "Recycling Collection", "complianceTemplates": ["recycling_permit", "dot_compliance"], "certifications": [] },
+            { "id": "hazmat_hauling", "name": "Hazardous Waste Hauling", "complianceTemplates": ["hazmat_certification", "epa_compliance", "dot_hazmat"], "certifications": ["HAZMAT_CERT", "EPA_ID"] },
+            { "id": "medical_waste", "name": "Medical Waste Transport", "complianceTemplates": ["medical_waste_permit", "osha_bloodborne", "dot_compliance"], "certifications": ["MEDICAL_WASTE_CERT"] },
+            { "id": "roll_off_service", "name": "Roll-Off/Dumpster Service", "complianceTemplates": ["waste_hauler_license", "dot_compliance"], "certifications": [] }
+          ]
+        },
+        {
+          "id": "waste_treatment",
+          "name": "Waste Treatment & Disposal",
+          "description": "Landfills, incinerators, and waste processing",
+          "subIndustries": [
+            { "id": "landfill", "name": "Landfill Operations", "complianceTemplates": ["epa_permit", "groundwater_monitoring", "osha_safety"], "certifications": ["LANDFILL_OPERATOR"] },
+            { "id": "recycling_facility", "name": "Recycling Processing Facility", "complianceTemplates": ["recycling_permit", "osha_safety", "environmental"], "certifications": [] },
+            { "id": "composting", "name": "Composting Facility", "complianceTemplates": ["composting_permit", "environmental"], "certifications": [] },
+            { "id": "transfer_station", "name": "Transfer Station", "complianceTemplates": ["transfer_permit", "osha_safety"], "certifications": [] }
+          ]
+        },
+        {
+          "id": "environmental_remediation",
+          "name": "Environmental Remediation",
+          "description": "Site cleanup and environmental restoration",
+          "subIndustries": [
+            { "id": "site_remediation", "name": "Site Remediation", "complianceTemplates": ["epa_compliance", "hazmat_handling", "osha_safety"], "certifications": ["HAZWOPER"] },
+            { "id": "asbestos_abatement", "name": "Asbestos Abatement", "complianceTemplates": ["asbestos_license", "osha_asbestos", "epa_compliance"], "certifications": ["ASBESTOS_CONTRACTOR"] },
+            { "id": "lead_abatement", "name": "Lead Abatement", "complianceTemplates": ["lead_contractor_license", "epa_lead", "osha_lead"], "certifications": ["EPA_LEAD_CONTRACTOR"] },
+            { "id": "mold_remediation", "name": "Mold Remediation", "complianceTemplates": ["mold_license", "osha_safety"], "certifications": ["IICRC_AMRT"] },
+            { "id": "tank_removal", "name": "Underground Tank Removal", "complianceTemplates": ["tank_removal_license", "epa_compliance"], "certifications": ["UST_CONTRACTOR"] }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "religious_civic",
+      "name": "Religious, Civic & Nonprofit",
+      "description": "Religious organizations, nonprofits, and civic groups",
+      "icon": "Heart",
+      "naicsCode": "813",
+      "industryGroups": [
+        {
+          "id": "religious_organizations",
+          "name": "Religious Organizations",
+          "description": "Churches, temples, mosques, and religious institutions",
+          "subIndustries": [
+            { "id": "church", "name": "Church/Place of Worship", "complianceTemplates": ["nonprofit_compliance", "youth_protection", "fire_safety"], "certifications": [] },
+            { "id": "religious_school", "name": "Religious School", "complianceTemplates": ["accreditation", "youth_protection", "background_check"], "certifications": [] },
+            { "id": "ministry", "name": "Ministry/Outreach", "complianceTemplates": ["nonprofit_compliance"], "certifications": [] }
+          ]
+        },
+        {
+          "id": "civic_organizations",
+          "name": "Civic & Social Organizations",
+          "description": "Community groups, clubs, and associations",
+          "subIndustries": [
+            { "id": "community_org", "name": "Community Organization", "complianceTemplates": ["nonprofit_compliance", "volunteer_management"], "certifications": [] },
+            { "id": "professional_assoc", "name": "Professional Association", "complianceTemplates": ["nonprofit_compliance"], "certifications": [] },
+            { "id": "labor_union", "name": "Labor Union", "complianceTemplates": ["nlrb_compliance", "financial_reporting"], "certifications": [] },
+            { "id": "political_org", "name": "Political Organization", "complianceTemplates": ["fec_compliance", "disclosure_requirements"], "certifications": [] }
+          ]
+        },
+        {
+          "id": "charitable_orgs",
+          "name": "Charitable & Grantmaking",
+          "description": "Foundations, charities, and grantmaking organizations",
+          "subIndustries": [
+            { "id": "foundation", "name": "Foundation/Grantmaker", "complianceTemplates": ["irs_990", "grant_compliance"], "certifications": [] },
+            { "id": "charity", "name": "Charitable Organization", "complianceTemplates": ["irs_990", "state_charity_registration"], "certifications": ["GUIDESTAR_SEAL"] },
+            { "id": "social_services", "name": "Social Services Agency", "complianceTemplates": ["nonprofit_compliance", "background_check", "client_confidentiality"], "certifications": [] }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "other_custom",
+      "name": "Other / My Industry Not Listed",
+      "description": "Custom industry category for businesses not listed above",
+      "icon": "Plus",
+      "isCustom": true,
+      "industryGroups": [
+        {
+          "id": "custom_category",
+          "name": "Custom Category",
+          "description": "Define your own industry category",
+          "allowCustomEntry": true,
+          "subIndustries": [
+            { "id": "custom_business", "name": "Custom Business Type", "complianceTemplates": ["basic_liability", "worker_comp"], "certifications": [], "allowCustomEntry": true }
           ]
         }
       ]
