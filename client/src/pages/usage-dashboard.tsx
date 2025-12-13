@@ -62,7 +62,7 @@ export default function UsageDashboard() {
 
   // Fetch usage summary
   const { data: summary, isLoading, error } = useQuery<CostSummary>({
-    queryKey: ['/api/workspace/usage-summary', selectedYear, selectedMonth],
+    queryKey: ['/api/workspace/usage-summary', { year: selectedYear, month: selectedMonth }],
     enabled: isAuthenticated,
   });
 
