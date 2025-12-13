@@ -109,23 +109,35 @@ export async function generatePlatformUpdate(data: AIInsightData): Promise<{ id:
     return null;
   }
   
-  const idempotencyKey = generateIdempotencyKey("update", data.workspaceId || null, JSON.stringify(data));
+  // Check for executionId in metadata - if present, use UUID to make idempotency key unique
+  const executionId = data.metadata?.executionId as string | undefined;
+  const hasUniqueMarker = executionId || data.metadata?.sourceAIBrain;
   
-  const existing = await db.select({ id: platformUpdates.id })
-    .from(platformUpdates)
-    .where(
-      and(
-        eq(platformUpdates.title, data.title),
-        data.workspaceId 
-          ? eq(platformUpdates.workspaceId, data.workspaceId)
-          : isNull(platformUpdates.workspaceId)
+  // For Trinity events, generate a fully unique idempotency key using UUID
+  // This ensures each Trinity operation gets its own entry in UNS
+  const idempotencyKey = hasUniqueMarker
+    ? `ai-update-${data.workspaceId || "global"}-trinity-${crypto.randomUUID()}`
+    : generateIdempotencyKey("update", data.workspaceId || null, JSON.stringify(data));
+  
+  // Only check for duplicates if there's no executionId (regular platform updates)
+  // Trinity operations with executionId are always unique
+  if (!hasUniqueMarker) {
+    const existing = await db.select({ id: platformUpdates.id })
+      .from(platformUpdates)
+      .where(
+        and(
+          eq(platformUpdates.title, data.title),
+          data.workspaceId 
+            ? eq(platformUpdates.workspaceId, data.workspaceId)
+            : isNull(platformUpdates.workspaceId)
+        )
       )
-    )
-    .limit(1);
-  
-  if (existing.length > 0) {
-    console.log(`[AINotification] Duplicate update detected, skipping: ${data.title}`);
-    return { id: existing[0].id };
+      .limit(1);
+    
+    if (existing.length > 0) {
+      console.log(`[AINotification] Duplicate update detected, skipping: ${data.title}`);
+      return { id: existing[0].id };
+    }
   }
   
   let enhancedDescription = data.description;
