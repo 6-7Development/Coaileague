@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspaceAccess } from "@/hooks/useWorkspaceAccess";
-import { selectSidebarFamilies, type OSModuleRoute } from "@/lib/osModules";
+import { selectSidebarFamilies, type ModuleRoute } from "@/lib/sidebarModules";
 import { useQuery } from "@tanstack/react-query";
 import { 
   Users, Activity, DollarSign, 
@@ -266,8 +266,8 @@ export default function Dashboard() {
   const families = selectSidebarFamilies(effectiveRole, effectiveTier, effectivePlatformStaff);
   
   // Extract top accessible routes for quick actions (excluding dashboard itself)
-  const accessibleRoutes: OSModuleRoute[] = [];
-  const lockedRoutes: OSModuleRoute[] = [];
+  const accessibleRoutes: ModuleRoute[] = [];
+  const lockedRoutes: ModuleRoute[] = [];
   
   families.forEach(family => {
     family.routes.forEach(route => {

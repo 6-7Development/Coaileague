@@ -16,7 +16,7 @@ import {
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspaceAccess } from "@/hooks/useWorkspaceAccess";
-import { selectSidebarFamilies } from "@/lib/osModules";
+import { selectSidebarFamilies } from "@/lib/sidebarModules";
 import { useTransition } from "@/contexts/transition-context";
 import { showLogoutTransition } from "@/lib/transition-utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";

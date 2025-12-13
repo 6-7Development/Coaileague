@@ -9,7 +9,7 @@ import { useLocation } from "wouter";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { useWorkspaceAccess } from "@/hooks/useWorkspaceAccess";
-import { selectSidebarFamilies } from "@/lib/osModules";
+import { selectSidebarFamilies } from "@/lib/sidebarModules";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
