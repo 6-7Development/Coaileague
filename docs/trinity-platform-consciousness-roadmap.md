@@ -264,5 +264,5 @@ async aggregateOrgLearning(workspaceId: string): Promise<OrgLearningInsights> {
 3. ✅ Phase 1D: Floating Trinity Dialogue UI - Created `trinity-dialogue.tsx`
 4. ✅ Phase 1A: Health-to-Conversation Bridge - Created `trinityHealthContext.ts`
 5. ✅ Phase 1B: Code Awareness Engine - Created `codebaseAwareness.ts`
-6. 📋 Phase 2A: Guru Task Graph Service - `guruTaskGraph.ts`
-7. 📋 Phase 2B: Org Learning Aggregation - Extend `TrinityMemoryService`
+6. ✅ Phase 2A: Guru Task Graph Service - Created `guruTaskGraph.ts`
+7. ✅ Phase 2B: Org Learning Aggregation - Extended `TrinityMemoryService` with `aggregateOrgLearning()`
