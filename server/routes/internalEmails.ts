@@ -669,6 +669,81 @@ router.patch("/:id", requireAuth, async (req: Request, res: Response) => {
   }
 });
 
+router.post("/:id/summarize", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const user = req.user as { id?: string };
+    if (!user?.id) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+
+    const { id } = req.params;
+
+    const mailbox = await db.query.internalMailboxes.findFirst({
+      where: eq(internalMailboxes.userId, user.id),
+    });
+
+    if (!mailbox) {
+      return res.status(404).json({ error: "No mailbox found" });
+    }
+
+    const recipient = await db.query.internalEmailRecipients.findFirst({
+      where: and(
+        eq(internalEmailRecipients.emailId, id),
+        eq(internalEmailRecipients.mailboxId, mailbox.id)
+      ),
+    });
+
+    if (!recipient) {
+      return res.status(404).json({ error: "Email not found in your mailbox" });
+    }
+
+    const email = await db.query.internalEmails.findFirst({
+      where: eq(internalEmails.id, id),
+    });
+
+    if (!email) {
+      return res.status(404).json({ error: "Email not found" });
+    }
+
+    const emailContent = email.bodyText || email.bodyHtml?.replace(/<[^>]*>/g, '') || '';
+    const subject = email.subject || '(No subject)';
+    
+    if (emailContent.length < 50) {
+      return res.json({ summary: emailContent || 'This email has no content to summarize.' });
+    }
+
+    try {
+      const { GoogleGenerativeAI } = await import("@google/generative-ai");
+      const apiKey = process.env.GOOGLE_AI_API_KEY || process.env.GEMINI_API_KEY;
+      
+      if (!apiKey) {
+        return res.json({ summary: emailContent.substring(0, 200) + (emailContent.length > 200 ? '...' : '') });
+      }
+
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-8b" });
+
+      const prompt = `Summarize this email in 2-3 concise sentences. Focus on key points and action items.
+
+Subject: ${subject}
+
+${emailContent.substring(0, 3000)}`;
+
+      const result = await model.generateContent(prompt);
+      const summary = result.response.text();
+
+      res.json({ summary });
+    } catch (aiError) {
+      console.error("AI summarization failed, using fallback:", aiError);
+      const fallbackSummary = emailContent.substring(0, 200) + (emailContent.length > 200 ? '...' : '');
+      res.json({ summary: fallbackSummary });
+    }
+  } catch (error) {
+    console.error("Error summarizing email:", error);
+    res.status(500).json({ error: "Failed to summarize email" });
+  }
+});
+
 router.delete("/:id", requireAuth, async (req: Request, res: Response) => {
   try {
     const user = req.user as { id?: string };
