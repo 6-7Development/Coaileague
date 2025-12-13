@@ -17,6 +17,11 @@ import { geminiClient } from '../providers/geminiClient';
 import { db } from '../../../db';
 import { eq, and, desc } from 'drizzle-orm';
 import {
+  publishTrinityDiagnosticStarted,
+  publishTrinityDiagnosticCompleted,
+  publishTrinityIssueDetected,
+} from '../../platformEventBus';
+import {
   visualQaRuns,
   visualQaFindings,
   visualQaBaselines,
@@ -431,6 +436,355 @@ Respond with JSON:
 
   getAvailableViewports(): string[] {
     return browserAutomationTool.getAvailablePresets();
+  }
+
+  // ==========================================================================
+  // LOGOPS INTEGRATION - Trinity Eyes + Log Analysis
+  // ==========================================================================
+
+  /**
+   * Perform comprehensive diagnostic combining visual inspection with log analysis
+   * This is the primary integration point between Trinity Eyes and LogOps
+   */
+  async runDiagnosticCheck(options: {
+    url: string;
+    workspaceId: string;
+    includeConsoleLogs?: boolean;
+    includeServerLogs?: boolean;
+    logContent?: string;
+    triggeredBy?: string;
+  }): Promise<{
+    visual: VqaCheckResult;
+    logFindings: any[];
+    combinedSeverity: 'healthy' | 'warning' | 'error' | 'critical';
+    summary: string;
+    recommendedActions: string[];
+  }> {
+    console.log(`[VQA] Running diagnostic check for ${options.url}`);
+    const executionId = `diag-${Date.now()}`;
+    
+    // Emit diagnostic started event through UNS
+    await publishTrinityDiagnosticStarted({
+      workspaceId: options.workspaceId,
+      triggeredBy: options.triggeredBy,
+      executionId,
+      targetUrl: options.url,
+      diagnosticScope: [
+        'visual',
+        ...(options.includeConsoleLogs ? ['console_logs'] : []),
+        ...(options.logContent ? ['server_logs'] : []),
+      ],
+    });
+    
+    // Track diagnostic state for finally block
+    let visualResult: VqaCheckResult | null = null;
+    let logFindings: any[] = [];
+    let combinedSeverity: 'healthy' | 'warning' | 'error' | 'critical' = 'healthy';
+    let recommendedActions: string[] = [];
+    let diagnosticError: Error | null = null;
+
+    try {
+      // Import LogOps dynamically to avoid circular dependencies
+      const { logOpsSubagent } = await import('./domainOpsSubagents');
+
+      // Run visual check
+      visualResult = await this.runVisualCheck({
+        url: options.url,
+        workspaceId: options.workspaceId,
+        triggeredBy: options.triggeredBy || 'trinity_diagnostic',
+        triggerSource: 'trinity',
+        autoHeal: false,
+      });
+
+      // Analyze logs if provided
+      if (options.logContent) {
+        logFindings = await logOpsSubagent.analyzeLogContent(
+          options.logContent,
+          `diagnostic:${options.url}`
+        );
+      }
+
+      // Capture browser console logs if enabled
+      if (options.includeConsoleLogs && visualResult.screenshot?.base64) {
+        try {
+          const consoleResult = await browserAutomationTool.executeScript({
+            url: options.url,
+            script: `return window.__consoleLogs || [];`,
+          });
+          if (consoleResult.success && Array.isArray(consoleResult.result)) {
+            const consoleLogs = consoleResult.result.join('\n');
+            const consoleFindings = await logOpsSubagent.analyzeLogContent(
+              consoleLogs,
+              `console:${options.url}`
+            );
+            logFindings.push(...consoleFindings);
+          }
+        } catch (e) {
+          console.warn('[VQA] Could not capture console logs:', e);
+        }
+      }
+
+      // Determine combined severity
+      combinedSeverity = this.determineCombinedSeverity(
+        visualResult.analysis?.anomalies || [],
+        logFindings
+      );
+
+      // Generate recommended actions
+      recommendedActions = this.generateRecommendedActions(
+        visualResult.findings,
+        logFindings,
+        combinedSeverity
+      );
+    } catch (error) {
+      diagnosticError = error instanceof Error ? error : new Error(String(error));
+      combinedSeverity = 'critical';
+      recommendedActions = [`Diagnostic failed: ${diagnosticError.message}`];
+      console.error('[VQA] Diagnostic check failed:', diagnosticError.message);
+    } finally {
+      // Always emit diagnostic completed event through UNS
+      const visualIssues = visualResult?.findings.length || 0;
+      const logIssues = logFindings.length;
+      const visualScore = visualResult?.analysis?.overallScore || 0;
+      
+      await publishTrinityDiagnosticCompleted({
+        workspaceId: options.workspaceId,
+        triggeredBy: options.triggeredBy,
+        executionId,
+        severity: combinedSeverity,
+        visualIssues,
+        logIssues,
+        visualScore,
+        recommendedActions,
+        metadata: diagnosticError ? { error: diagnosticError.message } : undefined,
+      });
+
+      // Emit individual issue detection events for critical/error issues
+      if (visualResult) {
+        for (const finding of visualResult.findings) {
+          if (finding.severity === 'critical' || finding.severity === 'high') {
+            await publishTrinityIssueDetected({
+              workspaceId: options.workspaceId,
+              triggeredBy: options.triggeredBy,
+              executionId,
+              issueTitle: finding.category,
+              issueDescription: finding.description,
+              issueCategory: 'visual',
+              severity: finding.severity === 'critical' ? 'critical' : 'error',
+              confidence: parseFloat(finding.confidence || '0'),
+            });
+          }
+        }
+      }
+    }
+
+    // Rethrow if there was an error
+    if (diagnosticError) {
+      throw diagnosticError;
+    }
+
+    // Create summary
+    const visualIssues = visualResult!.findings.length;
+    const logIssues = logFindings.length;
+    const summary = this.generateDiagnosticSummary(
+      visualIssues,
+      logIssues,
+      combinedSeverity,
+      visualResult!.analysis?.overallScore || 100
+    );
+
+    return {
+      visual: visualResult!,
+      logFindings,
+      combinedSeverity,
+      summary,
+      recommendedActions,
+    };
+  }
+
+  /**
+   * Analyze visual findings alongside log patterns for correlation
+   */
+  async correlateVisualAndLogIssues(
+    visualFindings: VisualQaFinding[],
+    logFindings: any[]
+  ): Promise<{
+    correlations: Array<{
+      visualFinding: VisualQaFinding;
+      relatedLogFinding: any;
+      confidence: number;
+      explanation: string;
+    }>;
+    uncorrelatedVisual: VisualQaFinding[];
+    uncorrelatedLogs: any[];
+  }> {
+    const correlations: Array<{
+      visualFinding: VisualQaFinding;
+      relatedLogFinding: any;
+      confidence: number;
+      explanation: string;
+    }> = [];
+    
+    const correlatedVisualIds = new Set<string>();
+    const correlatedLogIndexes = new Set<number>();
+
+    // Look for correlations based on timing and error patterns
+    for (const visual of visualFindings) {
+      for (let i = 0; i < logFindings.length; i++) {
+        const log = logFindings[i];
+        
+        // Check for correlation patterns
+        let correlation = this.checkCorrelation(visual, log);
+        
+        if (correlation.isCorrelated) {
+          correlations.push({
+            visualFinding: visual,
+            relatedLogFinding: log,
+            confidence: correlation.confidence,
+            explanation: correlation.explanation,
+          });
+          correlatedVisualIds.add(visual.id);
+          correlatedLogIndexes.add(i);
+        }
+      }
+    }
+
+    // Identify uncorrelated items
+    const uncorrelatedVisual = visualFindings.filter(v => !correlatedVisualIds.has(v.id));
+    const uncorrelatedLogs = logFindings.filter((_, i) => !correlatedLogIndexes.has(i));
+
+    return {
+      correlations,
+      uncorrelatedVisual,
+      uncorrelatedLogs,
+    };
+  }
+
+  private checkCorrelation(
+    visual: VisualQaFinding,
+    log: any
+  ): { isCorrelated: boolean; confidence: number; explanation: string } {
+    // Pattern 1: Network errors often cause broken images
+    if (visual.category === 'broken_icon' || visual.category === 'missing_element') {
+      if (log.gapType === 'log_error' && 
+          (log.title?.includes('network') || log.title?.includes('fetch') || log.title?.includes('404'))) {
+        return {
+          isCorrelated: true,
+          confidence: 0.8,
+          explanation: 'Network error likely caused missing visual element',
+        };
+      }
+    }
+
+    // Pattern 2: JavaScript errors can cause layout issues
+    if (visual.category === 'layout_shift' || visual.category === 'responsive_issue') {
+      if (log.gapType === 'log_error' && 
+          (log.title?.includes('TypeError') || log.title?.includes('ReferenceError'))) {
+        return {
+          isCorrelated: true,
+          confidence: 0.7,
+          explanation: 'JavaScript error may have disrupted dynamic layout',
+        };
+      }
+    }
+
+    // Pattern 3: CSS loading failures
+    if (visual.category === 'font_issue' || visual.category === 'color_mismatch') {
+      if (log.title?.includes('CSS') || log.title?.includes('stylesheet') || log.title?.includes('font')) {
+        return {
+          isCorrelated: true,
+          confidence: 0.75,
+          explanation: 'CSS/font loading issue caused visual styling problem',
+        };
+      }
+    }
+
+    return { isCorrelated: false, confidence: 0, explanation: '' };
+  }
+
+  private determineCombinedSeverity(
+    visualAnomalies: VisualAnomaly[],
+    logFindings: any[]
+  ): 'healthy' | 'warning' | 'error' | 'critical' {
+    const hasCriticalVisual = visualAnomalies.some(a => a.severity === 'critical');
+    const hasCriticalLog = logFindings.some(f => f.severity === 'critical');
+    
+    if (hasCriticalVisual || hasCriticalLog) return 'critical';
+
+    const hasErrorVisual = visualAnomalies.some(a => a.severity === 'high' || a.severity === 'critical');
+    const hasErrorLog = logFindings.some(f => f.severity === 'error');
+    
+    if (hasErrorVisual || hasErrorLog) return 'error';
+
+    const hasWarningVisual = visualAnomalies.some(a => a.severity === 'medium');
+    const hasWarningLog = logFindings.some(f => f.severity === 'warning');
+    
+    if (hasWarningVisual || hasWarningLog) return 'warning';
+
+    return 'healthy';
+  }
+
+  private generateRecommendedActions(
+    visualFindings: VisualQaFinding[],
+    logFindings: any[],
+    severity: string
+  ): string[] {
+    const actions: string[] = [];
+
+    // Critical severity actions
+    if (severity === 'critical') {
+      actions.push('Immediate attention required - critical issues detected');
+      actions.push('Review error logs for root cause analysis');
+    }
+
+    // Visual-specific actions
+    const brokenIcons = visualFindings.filter(f => f.category === 'broken_icon');
+    if (brokenIcons.length > 0) {
+      actions.push(`Fix ${brokenIcons.length} broken icon(s) - check image paths and CDN availability`);
+    }
+
+    const layoutIssues = visualFindings.filter(f => 
+      f.category === 'layout_shift' || f.category === 'responsive_issue'
+    );
+    if (layoutIssues.length > 0) {
+      actions.push(`Address ${layoutIssues.length} layout issue(s) - review CSS and responsive breakpoints`);
+    }
+
+    // Log-specific actions
+    const jsErrors = logFindings.filter(f => f.title?.includes('Error'));
+    if (jsErrors.length > 0) {
+      actions.push(`Investigate ${jsErrors.length} JavaScript error(s) in console`);
+    }
+
+    const networkErrors = logFindings.filter(f => 
+      f.title?.includes('ECONNREFUSED') || f.title?.includes('ETIMEDOUT')
+    );
+    if (networkErrors.length > 0) {
+      actions.push(`Check network connectivity - ${networkErrors.length} connection error(s) found`);
+    }
+
+    if (actions.length === 0) {
+      actions.push('No immediate actions required - system appears healthy');
+    }
+
+    return actions;
+  }
+
+  private generateDiagnosticSummary(
+    visualIssues: number,
+    logIssues: number,
+    severity: string,
+    visualScore: number
+  ): string {
+    if (severity === 'healthy' && visualIssues === 0 && logIssues === 0) {
+      return `System is healthy. Visual quality score: ${visualScore}/100. No issues detected.`;
+    }
+
+    const issueText = [];
+    if (visualIssues > 0) issueText.push(`${visualIssues} visual`);
+    if (logIssues > 0) issueText.push(`${logIssues} log`);
+    
+    return `Diagnostic complete. Status: ${severity.toUpperCase()}. Found ${issueText.join(' and ')} issue(s). Visual score: ${visualScore}/100.`;
   }
 }
 

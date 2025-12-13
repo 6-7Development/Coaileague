@@ -47,9 +47,21 @@ export type PlatformEventType =
   | 'shift_swap_approved'
   | 'shift_swap_denied'
   | 'shift_assigned'
-  | 'shift_unassigned';
+  | 'shift_unassigned'
+  // Trinity AI orchestration lifecycle events
+  | 'trinity_scan_started'
+  | 'trinity_scan_completed'
+  | 'trinity_issue_detected'
+  | 'trinity_fix_proposed'
+  | 'trinity_fix_approved'
+  | 'trinity_fix_rejected'
+  | 'trinity_fix_applied'
+  | 'trinity_diagnostic_started'
+  | 'trinity_diagnostic_completed'
+  | 'trinity_escalation_required'
+  | 'trinity_self_healing';
 
-export type EventCategory = 'feature' | 'improvement' | 'bugfix' | 'security' | 'announcement' | 'maintenance' | 'diagnostic' | 'support' | 'ai_brain' | 'error' | 'schedule';
+export type EventCategory = 'feature' | 'improvement' | 'bugfix' | 'security' | 'announcement' | 'maintenance' | 'diagnostic' | 'support' | 'ai_brain' | 'error' | 'schedule' | 'trinity';
 
 // Event visibility levels - must match update_visibility enum in database
 // Available: 'all', 'staff', 'supervisor', 'manager', 'admin'
@@ -623,6 +635,306 @@ export async function notifyShiftSwap(
       targetEmployeeId: params.targetEmployeeId,
       actionByRole: params.actionByRole,
       reason: params.reason,
+    },
+  });
+}
+
+// ============================================================================
+// TRINITY AI ORCHESTRATION LIFECYCLE EVENTS
+// ============================================================================
+
+export interface TrinityLifecycleParams {
+  workspaceId?: string;
+  triggeredBy?: string;
+  executionId?: string;
+  scanType?: 'visual' | 'log' | 'schema' | 'code' | 'full_diagnostic';
+  issueCount?: number;
+  severity?: 'healthy' | 'warning' | 'error' | 'critical';
+  fixId?: string;
+  fixDescription?: string;
+  affectedFiles?: string[];
+  reason?: string;
+  metadata?: Record<string, any>;
+}
+
+export async function publishTrinityScanStarted(params: TrinityLifecycleParams): Promise<void> {
+  await publishPlatformUpdate({
+    type: 'trinity_scan_started',
+    category: 'trinity',
+    title: 'Trinity Scan Started',
+    description: `Trinity AI initiated a ${params.scanType || 'system'} scan`,
+    workspaceId: params.workspaceId,
+    userId: params.triggeredBy,
+    visibility: 'admin',
+    priority: 3,
+    metadata: {
+      executionId: params.executionId,
+      scanType: params.scanType,
+      ...params.metadata,
+    },
+  });
+}
+
+export async function publishTrinityScanCompleted(params: TrinityLifecycleParams & {
+  issueCount: number;
+  durationMs?: number;
+}): Promise<void> {
+  const severityText = params.severity === 'healthy' ? 'No issues found' : 
+    `${params.issueCount} issue(s) detected (${params.severity})`;
+  
+  await publishPlatformUpdate({
+    type: 'trinity_scan_completed',
+    category: 'trinity',
+    title: 'Trinity Scan Completed',
+    description: `${params.scanType || 'System'} scan completed. ${severityText}`,
+    workspaceId: params.workspaceId,
+    userId: params.triggeredBy,
+    visibility: 'admin',
+    priority: params.severity === 'critical' ? 1 : params.severity === 'error' ? 2 : 3,
+    metadata: {
+      executionId: params.executionId,
+      scanType: params.scanType,
+      issueCount: params.issueCount,
+      severity: params.severity,
+      durationMs: params.durationMs,
+      ...params.metadata,
+    },
+  });
+}
+
+export async function publishTrinityIssueDetected(params: TrinityLifecycleParams & {
+  issueTitle: string;
+  issueDescription: string;
+  issueCategory?: string;
+  confidence?: number;
+}): Promise<void> {
+  await publishPlatformUpdate({
+    type: 'trinity_issue_detected',
+    category: 'trinity',
+    title: `Issue Detected: ${params.issueTitle}`,
+    description: params.issueDescription,
+    workspaceId: params.workspaceId,
+    userId: params.triggeredBy,
+    visibility: 'admin',
+    priority: params.severity === 'critical' ? 1 : 2,
+    metadata: {
+      executionId: params.executionId,
+      issueCategory: params.issueCategory,
+      confidence: params.confidence,
+      severity: params.severity,
+      affectedFiles: params.affectedFiles,
+      ...params.metadata,
+    },
+  });
+}
+
+export async function publishTrinityFixProposed(params: TrinityLifecycleParams & {
+  fixId: string;
+  fixDescription: string;
+  requiresApproval: boolean;
+  estimatedImpact?: string;
+}): Promise<void> {
+  await publishPlatformUpdate({
+    type: 'trinity_fix_proposed',
+    category: 'trinity',
+    title: 'Trinity Fix Proposed',
+    description: params.fixDescription,
+    workspaceId: params.workspaceId,
+    userId: params.triggeredBy,
+    visibility: 'admin',
+    priority: 1,
+    metadata: {
+      executionId: params.executionId,
+      fixId: params.fixId,
+      requiresApproval: params.requiresApproval,
+      estimatedImpact: params.estimatedImpact,
+      affectedFiles: params.affectedFiles,
+      ...params.metadata,
+    },
+  });
+  console.log(`[TrinityLifecycle] Fix proposed: ${params.fixId} - ${params.fixDescription}`);
+}
+
+export async function publishTrinityFixApproved(params: TrinityLifecycleParams & {
+  fixId: string;
+  approvedBy: string;
+}): Promise<void> {
+  await publishPlatformUpdate({
+    type: 'trinity_fix_approved',
+    category: 'trinity',
+    title: 'Trinity Fix Approved',
+    description: `Fix ${params.fixId} approved by ${params.approvedBy}`,
+    workspaceId: params.workspaceId,
+    userId: params.approvedBy,
+    visibility: 'admin',
+    priority: 2,
+    metadata: {
+      executionId: params.executionId,
+      fixId: params.fixId,
+      approvedBy: params.approvedBy,
+      ...params.metadata,
+    },
+  });
+}
+
+export async function publishTrinityFixRejected(params: TrinityLifecycleParams & {
+  fixId: string;
+  rejectedBy: string;
+  reason?: string;
+}): Promise<void> {
+  await publishPlatformUpdate({
+    type: 'trinity_fix_rejected',
+    category: 'trinity',
+    title: 'Trinity Fix Rejected',
+    description: `Fix ${params.fixId} rejected${params.reason ? `: ${params.reason}` : ''}`,
+    workspaceId: params.workspaceId,
+    userId: params.rejectedBy,
+    visibility: 'admin',
+    priority: 2,
+    metadata: {
+      executionId: params.executionId,
+      fixId: params.fixId,
+      rejectedBy: params.rejectedBy,
+      reason: params.reason,
+      ...params.metadata,
+    },
+  });
+}
+
+export async function publishTrinityFixApplied(params: TrinityLifecycleParams & {
+  fixId: string;
+  success: boolean;
+  commitHash?: string;
+  errorMessage?: string;
+}): Promise<void> {
+  const title = params.success ? 'Trinity Fix Applied' : 'Trinity Fix Failed';
+  const description = params.success 
+    ? `Fix ${params.fixId} successfully applied${params.commitHash ? ` (commit: ${params.commitHash.slice(0, 7)})` : ''}`
+    : `Fix ${params.fixId} failed: ${params.errorMessage || 'Unknown error'}`;
+
+  await publishPlatformUpdate({
+    type: 'trinity_fix_applied',
+    category: 'trinity',
+    title,
+    description,
+    workspaceId: params.workspaceId,
+    userId: params.triggeredBy,
+    visibility: 'admin',
+    priority: params.success ? 2 : 1,
+    metadata: {
+      executionId: params.executionId,
+      fixId: params.fixId,
+      success: params.success,
+      commitHash: params.commitHash,
+      errorMessage: params.errorMessage,
+      affectedFiles: params.affectedFiles,
+      ...params.metadata,
+    },
+  });
+}
+
+export async function publishTrinityDiagnosticStarted(params: TrinityLifecycleParams & {
+  targetUrl?: string;
+  diagnosticScope: string[];
+}): Promise<void> {
+  await publishPlatformUpdate({
+    type: 'trinity_diagnostic_started',
+    category: 'trinity',
+    title: 'Trinity Diagnostic Started',
+    description: `Full platform diagnostic initiated for: ${params.diagnosticScope.join(', ')}`,
+    workspaceId: params.workspaceId,
+    userId: params.triggeredBy,
+    visibility: 'admin',
+    priority: 3,
+    metadata: {
+      executionId: params.executionId,
+      targetUrl: params.targetUrl,
+      diagnosticScope: params.diagnosticScope,
+      ...params.metadata,
+    },
+  });
+}
+
+export async function publishTrinityDiagnosticCompleted(params: TrinityLifecycleParams & {
+  visualIssues: number;
+  logIssues: number;
+  visualScore: number;
+  recommendedActions: string[];
+}): Promise<void> {
+  const totalIssues = params.visualIssues + params.logIssues;
+  const healthStatus = params.severity || 'healthy';
+  
+  await publishPlatformUpdate({
+    type: 'trinity_diagnostic_completed',
+    category: 'trinity',
+    title: 'Trinity Diagnostic Completed',
+    description: `Diagnostic complete: ${totalIssues} issue(s) found. Visual score: ${params.visualScore}/100. Status: ${healthStatus}`,
+    workspaceId: params.workspaceId,
+    userId: params.triggeredBy,
+    visibility: 'admin',
+    priority: healthStatus === 'critical' ? 1 : healthStatus === 'error' ? 2 : 3,
+    metadata: {
+      executionId: params.executionId,
+      visualIssues: params.visualIssues,
+      logIssues: params.logIssues,
+      visualScore: params.visualScore,
+      severity: healthStatus,
+      recommendedActions: params.recommendedActions,
+      ...params.metadata,
+    },
+  });
+}
+
+export async function publishTrinityEscalationRequired(params: TrinityLifecycleParams & {
+  escalationReason: string;
+  escalatedTo: string[];
+  contextSummary: string;
+}): Promise<void> {
+  await publishPlatformUpdate({
+    type: 'trinity_escalation_required',
+    category: 'trinity',
+    title: 'Trinity Escalation Required',
+    description: `Human intervention needed: ${params.escalationReason}`,
+    workspaceId: params.workspaceId,
+    userId: params.triggeredBy,
+    visibility: 'admin',
+    priority: 1,
+    metadata: {
+      executionId: params.executionId,
+      escalationReason: params.escalationReason,
+      escalatedTo: params.escalatedTo,
+      contextSummary: params.contextSummary,
+      severity: params.severity || 'high',
+      ...params.metadata,
+    },
+  });
+}
+
+export async function publishTrinitySelfHealing(params: TrinityLifecycleParams & {
+  healingType: 'workflow_restart' | 'cache_clear' | 'service_restart' | 'config_fix' | 'dependency_update';
+  targetService?: string;
+  success: boolean;
+}): Promise<void> {
+  const title = params.success ? 'Trinity Self-Healing Successful' : 'Trinity Self-Healing Failed';
+  const description = params.success
+    ? `Automatically resolved: ${params.healingType.replace(/_/g, ' ')}${params.targetService ? ` for ${params.targetService}` : ''}`
+    : `Self-healing attempt failed: ${params.healingType.replace(/_/g, ' ')}`;
+
+  await publishPlatformUpdate({
+    type: 'trinity_self_healing',
+    category: 'trinity',
+    title,
+    description,
+    workspaceId: params.workspaceId,
+    userId: params.triggeredBy,
+    visibility: 'admin',
+    priority: params.success ? 3 : 2,
+    metadata: {
+      executionId: params.executionId,
+      healingType: params.healingType,
+      targetService: params.targetService,
+      success: params.success,
+      ...params.metadata,
     },
   });
 }
