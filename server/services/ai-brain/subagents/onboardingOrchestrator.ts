@@ -163,7 +163,11 @@ class OnboardingOrchestrator {
       }
 
       // Task 3: Industry Compliance Deployment (if workspace has industry selected)
-      if (workspace.subIndustryId) {
+      // Handle both standard taxonomy industries and custom user-defined industries
+      const isCustomIndustry = workspace.sectorId === 'other_custom';
+      
+      if (!isCustomIndustry && workspace.subIndustryId) {
+        // Standard industry from taxonomy - deploy pre-configured compliance templates
         parallelTasks.push(
           this.deployIndustryCompliance({
             workspaceId,
@@ -177,6 +181,27 @@ class OnboardingOrchestrator {
             }
           })
         );
+      } else if (isCustomIndustry) {
+        // Custom industry - deploy generic compliance templates and log for AI learning
+        if (workspace.customIndustryName) {
+          parallelTasks.push(
+            this.deployCustomIndustryCompliance({
+              workspaceId,
+              customIndustryName: workspace.customIndustryName,
+              customIndustryDescription: workspace.customIndustryDescription || undefined,
+              userId,
+            }).then(complianceResult => {
+              if (!complianceResult.success) {
+                result.warnings.push(...complianceResult.errors);
+              } else {
+                console.log(`[OnboardingOrchestrator] Custom industry compliance deployed for "${workspace.customIndustryName}": ${complianceResult.templatesDeployed.length} templates`);
+              }
+            })
+          );
+        } else {
+          // Custom industry selected but name not provided yet - add warning
+          result.warnings.push('Custom industry sector selected but industry name not provided. Please complete industry setup.');
+        }
       }
 
       // Execute all tasks in parallel
@@ -536,6 +561,7 @@ class OnboardingOrchestrator {
    */
   getMigrationCapabilities(): {
     automated: { name: string; description: string; sources: string[] }[];
+    apiIntegrations: { provider: IntegrationProvider; name: string; description: string; dataTypes: DataSyncType[] }[];
     manual: { name: string; description: string }[];
   } {
     return {
@@ -1096,13 +1122,103 @@ class OnboardingOrchestrator {
   }
 
   /**
+   * Deploy generic compliance templates for custom/user-defined industries
+   * Used when the user selects "Other / My Industry Not Listed" sector
+   * Logs the custom industry for AI learning and future taxonomy expansion
+   */
+  async deployCustomIndustryCompliance(params: {
+    workspaceId: string;
+    customIndustryName: string;
+    customIndustryDescription?: string;
+    userId: string;
+  }): Promise<{
+    success: boolean;
+    templatesDeployed: string[];
+    errors: string[];
+  }> {
+    const { workspaceId, customIndustryName, customIndustryDescription, userId } = params;
+    const errors: string[] = [];
+
+    console.log(`[OnboardingOrchestrator] Deploying custom industry compliance for workspace ${workspaceId}, industry "${customIndustryName}"`);
+
+    try {
+      // Deploy generic compliance templates applicable to all industries
+      const genericTemplates = [
+        'general_workplace_safety',
+        'employee_handbook_acknowledgment',
+        'emergency_procedures',
+        'anti_discrimination_policy',
+        'data_privacy_policy',
+      ];
+
+      // Log custom industry for AI learning and future taxonomy expansion
+      console.log(`[OnboardingOrchestrator] Custom industry logged for taxonomy expansion:`, {
+        workspaceId,
+        customIndustryName,
+        customIndustryDescription: customIndustryDescription || 'No description provided',
+        userId,
+        timestamp: new Date().toISOString(),
+      });
+
+      // Get current workspace to merge templates safely
+      const [currentWorkspace] = await db.select()
+        .from(workspaces)
+        .where(eq(workspaces.id, workspaceId))
+        .limit(1);
+
+      // Merge existing templates with new generic templates (avoid duplicates)
+      const existingTemplates = currentWorkspace?.industryComplianceTemplates || [];
+      const mergedTemplates = [...new Set([...existingTemplates, ...genericTemplates])];
+
+      // Update workspace with merged templates
+      await db.update(workspaces)
+        .set({
+          industryVerifiedBy: userId,
+          industryVerifiedAt: new Date(),
+          industryComplianceTemplates: mergedTemplates,
+        })
+        .where(eq(workspaces.id, workspaceId));
+
+      // Only mark onboarding complete after successful update
+      await db.update(workspaces)
+        .set({ industryOnboardingComplete: true })
+        .where(eq(workspaces.id, workspaceId));
+
+      console.log(`[OnboardingOrchestrator] Custom industry compliance deployed:`, {
+        workspaceId,
+        customIndustryName,
+        templatesDeployed: mergedTemplates.length,
+      });
+
+      return {
+        success: true,
+        templatesDeployed: mergedTemplates,
+        errors,
+      };
+
+    } catch (error: any) {
+      console.error('[OnboardingOrchestrator] Custom industry compliance deployment failed:', error);
+      errors.push(error.message);
+      return {
+        success: false,
+        templatesDeployed: [],
+        errors,
+      };
+    }
+  }
+
+  /**
    * Get industry compliance status for a workspace
+   * Handles both standard taxonomy industries and custom user-defined industries
    */
   async getIndustryComplianceStatus(workspaceId: string): Promise<{
     industryConfigured: boolean;
+    isCustomIndustry: boolean;
     subIndustryId: string | null;
     subIndustryName: string | null;
     sectorName: string | null;
+    customIndustryName: string | null;
+    customIndustryDescription: string | null;
     templatesActive: string[];
     complianceSummary: {
       totalTemplates: number;
@@ -1119,12 +1235,19 @@ class OnboardingOrchestrator {
         .where(eq(workspaces.id, workspaceId))
         .limit(1);
 
-      if (!workspace || !workspace.subIndustryId) {
+      // Check if no industry is configured at all
+      const hasStandardIndustry = workspace?.subIndustryId && workspace.sectorId !== 'other_custom';
+      const hasCustomIndustry = workspace?.sectorId === 'other_custom' && workspace.customIndustryName;
+
+      if (!workspace || (!hasStandardIndustry && !hasCustomIndustry)) {
         return {
           industryConfigured: false,
+          isCustomIndustry: false,
           subIndustryId: null,
           subIndustryName: null,
           sectorName: null,
+          customIndustryName: null,
+          customIndustryDescription: null,
           templatesActive: [],
           complianceSummary: null,
           requiredCertifications: [],
@@ -1132,16 +1255,42 @@ class OnboardingOrchestrator {
       }
 
       const templates = workspace.industryComplianceTemplates || [];
+
+      // Handle custom industry
+      if (hasCustomIndustry) {
+        return {
+          industryConfigured: true,
+          isCustomIndustry: true,
+          subIndustryId: workspace.subIndustryId,
+          subIndustryName: null,
+          sectorName: 'Other / My Industry Not Listed',
+          customIndustryName: workspace.customIndustryName,
+          customIndustryDescription: workspace.customIndustryDescription,
+          templatesActive: templates,
+          complianceSummary: {
+            totalTemplates: templates.length,
+            totalRequirements: 0, // Custom industries use generic templates
+            byCategory: { general: templates.length },
+            byPriority: { medium: templates.length },
+            criticalItems: [],
+          },
+          requiredCertifications: [],
+        };
+      }
+
+      // Handle standard taxonomy industry
       const complianceSummary = industryComplianceTemplates.getComplianceSummaryForWorkspace(workspaceId, templates);
       const requiredCertifications = industryComplianceTemplates.getRequiredCertifications(templates);
-
-      const taxonomy = industryComplianceTemplates.getSubIndustryFromTaxonomy(workspace.subIndustryId);
+      const taxonomy = industryComplianceTemplates.getSubIndustryFromTaxonomy(workspace.subIndustryId!);
 
       return {
         industryConfigured: true,
+        isCustomIndustry: false,
         subIndustryId: workspace.subIndustryId,
         subIndustryName: taxonomy?.subIndustry.name || null,
         sectorName: taxonomy?.sector.name || null,
+        customIndustryName: null,
+        customIndustryDescription: null,
         templatesActive: templates,
         complianceSummary,
         requiredCertifications,
@@ -1151,9 +1300,12 @@ class OnboardingOrchestrator {
       console.error('[OnboardingOrchestrator] Failed to get industry compliance status:', error);
       return {
         industryConfigured: false,
+        isCustomIndustry: false,
         subIndustryId: null,
         subIndustryName: null,
         sectorName: null,
+        customIndustryName: null,
+        customIndustryDescription: null,
         templatesActive: [],
         complianceSummary: null,
         requiredCertifications: [],

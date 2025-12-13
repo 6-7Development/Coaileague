@@ -346,6 +346,10 @@ export const workspaces = pgTable("workspaces", {
   industryOnboardingComplete: boolean("industry_onboarding_complete").default(false), // Industry-specific onboarding complete
   industryVerifiedBy: varchar("industry_verified_by"), // User/AI that verified industry classification
   industryVerifiedAt: timestamp("industry_verified_at"),
+  
+  // Custom Industry Support (for "Other / My Industry Not Listed" sector)
+  customIndustryName: varchar("custom_industry_name"), // User-defined industry name when using "Other/Custom"
+  customIndustryDescription: text("custom_industry_description"), // User-defined industry description
 
   // Manual Adjustments & Notes
   admin_notes: text("admin_notes"), // ROOT private notes about this org
