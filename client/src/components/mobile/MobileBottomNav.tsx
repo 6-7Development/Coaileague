@@ -10,7 +10,7 @@
  * - Keyboard-aware hiding
  */
 
-import { Calendar, Clock, MessageSquare, Menu, LogOut, ArrowLeft, Settings, User, HelpCircle, Mail, type LucideIcon } from "lucide-react";
+import { Calendar, Clock, MessageSquare, Menu, LogOut, Settings, User, HelpCircle, Mail, type LucideIcon } from "lucide-react";
 import { useLocation } from "wouter";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
@@ -133,16 +133,6 @@ export function MobileBottomNav({ onMenuOpen }: MobileBottomNavProps) {
     }
     return location.startsWith(href);
   };
-
-  const canGoBack = location !== '/dashboard' && location !== '/';
-  
-  const handleBack = () => {
-    if (window.history.length > 1) {
-      window.history.back();
-    } else {
-      setLocation('/dashboard');
-    }
-  };
   
   return (
     <nav 
@@ -158,24 +148,8 @@ export function MobileBottomNav({ onMenuOpen }: MobileBottomNavProps) {
       aria-label="Main navigation"
       data-testid="mobile-bottom-nav"
     >
-      <div className="mx-auto max-w-screen-sm flex justify-around items-center py-2 px-2">
-        {canGoBack && (
-          <button
-            onClick={handleBack}
-            className={cn(
-              "flex flex-col items-center justify-center rounded-xl transition-all duration-200",
-              "min-h-[52px] min-w-[56px] py-2 px-3",
-              "text-slate-400 hover:text-white hover:bg-slate-800/50"
-            )}
-            style={{ WebkitTapHighlightColor: 'transparent' }}
-            data-testid="nav-back"
-            aria-label="Go back"
-            title="Go back"
-          >
-            <ArrowLeft className="w-5 h-5" />
-            <span className="text-[10px] font-medium mt-1 leading-tight">Back</span>
-          </button>
-        )}
+      {/* Fixed 6-item layout: 5 nav items + More menu (no back button to prevent overflow) */}
+      <div className="mx-auto max-w-screen-sm flex justify-around items-center py-2 px-1">
         {navItems.map((item) => (
           <NavItem
             key={item.href}
