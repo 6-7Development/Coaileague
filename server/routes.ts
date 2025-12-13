@@ -89,6 +89,7 @@ import {
 import { emailService } from "./services/emailService";
 import { calculateStateTax, calculateBonusTaxation } from "./services/taxCalculator";
 import emailRouter from "./routes/emails";
+import internalEmailRouter from './routes/internalEmails';
 import { calendarRouter } from "./routes/calendarRoutes";
 import { smsRouter } from "./routes/smsRoutes";
 import { whatsNewRouter } from "./routes/whatsNewRoutes";
@@ -3049,6 +3050,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register Email Automation routes (Resend integration with billing)
   app.use("/api/emails", requireAuth, emailRouter);
+  app.use("/api/internal-email", requireAuth, internalEmailRouter);
 
   // Register Calendar routes (ICS export, Google Calendar integration)
   app.use("/api/calendar", calendarRouter);
