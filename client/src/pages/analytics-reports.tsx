@@ -27,7 +27,7 @@ import {
   Download, Filter, Lock, AlertCircle 
 } from "lucide-react";
 import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
-import type { SubscriptionTier } from "@/lib/osModules";
+import type { SubscriptionTier } from "@/lib/sidebarModules";
 
 // Report tab types
 type ReportTab = 'billable' | 'payroll' | 'client' | 'activity' | 'audit';

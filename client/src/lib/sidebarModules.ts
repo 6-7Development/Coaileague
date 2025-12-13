@@ -49,7 +49,7 @@ export type WorkspaceRole =
 
 export type SubscriptionTier = 'free' | 'starter' | 'professional' | 'enterprise';
 
-export type OSCapability =
+export type Capability =
   | 'view_schedules'
   | 'manage_schedules'
   | 'view_timesheets'
@@ -69,29 +69,29 @@ export type OSCapability =
 
 export type FamilyId = 'executive' | 'operations' | 'people' | 'intelligence' | 'platform';
 
-export interface OSModuleRoute {
+export interface ModuleRoute {
   id: string;
   label: string;
   href: string;
   icon: LucideIcon;
   description?: string;
-  capabilities?: OSCapability[];
+  capabilities?: Capability[];
   minimumTier?: SubscriptionTier;
   badge?: string;
   familyId?: FamilyId;
   isPrimary?: boolean;
   order?: number;
-  excludeForCapabilities?: OSCapability[]; // Hide route if user has any of these capabilities
+  excludeForCapabilities?: Capability[]; // Hide route if user has any of these capabilities
 }
 
-export interface OSModule {
+export interface SidebarModule {
   id: string;
   name: string;
   description: string;
   icon: LucideIcon;
   color: string;
-  routes: OSModuleRoute[];
-  capabilities: OSCapability[];
+  routes: ModuleRoute[];
+  capabilities: Capability[];
   minimumTier?: SubscriptionTier;
   familyId?: FamilyId;
 }
@@ -100,15 +100,15 @@ export interface SidebarFamily {
   id: FamilyId;
   label: string;
   order: number;
-  routes: OSModuleRoute[];
-  locked: OSModuleRoute[];
+  routes: ModuleRoute[];
+  locked: ModuleRoute[];
 }
 
 /**
  * Role Capability Map
  * Defines which capabilities each role has access to
  */
-export const roleCapabilities: Record<WorkspaceRole, OSCapability[]> = {
+export const roleCapabilities: Record<WorkspaceRole, Capability[]> = {
   // Platform roles (root_admin, sysop, support_agent)
   root_admin: [
     'view_schedules', 'manage_schedules',
@@ -210,7 +210,7 @@ export const tierHierarchy: Record<SubscriptionTier, number> = {
  */
 export function hasCapability(
   role: WorkspaceRole,
-  capability: OSCapability
+  capability: Capability
 ): boolean {
   return roleCapabilities[role]?.includes(capability) ?? false;
 }
@@ -232,7 +232,7 @@ export function hasTierAccess(
 export function canAccessRoute(
   role: WorkspaceRole,
   tier: SubscriptionTier,
-  route: OSModuleRoute
+  route: ModuleRoute
 ): boolean {
   // Check tier access
   if (!hasTierAccess(tier, route.minimumTier)) {
@@ -264,7 +264,7 @@ export function canAccessRoute(
  * 3. People & Engagement - Workforce, Communication, Talent
  * 4. Intelligence & Compliance - Analytics, Reports, Audit
  */
-export const osModules: OSModule[] = [
+export const sidebarModules: SidebarModule[] = [
   {
     id: 'workspace-dashboard',
     name: 'Dashboard',
@@ -654,7 +654,7 @@ export const osModules: OSModule[] = [
  * Platform Support Module (for CoAIleague staff - root_admin, deputy_admin, sysop, support)
  * Consolidated admin control center - ONE unified dashboard
  */
-export const platformSupportModule: OSModule = {
+export const platformSupportModule: SidebarModule = {
   id: 'support-control-center',
   name: 'Platform Operations',
   description: 'Unified Root Administrator Control Center',
@@ -769,10 +769,10 @@ export function getAccessibleModules(
   role: WorkspaceRole,
   tier: SubscriptionTier,
   isPlatformStaff: boolean = false
-): OSModule[] {
+): SidebarModule[] {
   const modules = isPlatformStaff 
-    ? [platformSupportModule, ...osModules]
-    : osModules;
+    ? [platformSupportModule, ...sidebarModules]
+    : sidebarModules;
 
   return modules
     .map(module => ({
@@ -790,10 +790,10 @@ export function getAccessibleModules(
 export function getLockedRoutes(
   role: WorkspaceRole,
   tier: SubscriptionTier
-): OSModuleRoute[] {
-  const locked: OSModuleRoute[] = [];
+): ModuleRoute[] {
+  const locked: ModuleRoute[] = [];
 
-  osModules.forEach(module => {
+  sidebarModules.forEach(module => {
     module.routes.forEach(route => {
       // Check if user has capability but not tier
       const hasRoleAccess = !route.capabilities || 
@@ -833,7 +833,7 @@ export function selectSidebarFamilies(
   isPlatformStaff: boolean = false
 ): SidebarFamily[] {
   // Collect all routes from all modules
-  const allRoutes: OSModuleRoute[] = [];
+  const allRoutes: ModuleRoute[] = [];
   
   // Add platform support module routes for staff ONLY
   if (isPlatformStaff) {
@@ -847,7 +847,7 @@ export function selectSidebarFamilies(
   }
 
   // Add regular module routes (with exclusion filtering)
-  osModules.forEach(module => {
+  sidebarModules.forEach(module => {
     module.routes.forEach(route => {
       // Check exclusion filter FIRST - before adding to allRoutes
       if (route.excludeForCapabilities && route.excludeForCapabilities.length > 0) {
@@ -877,7 +877,7 @@ export function selectSidebarFamilies(
   });
 
   // Group routes by family (4 High-Level Suites)
-  const familyMap: Record<FamilyId, { accessible: OSModuleRoute[]; locked: OSModuleRoute[] }> = {
+  const familyMap: Record<FamilyId, { accessible: ModuleRoute[]; locked: ModuleRoute[] }> = {
     platform: { accessible: [], locked: [] },
     executive: { accessible: [], locked: [] },
     operations: { accessible: [], locked: [] },
@@ -965,7 +965,7 @@ export function getDesktopOnlyRoutes(
   role: WorkspaceRole,
   tier: SubscriptionTier,
   isPlatformStaff: boolean = false
-): OSModuleRoute[] {
+): ModuleRoute[] {
   const mobileFriendlyIds = [
     'dashboard-home',
     'time-os',
@@ -974,7 +974,7 @@ export function getDesktopOnlyRoutes(
   ];
 
   const fullFamilies = selectSidebarFamilies(role, tier, isPlatformStaff);
-  const desktopOnlyRoutes: OSModuleRoute[] = [];
+  const desktopOnlyRoutes: ModuleRoute[] = [];
 
   fullFamilies.forEach(family => {
     family.routes.forEach(route => {
