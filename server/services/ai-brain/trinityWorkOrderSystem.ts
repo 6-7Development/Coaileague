@@ -13,12 +13,12 @@
  * 6. Work Summary Engine - Report completed work
  */
 
-import { aiBrainService } from './aiBrainService';
 import { trinityMemoryService } from './trinityMemoryService';
 import { selfReflectionEngine } from './selfReflectionEngine';
 import { trinityCodeOps } from './trinityCodeOps';
 import { aiBrainTestRunner } from './aiBrainTestRunner';
 import { platformEventBus } from '../platformEventBus';
+import { geminiClient } from './providers/geminiClient';
 import { db } from '../../db';
 import { systemAuditLogs } from '@shared/schema';
 import crypto from 'crypto';
@@ -348,15 +348,15 @@ Return JSON:
 }`;
 
     try {
-      const response = await aiBrainService.processRequest({
-        type: 'work_order_analysis',
-        userId,
+      const response = await geminiClient.generate({
         workspaceId,
-        messages: [{ role: 'user', content: prompt }],
-        contextLevel: 'full',
+        userId,
+        featureKey: 'work_order_analysis',
+        systemPrompt: 'You are an expert work order analyst for the CoAIleague platform.',
+        userMessage: prompt,
       });
 
-      const parsed = this.extractJSON(response.response);
+      const parsed = this.extractJSON(response.text);
       
       const workOrder: WorkOrder = {
         id: workOrderId,
@@ -429,19 +429,17 @@ Return JSON:
   private async logWorkOrder(workOrder: WorkOrder): Promise<void> {
     try {
       await db.insert(systemAuditLogs).values({
-        id: crypto.randomUUID(),
         workspaceId: workOrder.workspaceId,
         userId: workOrder.userId,
         action: 'work_order_created',
-        resourceType: 'work_order',
-        resourceId: workOrder.id,
-        details: {
+        entityType: 'work_order',
+        entityId: workOrder.id,
+        metadata: {
           intent: workOrder.intent,
           complexity: workOrder.complexity,
           summary: workOrder.summary,
           riskLevel: workOrder.riskLevel,
         },
-        timestamp: new Date(),
       });
     } catch (error) {
       console.error('[WorkOrderIntake] Failed to log work order:', error);
@@ -552,15 +550,15 @@ Return JSON array:
 Order tasks logically: understand -> plan -> implement -> test -> commit`;
 
     try {
-      const response = await aiBrainService.processRequest({
-        type: 'task_decomposition',
-        userId: workOrder.userId,
+      const response = await geminiClient.generate({
         workspaceId: workOrder.workspaceId,
-        messages: [{ role: 'user', content: prompt }],
-        contextLevel: 'full',
+        userId: workOrder.userId,
+        featureKey: 'task_decomposition',
+        systemPrompt: 'You are an expert task planner for the CoAIleague platform.',
+        userMessage: prompt,
       });
 
-      const tasksData = this.extractJSONArray(response.response);
+      const tasksData = this.extractJSONArray(response.text);
       
       const tasks: TaskNode[] = tasksData.map((t: any, i: number) => ({
         id: t.id || `task-${i + 1}`,
@@ -908,12 +906,12 @@ class SolutionDiscoveryLoop {
           const fs = await import('fs');
           
           // Get the proposed content from AI analysis
-          const editAnalysis = await aiBrainService.processRequest({
-            type: 'code_generation',
-            userId: workOrder.userId,
+          const editAnalysis = await geminiClient.generate({
             workspaceId: workOrder.workspaceId,
-            messages: [{ role: 'user', content: `Based on this task: "${task.description}"\n\nGenerate the code changes needed. Return only the code, no explanation.` }],
-            contextLevel: 'minimal',
+            userId: workOrder.userId,
+            featureKey: 'code_generation',
+            systemPrompt: 'You are an expert code generator. Generate clean, production-ready code.',
+            userMessage: `Based on this task: "${task.description}"\n\nGenerate the code changes needed. Return only the code, no explanation.`,
           });
           
           // Track the change (preview only - actual commit requires approval)
@@ -921,8 +919,8 @@ class SolutionDiscoveryLoop {
             id: crypto.randomUUID(),
             file: filePath,
             changeType: task.actionType === 'write_file' ? 'created' : 'modified',
-            diffPreview: editAnalysis.response.substring(0, 500),
-            linesAdded: editAnalysis.response.split('\n').length,
+            diffPreview: editAnalysis.text.substring(0, 500),
+            linesAdded: editAnalysis.text.split('\n').length,
             linesRemoved: 0,
             canRollback: true,
             rolledBack: false,
@@ -942,18 +940,18 @@ class SolutionDiscoveryLoop {
       case 'analyze':
       case 'think':
         try {
-          const thinkResult = await aiBrainService.processRequest({
-            type: 'analysis',
-            userId: workOrder.userId,
+          const thinkResult = await geminiClient.generate({
             workspaceId: workOrder.workspaceId,
-            messages: [{ role: 'user', content: `Analyze: ${task.description}\n\nContext: ${workOrder.summary}` }],
-            contextLevel: 'minimal',
+            userId: workOrder.userId,
+            featureKey: 'analysis',
+            systemPrompt: 'You are an expert analyst. Provide clear, actionable insights.',
+            userMessage: `Analyze: ${task.description}\n\nContext: ${workOrder.summary}`,
           });
           task.durationMs = Date.now() - startTime;
-          const hasOutput = thinkResult.response && thinkResult.response.length > 10;
+          const hasOutput = thinkResult.text && thinkResult.text.length > 10;
           return { 
             success: hasOutput, 
-            output: thinkResult.response,
+            output: thinkResult.text,
             error: hasOutput ? undefined : 'Analysis produced no meaningful output',
           };
         } catch (e: any) {
@@ -963,7 +961,7 @@ class SolutionDiscoveryLoop {
 
       case 'run_test':
         try {
-          const testResult = await aiBrainTestRunner.runAll('Trinity Work Order');
+          const testResult = await aiBrainTestRunner.runAllTests('Trinity Work Order');
           task.durationMs = Date.now() - startTime;
           const passed = testResult.summary.failed === 0;
           return { 
@@ -987,7 +985,7 @@ class SolutionDiscoveryLoop {
       case 'validate':
         try {
           // Run actual validation checks
-          const testResult = await aiBrainTestRunner.runCategory('api', 'Validation');
+          const testResult = await aiBrainTestRunner.runTestsByCategory('api');
           task.durationMs = Date.now() - startTime;
           const passed = testResult.summary.failed === 0;
           return { 
@@ -1012,15 +1010,15 @@ class SolutionDiscoveryLoop {
       case 'database_query':
         try {
           // Use readonly database operations only
-          const dbResult = await aiBrainService.processRequest({
-            type: 'database_analysis',
-            userId: workOrder.userId,
+          const dbResult = await geminiClient.generate({
             workspaceId: workOrder.workspaceId,
-            messages: [{ role: 'user', content: `Analyze database query requirements: ${task.description}` }],
-            contextLevel: 'minimal',
+            userId: workOrder.userId,
+            featureKey: 'database_analysis',
+            systemPrompt: 'You are a database analyst. Analyze query requirements and provide insights.',
+            userMessage: `Analyze database query requirements: ${task.description}`,
           });
           task.durationMs = Date.now() - startTime;
-          return { success: true, output: dbResult.response };
+          return { success: true, output: dbResult.text };
         } catch (e: any) {
           task.durationMs = Date.now() - startTime;
           return { success: false, error: e.message };
@@ -1028,15 +1026,15 @@ class SolutionDiscoveryLoop {
 
       case 'summarize':
         try {
-          const summaryResult = await aiBrainService.processRequest({
-            type: 'summarization',
-            userId: workOrder.userId,
+          const summaryResult = await geminiClient.generate({
             workspaceId: workOrder.workspaceId,
-            messages: [{ role: 'user', content: `Summarize: ${task.description}` }],
-            contextLevel: 'minimal',
+            userId: workOrder.userId,
+            featureKey: 'summarization',
+            systemPrompt: 'You are an expert summarizer. Create clear, concise summaries.',
+            userMessage: `Summarize: ${task.description}`,
           });
           task.durationMs = Date.now() - startTime;
-          return { success: true, output: summaryResult.response };
+          return { success: true, output: summaryResult.text };
         } catch (e: any) {
           task.durationMs = Date.now() - startTime;
           return { success: false, error: e.message };
