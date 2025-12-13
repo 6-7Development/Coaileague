@@ -13,7 +13,13 @@
 
 import { db } from '../../db';
 import { eq, and, desc, gte, sql, inArray } from 'drizzle-orm';
-import { trinityConversationSessions, knowledgeGapLogs, automationActionLedger } from '@shared/schema';
+import { 
+  trinityConversationSessions, 
+  knowledgeGapLogs, 
+  automationActionLedger,
+  trinityUserConfidenceStats,
+  trinityOrgStats,
+} from '@shared/schema';
 import { TTLCache } from './cacheUtils';
 
 // Type aliases for DB records
@@ -126,6 +132,29 @@ export interface SharedInsight {
   createdAt: Date;
   usageCount: number;
   effectivenessScore: number;
+}
+
+export interface OrgLearningInsights {
+  workspaceId: string;
+  totalActiveUsers: number;
+  totalSessions: number;
+  avgUserConfidence: number;
+  orgHealthScore: number;
+  commonTopics: string[];
+  commonPainPoints: string[];
+  growthOpportunities: string[];
+  featuresUsed: string[];
+  featureAdoptionScore: number;
+  recommendations: OrgRecommendation[];
+  aggregatedAt: Date;
+}
+
+export interface OrgRecommendation {
+  type: 'training' | 'support' | 'process' | 'adoption' | 'growth';
+  priority: 'high' | 'medium' | 'low';
+  title: string;
+  description: string;
+  actionable: boolean;
 }
 
 // ============================================================================
@@ -927,6 +956,248 @@ class TrinityMemoryService {
       this.profileCache.delete(cacheKey);
       console.log(`[TrinityMemoryService] Compacted memory for ${cacheKey}`);
     }
+  }
+
+  // ============================================================================
+  // ORG LEARNING AGGREGATION (Phase 2B)
+  // ============================================================================
+
+  /**
+   * Aggregate learning insights across all users in an organization.
+   * Updates trinity_org_stats with cross-user patterns, common topics, and pain points.
+   */
+  async aggregateOrgLearning(workspaceId: string): Promise<OrgLearningInsights> {
+    try {
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+      // Get all user sessions for this workspace
+      const sessions = await db
+        .select()
+        .from(trinityConversationSessions)
+        .where(
+          and(
+            eq(trinityConversationSessions.workspaceId, workspaceId),
+            gte(trinityConversationSessions.createdAt, thirtyDaysAgo)
+          )
+        )
+        .orderBy(desc(trinityConversationSessions.createdAt))
+        .limit(500);
+
+      // Get unique users
+      const uniqueUserIds = [...new Set(sessions.map(s => s.userId))];
+
+      // Get user confidence stats
+      const userStats = uniqueUserIds.length > 0 ? await db
+        .select()
+        .from(trinityUserConfidenceStats)
+        .where(
+          and(
+            inArray(trinityUserConfidenceStats.userId, uniqueUserIds),
+            eq(trinityUserConfidenceStats.workspaceId, workspaceId)
+          )
+        ) : [];
+
+      // Get knowledge gaps for this workspace's sessions
+      const sessionIds = sessions.map(s => s.id);
+      const knowledgeGaps = sessionIds.length > 0 ? await db
+        .select()
+        .from(knowledgeGapLogs)
+        .where(inArray(knowledgeGapLogs.sessionId, sessionIds))
+        .limit(200) : [];
+
+      // Aggregate common topics
+      const topicCounts: Record<string, number> = {};
+      for (const gap of knowledgeGaps) {
+        const topic = gap.gapType || 'general';
+        topicCounts[topic] = (topicCounts[topic] || 0) + 1;
+      }
+      const commonTopics = Object.entries(topicCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10)
+        .map(([topic]) => topic);
+
+      // Identify common pain points from unresolved gaps
+      const unresolvedGaps = knowledgeGaps.filter(g => g.resolutionStatus !== 'resolved');
+      const painPointCounts: Record<string, number> = {};
+      for (const gap of unresolvedGaps) {
+        const type = gap.gapType || 'unknown';
+        painPointCounts[type] = (painPointCounts[type] || 0) + 1;
+      }
+      const commonPainPoints = Object.entries(painPointCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([type]) => type);
+
+      // Calculate average user confidence
+      const confidenceValues = userStats
+        .filter(s => s.averageConfidence)
+        .map(s => parseFloat(s.averageConfidence || '0.5'));
+      const avgUserConfidence = confidenceValues.length > 0
+        ? confidenceValues.reduce((a, b) => a + b, 0) / confidenceValues.length
+        : 0.5;
+
+      // Calculate org health score based on various factors
+      const resolutionRate = knowledgeGaps.length > 0
+        ? knowledgeGaps.filter(g => g.resolutionStatus === 'resolved').length / knowledgeGaps.length
+        : 0.5;
+      const orgHealthScore = (avgUserConfidence * 0.4) + (resolutionRate * 0.6);
+
+      // Identify growth opportunities from successful patterns
+      const growthOpportunities: string[] = [];
+      if (avgUserConfidence > 0.7) {
+        growthOpportunities.push('High user confidence - ready for advanced automation');
+      }
+      if (sessions.length > 50) {
+        growthOpportunities.push('High engagement - consider Trinity Pro features');
+      }
+      if (resolutionRate > 0.8) {
+        growthOpportunities.push('Excellent issue resolution - reduce human escalations');
+      }
+
+      // Get features used from session data
+      const featuresUsed = new Set<string>();
+      for (const session of sessions) {
+        if (session.lastToolUsed) {
+          featuresUsed.add(session.lastToolUsed);
+        }
+      }
+
+      // Calculate feature adoption score
+      const expectedFeatures = 20; // Baseline expected feature count
+      const featureAdoptionScore = Math.min(featuresUsed.size / expectedFeatures, 1);
+
+      // Update trinity_org_stats table
+      const existingStats = await db.query.trinityOrgStats.findFirst({
+        where: eq(trinityOrgStats.workspaceId, workspaceId),
+      });
+
+      const statsUpdate = {
+        totalActiveUsers: uniqueUserIds.length,
+        totalUserSessions: sessions.length,
+        totalOrgInteractions: sessions.reduce((sum, s) => sum + (s.turnCount || 0), 0),
+        avgUserConfidence: avgUserConfidence.toFixed(4),
+        orgHealthScore: orgHealthScore.toFixed(2),
+        commonTopics,
+        commonPainPoints,
+        growthOpportunities,
+        featuresUsed: Array.from(featuresUsed),
+        featureAdoptionScore: featureAdoptionScore.toFixed(2),
+        updatedAt: new Date(),
+        lastAggregatedAt: new Date(),
+      };
+
+      if (existingStats) {
+        await db
+          .update(trinityOrgStats)
+          .set(statsUpdate)
+          .where(eq(trinityOrgStats.workspaceId, workspaceId));
+      } else {
+        await db.insert(trinityOrgStats).values({
+          workspaceId,
+          ...statsUpdate,
+        });
+      }
+
+      const insights: OrgLearningInsights = {
+        workspaceId,
+        totalActiveUsers: uniqueUserIds.length,
+        totalSessions: sessions.length,
+        avgUserConfidence,
+        orgHealthScore,
+        commonTopics,
+        commonPainPoints,
+        growthOpportunities,
+        featuresUsed: Array.from(featuresUsed),
+        featureAdoptionScore,
+        recommendations: this.generateOrgRecommendations(
+          avgUserConfidence,
+          orgHealthScore,
+          commonPainPoints,
+          featureAdoptionScore
+        ),
+        aggregatedAt: new Date(),
+      };
+
+      console.log(`[TrinityMemoryService] Aggregated org learning for workspace ${workspaceId}: ${uniqueUserIds.length} users, ${sessions.length} sessions`);
+      return insights;
+    } catch (error) {
+      console.error('[TrinityMemoryService] Error aggregating org learning:', error);
+      return {
+        workspaceId,
+        totalActiveUsers: 0,
+        totalSessions: 0,
+        avgUserConfidence: 0.5,
+        orgHealthScore: 0.5,
+        commonTopics: [],
+        commonPainPoints: [],
+        growthOpportunities: [],
+        featuresUsed: [],
+        featureAdoptionScore: 0,
+        recommendations: [],
+        aggregatedAt: new Date(),
+      };
+    }
+  }
+
+  private generateOrgRecommendations(
+    avgConfidence: number,
+    healthScore: number,
+    painPoints: string[],
+    adoptionScore: number
+  ): OrgRecommendation[] {
+    const recommendations: OrgRecommendation[] = [];
+
+    if (avgConfidence < 0.5) {
+      recommendations.push({
+        type: 'training',
+        priority: 'high',
+        title: 'Improve User Onboarding',
+        description: 'Low average confidence suggests users need more guidance. Consider enhanced onboarding tours.',
+        actionable: true,
+      });
+    }
+
+    if (healthScore < 0.6) {
+      recommendations.push({
+        type: 'support',
+        priority: 'high',
+        title: 'Address Issue Resolution Rate',
+        description: 'Many issues remain unresolved. Review common pain points and create documentation.',
+        actionable: true,
+      });
+    }
+
+    if (painPoints.length > 3) {
+      recommendations.push({
+        type: 'process',
+        priority: 'medium',
+        title: 'Address Recurring Pain Points',
+        description: `${painPoints.length} recurring issues detected. Consider automated solutions or documentation.`,
+        actionable: true,
+      });
+    }
+
+    if (adoptionScore < 0.3) {
+      recommendations.push({
+        type: 'adoption',
+        priority: 'medium',
+        title: 'Increase Feature Adoption',
+        description: 'Users are only using a fraction of available features. Consider feature discovery campaigns.',
+        actionable: true,
+      });
+    }
+
+    if (avgConfidence > 0.8 && adoptionScore > 0.7) {
+      recommendations.push({
+        type: 'growth',
+        priority: 'low',
+        title: 'Ready for Advanced Automation',
+        description: 'High confidence and adoption indicate readiness for Trinity Pro or Guru mode features.',
+        actionable: true,
+      });
+    }
+
+    return recommendations;
   }
 
   // ============================================================================
