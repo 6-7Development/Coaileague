@@ -2,35 +2,31 @@
  * MobileBottomNav - Fixed bottom navigation for mobile devices
  * 
  * Features:
- * - Fixed position with safe area support
- * - Touch-optimized tap targets (52px minimum - exceeds WCAG 44px requirement)
+ * - Fixed 5-item layout (4 primary + More) to fit all screen widths
+ * - Touch-optimized tap targets (48px minimum - meets WCAG requirement)
  * - Active state indication
- * - Smooth transitions
  * - Haptic feedback ready
  * - Keyboard-aware hiding
+ * - Grid-based More menu for extra items
  */
 
-import { Calendar, Clock, MessageSquare, Menu, LogOut, Settings, User, HelpCircle, Mail, type LucideIcon } from "lucide-react";
+import { Calendar, Clock, MessageSquare, Menu, LogOut, Settings, User, HelpCircle, Mail, Home, type LucideIcon } from "lucide-react";
 import { useLocation } from "wouter";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
-import { Button } from "@/components/ui/button";
-import { useAuth } from "@/hooks/useAuth";
 import { performLogout, setLogoutAnimationContext } from "@/lib/logoutHandler";
 import { useUniversalAnimation } from "@/contexts/universal-animation-context";
-import { useQuery } from "@tanstack/react-query";
 
 interface NavItemProps {
   icon: LucideIcon;
   label: string;
   href: string;
   isActive: boolean;
-  onClick: () => void;
 }
 
-function NavItem({ icon: Icon, label, href, isActive, onClick }: NavItemProps) {
+function NavItem({ icon: Icon, label, href, isActive }: NavItemProps) {
   const [, setLocation] = useLocation();
   
   const handleClick = () => {
@@ -38,19 +34,17 @@ function NavItem({ icon: Icon, label, href, isActive, onClick }: NavItemProps) {
       navigator.vibrate(10);
     }
     setLocation(href);
-    onClick();
   };
   
   return (
     <button
       onClick={handleClick}
       className={cn(
-        "flex flex-col items-center justify-center rounded-xl transition-all duration-200",
-        "min-h-[52px] min-w-[56px] py-2 px-3",
-        "-webkit-tap-highlight-color: transparent",
+        "flex flex-col items-center justify-center rounded-lg transition-all duration-150",
+        "min-h-[48px] flex-1 py-1.5 px-1",
         isActive 
-          ? "text-cyan-400 bg-slate-800" 
-          : "text-slate-400 hover:text-white hover:bg-slate-800/50"
+          ? "text-cyan-400" 
+          : "text-slate-400 active:text-white"
       )}
       style={{ WebkitTapHighlightColor: 'transparent' }}
       data-testid={`nav-${label.toLowerCase().replace(/\s+/g, '-')}`}
@@ -60,16 +54,38 @@ function NavItem({ icon: Icon, label, href, isActive, onClick }: NavItemProps) {
       <Icon 
         className={cn(
           "transition-all",
-          isActive ? "w-6 h-6" : "w-5 h-5"
+          isActive ? "w-5 h-5" : "w-5 h-5"
         )} 
         strokeWidth={isActive ? 2.5 : 2} 
       />
       <span className={cn(
-        "text-[10px] font-medium mt-1 leading-tight",
-        isActive ? "font-semibold text-white" : ""
+        "text-[9px] font-medium mt-0.5 leading-tight truncate max-w-full",
+        isActive ? "font-semibold text-cyan-400" : ""
       )}>
         {label}
       </span>
+    </button>
+  );
+}
+
+// Grid menu item for the More sheet
+function SheetMenuItem({ icon: Icon, label, href, onClose }: { 
+  icon: LucideIcon; 
+  label: string; 
+  href: string;
+  onClose: () => void;
+}) {
+  const [, setLocation] = useLocation();
+  
+  return (
+    <button
+      onClick={() => { setLocation(href); onClose(); }}
+      className="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-800/50 active:bg-slate-700 transition-colors"
+      style={{ WebkitTapHighlightColor: 'transparent' }}
+      data-testid={`menu-${label.toLowerCase().replace(/\s+/g, '-')}`}
+    >
+      <Icon className="w-6 h-6 text-cyan-400 mb-1" />
+      <span className="text-xs text-slate-300 font-medium">{label}</span>
     </button>
   );
 }
@@ -79,22 +95,13 @@ interface MobileBottomNavProps {
 }
 
 export function MobileBottomNav({ onMenuOpen }: MobileBottomNavProps) {
-  const [location, setLocation] = useLocation();
+  const [location] = useLocation();
   const isMobile = useIsMobile();
   const [menuOpen, setMenuOpen] = useState(false);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const animationContext = useUniversalAnimation();
   
-  // Fetch employee info for RBAC-based menu items
-  const { data: employee } = useQuery<{ workspaceRole?: string }>({
-    queryKey: ['/api/employees/me'],
-  });
-  
-  const workspaceRole = employee?.workspaceRole || 'staff';
-  const isSupervisor = ['org_owner', 'org_admin', 'manager', 'supervisor', 'hr_manager'].includes(workspaceRole);
-  
   useEffect(() => {
-    // Wire animation context to logout handler
     if (animationContext) {
       setLogoutAnimationContext(animationContext);
     }
@@ -118,13 +125,20 @@ export function MobileBottomNav({ onMenuOpen }: MobileBottomNavProps) {
     return null;
   }
   
-  // Essential field worker tools - streamlined for mobile (5 core tools)
+  // Primary nav: 4 essential items only (fits 320px screens)
   const navItems = [
+    { icon: Home, label: "Home", href: "/dashboard" },
     { icon: Clock, label: "Clock", href: "/time-tracking" },
     { icon: Calendar, label: "Schedule", href: "/schedule" },
     { icon: MessageSquare, label: "Chat", href: "/chat" },
-    { icon: HelpCircle, label: "Help", href: "/helpdesk" },
+  ];
+  
+  // Items moved to More menu
+  const menuItems = [
     { icon: Mail, label: "Inbox", href: "/inbox" },
+    { icon: HelpCircle, label: "Help", href: "/helpdesk" },
+    { icon: User, label: "Profile", href: "/profile" },
+    { icon: Settings, label: "Settings", href: "/settings" },
   ];
   
   const isActive = (href: string) => {
@@ -139,7 +153,7 @@ export function MobileBottomNav({ onMenuOpen }: MobileBottomNavProps) {
       className={cn(
         "fixed bottom-0 inset-x-0 z-50",
         "bg-slate-900/98 backdrop-blur-xl",
-        "border-t border-slate-700/50 shadow-2xl"
+        "border-t border-slate-700/50"
       )}
       style={{
         paddingBottom: 'env(safe-area-inset-bottom, 0px)'
@@ -148,8 +162,8 @@ export function MobileBottomNav({ onMenuOpen }: MobileBottomNavProps) {
       aria-label="Main navigation"
       data-testid="mobile-bottom-nav"
     >
-      {/* Fixed 6-item layout: 5 nav items + More menu (no back button to prevent overflow) */}
-      <div className="mx-auto max-w-screen-sm flex justify-around items-center py-2 px-1">
+      {/* Fixed 5-item layout: 4 primary + More (fits all screens) */}
+      <div className="flex items-center py-1">
         {navItems.map((item) => (
           <NavItem
             key={item.href}
@@ -157,7 +171,6 @@ export function MobileBottomNav({ onMenuOpen }: MobileBottomNavProps) {
             label={item.label}
             href={item.href}
             isActive={isActive(item.href)}
-            onClick={() => {}}
           />
         ))}
         
@@ -165,56 +178,48 @@ export function MobileBottomNav({ onMenuOpen }: MobileBottomNavProps) {
           <SheetTrigger asChild>
             <button
               className={cn(
-                "flex flex-col items-center justify-center rounded-xl transition-all duration-200",
-                "min-h-[52px] min-w-[56px] py-2 px-3",
-                menuOpen
-                  ? "text-cyan-400 bg-slate-800"
-                  : "text-slate-400 hover:text-white hover:bg-slate-800/50"
+                "flex flex-col items-center justify-center rounded-lg transition-all duration-150",
+                "min-h-[48px] flex-1 py-1.5 px-1",
+                menuOpen ? "text-cyan-400" : "text-slate-400 active:text-white"
               )}
               style={{ WebkitTapHighlightColor: 'transparent' }}
               data-testid="nav-more"
               aria-label="More options"
             >
               <Menu className="w-5 h-5" strokeWidth={2} />
-              <span className="text-[10px] font-medium mt-1 leading-tight">More</span>
+              <span className="text-[9px] font-medium mt-0.5 leading-tight">More</span>
             </button>
           </SheetTrigger>
-          <SheetContent side="bottom" className="rounded-t-3xl max-h-[70vh] overflow-y-auto bg-slate-900 border-slate-700">
-            <SheetTitle className="sr-only">Menu</SheetTitle>
-            <div className="p-5 space-y-3">
-              {/* Minimal menu - only essential options */}
-              <Button 
-                variant="ghost"
-                className="w-full h-14 justify-start gap-4 text-slate-300 hover:text-white hover:bg-slate-800 text-base"
-                onClick={() => { setLocation('/profile'); setMenuOpen(false); }}
-                data-testid="nav-profile"
-              >
-                <User className="w-6 h-6 text-cyan-400" />
-                My Profile
-              </Button>
-              
-              <Button 
-                variant="ghost"
-                className="w-full h-14 justify-start gap-4 text-slate-300 hover:text-white hover:bg-slate-800 text-base"
-                onClick={() => { setLocation('/settings'); setMenuOpen(false); }}
-                data-testid="nav-settings"
-              >
-                <Settings className="w-6 h-6 text-cyan-400" />
-                Settings
-              </Button>
-
-              <div className="pt-3 border-t border-slate-700">
-                <Button 
-                  variant="ghost"
-                  className="w-full h-14 justify-start gap-4 text-red-400 hover:text-red-300 hover:bg-red-950/20 text-base"
-                  onClick={() => performLogout()}
-                  data-testid="nav-logout"
-                >
-                  <LogOut className="w-6 h-6" />
-                  Log Out
-                </Button>
-              </div>
+          <SheetContent 
+            side="bottom" 
+            className="rounded-t-2xl bg-slate-900 border-slate-700 px-4 pt-4"
+            style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 16px) + 16px)' }}
+          >
+            <SheetTitle className="sr-only">More Options</SheetTitle>
+            
+            {/* 2x2 Grid for quick access items */}
+            <div className="grid grid-cols-4 gap-2 mb-4">
+              {menuItems.map((item) => (
+                <SheetMenuItem
+                  key={item.href}
+                  icon={item.icon}
+                  label={item.label}
+                  href={item.href}
+                  onClose={() => setMenuOpen(false)}
+                />
+              ))}
             </div>
+            
+            {/* Logout button */}
+            <button
+              onClick={() => performLogout()}
+              className="w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-red-950/30 border border-red-900/50 text-red-400 active:bg-red-900/40 transition-colors"
+              style={{ WebkitTapHighlightColor: 'transparent' }}
+              data-testid="nav-logout"
+            >
+              <LogOut className="w-5 h-5" />
+              <span className="text-sm font-medium">Log Out</span>
+            </button>
           </SheetContent>
         </Sheet>
       </div>
