@@ -7,7 +7,6 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TrinityAnnouncementDisplay } from "@/components/trinity-announcement";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { OnboardingTour } from "@/components/onboarding-tour";
 import { GraduationCap, Settings2, Search, Menu, Sparkles, LogOut, User, Bell, Mail } from "lucide-react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
@@ -209,25 +208,6 @@ import { MobileVoiceCommandOverlay } from "@/components/mobile/MobileVoiceComman
 
 // Trinity modes are driven by system state, not user interaction
 // Mode changes happen automatically based on AI activity, seasons, etc.
-
-// Wrapper component to provide user context to OnboardingTour
-function AuthenticatedOnboardingTour() {
-  const { user, isAuthenticated } = useAuth();
-  
-  // Only render tour for authenticated users
-  if (!isAuthenticated || !user) {
-    return null;
-  }
-  
-  const workspaceId = (user as any)?.activeWorkspaceId || (user as any)?.workspaceId;
-  
-  return (
-    <OnboardingTour 
-      userId={user.id} 
-      workspaceId={workspaceId}
-    />
-  );
-}
 
 function MascotRenderer() {
   const { user } = useAuth();
@@ -1448,7 +1428,6 @@ export default function App() {
                           <ReenableChatButton />
                           <Toaster />
                           <TrinityAnnouncementDisplay position="bottom-right" />
-                          <AuthenticatedOnboardingTour />
                         </ResponsiveAppFrame>
                         {/* Seasonal effects layer - snowfall, ornaments, etc. */}
                         <SeasonalEffectsLayer />
