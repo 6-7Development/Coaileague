@@ -686,7 +686,18 @@ export function NotificationsPopover() {
   const [subFilter, setSubFilter] = useState<SubFilter>('all');
   const [sortNewest, setSortNewest] = useState(true);
   const [showUnreadOnly, setShowUnreadOnly] = useState(false);
-  const isMobile = useIsMobile();
+  const isMobileBreakpoint = useIsMobile();
+  
+  // Enhanced mobile detection: consider touch + mobile user agent + viewport
+  // Samsung S24 Ultra and other large phones may have viewport > 768px
+  const isMobile = (() => {
+    if (typeof window === 'undefined') return isMobileBreakpoint;
+    const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    const hasMobileUA = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const hasCoarsePointer = window.matchMedia('(pointer: coarse)').matches;
+    // Mobile if: small viewport OR (touch device with mobile UA)
+    return isMobileBreakpoint || (hasTouch && hasMobileUA && hasCoarsePointer);
+  })();
   const { toast } = useToast();
   const { user } = useAuth();
   const userId = (user as any)?.id;
