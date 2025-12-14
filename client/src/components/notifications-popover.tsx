@@ -459,12 +459,14 @@ function NotificationCard({
   onAction,
   isGuruMode,
   canInteract,
+  compact = false,
 }: { 
   notification: UNSNotification; 
   onDismiss: (id: string) => void;
   onAction: (notification: UNSNotification, action: NonNullable<UNSNotification['actions']>[0]) => void;
   isGuruMode: boolean;
   canInteract: boolean; // True when user is authenticated - controls action buttons visibility
+  compact?: boolean; // Mobile compact mode - smaller padding, icons, text
 }) {
   const styles = PRIORITY_STYLES[notification.priority];
   const isCritical = notification.priority === 'critical';
@@ -504,25 +506,25 @@ function NotificationCard({
     >
       {/* Critical/High/Medium Priority Cards */}
       {(isCritical || isHigh || isMedium) ? (
-        <div className={`${cardBg} rounded-lg mx-2 my-2 overflow-hidden`}>
+        <div className={`${cardBg} rounded-lg mx-1.5 my-1.5 overflow-hidden`}>
           {/* Critical Banner */}
           {isCritical && (
-            <div className="bg-red-600 dark:bg-red-700 px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-white">
+            <div className={`bg-red-600 dark:bg-red-700 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white ${compact ? 'text-[8px]' : ''}`}>
               CRITICAL
             </div>
           )}
           
-          <div className="p-4">
-            <div className="flex gap-3">
+          <div className={compact ? "p-2.5" : "p-4"}>
+            <div className={compact ? "flex gap-2" : "flex gap-3"}>
               {/* AI Icon - color varies by priority */}
-              <div className={`shrink-0 w-9 h-9 rounded-full flex items-center justify-center ${
+              <div className={`shrink-0 ${compact ? 'w-7 h-7' : 'w-9 h-9'} rounded-full flex items-center justify-center ${
                 isCritical 
                   ? 'bg-white/20' 
                   : isHigh 
                   ? 'bg-amber-100 dark:bg-amber-900' 
                   : 'bg-blue-100 dark:bg-blue-900'
               }`}>
-                <Bot className={`h-5 w-5 ${
+                <Bot className={`${compact ? 'h-3.5 w-3.5' : 'h-5 w-5'} ${
                   isCritical 
                     ? 'text-white' 
                     : isHigh 
@@ -532,26 +534,26 @@ function NotificationCard({
               </div>
               
               {/* Content & Actions in Row Layout */}
-              <div className="flex-1 min-w-0 flex flex-col sm:flex-row gap-3">
+              <div className={`flex-1 min-w-0 flex flex-col ${compact ? 'gap-1.5' : 'sm:flex-row gap-3'}`}>
                 {/* Message Content */}
                 <div className="flex-1 min-w-0">
-                  <span className={`font-bold text-sm leading-tight block ${textColor}`}>
+                  <span className={`font-bold ${compact ? 'text-xs' : 'text-sm'} leading-tight block ${textColor}`}>
                     {notification.title}
                   </span>
-                  <p className={`text-sm leading-relaxed mt-1 ${mutedText}`}>
+                  <p className={`${compact ? 'text-[11px] mt-0.5 leading-snug' : 'text-sm leading-relaxed mt-1'} ${mutedText}`}>
                     {notification.message}
                   </p>
                 </div>
                 
                 {/* Action Buttons - Right Side */}
                 {hasActions && (
-                  <div className="flex flex-col gap-2 shrink-0">
+                  <div className={`flex ${compact ? 'flex-row flex-wrap gap-1.5' : 'flex-col gap-2'} shrink-0`}>
                     {notification.actions!.map((action, idx) => (
                       <Button
                         key={idx}
                         variant={isCritical ? 'secondary' : 'outline'}
                         size="sm"
-                        className={`h-8 text-xs whitespace-nowrap ${
+                        className={`${compact ? 'h-6 text-[10px] px-2' : 'h-8 text-xs'} whitespace-nowrap ${
                           isCritical 
                             ? 'bg-white text-red-700 hover:bg-red-50 border-0' 
                             : isHigh
@@ -573,9 +575,9 @@ function NotificationCard({
             </div>
             
             {/* Service Source & Time - Bottom */}
-            <div className={`flex items-center justify-between gap-2 text-[11px] mt-3 ${mutedText}`}>
+            <div className={`flex items-center justify-between gap-2 ${compact ? 'text-[10px] mt-2' : 'text-[11px] mt-3'} ${mutedText}`}>
               <div className="flex items-center gap-1">
-                <Clock className="h-3 w-3" />
+                <Clock className={compact ? "h-2.5 w-2.5" : "h-3 w-3"} />
                 <span className="font-medium">{notification.serviceSource}</span>
               </div>
               <span>{safeFormatTimestamp(notification.createdAt)}</span>
@@ -584,9 +586,9 @@ function NotificationCard({
           
           {/* Status Tag Below Card */}
           {notification.statusTag && notification.statusTag !== 'CRITICAL' && (
-            <div className="px-4 pb-3">
+            <div className={compact ? "px-2.5 pb-2" : "px-4 pb-3"}>
               <Badge 
-                className={`text-[10px] px-2 py-0.5 font-bold ${
+                className={`${compact ? 'text-[9px] px-1.5 py-0' : 'text-[10px] px-2 py-0.5'} font-bold ${
                   notification.statusTag === 'ACTION REQUIRED' 
                     ? 'bg-amber-600 text-white' 
                     : 'bg-white/20 text-white'
@@ -600,51 +602,51 @@ function NotificationCard({
       ) : (
         /* Regular/Info Cards */
         <div className={`${styles.border} hover:bg-muted/40 transition-colors`}>
-          <div className="p-4">
-            <div className="flex gap-3">
+          <div className={compact ? "p-2.5" : "p-4"}>
+            <div className={compact ? "flex gap-2" : "flex gap-3"}>
               {/* AI Icon */}
-              <div className="shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-primary/10">
-                <Bot className="h-4 w-4 text-primary" />
+              <div className={`shrink-0 ${compact ? 'w-6 h-6' : 'w-8 h-8'} rounded-full flex items-center justify-center bg-primary/10`}>
+                <Bot className={compact ? "h-3 w-3 text-primary" : "h-4 w-4 text-primary"} />
               </div>
               
               {/* Content */}
               <div className="flex-1 min-w-0">
-                <div className="flex items-start justify-between gap-2 mb-1">
-                  <span className="font-semibold text-sm leading-tight">
+                <div className={`flex items-start justify-between gap-2 ${compact ? 'mb-0.5' : 'mb-1'}`}>
+                  <span className={`font-semibold ${compact ? 'text-xs' : 'text-sm'} leading-tight`}>
                     {notification.title}
                   </span>
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className={`flex items-center ${compact ? 'gap-1' : 'gap-2'} shrink-0`}>
                     {/* INFO Badge for info priority */}
                     {notification.priority === 'info' && (
-                      <Badge variant="secondary" className="text-[10px] px-2 py-0 h-5">
+                      <Badge variant="secondary" className={compact ? "text-[9px] px-1.5 py-0 h-4" : "text-[10px] px-2 py-0 h-5"}>
                         INFO
                       </Badge>
                     )}
                     {/* Time */}
-                    <span className="text-[11px] text-muted-foreground">
+                    <span className={`${compact ? 'text-[10px]' : 'text-[11px]'} text-muted-foreground`}>
                       {safeFormatTimestamp(notification.createdAt)}
                     </span>
                   </div>
                 </div>
                 
-                <p className="text-sm text-muted-foreground leading-relaxed mb-2">
+                <p className={`${compact ? 'text-[11px] leading-snug mb-1' : 'text-sm leading-relaxed mb-2'} text-muted-foreground`}>
                   {notification.message}
                 </p>
                 
                 {/* Service Source */}
-                <div className="flex items-center gap-2 text-[11px] text-muted-foreground mb-2">
+                <div className={`flex items-center gap-2 ${compact ? 'text-[10px] mb-1' : 'text-[11px] mb-2'} text-muted-foreground`}>
                   <span className="font-medium">{notification.serviceSource}</span>
                 </div>
                 
                 {/* Action Buttons */}
                 {hasActions && (
-                  <div className="flex flex-wrap gap-2">
+                  <div className={`flex flex-wrap ${compact ? 'gap-1' : 'gap-2'}`}>
                     {notification.actions!.map((action, idx) => (
                       <Button
                         key={idx}
                         variant="outline"
                         size="sm"
-                        className="h-7 text-xs border-primary/30 text-primary hover:bg-primary/10"
+                        className={`${compact ? 'h-5 text-[10px] px-1.5' : 'h-7 text-xs'} border-primary/30 text-primary hover:bg-primary/10`}
                         onClick={(e) => {
                           e.stopPropagation();
                           onAction(notification, action);
@@ -661,9 +663,9 @@ function NotificationCard({
             
             {/* Status Tag */}
             {notification.statusTag && (
-              <div className="mt-2 ml-11">
+              <div className={compact ? "mt-1 ml-8" : "mt-2 ml-11"}>
                 <Badge 
-                  className={`text-[10px] px-2 py-0.5 font-bold ${
+                  className={`${compact ? 'text-[9px] px-1.5 py-0' : 'text-[10px] px-2 py-0.5'} font-bold ${
                     notification.statusTag === 'ACTION REQUIRED' 
                       ? 'bg-amber-500 text-white' 
                       : 'bg-primary/10 text-primary'
@@ -891,51 +893,51 @@ export function NotificationsPopover() {
     }
   };
 
-  const NotificationsContent = ({ simplified = false }: { simplified?: boolean }) => (
+  const NotificationsContent = ({ simplified = false, compact = false }: { simplified?: boolean; compact?: boolean }) => (
     <div className="flex flex-col h-full">
       {/* UNS Header with Trinity Branding - Violet to Indigo Gradient */}
-      <div className="px-4 py-3 border-b bg-gradient-to-r from-violet-600 to-indigo-600 flex-shrink-0">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="relative w-10 h-10 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center">
-              <TrinityRedesign mode="IDLE" size={36} mini={true} className="aspect-square object-contain" />
+      <div className={`${compact ? 'px-3 py-2' : 'px-4 py-3'} border-b bg-gradient-to-r from-violet-600 to-indigo-600 flex-shrink-0`}>
+        <div className={`flex items-center justify-between ${compact ? 'gap-2' : 'gap-3'}`}>
+          <div className={`flex items-center ${compact ? 'gap-2' : 'gap-3'}`}>
+            <div className={`relative ${compact ? 'w-8 h-8' : 'w-10 h-10'} rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center`}>
+              <TrinityRedesign mode="IDLE" size={compact ? 28 : 36} mini={true} className="aspect-square object-contain" />
             </div>
             <div>
-              <h2 className="font-bold text-base leading-tight text-white">Universal Notifications</h2>
-              <span className="text-xs text-white/90 font-medium">
+              <h2 className={`font-bold ${compact ? 'text-sm' : 'text-base'} leading-tight text-white`}>Notifications</h2>
+              <span className={`${compact ? 'text-[10px]' : 'text-xs'} text-white/90 font-medium`}>
                 {user ? `${totalUnread} unread` : 'Platform Updates'}
               </span>
             </div>
           </div>
-          <Badge variant="outline" className="text-xs px-3 py-1.5 font-medium bg-white/20 text-white border-white/30">
-            {user ? `${forYouCount + systemCount} New / ${allNotifications.length} Total` : `${allNotifications.length} Updates`}
+          <Badge variant="outline" className={`${compact ? 'text-[10px] px-2 py-0.5' : 'text-xs px-3 py-1.5'} font-medium bg-white/20 text-white border-white/30`}>
+            {user ? `${forYouCount + systemCount} new` : `${allNotifications.length}`}
           </Badge>
         </div>
         {/* Public User Banner */}
         {!user && (
-          <div className="mt-2 px-3 py-2 rounded-lg bg-white/20 backdrop-blur-sm border border-white/30">
-            <p className="text-xs text-white font-medium">
-              You're viewing public platform updates. Sign in for personalized notifications.
+          <div className={`${compact ? 'mt-1.5 px-2 py-1.5' : 'mt-2 px-3 py-2'} rounded-lg bg-white/20 backdrop-blur-sm border border-white/30`}>
+            <p className={`${compact ? 'text-[10px]' : 'text-xs'} text-white font-medium`}>
+              Sign in for personalized notifications.
             </p>
           </div>
         )}
       </div>
       
       {/* Main Tabs: For You | System Alerts | Clear All Read - Matching Design */}
-      <div className="flex items-center border-b bg-muted/30 flex-shrink-0 px-2">
+      <div className={`flex items-center border-b bg-muted/30 flex-shrink-0 ${compact ? 'px-1' : 'px-2'}`}>
         <button
           onClick={() => setActiveTab('for_you')}
-          className={`relative py-3 px-4 text-sm font-medium transition-colors ${
+          className={`relative ${compact ? 'py-2 px-2.5 text-xs' : 'py-3 px-4 text-sm'} font-medium transition-colors ${
             activeTab === 'for_you' 
               ? 'text-foreground' 
               : 'text-muted-foreground hover:text-foreground'
           }`}
           data-testid="tab-for-you"
         >
-          <span className="flex items-center gap-2">
+          <span className={`flex items-center ${compact ? 'gap-1' : 'gap-2'}`}>
             For You
             {forYouCount > 0 && (
-              <Badge className="h-5 min-w-5 px-1.5 flex items-center justify-center text-[10px] bg-primary text-white rounded-full">
+              <Badge className={`${compact ? 'h-4 min-w-4 px-1 text-[9px]' : 'h-5 min-w-5 px-1.5 text-[10px]'} flex items-center justify-center bg-primary text-white rounded-full`}>
                 {forYouCount > 9 ? '9+' : forYouCount}
               </Badge>
             )}
@@ -946,17 +948,17 @@ export function NotificationsPopover() {
         </button>
         <button
           onClick={() => setActiveTab('system_alerts')}
-          className={`relative py-3 px-4 text-sm font-medium transition-colors ${
+          className={`relative ${compact ? 'py-2 px-2.5 text-xs' : 'py-3 px-4 text-sm'} font-medium transition-colors ${
             activeTab === 'system_alerts' 
               ? 'text-foreground' 
               : 'text-muted-foreground hover:text-foreground'
           }`}
           data-testid="tab-system-alerts"
         >
-          <span className="flex items-center gap-2">
-            System Alerts
+          <span className={`flex items-center ${compact ? 'gap-1' : 'gap-2'}`}>
+            System
             {systemCount > 0 && (
-              <Badge className="h-5 min-w-5 px-1.5 flex items-center justify-center text-[10px] bg-amber-500 text-white rounded-full">
+              <Badge className={`${compact ? 'h-4 min-w-4 px-1 text-[9px]' : 'h-5 min-w-5 px-1.5 text-[10px]'} flex items-center justify-center bg-amber-500 text-white rounded-full`}>
                 {systemCount > 9 ? '9+' : systemCount}
               </Badge>
             )}
@@ -971,12 +973,12 @@ export function NotificationsPopover() {
           <Button
             variant="outline"
             size="sm"
-            className="h-8 px-3 text-xs font-medium bg-background border-muted-foreground/20"
+            className={`${compact ? 'h-6 px-2 text-[10px]' : 'h-8 px-3 text-xs'} font-medium bg-background border-muted-foreground/20`}
             onClick={() => clearAllMutation.mutate()}
             disabled={clearAllMutation.isPending || totalUnread === 0}
             data-testid="button-clear-all-read"
           >
-            Clear All Read
+            Clear All
           </Button>
         )}
       </div>
@@ -984,19 +986,19 @@ export function NotificationsPopover() {
       {/* Sub-filters - Horizontally scrollable chips */}
       {!simplified && (
         <div 
-          className="px-3 py-2 border-b bg-muted/10 flex-shrink-0 overflow-x-auto scrollbar-hide"
+          className={`${compact ? 'px-2 py-1.5' : 'px-3 py-2'} border-b bg-muted/10 flex-shrink-0 overflow-x-auto scrollbar-hide`}
           style={{ 
             WebkitOverflowScrolling: 'touch',
             scrollbarWidth: 'none',
             msOverflowStyle: 'none',
           }}
         >
-          <div className="flex items-center gap-2 min-w-max">
+          <div className={`flex items-center ${compact ? 'gap-1.5' : 'gap-2'} min-w-max`}>
             {/* All Sub-filter */}
             <Button
               variant={subFilter === 'all' ? 'default' : 'outline'}
               size="sm"
-              className={`h-7 text-xs px-3 rounded-full whitespace-nowrap ${
+              className={`${compact ? 'h-6 text-[10px] px-2' : 'h-7 text-xs px-3'} rounded-full whitespace-nowrap ${
                 subFilter === 'all' ? '' : 'border-muted-foreground/30'
               }`}
               onClick={() => setSubFilter('all')}
@@ -1009,16 +1011,16 @@ export function NotificationsPopover() {
             <Button
               variant={subFilter === 'system_alerts' ? 'default' : 'outline'}
               size="sm"
-              className={`h-7 text-xs px-3 rounded-full whitespace-nowrap ${
+              className={`${compact ? 'h-6 text-[10px] px-2' : 'h-7 text-xs px-3'} rounded-full whitespace-nowrap ${
                 subFilter === 'system_alerts' ? '' : 'border-muted-foreground/30'
               }`}
               onClick={() => setSubFilter('system_alerts')}
               data-testid="subfilter-system-alerts"
             >
-              <Shield className="h-3 w-3 mr-1" />
-              System Alerts
+              <Shield className={compact ? "h-2.5 w-2.5 mr-0.5" : "h-3 w-3 mr-1"} />
+              Alerts
               {systemAlertsSubCount > 0 && (
-                <Badge className="ml-1.5 h-4 min-w-4 px-1 text-[9px] bg-red-500 text-white rounded-full">
+                <Badge className={`${compact ? 'ml-1 h-3.5 min-w-3.5 px-0.5 text-[8px]' : 'ml-1.5 h-4 min-w-4 px-1 text-[9px]'} bg-red-500 text-white rounded-full`}>
                   {systemAlertsSubCount}
                 </Badge>
               )}
@@ -1028,16 +1030,16 @@ export function NotificationsPopover() {
             <Button
               variant={subFilter === 'admin_review' ? 'default' : 'outline'}
               size="sm"
-              className={`h-7 text-xs px-3 rounded-full whitespace-nowrap ${
+              className={`${compact ? 'h-6 text-[10px] px-2' : 'h-7 text-xs px-3'} rounded-full whitespace-nowrap ${
                 subFilter === 'admin_review' ? '' : 'border-muted-foreground/30'
               }`}
               onClick={() => setSubFilter('admin_review')}
               data-testid="subfilter-admin-review"
             >
-              <UserCheck className="h-3 w-3 mr-1" />
-              Admin Review
+              <UserCheck className={compact ? "h-2.5 w-2.5 mr-0.5" : "h-3 w-3 mr-1"} />
+              Admin
               {adminReviewCount > 0 && (
-                <Badge className="ml-1.5 h-4 min-w-4 px-1 text-[9px] bg-red-500 text-white rounded-full">
+                <Badge className={`${compact ? 'ml-1 h-3.5 min-w-3.5 px-0.5 text-[8px]' : 'ml-1.5 h-4 min-w-4 px-1 text-[9px]'} bg-red-500 text-white rounded-full`}>
                   {adminReviewCount}
                 </Badge>
               )}
@@ -1047,7 +1049,7 @@ export function NotificationsPopover() {
             <Button
               variant={subFilter === 'updates' ? 'default' : 'outline'}
               size="sm"
-              className={`h-7 text-xs px-3 rounded-full whitespace-nowrap ${
+              className={`${compact ? 'h-6 text-[10px] px-2' : 'h-7 text-xs px-3'} rounded-full whitespace-nowrap ${
                 subFilter === 'updates' ? '' : 'border-muted-foreground/30'
               }`}
               onClick={() => setSubFilter('updates')}
@@ -1055,7 +1057,7 @@ export function NotificationsPopover() {
             >
               Updates
               {updatesCount > 0 && (
-                <Badge className="ml-1.5 h-4 min-w-4 px-1 text-[9px] bg-primary text-white rounded-full">
+                <Badge className={`${compact ? 'ml-1 h-3.5 min-w-3.5 px-0.5 text-[8px]' : 'ml-1.5 h-4 min-w-4 px-1 text-[9px]'} bg-primary text-white rounded-full`}>
                   {updatesCount}
                 </Badge>
               )}
@@ -1065,29 +1067,29 @@ export function NotificationsPopover() {
       )}
       
       {/* Sort & Filter Row - Simplified on mobile */}
-      <div className={`flex items-center justify-between px-3 py-2 border-b bg-background flex-shrink-0 ${simplified ? 'gap-1' : 'gap-2 px-4'}`}>
-        <span className="text-xs text-muted-foreground truncate">
+      <div className={`flex items-center justify-between border-b bg-background flex-shrink-0 ${compact ? 'px-2 py-1 gap-1' : simplified ? 'px-3 py-2 gap-1' : 'px-4 py-2 gap-2'}`}>
+        <span className={`${compact ? 'text-[10px]' : 'text-xs'} text-muted-foreground truncate`}>
           {sortedNotifications.filter(n => !n.isRead).length} unread
         </span>
         <div className="flex items-center gap-1 shrink-0">
           <Button
             variant="ghost"
             size="sm"
-            className="h-6 text-xs px-2"
+            className={`${compact ? 'h-5 text-[10px] px-1.5' : 'h-6 text-xs px-2'}`}
             onClick={() => setSortNewest(!sortNewest)}
             data-testid="button-sort-toggle"
           >
-            <ArrowUpDown className="h-3 w-3 mr-1" />
+            <ArrowUpDown className={compact ? "h-2.5 w-2.5 mr-0.5" : "h-3 w-3 mr-1"} />
             {sortNewest ? 'New' : 'Old'}
           </Button>
           <Button
             variant={showUnreadOnly ? 'secondary' : 'ghost'}
             size="sm"
-            className="h-6 text-xs px-2"
+            className={`${compact ? 'h-5 text-[10px] px-1.5' : 'h-6 text-xs px-2'}`}
             onClick={() => setShowUnreadOnly(!showUnreadOnly)}
             data-testid="button-unread-toggle"
           >
-            <Eye className="h-3 w-3" />
+            <Eye className={compact ? "h-2.5 w-2.5" : "h-3 w-3"} />
           </Button>
         </div>
       </div>
@@ -1118,22 +1120,23 @@ export function NotificationsPopover() {
                 onAction={handleAction}
                 isGuruMode={isGuruMode}
                 canInteract={!!user}
+                compact={compact}
               />
             ))}
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-            <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mb-4">
+          <div className={`flex flex-col items-center justify-center ${compact ? 'py-10' : 'py-16'} text-muted-foreground`}>
+            <div className={`${compact ? 'w-12 h-12 mb-3' : 'w-16 h-16 mb-4'} rounded-full bg-muted/50 flex items-center justify-center`}>
               {activeTab === 'system_alerts' ? (
-                <Check className="h-8 w-8 text-emerald-500 opacity-70" />
+                <Check className={`${compact ? 'h-6 w-6' : 'h-8 w-8'} text-emerald-500 opacity-70`} />
               ) : (
-                <Sparkles className="h-8 w-8 opacity-50" />
+                <Sparkles className={`${compact ? 'h-6 w-6' : 'h-8 w-8'} opacity-50`} />
               )}
             </div>
-            <span className="text-sm font-medium">
+            <span className={`${compact ? 'text-xs' : 'text-sm'} font-medium`}>
               {activeTab === 'system_alerts' ? 'All systems operational' : 'No notifications'}
             </span>
-            <span className="text-xs mt-1">
+            <span className={`${compact ? 'text-[10px]' : 'text-xs'} mt-1`}>
               {activeTab === 'system_alerts' ? 'No system alerts at this time' : "You're all caught up!"}
             </span>
           </div>
@@ -1142,32 +1145,31 @@ export function NotificationsPopover() {
       
       {/* Footer: Ask Trinity for Help - Matching Design */}
       <div className="border-t bg-background shrink-0">
-        <div className="p-3 flex flex-col gap-2">
+        <div className={compact ? "p-2 flex flex-col gap-1.5" : "p-3 flex flex-col gap-2"}>
           <Button
             variant="outline"
-            className="w-full justify-start text-sm h-11 font-medium border-muted-foreground/20 hover:bg-muted/50 gap-3 group"
+            className={`w-full justify-start ${compact ? 'text-xs h-9 gap-2' : 'text-sm h-11 gap-3'} font-medium border-muted-foreground/20 hover:bg-muted/50 group`}
             onClick={() => {
               setOpen(false);
-              // Navigate to Trinity Insights page for AI help and interaction
               window.location.href = '/trinity-insights';
             }}
             data-testid="button-ask-trinity"
           >
-            <div className="shrink-0 p-1 rounded-lg bg-gradient-to-br from-cyan-500/10 to-purple-500/10 group-hover:from-cyan-500/20 group-hover:to-purple-500/20 transition-colors">
+            <div className={`shrink-0 ${compact ? 'p-0.5' : 'p-1'} rounded-lg bg-gradient-to-br from-cyan-500/10 to-purple-500/10 group-hover:from-cyan-500/20 group-hover:to-purple-500/20 transition-colors`}>
               <TrinityBadge showLabel={false} />
             </div>
-            <span className="flex items-center gap-1.5">
-              <span className="font-semibold bg-gradient-to-r from-cyan-600 to-purple-600 dark:from-cyan-400 dark:to-purple-400 bg-clip-text text-transparent">
+            <span className="flex items-center gap-1">
+              <span className={`font-semibold bg-gradient-to-r from-cyan-600 to-purple-600 dark:from-cyan-400 dark:to-purple-400 bg-clip-text text-transparent ${compact ? 'text-xs' : ''}`}>
                 Ask Trinity
               </span>
-              <span className="text-muted-foreground">for Help</span>
+              <span className={`text-muted-foreground ${compact ? 'text-[10px]' : ''}`}>for Help</span>
             </span>
           </Button>
         </div>
-        <div className="px-3 pb-3">
+        <div className={compact ? "px-2 pb-2" : "px-3 pb-3"}>
           <Button
             variant="ghost"
-            className="w-full justify-center text-xs h-7 font-medium text-primary hover:text-primary hover:bg-primary/5"
+            className={`w-full justify-center ${compact ? 'text-[10px] h-6' : 'text-xs h-7'} font-medium text-primary hover:text-primary hover:bg-primary/5`}
             onClick={() => {
               setOpen(false);
               window.location.href = "/updates";
@@ -1192,18 +1194,17 @@ export function NotificationsPopover() {
         </div>
         <SheetContent 
           side="bottom" 
-          className="h-[90vh] max-h-[700px] p-0 rounded-t-2xl overflow-hidden flex flex-col"
+          className="h-[80vh] max-h-[550px] p-0 rounded-t-2xl overflow-hidden flex flex-col"
           data-testid="notification-sheet-content"
           data-trinity-avoid="true"
-          style={{ touchAction: 'none' }}
         >
           {/* Drag Handle for Mobile */}
-          <div className="flex justify-center py-2 bg-background border-b shrink-0">
-            <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
+          <div className="flex justify-center py-1.5 bg-background border-b shrink-0">
+            <div className="w-8 h-1 rounded-full bg-muted-foreground/30" />
           </div>
-          {/* Full Feature Parity - No simplified mode */}
+          {/* Full Feature Parity with Compact Mode for Mobile */}
           <div className="flex-1 overflow-hidden">
-            <NotificationsContent simplified={false} />
+            <NotificationsContent simplified={false} compact={true} />
           </div>
         </SheetContent>
       </Sheet>
