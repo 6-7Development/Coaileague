@@ -8,6 +8,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { aiAnalyticsEngine } from '../services/ai-brain/aiAnalyticsEngine';
 import { trinityContextService, type TrinityContext } from '../services/trinityContext';
+import { trinitySelfAssessment } from '../services/ai-brain/trinitySelfAssessment';
 import { canAccessTrinity } from '../rbac';
 import { db } from '../db';
 import { users } from '@shared/schema';
@@ -321,6 +322,66 @@ router.post('/thought', async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error('[Trinity Thought API] Error generating thought:', error);
     res.status(500).json({ error: 'Failed to generate thought' });
+  }
+});
+
+/**
+ * GET /api/trinity/self-assessment
+ * Ask Trinity what she needs to be complete - returns capability gaps and recommendations
+ */
+router.get('/self-assessment', async (req: Request, res: Response) => {
+  try {
+    const user = await getAuthenticatedUser(req);
+    const workspaceId = user?.workspaceId || (req.query.workspaceId as string);
+    
+    const assessment = await trinitySelfAssessment.performAssessment(workspaceId);
+    
+    res.json({
+      success: true,
+      assessment: {
+        overallReadiness: assessment.overallReadiness,
+        canRunTheShow: assessment.canRunTheShow,
+        confidenceLevel: assessment.confidenceLevel,
+        totalCapabilities: assessment.totalCapabilities,
+        matureCapabilities: assessment.matureCapabilities,
+        criticalGaps: assessment.criticalGaps,
+        trinityNarrative: assessment.trinityNarrative,
+        prioritizedActions: assessment.prioritizedActions,
+        comparisonToReplitAgent: assessment.comparisonToReplitAgent,
+      },
+      gaps: assessment.gaps.filter(g => g.severity === 'critical' || g.severity === 'high'),
+      capabilities: assessment.capabilities.slice(0, 10),
+      timestamp: assessment.timestamp,
+    });
+  } catch (error: any) {
+    console.error('[Trinity Self-Assessment API] Error:', error);
+    res.status(500).json({ error: 'Failed to perform self-assessment' });
+  }
+});
+
+/**
+ * POST /api/trinity/ask-what-needed
+ * Conversational endpoint: Ask Trinity what she needs in plain language
+ */
+router.post('/ask-what-needed', async (req: Request, res: Response) => {
+  try {
+    const assessment = await trinitySelfAssessment.performAssessment();
+    
+    const response = {
+      trinityResponse: assessment.trinityNarrative,
+      readinessScore: assessment.overallReadiness,
+      topNeeds: assessment.prioritizedActions.slice(0, 5).map(a => a.action),
+      criticalGapsCount: assessment.criticalGaps,
+      feelsOrganized: assessment.overallReadiness >= 70,
+      inventorySystemFeedback: assessment.criticalGaps === 0 
+        ? "I feel more organized with the new file system. All critical infrastructure gaps have been resolved."
+        : `I still need ${assessment.criticalGaps} critical items addressed to feel fully organized.`,
+    };
+    
+    res.json({ success: true, ...response });
+  } catch (error: any) {
+    console.error('[Trinity Ask API] Error:', error);
+    res.status(500).json({ error: 'Failed to get Trinity response' });
   }
 });
 
