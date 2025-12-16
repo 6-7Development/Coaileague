@@ -3121,6 +3121,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================================================
   // ROUTE HEALTH MONITORING (Trinity Platform Awareness)
   // ============================================================================
+  // Trinity Editable Registry - Shows what Trinity can safely edit
+  app.get("/api/trinity/editable-registry", async (_req, res) => {
+    try {
+      const { getEditableModulesForTrinity, getProtectedModules } = await import("../shared/config/trinityEditableRegistry");
+      res.json({
+        success: true,
+        editableModules: getEditableModulesForTrinity(),
+        protectedModules: getProtectedModules(),
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("[TrinityRegistry] Error:", error);
+      res.status(500).json({ success: false, error: "Failed to get registry" });
+    }
+  });
+
   app.get("/api/trinity/route-health", async (_req, res) => {
     try {
       const { getRouteHealthSummary, CRITICAL_ROUTES, CRITICAL_API_ENDPOINTS } = await import("./services/routeHealthService");
