@@ -895,11 +895,13 @@ export function NotificationsPopover() {
 
   const NotificationsContent = ({ simplified = false, compact = false }: { simplified?: boolean; compact?: boolean }) => (
     <div 
-      className="flex flex-col overflow-hidden h-full" 
+      className="flex flex-col overflow-hidden" 
       style={{ 
-        height: '100%',
+        height: compact ? '400px' : '500px',
         minHeight: compact ? '400px' : '500px',
-        maxHeight: compact ? '400px' : '500px'
+        maxHeight: compact ? '400px' : '500px',
+        flexShrink: 0,
+        flexGrow: 0,
       }}
       data-trinity-surface="notifications"
     >
@@ -1107,7 +1109,9 @@ export function NotificationsPopover() {
         ref={scrollRef}
         className="flex-1 min-h-0 overflow-y-auto overscroll-contain"
         style={{ 
-          maxHeight: '300px',
+          flex: '1 1 0',
+          minHeight: 0,
+          maxHeight: 'none',
           touchAction: 'pan-y',
           WebkitOverflowScrolling: 'touch',
         }}
@@ -1231,13 +1235,17 @@ export function NotificationsPopover() {
         </div>
       </PopoverTrigger>
       <PopoverContent 
-        className="w-[380px] max-w-[calc(100vw-2rem)] p-0 shadow-xl border-muted overflow-hidden flex flex-col" 
+        className="w-[380px] max-w-[calc(100vw-2rem)] p-0 shadow-xl border-muted overflow-hidden" 
         align="end"
         sideOffset={8}
         style={{ 
           height: '500px',
           minHeight: '500px',
-          maxHeight: 'min(500px, var(--radix-popover-content-available-height, 500px))'
+          maxHeight: '500px',
+          display: 'flex',
+          flexDirection: 'column',
+          flexGrow: 0,
+          flexShrink: 0,
         }}
         data-testid="notification-popover-content"
         data-trinity-avoid="true"
