@@ -894,7 +894,11 @@ export function NotificationsPopover() {
   };
 
   const NotificationsContent = ({ simplified = false, compact = false }: { simplified?: boolean; compact?: boolean }) => (
-    <div className="flex flex-col overflow-hidden" style={{ maxHeight: '500px' }}>
+    <div 
+      className="flex flex-col overflow-hidden" 
+      style={{ maxHeight: '500px' }}
+      data-trinity-surface="notifications"
+    >
       {/* UNS Header with Trinity Branding - Violet to Indigo Gradient */}
       <div className={`${compact ? 'px-3 py-2' : 'px-4 py-3'} border-b bg-gradient-to-r from-violet-600 to-indigo-600 flex-shrink-0`}>
         <div className={`flex items-center justify-between ${compact ? 'gap-2' : 'gap-3'}`}>
