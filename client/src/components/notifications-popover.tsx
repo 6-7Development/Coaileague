@@ -895,8 +895,12 @@ export function NotificationsPopover() {
 
   const NotificationsContent = ({ simplified = false, compact = false }: { simplified?: boolean; compact?: boolean }) => (
     <div 
-      className="flex flex-col overflow-hidden" 
-      style={{ maxHeight: '500px' }}
+      className="flex flex-col overflow-hidden h-full" 
+      style={{ 
+        height: '100%',
+        minHeight: compact ? '400px' : '500px',
+        maxHeight: compact ? '400px' : '500px'
+      }}
       data-trinity-surface="notifications"
     >
       {/* UNS Header with Trinity Branding - Violet to Indigo Gradient */}
@@ -1230,7 +1234,11 @@ export function NotificationsPopover() {
         className="w-[380px] max-w-[calc(100vw-2rem)] p-0 shadow-xl border-muted overflow-hidden flex flex-col" 
         align="end"
         sideOffset={8}
-        style={{ maxHeight: 'min(500px, var(--radix-popover-content-available-height, 500px))' }}
+        style={{ 
+          height: '500px',
+          minHeight: '500px',
+          maxHeight: 'min(500px, var(--radix-popover-content-available-height, 500px))'
+        }}
         data-testid="notification-popover-content"
         data-trinity-avoid="true"
         onInteractOutside={(e) => {
