@@ -3117,6 +3117,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/uacp", requireAuth, uacpRouter); // Universal Access Control Panel (UACP)
   app.use("/api/workspace/integrations", requireAuth, integrationRoutes); // Workspace Integration Management
   app.use("/api/admin/partners", requirePlatformStaff, partnerRoutes); // Partner Catalog Management (Support Roles)
+  
+  // ============================================================================
+  // ROUTE HEALTH MONITORING (Trinity Platform Awareness)
+  // ============================================================================
+  app.get("/api/trinity/route-health", async (_req, res) => {
+    try {
+      const { getRouteHealthSummary, CRITICAL_ROUTES, CRITICAL_API_ENDPOINTS } = await import("./services/routeHealthService");
+      const summary = getRouteHealthSummary();
+      res.json({
+        success: true,
+        routes: CRITICAL_ROUTES,
+        apiEndpoints: CRITICAL_API_ENDPOINTS,
+        summary,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("[RouteHealth] Error:", error);
+      res.status(500).json({ success: false, error: "Failed to get route health" });
+    }
+  });
   // ============================================================================
   // AUTH ROUTES
   // ============================================================================
