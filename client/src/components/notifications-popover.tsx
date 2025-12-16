@@ -913,7 +913,7 @@ export function NotificationsPopover() {
               <TrinityRedesign mode="IDLE" size={compact ? 28 : 36} mini={true} className="aspect-square object-contain" />
             </div>
             <div>
-              <h2 className={`font-bold ${compact ? 'text-sm' : 'text-base'} leading-tight text-white`}>Notifications</h2>
+              <h2 className={`font-bold ${compact ? 'text-sm' : 'text-base'} leading-tight text-white`}>Universal Notifications</h2>
               <span className={`${compact ? 'text-[10px]' : 'text-xs'} text-white/90 font-medium`}>
                 {user ? `${totalUnread} unread` : 'Platform Updates'}
               </span>
@@ -1207,7 +1207,13 @@ export function NotificationsPopover() {
         </div>
         <SheetContent 
           side="bottom" 
-          className="h-[80vh] max-h-[550px] p-0 rounded-t-2xl overflow-hidden flex flex-col"
+          className="p-0 rounded-t-2xl"
+          style={{
+            height: '550px',
+            maxHeight: '550px',
+            overflow: 'hidden',
+            contain: 'strict',
+          }}
           data-testid="notification-sheet-content"
           data-trinity-avoid="true"
         >
@@ -1216,9 +1222,7 @@ export function NotificationsPopover() {
             <div className="w-8 h-1 rounded-full bg-muted-foreground/30" />
           </div>
           {/* Full Feature Parity with Compact Mode for Mobile */}
-          <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
-            <NotificationsContent simplified={false} compact={true} />
-          </div>
+          <NotificationsContent simplified={false} compact={true} />
         </SheetContent>
       </Sheet>
     );
