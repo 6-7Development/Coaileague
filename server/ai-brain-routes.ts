@@ -9,6 +9,7 @@ import { db } from './db';
 import { aiBrainService } from './services/ai-brain/aiBrainService';
 import { subagentConfidenceMonitor } from './services/ai-brain/subagentConfidenceMonitor';
 import { getAISystemStatus } from './services/ai-brain/providers/resilientAIGateway';
+import { trinityScanOrchestrator } from './services/ai-brain/trinityScanOrchestrator';
 import { 
   aiBrainJobs, 
   aiGlobalPatterns, 
@@ -83,6 +84,69 @@ aiBrainRouter.get('/system-status', isAuthenticated, async (req: Request, res: R
   } catch (error: any) {
     console.error('Error getting AI system status:', error);
     res.status(500).json({ error: 'Failed to get AI system status' });
+  }
+});
+
+/**
+ * POST /api/ai-brain/trinity-scan - Trigger Trinity's platform scan to build knowledge
+ */
+aiBrainRouter.post('/trinity-scan', isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    if (trinityScanOrchestrator.isCurrentlyScanning()) {
+      return res.status(409).json({ error: 'Scan already in progress' });
+    }
+
+    const result = await trinityScanOrchestrator.performInitialScan();
+    
+    res.json({
+      success: true,
+      scan: result,
+      message: `Trinity learned ${result.patternsLearned.length} patterns and generated ${result.insightsGenerated.length} insights`,
+    });
+  } catch (error: any) {
+    console.error('Error performing Trinity scan:', error);
+    res.status(500).json({ error: 'Failed to perform platform scan' });
+  }
+});
+
+/**
+ * GET /api/ai-brain/trinity-knowledge - Get Trinity's current knowledge state
+ */
+aiBrainRouter.get('/trinity-knowledge', isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    const state = await trinityScanOrchestrator.getKnowledgeState();
+    
+    res.json({
+      success: true,
+      knowledge: state,
+      message: state.knowledgePersisted 
+        ? `Trinity has ${state.totalPatternsLearned} learned patterns and ${state.readinessScore}% readiness`
+        : 'No knowledge data available - run a scan first',
+    });
+  } catch (error: any) {
+    console.error('Error getting Trinity knowledge:', error);
+    res.status(500).json({ error: 'Failed to get knowledge state' });
+  }
+});
+
+/**
+ * GET /api/ai-brain/trinity-persistence-test - Test if Trinity's knowledge persists
+ */
+aiBrainRouter.get('/trinity-persistence-test', isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    const result = await trinityScanOrchestrator.testKnowledgePersistence();
+    
+    res.json({
+      success: true,
+      passed: result.passed,
+      checks: result.checks,
+      message: result.passed 
+        ? 'Knowledge persistence verified - data survives restarts'
+        : 'Knowledge persistence issues detected',
+    });
+  } catch (error: any) {
+    console.error('Error testing persistence:', error);
+    res.status(500).json({ error: 'Failed to test knowledge persistence' });
   }
 });
 
