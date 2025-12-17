@@ -1201,6 +1201,7 @@ export function NotificationsPopover() {
         <SheetContent 
           side="bottom" 
           className="p-0 rounded-t-2xl flex flex-col"
+          style={{ height: '550px', maxHeight: '80vh' }}
           data-testid="notification-sheet-content"
           data-trinity-avoid="true"
         >
@@ -1226,7 +1227,8 @@ export function NotificationsPopover() {
         </div>
       </PopoverTrigger>
       <PopoverContent 
-        className="w-[380px] p-0 shadow-xl border-muted" 
+        className="w-[380px] p-0 shadow-xl border-muted flex flex-col" 
+        style={{ height: '500px', maxHeight: 'calc(100vh - 80px)' }}
         align="end"
         sideOffset={8}
         data-testid="notification-popover-content"
