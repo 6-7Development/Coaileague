@@ -895,14 +895,7 @@ export function NotificationsPopover() {
 
   const NotificationsContent = ({ simplified = false, compact = false }: { simplified?: boolean; compact?: boolean }) => (
     <div 
-      className="flex flex-col" 
-      style={{ 
-        height: '100%',
-        maxHeight: '100%',
-        overflow: 'hidden',
-        flex: '1 1 auto',
-        minHeight: 0,
-      }}
+      className="flex flex-col flex-1 min-h-0 overflow-hidden"
       data-trinity-surface="notifications"
     >
       {/* UNS Header with Trinity Branding - Violet to Indigo Gradient */}
@@ -1207,23 +1200,16 @@ export function NotificationsPopover() {
         </div>
         <SheetContent 
           side="bottom" 
-          className="p-0 rounded-t-2xl"
-          style={{
-            height: '550px',
-            maxHeight: '550px',
-            overflow: 'hidden',
-          }}
+          className="p-0 rounded-t-2xl h-[550px] max-h-[550px] overflow-hidden flex flex-col"
           data-testid="notification-sheet-content"
           data-trinity-avoid="true"
         >
-          <div style={{ height: '100%', maxHeight: '550px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-            {/* Drag Handle for Mobile */}
-            <div className="flex justify-center py-1.5 bg-background border-b shrink-0">
-              <div className="w-8 h-1 rounded-full bg-muted-foreground/30" />
-            </div>
-            {/* Full Feature Parity with Compact Mode for Mobile */}
-            <NotificationsContent simplified={false} compact={true} />
+          {/* Drag Handle for Mobile */}
+          <div className="flex justify-center py-1.5 bg-background border-b shrink-0">
+            <div className="w-8 h-1 rounded-full bg-muted-foreground/30" />
           </div>
+          {/* Full Feature Parity with Compact Mode for Mobile */}
+          <NotificationsContent simplified={false} compact={true} />
         </SheetContent>
       </Sheet>
     );
@@ -1240,14 +1226,9 @@ export function NotificationsPopover() {
         </div>
       </PopoverTrigger>
       <PopoverContent 
-        className="w-[380px] max-w-[calc(100vw-2rem)] p-0 shadow-xl border-muted" 
+        className="w-[380px] max-w-[calc(100vw-2rem)] h-[500px] max-h-[500px] p-0 shadow-xl border-muted overflow-hidden flex flex-col" 
         align="end"
         sideOffset={8}
-        style={{ 
-          height: '500px',
-          maxHeight: '500px',
-          overflow: 'hidden',
-        }}
         data-testid="notification-popover-content"
         data-trinity-avoid="true"
         onInteractOutside={(e) => {
@@ -1260,9 +1241,7 @@ export function NotificationsPopover() {
           }
         }}
       >
-        <div style={{ height: '500px', maxHeight: '500px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-          <NotificationsContent />
-        </div>
+        <NotificationsContent />
       </PopoverContent>
     </Popover>
   );
