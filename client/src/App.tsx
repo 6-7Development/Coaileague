@@ -33,6 +33,7 @@ import { LeaderRoute } from "@/components/leader-route";
 import { OwnerRoute } from "@/components/owner-route";
 import { PlatformAdminRoute } from "@/components/platform-admin-route";
 import { DemoBanner } from "@/components/demo-banner";
+import { AISystemStatusBanner } from "@/components/ai-system-status-banner";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { GlobalErrorBoundary } from "@/components/errors/GlobalErrorBoundary";
 import { ServiceHealthProvider } from "@/contexts/ServiceHealthContext";
@@ -1233,6 +1234,8 @@ function AppContent() {
             <div className="flex flex-col flex-1 min-h-0 w-full max-w-full overflow-x-hidden">
               {/* Demo Banner - positioned to account for fixed header (hidden on mobile) */}
               {!isMobile && <DemoBanner />}
+              {/* AI System Status Banner - shows when AI is in degraded or emergency mode */}
+              <AISystemStatusBanner />
 
             {/* Compact top-right utility cluster - HIDDEN on mobile and when universal header is shown */}
             {!isMobileChat && !isHelpDesk && !isMobile && !true && (
