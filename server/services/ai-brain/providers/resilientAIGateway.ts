@@ -14,8 +14,8 @@
  * - Graceful degradation to rule-based fallbacks
  */
 
-import { db } from '../../../../db';
-import { auditLog } from '@shared/schema';
+import { db } from '../../../db';
+import { auditLogs } from '@shared/schema';
 
 export type AIProvider = 'gemini' | 'claude' | 'openai' | 'rule_based';
 
@@ -175,16 +175,20 @@ class ResilientAIGateway {
     request: AIRequest
   ) {
     try {
-      await db.insert(auditLog).values({
-        entityType: 'ai_provider_switch',
-        entityId: `${originalProvider}_to_${usedProvider}`,
-        action: 'fallback',
-        userId: request.userId ? parseInt(request.userId) : null,
-        workspaceId: request.workspaceId ? parseInt(request.workspaceId) : null,
-        oldValues: { provider: originalProvider, domain: request.domain },
-        newValues: { provider: usedProvider, reason },
-        timestamp: new Date(),
-      });
+      if (request.userId) {
+        await db.insert(auditLogs).values({
+          userId: request.userId,
+          userEmail: 'system@coaileague.ai',
+          userRole: 'system',
+          action: 'update',
+          entityType: 'ai_provider_switch',
+          entityId: `${originalProvider}_to_${usedProvider}`,
+          workspaceId: request.workspaceId || null,
+          changes: { before: { provider: originalProvider }, after: { provider: usedProvider } },
+          metadata: { reason, domain: request.domain },
+        });
+      }
+      console.log(`📋 Provider switch logged: ${originalProvider} → ${usedProvider} (${reason})`);
     } catch (err) {
       console.error('Failed to log provider switch:', err);
     }
