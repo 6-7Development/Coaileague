@@ -533,8 +533,8 @@ function NotificationCard({
                 }`} />
               </div>
               
-              {/* Content & Actions in Row Layout */}
-              <div className={`flex-1 min-w-0 flex flex-col ${compact ? 'gap-1.5' : 'sm:flex-row gap-3'}`}>
+              {/* Content & Actions - Always stacked in popover to maintain consistent width */}
+              <div className={`flex-1 min-w-0 flex flex-col ${compact ? 'gap-1.5' : 'gap-2'}`}>
                 {/* Message Content */}
                 <div className="flex-1 min-w-0">
                   <span className={`font-bold ${compact ? 'text-xs' : 'text-sm'} leading-tight block ${textColor}`}>
@@ -1227,7 +1227,7 @@ export function NotificationsPopover() {
         </div>
       </PopoverTrigger>
       <PopoverContent 
-        className="w-[340px] p-0 shadow-xl border-muted flex flex-col" 
+        className="w-[340px] max-w-[340px] p-0 shadow-xl border-muted flex flex-col overflow-hidden" 
         style={{ height: '420px', maxHeight: 'calc(100vh - 100px)' }}
         align="end"
         sideOffset={8}
