@@ -1227,8 +1227,8 @@ export function NotificationsPopover() {
         </div>
       </PopoverTrigger>
       <PopoverContent 
-        className="w-[380px] p-0 shadow-xl border-muted flex flex-col" 
-        style={{ height: '500px', maxHeight: 'calc(100vh - 80px)' }}
+        className="w-[340px] p-0 shadow-xl border-muted flex flex-col" 
+        style={{ height: '420px', maxHeight: 'calc(100vh - 100px)' }}
         align="end"
         sideOffset={8}
         data-testid="notification-popover-content"
