@@ -529,14 +529,54 @@ export default function Employees() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1.5">
                       <Label htmlFor="role" className="text-xs">Position</Label>
-                      <Input 
-                        id="role" 
-                        placeholder="Security Guard" 
-                        value={formData.role}
-                        onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                        data-testid="input-employee-role"
-                        className="h-9 text-sm"
-                      />
+                      <Select 
+                        value={formData.role} 
+                        onValueChange={(value) => setFormData({ ...formData, role: value })}
+                      >
+                        <SelectTrigger className="h-9 text-sm" data-testid="select-employee-position">
+                          <SelectValue placeholder="Select position" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Security Guard">Security Guard</SelectItem>
+                          <SelectItem value="Security Officer">Security Officer</SelectItem>
+                          <SelectItem value="Security Supervisor">Security Supervisor</SelectItem>
+                          <SelectItem value="Plumber">Plumber</SelectItem>
+                          <SelectItem value="Electrician">Electrician</SelectItem>
+                          <SelectItem value="HVAC Technician">HVAC Technician</SelectItem>
+                          <SelectItem value="Cleaner">Cleaner</SelectItem>
+                          <SelectItem value="Janitor">Janitor</SelectItem>
+                          <SelectItem value="Housekeeper">Housekeeper</SelectItem>
+                          <SelectItem value="Maintenance Technician">Maintenance Technician</SelectItem>
+                          <SelectItem value="Landscaper">Landscaper</SelectItem>
+                          <SelectItem value="Carpenter">Carpenter</SelectItem>
+                          <SelectItem value="Painter">Painter</SelectItem>
+                          <SelectItem value="Welder">Welder</SelectItem>
+                          <SelectItem value="Pest Control">Pest Control</SelectItem>
+                          <SelectItem value="Pool Technician">Pool Technician</SelectItem>
+                          <SelectItem value="Locksmith">Locksmith</SelectItem>
+                          <SelectItem value="Handyman">Handyman</SelectItem>
+                          <SelectItem value="Caregiver">Caregiver</SelectItem>
+                          <SelectItem value="Nurse Aide">Nurse Aide</SelectItem>
+                          <SelectItem value="Driver">Driver</SelectItem>
+                          <SelectItem value="Warehouse Worker">Warehouse Worker</SelectItem>
+                          <SelectItem value="Forklift Operator">Forklift Operator</SelectItem>
+                          <SelectItem value="Server">Server</SelectItem>
+                          <SelectItem value="Cook">Cook</SelectItem>
+                          <SelectItem value="Dishwasher">Dishwasher</SelectItem>
+                          <SelectItem value="Bartender">Bartender</SelectItem>
+                          <SelectItem value="Host/Hostess">Host/Hostess</SelectItem>
+                          <SelectItem value="Cashier">Cashier</SelectItem>
+                          <SelectItem value="Sales Associate">Sales Associate</SelectItem>
+                          <SelectItem value="Customer Service Rep">Customer Service Rep</SelectItem>
+                          <SelectItem value="Receptionist">Receptionist</SelectItem>
+                          <SelectItem value="Administrative Assistant">Administrative Assistant</SelectItem>
+                          <SelectItem value="Office Manager">Office Manager</SelectItem>
+                          <SelectItem value="Team Lead">Team Lead</SelectItem>
+                          <SelectItem value="Shift Supervisor">Shift Supervisor</SelectItem>
+                          <SelectItem value="General Manager">General Manager</SelectItem>
+                          <SelectItem value="Other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div className="space-y-1.5">
                       <Label htmlFor="hourlyRate" className="text-xs">Hourly Rate ($)</Label>
@@ -1023,14 +1063,54 @@ export default function Employees() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label htmlFor="edit-role" className="text-xs">Position</Label>
-                  <Input 
-                    id="edit-role" 
-                    placeholder="Security Guard" 
-                    value={editFormData.role}
-                    onChange={(e) => setEditFormData({ ...editFormData, role: e.target.value })}
-                    data-testid="input-edit-role"
-                    className="h-9 text-sm"
-                  />
+                  <Select 
+                    value={editFormData.role} 
+                    onValueChange={(value) => setEditFormData({ ...editFormData, role: value })}
+                  >
+                    <SelectTrigger className="h-9 text-sm" data-testid="select-edit-position">
+                      <SelectValue placeholder="Select position" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Security Guard">Security Guard</SelectItem>
+                      <SelectItem value="Security Officer">Security Officer</SelectItem>
+                      <SelectItem value="Security Supervisor">Security Supervisor</SelectItem>
+                      <SelectItem value="Plumber">Plumber</SelectItem>
+                      <SelectItem value="Electrician">Electrician</SelectItem>
+                      <SelectItem value="HVAC Technician">HVAC Technician</SelectItem>
+                      <SelectItem value="Cleaner">Cleaner</SelectItem>
+                      <SelectItem value="Janitor">Janitor</SelectItem>
+                      <SelectItem value="Housekeeper">Housekeeper</SelectItem>
+                      <SelectItem value="Maintenance Technician">Maintenance Technician</SelectItem>
+                      <SelectItem value="Landscaper">Landscaper</SelectItem>
+                      <SelectItem value="Carpenter">Carpenter</SelectItem>
+                      <SelectItem value="Painter">Painter</SelectItem>
+                      <SelectItem value="Welder">Welder</SelectItem>
+                      <SelectItem value="Pest Control">Pest Control</SelectItem>
+                      <SelectItem value="Pool Technician">Pool Technician</SelectItem>
+                      <SelectItem value="Locksmith">Locksmith</SelectItem>
+                      <SelectItem value="Handyman">Handyman</SelectItem>
+                      <SelectItem value="Caregiver">Caregiver</SelectItem>
+                      <SelectItem value="Nurse Aide">Nurse Aide</SelectItem>
+                      <SelectItem value="Driver">Driver</SelectItem>
+                      <SelectItem value="Warehouse Worker">Warehouse Worker</SelectItem>
+                      <SelectItem value="Forklift Operator">Forklift Operator</SelectItem>
+                      <SelectItem value="Server">Server</SelectItem>
+                      <SelectItem value="Cook">Cook</SelectItem>
+                      <SelectItem value="Dishwasher">Dishwasher</SelectItem>
+                      <SelectItem value="Bartender">Bartender</SelectItem>
+                      <SelectItem value="Host/Hostess">Host/Hostess</SelectItem>
+                      <SelectItem value="Cashier">Cashier</SelectItem>
+                      <SelectItem value="Sales Associate">Sales Associate</SelectItem>
+                      <SelectItem value="Customer Service Rep">Customer Service Rep</SelectItem>
+                      <SelectItem value="Receptionist">Receptionist</SelectItem>
+                      <SelectItem value="Administrative Assistant">Administrative Assistant</SelectItem>
+                      <SelectItem value="Office Manager">Office Manager</SelectItem>
+                      <SelectItem value="Team Lead">Team Lead</SelectItem>
+                      <SelectItem value="Shift Supervisor">Shift Supervisor</SelectItem>
+                      <SelectItem value="General Manager">General Manager</SelectItem>
+                      <SelectItem value="Other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="edit-hourlyRate" className="text-xs">Hourly Rate ($)</Label>
