@@ -314,11 +314,9 @@ function mapToUNS(data: NotificationsData | undefined, userPlatformRole?: string
   const seenIds = new Set<string>();
   const seenCorrelationKeys = new Set<string>(); // Prevent semantic duplicates
   
-  // Map platform updates
+  // Map platform updates - include ALL items, not just unviewed
+  // The isRead state controls the NEW badge, not display
   data.platformUpdates?.forEach(update => {
-    // Skip already viewed updates (cleared)
-    if (update.isViewed) return;
-    
     // Skip duplicates within the same fetch (by ID only)
     if (seenIds.has(update.id)) return;
     seenIds.add(update.id);
@@ -353,10 +351,8 @@ function mapToUNS(data: NotificationsData | undefined, userPlatformRole?: string
   });
   
   // Map maintenance alerts with orchestration actions
+  // Include ALL alerts, not just unacknowledged
   data.maintenanceAlerts?.forEach(alert => {
-    // Skip already acknowledged alerts (cleared)
-    if (alert.isAcknowledged) return;
-    
     // Skip duplicates
     if (seenIds.has(alert.id)) return;
     seenIds.add(alert.id);
@@ -402,9 +398,10 @@ function mapToUNS(data: NotificationsData | undefined, userPlatformRole?: string
     });
   });
   
-  // Map notifications
+  // Map notifications - include ALL items
+  // Only filter out items explicitly cleared (clearedAt set)
   data.notifications?.forEach(notif => {
-    if (notif.isRead || notif.clearedAt) return;
+    if (notif.clearedAt) return; // Only skip if explicitly cleared
     
     // Skip duplicates
     if (seenIds.has(notif.id)) return;
