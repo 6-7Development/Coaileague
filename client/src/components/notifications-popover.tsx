@@ -63,6 +63,7 @@ interface UNSNotification {
     endUserSummary?: string;
     technicalSummary?: string;
   };
+  isCleared?: boolean; // True if user explicitly cleared this item
 }
 
 interface NotificationsData {
@@ -314,8 +315,7 @@ function mapToUNS(data: NotificationsData | undefined, userPlatformRole?: string
   const seenIds = new Set<string>();
   const seenCorrelationKeys = new Set<string>(); // Prevent semantic duplicates
   
-  // Map platform updates - include ALL items, not just unviewed
-  // The isRead state controls the NEW badge, not display
+  // Map platform updates - show ALL items, use isViewed for visual state
   data.platformUpdates?.forEach(update => {
     // Skip duplicates within the same fetch (by ID only)
     if (seenIds.has(update.id)) return;
@@ -345,13 +345,13 @@ function mapToUNS(data: NotificationsData | undefined, userPlatformRole?: string
       serviceSource: update.metadata?.sourceName || 'Platform',
       statusTag: update.isViewed ? undefined : 'NEW',
       isRead: update.isViewed,
+      isCleared: update.isViewed, // Platform updates use isViewed as cleared flag
       createdAt: update.createdAt,
       metadata: update.metadata,
     });
   });
   
-  // Map maintenance alerts with orchestration actions
-  // Include ALL alerts, not just unacknowledged
+  // Map maintenance alerts with orchestration actions - show ALL
   data.maintenanceAlerts?.forEach(alert => {
     // Skip duplicates
     if (seenIds.has(alert.id)) return;
@@ -392,17 +392,15 @@ function mapToUNS(data: NotificationsData | undefined, userPlatformRole?: string
       serviceSource: humanizeText(alert.serviceSource || 'System Operations'),
       statusTag: alert.isAcknowledged ? undefined : 'ACTION REQUIRED',
       isRead: alert.isAcknowledged || false,
+      isCleared: alert.isAcknowledged || false, // Alerts use isAcknowledged as cleared flag
       createdAt: alert.scheduledStartTime,
       actions,
       metadata: { workflowId: alert.id },
     });
   });
   
-  // Map notifications - include ALL items
-  // Only filter out items explicitly cleared (clearedAt set)
+  // Map notifications - include ALL items (even cleared ones for history view)
   data.notifications?.forEach(notif => {
-    if (notif.clearedAt) return; // Only skip if explicitly cleared
-    
     // Skip duplicates
     if (seenIds.has(notif.id)) return;
     seenIds.add(notif.id);
@@ -445,6 +443,11 @@ function mapToUNS(data: NotificationsData | undefined, userPlatformRole?: string
     // Humanize the service source name (e.g., "PayrollOps Lead" -> "Payroll Team")
     const friendlySource = humanizeText(notif.metadata?.sourceName || notif.metadata?.subagent || 'Trinity AI');
     
+    // clearedAt indicates user explicitly cleared this notification
+    const isCleared = Boolean(notif.clearedAt);
+    // Notifications are read if explicitly marked as read OR if cleared
+    const isRead = notif.isRead || isCleared;
+    
     notifications.push({
       id: notif.id,
       title: friendlyTitle,
@@ -453,8 +456,9 @@ function mapToUNS(data: NotificationsData | undefined, userPlatformRole?: string
       category: 'for_you',
       subCategory: notif.type,
       serviceSource: friendlySource,
-      statusTag: 'NEW',
-      isRead: notif.isRead,
+      statusTag: isRead ? undefined : 'NEW', // Remove NEW tag when read
+      isRead,
+      isCleared,
       createdAt: notif.createdAt,
       actions,
       metadata: notif.metadata,
@@ -474,16 +478,20 @@ function mapToUNS(data: NotificationsData | undefined, userPlatformRole?: string
     seenCorrelationKeys.add(correlationKey);
     
     // Gap findings come pre-formatted from the backend
+    // Normalize category to 'for_you' so they appear in the For You tab with their count
+    // isCleared only from explicit clear action (clearedAt), NOT from being read
+    const isCleared = Boolean(finding.clearedAt);
     notifications.push({
       id: finding.id,
       title: finding.title,
       message: finding.message,
       priority: finding.priority,
-      category: finding.category,
-      subCategory: finding.subCategory,
+      category: 'for_you', // Always show in For You tab (matching the apiForYouUnread calculation)
+      subCategory: finding.subCategory || finding.category, // Preserve original category as subCategory
       serviceSource: finding.serviceSource,
-      statusTag: finding.statusTag,
+      statusTag: finding.isRead ? undefined : finding.statusTag, // Remove NEW tag when read
       isRead: finding.isRead,
+      isCleared,
       createdAt: finding.createdAt,
       actions: finding.actions,
       metadata: finding.metadata,
@@ -861,22 +869,38 @@ export function NotificationsPopover() {
   // Map to UNS format with user's platform role for action button visibility
   const allNotifications = mapToUNS(rawData, userPlatformRole);
   
-  // Sub-category counts - based on actual data patterns
-  const systemAlertsSubCount = allNotifications.filter(n => 
-    n.category === 'system_alerts' && !n.isRead
-  ).length;
-  const adminReviewCount = allNotifications.filter(n => 
+  // Filter to only non-cleared items for default display 
+  // Cleared items are hidden from default view but accessible via history toggle
+  // This uses isCleared flag which is set when user explicitly clears items
+  const visibleNotifications = allNotifications.filter(n => !n.isCleared);
+  
+  // Use API-provided counts as the authoritative source for badges
+  // This ensures bell badge, tab badges, and "X unread" text are always in sync
+  const apiTotalUnread = rawData?.totalUnread ?? 0;
+  // Include gap findings in for-you count since they appear in the for_you tab
+  const apiForYouUnread = (rawData?.unreadPlatformUpdates ?? 0) + (rawData?.unreadNotifications ?? 0) + (rawData?.unreadGapFindings ?? 0);
+  const apiSystemUnread = rawData?.unreadAlerts ?? 0;
+  
+  // For tab badges - use API counts for consistency with bell badge
+  const forYouCount = apiForYouUnread;
+  const systemCount = apiSystemUnread;
+  const totalUnread = apiTotalUnread;
+  
+  // Sub-category counts - based on visible (non-cleared) items that are also unread
+  const systemAlertsSubCount = visibleNotifications.filter(n => n.category === 'system_alerts' && !n.isRead).length;
+  const adminReviewCount = visibleNotifications.filter(n => 
     (n.statusTag?.includes('ACTION') || n.priority === 'critical' || n.priority === 'high') && !n.isRead
   ).length;
-  const updatesCount = allNotifications.filter(n => 
+  const updatesCount = visibleNotifications.filter(n => 
     (n.subCategory === 'feature_release' || n.subCategory === 'update' || n.priority === 'info') && !n.isRead
   ).length;
 
-  // Filter notifications - 'all' shows everything in the current tab
-  // Sub-filters work across ALL notifications (ignore activeTab when sub-filter is active)
-  const filteredNotifications = allNotifications.filter(n => {
+  // Filter notifications - default shows non-cleared items, toggle filters to unread only
+  // When showUnreadOnly is true, show only unread items from visible (non-cleared) list
+  // When showUnreadOnly is false, show all non-cleared items
+  const filteredNotifications = visibleNotifications.filter(n => {
+    // Apply unread filter first if enabled
     if (showUnreadOnly && n.isRead) return false;
-    
     // When 'all' sub-filter is selected, respect the main tab filter
     if (subFilter === 'all') {
       return n.category === activeTab;
@@ -903,12 +927,6 @@ export function NotificationsPopover() {
     }
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
-  
-  // Counts - use actual displayed notification counts for consistency
-  const forYouCount = allNotifications.filter(n => n.category === 'for_you' && !n.isRead).length;
-  const systemCount = allNotifications.filter(n => n.category === 'system_alerts' && !n.isRead).length;
-  // Use actual counts from notifications, not API totalUnread which may be stale or include different notification types
-  const totalUnread = forYouCount + systemCount;
 
   // Mutations with cross-tab sync
   const dismissMutation = useMutation({
@@ -941,20 +959,29 @@ export function NotificationsPopover() {
     onMutate: async () => {
       await queryClient.cancelQueries({ queryKey: ["/api/notifications/combined"] });
       const previousData = queryClient.getQueryData(["/api/notifications/combined"]);
+      const now = new Date().toISOString();
       queryClient.setQueryData(["/api/notifications/combined"], (old: any) => ({
         ...old,
-        notifications: [],
+        notifications: old?.notifications?.map((n: any) => ({ ...n, clearedAt: now, isRead: true })) || [],
         platformUpdates: old?.platformUpdates?.map((u: any) => ({ ...u, isViewed: true })) || [],
         maintenanceAlerts: old?.maintenanceAlerts?.map((a: any) => ({ ...a, isAcknowledged: true })) || [],
         totalUnread: 0,
+        unreadNotifications: 0,
+        unreadPlatformUpdates: 0,
+        unreadAlerts: 0,
       }));
       return { previousData };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/notifications/combined"] });
-      // Sync across tabs
       syncClearAll();
       toast({ title: "Done", description: "All notifications cleared." });
+    },
+    onError: (error, _, context) => {
+      if (context?.previousData) {
+        queryClient.setQueryData(["/api/notifications/combined"], context.previousData);
+      }
+      toast({ title: "Error", description: "Failed to clear notifications.", variant: "destructive" });
     },
   });
   
@@ -1301,7 +1328,7 @@ export function NotificationsPopover() {
     </div>
   );
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, subFilter, sortNewest, showUnreadOnly, sortedNotifications, isLoading, totalUnread, forYouCount, systemCount, user, allNotifications, systemAlertsSubCount, adminReviewCount, updatesCount, isGuruMode, isMobile]);
+  }, [activeTab, subFilter, sortNewest, showUnreadOnly, sortedNotifications, isLoading, totalUnread, forYouCount, systemCount, user, allNotifications, visibleNotifications, systemAlertsSubCount, adminReviewCount, updatesCount, isGuruMode, isMobile]);
 
   // Create stable component references using the memoized generator
   const MobileNotificationsContent = renderNotificationsContent({ simplified: false, compact: true });
@@ -1312,7 +1339,7 @@ export function NotificationsPopover() {
       <Sheet open={open} onOpenChange={setOpen}>
         <div onClick={() => setOpen(true)}>
           <AnimatedNotificationBell
-            notificationCount={allNotifications.length}
+            notificationCount={totalUnread}
             onClick={() => setOpen(true)}
           />
         </div>
@@ -1339,7 +1366,7 @@ export function NotificationsPopover() {
       <PopoverTrigger asChild>
         <div>
           <AnimatedNotificationBell
-            notificationCount={allNotifications.length}
+            notificationCount={totalUnread}
             onClick={() => setOpen(!open)}
           />
         </div>
