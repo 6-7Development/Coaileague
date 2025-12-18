@@ -78,78 +78,124 @@ interface NotificationsData {
   totalUnread: number;
 }
 
-// Client-side pending cleared IDs - persists across refetches until backend confirms
-// Items in this set are hidden from view until the server confirms they're cleared
-const pendingClearIds = new Set<string>();
-let pendingClearAllIds: Set<string> | null = null;
-const RECONCILE_TIMEOUT = 15000; // 15 seconds max to wait for server confirmation
+// Module-level pending sets - survive component unmounts and window focus restores
+// This ensures Clear All protection persists until server confirms
+const _pendingSingleIds = new Set<string>();
+let _pendingBulkIds: Set<string> | null = null;
 
-// Helper to check if an item is pending clear (hidden until server confirms)
-function isPendingClear(id: string): boolean {
-  if (pendingClearIds.has(id)) return true;
-  if (pendingClearAllIds && pendingClearAllIds.has(id)) return true;
-  return false;
-}
-
-// Reconcile pending clears against refetched data - call this after each successful query
-// Items that are confirmed cleared (missing or flagged) are removed from pending sets
-function reconcilePendingClears(data: NotificationsData): void {
-  if (!data) return;
+// Pending-clear hook - reads/writes module-level Sets, triggers component re-renders
+function usePendingClears() {
+  // Counter to force re-renders when pending sets change
+  const [, setRenderTrigger] = useState(0);
+  const forceRender = useCallback(() => setRenderTrigger(c => c + 1), []);
   
-  // Build set of all IDs currently in the response
-  const responseIds = new Set<string>();
-  const confirmedClearedIds = new Set<string>();
+  // Queue single item for clearing (synchronous)
+  const queueSingle = useCallback((id: string) => {
+    _pendingSingleIds.add(id);
+    forceRender();
+  }, [forceRender]);
   
-  // Check platform updates - if isViewed=true, it's confirmed cleared
-  data.platformUpdates?.forEach(u => {
-    responseIds.add(u.id);
-    if (u.isViewed) confirmedClearedIds.add(u.id);
-  });
-  
-  // Check notifications - if clearedAt exists, it's confirmed cleared
-  data.notifications?.forEach(n => {
-    responseIds.add(n.id);
-    if (n.clearedAt) confirmedClearedIds.add(n.id);
-  });
-  
-  // Check alerts - if isAcknowledged=true, it's confirmed cleared
-  data.maintenanceAlerts?.forEach(a => {
-    responseIds.add(a.id);
-    if (a.isAcknowledged) confirmedClearedIds.add(a.id);
-  });
-  
-  // Check gap findings - if clearedAt exists, it's confirmed cleared
-  data.gapFindings?.forEach(f => {
-    responseIds.add(f.id);
-    if (f.clearedAt) confirmedClearedIds.add(f.id);
-  });
-  
-  // Remove confirmed cleared items from pending sets
-  pendingClearIds.forEach(id => {
-    if (confirmedClearedIds.has(id) || !responseIds.has(id)) {
-      pendingClearIds.delete(id);
+  // Queue bulk clear with all provided IDs (synchronous)
+  const queueBulk = useCallback((ids: string[]) => {
+    if (ids.length > 0) {
+      _pendingBulkIds = new Set(ids);
     }
-  });
+    forceRender();
+  }, [forceRender]);
   
-  // Handle bulk clear - remove confirmed items from pending set
-  if (pendingClearAllIds) {
-    pendingClearAllIds.forEach(id => {
+  // Check if ID is pending clear (reads module Sets directly - always current)
+  const isPending = useCallback((id: string): boolean => {
+    return _pendingSingleIds.has(id) || (_pendingBulkIds?.has(id) ?? false);
+  }, []);
+  
+  // Confirm IDs are cleared (remove from pending) - only called by reconcile
+  const confirmCleared = useCallback((ids: string[]) => {
+    let changed = false;
+    ids.forEach(id => {
+      if (_pendingSingleIds.delete(id)) changed = true;
+      if (_pendingBulkIds?.delete(id)) changed = true;
+    });
+    // Clear bulk set if empty
+    if (_pendingBulkIds && _pendingBulkIds.size === 0) {
+      _pendingBulkIds = null;
+    }
+    if (changed) forceRender();
+  }, [forceRender]);
+  
+  // Rollback single ID (on error)
+  const rollbackSingle = useCallback((id: string) => {
+    if (_pendingSingleIds.delete(id)) {
+      forceRender();
+    }
+  }, [forceRender]);
+  
+  // Reset all pending clears (on error)
+  const reset = useCallback(() => {
+    _pendingSingleIds.clear();
+    _pendingBulkIds = null;
+    forceRender();
+  }, [forceRender]);
+  
+  // Reconcile pending clears against server data
+  // Items are confirmed cleared if: flag is set, metadata.wasCleared exists, or item vanished from response
+  // This is the ONLY place pending IDs should be removed (not onSuccess)
+  const reconcile = useCallback((data: NotificationsData) => {
+    if (!data) return;
+    
+    // Build set of all IDs currently in response
+    const responseIds = new Set<string>();
+    // Build set of confirmed cleared IDs
+    const confirmedClearedIds = new Set<string>();
+    
+    // Check platform updates
+    data.platformUpdates?.forEach(u => {
+      responseIds.add(u.id);
+      if (u.isViewed || u.metadata?.wasCleared) confirmedClearedIds.add(u.id);
+    });
+    // Check notifications
+    data.notifications?.forEach(n => {
+      responseIds.add(n.id);
+      if (n.clearedAt || n.metadata?.wasCleared) confirmedClearedIds.add(n.id);
+    });
+    // Check maintenance alerts
+    data.maintenanceAlerts?.forEach(a => {
+      responseIds.add(a.id);
+      if (a.isAcknowledged || a.metadata?.wasCleared) confirmedClearedIds.add(a.id);
+    });
+    // Check gap findings
+    data.gapFindings?.forEach(f => {
+      responseIds.add(f.id);
+      if (f.clearedAt || f.metadata?.wasCleared) confirmedClearedIds.add(f.id);
+    });
+    
+    // Check pending IDs and confirm those that are cleared or vanished
+    let changed = false;
+    
+    // Check single pending IDs
+    _pendingSingleIds.forEach(id => {
       if (confirmedClearedIds.has(id) || !responseIds.has(id)) {
-        pendingClearAllIds!.delete(id);
+        _pendingSingleIds.delete(id);
+        changed = true;
       }
     });
     
-    // If all items are confirmed, clear the bulk pending set
-    if (pendingClearAllIds.size === 0) {
-      pendingClearAllIds = null;
+    // Check bulk pending IDs
+    _pendingBulkIds?.forEach(id => {
+      if (confirmedClearedIds.has(id) || !responseIds.has(id)) {
+        _pendingBulkIds!.delete(id);
+        changed = true;
+      }
+    });
+    
+    // Clear bulk set if empty
+    if (_pendingBulkIds && _pendingBulkIds.size === 0) {
+      _pendingBulkIds = null;
     }
-  }
-}
-
-// Reset all pending clears (used on error)
-function resetPendingClears(): void {
-  pendingClearIds.clear();
-  pendingClearAllIds = null;
+    
+    if (changed) forceRender();
+  }, [forceRender]);
+  
+  return { isPending, queueSingle, queueBulk, confirmCleared, rollbackSingle, reset, reconcile };
 }
 
 // Priority styling configuration
@@ -382,7 +428,12 @@ function generateCorrelationKey(title: string, category: string, createdAt: stri
 }
 
 // Map existing data to UNS format with human-friendly language
-function mapToUNS(data: NotificationsData | undefined, userPlatformRole?: string | null): UNSNotification[] {
+// isPending: Optional function to check if item is pending clear (for reactive state)
+function mapToUNS(
+  data: NotificationsData | undefined, 
+  userPlatformRole?: string | null,
+  isPending?: (id: string) => boolean
+): UNSNotification[] {
   if (!data) return [];
   
   const notifications: UNSNotification[] = [];
@@ -411,7 +462,7 @@ function mapToUNS(data: NotificationsData | undefined, userPlatformRole?: string
     
     // Platform updates: isViewed means the user has seen/cleared this update
     // Also check pending clear tracking for lifecycle guard
-    const isCleared = update.isViewed || update.metadata?.wasCleared || isPendingClear(update.id);
+    const isCleared = update.isViewed || update.metadata?.wasCleared || (isPending?.(update.id) ?? false);
     
     notifications.push({
       id: update.id,
@@ -462,7 +513,7 @@ function mapToUNS(data: NotificationsData | undefined, userPlatformRole?: string
     
     // Alerts: isAcknowledged means the user has acknowledged/cleared this alert
     // Also check pending clear tracking for lifecycle guard
-    const isCleared = alert.isAcknowledged || alert.metadata?.wasCleared || isPendingClear(alert.id);
+    const isCleared = alert.isAcknowledged || alert.metadata?.wasCleared || (isPending?.(alert.id) ?? false);
     
     notifications.push({
       id: alert.id,
@@ -527,7 +578,7 @@ function mapToUNS(data: NotificationsData | undefined, userPlatformRole?: string
     
     // clearedAt indicates user explicitly cleared this notification
     // Also check pending clear tracking for lifecycle guard
-    const isCleared = Boolean(notif.clearedAt) || isPendingClear(notif.id);
+    const isCleared = Boolean(notif.clearedAt) || (isPending?.(notif.id) ?? false);
     // Notifications are read if explicitly marked as read OR if cleared
     const isRead = notif.isRead || isCleared;
     
@@ -563,7 +614,7 @@ function mapToUNS(data: NotificationsData | undefined, userPlatformRole?: string
     // Gap findings come pre-formatted from the backend
     // Normalize category to 'for_you' so they appear in the For You tab with their count
     // isCleared from explicit clear action (clearedAt) or pending clear tracking
-    const isCleared = Boolean(finding.clearedAt) || isPendingClear(finding.id);
+    const isCleared = Boolean(finding.clearedAt) || (isPending?.(finding.id) ?? false);
     notifications.push({
       id: finding.id,
       title: finding.title,
@@ -875,6 +926,9 @@ export function NotificationsPopover() {
   
   // Cross-tab notification sync - syncs read/cleared state across browser tabs
   const { syncNotificationRead, syncClearAll } = useNotificationSync();
+  
+  // Reactive pending-clear state - stores IDs in React state for proper re-renders
+  const pendingClears = usePendingClears();
 
   // Fetch notifications - truly live with instant refetch on WebSocket events
   // UNS is UNIVERSAL - works for both authenticated AND unauthenticated users
@@ -890,9 +944,9 @@ export function NotificationsPopover() {
   // Reconcile pending clears when data changes - removes IDs from pending set when server confirms
   useEffect(() => {
     if (rawData) {
-      reconcilePendingClears(rawData);
+      pendingClears.reconcile(rawData);
     }
-  }, [rawData, dataUpdatedAt]);
+  }, [rawData, dataUpdatedAt, pendingClears.reconcile]);
   
   // Refetch when popover opens for instant updates
   useEffect(() => {
@@ -957,7 +1011,8 @@ export function NotificationsPopover() {
   }, [activeTab, subFilter]);
   
   // Map to UNS format with user's platform role for action button visibility
-  const allNotifications = mapToUNS(rawData, userPlatformRole);
+  // Pass isPending from reactive hook to ensure cleared items stay hidden
+  const allNotifications = mapToUNS(rawData, userPlatformRole, pendingClears.isPending);
   
   // Filter to only non-cleared items for default display 
   // Cleared items are hidden from default view but accessible via history toggle
@@ -1029,8 +1084,8 @@ export function NotificationsPopover() {
       await queryClient.cancelQueries({ queryKey: ["/api/notifications/combined"] });
       const previousData = queryClient.getQueryData(["/api/notifications/combined"]);
       
-      // Add to pending clear tracking for race condition protection
-      pendingClearIds.add(id);
+      // Add to pending clear tracking for race condition protection (reactive state)
+      pendingClears.queueSingle(id);
       
       // Optimistic cache update for immediate UI feedback
       const now = new Date().toISOString();
@@ -1057,16 +1112,16 @@ export function NotificationsPopover() {
         return {
           ...old,
           notifications: old.notifications?.map((n: any) => 
-            n.id === id ? { ...n, clearedAt: now, isRead: true } : n
+            n.id === id ? { ...n, clearedAt: now, isRead: true, metadata: { ...(n.metadata || {}), wasCleared: true } } : n
           ),
           platformUpdates: old.platformUpdates?.map((u: any) => 
-            u.id === id ? { ...u, isViewed: true } : u
+            u.id === id ? { ...u, isViewed: true, metadata: { ...(u.metadata || {}), wasCleared: true } } : u
           ),
           maintenanceAlerts: old.maintenanceAlerts?.map((a: any) => 
-            a.id === id ? { ...a, isAcknowledged: true } : a
+            a.id === id ? { ...a, isAcknowledged: true, metadata: { ...(a.metadata || {}), wasCleared: true } } : a
           ),
           gapFindings: old.gapFindings?.map((f: any) => 
-            f.id === id ? { ...f, clearedAt: now, isRead: true } : f
+            f.id === id ? { ...f, clearedAt: now, isRead: true, metadata: { ...(f.metadata || {}), wasCleared: true } } : f
           ),
           totalUnread: unreadNotifications + unreadPlatformUpdates + unreadAlerts + unreadGapFindings,
           unreadNotifications,
@@ -1076,17 +1131,19 @@ export function NotificationsPopover() {
         };
       });
       
-      return { previousData };
+      return { previousData, clearedId: id };
     },
     onSuccess: (_, id) => {
-      // Invalidate queries - reconciliation will confirm the clear and remove from pending
+      // Don't remove from pending here - let reconcile confirm when server data shows cleared
+      // This prevents race condition where stale refetch arrives before DB commit
+      // Invalidate queries to get fresh data from server
       queryClient.invalidateQueries({ queryKey: ["/api/notifications/combined"] });
       // Sync across tabs
       syncNotificationRead(id);
     },
     onError: (_, id, context: any) => {
-      // Remove from pending tracking on error
-      pendingClearIds.delete(id);
+      // Remove from pending tracking on error (rollback reactive state)
+      pendingClears.rollbackSingle(id);
       // Restore previous cache state
       if (context?.previousData) {
         queryClient.setQueryData(["/api/notifications/combined"], context.previousData);
@@ -1109,17 +1166,24 @@ export function NotificationsPopover() {
       return response.json();
     },
     onMutate: async () => {
-      await queryClient.cancelQueries({ queryKey: ["/api/notifications/combined"] });
-      const previousData = queryClient.getQueryData(["/api/notifications/combined"]) as NotificationsData | undefined;
-      const now = new Date().toISOString();
+      // IMPORTANT: Capture IDs BEFORE canceling queries to ensure we have the data
+      const snapshotData = queryClient.getQueryData(["/api/notifications/combined"]) as NotificationsData | undefined;
       
-      // Capture all current IDs in pending clear set for race condition protection
-      const allIds = new Set<string>();
-      previousData?.notifications?.forEach(n => allIds.add(n.id));
-      previousData?.platformUpdates?.forEach(u => allIds.add(u.id));
-      previousData?.maintenanceAlerts?.forEach(a => allIds.add(a.id));
-      previousData?.gapFindings?.forEach(f => allIds.add(f.id));
-      pendingClearAllIds = allIds;
+      // Capture all current IDs for race condition protection FIRST
+      const allIds: string[] = [];
+      snapshotData?.notifications?.forEach(n => allIds.push(n.id));
+      snapshotData?.platformUpdates?.forEach(u => allIds.push(u.id));
+      snapshotData?.maintenanceAlerts?.forEach(a => allIds.push(a.id));
+      snapshotData?.gapFindings?.forEach(f => allIds.push(f.id));
+      
+      // Queue bulk IDs BEFORE canceling queries to protect against race
+      if (allIds.length > 0) {
+        pendingClears.queueBulk(allIds);
+      }
+      
+      await queryClient.cancelQueries({ queryKey: ["/api/notifications/combined"] });
+      const previousData = snapshotData;
+      const now = new Date().toISOString();
       
       // Optimistic cache update for immediate UI feedback + pending set for protection
       queryClient.setQueryData(["/api/notifications/combined"], (old: any) => ({
@@ -1127,20 +1191,24 @@ export function NotificationsPopover() {
         notifications: old?.notifications?.map((n: any) => ({ 
           ...n, 
           clearedAt: now, 
-          isRead: true 
+          isRead: true,
+          metadata: { ...(n.metadata || {}), wasCleared: true }
         })) || [],
         platformUpdates: old?.platformUpdates?.map((u: any) => ({ 
           ...u, 
           isViewed: true,
+          metadata: { ...(u.metadata || {}), wasCleared: true }
         })) || [],
         maintenanceAlerts: old?.maintenanceAlerts?.map((a: any) => ({ 
           ...a, 
           isAcknowledged: true,
+          metadata: { ...(a.metadata || {}), wasCleared: true }
         })) || [],
         gapFindings: old?.gapFindings?.map((f: any) => ({
           ...f,
           isRead: true,
-          clearedAt: now
+          clearedAt: now,
+          metadata: { ...(f.metadata || {}), wasCleared: true }
         })) || [],
         totalUnread: 0,
         unreadNotifications: 0,
@@ -1148,18 +1216,20 @@ export function NotificationsPopover() {
         unreadAlerts: 0,
         unreadGapFindings: 0,
       }));
-      return { previousData };
+      return { previousData, clearedIds: allIds };
     },
     onSuccess: () => {
       syncClearAll();
       toast({ title: "Done", description: "All notifications cleared." });
       
-      // Invalidate queries - reconciliation will confirm the clears and remove from pending
+      // Don't remove from pending here - let reconcile confirm when server data shows cleared
+      // This prevents race condition where stale refetch arrives before DB commit
+      // Invalidate queries to get fresh data from server
       queryClient.invalidateQueries({ queryKey: ["/api/notifications/combined"] });
     },
-    onError: (error, _, context) => {
-      // Reset pending clear tracking on error
-      resetPendingClears();
+    onError: (error, _, context: any) => {
+      // Reset pending clear tracking on error (reactive state)
+      pendingClears.reset();
       if (context?.previousData) {
         queryClient.setQueryData(["/api/notifications/combined"], context.previousData);
       }
