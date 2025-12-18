@@ -435,6 +435,100 @@ class GapIntelligenceService {
       .limit(limit);
   }
 
+  /**
+   * Get gap findings formatted for the Universal Notification System (UNS)
+   * Returns actionable notifications for platform support roles
+   */
+  async getGapFindingsForUNS(limit: number = 20): Promise<Array<{
+    id: string;
+    title: string;
+    message: string;
+    priority: 'critical' | 'high' | 'medium' | 'info';
+    category: 'system_alerts' | 'for_you';
+    subCategory: string;
+    serviceSource: string;
+    statusTag: string;
+    isRead: boolean;
+    createdAt: Date;
+    actions: Array<{
+      label: string;
+      type: 'orchestration' | 'navigate' | 'api_call';
+      target: string;
+      variant: 'primary' | 'secondary' | 'ghost';
+    }>;
+    metadata: Record<string, any>;
+  }>> {
+    const openFindings = await this.getOpenFindings(limit);
+    
+    return openFindings.map(finding => {
+      // Map severity to priority
+      const priorityMap: Record<string, 'critical' | 'high' | 'medium' | 'info'> = {
+        'critical': 'critical',
+        'blocker': 'critical',
+        'error': 'high',
+        'warning': 'medium',
+        'info': 'info',
+      };
+      
+      // Map gap type to human-readable category
+      const gapTypeLabels: Record<string, string> = {
+        'schema_mismatch': 'Schema Issue',
+        'performance_issue': 'Performance Issue',
+        'typescript_error': 'Code Error',
+        'handler_gap': 'Handler Gap',
+        'hook_issue': 'Hook Issue',
+        'log_error': 'Runtime Error',
+      };
+      
+      // Generate end-user friendly message
+      const userMessage = finding.endUserSummary || 
+        `Found ${gapTypeLabels[finding.gapType] || finding.gapType}: ${finding.title}`;
+      
+      return {
+        id: `gap-finding-${finding.id}`,
+        title: `Trinity: ${gapTypeLabels[finding.gapType] || 'Issue'} Detected`,
+        message: userMessage,
+        priority: priorityMap[finding.severity] || 'medium',
+        category: 'system_alerts' as const,
+        subCategory: 'trinity_analysis',
+        serviceSource: 'Gap Intelligence',
+        statusTag: finding.status === 'open' ? 'ACTION REQUIRED' : 'IN PROGRESS',
+        isRead: false,
+        createdAt: finding.createdAt,
+        actions: [
+          {
+            label: 'Approve Fix',
+            type: 'orchestration' as const,
+            target: `gap_intelligence.approve_fix:${finding.id}`,
+            variant: 'primary' as const,
+          },
+          {
+            label: 'View Details',
+            type: 'navigate' as const,
+            target: `/diagnostics?findingId=${finding.id}`,
+            variant: 'secondary' as const,
+          },
+          {
+            label: 'Dismiss',
+            type: 'orchestration' as const,
+            target: `gap_intelligence.dismiss:${finding.id}`,
+            variant: 'ghost' as const,
+          },
+        ],
+        metadata: {
+          findingId: finding.id,
+          gapType: finding.gapType,
+          severity: finding.severity,
+          filePath: finding.filePath,
+          lineNumber: finding.lineNumber,
+          suggestedFix: finding.suggestedFix,
+          detectedBy: finding.detectedBy,
+          domain: finding.domain,
+        },
+      };
+    });
+  }
+
   async getCriticalFindings(): Promise<any[]> {
     return db
       .select()

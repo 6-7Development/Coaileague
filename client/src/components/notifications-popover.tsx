@@ -69,9 +69,11 @@ interface NotificationsData {
   platformUpdates: any[];
   maintenanceAlerts: any[];
   notifications: any[];
+  gapFindings?: any[];
   unreadPlatformUpdates: number;
   unreadNotifications: number;
   unreadAlerts: number;
+  unreadGapFindings?: number;
   totalUnread: number;
 }
 
@@ -422,6 +424,29 @@ function mapToUNS(data: NotificationsData | undefined, userPlatformRole?: string
       createdAt: notif.createdAt,
       actions,
       metadata: notif.metadata,
+    });
+  });
+  
+  // Map gap intelligence findings (already formatted for UNS from backend)
+  data.gapFindings?.forEach(finding => {
+    // Skip duplicates
+    if (seenIds.has(finding.id)) return;
+    seenIds.add(finding.id);
+    
+    // Gap findings come pre-formatted from the backend
+    notifications.push({
+      id: finding.id,
+      title: finding.title,
+      message: finding.message,
+      priority: finding.priority,
+      category: finding.category,
+      subCategory: finding.subCategory,
+      serviceSource: finding.serviceSource,
+      statusTag: finding.statusTag,
+      isRead: finding.isRead,
+      createdAt: finding.createdAt,
+      actions: finding.actions,
+      metadata: finding.metadata,
     });
   });
   
