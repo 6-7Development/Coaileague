@@ -28244,7 +28244,9 @@ Respond with valid JSON array only.`
         return res.status(401).json({ message: 'Unauthorized' });
       }
       const workspaceId = req.workspaceId;
-      const isSupportStaff = req.user!.role === 'platform_admin' || req.user!.role === 'support_staff';
+      const userRole = req.user!.role;
+      const platformRole = (req.user as any)?.platformRole;
+      const isSupportStaff = userRole === 'platform_admin' || userRole === 'support_staff' || platformRole === 'root_admin' || platformRole === 'platform_admin' || platformRole === 'support_staff';
 
       let rooms;
       if (isSupportStaff) {
@@ -28275,7 +28277,9 @@ Respond with valid JSON array only.`
         return res.status(401).json({ message: 'Unauthorized' });
       }
       const workspaceId = req.workspaceId;
-      const isSupportStaff = req.user!.role === 'platform_admin' || req.user!.role === 'support_staff';
+      const userRole = req.user!.role;
+      const platformRole = (req.user as any)?.platformRole;
+      const isSupportStaff = userRole === 'platform_admin' || userRole === 'support_staff' || platformRole === 'root_admin' || platformRole === 'platform_admin' || platformRole === 'support_staff';
 
       // Get base room data
       let rooms;
@@ -28343,7 +28347,9 @@ Respond with valid JSON array only.`
       
       // Check access permissions
       const workspaceId = req.workspaceId;
-      const isSupportStaff = req.user!.role === 'platform_admin' || req.user!.role === 'support_staff';
+      const userRole = req.user!.role;
+      const platformRole = (req.user as any)?.platformRole;
+      const isSupportStaff = userRole === 'platform_admin' || userRole === 'support_staff' || platformRole === 'root_admin' || platformRole === 'platform_admin' || platformRole === 'support_staff';
       
       if (!isSupportStaff && room.workspaceId !== workspaceId) {
         return res.status(403).json({ message: "Access denied" });
@@ -28392,7 +28398,9 @@ Respond with valid JSON array only.`
         return res.status(401).json({ message: 'Unauthorized' });
       }
       const workspaceId = req.workspaceId;
-      const isSupportStaff = req.user!.role === 'platform_admin' || req.user!.role === 'support_staff';
+      const userRole = req.user!.role;
+      const platformRole = (req.user as any)?.platformRole;
+      const isSupportStaff = userRole === 'platform_admin' || userRole === 'support_staff' || platformRole === 'root_admin' || platformRole === 'platform_admin' || platformRole === 'support_staff';
       
       const { query, roomId, startDate, endDate, limit = 50 } = req.query;
       
@@ -28625,7 +28633,9 @@ Respond with valid JSON array only.`
         return res.status(401).json({ message: 'Unauthorized' });
       }
       const roomId = req.params.id;
-      const isSupportStaff = req.user!.role === 'platform_admin' || req.user!.role === 'support_staff';
+      const userRole = req.user!.role;
+      const platformRole = (req.user as any)?.platformRole;
+      const isSupportStaff = userRole === 'platform_admin' || userRole === 'support_staff' || platformRole === 'root_admin' || platformRole === 'platform_admin' || platformRole === 'support_staff';
 
       if (!isSupportStaff) {
         return res.status(403).json({ message: "Only support staff can join organization rooms" });
@@ -28702,7 +28712,9 @@ Respond with valid JSON array only.`
       }
       const roomId = req.params.id;
       const { reason } = req.body;
-      const isSupportStaff = req.user!.role === 'platform_admin' || req.user!.role === 'support_staff';
+      const userRole = req.user!.role;
+      const platformRole = (req.user as any)?.platformRole;
+      const isSupportStaff = userRole === 'platform_admin' || userRole === 'support_staff' || platformRole === 'root_admin' || platformRole === 'platform_admin' || platformRole === 'support_staff';
 
       if (!isSupportStaff) {
         return res.status(403).json({ message: "Only support staff can suspend rooms" });
@@ -28753,7 +28765,9 @@ Respond with valid JSON array only.`
         return res.status(401).json({ message: 'Unauthorized' });
       }
       const roomId = req.params.id;
-      const isSupportStaff = req.user!.role === 'platform_admin' || req.user!.role === 'support_staff';
+      const userRole = req.user!.role;
+      const platformRole = (req.user as any)?.platformRole;
+      const isSupportStaff = userRole === 'platform_admin' || userRole === 'support_staff' || platformRole === 'root_admin' || platformRole === 'platform_admin' || platformRole === 'support_staff';
 
       if (!isSupportStaff) {
         return res.status(403).json({ message: "Only support staff can lift room suspensions" });
@@ -29168,7 +29182,9 @@ Respond with valid JSON array only.`
   app.post('/api/chat-export/support-conversation/:id', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       // Support staff authorization
-      const isSupportStaff = req.user!.role === 'platform_admin' || req.user!.role === 'support_staff';
+      const userRole = req.user!.role;
+      const platformRole = (req.user as any)?.platformRole;
+      const isSupportStaff = userRole === 'platform_admin' || userRole === 'support_staff' || platformRole === 'root_admin' || platformRole === 'platform_admin' || platformRole === 'support_staff';
       if (!isSupportStaff) {
         return res.status(403).json({ message: "Access denied. Support staff only." });
       }
@@ -29249,7 +29265,9 @@ Respond with valid JSON array only.`
   app.post('/api/chat-export/comm-room/:id', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       // Support staff authorization
-      const isSupportStaff = req.user!.role === 'platform_admin' || req.user!.role === 'support_staff';
+      const userRole = req.user!.role;
+      const platformRole = (req.user as any)?.platformRole;
+      const isSupportStaff = userRole === 'platform_admin' || userRole === 'support_staff' || platformRole === 'root_admin' || platformRole === 'platform_admin' || platformRole === 'support_staff';
       if (!isSupportStaff) {
         return res.status(403).json({ message: "Access denied. Support staff only." });
       }
@@ -29332,7 +29350,9 @@ Respond with valid JSON array only.`
   app.post('/api/chat-export/private-conversation/:id', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       // Support staff authorization (only platform_admin or support_staff can export encrypted DMs)
-      const isSupportStaff = req.user!.role === 'platform_admin' || req.user!.role === 'support_staff';
+      const userRole = req.user!.role;
+      const platformRole = (req.user as any)?.platformRole;
+      const isSupportStaff = userRole === 'platform_admin' || userRole === 'support_staff' || platformRole === 'root_admin' || platformRole === 'platform_admin' || platformRole === 'support_staff';
       if (!isSupportStaff) {
         return res.status(403).json({ message: "Access denied. Support staff only." });
       }
