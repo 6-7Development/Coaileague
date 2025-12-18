@@ -814,10 +814,11 @@ export function NotificationsPopover() {
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
   
-  // Counts
+  // Counts - use actual displayed notification counts for consistency
   const forYouCount = allNotifications.filter(n => n.category === 'for_you' && !n.isRead).length;
   const systemCount = allNotifications.filter(n => n.category === 'system_alerts' && !n.isRead).length;
-  const totalUnread = rawData?.totalUnread ?? (forYouCount + systemCount);
+  // Use actual counts from notifications, not API totalUnread which may be stale or include different notification types
+  const totalUnread = forYouCount + systemCount;
 
   // Mutations with cross-tab sync
   const dismissMutation = useMutation({
