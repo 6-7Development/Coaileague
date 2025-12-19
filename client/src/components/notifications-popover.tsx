@@ -31,8 +31,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { useNotificationWebSocket } from "@/hooks/use-notification-websocket";
 import { useTrinityContext } from "@/hooks/use-trinity-context";
 import { useNotificationSync } from "@/hooks/use-notification-sync";
-import TrinityRedesign from "@/components/trinity-redesign";
-import { TrinityBadge } from "@/components/trinity-marketing-hero";
 import { humanizeTitle, humanizeText, generateEndUserSummary } from "@shared/utils/humanFriendlyCopy";
 
 // Priority levels for UNS cards
@@ -1310,7 +1308,7 @@ export function NotificationsPopover() {
         <div className={`flex items-center justify-between ${compact ? 'gap-2' : 'gap-3'}`}>
           <div className={`flex items-center ${compact ? 'gap-2' : 'gap-3'}`}>
             <div className={`relative ${compact ? 'w-8 h-8' : 'w-10 h-10'} rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center`}>
-              <TrinityRedesign mode="IDLE" size={compact ? 28 : 36} mini={true} className="aspect-square object-contain" />
+              <Bell className={`${compact ? 'w-5 h-5' : 'w-6 h-6'} text-white`} />
             </div>
             <div>
               <h2 className={`font-bold ${compact ? 'text-sm' : 'text-base'} leading-tight text-white`}>Universal Notifications</h2>
