@@ -418,8 +418,16 @@ Respond ONLY with valid JSON (no markdown, no explanations):
       if (jsonMatch) {
         try {
           const parsed = JSON.parse(jsonMatch[0]);
+          // Sanitize title - remove "undefined" literals and ensure valid title
+          let safeTitle = parsed.title?.substring(0, 70) || '';
+          safeTitle = safeTitle.replace(/undefined/gi, '').trim();
+          if (!safeTitle || safeTitle.length < 3) {
+            const moduleName = (change.affectedModules[0] || 'Platform').replace(/undefined/gi, '').trim() || 'Platform';
+            const changeTypeName = change.type.replace(/_/g, ' ');
+            safeTitle = `${moduleName} ${changeTypeName}`.trim();
+          }
           return {
-            title: parsed.title?.substring(0, 70) || `${change.affectedModules[0] || 'Platform'} ${change.type.replace(/_/g, ' ')}`,
+            title: safeTitle,
             summary: parsed.summary || this.generateFallbackSummary(change),
             technicalDetails: parsed.technicalDetails || change.rawDiff,
             requiresAction: parsed.requiresAction === true,
