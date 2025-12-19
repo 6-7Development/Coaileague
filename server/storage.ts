@@ -6781,6 +6781,7 @@ export class DatabaseStorage implements IStorage {
       visibility: row.visibility,
       workspaceId: row.workspace_id,
       createdAt: row.created_at,
+      metadata: row.metadata, // Include metadata for frontend mapping
       isViewed: row.view_id !== null && row.view_id !== undefined && row.view_id !== '',
     }));
   }

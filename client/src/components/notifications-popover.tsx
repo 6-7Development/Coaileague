@@ -137,37 +137,38 @@ function usePendingClears() {
   }, [forceRender]);
   
   // Reconcile pending clears against server data
-  // Items are confirmed cleared if: ACTUAL SERVER FLAGS are set, or item vanished from response
-  // IMPORTANT: Do NOT use metadata.wasCleared - that's client-side optimistic metadata
-  // Only server-side flags (isViewed, clearedAt, isAcknowledged) indicate true DB confirmation
+  // Items are confirmed cleared if: ACTUAL SERVER FLAGS are set (without wasCleared marker), or item vanished from response
+  // IMPORTANT: If item has metadata.wasCleared, it's from optimistic update, NOT server confirmation
+  // Only remove from pending when server data (without wasCleared) confirms the clear
   // This is the ONLY place pending IDs should be removed (not onSuccess)
   const reconcile = useCallback((data: NotificationsData) => {
     if (!data) return;
     
     // Build set of all IDs currently in response
     const responseIds = new Set<string>();
-    // Build set of confirmed cleared IDs - ONLY using actual server flags
+    // Build set of confirmed cleared IDs - ONLY using actual server flags WITHOUT wasCleared marker
     const confirmedClearedIds = new Set<string>();
     
-    // Check platform updates - isViewed is server flag from userPlatformUpdateViews table
+    // Check platform updates - isViewed is server flag, but skip if wasCleared exists (optimistic data)
     data.platformUpdates?.forEach(u => {
       responseIds.add(u.id);
-      if (u.isViewed) confirmedClearedIds.add(u.id);
+      // Only count as confirmed if isViewed is true AND no wasCleared marker (real server data)
+      if (u.isViewed && !u.metadata?.wasCleared) confirmedClearedIds.add(u.id);
     });
-    // Check notifications - clearedAt is server flag from notifications table
+    // Check notifications - clearedAt is server flag, but skip if wasCleared exists (optimistic data)
     data.notifications?.forEach(n => {
       responseIds.add(n.id);
-      if (n.clearedAt) confirmedClearedIds.add(n.id);
+      if (n.clearedAt && !n.metadata?.wasCleared) confirmedClearedIds.add(n.id);
     });
-    // Check maintenance alerts - isAcknowledged is server flag from maintenance_alerts table
+    // Check maintenance alerts - isAcknowledged is server flag, but skip if wasCleared exists
     data.maintenanceAlerts?.forEach(a => {
       responseIds.add(a.id);
-      if (a.isAcknowledged) confirmedClearedIds.add(a.id);
+      if (a.isAcknowledged && !a.metadata?.wasCleared) confirmedClearedIds.add(a.id);
     });
-    // Check gap findings - clearedAt is server flag
+    // Check gap findings - clearedAt is server flag, but skip if wasCleared exists
     data.gapFindings?.forEach(f => {
       responseIds.add(f.id);
-      if (f.clearedAt) confirmedClearedIds.add(f.id);
+      if (f.clearedAt && !f.metadata?.wasCleared) confirmedClearedIds.add(f.id);
     });
     
     // Check pending IDs and confirm those that are cleared or vanished
@@ -1226,8 +1227,11 @@ export function NotificationsPopover() {
       
       // Don't remove from pending here - let reconcile confirm when server data shows cleared
       // This prevents race condition where stale refetch arrives before DB commit
-      // Invalidate queries to get fresh data from server
-      queryClient.invalidateQueries({ queryKey: ["/api/notifications/combined"] });
+      // Force refetch to get fresh data from server - use refetchType 'all' to ensure active queries update
+      queryClient.invalidateQueries({ 
+        queryKey: ["/api/notifications/combined"],
+        refetchType: 'all'
+      });
     },
     onError: (error, _, context: any) => {
       // Reset pending clear tracking on error (reactive state)
