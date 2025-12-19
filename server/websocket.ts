@@ -4094,10 +4094,13 @@ export function setupWebSocket(server: Server) {
             }
             notificationClients.get(effectiveWorkspaceId)!.set(userId, ws);
 
-            // Get initial unread count (use effectiveWorkspaceId for consistency)
-            const unreadCount = await storage.getUnreadNotificationCount(userId, effectiveWorkspaceId);
+            // Get initial unread count - MUST match REST API /api/notifications/combined totalUnread
+            // Include: notifications + platform updates to match the REST API exactly
+            const unreadNotifications = await storage.getTotalUnreadCountForUser(userId, effectiveWorkspaceId);
+            const unreadPlatformUpdates = await storage.getUnreadPlatformUpdatesCount(userId, effectiveWorkspaceId);
+            const unreadCount = unreadNotifications + unreadPlatformUpdates;
 
-            console.log(`✅ User ${userId} subscribed to notifications for workspace ${effectiveWorkspaceId} (${unreadCount} unread)`);
+            console.log(`✅ User ${userId} subscribed to notifications for workspace ${effectiveWorkspaceId} (${unreadCount} unread: ${unreadNotifications} notifs + ${unreadPlatformUpdates} updates)`);
 
             // Send confirmation with current unread count
             ws.send(JSON.stringify({
