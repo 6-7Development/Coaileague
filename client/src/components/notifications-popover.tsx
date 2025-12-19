@@ -1312,7 +1312,7 @@ export function NotificationsPopover() {
             <div>
               <h2 className={`font-bold ${compact ? 'text-sm' : 'text-base'} leading-tight text-white`}>Universal Notifications</h2>
               <span className={`${compact ? 'text-[10px]' : 'text-xs'} text-white/90 font-medium`}>
-                {user ? `${allNotifications.length} notification${allNotifications.length === 1 ? '' : 's'}` : 'Platform Updates'}
+                {user ? (totalUnread > 0 ? `${totalUnread} unread` : 'All caught up') : 'Platform Updates'}
               </span>
             </div>
           </div>
