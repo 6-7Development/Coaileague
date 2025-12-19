@@ -1301,7 +1301,6 @@ export function NotificationsPopover() {
     return ({ simplified = false, compact = false }: { simplified?: boolean; compact?: boolean }) => (
     <div 
       className="flex flex-col h-full min-h-0 overflow-hidden"
-      data-trinity-surface="notifications"
     >
       {/* UNS Header with Trinity Branding - Violet to Indigo Gradient */}
       <div className={`${compact ? 'px-3 py-2' : 'px-4 py-3'} border-b bg-gradient-to-r from-violet-600 to-indigo-600 flex-shrink-0`}>
