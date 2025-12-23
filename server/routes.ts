@@ -3032,6 +3032,172 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register Partner Integration OAuth routes (QuickBooks, Gusto)
   app.use('/api/integrations', integrationRouter);
 
+  // ============= QUICKBOOKS SYNC SERVICE ROUTES =============
+  const { quickbooksSyncService } = await import('./services/partners/quickbooksSyncService');
+
+  // Run initial sync on OAuth connect
+  app.post("/api/quickbooks/sync/initial", requireAuth, async (req, res) => {
+    try {
+      const workspaceId = req.user?.workspaceId;
+      if (!workspaceId) {
+        return res.status(400).json({ error: "Workspace required" });
+      }
+      const result = await quickbooksSyncService.runInitialSync(workspaceId, req.user!.id);
+      res.json(result);
+    } catch (error: any) {
+      console.error("[QBO Sync] Initial sync error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Create invoice with idempotency - Zod validated
+  const qboInvoiceSchema = z.object({
+    clientId: z.string().min(1, "clientId is required"),
+    weekEnding: z.string().refine((val) => !isNaN(Date.parse(val)), "weekEnding must be a valid date"),
+    lineItems: z.array(z.object({
+      description: z.string().min(1),
+      amount: z.number().positive(),
+      hours: z.number().positive().optional(),
+    })).min(1, "At least one line item is required"),
+  });
+
+  app.post("/api/quickbooks/invoice/create", requireAuth, async (req, res) => {
+    try {
+      const workspaceId = req.user?.workspaceId;
+      if (!workspaceId) {
+        return res.status(400).json({ error: "Workspace required" });
+      }
+      
+      const parseResult = qboInvoiceSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ 
+          error: "Validation failed", 
+          details: parseResult.error.issues 
+        });
+      }
+      
+      const { clientId, weekEnding, lineItems } = parseResult.data;
+      const result = await quickbooksSyncService.createInvoiceWithIdempotency(
+        workspaceId,
+        clientId,
+        new Date(weekEnding),
+        lineItems,
+        req.user!.id
+      );
+      res.json(result);
+    } catch (error: any) {
+      console.error("[QBO Sync] Invoice creation error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Run CDC poll for changes
+  app.post("/api/quickbooks/sync/cdc", requireAuth, async (req, res) => {
+    try {
+      const workspaceId = req.user?.workspaceId;
+      if (!workspaceId) {
+        return res.status(400).json({ error: "Workspace required" });
+      }
+      const { sinceDate } = req.body;
+      const result = await quickbooksSyncService.runCDCPoll(
+        workspaceId,
+        req.user!.id,
+        sinceDate ? new Date(sinceDate) : undefined
+      );
+      res.json(result);
+    } catch (error: any) {
+      console.error("[QBO Sync] CDC poll error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get manual review queue
+  app.get("/api/quickbooks/review-queue", requireAuth, async (req, res) => {
+    try {
+      const workspaceId = req.user?.workspaceId;
+      if (!workspaceId) {
+        return res.status(400).json({ error: "Workspace required" });
+      }
+      const status = (req.query.status as string) || 'pending';
+      const queue = await quickbooksSyncService.getManualReviewQueue(
+        workspaceId,
+        status as 'pending' | 'resolved' | 'skipped'
+      );
+      res.json({ queue });
+    } catch (error: any) {
+      console.error("[QBO Sync] Review queue error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Resolve manual review item
+  app.post("/api/quickbooks/review-queue/:itemId/resolve", requireAuth, async (req, res) => {
+    try {
+      const { itemId } = req.params;
+      const { resolution, selectedCoaileagueEntityId } = req.body;
+      if (!resolution) {
+        return res.status(400).json({ error: "resolution is required" });
+      }
+      await quickbooksSyncService.resolveManualReview(
+        itemId,
+        resolution,
+        selectedCoaileagueEntityId,
+        req.user!.id
+      );
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[QBO Sync] Review resolution error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Webhook handler for QuickBooks real-time updates
+  app.post("/api/webhooks/quickbooks", async (req, res) => {
+    try {
+      const signature = req.headers['intuit-signature'] as string;
+      if (!signature) {
+        console.log("[QBO Webhook] Missing signature header");
+        return res.status(401).json({ error: "Missing signature" });
+      }
+
+      const payload = JSON.stringify(req.body);
+      
+      // Find the connection and verify signature
+      const event = req.body;
+      if (event.eventNotifications && event.eventNotifications.length > 0) {
+        const realmId = event.eventNotifications[0]?.realmId;
+        if (realmId) {
+          const [connection] = await db.select()
+            .from(partnerConnections)
+            .where(eq(partnerConnections.realmId, realmId))
+            .limit(1);
+
+          if (connection && connection.webhookSecret) {
+            try {
+              const result = await quickbooksSyncService.handleWebhook(
+                signature,
+                payload,
+                connection.webhookSecret
+              );
+              console.log("[QBO Webhook] Processed entities:", result.entities);
+            } catch (verifyError: any) {
+              console.error("[QBO Webhook] Signature verification failed:", verifyError.message);
+              return res.status(401).json({ error: "Invalid signature" });
+            }
+          } else {
+            console.log("[QBO Webhook] No connection or secret found for realm:", realmId);
+          }
+        }
+      }
+      
+      res.status(200).send('OK');
+    } catch (error: any) {
+      console.error("[QBO Webhook] Error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+
   // Register Universal Time Tracking & Clock System
   app.use('/api/time-entries', timeEntryRouter);
 
