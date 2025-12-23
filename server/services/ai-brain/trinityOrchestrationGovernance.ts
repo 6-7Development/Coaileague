@@ -406,19 +406,19 @@ class AutomationApprovalGate {
     const approvalId = `approval-${domain}-${Date.now()}`;
     
     await db.insert(aiWorkflowApprovals).values({
-      workspaceId,
-      workflowType: `automation_${domain}`,
-      findingId: null,
+      id: approvalId,
       title: `${domain.charAt(0).toUpperCase() + domain.slice(1)} Automation Approval Required`,
-      description: `Action: ${actionDetails.type}\nAffected Records: ${actionDetails.affectedRecords}\nImpact: ${actionDetails.estimatedImpact}`,
+      description: `Action: ${actionDetails.type}\nAffected Records: ${actionDetails.affectedRecords}\nImpact: ${actionDetails.estimatedImpact}\nWorkspace: ${workspaceId}`,
+      endUserSummary: `Automated ${domain} operation requires your approval before proceeding.`,
       riskLevel: confidence < GOVERNANCE_CONFIG.highRiskThreshold ? 'high' : 'medium',
+      impactScope: 'workspace',
       affectedFiles: [],
       rollbackPlan: 'Revert to previous state via automation rollback',
       status: 'pending',
-      requestedBy: 'system-trinity',
-      requestedAt: new Date(),
-      metadata: {
+      requiredRole: 'org_admin',
+      proposedChanges: {
         domain,
+        workspaceId,
         riskSignals,
         confidence,
         actionDetails,
@@ -453,7 +453,6 @@ class AutomationApprovalGate {
         title: `${domain.charAt(0).toUpperCase() + domain.slice(1)} Automation Needs Approval`,
         message: `Action: ${actionDetails.type} affecting ${actionDetails.affectedRecords} records requires your approval.`,
         actionUrl: `/settings/automation-approvals?id=${approvalId}`,
-        priority: 'high',
         relatedEntityType: 'automation',
         relatedEntityId: approvalId,
         metadata: { domain, approvalId },

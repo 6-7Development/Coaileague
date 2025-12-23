@@ -301,6 +301,25 @@ process.on('SIGTERM', () => {
     console.error('[Server] Warning: Failed to initialize Orchestration Governance:', error);
   }
 
+  // Initialize Trinity Thought Engine - metacognition and self-awareness
+  try {
+    const { registerThoughtEngineActions } = await import('./services/ai-brain/trinityThoughtEngine');
+    registerThoughtEngineActions();
+    console.log('[Server] Trinity Thought Engine initialized - metacognition active');
+  } catch (error) {
+    console.error('[Server] Warning: Failed to initialize Thought Engine:', error);
+  }
+
+  // Initialize Approval Resume Orchestrator - handles resume-after-approval flow
+  try {
+    const { approvalResumeOrchestrator, registerApprovalResumeActions } = await import('./services/ai-brain/approvalResumeOrchestrator');
+    registerApprovalResumeActions();
+    approvalResumeOrchestrator.start();
+    console.log('[Server] Approval Resume Orchestrator initialized - email escalations active');
+  } catch (error) {
+    console.error('[Server] Warning: Failed to initialize Approval Resume Orchestrator:', error);
+  }
+
   // Initialize Trinity Agent Parity Layer - Replit Agent-equivalent capabilities
   try {
     const { trinityAgentParityLayer } = await import('./services/ai-brain/trinityAgentParityLayer');
