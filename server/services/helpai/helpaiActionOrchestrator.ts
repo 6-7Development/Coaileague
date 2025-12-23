@@ -20,6 +20,7 @@ import { notifications, platformUpdates, maintenanceAlerts, systemAuditLogs } fr
 import { eq, and, desc, gte } from 'drizzle-orm';
 import { automationGovernanceService, type ActionContext, type ConfidenceFactors } from '../ai-brain/automationGovernanceService';
 import { knowledgeOrchestrationService } from '../ai-brain/knowledgeOrchestrationService';
+import { idempotencyService, registerIdempotencyActions } from '../ai-brain/idempotencyService';
 
 // ============================================================================
 // ACTION TYPES & INTERFACES
@@ -933,6 +934,9 @@ class HelpaiActionOrchestrator {
       }
     });
 
+    // Register idempotency management actions
+    registerIdempotencyActions(this);
+
     console.log(`[HelpAI Orchestrator] Registered ${ACTION_REGISTRY.size} built-in actions`);
   }
 
@@ -1098,6 +1102,47 @@ class HelpaiActionOrchestrator {
     }
 
     // ============================================================================
+    // IDEMPOTENCY CHECK - Prevent duplicate action execution
+    // ============================================================================
+    const requiresIdempotency = ['payroll', 'invoicing', 'billing', 'notifications', 'scheduling'].includes(handler.category);
+    let idempotencyKey: string | null = null;
+    
+    if (requiresIdempotency && !request.isTestMode) {
+      idempotencyKey = idempotencyService.generateKey({
+        category: 'action',
+        actionId: request.actionId,
+        workspaceId: request.workspaceId,
+        userId: request.userId,
+        payload: request.payload,
+      });
+      
+      const idempotencyCheck = idempotencyService.checkAndMark(idempotencyKey, {
+        category: 'action',
+        workspaceId: request.workspaceId,
+        userId: request.userId,
+      });
+      
+      if (!idempotencyCheck.isNew) {
+        console.log(`[HelpAI Orchestrator] Duplicate action detected: ${request.actionId} (key: ${idempotencyKey})`);
+        
+        if (idempotencyCheck.cachedResult) {
+          return {
+            ...idempotencyCheck.cachedResult,
+            message: `${idempotencyCheck.cachedResult.message} (cached)`,
+          };
+        }
+        
+        return {
+          success: false,
+          actionId: request.actionId,
+          message: `Duplicate action detected - operation already in progress`,
+          data: { idempotencyKey, expiresAt: idempotencyCheck.expiresAt },
+          executionTimeMs: Date.now() - startTime,
+        };
+      }
+    }
+
+    // ============================================================================
     // TRINITY AI INTEGRATION - Pre-Action Reasoning
     // ============================================================================
     let preActionDecision = null;
@@ -1121,6 +1166,12 @@ class HelpaiActionOrchestrator {
           
           if (preActionDecision && !preActionDecision.shouldProceed) {
             console.log(`[HelpAI Orchestrator] Trinity blocked action: ${handler.name} - ${preActionDecision.rationale}`);
+            
+            // Mark idempotency as failed so it can be retried
+            if (idempotencyKey) {
+              idempotencyService.markFailed(idempotencyKey, 'Blocked by Trinity');
+            }
+            
             return {
               success: false,
               actionId: request.actionId,
@@ -1232,6 +1283,11 @@ class HelpaiActionOrchestrator {
         };
       }
 
+      // Store idempotency result for caching
+      if (idempotencyKey) {
+        idempotencyService.storeResult(idempotencyKey, result, result.success);
+      }
+
       return result;
     } catch (error: any) {
       const errorResult: ActionResult = {
@@ -1250,6 +1306,11 @@ class HelpaiActionOrchestrator {
           errorDetails: error.message,
           executionTimeMs: Date.now() - startTime,
         });
+      }
+      
+      // Mark idempotency as failed to allow retry
+      if (idempotencyKey) {
+        idempotencyService.markFailed(idempotencyKey, error.message);
       }
       
       // Notify support of failed action if critical
