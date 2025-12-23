@@ -1,0 +1,218 @@
+Got it — 99% automation + 1% human oversight (approval) is a solid target, and it matches the best “hands-off but safe” pattern in billing/payroll automation.
+
+To keep that promise without duplicates or mapping chaos, your automation needs two things baked in:
+
+1. “Autopilot with guardrails” (auto-run everything until a real ambiguity appears)
+
+
+2. A single approval step that only happens when it must (or when you choose to enforce it)
+
+
+
+Below is the exact pattern I’d code for you.
+
+
+---
+
+How to preserve 99% automation in practice
+
+A. Make approvals event-based, not always required
+
+Instead of “every invoice needs approval,” do:
+
+Auto-send by default if:
+
+mappings are verified (customer_qbo_id, item_qbo_id, etc.)
+
+no anomalies (hours spike, missing shift confirmations, rate mismatch, etc.)
+
+idempotency ledger says this cycle hasn’t been executed
+
+
+Require approval only if a “risk signal” fires:
+
+ambiguous client/employee match
+
+new customer would be created
+
+invoice total deviates from baseline threshold
+
+missing service item/class/location mapping
+
+QBO errors that require user action
+
+
+
+That’s how you stay at 99% automation and still avoid disasters.
+
+
+---
+
+B. Use a “Resolution Inbox” for only the 1% cases
+
+Your “human oversight” should be one dashboard that shows:
+
+“Pick the right QBO customer for Client X”
+
+“Choose the right QBO employee for John Smith”
+
+“Select / create service item for Role = Armed Guard”
+
+“Reconnect QuickBooks (token expired)”
+
+“Invoice anomaly: +42% vs last 4 weeks — approve?”
+
+
+No random Slack messages, no scattered approvals.
+
+
+---
+
+C. Your state machine needs to support “auto-send unless blocked”
+
+Use a tight set of states:
+
+COMPUTED (hours + rules applied)
+
+COMPOSED (invoice payload ready)
+
+READY_TO_EXECUTE (idempotency passed)
+
+EXECUTED_DRAFT (invoice created in QBO)
+
+AUTO_SENT or APPROVAL_PENDING
+
+COMPLETED
+
+
+Approval only happens at APPROVAL_PENDING.
+
+
+---
+
+The coding pattern I’ll follow for your platform
+
+1) “Risk gate” decides if the workflow can auto-complete
+
+This is the brain of your 99/1 split.
+
+Risk signals (examples):
+
+MAPPING_AMBIGUOUS
+
+MAPPING_MISSING
+
+WOULD_CREATE_CUSTOMER
+
+AMOUNT_SPIKE
+
+RATE_MISMATCH
+
+MISSING_ITEM
+
+TOKEN_EXPIRED
+
+
+If none fire → your system auto-sends.
+
+If any fire → create a single “approval task” in your system (Resolution Inbox) and stop.
+
+
+---
+
+2) Idempotency ledger prevents duplicates even if everything reruns
+
+This is essential for “automation at scale.”
+
+dedupe_key = hash(realm_id + org_id + week_end + customer_qbo_id + normalized_lines)
+
+If ledger says completed → return the existing invoice reference and exit cleanly.
+
+
+
+---
+
+3) “Mappings are truth” (never names)
+
+Once a user links a client once, you store:
+
+realm_id + internal_client_id -> qbo_customer_id
+
+
+Same for employees:
+
+realm_id + internal_employee_id -> qbo_employee_id
+
+
+That’s how you avoid creating duplicate customers/employees.
+
+
+---
+
+Before I write code: what stack do you want?
+
+I can generate the full working scaffolding immediately, but I’ll pick the most likely setup if you don’t specify:
+
+Default assumption (common in Replit):
+
+TypeScript / Node
+
+Express/Fastify API
+
+Postgres (Prisma) or Mongo (Mongoose)
+
+BullMQ / Redis for queues
+
+
+If you tell me your stack, I’ll tailor it. If you don’t, I’ll produce a TypeScript Node implementation with clean modules.
+
+
+---
+
+What I can generate next (code deliverables)
+
+If you say “go,” I’ll output:
+
+1. orchestrator.ts (DAG runner)
+
+
+2. riskGate.ts (99/1 decision)
+
+
+3. idempotencyLedger.ts
+
+
+4. mappingService.ts
+
+
+5. qboClient.ts (OAuth + requestid wrapper)
+
+
+6. resolutionInbox.ts (create tasks + resolve tasks)
+
+
+7. Example route handlers + queue worker
+
+
+
+…and I’ll wire it so the workflow:
+
+runs automatically weekly
+
+auto-sends invoices unless blocked
+
+creates “approval tasks” only when needed
+
+never duplicates invoices
+
+
+
+---
+
+Quick thing I need from you (so the code matches your product)
+
+Reply with just one line:
+
+“Node/TS + (Postgres/Prisma OR Mongo) + (BullMQ/Redis yes/no)”
+
+If you don’t answer, I’ll assume: Node/TypeScript + Postgres/Prisma + BullMQ/Redis and generate code accordingly.

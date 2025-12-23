@@ -1,0 +1,1046 @@
+import { db } from '../../db';
+import { 
+  partnerConnections, 
+  partnerDataMappings,
+  partnerInvoiceIdempotency,
+  partnerSyncLogs,
+  partnerManualReviewQueue,
+  clients,
+  employees,
+  timeEntries,
+  invoices,
+  InsertPartnerDataMapping,
+  InsertPartnerInvoiceIdempotency,
+  InsertPartnerSyncLog,
+  InsertPartnerManualReviewQueue,
+} from '@shared/schema';
+import { eq, and, or, ilike, gte, lte, desc, isNull } from 'drizzle-orm';
+import { quickbooksOAuthService } from '../oauth/quickbooks';
+import { platformEventBus } from '../platformEventBus';
+import crypto from 'crypto';
+
+const QBO_API_BASE = 'https://quickbooks.api.intuit.com/v3/company';
+
+interface QBOCustomer {
+  Id: string;
+  SyncToken: string;
+  DisplayName: string;
+  GivenName?: string;
+  FamilyName?: string;
+  CompanyName?: string;
+  PrimaryEmailAddr?: { Address: string };
+  PrimaryPhone?: { FreeFormNumber: string };
+  Active?: boolean;
+}
+
+interface QBOEmployee {
+  Id: string;
+  SyncToken: string;
+  DisplayName: string;
+  GivenName?: string;
+  FamilyName?: string;
+  PrimaryEmailAddr?: { Address: string };
+  PrimaryPhone?: { FreeFormNumber: string };
+  Active?: boolean;
+}
+
+interface EntityMatch {
+  coaileagueEntityId: string;
+  coaileagueEntityName: string;
+  coaileagueEmail?: string;
+  partnerEntityId: string;
+  partnerEntityName: string;
+  partnerEmail?: string;
+  confidence: number;
+  matchType: 'email_exact' | 'name_exact' | 'name_fuzzy' | 'ambiguous' | 'no_match';
+  ambiguousCandidates?: { id: string; name: string; email?: string }[];
+}
+
+interface SyncResult {
+  success: boolean;
+  jobId: string;
+  recordsProcessed: number;
+  recordsMatched: number;
+  recordsCreated: number;
+  recordsReviewRequired: number;
+  errors: string[];
+  durationMs: number;
+}
+
+export class QuickBooksSyncService {
+  
+  private async getConnection(workspaceId: string) {
+    const [connection] = await db.select()
+      .from(partnerConnections)
+      .where(
+        and(
+          eq(partnerConnections.workspaceId, workspaceId),
+          eq(partnerConnections.partnerType, 'quickbooks'),
+          eq(partnerConnections.status, 'connected')
+        )
+      )
+      .limit(1);
+
+    if (!connection) {
+      throw new Error('No active QuickBooks connection found');
+    }
+
+    return connection;
+  }
+
+  private async getAccessToken(connectionId: string): Promise<string> {
+    return await quickbooksOAuthService.getValidAccessToken(connectionId);
+  }
+
+  private async makeRequest<T>(
+    method: 'GET' | 'POST',
+    endpoint: string,
+    realmId: string,
+    accessToken: string,
+    body?: any
+  ): Promise<T> {
+    const url = `${QBO_API_BASE}/${realmId}${endpoint}`;
+
+    const response = await fetch(url, {
+      method,
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`QuickBooks API error (${response.status}): ${error}`);
+    }
+
+    return await response.json();
+  }
+
+  private async queryWithPagination<T>(
+    entityType: string,
+    realmId: string,
+    accessToken: string,
+    whereClause: string = 'where Active = true'
+  ): Promise<T[]> {
+    const pageSize = 1000;
+    let startPosition = 1;
+    let allRecords: T[] = [];
+    let hasMore = true;
+
+    while (hasMore) {
+      const query = `select * from ${entityType} ${whereClause} STARTPOSITION ${startPosition} MAXRESULTS ${pageSize}`;
+      const response = await this.makeRequest<{ QueryResponse: Record<string, T[]> }>(
+        'GET',
+        `/query?query=${encodeURIComponent(query)}`,
+        realmId,
+        accessToken
+      );
+
+      const records = response.QueryResponse[entityType] || [];
+      allRecords = allRecords.concat(records);
+
+      if (records.length < pageSize) {
+        hasMore = false;
+      } else {
+        startPosition += pageSize;
+      }
+    }
+
+    return allRecords;
+  }
+
+  private async createSyncLog(
+    data: Omit<InsertPartnerSyncLog, 'id' | 'createdAt'>
+  ): Promise<string> {
+    const [log] = await db.insert(partnerSyncLogs).values({
+      ...data,
+      startedAt: new Date(),
+    }).returning();
+    return log.id;
+  }
+
+  private async updateSyncLog(
+    jobId: string,
+    updates: Partial<InsertPartnerSyncLog>
+  ): Promise<void> {
+    await db.update(partnerSyncLogs)
+      .set({
+        ...updates,
+        completedAt: updates.status === 'completed' || updates.status === 'failed' ? new Date() : undefined,
+      })
+      .where(eq(partnerSyncLogs.id, jobId));
+  }
+
+  async runInitialSync(
+    workspaceId: string,
+    userId: string
+  ): Promise<SyncResult> {
+    const startTime = Date.now();
+    const connection = await this.getConnection(workspaceId);
+    const accessToken = await this.getAccessToken(connection.id);
+    const realmId = connection.realmId!;
+
+    const jobId = await this.createSyncLog({
+      workspaceId,
+      partnerConnectionId: connection.id,
+      jobType: 'initial_sync',
+      entityType: 'all',
+      status: 'running',
+      triggeredBy: userId,
+    });
+
+    let recordsProcessed = 0;
+    let recordsMatched = 0;
+    let recordsCreated = 0;
+    let recordsReviewRequired = 0;
+    const errors: string[] = [];
+
+    try {
+      const customerResult = await this.syncQBOCustomers(
+        workspaceId,
+        connection.id,
+        realmId,
+        accessToken,
+        userId
+      );
+      
+      recordsProcessed += customerResult.processed;
+      recordsMatched += customerResult.matched;
+      recordsCreated += customerResult.created;
+      recordsReviewRequired += customerResult.reviewRequired;
+      errors.push(...customerResult.errors);
+
+      const employeeResult = await this.syncQBOEmployees(
+        workspaceId,
+        connection.id,
+        realmId,
+        accessToken,
+        userId
+      );
+      
+      recordsProcessed += employeeResult.processed;
+      recordsMatched += employeeResult.matched;
+      recordsCreated += employeeResult.created;
+      recordsReviewRequired += employeeResult.reviewRequired;
+      errors.push(...employeeResult.errors);
+
+      await this.updateSyncLog(jobId, {
+        status: errors.length > 0 ? 'partial' : 'completed',
+        recordsProcessed,
+        recordsCreated,
+        recordsFailed: errors.length,
+        errorDetails: errors.length > 0 ? { errors } : null,
+      });
+
+      platformEventBus.emit({
+        type: 'ai_brain_action',
+        data: {
+          action: 'quickbooks.initial_sync_complete',
+          workspaceId,
+          jobId,
+          recordsProcessed,
+          recordsMatched,
+          recordsCreated,
+          recordsReviewRequired,
+        },
+        timestamp: new Date(),
+      });
+
+      return {
+        success: errors.length === 0,
+        jobId,
+        recordsProcessed,
+        recordsMatched,
+        recordsCreated,
+        recordsReviewRequired,
+        errors,
+        durationMs: Date.now() - startTime,
+      };
+    } catch (error: any) {
+      await this.updateSyncLog(jobId, {
+        status: 'failed',
+        errorDetails: { message: error.message },
+      });
+
+      return {
+        success: false,
+        jobId,
+        recordsProcessed,
+        recordsMatched,
+        recordsCreated,
+        recordsReviewRequired,
+        errors: [error.message],
+        durationMs: Date.now() - startTime,
+      };
+    }
+  }
+
+  private async syncQBOCustomers(
+    workspaceId: string,
+    connectionId: string,
+    realmId: string,
+    accessToken: string,
+    userId: string
+  ): Promise<{ processed: number; matched: number; created: number; reviewRequired: number; errors: string[] }> {
+    const qboCustomers = await this.queryWithPagination<QBOCustomer>(
+      'Customer',
+      realmId,
+      accessToken,
+      'where Active = true'
+    );
+    const coaileagueClients = await db.select().from(clients)
+      .where(eq(clients.workspaceId, workspaceId));
+
+    let matched = 0;
+    let created = 0;
+    let reviewRequired = 0;
+    const errors: string[] = [];
+
+    for (const qboCustomer of qboCustomers) {
+      try {
+        const match = this.findBestClientMatch(qboCustomer, coaileagueClients);
+
+        if (match.matchType === 'email_exact' || match.matchType === 'name_exact') {
+          await this.createOrUpdateMapping(
+            workspaceId,
+            connectionId,
+            'client',
+            match.coaileagueEntityId,
+            qboCustomer.Id,
+            qboCustomer.DisplayName,
+            qboCustomer.SyncToken,
+            qboCustomer.PrimaryEmailAddr?.Address,
+            match.confidence,
+            userId
+          );
+          matched++;
+        } else if (match.matchType === 'name_fuzzy' || match.matchType === 'ambiguous') {
+          await this.createManualReviewItem(
+            workspaceId,
+            connectionId,
+            'client',
+            match.coaileagueEntityId,
+            match.coaileagueEntityName,
+            qboCustomer.Id,
+            qboCustomer.DisplayName,
+            qboCustomer.PrimaryEmailAddr?.Address,
+            match.confidence,
+            match.ambiguousCandidates || [],
+            userId
+          );
+          reviewRequired++;
+        }
+      } catch (error: any) {
+        errors.push(`Customer ${qboCustomer.DisplayName}: ${error.message}`);
+      }
+    }
+
+    return { processed: qboCustomers.length, matched, created, reviewRequired, errors };
+  }
+
+  private async syncQBOEmployees(
+    workspaceId: string,
+    connectionId: string,
+    realmId: string,
+    accessToken: string,
+    userId: string
+  ): Promise<{ processed: number; matched: number; created: number; reviewRequired: number; errors: string[] }> {
+    const qboEmployees = await this.queryWithPagination<QBOEmployee>(
+      'Employee',
+      realmId,
+      accessToken,
+      'where Active = true'
+    );
+    const coaileagueEmployees = await db.select().from(employees)
+      .where(eq(employees.workspaceId, workspaceId));
+
+    let matched = 0;
+    let created = 0;
+    let reviewRequired = 0;
+    const errors: string[] = [];
+
+    for (const qboEmployee of qboEmployees) {
+      try {
+        const match = this.findBestEmployeeMatch(qboEmployee, coaileagueEmployees);
+
+        if (match.matchType === 'email_exact' || match.matchType === 'name_exact') {
+          await this.createOrUpdateMapping(
+            workspaceId,
+            connectionId,
+            'employee',
+            match.coaileagueEntityId,
+            qboEmployee.Id,
+            qboEmployee.DisplayName,
+            qboEmployee.SyncToken,
+            qboEmployee.PrimaryEmailAddr?.Address,
+            match.confidence,
+            userId
+          );
+          matched++;
+        } else if (match.matchType === 'name_fuzzy' || match.matchType === 'ambiguous') {
+          await this.createManualReviewItem(
+            workspaceId,
+            connectionId,
+            'employee',
+            match.coaileagueEntityId,
+            match.coaileagueEntityName,
+            qboEmployee.Id,
+            qboEmployee.DisplayName,
+            qboEmployee.PrimaryEmailAddr?.Address,
+            match.confidence,
+            match.ambiguousCandidates || [],
+            userId
+          );
+          reviewRequired++;
+        }
+      } catch (error: any) {
+        errors.push(`Employee ${qboEmployee.DisplayName}: ${error.message}`);
+      }
+    }
+
+    return { processed: qboEmployees.length, matched, created, reviewRequired, errors };
+  }
+
+  private findBestClientMatch(
+    qboCustomer: QBOCustomer,
+    coaileagueClients: any[]
+  ): EntityMatch {
+    const qboEmail = qboCustomer.PrimaryEmailAddr?.Address?.toLowerCase();
+    const qboName = qboCustomer.DisplayName.toLowerCase();
+
+    if (qboEmail) {
+      const emailMatch = coaileagueClients.find(c => 
+        c.contactEmail?.toLowerCase() === qboEmail
+      );
+      if (emailMatch) {
+        return {
+          coaileagueEntityId: emailMatch.id,
+          coaileagueEntityName: emailMatch.name,
+          coaileagueEmail: emailMatch.contactEmail,
+          partnerEntityId: qboCustomer.Id,
+          partnerEntityName: qboCustomer.DisplayName,
+          partnerEmail: qboEmail,
+          confidence: 1.0,
+          matchType: 'email_exact',
+        };
+      }
+    }
+
+    const nameMatches = coaileagueClients.filter(c => 
+      c.name.toLowerCase() === qboName ||
+      c.companyName?.toLowerCase() === qboName
+    );
+
+    if (nameMatches.length === 1) {
+      return {
+        coaileagueEntityId: nameMatches[0].id,
+        coaileagueEntityName: nameMatches[0].name,
+        coaileagueEmail: nameMatches[0].contactEmail,
+        partnerEntityId: qboCustomer.Id,
+        partnerEntityName: qboCustomer.DisplayName,
+        partnerEmail: qboEmail,
+        confidence: 0.9,
+        matchType: 'name_exact',
+      };
+    }
+
+    const fuzzyMatches = coaileagueClients.filter(c => 
+      this.fuzzyNameMatch(c.name, qboCustomer.DisplayName) > 0.7 ||
+      (c.companyName && this.fuzzyNameMatch(c.companyName, qboCustomer.DisplayName) > 0.7)
+    );
+
+    if (fuzzyMatches.length === 1) {
+      return {
+        coaileagueEntityId: fuzzyMatches[0].id,
+        coaileagueEntityName: fuzzyMatches[0].name,
+        coaileagueEmail: fuzzyMatches[0].contactEmail,
+        partnerEntityId: qboCustomer.Id,
+        partnerEntityName: qboCustomer.DisplayName,
+        partnerEmail: qboEmail,
+        confidence: 0.75,
+        matchType: 'name_fuzzy',
+      };
+    }
+
+    if (fuzzyMatches.length > 1) {
+      return {
+        coaileagueEntityId: fuzzyMatches[0].id,
+        coaileagueEntityName: fuzzyMatches[0].name,
+        coaileagueEmail: fuzzyMatches[0].contactEmail,
+        partnerEntityId: qboCustomer.Id,
+        partnerEntityName: qboCustomer.DisplayName,
+        partnerEmail: qboEmail,
+        confidence: 0.5,
+        matchType: 'ambiguous',
+        ambiguousCandidates: fuzzyMatches.map(m => ({
+          id: m.id,
+          name: m.name,
+          email: m.contactEmail,
+        })),
+      };
+    }
+
+    return {
+      coaileagueEntityId: '',
+      coaileagueEntityName: '',
+      partnerEntityId: qboCustomer.Id,
+      partnerEntityName: qboCustomer.DisplayName,
+      partnerEmail: qboEmail,
+      confidence: 0,
+      matchType: 'no_match',
+    };
+  }
+
+  private findBestEmployeeMatch(
+    qboEmployee: QBOEmployee,
+    coaileagueEmployees: any[]
+  ): EntityMatch {
+    const qboEmail = qboEmployee.PrimaryEmailAddr?.Address?.toLowerCase();
+    const qboName = qboEmployee.DisplayName.toLowerCase();
+    const qboFirst = qboEmployee.GivenName?.toLowerCase();
+    const qboLast = qboEmployee.FamilyName?.toLowerCase();
+
+    if (qboEmail) {
+      const emailMatch = coaileagueEmployees.find(e => 
+        e.email?.toLowerCase() === qboEmail
+      );
+      if (emailMatch) {
+        return {
+          coaileagueEntityId: emailMatch.id,
+          coaileagueEntityName: `${emailMatch.firstName} ${emailMatch.lastName}`,
+          coaileagueEmail: emailMatch.email,
+          partnerEntityId: qboEmployee.Id,
+          partnerEntityName: qboEmployee.DisplayName,
+          partnerEmail: qboEmail,
+          confidence: 1.0,
+          matchType: 'email_exact',
+        };
+      }
+    }
+
+    const nameMatches = coaileagueEmployees.filter(e => {
+      const fullName = `${e.firstName} ${e.lastName}`.toLowerCase();
+      return fullName === qboName ||
+        (qboFirst && qboLast && 
+         e.firstName?.toLowerCase() === qboFirst && 
+         e.lastName?.toLowerCase() === qboLast);
+    });
+
+    if (nameMatches.length === 1) {
+      return {
+        coaileagueEntityId: nameMatches[0].id,
+        coaileagueEntityName: `${nameMatches[0].firstName} ${nameMatches[0].lastName}`,
+        coaileagueEmail: nameMatches[0].email,
+        partnerEntityId: qboEmployee.Id,
+        partnerEntityName: qboEmployee.DisplayName,
+        partnerEmail: qboEmail,
+        confidence: 0.9,
+        matchType: 'name_exact',
+      };
+    }
+
+    if (nameMatches.length > 1) {
+      return {
+        coaileagueEntityId: nameMatches[0].id,
+        coaileagueEntityName: `${nameMatches[0].firstName} ${nameMatches[0].lastName}`,
+        coaileagueEmail: nameMatches[0].email,
+        partnerEntityId: qboEmployee.Id,
+        partnerEntityName: qboEmployee.DisplayName,
+        partnerEmail: qboEmail,
+        confidence: 0.5,
+        matchType: 'ambiguous',
+        ambiguousCandidates: nameMatches.map(m => ({
+          id: m.id,
+          name: `${m.firstName} ${m.lastName}`,
+          email: m.email,
+        })),
+      };
+    }
+
+    return {
+      coaileagueEntityId: '',
+      coaileagueEntityName: '',
+      partnerEntityId: qboEmployee.Id,
+      partnerEntityName: qboEmployee.DisplayName,
+      partnerEmail: qboEmail,
+      confidence: 0,
+      matchType: 'no_match',
+    };
+  }
+
+  private fuzzyNameMatch(a: string, b: string): number {
+    const aLower = a.toLowerCase().trim();
+    const bLower = b.toLowerCase().trim();
+    
+    if (aLower === bLower) return 1.0;
+    if (aLower.includes(bLower) || bLower.includes(aLower)) return 0.85;
+    
+    const aWords = new Set(aLower.split(/\s+/));
+    const bWords = new Set(bLower.split(/\s+/));
+    const intersection = [...aWords].filter(w => bWords.has(w));
+    
+    if (intersection.length > 0) {
+      return intersection.length / Math.max(aWords.size, bWords.size);
+    }
+    
+    return 0;
+  }
+
+  private async createOrUpdateMapping(
+    workspaceId: string,
+    connectionId: string,
+    entityType: string,
+    coaileagueEntityId: string,
+    partnerEntityId: string,
+    partnerEntityName: string,
+    syncToken: string,
+    matchEmail: string | undefined,
+    confidence: number,
+    userId: string
+  ): Promise<void> {
+    const [existing] = await db.select()
+      .from(partnerDataMappings)
+      .where(
+        and(
+          eq(partnerDataMappings.workspaceId, workspaceId),
+          eq(partnerDataMappings.partnerType, 'quickbooks'),
+          eq(partnerDataMappings.entityType, entityType),
+          eq(partnerDataMappings.coaileagueEntityId, coaileagueEntityId)
+        )
+      )
+      .limit(1);
+
+    if (existing) {
+      await db.update(partnerDataMappings)
+        .set({
+          partnerEntityId,
+          partnerEntityName,
+          syncToken,
+          matchEmail,
+          matchConfidence: confidence,
+          syncStatus: 'synced',
+          lastSyncAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(partnerDataMappings.id, existing.id));
+    } else {
+      await db.insert(partnerDataMappings).values({
+        workspaceId,
+        partnerConnectionId: connectionId,
+        partnerType: 'quickbooks',
+        entityType,
+        coaileagueEntityId,
+        partnerEntityId,
+        partnerEntityName,
+        syncToken,
+        matchEmail,
+        matchConfidence: confidence,
+        syncStatus: 'synced',
+        lastSyncAt: new Date(),
+        mappingSource: 'auto',
+        createdBy: userId,
+      });
+    }
+  }
+
+  private async createManualReviewItem(
+    workspaceId: string,
+    connectionId: string,
+    entityType: string,
+    coaileagueEntityId: string,
+    coaileagueEntityName: string,
+    partnerEntityId: string,
+    partnerEntityName: string,
+    partnerEmail: string | undefined,
+    confidence: number,
+    candidates: { id: string; name: string; email?: string }[],
+    userId: string
+  ): Promise<void> {
+    const [existing] = await db.select()
+      .from(partnerManualReviewQueue)
+      .where(
+        and(
+          eq(partnerManualReviewQueue.workspaceId, workspaceId),
+          eq(partnerManualReviewQueue.partnerEntityId, partnerEntityId),
+          eq(partnerManualReviewQueue.status, 'pending')
+        )
+      )
+      .limit(1);
+
+    if (existing) {
+      return;
+    }
+
+    await db.insert(partnerManualReviewQueue).values({
+      workspaceId,
+      partnerConnectionId: connectionId,
+      entityType,
+      coaileagueEntityId,
+      coaileagueEntityName,
+      partnerEntityId,
+      partnerEntityName,
+      partnerEmail,
+      matchConfidence: confidence,
+      candidateMatches: candidates,
+      status: 'pending',
+    });
+  }
+
+  generateInvoiceRequestId(
+    realmId: string,
+    weekEnding: Date,
+    clientQboId: string,
+    lineItems: { description: string; amount: number }[]
+  ): string {
+    const linesHash = crypto.createHash('sha256')
+      .update(JSON.stringify(lineItems.map(l => ({ d: l.description, a: l.amount }))))
+      .digest('hex')
+      .substring(0, 8);
+    
+    const weekEndingStr = weekEnding.toISOString().split('T')[0];
+    
+    return `invoice:${realmId}:${weekEndingStr}:${clientQboId}:${linesHash}`;
+  }
+
+  async createInvoiceWithIdempotency(
+    workspaceId: string,
+    clientId: string,
+    weekEnding: Date,
+    lineItems: { description: string; amount: number; hours?: number }[],
+    userId: string
+  ): Promise<{ invoiceId: string; wasCreated: boolean }> {
+    const connection = await this.getConnection(workspaceId);
+    const accessToken = await this.getAccessToken(connection.id);
+    const realmId = connection.realmId!;
+
+    const [clientMapping] = await db.select()
+      .from(partnerDataMappings)
+      .where(
+        and(
+          eq(partnerDataMappings.workspaceId, workspaceId),
+          eq(partnerDataMappings.partnerType, 'quickbooks'),
+          eq(partnerDataMappings.entityType, 'client'),
+          eq(partnerDataMappings.coaileagueEntityId, clientId)
+        )
+      )
+      .limit(1);
+
+    if (!clientMapping) {
+      throw new Error('Client not mapped to QuickBooks. Please sync client first.');
+    }
+
+    const requestId = this.generateInvoiceRequestId(
+      realmId,
+      weekEnding,
+      clientMapping.partnerEntityId,
+      lineItems
+    );
+
+    const [existingRequest] = await db.select()
+      .from(partnerInvoiceIdempotency)
+      .where(
+        and(
+          eq(partnerInvoiceIdempotency.partnerConnectionId, connection.id),
+          eq(partnerInvoiceIdempotency.requestId, requestId)
+        )
+      )
+      .limit(1);
+
+    if (existingRequest) {
+      if (existingRequest.status === 'completed' && existingRequest.qboInvoiceId) {
+        return { invoiceId: existingRequest.qboInvoiceId, wasCreated: false };
+      }
+
+      if (existingRequest.status === 'processing') {
+        throw new Error('Invoice creation already in progress');
+      }
+    }
+
+    const [idempotencyRecord] = existingRequest 
+      ? [existingRequest]
+      : await db.insert(partnerInvoiceIdempotency).values({
+          workspaceId,
+          partnerConnectionId: connection.id,
+          requestId,
+          weekEnding,
+          clientQboId: clientMapping.partnerEntityId,
+          linesHash: requestId.split(':').pop()!,
+          status: 'processing',
+        }).returning();
+
+    try {
+      const totalAmount = lineItems.reduce((sum, l) => sum + l.amount, 0);
+
+      const qboInvoice = {
+        TxnDate: weekEnding.toISOString().split('T')[0],
+        CustomerRef: { value: clientMapping.partnerEntityId },
+        Line: lineItems.map(item => ({
+          DetailType: 'SalesItemLineDetail',
+          Amount: item.amount,
+          Description: item.description,
+          SalesItemLineDetail: {
+            ItemRef: { value: '1', name: 'Services' },
+            Qty: item.hours || 1,
+            UnitPrice: item.hours ? item.amount / item.hours : item.amount,
+          },
+        })),
+      };
+
+      const response = await this.makeRequest<{ Invoice: { Id: string; SyncToken: string } }>(
+        'POST',
+        '/invoice',
+        realmId,
+        accessToken,
+        qboInvoice
+      );
+
+      await db.update(partnerInvoiceIdempotency)
+        .set({
+          status: 'completed',
+          qboInvoiceId: response.Invoice.Id,
+          qboSyncToken: response.Invoice.SyncToken,
+          completedAt: new Date(),
+        })
+        .where(eq(partnerInvoiceIdempotency.id, idempotencyRecord.id));
+
+      return { invoiceId: response.Invoice.Id, wasCreated: true };
+
+    } catch (error: any) {
+      await db.update(partnerInvoiceIdempotency)
+        .set({
+          status: 'failed',
+          errorMessage: error.message,
+          retryCount: (existingRequest?.retryCount || 0) + 1,
+        })
+        .where(eq(partnerInvoiceIdempotency.id, idempotencyRecord.id));
+
+      throw error;
+    }
+  }
+
+  async handleWebhook(
+    signature: string,
+    payload: string,
+    webhookSecret: string
+  ): Promise<{ processed: boolean; entities: string[] }> {
+    const computedSignature = crypto
+      .createHmac('sha256', webhookSecret)
+      .update(payload)
+      .digest('base64');
+
+    if (signature !== computedSignature) {
+      throw new Error('Invalid webhook signature');
+    }
+
+    const event = JSON.parse(payload);
+    const entities: string[] = [];
+
+    if (event.eventNotifications) {
+      for (const notification of event.eventNotifications) {
+        const realmId = notification.realmId;
+        const dataChangeEvents = notification.dataChangeEvent?.entities || [];
+
+        for (const entity of dataChangeEvents) {
+          entities.push(`${entity.name}:${entity.id}`);
+          
+          await this.processWebhookEntity(realmId, entity);
+        }
+      }
+    }
+
+    return { processed: true, entities };
+  }
+
+  private async processWebhookEntity(
+    realmId: string,
+    entity: { name: string; id: string; operation: string }
+  ): Promise<void> {
+    const [connection] = await db.select()
+      .from(partnerConnections)
+      .where(eq(partnerConnections.realmId, realmId))
+      .limit(1);
+
+    if (!connection) {
+      console.log(`[QBO Webhook] No connection found for realm ${realmId}`);
+      return;
+    }
+
+    if (entity.name === 'Customer' || entity.name === 'Employee') {
+      await db.update(partnerDataMappings)
+        .set({ 
+          syncStatus: 'stale',
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(partnerDataMappings.partnerConnectionId, connection.id),
+            eq(partnerDataMappings.partnerEntityId, entity.id)
+          )
+        );
+    }
+
+    if (entity.name === 'Invoice' && entity.operation === 'Update') {
+      await db.update(partnerDataMappings)
+        .set({
+          syncStatus: 'stale',
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(partnerDataMappings.partnerConnectionId, connection.id),
+            eq(partnerDataMappings.entityType, 'invoice'),
+            eq(partnerDataMappings.partnerEntityId, entity.id)
+          )
+        );
+    }
+  }
+
+  async runCDCPoll(
+    workspaceId: string,
+    userId: string,
+    sinceDate?: Date
+  ): Promise<SyncResult> {
+    const startTime = Date.now();
+    const connection = await this.getConnection(workspaceId);
+    const accessToken = await this.getAccessToken(connection.id);
+    const realmId = connection.realmId!;
+
+    const since = sinceDate || new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const sinceStr = since.toISOString();
+
+    const jobId = await this.createSyncLog({
+      workspaceId,
+      partnerConnectionId: connection.id,
+      jobType: 'cdc_poll',
+      entityType: 'all',
+      status: 'running',
+      triggeredBy: userId,
+    });
+
+    try {
+      const response = await this.makeRequest<{ CDCResponse: any[] }>(
+        'GET',
+        `/cdc?changedSince=${sinceStr}&entities=Customer,Employee,Invoice`,
+        realmId,
+        accessToken
+      );
+
+      let recordsProcessed = 0;
+
+      for (const queryResponse of response.CDCResponse || []) {
+        const customers = queryResponse.QueryResponse?.filter((q: any) => q.Customer)
+          .flatMap((q: any) => q.Customer) || [];
+        const employees = queryResponse.QueryResponse?.filter((q: any) => q.Employee)
+          .flatMap((q: any) => q.Employee) || [];
+
+        recordsProcessed += customers.length + employees.length;
+      }
+
+      await this.updateSyncLog(jobId, {
+        status: 'completed',
+        recordsProcessed,
+      });
+
+      return {
+        success: true,
+        jobId,
+        recordsProcessed,
+        recordsMatched: 0,
+        recordsCreated: 0,
+        recordsReviewRequired: 0,
+        errors: [],
+        durationMs: Date.now() - startTime,
+      };
+
+    } catch (error: any) {
+      await this.updateSyncLog(jobId, {
+        status: 'failed',
+        errorDetails: { message: error.message },
+      });
+
+      return {
+        success: false,
+        jobId,
+        recordsProcessed: 0,
+        recordsMatched: 0,
+        recordsCreated: 0,
+        recordsReviewRequired: 0,
+        errors: [error.message],
+        durationMs: Date.now() - startTime,
+      };
+    }
+  }
+
+  async getManualReviewQueue(
+    workspaceId: string,
+    status: 'pending' | 'resolved' | 'skipped' = 'pending'
+  ): Promise<any[]> {
+    return await db.select()
+      .from(partnerManualReviewQueue)
+      .where(
+        and(
+          eq(partnerManualReviewQueue.workspaceId, workspaceId),
+          eq(partnerManualReviewQueue.status, status)
+        )
+      )
+      .orderBy(desc(partnerManualReviewQueue.createdAt));
+  }
+
+  async resolveManualReview(
+    reviewItemId: string,
+    resolution: 'linked_existing' | 'created_new' | 'skipped',
+    selectedCoaileagueEntityId: string | null,
+    userId: string
+  ): Promise<void> {
+    const [item] = await db.select()
+      .from(partnerManualReviewQueue)
+      .where(eq(partnerManualReviewQueue.id, reviewItemId))
+      .limit(1);
+
+    if (!item) {
+      throw new Error('Review item not found');
+    }
+
+    if (resolution === 'linked_existing' && selectedCoaileagueEntityId) {
+      const [mapping] = await db.insert(partnerDataMappings).values({
+        workspaceId: item.workspaceId,
+        partnerConnectionId: item.partnerConnectionId,
+        partnerType: 'quickbooks',
+        entityType: item.entityType,
+        coaileagueEntityId: selectedCoaileagueEntityId,
+        partnerEntityId: item.partnerEntityId,
+        partnerEntityName: item.partnerEntityName,
+        matchEmail: item.partnerEmail,
+        matchConfidence: 1.0,
+        syncStatus: 'synced',
+        lastSyncAt: new Date(),
+        mappingSource: 'manual',
+        createdBy: userId,
+      }).returning();
+
+      await db.update(partnerManualReviewQueue)
+        .set({
+          status: 'resolved',
+          resolution,
+          resolvedMappingId: mapping.id,
+          resolvedBy: userId,
+          resolvedAt: new Date(),
+        })
+        .where(eq(partnerManualReviewQueue.id, reviewItemId));
+    } else {
+      await db.update(partnerManualReviewQueue)
+        .set({
+          status: resolution === 'skipped' ? 'skipped' : 'resolved',
+          resolution,
+          resolvedBy: userId,
+          resolvedAt: new Date(),
+        })
+        .where(eq(partnerManualReviewQueue.id, reviewItemId));
+    }
+  }
+}
+
+export const quickbooksSyncService = new QuickBooksSyncService();
