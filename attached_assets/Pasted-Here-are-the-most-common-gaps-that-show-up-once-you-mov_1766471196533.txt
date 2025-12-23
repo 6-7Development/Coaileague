@@ -1,0 +1,306 @@
+Here are the most common “gaps” that show up once you move from “it works” to “it runs itself at scale,” plus how to delegate them to subagents in an orchestration workflow. I’ll frame this in a way you can paste straight into Replit as implementation ideas.
+
+Likely gaps in your current workflow
+
+1) Identity resolution isn’t a one-time thing
+
+Even if you map Customer/Employee IDs initially, identities drift:
+
+Customer renamed, merged, or made inactive in QBO
+
+Employee deactivated or re-created
+
+Duplicate “near matches” added later
+
+
+Missing workflow: a reconciliation loop that detects drift and either auto-fixes or asks for review.
+
+Triggered by: webhooks/CDC sync, invoice failure, payroll cycle start
+
+Output: “mapping still valid / needs relink / ambiguous candidates”
+
+
+Subagent: IdentityReconciler
+
+
+---
+
+2) Idempotency across your whole pipeline, not just invoice creation
+
+QuickBooks requestid helps, but duplicates can still happen upstream:
+
+schedule job reruns
+
+timesheet aggregation reruns
+
+invoice line-item rebuild with slightly different ordering causes “new hash”
+
+
+Missing workflow: a platform-wide idempotency ledger
+
+per realm_id + org_id + cycle_key (week ending) + entity (invoice/payroll export)
+
+stores: input hash, output object ID, status, retry count, last error
+
+
+Subagent: IdempotencyGuard
+
+
+---
+
+3) “Approval mode” needs a real state machine
+
+Hybrid “approve or auto-send” can break if you don’t formalize states. Example failures:
+
+Invoice created → approval pending → customer mapping updated → invoice lines now stale
+
+Approval takes 7 days → billable hours changed → mismatch
+
+
+Missing workflow: an Invoice Lifecycle State Machine States like:
+
+DRAFT_COMPUTED → DRAFT_CREATED_IN_QBO → APPROVAL_PENDING → APPROVED → SENT → PAID/FAILED With rules for:
+
+what changes are allowed at each stage
+
+when to regenerate vs patch vs lock
+
+
+Subagent: BillingStateManager
+
+
+---
+
+4) Exception handling needs classification + “next best action”
+
+Right now most systems just “throw error and stop.” At scale you need:
+
+classify error (auth, rate limit, duplicate, validation, missing mapping)
+
+route to correct remediation
+
+
+Missing workflow: Error Triage + Auto-Remediation
+
+If auth expired → refresh / re-auth request
+
+If duplicate name → run match and relink
+
+If rate-limited → backoff + queue
+
+If validation error → produce fix suggestion
+
+
+Subagent: ExceptionTriageAgent
+
+
+---
+
+5) Rate limits + concurrency control
+
+If you process many orgs at once, you’ll hit:
+
+QBO rate limits
+
+burst limits per realm/company
+
+throttling leading to partial writes
+
+
+Missing tool: a realm-scoped queue with backoff and concurrency caps.
+
+Max N concurrent requests per realm_id
+
+Exponential backoff with jitter
+
+Automatic retries only for safe operations (idempotent)
+
+
+Subagent: ThrottleController
+
+
+---
+
+6) Time tracking truth source and auditability
+
+Clients will challenge invoices. You need:
+
+a durable audit trail: who/what produced each hour
+
+“explain this invoice line” drill-down
+
+
+Missing workflow: an Audit Proof Pack generator
+
+invoice → lines → underlying shifts/time entries → employee schedule → approvals/edits → change history
+
+export PDF/CSV or a linkable report
+
+
+Subagent: AuditPackAgent
+
+
+---
+
+7) Rounding, breaks, overtime, and jurisdiction rules
+
+This is where billing systems die in the real world:
+
+rounding to 0.25 hrs vs minute-level
+
+unpaid breaks
+
+overtime and double-time
+
+client-specific rules (billable vs payable differs)
+
+holiday logic per client contract
+
+
+Missing workflow: a Rules Engine
+
+policy per org, per client, per site, per role
+
+separates billable hours policy from payroll hours policy
+
+
+Subagent: PolicyRulesAgent
+
+
+---
+
+8) Job/Location/Service Item mapping (not just Customer)
+
+QuickBooks often requires:
+
+Customer + Service Item + (sometimes) Class / Location / Department If you only map Customer/Employee, invoices will still fail or become messy.
+
+
+Missing workflow: Accounting Dimension Mapper
+
+For each schedule location/site/role:
+
+map to QBO: item/service, class, location, department, project/job (if used)
+
+
+Provide UI defaults + auto-suggest from existing QBO items
+
+
+Subagent: AccountingMapper
+
+
+---
+
+9) Security: least privilege + tenant isolation + PII boundaries
+
+Payroll data and employee data are sensitive. Common missing pieces:
+
+encrypt tokens at rest + rotation strategy
+
+strict realm/org isolation checks
+
+scoped access logs
+
+data minimization (store only what you need)
+
+
+Missing workflow: a Security Compliance Pass
+
+token vault pattern
+
+structured audit logs
+
+PII redaction in logs & AI prompts
+
+
+Subagent: SecurityAgent
+
+
+---
+
+10) Human-in-the-loop UX for “ambiguous mapping”
+
+Your automation will eventually face ambiguous matches. If you don’t design this flow, you’ll get stuck with errors.
+
+Missing workflow: Resolution Inbox
+
+“We found 3 possible matches for this client — pick one”
+
+“Employee exists but inactive — reactivate or link to different employee”
+
+“Service item missing — create or choose existing”
+
+
+Subagent: ResolutionInboxAgent
+
+
+---
+
+Recommended orchestration blueprint (simple and scalable)
+
+Orchestrator (top-level):
+
+1. PreFlightAgent: token valid? realm reachable? permissions ok?
+
+
+2. SyncAgent: pull changes (webhooks/CDC) + refresh local cache
+
+
+3. IdentityReconciler: ensure mappings are valid (Customer/Employee/Items)
+
+
+4. PolicyRulesAgent: compute billable/payable hours + OT/breaks
+
+
+5. BillingComposer: create invoice payload + deterministic hash
+
+
+6. IdempotencyGuard: check ledger; if already created, stop safely
+
+
+7. QBOExecutor: create/update invoice with requestid + throttling
+
+
+8. BillingStateManager: approval/send workflow
+
+
+9. AuditPackAgent: store proof pack reference
+
+
+10. ExceptionTriageAgent: handle errors and route to inbox
+
+
+
+If payroll is in scope:
+
+PayrollComposer → PayrollExporter/Syncer (depending on what QBO product supports)
+
+
+
+---
+
+Copy/paste note to send to Replit (implementation checklist)
+
+Add realm_id-scoped idempotency ledger covering schedule aggregation → invoice creation → send
+
+Implement identity reconciliation (customer/employee/item/class/location) with ambiguity routing to a Resolution Inbox
+
+Build an Invoice Lifecycle State Machine with strict rules and regeneration/patch policies
+
+Add realm-scoped throttling queue + backoff + retry classification
+
+Separate billable rules engine from payroll rules engine (OT, breaks, rounding, holidays)
+
+Add mapping beyond Customer/Employee: service items, classes, locations/departments, projects/jobs
+
+Add audit proof pack generator for “explain this invoice” disputes
+
+Add security controls: token vault, encryption, PII redaction, tenant isolation enforcement
+
+Add error triage agent producing deterministic “next best action” + minimal support tickets
+
+
+
+---
+
+If you want, paste (1) your current step-by-step workflow and (2) whether you’re using QBO Projects/Classes/Locations and what your billing increments are (minute vs 0.25 hr). I’ll turn that into a clean “subagents + contracts between them” spec you can drop straight into Replit.
