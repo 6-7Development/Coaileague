@@ -1809,22 +1809,76 @@ export function startAutonomousScheduler() {
     console.log(`   Schedule: ${SCHEDULER_CONFIG.creditReset.schedule} (monthly at midnight on 1st)`);
     console.log(`   ${SCHEDULER_CONFIG.creditReset.description}\n`);
   }
-  // Trial Expiry Warning Job - Daily at 6 AM (7 days before expiry)
+  // Trial Expiry & Conversion Job - Daily at 6 AM (process expiring trials with 7/3/1 day warnings)
   cron.schedule("0 6 * * *", () => {
-    console.log(`🕐 [CRON EXECUTING] Trial expiry check triggered at ${new Date().toISOString()}`);
+    console.log(`🕐 [CRON EXECUTING] Trial conversion check triggered at ${new Date().toISOString()}`);
     (async () => {
       try {
-        const sevenDaysFromNow = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-        const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
-        console.log("📧 Trial expiry warning: checking expirations...");
+        const { trialConversionOrchestrator } = await import('./billing/trialConversionOrchestrator');
+        const result = await trialConversionOrchestrator.processExpiringTrials();
+        console.log(`📧 Trial conversion: ${result.processed} processed, ${result.converted} converted, ${result.suspended} suspended`);
+        emitAutomationEvent({
+          jobName: 'Trial Conversion Processing',
+          category: 'billing',
+          success: true,
+          duration: 0,
+          recordsProcessed: result.processed,
+          details: {
+            converted: result.converted,
+            gracePeriod: result.gracePeriod,
+            suspended: result.suspended,
+            notified: result.notified,
+          },
+        });
       } catch (err) {
-        console.error("Trial expiry check error:", err);
+        console.error("Trial conversion check error:", err);
+        emitAutomationEvent({
+          jobName: 'Trial Conversion Processing',
+          category: 'billing',
+          success: false,
+          details: { error: (err as Error).message },
+        });
       }
     })();
   });
   console.log("✅ Trial Expiry Warning Job:");
   console.log("   Schedule: 0 6 * * * (daily 6 AM)");
-  console.log("   Notifies users 7 days before trial expiry\n");
+  console.log("   Processes trial conversions, warnings, and suspensions\n");
+  
+  // Billing Exception Queue Processing - Daily at 5 AM
+  cron.schedule("0 5 * * *", () => {
+    console.log(`🕐 [CRON EXECUTING] Exception queue processing triggered at ${new Date().toISOString()}`);
+    (async () => {
+      try {
+        const { exceptionQueueProcessor } = await import('./billing/exceptionQueueProcessor');
+        const result = await exceptionQueueProcessor.processQueue();
+        console.log(`🔧 Exception queue: ${result.processed} processed, ${result.autoResolved} auto-resolved, ${result.escalated} escalated`);
+        emitAutomationEvent({
+          jobName: 'Billing Exception Processing',
+          category: 'billing',
+          success: true,
+          duration: 0,
+          recordsProcessed: result.processed,
+          details: {
+            autoResolved: result.autoResolved,
+            escalated: result.escalated,
+            expired: result.expired,
+          },
+        });
+      } catch (err) {
+        console.error("Exception queue processing error:", err);
+        emitAutomationEvent({
+          jobName: 'Billing Exception Processing',
+          category: 'billing',
+          success: false,
+          details: { error: (err as Error).message },
+        });
+      }
+    })();
+  });
+  console.log("✅ Billing Exception Queue Processing:");
+  console.log("   Schedule: 0 5 * * * (daily 5 AM)");
+  console.log("   Auto-resolves and escalates billing exceptions\n");
   
   // Email Automation Job - Twice daily
   cron.schedule("0 9,15 * * *", () => {

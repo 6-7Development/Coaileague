@@ -14483,6 +14483,15 @@ ${application.email}`,
           break;
       }
 
+      // Route event to AI Brain StripeEventBridge for additional processing
+      try {
+        const { stripeEventBridge } = await import('./services/billing/stripeEventBridge');
+        const bridgeResult = await stripeEventBridge.processEvent(event);
+        console.log(`[Stripe Webhook] AI Brain processed: ${bridgeResult.action}`);
+      } catch (bridgeError) {
+        console.warn('[Stripe Webhook] AI Brain processing failed (non-blocking):', bridgeError);
+      }
+
       res.json({ received: true });
     } catch (error: any) {
       console.error('Webhook error:', error.message);
