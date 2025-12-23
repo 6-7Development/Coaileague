@@ -29732,21 +29732,31 @@ app.get("/api/sales/invitations", requireAuth, async (req, res) => {
   }
 });
 
+// Generate a unique, user-friendly invite code (e.g., "ACME-2024-XK7")
+function generateUniqueInviteCode(orgName: string | undefined): string {
+  const safeName = (orgName || 'ORG').slice(0, 4).toUpperCase().replace(/[^A-Z]/g, 'X').padEnd(4, 'X');
+  const year = new Date().getFullYear();
+  const suffix = Math.random().toString(36).substring(2, 5).toUpperCase();
+  return `${safeName}-${year}-${suffix}`;
+}
+
 app.post("/api/sales/invitations/send", requireAuth, async (req, res) => {
   try {
-    const { email, organizationName, contactName, offeredTier } = req.body;
+    const { email, organizationName, contactName, offeredTier, customInviteCode } = req.body;
     const token = Math.random().toString(36).substring(2, 15);
+    const uniqueInviteCode = (customInviteCode || generateUniqueInviteCode(organizationName)).toUpperCase();
     const result = await db.insert(orgInvitations).values({
       email,
       organizationName,
       contactName,
       offeredTier: offeredTier || "starter",
       invitationToken: token,
+      uniqueInviteCode,
       invitationTokenExpiry: new Date(Date.now() + 14*24*60*60*1000),
       sentBy: req.user?.id,
       status: "pending",
     }).returning();
-    res.json({ success: true, invitation: result[0] });
+    res.json({ success: true, invitation: result[0], inviteCode: uniqueInviteCode });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
@@ -29755,7 +29765,7 @@ app.post("/api/sales/invitations/send", requireAuth, async (req, res) => {
 // Enhanced organization invitation with Trinity AI integration
 app.post("/api/sales/invitations/send-enhanced", requireAuth, async (req, res) => {
   try {
-    const { email, organizationName, contactName, offeredTier, inviterCompany, expiresInDays } = req.body;
+    const { email, organizationName, contactName, offeredTier, inviterCompany, expiresInDays, customInviteCode } = req.body;
     
     if (!email || !organizationName || !contactName) {
       return res.status(400).json({ error: "email, organizationName, and contactName are required" });
@@ -29763,6 +29773,7 @@ app.post("/api/sales/invitations/send-enhanced", requireAuth, async (req, res) =
     
     const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
     const expiryDays = expiresInDays || 14;
+    const uniqueInviteCode = customInviteCode || generateUniqueInviteCode(organizationName);
     
     // Create invitation record
     const [invitation] = await db.insert(orgInvitations).values({
@@ -29771,6 +29782,7 @@ app.post("/api/sales/invitations/send-enhanced", requireAuth, async (req, res) =
       contactName,
       offeredTier: offeredTier || "starter",
       invitationToken: token,
+      uniqueInviteCode,
       invitationTokenExpiry: new Date(Date.now() + expiryDays * 24 * 60 * 60 * 1000),
       sentBy: req.user?.id,
       status: "pending",
@@ -29807,6 +29819,43 @@ app.post("/api/sales/invitations/send-enhanced", requireAuth, async (req, res) =
   } catch (error: any) {
     console.error("[Enhanced Invitation] Error:", error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+// Lookup invitation by unique invite code
+app.get("/api/sales/invitations/lookup/:inviteCode", async (req, res) => {
+  try {
+    const { inviteCode } = req.params;
+    
+    if (!inviteCode) {
+      return res.status(400).json({ error: "Invite code is required" });
+    }
+    
+    const [invitation] = await db.select().from(orgInvitations)
+      .where(eq(orgInvitations.uniqueInviteCode, inviteCode.toUpperCase()));
+    
+    if (!invitation) {
+      return res.status(404).json({ error: "Invitation not found" });
+    }
+    
+    if (invitation.status === 'accepted') {
+      return res.status(400).json({ error: "This invitation has already been accepted" });
+    }
+    
+    if (invitation.invitationTokenExpiry && new Date(invitation.invitationTokenExpiry) < new Date()) {
+      return res.status(400).json({ error: "This invitation has expired" });
+    }
+    
+    res.json({
+      organizationName: invitation.organizationName,
+      email: invitation.email,
+      contactName: invitation.contactName,
+      invitationToken: invitation.invitationToken,
+      expiresAt: invitation.invitationTokenExpiry,
+    });
+  } catch (error) {
+    console.error("[Invitation Lookup] Error:", error);
+    res.status(500).json({ error: "Failed to lookup invitation" });
   }
 });
 

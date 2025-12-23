@@ -1,0 +1,571 @@
+Absolutely — here’s a ready-to-drop spec you can paste into Replit (or your repo README) that defines:
+
+the subagents
+
+the contracts (inputs/outputs)
+
+the orchestration DAG
+
+the datastores
+
+the idempotency + throttling strategy
+
+the human-in-the-loop “Resolution Inbox”
+
+the minimum viable “AI Trinity” delegation pattern
+
+
+You can implement this with any stack (Node, Python, TS). I’ll keep it platform-agnostic.
+
+
+---
+
+CoAIleague Orchestration Spec (Subagents + Contracts)
+
+Core principles (non-negotiable for scale)
+
+1. Never match by name only → always persist and use QuickBooks IDs (Customer.Id, Employee.Id, Item.Id, etc.) keyed by realm_id.
+
+
+2. Every external write is idempotent (platform ledger + QBO requestid).
+
+
+3. Every workflow step is re-entrant (safe to run twice).
+
+
+4. Errors route to a Resolution Inbox with a recommended fix.
+
+
+
+
+---
+
+Data model (minimum tables / collections)
+
+connections
+
+org_id
+
+provider = "qbo"
+
+realm_id
+
+access_token_encrypted
+
+refresh_token_encrypted
+
+token_expiry
+
+scopes
+
+status (active, needs_reauth)
+
+
+qbo_mappings
+
+Maps your internal objects to QBO objects.
+
+org_id
+
+realm_id
+
+entity_type ("customer" | "employee" | "item" | "class" | "location" | "department" | "project")
+
+internal_id
+
+qbo_id
+
+qbo_sync_token (optional but helpful)
+
+match_confidence (0–1)
+
+match_method ("selected" | "email_exact" | "name_exact" | "heuristic" | "created")
+
+last_verified_at
+
+status ("active" | "needs_review" | "broken")
+
+
+idempotency_ledger
+
+org_id
+
+realm_id
+
+workflow_type ("weekly_invoice" | "payroll_export" | "timesync")
+
+cycle_key (ex: "2025-12-21_week_end")
+
+dedupe_key (hash of normalized inputs)
+
+status ("started" | "completed" | "failed" | "needs_review")
+
+result_refs (ex: { invoice_id, doc_number })
+
+last_error
+
+
+resolution_inbox
+
+org_id
+
+realm_id
+
+type ("customer_match" | "employee_match" | "item_missing" | "auth" | "validation" | "duplicate_risk")
+
+title
+
+details (structured JSON)
+
+candidates (structured list)
+
+recommended_action
+
+status ("open" | "resolved" | "ignored")
+
+created_at
+
+
+policy_profiles
+
+Rules engine inputs.
+
+org_id
+
+client_id (nullable; if null = org default)
+
+site_id (nullable)
+
+role_id (nullable)
+
+billable_rounding (ex: 1 minute / 15 minutes)
+
+payroll_rounding
+
+break_rules
+
+overtime_rules
+
+holiday_rules
+
+invoice_grouping (by client, by site, by role)
+
+approval_mode ("auto_send" | "approve" | "hybrid")
+
+
+
+---
+
+Subagents (each returns structured output)
+
+0) OrchestratorAgent
+
+Role: routes and runs the DAG, persists status in ledger, pushes tasks to queue.
+
+Input:
+
+{ "org_id": "x", "workflow_type": "weekly_invoice", "cycle_key": "YYYY-MM-DD_week_end" }
+
+Output:
+
+{ "status": "completed|failed|needs_review", "result_refs": {}, "inbox_items": [] }
+
+
+---
+
+1) PreFlightAgent
+
+Checks: token valid, realm reachable, required scopes, org settings present.
+
+Input: { org_id, realm_id }
+Output:
+
+{ "ok": true, "needs_reauth": false, "capabilities": { "can_create_invoice": true } }
+
+If not ok → create resolution_inbox item type auth.
+
+
+---
+
+2) SyncAgent
+
+Role: keeps local cache/mappings fresh (CDC/webhooks if available, otherwise periodic query).
+
+Input: { org_id, realm_id, since: "timestamp" }
+Output:
+
+{ "synced": true, "changes": { "customers": 12, "employees": 1, "items": 3 } }
+
+
+---
+
+3) IdentityReconcilerAgent
+
+Role: verifies all required mappings exist for this run:
+
+Customers for each end client being invoiced
+
+Employees for payroll/time attribution (if used)
+
+Items/service lines for roles
+
+Optional: class/location/department/project mappings
+
+
+Input:
+
+{
+  "org_id": "x",
+  "realm_id": "y",
+  "required": {
+    "customers": ["client_1", "client_2"],
+    "employees": ["emp_1", "emp_2"],
+    "items": ["role_guard", "role_supervisor"]
+  }
+}
+
+Output:
+
+{
+  "ok": false,
+  "missing": [{ "entity_type": "customer", "internal_id": "client_2" }],
+  "ambiguous": [{
+    "entity_type": "customer",
+    "internal_id": "client_2",
+    "candidates": [{ "qbo_id": "123", "display_name": "ACME", "confidence": 0.72 }]
+  }]
+}
+
+If missing/ambiguous → push to resolution_inbox and return needs_review.
+
+
+---
+
+4) PolicyRulesAgent
+
+Role: calculates billable hours + payroll hours using policy profiles, produces normalized “line facts”.
+
+Input:
+
+{
+  "org_id": "x",
+  "cycle_key": "YYYY-MM-DD_week_end",
+  "shifts": [ ... ],
+  "time_entries": [ ... ],
+  "policy_profiles": [ ... ]
+}
+
+Output:
+
+{
+  "billable": [
+    { "client_id": "c1", "site_id": "s1", "item_key": "role_guard", "qty_hours": 120.25, "rate": 45.0 }
+  ],
+  "payroll": [
+    { "employee_id": "e1", "regular_hours": 38.0, "ot_hours": 6.0 }
+  ],
+  "proof": {
+    "rounding": "15_min",
+    "overtime_policy": "weekly_40"
+  }
+}
+
+
+---
+
+5) BillingComposerAgent
+
+Role: converts normalized “billable facts” to a QuickBooks invoice payload using mappings.
+
+Input:
+
+{
+  "org_id": "x",
+  "realm_id": "y",
+  "cycle_key": "YYYY-MM-DD_week_end",
+  "billable": [ ... ],
+  "mappings": { "customers": {...}, "items": {...}, "classes": {...} }
+}
+
+Output:
+
+{
+  "qbo_invoice_payloads": [
+    {
+      "client_internal_id": "c1",
+      "customer_qbo_id": "123",
+      "payload": { "CustomerRef": {"value":"123"}, "Line": [ ... ] },
+      "dedupe_key": "sha256:....",
+      "request_id": "invoice:y:2025-12-21:c1:...."
+    }
+  ]
+}
+
+
+---
+
+6) IdempotencyGuardAgent
+
+Role: prevents duplicate work (your ledger), ensures consistent ordering/hashing.
+
+Input: { org_id, realm_id, workflow_type, cycle_key, dedupe_key }
+Output:
+
+{ "should_execute": true, "existing_result": null }
+
+If already completed → return existing result and stop.
+
+
+---
+
+7) ThrottleControllerAgent
+
+Role: enforces realm-scoped rate limits and concurrency.
+
+Input: { realm_id, operation: "create_invoice", priority: "normal" }
+Output: { "granted": true, "delay_ms": 0 }
+
+
+---
+
+8) QBOExecutorAgent
+
+Role: performs the QBO API calls (create invoice, update, send) with requestid.
+
+Input:
+
+{
+  "org_id":"x",
+  "realm_id":"y",
+  "request_id":"invoice:y:...",
+  "payload": { ... },
+  "mode": "create|update|send"
+}
+
+Output:
+
+{
+  "ok": true,
+  "qbo_invoice_id": "456",
+  "doc_number": "INV-1042",
+  "status": "DRAFT|SENT"
+}
+
+
+---
+
+9) BillingStateManagerAgent
+
+Role: state machine for approval/hybrid modes.
+
+Input:
+
+{
+  "org_id":"x",
+  "cycle_key":"...",
+  "approval_mode":"hybrid",
+  "invoice_result": { ... }
+}
+
+Output:
+
+{ "final_state":"APPROVAL_PENDING|SENT", "actions": ["notify_user"] }
+
+
+---
+
+10) AuditPackAgent
+
+Role: generates an “explain this invoice” proof pack.
+
+Input: { org_id, cycle_key, invoice_id, billable_facts, shift_refs }
+Output:
+
+{ "audit_pack_url": "https://.../audit/pack/...", "checksum": "sha256:..." }
+
+
+---
+
+11) ExceptionTriageAgent
+
+Role: classifies errors and routes to inbox with recommended fix.
+
+Input: { org_id, realm_id, error, context }
+Output:
+
+{
+  "type":"customer_match|auth|rate_limit|validation|duplicate_risk",
+  "recommended_action":"prompt_relink_customer",
+  "inbox_item_id":"..."
+}
+
+
+---
+
+Orchestration DAG (Weekly Invoice)
+
+Workflow: weekly_invoice(org_id, cycle_key)
+
+1. PreFlightAgent
+
+
+2. SyncAgent
+
+
+3. PolicyRulesAgent
+
+
+4. IdentityReconcilerAgent (customers/items/classes needed for the billable set)
+
+
+5. BillingComposerAgent (invoice payloads + requestid + dedupe_key)
+
+
+6. For each invoice payload:
+
+IdempotencyGuardAgent
+
+ThrottleControllerAgent
+
+QBOExecutorAgent (create)
+
+BillingStateManagerAgent (approve/send/hybrid)
+
+AuditPackAgent
+
+
+
+7. If any step fails → ExceptionTriageAgent → Resolution Inbox → mark ledger needs_review
+
+
+
+Hard rule: Orchestrator marks ledger completed only if all invoice payloads reach a terminal state (SENT or APPROVAL_PENDING depending on mode).
+
+
+---
+
+Orchestration DAG (Payroll Hours)
+
+Workflow: payroll_hours(org_id, cycle_key)
+
+1. PreFlightAgent
+
+
+2. SyncAgent
+
+
+3. PolicyRulesAgent (payroll facts)
+
+
+4. IdentityReconcilerAgent (employees)
+
+
+5. PayrollComposerAgent (optional, depending on product)
+
+
+6. PayrollExporterAgent (CSV/report) OR PayrollSyncAgent (if supported)
+
+
+7. AuditPackAgent (payroll proof pack)
+
+
+8. ExceptionTriageAgent on failures
+
+
+
+
+---
+
+“AI Trinity” delegation (how to use intelligence without breaking compliance)
+
+You don’t want AI “deciding” accounting identities blindly. Use AI in these bounded ways:
+
+A) MatchSuggestionAgent (safe)
+
+Purpose: suggest candidate matches with confidence + reasoning
+Never auto-links when confidence < threshold.
+
+Inputs: internal client data + cached QBO customers
+Outputs: ranked candidates + score + features (email match, name similarity, phone)
+
+B) PolicyInterpreterAgent (safe)
+
+Purpose: converts human policy text (“round to nearest 15, unpaid 30 min lunch”) into structured policy profile proposals.
+Requires user approval before applying.
+
+C) NarrativeExplainerAgent (safe)
+
+Purpose: creates human-readable “invoice explanation” / audit narrative from facts (no external writes).
+
+
+---
+
+Key “missing tools” you should add (biggest wins)
+
+1. Resolution Inbox UI (mandatory)
+
+
+
+“Link to QBO Customer”
+
+“Link to QBO Employee”
+
+“Choose service item”
+
+“Re-auth QuickBooks”
+
+“Retry failed run”
+
+
+2. Deterministic dedupe_key
+
+
+
+Stable ordering of invoice lines
+
+Stable rounding rules
+
+Stable hashing
+
+
+3. Realm-scoped queue
+
+
+
+concurrency cap per realm_id
+
+backoff + jitter
+
+retry only when safe
+
+
+4. Invoice lifecycle state machine
+
+
+
+prevents stale approvals
+
+prevents edits after locking
+
+
+5. Audit proof packs
+
+
+
+ends disputes fast
+
+
+
+---
+
+Paste-ready message to Replit (short version)
+
+> Implement orchestration as subagents with strict JSON contracts: PreFlight → Sync → RulesEngine → IdentityReconciler → BillingComposer → IdempotencyGuard → ThrottleController → QBOExecutor → BillingStateManager → AuditPack; failures go to ExceptionTriage + Resolution Inbox.
+Store QBO mappings by realm_id using QBO IDs; never match by name only. Add idempotency ledger for entire pipeline (not just QBO requestid). Add Resolution Inbox for ambiguous mappings. Add realm-scoped throttling queue. Add invoice lifecycle state machine (draft→approval→send). Add audit proof pack generator. AI can suggest matches/policies but must not auto-link under low confidence.
+
+
+
+
+---
+
+If you want, I can also give you a folder structure + interface stubs (TypeScript or Python) matching the subagents above, so your Replit project has a clean starting point.
