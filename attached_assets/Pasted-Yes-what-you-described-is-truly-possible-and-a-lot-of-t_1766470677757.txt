@@ -1,0 +1,222 @@
+Yes — what you described is truly possible, and a lot of time/billing platforms do it. The “secret sauce” is that your automation must never rely on names alone (“ACME Inc.”, “John Smith”) to decide what matches in QuickBooks. It has to maintain a stable ID mapping per connected QuickBooks company (realm).
+
+Below is the practical way this works in real integrations.
+
+
+---
+
+1) The core concept: “mapping” using QuickBooks IDs (per RealmID)
+
+When a user connects QuickBooks via OAuth, you get a RealmID (the specific QuickBooks company file). Inside that realm, every Customer/Employee has a unique Id.
+
+So your platform should store mappings like:
+
+realm_id (which QBO company)
+
+your internal client_id / employee_id
+
+QuickBooks Customer.Id or Employee.Id
+
+last SyncToken (useful for updates)
+
+optional “match keys” (email, display name, etc.)
+
+
+This is exactly why Intuit recommends you fetch and persist IDs + DisplayName locally and keep it up to date using CDC and/or Webhooks. 
+
+Result: once mapped, you invoice/payroll against the QBO Id, not the name.
+
+
+---
+
+2) How you prevent duplicate customers (the “client matching” problem)
+
+Best-practice flow (what “works best” in production)
+
+A) Initial sync on connect
+
+On OAuth connect, you run a QBO query to pull Customers (at least Id, DisplayName, and ideally PrimaryEmailAddr), and store them in your DB/cache. (QBO supports query operations broadly. )
+
+
+B) When the org adds a client in CoAIleague You do one of these (or a hybrid):
+
+1. User selects an existing QBO customer (best accuracy)
+
+Provide a “Search QuickBooks customers” picker in your UI.
+
+Once selected, store Customer.Id mapping.
+
+
+
+2. Auto-match (good, but always allow review)
+
+Try to match by:
+
+email (strong)
+
+exact normalized DisplayName (good)
+
+phone / address (backup)
+
+
+If you find 1 strong match → auto-link.
+
+If multiple candidates or weak match → show “Choose the correct customer.”
+
+
+
+3. Create customer only when no match
+
+If no match found, create in QBO and store returned Customer.Id.
+
+
+
+
+Why not rely on DisplayName alone?
+
+Because QuickBooks enforces uniqueness rules and can throw “duplicate name exists” issues, and names are messy. Intuit support commonly recommends persisting IDs and checking DisplayName existence before creating. 
+
+
+---
+
+3) How you prevent duplicate invoices (idempotency)
+
+Even with perfect mapping, you also need protection against “workflow retried → duplicate invoice.”
+
+QuickBooks supports using a unique requestid on create calls to provide idempotency (same request → same result instead of new invoice). Intuit explicitly calls this out as a best practice to avoid duplicates. 
+
+What you do:
+
+Generate a deterministic requestid like:
+invoice:{realmId}:{coai_week_ending}:{client_qbo_id}:{hash_of_lines}
+
+If your workflow retries, QBO returns the original result instead of creating another invoice.
+
+
+
+---
+
+4) Billable hours → invoice: the cleanest QuickBooks-native model
+
+There are two common architectures:
+
+Option 1 (most “QuickBooks-native”): create TimeActivity records
+
+Push time into QBO as TimeActivity (marked billable, linked to customer/job where applicable).
+
+Then build an invoice from those billable items.
+
+
+TimeActivity is a first-class QBO entity and is documented in the Accounting API. 
+
+Option 2: keep time in CoAIleague, create invoice lines directly
+
+You compute hours internally and create invoice lines in QBO.
+
+This is often simpler and avoids tricky edge cases around linking time-to-invoice (some developers report quirks). 
+
+
+Hybrid (what you described) is common:
+
+Store time internally for truth + audits
+
+Optionally push summarized time activities or just invoice lines
+
+
+
+---
+
+5) Payroll hours: same identity-mapping idea, but watch the API surface area
+
+The matching problem is solved the same way:
+
+On connect, pull Employees (Employee.Id, name fields, email if available) and store mapping.
+
+When they add an employee in your platform:
+
+Prefer “Select from QuickBooks Employees”
+
+Or auto-match by email + name
+
+Else create employee (if your integration scope supports it)
+
+
+
+The QBO Accounting API has an Employee entity. 
+
+The bigger issue: “Can we run payroll automatically?”
+
+This depends on what exact Intuit product you’re integrating with:
+
+QuickBooks Online Accounting API ≠ full payroll execution API
+
+QuickBooks Payroll / Time APIs exist, but access/scopes and capabilities can be constrained and vary by program/app approval (Intuit community discussions show scope limitations people hit). 
+
+
+So, tracking payroll hours and syncing time is very feasible; fully automating payroll runs may be limited depending on the user’s payroll setup and what scopes/products your app is approved for.
+
+
+---
+
+6) Keeping your local cache accurate (so mappings don’t drift)
+
+Once you store mappings, you must handle changes like:
+
+customer renamed in QBO
+
+employee deactivated
+
+merged/combined records
+
+someone edits email
+
+
+Intuit gives you two key tools:
+
+Webhooks for event-driven notifications 
+
+CDC (Change Data Capture) for polling what changed in a lookback window 
+
+
+Most platforms do:
+
+Webhooks for quick reaction
+
+CDC as a safety net (daily/hourly) for anything missed
+
+
+
+---
+
+7) A practical “works best” approach for CoAIleague
+
+If you want the least support tickets + least duplicates:
+
+1. On connect: full lightweight sync (Customers + Employees: Id, DisplayName, Email)
+
+
+2. In UI: require linking when creating a “Client Location / End Client”
+
+“Link to existing QuickBooks customer” (search dropdown)
+
+“Create new in QuickBooks”
+
+
+
+3. For automation: always invoice using stored Customer.Id
+
+
+4. For invoice creation: always pass a unique requestid (idempotency)
+
+
+5. For payroll: same linking UI for employees; if payroll execution isn’t possible, generate a payroll-ready export and/or push time entries where supported
+
+
+6. Ongoing: webhooks + CDC to refresh your cache
+
+
+
+
+---
+
+If you tell me which QuickBooks products you’re targeting for payroll (QBO Payroll, QuickBooks Time, or another provider), I can give you the most realistic “here’s exactly what you can automate vs what must stay as an approval step” breakdown based on the current Intuit API surfaces.
