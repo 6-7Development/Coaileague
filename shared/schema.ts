@@ -20879,6 +20879,194 @@ export type InsertInteractiveOnboardingState = z.infer<typeof insertInteractiveO
 export type InteractiveOnboardingState = typeof interactiveOnboardingState.$inferSelect;
 
 // ============================================================================
+// TRINITY METACOGNITION SYSTEM - Thoughts, Reflections, and Reasoning
+// ============================================================================
+
+/**
+ * Trinity Thoughts - Inner monologue and reasoning traces
+ * Captures Trinity's "thinking" process for metacognition
+ */
+export const trinityThoughts = pgTable("trinity_thoughts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Context
+  workspaceId: varchar("workspace_id").references(() => workspaces.id, { onDelete: 'cascade' }),
+  sessionId: varchar("session_id"),
+  parentThoughtId: varchar("parent_thought_id"), // For thought chains
+  
+  // Thought content
+  phase: varchar("phase", { length: 50 }).notNull(), // 'perception', 'deliberation', 'planning', 'execution', 'reflection'
+  thoughtType: varchar("thought_type", { length: 50 }).notNull(), // 'observation', 'hypothesis', 'decision', 'doubt', 'insight', 'correction'
+  content: text("content").notNull(),
+  
+  // Reasoning metadata
+  confidence: decimal("confidence", { precision: 5, scale: 4 }).default("0.8"),
+  reasoningDepth: integer("reasoning_depth").default(1), // How many reasoning steps
+  alternativesConsidered: jsonb("alternatives_considered"), // Other options Trinity considered
+  
+  // Triggers
+  triggeredBy: varchar("triggered_by", { length: 100 }), // What caused this thought
+  relatedActionId: varchar("related_action_id"), // AI Brain action if any
+  relatedFindingId: varchar("related_finding_id"), // Gap finding if any
+  
+  // Outcome tracking
+  wasActedUpon: boolean("was_acted_upon").default(false),
+  outcomePositive: boolean("outcome_positive"),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("tt_workspace_idx").on(table.workspaceId),
+  index("tt_session_idx").on(table.sessionId),
+  index("tt_phase_idx").on(table.phase),
+  index("tt_type_idx").on(table.thoughtType),
+  index("tt_created_idx").on(table.createdAt),
+  index("tt_parent_idx").on(table.parentThoughtId),
+]);
+
+export const insertTrinityThoughtSchema = createInsertSchema(trinityThoughts).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertTrinityThought = z.infer<typeof insertTrinityThoughtSchema>;
+export type TrinityThought = typeof trinityThoughts.$inferSelect;
+
+/**
+ * Trinity Reflections - Post-action analysis and learnings
+ * How Trinity evaluates its own performance
+ */
+export const trinityReflections = pgTable("trinity_reflections", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Context
+  workspaceId: varchar("workspace_id").references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  // What's being reflected on
+  reflectionTarget: varchar("reflection_target", { length: 100 }).notNull(), // 'action', 'decision', 'workflow', 'day_summary'
+  targetId: varchar("target_id"),
+  
+  // Reflection content
+  whatHappened: text("what_happened").notNull(),
+  whatWorked: text("what_worked"),
+  whatFailed: text("what_failed"),
+  lessonsLearned: text("lessons_learned"),
+  
+  // Self-assessment
+  performanceScore: decimal("performance_score", { precision: 5, scale: 4 }), // 0-1
+  confidenceCalibration: decimal("confidence_calibration", { precision: 5, scale: 4 }), // Was I overconfident/underconfident?
+  
+  // Improvements
+  proposedImprovements: jsonb("proposed_improvements"),
+  appliedToSelfAwareness: boolean("applied_to_self_awareness").default(false),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("tr_workspace_idx").on(table.workspaceId),
+  index("tr_target_idx").on(table.reflectionTarget),
+  index("tr_created_idx").on(table.createdAt),
+]);
+
+export const insertTrinityReflectionSchema = createInsertSchema(trinityReflections).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertTrinityReflection = z.infer<typeof insertTrinityReflectionSchema>;
+export type TrinityReflectionRecord = typeof trinityReflections.$inferSelect;
+
+/**
+ * Trinity Telemetry - Enhanced reasoning metrics
+ */
+export const trinityTelemetry = pgTable("trinity_telemetry", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Request context
+  requestId: varchar("request_id", { length: 100 }).notNull(),
+  domain: varchar("domain", { length: 100 }),
+  actionType: varchar("action_type", { length: 100 }),
+  
+  // Gemini tier used
+  geminiTier: varchar("gemini_tier", { length: 50 }),
+  
+  // Token usage
+  inputTokens: integer("input_tokens"),
+  outputTokens: integer("output_tokens"),
+  
+  // Performance
+  responseTimeMs: integer("response_time_ms"),
+  reasoningSteps: integer("reasoning_steps"),
+  
+  // Confidence metrics
+  initialConfidence: decimal("initial_confidence", { precision: 5, scale: 4 }),
+  finalConfidence: decimal("final_confidence", { precision: 5, scale: 4 }),
+  confidenceDelta: decimal("confidence_delta", { precision: 5, scale: 4 }),
+  
+  // Confusion detection
+  confusionSignals: jsonb("confusion_signals"), // Low confidence, retries, ambiguity flags
+  wasConfused: boolean("was_confused").default(false),
+  
+  // Outcome
+  wasSuccessful: boolean("was_successful"),
+  errorType: varchar("error_type", { length: 100 }),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("ttel_request_idx").on(table.requestId),
+  index("ttel_domain_idx").on(table.domain),
+  index("ttel_tier_idx").on(table.geminiTier),
+  index("ttel_confused_idx").on(table.wasConfused),
+  index("ttel_created_idx").on(table.createdAt),
+]);
+
+export const insertTrinityTelemetrySchema = createInsertSchema(trinityTelemetry).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertTrinityTelemetry = z.infer<typeof insertTrinityTelemetrySchema>;
+export type TrinityTelemetryRecord = typeof trinityTelemetry.$inferSelect;
+
+/**
+ * Workspace Governance Policies - Per-workspace automation risk thresholds
+ */
+export const workspaceGovernancePolicies = pgTable("workspace_governance_policies", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }).unique(),
+  
+  // Approval thresholds (overrides platform defaults)
+  autoApprovalThreshold: decimal("auto_approval_threshold", { precision: 5, scale: 4 }).default("0.99"),
+  highRiskThreshold: decimal("high_risk_threshold", { precision: 5, scale: 4 }).default("0.95"),
+  
+  // Domain-specific overrides
+  schedulingRiskWeight: decimal("scheduling_risk_weight", { precision: 5, scale: 4 }).default("0.3"),
+  payrollRiskWeight: decimal("payroll_risk_weight", { precision: 5, scale: 4 }).default("0.8"),
+  invoicingRiskWeight: decimal("invoicing_risk_weight", { precision: 5, scale: 4 }).default("0.7"),
+  
+  // Hotpatch settings
+  hotpatchDailyLimit: integer("hotpatch_daily_limit").default(1),
+  hotpatchWindowStartHour: integer("hotpatch_window_start_hour").default(2),
+  hotpatchWindowEndHour: integer("hotpatch_window_end_hour").default(5),
+  
+  // Email escalation preferences
+  emailEscalationEnabled: boolean("email_escalation_enabled").default(true),
+  escalationEmails: text("escalation_emails").array(),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("wgp_workspace_idx").on(table.workspaceId),
+]);
+
+export const insertWorkspaceGovernancePolicySchema = createInsertSchema(workspaceGovernancePolicies).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertWorkspaceGovernancePolicy = z.infer<typeof insertWorkspaceGovernancePolicySchema>;
+export type WorkspaceGovernancePolicy = typeof workspaceGovernancePolicies.$inferSelect;
+
+// ============================================================================
 // TRINITY UNIFIED TASK SCHEMA - Re-exports
 // ============================================================================
 
