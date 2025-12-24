@@ -95,48 +95,60 @@ export default function Support() {
 
   const faqs = [
     {
-      question: "What is the CoAI buddy and how do I use it?",
-      answer: "CoAI is your intelligent AI assistant represented by three floating stars (Co/cyan, AI/purple, LE/gold) visible on every page. It proactively offers helpful tips, answers your questions, and learns from your usage patterns. Just watch for the colorful floating messages near the mascot - they provide contextual guidance based on what you're doing. CoAI monitors platform health, suggests optimizations, and connects you to HelpAI for deeper conversations.",
+      question: "What is Trinity AI and how does it help my business?",
+      answer: "Trinity is our Fortune 500-grade AI assistant that orchestrates over 277 automated actions across your entire workforce. It operates in three modes: Demo (guided tutorials), Business Pro (daily operations), and Guru (strategic insights). Trinity handles scheduling, payroll, invoicing, compliance monitoring, and more with 99% automation and only 1% human oversight for critical decisions.",
+    },
+    {
+      question: "How does the AI Brain orchestration work?",
+      answer: "The AI Brain is our central intelligence hub powered by Google's Gemini technology. It coordinates specialized subagents for scheduling, payroll, compliance, security, and analytics. The system learns from your patterns, detects anomalies, and proactively suggests optimizations. All actions are logged, auditable, and can be approved or overridden by authorized managers.",
+    },
+    {
+      question: "What is HelpAI and how do I use it?",
+      answer: "HelpAI is your unified support chatbot accessible from any page. Simply click the chat icon to ask questions, request actions, or get help. HelpAI understands natural language, can execute platform actions on your behalf (with appropriate permissions), and routes complex issues to specialized domain agents or human support when needed.",
+    },
+    {
+      question: "How does QuickBooks integration automation work?",
+      answer: "Connect your QuickBooks account via OAuth and our Cognitive Onboarding Service automatically imports employees, syncs time entries, generates invoices, and processes payroll. The OnboardingQuickBooksFlow pipeline handles the entire process with automatic data extraction, field mapping, and schedule generation. Similar integrations are available for Gusto, ADP, Paychex, and other providers.",
     },
     {
       question: "How do I get started with CoAIleague?",
-      answer: "Getting started is simple: 1) Sign up for a free trial, 2) Create your workspace and invite your first employee, 3) Set up your clients and schedule your first shift, 4) Start tracking time and generating invoices. Our interactive demo walks you through each step, or schedule a personalized onboarding session with our team.",
+      answer: "Getting started is simple: 1) Sign up for a free trial, 2) Create your workspace and invite your first employee, 3) Set up your clients and schedule your first shift, 4) Start tracking time and generating invoices. Trinity AI guides you through each step with interactive tutorials and contextual tips.",
     },
     {
       question: "What's included in the free trial?",
-      answer: "The 14-day free trial includes full access to all Professional plan features: unlimited employees and clients, GPS clock-in, job posting, employee file management, audit tools, manager assignments, and priority support. No credit card required to start.",
+      answer: "The 14-day free trial includes full access to all Professional plan features: unlimited employees and clients, GPS clock-in, Trinity AI assistance, automated scheduling, job posting, employee file management, audit tools, manager assignments, and priority support. No credit card required to start.",
     },
     {
       question: "How does time tracking and GPS verification work?",
       answer: "Employees can clock in/out from the mobile app or web interface. GPS verification captures their location at clock-in to ensure they're at the designated work site. You can set geofence boundaries and receive alerts for unusual locations. All time entries are automatically calculated and ready for payroll or invoicing.",
     },
     {
-      question: "Can I import existing employee data?",
-      answer: "Yes! CoAIleague supports bulk import via CSV for employees, clients, and historical data. Our team can also assist with custom data migration from other HR systems like ADP, Workday, or BambooHR during your onboarding process.",
+      question: "What automation features are available?",
+      answer: "CoAIleague offers comprehensive automation: smart billing (nightly invoice generation), AI scheduling (weekly schedule optimization), auto payroll processing, compliance alerts (certification expiry warnings), shift reminders, break compliance checking across all 50 states, trial conversion management, and self-healing error recovery. Most workflows run autonomously with human approval only for exceptions.",
     },
     {
-      question: "How does automated invoice generation work?",
-      answer: "Select unbilled time entries for one or more clients, and CoAIleague automatically generates professional invoices with calculated hours, rates, taxes, and platform fees. Invoices can be sent via email or downloaded as PDF. You can track payment status and generate reports for accounting.",
+      question: "How does the approval workflow system work?",
+      answer: "The Workflow Approval Service manages human-in-the-loop decisions for high-risk actions. When Trinity needs approval, you receive a notification via email and in-app. You can approve, reject, or delegate decisions. Expired approvals are automatically escalated. The ApprovalGateEnforcement service ensures critical operations like payroll and large invoices always get proper authorization.",
     },
     {
       question: "What security measures are in place?",
-      answer: "CoAIleague uses bank-level encryption (AES-256), SOC 2 Type II compliance, multi-factor authentication, role-based access control, and immutable audit logs. All data is backed up hourly with 99.9% uptime SLA for Enterprise customers. We're also GDPR and CCPA compliant.",
+      answer: "CoAIleague uses AES-256-GCM encryption, PBKDF2-SHA256 password hashing, role-based access control (RBAC) with a 9-level hierarchy, and attribute-based access control (ABAC) for fine-grained permissions. The Universal Access Control Panel manages dynamic policies. We're SOC 2 Type II, GDPR, and CCPA compliant with immutable audit logs and 99.9% uptime SLA.",
     },
     {
-      question: "How do I upgrade or downgrade my plan?",
-      answer: "You can change plans anytime from your workspace settings. Upgrades take effect immediately with prorated billing. Downgrades take effect at the start of your next billing cycle. Contact support if you need help choosing the right tier for your business size.",
+      question: "Can I import existing employee data?",
+      answer: "Yes! CoAIleague supports bulk import via CSV for employees, clients, and historical data. Our Cognitive Onboarding Service can automatically extract and map data from QuickBooks, Gusto, ADP, Paychex, Zenefits, Rippling, BambooHR, or Workday via OAuth integration. AI-powered field mapping ensures accurate data migration.",
     },
     {
-      question: "Do you offer custom integrations?",
-      answer: "Enterprise customers can request custom integrations with payroll providers (ADP, Paychex), accounting software (QuickBooks, Xero), or other business tools. Our API is also available for Professional and Enterprise tiers to build your own integrations.",
+      question: "How does the billing automation work?",
+      answer: "Our 99% automation billing system includes weekly billing runs, automatic invoice generation from tracked hours, Stripe integration for payments, exception queue processing, and human escalation for anomalies. The BillingOrchestration service handles risk evaluation, state transitions, and generates audit packs for compliance.",
     },
     {
-      question: "What happens to my data if I cancel?",
-      answer: "You can export all your data (employees, clients, time entries, invoices, documents) as CSV or JSON before canceling. We retain your data for 90 days after cancellation in case you decide to return. After 90 days, all data is permanently deleted per our data retention policy.",
+      question: "How can administrators monitor AI operations?",
+      answer: "Platform administrators have access to comprehensive AI monitoring tools including real-time activity feeds, orchestration dashboards, and audit logs. Root admins can view all automated operations, approve or reject high-risk actions, and intervene when needed. The system provides full visibility into the AI Brain hierarchy with RBAC-gated access controls.",
     },
     {
       question: "How can I contact support?",
-      answer: "Standard plan: Email & chat support with 4-hour response time. Professional plan: Priority phone, email & chat with 1-hour response time. Enterprise plan: 24/7 white-glove support with 15-minute response time and dedicated account manager. Visit our Contact page for details.",
+      answer: "All plans include HelpAI chat support with instant responses. Standard plan: Email support with 4-hour response time. Professional plan: Priority phone, email & chat with 1-hour response time. Enterprise plan: 24/7 white-glove support with 15-minute response time and dedicated account manager. Visit our Contact page for details.",
     },
   ];
 
