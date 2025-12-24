@@ -892,6 +892,17 @@ function NotificationCard({
 }
 
 export function NotificationsPopover() {
+  const { user } = useAuth();
+  
+  // Early return for unauthenticated users - prevents rendering entirely
+  if (!user) {
+    return null;
+  }
+  
+  return <NotificationsPopoverInner user={user} />;
+}
+
+function NotificationsPopoverInner({ user }: { user: any }) {
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<TabCategory>('for_you');
   const [subFilter, setSubFilter] = useState<SubFilter>('all');
@@ -915,7 +926,7 @@ export function NotificationsPopover() {
     return isMobileBreakpoint || (hasTouch && hasMobileUA && hasCoarsePointer);
   })();
   const { toast } = useToast();
-  const { user } = useAuth();
+  // user is now passed as a prop from NotificationsPopover wrapper
   const userId = (user as any)?.id;
   const workspaceId = (user as any)?.activeWorkspaceId || (user as any)?.workspaceId;
   const userPlatformRole = (user as any)?.platformRole as string | null | undefined;
