@@ -75,7 +75,7 @@ export const navConfig = {
     platform: "/platform-admin",
     root: "/root-admin-portal",
     dashboard: "/root-admin-dashboard",
-    users: "/platform-users",
+    users: "/platform/users",
     commands: "/admin-command-center",
     usage: "/admin-usage",
     customForms: "/admin-custom-forms",
@@ -122,6 +122,10 @@ export const navConfig = {
     records: "/records",
     insights: "/insights",
     commandCenter: "/ai-command-center",
+    trinityCommandCenter: "/trinity/command-center",
+    supportConsole: "/support/console",
+    supportAiConsole: "/support/ai-console",
+    aiBrainDashboard: "/ai-brain-dashboard",
   },
 
   // Feature Families (Category Pages)
