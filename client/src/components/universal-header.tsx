@@ -36,10 +36,30 @@ export function UniversalHeader({ variant = "public" }: UniversalHeaderProps) {
   const [isChristmas, setIsChristmas] = useState(false);
   const [lightPhase, setLightPhase] = useState(0);
 
-  // Detect Christmas season (universal - works every year)
+  // Detect Christmas season only if seasonal theming is not disabled
   useEffect(() => {
-    const holiday = getCurrentHoliday();
-    setIsChristmas(holiday?.key === 'christmas');
+    // Check if seasonal theming is disabled via environment variable
+    const disableSeasonal = import.meta.env.VITE_DISABLE_SEASONAL_THEMING === 'true';
+    if (disableSeasonal) {
+      setIsChristmas(false);
+      return;
+    }
+    // Also check via API to respect runtime settings
+    fetch('/api/mascot/seasonal/state')
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data?.isDisabled || data?.forceDeactivated) {
+          setIsChristmas(false);
+        } else {
+          const holiday = getCurrentHoliday();
+          setIsChristmas(holiday?.key === 'christmas');
+        }
+      })
+      .catch(() => {
+        // On error, fall back to date check
+        const holiday = getCurrentHoliday();
+        setIsChristmas(holiday?.key === 'christmas');
+      });
   }, []);
 
   // Animate Christmas light colors on mobile word logo
@@ -58,9 +78,9 @@ export function UniversalHeader({ variant = "public" }: UniversalHeaderProps) {
     return colors.map((_, i) => colors[(i + lightPhase) % colors.length]);
   }, [lightPhase]);
 
-  // UNS is UNIVERSAL - always show notification bell for all users
-  // Unauthenticated users see platform updates, authenticated see full notifications
-  const showNotificationFeatures = true;
+  // Only show notification bell for authenticated users
+  // UNS notifications require login to function properly
+  const showNotificationFeatures = !!user;
   
   // Safe scroll function for SPA navigation
   const scrollToFeatures = () => {

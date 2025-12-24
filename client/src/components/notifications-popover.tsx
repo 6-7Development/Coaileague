@@ -1503,9 +1503,10 @@ export function NotificationsPopover() {
         </div>
       </div>
       
-      {/* Notification List - Scrollable container with visible scrollbar */}
+      {/* Notification List - Scrollable container with touch-friendly scrolling */}
       <ScrollArea 
-        className="flex-1 min-h-0 max-h-[320px]"
+        className="flex-1 min-h-0"
+        style={{ maxHeight: 'min(50vh, 280px)', WebkitOverflowScrolling: 'touch' }}
         viewportRef={setViewportRef}
       >
         <div className="min-h-0">
@@ -1595,8 +1596,8 @@ export function NotificationsPopover() {
         </div>
         <SheetContent 
           side="bottom" 
-          className="p-0 rounded-t-2xl flex flex-col overflow-hidden"
-          style={{ maxHeight: 'min(90vh, 560px)' }}
+          className="p-0 rounded-t-2xl flex flex-col"
+          style={{ maxHeight: 'min(70vh, 480px)' }}
           data-testid="notification-sheet-content"
           data-trinity-avoid="true"
         >

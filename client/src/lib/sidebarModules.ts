@@ -31,7 +31,6 @@ import {
   CheckCircle,
   Activity,
   Brain,
-  Terminal,
   UserCog,
   type LucideIcon,
 } from "lucide-react";
@@ -764,18 +763,6 @@ export const platformSupportModule: SidebarModule = {
       badge: 'Root',
       isPrimary: false,
       order: 7,
-    },
-    {
-      id: 'ai-command-center',
-      label: 'AI Command Center',
-      href: '/ai/command-center',
-      icon: Terminal,
-      description: 'AI Brain actions and automation testing',
-      capabilities: ['support_dashboard'],
-      familyId: 'platform',
-      badge: 'Root',
-      isPrimary: false,
-      order: 8,
     },
     {
       id: 'org-management',
