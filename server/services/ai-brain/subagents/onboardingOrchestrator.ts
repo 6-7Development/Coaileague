@@ -23,7 +23,7 @@ import { gamificationActivationAgent, type ActivationResult, AUTOMATION_GATES } 
 import { cognitiveOnboardingService, type IntegrationProvider, type DataSyncType } from '../cognitiveOnboardingService';
 import { industryComplianceTemplates, type IndustryComplianceConfig } from '../industryComplianceTemplates';
 import { db } from '../../../db';
-import { workspaces, notifications, orgInvitations } from '@shared/schema';
+import { workspaces, notifications, orgInvitations, employees } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 import { TrialManager } from '../../billing/trialManager';
 import { onboardingPipelineService } from '../../onboardingPipelineService';
@@ -1072,6 +1072,13 @@ class OnboardingOrchestrator {
 
       const trinityInitialized = !!trinityNotification;
 
+      // Check if data has been imported by counting employees in workspace
+      const employeeCount = await db.select()
+        .from(employees)
+        .where(eq(employees.workspaceId, workspaceId))
+        .limit(1);
+      const dataImported = employeeCount.length > 0;
+
       // Determine recommendations
       if (!gamificationEnabled) {
         recommendations.push('Activate gamification to unlock automation features');
@@ -1082,6 +1089,9 @@ class OnboardingOrchestrator {
       if (gateStatus.gates.filter(g => g.unlocked).length === 0) {
         recommendations.push('Complete onboarding challenges to unlock automation gates');
       }
+      if (!dataImported) {
+        recommendations.push('Import employee data to get started with scheduling');
+      }
 
       return {
         workspaceId,
@@ -1089,7 +1099,7 @@ class OnboardingOrchestrator {
         trinityInitialized,
         gamificationActive: gamificationEnabled,
         automationGatesUnlocked: gateStatus.gates.filter(g => g.unlocked).map(g => g.name),
-        dataImported: false, // TODO: Check if data has been imported
+        dataImported,
         errors,
         recommendations,
       };

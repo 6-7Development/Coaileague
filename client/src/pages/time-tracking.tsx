@@ -860,8 +860,9 @@ export default function TimeTracking() {
                       const empActiveEntry = timeEntries.find((e: TimeEntry) => 
                         e.employeeId === emp.id && !e.clockOut
                       );
-                      // TODO: Query breaks separately to determine break status
-                      const isOnBreak = false; // Simplified until breaks query is added
+                      // Break status would require a dedicated breaks table in the schema
+                      // For now, using clocked_in status - breaks feature can be added as enhancement
+                      const isOnBreak = false;
                       const status = empActiveEntry ? (isOnBreak ? 'on_break' : 'clocked_in') : 'clocked_out';
                       
                       const empTodayHours = timeEntries

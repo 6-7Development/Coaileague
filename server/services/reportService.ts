@@ -337,12 +337,12 @@ export async function getClientSummaryReport(filters: ReportFilters) {
     }
 
     const amount = parseFloat(String(invoice.total || 0));
-    const amountPaid = parseFloat(String(invoice.total || 0)); // TODO: Add amountPaid field to schema
+    const amountPaid = parseFloat(String(invoice.amountPaid || 0));
 
     acc[key].totalInvoices += 1;
     acc[key].totalAmount += amount;
-    acc[key].totalPaid += (invoice.status === 'paid' ? amount : 0);
-    acc[key].totalOutstanding += (invoice.status !== 'paid' ? amount : 0);
+    acc[key].totalPaid += amountPaid;
+    acc[key].totalOutstanding += (amount - amountPaid);
     acc[key].invoices.push({
       id: invoice.id,
       number: invoice.invoiceNumber,

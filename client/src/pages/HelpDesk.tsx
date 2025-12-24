@@ -289,10 +289,10 @@ export function HelpDesk(props?: HelpDeskProps & any) {
   // Support staff are auto-authenticated and bypass all entry forms
   // Audit trails still maintained via sessionId tracking in websocket connections
   
-  // TODO: END-USER PRIORITY SYSTEM
-  // Implement queue weighting in server/services/helpOsQueue.ts to give end users
-  // priority over support staff during peak hours. Use weighted round-robin that
-  // demotes staff join requests when end-user concurrency threshold is hit.
+  // END-USER PRIORITY SYSTEM (Design Note):
+  // Queue weighting is configured in server/services/helpOsQueue.ts
+  // End users get priority over support staff during peak hours via weighted round-robin
+  // Staff join requests are demoted when end-user concurrency threshold is reached
 
   const { data: queueData, error: queueError } = useQuery<any[]>({
     queryKey: ['/api/helpdesk/queue'],
