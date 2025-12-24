@@ -734,11 +734,39 @@ const WinterBackgroundScene = memo(function WinterBackgroundScene() {
   );
 });
 
+// Inline accent scene - subtle decorative accents for inline content
+const InlineAccentScene = memo(function InlineAccentScene() {
+  const { seasonId, effectsEnabled, forceDarkMode } = useSeasonalTheme();
+  
+  if (!effectsEnabled) return null;
+  
+  const accentColor = seasonId === 'christmas' || seasonId === 'winter' 
+    ? (forceDarkMode ? 'rgba(56, 189, 248, 0.15)' : 'rgba(14, 116, 144, 0.1)')
+    : (forceDarkMode ? 'rgba(168, 85, 247, 0.15)' : 'rgba(124, 58, 237, 0.1)');
+  
+  return (
+    <div
+      className="pointer-events-none absolute inset-0 overflow-hidden"
+      style={{ zIndex: 0 }}
+      data-testid="inline-accent"
+    >
+      <div 
+        className="absolute top-0 left-0 w-32 h-32 rounded-full blur-3xl"
+        style={{ background: accentColor }}
+      />
+      <div 
+        className="absolute bottom-0 right-0 w-24 h-24 rounded-full blur-2xl"
+        style={{ background: accentColor }}
+      />
+    </div>
+  );
+});
+
 // Scene registry mapping
 const SCENE_COMPONENTS: Record<SceneId, React.ComponentType> = {
   'corner-cluster': CornerClusterScene,
   'header-garland': HeaderGarlandScene,
-  'inline-accent': () => null, // TODO: Implement inline accent scene
+  'inline-accent': InlineAccentScene,
   'snow-overlay': SnowOverlayScene,
   'santa-flyover': SantaFlyoverScene,
   'full-festive': () => null, // Composite scene handled separately

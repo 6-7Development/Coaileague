@@ -51,8 +51,9 @@ export async function setWorkspaceAdminHourlyRate(
     throw new Error('Hourly rate must be between $1 and $500');
   }
   
-  // TODO: Add adminHourlyRate column to workspaces table to enable per-workspace rates
-  console.log(`[AutomationMetrics] Workspace rate configuration not yet supported. Using default: $${DEFAULT_ADMIN_HOURLY_RATE}/hr`);
+  // Per-workspace rates require adminHourlyRate column in workspaces table
+  // Using default rate until schema extension is implemented
+  console.log(`[AutomationMetrics] Using default hourly rate: $${DEFAULT_ADMIN_HOURLY_RATE}/hr (workspace-specific rates require schema extension)`);
 }
 
 interface AutomationMetrics {
