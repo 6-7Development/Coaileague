@@ -439,21 +439,38 @@ class AutomationGovernanceService {
 
   async evaluateExecution(
     context: ActionContext,
-    confidenceFactors: ConfidenceFactors
+    confidenceFactors: ConfidenceFactors,
+    userPlatformRole?: string
   ): Promise<ExecutionDecision> {
+    // Check if targeting a platform workspace (not a customer tenant workspace)
+    const isPlatformWorkspace = context.workspaceId === 'coaileague-platform-workspace' || 
+                                 context.workspaceId === 'ops-workspace-00000000' ||
+                                 context.workspaceId === 'system-automation';
+    
+    // PLATFORM ADMIN BYPASS: Only allowed when targeting platform workspaces
+    // This prevents platform admins from bypassing tenant consent in customer workspaces
+    const isPlatformAdmin = userPlatformRole === 'root_admin' || userPlatformRole === 'superadmin';
+    const canBypassConsent = isPlatformAdmin && isPlatformWorkspace;
+    
     // SECURITY: Require workspaceId for all non-system actions
+    // Platform admins CAN operate without workspace context when targeting platform workspace
     if (!context.workspaceId && context.executorType !== 'automation_job') {
-      return {
-        canExecute: false,
-        requiresApproval: true,
-        computedLevel: 'hand_held',
-        policyLevel: 'hand_held',
-        confidenceScore: 0,
-        confidenceFactors,
-        isHighRisk: true,
-        riskFactors: ['Missing workspace context - cannot determine policy'],
-        blockingReason: 'Workspace ID is required for automation governance',
-      };
+      if (isPlatformAdmin) {
+        // Platform admins without workspace context use platform workspace by default
+        context = { ...context, workspaceId: 'ops-workspace-00000000' };
+      } else {
+        return {
+          canExecute: false,
+          requiresApproval: true,
+          computedLevel: 'hand_held',
+          policyLevel: 'hand_held',
+          confidenceScore: 0,
+          confidenceFactors,
+          isHighRisk: true,
+          riskFactors: ['Missing workspace context - cannot determine policy'],
+          blockingReason: 'Workspace ID is required for automation governance',
+        };
+      }
     }
     
     const workspaceId = context.workspaceId || 'system-automation';
@@ -487,7 +504,9 @@ class AutomationGovernanceService {
     const requiredConsents: string[] = [];
 
     // Check org owner consent for automation features
-    if (!policy.orgOwnerConsent) {
+    // BYPASS: Only allowed when platform admin is targeting platform workspace
+    // Platform admins targeting customer workspaces must respect tenant consent
+    if (!policy.orgOwnerConsent && !canBypassConsent) {
       canExecute = false;
       blockingReason = 'Organization owner has not consented to automation features';
       requiredConsents.push('org_automation');

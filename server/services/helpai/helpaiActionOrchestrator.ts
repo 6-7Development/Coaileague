@@ -60,6 +60,7 @@ export interface ActionRequest {
   workspaceId?: string;
   userId: string;
   userRole: string;
+  platformRole?: string; // Platform-level role for governance bypass (root_admin, superadmin)
   priority?: ActionPriority;
   requiresConfirmation?: boolean;
   isTestMode?: boolean;
@@ -1046,7 +1047,7 @@ class HelpaiActionOrchestrator {
           riskMultiplier: handler.category === 'payroll' || handler.category === 'invoicing' ? 0.8 : 1.0,
         };
         
-        governanceDecision = await automationGovernanceService.evaluateExecution(actionContext, confidenceFactors);
+        governanceDecision = await automationGovernanceService.evaluateExecution(actionContext, confidenceFactors, request.platformRole);
         
         ledgerEntry = await automationGovernanceService.createLedgerEntry(actionContext, governanceDecision);
         

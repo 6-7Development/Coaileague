@@ -54,13 +54,19 @@ router.get("/pending-count", async (req, res) => {
     }
 
     const workspaceId = req.headers["x-workspace-id"] as string || user.workspaceId;
+    
+    // Platform admins without a workspace context get 0 count (they view all workspaces)
+    const isPlatformAdmin = user.platformRole === 'root_admin' || user.platformRole === 'superadmin';
     if (!workspaceId) {
+      if (isPlatformAdmin) {
+        // Platform admins without workspace context: return 0 (no workspace-specific approvals)
+        return res.json({ success: true, count: 0 });
+      }
       return res.status(400).json({ success: false, error: "Workspace ID required" });
     }
 
-    const isAdmin = user.platformRole === 'root_admin' || user.platformRole === 'superadmin';
     const isManager = user.workspaceRole === 'org_owner' || user.workspaceRole === 'admin' || user.workspaceRole === 'manager';
-    const scope = isAdmin ? 'admin' : isManager ? 'manager' : 'employee';
+    const scope = isPlatformAdmin ? 'admin' : isManager ? 'manager' : 'employee';
 
     const count = await approvalRequestService.getPendingCount(user.id, workspaceId, scope);
 
