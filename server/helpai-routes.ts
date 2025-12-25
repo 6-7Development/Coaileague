@@ -9,6 +9,8 @@ import { type AuthenticatedRequest } from './rbac';
 import { helpaiRegistryService } from './services/helpai/helpaiRegistryService';
 import { helpaiIntegrationService } from './services/helpai/helpaiIntegrationService';
 import { helpaiAuditService } from './services/helpai/helpaiAuditService';
+import { helposService } from './services/helposService';
+import { storage } from './storage';
 import { PERMISSIONS, ROLES, ROLE_HIERARCHY } from '@shared/platformConfig';
 import { z } from 'zod';
 
@@ -622,3 +624,70 @@ helpaiRouter.post(
     }
   }
 );
+
+/**
+ * POST /api/helpai/chat
+ * Trinity Dialogue chat endpoint - routes to HelpOS for AI responses
+ * Supports both authenticated and anonymous users
+ */
+helpaiRouter.post('/chat', async (req: Request, res: Response) => {
+  try {
+    const authReq = req as any;
+    const { message, workspaceId: reqWorkspaceId, source, mode, conversationHistory = [] } = req.body;
+    
+    if (!message || typeof message !== 'string') {
+      return res.status(400).json({ error: 'Message is required' });
+    }
+
+    // Support both auth systems
+    let userId: string | null = null;
+    let userName = 'User';
+    let workspaceId = reqWorkspaceId || 'coaileague-platform-workspace';
+    
+    // Try custom auth first (session-based)
+    if (authReq.session?.userId) {
+      userId = authReq.session.userId;
+      userName = authReq.session.userName || 'User';
+      workspaceId = authReq.session.workspaceId || workspaceId;
+    }
+    // Try Replit Auth (OIDC)
+    else if (authReq.isAuthenticated?.() && authReq.user?.claims?.sub) {
+      userId = authReq.user.claims.sub;
+      userName = authReq.user.claims.name || 'User';
+    }
+    
+    // For anonymous users, derive a stable userId
+    if (!userId) {
+      userId = `anon-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    }
+
+    // Use HelpOS service to get AI response
+    const response = await helposService.bubbleAgent_reply({
+      workspaceId,
+      userId,
+      userName,
+      userMessage: message,
+      conversationHistory,
+      storage
+    });
+
+    // Return response in format expected by Trinity Dialogue
+    res.json({
+      success: true,
+      reply: response.message,
+      message: response.message,
+      sessionId: response.sessionId,
+      shouldEscalate: response.shouldEscalate,
+      escalationReason: response.escalationReason,
+      mode: mode || 'pro',
+      source: source || 'trinity-dialogue',
+      confidenceScore: 0.85
+    });
+  } catch (error: any) {
+    console.error('[HelpAI] Chat error:', error);
+    res.status(500).json({ 
+      error: 'Failed to process chat message',
+      message: error.message || 'Internal server error'
+    });
+  }
+});
