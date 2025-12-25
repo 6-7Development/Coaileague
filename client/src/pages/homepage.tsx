@@ -133,74 +133,75 @@ export default function Homepage() {
             </div>
 
             {/* Right Column - Visual Demo */}
-            <div className="relative">
+            <div className="relative hidden sm:block">
               <div className="absolute -top-6 -right-6 w-32 h-32 bg-gradient-to-br from-blue-400 to-blue-400 rounded-full opacity-20 blur-2xl"></div>
-              <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 p-6 relative">
-                <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-200">
-                  <div className="flex items-center gap-2">
-                    <Cpu className="w-5 h-5 text-blue-600" />
-                    <span className="font-bold text-gray-900">CoAIleague AI Brain</span>
+              <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 p-4 md:p-6 relative max-w-full overflow-hidden">
+                <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-200 gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Cpu className="w-5 h-5 text-blue-600 shrink-0" />
+                    <span className="font-bold text-gray-900 text-sm md:text-base truncate">CoAIleague AI Brain</span>
                   </div>
-                  <div className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1">
+                  <div className="bg-blue-100 text-blue-700 px-2 md:px-3 py-1 rounded-full text-[10px] md:text-xs font-semibold flex items-center gap-1 shrink-0">
                     <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                    Neural Engine Active
+                    <span className="hidden md:inline">Neural Engine Active</span>
+                    <span className="md:hidden">Active</span>
                   </div>
                 </div>
                 
-                {/* Mini Schedule Preview */}
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-md">
+                {/* Mini Schedule Preview - Responsive Grid */}
+                <div className="space-y-2 md:space-y-3">
+                  <div className="flex items-center gap-2 md:gap-3">
+                    <div className="w-10 h-10 md:w-14 md:h-14 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center text-white font-bold text-xs md:text-sm shadow-md shrink-0">
                       SM
                     </div>
-                    <div className="flex-1 grid grid-cols-4 gap-2">
-                      <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-3 rounded-lg shadow-md hover-elevate active-elevate-2 cursor-pointer">
-                        <div className="text-xs font-semibold">Tech Support</div>
-                        <div className="text-xs opacity-90 mt-1">9AM-5PM</div>
+                    <div className="flex-1 grid grid-cols-2 md:grid-cols-4 gap-1.5 md:gap-2 min-w-0">
+                      <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-2 md:p-3 rounded-lg shadow-md">
+                        <div className="text-[10px] md:text-xs font-semibold truncate">Tech Support</div>
+                        <div className="text-[9px] md:text-xs opacity-90 mt-0.5">9AM-5PM</div>
                       </div>
-                      <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-3 rounded-lg shadow-md hover-elevate active-elevate-2 cursor-pointer">
-                        <div className="text-xs font-semibold">Field Ops</div>
-                        <div className="text-xs opacity-90 mt-1">1PM-9PM</div>
+                      <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-2 md:p-3 rounded-lg shadow-md">
+                        <div className="text-[10px] md:text-xs font-semibold truncate">Field Ops</div>
+                        <div className="text-[9px] md:text-xs opacity-90 mt-0.5">1PM-9PM</div>
                       </div>
-                      <div className="border-2 border-dashed border-gray-300 p-3 rounded-lg bg-gray-50"></div>
-                      <div className="bg-gradient-to-br from-purple-500 to-purple-600 text-white p-3 rounded-lg shadow-md hover-elevate active-elevate-2 cursor-pointer">
-                        <div className="text-xs font-semibold">Emergency</div>
-                        <div className="text-xs opacity-90 mt-1">12AM-8AM</div>
+                      <div className="border-2 border-dashed border-gray-300 p-2 md:p-3 rounded-lg bg-gray-50 hidden md:block"></div>
+                      <div className="bg-gradient-to-br from-purple-500 to-purple-600 text-white p-2 md:p-3 rounded-lg shadow-md hidden md:block">
+                        <div className="text-[10px] md:text-xs font-semibold truncate">Emergency</div>
+                        <div className="text-[9px] md:text-xs opacity-90 mt-0.5">12AM-8AM</div>
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-md">
+                  <div className="flex items-center gap-2 md:gap-3">
+                    <div className="w-10 h-10 md:w-14 md:h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-xs md:text-sm shadow-md shrink-0">
                       JD
                     </div>
-                    <div className="flex-1 grid grid-cols-4 gap-2">
-                      <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-3 rounded-lg shadow-md hover-elevate active-elevate-2 cursor-pointer">
-                        <div className="text-xs font-semibold">Healthcare</div>
-                        <div className="text-xs opacity-90 mt-1">8AM-4PM</div>
+                    <div className="flex-1 grid grid-cols-2 md:grid-cols-4 gap-1.5 md:gap-2 min-w-0">
+                      <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-2 md:p-3 rounded-lg shadow-md">
+                        <div className="text-[10px] md:text-xs font-semibold truncate">Healthcare</div>
+                        <div className="text-[9px] md:text-xs opacity-90 mt-0.5">8AM-4PM</div>
                       </div>
-                      <div className="border-2 border-dashed border-gray-300 p-3 rounded-lg bg-gray-50"></div>
-                      <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-3 rounded-lg shadow-md hover-elevate active-elevate-2 cursor-pointer">
-                        <div className="text-xs font-semibold">Training</div>
-                        <div className="text-xs opacity-90 mt-1">10AM-2PM</div>
+                      <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-2 md:p-3 rounded-lg shadow-md">
+                        <div className="text-[10px] md:text-xs font-semibold truncate">Training</div>
+                        <div className="text-[9px] md:text-xs opacity-90 mt-0.5">10AM-2PM</div>
                       </div>
-                      <div className="border-2 border-dashed border-gray-300 p-3 rounded-lg bg-gray-50"></div>
+                      <div className="border-2 border-dashed border-gray-300 p-2 md:p-3 rounded-lg bg-gray-50 hidden md:block"></div>
+                      <div className="border-2 border-dashed border-gray-300 p-2 md:p-3 rounded-lg bg-gray-50 hidden md:block"></div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-md">
+                  <div className="flex items-center gap-2 md:gap-3 hidden md:flex">
+                    <div className="w-10 h-10 md:w-14 md:h-14 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg flex items-center justify-center text-white font-bold text-xs md:text-sm shadow-md shrink-0">
                       MD
                     </div>
-                    <div className="flex-1 grid grid-cols-4 gap-2">
-                      <div className="border-2 border-dashed border-gray-300 p-3 rounded-lg bg-gray-50"></div>
-                      <div className="bg-gradient-to-br from-teal-500 to-teal-600 text-white p-3 rounded-lg shadow-md hover-elevate active-elevate-2 cursor-pointer">
-                        <div className="text-xs font-semibold">Security</div>
-                        <div className="text-xs opacity-90 mt-1">2PM-10PM</div>
+                    <div className="flex-1 grid grid-cols-2 md:grid-cols-4 gap-1.5 md:gap-2 min-w-0">
+                      <div className="border-2 border-dashed border-gray-300 p-2 md:p-3 rounded-lg bg-gray-50"></div>
+                      <div className="bg-gradient-to-br from-teal-500 to-teal-600 text-white p-2 md:p-3 rounded-lg shadow-md">
+                        <div className="text-[10px] md:text-xs font-semibold truncate">Security</div>
+                        <div className="text-[9px] md:text-xs opacity-90 mt-0.5">2PM-10PM</div>
                       </div>
-                      <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 text-white p-3 rounded-lg shadow-md hover-elevate active-elevate-2 cursor-pointer">
-                        <div className="text-xs font-semibold">Admin</div>
-                        <div className="text-xs opacity-90 mt-1">9AM-5PM</div>
+                      <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 text-white p-2 md:p-3 rounded-lg shadow-md">
+                        <div className="text-[10px] md:text-xs font-semibold truncate">Admin</div>
+                        <div className="text-[9px] md:text-xs opacity-90 mt-0.5">9AM-5PM</div>
                       </div>
-                      <div className="border-2 border-dashed border-gray-300 p-3 rounded-lg bg-gray-50"></div>
+                      <div className="border-2 border-dashed border-gray-300 p-2 md:p-3 rounded-lg bg-gray-50"></div>
                     </div>
                   </div>
                 </div>
