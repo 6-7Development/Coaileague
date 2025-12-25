@@ -415,7 +415,7 @@ export default function Dashboard() {
               <FeatureCard icon={MessageCircle} label="Live Chat" href="/chat" />
               <FeatureCard icon={HelpCircle} label="Help Desk" href="/chat" />
               <FeatureCard icon={Mail} label="Support" href="/support" />
-              {isStaff && <FeatureCard icon={Shield} label="Admin" href="/dashboard" />}
+              {isStaff && <FeatureCard icon={Shield} label="Admin" href="/support/console" />}
             </div>
           </section>
 
