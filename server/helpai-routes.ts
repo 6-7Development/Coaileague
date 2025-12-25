@@ -502,6 +502,7 @@ helpaiRouter.post(
         workspaceId: req.user?.currentWorkspaceId,
         userId: req.user?.id || 'unknown',
         userRole: req.user?.role || 'employee',
+        platformRole: req.platformRole || req.user?.platformRole,
         priority: priority || 'normal',
         isTestMode: isTestMode || false
       };
@@ -603,7 +604,8 @@ helpaiRouter.post(
         payload,
         workspaceId: req.user?.currentWorkspaceId,
         userId: req.user?.id || 'unknown',
-        userRole: req.user?.role || 'employee'
+        userRole: req.user?.role || 'employee',
+        platformRole: req.platformRole || req.user?.platformRole
       };
 
       const result = await helpaiOrchestrator.executeAction(request);
