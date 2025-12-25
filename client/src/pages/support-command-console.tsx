@@ -20,6 +20,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -54,7 +55,8 @@ import {
   Wrench,
   Database,
   Lock,
-  Loader2
+  Loader2,
+  PanelRight
 } from "lucide-react";
 import { format } from "date-fns";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -155,6 +157,9 @@ export default function SupportCommandConsole() {
   const [reasoningSession, setReasoningSession] = useState<ReasoningSession | null>(null);
   const [fastMode, setFastMode] = useState(false);
   const [showReasoningPanel, setShowReasoningPanel] = useState(true);
+  
+  // Mobile tools sheet state
+  const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
 
   // Helper to add reasoning steps
   const addReasoningStep = (step: ReasoningStep) => {
@@ -516,52 +521,89 @@ export default function SupportCommandConsole() {
   const totalServices = healthStatus?.services?.length || 0;
 
   return (
-    <div className="flex flex-col h-full bg-background">
-      <div className="bg-gradient-to-r from-slate-900 to-slate-800 text-white p-4 lg:p-6">
+    <div className="flex flex-col h-[100dvh] bg-background overflow-hidden">
+      <div className="bg-gradient-to-r from-slate-900 to-slate-800 text-white p-3 lg:p-6 shrink-0">
         <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-lg flex items-center justify-center shadow-lg shadow-cyan-500/20">
-                <Terminal className="w-5 h-5" />
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center space-x-2 lg:space-x-3 min-w-0">
+              <div className="w-8 h-8 lg:w-10 lg:h-10 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-lg flex items-center justify-center shadow-lg shadow-cyan-500/20 shrink-0">
+                <Terminal className="w-4 h-4 lg:w-5 lg:h-5" />
               </div>
-              <div>
-                <h1 className="text-xl lg:text-2xl font-bold" data-testid="text-page-title">Support Command Console</h1>
-                <p className="text-slate-400 text-sm">
+              <div className="min-w-0">
+                <h1 className="text-base lg:text-2xl font-bold truncate" data-testid="text-page-title">Support Console</h1>
+                <p className="text-slate-400 text-xs lg:text-sm hidden sm:block">
                   Trinity AI Brain - Interactive Command Interface
                 </p>
               </div>
             </div>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-1 lg:space-x-2 shrink-0">
               <Badge 
                 variant={healthStatus?.status === 'healthy' ? 'default' : 'destructive'}
-                className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+                className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 text-[10px] lg:text-xs px-1.5 lg:px-2"
                 data-testid="badge-health-status"
               >
                 <Activity className="w-3 h-3 mr-1" />
-                {healthyCount}/{totalServices} Services
+                {healthyCount}/{totalServices}
               </Badge>
               <Button 
                 size="icon" 
                 variant="ghost" 
-                className="text-slate-400 hover:text-white"
+                className="text-slate-400 hover:text-white h-8 w-8"
                 onClick={() => refetchHealth()}
                 data-testid="button-refresh-health"
               >
                 <RefreshCw className="w-4 h-4" />
               </Button>
+              <Sheet open={mobileToolsOpen} onOpenChange={setMobileToolsOpen}>
+                <SheetTrigger asChild>
+                  <Button 
+                    size="icon" 
+                    variant="ghost" 
+                    className="text-slate-400 hover:text-white h-8 w-8 lg:hidden"
+                    data-testid="button-mobile-tools"
+                    aria-label="Open tools and status panel"
+                  >
+                    <PanelRight className="w-4 h-4" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="w-[85vw] sm:w-80 p-4 overflow-auto">
+                  <SheetHeader>
+                    <SheetTitle>Tools & Status</SheetTitle>
+                  </SheetHeader>
+                  <div className="mt-4">
+                    <MobileToolsPanel 
+                      healthStatus={healthStatus}
+                      orchestrationHealth={orchestrationHealth}
+                      refetchOrchestration={refetchOrchestration}
+                      pauseOrchestrationService={pauseOrchestrationService}
+                      resumeOrchestrationService={resumeOrchestrationService}
+                      testAlertMutation={testAlertMutation}
+                      quickFixSuggestions={quickFixSuggestions}
+                      quickFixData={quickFixData}
+                      loadingQuickFix={loadingQuickFix}
+                      refetchQuickFix={refetchQuickFix}
+                      handleQuickFixClick={handleQuickFixClick}
+                      quickFixHistory={quickFixHistory}
+                      testTools={testTools}
+                      handleQuickCommand={handleQuickCommand}
+                      actions={actions}
+                    />
+                  </div>
+                </SheetContent>
+              </Sheet>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="flex-1 flex overflow-hidden">
-        <div className="flex-1 flex flex-col max-w-4xl mx-auto w-full p-4">
+      <div className="flex-1 flex overflow-hidden min-h-0">
+        <div className="flex-1 flex flex-col max-w-4xl mx-auto w-full p-2 lg:p-4">
           <ScrollArea 
-            className="flex-1 pr-4" 
+            className="flex-1 pr-2 lg:pr-4 min-h-0" 
             ref={scrollRef}
             data-testid="scroll-chat-messages"
           >
-            <div className="space-y-4 pb-4">
+            <div className="space-y-3 lg:space-y-4 pb-4">
               {messages.map((message) => (
                 <MessageBubble key={message.id} message={message} />
               ))}
@@ -578,9 +620,9 @@ export default function SupportCommandConsole() {
             </div>
           </ScrollArea>
 
-          {/* Trinity AI Reasoning Panel */}
+          {/* Trinity AI Reasoning Panel - Hidden on mobile for space */}
           {showReasoningPanel && (
-            <div className="mt-4 mb-2">
+            <div className="hidden lg:block mt-4 mb-2">
               <TrinityReasoningPanel
                 session={reasoningSession}
                 isActive={sendCommandMutation.isPending}
@@ -590,21 +632,38 @@ export default function SupportCommandConsole() {
             </div>
           )}
 
-          <div className="mt-4">
-            <div className="flex flex-wrap gap-2 mb-3">
-              {QUICK_COMMANDS.map((cmd) => (
+          <div className="mt-2 lg:mt-4 shrink-0 pb-2 lg:pb-0">
+            {/* Quick commands - scrollable on mobile */}
+            <div className="flex gap-2 mb-2 lg:mb-3 overflow-x-auto pb-1 -mx-2 px-2 lg:mx-0 lg:px-0 lg:flex-wrap lg:overflow-visible">
+              {QUICK_COMMANDS.slice(0, 3).map((cmd) => (
                 <Button
                   key={cmd.command}
                   variant="outline"
                   size="sm"
-                  className="text-xs"
+                  className="text-[10px] lg:text-xs shrink-0 h-7 lg:h-8 px-2 lg:px-3"
                   onClick={() => handleQuickCommand(cmd.command)}
                   data-testid={`button-quick-${cmd.command.replace('/', '').split(' ')[0]}`}
                 >
                   <cmd.icon className="w-3 h-3 mr-1" />
-                  {cmd.description}
+                  <span className="hidden sm:inline">{cmd.description}</span>
+                  <span className="sm:hidden">{cmd.command.split(' ')[0]}</span>
                 </Button>
               ))}
+              <div className="hidden lg:contents">
+                {QUICK_COMMANDS.slice(3).map((cmd) => (
+                  <Button
+                    key={cmd.command}
+                    variant="outline"
+                    size="sm"
+                    className="text-xs h-8 px-3"
+                    onClick={() => handleQuickCommand(cmd.command)}
+                    data-testid={`button-quick-${cmd.command.replace('/', '').split(' ')[0]}`}
+                  >
+                    <cmd.icon className="w-3 h-3 mr-1" />
+                    {cmd.description}
+                  </Button>
+                ))}
+              </div>
             </div>
 
             <div className="flex space-x-2">
@@ -614,8 +673,8 @@ export default function SupportCommandConsole() {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="Type a command or question... (/ for commands)"
-                  className="pr-10"
+                  placeholder="Ask Trinity anything..."
+                  className="pr-10 h-10 lg:h-9 text-sm"
                   data-testid="input-command"
                 />
                 <Popover open={isCommandPaletteOpen} onOpenChange={setIsCommandPaletteOpen}>
@@ -659,6 +718,7 @@ export default function SupportCommandConsole() {
               <Button 
                 onClick={handleSend} 
                 disabled={!input.trim() || sendCommandMutation.isPending}
+                className="h-10 lg:h-9 px-3 lg:px-4"
                 data-testid="button-send-command"
               >
                 <Send className="w-4 h-4" />
@@ -1100,20 +1160,20 @@ function MessageBubble({ message }: { message: ChatMessage }) {
 
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
-      <div className={`flex items-start space-x-2 max-w-[80%] ${isUser ? 'flex-row-reverse space-x-reverse' : ''}`}>
-        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+      <div className={`flex items-start space-x-2 max-w-[85%] lg:max-w-[80%] ${isUser ? 'flex-row-reverse space-x-reverse' : ''}`}>
+        <div className={`w-7 h-7 lg:w-8 lg:h-8 rounded-lg flex items-center justify-center shrink-0 ${
           isUser 
             ? 'bg-primary text-primary-foreground' 
             : 'bg-gradient-to-br from-cyan-400 to-blue-500 text-white'
         }`}>
-          {isUser ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
+          {isUser ? <User className="w-3.5 h-3.5 lg:w-4 lg:h-4" /> : <Bot className="w-3.5 h-3.5 lg:w-4 lg:h-4" />}
         </div>
-        <div className={`rounded-lg p-3 ${
+        <div className={`rounded-lg p-2.5 lg:p-3 ${
           isUser 
             ? 'bg-primary text-primary-foreground' 
             : 'bg-muted'
         }`}>
-          <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+          <p className="text-xs lg:text-sm whitespace-pre-wrap">{message.content}</p>
           
           {message.data && (
             <div className="mt-2 pt-2 border-t border-border/50">
@@ -1141,7 +1201,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
             </div>
           )}
 
-          <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
+          <div className="flex items-center justify-between mt-2 text-[10px] lg:text-xs text-muted-foreground gap-2">
             <span>{format(new Date(message.timestamp), 'HH:mm:ss')}</span>
             {message.executionTimeMs && (
               <span className="flex items-center">
@@ -1158,5 +1218,178 @@ function MessageBubble({ message }: { message: ChatMessage }) {
         </div>
       </div>
     </div>
+  );
+}
+
+function MobileToolsPanel({
+  healthStatus,
+  orchestrationHealth,
+  refetchOrchestration,
+  pauseOrchestrationService,
+  resumeOrchestrationService,
+  testAlertMutation,
+  quickFixSuggestions,
+  quickFixData,
+  loadingQuickFix,
+  refetchQuickFix,
+  handleQuickFixClick,
+  quickFixHistory,
+  testTools,
+  handleQuickCommand,
+  actions
+}: any) {
+  return (
+    <Tabs defaultValue="health" className="w-full">
+      <TabsList className="w-full grid grid-cols-4 h-8">
+        <TabsTrigger value="health" className="text-[10px] px-1">Health</TabsTrigger>
+        <TabsTrigger value="ai" className="text-[10px] px-1">AI</TabsTrigger>
+        <TabsTrigger value="fixes" className="text-[10px] px-1">Fixes</TabsTrigger>
+        <TabsTrigger value="tools" className="text-[10px] px-1">Tools</TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="health" className="mt-3 space-y-3">
+        <Card>
+          <CardHeader className="pb-2 px-3 pt-3">
+            <CardTitle className="text-sm">Service Status</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 px-3 pb-3">
+            {healthStatus?.services?.map((service: any) => (
+              <div key={service.serviceName} className="flex items-center justify-between text-xs">
+                <div className="flex items-center space-x-2">
+                  {service.isHealthy ? (
+                    <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
+                  ) : (
+                    <XCircle className="w-3.5 h-3.5 text-red-500" />
+                  )}
+                  <span className="capitalize">{service.serviceName}</span>
+                </div>
+                {service.responseTimeMs && (
+                  <span className="text-muted-foreground text-[10px]">{service.responseTimeMs}ms</span>
+                )}
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      <TabsContent value="ai" className="mt-3 space-y-3">
+        <Card>
+          <CardHeader className="pb-2 px-3 pt-3 flex flex-row items-center justify-between space-y-0">
+            <CardTitle className="text-sm flex items-center">
+              <Brain className="w-4 h-4 mr-2 text-indigo-500" />
+              Orchestration
+            </CardTitle>
+            <Badge 
+              className={`text-[10px] ${
+                orchestrationHealth?.overall === 'healthy' 
+                  ? 'bg-emerald-100 text-emerald-700' 
+                  : orchestrationHealth?.overall === 'degraded'
+                  ? 'bg-yellow-100 text-yellow-700'
+                  : 'bg-red-100 text-red-700'
+              }`}
+            >
+              {orchestrationHealth?.overall || 'loading'}
+            </Badge>
+          </CardHeader>
+          <CardContent className="space-y-2 px-3 pb-3">
+            <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-2">
+              <span>{orchestrationHealth?.summary?.runningServices || 0}/{orchestrationHealth?.summary?.totalServices || 0} running</span>
+              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => refetchOrchestration()}>
+                <RefreshCw className="w-3 h-3" />
+              </Button>
+            </div>
+            {orchestrationHealth?.services?.slice(0, 5).map((service: any) => (
+              <div key={service.name} className="flex items-center justify-between p-1.5 rounded-md bg-muted/50 text-xs">
+                <div className="flex items-center space-x-2">
+                  {service.status === 'running' ? (
+                    <CheckCircle className="w-3 h-3 text-emerald-500" />
+                  ) : service.status === 'paused' ? (
+                    <Pause className="w-3 h-3 text-yellow-500" />
+                  ) : (
+                    <XCircle className="w-3 h-3 text-red-500" />
+                  )}
+                  <span className="text-[10px] capitalize truncate max-w-[120px]">{service.name.replace(/_/g, ' ')}</span>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      <TabsContent value="fixes" className="mt-3 space-y-3">
+        <Card>
+          <CardHeader className="pb-2 px-3 pt-3">
+            <CardTitle className="text-sm flex items-center">
+              <Wrench className="w-4 h-4 mr-2 text-orange-500" />
+              Quick Fixes
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 px-3 pb-3">
+            {loadingQuickFix ? (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="w-4 h-4 animate-spin" />
+              </div>
+            ) : quickFixData?.actions?.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-2">No fixes available</p>
+            ) : (
+              quickFixData?.actions?.slice(0, 4).map((action: any) => (
+                <div 
+                  key={action.id}
+                  className="p-2 rounded-md bg-muted/50 hover-elevate cursor-pointer"
+                  onClick={() => handleQuickFixClick(action)}
+                >
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-xs font-medium truncate">{action.name}</span>
+                    <Badge className={`text-[10px] h-4 shrink-0 ${RISK_COLORS[action.riskTier]}`}>
+                      {action.riskTier}
+                    </Badge>
+                  </div>
+                </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      <TabsContent value="tools" className="mt-3 space-y-3">
+        <Card>
+          <CardHeader className="pb-2 px-3 pt-3">
+            <CardTitle className="text-sm flex items-center">
+              <Zap className="w-4 h-4 mr-2 text-amber-500" />
+              Test Tools
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 px-3 pb-3">
+            {testTools?.tools?.slice(0, 4).map((tool: any) => (
+              <Button
+                key={tool.actionId}
+                variant="outline"
+                size="sm"
+                className="w-full justify-start text-left h-auto py-2 text-xs"
+                onClick={() => handleQuickCommand(`/${tool.actionId.replace('.', '-')}`)}
+              >
+                <div className="truncate">
+                  <div className="font-medium text-xs truncate">{tool.name}</div>
+                </div>
+              </Button>
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2 px-3 pt-3">
+            <CardTitle className="text-sm flex items-center">
+              <Shield className="w-4 h-4 mr-2 text-blue-500" />
+              Actions
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-3 pb-3">
+            <div className="text-xs text-muted-foreground">
+              {actions?.actions?.length || 0} actions available
+            </div>
+          </CardContent>
+        </Card>
+      </TabsContent>
+    </Tabs>
   );
 }
