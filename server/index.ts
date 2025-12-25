@@ -381,6 +381,42 @@ async function initializeBackgroundServices(): Promise<void> {
       console.log('[Server] Workflow Orchestration Services initialized - 33 actions registered');
     }),
     
+    timedInit('HRIS Integration Service', async () => {
+      const { hrisIntegrationService } = await import('./services/hris/hrisIntegrationService');
+      const { helpaiOrchestrator } = await import('./services/helpai/helpaiActionOrchestrator');
+      const actions = hrisIntegrationService.getAIBrainActions();
+      for (const action of actions) {
+        helpaiOrchestrator.registerAction({
+          actionId: action.name,
+          name: action.name.replace('hris.', '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+          category: 'integrations' as const,
+          description: action.description,
+          requiredRoles: ['root_admin', 'superadmin', 'owner', 'admin'],
+          handler: async (request: any) => {
+            const startTime = Date.now();
+            try {
+              const result = await action.handler(request.payload || {});
+              return {
+                success: result.success,
+                actionId: request.actionId,
+                message: result.success ? `HRIS action ${action.name} completed` : 'HRIS action failed',
+                data: result,
+                executionTimeMs: Date.now() - startTime,
+              };
+            } catch (error: any) {
+              return {
+                success: false,
+                actionId: request.actionId,
+                message: error.message,
+                executionTimeMs: Date.now() - startTime,
+              };
+            }
+          },
+        });
+      }
+      console.log(`[Server] HRIS Integration Service initialized - ${actions.length} actions registered`);
+    }),
+    
     timedInit('Notification Cleanup Scheduler', async () => {
       startNotificationCleanupScheduler();
       console.log('[Server] Notification cleanup scheduler started');
