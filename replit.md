@@ -84,6 +84,7 @@ CoAIleague features a multi-tenant architecture with RBAC security and isolation
 - **Workflow Orchestration Services:** 7 Fortune 500-grade workflow pipeline services: OnboardingStateMachine, ApprovalGateEnforcement, CrossDomainExceptionService, NotificationAcknowledgmentService, ScheduleLifecycleOrchestrator, OnboardingQuickBooksFlow, and AutomationTriggerService.
 - **OnboardingQuickBooksFlow:** Automated QuickBooks OAuth → data sync → employee import → schedule generation pipeline.
 - **AutomationTriggerService:** Event-driven automation linking integration connections to scheduling, invoicing, and payroll workflows.
+- **HRIS Integration Service:** Unified 8-provider HRIS integration (QuickBooks, Gusto, ADP, Paychex, Zenefits, Rippling, BambooHR, Workday) with OAuth2 authentication, bidirectional data sync, AI-powered field mapping with confidence scoring, conflict resolution, and 5 AI Brain actions registered for Trinity orchestration.
 
 **System Design Choices:**
 - **Modularity:** Extensive backend service modules and frontend routes.
