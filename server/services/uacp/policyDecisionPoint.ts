@@ -20,6 +20,7 @@ import {
 import { eq, and, or, inArray, gte, lte, isNull, desc } from 'drizzle-orm';
 import { platformEventBus } from '../platformEventBus';
 import { ROLE_HIERARCHY, AI_BRAIN_AUTHORITY_ROLES, TRINITY_SERVICE_IDENTIFIERS, TRINITY_ENTITY_TYPE } from '../ai-brain/aiBrainAuthorizationService';
+import { trinityOrchestration } from '../trinity/trinityOrchestrationAdapter';
 
 export type EntityType = 'human' | 'bot' | 'subagent' | 'trinity' | 'service' | 'external';
 export type PolicyEffect = 'allow' | 'deny' | 'require_approval';
@@ -94,7 +95,10 @@ class PolicyDecisionPoint {
         if (!agentStatus.active) {
           return this.createDenyDecision(
             `Agent ${subject.entityId} is ${agentStatus.status}: ${agentStatus.reason}`,
-            subjectAttributes
+            subjectAttributes,
+            [],
+            subject,
+            resource
           );
         }
       }
@@ -106,7 +110,10 @@ class PolicyDecisionPoint {
           console.log(`[PDP] KILL SWITCH ACTIVE: Trinity blocked from ${resource.resourceType}:${resource.resourceId}`);
           return this.createDenyDecision(
             `Trinity root access BLOCKED: Kill switch activated - ${killSwitchStatus.reason}`,
-            subjectAttributes
+            subjectAttributes,
+            [],
+            subject,
+            resource
           );
         }
       }
@@ -114,7 +121,7 @@ class PolicyDecisionPoint {
       // Step 3: Apply RBAC base check
       const rbacResult = this.evaluateRBAC(subject, resource);
       if (!rbacResult.allowed && !context.elevatedSession) {
-        return this.createDenyDecision(rbacResult.reason, subjectAttributes);
+        return this.createDenyDecision(rbacResult.reason, subjectAttributes, [], subject, resource);
       }
 
       // Step 4: Load and evaluate ABAC policies
@@ -124,7 +131,7 @@ class PolicyDecisionPoint {
       // Step 5: Check context constraints (time, device, risk)
       const contextResult = this.evaluateContextConstraints(context, subjectAttributes);
       if (!contextResult.allowed) {
-        return this.createDenyDecision(contextResult.reason, subjectAttributes, policyResult.matchedPolicies);
+        return this.createDenyDecision(contextResult.reason, subjectAttributes, policyResult.matchedPolicies, subject, resource);
       }
 
       // Step 6: Create audit log
@@ -136,6 +143,14 @@ class PolicyDecisionPoint {
         durationMs: Date.now() - startTime,
       });
 
+      void trinityOrchestration.rbac.checkAllowed(
+        subject.entityId,
+        `${resource.resourceType}:${resource.resourceId}`,
+        resource.action,
+        subject.role || 'unknown',
+        subject.workspaceId
+      );
+
       return {
         ...policyResult,
         auditId,
@@ -144,7 +159,21 @@ class PolicyDecisionPoint {
 
     } catch (error) {
       console.error('[PDP] Authorization error:', error);
-      return this.createDenyDecision(`Authorization error: ${(error as Error).message}`, {});
+      void trinityOrchestration.rbac.checkDenied(
+        subject.entityId,
+        `${resource.resourceType}:${resource.resourceId}`,
+        resource.action,
+        subject.role || 'unknown',
+        (error as Error).message,
+        subject.workspaceId
+      );
+      return this.createDenyDecision(
+        `Authorization error: ${(error as Error).message}`, 
+        {}, 
+        [], 
+        subject, 
+        resource
+      );
     }
   }
 
@@ -533,7 +562,22 @@ class PolicyDecisionPoint {
     return true;
   }
 
-  private createDenyDecision(reason: string, attributes: Record<string, any>, matchedPolicies: string[] = []): AccessDecision {
+  private createDenyDecision(
+    reason: string, 
+    attributes: Record<string, any>, 
+    matchedPolicies: string[] = [],
+    subject?: AccessSubject,
+    resource?: AccessResource
+  ): AccessDecision {
+    trinityOrchestration.rbac.checkDenied(
+      subject?.entityId || attributes.entityId || 'unknown',
+      resource ? `${resource.resourceType}:${resource.resourceId}` : (attributes.resource || 'unknown'),
+      resource?.action || attributes.action || 'unknown',
+      subject?.role || attributes.role || 'unknown',
+      reason,
+      subject?.workspaceId
+    );
+
     return {
       allowed: false,
       effect: 'deny',

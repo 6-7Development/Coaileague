@@ -24,6 +24,7 @@ import { eq, and, desc, sql, inArray, gte, isNull, or } from 'drizzle-orm';
 import { helpaiOrchestrator } from '../helpai/helpaiActionOrchestrator';
 import { platformEventBus, PlatformEvent } from '../platformEventBus';
 import { GapFinding } from './subagents/domainOpsSubagents';
+import { trinityOrchestration } from '../trinity/trinityOrchestrationAdapter';
 
 // ============================================================================
 // CONFIGURATION
@@ -260,6 +261,18 @@ class WorkflowApprovalService {
         await this.emitApprovalEvent('approval_approved', { ...existing, approvedBy });
       }
 
+      const durationMs = existing.createdAt 
+        ? Date.now() - new Date(existing.createdAt).getTime() 
+        : 0;
+      void trinityOrchestration.workflow.stepCompleted(
+        `workflow-approval-${existing.workspaceId || 'global'}`,
+        `approval-${approvalId}`,
+        'approval_review_granted',
+        1,
+        approvalId,
+        durationMs
+      );
+
       return { success: true, message: 'Approval granted. Trinity will proceed with the fix.' };
     } catch (error) {
       console.error('[WorkflowApproval] Error approving request:', error);
@@ -311,6 +324,14 @@ class WorkflowApprovalService {
       console.log(`[WorkflowApproval] Request ${approvalId} rejected by ${rejectedBy}`);
 
       await this.emitApprovalEvent('approval_rejected', { ...existing, rejectedBy, reason });
+
+      void trinityOrchestration.workflow.stepFailed(
+        `workflow-approval-${existing.workspaceId || 'global'}`,
+        `approval-${approvalId}`,
+        'approval_review_rejected',
+        reason,
+        approvalId
+      );
 
       return { success: true, message: 'Request rejected. Finding will remain open for manual review.' };
     } catch (error) {
