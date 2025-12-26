@@ -136,6 +136,7 @@ import PayInvoice from "@/pages/pay-invoice";
 import Expenses from "@/pages/expenses";
 import ExpenseApprovals from "@/pages/expense-approvals";
 import I9Compliance from "@/pages/i9-compliance";
+import ComplianceReports from "@/pages/compliance-reports";
 import Policies from "@/pages/policies";
 import RoleManagement from "@/pages/role-management";
 import ManagerDashboard from "@/pages/manager-dashboard";
@@ -1002,6 +1003,7 @@ function AppContent() {
               <Route path="/timesheets/pending" component={PendingTimeEntries} />
               <Route path="/timesheets/approvals" component={TimesheetApprovals} />
               <Route path="/i9-compliance" component={I9Compliance} />
+              <Route path="/compliance-reports" component={ComplianceReports} />
               <Route path="/policies" component={Policies} />
               <Route path="/payroll" component={PayrollDashboard} />
               <Route path="/my-paychecks" component={MyPaychecks} />
@@ -1324,6 +1326,7 @@ function AppContent() {
                 <Route path="/timesheets/pending" component={PendingTimeEntries} />
                 <Route path="/timesheets/approvals" component={TimesheetApprovals} />
                 <Route path="/i9-compliance" component={I9Compliance} />
+                <Route path="/compliance-reports" component={ComplianceReports} />
                 <Route path="/policies" component={Policies} />
                 <Route path="/payroll" component={PayrollDashboard} />
                 <Route path="/my-paychecks" component={MyPaychecks} />
