@@ -16,11 +16,10 @@ import {
   Clock, 
   Shield,
   Scale,
-  DollarSign,
-  Briefcase,
   Users,
   CalendarDays,
-  FileCheck
+  FileCheck,
+  DollarSign
 } from "lucide-react";
 import { format } from "date-fns";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -56,7 +55,6 @@ interface ComplianceReport {
 
 const categoryIcons: Record<string, typeof Shield> = {
   labor: Scale,
-  financial: DollarSign,
   audit: FileCheck,
   hr: Users,
 };
@@ -235,7 +233,7 @@ export default function ComplianceReportsPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Briefcase className="w-5 h-5" />
+                <Shield className="w-5 h-5" />
                 Automated Compliance Monitoring
               </CardTitle>
               <CardDescription>
@@ -249,21 +247,21 @@ export default function ComplianceReportsPage() {
                     <Scale className="w-4 h-4 text-primary" />
                     <span className="font-medium text-sm">Labor Law</span>
                   </div>
-                  <p className="text-xs text-muted-foreground">FLSA, DOL, State wage laws monitored 24/7</p>
+                  <p className="text-xs text-muted-foreground">FLSA overtime, shift turnaround, fatigue prevention</p>
                 </div>
                 <div className="p-4 rounded-lg bg-muted/50">
                   <div className="flex items-center gap-2 mb-2">
-                    <DollarSign className="w-4 h-4 text-primary" />
-                    <span className="font-medium text-sm">Tax Compliance</span>
+                    <Clock className="w-4 h-4 text-primary" />
+                    <span className="font-medium text-sm">Break Compliance</span>
                   </div>
-                  <p className="text-xs text-muted-foreground">IRS, State withholding tracked automatically</p>
+                  <p className="text-xs text-muted-foreground">50-state meal and rest break law enforcement</p>
                 </div>
                 <div className="p-4 rounded-lg bg-muted/50">
                   <div className="flex items-center gap-2 mb-2">
                     <Users className="w-4 h-4 text-primary" />
-                    <span className="font-medium text-sm">HR Compliance</span>
+                    <span className="font-medium text-sm">Certifications</span>
                   </div>
-                  <p className="text-xs text-muted-foreground">I-9, certifications, work authorization</p>
+                  <p className="text-xs text-muted-foreground">License expiry alerts and renewal tracking</p>
                 </div>
               </div>
             </CardContent>

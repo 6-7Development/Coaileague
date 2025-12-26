@@ -35677,13 +35677,6 @@ app.post("/api/alerts/test", requireAuth, mutationLimiter, async (req: Authentic
           category: 'labor',
         },
         {
-          id: 'tax_remittance',
-          name: 'Tax Remittance Proof',
-          description: 'Documents tax withholdings for IRS and state compliance',
-          regulations: ['IRS Publication 15', 'State Tax Withholding Laws'],
-          category: 'financial',
-        },
-        {
           id: 'time_entry_audit',
           name: 'Time Entry Audit Log',
           description: '7-year audit trail of time entry modifications',
@@ -35710,20 +35703,6 @@ app.post("/api/alerts/test", requireAuth, mutationLimiter, async (req: Authentic
           description: 'Tracks expiring licenses and certifications',
           regulations: ['Industry Licensing', 'Professional Certifications'],
           category: 'hr',
-        },
-        {
-          id: 'i9_verification',
-          name: 'I-9 Verification Status',
-          description: 'Employment eligibility verification compliance',
-          regulations: ['USCIS I-9', 'Immigration Reform Act'],
-          category: 'hr',
-        },
-        {
-          id: 'payroll_summary',
-          name: 'Payroll Summary',
-          description: 'Payroll runs, taxes, and net pay distributions',
-          regulations: ['FLSA Wage Requirements', 'State Payday Laws'],
-          category: 'financial',
         },
       ];
 
