@@ -343,11 +343,9 @@ router.get(
       // Try multiple sources for userId (session, user object, request)
       const userId = authReq.user?.id || (req as any).session?.userId || authReq.user?.email;
 
-      // Allow platform-level access even without workspace context
-      // When no workspace, only return platform-wide support rooms
-      if (!userId) {
-        return res.status(401).json({ error: "Authentication required" });
-      }
+      // PUBLIC ACCESS: Allow unauthenticated users to see platform-wide rooms (HelpDesk)
+      // This enables guests, end-users, and support roles to access HelpDesk 24/7
+      const isAuthenticated = !!userId;
 
       const rooms: any[] = [];
 
