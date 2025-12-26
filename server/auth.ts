@@ -10,6 +10,7 @@ import { db } from "./db";
 import { users } from "@shared/schema";
 import { eq, and, gt } from "drizzle-orm";
 import "./types"; // Import session type extensions
+import { trinityOrchestration } from "./services/trinity/trinityOrchestrationAdapter";
 
 // ============================================================================
 // Password Security
@@ -184,7 +185,12 @@ export function getSession() {
 // ============================================================================
 
 export const requireAuth: RequestHandler = async (req, res, next) => {
+  const endpoint = req.path;
+  const method = req.method;
+  const ipAddress = req.ip || req.socket?.remoteAddress;
+
   if (!req.session?.userId) {
+    trinityOrchestration.auth.requestUnauthenticated(endpoint, method, 'no_session', ipAddress);
     return res.status(401).json({ message: "Unauthorized - Please login" });
   }
 
@@ -196,6 +202,7 @@ export const requireAuth: RequestHandler = async (req, res, next) => {
     .limit(1);
 
   if (!user) {
+    trinityOrchestration.auth.requestUnauthenticated(endpoint, method, 'user_not_found', ipAddress);
     req.session.destroy(() => {});
     return res.status(401).json({ message: "User not found" });
   }
@@ -203,8 +210,11 @@ export const requireAuth: RequestHandler = async (req, res, next) => {
   // Check if account is locked
   const lockStatus = await checkAccountLocked(user.id);
   if (lockStatus.locked) {
+    trinityOrchestration.auth.requestUnauthenticated(endpoint, method, 'account_locked', ipAddress);
     return res.status(403).json({ message: lockStatus.message });
   }
+
+  trinityOrchestration.auth.requestAuthenticated(user.id, endpoint, method, user.currentWorkspaceId || undefined);
 
   // Attach user to request
   req.user = user;
