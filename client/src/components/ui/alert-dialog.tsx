@@ -77,12 +77,12 @@ const AlertDialogContent = React.forwardRef<
         {showHomeButton && (
           <button
             onClick={handleHomeClick}
-            className="absolute right-3 top-3 rounded-md p-1.5 opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 hover:bg-accent"
+            className="absolute right-2 top-2 flex items-center justify-center rounded-md min-h-11 min-w-11 opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 hover:bg-accent active:bg-accent/80"
             data-testid={config.testId}
             title={config.tooltip}
             aria-label={config.ariaLabel}
           >
-            <Home className="h-3.5 w-3.5" />
+            <Home className="h-5 w-5" />
             <span className="sr-only">{config.ariaLabel}</span>
           </button>
         )}
