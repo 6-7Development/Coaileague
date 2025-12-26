@@ -740,6 +740,7 @@ function MascotRenderer() {
           mascotPosition={{ x: effectiveX, y: effectiveY }}
           mascotSize={bubbleSize}
           isMobile={isMobile}
+          onDismiss={() => setCurrentThought(null)}
         />
       ) : currentThought ? (
         <CompactBubble

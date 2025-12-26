@@ -17,6 +17,7 @@ interface FestiveDialogueBubbleProps {
   mascotPosition: { x: number; y: number };
   mascotSize: number;
   isMobile?: boolean;
+  onDismiss?: () => void;
 }
 
 interface LetterData {
@@ -90,6 +91,7 @@ export const FestiveDialogueBubble = memo(function FestiveDialogueBubble({
   mascotPosition,
   mascotSize,
   isMobile = false,
+  onDismiss,
 }: FestiveDialogueBubbleProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -444,6 +446,16 @@ export const FestiveDialogueBubble = memo(function FestiveDialogueBubble({
     containerRef.current.style.left = `${pos.left}px`;
   }, [isActive, mascotPosition, mascotSize, isMobile, bubbleDimensionsReady]);
   
+  // Handle manual dismiss
+  const handleDismiss = useCallback(() => {
+    setIsActive(false);
+    lastThoughtIdRef.current = null;
+    if (animFrameRef.current) {
+      cancelAnimationFrame(animFrameRef.current);
+    }
+    onDismiss?.();
+  }, [onDismiss]);
+
   if (!isActive || !thought) return null;
   
   return (
@@ -459,6 +471,18 @@ export const FestiveDialogueBubble = memo(function FestiveDialogueBubble({
       }}
       data-testid="festive-dialogue-bubble"
     >
+      {/* Close button wrapper - needs pointer-events-auto to be clickable */}
+      <div className="pointer-events-auto absolute -top-2 -right-2 z-10">
+        <button
+          onClick={handleDismiss}
+          className="w-6 h-6 rounded-full bg-white border-2 border-red-500 flex items-center justify-center shadow-md hover:bg-red-50 transition-colors"
+          style={{ fontSize: '14px', fontWeight: 'bold', color: '#c41e3a' }}
+          aria-label="Dismiss thought bubble"
+          data-testid="button-close-festive-bubble"
+        >
+          ×
+        </button>
+      </div>
       <canvas
         ref={canvasRef}
         style={{
