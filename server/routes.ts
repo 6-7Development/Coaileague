@@ -35567,4 +35567,170 @@ app.post("/api/alerts/test", requireAuth, mutationLimiter, async (req: Authentic
       res.status(500).json({ error: error.message });
     }
   });
+
+  // =========================================================================
+  // COMPREHENSIVE COMPLIANCE REPORTS - Automated Regulatory Reporting
+  // =========================================================================
+
+  // Generate a new compliance report
+  app.post('/api/compliance-reports/generate', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user?.currentWorkspaceId) {
+        return res.status(403).json({ message: "No workspace selected" });
+      }
+
+      const { reportType, startDate, endDate } = req.body;
+      if (!reportType) {
+        return res.status(400).json({ message: "Report type is required" });
+      }
+
+      const validTypes = [
+        'labor_law_violations', 'tax_remittance', 'time_entry_audit',
+        'break_compliance', 'overtime_summary', 'certification_expiry',
+        'i9_verification', 'payroll_summary'
+      ];
+      if (!validTypes.includes(reportType)) {
+        return res.status(400).json({ message: `Invalid report type. Valid types: ${validTypes.join(', ')}` });
+      }
+
+      const { generateComplianceReport } = await import('./services/complianceReports');
+      const report = await generateComplianceReport({
+        workspaceId: user.currentWorkspaceId,
+        reportType,
+        startDate: startDate ? new Date(startDate) : undefined,
+        endDate: endDate ? new Date(endDate) : undefined,
+        userId,
+        automated: false,
+      });
+
+      res.json({ success: true, report });
+    } catch (error) {
+      console.error("Error generating compliance report:", error);
+      res.status(500).json({ message: "Failed to generate compliance report" });
+    }
+  });
+
+  // List all compliance reports for workspace
+  app.get('/api/compliance-reports/list', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user?.currentWorkspaceId) {
+        return res.status(403).json({ message: "No workspace selected" });
+      }
+
+      const { reportType, status, limit, offset } = req.query;
+
+      const { listComplianceReports } = await import('./services/complianceReports');
+      const result = await listComplianceReports(user.currentWorkspaceId, {
+        reportType: reportType as any,
+        status: status as any,
+        limit: limit ? parseInt(limit as string) : 20,
+        offset: offset ? parseInt(offset as string) : 0,
+      });
+
+      res.json(result);
+    } catch (error) {
+      console.error("Error listing compliance reports:", error);
+      res.status(500).json({ message: "Failed to list compliance reports" });
+    }
+  });
+
+  // Get a specific compliance report with full data
+  app.get('/api/compliance-reports/detail/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user?.currentWorkspaceId) {
+        return res.status(403).json({ message: "No workspace selected" });
+      }
+
+      const { getComplianceReport } = await import('./services/complianceReports');
+      const report = await getComplianceReport(req.params.id);
+
+      if (!report) {
+        return res.status(404).json({ message: "Report not found" });
+      }
+
+      if (report.workspaceId !== user.currentWorkspaceId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      res.json(report);
+    } catch (error) {
+      console.error("Error fetching compliance report:", error);
+      res.status(500).json({ message: "Failed to fetch compliance report" });
+    }
+  });
+
+  // Get available report types with descriptions
+  app.get('/api/compliance-reports/types', isAuthenticated, async (req: any, res) => {
+    try {
+      const reportTypes = [
+        {
+          id: 'labor_law_violations',
+          name: 'Labor Law Violations',
+          description: 'Identifies FLSA and DOL violations including overtime, rest periods',
+          regulations: ['FLSA §207', 'DOL Wage & Hour', 'OSHA Fatigue Prevention'],
+          category: 'labor',
+        },
+        {
+          id: 'tax_remittance',
+          name: 'Tax Remittance Proof',
+          description: 'Documents tax withholdings for IRS and state compliance',
+          regulations: ['IRS Publication 15', 'State Tax Withholding Laws'],
+          category: 'financial',
+        },
+        {
+          id: 'time_entry_audit',
+          name: 'Time Entry Audit Log',
+          description: '7-year audit trail of time entry modifications',
+          regulations: ['IRS 7-Year Retention', 'DOL Record Keeping'],
+          category: 'audit',
+        },
+        {
+          id: 'break_compliance',
+          name: 'Break Compliance',
+          description: 'Meal and rest break scheduling per state labor laws',
+          regulations: ['State Meal Break Laws', 'State Rest Break Laws'],
+          category: 'labor',
+        },
+        {
+          id: 'overtime_summary',
+          name: 'Overtime Summary',
+          description: 'Weekly breakdown of regular, OT, and double-time hours',
+          regulations: ['FLSA §207 Overtime', 'State Overtime Laws'],
+          category: 'labor',
+        },
+        {
+          id: 'certification_expiry',
+          name: 'Certification Expiry',
+          description: 'Tracks expiring licenses and certifications',
+          regulations: ['Industry Licensing', 'Professional Certifications'],
+          category: 'hr',
+        },
+        {
+          id: 'i9_verification',
+          name: 'I-9 Verification Status',
+          description: 'Employment eligibility verification compliance',
+          regulations: ['USCIS I-9', 'Immigration Reform Act'],
+          category: 'hr',
+        },
+        {
+          id: 'payroll_summary',
+          name: 'Payroll Summary',
+          description: 'Payroll runs, taxes, and net pay distributions',
+          regulations: ['FLSA Wage Requirements', 'State Payday Laws'],
+          category: 'financial',
+        },
+      ];
+
+      res.json({ reportTypes });
+    } catch (error) {
+      console.error("Error fetching report types:", error);
+      res.status(500).json({ message: "Failed to fetch report types" });
+    }
+  });
 }
