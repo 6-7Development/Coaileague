@@ -150,7 +150,8 @@ export function TrinityAnnouncementDisplay({
   
   return (
     <div 
-      className={`fixed ${positionStyles[position]} z-50 flex flex-col gap-2 pointer-events-none`}
+      className={`fixed ${positionStyles[position]} flex flex-col gap-2 pointer-events-none`}
+      style={{ zIndex: 10010 }}
       data-testid="trinity-announcement-container"
     >
       <AnimatePresence mode="popLayout">
