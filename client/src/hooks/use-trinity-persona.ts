@@ -22,6 +22,8 @@ function buildPersonaContext(context: TrinityContext): TrinityPersonaContext {
     isPlatformStaff: context.isPlatformStaff,
     isRootAdmin: context.isRootAdmin,
     isSupportRole: context.isSupportRole,
+    workspaceId: context.workspaceId,
+    workspaceName: context.workspaceName,
     workspaceRole: context.workspaceRole,
     isOrgOwner: context.isOrgOwner,
     isManager: context.isManager,
