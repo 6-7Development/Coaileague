@@ -708,9 +708,11 @@ export default function Chatrooms() {
 
   const filteredRooms = useMemo(() => {
     // Start with rooms from API or empty array
+    // On API error, still show HelpDesk as fallback (24/7 availability)
     let normalized = (roomsData?.rooms || []).map(normalizeRoom);
     
-    // Always ensure HelpDesk room is present (merge with API data if exists)
+    // Always ensure HelpDesk room is present - critical for 24/7 support access
+    // This ensures HelpDesk appears even when API errors or returns empty
     const hasHelpDesk = normalized.some(r => r.slug === 'helpdesk' || r.id === 'helpdesk');
     if (!hasHelpDesk) {
       normalized = [DEFAULT_HELPDESK_ROOM, ...normalized];
