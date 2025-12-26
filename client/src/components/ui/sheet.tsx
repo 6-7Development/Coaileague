@@ -97,21 +97,21 @@ const SheetContent = React.forwardRef<
         {...props}
       >
         {children}
-        <div className="absolute right-4 top-4 flex items-center gap-1">
+        <div className="absolute right-2 top-2 flex items-center gap-0.5">
           {showHomeButton && (
             <button
               onClick={handleHomeClick}
-              className="rounded-md p-1.5 opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 hover:bg-accent"
+              className="flex items-center justify-center rounded-md min-h-11 min-w-11 opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 hover:bg-accent active:bg-accent/80"
               data-testid={config.testId}
               title={config.tooltip}
               aria-label={config.ariaLabel}
             >
-              <Home className="h-4 w-4" />
+              <Home className="h-5 w-5" />
               <span className="sr-only">{config.ariaLabel}</span>
             </button>
           )}
-          <SheetPrimitive.Close className="rounded-sm p-1.5 opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary hover:bg-accent">
-            <X className="h-4 w-4" />
+          <SheetPrimitive.Close className="flex items-center justify-center rounded-md min-h-11 min-w-11 opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary hover:bg-accent active:bg-accent/80">
+            <X className="h-5 w-5" />
             <span className="sr-only">Close</span>
           </SheetPrimitive.Close>
         </div>
