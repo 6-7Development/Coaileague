@@ -5,7 +5,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { AlertCircle, CheckCircle, XCircle, RefreshCw, ExternalLink, Link as LinkIcon, Unlink } from 'lucide-react';
+import { AlertCircle, CheckCircle, XCircle, RefreshCw, ExternalLink, Link as LinkIcon, Unlink, Users, Building2, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Dialog,
@@ -18,6 +18,7 @@ import {
 import { useState } from 'react';
 import { FRIENDLY_LABELS, FRIENDLY_MESSAGES, FRIENDLY_HELP, friendlyError } from '@/lib/friendlyStrings';
 import { IntegrationHealthPanel } from '@/components/integration-health-panel';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 // Helper function for relative time
 function getRelativeTime(date: Date): string {
@@ -45,6 +46,35 @@ interface PartnerConnection {
   metadata: any;
 }
 
+interface HRISProvider {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  features: string[];
+  oauthSupported: boolean;
+}
+
+interface HRISConnection {
+  id: string;
+  provider: string;
+  status: 'connected' | 'disconnected' | 'expired' | 'error';
+  lastSyncedAt: string | null;
+  syncDirection: string;
+  entityTypes: string[];
+}
+
+const HRIS_PROVIDER_ICONS: Record<string, React.ReactNode> = {
+  quickbooks: <Building2 className="w-6 h-6 text-green-600" />,
+  gusto: <Users className="w-6 h-6 text-orange-500" />,
+  adp: <Building2 className="w-6 h-6 text-red-600" />,
+  paychex: <Users className="w-6 h-6 text-blue-600" />,
+  zenefits: <Users className="w-6 h-6 text-purple-600" />,
+  rippling: <Building2 className="w-6 h-6 text-indigo-600" />,
+  bamboohr: <Users className="w-6 h-6 text-green-500" />,
+  workday: <Building2 className="w-6 h-6 text-blue-500" />,
+};
+
 export default function IntegrationsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -52,11 +82,96 @@ export default function IntegrationsPage() {
     open: false,
     partner: null,
   });
+  const [hrisDisconnectDialog, setHrisDisconnectDialog] = useState<{ open: boolean; provider: string | null }>({
+    open: false,
+    provider: null,
+  });
 
   // Fetch connections
   const { data: connectionsData, isLoading } = useQuery<{ connections: PartnerConnection[] }>({
     queryKey: ['/api/integrations/connections', user?.currentWorkspaceId],
     enabled: !!user?.currentWorkspaceId,
+  });
+
+  // Fetch HRIS providers
+  const { data: hrisProvidersData, isLoading: hrisProvidersLoading } = useQuery<{ success: boolean; providers: HRISProvider[] }>({
+    queryKey: ['/api/hris/providers'],
+  });
+
+  // Fetch HRIS connections
+  const { data: hrisConnectionsData, isLoading: hrisConnectionsLoading } = useQuery<{ success: boolean; connections: HRISConnection[] }>({
+    queryKey: ['/api/hris/connections'],
+  });
+
+  const hrisProviders = hrisProvidersData?.providers || [];
+  const hrisConnections = hrisConnectionsData?.connections || [];
+
+  // HRIS Connect mutation
+  const hrisConnectMutation = useMutation({
+    mutationFn: async (provider: string) => {
+      const response = await apiRequest('GET', `/api/hris/auth/${provider}`);
+      const data = await response.json();
+      if (data.success && data.authUrl) {
+        window.location.href = data.authUrl;
+      }
+      return data;
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Connection Failed',
+        description: friendlyError(error.message || 'Could not start connection'),
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // HRIS Disconnect mutation
+  const hrisDisconnectMutation = useMutation({
+    mutationFn: async (provider: string) => {
+      const response = await apiRequest('DELETE', `/api/hris/disconnect/${provider}`);
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/hris/connections'] });
+      toast({
+        title: 'Disconnected',
+        description: 'HRIS provider has been disconnected.',
+      });
+      setHrisDisconnectDialog({ open: false, provider: null });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Disconnect Failed',
+        description: friendlyError(error.message || 'Could not disconnect provider'),
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // HRIS Sync mutation
+  const hrisSyncMutation = useMutation({
+    mutationFn: async (provider: string) => {
+      const response = await apiRequest('POST', `/api/hris/sync/${provider}`, {
+        direction: 'bidirectional',
+        entities: ['employee'],
+        fullSync: false,
+      });
+      return await response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/hris/connections'] });
+      toast({
+        title: 'Sync Started',
+        description: `Syncing ${data.result?.recordsProcessed || 0} records from HRIS.`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Sync Failed',
+        description: friendlyError(error.message || 'Could not sync data'),
+        variant: 'destructive',
+      });
+    },
   });
 
   const connections = connectionsData?.connections || [];
@@ -297,12 +412,93 @@ export default function IntegrationsPage() {
     );
   }
 
+  const getHRISConnection = (providerId: string) => {
+    return hrisConnections.find((c) => c.provider === providerId);
+  };
+
+  const HRISProviderCard = ({ provider }: { provider: HRISProvider }) => {
+    const connection = getHRISConnection(provider.id);
+    const isConnected = connection?.status === 'connected';
+
+    return (
+      <Card data-testid={`card-hris-${provider.id}`}>
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-muted">
+                {HRIS_PROVIDER_ICONS[provider.id] || <Users className="w-5 h-5" />}
+              </div>
+              <div>
+                <CardTitle className="text-base">{provider.name}</CardTitle>
+                <CardDescription className="text-xs mt-0.5">{provider.description}</CardDescription>
+              </div>
+            </div>
+            {getStatusBadge(connection?.status || 'disconnected')}
+          </div>
+        </CardHeader>
+        <CardContent className="pt-0 space-y-3">
+          {connection && connection.lastSyncedAt && (
+            <div className="text-xs text-muted-foreground bg-muted/30 p-2 rounded">
+              Last synced: {getRelativeTime(new Date(connection.lastSyncedAt))}
+            </div>
+          )}
+          <div className="flex gap-2 flex-wrap">
+            {!isConnected ? (
+              <Button
+                size="sm"
+                onClick={() => hrisConnectMutation.mutate(provider.id)}
+                disabled={hrisConnectMutation.isPending}
+                className="gap-1.5"
+                data-testid={`button-connect-hris-${provider.id}`}
+              >
+                {hrisConnectMutation.isPending ? (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                ) : (
+                  <LinkIcon className="w-3 h-3" />
+                )}
+                Connect
+              </Button>
+            ) : (
+              <>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => hrisSyncMutation.mutate(provider.id)}
+                  disabled={hrisSyncMutation.isPending}
+                  className="gap-1.5"
+                  data-testid={`button-sync-hris-${provider.id}`}
+                >
+                  {hrisSyncMutation.isPending ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <RefreshCw className="w-3 h-3" />
+                  )}
+                  Sync
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setHrisDisconnectDialog({ open: true, provider: provider.id })}
+                  className="gap-1.5 text-muted-foreground"
+                  data-testid={`button-disconnect-hris-${provider.id}`}
+                >
+                  <Unlink className="w-3 h-3" />
+                  Disconnect
+                </Button>
+              </>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div>
         <h1 className="text-3xl font-bold" data-testid="text-page-title">Connect Your Services</h1>
         <p className="text-muted-foreground mt-2" data-testid="text-page-description">
-          Link QuickBooks for automatic invoicing and Gusto for automatic payroll
+          Link your business tools to automate workflows and sync data
         </p>
       </div>
 
@@ -313,37 +509,90 @@ export default function IntegrationsPage() {
         </AlertDescription>
       </Alert>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2 grid gap-6 md:grid-cols-2">
-          <IntegrationCard
-            title="QuickBooks Online"
-            description="Automated invoicing and financial management"
-            partner="quickbooks"
-            connection={quickbooksConnection}
-            icon={
-              <svg className="w-6 h-6 text-primary" viewBox="0 0 24 24" fill="currentColor">
-                <rect width="24" height="24" rx="4" />
-              </svg>
-            }
-          />
+      <Tabs defaultValue="accounting" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="accounting" data-testid="tab-accounting">Accounting</TabsTrigger>
+          <TabsTrigger value="hris" data-testid="tab-hris">HR Systems</TabsTrigger>
+        </TabsList>
 
-          <IntegrationCard
-            title="Gusto Payroll"
-            description="Streamlined payroll processing and employee management"
-            partner="gusto"
-            connection={gustoConnection}
-            icon={
-              <svg className="w-6 h-6 text-primary" viewBox="0 0 24 24" fill="currentColor">
-                <circle cx="12" cy="12" r="10" />
-              </svg>
-            }
-          />
-        </div>
+        <TabsContent value="accounting" className="space-y-6">
+          <div className="grid gap-6 lg:grid-cols-3">
+            <div className="lg:col-span-2 grid gap-6 md:grid-cols-2">
+              <IntegrationCard
+                title="QuickBooks Online"
+                description="Automated invoicing and financial management"
+                partner="quickbooks"
+                connection={quickbooksConnection}
+                icon={
+                  <svg className="w-6 h-6 text-primary" viewBox="0 0 24 24" fill="currentColor">
+                    <rect width="24" height="24" rx="4" />
+                  </svg>
+                }
+              />
 
-        <div className="lg:col-span-1">
-          <IntegrationHealthPanel />
-        </div>
-      </div>
+              <IntegrationCard
+                title="Gusto Payroll"
+                description="Streamlined payroll processing and employee management"
+                partner="gusto"
+                connection={gustoConnection}
+                icon={
+                  <svg className="w-6 h-6 text-primary" viewBox="0 0 24 24" fill="currentColor">
+                    <circle cx="12" cy="12" r="10" />
+                  </svg>
+                }
+              />
+            </div>
+
+            <div className="lg:col-span-1">
+              <IntegrationHealthPanel />
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="hris" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">HR Information Systems</CardTitle>
+              <CardDescription>
+                Connect your HR platform to automatically sync employee data, benefits, and payroll information
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {hrisProvidersLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {hrisProviders.map((provider) => (
+                    <HRISProviderCard key={provider.id} provider={provider} />
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">What HRIS Integrations Do</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm text-muted-foreground">
+              <div>
+                <h3 className="font-semibold text-foreground mb-1">Automatic Employee Sync</h3>
+                <p>Keep employee records up to date automatically. When you add or update employees in your HRIS, changes sync to CoAIleague.</p>
+              </div>
+              <div>
+                <h3 className="font-semibold text-foreground mb-1">AI-Powered Field Mapping</h3>
+                <p>Our AI intelligently maps fields between systems, ensuring data flows correctly even when field names differ.</p>
+              </div>
+              <div>
+                <h3 className="font-semibold text-foreground mb-1">Bidirectional Sync</h3>
+                <p>Changes can flow both ways. Update employee schedules in CoAIleague and see them reflected in your HRIS.</p>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       <Card>
         <CardHeader>
@@ -407,6 +656,35 @@ export default function IntegrationsPage() {
               data-testid="button-confirm-disconnect"
             >
               {disconnectMutation.isPending ? 'Stopping...' : 'Stop Using'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={hrisDisconnectDialog.open} onOpenChange={(open) => setHrisDisconnectDialog({ open, provider: null })}>
+        <DialogContent data-testid="dialog-hris-disconnect">
+          <DialogHeader>
+            <DialogTitle>Disconnect HR System?</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to disconnect this HR system? Employee data will no longer sync automatically.
+              You can reconnect at any time.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setHrisDisconnectDialog({ open: false, provider: null })}
+              data-testid="button-cancel-hris-disconnect"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => hrisDisconnectDialog.provider && hrisDisconnectMutation.mutate(hrisDisconnectDialog.provider)}
+              disabled={hrisDisconnectMutation.isPending}
+              data-testid="button-confirm-hris-disconnect"
+            >
+              {hrisDisconnectMutation.isPending ? 'Disconnecting...' : 'Disconnect'}
             </Button>
           </DialogFooter>
         </DialogContent>
