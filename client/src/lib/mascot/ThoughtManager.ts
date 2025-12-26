@@ -110,6 +110,8 @@ export interface TrinityPersonaContext {
   isPlatformStaff: boolean;
   isRootAdmin: boolean;
   isSupportRole: boolean;
+  workspaceId?: string;
+  workspaceName?: string;
   workspaceRole?: string;
   isOrgOwner: boolean;
   isManager: boolean;
@@ -188,6 +190,7 @@ class ThoughtManager {
   
   private onboardingReminderTimer: ReturnType<typeof setInterval> | null = null;
   private initialReminderTimeout: ReturnType<typeof setTimeout> | null = null;
+  private notificationAwarenessTimer: ReturnType<typeof setTimeout> | null = null;
   
   // AI Brain readiness gate - prevents showing thoughts before AI session is ready
   private aiSessionReady: boolean = false;
@@ -825,6 +828,10 @@ class ThoughtManager {
    * Called when /api/trinity/context returns successfully - marks AI session ready
    */
   setTrinityContext(context: TrinityPersonaContext | null): void {
+    // Clear any pending notification awareness timer from previous context
+    // Prevents stacked follow-up messages on rapid persona/workspace switches
+    this.clearNotificationAwarenessTimer();
+    
     this.state.trinityContext = context;
     
     // Mark AI session as ready when context is set (enables bubble display)
@@ -1497,6 +1504,7 @@ class ThoughtManager {
   
   /**
    * Trigger role-aware greeting based on Trinity context
+   * Includes workspace name and notification awareness for conversational experience
    * Safe fallback to standard greeting if context is missing
    */
   triggerRoleAwareGreeting(): void {
@@ -1507,6 +1515,7 @@ class ThoughtManager {
     
     const ctx = this.state.trinityContext;
     const displayName = this.getUserDisplayName() || 'there';
+    const workspaceName = ctx?.workspaceName;
     const hour = new Date().getHours();
     
     let timeGreeting: string;
@@ -1520,12 +1529,19 @@ class ThoughtManager {
       timeGreeting = 'Working late';
     }
     
-    // Standard fallback greetings - professional business tone
+    // Workspace context - only add if we have workspace name and greeting doesn't already mention it
+    // Build greeting suffix that avoids awkward duplication (e.g., "Welcome back...Welcome to")
+    const atWorkspace = workspaceName ? ` at ${workspaceName}` : '';
+    const workspaceSuffix = workspaceName ? ` Here in ${workspaceName}, I'm ready to assist.` : '';
+    
+    // Standard fallback greetings - professional business tone with workspace awareness
     const standardGreetings = [
-      `${timeGreeting}, ${displayName}. I'm Trinity, your AI assistant. How may I help you today?`,
-      `${timeGreeting}, ${displayName}. Ready to assist with your workflow.`,
-      `Welcome back, ${displayName}. What can I help you accomplish today?`,
-      `${timeGreeting}, ${displayName}. Your AI assistant is ready.`,
+      `${timeGreeting}, ${displayName}! I'm Trinity, your AI assistant${atWorkspace}. How may I help you today?`,
+      `${timeGreeting}, ${displayName}!${workspaceSuffix} Ready to assist with your workflow.`,
+      workspaceName 
+        ? `Welcome back to ${workspaceName}, ${displayName}! What can I help you accomplish today?`
+        : `Welcome back, ${displayName}! What can I help you accomplish today?`,
+      `${timeGreeting}, ${displayName}! Your AI assistant${atWorkspace} is ready.`,
     ];
     
     let greeting: string;
@@ -1563,41 +1579,45 @@ class ThoughtManager {
       ];
       greeting = staffGreetings[Math.floor(Math.random() * staffGreetings.length)];
     }
-    // Trinity Pro users - executive advisor tone
+    // Trinity Pro users - executive advisor tone with workspace
     else if (ctx.hasTrinityPro) {
       const proGreetings = [
-        `${timeGreeting}, ${displayName}. Trinity Pro activated. Your AI advisor is ready.`,
-        `${timeGreeting}, ${displayName}. Priority support access enabled. How can I assist?`,
-        `Welcome back, ${displayName}. Ready to provide strategic insights and recommendations.`,
-        `${timeGreeting}, ${displayName}. Trinity Pro features at your service.`,
+        `${timeGreeting}, ${displayName}! Trinity Pro activated${atWorkspace}. Your AI advisor is ready.`,
+        `${timeGreeting}, ${displayName}! Priority support access enabled. How can I assist?`,
+        workspaceName
+          ? `Welcome back to ${workspaceName}, ${displayName}! Ready to provide strategic insights.`
+          : `Welcome back, ${displayName}! Ready to provide strategic insights.`,
+        `${timeGreeting}, ${displayName}! Trinity Pro features at your service.`,
       ];
       greeting = proGreetings[Math.floor(Math.random() * proGreetings.length)];
     }
-    // Organization owner / Business Buddy persona - business professional tone
+    // Organization owner / Business Buddy persona - business professional tone with workspace
     else if (ctx.isOrgOwner || ctx.hasBusinessBuddy || ctx.persona === 'business_buddy') {
       const ownerGreetings = [
-        `${timeGreeting}, ${displayName}. Your business intelligence dashboard is ready.`,
-        `${timeGreeting}, ${displayName}. Ready to assist with workforce optimization.`,
-        `Welcome back, ${displayName}. How can I help with your organization today?`,
-        `${timeGreeting}, ${displayName}. Standing by to support your business operations.`,
+        `${timeGreeting}, ${displayName}!${workspaceSuffix} Your business intelligence dashboard is ready.`,
+        `${timeGreeting}, ${displayName}! Ready to assist with workforce optimization${atWorkspace}.`,
+        `Welcome back to ${workspaceName || 'your workspace'}, ${displayName}! How can I help today?`,
+        `${timeGreeting}, ${displayName}! Standing by to support your operations${atWorkspace}.`,
       ];
       greeting = ownerGreetings[Math.floor(Math.random() * ownerGreetings.length)];
     }
-    // New org / onboarding persona - helpful professional guide
+    // New org / onboarding persona - helpful professional guide with workspace
     else if (ctx.persona === 'onboarding_guide' || ctx.orgStats?.isNewOrg) {
       const onboardingGreetings = [
-        `${timeGreeting}, ${displayName}. I'm Trinity, your onboarding guide. Let me walk you through the setup.`,
-        `Welcome, ${displayName}. I'll help you configure your platform step by step.`,
-        `${timeGreeting}, ${displayName}. Ready to help you get started with the platform.`,
+        `${timeGreeting}, ${displayName}! I'm Trinity, your onboarding guide${atWorkspace}. Let me walk you through the setup.`,
+        `Welcome to ${workspaceName || 'your new workspace'}, ${displayName}! I'll help you configure everything step by step.`,
+        `${timeGreeting}, ${displayName}! Ready to help you get started${atWorkspace}.`,
       ];
       greeting = onboardingGreetings[Math.floor(Math.random() * onboardingGreetings.length)];
     }
-    // Manager persona - team management professional
+    // Manager persona - team management professional with workspace
     else if (ctx.isManager) {
       const managerGreetings = [
-        `${timeGreeting}, ${displayName}. Team management tools are ready.`,
-        `${timeGreeting}, ${displayName}. Ready to assist with schedule coordination.`,
-        `Welcome, ${displayName}. Your team status and schedule are updated.`,
+        `${timeGreeting}, ${displayName}! Team management tools are ready${atWorkspace}.`,
+        `${timeGreeting}, ${displayName}! Ready to assist with schedule coordination.`,
+        workspaceName
+          ? `Welcome back to ${workspaceName}, ${displayName}! Your team status and schedule are updated.`
+          : `Welcome back, ${displayName}! Your team status and schedule are updated.`,
       ];
       greeting = managerGreetings[Math.floor(Math.random() * managerGreetings.length)];
     }
@@ -1608,12 +1628,14 @@ class ThoughtManager {
     
     // Holiday override for festive flair (50% chance)
     if (this.state.isHoliday && this.state.currentHoliday && Math.random() > 0.5) {
-      greeting = `${this.state.currentHoliday.greeting} ${displayName}!`;
+      greeting = workspaceName
+        ? `${this.state.currentHoliday.greeting} ${displayName}! Great to see you at ${workspaceName}.`
+        : `${this.state.currentHoliday.greeting} ${displayName}!`;
     }
     
     // Final safety check: ensure greeting is a valid string
     if (!greeting || typeof greeting !== 'string') {
-      greeting = `Hello, ${displayName}. I'm Trinity, ready to assist.`;
+      greeting = `Hello, ${displayName}! I'm Trinity, ready to assist${atWorkspace}.`;
     }
     
     const thought = this.createThought(greeting, 'GREETING' as MascotMode, 'default', 'high');
@@ -1623,6 +1645,74 @@ class ThoughtManager {
     // Mark user as greeted after successful greeting
     if (this.state.user?.id) {
       this.state.lastGreetedUserId = this.state.user.id;
+    }
+    
+    // Schedule notification awareness follow-up after greeting (3 seconds later)
+    this.scheduleNotificationAwareness();
+  }
+  
+  /**
+   * Schedule a notification awareness message after greeting
+   * Informs users about unread notifications in a conversational way
+   * Uses timer management to prevent duplicate follow-ups
+   */
+  private scheduleNotificationAwareness(): void {
+    // Clear any existing notification awareness timer to prevent duplicates
+    if (this.notificationAwarenessTimer) {
+      clearTimeout(this.notificationAwarenessTimer);
+      this.notificationAwarenessTimer = null;
+    }
+    
+    const ctx = this.state.trinityContext;
+    if (!ctx?.orgIntelligence?.notificationSummary) {
+      return;
+    }
+    
+    const { unreadCount, urgentCount, categories } = ctx.orgIntelligence.notificationSummary;
+    
+    // Only show if there are meaningful notifications (at least 1)
+    if (unreadCount === 0 && urgentCount === 0) {
+      return;
+    }
+    
+    const displayName = this.getUserDisplayName() || 'there';
+    let notificationMessage: string;
+    
+    // Build conversational notification awareness message
+    if (urgentCount > 0) {
+      // Urgent notifications take priority
+      notificationMessage = urgentCount === 1
+        ? `Hey ${displayName}, heads up! You have 1 urgent notification that needs your attention.`
+        : `${displayName}, just so you know, you have ${urgentCount} urgent notifications waiting for you.`;
+    } else if (unreadCount === 1) {
+      // Single notification - casual mention
+      const category = categories?.[0]?.type || 'message';
+      notificationMessage = `By the way, ${displayName}, you have a new ${category} waiting in your inbox.`;
+    } else if (unreadCount <= 5) {
+      // Few notifications - friendly nudge
+      notificationMessage = `${displayName}, you have ${unreadCount} new notifications. Want me to summarize them?`;
+    } else {
+      // Many notifications - helpful summary
+      notificationMessage = `${displayName}, you've got ${unreadCount} notifications stacked up. Check your inbox when you get a chance!`;
+    }
+    
+    // Queue the notification awareness thought with delay (cleared on persona switch)
+    this.notificationAwarenessTimer = setTimeout(() => {
+      this.notificationAwarenessTimer = null;
+      const thought = this.createThought(notificationMessage, 'ADVISING', 'ai', 'normal');
+      thought.ctaText = 'View Notifications';
+      thought.ctaLink = '/inbox';
+      this.queueThought(thought);
+    }, 4000); // 4 second delay after greeting
+  }
+  
+  /**
+   * Clear notification awareness timer (called on persona/workspace changes)
+   */
+  clearNotificationAwarenessTimer(): void {
+    if (this.notificationAwarenessTimer) {
+      clearTimeout(this.notificationAwarenessTimer);
+      this.notificationAwarenessTimer = null;
     }
   }
   
