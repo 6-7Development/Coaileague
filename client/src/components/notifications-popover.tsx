@@ -1211,9 +1211,21 @@ function NotificationsPopoverInner({ user }: { user: any }) {
       // IMPORTANT: Capture IDs BEFORE canceling queries to ensure we have the data
       const snapshotData = queryClient.getQueryData(["/api/notifications/combined"]) as NotificationsData | undefined;
       
-      // Capture all current IDs for race condition protection FIRST
+      // PROTECTED_CATEGORIES: These notifications are never cleared by "Clear All"
+      // They require explicit user action (apply fix, approve, etc.) to resolve
+      // MUST be defined BEFORE building allIds so we can filter them out
+      const PROTECTED_CATEGORIES = ['system_fix', 'hotpatch', 'admin_action'];
+      
+      // Capture only NON-PROTECTED IDs for race condition protection
+      // Protected notifications (hotpatch, system_fix, admin_action) should NOT be in pending set
+      // because the server won't clear them, and they'd stay in pending forever
       const allIds: string[] = [];
-      snapshotData?.notifications?.forEach(n => allIds.push(n.id));
+      snapshotData?.notifications?.forEach(n => {
+        // Only add non-protected notifications to pending set
+        if (!PROTECTED_CATEGORIES.includes(n.category)) {
+          allIds.push(n.id);
+        }
+      });
       snapshotData?.platformUpdates?.forEach(u => allIds.push(u.id));
       snapshotData?.maintenanceAlerts?.forEach(a => allIds.push(a.id));
       snapshotData?.gapFindings?.forEach(f => allIds.push(f.id));
@@ -1226,10 +1238,6 @@ function NotificationsPopoverInner({ user }: { user: any }) {
       await queryClient.cancelQueries({ queryKey: ["/api/notifications/combined"] });
       const previousData = snapshotData;
       const now = new Date().toISOString();
-      
-      // PROTECTED_CATEGORIES: These notifications are never cleared by "Clear All"
-      // They require explicit user action (apply fix, approve, etc.) to resolve
-      const PROTECTED_CATEGORIES = ['system_fix', 'hotpatch', 'admin_action'];
       
       // Optimistic cache update for immediate UI feedback + pending set for protection
       // NOTE: Protected categories (hotpatch, system_fix, admin_action) are NOT cleared

@@ -118,8 +118,17 @@ interface TrinityMessage {
   executionTimeMs?: number;
   success?: boolean;
   data?: any;
-  outputType?: 'text' | 'chart' | 'table' | 'report';
+  outputType?: 'text' | 'chart' | 'table' | 'report' | 'simulation' | 'evolution';
+  // Frontier capability metadata
+  frontierCapability?: 'hire_agent' | 'predict_frustration' | 'run_simulation' | 'check_ethics' | 'propose_evolution';
+  collaboratorJoined?: string; // External agent name when hired
+  complianceVerified?: { passed: boolean; guardrails: string[]; }; // Ethics check result
+  evolutionLog?: { before: string; after: string; reason: string; }; // Evolution diff
+  simulationResults?: { bottleneck: string; recommendation: string; confidence: number; }; // Digital Twin results
 }
+
+// Frontier capability mode toggle
+type TrinityMode = 'diagnostic' | 'strategic_guru';
 
 interface QuickAction {
   id: string;
@@ -285,6 +294,7 @@ export default function TrinityCommandCenter() {
   const [actionNotes, setActionNotes] = useState('');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isOutputExpanded, setIsOutputExpanded] = useState(false);
+  const [trinityMode, setTrinityMode] = useState<TrinityMode>('diagnostic');
   
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -547,14 +557,37 @@ export default function TrinityCommandCenter() {
         {/* Left Panel - Trinity AI Output (Desktop only, Support Staff only) */}
         {canUseChat && (
           <div className={`hidden lg:flex flex-col w-[55%] border-r border-slate-700/50 ${isOutputExpanded ? 'lg:w-[70%]' : ''}`}>
-            {/* Output Header */}
+            {/* Output Header with Frontier Mode Toggle */}
             <div className="bg-slate-900/50 border-b border-slate-700/50 px-4 py-2 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-cyan-400" />
                 <span className="text-sm font-medium text-white">Trinity AI Output</span>
-                <span className="text-xs text-slate-400">/ Dynamic Report</span>
+                <span className="text-xs text-slate-400">/ {trinityMode === 'strategic_guru' ? 'Strategic Guru' : 'Diagnostic'}</span>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
+                {/* Frontier Mode Toggle */}
+                <div className="flex items-center gap-2 px-2 py-1 rounded-md bg-slate-800/50 border border-slate-700">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={`h-6 px-2 text-xs ${trinityMode === 'diagnostic' ? 'bg-cyan-500/20 text-cyan-400' : 'text-slate-400 hover:text-white'}`}
+                    onClick={() => setTrinityMode('diagnostic')}
+                    data-testid="button-mode-diagnostic"
+                  >
+                    <Bug className="w-3 h-3 mr-1" />
+                    Diagnostic
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={`h-6 px-2 text-xs ${trinityMode === 'strategic_guru' ? 'bg-purple-500/20 text-purple-400' : 'text-slate-400 hover:text-white'}`}
+                    onClick={() => setTrinityMode('strategic_guru')}
+                    data-testid="button-mode-guru"
+                  >
+                    <Sparkles className="w-3 h-3 mr-1" />
+                    Guru Mode
+                  </Button>
+                </div>
                 <Button 
                   variant="ghost" 
                   size="icon" 
@@ -875,6 +908,14 @@ function MessageBubble({ message }: { message: TrinityMessage }) {
       </div>
       
       <div className={`flex-1 max-w-[80%] ${isUser ? 'text-right' : ''}`}>
+        {/* Collaborator Joined Badge - when external agent is hired */}
+        {message.collaboratorJoined && (
+          <div className="mb-2 inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-purple-500/20 border border-purple-500/40 text-purple-300 text-xs">
+            <Bot className="w-3 h-3" />
+            <span>Collaborator Joined: {message.collaboratorJoined}</span>
+          </div>
+        )}
+        
         <div className={`inline-block rounded-lg px-4 py-2 ${
           isUser 
             ? 'bg-slate-700 text-white' 
@@ -884,11 +925,86 @@ function MessageBubble({ message }: { message: TrinityMessage }) {
         }`}>
           <p className="text-sm whitespace-pre-wrap">{message.content}</p>
           
+          {/* Digital Twin Simulation Results */}
+          {message.simulationResults && (
+            <div className="mt-3 p-3 rounded-lg bg-indigo-500/10 border border-indigo-500/30">
+              <div className="flex items-center gap-2 text-indigo-300 text-xs font-medium mb-2">
+                <Activity className="w-3 h-3" />
+                Digital Twin Simulation
+              </div>
+              <table className="w-full text-xs">
+                <tbody>
+                  <tr className="border-b border-indigo-500/20">
+                    <td className="py-1 text-slate-400">Bottleneck</td>
+                    <td className="py-1 text-white font-medium">{message.simulationResults.bottleneck}</td>
+                  </tr>
+                  <tr className="border-b border-indigo-500/20">
+                    <td className="py-1 text-slate-400">Recommendation</td>
+                    <td className="py-1 text-cyan-300">{message.simulationResults.recommendation}</td>
+                  </tr>
+                  <tr>
+                    <td className="py-1 text-slate-400">Confidence</td>
+                    <td className="py-1">
+                      <div className="flex items-center gap-2">
+                        <Progress value={message.simulationResults.confidence} className="h-1.5 flex-1" />
+                        <span className="text-emerald-400">{message.simulationResults.confidence}%</span>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          )}
+          
+          {/* Evolution Log - Before/After diff */}
+          {message.evolutionLog && (
+            <div className="mt-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30">
+              <div className="flex items-center gap-2 text-amber-300 text-xs font-medium mb-2">
+                <Sparkles className="w-3 h-3" />
+                Self-Evolution Log
+              </div>
+              <div className="space-y-2 text-xs">
+                <div>
+                  <span className="text-slate-400">Before:</span>
+                  <pre className="mt-1 p-2 rounded bg-slate-900/50 text-red-300 overflow-x-auto">{message.evolutionLog.before}</pre>
+                </div>
+                <div>
+                  <span className="text-slate-400">After:</span>
+                  <pre className="mt-1 p-2 rounded bg-slate-900/50 text-emerald-300 overflow-x-auto">{message.evolutionLog.after}</pre>
+                </div>
+                <div className="text-slate-400 italic">Reason: {message.evolutionLog.reason}</div>
+              </div>
+            </div>
+          )}
+          
           {message.data && (
             <div className="mt-2 pt-2 border-t border-slate-700">
               {message.outputType === 'table' && (
                 <div className="text-xs text-slate-400">
                   <pre className="overflow-x-auto">{JSON.stringify(message.data, null, 2)}</pre>
+                </div>
+              )}
+            </div>
+          )}
+          
+          {/* Compliance Verified Footer - Ethics check result */}
+          {message.complianceVerified && (
+            <div className={`mt-3 pt-2 border-t ${message.complianceVerified.passed ? 'border-emerald-500/30' : 'border-red-500/30'}`}>
+              <div className={`flex items-center gap-1.5 text-xs ${message.complianceVerified.passed ? 'text-emerald-400' : 'text-red-400'}`}>
+                {message.complianceVerified.passed ? (
+                  <CheckCircle className="w-3 h-3" />
+                ) : (
+                  <XCircle className="w-3 h-3" />
+                )}
+                <span className="font-medium">Compliance {message.complianceVerified.passed ? 'Verified' : 'Failed'}</span>
+              </div>
+              {message.complianceVerified.guardrails.length > 0 && (
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {message.complianceVerified.guardrails.map((guardrail, idx) => (
+                    <Badge key={idx} variant="outline" className="text-[10px] py-0 px-1.5 border-slate-600 text-slate-400">
+                      {guardrail}
+                    </Badge>
+                  ))}
                 </div>
               )}
             </div>
@@ -906,6 +1022,11 @@ function MessageBubble({ message }: { message: TrinityMessage }) {
             ) : (
               <XCircle className="w-3 h-3 text-red-400" />
             )
+          )}
+          {message.frontierCapability && (
+            <Badge variant="outline" className="text-[10px] py-0 border-cyan-500/30 text-cyan-400">
+              {message.frontierCapability.replace('_', ' ')}
+            </Badge>
           )}
         </div>
       </div>
