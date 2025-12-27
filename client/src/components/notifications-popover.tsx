@@ -1227,37 +1227,59 @@ function NotificationsPopoverInner({ user }: { user: any }) {
       const previousData = snapshotData;
       const now = new Date().toISOString();
       
+      // PROTECTED_CATEGORIES: These notifications are never cleared by "Clear All"
+      // They require explicit user action (apply fix, approve, etc.) to resolve
+      const PROTECTED_CATEGORIES = ['system_fix', 'hotpatch', 'admin_action'];
+      
       // Optimistic cache update for immediate UI feedback + pending set for protection
-      queryClient.setQueryData(["/api/notifications/combined"], (old: any) => ({
-        ...old,
-        notifications: old?.notifications?.map((n: any) => ({ 
-          ...n, 
-          clearedAt: now, 
-          isRead: true,
-          metadata: { ...(n.metadata || {}), wasCleared: true }
-        })) || [],
-        platformUpdates: old?.platformUpdates?.map((u: any) => ({ 
-          ...u, 
-          isViewed: true,
-          metadata: { ...(u.metadata || {}), wasCleared: true }
-        })) || [],
-        maintenanceAlerts: old?.maintenanceAlerts?.map((a: any) => ({ 
-          ...a, 
-          isAcknowledged: true,
-          metadata: { ...(a.metadata || {}), wasCleared: true }
-        })) || [],
-        gapFindings: old?.gapFindings?.map((f: any) => ({
-          ...f,
-          isRead: true,
-          clearedAt: now,
-          metadata: { ...(f.metadata || {}), wasCleared: true }
-        })) || [],
-        totalUnread: 0,
-        unreadNotifications: 0,
-        unreadPlatformUpdates: 0,
-        unreadAlerts: 0,
-        unreadGapFindings: 0,
-      }));
+      // NOTE: Protected categories (hotpatch, system_fix, admin_action) are NOT cleared
+      queryClient.setQueryData(["/api/notifications/combined"], (old: any) => {
+        // Count how many protected notifications remain unread (not yet cleared)
+        const protectedUnreadCount = old?.notifications?.filter((n: any) => 
+          PROTECTED_CATEGORIES.includes(n.category) && !n.clearedAt && !n.isRead
+        )?.length || 0;
+        
+        // Map notifications - mark all as cleared EXCEPT protected categories
+        const updatedNotifications = old?.notifications?.map((n: any) => {
+          // Preserve protected notifications (hotpatch, system_fix, admin_action)
+          if (PROTECTED_CATEGORIES.includes(n.category)) {
+            return n; // Don't modify - these require explicit action
+          }
+          return { 
+            ...n, 
+            clearedAt: now, 
+            isRead: true,
+            metadata: { ...(n.metadata || {}), wasCleared: true }
+          };
+        }) || [];
+        
+        return {
+          ...old,
+          notifications: updatedNotifications,
+          platformUpdates: old?.platformUpdates?.map((u: any) => ({ 
+            ...u, 
+            isViewed: true,
+            metadata: { ...(u.metadata || {}), wasCleared: true }
+          })) || [],
+          maintenanceAlerts: old?.maintenanceAlerts?.map((a: any) => ({ 
+            ...a, 
+            isAcknowledged: true,
+            metadata: { ...(a.metadata || {}), wasCleared: true }
+          })) || [],
+          gapFindings: old?.gapFindings?.map((f: any) => ({
+            ...f,
+            isRead: true,
+            clearedAt: now,
+            metadata: { ...(f.metadata || {}), wasCleared: true }
+          })) || [],
+          // Only protected unread notifications remain in count after clear-all
+          totalUnread: protectedUnreadCount,
+          unreadNotifications: protectedUnreadCount,
+          unreadPlatformUpdates: 0,
+          unreadAlerts: 0,
+          unreadGapFindings: 0,
+        };
+      });
       return { previousData, clearedIds: allIds };
     },
     onSuccess: () => {

@@ -28,6 +28,7 @@ import { registerCoreSubagentActions } from "./subagents/coreSubagentOrchestrati
 import { registerTrinityCodeOpsActions } from "./trinityCodeOpsActions";
 import { registerScheduleLiveNotifierActions } from "./scheduleLiveNotifierActions";
 import { registerTrinityWorkOrderActions } from "./trinityWorkOrderActions";
+import { registerTrinityFrontierActions } from "./trinityFrontierActions";
 import { registerCognitiveBrainActions } from "./cognitiveBrainActions";
 import { registerIntegrationBrainActions } from "./integrationBrainActions";
 import { registerDomainSupervisorActions } from "./domainSupervisorActions";
@@ -409,6 +410,7 @@ class AIBrainMasterOrchestrator {
     registerTrinityCodeOpsActions(helpaiOrchestrator); // Trinity Autonomous Coding Actions (grep, patch, commit, FAST mode)
     registerScheduleLiveNotifierActions(); // Real-time schedule notification actions
     registerTrinityWorkOrderActions(); // Trinity Work Order System (intake, decompose, execute, summarize)
+    registerTrinityFrontierActions(helpaiOrchestrator); // Trinity 2025 Frontier Capabilities (external agents, frustration prediction, self-evolution, digital twin, ethics)
     registerCognitiveBrainActions(); // Cognitive Brain: API integrations, Knowledge Graph, A2A, Reinforcement Learning
     registerIntegrationBrainActions(); // Integration Management: Workspace integrations, API keys, Partner management
     registerDomainSupervisorActions(); // Domain Lead Supervisors: RevenueOps, SecurityOps, OnboardingOps + Enhanced LLM Judge
