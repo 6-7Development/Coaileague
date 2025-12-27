@@ -6569,6 +6569,10 @@ export class DatabaseStorage implements IStorage {
     const conditions = [
       eq(notifications.userId, userId),
       isNull(notifications.clearedAt), // Only clear uncleared notifications
+      // NEVER clear hotpatch/system_fix notifications - these require explicit approval
+      not(eq(notifications.category, 'system_fix' as any)),
+      not(eq(notifications.category, 'hotpatch' as any)),
+      not(eq(notifications.category, 'admin_action' as any)),
     ];
     
     if (workspaceId) {
