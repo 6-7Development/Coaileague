@@ -700,30 +700,36 @@ function MascotRenderer() {
         data-testid="mascot-container"
         data-transport-effect={currentEffect || undefined}
       >
+        {/* Clickable mascot area - ONLY the mascot visual itself, not full container */}
+        {/* This prevents Trinity from blocking links/buttons underneath */}
         <div 
-          className="w-full h-full pointer-events-auto" 
-          onClick={handleTap}
-          draggable={false}
-          onDragStart={(e) => e.preventDefault()}
-          onMouseDown={(e) => e.preventDefault()}
-          onTouchStart={(e) => { /* Tap only - no drag */ }}
-          style={{ 
-            background: 'transparent', 
-            cursor: 'default', 
-            userSelect: 'none', 
-            WebkitUserDrag: 'none',
-            WebkitTouchCallout: 'none',
-          } as React.CSSProperties}
+          className="w-full h-full pointer-events-none"
+          style={{ background: 'transparent' }}
         >
           {/* Polished Trinity Redesign - Smooth mutations and state animations */}
           {/* Auto-cycles through states after 30 seconds of user inactivity */}
-          <TrinityRedesign 
-            mode={(voiceModeOverride as any) || currentMode}
-            size={bubbleSize}
-            mini={!isExpanded}
-            idleTimeout={30000}
-            cycleInterval={3000}
-          />
+          {/* pointer-events-auto ONLY on the actual mascot visual */}
+          <div
+            className="pointer-events-auto cursor-pointer"
+            onClick={handleTap}
+            draggable={false}
+            onDragStart={(e) => e.preventDefault()}
+            onMouseDown={(e) => e.preventDefault()}
+            onTouchStart={(e) => { /* Tap only - no drag */ }}
+            style={{ 
+              userSelect: 'none', 
+              WebkitUserDrag: 'none',
+              WebkitTouchCallout: 'none',
+            } as React.CSSProperties}
+          >
+            <TrinityRedesign 
+              mode={(voiceModeOverride as any) || currentMode}
+              size={bubbleSize}
+              mini={!isExpanded}
+              idleTimeout={30000}
+              cycleInterval={3000}
+            />
+          </div>
           
           {!currentThought && workspaceId && (
             <MascotTaskBox 
