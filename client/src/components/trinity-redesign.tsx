@@ -730,6 +730,7 @@ const TrinityRedesign = memo(function TrinityRedesign({
         userSelect: 'none',
         WebkitUserDrag: 'none',
         WebkitTouchCallout: 'none',
+        pointerEvents: 'none',
       } as React.CSSProperties}
     >
       <canvas

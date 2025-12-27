@@ -103,6 +103,7 @@ import {
 import { format, formatDistanceToNow } from "date-fns";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { isSupportStaff } from "@/components/support-staff-route";
 
 // ============================================================================
 // TYPES
@@ -324,6 +325,11 @@ export default function TrinityCommandCenter() {
   const availableActions = QUICK_ACTIONS.filter(action => 
     canUserAccessAction(userRole, action.requiredRole) && action.enabled
   );
+  
+  // Only support staff can use the full chat interface
+  // Regular org owners only see Quick Actions based on their business
+  // userRole already has the fallback: platformRole || role || 'employee'
+  const canUseChat = isSupportStaff(userRole);
 
   // Auto-scroll chat
   useEffect(() => {
@@ -413,6 +419,8 @@ export default function TrinityCommandCenter() {
 
   // Handle send
   const handleSend = useCallback(() => {
+    // Defensive check: prevent non-support users from sending chat messages
+    if (!canUseChat) return;
     if (!input.trim() || isProcessing) return;
     
     const userMessage: TrinityMessage = {
@@ -426,7 +434,7 @@ export default function TrinityCommandCenter() {
     setInput('');
     setIsProcessing(true);
     sendMessage.mutate(input.trim());
-  }, [input, isProcessing, sendMessage]);
+  }, [input, isProcessing, sendMessage, canUseChat]);
 
   // Handle voice input toggle
   const toggleVoice = useCallback(() => {
@@ -536,59 +544,29 @@ export default function TrinityCommandCenter() {
 
       {/* Main Content - Split Layout */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Left Panel - Trinity AI Output (Desktop only) */}
-        <div className={`hidden lg:flex flex-col w-[55%] border-r border-slate-700/50 ${isOutputExpanded ? 'lg:w-[70%]' : ''}`}>
-          {/* Output Header */}
-          <div className="bg-slate-900/50 border-b border-slate-700/50 px-4 py-2 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-cyan-400" />
-              <span className="text-sm font-medium text-white">Trinity AI Output</span>
-              <span className="text-xs text-slate-400">/ Dynamic Report</span>
+        {/* Left Panel - Trinity AI Output (Desktop only, Support Staff only) */}
+        {canUseChat && (
+          <div className={`hidden lg:flex flex-col w-[55%] border-r border-slate-700/50 ${isOutputExpanded ? 'lg:w-[70%]' : ''}`}>
+            {/* Output Header */}
+            <div className="bg-slate-900/50 border-b border-slate-700/50 px-4 py-2 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-cyan-400" />
+                <span className="text-sm font-medium text-white">Trinity AI Output</span>
+                <span className="text-xs text-slate-400">/ Dynamic Report</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-7 w-7 text-slate-400 hover:text-white"
+                  onClick={() => setIsOutputExpanded(!isOutputExpanded)}
+                >
+                  {isOutputExpanded ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+                </Button>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="h-7 w-7 text-slate-400 hover:text-white"
-                onClick={() => setIsOutputExpanded(!isOutputExpanded)}
-              >
-                {isOutputExpanded ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-              </Button>
-            </div>
-          </div>
-          
-          {/* Chat Messages */}
-          <ScrollArea className="flex-1 p-4" ref={scrollRef}>
-            <div className="space-y-4">
-              {messages.map((msg) => (
-                <MessageBubble key={msg.id} message={msg} />
-              ))}
-              {isProcessing && (
-                <div className="flex items-center gap-2 text-cyan-400">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span className="text-sm">Trinity is thinking...</span>
-                </div>
-              )}
-            </div>
-          </ScrollArea>
-          
-          {/* Token Usage Footer */}
-          <div className="border-t border-slate-700/50 px-4 py-2 bg-slate-900/30">
-            <div className="flex items-center justify-between text-xs text-slate-400">
-              <span>
-                Tokens Used: <span className="text-cyan-400 font-mono">{(creditsData?.used || 0).toLocaleString()}</span>
-                {' | '}
-                Cost: <span className="text-emerald-400 font-mono">${((creditsData?.used || 0) * 0.0001).toFixed(2)}</span>
-              </span>
-              <span>Last Action: {messages[messages.length - 1]?.executionTimeMs ? `${messages[messages.length - 1].executionTimeMs}ms ago` : 'N/A'}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Right Panel - Command & Control */}
-        <div className={`flex-1 flex flex-col ${isOutputExpanded ? 'lg:w-[30%]' : 'lg:w-[45%]'}`}>
-          {/* Mobile Chat (shown on mobile) */}
-          <div className="lg:hidden flex-1 flex flex-col">
+            
+            {/* Chat Messages */}
             <ScrollArea className="flex-1 p-4" ref={scrollRef}>
               <div className="space-y-4">
                 {messages.map((msg) => (
@@ -597,96 +575,144 @@ export default function TrinityCommandCenter() {
                 {isProcessing && (
                   <div className="flex items-center gap-2 text-cyan-400">
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span className="text-sm">Processing...</span>
+                    <span className="text-sm">Trinity is thinking...</span>
                   </div>
                 )}
               </div>
             </ScrollArea>
+            
+            {/* Token Usage Footer */}
+            <div className="border-t border-slate-700/50 px-4 py-2 bg-slate-900/30">
+              <div className="flex items-center justify-between text-xs text-slate-400">
+                <span>
+                  Tokens Used: <span className="text-cyan-400 font-mono">{(creditsData?.used || 0).toLocaleString()}</span>
+                  {' | '}
+                  Cost: <span className="text-emerald-400 font-mono">${((creditsData?.used || 0) * 0.0001).toFixed(2)}</span>
+                </span>
+                <span>Last Action: {messages[messages.length - 1]?.executionTimeMs ? `${messages[messages.length - 1].executionTimeMs}ms ago` : 'N/A'}</span>
+              </div>
+            </div>
           </div>
+        )}
+
+        {/* Right Panel - Command & Control */}
+        <div className={`flex-1 flex flex-col ${canUseChat ? (isOutputExpanded ? 'lg:w-[30%]' : 'lg:w-[45%]') : 'w-full'}`}>
+          {/* Mobile Chat (shown on mobile, Support Staff only) */}
+          {canUseChat && (
+            <div className="lg:hidden flex-1 flex flex-col">
+              <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+                <div className="space-y-4">
+                  {messages.map((msg) => (
+                    <MessageBubble key={msg.id} message={msg} />
+                  ))}
+                  {isProcessing && (
+                    <div className="flex items-center gap-2 text-cyan-400">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span className="text-sm">Processing...</span>
+                    </div>
+                  )}
+                </div>
+              </ScrollArea>
+            </div>
+          )}
 
           {/* Command & Control Panel */}
           <div className="bg-slate-900/50 border-t lg:border-t-0 lg:border-l border-slate-700/50 p-4 space-y-4">
-            {/* Chat Input */}
-            <div className="space-y-2">
-              <Label className="text-slate-300 text-xs">Talk to Trinity...</Label>
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <Input
-                    ref={inputRef}
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                    placeholder="Enter command or ask a question..."
-                    className="bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 pr-10"
-                    data-testid="input-trinity-command"
-                  />
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className={`absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 ${isListening ? 'text-red-400' : 'text-slate-400 hover:text-white'}`}
-                    onClick={toggleVoice}
-                    data-testid="button-voice-input"
+            {/* Chat Input - Support Staff Only */}
+            {canUseChat ? (
+              <div className="space-y-2">
+                <Label className="text-slate-300 text-xs">Talk to Trinity...</Label>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Input
+                      ref={inputRef}
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                      placeholder="Enter command or ask a question..."
+                      className="bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 pr-10"
+                      data-testid="input-trinity-command"
+                    />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className={`absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 ${isListening ? 'text-red-400' : 'text-slate-400 hover:text-white'}`}
+                      onClick={toggleVoice}
+                      data-testid="button-voice-input"
+                    >
+                      {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                    </Button>
+                  </div>
+                  <Button 
+                    onClick={handleSend}
+                    disabled={!input.trim() || isProcessing}
+                    className="bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600"
+                    data-testid="button-send-command"
                   >
-                    {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                    {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                   </Button>
                 </div>
-                <Button 
-                  onClick={handleSend}
-                  disabled={!input.trim() || isProcessing}
-                  className="bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600"
-                  data-testid="button-send-command"
-                >
-                  {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                </Button>
               </div>
-            </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-slate-300">
+                  <Brain className="w-5 h-5 text-cyan-400" />
+                  <span className="font-medium">Trinity Quick Actions</span>
+                </div>
+                <p className="text-xs text-slate-400">
+                  Use the quick actions below to run AI-powered tasks for your organization.
+                </p>
+              </div>
+            )}
 
-            <Separator className="bg-slate-700/50" />
+            {canUseChat && <Separator className="bg-slate-700/50" />}
 
             {/* Quick Actions Grid */}
-            <div className="space-y-2 hidden lg:block">
+            <div className={`space-y-2 ${canUseChat ? 'hidden lg:block' : 'block'}`}>
               <Label className="text-slate-300 text-xs">Quick Actions</Label>
-              <div className="grid grid-cols-4 gap-2">
-                {availableActions.slice(0, 12).map((action) => {
+              <div className={`grid gap-2 ${canUseChat ? 'grid-cols-4' : 'grid-cols-3 md:grid-cols-4 lg:grid-cols-6'}`}>
+                {availableActions.slice(0, canUseChat ? 12 : 18).map((action) => {
                   const Icon = getActionIcon(action.icon);
                   return (
                     <Button
                       key={action.id}
                       variant="outline"
                       size="sm"
-                      className="flex flex-col h-auto py-2 px-2 bg-slate-800/50 border-slate-700 hover:bg-slate-700 hover:border-cyan-500/50 text-slate-300 hover:text-white"
+                      className={`flex flex-col h-auto py-2 px-2 bg-slate-800/50 border-slate-700 hover:bg-slate-700 hover:border-cyan-500/50 text-slate-300 hover:text-white ${!canUseChat ? 'py-3' : ''}`}
                       onClick={() => handleActionClick(action)}
                       data-testid={`button-action-${action.id}`}
                     >
-                      <Icon className="w-4 h-4 mb-1" />
-                      <span className="text-[10px] leading-tight text-center">{action.name}</span>
+                      <Icon className={`mb-1 ${canUseChat ? 'w-4 h-4' : 'w-5 h-5'}`} />
+                      <span className={`leading-tight text-center ${canUseChat ? 'text-[10px]' : 'text-xs'}`}>{action.name}</span>
                     </Button>
                   );
                 })}
               </div>
             </div>
 
-            <Separator className="bg-slate-700/50 hidden lg:block" />
+            {canUseChat && <Separator className="bg-slate-700/50 hidden lg:block" />}
 
-            {/* Reports */}
-            <div className="space-y-2 hidden lg:block">
-              <Label className="text-slate-300 text-xs">Reports</Label>
-              <div className="space-y-2">
-                <ReportRow 
-                  name="Payroll Report" 
-                  status="completed" 
-                  onClick={() => handleActionClick({ ...QUICK_ACTIONS[0], name: 'Payroll Report', actionId: 'payroll.report' })}
-                />
-                <ReportRow 
-                  name="Team Approvals" 
-                  status="pending" 
-                  progress={67}
-                  onClick={() => handleActionClick({ ...QUICK_ACTIONS[0], name: 'Team Approvals', actionId: 'approvals.pending' })}
-                />
+            {/* Reports - Support Staff Only */}
+            {canUseChat && (
+              <div className="space-y-2 hidden lg:block">
+                <Label className="text-slate-300 text-xs">Reports</Label>
+                <div className="space-y-2">
+                  <ReportRow 
+                    name="Payroll Report" 
+                    status="completed" 
+                    onClick={() => handleActionClick({ ...QUICK_ACTIONS[0], name: 'Payroll Report', actionId: 'payroll.report' })}
+                  />
+                  <ReportRow 
+                    name="Team Approvals" 
+                    status="pending" 
+                    progress={67}
+                    onClick={() => handleActionClick({ ...QUICK_ACTIONS[0], name: 'Team Approvals', actionId: 'approvals.pending' })}
+                  />
+                </div>
               </div>
-            </div>
+            )}
 
-            <Separator className="bg-slate-700/50 hidden lg:block" />
+            <Separator className="bg-slate-700/50" />
 
             {/* Role Status */}
             <div className="space-y-2">
@@ -711,27 +737,46 @@ export default function TrinityCommandCenter() {
               </Card>
             </div>
 
-            {/* System Approved Quick Access */}
-            <div className="space-y-2">
-              <Label className="text-slate-300 text-xs">System Approved</Label>
-              <div className="space-y-1">
-                <QuickAccessRow 
-                  icon={<Gauge className="w-4 h-4" />}
-                  label="Recent Inbox"
-                  onClick={() => setInput('/inbox recent')}
-                />
-                <QuickAccessRow 
-                  icon={<Settings className="w-4 h-4" />}
-                  label="Open Functionality"
-                  onClick={() => setInput('/help features')}
-                />
-                <QuickAccessRow 
-                  icon={<Activity className="w-4 h-4" />}
-                  label="Recent Activity"
-                  onClick={() => setInput('/activity recent')}
-                />
+            {/* System Approved Quick Access - Support Staff Only */}
+            {canUseChat && (
+              <div className="space-y-2">
+                <Label className="text-slate-300 text-xs">System Approved</Label>
+                <div className="space-y-1">
+                  <QuickAccessRow 
+                    icon={<Gauge className="w-4 h-4" />}
+                    label="Recent Inbox"
+                    onClick={() => setInput('/inbox recent')}
+                  />
+                  <QuickAccessRow 
+                    icon={<Settings className="w-4 h-4" />}
+                    label="Open Functionality"
+                    onClick={() => setInput('/help features')}
+                  />
+                  <QuickAccessRow 
+                    icon={<Activity className="w-4 h-4" />}
+                    label="Recent Activity"
+                    onClick={() => setInput('/activity recent')}
+                  />
+                </div>
               </div>
-            </div>
+            )}
+            
+            {/* Org Owner Info */}
+            {!canUseChat && (
+              <div className="mt-4 p-4 bg-slate-800/30 rounded-lg border border-slate-700/50">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 rounded-full bg-cyan-500/10">
+                    <Shield className="w-4 h-4 text-cyan-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-slate-300 font-medium">Copilot Automation</p>
+                    <p className="text-xs text-slate-400 mt-1">
+                      Trinity handles 99% of operations automatically. Critical actions require your approval to ensure legal safety and compliance.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
