@@ -289,10 +289,9 @@ class MetricsDashboardService {
     try {
       await db.insert(systemAuditLogs).values({
         id: randomUUID(),
-        eventType: 'metrics_exported',
-        severity: 'info',
-        source: 'metrics_dashboard',
-        message: 'Metrics snapshot exported',
+        action: 'metrics_exported',
+        entityType: 'metrics_dashboard',
+        entityId: 'system',
         metadata: {
           overview,
           triggeredAlerts: triggeredAlerts.map(a => ({
@@ -301,9 +300,10 @@ class MetricsDashboardService {
             severity: a.severity
           })),
           metricsCount: this.metrics.size,
-          timestamp: Date.now()
+          timestamp: Date.now(),
+          severity: 'info'
         },
-        timestamp: new Date()
+        createdAt: new Date()
       });
     } catch (error) {
       console.error('[MetricsDashboard] Failed to export metrics:', error);
@@ -429,19 +429,19 @@ class MetricsDashboardService {
     try {
       await db.insert(systemAuditLogs).values({
         id: randomUUID(),
-        eventType: 'alert_triggered',
-        severity: rule.severity,
-        source: 'metrics_dashboard',
-        message: `Alert: ${rule.metricName} ${rule.condition} ${rule.threshold}`,
+        action: 'alert_triggered',
+        entityType: 'metrics_alert',
+        entityId: rule.id,
         metadata: {
           ruleId: rule.id,
           metricName: rule.metricName,
           condition: rule.condition,
           threshold: rule.threshold,
           currentValue: value,
-          severity: rule.severity
+          severity: rule.severity,
+          message: `Alert: ${rule.metricName} ${rule.condition} ${rule.threshold}`
         },
-        timestamp: new Date()
+        createdAt: new Date()
       });
     } catch (error) {
       console.error('[MetricsDashboard] Failed to log alert:', error);

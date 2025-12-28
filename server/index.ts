@@ -17,6 +17,8 @@ import { initializeOrchestrationServices, setOrchestrationWebSocketBroadcaster }
 import { broadcastToWorkspace } from "./websocket";
 import { initializeSkillsSystem } from "./services/ai-brain/skills/skill-loader";
 import "./services/scheduleLiveNotifier";
+import { tracingMiddleware } from "./services/infrastructure/distributedTracing";
+import { rateLimitMiddleware } from "./services/infrastructure/rateLimiting";
 
 const app = express();
 
@@ -45,6 +47,12 @@ app.use(express.urlencoded({ extended: false }));
 
 // Trust proxy for accurate IP detection behind load balancers
 app.set('trust proxy', 1);
+
+// Distributed tracing middleware - adds trace IDs to all requests
+app.use(tracingMiddleware);
+
+// Rate limiting middleware - applies per-tenant quotas on API routes
+app.use('/api', rateLimitMiddleware);
 
 // Production health check endpoint with monitoring service
 app.get('/health', async (req, res) => {
