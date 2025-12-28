@@ -26,6 +26,7 @@ import { connectionPooling } from './connectionPooling';
 import { rateLimiting } from './rateLimiting';
 import { healthCheckAggregation } from './healthCheckAggregation';
 import { metricsDashboard } from './metricsDashboard';
+import { initializeProductionSeeding } from './productionSeeding';
 
 // Q1 exports
 export { durableJobQueue } from './durableJobQueue';
@@ -39,6 +40,9 @@ export { connectionPooling } from './connectionPooling';
 export { rateLimiting, rateLimitMiddleware } from './rateLimiting';
 export { healthCheckAggregation } from './healthCheckAggregation';
 export { metricsDashboard } from './metricsDashboard';
+
+// Production seeding exports
+export { initializeProductionSeeding, seedProductionAlertRules, seedProductionDashboards, registerExtendedHealthChecks } from './productionSeeding';
 
 /**
  * Initialize all infrastructure services
@@ -77,9 +81,13 @@ export async function initializeInfrastructureServices(): Promise<void> {
   // Register Trinity recovery job handler
   registerTrinityRecoveryHandler();
   
+  // Initialize production seeding (alert rules, dashboards, extended health checks)
+  await initializeProductionSeeding();
+  
   console.log(`[Infrastructure] ${successes}/${allResults.length} services initialized successfully`);
   console.log('[Infrastructure] Q1: Job Queue, Backups, Error Tracking, API Key Rotation');
   console.log('[Infrastructure] Q2: Distributed Tracing, Connection Pooling, Rate Limiting, Health Checks, Metrics Dashboard');
+  console.log('[Infrastructure] Production: SRE alerts, dashboards, extended health checks');
 }
 
 /**

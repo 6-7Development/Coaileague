@@ -367,18 +367,18 @@ class HealthCheckAggregationService {
     try {
       await db.insert(systemAuditLogs).values({
         id: randomUUID(),
-        eventType: 'service_unhealthy',
-        severity: 'error',
-        source: 'health_check',
-        message: `Service unhealthy: ${service.serviceName}`,
+        action: 'service_unhealthy',
+        entityType: 'health_check',
+        entityId: service.serviceId,
         metadata: {
           serviceId: service.serviceId,
           serviceName: service.serviceName,
           consecutiveFailures: service.consecutiveFailures,
           uptime: service.uptime,
-          lastCheck: service.lastCheck
+          lastCheck: service.lastCheck,
+          severity: 'error'
         },
-        timestamp: new Date()
+        createdAt: new Date()
       });
     } catch (error) {
       console.error('[HealthCheck] Failed to log unhealthy service:', error);
