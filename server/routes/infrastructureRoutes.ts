@@ -1,8 +1,8 @@
 /**
  * INFRASTRUCTURE API ROUTES
  * ==========================
- * API endpoints for Q1 2026 infrastructure services.
- * Provides management interfaces for backups, error tracking, and key rotation.
+ * API endpoints for Q1/Q2 2026 infrastructure services.
+ * Provides management interfaces for all infrastructure capabilities.
  */
 
 import { Router, Request, Response } from 'express';
@@ -10,6 +10,11 @@ import { durableJobQueue } from '../services/infrastructure/durableJobQueue';
 import { backupService } from '../services/infrastructure/backupService';
 import { errorTrackingService } from '../services/infrastructure/errorTrackingService';
 import { apiKeyRotationService } from '../services/infrastructure/apiKeyRotationService';
+import { distributedTracing } from '../services/infrastructure/distributedTracing';
+import { connectionPooling } from '../services/infrastructure/connectionPooling';
+import { rateLimiting } from '../services/infrastructure/rateLimiting';
+import { healthCheckAggregation } from '../services/infrastructure/healthCheckAggregation';
+import { metricsDashboard } from '../services/infrastructure/metricsDashboard';
 import { getInfrastructureHealth } from '../services/infrastructure/index';
 
 const router = Router();
@@ -32,7 +37,7 @@ router.get('/health', async (req: Request, res: Response) => {
 });
 
 // ============================================================================
-// JOB QUEUE
+// JOB QUEUE (Q1)
 // ============================================================================
 
 router.get('/jobs/stats', async (req: Request, res: Response) => {
@@ -67,7 +72,7 @@ router.post('/jobs/retry-dead-letter', async (req: Request, res: Response) => {
 });
 
 // ============================================================================
-// BACKUPS
+// BACKUPS (Q1)
 // ============================================================================
 
 router.get('/backups', async (req: Request, res: Response) => {
@@ -118,7 +123,7 @@ router.patch('/backups/config', (req: Request, res: Response) => {
 });
 
 // ============================================================================
-// ERROR TRACKING
+// ERROR TRACKING (Q1)
 // ============================================================================
 
 router.get('/errors', async (req: Request, res: Response) => {
@@ -160,7 +165,7 @@ router.post('/errors/alerts', async (req: Request, res: Response) => {
 });
 
 // ============================================================================
-// API KEY ROTATION
+// API KEY ROTATION (Q1)
 // ============================================================================
 
 router.get('/keys', async (req: Request, res: Response) => {
@@ -216,6 +221,337 @@ router.post('/keys/validate', async (req: Request, res: Response) => {
     const { keyValue } = req.body;
     const key = await apiKeyRotationService.validateKey(keyValue);
     res.json({ success: true, data: { valid: !!key, key: key ? { id: key.id, name: key.name, status: key.status } : null } });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================================================
+// DISTRIBUTED TRACING (Q2)
+// ============================================================================
+
+router.get('/tracing/stats', (req: Request, res: Response) => {
+  try {
+    const stats = distributedTracing.getStats();
+    res.json({ success: true, data: stats });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.get('/tracing/traces', (req: Request, res: Response) => {
+  try {
+    const limit = parseInt(req.query.limit as string) || 50;
+    const traces = distributedTracing.getRecentTraces(limit);
+    res.json({ success: true, data: traces.map(t => ({
+      traceId: t.traceId,
+      startTime: t.startTime,
+      spanCount: t.spans.size,
+      rootSpan: t.spans.get(t.rootSpanId),
+    })) });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.get('/tracing/traces/:traceId', (req: Request, res: Response) => {
+  try {
+    const spans = distributedTracing.getTraceSpans(req.params.traceId);
+    if (spans.length === 0) {
+      return res.status(404).json({ success: false, error: 'Trace not found' });
+    }
+    res.json({ success: true, data: { traceId: req.params.traceId, spans } });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.post('/tracing/sample-rate', (req: Request, res: Response) => {
+  try {
+    const { rate } = req.body;
+    distributedTracing.setSampleRate(rate);
+    res.json({ success: true, data: { sampleRate: rate } });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================================================
+// CONNECTION POOLING (Q2)
+// ============================================================================
+
+router.get('/pool/stats', (req: Request, res: Response) => {
+  try {
+    const stats = connectionPooling.getStats();
+    res.json({ success: true, data: stats });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.get('/pool/config', (req: Request, res: Response) => {
+  try {
+    const config = connectionPooling.getConfig();
+    res.json({ success: true, data: config });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.patch('/pool/config', (req: Request, res: Response) => {
+  try {
+    connectionPooling.updateConfig(req.body);
+    const config = connectionPooling.getConfig();
+    res.json({ success: true, data: config });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.post('/pool/health-check', async (req: Request, res: Response) => {
+  try {
+    const result = await connectionPooling.forceHealthCheck();
+    res.json({ success: true, data: result });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================================================
+// RATE LIMITING (Q2)
+// ============================================================================
+
+router.get('/rate-limit/stats', (req: Request, res: Response) => {
+  try {
+    const stats = rateLimiting.getStats();
+    res.json({ success: true, data: stats });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.get('/rate-limit/plans', (req: Request, res: Response) => {
+  try {
+    const plans = rateLimiting.getPlanLimits();
+    res.json({ success: true, data: plans });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.get('/rate-limit/tenant/:tenantId', (req: Request, res: Response) => {
+  try {
+    const status = rateLimiting.getQuotaStatus(req.params.tenantId);
+    if (!status) {
+      return res.status(404).json({ success: false, error: 'Tenant not found' });
+    }
+    res.json({ success: true, data: status });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.post('/rate-limit/tenant/:tenantId/unblock', (req: Request, res: Response) => {
+  try {
+    const success = rateLimiting.unblockTenant(req.params.tenantId);
+    res.json({ success });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.post('/rate-limit/tenant/:tenantId/custom', (req: Request, res: Response) => {
+  try {
+    rateLimiting.setCustomLimit(req.params.tenantId, req.body);
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================================================
+// HEALTH CHECK AGGREGATION (Q2)
+// ============================================================================
+
+router.get('/health-check/aggregate', (req: Request, res: Response) => {
+  try {
+    const aggregate = healthCheckAggregation.getAggregateHealth();
+    res.json({ success: true, data: aggregate });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.get('/health-check/services', (req: Request, res: Response) => {
+  try {
+    const status = req.query.status as string | undefined;
+    if (status) {
+      const services = healthCheckAggregation.getServicesByStatus(status as any);
+      res.json({ success: true, data: services });
+    } else {
+      const aggregate = healthCheckAggregation.getAggregateHealth();
+      res.json({ success: true, data: aggregate.services });
+    }
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.get('/health-check/services/:serviceId', (req: Request, res: Response) => {
+  try {
+    const health = healthCheckAggregation.getServiceHealth(req.params.serviceId);
+    if (!health) {
+      return res.status(404).json({ success: false, error: 'Service not found' });
+    }
+    res.json({ success: true, data: health });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.get('/health-check/history', (req: Request, res: Response) => {
+  try {
+    const limit = parseInt(req.query.limit as string) || 60;
+    const history = healthCheckAggregation.getHistory(limit);
+    res.json({ success: true, data: history });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.post('/health-check/refresh', async (req: Request, res: Response) => {
+  try {
+    const aggregate = await healthCheckAggregation.checkAllServices();
+    res.json({ success: true, data: aggregate });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================================================
+// METRICS DASHBOARD (Q2)
+// ============================================================================
+
+router.get('/metrics/overview', (req: Request, res: Response) => {
+  try {
+    const overview = metricsDashboard.getSystemOverview();
+    res.json({ success: true, data: overview });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.get('/metrics/names', (req: Request, res: Response) => {
+  try {
+    const names = metricsDashboard.getMetricNames();
+    res.json({ success: true, data: names });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.get('/metrics/series/:name', (req: Request, res: Response) => {
+  try {
+    const timeRange = parseInt(req.query.timeRange as string) || undefined;
+    const series = metricsDashboard.getSeries(req.params.name, timeRange);
+    if (!series) {
+      return res.status(404).json({ success: false, error: 'Metric not found' });
+    }
+    res.json({ success: true, data: series });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.post('/metrics/record', (req: Request, res: Response) => {
+  try {
+    const { name, value, labels } = req.body;
+    metricsDashboard.record(name, value, labels);
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.get('/metrics/alerts', (req: Request, res: Response) => {
+  try {
+    const rules = metricsDashboard.getAlertRules();
+    res.json({ success: true, data: rules });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.get('/metrics/alerts/triggered', (req: Request, res: Response) => {
+  try {
+    const triggered = metricsDashboard.getTriggeredAlerts();
+    res.json({ success: true, data: triggered });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.post('/metrics/alerts', (req: Request, res: Response) => {
+  try {
+    const rule = metricsDashboard.addAlertRule(req.body);
+    res.json({ success: true, data: rule });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.delete('/metrics/alerts/:ruleId', (req: Request, res: Response) => {
+  try {
+    const success = metricsDashboard.removeAlertRule(req.params.ruleId);
+    res.json({ success });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.get('/metrics/dashboards', (req: Request, res: Response) => {
+  try {
+    const dashboards = metricsDashboard.getDashboards();
+    res.json({ success: true, data: dashboards });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.get('/metrics/dashboards/:dashboardId', (req: Request, res: Response) => {
+  try {
+    const dashboard = metricsDashboard.getDashboard(req.params.dashboardId);
+    if (!dashboard) {
+      return res.status(404).json({ success: false, error: 'Dashboard not found' });
+    }
+    res.json({ success: true, data: dashboard });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.get('/metrics/dashboards/:dashboardId/data', (req: Request, res: Response) => {
+  try {
+    const data = metricsDashboard.getDashboardData(req.params.dashboardId);
+    res.json({ success: true, data });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.post('/metrics/dashboards', (req: Request, res: Response) => {
+  try {
+    const dashboard = metricsDashboard.createDashboard(req.body);
+    res.json({ success: true, data: dashboard });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.post('/metrics/export', async (req: Request, res: Response) => {
+  try {
+    await metricsDashboard.exportMetricsToAudit();
+    res.json({ success: true });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
   }
