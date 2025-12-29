@@ -61,101 +61,22 @@ router.post("/api/auth/register", async (req, res) => {
     // Hash password
     const passwordHash = await hashPassword(data.password);
 
-    // TRANSACTION: Create user + workspace + employee atomically
-    const { newUser, workspace, newEmployee } = await db.transaction(async (tx) => {
-      // 1. Create user
-      const [user] = await tx
-        .insert(users)
-        .values({
-          email: data.email,
-          passwordHash,
-          firstName: data.firstName,
-          lastName: data.lastName,
-          emailVerified: false,
-          role: "user",
-        })
-        .returning();
-
-      // 2. Create workspace
-      const [ws] = await tx.insert(workspaces).values({
-        name: `${data.firstName}'s Workspace`,
-        ownerId: user.id,
-        subscriptionTier: "free",
-        subscriptionStatus: "active",
-      }).returning();
-
-      console.log(`[Registration] Created workspace ${ws.id} for user ${user.id}`);
-
-      // Seed default expense categories (inline to use transaction)
-      const defaultCategories = [
-        { name: 'Mileage', description: 'Vehicle mileage reimbursement' },
-        { name: 'Meals', description: 'Business meals and entertainment' },
-        { name: 'Travel', description: 'Flights, hotels, and transportation' },
-        { name: 'Office Supplies', description: 'Office equipment and supplies' },
-      ];
-      for (const category of defaultCategories) {
-        try {
-          await tx.insert(expenseCategories).values({
-            workspaceId: ws.id,
-            name: category.name,
-            description: category.description,
-            isActive: true,
-          });
-        } catch (error: any) {
-          // Only ignore duplicate key violations (code '23505')
-          // Let other errors bubble up to abort the transaction
-          if (error.code === '23505') {
-            console.log(`Category ${category.name} already exists for workspace ${ws.id}`);
-          } else {
-            throw error; // Re-throw non-duplicate errors to rollback transaction
-          }
-        }
-      }
-
-      // 3. Update user with workspace ID
-      await tx
-        .update(users)
-        .set({ currentWorkspaceId: ws.id })
-        .where(eq(users.id, user.id));
-
-      // 4. Create employee record
-      const [emp] = await tx.insert(employees).values({
-        userId: user.id,
-        workspaceId: ws.id,
+    // Create ONLY the user account - NO workspace/employee yet
+    // User will be redirected to /create-org to set up their organization
+    const [newUser] = await db
+      .insert(users)
+      .values({
         email: data.email,
+        passwordHash,
         firstName: data.firstName,
         lastName: data.lastName,
-        workspaceRole: 'org_owner',
-        isActive: true,
-      }).returning();
+        emailVerified: false,
+        role: "user",
+        // currentWorkspaceId is left null - user needs to create org first
+      })
+      .returning();
 
-      console.log(`[Registration] Created employee ${emp.id} for workspace ${ws.id}`);
-
-      return { newUser: user, workspace: ws, newEmployee: emp };
-    });
-
-    console.log(`[Registration] Transaction complete - user, workspace, and employee created`);
-
-    // Ensure org identifiers exist (OUTSIDE transaction - won't rollback registration if it fails)
-    const { ensureOrgIdentifiers } = await import('./services/identityService');
-    try {
-      await ensureOrgIdentifiers(workspace.id, workspace.name);
-      console.log(`[Registration] Ensured org identifiers for workspace ${workspace.id}`);
-    } catch (orgError: any) {
-      console.error(`[Registration] Failed to ensure org identifiers:`, orgError.message);
-      // Don't fail registration - external IDs can be retried later
-    }
-
-    // Try to attach employee external ID (in separate transaction - won't rollback employee creation)
-    try {
-      const { attachEmployeeExternalId } = await import('./services/identityService');
-      const result = await attachEmployeeExternalId(newEmployee.id, workspace.id);
-      console.log(`[Registration] Attached external ID ${result.externalId} to employee ${newEmployee.id}`);
-    } catch (extIdError: any) {
-      console.error(`[Registration] Failed to attach external ID:`, extIdError.message);
-      console.log(`[Registration] Employee ${newEmployee.id} created successfully - external ID can be attached later`);
-      // Don't fail registration - external IDs can be attached later via retry mechanism
-    }
+    console.log(`[Registration] Created user ${newUser.id} (${newUser.email}) - needs org setup`);
 
     // Create verification token
     const verificationToken = await createVerificationToken(newUser.id);
@@ -184,13 +105,15 @@ router.post("/api/auth/register", async (req, res) => {
 
     res.status(201).json({
       message: "Registration successful",
+      needsOrgSetup: true, // User needs to create their organization
+      redirectTo: "/create-org", // Redirect user to org creation wizard
       user: {
         id: newUser.id,
         email: newUser.email,
         firstName: newUser.firstName,
         lastName: newUser.lastName,
         role: newUser.role,
-        currentWorkspaceId: workspace.id,
+        currentWorkspaceId: null, // No workspace yet
       },
     });
   } catch (error) {

@@ -2673,11 +2673,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/workspaces', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const userId = req.user?.id;
-      if (!userId) {
+      const user = req.user;
+      if (!userId || !user) {
         return res.status(401).json({ message: 'Unauthorized' });
       }
 
-      const { name, description, industry, size, companyName } = req.body;
+      const { name, description, industry, size, companyName, sectorId, industryGroupId, subIndustryId, complianceTemplates, certifications } = req.body;
 
       if (!name || typeof name !== 'string' || name.trim().length === 0) {
         return res.status(400).json({ message: 'Organization name is required' });
@@ -2690,7 +2691,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         companyName: companyName || name.trim(),
         industryDescription: description || null,
         businessCategory: industry || 'general',
+        subscriptionTier: 'free',
+        subscriptionStatus: 'active',
       });
+
+      // Create employee record for the owner (org_owner role)
+      const employee = await storage.createEmployee({
+        userId: userId,
+        workspaceId: workspace.id,
+        email: user.email,
+        firstName: user.firstName || 'Owner',
+        lastName: user.lastName || '',
+        workspaceRole: 'org_owner',
+        isActive: true,
+      });
+
+      // Update user's currentWorkspaceId
+      await db.update(users).set({ currentWorkspaceId: workspace.id }).where(eq(users.id, userId));
+
+      // Update session with workspace
+      if (req.session) {
+        (req.session as any).workspaceId = workspace.id;
+        (req.session as any).activeWorkspaceId = workspace.id;
+      }
+
+      // Try to attach employee external ID
+      try {
+        const { attachEmployeeExternalId } = await import('./services/identityService');
+        await attachEmployeeExternalId(employee.id, workspace.id);
+        console.log(`[Workspace Create] Attached external ID to employee ${employee.id}`);
+      } catch (extIdError: any) {
+        console.error(`[Workspace Create] Failed to attach external ID:`, extIdError.message);
+      }
 
       // Log the organization creation
       await storage.createAuditLogEntry({
@@ -2703,6 +2735,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           name: workspace.name,
           industry,
           size,
+          sectorId,
+          industryGroupId,
+          subIndustryId,
           organizationId: workspace.organizationId,
         },
         ipAddress: req.ip || req.socket.remoteAddress,
@@ -2716,6 +2751,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         workspaceId: workspace.id,
         timestamp: new Date().toISOString(),
       });
+
+      console.log(`[Workspace Create] Created workspace ${workspace.id} and employee ${employee.id} for user ${userId}`);
 
       res.status(201).json({
         success: true,
