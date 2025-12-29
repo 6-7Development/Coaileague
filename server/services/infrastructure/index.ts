@@ -1,7 +1,7 @@
 /**
  * INFRASTRUCTURE SERVICES INDEX
  * ==============================
- * Central initialization and export for all Q1/Q2 2026 infrastructure services.
+ * Central initialization and export for all Q1/Q2/Q3 2026 infrastructure services.
  * 
  * Q1 Services:
  * - Durable Job Queue: Database-backed reliable task execution
@@ -15,6 +15,10 @@
  * - Rate Limiting: Per-tenant quota management
  * - Health Check Aggregation: Unified service health monitoring
  * - Metrics Dashboard: Infrastructure visualization
+ * 
+ * Q3 Services (Phase 3b):
+ * - Circuit Breaker: Cascade failure prevention for external services
+ * - SLA Monitoring: Uptime tracking and compliance reporting
  */
 
 import { durableJobQueue } from './durableJobQueue';
@@ -26,6 +30,8 @@ import { connectionPooling } from './connectionPooling';
 import { rateLimiting } from './rateLimiting';
 import { healthCheckAggregation } from './healthCheckAggregation';
 import { metricsDashboard } from './metricsDashboard';
+import { circuitBreaker } from './circuitBreaker';
+import { slaMonitoring } from './slaMonitoring';
 import { initializeProductionSeeding } from './productionSeeding';
 
 // Q1 exports
@@ -41,6 +47,10 @@ export { rateLimiting, rateLimitMiddleware } from './rateLimiting';
 export { healthCheckAggregation } from './healthCheckAggregation';
 export { metricsDashboard } from './metricsDashboard';
 
+// Q3 exports (Phase 3b)
+export { circuitBreaker } from './circuitBreaker';
+export { slaMonitoring } from './slaMonitoring';
+
 // Production seeding exports
 export { initializeProductionSeeding, seedProductionAlertRules, seedProductionDashboards, registerExtendedHealthChecks } from './productionSeeding';
 
@@ -49,7 +59,7 @@ export { initializeProductionSeeding, seedProductionAlertRules, seedProductionDa
  * Should be called during server startup
  */
 export async function initializeInfrastructureServices(): Promise<void> {
-  console.log('[Infrastructure] Initializing Q1/Q2 2026 infrastructure services...');
+  console.log('[Infrastructure] Initializing Q1/Q2/Q3 2026 infrastructure services...');
   
   // Initialize Q1 services
   const q1Results = await Promise.allSettled([
@@ -68,7 +78,13 @@ export async function initializeInfrastructureServices(): Promise<void> {
     metricsDashboard.initialize(),
   ]);
   
-  const allResults = [...q1Results, ...q2Results];
+  // Initialize Q3 services (Phase 3b)
+  const q3Results = await Promise.allSettled([
+    circuitBreaker.initialize(),
+    slaMonitoring.initialize(),
+  ]);
+  
+  const allResults = [...q1Results, ...q2Results, ...q3Results];
   const successes = allResults.filter(r => r.status === 'fulfilled').length;
   const failures = allResults.filter(r => r.status === 'rejected');
   
@@ -81,12 +97,19 @@ export async function initializeInfrastructureServices(): Promise<void> {
   // Register Trinity recovery job handler
   registerTrinityRecoveryHandler();
   
+  // Register default circuit breakers for external services
+  registerDefaultCircuits();
+  
+  // Register default SLA monitoring for core services
+  registerDefaultSLAMonitoring();
+  
   // Initialize production seeding (alert rules, dashboards, extended health checks)
   await initializeProductionSeeding();
   
   console.log(`[Infrastructure] ${successes}/${allResults.length} services initialized successfully`);
   console.log('[Infrastructure] Q1: Job Queue, Backups, Error Tracking, API Key Rotation');
   console.log('[Infrastructure] Q2: Distributed Tracing, Connection Pooling, Rate Limiting, Health Checks, Metrics Dashboard');
+  console.log('[Infrastructure] Q3: Circuit Breaker, SLA Monitoring');
   console.log('[Infrastructure] Production: SRE alerts, dashboards, extended health checks');
 }
 
@@ -129,6 +152,41 @@ function registerTrinityRecoveryHandler(): void {
 }
 
 /**
+ * Register default circuit breakers for external services
+ */
+function registerDefaultCircuits(): void {
+  // Register circuits for all critical external services
+  circuitBreaker.registerCircuit('stripe', 'Stripe Payment API');
+  circuitBreaker.registerCircuit('gemini', 'Google Gemini AI');
+  circuitBreaker.registerCircuit('resend', 'Resend Email API');
+  circuitBreaker.registerCircuit('twilio', 'Twilio SMS API');
+  circuitBreaker.registerCircuit('database', 'PostgreSQL Database');
+  circuitBreaker.registerCircuit('websocket', 'WebSocket Server');
+  
+  console.log('[Infrastructure] Registered 6 default circuit breakers');
+}
+
+/**
+ * Register default SLA monitoring for core services
+ */
+function registerDefaultSLAMonitoring(): void {
+  // Core platform services - Platinum tier (99.99%)
+  slaMonitoring.registerService('database', 'PostgreSQL Database', 'platinum');
+  slaMonitoring.registerService('api', 'REST API', 'gold');
+  
+  // External integrations - Gold tier (99.9%)
+  slaMonitoring.registerService('stripe', 'Stripe Integration', 'gold');
+  slaMonitoring.registerService('gemini', 'Gemini AI', 'gold');
+  slaMonitoring.registerService('resend', 'Email Service', 'gold');
+  
+  // Supporting services - Silver tier (99.5%)
+  slaMonitoring.registerService('websocket', 'WebSocket Server', 'silver');
+  slaMonitoring.registerService('background_jobs', 'Background Jobs', 'silver');
+  
+  console.log('[Infrastructure] Registered 7 SLA monitoring targets');
+}
+
+/**
  * Shutdown all infrastructure services gracefully
  */
 export function shutdownInfrastructureServices(): void {
@@ -146,6 +204,10 @@ export function shutdownInfrastructureServices(): void {
   rateLimiting.shutdown();
   healthCheckAggregation.shutdown();
   metricsDashboard.shutdown();
+  
+  // Q3 services
+  circuitBreaker.shutdown();
+  slaMonitoring.shutdown();
   
   console.log('[Infrastructure] All infrastructure services shut down');
 }
@@ -167,6 +229,10 @@ export async function getInfrastructureHealth(): Promise<{
     healthCheck: { status: string; aggregate: any };
     metrics: { status: string; overview: any };
   };
+  q3: {
+    circuitBreaker: { status: string; stats: any };
+    slaMonitoring: { status: string; compliance: any };
+  };
 }> {
   const [jobQueueStats, backupStats, errorStats, keys] = await Promise.all([
     durableJobQueue.getStats(),
@@ -180,6 +246,12 @@ export async function getInfrastructureHealth(): Promise<{
   const rateLimitStats = rateLimiting.getStats();
   const healthAggregate = healthCheckAggregation.getAggregateHealth();
   const metricsOverview = metricsDashboard.getSystemOverview();
+  
+  // Q3 stats
+  const circuitHealth = circuitBreaker.getHealth();
+  const circuitStats = circuitBreaker.getAggregateStats();
+  const slaHealth = slaMonitoring.getHealth();
+  const slaCompliance = slaMonitoring.getComplianceSummary();
   
   return {
     q1: {
@@ -220,6 +292,19 @@ export async function getInfrastructureHealth(): Promise<{
       metrics: {
         status: 'healthy',
         overview: metricsOverview,
+      },
+    },
+    q3: {
+      circuitBreaker: {
+        status: circuitHealth.healthy ? 'healthy' : 'degraded',
+        stats: {
+          ...circuitStats,
+          openCircuits: circuitHealth.openCircuits
+        },
+      },
+      slaMonitoring: {
+        status: slaCompliance.overallHealth,
+        compliance: slaCompliance,
       },
     },
   };
