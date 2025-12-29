@@ -52,7 +52,7 @@ export default function CustomRegister() {
   const onSubmit = async (data: RegisterFormData) => {
     setIsLoading(true);
     try {
-      await apiPost('auth.register', {
+      const response = await apiPost('auth.register', {
         firstName: data.firstName,
         lastName: data.lastName,
         email: data.email,
@@ -61,11 +61,19 @@ export default function CustomRegister() {
 
       toast({
         title: "Registration successful",
-        description: "Welcome to CoAIleague!",
+        description: "Let's set up your organization!",
       });
 
-      // Redirect to dashboard
-      setLocation(navConfig.app.dashboard);
+      // New users need to create their organization first
+      if (response?.needsOrgSetup || response?.redirectTo) {
+        setLocation(response.redirectTo || "/create-org");
+      } else if (response?.user?.currentWorkspaceId) {
+        // Existing flow for users with workspaces
+        setLocation(navConfig.app.dashboard);
+      } else {
+        // Default: redirect to org creation
+        setLocation("/create-org");
+      }
     } catch (error: any) {
       toast({
         title: "Registration failed",
