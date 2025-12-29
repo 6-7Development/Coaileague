@@ -39,6 +39,7 @@ import deviceLoaderRouter from "./routes/deviceLoaderRoutes"; // Universal Devic
 import controlTowerRouter from "./routes/controlTowerRoutes"; // Control Tower Dashboard API
 import integrationRouter from "./integrationRoutes"; // Partner Integration OAuth routes
 import { timeEntryRouter } from "./time-entry-routes"; // Universal Time Tracking & Clock System
+import { shiftsRouter, incidentsRouter } from './routes/mobileWorkerRoutes'; // Mobile Worker API
 import { gamificationRouter } from "./gamification-api"; // Employee Engagement & Recognition System
 import schedulerRouter from "./routes/schedulerRoutes"; // CoAIleague Autonomous Scheduler API
 import { automationRouter } from "./routes/automation"; // Core Automation (Scheduling, Invoicing, Payroll)
@@ -3219,6 +3220,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register Universal Time Tracking & Clock System
   app.use('/api/time-entries', timeEntryRouter);
 
+  // Mobile Worker API routes (clock status, shifts, incidents)
+  app.use('/api/shifts', shiftsRouter);
+  app.use('/api/incidents', incidentsRouter);
   // Register Gamification & Employee Engagement System
   app.use('/api/gamification', gamificationRouter);
   app.use('/api/dashboard', requireAuth, dashboardRoutes);

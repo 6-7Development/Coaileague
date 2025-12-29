@@ -43,6 +43,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useIsMobile, ResponsiveAppFrame } from "@/hooks/use-mobile";
 import { MobileBottomNav } from "@/components/mobile/MobileBottomNav";
 import { MobileQuickActionsFAB } from "@/components/mobile/MobileQuickActionsFAB";
+import { PWAInstallPrompt } from "@/components/mobile/PWAInstallPrompt";
 import { performLogout } from "@/lib/logoutHandler";
 import { useTransition } from "@/contexts/transition-context";
 import { showLogoutTransition } from "@/lib/transition-utils";
@@ -114,6 +115,8 @@ import PayrollGarnishments from "@/pages/payroll-garnishments";
 import CommunicationsOnboarding from "@/pages/communications-onboarding";
 import Diagnostics from "@/pages/diagnostics";
 import PrivateMessages from "@/pages/private-messages";
+import WorkerDashboard from "@/pages/worker-dashboard";
+import WorkerIncidents from "@/pages/worker-incidents";
 import Training from "@/pages/training-os";
 import Budgeting from "@/pages/budgeting";
 import AIIntegrations from "@/pages/ai-integrations";
@@ -966,6 +969,9 @@ function AppContent() {
               </Route>
               <Route path="/mobile-dashboard"><Redirect to="/dashboard" /></Route>
               <Route path="/dashboard" component={Dashboard} />
+              <Route path="/worker" component={WorkerDashboard} />
+              <Route path="/worker/schedule"><Redirect to="/schedule" /></Route>
+              <Route path="/worker/incidents" component={WorkerIncidents} />
               <Route path="/schedule" component={UniversalSchedule} />
               <Route path="/universal-schedule"><Redirect to="/schedule" /></Route>
               <Route path="/daily-schedule"><Redirect to="/schedule" /></Route>
@@ -1163,6 +1169,8 @@ function AppContent() {
           {!isHelpDesk && <MobileBottomNav />}
           {/* Mobile Quick Actions FAB - Above bottom nav */}
           {!isHelpDesk && <MobileQuickActionsFAB />}
+          {/* PWA Install Prompt - Shows once for mobile users */}
+          <PWAInstallPrompt />
         </div>
       {/* Universal Approval Request Tray - Desktop */}
       <ApprovalTray scope="admin" isMobile={false} />
@@ -1281,6 +1289,9 @@ function AppContent() {
                 </Route>
                 <Route path="/mobile-dashboard"><Redirect to="/dashboard" /></Route>
                 <Route path="/dashboard" component={Dashboard} />
+                <Route path="/worker" component={WorkerDashboard} />
+                <Route path="/worker/schedule"><Redirect to="/schedule" /></Route>
+                <Route path="/worker/incidents" component={WorkerIncidents} />
                 <Route path="/schedule" component={UniversalSchedule} />
                 <Route path="/universal-schedule"><Redirect to="/schedule" /></Route>
                 <Route path="/daily-schedule"><Redirect to="/schedule" /></Route>
