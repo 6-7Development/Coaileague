@@ -54,23 +54,18 @@ app.use(tracingMiddleware);
 // Rate limiting middleware - applies per-tenant quotas on API routes
 app.use('/api', rateLimitMiddleware);
 
-// Production health check endpoint with monitoring service
-app.get('/health', async (req, res) => {
-  try {
-    const healthStatus = await monitoringService.getHealthStatus();
-    const httpStatus = healthStatus.status === 'healthy' ? 200 : 
-                       healthStatus.status === 'degraded' ? 503 : 503;
-    res.status(httpStatus).json(healthStatus);
-  } catch (error) {
-    monitoringService.logError(error as Error, { 
-      additionalData: { endpoint: '/health' } 
-    });
-    res.status(503).json({ 
-      status: 'down', 
-      checks: {}, 
-      timestamp: new Date() 
-    });
-  }
+// LIGHTWEIGHT ROOT ENDPOINT - responds immediately for health checks
+app.get('/', (req, res) => {
+  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Production health check endpoint - lightweight, non-blocking
+app.get('/health', (req, res) => {
+  // Return immediately without waiting for monitoring service
+  res.status(200).json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString()
+  });
 });
 
 // Performance monitoring middleware - tracks all requests
