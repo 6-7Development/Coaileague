@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -7,6 +8,7 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiGet, apiPost, apiPatch, apiDelete } from "@/lib/apiClient";
 import { queryKeys } from "@/config/queryKeys";
 import { useMessage } from "@/hooks/useConfig";
+import { SiQuickbooks } from "react-icons/si";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -450,14 +452,24 @@ export default function Employees() {
                 Manage your team members and their schedules
               </p>
             </div>
-          
-          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-            <DialogTrigger asChild>
-              <Button data-testid="button-add-employee">
-                <Plus className="mr-2 h-4 w-4" />
-                Add Employee
+
+          <div className="flex items-center gap-2">
+            <Link href="/quickbooks-import">
+              <Button variant="outline" data-testid="button-import-quickbooks" className="gap-2">
+                <SiQuickbooks className="h-4 w-4 text-[#2CA01C]" />
+                <span className="hidden sm:inline">Import from QuickBooks</span>
+                <span className="sm:hidden">Import</span>
               </Button>
-            </DialogTrigger>
+            </Link>
+          
+            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+              <DialogTrigger asChild>
+                <Button data-testid="button-add-employee">
+                  <Plus className="mr-2 h-4 w-4" />
+                  <span className="hidden sm:inline">Add Employee</span>
+                  <span className="sm:hidden">Add</span>
+                </Button>
+              </DialogTrigger>
             <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto p-4 sm:p-6">
               <DialogHeader className="space-y-2 pb-3">
                 <DialogTitle className="text-lg sm:text-xl">Add Employee</DialogTitle>
@@ -675,7 +687,8 @@ export default function Employees() {
                 </Button>
               </DialogFooter>
             </DialogContent>
-          </Dialog>
+            </Dialog>
+          </div>
         </div>
 
         <div className="relative max-w-md">

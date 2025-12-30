@@ -123,6 +123,7 @@ import AIIntegrations from "@/pages/ai-integrations";
 import EmployeeRecognition from "@/pages/employee-recognition";
 import AlertConfiguration from "@/pages/alert-configuration";
 import AccountingIntegrations from "@/pages/accounting-integrations";
+import QuickBooksImport from "@/pages/quickbooks-import";
 import Records from "@/pages/records";
 import Insights from "@/pages/insights";
 import CommunicationFamilyPage from "@/pages/category-communication";
@@ -983,6 +984,7 @@ function AppContent() {
               <Route path="/sales" component={WorkspaceSales} />
               <Route path="/time-tracking" component={TimeTracking} />
               <Route path="/employees" component={Employees} />
+              <Route path="/quickbooks-import" component={QuickBooksImport} />
               <Route path="/org-management" component={OrgManagement} />
               <Route path="/role-management" component={RoleManagement} />
               <Route path="/manager-dashboard" component={ManagerDashboard} />
@@ -1304,6 +1306,7 @@ function AppContent() {
                 <Route path="/sales" component={WorkspaceSales} />
                 <Route path="/time-tracking" component={TimeTracking} />
                 <Route path="/employees" component={Employees} />
+                <Route path="/quickbooks-import" component={QuickBooksImport} />
                 <Route path="/org-management" component={OrgManagement} />
                 <Route path="/role-management" component={RoleManagement} />
                 <Route path="/manager-dashboard" component={ManagerDashboard} />
