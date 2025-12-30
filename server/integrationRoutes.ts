@@ -218,6 +218,305 @@ router.post('/quickbooks/refresh', requireAuth, requireWorkspaceMembership(), as
   }
 });
 
+/**
+ * GET /api/integrations/quickbooks/preview
+ * 
+ * Preview employees and customers from QuickBooks for selective import
+ */
+router.get('/quickbooks/preview', requireAuth, requireWorkspaceMembership('query'), async (req: Request, res: Response) => {
+  try {
+    const workspaceId = req.query.workspaceId as string;
+
+    if (!workspaceId) {
+      return res.status(400).json({ error: 'Missing workspaceId' });
+    }
+
+    // Find connection
+    const [connection] = await db.select()
+      .from(partnerConnections)
+      .where(
+        and(
+          eq(partnerConnections.workspaceId, workspaceId),
+          eq(partnerConnections.partnerType, 'quickbooks'),
+          eq(partnerConnections.status, 'connected')
+        )
+      )
+      .limit(1);
+
+    if (!connection) {
+      return res.status(404).json({ error: 'QuickBooks not connected' });
+    }
+
+    // Get valid access token
+    const accessToken = await quickbooksOAuthService.getValidAccessToken(connection.id);
+    const realmId = connection.realmId!;
+    const apiBase = 'https://quickbooks.api.intuit.com/v3/company';
+
+    // Fetch employees
+    const employeeQuery = encodeURIComponent('select * from Employee where Active = true MAXRESULTS 100');
+    const employeeResponse = await fetch(`${apiBase}/${realmId}/query?query=${employeeQuery}`, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Accept': 'application/json',
+      },
+    });
+    
+    let employees: any[] = [];
+    if (employeeResponse.ok) {
+      const empData = await employeeResponse.json();
+      employees = (empData.QueryResponse?.Employee || []).map((e: any) => ({
+        qboId: e.Id,
+        displayName: e.DisplayName,
+        givenName: e.GivenName || '',
+        familyName: e.FamilyName || '',
+        email: e.PrimaryEmailAddr?.Address || '',
+        phone: e.PrimaryPhone?.FreeFormNumber || '',
+        active: e.Active !== false,
+      }));
+    }
+
+    // Fetch customers (clients)
+    const customerQuery = encodeURIComponent('select * from Customer where Active = true MAXRESULTS 100');
+    const customerResponse = await fetch(`${apiBase}/${realmId}/query?query=${customerQuery}`, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Accept': 'application/json',
+      },
+    });
+
+    let customers: any[] = [];
+    if (customerResponse.ok) {
+      const custData = await customerResponse.json();
+      customers = (custData.QueryResponse?.Customer || []).map((c: any) => ({
+        qboId: c.Id,
+        displayName: c.DisplayName,
+        companyName: c.CompanyName || c.DisplayName,
+        email: c.PrimaryEmailAddr?.Address || '',
+        phone: c.PrimaryPhone?.FreeFormNumber || '',
+        active: c.Active !== false,
+      }));
+    }
+
+    return res.json({
+      employees,
+      customers,
+      connectionId: connection.id,
+      companyName: connection.companyName || 'QuickBooks Company',
+    });
+  } catch (error: any) {
+    console.error('QuickBooks preview error:', error);
+    return res.status(500).json({ error: error.message || 'Failed to fetch QuickBooks data' });
+  }
+});
+
+/**
+ * POST /api/integrations/quickbooks/import
+ * 
+ * Import selected employees and customers from QuickBooks with duplicate detection
+ */
+router.post('/quickbooks/import', requireAuth, requireWorkspaceMembership(), async (req: Request, res: Response) => {
+  try {
+    const { workspaceId, selectedEmployees, selectedCustomers } = req.body;
+
+    if (!workspaceId) {
+      return res.status(400).json({ error: 'Missing workspaceId' });
+    }
+
+    // Validate arrays
+    if (selectedEmployees && !Array.isArray(selectedEmployees)) {
+      return res.status(400).json({ error: 'selectedEmployees must be an array' });
+    }
+    if (selectedCustomers && !Array.isArray(selectedCustomers)) {
+      return res.status(400).json({ error: 'selectedCustomers must be an array' });
+    }
+
+    // Find connection
+    const [connection] = await db.select()
+      .from(partnerConnections)
+      .where(
+        and(
+          eq(partnerConnections.workspaceId, workspaceId),
+          eq(partnerConnections.partnerType, 'quickbooks'),
+          eq(partnerConnections.status, 'connected')
+        )
+      )
+      .limit(1);
+
+    if (!connection) {
+      return res.status(404).json({ error: 'QuickBooks not connected' });
+    }
+
+    let importedEmployees = 0;
+    let skippedEmployees = 0;
+    let importedClients = 0;
+    let skippedClients = 0;
+    const errors: string[] = [];
+
+    const { employees: employeesTable, clients: clientsTable } = await import('@shared/schema');
+
+    // Import employees with robust duplicate detection
+    if (selectedEmployees && selectedEmployees.length > 0) {
+      // Get workspace for employee ID generation
+      const [ws] = await db.select().from(workspaces).where(eq(workspaces.id, workspaceId)).limit(1);
+      const orgCode = ws?.orgCode || 'ORG';
+      const prefix = orgCode.replace('ORG-', '');
+
+      // Pre-fetch existing employees for duplicate checking
+      const existingEmployees = await db.select()
+        .from(employeesTable)
+        .where(eq(employeesTable.workspaceId, workspaceId));
+      
+      const existingByQboId = new Map(
+        existingEmployees
+          .filter(e => e.partnerEmployeeId && e.partnerType === 'quickbooks')
+          .map(e => [e.partnerEmployeeId, e])
+      );
+      const existingByEmail = new Map(
+        existingEmployees
+          .filter(e => e.email)
+          .map(e => [e.email!.toLowerCase(), e])
+      );
+      
+      let empCounter = existingEmployees.length;
+
+      for (const emp of selectedEmployees) {
+        try {
+          // Validate required fields
+          const qboId = String(emp.qboId || '').trim();
+          const displayName = String(emp.displayName || '').trim();
+          
+          if (!qboId || !displayName) {
+            errors.push(`Invalid employee data: missing qboId or displayName`);
+            continue;
+          }
+
+          // Check for duplicates by QuickBooks ID first (most reliable)
+          if (existingByQboId.has(qboId)) {
+            skippedEmployees++;
+            continue;
+          }
+
+          // Check for duplicates by email
+          const email = String(emp.email || '').trim().toLowerCase();
+          if (email && existingByEmail.has(email)) {
+            skippedEmployees++;
+            continue;
+          }
+
+          // Generate employee ID
+          empCounter++;
+          const empNum = String(empCounter).padStart(5, '0');
+
+          // Sanitize and insert
+          const firstName = String(emp.givenName || displayName.split(' ')[0] || 'Unknown').trim().slice(0, 100);
+          const lastName = String(emp.familyName || displayName.split(' ').slice(1).join(' ') || '').trim().slice(0, 100);
+          const phone = String(emp.phone || '').trim().slice(0, 20) || null;
+
+          await db.insert(employeesTable).values({
+            workspaceId,
+            firstName,
+            lastName,
+            email: email || null,
+            phone,
+            employeeId: `EMP-${prefix}-${empNum}`,
+            role: 'field_worker',
+            onboardingStatus: 'not_started',
+            status: 'active',
+            partnerEmployeeId: qboId,
+            partnerType: 'quickbooks',
+          });
+          
+          // Update our maps to prevent same-batch duplicates
+          existingByQboId.set(qboId, {} as any);
+          if (email) existingByEmail.set(email, {} as any);
+          
+          importedEmployees++;
+        } catch (err: any) {
+          errors.push(`Employee ${emp.displayName}: ${err.message}`);
+        }
+      }
+    }
+
+    // Import clients/customers with robust duplicate detection
+    if (selectedCustomers && selectedCustomers.length > 0) {
+      // Pre-fetch existing clients for duplicate checking
+      const existingClients = await db.select()
+        .from(clientsTable)
+        .where(eq(clientsTable.workspaceId, workspaceId));
+      
+      const existingByQboId = new Map(
+        existingClients
+          .filter(c => c.partnerCustomerId && c.partnerType === 'quickbooks')
+          .map(c => [c.partnerCustomerId, c])
+      );
+      const existingByName = new Map(
+        existingClients.map(c => [c.name.toLowerCase(), c])
+      );
+
+      for (const cust of selectedCustomers) {
+        try {
+          // Validate required fields
+          const qboId = String(cust.qboId || '').trim();
+          const companyName = String(cust.companyName || cust.displayName || '').trim();
+          
+          if (!qboId || !companyName) {
+            errors.push(`Invalid client data: missing qboId or name`);
+            continue;
+          }
+
+          // Check for duplicates by QuickBooks ID first
+          if (existingByQboId.has(qboId)) {
+            skippedClients++;
+            continue;
+          }
+
+          // Check for duplicates by name
+          if (existingByName.has(companyName.toLowerCase())) {
+            skippedClients++;
+            continue;
+          }
+
+          // Sanitize and insert
+          const email = String(cust.email || '').trim().slice(0, 255) || null;
+          const phone = String(cust.phone || '').trim().slice(0, 20) || null;
+
+          await db.insert(clientsTable).values({
+            workspaceId,
+            name: companyName.slice(0, 255),
+            email,
+            phone,
+            status: 'active',
+            partnerCustomerId: qboId,
+            partnerType: 'quickbooks',
+          });
+          
+          // Update maps to prevent same-batch duplicates
+          existingByQboId.set(qboId, {} as any);
+          existingByName.set(companyName.toLowerCase(), {} as any);
+          
+          importedClients++;
+        } catch (err: any) {
+          errors.push(`Client ${cust.displayName}: ${err.message}`);
+        }
+      }
+    }
+
+    return res.json({
+      success: true,
+      importedEmployees,
+      skippedEmployees,
+      importedClients,
+      skippedClients,
+      totalEmployees: importedEmployees + skippedEmployees,
+      totalClients: importedClients + skippedClients,
+      errors: errors.length > 0 ? errors : undefined,
+    });
+  } catch (error: any) {
+    console.error('QuickBooks import error:', error);
+    return res.status(500).json({ error: error.message || 'Failed to import QuickBooks data' });
+  }
+});
+
 // ============================================================================
 // GUSTO INTEGRATION
 // ============================================================================
