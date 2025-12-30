@@ -194,11 +194,11 @@ export const CompactBubble = memo(function CompactBubble({
       style={{
         left: `${bubbleLeft}px`,
         top: `${bubbleTop}px`,
-        zIndex: 9989,
+        zIndex: 10005,
         maxWidth: '280px',
         transform: `translate(${swipeOffset.x}px, ${swipeOffset.y}px)`,
         transition: isDismissing ? 'all 0.3s ease-out' : (swipeOffset.x === 0 && swipeOffset.y === 0 ? 'all 0.3s ease-out' : 'none'),
-        cursor: 'grab',
+        cursor: 'default',
         userSelect: 'none',
         touchAction: 'pan-y',
       }}
