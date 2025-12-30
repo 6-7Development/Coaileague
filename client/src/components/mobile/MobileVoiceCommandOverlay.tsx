@@ -253,10 +253,16 @@ export function MobileVoiceCommandOverlay({
                   variant="ghost"
                   size="icon"
                   onClick={handleClose}
-                  className="h-8 w-8"
+                  onTouchEnd={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleClose();
+                  }}
+                  className="h-11 w-11 min-h-[44px] min-w-[44px]"
+                  style={{ touchAction: 'manipulation' }}
                   data-testid="button-close-voice-overlay"
                 >
-                  <X className="h-4 w-4" />
+                  <X className="h-5 w-5" />
                 </Button>
               </div>
             </div>

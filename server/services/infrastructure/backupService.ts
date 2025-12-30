@@ -180,7 +180,8 @@ class BackupService {
     
     console.log(`[BackupService] Starting ${type} backup ${backupId}`);
     
-    // Create backup record
+    // Create backup record - cast tables array properly for PostgreSQL
+    const tablesArray = `{${this.config.criticalTables.join(',')}}`;
     await db.execute(sql`
       INSERT INTO backup_records (id, type, status, started_at, tables_included, metadata)
       VALUES (
@@ -188,7 +189,7 @@ class BackupService {
         ${type}, 
         'running', 
         ${startedAt}, 
-        ${this.config.criticalTables},
+        ${tablesArray}::text[],
         ${JSON.stringify({ initiatedBy: 'scheduled', config: this.config })}::jsonb
       )
     `);
