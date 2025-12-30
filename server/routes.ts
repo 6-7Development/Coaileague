@@ -327,6 +327,7 @@ import {
   updateNotificationPreferencesSchema,
   trinityCredits,
   trinityCreditTransactions,
+  workspaceInvites,
 } from "@shared/schema";
 import crypto from "crypto";
 import { sql, eq, and, or, isNull, isNotNull, lte, gte, desc, asc, inArray, ne } from "drizzle-orm";
@@ -35789,6 +35790,273 @@ app.post("/api/alerts/test", requireAuth, mutationLimiter, async (req: Authentic
     } catch (error) {
       console.error("Error fetching report types:", error);
       res.status(500).json({ message: "Failed to fetch report types" });
+    }
+  });
+
+  // ============================================================================
+  // WORKSPACE INVITES - Employee Onboarding (MVP - temporary, migrate to onboardingInvites post-beta)
+  // TODO: Post-beta migration to extend onboardingInvites with shortCode column
+  // ============================================================================
+
+  // Generate a random 8-character invite code
+  function generateInviteCode(): string {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Exclude confusing chars: 0,O,1,I
+    let code = '';
+    for (let i = 0; i < 8; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
+  }
+
+  // Create an invite code (organization owners/admins only)
+  app.post('/api/invites/create', isAuthenticated, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user?.currentWorkspaceId) {
+        return res.status(400).json({ message: "No workspace selected" });
+      }
+
+      // Verify user is workspace owner or admin
+      const workspace = await storage.getWorkspace(user.currentWorkspaceId);
+      if (!workspace || workspace.ownerId !== userId) {
+        // Check if they're an org_admin
+        const employee = await storage.getEmployeeByUserId(userId);
+        if (!employee || !['org_owner', 'org_admin'].includes(employee.workspaceRole || '')) {
+          return res.status(403).json({ message: "Only organization owners or admins can create invites" });
+        }
+      }
+
+      const { inviteeEmail, inviteeRole = 'staff' } = req.body;
+
+      // Generate unique invite code
+      let inviteCode = generateInviteCode();
+      let attempts = 0;
+      while (attempts < 5) {
+        const existing = await db.select().from(workspaceInvites).where(eq(workspaceInvites.inviteCode, inviteCode)).limit(1);
+        if (existing.length === 0) break;
+        inviteCode = generateInviteCode();
+        attempts++;
+      }
+
+      // Create invite with 7-day expiry
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 7);
+
+      const [invite] = await db.insert(workspaceInvites).values({
+        workspaceId: user.currentWorkspaceId,
+        inviteCode,
+        inviterUserId: userId,
+        inviteeEmail: inviteeEmail || null,
+        inviteeRole,
+        status: 'pending',
+        expiresAt,
+      }).returning();
+
+      console.log(`[WorkspaceInvites] Created invite code ${inviteCode} for workspace ${user.currentWorkspaceId}`);
+
+      res.json({
+        success: true,
+        invite: {
+          id: invite.id,
+          inviteCode: invite.inviteCode,
+          inviteeEmail: invite.inviteeEmail,
+          inviteeRole: invite.inviteeRole,
+          expiresAt: invite.expiresAt,
+          status: invite.status,
+        },
+        workspaceName: workspace?.name || 'Unknown',
+      });
+    } catch (error) {
+      console.error("Error creating invite:", error);
+      res.status(500).json({ message: "Failed to create invite" });
+    }
+  });
+
+  // Accept an invite code (any authenticated user without a workspace)
+  app.post('/api/invites/accept', isAuthenticated, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Users with existing workspace shouldn't use this endpoint
+      if (user.currentWorkspaceId) {
+        return res.status(400).json({ message: "You already belong to an organization" });
+      }
+
+      const { inviteCode } = req.body;
+      if (!inviteCode || typeof inviteCode !== 'string') {
+        return res.status(400).json({ message: "Invite code is required" });
+      }
+
+      const normalizedCode = inviteCode.toUpperCase().trim();
+
+      // Find the invite
+      const [invite] = await db.select().from(workspaceInvites)
+        .where(eq(workspaceInvites.inviteCode, normalizedCode))
+        .limit(1);
+
+      if (!invite) {
+        return res.status(404).json({ message: "Invalid invite code" });
+      }
+
+      // Check if expired
+      if (new Date() > new Date(invite.expiresAt)) {
+        return res.status(400).json({ message: "This invite code has expired" });
+      }
+
+      // Check if already used
+      if (invite.status !== 'pending') {
+        return res.status(400).json({ message: "This invite code has already been used" });
+      }
+
+      // Check if email-restricted
+      if (invite.inviteeEmail && invite.inviteeEmail.toLowerCase() !== user.email.toLowerCase()) {
+        return res.status(403).json({ message: "This invite code is for a different email address" });
+      }
+
+      // Get workspace info
+      const workspace = await storage.getWorkspace(invite.workspaceId);
+      if (!workspace) {
+        return res.status(404).json({ message: "Organization no longer exists" });
+      }
+
+      // Transaction: Accept invite and assign user to workspace
+      await db.transaction(async (tx) => {
+        // Update invite status
+        await tx.update(workspaceInvites)
+          .set({
+            status: 'accepted',
+            acceptedByUserId: userId,
+            acceptedAt: new Date(),
+          })
+          .where(eq(workspaceInvites.id, invite.id));
+
+        // Update user's workspace
+        await tx.update(users)
+          .set({ currentWorkspaceId: invite.workspaceId })
+          .where(eq(users.id, userId));
+
+        // Create employee record for the user in this workspace
+        await tx.insert(employees).values({
+          workspaceId: invite.workspaceId,
+          userId: userId,
+          firstName: user.firstName || 'New',
+          lastName: user.lastName || 'Employee',
+          email: user.email,
+          workspaceRole: (invite.inviteeRole as any) || 'staff',
+          status: 'active',
+          hireDate: new Date().toISOString().split('T')[0],
+        });
+      });
+
+      console.log(`[WorkspaceInvites] User ${userId} accepted invite ${invite.inviteCode} and joined workspace ${invite.workspaceId}`);
+
+      res.json({
+        success: true,
+        workspaceId: invite.workspaceId,
+        workspaceName: workspace.name,
+        role: invite.inviteeRole,
+        message: `Welcome to ${workspace.name}!`,
+      });
+    } catch (error) {
+      console.error("Error accepting invite:", error);
+      res.status(500).json({ message: "Failed to accept invite" });
+    }
+  });
+
+  // List invites for current workspace (org owners/admins only)
+  app.get('/api/invites', isAuthenticated, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user?.currentWorkspaceId) {
+        return res.status(400).json({ message: "No workspace selected" });
+      }
+
+      // Verify user has permission
+      const workspace = await storage.getWorkspace(user.currentWorkspaceId);
+      const isOwner = workspace?.ownerId === userId;
+      const employee = await storage.getEmployeeByUserId(userId);
+      const isAdmin = employee && ['org_owner', 'org_admin'].includes(employee.workspaceRole || '');
+
+      if (!isOwner && !isAdmin) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const invites = await db.select().from(workspaceInvites)
+        .where(eq(workspaceInvites.workspaceId, user.currentWorkspaceId))
+        .orderBy(desc(workspaceInvites.createdAt));
+
+      res.json({
+        invites: invites.map(inv => ({
+          id: inv.id,
+          inviteCode: inv.inviteCode,
+          inviteeEmail: inv.inviteeEmail,
+          inviteeRole: inv.inviteeRole,
+          status: inv.status,
+          expiresAt: inv.expiresAt,
+          createdAt: inv.createdAt,
+          acceptedAt: inv.acceptedAt,
+        })),
+      });
+    } catch (error) {
+      console.error("Error listing invites:", error);
+      res.status(500).json({ message: "Failed to list invites" });
+    }
+  });
+
+  // Revoke an invite (org owners/admins only)
+  app.delete('/api/invites/:id', isAuthenticated, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user?.currentWorkspaceId) {
+        return res.status(400).json({ message: "No workspace selected" });
+      }
+
+      const inviteId = req.params.id;
+      const [invite] = await db.select().from(workspaceInvites)
+        .where(eq(workspaceInvites.id, inviteId))
+        .limit(1);
+
+      if (!invite || invite.workspaceId !== user.currentWorkspaceId) {
+        return res.status(404).json({ message: "Invite not found" });
+      }
+
+      if (invite.status !== 'pending') {
+        return res.status(400).json({ message: "Only pending invites can be revoked" });
+      }
+
+      await db.update(workspaceInvites)
+        .set({ status: 'revoked' })
+        .where(eq(workspaceInvites.id, inviteId));
+
+      console.log(`[WorkspaceInvites] Invite ${inviteId} revoked by user ${userId}`);
+
+      res.json({ success: true, message: "Invite revoked" });
+    } catch (error) {
+      console.error("Error revoking invite:", error);
+      res.status(500).json({ message: "Failed to revoke invite" });
     }
   });
 }

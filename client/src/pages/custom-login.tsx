@@ -110,8 +110,8 @@ export default function CustomLogin() {
       setShowWelcome(true);
 
       // Determine redirect destination based on workspace status
-      // Users without a workspace need to create their organization first
-      const redirectTo = result.user.currentWorkspaceId ? "/dashboard" : "/create-org";
+      // Users without a workspace need to choose: create org or join with invite
+      const redirectTo = result.user.currentWorkspaceId ? "/dashboard" : "/onboarding/start";
 
       // Hide animation and redirect after welcome notification completes
       setTimeout(() => {
