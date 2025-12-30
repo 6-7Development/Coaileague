@@ -615,6 +615,98 @@ class HelpaiActionOrchestrator {
       }
     });
 
+
+    // ============================================================================
+    // PAYMENT ENFORCEMENT ACTIONS - Trinity can deactivate/reactivate workspaces
+    // ============================================================================
+
+    // Deactivate Workspace (for non-payment)
+    this.registerAction({
+      actionId: "admin.deactivate_workspace",
+      name: "Deactivate Workspace",
+      category: "admin",
+      description: "Deactivate a workspace due to non-payment or suspension. End users will be logged out, org owners will see payment prompt.",
+      requiredRoles: ["admin", "super_admin"],
+      handler: async (request) => {
+        const startTime = Date.now();
+        const { workspaceId, reason, status } = request.payload || {};
+        
+        const targetWorkspace = workspaceId || request.workspaceId;
+        if (!targetWorkspace) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: "Workspace ID required to deactivate",
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+        
+        const deactivationStatus = status || "suspended";
+        
+        try {
+          await db.update(workspaces).set({ subscriptionStatus: deactivationStatus }).where(eq(workspaces.id, targetWorkspace));
+          console.log(`[Trinity] Workspace ${targetWorkspace} deactivated (${deactivationStatus}) by Trinity. Reason: ${reason || "No reason provided"}`);
+          
+          return {
+            success: true,
+            actionId: request.actionId,
+            message: `Workspace ${targetWorkspace} has been ${deactivationStatus}. End users will be logged out on next request.`,
+            data: { workspaceId: targetWorkspace, status: deactivationStatus, reason },
+            executionTimeMs: Date.now() - startTime
+          };
+        } catch (error: any) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: `Failed to deactivate workspace: ${error.message}`,
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+      }
+    });
+
+    // Reactivate Workspace (after payment)
+    this.registerAction({
+      actionId: "admin.reactivate_workspace",
+      name: "Reactivate Workspace",
+      category: "admin",
+      description: "Reactivate a previously suspended workspace after payment is received.",
+      requiredRoles: ["admin", "super_admin"],
+      handler: async (request) => {
+        const startTime = Date.now();
+        const { workspaceId } = request.payload || {};
+        
+        const targetWorkspace = workspaceId || request.workspaceId;
+        if (!targetWorkspace) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: "Workspace ID required to reactivate",
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+        
+        try {
+          await db.update(workspaces).set({ subscriptionStatus: "active" }).where(eq(workspaces.id, targetWorkspace));
+          console.log(`[Trinity] Workspace ${targetWorkspace} reactivated by Trinity`);
+          
+          return {
+            success: true,
+            actionId: request.actionId,
+            message: `Workspace ${targetWorkspace} has been reactivated. Users can now log in.`,
+            data: { workspaceId: targetWorkspace, status: "active" },
+            executionTimeMs: Date.now() - startTime
+          };
+        } catch (error: any) {
+          return {
+            success: false,
+            actionId: request.actionId,
+            message: `Failed to reactivate workspace: ${error.message}`,
+            executionTimeMs: Date.now() - startTime
+          };
+        }
+      }
+    });
     // AI Brain Query
     this.registerAction({
       actionId: 'ai.query',

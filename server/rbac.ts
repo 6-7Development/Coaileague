@@ -580,3 +580,159 @@ export const requireTrinityAccess: RequestHandler = async (req, res, next) => {
   
   next();
 };
+
+// ============================================================================
+// PAYMENT ENFORCEMENT
+// Blocks access to deactivated/suspended organizations
+// - End users: 404 error, force logout, redirect to homepage
+// - Org owners: Notify payment needed, redirect to payment page
+// ============================================================================
+
+export interface PaymentEnforcementResult {
+  allowed: boolean;
+  reason?: 'active' | 'suspended' | 'cancelled' | 'no_workspace';
+  isOwner: boolean;
+  workspaceId?: string;
+  workspaceName?: string;
+}
+
+/**
+ * Check if workspace is active and user can access it
+ * Returns enforcement result with user's owner status
+ */
+export async function checkWorkspacePaymentStatus(
+  userId: string,
+  workspaceId: string
+): Promise<PaymentEnforcementResult> {
+  // Get workspace with subscription status
+  const [workspace] = await db
+    .select()
+    .from(workspaces)
+    .where(eq(workspaces.id, workspaceId))
+    .limit(1);
+
+  if (!workspace) {
+    return { allowed: false, reason: 'no_workspace', isOwner: false };
+  }
+
+  // Check if user is the org owner
+  const isOwner = workspace.ownerId === userId;
+  const status = (workspace.subscriptionStatus || 'active') as 'active' | 'suspended' | 'cancelled';
+
+  // Active workspaces always allowed
+  if (status === 'active') {
+    return { 
+      allowed: true, 
+      reason: 'active', 
+      isOwner,
+      workspaceId: workspace.id,
+      workspaceName: workspace.name
+    };
+  }
+
+  // Suspended or cancelled - block with appropriate response
+  return {
+    allowed: false,
+    reason: status,
+    isOwner,
+    workspaceId: workspace.id,
+    workspaceName: workspace.name
+  };
+}
+
+/**
+ * Middleware to enforce payment status on protected routes
+ * - End users get 404 + logout signal
+ * - Org owners get payment required message with redirect
+ * 
+ * Apply this AFTER requireAuth and workspace resolution
+ */
+export const enforcePaymentStatus: RequestHandler = async (req, res, next) => {
+  const authReq = req as AuthenticatedRequest;
+  
+  // Skip for unauthenticated requests (handled by requireAuth)
+  if (!authReq.user?.id) {
+    return next();
+  }
+
+  // Skip for platform staff - they can access everything
+  if (authReq.platformRole && hasPlatformWideAccess(authReq.platformRole)) {
+    return next();
+  }
+
+  // No workspace context - skip (some routes don't need workspace)
+  const workspaceId = authReq.workspaceId || authReq.user?.defaultWorkspaceId;
+  if (!workspaceId) {
+    return next();
+  }
+
+  const result = await checkWorkspacePaymentStatus(authReq.user.id, workspaceId);
+
+  // Active workspace - proceed normally
+  if (result.allowed) {
+    return next();
+  }
+
+  // Suspended/cancelled workspace - different responses for owner vs end user
+  if (result.isOwner) {
+    // Org owner: Tell them payment is needed, redirect to payment
+    return res.status(402).json({
+      code: 'PAYMENT_REQUIRED',
+      message: 'Your organization subscription is inactive. Please update your payment to continue.',
+      reason: result.reason,
+      workspaceId: result.workspaceId,
+      workspaceName: result.workspaceName,
+      redirectTo: '/org-management',
+      isOwner: true
+    });
+  }
+
+  // End user: 404 + force logout signal
+  return res.status(404).json({
+    code: 'ORGANIZATION_INACTIVE',
+    message: 'This organization is currently unavailable.',
+    reason: result.reason,
+    forceLogout: true,
+    redirectTo: '/',
+    isOwner: false
+  });
+};
+
+/**
+ * Deactivate a workspace (for testing or admin use)
+ * Sets subscriptionStatus to 'suspended' or 'cancelled'
+ */
+export async function deactivateWorkspace(
+  workspaceId: string, 
+  status: 'suspended' | 'cancelled' = 'suspended'
+): Promise<boolean> {
+  try {
+    await db
+      .update(workspaces)
+      .set({ subscriptionStatus: status })
+      .where(eq(workspaces.id, workspaceId));
+    console.log(`[PaymentEnforcement] Workspace ${workspaceId} set to ${status}`);
+    return true;
+  } catch (error) {
+    console.error('[PaymentEnforcement] Failed to deactivate workspace:', error);
+    return false;
+  }
+}
+
+/**
+ * Reactivate a workspace after payment
+ * Sets subscriptionStatus back to 'active'
+ */
+export async function reactivateWorkspace(workspaceId: string): Promise<boolean> {
+  try {
+    await db
+      .update(workspaces)
+      .set({ subscriptionStatus: 'active' })
+      .where(eq(workspaces.id, workspaceId));
+    console.log(`[PaymentEnforcement] Workspace ${workspaceId} reactivated`);
+    return true;
+  } catch (error) {
+    console.error('[PaymentEnforcement] Failed to reactivate workspace:', error);
+    return false;
+  }
+}
