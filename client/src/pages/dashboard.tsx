@@ -402,7 +402,12 @@ export default function Dashboard() {
                       </Badge>
                     )}
                   </div>
-                  <p className="text-[10px] text-gray-600 mt-1.5 break-all leading-tight" data-testid="text-email">
+                  {workspace?.name && (
+                    <p className="text-xs font-semibold text-blue-700 mt-2" data-testid="text-org-name">
+                      {workspace.name}
+                    </p>
+                  )}
+                  <p className="text-[10px] text-gray-600 mt-1 break-all leading-tight" data-testid="text-email">
                     {user?.email || "Loading..."}
                   </p>
                 </div>
