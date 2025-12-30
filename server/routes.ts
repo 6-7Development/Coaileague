@@ -4849,6 +4849,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Get members of an organization (employees in the workspace)
   // RBAC: Only org_owner, org_admin, or platform staff can view member list
+  // Deactivate/reactivate a workspace (admin/Trinity action)
+  // RBAC: Only root_admin, sysop, or org_owner can change activation status
+  app.patch("/api/organizations/:orgId/status", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { orgId } = req.params;
+      const { status } = req.body; // "active", "suspended", "cancelled"
+      const userId = req.userId || req.user?.id;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      // Validate status
+      if (!["active", "suspended", "cancelled"].includes(status)) {
+        return res.status(400).json({ message: "Invalid status. Must be: active, suspended, or cancelled" });
+      }
+      
+      // Check if user is platform admin or org owner
+      const platformRole = req.platformRole;
+      const isPlatformAdmin = platformRole && ["root_admin", "deputy_admin", "sysop"].includes(platformRole);
+      
+      // Check if user owns this workspace
+      const [workspace] = await db.select().from(workspaces).where(eq(workspaces.id, orgId)).limit(1);
+      if (!workspace) {
+        return res.status(404).json({ message: "Organization not found" });
+      }
+      
+      const isOwner = workspace.ownerId === userId;
+      
+      if (!isPlatformAdmin && !isOwner) {
+        return res.status(403).json({ message: "Only platform admins or org owners can change activation status" });
+      }
+      
+      // Update workspace status
+      await db.update(workspaces).set({ subscriptionStatus: status }).where(eq(workspaces.id, orgId));
+      
+      console.log(`[PaymentEnforcement] Workspace ${orgId} status changed to ${status} by user ${userId}`);
+      
+      res.json({
+        success: true,
+        workspaceId: orgId,
+        status,
+        message: status === "active" ? "Organization reactivated" : `Organization ${status}`
+      });
+    } catch (error: any) {
+      console.error("Error updating organization status:", error);
+      res.status(500).json({ message: error.message || "Failed to update organization status" });
+    }
+  });
+
   app.get('/api/organizations/:orgId/members', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const { orgId } = req.params;

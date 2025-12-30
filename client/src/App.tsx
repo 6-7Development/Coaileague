@@ -27,6 +27,7 @@ import { UniversalAnimationProvider } from "@/contexts/universal-animation-conte
 import { SeasonalThemeProvider, useSeasonalTheme } from "@/context/SeasonalThemeContext";
 import SeasonalEffectsLayer from "@/components/effects/SeasonalEffectsLayer";
 import { Button } from "@/components/ui/button";
+import { PaymentEnforcementProvider } from "@/hooks/use-payment-enforcement";
 import { ProtectedRoute } from "@/components/protected-route";
 import { ApprovalTray } from "@/components/approvals/ApprovalTray";
 import { LeaderRoute } from "@/components/leader-route";
@@ -1519,7 +1520,7 @@ export default function App() {
                       <SeasonalThemeProvider>
                         <ResponsiveAppFrame>
                           <ChatroomNotificationListener />
-                          <AppContent />
+                          <PaymentEnforcementProvider><AppContent /></PaymentEnforcementProvider>
                           <ReenableChatButton />
                           <Toaster />
                           <TrinityAnnouncementDisplay position="bottom-right" />
