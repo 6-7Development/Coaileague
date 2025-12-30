@@ -4348,11 +4348,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!userId) {
         return res.status(401).json({ message: 'Unauthorized' });
       }
-      let workspace = await storage.getWorkspaceByOwnerId(userId);
       
-      // Auto-create workspace on first login
+      // First try to get user's current workspace (the one they're actively using)
+      const user = await storage.getUser(userId);
+      let workspace = null;
+      
+      if (user?.currentWorkspaceId) {
+        workspace = await storage.getWorkspace(user.currentWorkspaceId);
+      }
+      
+      // Fallback to workspace they own
       if (!workspace) {
-        const user = await storage.getUser(userId);
+        workspace = await storage.getWorkspaceByOwnerId(userId);
+      }
+      
+      // Auto-create workspace on first login if none exists
+      if (!workspace) {
         workspace = await storage.createWorkspace({
           name: `${user?.firstName || user?.email || 'My'}'s Workspace`,
           ownerId: userId,
