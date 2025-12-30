@@ -255,7 +255,7 @@ import {
 import type { PaginatedResponse, ClientWithInvoiceCount } from "@shared/types";
 import type { ClientsQueryParams } from "@shared/validation/pagination";
 import { db } from "./db";
-import { eq, and, desc, isNotNull, isNull, or, like, sql, lte, gte, count, gt, inArray } from "drizzle-orm";
+import { eq, and, desc, isNotNull, isNull, or, like, sql, lte, gte, count, gt, inArray, not, ne } from "drizzle-orm";
 
 // Custom error for WAL transition failures
 export class InvalidWalTransitionError extends Error {
