@@ -133,6 +133,7 @@ import Profile from "@/pages/profile";
 import Unavailability from "@/pages/unavailability";
 import AvailabilityPage from "@/pages/availability";
 import CreateOrg from "@/pages/create-org";
+import OnboardingStart from "@/pages/onboarding-start";
 import Updates from "@/pages/updates";
 import Help from "@/pages/help";
 import CompanyReports from "./pages/company-reports";
@@ -1073,6 +1074,7 @@ function AppContent() {
               <Route path="/unavailability" component={Unavailability} />
               <Route path="/availability" component={AvailabilityPage} />
               <Route path="/create-org" component={CreateOrg} />
+              <Route path="/onboarding/start" component={OnboardingStart} />
               <Route path="/updates" component={Updates} />
               <Route path="/help" component={Help} />
 
@@ -1410,6 +1412,7 @@ function AppContent() {
                 <Route path="/profile" component={Profile} />
                 <Route path="/unavailability" component={Unavailability} />
                 <Route path="/create-org" component={CreateOrg} />
+                <Route path="/onboarding/start" component={OnboardingStart} />
                 <Route path="/updates" component={Updates} />
                 <Route path="/help" component={Help} />
 

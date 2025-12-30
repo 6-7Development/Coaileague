@@ -307,9 +307,9 @@ export default function Dashboard() {
     if (!isLoading && !isAuthenticated) {
       window.location.href = '/login';
     }
-    // Redirect users without a workspace to organization creation wizard
+    // Redirect users without a workspace to onboarding choice page
     if (!isLoading && isAuthenticated && user && !user.currentWorkspaceId) {
-      window.location.href = '/create-org';
+      window.location.href = '/onboarding/start';
     }
   }, [isAuthenticated, isLoading, user]);
 
