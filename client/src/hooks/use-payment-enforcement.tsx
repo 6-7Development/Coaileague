@@ -9,7 +9,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { AlertTriangle, CreditCard } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 
 interface PaymentErrorResponse {
   code: 'PAYMENT_REQUIRED' | 'ORGANIZATION_INACTIVE';
@@ -30,31 +30,15 @@ interface PaymentModalState {
 
 const PaymentModalContext = createContext<{
   showPaymentModal: (data: PaymentErrorResponse) => void;
+  isModalOpen: boolean;
 } | null>(null);
 
 export function usePaymentEnforcement() {
   const context = useContext(PaymentModalContext);
-  
-  const handlePaymentError = useCallback((error: PaymentErrorResponse) => {
-    console.log('[PaymentEnforcement] Handling error:', error);
-    
-    if (error.code === 'PAYMENT_REQUIRED' && error.isOwner) {
-      // Show modal for owners
-      if (context?.showPaymentModal) {
-        context.showPaymentModal(error);
-      } else {
-        // Fallback if context not available
-        window.location.href = error.redirectTo || '/org-management';
-      }
-    } else if (error.code === 'ORGANIZATION_INACTIVE' && error.forceLogout) {
-      // End user - force logout
-      apiRequest('POST', '/api/auth/logout').finally(() => {
-        window.location.href = '/';
-      });
-    }
-  }, [context]);
-
-  return { handlePaymentError };
+  return { 
+    showPaymentModal: context?.showPaymentModal,
+    isModalOpen: context?.isModalOpen ?? false
+  };
 }
 
 export function PaymentEnforcementProvider({ children }: { children: React.ReactNode }) {
@@ -69,7 +53,7 @@ export function PaymentEnforcementProvider({ children }: { children: React.React
     console.log('[PaymentEnforcement] Showing modal for:', data);
     setModalState({
       isOpen: true,
-      workspaceName: data.workspaceName || 'your organization',
+      workspaceName: data.workspaceName || 'Your organization',
       reason: data.reason || 'suspended',
       redirectTo: data.redirectTo || '/org-management'
     });
@@ -92,18 +76,21 @@ export function PaymentEnforcementProvider({ children }: { children: React.React
         const clonedResponse = response.clone();
         try {
           const data = await clonedResponse.json();
-          console.log('[PaymentEnforcement] Intercepted response:', data);
+          console.log('[PaymentEnforcement] Intercepted:', response.status, data);
           
-          if (data.code === 'PAYMENT_REQUIRED' && data.isOwner) {
-            // Owner with payment issue - show modal
+          // IMPORTANT: Check isOwner FIRST before checking forceLogout
+          if (data.isOwner === true) {
+            // Owner with payment issue - show modal, never logout
+            console.log('[PaymentEnforcement] Owner detected - showing modal');
             setModalState({
               isOpen: true,
-              workspaceName: data.workspaceName || 'your organization',
+              workspaceName: data.workspaceName || 'Your organization',
               reason: data.reason || 'suspended',
               redirectTo: data.redirectTo || '/org-management'
             });
-          } else if (data.code === 'ORGANIZATION_INACTIVE' && data.forceLogout) {
-            // End user - force logout
+          } else if (data.forceLogout === true && data.isOwner === false) {
+            // Explicitly non-owner with force logout - log them out
+            console.log('[PaymentEnforcement] Non-owner - forcing logout');
             apiRequest('POST', '/api/auth/logout').finally(() => {
               window.location.href = '/';
             });
@@ -122,35 +109,30 @@ export function PaymentEnforcementProvider({ children }: { children: React.React
   }, []);
 
   return (
-    <PaymentModalContext.Provider value={{ showPaymentModal }}>
+    <PaymentModalContext.Provider value={{ showPaymentModal, isModalOpen: modalState.isOpen }}>
       {children}
       
-      {/* Payment Required Modal */}
+      {/* Compact Payment Modal - SaaS style */}
       <AlertDialog open={modalState.isOpen}>
-        <AlertDialogContent className="max-w-md">
-          <AlertDialogHeader>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 bg-destructive/10 rounded-full">
-                <AlertTriangle className="h-6 w-6 text-destructive" />
-              </div>
-              <AlertDialogTitle className="text-xl">
+        <AlertDialogContent className="max-w-xs p-4 gap-3">
+          <AlertDialogHeader className="gap-2">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-amber-500" />
+              <AlertDialogTitle className="text-base font-semibold">
                 Subscription Inactive
               </AlertDialogTitle>
             </div>
-            <AlertDialogDescription className="text-base pt-2">
-              <strong>{modalState.workspaceName}</strong>'s subscription has been {modalState.reason === 'cancelled' ? 'cancelled' : 'suspended'}.
-              <br /><br />
-              To continue using CoAIleague, please reactivate your subscription.
+            <AlertDialogDescription className="text-sm">
+              {modalState.workspaceName} is {modalState.reason}. Reactivate to continue.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="mt-4">
+          <AlertDialogFooter className="mt-1">
             <AlertDialogAction 
               onClick={handleActivate}
-              className="w-full gap-2"
+              className="w-full h-8 text-sm"
               data-testid="button-activate-subscription"
             >
-              <CreditCard className="h-4 w-4" />
-              Activate Subscription
+              Activate
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
