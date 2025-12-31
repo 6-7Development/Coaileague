@@ -596,19 +596,97 @@ Respond ONLY with valid JSON (no markdown, no explanations):
   }
 
   private generateFallbackResponse(change: DetectedChange) {
+    // Generate a clear, human-readable title based on what actually changed
+    const moduleNames = change.affectedModules.filter(m => m && m !== 'undefined' && m !== 'unknown');
+    const primaryModule = moduleNames[0] || this.inferModuleFromFiles(change.affectedFiles);
+    
+    // Create specific, action-oriented titles based on change type
+    let title = '';
+    switch (change.type) {
+      case 'bug_fixed':
+        title = `${this.formatModuleName(primaryModule)} Issue Resolved`;
+        break;
+      case 'feature_added':
+        title = `New ${this.formatModuleName(primaryModule)} Feature Available`;
+        break;
+      case 'security_fix':
+        title = `Security Enhancement for ${this.formatModuleName(primaryModule)}`;
+        break;
+      case 'enhancement':
+        title = `${this.formatModuleName(primaryModule)} Performance Boost`;
+        break;
+      case 'hotpatch':
+        title = `Quick Fix Applied to ${this.formatModuleName(primaryModule)}`;
+        break;
+      default:
+        title = `${this.formatModuleName(primaryModule)} Improvement Released`;
+    }
+    
     return {
-      title: `${change.affectedModules[0]?.charAt(0).toUpperCase()}${change.affectedModules[0]?.slice(1) || 'Platform'} ${change.type.replace(/_/g, ' ')}`,
+      title: title.substring(0, 70),
       summary: this.generateFallbackSummary(change),
-      technicalDetails: `Modified: ${change.affectedFiles.join(', ')}. Severity: ${change.severity}. Type: ${change.type}`,
+      technicalDetails: `Modified: ${change.affectedFiles.slice(0, 5).join(', ')}${change.affectedFiles.length > 5 ? ` and ${change.affectedFiles.length - 5} more files` : ''}. Severity: ${change.severity}.`,
       requiresAction: false,
       actionRequired: null,
       endUserSummary: this.generateEndUserSummary(change),
-      brokenDescription: change.type === 'bug_fixed' ? 'An issue was detected and resolved.' : null,
+      brokenDescription: change.type === 'bug_fixed' ? 'A workflow issue was identified and corrected by our team.' : null,
       impactDescription: this.analyzeImpact(change),
       detailedCategory: this.mapToDetailedCategory(change.type),
       sourceType: change.sourceType || 'system',
-      sourceName: change.sourceName || 'AI Brain Platform Monitor',
+      sourceName: change.sourceName || 'Trinity Platform Monitor',
     };
+  }
+  
+  private formatModuleName(module: string): string {
+    if (!module || module === 'undefined' || module === 'unknown') {
+      return 'Platform';
+    }
+    // Convert camelCase/snake_case to Title Case
+    return module
+      .replace(/([A-Z])/g, ' $1')
+      .replace(/_/g, ' ')
+      .replace(/^\s+/, '')
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ')
+      .trim();
+  }
+  
+  private inferModuleFromFiles(files: string[]): string {
+    // Infer module name from file paths when modules list is empty
+    const modulePatterns: Record<string, string> = {
+      'schedule': 'Scheduling',
+      'billing': 'Billing',
+      'payment': 'Payments',
+      'stripe': 'Payments',
+      'employee': 'Employee Management',
+      'client': 'Client Management',
+      'auth': 'Authentication',
+      'notification': 'Notifications',
+      'chat': 'Chat',
+      'helpai': 'Trinity AI',
+      'trinity': 'Trinity AI',
+      'ai-brain': 'AI Intelligence',
+      'analytics': 'Analytics',
+      'report': 'Reporting',
+      'time': 'Time Tracking',
+      'shift': 'Shift Management',
+      'onboard': 'Onboarding',
+      'compliance': 'Compliance',
+      'invoice': 'Invoicing',
+      'payroll': 'Payroll',
+    };
+    
+    for (const file of files) {
+      const lowerFile = file.toLowerCase();
+      for (const [pattern, moduleName] of Object.entries(modulePatterns)) {
+        if (lowerFile.includes(pattern)) {
+          return moduleName;
+        }
+      }
+    }
+    
+    return 'Platform Services';
   }
 
   private async notifyAllUsers(changeEventId: string, summary: {
