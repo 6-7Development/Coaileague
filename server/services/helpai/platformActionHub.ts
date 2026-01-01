@@ -39,6 +39,7 @@ export type ActionCategory =
   | 'support'
   | 'analytics'
   | 'integration'
+  | 'integrations'
   | 'test'
   | 'compliance'
   | 'gamification'
@@ -50,7 +51,10 @@ export type ActionCategory =
   | 'escalation'
   | 'session_checkpoint'
   | 'security'
-  | 'memory';
+  | 'memory'
+  | 'admin'
+  | 'coding'
+  | 'strategic';
 
 export type ActionPriority = 'low' | 'normal' | 'high' | 'critical';
 

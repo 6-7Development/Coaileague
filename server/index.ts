@@ -387,6 +387,14 @@ async function initializeBackgroundServices(): Promise<void> {
       console.log('[Server] Autonomous Fix Pipeline initialized - self-healing active');
     }),
     
+    timedInit('AI Brain Action Registry', async () => {
+      const { aiBrainActionRegistry } = await import('./services/ai-brain/actionRegistry');
+      await aiBrainActionRegistry.initialize();
+      const { helpaiOrchestrator } = await import('./services/helpai/platformActionHub');
+      const counts = helpaiOrchestrator.getActionCountByCategory();
+      console.log(`[Server] Action categories: ${JSON.stringify(counts)}`);
+    }),
+    
     timedInit('Workflow Orchestration', async () => {
       const { initializeOrchestrationServices: initWorkflowOrchestration } = await import('./services/orchestration/index');
       await initWorkflowOrchestration();
