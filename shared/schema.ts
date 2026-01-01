@@ -1005,11 +1005,25 @@ export const employeeMetrics = pgTable("employee_metrics", {
   availableForLastMinute: boolean("available_for_last_minute").default(false),
   typicalResponseTime: integer("typical_response_time").default(120), // minutes
   
+  // Strategic Business Optimization - Client Feedback Tracking
+  clientComplaints: integer("client_complaints").default(0), // Total complaints received
+  clientPraise: integer("client_praise").default(0), // Positive feedback count
+  issuesReported: integer("issues_reported").default(0), // Incidents/problems caused
+  clientSatisfactionScore: decimal("client_satisfaction_score", { precision: 5, scale: 2 }).default("75.00"), // 0-100
+  
+  // Strategic Business Optimization - Performance Tracking
+  totalShiftsAssigned: integer("total_shifts_assigned").default(0),
+  attendanceRate: decimal("attendance_rate", { precision: 5, scale: 2 }).default("95.00"), // Percentage
+  overallScore: decimal("overall_score", { precision: 5, scale: 2 }).default("75.00"), // Weighted composite score 0-100
+  effectiveCostPerHour: decimal("effective_cost_per_hour", { precision: 10, scale: 2 }), // Includes taxes, benefits, overhead
+  recentPerformanceTrend: varchar("recent_performance_trend").default("stable"), // 'improving', 'stable', 'declining'
+  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
   index("idx_employee_metrics_employee").on(table.employeeId),
   index("idx_employee_metrics_reliability").on(table.reliabilityScore),
+  index("idx_employee_metrics_overall_score").on(table.overallScore),
 ]);
 
 export const insertEmployeeMetricsSchema = createInsertSchema(employeeMetrics).omit({
@@ -1678,6 +1692,37 @@ export const clients = pgTable("clients", {
   lastQboSyncAt: timestamp("last_qbo_sync_at"), // Last synced from QuickBooks
   qboSyncStatus: varchar("qbo_sync_status"), // 'synced', 'pending', 'error'
 
+  // ============================================================================
+  // STRATEGIC BUSINESS OPTIMIZATION - Profit-First AI Decision Making
+  // ============================================================================
+  
+  // Client Tiering (Strategic Prioritization)
+  strategicTier: varchar("strategic_tier").default("standard"), // 'enterprise', 'premium', 'standard', 'trial'
+  tierScore: decimal("tier_score", { precision: 5, scale: 2 }).default("50.00"), // 0-100, higher = more valuable
+  
+  // Financial Value Metrics
+  monthlyRevenue: decimal("monthly_revenue", { precision: 12, scale: 2 }).default("0.00"), // Average monthly billing
+  lifetimeValue: decimal("lifetime_value", { precision: 14, scale: 2 }).default("0.00"), // Total revenue since client start
+  paymentHistory: varchar("payment_history").default("good"), // 'excellent', 'good', 'delayed', 'problematic'
+  averageProfitMargin: decimal("average_profit_margin", { precision: 5, scale: 2 }).default("30.00"), // Percentage
+  
+  // Relationship Metrics
+  clientSince: timestamp("client_since"), // When they became a client
+  satisfactionScore: decimal("satisfaction_score", { precision: 5, scale: 2 }).default("80.00"), // 0-100 based on surveys/feedback
+  complaintsReceived: integer("complaints_received").default(0), // Client complained about service
+  praiseReceived: integer("praise_received").default(0), // Client praised service
+  renewalProbability: decimal("renewal_probability", { precision: 5, scale: 2 }).default("75.00"), // 0-100, predicted renewal likelihood
+  
+  // Strategic Flags (for profit-first AI decisions)
+  isLegacyClient: boolean("is_legacy_client").default(false), // Been with us 2+ years
+  isHighValue: boolean("is_high_value").default(false), // Top 20% revenue generators
+  isAtRisk: boolean("is_at_risk").default(false), // Satisfaction declining, may churn
+  isGrowthAccount: boolean("is_growth_account").default(false), // Expanding, more sites coming
+  profitabilityTrend: varchar("profitability_trend").default("stable"), // 'increasing', 'stable', 'decreasing'
+  
+  // Difficulty & Risk Assessment
+  siteDifficultyLevel: varchar("site_difficulty_level").default("moderate"), // 'easy', 'moderate', 'difficult', 'high-risk'
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
@@ -1685,6 +1730,10 @@ export const clients = pgTable("clients", {
   userIdIdx: index("clients_user_id_idx").on(table.userId),
   // Add index on quickbooksClientId for sync lookups
   qboClientIdIdx: index("clients_qbo_client_id_idx").on(table.quickbooksClientId),
+  // Strategic optimization indexes
+  strategicTierIdx: index("clients_strategic_tier_idx").on(table.strategicTier),
+  tierScoreIdx: index("clients_tier_score_idx").on(table.tierScore),
+  atRiskIdx: index("clients_at_risk_idx").on(table.isAtRisk),
 }));
 
 export const insertClientSchema = createInsertSchema(clients).omit({
