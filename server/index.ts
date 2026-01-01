@@ -20,6 +20,7 @@ import "./services/scheduleLiveNotifier";
 import { tracingMiddleware } from "./services/infrastructure/distributedTracing";
 import { rateLimitMiddleware } from "./services/infrastructure/rateLimiting";
 import { initializeTrinityEventSubscriptions } from "./services/trinityEventSubscriptions";
+import { runProductionSeed } from "./services/productionSeed";
 
 const app = express();
 
@@ -478,6 +479,16 @@ async function initializeBackgroundServices(): Promise<void> {
     console.error('CRITICAL: Failed to register routes:', error);
     console.error('Application cannot start without platform workspace. Exiting...');
     process.exit(1);
+  }
+
+  // PHASE 0.5: Production database seeding (only runs in production deployment)
+  try {
+    console.log('[Startup] Phase 0.5: Checking production database seed...');
+    const seedResult = await runProductionSeed();
+    console.log(`[Startup] Production seed: ${seedResult.message}`);
+  } catch (error) {
+    console.error('[Startup] Warning: Production seed check failed:', error);
+    // Non-fatal - continue startup
   }
 
   // PHASE 1: Initialize critical services (fast, synchronous)
