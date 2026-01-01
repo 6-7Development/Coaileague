@@ -34,10 +34,10 @@ const alertDialogContentVariants = cva(
   {
     variants: {
       size: {
-        sm: "!w-[min(92vw,20rem)] !max-w-none",
-        md: "!w-[min(92vw,24rem)] !max-w-none",
-        default: "!w-[min(92vw,26rem)] !max-w-none",
-        lg: "!w-[min(92vw,30rem)] !max-w-none",
+        sm: "w-[min(92vw,20rem)] max-w-none",
+        md: "w-[min(92vw,24rem)] max-w-none",
+        default: "w-[min(92vw,26rem)] max-w-none",
+        lg: "w-[min(92vw,30rem)] max-w-none",
       },
     },
   }
