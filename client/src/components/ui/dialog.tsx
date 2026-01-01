@@ -37,12 +37,12 @@ const dialogContentVariants = cva(
   {
     variants: {
       size: {
-        sm: "!w-[min(92vw,22rem)] !max-w-none",
-        md: "!w-[min(92vw,26rem)] !max-w-none",
-        default: "!w-[min(92vw,28rem)] !max-w-none",
-        lg: "!w-[min(92vw,32rem)] !max-w-none",
-        xl: "!w-[min(92vw,42rem)] !max-w-none",
-        full: "!w-[min(95vw,56rem)] !max-w-none",
+        sm: "w-[min(92vw,22rem)] max-w-none",
+        md: "w-[min(92vw,26rem)] max-w-none",
+        default: "w-[min(92vw,28rem)] max-w-none",
+        lg: "w-[min(92vw,32rem)] max-w-none",
+        xl: "w-[min(92vw,42rem)] max-w-none",
+        full: "w-[min(95vw,56rem)] max-w-none",
       },
     },
   }
