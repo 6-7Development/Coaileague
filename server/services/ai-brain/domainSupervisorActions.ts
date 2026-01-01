@@ -152,7 +152,7 @@ export function registerDomainSupervisorActions(): void {
   console.log('[DomainSupervisorActions] Registered 6 RevenueOps actions');
 
   // ============================================================================
-  // SECURITY OPS ACTIONS
+  // SECURITY OPS ACTIONS - Trinity compliance automation
   // ============================================================================
 
   helpaiOrchestrator.registerAction({
@@ -680,7 +680,7 @@ export function registerDomainSupervisorActions(): void {
   console.log('[DomainSupervisorActions] Registered 6 CommunicationOps actions');
 
   // ============================================================================
-  // ENHANCED LLM JUDGE ACTIONS
+  // ENHANCED LLM JUDGE ACTIONS - Trinity safety layer
   // ============================================================================
 
   helpaiOrchestrator.registerAction({

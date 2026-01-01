@@ -246,8 +246,14 @@ class UIControlSubagent {
 
   /**
    * Register AI Brain actions for Trinity to control UI
+   * DISABLED: Phase 2 cleanup - UI control not customer-facing MVP
    */
   registerActions() {
+    // DISABLED: Phase 2 - All 11 UI control actions not MVP
+    console.log('[UIControlSubagent] DISABLED: 11 UI control actions (Phase 2 cleanup - not MVP)');
+    return; // Skip all UI action registrations
+    
+    /* DISABLED: Phase 2 - UI control not customer-facing MVP
     // List all UI components
     helpaiOrchestrator.registerAction({
       actionId: 'ui.list_components',
@@ -430,6 +436,7 @@ class UIControlSubagent {
     });
 
     log('[UIControlSubagent] Registered 11 UI control actions with AI Brain');
+    */ // END DISABLED: Phase 2 - UI control actions
   }
 }
 

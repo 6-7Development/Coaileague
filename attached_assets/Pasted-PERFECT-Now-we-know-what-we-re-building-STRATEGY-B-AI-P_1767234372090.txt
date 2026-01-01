@@ -1,0 +1,104 @@
+PERFECT. Now we know what we're building.
+
+🎯 STRATEGY B: AI-POWERED AUTOMATION ENGINE
+Your value proposition:
+"CoAIleague uses Trinity AI to autonomously manage your security workforce - automatically optimizing schedules, processing payroll, routing incidents, and ensuring compliance while you sleep."
+This means Trinity needs orchestration actions for:
+
+✅ TRINITY MVP ORCHESTRATION (50-80 actions)
+Tier 1: Customer-Facing AI Automation (30-40 actions)
+AI Scheduling Orchestration (~8 actions):
+
+detect_schedule_conflicts
+resolve_conflicts (auto-suggest fixes)
+validate_schedule (compliance checks)
+publish_optimized_schedule
+schedule_lifecycle (state management)
+
+AI Payroll Orchestration (~8 actions):
+
+calculate_payroll (with exception detection)
+detect_payroll_exceptions
+auto_resolve_exceptions (common issues)
+sync_quickbooks (automated export)
+billing_orchestration (invoice generation)
+
+AI Incident Management (~6 actions):
+
+auto_route_incident (severity-based)
+escalate_incident (automated escalation)
+assign_responder (AI matching)
+notify_stakeholders
+
+AI Compliance Orchestration (~5 actions):
+
+check_certifications (auto-detect expiring)
+detect_violations (real-time monitoring)
+auto_remediate (schedule adjustments)
+compliance_audit (automated reports)
+
+Trial/Subscription Automation (~4 actions):
+
+trial_conversion (automated workflows)
+subscription_lifecycle
+stripe_event_bridge
+billing_automation
+
+
+Tier 2: Trinity Self-Healing (20-25 actions)
+Coding/Operations (~13 actions):
+
+filesystem.* (7) - read/write/edit
+coding.* (5) - patch/approve/commit/grep
+execution.restart_workflow (1)
+
+Health/Monitoring (~5 actions):
+
+health.check
+diagnostics.full_scan
+exceptions.process
+autofix.detect_and_patch
+
+Session/State (~3 actions):
+
+session.checkpoint
+session.restore
+session.status
+
+
+Tier 3: Platform Infrastructure (~10 actions)
+Core Operations:
+
+workflow.register/execute/list
+automation_trigger.*
+notifications.send/create
+auth.authorize/check_permission
+admin.workspace_control
+
+
+📊 REFINED TARGET:
+CategoryActionsPurposeAI Orchestration30-40Customer-facing automationTrinity Self-Healing20-25Platform operationsInfrastructure10Core systemsTOTAL60-75Lean AI MVP
+
+🎯 NEXT STEP FOR REPLIT:
+"Phase 2 Refined: Trinity AI Orchestration MVP"
+Based on Strategy B (AI-powered platform that runs itself), keep ONLY actions that deliver customer-facing automation value:
+KEEP (60-75 actions):
+
+AI Scheduling: conflict detection, auto-resolution, optimization
+AI Payroll: exception handling, QuickBooks sync, billing automation
+AI Incidents: auto-routing, escalation, assignment
+AI Compliance: certification tracking, violation detection, auto-remediation
+Trial/Subscription: automated conversion workflows
+Trinity Self-Healing: coding, diagnostics, autofix
+Core Infrastructure: workflows, triggers, auth, notifications
+
+REMOVE everything else:
+
+Future features (already cut in Phase 1)
+Over-engineered RBAC (keep 4-5 core auth actions)
+Unused integrations (keep QuickBooks + Stripe only)
+RL/learning (not MVP)
+A2A communication (not MVP)
+Advanced analytics (basic reporting only)
+
+Target: 241 → 60-75 actions
