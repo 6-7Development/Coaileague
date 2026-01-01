@@ -9,7 +9,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { AlertTriangle, Loader2 } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 
 // Grace period only for LOGOUT actions - owners see modal immediately
 const LOGOUT_GRACE_PERIOD_MS = 5000; // 5 seconds before any logout
@@ -31,6 +31,10 @@ interface PaymentModalState {
   redirectTo: string;
 }
 
+// Global state to persist across component remounts
+let globalModalShown = false;
+let globalModalData: PaymentModalState | null = null;
+
 const PaymentModalContext = createContext<{
   showPaymentModal: (data: PaymentErrorResponse) => void;
   isModalOpen: boolean;
@@ -45,24 +49,47 @@ export function usePaymentEnforcement() {
 }
 
 export function PaymentEnforcementProvider({ children }: { children: React.ReactNode }) {
-  const [modalState, setModalState] = useState<PaymentModalState>({
-    isOpen: false,
-    workspaceName: '',
-    reason: '',
-    redirectTo: '/org-management'
+  // Initialize from global state if modal was already shown
+  const [modalState, setModalState] = useState<PaymentModalState>(() => {
+    if (globalModalShown && globalModalData) {
+      return globalModalData;
+    }
+    return {
+      isOpen: false,
+      workspaceName: '',
+      reason: '',
+      redirectTo: '/org-management'
+    };
   });
   
   // Prevent duplicate processing
-  const hasHandledRef = useRef(false);
+  const hasHandledRef = useRef(globalModalShown);
   const logoutTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const fetchInterceptorSetRef = useRef(false);
 
   const handleActivate = useCallback(() => {
     console.log('[PaymentEnforcement] Navigating to:', modalState.redirectTo);
+    // Clear global state before navigating
+    globalModalShown = false;
+    globalModalData = null;
     window.location.href = modalState.redirectTo;
   }, [modalState.redirectTo]);
 
-  // Intercept fetch calls
+  // Sync modal state to global
   useEffect(() => {
+    if (modalState.isOpen) {
+      globalModalShown = true;
+      globalModalData = modalState;
+    }
+  }, [modalState]);
+
+  // Intercept fetch calls - only set up once
+  useEffect(() => {
+    if (fetchInterceptorSetRef.current) {
+      return; // Already set up
+    }
+    fetchInterceptorSetRef.current = true;
+    
     const originalFetch = window.fetch;
     
     window.fetch = async (...args) => {
@@ -85,8 +112,8 @@ export function PaymentEnforcementProvider({ children }: { children: React.React
             console.log('[PaymentEnforcement] Intercepted:', response.status, data.code, 'isOwner:', data.isOwner);
             
             // Prevent duplicate handling
-            if (hasHandledRef.current) {
-              console.log('[PaymentEnforcement] Already handled, skipping');
+            if (hasHandledRef.current || globalModalShown) {
+              console.log('[PaymentEnforcement] Already handled, keeping modal open');
               return response;
             }
             
@@ -94,12 +121,15 @@ export function PaymentEnforcementProvider({ children }: { children: React.React
             if (data.isOwner === true) {
               console.log('[PaymentEnforcement] Owner detected - showing modal NOW');
               hasHandledRef.current = true;
-              setModalState({
+              globalModalShown = true;
+              const newState = {
                 isOpen: true,
                 workspaceName: data.workspaceName || 'Your organization',
                 reason: data.reason || 'suspended',
                 redirectTo: data.redirectTo || '/org-management'
-              });
+              };
+              globalModalData = newState;
+              setModalState(newState);
               return response;
             }
             
@@ -126,23 +156,32 @@ export function PaymentEnforcementProvider({ children }: { children: React.React
     };
 
     return () => {
-      window.fetch = originalFetch;
+      // Don't restore fetch on unmount - keep intercepting
       if (logoutTimerRef.current) {
         clearTimeout(logoutTimerRef.current);
       }
     };
   }, []);
 
+  // Force modal to stay open if it was shown
+  useEffect(() => {
+    if (globalModalShown && globalModalData && !modalState.isOpen) {
+      console.log('[PaymentEnforcement] Restoring modal state from global');
+      setModalState(globalModalData);
+    }
+  }, [modalState.isOpen]);
+
   return (
     <PaymentModalContext.Provider value={{ showPaymentModal: () => {}, isModalOpen: modalState.isOpen }}>
-      {/* Show children normally - modal overlays on top */}
       {children}
       
       {/* Ultra-compact Payment Modal - blocks all interaction until resolved */}
-      <AlertDialog open={modalState.isOpen}>
+      <AlertDialog open={modalState.isOpen} onOpenChange={() => {}}>
         <AlertDialogContent 
           className="!max-w-[280px] p-4 gap-3"
           showHomeButton={false}
+          onEscapeKeyDown={(e) => e.preventDefault()}
+          onPointerDownOutside={(e) => e.preventDefault()}
         >
           <AlertDialogHeader className="gap-2 space-y-0">
             <div className="flex items-center gap-2">
