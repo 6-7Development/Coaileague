@@ -125,8 +125,10 @@ export function registerUACPActions(orchestrator: any): void {
 
   // ============================================================================
   // AGENT IDENTITY MANAGEMENT ACTIONS
+  // PHASE 2 CLEANUP: Disabled 12 non-MVP actions, keeping only core auth
   // ============================================================================
 
+  /* DISABLED: Phase 2 - Not MVP (list/get agent details)
   orchestrator.registerAction({
     actionId: 'uacp.list_agents',
     name: 'List Agent Identities',
@@ -185,6 +187,7 @@ export function registerUACPActions(orchestrator: any): void {
       };
     }
   });
+  */ // END DISABLED: list_agents, get_agent
 
   orchestrator.registerAction({
     actionId: 'uacp.suspend_agent',
@@ -257,6 +260,7 @@ export function registerUACPActions(orchestrator: any): void {
     }
   });
 
+  /* DISABLED: Phase 2 - Not MVP (agent mission/access updates)
   orchestrator.registerAction({
     actionId: 'uacp.update_agent_mission',
     name: 'Update Agent Mission',
@@ -328,11 +332,13 @@ export function registerUACPActions(orchestrator: any): void {
       };
     }
   });
+  */ // END DISABLED: update_agent_mission, update_agent_access
 
   // ============================================================================
-  // POLICY MANAGEMENT ACTIONS
+  // POLICY MANAGEMENT ACTIONS - DISABLED: Phase 2 - Not MVP
   // ============================================================================
 
+  /* DISABLED: Phase 2 - Policy management, audit, support team not MVP
   orchestrator.registerAction({
     actionId: 'uacp.list_policies',
     name: 'List Access Policies',
@@ -632,8 +638,9 @@ export function registerUACPActions(orchestrator: any): void {
       };
     }
   });
+  */ // END DISABLED: list_policies, invalidate_cache, get_recent_events, security_audit, create_support_employee, assign_platform_role, list_support_team
 
-  console.log('[AI Brain Master Orchestrator] Registered 16 UACP access control actions');
+  console.log('[AI Brain Master Orchestrator] Registered 5 UACP access control actions (Phase 2: disabled 11 non-MVP)');
 }
 
 /**
