@@ -33,20 +33,17 @@ const DialogOverlay = React.forwardRef<
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
 
 const dialogContentVariants = cva(
-  "fixed left-[50%] top-[50%] z-50 grid translate-x-[-50%] translate-y-[-50%] gap-3 border bg-background/95 backdrop-blur-md p-4 shadow-2xl duration-150 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] rounded-xl max-h-[min(90vh,800px)] overflow-y-auto",
+  "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-3 border bg-background/95 backdrop-blur-md p-4 shadow-2xl duration-150 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] rounded-xl max-h-[min(90vh,800px)] overflow-y-auto",
   {
     variants: {
       size: {
-        sm: "w-[min(92vw,22rem)]",
-        md: "w-[min(92vw,26rem)]",
-        default: "w-[min(92vw,28rem)]",
-        lg: "w-[min(92vw,32rem)]",
-        xl: "w-[min(92vw,42rem)]",
-        full: "w-[min(95vw,56rem)]",
+        sm: "!w-[min(92vw,22rem)] !max-w-none",
+        md: "!w-[min(92vw,26rem)] !max-w-none",
+        default: "!w-[min(92vw,28rem)] !max-w-none",
+        lg: "!w-[min(92vw,32rem)] !max-w-none",
+        xl: "!w-[min(92vw,42rem)] !max-w-none",
+        full: "!w-[min(95vw,56rem)] !max-w-none",
       },
-    },
-    defaultVariants: {
-      size: "default",
     },
   }
 )
