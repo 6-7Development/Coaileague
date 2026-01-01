@@ -340,6 +340,24 @@ export class AICreditGateway {
 
     console.log(`[AICreditGateway] PAID usage: ${featureKey}, ${classification.creditCost} credits, ${tokensUsed} tokens`);
 
+    // Emit billing event for Trinity awareness
+    platformEventBus.emit({
+      type: 'billing',
+      category: 'ai_usage_billed',
+      title: 'AI Usage Billed',
+      message: `${featureKey}: ${tokensUsed} tokens, ${classification.creditCost} credits`,
+      workspaceId,
+      userId,
+      metadata: {
+        featureKey,
+        tier: classification.tier,
+        tokensUsed,
+        creditsDeducted: classification.creditCost,
+        newBalance: deduction.newBalance,
+        charged: deduction.success,
+      },
+    });
+
     return {
       charged: deduction.success,
       creditsDeducted: classification.creditCost,
