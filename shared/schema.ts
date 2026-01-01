@@ -878,6 +878,7 @@ export const employees = pgTable("employees", {
 
   // Employment details
   role: varchar("role"), // e.g., "Technician", "Consultant", "Driver" - job title
+  organizationalTitle: varchar("organizational_title").default("staff"), // Hierarchy: staff, supervisor, manager, director, owner
   workspaceRole: workspaceRoleEnum("workspace_role").default("staff"), // Permission level (formerly 'employee')
   hourlyRate: decimal("hourly_rate", { precision: 10, scale: 2 }),
   color: varchar("color").default("#3b82f6"), // For calendar display

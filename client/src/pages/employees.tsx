@@ -103,6 +103,7 @@ export default function Employees() {
     email: "",
     phone: "",
     role: "",
+    organizationalTitle: "staff",
     hourlyRate: "",
   });
   const [formData, setFormData] = useState({
@@ -111,6 +112,7 @@ export default function Employees() {
     email: "",
     phone: "",
     role: "",
+    organizationalTitle: "staff", // Hierarchy: staff, supervisor, manager, director, owner
     hourlyRate: "",
     workspaceRole: "staff", // Default to staff role
     platformRole: "", // Empty = no platform role
@@ -156,6 +158,7 @@ export default function Employees() {
         email: "",
         phone: "",
         role: "",
+        organizationalTitle: "staff",
         hourlyRate: "",
         workspaceRole: "staff",
         platformRole: "",
@@ -410,6 +413,7 @@ export default function Employees() {
       email: employee.email || "",
       phone: employee.phone || "",
       role: employee.role || "",
+      organizationalTitle: (employee as any).organizationalTitle || "staff",
       hourlyRate: employee.hourlyRate?.toString() || "",
     });
     setIsEditDialogOpen(true);
@@ -425,6 +429,7 @@ export default function Employees() {
         email: editFormData.email,
         phone: editFormData.phone || undefined,
         role: editFormData.role || undefined,
+        organizationalTitle: editFormData.organizationalTitle || "staff",
         hourlyRate: editFormData.hourlyRate ? parseFloat(editFormData.hourlyRate) : undefined,
       },
     });
@@ -591,17 +596,35 @@ export default function Employees() {
                       </Select>
                     </div>
                     <div className="space-y-1.5">
-                      <Label htmlFor="hourlyRate" className="text-xs">Hourly Rate ($)</Label>
-                      <Input 
-                        id="hourlyRate" 
-                        type="number" 
-                        placeholder="25.00" 
-                        value={formData.hourlyRate}
-                        onChange={(e) => setFormData({ ...formData, hourlyRate: e.target.value })}
-                        data-testid="input-employee-rate"
-                        className="h-9 text-sm"
-                      />
+                      <Label htmlFor="organizationalTitle" className="text-xs">Org Title</Label>
+                      <Select 
+                        value={formData.organizationalTitle} 
+                        onValueChange={(value) => setFormData({ ...formData, organizationalTitle: value })}
+                      >
+                        <SelectTrigger className="h-9 text-sm" data-testid="select-organizational-title">
+                          <SelectValue placeholder="Select title" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="staff">Staff</SelectItem>
+                          <SelectItem value="supervisor">Supervisor</SelectItem>
+                          <SelectItem value="manager">Manager</SelectItem>
+                          <SelectItem value="director">Director</SelectItem>
+                          <SelectItem value="owner">Owner</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="hourlyRate" className="text-xs">Hourly Rate ($)</Label>
+                    <Input 
+                      id="hourlyRate" 
+                      type="number" 
+                      placeholder="25.00" 
+                      value={formData.hourlyRate}
+                      onChange={(e) => setFormData({ ...formData, hourlyRate: e.target.value })}
+                      data-testid="input-employee-rate"
+                      className="h-9 text-sm"
+                    />
                   </div>
                 </div>
 
@@ -789,6 +812,11 @@ export default function Employees() {
                       <Badge variant="secondary" className="text-xs">
                         {employee.role || "Employee"}
                       </Badge>
+                      {(employee as any).organizationalTitle && (employee as any).organizationalTitle !== 'staff' && (
+                        <Badge variant="outline" className="text-xs capitalize">
+                          {(employee as any).organizationalTitle}
+                        </Badge>
+                      )}
                       {getOnboardingStatusBadge(employee.onboardingStatus ?? undefined)}
                     </div>
                   </div>
@@ -1176,17 +1204,35 @@ export default function Employees() {
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="edit-hourlyRate" className="text-xs">Hourly Rate ($)</Label>
-                  <Input 
-                    id="edit-hourlyRate" 
-                    type="number" 
-                    placeholder="25.00" 
-                    value={editFormData.hourlyRate}
-                    onChange={(e) => setEditFormData({ ...editFormData, hourlyRate: e.target.value })}
-                    data-testid="input-edit-hourlyRate"
-                    className="h-9 text-sm"
-                  />
+                  <Label htmlFor="edit-organizationalTitle" className="text-xs">Org Title</Label>
+                  <Select 
+                    value={editFormData.organizationalTitle} 
+                    onValueChange={(value) => setEditFormData({ ...editFormData, organizationalTitle: value })}
+                  >
+                    <SelectTrigger className="h-9 text-sm" data-testid="select-edit-organizational-title">
+                      <SelectValue placeholder="Select title" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="staff">Staff</SelectItem>
+                      <SelectItem value="supervisor">Supervisor</SelectItem>
+                      <SelectItem value="manager">Manager</SelectItem>
+                      <SelectItem value="director">Director</SelectItem>
+                      <SelectItem value="owner">Owner</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-hourlyRate" className="text-xs">Hourly Rate ($)</Label>
+                <Input 
+                  id="edit-hourlyRate" 
+                  type="number" 
+                  placeholder="25.00" 
+                  value={editFormData.hourlyRate}
+                  onChange={(e) => setEditFormData({ ...editFormData, hourlyRate: e.target.value })}
+                  data-testid="input-edit-hourlyRate"
+                  className="h-9 text-sm"
+                />
               </div>
             </div>
             <DialogFooter className="flex-col sm:flex-row gap-2 pt-3">
