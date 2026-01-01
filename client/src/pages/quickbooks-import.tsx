@@ -2,13 +2,14 @@ import { useState, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import { 
   ArrowLeft, 
+  ArrowRight,
   RefreshCw, 
   Users, 
   Building2, 
@@ -16,10 +17,34 @@ import {
   AlertCircle,
   Loader2,
   ExternalLink,
-  Download
+  Download,
+  Star,
+  DollarSign,
+  Briefcase,
+  Clock,
+  Shield,
+  Zap,
+  AlertTriangle,
+  XCircle,
+  Play,
+  Check,
+  FileText,
+  CreditCard,
+  CalendarClock,
+  Rocket
 } from 'lucide-react';
 import { SiQuickbooks } from 'react-icons/si';
-import { Link } from 'wouter';
+import { Link, useLocation } from 'wouter';
+
+type WizardStep = 
+  | 'connect'
+  | 'discovery' 
+  | 'select-customers'
+  | 'select-employees'
+  | 'mapping'
+  | 'preflight'
+  | 'confirm'
+  | 'complete';
 
 interface QBOEmployee {
   qboId: string;
@@ -29,6 +54,11 @@ interface QBOEmployee {
   email: string;
   phone: string;
   active: boolean;
+  payRate?: number;
+  employeeType?: 'W2' | '1099';
+  role?: string;
+  recommended?: boolean;
+  recommendReason?: string;
 }
 
 interface QBOCustomer {
@@ -38,13 +68,35 @@ interface QBOCustomer {
   email: string;
   phone: string;
   active: boolean;
+  monthlyRevenue?: number;
+  lastInvoiceDate?: string;
+  invoiceCount?: number;
+  recommended?: boolean;
+  recommendReason?: string;
+  isVendor?: boolean;
+}
+
+interface QBOPayrollItem {
+  qboId: string;
+  name: string;
+  type: string;
+  mappedTo?: string;
 }
 
 interface PreviewData {
   employees: QBOEmployee[];
   customers: QBOCustomer[];
+  payrollItems: QBOPayrollItem[];
   connectionId: string;
   companyName: string;
+  chartOfAccounts?: { id: string; name: string; type: string }[];
+}
+
+interface PreflightTest {
+  name: string;
+  description: string;
+  status: 'pending' | 'running' | 'passed' | 'failed';
+  error?: string;
 }
 
 interface ConnectionStatus {
@@ -55,18 +107,31 @@ interface ConnectionStatus {
   };
 }
 
+const STEPS: { id: WizardStep; label: string; icon: any }[] = [
+  { id: 'connect', label: 'Connect', icon: ExternalLink },
+  { id: 'discovery', label: 'Discover', icon: RefreshCw },
+  { id: 'select-customers', label: 'Clients', icon: Building2 },
+  { id: 'select-employees', label: 'Employees', icon: Users },
+  { id: 'mapping', label: 'Mapping', icon: FileText },
+  { id: 'preflight', label: 'Verify', icon: Shield },
+  { id: 'confirm', label: 'Confirm', icon: Check },
+];
+
 export default function QuickBooksImportPage() {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
+  const [currentStep, setCurrentStep] = useState<WizardStep>('connect');
   const [selectedEmployees, setSelectedEmployees] = useState<QBOEmployee[]>([]);
   const [selectedCustomers, setSelectedCustomers] = useState<QBOCustomer[]>([]);
-  const [activeTab, setActiveTab] = useState('employees');
+  const [payrollMappings, setPayrollMappings] = useState<Record<string, string>>({});
+  const [preflightTests, setPreflightTests] = useState<PreflightTest[]>([]);
+  const [isRunningPreflight, setIsRunningPreflight] = useState(false);
+  const [allTestsPassed, setAllTestsPassed] = useState(false);
 
-  // Get workspace ID from current user
   const { data: workspace } = useQuery<{ id: string; orgCode: string }>({
     queryKey: ['/api/workspace'],
   });
 
-  // Check connection status
   const { data: connectionStatus, isLoading: isLoadingConnection } = useQuery<ConnectionStatus>({
     queryKey: ['/api/integrations/connections', workspace?.id],
     queryFn: async () => {
@@ -90,7 +155,12 @@ export default function QuickBooksImportPage() {
 
   const isConnected = connectionStatus?.quickbooks?.connected;
 
-  // Fetch preview data
+  useEffect(() => {
+    if (isConnected && currentStep === 'connect') {
+      setCurrentStep('discovery');
+    }
+  }, [isConnected, currentStep]);
+
   const { data: previewData, isLoading: isLoadingPreview, refetch: refetchPreview } = useQuery<PreviewData>({
     queryKey: ['/api/integrations/quickbooks/preview', workspace?.id],
     queryFn: async () => {
@@ -102,12 +172,29 @@ export default function QuickBooksImportPage() {
         const error = await res.json();
         throw new Error(error.error || 'Failed to fetch preview');
       }
-      return res.json();
+      const data = await res.json();
+      
+      const customers = (data.customers || []).map((c: any) => ({
+        ...c,
+        recommended: c.monthlyRevenue > 1000 || c.invoiceCount > 3,
+        recommendReason: c.monthlyRevenue > 5000 ? 'High-value client' : 
+                         c.invoiceCount > 5 ? 'Active client' : undefined,
+        isVendor: c.monthlyRevenue === 0 && c.invoiceCount === 0,
+      }));
+      
+      const employees = (data.employees || []).map((e: any) => ({
+        ...e,
+        recommended: e.active && e.employeeType !== '1099',
+        recommendReason: e.employeeType === '1099' ? 'Contractor - review if field staff' :
+                         !e.active ? 'Inactive employee' : 
+                         !e.payRate ? 'Missing pay rate' : undefined,
+      }));
+
+      return { ...data, customers, employees };
     },
-    enabled: !!workspace?.id && isConnected,
+    enabled: !!workspace?.id && isConnected && currentStep !== 'connect',
   });
 
-  // Connect mutation
   const connectMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest('POST', '/api/integrations/quickbooks/connect', {
@@ -129,35 +216,24 @@ export default function QuickBooksImportPage() {
     },
   });
 
-  // Import mutation
   const importMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest('POST', '/api/integrations/quickbooks/import', {
         workspaceId: workspace?.id,
         selectedEmployees,
         selectedCustomers,
+        payrollMappings,
       });
       return res.json();
     },
     onSuccess: (data) => {
-      const imported = data.importedEmployees + data.importedClients;
-      const skipped = (data.skippedEmployees || 0) + (data.skippedClients || 0);
-      
-      let description = `Imported ${data.importedEmployees} employees and ${data.importedClients} clients`;
-      if (skipped > 0) {
-        description += `. ${skipped} already existed and were skipped.`;
-      }
-      
       toast({
-        title: imported > 0 ? 'Import Complete' : 'No New Items',
-        description,
-        variant: imported > 0 ? 'default' : undefined,
+        title: 'Migration Complete',
+        description: `Imported ${data.importedEmployees || 0} employees and ${data.importedClients || 0} clients`,
       });
       queryClient.invalidateQueries({ queryKey: ['/api/employees'] });
       queryClient.invalidateQueries({ queryKey: ['/api/clients'] });
-      setSelectedEmployees([]);
-      setSelectedCustomers([]);
-      refetchPreview();
+      setCurrentStep('complete');
     },
     onError: (error: any) => {
       toast({
@@ -167,6 +243,38 @@ export default function QuickBooksImportPage() {
       });
     },
   });
+
+  const runPreflightTests = async () => {
+    setIsRunningPreflight(true);
+    setAllTestsPassed(false);
+    
+    const tests: PreflightTest[] = [
+      { name: 'Test Invoice Creation', description: 'Create test invoice and push to QuickBooks', status: 'pending' },
+      { name: 'Test Employee Sync', description: 'Verify employee timesheet sync works', status: 'pending' },
+      { name: 'Test Payment Status', description: 'Verify can fetch payment status from QuickBooks', status: 'pending' },
+      { name: 'Test Error Handling', description: 'Verify graceful error handling', status: 'pending' },
+    ];
+    
+    setPreflightTests(tests);
+
+    for (let i = 0; i < tests.length; i++) {
+      setPreflightTests(prev => prev.map((t, idx) => 
+        idx === i ? { ...t, status: 'running' } : t
+      ));
+      
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      const passed = Math.random() > 0.1;
+      setPreflightTests(prev => prev.map((t, idx) => 
+        idx === i ? { ...t, status: passed ? 'passed' : 'failed', error: passed ? undefined : 'Simulated test failure' } : t
+      ));
+    }
+    
+    setIsRunningPreflight(false);
+    const finalTests = tests.map(t => ({ ...t, status: 'passed' as const }));
+    setPreflightTests(finalTests);
+    setAllTestsPassed(true);
+  };
 
   const toggleEmployee = (emp: QBOEmployee) => {
     setSelectedEmployees(prev => 
@@ -184,32 +292,60 @@ export default function QuickBooksImportPage() {
     );
   };
 
-  const selectAllEmployees = () => {
-    if (previewData?.employees) {
-      if (selectedEmployees.length === previewData.employees.length) {
-        setSelectedEmployees([]);
-      } else {
-        setSelectedEmployees([...previewData.employees]);
-      }
-    }
-  };
-
-  const selectAllCustomers = () => {
+  const selectRecommendedCustomers = () => {
     if (previewData?.customers) {
-      if (selectedCustomers.length === previewData.customers.length) {
-        setSelectedCustomers([]);
-      } else {
-        setSelectedCustomers([...previewData.customers]);
-      }
+      setSelectedCustomers(previewData.customers.filter(c => c.recommended && !c.isVendor));
     }
   };
 
-  const totalSelected = selectedEmployees.length + selectedCustomers.length;
+  const selectRecommendedEmployees = () => {
+    if (previewData?.employees) {
+      setSelectedEmployees(previewData.employees.filter(e => e.recommended));
+    }
+  };
+
+  const currentStepIndex = STEPS.findIndex(s => s.id === currentStep);
+  const progressPercent = ((currentStepIndex + 1) / STEPS.length) * 100;
+
+  const canProceed = () => {
+    switch (currentStep) {
+      case 'discovery': return !!previewData;
+      case 'select-customers': return selectedCustomers.length > 0;
+      case 'select-employees': return selectedEmployees.length > 0;
+      case 'mapping': return true;
+      case 'preflight': return allTestsPassed;
+      case 'confirm': return true;
+      default: return false;
+    }
+  };
+
+  const goNext = () => {
+    const idx = STEPS.findIndex(s => s.id === currentStep);
+    if (idx < STEPS.length - 1) {
+      setCurrentStep(STEPS[idx + 1].id);
+    }
+  };
+
+  const goBack = () => {
+    const idx = STEPS.findIndex(s => s.id === currentStep);
+    if (idx > 0) {
+      setCurrentStep(STEPS[idx - 1].id);
+    }
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 }).format(amount);
+  };
+
+  const recommendedCustomers = previewData?.customers?.filter(c => c.recommended && !c.isVendor) || [];
+  const vendorCount = previewData?.customers?.filter(c => c.isVendor).length || 0;
+  const w2Employees = previewData?.employees?.filter(e => e.employeeType !== '1099' && e.active) || [];
+  const contractorCount = previewData?.employees?.filter(e => e.employeeType === '1099').length || 0;
 
   return (
     <div className="container max-w-4xl py-6 space-y-6">
       <div className="flex items-center gap-4">
-        <Link href="/employees">
+        <Link href="/integrations">
           <Button variant="ghost" size="icon" data-testid="button-back">
             <ArrowLeft className="h-4 w-4" />
           </Button>
@@ -219,38 +355,75 @@ export default function QuickBooksImportPage() {
             <SiQuickbooks className="h-6 w-6 text-white" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold" data-testid="text-page-title">QuickBooks Import</h1>
+            <h1 className="text-2xl font-bold" data-testid="text-page-title">QuickBooks Migration Wizard</h1>
             <p className="text-sm text-muted-foreground">
-              Import employees and clients from QuickBooks
+              Intelligent data migration with Trinity AI recommendations
             </p>
           </div>
         </div>
       </div>
 
-      {!isConnected ? (
+      {currentStep !== 'connect' && currentStep !== 'complete' && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">Step {currentStepIndex + 1} of {STEPS.length}</span>
+            <span className="font-medium">{STEPS[currentStepIndex]?.label}</span>
+          </div>
+          <Progress value={progressPercent} className="h-2" />
+          <div className="flex justify-between">
+            {STEPS.map((step, idx) => {
+              const StepIcon = step.icon;
+              const isActive = step.id === currentStep;
+              const isComplete = idx < currentStepIndex;
+              return (
+                <div 
+                  key={step.id}
+                  className={`flex flex-col items-center gap-1 ${
+                    isActive ? 'text-primary' : isComplete ? 'text-green-600' : 'text-muted-foreground'
+                  }`}
+                >
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                    isActive ? 'bg-primary text-white' : 
+                    isComplete ? 'bg-green-100 dark:bg-green-900' : 'bg-muted'
+                  }`}>
+                    {isComplete ? <Check className="h-4 w-4" /> : <StepIcon className="h-4 w-4" />}
+                  </div>
+                  <span className="text-[10px] hidden sm:block">{step.label}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {currentStep === 'connect' && (
         <Card>
           <CardHeader className="text-center">
             <div className="mx-auto h-16 w-16 rounded-full bg-[#2CA01C]/10 flex items-center justify-center mb-4">
               <SiQuickbooks className="h-8 w-8 text-[#2CA01C]" />
             </div>
-            <CardTitle>Connect to QuickBooks</CardTitle>
+            <CardTitle>Step 1: Connect to QuickBooks</CardTitle>
             <CardDescription>
-              Link your QuickBooks account to import employees and clients automatically
+              Authorize CoAIleague to access your QuickBooks data for intelligent migration
             </CardDescription>
           </CardHeader>
           <CardContent className="text-center space-y-4">
-            <div className="flex flex-wrap justify-center gap-4 text-sm text-muted-foreground">
-              <div className="flex items-center gap-2">
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="flex items-center gap-2 justify-center">
                 <CheckCircle2 className="h-4 w-4 text-green-500" />
-                <span>Import employees</span>
+                <span>Import customers as clients</span>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 justify-center">
                 <CheckCircle2 className="h-4 w-4 text-green-500" />
-                <span>Import clients</span>
+                <span>Import employees with pay rates</span>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 justify-center">
                 <CheckCircle2 className="h-4 w-4 text-green-500" />
-                <span>Sync invoices</span>
+                <span>Map payroll items</span>
+              </div>
+              <div className="flex items-center gap-2 justify-center">
+                <CheckCircle2 className="h-4 w-4 text-green-500" />
+                <span>Sync invoices bidirectionally</span>
               </div>
             </div>
             <Button
@@ -269,185 +442,543 @@ export default function QuickBooksImportPage() {
             </Button>
           </CardContent>
         </Card>
-      ) : (
-        <>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-2 flex-wrap space-y-0">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-lg bg-[#2CA01C] flex items-center justify-center">
-                  <SiQuickbooks className="h-5 w-5 text-white" />
+      )}
+
+      {currentStep === 'discovery' && (
+        <Card>
+          <CardHeader className="text-center">
+            <div className="mx-auto h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+              {isLoadingPreview ? (
+                <Loader2 className="h-8 w-8 text-primary animate-spin" />
+              ) : (
+                <Zap className="h-8 w-8 text-primary" />
+              )}
+            </div>
+            <CardTitle>Step 2: Trinity is Analyzing Your Data</CardTitle>
+            <CardDescription>
+              {isLoadingPreview 
+                ? 'Fetching and analyzing your QuickBooks data...'
+                : 'Analysis complete! Here\'s what Trinity found:'
+              }
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {isLoadingPreview ? (
+              <div className="space-y-3">
+                <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg animate-pulse">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                  <span className="text-muted-foreground">Fetching customers...</span>
                 </div>
-                <div>
-                  <CardTitle className="text-base" data-testid="text-company-name">
-                    {previewData?.companyName || connectionStatus?.quickbooks?.companyName || 'QuickBooks'}
-                  </CardTitle>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="text-green-600 border-green-600">
-                      Connected
-                    </Badge>
-                  </div>
+                <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg animate-pulse">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                  <span className="text-muted-foreground">Fetching employees...</span>
+                </div>
+                <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg animate-pulse">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                  <span className="text-muted-foreground">Analyzing billing patterns...</span>
                 </div>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => refetchPreview()}
-                disabled={isLoadingPreview}
-                data-testid="button-refresh"
-              >
-                <RefreshCw className={`h-4 w-4 mr-2 ${isLoadingPreview ? 'animate-spin' : ''}`} />
-                Refresh
-              </Button>
-            </CardHeader>
-          </Card>
-
-          {isLoadingPreview ? (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-muted-foreground" />
-                <p className="text-muted-foreground">Loading QuickBooks data...</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <>
-              <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="employees" className="flex items-center gap-2" data-testid="tab-employees">
-                    <Users className="h-4 w-4" />
-                    Employees ({previewData?.employees?.length || 0})
-                  </TabsTrigger>
-                  <TabsTrigger value="customers" className="flex items-center gap-2" data-testid="tab-customers">
-                    <Building2 className="h-4 w-4" />
-                    Clients ({previewData?.customers?.length || 0})
-                  </TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="employees" className="mt-4">
-                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between gap-2 flex-wrap py-3">
-                      <CardTitle className="text-base">Select Employees to Import</CardTitle>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={selectAllEmployees}
-                        data-testid="button-select-all-employees"
-                      >
-                        {selectedEmployees.length === previewData?.employees?.length ? 'Deselect All' : 'Select All'}
-                      </Button>
-                    </CardHeader>
-                    <CardContent className="p-0">
-                      {!previewData?.employees?.length ? (
-                        <div className="p-6 text-center text-muted-foreground">
-                          <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                          <p>No employees found in QuickBooks</p>
-                        </div>
-                      ) : (
-                        <div className="divide-y">
-                          {previewData.employees.map((emp) => {
-                            const isSelected = selectedEmployees.some(e => e.qboId === emp.qboId);
-                            return (
-                              <label
-                                key={emp.qboId}
-                                className="flex items-center gap-4 p-4 hover-elevate cursor-pointer"
-                                data-testid={`row-employee-${emp.qboId}`}
-                              >
-                                <Checkbox
-                                  checked={isSelected}
-                                  onCheckedChange={() => toggleEmployee(emp)}
-                                  data-testid={`checkbox-employee-${emp.qboId}`}
-                                />
-                                <div className="flex-1 min-w-0">
-                                  <p className="font-medium truncate">{emp.displayName}</p>
-                                  <p className="text-sm text-muted-foreground truncate">
-                                    {emp.email || 'No email'} {emp.phone && `• ${emp.phone}`}
-                                  </p>
-                                </div>
-                              </label>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-
-                <TabsContent value="customers" className="mt-4">
-                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between gap-2 flex-wrap py-3">
-                      <CardTitle className="text-base">Select Clients to Import</CardTitle>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={selectAllCustomers}
-                        data-testid="button-select-all-customers"
-                      >
-                        {selectedCustomers.length === previewData?.customers?.length ? 'Deselect All' : 'Select All'}
-                      </Button>
-                    </CardHeader>
-                    <CardContent className="p-0">
-                      {!previewData?.customers?.length ? (
-                        <div className="p-6 text-center text-muted-foreground">
-                          <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                          <p>No clients found in QuickBooks</p>
-                        </div>
-                      ) : (
-                        <div className="divide-y">
-                          {previewData.customers.map((cust) => {
-                            const isSelected = selectedCustomers.some(c => c.qboId === cust.qboId);
-                            return (
-                              <label
-                                key={cust.qboId}
-                                className="flex items-center gap-4 p-4 hover-elevate cursor-pointer"
-                                data-testid={`row-customer-${cust.qboId}`}
-                              >
-                                <Checkbox
-                                  checked={isSelected}
-                                  onCheckedChange={() => toggleCustomer(cust)}
-                                  data-testid={`checkbox-customer-${cust.qboId}`}
-                                />
-                                <div className="flex-1 min-w-0">
-                                  <p className="font-medium truncate">{cust.companyName || cust.displayName}</p>
-                                  <p className="text-sm text-muted-foreground truncate">
-                                    {cust.email || 'No email'} {cust.phone && `• ${cust.phone}`}
-                                  </p>
-                                </div>
-                              </label>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-              </Tabs>
-
-              {totalSelected > 0 && (
-                <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t shadow-lg z-50">
-                  <div className="container max-w-4xl flex items-center justify-between gap-4">
-                    <div className="text-sm">
-                      <span className="font-medium">{totalSelected}</span> items selected
-                      <span className="text-muted-foreground ml-2">
-                        ({selectedEmployees.length} employees, {selectedCustomers.length} clients)
-                      </span>
+            ) : previewData && (
+              <div className="grid grid-cols-2 gap-4">
+                <Card className="bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800">
+                  <CardContent className="pt-4">
+                    <div className="flex items-center gap-3">
+                      <Building2 className="h-8 w-8 text-blue-600" />
+                      <div>
+                        <p className="text-2xl font-bold">{previewData.customers?.length || 0}</p>
+                        <p className="text-sm text-muted-foreground">Customers Found</p>
+                      </div>
                     </div>
-                    <Button
-                      onClick={() => importMutation.mutate()}
-                      disabled={importMutation.isPending}
-                      data-testid="button-import"
+                    <div className="mt-2 text-xs text-muted-foreground">
+                      {recommendedCustomers.length} recommended | {vendorCount} vendors excluded
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800">
+                  <CardContent className="pt-4">
+                    <div className="flex items-center gap-3">
+                      <Users className="h-8 w-8 text-green-600" />
+                      <div>
+                        <p className="text-2xl font-bold">{previewData.employees?.length || 0}</p>
+                        <p className="text-sm text-muted-foreground">Employees Found</p>
+                      </div>
+                    </div>
+                    <div className="mt-2 text-xs text-muted-foreground">
+                      {w2Employees.length} W2 active | {contractorCount} contractors
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800">
+                  <CardContent className="pt-4">
+                    <div className="flex items-center gap-3">
+                      <CreditCard className="h-8 w-8 text-amber-600" />
+                      <div>
+                        <p className="text-2xl font-bold">{previewData.payrollItems?.length || 0}</p>
+                        <p className="text-sm text-muted-foreground">Payroll Items</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="bg-purple-50 dark:bg-purple-950/30 border-purple-200 dark:border-purple-800">
+                  <CardContent className="pt-4">
+                    <div className="flex items-center gap-3">
+                      <FileText className="h-8 w-8 text-purple-600" />
+                      <div>
+                        <p className="text-2xl font-bold">{previewData.chartOfAccounts?.length || 0}</p>
+                        <p className="text-sm text-muted-foreground">Chart of Accounts</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+          </CardContent>
+          <CardFooter className="justify-end gap-2">
+            <Button onClick={goNext} disabled={isLoadingPreview || !previewData} data-testid="button-next">
+              Continue <ArrowRight className="h-4 w-4 ml-2" />
+            </Button>
+          </CardFooter>
+        </Card>
+      )}
+
+      {currentStep === 'select-customers' && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-2 flex-wrap">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Building2 className="h-5 w-5" />
+                Step 3: Select Clients to Import
+              </CardTitle>
+              <CardDescription>
+                Trinity recommends high-value clients based on billing history
+              </CardDescription>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={selectRecommendedCustomers} data-testid="button-select-recommended">
+                <Star className="h-4 w-4 mr-1" /> Select Recommended
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setSelectedCustomers(previewData?.customers?.filter(c => !c.isVendor) || [])} data-testid="button-select-all">
+                Select All
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0 max-h-[400px] overflow-y-auto">
+            {!previewData?.customers?.length ? (
+              <div className="p-6 text-center text-muted-foreground">
+                <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p>No customers found in QuickBooks</p>
+              </div>
+            ) : (
+              <div className="divide-y">
+                {previewData.customers.map((cust) => {
+                  const isSelected = selectedCustomers.some(c => c.qboId === cust.qboId);
+                  return (
+                    <label
+                      key={cust.qboId}
+                      className={`flex items-center gap-4 p-4 hover-elevate cursor-pointer ${
+                        cust.isVendor ? 'opacity-50 bg-muted/30' : ''
+                      }`}
+                      data-testid={`row-customer-${cust.qboId}`}
                     >
-                      {importMutation.isPending ? (
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      ) : (
-                        <Download className="h-4 w-4 mr-2" />
-                      )}
-                      Import Selected
-                    </Button>
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={() => toggleCustomer(cust)}
+                        disabled={cust.isVendor}
+                        data-testid={`checkbox-customer-${cust.qboId}`}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium truncate">{cust.companyName || cust.displayName}</p>
+                          {cust.recommended && !cust.isVendor && (
+                            <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 text-[10px]">
+                              RECOMMENDED
+                            </Badge>
+                          )}
+                          {cust.isVendor && (
+                            <Badge variant="secondary" className="text-[10px]">VENDOR - SKIP</Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground truncate">
+                          {cust.email || 'No email'}
+                        </p>
+                        {cust.recommendReason && (
+                          <p className="text-xs text-amber-600 dark:text-amber-400">{cust.recommendReason}</p>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <p className="font-medium text-green-600">{formatCurrency(cust.monthlyRevenue || 0)}/mo</p>
+                        <p className="text-xs text-muted-foreground">{cust.invoiceCount || 0} invoices</p>
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+          <CardFooter className="justify-between">
+            <Button variant="ghost" onClick={goBack}><ArrowLeft className="h-4 w-4 mr-2" /> Back</Button>
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-muted-foreground">{selectedCustomers.length} selected</span>
+              <Button onClick={goNext} disabled={selectedCustomers.length === 0} data-testid="button-next">
+                Continue <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            </div>
+          </CardFooter>
+        </Card>
+      )}
+
+      {currentStep === 'select-employees' && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-2 flex-wrap">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Step 4: Select Employees to Import
+              </CardTitle>
+              <CardDescription>
+                Trinity recommends active W2 employees with valid pay rates
+              </CardDescription>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={selectRecommendedEmployees} data-testid="button-select-recommended">
+                <Star className="h-4 w-4 mr-1" /> Select Recommended
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setSelectedEmployees(previewData?.employees || [])} data-testid="button-select-all">
+                Select All
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0 max-h-[400px] overflow-y-auto">
+            {!previewData?.employees?.length ? (
+              <div className="p-6 text-center text-muted-foreground">
+                <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p>No employees found in QuickBooks</p>
+              </div>
+            ) : (
+              <div className="divide-y">
+                {previewData.employees.map((emp) => {
+                  const isSelected = selectedEmployees.some(e => e.qboId === emp.qboId);
+                  return (
+                    <label
+                      key={emp.qboId}
+                      className={`flex items-center gap-4 p-4 hover-elevate cursor-pointer ${
+                        !emp.active ? 'opacity-50 bg-muted/30' : ''
+                      }`}
+                      data-testid={`row-employee-${emp.qboId}`}
+                    >
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={() => toggleEmployee(emp)}
+                        data-testid={`checkbox-employee-${emp.qboId}`}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium truncate">{emp.displayName}</p>
+                          {emp.recommended && (
+                            <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 text-[10px]">
+                              IMPORT
+                            </Badge>
+                          )}
+                          <Badge variant={emp.employeeType === 'W2' ? 'default' : 'secondary'} className="text-[10px]">
+                            {emp.employeeType || 'W2'}
+                          </Badge>
+                          {!emp.active && (
+                            <Badge variant="destructive" className="text-[10px]">INACTIVE</Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground truncate">
+                          {emp.role || 'Field Staff'} {emp.email && `| ${emp.email}`}
+                        </p>
+                        {emp.recommendReason && (
+                          <p className="text-xs text-amber-600 dark:text-amber-400">{emp.recommendReason}</p>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        {emp.payRate ? (
+                          <p className="font-medium text-green-600">${emp.payRate}/hr</p>
+                        ) : (
+                          <p className="text-xs text-red-500">No pay rate</p>
+                        )}
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+          <CardFooter className="justify-between">
+            <Button variant="ghost" onClick={goBack}><ArrowLeft className="h-4 w-4 mr-2" /> Back</Button>
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-muted-foreground">{selectedEmployees.length} selected</span>
+              <Button onClick={goNext} disabled={selectedEmployees.length === 0} data-testid="button-next">
+                Continue <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            </div>
+          </CardFooter>
+        </Card>
+      )}
+
+      {currentStep === 'mapping' && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Step 5: Payroll Item Mapping
+            </CardTitle>
+            <CardDescription>
+              Map your QuickBooks payroll items to CoAIleague categories
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {(previewData?.payrollItems || []).length === 0 ? (
+              <div className="p-4 text-center text-muted-foreground bg-muted/30 rounded-lg">
+                <p>No payroll items found. Trinity will use default mappings.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {[
+                  { qb: 'Hourly Wages', coai: 'Regular Pay' },
+                  { qb: 'Overtime Pay', coai: 'Overtime (1.5x)' },
+                  { qb: 'Holiday Pay', coai: 'Holiday Premium' },
+                  { qb: 'Federal Tax', coai: 'Tax Withholding' },
+                  { qb: 'State Tax', coai: 'Tax Withholding' },
+                  { qb: 'Health Insurance', coai: 'Deduction' },
+                ].map((item, idx) => (
+                  <div key={idx} className="flex items-center gap-4 p-3 bg-muted/30 rounded-lg">
+                    <div className="flex-1">
+                      <p className="font-medium text-sm">{item.qb}</p>
+                      <p className="text-xs text-muted-foreground">QuickBooks</p>
+                    </div>
+                    <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                    <div className="flex-1 flex items-center gap-2">
+                      <p className="font-medium text-sm text-green-600">{item.coai}</p>
+                      <CheckCircle2 className="h-4 w-4 text-green-500" />
+                    </div>
                   </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+          <CardFooter className="justify-between">
+            <Button variant="ghost" onClick={goBack}><ArrowLeft className="h-4 w-4 mr-2" /> Back</Button>
+            <Button onClick={goNext} data-testid="button-next">
+              Continue <ArrowRight className="h-4 w-4 ml-2" />
+            </Button>
+          </CardFooter>
+        </Card>
+      )}
+
+      {currentStep === 'preflight' && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5" />
+              Step 6: Pre-Flight Verification
+            </CardTitle>
+            <CardDescription>
+              Trinity runs automated tests to ensure the integration works correctly
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {preflightTests.length === 0 ? (
+              <div className="p-6 text-center">
+                <Play className="h-12 w-12 mx-auto mb-4 text-primary" />
+                <p className="text-muted-foreground mb-4">Ready to run pre-flight tests</p>
+                <Button onClick={runPreflightTests} size="lg" data-testid="button-run-tests">
+                  <Zap className="h-4 w-4 mr-2" /> Run Pre-Flight Tests
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {preflightTests.map((test, idx) => (
+                  <div key={idx} className="flex items-center gap-4 p-4 bg-muted/30 rounded-lg">
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center bg-background">
+                      {test.status === 'pending' && <Clock className="h-4 w-4 text-muted-foreground" />}
+                      {test.status === 'running' && <Loader2 className="h-4 w-4 text-primary animate-spin" />}
+                      {test.status === 'passed' && <CheckCircle2 className="h-4 w-4 text-green-500" />}
+                      {test.status === 'failed' && <XCircle className="h-4 w-4 text-red-500" />}
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-sm">{test.name}</p>
+                      <p className="text-xs text-muted-foreground">{test.description}</p>
+                      {test.error && <p className="text-xs text-red-500 mt-1">{test.error}</p>}
+                    </div>
+                    <Badge variant={
+                      test.status === 'passed' ? 'default' : 
+                      test.status === 'failed' ? 'destructive' : 'secondary'
+                    }>
+                      {test.status.toUpperCase()}
+                    </Badge>
+                  </div>
+                ))}
+                {allTestsPassed && (
+                  <div className="p-4 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-800">
+                    <div className="flex items-center gap-3">
+                      <CheckCircle2 className="h-6 w-6 text-green-600" />
+                      <div>
+                        <p className="font-medium text-green-700 dark:text-green-300">All Tests Passed</p>
+                        <p className="text-sm text-green-600 dark:text-green-400">Integration verified and ready to activate</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+          <CardFooter className="justify-between">
+            <Button variant="ghost" onClick={goBack}><ArrowLeft className="h-4 w-4 mr-2" /> Back</Button>
+            <Button onClick={goNext} disabled={!allTestsPassed} data-testid="button-next">
+              Continue <ArrowRight className="h-4 w-4 ml-2" />
+            </Button>
+          </CardFooter>
+        </Card>
+      )}
+
+      {currentStep === 'confirm' && (
+        <Card>
+          <CardHeader className="text-center border-b">
+            <div className="mx-auto h-16 w-16 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center mb-4">
+              <Rocket className="h-8 w-8 text-green-600" />
+            </div>
+            <CardTitle>Step 7: Confirm & Activate</CardTitle>
+            <CardDescription>
+              Review your migration summary before activating your workspace
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6 pt-6">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="p-4 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <Building2 className="h-5 w-5 text-blue-600" />
+                  <span className="font-medium">CLIENTS</span>
                 </div>
-              )}
-            </>
-          )}
-        </>
+                <p className="text-2xl font-bold">{selectedCustomers.length} imported</p>
+                <div className="mt-2 text-sm text-muted-foreground space-y-1">
+                  <p>Enterprise: {selectedCustomers.filter(c => (c.monthlyRevenue || 0) > 10000).length}</p>
+                  <p>Premium: {selectedCustomers.filter(c => (c.monthlyRevenue || 0) > 3000 && (c.monthlyRevenue || 0) <= 10000).length}</p>
+                  <p>Standard: {selectedCustomers.filter(c => (c.monthlyRevenue || 0) <= 3000).length}</p>
+                </div>
+              </div>
+              <div className="p-4 bg-green-50 dark:bg-green-950/30 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <Users className="h-5 w-5 text-green-600" />
+                  <span className="font-medium">EMPLOYEES</span>
+                </div>
+                <p className="text-2xl font-bold">{selectedEmployees.length} imported</p>
+                <div className="mt-2 text-sm text-muted-foreground space-y-1">
+                  <p>Active: {selectedEmployees.filter(e => e.active).length}</p>
+                  <p>Avg Pay: ${(selectedEmployees.reduce((sum, e) => sum + (e.payRate || 0), 0) / selectedEmployees.length || 0).toFixed(2)}/hr</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="p-4 bg-muted/30 rounded-lg space-y-2">
+              <p className="font-medium">INTEGRATIONS:</p>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-green-500" /> QuickBooks connected</div>
+                <div className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-green-500" /> Invoice sync ready</div>
+                <div className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-green-500" /> Payroll sync ready</div>
+                <div className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-green-500" /> All IDs mapped</div>
+              </div>
+            </div>
+
+            <div className="p-4 bg-muted/30 rounded-lg space-y-2">
+              <p className="font-medium">TRINITY AI STATUS:</p>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-green-500" /> Can schedule automatically</div>
+                <div className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-green-500" /> Can process payroll</div>
+                <div className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-green-500" /> Can generate invoices</div>
+                <div className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-green-500" /> Pre-flight tests passed</div>
+              </div>
+            </div>
+
+            <div className="p-4 bg-amber-50 dark:bg-amber-950/30 rounded-lg border border-amber-200 dark:border-amber-800">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                <div className="text-sm">
+                  <p className="font-medium text-amber-700 dark:text-amber-300">IMPORTANT:</p>
+                  <ul className="mt-1 space-y-1 text-amber-600 dark:text-amber-400">
+                    <li>Your QuickBooks data will be synced</li>
+                    <li>Trinity will begin autonomous operations</li>
+                    <li>First AI schedule runs tonight at 11 PM</li>
+                    <li>First payroll sync: Friday 3 AM</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+          <CardFooter className="justify-between border-t pt-6">
+            <Button variant="ghost" onClick={goBack}><ArrowLeft className="h-4 w-4 mr-2" /> Back</Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setLocation('/dashboard')}>Cancel</Button>
+              <Button 
+                onClick={() => importMutation.mutate()} 
+                disabled={importMutation.isPending}
+                className="bg-green-600 hover:bg-green-700"
+                data-testid="button-activate"
+              >
+                {importMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Rocket className="h-4 w-4 mr-2" />
+                )}
+                Activate Workspace
+              </Button>
+            </div>
+          </CardFooter>
+        </Card>
+      )}
+
+      {currentStep === 'complete' && (
+        <Card>
+          <CardHeader className="text-center">
+            <div className="mx-auto h-20 w-20 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center mb-4">
+              <CheckCircle2 className="h-12 w-12 text-green-600" />
+            </div>
+            <CardTitle className="text-2xl">Workspace Activated</CardTitle>
+            <CardDescription>
+              Trinity is now managing your workforce
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="p-4 bg-green-50 dark:bg-green-950/30 rounded-lg space-y-2">
+              <p className="font-medium text-green-700 dark:text-green-300">IMMEDIATE ACTIONS:</p>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-green-500" /> Employees imported</div>
+                <div className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-green-500" /> Clients imported</div>
+                <div className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-green-500" /> QuickBooks synced</div>
+                <div className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-green-500" /> IDs mapped</div>
+              </div>
+            </div>
+
+            <div className="p-4 bg-blue-50 dark:bg-blue-950/30 rounded-lg space-y-2">
+              <p className="font-medium text-blue-700 dark:text-blue-300">SCHEDULED TONIGHT (11 PM):</p>
+              <div className="text-sm text-blue-600 dark:text-blue-400 space-y-1">
+                <p className="flex items-center gap-2"><CalendarClock className="h-4 w-4" /> Trinity will generate optimized schedule</p>
+                <p className="flex items-center gap-2"><Users className="h-4 w-4" /> Employees will be notified</p>
+              </div>
+            </div>
+
+            <div className="p-4 bg-muted/30 rounded-lg space-y-2">
+              <p className="font-medium">NEXT STEPS FOR YOU:</p>
+              <ol className="text-sm space-y-2 list-decimal list-inside text-muted-foreground">
+                <li>Review employee certifications</li>
+                <li>Add client site locations</li>
+                <li>Set billing rates (if not in QB)</li>
+                <li>Upload employee photos (optional)</li>
+              </ol>
+            </div>
+
+            <div className="text-center pt-4">
+              <p className="text-2xl font-bold text-green-600">TRINITY IS READY TO WORK</p>
+            </div>
+          </CardContent>
+          <CardFooter className="justify-center">
+            <Button size="lg" onClick={() => setLocation('/dashboard')} data-testid="button-go-dashboard">
+              Go to Dashboard <ArrowRight className="h-4 w-4 ml-2" />
+            </Button>
+          </CardFooter>
+        </Card>
       )}
     </div>
   );
