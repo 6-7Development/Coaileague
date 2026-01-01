@@ -120,6 +120,17 @@ export function PaymentEnforcementProvider({ children }: { children: React.React
       const url = args[0]?.toString() || '';
       if (!url.includes('/api/')) return response;
       
+      // Clear payment modal if auth succeeds (workspace is now active/valid trial)
+      if (url.includes('/api/auth/me') && response.status === 200) {
+        const existingModal = getStoredModalState();
+        if (existingModal?.isOpen) {
+          console.log('[PaymentEnforcement] Auth succeeded - clearing stale modal state');
+          setStoredModalState(null);
+          setModalState(prev => ({ ...prev, isOpen: false }));
+        }
+        return response;
+      }
+      
       if (response.status === 402 || response.status === 404) {
         const clonedResponse = response.clone();
         try {

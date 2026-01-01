@@ -1,0 +1,514 @@
+💼 STRATEGIC BUSINESS OPTIMIZATION - What You Need:
+Trinity should make decisions like:
+Scenario 1: Which guard for which site?
+
+❌ Basic AI: "Employee A is available, assign them"
+✅ Strategic AI: "Employee A costs $18/hr, client pays $35/hr = $17/hr profit. Employee B costs $22/hr but has 98% reliability score and this is our biggest client paying $45/hr = $23/hr profit AND ensures client retention. Assign Employee B."
+
+Scenario 2: Schedule conflict - who gets the shift?
+
+❌ Basic AI: "First available employee"
+✅ Strategic AI: "Client X pays $50/hr (legacy, 5 years), Client Y pays $30/hr (new, 2 months). Employee C lives 5 miles from Client X, Employee D lives 25 miles from Client Y. Prioritize Client X, assign Employee C, saves fuel costs + keeps high-value legacy client happy."
+
+Scenario 3: Employee with complaints vs reliable employee
+
+❌ Basic AI: "Both available, assign randomly"
+✅ Strategic AI: "Employee E has 3 client complaints this month, 2 no-shows. Employee F has 100% attendance, 5-star client ratings. Client is enterprise account worth $15k/month. Assign Employee F to protect revenue."
+
+
+📋 COMPREHENSIVE PROMPT FOR REPLIT:
+
+"TRINITY STRATEGIC BUSINESS OPTIMIZATION - Profit-First AI Decision Making"
+Trinity needs to evolve from operational automation to strategic business management. Implement profit-first decision-making across all AI orchestration.
+
+PHASE 1: Enhanced Data Model - Track Business Metrics
+Add these data points to track for strategic decisions:
+
+A) Employee Metrics (Expand employee table/model):
+typescriptinterface EmployeeBusinessMetrics {
+  // Financial
+  hourlyPayRate: number;
+  effectiveCostPerHour: number; // includes taxes, benefits, overhead
+  
+  // Performance Scoring (0-100)
+  overallScore: number; // Calculated composite score
+  reliabilityScore: number; // Based on attendance
+  clientSatisfactionScore: number; // Based on client feedback
+  
+  // Reliability Tracking
+  totalShiftsAssigned: number;
+  shiftsCompleted: number;
+  noShows: number; // Didn't show up
+  lateArrivals: number; // Clocked in late
+  callIns: number; // Last-minute unavailability
+  attendanceRate: number; // (shiftsCompleted / totalShiftsAssigned) * 100
+  
+  // Client Feedback
+  clientComplaints: number; // Total complaints received
+  clientPraise: number; // Positive feedback count
+  issuesReported: number; // Incidents/problems caused
+  
+  // Geographic
+  homeAddress: {
+    lat: number;
+    lng: number;
+    address: string;
+  };
+  maxCommuteDistance: number; // Miles willing to travel
+  
+  // Tenure & Experience
+  hireDate: Date;
+  yearsExperience: number;
+  certifications: string[];
+  specialSkills: string[]; // "armed", "medical", "k9", etc.
+  
+  // Last 30 days trend
+  recentPerformanceTrend: 'improving' | 'stable' | 'declining';
+}
+Implement scoring calculations:
+typescriptfunction calculateEmployeeScore(employee: Employee): number {
+  // Weighted composite score
+  const reliabilityWeight = 0.40; // 40% - most important
+  const satisfactionWeight = 0.30; // 30% - client retention
+  const experienceWeight = 0.15; // 15% - expertise
+  const attendanceWeight = 0.15; // 15% - consistency
+  
+  const reliabilityScore = calculateReliability(employee);
+  const satisfactionScore = calculateSatisfaction(employee);
+  const experienceScore = calculateExperience(employee);
+  const attendanceScore = employee.attendanceRate;
+  
+  return (
+    reliabilityScore * reliabilityWeight +
+    satisfactionScore * satisfactionWeight +
+    experienceScore * experienceWeight +
+    attendanceScore * attendanceWeight
+  );
+}
+
+function calculateReliability(employee: Employee): number {
+  const totalIssues = employee.noShows + employee.callIns + employee.lateArrivals;
+  const issueRate = totalIssues / Math.max(employee.totalShiftsAssigned, 1);
+  
+  // Penalize heavily for reliability issues
+  const baseScore = 100 - (issueRate * 100);
+  
+  // Extra penalty for no-shows (worse than call-ins)
+  const noShowPenalty = employee.noShows * 5;
+  
+  return Math.max(0, baseScore - noShowPenalty);
+}
+
+function calculateSatisfaction(employee: Employee): number {
+  const totalFeedback = employee.clientComplaints + employee.clientPraise;
+  if (totalFeedback === 0) return 75; // Neutral score for no data
+  
+  const positiveRatio = employee.clientPraise / totalFeedback;
+  const complaintPenalty = employee.clientComplaints * 3;
+  
+  return Math.max(0, Math.min(100, (positiveRatio * 100) - complaintPenalty));
+}
+
+B) Client Metrics (Expand client table/model):
+typescriptinterface ClientBusinessMetrics {
+  // Financial Value
+  monthlyRevenue: number; // Average monthly billing
+  lifetimeValue: number; // Total revenue since client start
+  averageHourlyRate: number; // What they pay per hour
+  paymentHistory: 'excellent' | 'good' | 'delayed' | 'problematic';
+  
+  // Client Tier (Strategic prioritization)
+  tier: 'enterprise' | 'premium' | 'standard' | 'trial';
+  tierScore: number; // 1-100, higher = more valuable
+  
+  // Relationship
+  clientSince: Date; // Legacy vs new
+  yearsAsClient: number;
+  contractType: 'long-term' | 'short-term' | 'one-time';
+  renewalProbability: number; // 0-100, predicted likelihood to renew
+  
+  // Satisfaction
+  satisfactionScore: number; // 0-100 based on surveys, feedback
+  complaintsReceived: number; // Client complained about service
+  praiseReceived: number; // Client praised service
+  
+  // Profitability
+  averageProfitMargin: number; // (rate - cost) / rate * 100
+  isProfitable: boolean;
+  profitabilityTrend: 'increasing' | 'stable' | 'decreasing';
+  
+  // Strategic Flags
+  isLegacyClient: boolean; // Been with us 2+ years
+  isHighValue: boolean; // Top 20% revenue generators
+  isAtRisk: boolean; // Satisfaction declining, may churn
+  isGrowthAccount: boolean; // Expanding, more sites coming
+}
+Implement client tiering:
+typescriptfunction calculateClientTier(client: Client): ClientTier {
+  const score = 
+    (client.monthlyRevenue / 1000) * 0.30 + // Revenue weight
+    client.yearsAsClient * 10 * 0.25 + // Loyalty weight
+    client.satisfactionScore * 0.20 + // Satisfaction weight
+    client.averageProfitMargin * 0.15 + // Profitability weight
+    (client.renewalProbability) * 0.10; // Retention risk weight
+  
+  if (score >= 80) return { tier: 'enterprise', tierScore: score };
+  if (score >= 60) return { tier: 'premium', tierScore: score };
+  if (score >= 40) return { tier: 'standard', tierScore: score };
+  return { tier: 'trial', tierScore: score };
+}
+
+C) Site/Shift Metrics:
+typescriptinterface SiteBusinessMetrics {
+  // Geographic
+  location: {
+    lat: number;
+    lng: number;
+    address: string;
+  };
+  
+  // Financial
+  clientId: string;
+  billableRate: number; // What client pays for this site
+  
+  // Requirements
+  requiredCertifications: string[];
+  requiredSkills: string[];
+  difficultyLevel: 'easy' | 'moderate' | 'difficult' | 'high-risk';
+}
+
+PHASE 2: Strategic AI Scheduling - Profit-First Gemini Prompts
+Modify schedulingSubagent.ts to include business context in Gemini prompt:
+
+Enhanced Gemini Prompt for Schedule Optimization:
+typescriptconst strategicSchedulingPrompt = `You are Trinity, an AI business strategist optimizing workforce scheduling for maximum profitability and client retention.
+
+🎯 PRIMARY OBJECTIVES (in priority order):
+1. MAXIMIZE PROFIT - Assign employees to shifts that generate highest profit margins
+2. PROTECT HIGH-VALUE CLIENTS - Prioritize enterprise/legacy clients with best employees
+3. MINIMIZE COSTS - Reduce commute distances, overtime, inefficiencies
+4. ENSURE CLIENT RETENTION - Match employee quality to client value
+5. MAINTAIN COMPLIANCE - All labor laws, certifications, break requirements
+
+📊 BUSINESS CONTEXT:
+
+CLIENTS (${clients.length} total):
+${clients.map(c => `
+  - ${c.name}:
+    * Tier: ${c.tier.toUpperCase()} (Score: ${c.tierScore}/100)
+    * Monthly Revenue: $${c.monthlyRevenue}
+    * Client Since: ${c.yearsAsClient} years ${c.isLegacyClient ? '(LEGACY)' : '(NEW)'}
+    * Hourly Rate: $${c.averageHourlyRate}/hr
+    * Profit Margin: ${c.averageProfitMargin}%
+    * Satisfaction: ${c.satisfactionScore}/100
+    * Status: ${c.isAtRisk ? '⚠️ AT RISK OF CHURN' : c.isGrowthAccount ? '📈 GROWING' : '✅ STABLE'}
+`).join('\n')}
+
+EMPLOYEES (${employees.length} available):
+${employees.map(e => `
+  - ${e.name}:
+    * Overall Score: ${e.overallScore}/100
+    * Reliability: ${e.reliabilityScore}/100 (${e.attendanceRate}% attendance)
+    * Client Satisfaction: ${e.clientSatisfactionScore}/100
+    * Pay Rate: $${e.hourlyPayRate}/hr
+    * Location: ${e.homeAddress.address}
+    * Issues Last 30d: ${e.noShows} no-shows, ${e.callIns} call-ins, ${e.clientComplaints} complaints
+    * Trend: ${e.recentPerformanceTrend}
+    * Certifications: ${e.certifications.join(', ')}
+`).join('\n')}
+
+OPEN SHIFTS (${shifts.length} to fill):
+${shifts.map(s => `
+  - Site: ${s.siteName} (Client: ${s.clientName})
+    * Client Tier: ${s.clientTier}
+    * Billable Rate: $${s.billableRate}/hr
+    * Duration: ${s.durationHours} hours
+    * Location: ${s.location.address}
+    * Required: ${s.requiredCertifications.join(', ')}
+    * Difficulty: ${s.difficultyLevel}
+`).join('\n')}
+
+💰 PROFIT OPTIMIZATION RULES:
+
+1. EMPLOYEE-TO-CLIENT MATCHING:
+   - ENTERPRISE clients ($50k+/month, 3+ years) → Assign employees with score 85+
+   - PREMIUM clients ($20k-50k/month) → Assign employees with score 75+
+   - STANDARD clients → Assign employees with score 60+
+   - TRIAL clients → Can use employees with score 50+ (training opportunity)
+
+2. PROFIT MARGIN MAXIMIZATION:
+   For each shift, calculate: (Billable Rate - Employee Cost) = Profit/Hour
+   - Prioritize high-margin assignments
+   - Example: $45/hr client - $18/hr employee = $27/hr profit ✅
+   - Avoid: $30/hr client - $25/hr employee = $5/hr profit ❌
+
+3. DISTANCE/COMMUTE OPTIMIZATION:
+   Calculate miles from employee.homeAddress to shift.location
+   - Prefer employees within 10 miles (reduce fuel, increase punctuality)
+   - Penalty for 20+ mile commutes (higher no-show risk)
+   - Exception: High-value clients worth the commute
+
+4. EMPLOYEE PERFORMANCE WEIGHTING:
+   - NO-SHOWS penalty: -20 points per occurrence this month
+   - CLIENT COMPLAINTS penalty: -15 points per complaint
+   - LATE ARRIVALS penalty: -5 points per occurrence
+   - Never assign problem employees to enterprise/at-risk clients
+
+5. LEGACY CLIENT PROTECTION:
+   - Clients with yearsAsClient >= 3 are LEGACY
+   - LEGACY clients get preferential treatment:
+     * Best-performing employees
+     * Backup coverage automatically scheduled
+     * No experimental/new employees unless requested
+
+6. AT-RISK CLIENT RECOVERY:
+   - Clients with isAtRisk: true need special care
+   - Assign employees with clientSatisfactionScore >= 90
+   - Consider offering "above-rate" employee at same price (profit sacrifice for retention)
+
+7. GROWTH ACCOUNT INVESTMENT:
+   - Clients with isGrowthAccount: true are expanding
+   - Assign high-performers to impress and secure more contracts
+   - Worth accepting lower margins now for future revenue
+
+🎯 DECISION-MAKING EXAMPLES:
+
+SCENARIO 1: Two employees available for one shift
+- Client: MegaCorp (Enterprise, $75k/mo, 5 years, 95% satisfaction)
+- Shift: $50/hr, 8 hours
+- Employee A: Score 95, $20/hr, 3 miles away, 0 issues
+- Employee B: Score 70, $18/hr, 15 miles away, 2 call-ins this month
+
+DECISION: Assign Employee A
+REASONING: Enterprise legacy client worth protecting. Extra $2/hr cost ($16/shift) is negligible compared to $75k/mo relationship. Employee A's perfect record ensures client satisfaction.
+
+SCENARIO 2: Profitable vs High-Value Client Conflict
+- Shift 1: Local Store ($35/hr, Standard tier, 1 year old)
+- Shift 2: Bank HQ ($45/hr, Enterprise, 4 years, at-risk)
+- Best Employee: Score 90, $22/hr, equidistant to both
+
+DECISION: Assign to Bank HQ (Shift 2)
+REASONING: Losing $75k/yr enterprise client is catastrophic. Local Store can use Score 75 employee. Protect high-value relationships first.
+
+SCENARIO 3: Distance vs Profit
+- Shift: Construction Site ($40/hr, 8 hours)
+- Employee A: $18/hr, 5 miles away = $22/hr profit, Score 80
+- Employee B: $16/hr, 25 miles away = $24/hr profit, Score 75
+
+DECISION: Assign Employee A
+REASONING: $2/hr higher profit isn't worth 25-mile commute risk. Employee B more likely to call in, arrive late, or no-show. Lost shift costs $320 (8hr × $40).
+
+📋 REQUIRED OUTPUT FORMAT (JSON):
+
+{
+  "schedule": [
+    {
+      "shiftId": "shift_123",
+      "employeeId": "emp_456",
+      "employeeName": "John Doe",
+      "clientName": "MegaCorp",
+      "clientTier": "enterprise",
+      "assignment": {
+        "billableRate": 50,
+        "employeeCost": 20,
+        "profitPerHour": 30,
+        "totalProfit": 240,
+        "commuteMiles": 3,
+        "estimatedFuelCost": 2.50
+      },
+      "reasoning": "Enterprise legacy client, high-scoring employee, minimal commute, excellent profit margin"
+    }
+  ],
+  "businessMetrics": {
+    "totalRevenue": 12500,
+    "totalCost": 7200,
+    "totalProfit": 5300,
+    "avgProfitMargin": 42.4,
+    "enterpriseClientsCovered": 8,
+    "atRiskClientsServiced": 2,
+    "averageEmployeeScore": 82.3,
+    "averageCommuteMiles": 8.5
+  },
+  "strategicDecisions": [
+    "Prioritized MegaCorp (enterprise, at-risk) with top-performing employee",
+    "Assigned new employee to trial client as training opportunity",
+    "Sacrificed $50 profit margin on Bank HQ to ensure retention"
+  ],
+  "alerts": [
+    "Employee John Doe assigned to 3 shifts (approaching overtime)",
+    "Client ABC Corp has no preferred employees available - using backup",
+    "High-value client XYZ received employee with recent complaint - monitor closely"
+  ],
+  "confidence": {
+    "score": 0.92,
+    "reasoning": "Clear profit optimization, all enterprise clients protected, compliance maintained",
+    "uncertainties": ["Employee Jane Doe availability TBD - contingency needed"],
+    "recommendation": "AUTO_APPROVE"
+  }
+}
+
+🚀 OPTIMIZE FOR MAXIMUM BUSINESS SUCCESS. MAKE STRATEGIC DECISIONS.`;
+
+PHASE 3: Real-Time Profit Calculations
+Add profit calculation service:
+typescriptclass ProfitOptimizationService {
+  calculateShiftProfit(shift: Shift, employee: Employee): ShiftProfitMetrics {
+    // Base calculation
+    const billableRate = shift.billableRate;
+    const employeeCost = employee.effectiveCostPerHour; // includes taxes, overhead
+    const profitPerHour = billableRate - employeeCost;
+    const totalProfit = profitPerHour * shift.durationHours;
+    const profitMargin = (profitPerHour / billableRate) * 100;
+    
+    // Distance/commute cost
+    const distance = calculateDistance(
+      employee.homeAddress,
+      shift.location
+    );
+    const estimatedFuelCost = distance * 0.67; // IRS mileage rate
+    const netProfit = totalProfit - estimatedFuelCost;
+    
+    // Risk adjustment
+    const riskFactor = this.calculateRiskFactor(employee, shift.client);
+    const riskAdjustedProfit = netProfit * (1 - riskFactor);
+    
+    return {
+      billableRate,
+      employeeCost,
+      profitPerHour,
+      totalProfit,
+      profitMargin,
+      commuteMiles: distance,
+      estimatedFuelCost,
+      netProfit,
+      riskFactor,
+      riskAdjustedProfit,
+      recommendation: this.getRecommendation(riskAdjustedProfit, profitMargin)
+    };
+  }
+  
+  calculateRiskFactor(employee: Employee, client: Client): number {
+    let risk = 0;
+    
+    // Employee reliability risk
+    if (employee.noShows > 0) risk += 0.05 * employee.noShows;
+    if (employee.callIns > 2) risk += 0.02 * employee.callIns;
+    if (employee.clientComplaints > 0) risk += 0.10 * employee.clientComplaints;
+    
+    // Client value risk (higher risk of losing valuable clients)
+    if (client.tier === 'enterprise' && employee.overallScore < 85) risk += 0.15;
+    if (client.isAtRisk && employee.clientSatisfactionScore < 90) risk += 0.20;
+    
+    // Commute risk
+    const distance = calculateDistance(employee.homeAddress, client.location);
+    if (distance > 20) risk += 0.10;
+    if (distance > 30) risk += 0.20;
+    
+    return Math.min(0.5, risk); // Cap at 50% risk
+  }
+}
+
+PHASE 4: Strategic Decision Dashboard
+Create business intelligence views for the owner:
+typescriptinterface StrategyDashboard {
+  // Top-level metrics
+  monthlyRecurringRevenue: number;
+  totalProfitMargin: number;
+  averageProfitPerEmployee: number;
+  
+  // Client health
+  enterpriseClients: {
+    count: number;
+    revenue: number;
+    atRiskCount: number;
+    satisfactionAvg: number;
+  };
+  
+  // Employee performance
+  topPerformers: Employee[]; // Top 20% by score
+  problematicEmployees: Employee[]; // Bottom 20% or issues
+  
+  // Strategic recommendations
+  recommendations: [
+    {
+      type: 'EMPLOYEE_COACHING' | 'CLIENT_RETENTION' | 'PROFIT_OPPORTUNITY',
+      priority: 'high' | 'medium' | 'low',
+      description: string,
+      impact: string, // "Could save $2,500/month"
+      action: string
+    }
+  ];
+}
+Example AI recommendations:
+typescriptrecommendations: [
+  {
+    type: 'CLIENT_RETENTION',
+    priority: 'high',
+    description: 'MegaCorp satisfaction dropped from 95% to 78% this month',
+    impact: 'At risk of losing $75,000/month contract',
+    action: 'Assign only top-scored employees (90+) for next 30 days, schedule check-in call'
+  },
+  {
+    type: 'PROFIT_OPPORTUNITY',
+    priority: 'medium',
+    description: 'Employee costs 30% below market rate but scores 95/100',
+    impact: 'Could increase rate to $22/hr (still $8/hr margin) and improve retention',
+    action: 'Consider 10% raise to prevent poaching by competitors'
+  },
+  {
+    type: 'EMPLOYEE_COACHING',
+    priority: 'high',
+    description: 'John Doe: 3 no-shows this month, down from perfect record',
+    impact: 'Lost $960 in revenue, damaged client relationships',
+    action: 'Mandatory check-in - personal issue? Performance plan if continues'
+  }
+]
+
+PHASE 5: Implementation Checklist
+Implement the following in order:
+Week 1 - Data Foundation:
+
+ Expand Employee model with business metrics
+ Expand Client model with tier/value metrics
+ Add distance calculation utils
+ Implement employee scoring algorithms
+ Implement client tiering algorithms
+ Create profit calculation service
+
+Week 2 - AI Integration:
+
+ Update Gemini scheduling prompt with strategic context
+ Add profit optimization to scheduling workflow
+ Implement risk-adjusted profit calculations
+ Add strategic decision logging
+
+Week 3 - Validation & Dashboards:
+
+ Enhance LLM Judge to validate profit-first decisions
+ Create strategy dashboard for business owners
+ Implement AI recommendation engine
+ Add alerts for at-risk clients and problem employees
+
+Week 4 - Testing:
+
+ Test with real client/employee data
+ Verify profit calculations are accurate
+ Validate Gemini makes strategic choices correctly
+ Ensure compliance isn't compromised for profit
+
+
+🎯 EXPECTED OUTCOMES:
+After implementation, Trinity will:
+✅ Automatically prioritize high-value clients with best employees
+✅ Maximize profit margins on every shift assignment
+✅ Minimize operational costs (commute, overtime, etc.)
+✅ Protect legacy clients from employee quality issues
+✅ Identify at-risk clients before they churn
+✅ Flag problem employees before they damage relationships
+✅ Provide strategic recommendations to grow the business
+✅ Calculate real profit (not just revenue) in real-time
+This transforms Trinity from operational AI to strategic business partner.
+
+Implement these changes and provide confirmation when complete.
+
+END OF STRATEGIC OPTIMIZATION PLAN
