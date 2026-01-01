@@ -19,6 +19,7 @@ import { quickbooksOAuthService } from '../oauth/quickbooks';
 import { platformEventBus } from '../platformEventBus';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { enhancedLLMJudge } from '../ai-brain/llmJudgeEnhanced';
+import { auditLogger } from '../audit-logger';
 import crypto from 'crypto';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
@@ -316,9 +317,59 @@ export class QuickBooksSyncService {
         durationMs: Date.now() - startTime,
       };
     } catch (error: any) {
+      // Use intelligent error analysis to determine next action
+      const errorAnalysis = await this.analyzeAndHandleSyncError(
+        workspaceId,
+        error,
+        {
+          operation: 'runInitialSync',
+          entityType: 'all',
+          retryCount: 0,
+        }
+      );
+
+      // Log audit event for sync failure with AI analysis
+      await auditLogger.logEvent(
+        {
+          actorId: 'trinity-quickbooks-sync',
+          actorType: 'AI_AGENT',
+          actorName: 'Trinity QuickBooks Sync',
+          workspaceId,
+        },
+        {
+          eventType: 'quickbooks.sync_error',
+          aggregateId: jobId,
+          aggregateType: 'sync_job',
+          payload: {
+            errorMessage: error.message,
+            aiAction: errorAnalysis.action,
+            aiReasoning: errorAnalysis.reasoning,
+            shouldRetry: errorAnalysis.shouldRetry,
+            suggestedFix: errorAnalysis.suggestedFix,
+          },
+        },
+        { generateHash: true }
+      ).catch(err => console.error('[QuickBooksSyncService] Audit log failed:', err.message));
+
+      // Emit platform event for monitoring
+      platformEventBus.emit({
+        type: 'ai_brain_action',
+        data: {
+          action: 'quickbooks.sync_error_analyzed',
+          workspaceId,
+          jobId,
+          errorAnalysisAction: errorAnalysis.action,
+          shouldRetry: errorAnalysis.shouldRetry,
+        },
+        timestamp: new Date(),
+      });
+
       await this.updateSyncLog(jobId, {
         status: 'failed',
-        errorDetails: { message: error.message },
+        errorDetails: { 
+          message: error.message,
+          aiAnalysis: errorAnalysis,
+        },
       });
 
       return {
@@ -328,7 +379,7 @@ export class QuickBooksSyncService {
         recordsMatched,
         recordsCreated,
         recordsReviewRequired,
-        errors: [error.message],
+        errors: [`${error.message} (AI: ${errorAnalysis.action} - ${errorAnalysis.reasoning})`],
         durationMs: Date.now() - startTime,
       };
     }
