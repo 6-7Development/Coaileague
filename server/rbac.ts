@@ -617,7 +617,7 @@ export async function checkWorkspacePaymentStatus(
 
   // Check if user is the org owner
   const isOwner = workspace.ownerId === userId;
-  const status = (workspace.subscriptionStatus || 'active') as 'active' | 'suspended' | 'cancelled';
+  const status = (workspace.subscriptionStatus || 'active') as 'active' | 'trial' | 'suspended' | 'cancelled';
 
   // Active workspaces always allowed
   if (status === 'active') {
@@ -630,10 +630,37 @@ export async function checkWorkspacePaymentStatus(
     };
   }
 
+  // Trial workspaces: allowed if trial hasn't expired
+  if (status === 'trial') {
+    const trialEndsAt = workspace.trialEndsAt;
+    const now = new Date();
+    
+    // If no trial end date set, or trial is still valid, allow access
+    if (!trialEndsAt || new Date(trialEndsAt) > now) {
+      return { 
+        allowed: true, 
+        reason: 'active', // Treat valid trial as active for permissions
+        isOwner,
+        workspaceId: workspace.id,
+        workspaceName: workspace.name
+      };
+    }
+    
+    // Trial has expired - treat as suspended
+    console.log(`[PaymentEnforcement] Trial expired for workspace ${workspace.id} (ended: ${trialEndsAt})`);
+    return {
+      allowed: false,
+      reason: 'suspended',
+      isOwner,
+      workspaceId: workspace.id,
+      workspaceName: workspace.name
+    };
+  }
+
   // Suspended or cancelled - block with appropriate response
   return {
     allowed: false,
-    reason: status,
+    reason: status as 'suspended' | 'cancelled',
     isOwner,
     workspaceId: workspace.id,
     workspaceName: workspace.name
