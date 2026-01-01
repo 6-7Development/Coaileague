@@ -33,6 +33,7 @@ import {
   Brain,
   UserCog,
   Server,
+  ArrowRightLeft,
   type LucideIcon,
 } from "lucide-react";
 import { isRouteVisibleInMVP } from "@/config/mvpFeatures";
@@ -408,6 +409,17 @@ export const sidebarModules: SidebarModule[] = [
         familyId: 'executive',
         isPrimary: false,
         order: 4,
+      },
+      {
+        id: 'quickbooks-migration',
+        label: 'QuickBooks Migration',
+        href: '/quickbooks-import',
+        icon: ArrowRightLeft,
+        description: '7-step data migration wizard',
+        capabilities: ['data_migration'],
+        familyId: 'executive',
+        isPrimary: true,
+        order: 5,
       },
     ],
   },
@@ -844,6 +856,7 @@ const curatedWorkspaceRoutesForPlatformStaff: string[] = [
   'clients',             // Client management
   'analytics',           // Analytics - insights and reporting
   'billing-integrations', // Integrations - QuickBooks/Gusto monitoring
+  'quickbooks-migration', // QuickBooks Migration - 7-step data import wizard
 ];
 
 /**
