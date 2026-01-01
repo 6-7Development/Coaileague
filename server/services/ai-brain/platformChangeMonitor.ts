@@ -358,6 +358,7 @@ TITLE REQUIREMENTS:
 - Max 70 characters
 - Be specific about WHAT changed (not "Platform Update")
 - Include the module affected if applicable
+- NEVER mention "Replit" or any development tools in titles - use "Platform Config" or "Dev Environment" instead
 - Examples: "AI Scheduling Optimization Released", "Security Patch: Session Management", "New Mobile Calendar Sync"
 
 SUMMARY REQUIREMENTS (for technical staff):
