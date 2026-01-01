@@ -27,6 +27,7 @@ import { GEMINI_MODELS } from '../providers/geminiClient';
 import { enhancedLLMJudge } from '../llmJudgeEnhanced';
 import { platformEventBus } from '../../platformEventBus';
 import { auditLogger } from '../../audit-logger';
+import { strategicOptimizationService, EmployeeBusinessMetrics, ClientBusinessMetrics, StrategicAssignment } from '../strategicOptimizationService';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
@@ -909,6 +910,396 @@ Generate a JSON schedule with format:
     
     const best = topCandidates[0];
     return `Recommend ${best.employeeName} (${best.matchScore}% match). ${best.reason}`;
+  }
+
+  // ===========================================================================
+  // STRATEGIC PROFIT-FIRST SCHEDULING (Gemini 3 Pro Deep Think)
+  // ===========================================================================
+
+  /**
+   * Generate profit-optimized schedule using strategic business intelligence
+   * This is the core profit-first AI scheduling method that considers:
+   * - Client tier (enterprise > premium > standard > trial)
+   * - Employee scores (reliability, satisfaction, experience)
+   * - Profit margins per shift
+   * - Distance/commute costs
+   * - Risk-adjusted profitability
+   */
+  async generateStrategicSchedule(
+    workspaceId: string,
+    openShifts: Array<{
+      shiftId: string;
+      clientId: string;
+      date: Date;
+      startTime: string;
+      endTime: string;
+      durationHours: number;
+    }>
+  ): Promise<{
+    schedule: StrategicAssignment[];
+    businessMetrics: {
+      totalRevenue: number;
+      totalCost: number;
+      totalProfit: number;
+      avgProfitMargin: number;
+      enterpriseClientsCovered: number;
+      atRiskClientsServiced: number;
+      averageEmployeeScore: number;
+      averageCommuteMiles: number;
+    };
+    strategicDecisions: string[];
+    alerts: string[];
+    confidence: {
+      score: number;
+      reasoning: string;
+      recommendation: 'AUTO_APPROVE' | 'REVIEW_RECOMMENDED' | 'MANUAL_REQUIRED';
+    };
+  }> {
+    console.log(`[SchedulingSubagent] Generating strategic profit-first schedule for ${openShifts.length} shifts`);
+
+    // Gather strategic business context
+    const strategicContext = await strategicOptimizationService.generateStrategicContext(workspaceId);
+    const { employees, clients, summary } = strategicContext;
+
+    // Build strategic Gemini prompt
+    const prompt = this.buildStrategicSchedulingPrompt(employees, clients, openShifts, summary);
+
+    // Call Gemini 3 Pro for deep strategic analysis
+    const model = genAI.getGenerativeModel({ model: GEMINI_MODELS.TIER_1 });
+    
+    const result = await model.generateContent({
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: 0.3, // Lower for more deterministic business decisions
+        topP: 0.9,
+        maxOutputTokens: 8192,
+      },
+    });
+
+    const responseText = result.response.text();
+    
+    // Parse JSON response from Gemini
+    let parsedResponse: any;
+    try {
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        parsedResponse = JSON.parse(jsonMatch[0]);
+      } else {
+        throw new Error('No JSON found in response');
+      }
+    } catch (parseError) {
+      console.error('[SchedulingSubagent] Failed to parse Gemini strategic response:', parseError);
+      // Return fallback response with basic assignments
+      return this.generateFallbackStrategicSchedule(openShifts, employees, clients);
+    }
+
+    // Validate through LLM Judge
+    const judgeResult = await enhancedLLMJudge.evaluateAction({
+      actionType: 'schedule_shifts',
+      actionDetails: {
+        description: `Strategic profit-first schedule: ${parsedResponse.schedule?.length || 0} assignments`,
+        shiftsAssigned: parsedResponse.schedule?.length || 0,
+        totalProfit: parsedResponse.businessMetrics?.totalProfit || 0,
+        avgProfitMargin: parsedResponse.businessMetrics?.avgProfitMargin || 0,
+      },
+      context: {
+        workspaceId,
+        enterpriseClients: summary.enterpriseClients,
+        atRiskClients: summary.atRiskClients,
+      },
+    });
+
+    if (!judgeResult.approved) {
+      console.warn('[SchedulingSubagent] LLM Judge rejected strategic schedule:', judgeResult.reason);
+      parsedResponse.confidence = {
+        score: 0.4,
+        reasoning: `LLM Judge concern: ${judgeResult.reason}`,
+        recommendation: 'MANUAL_REQUIRED',
+      };
+    }
+
+    // Log strategic decision for audit
+    await auditLogger.log({
+      action: 'strategic_schedule_generated',
+      resourceType: 'schedule',
+      resourceId: workspaceId,
+      details: {
+        shiftsScheduled: parsedResponse.schedule?.length || 0,
+        totalProfit: parsedResponse.businessMetrics?.totalProfit || 0,
+        enterpriseClientsServed: parsedResponse.businessMetrics?.enterpriseClientsCovered || 0,
+        atRiskClientsServed: parsedResponse.businessMetrics?.atRiskClientsServiced || 0,
+        judgeApproved: judgeResult.approved,
+      },
+      workspaceId,
+    });
+
+    return {
+      schedule: parsedResponse.schedule || [],
+      businessMetrics: parsedResponse.businessMetrics || {
+        totalRevenue: 0,
+        totalCost: 0,
+        totalProfit: 0,
+        avgProfitMargin: 0,
+        enterpriseClientsCovered: 0,
+        atRiskClientsServiced: 0,
+        averageEmployeeScore: 0,
+        averageCommuteMiles: 0,
+      },
+      strategicDecisions: parsedResponse.strategicDecisions || [],
+      alerts: parsedResponse.alerts || [],
+      confidence: parsedResponse.confidence || {
+        score: 0.7,
+        reasoning: 'Standard strategic optimization applied',
+        recommendation: 'REVIEW_RECOMMENDED',
+      },
+    };
+  }
+
+  /**
+   * Build the strategic profit-first Gemini prompt
+   */
+  private buildStrategicSchedulingPrompt(
+    employees: EmployeeBusinessMetrics[],
+    clients: ClientBusinessMetrics[],
+    openShifts: any[],
+    summary: any
+  ): string {
+    return `You are Trinity, an AI business strategist optimizing workforce scheduling for maximum profitability and client retention.
+
+🎯 PRIMARY OBJECTIVES (in priority order):
+1. MAXIMIZE PROFIT - Assign employees to shifts that generate highest profit margins
+2. PROTECT HIGH-VALUE CLIENTS - Prioritize enterprise/legacy clients with best employees
+3. MINIMIZE COSTS - Reduce commute distances, overtime, inefficiencies
+4. ENSURE CLIENT RETENTION - Match employee quality to client value
+5. MAINTAIN COMPLIANCE - All labor laws, certifications, break requirements
+
+📊 BUSINESS CONTEXT:
+
+SUMMARY:
+- Total Employees Available: ${summary.totalEmployees}
+- Top Performers (Score 85+): ${summary.topPerformers}
+- Problematic Employees: ${summary.problematicEmployees}
+- Enterprise Clients: ${summary.enterpriseClients}
+- At-Risk Clients: ${summary.atRiskClients}
+- Legacy Clients (2+ years): ${summary.legacyClients}
+
+CLIENTS (${clients.length} total):
+${clients.map(c => `
+  - ${c.clientName}:
+    * Tier: ${c.tier.toUpperCase()} (Score: ${c.tierScore}/100)
+    * Monthly Revenue: $${c.monthlyRevenue.toLocaleString()}
+    * Client Since: ${c.yearsAsClient.toFixed(1)} years ${c.isLegacyClient ? '(LEGACY)' : '(NEW)'}
+    * Hourly Rate: $${c.averageHourlyRate}/hr
+    * Profit Margin: ${c.averageProfitMargin}%
+    * Satisfaction: ${c.satisfactionScore}/100
+    * Status: ${c.isAtRisk ? '⚠️ AT RISK OF CHURN' : c.isGrowthAccount ? '📈 GROWING' : '✅ STABLE'}
+    * Required Certs: ${c.requiredCertifications?.join(', ') || 'None'}
+`).join('')}
+
+EMPLOYEES (${employees.length} available):
+${employees.map(e => `
+  - ${e.employeeName}:
+    * Overall Score: ${e.overallScore}/100
+    * Reliability: ${e.reliabilityScore}/100 (${e.attendanceRate}% attendance)
+    * Client Satisfaction: ${e.clientSatisfactionScore}/100
+    * Pay Rate: $${e.hourlyPayRate}/hr (Effective Cost: $${e.effectiveCostPerHour}/hr)
+    * Issues Last 90d: ${e.noShows} no-shows, ${e.callIns} call-ins, ${e.clientComplaints} complaints
+    * Trend: ${e.recentPerformanceTrend}
+`).join('')}
+
+OPEN SHIFTS (${openShifts.length} to fill):
+${openShifts.map(s => {
+  const client = clients.find(c => c.clientId === s.clientId);
+  return `
+  - Shift ${s.shiftId}:
+    * Client: ${client?.clientName || 'Unknown'} (${client?.tier || 'standard'} tier)
+    * Date: ${new Date(s.date).toLocaleDateString()}
+    * Time: ${s.startTime} - ${s.endTime} (${s.durationHours}h)
+    * Billable Rate: $${client?.averageHourlyRate || 0}/hr
+    * Required Certs: ${client?.requiredCertifications?.join(', ') || 'None'}
+`;
+}).join('')}
+
+💰 PROFIT OPTIMIZATION RULES:
+
+1. EMPLOYEE-TO-CLIENT MATCHING:
+   - ENTERPRISE clients → Assign employees with score 85+
+   - PREMIUM clients → Assign employees with score 75+
+   - STANDARD clients → Assign employees with score 60+
+   - TRIAL clients → Can use employees with score 50+ (training opportunity)
+
+2. PROFIT MARGIN MAXIMIZATION:
+   For each shift, calculate: (Billable Rate - Employee Cost) = Profit/Hour
+   - Prioritize high-margin assignments
+   - Example: $45/hr client - $18/hr employee = $27/hr profit ✅
+   - Avoid: $30/hr client - $25/hr employee = $5/hr profit ❌
+
+3. EMPLOYEE PERFORMANCE WEIGHTING:
+   - NO-SHOWS penalty: -20 points per occurrence
+   - CLIENT COMPLAINTS penalty: -15 points per complaint
+   - LATE ARRIVALS penalty: -5 points per occurrence
+   - Never assign problem employees to enterprise/at-risk clients
+
+4. LEGACY CLIENT PROTECTION:
+   - Clients with yearsAsClient >= 2 are LEGACY
+   - LEGACY clients get best-performing employees
+   - No experimental/new employees for legacy clients
+
+5. AT-RISK CLIENT RECOVERY:
+   - Clients with isAtRisk: true need special care
+   - Assign employees with clientSatisfactionScore >= 90
+   - Worth sacrificing margin for retention
+
+📋 REQUIRED OUTPUT FORMAT (JSON only, no markdown):
+
+{
+  "schedule": [
+    {
+      "shiftId": "shift_123",
+      "employeeId": "emp_456",
+      "employeeName": "John Doe",
+      "clientId": "client_789",
+      "clientName": "MegaCorp",
+      "clientTier": "enterprise",
+      "assignment": {
+        "billableRate": 50,
+        "employeeCost": 20,
+        "profitPerHour": 30,
+        "totalProfit": 240,
+        "commuteMiles": 3,
+        "estimatedFuelCost": 2.50
+      },
+      "reasoning": "Enterprise legacy client, high-scoring employee, excellent profit margin"
+    }
+  ],
+  "businessMetrics": {
+    "totalRevenue": 12500,
+    "totalCost": 7200,
+    "totalProfit": 5300,
+    "avgProfitMargin": 42.4,
+    "enterpriseClientsCovered": 8,
+    "atRiskClientsServiced": 2,
+    "averageEmployeeScore": 82.3,
+    "averageCommuteMiles": 8.5
+  },
+  "strategicDecisions": [
+    "Prioritized MegaCorp (enterprise, at-risk) with top-performing employee",
+    "Assigned new employee to trial client as training opportunity"
+  ],
+  "alerts": [
+    "Employee John Doe assigned to 3 shifts (approaching overtime)",
+    "High-value client XYZ received employee with recent complaint - monitor closely"
+  ],
+  "confidence": {
+    "score": 0.92,
+    "reasoning": "Clear profit optimization, all enterprise clients protected, compliance maintained",
+    "recommendation": "AUTO_APPROVE"
+  }
+}
+
+🚀 OPTIMIZE FOR MAXIMUM BUSINESS SUCCESS. MAKE STRATEGIC DECISIONS.`;
+  }
+
+  /**
+   * Generate fallback schedule if Gemini parsing fails
+   */
+  private generateFallbackStrategicSchedule(
+    openShifts: any[],
+    employees: EmployeeBusinessMetrics[],
+    clients: ClientBusinessMetrics[]
+  ): any {
+    console.log('[SchedulingSubagent] Generating fallback strategic schedule');
+
+    const schedule: StrategicAssignment[] = [];
+    const usedEmployees = new Set<string>();
+    let totalRevenue = 0;
+    let totalCost = 0;
+
+    // Sort employees by overall score (best first)
+    const sortedEmployees = [...employees].sort((a, b) => b.overallScore - a.overallScore);
+
+    // Sort shifts by client tier priority
+    const tierPriority = { enterprise: 0, premium: 1, standard: 2, trial: 3 };
+    const sortedShifts = [...openShifts].sort((a, b) => {
+      const clientA = clients.find(c => c.clientId === a.clientId);
+      const clientB = clients.find(c => c.clientId === b.clientId);
+      return (tierPriority[clientA?.tier || 'standard'] || 2) - (tierPriority[clientB?.tier || 'standard'] || 2);
+    });
+
+    for (const shift of sortedShifts) {
+      const client = clients.find(c => c.clientId === shift.clientId);
+      if (!client) continue;
+
+      // Find best available employee for this client tier
+      const minScore = strategicOptimizationService.getMinimumEmployeeScoreForClient(client.tier);
+      const availableEmployee = sortedEmployees.find(e => 
+        !usedEmployees.has(e.employeeId) && e.overallScore >= minScore
+      );
+
+      if (availableEmployee) {
+        const profitMetrics = strategicOptimizationService.calculateShiftProfit({
+          billableRate: client.averageHourlyRate,
+          employeeCostPerHour: availableEmployee.effectiveCostPerHour,
+          shiftDurationHours: shift.durationHours,
+          employeeScore: availableEmployee.overallScore,
+          clientTier: client.tier,
+          clientIsAtRisk: client.isAtRisk,
+          employeeNoShows: availableEmployee.noShows,
+          employeeCallIns: availableEmployee.callIns,
+          employeeClientComplaints: availableEmployee.clientComplaints,
+        });
+
+        schedule.push({
+          shiftId: shift.shiftId,
+          employeeId: availableEmployee.employeeId,
+          employeeName: availableEmployee.employeeName,
+          clientId: client.clientId,
+          clientName: client.clientName,
+          clientTier: client.tier,
+          assignment: {
+            billableRate: profitMetrics.billableRate,
+            employeeCost: profitMetrics.employeeCost,
+            profitPerHour: profitMetrics.profitPerHour,
+            totalProfit: profitMetrics.totalProfit,
+            commuteMiles: profitMetrics.commuteMiles,
+            estimatedFuelCost: profitMetrics.estimatedFuelCost,
+          },
+          reasoning: profitMetrics.reasoning,
+          confidence: 1 - profitMetrics.riskFactor,
+        });
+
+        usedEmployees.add(availableEmployee.employeeId);
+        totalRevenue += client.averageHourlyRate * shift.durationHours;
+        totalCost += availableEmployee.effectiveCostPerHour * shift.durationHours;
+      }
+    }
+
+    return {
+      schedule,
+      businessMetrics: {
+        totalRevenue,
+        totalCost,
+        totalProfit: totalRevenue - totalCost,
+        avgProfitMargin: totalRevenue > 0 ? ((totalRevenue - totalCost) / totalRevenue) * 100 : 0,
+        enterpriseClientsCovered: schedule.filter(s => s.clientTier === 'enterprise').length,
+        atRiskClientsServiced: schedule.filter(s => clients.find(c => c.clientId === s.clientId)?.isAtRisk).length,
+        averageEmployeeScore: schedule.length > 0 
+          ? schedule.reduce((sum, s) => sum + (employees.find(e => e.employeeId === s.employeeId)?.overallScore || 0), 0) / schedule.length 
+          : 0,
+        averageCommuteMiles: schedule.length > 0
+          ? schedule.reduce((sum, s) => sum + s.assignment.commuteMiles, 0) / schedule.length
+          : 0,
+      },
+      strategicDecisions: ['Fallback scheduling applied - employees sorted by score, shifts by client tier priority'],
+      alerts: schedule.length < openShifts.length 
+        ? [`${openShifts.length - schedule.length} shifts could not be assigned due to insufficient qualified employees`]
+        : [],
+      confidence: {
+        score: 0.6,
+        reasoning: 'Fallback algorithm used - Gemini response parsing failed',
+        recommendation: 'REVIEW_RECOMMENDED' as const,
+      },
+    };
   }
 }
 

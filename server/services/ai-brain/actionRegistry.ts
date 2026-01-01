@@ -70,6 +70,7 @@ class AIBrainActionRegistry {
     this.registerBulkOperationActions();
     this.registerIntegrationActions();
     this.registerOnboardingActions();
+    this.registerStrategicOptimizationActions();
 
     this.initialized = true;
     console.log(`[AI Brain Action Registry] Initialization complete`);
@@ -736,11 +737,154 @@ class AIBrainActionRegistry {
   }
 
   // ============================================================================
+  // STRATEGIC BUSINESS OPTIMIZATION ACTIONS
+  // ============================================================================
+
+  private registerStrategicOptimizationActions(): void {
+    const generateStrategicSchedule: ActionHandler = {
+      actionId: 'strategic.generate_schedule',
+      name: 'Generate Strategic Schedule',
+      category: 'strategic',
+      description: 'Generate profit-first strategic schedule using business intelligence',
+      requiredRoles: ['owner', 'root_admin'],
+      handler: async (request: ActionRequest): Promise<ActionResult> => {
+        const start = Date.now();
+        const { schedulingSubagent } = await import('./subagents/schedulingSubagent');
+        const result = await schedulingSubagent.generateStrategicSchedule(
+          request.workspaceId!,
+          request.payload?.openShifts || []
+        );
+        return createResult(request.actionId, true, `Strategic schedule generated: ${result.schedule.length} assignments, $${result.businessMetrics.totalProfit} profit`, result, start);
+      },
+    };
+
+    const getEmployeeBusinessMetrics: ActionHandler = {
+      actionId: 'strategic.get_employee_metrics',
+      name: 'Get Employee Business Metrics',
+      category: 'strategic',
+      description: 'Get strategic employee scoring and performance metrics',
+      requiredRoles: ['owner', 'root_admin', 'manager'],
+      handler: async (request: ActionRequest): Promise<ActionResult> => {
+        const start = Date.now();
+        const { strategicOptimizationService } = await import('./strategicOptimizationService');
+        const metrics = await strategicOptimizationService.getEmployeeBusinessMetrics(request.workspaceId!);
+        return createResult(request.actionId, true, `Retrieved metrics for ${metrics.length} employees`, { employees: metrics, count: metrics.length }, start);
+      },
+    };
+
+    const getClientBusinessMetrics: ActionHandler = {
+      actionId: 'strategic.get_client_metrics',
+      name: 'Get Client Business Metrics',
+      category: 'strategic',
+      description: 'Get strategic client tiering and value metrics',
+      requiredRoles: ['owner', 'root_admin', 'manager'],
+      handler: async (request: ActionRequest): Promise<ActionResult> => {
+        const start = Date.now();
+        const { strategicOptimizationService } = await import('./strategicOptimizationService');
+        const metrics = await strategicOptimizationService.getClientBusinessMetrics(request.workspaceId!);
+        return createResult(request.actionId, true, `Retrieved metrics for ${metrics.length} clients`, { clients: metrics, count: metrics.length }, start);
+      },
+    };
+
+    const getStrategicContext: ActionHandler = {
+      actionId: 'strategic.get_context',
+      name: 'Get Strategic Business Context',
+      category: 'strategic',
+      description: 'Get full strategic business context for AI scheduling',
+      requiredRoles: ['owner', 'root_admin'],
+      handler: async (request: ActionRequest): Promise<ActionResult> => {
+        const start = Date.now();
+        const { strategicOptimizationService } = await import('./strategicOptimizationService');
+        const context = await strategicOptimizationService.generateStrategicContext(request.workspaceId!);
+        return createResult(request.actionId, true, `Strategic context: ${context.summary.totalEmployees} employees, ${context.clients.length} clients`, context, start);
+      },
+    };
+
+    const calculateShiftProfit: ActionHandler = {
+      actionId: 'strategic.calculate_shift_profit',
+      name: 'Calculate Shift Profit',
+      category: 'strategic',
+      description: 'Calculate profit metrics for a specific employee-shift assignment',
+      requiredRoles: ['owner', 'root_admin', 'manager'],
+      handler: async (request: ActionRequest): Promise<ActionResult> => {
+        const start = Date.now();
+        const { strategicOptimizationService } = await import('./strategicOptimizationService');
+        const profit = strategicOptimizationService.calculateShiftProfit({
+          billableRate: request.payload?.billableRate || 0,
+          employeeCostPerHour: request.payload?.employeeCost || 0,
+          shiftDurationHours: request.payload?.durationHours || 8,
+          employeeScore: request.payload?.employeeScore || 75,
+          clientTier: request.payload?.clientTier || 'standard',
+          clientIsAtRisk: request.payload?.clientIsAtRisk || false,
+          employeeNoShows: request.payload?.employeeNoShows || 0,
+          employeeCallIns: request.payload?.employeeCallIns || 0,
+          employeeClientComplaints: request.payload?.employeeClientComplaints || 0,
+        });
+        return createResult(request.actionId, true, `Shift profit: $${profit.totalProfit.toFixed(2)} (${profit.profitMargin.toFixed(1)}% margin), recommendation: ${profit.recommendation}`, profit, start);
+      },
+    };
+
+    const getAtRiskClients: ActionHandler = {
+      actionId: 'strategic.get_at_risk_clients',
+      name: 'Get At-Risk Clients',
+      category: 'strategic',
+      description: 'Get list of clients flagged as at-risk of churn',
+      requiredRoles: ['owner', 'root_admin', 'manager'],
+      handler: async (request: ActionRequest): Promise<ActionResult> => {
+        const start = Date.now();
+        const { strategicOptimizationService } = await import('./strategicOptimizationService');
+        const clients = await strategicOptimizationService.getClientBusinessMetrics(request.workspaceId!);
+        const atRisk = clients.filter(c => c.isAtRisk);
+        return createResult(request.actionId, true, `Found ${atRisk.length} at-risk clients requiring attention`, { atRiskClients: atRisk, count: atRisk.length }, start);
+      },
+    };
+
+    const getTopPerformers: ActionHandler = {
+      actionId: 'strategic.get_top_performers',
+      name: 'Get Top Performing Employees',
+      category: 'strategic',
+      description: 'Get list of top-performing employees (score 85+)',
+      requiredRoles: ['owner', 'root_admin', 'manager'],
+      handler: async (request: ActionRequest): Promise<ActionResult> => {
+        const start = Date.now();
+        const { strategicOptimizationService } = await import('./strategicOptimizationService');
+        const employees = await strategicOptimizationService.getEmployeeBusinessMetrics(request.workspaceId!);
+        const topPerformers = employees.filter(e => e.overallScore >= 85).sort((a, b) => b.overallScore - a.overallScore);
+        return createResult(request.actionId, true, `Found ${topPerformers.length} top performers`, { topPerformers, count: topPerformers.length }, start);
+      },
+    };
+
+    const getProblematicEmployees: ActionHandler = {
+      actionId: 'strategic.get_problematic_employees',
+      name: 'Get Problematic Employees',
+      category: 'strategic',
+      description: 'Get list of employees with performance issues (low scores or no-shows)',
+      requiredRoles: ['owner', 'root_admin', 'manager'],
+      handler: async (request: ActionRequest): Promise<ActionResult> => {
+        const start = Date.now();
+        const { strategicOptimizationService } = await import('./strategicOptimizationService');
+        const employees = await strategicOptimizationService.getEmployeeBusinessMetrics(request.workspaceId!);
+        const problematic = employees.filter(e => e.overallScore < 60 || e.noShows > 2 || e.clientComplaints > 2);
+        return createResult(request.actionId, true, `Found ${problematic.length} employees needing attention`, { problematicEmployees: problematic, count: problematic.length }, start);
+      },
+    };
+
+    helpaiOrchestrator.registerAction(generateStrategicSchedule);
+    helpaiOrchestrator.registerAction(getEmployeeBusinessMetrics);
+    helpaiOrchestrator.registerAction(getClientBusinessMetrics);
+    helpaiOrchestrator.registerAction(getStrategicContext);
+    helpaiOrchestrator.registerAction(calculateShiftProfit);
+    helpaiOrchestrator.registerAction(getAtRiskClients);
+    helpaiOrchestrator.registerAction(getTopPerformers);
+    helpaiOrchestrator.registerAction(getProblematicEmployees);
+  }
+
+  // ============================================================================
   // PUBLIC API
   // ============================================================================
 
   getRegisteredActionCount(): number {
-    return 25; // Approximate count of registered actions
+    return 33; // Updated count including 8 new strategic actions
   }
 }
 

@@ -6,10 +6,16 @@ CoAIleague is a Fortune 500-grade multi-tenant autonomous workforce management p
 ## AI Architecture (Critical Distinction)
 **Trinity AI** is the AI Brain orchestrator - handles ALL end user/org automations:
 - Autonomous scheduling using client data (addresses, contract rates, post orders)
-- Platform Action Hub: Central registry for 300+ AI Brain actions
+- Platform Action Hub: Central registry for 33+ AI Brain actions (including 8 strategic optimization actions)
 - Multi-tenant AI orchestration for workforce management
 - Universal Diagnostic Orchestrator with 7 specialized domain subagents
 - QuickBooks integration for client enrichment
+- **Strategic Business Optimization System:**
+  - Employee scoring (0-100 composite): Reliability 40%, Satisfaction 30%, Experience 15%, Attendance 15%
+  - Client tiering (enterprise/premium/standard/trial): Revenue 30%, Loyalty 25%, Satisfaction 20%, Profitability 15%, Retention 10%
+  - Profit-first scheduling with risk-adjusted calculations
+  - At-risk client protection (90+ score employees regardless of cost)
+  - Legacy client retention (2+ years get top performers)
 
 **HelpAI** is ONLY for helpdesk chatroom support:
 - Staff copilot for support agents in helpdesk chatrooms
@@ -34,7 +40,7 @@ CoAIleague features a multi-tenant architecture with RBAC security and isolation
 
 **Technical Implementations:**
 - **Trinity AI Brain Services:** Utilizes a 4-tier Gemini architecture for document extraction, issue detection, autonomous scheduling, and platform orchestration.
-- **Platform Action Hub (Trinity):** Central registry for 300+ AI Brain actions, formerly named helpaiActionOrchestrator. This is Trinity's infrastructure - NOT related to HelpAI despite legacy naming.
+- **Platform Action Hub (Trinity):** Central registry for 33+ AI Brain actions, formerly named helpaiActionOrchestrator. This is Trinity's infrastructure - NOT related to HelpAI despite legacy naming. Includes 8 strategic optimization actions for profit-first scheduling and business intelligence.
 - **Universal Diagnostic Orchestrator:** Seven specialized domain subagents for root cause analysis and hotpatch suggestions.
 - **HelpAI (Helpdesk Only):** Support staff copilot for helpdesk chatrooms - escalation handling and ticket summarization. NOT for general user automations.
 - **Financials:** Real-time Stripe integration for payments, payroll, invoicing, and tax.
