@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { UniversalHeader } from "@/components/universal-header";
 import { Footer } from "@/components/footer";
 import { SchedulePreview } from "@/components/schedule-preview";
+import { PricingROICalculator } from "@/components/pricing-roi-calculator";
 import { Check, X, TrendingUp, Sparkles, ArrowRight, Shield, Lock, Award } from "lucide-react";
 import { MARKETING, getFormattedPrice } from "@shared/marketingConfig";
 
@@ -14,9 +15,12 @@ interface Section {
   label: string;
 }
 
+type BillingCycle = 'monthly' | 'annual';
+
 export default function UniversalMarketing() {
   const [, setLocation] = useLocation();
   const [section, setSection] = useState<Section['id']>('landing');
+  const [billingCycle, setBillingCycle] = useState<BillingCycle>('monthly');
 
   // Read section from URL path or params
   useEffect(() => {
@@ -176,17 +180,75 @@ export default function UniversalMarketing() {
       {section === 'pricing' && (
         <section className="py-12 md:py-16 px-3 sm:px-4 md:px-6 mobile-compact-p">
           <div className="container mx-auto max-w-7xl">
-            <div className="text-center mb-12">
-              <Badge className="inline-block mb-4">{MARKETING.pricing.badge}</Badge>
-              <h1 className="text-2xl md:text-4xl font-bold mb-4">{MARKETING.pricing.headline}</h1>
-              <p className="text-muted-foreground max-w-2xl mx-auto">{MARKETING.pricing.subheadline}</p>
+            <div className="text-center mb-8">
+              <Badge className="inline-block mb-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white border-0">
+                The AI That Runs Your Security Business
+              </Badge>
+              <h1 className="text-2xl md:text-4xl font-bold mb-4">
+                Premium AI Workforce Automation
+              </h1>
+              <p className="text-muted-foreground max-w-2xl mx-auto">
+                Trinity AI autonomously schedules, processes payroll, bills clients, and optimizes profit while you sleep. 
+                Security companies save 30-40 hours/month and increase profit margins by 2-5%.
+              </p>
+            </div>
+
+            {/* ROI Calculator */}
+            <div className="max-w-lg mx-auto mb-12">
+              <PricingROICalculator />
+            </div>
+
+            {/* Billing Cycle Toggle */}
+            <div className="flex justify-center mb-8">
+              <div className="inline-flex items-center gap-2 p-1 bg-muted rounded-lg">
+                <Button
+                  variant={billingCycle === 'monthly' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setBillingCycle('monthly')}
+                  data-testid="toggle-monthly"
+                >
+                  Monthly
+                </Button>
+                <Button
+                  variant={billingCycle === 'annual' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setBillingCycle('annual')}
+                  data-testid="toggle-annual"
+                  className="relative"
+                >
+                  Annual
+                  <Badge className="absolute -top-2 -right-2 text-[10px] px-1.5 py-0.5 bg-green-500 text-white border-0">
+                    Save 20%
+                  </Badge>
+                </Button>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mobile-cols-1 mobile-gap-4">
-              {MARKETING.pricing.getTiers().map((tier) => (
+              {MARKETING.pricing.getTiers().map((tier) => {
+                const isAnnual = billingCycle === 'annual';
+                const monthlyPrice = tier.monthlyPrice / 100;
+                const annualMonthlyPrice = Math.round(monthlyPrice * 0.8);
+                const displayPrice = tier.monthlyPrice === 0 
+                  ? '$0' 
+                  : tier.id === 'enterprise' 
+                    ? 'Custom' 
+                    : isAnnual 
+                      ? `$${annualMonthlyPrice.toLocaleString()}` 
+                      : `$${monthlyPrice.toLocaleString()}`;
+                const priceSubtext = tier.id === 'free' 
+                  ? '14-day free trial' 
+                  : tier.id === 'enterprise' 
+                    ? 'starts at $3,500/mo' 
+                    : isAnnual 
+                      ? '/month billed annually' 
+                      : '/month';
+                
+                return (
                 <Card
                   key={tier.id}
                   className={`relative ${tier.popular ? 'ring-2 ring-primary md:scale-105' : ''}`}
+                  data-testid={`card-tier-${tier.id}`}
                 >
                   {tier.popular && (
                     <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary">
@@ -198,10 +260,8 @@ export default function UniversalMarketing() {
                     <CardTitle>{tier.name}</CardTitle>
                     <CardDescription>{tier.description}</CardDescription>
                     <div className="mt-4">
-                      <span className="text-3xl font-bold">{tier.price}</span>
-                      {tier.priceSubtext && (
-                        <span className="text-sm text-muted-foreground ml-1">{tier.priceSubtext}</span>
-                      )}
+                      <span className="text-3xl font-bold">{displayPrice}</span>
+                      <span className="text-sm text-muted-foreground ml-1">{priceSubtext}</span>
                     </div>
                     <p className="text-xs text-primary font-medium mt-2">{tier.savings}</p>
                   </CardHeader>
@@ -217,6 +277,7 @@ export default function UniversalMarketing() {
                           setLocation(`/register?tier=${tier.id}`);
                         }
                       }}
+                      data-testid={`button-tier-${tier.id}`}
                     >
                       {tier.cta}
                     </Button>
@@ -231,7 +292,7 @@ export default function UniversalMarketing() {
                     </ul>
                   </CardContent>
                 </Card>
-              ))}
+              );})}
             </div>
           </div>
         </section>
