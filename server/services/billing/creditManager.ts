@@ -36,11 +36,13 @@ const UNLIMITED_CREDIT_ROLES: PlatformRole[] = ['root_admin', 'deputy_admin', 's
 
 /**
  * Check if a user has unlimited credits based on:
- * 1. Platform-wide access (support/admin roles)
- * 2. Being the workspace owner
+ * 1. Platform-wide access (support/admin roles) - ALWAYS unlimited
+ * 2. Being workspace owner with PAID subscription (not trial) - unlimited
+ * 
+ * Trial accounts should NOT get unlimited credits - they see their trial allocation
  */
 export async function isUnlimitedCreditUser(userId: string, workspaceId: string): Promise<boolean> {
-  // Check platform role first (most privileged)
+  // Check platform role first (most privileged) - always unlimited
   const platformRole = await getUserPlatformRole(userId);
   if (hasPlatformWideAccess(platformRole)) {
     return true;
@@ -52,13 +54,26 @@ export async function isUnlimitedCreditUser(userId: string, workspaceId: string)
     .where(eq(workspaces.id, workspaceId))
     .limit(1);
   
-  if (workspace && workspace.ownerId === userId) {
+  if (!workspace) {
+    return false;
+  }
+  
+  // Trial accounts do NOT get unlimited credits - they see their trial allocation
+  // Only paid subscriptions get unlimited for owners
+  const paidTiers = ['starter', 'professional', 'enterprise', 'unlimited'];
+  const isPaidSubscription = paidTiers.includes(workspace.subscriptionTier || '');
+  
+  // Check if workspace is on active trial - trial users see their trial credits
+  const isOnTrial = workspace.status === 'trial' && workspace.trialExpiresAt && new Date(workspace.trialExpiresAt) > new Date();
+  
+  // Owners only get unlimited if they have a PAID subscription (not trial)
+  if (workspace.ownerId === userId && isPaidSubscription && !isOnTrial) {
     return true;
   }
   
-  // Check if user has org_owner workspace role
+  // Check if user has org_owner workspace role with paid subscription
   const { role } = await getUserWorkspaceRole(userId, workspaceId);
-  if (role === 'org_owner') {
+  if (role === 'org_owner' && isPaidSubscription && !isOnTrial) {
     return true;
   }
   
@@ -131,6 +146,7 @@ export const CREDIT_EXEMPT_FEATURES = new Set([
 // Monthly credit allocation by subscription tier
 export const TIER_CREDIT_ALLOCATIONS = {
   'free': 100,
+  'trial': 250,        // Trial accounts get 250 credits to test features
   'starter': 500,
   'professional': 2000,
   'enterprise': 10000,
