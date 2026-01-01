@@ -4,6 +4,7 @@ import { setupVite, serveStatic, log } from "./vite";
 import { pool } from "./db"; // Assuming 'pool' is your PostgreSQL client connection pool
 import { monitoringService } from "./monitoring";
 import { startAutonomousScheduler } from "./services/autonomousScheduler";
+import { ensureRequiredTables } from "./services/dbMigrationService";
 import { execSync } from "child_process";
 import * as net from "net";
 import * as fs from "fs";
@@ -253,6 +254,13 @@ function timedInit(name: string, fn: () => Promise<void>): Promise<{ name: strin
 // PHASE 1: CRITICAL SERVICES (must run before server listens)
 // ============================================================================
 async function initializeCriticalServices() {
+  // Auto-migrate database tables - ensures production has all required tables
+  try {
+    await ensureRequiredTables();
+  } catch (error) {
+    console.error('[Server] Warning: Database migration check failed:', error);
+  }
+  
   // ChatServerHub Gateway - needed for WebSocket connections
   try {
     await initializeChatServerHub();
