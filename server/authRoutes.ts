@@ -310,6 +310,8 @@ router.get("/api/auth/me", requireAuth, async (req, res) => {
         try {
           await db.insert(systemAuditLogs).values({
             action: 'payment_block_owner',
+            entityType: 'workspace',
+            entityId: paymentResult.workspaceId,
             category: 'billing',
             severity: 'warning',
             userId: freshUser.id,
