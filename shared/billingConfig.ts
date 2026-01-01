@@ -22,9 +22,8 @@ export const BILLING = {
   },
 
   // ==========================================================================
-  // SUBSCRIPTION TIERS
-  // Middleware pricing: Fair value for automation layer connecting to HRIS/accounting
-  // Users already pay for QuickBooks, Gusto, etc. - we provide the AI automation
+  // SUBSCRIPTION TIERS - PREMIUM VALUE-BASED PRICING (Jan 2026)
+  // Trinity AI replaces 3-5 admin positions. Pricing reflects 40-50% of value.
   // ==========================================================================
   tiers: {
     free: {
@@ -56,23 +55,24 @@ export const BILLING = {
     starter: {
       id: "starter",
       name: "Starter",
-      description: "Perfect for small security teams (25-50 guards)",
-      monthlyPrice: 29900, // $299/month in cents
-      yearlyPrice: 299000, // $2,990/year (2 months free)
-      maxEmployees: 25,
+      description: "AI scheduling for small security companies (5-25 guards)",
+      monthlyPrice: 49900, // $499/month in cents
+      yearlyPrice: 499000, // $4,990/year (17% discount)
+      maxEmployees: 15,
       maxManagers: 2,
-      monthlyCredits: 5000,
-      adminReplacementValue: 35000, // Saves ~$35K/year in admin time
-      overagePerEmployee: 800, // $8/employee after 25
+      monthlyCredits: 2000,
+      adminReplacementValue: 10000, // Saves ~$10K/year in admin time
+      overagePerEmployee: 1500, // $15/employee after 15
       features: [
-        "Up to 25 employees included",
-        "+$8/employee after 25",
-        "2 managers included",
-        "Trinity AI Scheduling",
-        "Time tracking & approvals",
+        "Up to 15 employees included",
+        "+$15/employee after 15",
+        "Trinity AI scheduling",
+        "GPS time tracking",
         "Basic compliance alerts",
-        "5,000 AI credits/month",
-        "Email support (48hr response)",
+        "Mobile app for guards",
+        "Email/SMS notifications",
+        "2,000 AI credits/month",
+        "Email support (72hr response)",
       ],
       popular: false,
     },
@@ -80,26 +80,27 @@ export const BILLING = {
     professional: {
       id: "professional",
       name: "Professional",
-      description: "Full automation for growing security companies (50-150 guards)",
-      monthlyPrice: 79900, // $799/month in cents
-      yearlyPrice: 799000, // $7,990/year (2 months free)
+      description: "Full automation for growing security companies (25-150 guards)",
+      monthlyPrice: 149900, // $1,499/month in cents
+      yearlyPrice: 1439000, // $14,390/year (20% discount)
       maxEmployees: 50,
       maxManagers: 5,
-      monthlyCredits: 25000,
-      adminReplacementValue: 90000, // Saves ~$90K/year in admin time
-      overagePerEmployee: 600, // $6/employee after 50
+      monthlyCredits: 10000,
+      adminReplacementValue: 35000, // Saves ~$35K/year in admin time
+      overagePerEmployee: 1200, // $12/employee after 50
       features: [
         "Up to 50 employees included",
-        "+$6/employee after 50",
-        "5 managers included",
-        "Everything in Starter",
-        "AI Payroll automation",
-        "Client billing & invoicing",
-        "50-state compliance engine",
-        "Unlimited HRIS/accounting integrations",
-        "25,000 AI credits/month",
+        "+$12/employee after 50",
+        "FULL Trinity AI automation",
+        "Profit-first scheduling optimization",
+        "Automated payroll processing",
+        "Client billing automation",
+        "QuickBooks integration",
+        "Advanced compliance (SOX audit trails)",
+        "Incident management",
+        "Strategic business insights",
+        "10,000 AI credits/month",
         "Priority support (24hr response)",
-        "Advanced analytics dashboard",
       ],
       popular: true,
     },
@@ -108,25 +109,26 @@ export const BILLING = {
       id: "enterprise",
       name: "Enterprise",
       description: "Custom solutions for large security companies (150+ guards)",
-      monthlyPrice: 0, // Contact sales
+      monthlyPrice: 0, // Contact sales (starts at $3,500/month)
       yearlyPrice: 0, // Contact sales
       maxEmployees: 999999, // Unlimited
       maxManagers: 999999, // Unlimited
-      monthlyCredits: 100000,
+      monthlyCredits: -1, // Unlimited
       adminReplacementValue: 250000, // Saves ~$250K+/year in admin time
       isContactSales: true,
-      overagePerEmployee: 400, // $4/employee at scale
+      startsAt: 350000, // Starts at $3,500/month
+      overagePerEmployee: 0, // Negotiated
       features: [
-        "100+ employees at scale pricing",
-        "+$4/employee (volume discount)",
-        "Unlimited managers",
-        "Everything in Professional",
+        "150+ employees",
+        "Multi-location management",
+        "Strategic profit optimization",
+        "Custom integrations (ADP, Workday, etc.)",
+        "White-label options",
+        "API access",
         "Dedicated account manager",
-        "Custom integrations",
-        "SSO & advanced security",
-        "SLA guarantees",
-        "100,000+ AI credits/month",
-        "Priority support (4hr response)",
+        "Custom SLAs",
+        "Unlimited AI credits",
+        "On-demand support",
       ],
       popular: false,
     },
@@ -139,13 +141,13 @@ export const BILLING = {
     employee: {
       id: "seat_employee",
       name: "Additional Employee",
-      pricePerMonth: 800, // $8/employee/month in cents (Starter tier overage)
+      pricePerMonth: 1500, // $15/employee/month in cents (Starter tier overage)
       description: "Additional employees beyond plan limit",
     },
     manager: {
       id: "seat_manager", 
       name: "Additional Manager",
-      pricePerMonth: 1500, // $15/manager/month in cents
+      pricePerMonth: 2500, // $25/manager/month in cents
       description: "Managers use approvals, reports, advanced automation",
     },
   },
@@ -154,9 +156,9 @@ export const BILLING = {
   // TIERED OVERAGE PRICING (Per-tier employee overage rates)
   // ==========================================================================
   overages: {
-    starter: 800, // $8/employee after 25 (Starter tier)
-    professional: 600, // $6/employee after 50 (Professional tier)
-    enterprise: 400, // $4/employee at scale (Enterprise tier)
+    starter: 1500, // $15/employee after 15 (Starter tier)
+    professional: 1200, // $12/employee after 50 (Professional tier)
+    enterprise: 0, // Negotiated (Enterprise tier)
     description: "Additional employees beyond plan limit - rate based on tier",
     billingCycle: "monthly",
   },
@@ -322,7 +324,11 @@ export function calculateOverageAmount(employeeCount: number, tierId: TierKey): 
   const tier = getTierById(tierId);
   if (tier.maxEmployees === 999999) return 0; // Unlimited
   const overage = Math.max(0, employeeCount - tier.maxEmployees);
-  return overage * BILLING.overages.perEmployee;
+  const overageRate = BILLING.overages[tierId as keyof typeof BILLING.overages] || 0;
+  if (typeof overageRate === 'number') {
+    return overage * overageRate;
+  }
+  return 0;
 }
 
 export function getCreditPackById(packId: string) {

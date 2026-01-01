@@ -3,6 +3,35 @@
 ## Overview
 CoAIleague is a Fortune 500-grade multi-tenant autonomous workforce management platform. Its purpose is to centralize dynamic configuration, eliminate hardcoded values, and integrate financial management with real Stripe payments. The platform leverages AI for advanced automation across various workforce management functions, including scheduling, sentiment analysis, onboarding, health monitoring, and dispute resolution. CoAIleague aims to deliver an efficient, comprehensive, and AI-driven workforce management solution with significant market potential.
 
+## What Trinity AI Can Do (Jan 2026)
+**Autonomous Operations:**
+- **AI Scheduling**: Generates profit-optimized schedules using client data, addresses, contract rates, and employee scores
+- **GPS Time Tracking**: Verifies employee location at clock-in/out with geofence boundaries
+- **Automated Payroll**: Processes payroll with QuickBooks sync, detects anomalies, auto-resolves 99% of exceptions
+- **Client Billing**: Generates invoices from tracked hours, syncs to QuickBooks, sends via email
+- **Compliance Engine**: 50-state labor law configuration, break scheduling, certification expiry alerts
+- **Incident Management**: GPS-verified incident reports with photo upload and real-time notifications
+
+**Strategic Business Intelligence:**
+- Employee scoring (0-100 composite): Reliability 40%, Satisfaction 30%, Experience 15%, Attendance 15%
+- Client tiering (enterprise/premium/standard/trial): Revenue, Loyalty, Satisfaction, Profitability, Retention
+- Profit-first scheduling: Assigns best employees to highest-value clients, risk-adjusted calculations
+- At-risk client protection: 90+ score employees assigned regardless of cost
+- Legacy client retention: 2+ year clients get top performers
+
+**Integrations:**
+- QuickBooks: 7-step intelligent migration wizard with AI recommendations, bidirectional ID mapping
+- Stripe: Real payments, subscriptions, invoicing, metered billing for overages
+- Resend: Email automation with per-email billing and templates
+- VAPID: Push notifications for mobile app
+- HRIS: 8-provider integration (Gusto, ADP, Paychex, Zenefits, Rippling, BambooHR, Workday)
+
+## Pricing Tiers (Jan 2026)
+- **Free Trial**: $0 for 14 days (5 employees, 500 AI credits)
+- **Starter**: $499/month (15 employees included, +$15/employee overage, 2,000 AI credits)
+- **Professional**: $1,499/month (50 employees included, +$12/employee overage, 10,000 AI credits) - MOST POPULAR
+- **Enterprise**: Custom (starts at $3,500/month, 150+ employees, unlimited AI credits)
+
 ## AI Architecture (Critical Distinction)
 **Trinity AI** is the AI Brain orchestrator - handles ALL end user/org automations:
 - Autonomous scheduling using client data (addresses, contract rates, post orders)

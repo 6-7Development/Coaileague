@@ -1,0 +1,676 @@
+**🎯 COMPREHENSIVE PRICING UPGRADE PROMPT FOR REPLIT:**
+
+---
+
+**"PRICING TIER UPGRADE - Update Product Positioning, Stripe Integration & Value Messaging"**
+
+We're upgrading from commodity pricing to value-based premium positioning. Implement the following changes across pricing page, Stripe configuration, and database:
+
+---
+
+## **PHASE 1: STRIPE CONFIGURATION**
+
+### **A) Create New Stripe Price IDs**
+
+**Delete or archive old prices, create new:**
+
+**STARTER TIER:**
+```
+Product: CoAIleague Starter
+Base Price: $499/month (recurring)
+  - Stripe Price ID: price_starter_base_monthly
+  
+Per-Employee Overage: $15/employee/month (after 15 employees)
+  - Stripe Price ID: price_starter_per_employee
+  - Metered billing
+  
+Annual Plan: $4,990/year (17% discount)
+  - Stripe Price ID: price_starter_annual
+```
+
+**PROFESSIONAL TIER (Most Popular):**
+```
+Product: CoAIleague Professional
+Base Price: $1,499/month (recurring)
+  - Stripe Price ID: price_professional_base_monthly
+  
+Per-Employee Overage: $12/employee/month (after 50 employees)
+  - Stripe Price ID: price_professional_per_employee
+  - Metered billing
+  
+Annual Plan (monthly billing): $1,349/month (10% discount)
+  - Stripe Price ID: price_professional_annual_monthly
+  
+Annual Plan (upfront): $14,390/year (20% discount)
+  - Stripe Price ID: price_professional_annual_upfront
+```
+
+**ENTERPRISE TIER:**
+```
+Product: CoAIleague Enterprise
+Base Price: Custom (starting $3,500/month)
+  - Stripe Price ID: price_enterprise_custom
+  - Manually created per customer
+```
+
+**ADD-ON MODULES (Optional Revenue):**
+```
+Advanced Analytics Dashboard: $99/month
+  - Stripe Price ID: price_addon_analytics
+
+Multi-Location Management: $199/month
+  - Stripe Price ID: price_addon_multilocation
+
+Custom Integration (per integration): $299/month
+  - Stripe Price ID: price_addon_integration
+```
+
+**ONE-TIME FEES:**
+```
+Implementation/Onboarding Fee: $2,500 (one-time)
+  - Stripe Price ID: price_implementation_fee
+```
+
+**AI CREDIT OVERAGES:**
+```
+AI Credit Overage: $0.10 per credit
+  - Stripe Price ID: price_ai_credit_overage
+  - Metered billing
+```
+
+---
+
+### **B) Update Database Schema**
+
+**Modify subscription/pricing tables to support:**
+
+```typescript
+interface PricingTier {
+  id: string;
+  name: 'starter' | 'professional' | 'enterprise';
+  displayName: string;
+  basePrice: number; // Monthly base price
+  includedEmployees: number; // Employees included in base
+  overagePrice: number; // Price per employee after included
+  annualDiscountPercent: number; // Discount for annual
+  features: string[]; // Feature list
+  aiCreditsIncluded: number; // Monthly AI credits
+  supportLevel: 'email_72hr' | 'priority_24hr' | 'dedicated';
+  stripeBasePriceId: string;
+  stripeOveragePriceId: string;
+  stripeAnnualPriceId?: string;
+}
+
+interface Subscription {
+  // ... existing fields
+  tier: 'starter' | 'professional' | 'enterprise';
+  basePrice: number;
+  employeeCount: number;
+  includedEmployees: number;
+  overageEmployees: number; // employeeCount - includedEmployees
+  overageCharge: number; // overageEmployees × overagePrice
+  totalMonthlyCharge: number; // basePrice + overageCharge
+  billingCycle: 'monthly' | 'annual_monthly' | 'annual_upfront';
+  addOns: AddOn[]; // Array of active add-ons
+  implementationFeePaid: boolean;
+}
+
+interface AddOn {
+  id: string;
+  name: string;
+  price: number;
+  stripePriceId: string;
+  active: boolean;
+}
+```
+
+---
+
+### **C) Update Stripe Webhook Handlers**
+
+**Ensure these events update subscription correctly:**
+
+```typescript
+// When employee count changes, update metered billing
+async function handleEmployeeCountChange(
+  workspaceId: string, 
+  newCount: number
+) {
+  const subscription = await getSubscription(workspaceId);
+  const tier = PRICING_TIERS[subscription.tier];
+  
+  const overageEmployees = Math.max(0, newCount - tier.includedEmployees);
+  
+  // Report usage to Stripe for metered billing
+  await stripe.subscriptionItems.createUsageRecord(
+    subscription.stripeOverageItemId,
+    {
+      quantity: overageEmployees,
+      timestamp: Math.floor(Date.now() / 1000),
+      action: 'set' // Replace previous value
+    }
+  );
+  
+  // Update local database
+  await updateSubscription(workspaceId, {
+    employeeCount: newCount,
+    overageEmployees,
+    overageCharge: overageEmployees * tier.overagePrice,
+    totalMonthlyCharge: tier.basePrice + (overageEmployees * tier.overagePrice)
+  });
+}
+```
+
+---
+
+## **PHASE 2: PRICING PAGE UI**
+
+### **A) Update Pricing Page Component**
+
+**File: Update pricing page with new tiers**
+
+```tsx
+const PRICING_TIERS = [
+  {
+    name: 'starter',
+    displayName: 'Starter',
+    price: 499,
+    savings: '~$10K/year in admin time',
+    includedEmployees: 15,
+    overagePrice: 15,
+    aiCredits: 2000,
+    features: [
+      'Up to 15 employees included',
+      '+$15/employee after 15',
+      'Trinity AI scheduling',
+      'GPS time tracking',
+      'Basic compliance alerts',
+      'Mobile app for guards',
+      'Email/SMS notifications',
+      '2,000 AI credits/month',
+      'Email support (72hr response)'
+    ],
+    bestFor: '5-25 employee security companies',
+    cta: 'Start Free Trial'
+  },
+  {
+    name: 'professional',
+    displayName: 'Professional',
+    price: 1499,
+    savings: '~$35K/year in admin time',
+    includedEmployees: 50,
+    overagePrice: 12,
+    aiCredits: 10000,
+    popular: true, // Show "Most Popular" badge
+    features: [
+      'Up to 50 employees included',
+      '+$12/employee after 50',
+      'FULL Trinity AI automation',
+      'Profit-first scheduling optimization',
+      'Automated payroll processing',
+      'Client billing automation',
+      'QuickBooks integration',
+      'Advanced compliance (SOX audit trails)',
+      'Incident management',
+      'Strategic business insights',
+      '10,000 AI credits/month',
+      'Priority support (24hr response)'
+    ],
+    bestFor: '25-150 employee companies ready to scale',
+    cta: 'Start Free Trial'
+  },
+  {
+    name: 'enterprise',
+    displayName: 'Enterprise',
+    price: 'Custom',
+    priceSubtext: 'starts at $3,500/month',
+    savings: '~$250K+/year in admin time',
+    includedEmployees: 150,
+    features: [
+      '150+ employees',
+      'Multi-location management',
+      'Strategic profit optimization',
+      'Custom integrations (ADP, Workday, etc.)',
+      'White-label options',
+      'API access',
+      'Dedicated account manager',
+      'Custom SLAs',
+      'Unlimited AI credits',
+      'On-demand support'
+    ],
+    bestFor: 'Large security firms (150+ guards)',
+    cta: 'Contact Sales'
+  }
+];
+```
+
+**Design updates:**
+- Add "MOST POPULAR" badge to Professional tier
+- Show annual discount option: "Save 10-20% with annual billing"
+- Add ROI calculator (see Phase 3)
+- Emphasize savings value prominently
+- Update CTA buttons to match tier
+
+---
+
+### **B) Value-First Messaging**
+
+**Update all pricing copy to focus on VALUE, not features:**
+
+**Hero Section:**
+```
+OLD: "Workforce Management for Security Companies"
+NEW: "The AI That Runs Your Security Business"
+
+Subtext: "Trinity AI autonomously schedules, processes payroll, 
+bills clients, and optimizes profit while you sleep. 
+Security companies save 30-40 hours/month and increase 
+profit margins by 2-5%."
+```
+
+**Feature Callouts (use these everywhere):**
+```
+❌ "Scheduling automation"
+✅ "Trinity AI optimizes schedules for maximum profit - 
+    assigns best employees to highest-value clients"
+
+❌ "Time tracking"  
+✅ "GPS-verified time tracking prevents $5K+/month in timesheet fraud"
+
+❌ "QuickBooks integration"
+✅ "Automated payroll → QuickBooks sync. Zero manual data entry."
+
+❌ "Compliance alerts"
+✅ "SOX-compliant audit trails + AI prevents violations before they happen"
+
+❌ "Payroll processing"
+✅ "Gemini AI detects payroll anomalies and auto-resolves 99% of exceptions"
+```
+
+---
+
+## **PHASE 3: ROI CALCULATOR**
+
+### **Add Interactive ROI Calculator to Pricing Page**
+
+**Component: PricingROICalculator.tsx**
+
+```tsx
+function PricingROICalculator() {
+  const [employees, setEmployees] = useState(50);
+  const [avgPayRate, setAvgPayRate] = useState(18);
+  const [tier, setTier] = useState<'starter' | 'professional'>('professional');
+  
+  // Calculations
+  const monthlyPayroll = employees * avgPayRate * 160; // 160 hrs/month
+  const adminTimeSaved = 35; // hours/month
+  const adminCostSaved = adminTimeSaved * 25; // $25/hr admin rate
+  const timesheetFraudPrevented = monthlyPayroll * 0.03; // 3% fraud
+  const profitMarginImprovement = monthlyPayroll * 1.15 * 0.02; // 2% on revenue
+  const complianceViolationsPrevented = 2000; // Avg per violation
+  
+  const totalMonthlySavings = 
+    adminCostSaved + 
+    timesheetFraudPrevented + 
+    profitMarginImprovement + 
+    (complianceViolationsPrevented / 12);
+  
+  const tierPricing = PRICING_TIERS.find(t => t.name === tier);
+  const basePrice = tierPricing.price;
+  const overageEmployees = Math.max(0, employees - tierPricing.includedEmployees);
+  const overageCharge = overageEmployees * tierPricing.overagePrice;
+  const totalCost = basePrice + overageCharge;
+  
+  const netSavings = totalMonthlySavings - totalCost;
+  const roi = ((netSavings / totalCost) * 100).toFixed(0);
+  
+  return (
+    <div className="roi-calculator">
+      <h3>Calculate Your ROI</h3>
+      
+      <label>Number of Employees</label>
+      <input 
+        type="range" 
+        min="5" 
+        max="200" 
+        value={employees}
+        onChange={(e) => setEmployees(Number(e.target.value))}
+      />
+      <span>{employees} employees</span>
+      
+      <label>Average Pay Rate</label>
+      <input 
+        type="number" 
+        value={avgPayRate}
+        onChange={(e) => setAvgPayRate(Number(e.target.value))}
+      />
+      
+      <div className="results">
+        <h4>Your Monthly Savings with CoAIleague:</h4>
+        
+        <div className="savings-breakdown">
+          <div>Admin time saved: <strong>${adminCostSaved.toLocaleString()}</strong></div>
+          <div>Timesheet fraud prevented: <strong>${timesheetFraudPrevented.toLocaleString()}</strong></div>
+          <div>Profit optimization: <strong>${profitMarginImprovement.toLocaleString()}</strong></div>
+          <div>Compliance protection: <strong>${(complianceViolationsPrevented/12).toLocaleString()}</strong></div>
+          <hr />
+          <div className="total">Total Savings: <strong>${totalMonthlySavings.toLocaleString()}/month</strong></div>
+        </div>
+        
+        <div className="cost">
+          CoAIleague {tierPricing.displayName} Cost: 
+          <strong>${basePrice}</strong>
+          {overageEmployees > 0 && <span> + ${overageCharge} ({overageEmployees} extra employees)</span>}
+          = <strong>${totalCost}/month</strong>
+        </div>
+        
+        <div className="net-savings">
+          <h4>Net Monthly Profit: <span className="highlight">${netSavings.toLocaleString()}</span></h4>
+          <div>ROI: {roi}% return on investment</div>
+          <div>Annual Savings: <strong>${(netSavings * 12).toLocaleString()}</strong></div>
+        </div>
+        
+        <button>Start Free Trial</button>
+      </div>
+    </div>
+  );
+}
+```
+
+**Place calculator:**
+- Above pricing tiers (let them see value first)
+- OR below pricing tiers (reinforce decision)
+- Make it interactive and visual
+
+---
+
+## **PHASE 4: TRIAL & CONVERSION FLOW**
+
+### **A) Update Trial Logic**
+
+**Free Trial stays 14 days, but:**
+
+```typescript
+interface Trial {
+  duration: 14, // days
+  includedEmployees: 5, // Limited during trial
+  aiCredits: 500, // Limited credits
+  features: [
+    'Basic scheduling',
+    'Time tracking',
+    'See Trinity in action'
+  ],
+  noCreditCardRequired: true,
+  autoConvertTo: null, // User chooses tier after trial
+}
+```
+
+**After 14 days:**
+- User MUST select a tier (Starter/Professional/Enterprise)
+- Show them usage during trial: "You used X employees, Y AI credits"
+- Recommend tier based on usage
+- Require payment before activating full platform
+
+---
+
+### **B) Trial → Paid Conversion**
+
+**Update TrialConversion orchestrator:**
+
+```typescript
+async function convertTrialToP aid(workspaceId: string, selectedTier: string) {
+  const tier = PRICING_TIERS.find(t => t.name === selectedTier);
+  const workspace = await getWorkspace(workspaceId);
+  
+  // Calculate initial charge
+  const employeeCount = await getEmployeeCount(workspaceId);
+  const overageEmployees = Math.max(0, employeeCount - tier.includedEmployees);
+  const baseCharge = tier.basePrice;
+  const overageCharge = overageEmployees * tier.overagePrice;
+  const totalCharge = baseCharge + overageCharge;
+  
+  // Create Stripe subscription
+  const subscription = await stripe.subscriptions.create({
+    customer: workspace.stripeCustomerId,
+    items: [
+      {
+        price: tier.stripeBasePriceId, // Base price
+      },
+      {
+        price: tier.stripeOveragePriceId, // Metered employee overage
+      }
+    ],
+    metadata: {
+      workspaceId,
+      tier: selectedTier,
+      employeeCount,
+      includedEmployees: tier.includedEmployees
+    }
+  });
+  
+  // Report initial overage usage
+  if (overageEmployees > 0) {
+    await stripe.subscriptionItems.createUsageRecord(
+      subscription.items.data[1].id, // Overage item
+      { quantity: overageEmployees }
+    );
+  }
+  
+  // Update workspace
+  await updateWorkspace(workspaceId, {
+    subscriptionStatus: 'active',
+    tier: selectedTier,
+    stripeSubscriptionId: subscription.id,
+    trialEnded: new Date()
+  });
+  
+  // Send confirmation email
+  await sendEmail({
+    to: workspace.ownerEmail,
+    subject: `Welcome to CoAIleague ${tier.displayName}!`,
+    body: `You're now on the ${tier.displayName} plan.
+    
+    Your first charge: $${totalCharge}
+    Base: $${baseCharge}
+    ${overageEmployees > 0 ? `+ ${overageEmployees} employees × $${tier.overagePrice} = $${overageCharge}` : ''}
+    
+    Trinity AI is now fully activated and managing your workforce.
+    
+    Next billing date: ${getNextBillingDate()}
+    `
+  });
+}
+```
+
+---
+
+## **PHASE 5: BILLING & INVOICING**
+
+### **A) Dynamic Invoice Generation**
+
+**Ensure invoices show breakdown:**
+
+```
+CoAIleague Professional - February 2026
+
+Base Plan (up to 50 employees)          $1,499.00
+Additional Employees (12 × $12)           $144.00
+Advanced Analytics Add-On                  $99.00
+                                        ----------
+Subtotal                                $1,742.00
+Tax (if applicable)                        $0.00
+                                        ----------
+TOTAL                                   $1,742.00
+
+Billed to: [Stripe payment method]
+Next billing date: March 1, 2026
+```
+
+---
+
+### **B) Usage Tracking Dashboard**
+
+**Show customers their current usage:**
+
+```tsx
+<UsageDashboard>
+  <h3>Your Current Usage</h3>
+  
+  <div>Plan: Professional ($1,499/month)</div>
+  <div>Employees: 62 / 50 included</div>
+  <div>Overage: 12 employees × $12 = $144/month</div>
+  <div>AI Credits: 8,450 / 10,000 used this month</div>
+  
+  <div>Estimated Next Bill: $1,643</div>
+  
+  <button>Upgrade to Enterprise</button>
+  <button>Add Analytics Module (+$99)</button>
+</UsageDashboard>
+```
+
+---
+
+## **PHASE 6: SALES & ENTERPRISE FLOW**
+
+### **A) Enterprise "Contact Sales" Form**
+
+```tsx
+<EnterpriseContactForm>
+  <h3>Request Enterprise Pricing</h3>
+  
+  <input name="companyName" placeholder="Company Name" required />
+  <input name="contactName" placeholder="Your Name" required />
+  <input name="email" type="email" placeholder="Email" required />
+  <input name="phone" placeholder="Phone" />
+  <input name="employeeCount" type="number" placeholder="Number of Employees" required />
+  <textarea name="requirements" placeholder="Tell us about your needs"></textarea>
+  
+  <button>Request Quote</button>
+</EnterpriseContactForm>
+```
+
+**On submission:**
+- Send to your sales email
+- Create lead in CRM (if you have one)
+- Auto-reply: "Thanks! We'll contact you within 24 hours."
+
+---
+
+## **PHASE 7: ANNUAL BILLING DISCOUNTS**
+
+### **A) Annual Plan Selector**
+
+**On pricing page, add toggle:**
+
+```tsx
+<BillingCycleToggle>
+  <button active={cycle === 'monthly'}>Monthly</button>
+  <button active={cycle === 'annual'}>
+    Annual <span className="badge">Save 20%</span>
+  </button>
+</BillingCycleToggle>
+```
+
+**Show different prices:**
+- Monthly: $1,499/month
+- Annual (paid monthly): $1,349/month (10% off) - easier commitment
+- Annual (paid upfront): $14,390/year (20% off) - better cash flow for you
+
+---
+
+## **PHASE 8: IMPLEMENTATION FEE**
+
+### **A) One-Time Setup Charge**
+
+**During onboarding (after trial converts):**
+
+```tsx
+<ImplementationFee>
+  <h3>Professional Onboarding</h3>
+  <p>One-time setup includes:</p>
+  <ul>
+    <li>QuickBooks migration & testing</li>
+    <li>Employee data import & validation</li>
+    <li>Custom Trinity configuration</li>
+    <li>Training session for your team</li>
+    <li>30-day success check-ins</li>
+  </ul>
+  
+  <div>One-time fee: $2,500</div>
+  <button>Add to First Invoice</button>
+  <button>Skip (DIY setup)</button>
+</ImplementationFee>
+```
+
+**Stripe:**
+- Charge as one-time invoice
+- OR add to first subscription charge
+- Mark as `implementationFeePaid: true` in database
+
+---
+
+## **IMPLEMENTATION CHECKLIST:**
+
+**Update these files:**
+- [ ] Stripe dashboard - Create all new price IDs
+- [ ] Database schema - Add subscription fields for tiers/overages
+- [ ] Pricing page component - New tiers, messaging, ROI calculator
+- [ ] Stripe webhook handlers - Handle metered billing for employee count
+- [ ] Trial conversion flow - Let user select tier
+- [ ] Billing service - Generate detailed invoices
+- [ ] Usage dashboard - Show current employee count & projected bill
+- [ ] Enterprise contact form - Sales lead capture
+- [ ] Email templates - Update with new pricing
+- [ ] Documentation - Update help docs with new tiers
+
+**Testing checklist:**
+- [ ] Create Stripe subscription with Starter tier
+- [ ] Add 20 employees → verify overage charge
+- [ ] Switch from Starter → Professional → verify proration
+- [ ] Convert trial → verify correct tier activated
+- [ ] Generate invoice → verify breakdown shows correctly
+- [ ] Annual billing → verify discount applied
+- [ ] Add-on module → verify additional charge
+- [ ] Implementation fee → verify one-time charge
+
+---
+
+## **ROLLOUT STRATEGY:**
+
+**Since you're launching Jan 1 with ZERO existing customers:**
+
+1. **Update Stripe NOW** - Create all new price IDs today
+2. **Update pricing page** - Deploy new tiers before launch
+3. **No grandfathering needed** - You have no existing customers
+4. **Launch with new pricing** - Start premium from day 1
+
+**If you had existing customers (you don't), you would:**
+- Grandfather them at old prices for 6-12 months
+- New customers pay new prices
+- Email grandfathered customers: "Your price locked until July 2026"
+
+---
+
+**Implement all of the above and confirm when complete. This is a comprehensive pricing upgrade that positions CoAIleague as premium AI automation, not commodity workforce software.**
+
+---
+
+**END OF PRICING UPGRADE PROMPT**
+
+---
+
+**Bryan, copy that entire thing and send it to Replit.**
+
+**This will:**
+1. ✅ Update Stripe with new pricing ($499/$1,499/Custom)
+2. ✅ Rebuild pricing page with value messaging
+3. ✅ Add ROI calculator
+4. ✅ Handle employee overage billing
+5. ✅ Add annual discounts
+6. ✅ Set up add-on modules
+7. ✅ Implement one-time setup fee
+8. ✅ Update trial conversion flow
+
+**You'll launch Jan 1 with enterprise-grade pricing that reflects what Trinity actually does.**
+
+**Want me to make any changes before you send it?** 🚀
