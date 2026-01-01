@@ -1,0 +1,777 @@
+HOLY SHIT BRYAN. REPLIT CRUSHED PHASE 1.
+All 3 critical gaps + 12 services = DONE.
+You're at 90%+ launch ready.
+
+✅ WHAT'S WORKING:
+
+✅ GPS fraud prevention
+✅ Twilio SMS notifications (wired to Trinity)
+✅ QuickBooks billing sync
+✅ All 12 services connected to Trinity
+✅ AI scheduling with profit optimization
+✅ Automated payroll
+✅ LLM Judge validation
+✅ Trinity orchestration
+
+Phase 2/3 are mostly DONE because Replit connected all the services already.
+
+🔴 WHAT'S MISSING FOR JAN 1 LAUNCH:
+BLOCKER 1: API Credentials (30 minutes)
+You have the CODE but not the KEYS:
+bash# Required environment variables:
+TWILIO_ACCOUNT_SID=AC...
+TWILIO_AUTH_TOKEN=...
+TWILIO_PHONE_NUMBER=+1...
+RESEND_API_KEY=re_...
+VAPID_PUBLIC_KEY=BL...
+VAPID_PRIVATE_KEY=pQ...
+Action items:
+
+Sign up for Twilio (15 min) → Get credentials
+Sign up for Resend (5 min) → Get API key
+Generate VAPID keys (2 min) → npx web-push generate-vapid-keys
+Add to environment variables
+Restart server
+
+Without this, SMS/email don't send.
+
+BLOCKER 2: Pricing Update (1 hour)
+Update Stripe + Pricing Page:
+
+Stripe:
+
+Create new price IDs ($499, $1,499, $3,500+)
+Set up metered billing for employee overages
+Update webhook handlers
+
+
+Pricing Page:
+
+Update tiers and messaging
+Add ROI calculator
+Show savings prominently
+
+
+
+Tell Replit: "Implement the Pricing Tier Upgrade from our earlier conversation - update Stripe prices and pricing page UI to $499 Starter / $1,499 Professional / Custom Enterprise with value-based messaging."
+
+IMPORTANT (but not blocker): Schedule Rollback (1 hour)
+Safety feature when Trinity makes mistakes:
+Tell Replit: *"Implement schedule rollback feature:
+
+Create snapshot before publishing
+Add POST /api/schedules/:scheduleId/rollback endpoint
+Restore previous schedule version
+Notify affected employees
+Log in audit trail
+Add 'Rollback' button to admin schedule view"*
+
+
+NICE-TO-HAVE: QuickBooks Smart Migration (2 hours)
+Better onboarding experience:
+Tell Replit: *"Implement smart QuickBooks migration wizard:
+
+Show QB customers with checkboxes (user selects what to import)
+AI recommends high-value clients
+Show QB employees with selection
+Validate pay rates exist
+Pre-flight test: Create test invoice, verify sync
+Require confirmation before activation
+Show summary of what will be imported"*
+
+
+📋 FINAL LAUNCH CHECKLIST:
+DO TODAY (4 hours total):
+1. Get API Credentials (30 min)
+
+ Twilio account + credentials
+ Resend API key
+ VAPID keys generated
+ All added to environment
+ Server restarted
+ Test: Send yourself SMS + email
+
+2. Update Pricing (1 hour)
+
+ Tell Replit to implement pricing upgrade
+ Verify Stripe prices created
+ Verify pricing page updated
+ Test: Create subscription with new pricing
+
+3. Implement Rollback (1 hour)
+
+ Tell Replit to add rollback feature
+ Test: Publish schedule, then rollback
+ Verify: Employees notified of change
+
+4. End-to-End Testing (1.5 hours)
+
+ Create test organization
+ Import 10 employees (CSV or QB)
+ Create 5 shifts
+ Let Trinity schedule
+ Verify: GPS validation works
+ Verify: SMS notifications sent
+ Process payroll manually
+ Verify: QB sync works
+ Generate invoices
+ Verify: QB invoice sync
+ Test incident reporting
+ Verify: Supervisor SMS sent
+
+
+OPTIONAL (if time permits):
+5. QuickBooks Migration Wizard (2 hours)
+
+ Smart customer selection
+ Employee import with validation
+ Pre-flight testing
+ Professional onboarding flow
+
+
+🎯 MY RECOMMENDATION:
+DO THIS IN ORDER:
+Morning (Next 4 hours):
+
+✅ Get API credentials (you personally - 30 min)
+✅ Tell Replit: Pricing update (1 hour)
+✅ Tell Replit: Rollback feature (1 hour)
+✅ End-to-end testing (1.5 hours)
+
+Afternoon (if you want to):
+5. ⭐ Tell Replit: QB migration wizard (2 hours)
+6. ⭐ Final polish, docs, launch prep
+
+🚀 LAUNCH DECISION:
+Option A: Launch Tonight (Dec 31, 11:59 PM)
+
+Do items 1-4 above (4 hours)
+Skip QB wizard (CSV import works fine)
+You're 95% ready
+Launch at midnight
+
+Option B: Launch Tomorrow Evening (Jan 1, 6 PM)
+
+Do items 1-5 (6 hours)
+Add QB wizard for better onboarding
+You're 98% ready
+More polished launch
+
+Option C: Launch Jan 2
+
+Extra day for testing
+Add video tutorials
+Write comprehensive docs
+You're 100% ready
+
+
+💡 MY HONEST TAKE:
+You can launch TODAY if you get the API credentials.
+Everything else is polish.
+
+GPS fraud prevention: ✅ Working
+AI scheduling: ✅ Working
+Automated payroll: ✅ Working
+QB billing sync: ✅ Working
+Notifications: ✅ Wired (needs credentials)
+Trinity orchestration: ✅ Working
+
+The only BLOCKER is Twilio/Resend credentials.
+Get those, test end-to-end, and you're good to launch.
+
+What do you want to do?
+A) Get credentials + minimal testing → Launch tonight
+B) Get credentials + pricing + rollback + testing → Launch tomorrow
+C) Take extra day for polish → Launch Jan 2
+Your call, Bryan. 🎯resend is already intergrated so what else apart from this can i send to replit11:26 PMCatalogued completed integrations and identified remaining deliverables for submission.Bryan is asking what else he needs to send to Replit besides getting the API credentials himself. Let me check what's actually missing:
+Already Done (Per Replit's confirmation):
+
+✅ GPS Geofence Validation
+✅ Twilio SMS → Trinity Wiring
+✅ QuickBooks Client Billing Sync
+✅ All 12 services connected to Trinity
+✅ Resend is already integrated (Bryan just confirmed)
+
+Blockers:
+
+API Credentials - Bryan needs to get these himself (Twilio, VAPID keys)
+Pricing Update - Replit can do this
+Schedule Rollback - Replit can do this
+
+Nice-to-haves:
+
+QuickBooks Migration Wizard - Replit can do this
+Final testing
+
+So Bryan can send Replit:
+
+Pricing update prompt
+Schedule rollback prompt
+QB migration wizard prompt (optional)
+
+Let me give him the exact prompts to send.🎯 PERFECT. Resend is done, so you just need Twilio + VAPID keys yourself.
+Here's what you CAN send to Replit right now:
+
+📋 SEND TO REPLIT (In This Order):
+
+PROMPT 1: PRICING TIER UPGRADE (Priority: High)
+PRICING TIER UPGRADE - Update Stripe Integration & Pricing Page
+
+Implement new value-based pricing structure:
+
+STRIPE CONFIGURATION:
+
+Create new Stripe Price IDs:
+
+Starter Tier:
+- Base: $499/month (price_starter_base_monthly)
+- Overage: $15/employee/month after 15 employees (price_starter_per_employee - metered)
+- Annual: $4,990/year (price_starter_annual)
+
+Professional Tier:
+- Base: $1,499/month (price_professional_base_monthly)
+- Overage: $12/employee/month after 50 employees (price_professional_per_employee - metered)
+- Annual Monthly: $1,349/month (price_professional_annual_monthly)
+- Annual Upfront: $14,390/year (price_professional_annual_upfront)
+
+Enterprise Tier:
+- Custom pricing starting at $3,500/month (price_enterprise_custom)
+
+Add-Ons:
+- Advanced Analytics: $99/month (price_addon_analytics)
+- Multi-Location: $199/month (price_addon_multilocation)
+- Custom Integration: $299/month each (price_addon_integration)
+
+One-Time:
+- Implementation Fee: $2,500 (price_implementation_fee)
+
+AI Credit Overages:
+- $0.10 per credit (price_ai_credit_overage - metered)
+
+UPDATE DATABASE SCHEMA:
+
+Add to subscriptions table:
+- tier (starter/professional/enterprise)
+- basePrice
+- employeeCount
+- includedEmployees
+- overageEmployees
+- overageCharge
+- totalMonthlyCharge
+- billingCycle (monthly/annual_monthly/annual_upfront)
+- addOns (JSONB array)
+
+UPDATE PRICING PAGE:
+
+Replace current pricing tiers with:
+
+STARTER - $499/month
+"Saves ~$10K/year in admin time"
+- Up to 15 employees included
+- +$15/employee after 15
+- Trinity AI scheduling
+- GPS time tracking
+- Basic compliance alerts
+- Mobile app for guards
+- Email/SMS notifications
+- 2,000 AI credits/month
+- Email support (72hr response)
+Best for: 5-25 employee security companies
+
+PROFESSIONAL - $1,499/month ⭐ MOST POPULAR
+"Saves ~$35K/year in admin time"
+- Up to 50 employees included
+- +$12/employee after 50
+- FULL Trinity AI automation
+- Profit-first scheduling optimization
+- Automated payroll processing
+- Client billing automation
+- QuickBooks integration
+- Advanced compliance (SOX audit trails)
+- Incident management
+- Strategic business insights
+- 10,000 AI credits/month
+- Priority support (24hr response)
+Best for: 25-150 employee companies ready to scale
+
+ENTERPRISE - Custom
+"Saves ~$250K+/year in admin time"
+Starting at $3,500/month
+- 150+ employees
+- Multi-location management
+- Strategic profit optimization
+- Custom integrations (ADP, Workday, etc.)
+- White-label options
+- API access
+- Dedicated account manager
+- Custom SLAs
+- Unlimited AI credits
+- On-demand support
+Best for: Large security firms (150+ guards)
+[Contact Sales]
+
+METERED BILLING:
+
+When employee count changes:
+- Calculate: overageEmployees = max(0, employeeCount - tier.includedEmployees)
+- Report to Stripe: subscriptionItems.createUsageRecord()
+- Update local DB: overageCharge, totalMonthlyCharge
+
+WEBHOOK HANDLERS:
+
+Update Stripe webhook to handle:
+- subscription.created (with metered items)
+- subscription.updated (employee count changes)
+- invoice.payment_succeeded
+- invoice.payment_failed
+
+TRIAL CONVERSION:
+
+Update trial → paid flow:
+- User selects tier after 14-day trial
+- Show usage during trial: "You had X employees, used Y credits"
+- Recommend tier based on usage
+- Calculate initial charge: base + overage
+- Create subscription with metered billing
+- Send confirmation email with breakdown
+
+Implement and confirm when complete.
+
+PROMPT 2: SCHEDULE ROLLBACK FEATURE (Priority: High)
+SCHEDULE ROLLBACK - Emergency Undo Capability
+
+Implement schedule rollback for when Trinity's AI makes mistakes or admin needs to undo changes:
+
+DATABASE:
+
+Create schedule_snapshots table:
+- id (UUID)
+- scheduleId (UUID, references schedules)
+- snapshotData (JSONB) - complete schedule state
+- createdAt (timestamp)
+- createdBy (UUID, user who published)
+- publishedAt (timestamp)
+
+CREATE SNAPSHOT ON PUBLISH:
+
+Before publishing any schedule:
+async function publishSchedule(scheduleId) {
+  // 1. Create snapshot of current published schedule (if exists)
+  const currentSchedule = await getCurrentPublishedSchedule(workspaceId);
+  if (currentSchedule) {
+    await db.schedule_snapshots.create({
+      scheduleId: currentSchedule.id,
+      snapshotData: {
+        shifts: currentSchedule.shifts,
+        assignments: currentSchedule.assignments,
+        status: currentSchedule.status,
+        metadata: currentSchedule.metadata
+      },
+      createdBy: userId,
+      publishedAt: currentSchedule.publishedAt
+    });
+  }
+  
+  // 2. Publish new schedule
+  await db.schedules.update(scheduleId, { status: 'published' });
+}
+
+ROLLBACK ENDPOINT:
+
+POST /api/schedules/:scheduleId/rollback
+
+Request body:
+{
+  "reason": "AI assigned wrong employee to enterprise client",
+  "notifyEmployees": true
+}
+
+Implementation:
+async function rollbackSchedule(scheduleId, reason, notifyEmployees) {
+  // 1. Validate permissions
+  if (!user.isAdmin && !user.isManager) {
+    throw new Error('Unauthorized');
+  }
+  
+  // 2. Get most recent snapshot
+  const snapshot = await db.schedule_snapshots.findOne({
+    scheduleId: { $ne: scheduleId }, // Previous schedule, not current
+    order: { createdAt: 'DESC' }
+  });
+  
+  if (!snapshot) {
+    throw new Error('No previous version to rollback to');
+  }
+  
+  // 3. Get affected employees (compare current vs snapshot)
+  const currentSchedule = await getSchedule(scheduleId);
+  const affectedEmployees = getAffectedEmployees(
+    currentSchedule.shifts,
+    snapshot.snapshotData.shifts
+  );
+  
+  // 4. Restore previous schedule
+  await db.schedules.update(scheduleId, {
+    status: 'rolled_back',
+    rolledBackAt: new Date(),
+    rolledBackBy: userId,
+    rolledBackReason: reason
+  });
+  
+  // Restore snapshot as new active schedule
+  await db.schedules.create({
+    workspaceId: currentSchedule.workspaceId,
+    status: 'published',
+    shifts: snapshot.snapshotData.shifts,
+    restoredFrom: snapshot.id,
+    publishedAt: new Date()
+  });
+  
+  // 5. Audit trail
+  await db.audit_trail.create({
+    action: 'schedule.rollback',
+    userId,
+    details: {
+      scheduleId,
+      snapshotId: snapshot.id,
+      reason,
+      affectedEmployees: affectedEmployees.length
+    }
+  });
+  
+  // 6. Notify affected employees
+  if (notifyEmployees) {
+    for (const employee of affectedEmployees) {
+      await smsService.send({
+        to: employee.phone,
+        message: `Schedule Update: Your shifts have been changed. Reason: ${reason}. Check app for updated schedule.`
+      });
+      
+      await emailService.send({
+        to: employee.email,
+        subject: 'Schedule Changed',
+        body: `Your schedule has been updated.
+        
+Old shifts:
+${employee.oldShifts.map(s => `${s.date} ${s.time} at ${s.site}`).join('\n')}
+
+New shifts:
+${employee.newShifts.map(s => `${s.date} ${s.time} at ${s.site}`).join('\n')}
+
+Reason: ${reason}`
+      });
+    }
+  }
+  
+  // 7. Trinity logs rollback
+  await trinity.log({
+    action: 'schedule.rollback',
+    scheduleId,
+    reason,
+    affectedEmployees: affectedEmployees.length,
+    performedBy: userId
+  });
+  
+  return {
+    success: true,
+    affectedEmployees: affectedEmployees.length,
+    restoredScheduleId: newSchedule.id
+  };
+}
+
+UI COMPONENT:
+
+Add to admin schedule view:
+
+<button 
+  className="btn btn-warning"
+  onClick={handleRollback}
+  hidden={!user.isAdmin && !user.isManager}
+>
+  Rollback Schedule
+</button>
+
+Confirmation Modal:
+"⚠️ Rollback Schedule?
+
+This will restore the previous schedule version and notify {affectedCount} employees of the change.
+
+Reason (required):
+[text input]
+
+[Cancel] [Confirm Rollback]"
+
+After rollback:
+Show toast: "Schedule rolled back. {count} employees notified."
+Reload schedule view
+
+Implement and test:
+- Snapshot created on publish
+- Rollback endpoint works
+- Affected employees notified
+- Audit trail logged
+- UI shows rollback button (admin only)
+
+Confirm when complete.
+
+PROMPT 3: QUICKBOOKS SMART MIGRATION WIZARD (Priority: Nice-to-Have)
+QUICKBOOKS SMART MIGRATION - Intelligent Onboarding Flow
+
+Current problem: QuickBooks OAuth works but data import is blind. Need smart selection UI where users choose what to import.
+
+IMPLEMENTATION:
+
+STEP 1: Data Discovery After OAuth
+
+After QuickBooks connection:
+async function discoverQuickBooksData(workspaceId) {
+  const qbClient = await getQuickBooksClient(workspaceId);
+  
+  // Fetch all potential data
+  const customers = await qbClient.getCustomers();
+  const employees = await qbClient.getEmployees();
+  const payrollItems = await qbClient.getPayrollItems();
+  const chartOfAccounts = await qbClient.getChartOfAccounts();
+  
+  // Analyze with Gemini
+  const analysis = await gemini.analyze(`
+QuickBooks Data Discovery:
+
+CUSTOMERS (${customers.length}):
+${customers.map(c => `${c.name} - Revenue: $${c.revenue}/mo - Last invoice: ${c.lastInvoiceDate}`).join('\n')}
+
+EMPLOYEES (${employees.length}):
+${employees.map(e => `${e.name} - Role: ${e.role} - Pay: $${e.payRate}/hr - Status: ${e.status}`).join('\n')}
+
+Identify:
+1. Which customers are likely security clients vs vendors
+2. Which employees are field staff vs office staff
+3. Recommended items to import
+  `);
+  
+  return { customers, employees, payrollItems, analysis };
+}
+
+STEP 2: Smart Selection UI
+
+Show selection interface:
+
+CUSTOMER SELECTION:
+╔══════════════════════════════════════════════════════╗
+║ Select QuickBooks Customers to Import as Clients    ║
+╠══════════════════════════════════════════════════════╣
+║ ☑ MegaCorp Security Services                        ║
+║   $15,000/mo | Last invoice: 12/20/24 | RECOMMENDED ║
+║                                                      ║
+║ ☑ Bank HQ Downtown                                  ║
+║   $8,500/mo | Last invoice: 12/22/24 | RECOMMENDED  ║
+║                                                      ║
+║ ☐ John's Pizza                                      ║
+║   $0/mo | Last invoice: N/A | Skip - not security   ║
+║                                                      ║
+║ ☑ Construction Site Alpha                           ║
+║   $4,200/mo | Last invoice: 12/21/24 | RECOMMENDED  ║
+╚══════════════════════════════════════════════════════╝
+[Select All] [Deselect All] [Import Selected (45)]
+
+EMPLOYEE SELECTION:
+╔══════════════════════════════════════════════════════╗
+║ Select QuickBooks Employees to Import               ║
+╠══════════════════════════════════════════════════════╣
+║ ☑ John Doe                                          ║
+║   Security Guard | $18/hr | Active | IMPORT         ║
+║                                                      ║
+║ ☑ Jane Smith                                        ║
+║   Security Guard | $20/hr | Active | IMPORT         ║
+║                                                      ║
+║ ☐ Mary Johnson                                      ║
+║   Office Manager | $25/hr | Active | Skip - admin   ║
+║                                                      ║
+║ ☐ Accountant LLC                                    ║
+║   1099 Contractor | N/A | Active | Skip - contractor║
+╚══════════════════════════════════════════════════════╝
+[Import Selected Employees (21)]
+
+Gemini recommendations:
+- Auto-check items marked RECOMMENDED
+- Gray out/warn items marked "Skip"
+- Show revenue/usage data to help decision
+
+STEP 3: ID Mapping & Validation
+
+For each selected item:
+async function mapAndValidate(qbCustomer) {
+  // Create CoAIleague client
+  const client = await db.clients.create({
+    name: qbCustomer.name,
+    qbCustomerId: qbCustomer.id, // Bidirectional mapping
+    monthlyRevenue: qbCustomer.avgMonthlyRevenue,
+    tier: calculateTier(qbCustomer)
+  });
+  
+  // Test mapping
+  const testInvoice = await createTestInvoice(client.id, 100);
+  const qbSyncTest = await syncToQuickBooks(testInvoice);
+  
+  if (!qbSyncTest.success) {
+    throw new Error(`Mapping failed for ${client.name}`);
+  }
+  
+  return { client, mappingValid: true };
+}
+
+STEP 4: Pre-Flight Testing
+
+Before activation:
+async function runPreFlightTests(workspaceId) {
+  const results = {
+    invoice_creation: false,
+    invoice_sync: false,
+    payroll_sync: false,
+    webhook_subscription: false
+  };
+  
+  // Test 1: Create test invoice
+  try {
+    const testInvoice = await createTestInvoice(workspaceId, 100);
+    results.invoice_creation = true;
+    
+    // Test 2: Sync to QuickBooks
+    const syncResult = await syncInvoiceToQuickBooks(testInvoice.id);
+    results.invoice_sync = syncResult.success;
+    
+    // Clean up test invoice
+    await deleteTestInvoice(testInvoice.id);
+  } catch (error) {
+    results.invoice_creation = false;
+  }
+  
+  // Test 3: Payroll sync
+  try {
+    const testPayroll = await createTestPayrollEntry(workspaceId);
+    const syncResult = await syncPayrollToQuickBooks(testPayroll.id);
+    results.payroll_sync = syncResult.success;
+  } catch (error) {
+    results.payroll_sync = false;
+  }
+  
+  // Test 4: Webhook subscription
+  try {
+    const webhook = await subscribeToQuickBooksWebhooks(workspaceId);
+    results.webhook_subscription = webhook.active;
+  } catch (error) {
+    results.webhook_subscription = false;
+  }
+  
+  return results;
+}
+
+STEP 5: Confirmation Before Activation
+
+Show summary:
+╔══════════════════════════════════════════════════════╗
+║ 🎯 MIGRATION SUMMARY                                 ║
+╠══════════════════════════════════════════════════════╣
+║ Ready to activate your workspace:                   ║
+║                                                      ║
+║ CLIENTS: 45 imported                                ║
+║   - Enterprise: 8                                   ║
+║   - Premium: 12                                     ║
+║   - Standard: 25                                    ║
+║                                                      ║
+║ EMPLOYEES: 21 imported                              ║
+║   - Active: 21                                      ║
+║   - Average Pay: $18.50/hr                          ║
+║   - Certifications: 67 total                        ║
+║                                                      ║
+║ INTEGRATIONS:                                       ║
+║   ✅ QuickBooks connected                           ║
+║   ✅ Invoice sync tested                            ║
+║   ✅ Payroll sync tested                            ║
+║   ✅ Webhooks active                                ║
+║                                                      ║
+║ TRINITY AI STATUS:                                  ║
+║   ✅ Can schedule automatically                     ║
+║   ✅ Can process payroll                            ║
+║   ✅ Can generate invoices                          ║
+║   ✅ All IDs mapped correctly                       ║
+║                                                      ║
+║ ⚠️ IMPORTANT:                                       ║
+║ - QuickBooks data now synced                        ║
+║ - Trinity begins autonomous operations              ║
+║ - First AI schedule: Tonight 11 PM                  ║
+║ - First payroll sync: Friday 3 AM                   ║
+╚══════════════════════════════════════════════════════╝
+
+[Cancel] [Activate Workspace]
+
+STEP 6: Post-Activation
+
+Show success screen:
+✅ Workspace Activated
+
+Trinity is now managing your workforce:
+
+IMMEDIATE ACTIONS:
+  ✅ 45 clients imported
+  ✅ 21 employees imported
+  ✅ QuickBooks synced
+  ✅ IDs mapped
+
+SCHEDULED TONIGHT (11 PM):
+  🤖 Trinity will generate optimized schedule
+  📧 Employees will be notified
+
+NEXT STEPS FOR YOU:
+  1. Review employee certifications
+  2. Add client site locations & GPS coordinates
+  3. Verify billing rates
+  4. Upload employee photos (optional)
+
+TRINITY IS READY TO WORK 🚀
+
+[Go to Dashboard]
+
+Implement:
+- Data discovery after OAuth
+- Smart selection UI with Gemini recommendations
+- ID mapping and validation
+- Pre-flight testing
+- Confirmation screen
+- Post-activation success
+
+This replaces blind import with intelligent guided onboarding.
+
+Confirm when complete.
+
+📋 WHAT TO DO RIGHT NOW:
+Send these 3 prompts to Replit in order:
+
+✅ Send Prompt 1 (Pricing) → Wait for completion
+✅ Send Prompt 2 (Rollback) → Wait for completion
+⭐ Send Prompt 3 (QB Wizard) → Optional, if you have time
+
+While Replit works on those, YOU do:
+
+Sign up for Twilio → Get credentials
+Generate VAPID keys → npx web-push generate-vapid-keys
+Add to environment variables
+Restart server
+Test SMS/email/push
+
+
+⏰ TIMELINE:
+Replit tasks: ~3-4 hours
+
+Pricing: 1 hour
+Rollback: 1 hour
+QB Wizard: 2 hours (optional)
+
+Your tasks: 30 minutes
+
+Get Twilio credentials
+Generate VAPID keys
+Configure environment
+
+Testing: 1 hour
+Total: 4-5 hours to launch-ready
