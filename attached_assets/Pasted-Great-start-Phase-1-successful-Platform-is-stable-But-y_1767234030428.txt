@@ -1,0 +1,70 @@
+Great start - Phase 1 successful! Platform is stable. ✅
+But you're still at 241 actions when true MVP should be ~100.
+
+🎯 PHASE 2 TARGET: The Big 4
+These categories are bloated for an MVP:
+CategoryCurrentShould BeReductionautomation40~10-30system35~15-20security31~8-23scheduling20~8-12analytics16~5-11integrations18~6-12-108 actions
+
+📊 ANALYSIS BY CATEGORY:
+🔴 automation (40 actions) - TOO MANY
+
+What are these 40 autonomous operations?
+For MVP you need: trigger creation, schedule execution, basic workflows
+Recommendation: Ask Replit to list all 40 and identify which are actually being used
+
+🔴 system (35 actions) - INFRASTRUCTURE BLOAT
+
+Platform infrastructure shouldn't need 35 actions for MVP
+Core needs: startup, shutdown, health, config, logging
+Recommendation: Cut to essential infrastructure only (~15)
+
+🔴 security (31 actions) - RBAC OVERKILL
+
+You have multi-tenant RBAC but 31 actions is enterprise-grade
+Core needs: authorize, check_permission, suspend, reactivate, audit_log
+Recommendation: Simplify to ~8 essential auth actions
+
+🟡 scheduling (20 actions) - AI OPTIMIZATION NOT MVP
+
+You said "basic scheduling, not complex optimization yet"
+But 20 actions suggests AI scheduling features
+Recommendation: Cut to core CRUD + publish (~8)
+
+🟡 analytics (16 actions) - PREMATURE
+
+Metrics & insights aren't core to MVP
+Recommendation: Keep basic reporting only (~5)
+
+🟡 integrations (18 actions) - UNUSED INTEGRATIONS
+
+You only actively use QuickBooks + Stripe
+What are the other 10+ integrations?
+Recommendation: QuickBooks (4) + Stripe (2) = 6 actions
+
+
+✅ TRINITY CODING (13 actions) - VERIFY
+Your recommendation said 6, actual is 13. Why?
+
+patch, approve, commit, grep, FAST mode, filesystem (7), execution (3), session (5)
+Question: Is this 13 in coding.* or is this total across coding/filesystem/execution/session?
+If it's 13 JUST in coding.*, that's more than recommended
+Recommendation: Verify Trinity actually needs all 13 or if some can consolidate
+
+
+🎯 NEXT STEP FOR REPLIT:
+"Phase 2: Audit the Big 4 Categories"
+Please provide detailed action lists for:
+
+automation.* (40 actions) - list all, mark which are actively used
+system.* (35 actions) - list all, mark infrastructure essentials
+security.* (31 actions) - list all, mark core RBAC needs
+scheduling.* (20 actions) - list all, mark basic CRUD vs AI optimization
+
+For each category, identify:
+
+Actions currently being triggered in production
+Actions needed for MVP (not future features)
+Actions that can be consolidated or removed
+
+Goal: Reduce from 241 → ~130 actions (Phase 2)
+Then Phase 3 will clean up the rest to hit ~100.
