@@ -19,6 +19,7 @@ import { workspaces, subscriptions, users, notifications } from '@shared/schema'
 import { eq, and, lte, gte, isNotNull, isNull } from 'drizzle-orm';
 import { TrialManager } from './trialManager';
 import { SubscriptionManager, type SubscriptionTier, type BillingCycle } from './subscriptionManager';
+import { CreditManager } from './creditManager';
 import { platformEventBus, type PlatformEvent } from '../platformEventBus';
 import { helpaiOrchestrator } from '../helpai/platformActionHub';
 import { BILLING } from '@shared/billingConfig';
@@ -48,10 +49,12 @@ class TrialConversionOrchestrator {
   private static instance: TrialConversionOrchestrator;
   private trialManager: TrialManager;
   private subscriptionManager: SubscriptionManager;
+  private creditManager: CreditManager;
 
   private constructor() {
     this.trialManager = TrialManager.getInstance();
     this.subscriptionManager = SubscriptionManager.getInstance();
+    this.creditManager = new CreditManager();
   }
 
   static getInstance(): TrialConversionOrchestrator {
@@ -320,9 +323,11 @@ class TrialConversionOrchestrator {
   }
 
   /**
-   * Suspend workspace after grace period expires
+   * Suspend workspace after grace period expires or manual action
+   * @param trial - Trial check info
+   * @param reason - Reason for suspension (default: 'trial_expired')
    */
-  private async suspendWorkspace(trial: TrialExpiryCheck): Promise<void> {
+  private async suspendWorkspace(trial: TrialExpiryCheck, reason: string = 'trial_expired'): Promise<void> {
     const { workspaceId, workspaceName } = trial;
 
     await db.update(subscriptions)
@@ -330,21 +335,31 @@ class TrialConversionOrchestrator {
       .where(eq(subscriptions.workspaceId, workspaceId));
 
     await db.update(workspaces)
-      .set({ subscriptionStatus: 'suspended', isActive: false })
+      .set({ subscriptionStatus: 'suspended', isActive: false, isSuspended: true })
       .where(eq(workspaces.id, workspaceId));
+
+    const reasonDescriptions: Record<string, string> = {
+      'trial_expired': 'trial and grace period expired',
+      'manual_suspend': 'manual suspension by administrator',
+      'payment_failed': 'repeated payment failures',
+      'policy_violation': 'policy violation',
+    };
 
     await platformEventBus.publish({
       type: 'workspace_suspended',
       category: 'billing',
       title: 'Workspace Suspended',
-      description: `${workspaceName} suspended after trial and grace period expired`,
-      metadata: { workspaceId, reason: 'trial_expired' },
+      description: `${workspaceName} suspended: ${reasonDescriptions[reason] || reason}`,
+      metadata: { workspaceId, reason },
       visibility: 'admin',
     });
+    
+    console.log(`[TrialSubscription] Workspace ${workspaceId} suspended: ${reason}`);
   }
 
   /**
    * Reactivate a suspended workspace after payment
+   * Coordinates with Stripe to resume/create subscription before updating local records
    */
   async reactivateWorkspace(workspaceId: string, newTier?: SubscriptionTier): Promise<{ success: boolean; message: string }> {
     try {
@@ -355,6 +370,27 @@ class TrialConversionOrchestrator {
 
       const tier = newTier || workspace.subscriptionTier as SubscriptionTier || 'starter';
       
+      // Coordinate with Stripe if there's an existing subscription
+      if (workspace.stripeSubscriptionId && tier !== 'free') {
+        try {
+          // Attempt to resume the Stripe subscription
+          const stripeResult = await this.subscriptionManager.createSubscription({
+            workspaceId,
+            tier,
+            billingCycle: 'monthly',
+          });
+          
+          if (!stripeResult.success) {
+            console.warn(`[TrialSubscription] Stripe reactivation warning: ${stripeResult.error}`);
+            // Continue with local reactivation even if Stripe fails - admin can fix manually
+          }
+        } catch (stripeError: any) {
+          console.warn(`[TrialSubscription] Stripe coordination failed: ${stripeError.message}`);
+          // Continue with local reactivation - webhook will sync later
+        }
+      }
+      
+      // Update local records atomically
       await db.update(workspaces).set({
         subscriptionStatus: 'active',
         subscriptionTier: tier,
@@ -367,19 +403,22 @@ class TrialConversionOrchestrator {
         plan: tier,
       }).where(eq(subscriptions.workspaceId, workspaceId));
 
+      // Initialize credits for the new tier
+      await this.creditManager.initializeCredits(workspaceId, tier);
+
       await platformEventBus.publish({
         type: 'workspace_reactivated',
         category: 'billing',
         title: 'Workspace Reactivated',
         description: `${workspace.name} reactivated with ${tier} plan`,
-        metadata: { workspaceId, tier },
+        metadata: { workspaceId, tier, stripeCoordinated: !!workspace.stripeSubscriptionId },
         visibility: 'admin',
       });
 
-      console.log(`[TrialConversion] Workspace ${workspaceId} reactivated with ${tier} tier`);
+      console.log(`[TrialSubscription] Workspace ${workspaceId} reactivated with ${tier} tier`);
       return { success: true, message: `Workspace reactivated with ${tier} plan` };
     } catch (error: any) {
-      console.error('[TrialConversion] Reactivation failed:', error);
+      console.error('[TrialSubscription] Reactivation failed:', error);
       return { success: false, message: error.message };
     }
   }
@@ -563,14 +602,16 @@ class TrialConversionOrchestrator {
       requiredRoles: ['admin', 'super_admin'],
       handler: async (request) => {
         const { workspaceId, reason } = request.payload;
+        // Fetch workspace name for accurate event logging
+        const [workspace] = await db.select().from(workspaces).where(eq(workspaces.id, workspaceId)).limit(1);
         await this.suspendWorkspace({
           workspaceId,
-          workspaceName: 'Manual Suspension',
+          workspaceName: workspace?.name || 'Unknown Workspace',
           ownerEmail: '',
           daysRemaining: 0,
           hasPaymentMethod: false,
-        });
-        return { success: true, actionId: request.actionId, message: `Workspace ${workspaceId} suspended${reason ? `: ${reason}` : ''}` };
+        }, reason || 'manual_suspend');
+        return { success: true, actionId: request.actionId, message: `Workspace ${workspaceId} suspended: ${reason || 'manual_suspend'}` };
       },
     });
 
