@@ -1469,11 +1469,13 @@ function NotificationsPopoverInner({ user }: { user: any }) {
         )}
       </div>
       
-      {/* Main Tabs: ALERTS | UPDATES | SYSTEM (Admin) */}
-      <div 
-        className={`flex items-center border-b bg-muted/30 flex-shrink-0 overflow-x-auto ${compact ? 'px-2 gap-1' : 'px-2 gap-1'}`}
-        style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-      >
+      {/* Main Tabs: ALERTS | UPDATES | SYSTEM (Admin) + Clear All */}
+      <div className={`flex items-center border-b bg-muted/30 flex-shrink-0 ${compact ? 'px-2 gap-1' : 'px-2 gap-1'}`}>
+        {/* Scrollable tabs area */}
+        <div 
+          className="flex items-center flex-1 min-w-0 overflow-x-auto"
+          style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+        >
         {/* ALERTS Tab - Operational alerts requiring attention */}
         <button
           onClick={() => setActiveTab('alerts')}
@@ -1545,14 +1547,14 @@ function NotificationsPopoverInner({ user }: { user: any }) {
             <div className="absolute bottom-0 left-2 right-2 h-0.5 bg-amber-500 rounded-full" />
           )}
         </button>
+        </div>
         
-        <div className="flex-1 min-w-2" />
-        {/* Only show Clear All button for authenticated users */}
+        {/* Fixed Clear All button - always visible, never scrolls */}
         {user && (
           <Button
             variant="outline"
             size="sm"
-            className={`${compact ? 'h-7 px-2 text-[10px]' : 'h-8 px-3 text-xs'} font-medium bg-background border-muted-foreground/20 flex-shrink-0`}
+            className={`${compact ? 'h-7 px-2 text-[10px]' : 'h-8 px-3 text-xs'} font-medium bg-background border-muted-foreground/20 flex-shrink-0 ml-auto`}
             onClick={() => clearAllMutation.mutate()}
             disabled={clearAllMutation.isPending || totalUnread === 0}
             data-testid="button-clear-all-read"
