@@ -1632,8 +1632,8 @@ function NotificationsPopoverInner({ user }: { user: any }) {
       <div 
         className="flex-1 min-h-0 overflow-y-auto overscroll-contain"
         style={{ 
-          minHeight: compact ? '40vh' : '35vh',
-          maxHeight: compact ? 'calc(85vh - 140px)' : 'calc(75vh - 160px)',
+          minHeight: compact ? '50vh' : '35vh',
+          maxHeight: compact ? 'calc(90vh - 100px)' : 'calc(75vh - 160px)',
           WebkitOverflowScrolling: 'touch',
           touchAction: 'pan-y',
         }}
