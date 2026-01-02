@@ -106,10 +106,27 @@ async function getSessionFromRequest(request: IncomingMessage): Promise<Authenti
       }
     }
     
+    // CRITICAL FIX: If still no workspace, dynamically resolve from user's ownership/membership
+    // This ensures org owners get their workspace even if it wasn't stored in session
+    let resolvedRole: string | undefined = sess.role || sess.passport?.user?.role || sess.passport?.user?.claims?.role;
+    if (!workspaceId && userId) {
+      try {
+        const { resolveWorkspaceForUser } = await import('./rbac');
+        const resolved = await resolveWorkspaceForUser(userId);
+        if (resolved.workspaceId) {
+          workspaceId = resolved.workspaceId;
+          resolvedRole = resolved.role || resolvedRole;
+          console.log(`[WebSocket Auth] Dynamically resolved workspace for user ${userId}: ${workspaceId} (role: ${resolvedRole})`);
+        }
+      } catch (resolveError) {
+        console.warn('[WebSocket Auth] Failed to dynamically resolve workspace:', resolveError);
+      }
+    }
+    
     return {
       userId,
       workspaceId,
-      role: sess.role || sess.passport?.user?.role || sess.passport?.user?.claims?.role,
+      role: resolvedRole,
       email,
     };
   } catch (error) {
