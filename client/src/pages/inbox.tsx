@@ -183,6 +183,20 @@ export default function InboxPage() {
     },
   });
 
+  const restoreEmailMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest(`/api/internal-email/${id}/restore`, { method: "POST" });
+    },
+    onSuccess: () => {
+      toast({ title: "Email restored to inbox" });
+      setSelectedEmail(null);
+      queryClient.invalidateQueries({ queryKey: ["/api/internal-email/inbox"] });
+    },
+    onError: () => {
+      toast({ title: "Failed to restore email", variant: "destructive" });
+    },
+  });
+
   const handleSendEmail = () => {
     if (!composeTo.trim() || !composeSubject.trim()) {
       toast({ title: "Please fill in recipient and subject", variant: "destructive" });
@@ -458,13 +472,27 @@ export default function InboxPage() {
                 <Star className="h-4 w-4 mr-2" />
                 {selectedEmail.isStarred ? "Unstar" : "Star"}
               </DropdownMenuItem>
-              <DropdownMenuItem 
-                onClick={() => deleteEmailMutation.mutate(selectedEmail.id)}
-                className="text-destructive"
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Delete
-              </DropdownMenuItem>
+              {selectedFolder === 'trash' ? (
+                <DropdownMenuItem 
+                  onClick={() => restoreEmailMutation.mutate(selectedEmail.id)}
+                  disabled={restoreEmailMutation.isPending}
+                  className="text-primary"
+                  data-testid="button-restore"
+                >
+                  <Inbox className="h-4 w-4 mr-2" />
+                  {restoreEmailMutation.isPending ? 'Restoring...' : 'Restore to Inbox'}
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem 
+                  onClick={() => deleteEmailMutation.mutate(selectedEmail.id)}
+                  disabled={deleteEmailMutation.isPending}
+                  className="text-destructive"
+                  data-testid="button-delete"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  {deleteEmailMutation.isPending ? 'Deleting...' : 'Delete'}
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
