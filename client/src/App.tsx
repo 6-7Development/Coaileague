@@ -719,7 +719,8 @@ function MascotRenderer() {
         >
           {/* Polished Trinity Redesign - Smooth mutations and state animations */}
           {/* Auto-cycles through states after 30 seconds of user inactivity */}
-          {/* pointer-events-auto ONLY on the actual mascot visual */}
+          {/* pointer-events-auto ONLY on circular core - NOT the rectangular container */}
+          {/* This allows clicks to pass through transparent corners to elements behind */}
           <div
             className="pointer-events-auto cursor-pointer"
             onClick={handleTap}
@@ -731,6 +732,10 @@ function MascotRenderer() {
               userSelect: 'none', 
               WebkitUserDrag: 'none',
               WebkitTouchCallout: 'none',
+              // Clip to circular shape so only the visible mascot is clickable
+              // This prevents Trinity from blocking clicks on elements behind the corners
+              clipPath: 'circle(42% at center)',
+              WebkitClipPath: 'circle(42% at center)',
             } as React.CSSProperties}
           >
             <TrinityRedesign 
