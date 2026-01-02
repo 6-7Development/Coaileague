@@ -252,17 +252,9 @@ class TrinityNotificationBridge {
       date: new Date(),
     }).returning();
 
-    await publishPlatformUpdate({
-      type: 'announcement',
-      category: options.category,
-      title: options.title,
-      description: options.description,
-      version: options.version,
-      priority: options.priority || 5,
-      visibility: options.visibility || 'all',
-      workspaceId: options.workspaceId,
-      learnMoreUrl: options.learnMoreUrl,
-    });
+    // NOTE: Do NOT call publishPlatformUpdate here - it would cause double posting
+    // Trinity directly inserts into platformUpdates and broadcasts via WebSocket
+    // The platformEventBus is only used as a fallback when Trinity is unhealthy
 
     const count = broadcastToAllClients({
       type: 'force_refresh',

@@ -1017,6 +1017,58 @@ export class PlatformFeatureRegistry {
   getCategories(): FeatureCategory[] {
     return [...new Set(PLATFORM_FEATURES.map(f => f.category))];
   }
+
+  /**
+   * Trinity Sync - Get registry sync status for orchestration awareness
+   * Called on startup and after republish to ensure Trinity is always aware
+   */
+  private lastSyncedAt: Date = new Date();
+  private syncVersion: number = 1;
+
+  getSyncStatus(): {
+    lastSyncedAt: Date;
+    syncVersion: number;
+    featureCount: number;
+    enabledCount: number;
+    categories: FeatureCategory[];
+  } {
+    const enabled = PLATFORM_FEATURES.filter(f => f.enabled);
+    return {
+      lastSyncedAt: this.lastSyncedAt,
+      syncVersion: this.syncVersion,
+      featureCount: PLATFORM_FEATURES.length,
+      enabledCount: enabled.length,
+      categories: this.getCategories(),
+    };
+  }
+
+  /**
+   * Refresh sync - called after deployment or when Trinity needs to reload
+   * Increments version and updates timestamp for clients to detect changes
+   */
+  refreshSync(): { syncVersion: number; lastSyncedAt: Date } {
+    this.syncVersion++;
+    this.lastSyncedAt = new Date();
+    console.log(`[PlatformFeatureRegistry] Trinity sync refreshed: v${this.syncVersion} at ${this.lastSyncedAt.toISOString()}`);
+    return {
+      syncVersion: this.syncVersion,
+      lastSyncedAt: this.lastSyncedAt,
+    };
+  }
+
+  /**
+   * Generate Trinity awareness context - compact summary for AI Brain
+   */
+  generateTrinityAwareness(): string {
+    const status = this.getSyncStatus();
+    return `Platform Feature Registry (v${status.syncVersion}, synced ${status.lastSyncedAt.toISOString()})
+Total Features: ${status.featureCount} (${status.enabledCount} enabled)
+Categories: ${status.categories.join(', ')}
+I am aware of all platform capabilities and can orchestrate any feature.`;
+  }
 }
 
 export const platformFeatureRegistry = new PlatformFeatureRegistry();
+
+// Auto-log on startup for Trinity awareness
+console.log('[PlatformFeatureRegistry] Initialized for Trinity orchestration:', platformFeatureRegistry.getSyncStatus());
