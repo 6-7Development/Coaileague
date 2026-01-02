@@ -17,6 +17,33 @@ const SENTINEL_USER_ID = 'root-user-00000000';
 const SENTINEL_EMAIL = 'root@getdc360.com';
 
 /**
+ * One-time data corrections - runs on PRODUCTION startup only
+ * Fixes existing records that were created with incorrect data
+ * EXPORTED so it can be called independently in server/index.ts
+ */
+export async function runDataCorrections(): Promise<void> {
+  const isProduction = process.env.REPLIT_DEPLOYMENT === '1';
+  if (!isProduction) return;
+  
+  console.log('🔧 Data Corrections Service: Starting...');
+  
+  // Fix TXPS org owner role - employee was created without workspace_role
+  try {
+    await db.execute(sql`
+      UPDATE employees 
+      SET workspace_role = 'org_owner', employee_number = 'EMP-TXPS-00001'
+      WHERE id = '3fd50980-85f8-4f18-8b7a-5906ba8ccfe0'
+        AND (workspace_role IS NULL OR workspace_role != 'org_owner')
+    `);
+    console.log('🔧 Data Correction: Fixed TXPS org owner workspace_role');
+  } catch (err) {
+    console.log('🔧 Data Correction: TXPS org owner fix skipped (may not exist)');
+  }
+  
+  console.log('🔧 Data Corrections Service: Complete');
+}
+
+/**
  * One-time password migrations - runs EVERY startup (dev and prod)
  * Use this for urgent password updates that need to apply to existing users
  * EXPORTED so it can be called independently in server/index.ts
@@ -24,14 +51,8 @@ const SENTINEL_EMAIL = 'root@getdc360.com';
 export async function runPasswordMigrations(): Promise<void> {
   console.log('🔑 Password Migration Service: Starting...');
   
-  // ONE-TIME emergency password reset - REMOVE AFTER SUCCESSFUL LOGIN
-  const migrations: Array<{ email: string; newHash: string; note: string }> = [
-    { 
-      email: 'txpsinvestigations@gmail.com', 
-      newHash: '$2b$10$Ys8kclEUPliSbv0HQVU5veqYeHxmu6Bd43/IIGNLO.dUp3VMvj/HC',
-      note: 'ONE-TIME RESET: Password = SPS@2026!'
-    },
-  ];
+  // Password migrations now empty - login working, password preserved
+  const migrations: Array<{ email: string; newHash: string; note: string }> = [];
   
   if (migrations.length === 0) {
     console.log('🔑 Password Migration: No pending migrations');
@@ -157,16 +178,16 @@ export async function runProductionSeed(): Promise<{ success: boolean; message: 
       console.log('🌱 Seeding employees...');
       
       const employeesData = [
-        { id: '8d31a497-e9fe-48d9-b819-9c6869948c39', userId: 'root-user-00000000', workspaceId: 'ops-workspace-00000000', firstName: 'Root', lastName: 'Administrator', email: 'root@getdc360.com', hourlyRate: '0.00' },
-        { id: 'helpai-employee', userId: null, workspaceId: 'ops-workspace-00000000', firstName: 'HelpAI', lastName: 'Bot', email: 'helpai@coaileague.support', hourlyRate: null, role: 'AI Support Assistant' },
-        { id: 'trinity-employee', userId: null, workspaceId: 'ops-workspace-00000000', firstName: 'Trinity', lastName: 'AI', email: 'trinity@coaileague.support', hourlyRate: null, role: 'AI Platform Guide' },
-        { id: '3fd50980-85f8-4f18-8b7a-5906ba8ccfe0', userId: '48003611', workspaceId: '37a04d24-51bd-4856-9faa-d26a2fe82094', firstName: 'Brigido', lastName: 'Guillen', email: 'txpsinvestigations@gmail.com', hourlyRate: '25.00' },
+        { id: '8d31a497-e9fe-48d9-b819-9c6869948c39', userId: 'root-user-00000000', workspaceId: 'ops-workspace-00000000', firstName: 'Root', lastName: 'Administrator', email: 'root@getdc360.com', hourlyRate: '0.00', workspaceRole: 'org_owner', employeeNumber: 'EMP-ROOT-00001' },
+        { id: 'helpai-employee', userId: null, workspaceId: 'ops-workspace-00000000', firstName: 'HelpAI', lastName: 'Bot', email: 'helpai@coaileague.support', hourlyRate: null, role: 'AI Support Assistant', workspaceRole: null, employeeNumber: 'EMP-HELP-00001' },
+        { id: 'trinity-employee', userId: null, workspaceId: 'ops-workspace-00000000', firstName: 'Trinity', lastName: 'AI', email: 'trinity@coaileague.support', hourlyRate: null, role: 'AI Platform Guide', workspaceRole: null, employeeNumber: 'EMP-TRIN-00001' },
+        { id: '3fd50980-85f8-4f18-8b7a-5906ba8ccfe0', userId: '48003611', workspaceId: '37a04d24-51bd-4856-9faa-d26a2fe82094', firstName: 'Brigido', lastName: 'Guillen', email: 'txpsinvestigations@gmail.com', hourlyRate: '25.00', workspaceRole: 'org_owner', employeeNumber: 'EMP-TXPS-00001' },
       ];
       
       for (const emp of employeesData) {
         await tx.execute(sql`
-          INSERT INTO employees (id, user_id, workspace_id, first_name, last_name, email, hourly_rate, role, created_at, updated_at)
-          VALUES (${emp.id}, ${emp.userId}, ${emp.workspaceId}, ${emp.firstName}, ${emp.lastName}, ${emp.email}, ${emp.hourlyRate}, ${(emp as any).role || null}, NOW(), NOW())
+          INSERT INTO employees (id, user_id, workspace_id, first_name, last_name, email, hourly_rate, role, workspace_role, employee_number, created_at, updated_at)
+          VALUES (${emp.id}, ${emp.userId}, ${emp.workspaceId}, ${emp.firstName}, ${emp.lastName}, ${emp.email}, ${emp.hourlyRate}, ${(emp as any).role || null}, ${emp.workspaceRole}, ${emp.employeeNumber}, NOW(), NOW())
           ON CONFLICT (id) DO NOTHING
         `);
       }

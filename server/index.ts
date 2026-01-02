@@ -131,7 +131,7 @@ import "./services/scheduleLiveNotifier";
 import { tracingMiddleware } from "./services/infrastructure/distributedTracing";
 import { rateLimitMiddleware } from "./services/infrastructure/rateLimiting";
 import { initializeTrinityEventSubscriptions } from "./services/trinityEventSubscriptions";
-import { runProductionSeed, runPasswordMigrations } from "./services/productionSeed";
+import { runProductionSeed, runPasswordMigrations, runDataCorrections } from "./services/productionSeed";
 
 const app = express();
 
@@ -701,6 +701,16 @@ process.on('unhandledRejection', (reason, promise) => {
     console.log(`[Startup] Production seed: ${seedResult.message}`);
   } catch (error) {
     console.error('[Startup] Warning: Production seed check failed:', error);
+    // Non-fatal - continue startup
+  }
+
+  // PHASE 0.6: Production data corrections (fixes existing records with incorrect data)
+  try {
+    console.log('[Startup] Phase 0.6: Running data corrections...');
+    await runDataCorrections();
+    console.log('[Startup] Data corrections complete');
+  } catch (error) {
+    console.error('[Startup] Warning: Data corrections failed:', error);
     // Non-fatal - continue startup
   }
 
