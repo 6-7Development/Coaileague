@@ -15,7 +15,7 @@ import { db } from '../db';
 import { employees, users, workspaces, shifts, timeEntries, clients } from '@shared/schema';
 import { eq, and, gte, desc } from 'drizzle-orm';
 import { eventBus } from './eventBus';
-import { wsManager } from '../websocket';
+import { sessionSyncService } from './ai-brain/sessionSyncService';
 
 interface SyncState {
   userId: string;
@@ -69,6 +69,15 @@ class CrossDeviceSyncService {
     eventBus.on('time_entry_updated', this.handleEntityChange.bind(this, 'timeEntries'));
     eventBus.on('client_created', this.handleEntityChange.bind(this, 'clients'));
     eventBus.on('client_updated', this.handleEntityChange.bind(this, 'clients'));
+
+    sessionSyncService.onDeviceDisconnect((userId, workspaceId, deviceId) => {
+      this.unregisterDevice(userId, workspaceId, deviceId);
+    });
+
+    sessionSyncService.onWorkspaceSwitch((userId, oldWorkspaceId, newWorkspaceId, deviceId) => {
+      this.unregisterDevice(userId, oldWorkspaceId, deviceId);
+      console.log(`[CrossDeviceSync] Workspace switch: user ${userId} moved from ${oldWorkspaceId} to ${newWorkspaceId}`);
+    });
 
     console.log('[CrossDeviceSync] Service initialized - listening for data changes');
     this.initialized = true;
@@ -221,10 +230,18 @@ class CrossDeviceSyncService {
     };
 
     try {
-      wsManager.broadcastToUser(userId, {
+      const sent = sessionSyncService.broadcastToWorkspace(workspaceId, {
         type: 'sync_update',
-        payload: fullPayload,
+        action: 'update',
+        resource: 'cross_device_sync',
+        data: fullPayload,
+        workspaceId,
+        timestamp: new Date().toISOString(),
       });
+      
+      if (sent === 0) {
+        throw new Error('No active connections');
+      }
     } catch (error) {
       const userDevices = Array.from(this.syncStates.entries())
         .filter(([key, state]) => {
@@ -242,7 +259,7 @@ class CrossDeviceSyncService {
       }
     }
 
-    console.log(`[CrossDeviceSync] Pushed sync update to user ${userId} in workspace ${workspaceId}`);
+    console.log(`[CrossDeviceSync] Pushed sync update to workspace ${workspaceId}`);
   }
 
   unregisterDevice(userId: string, workspaceId: string, deviceId: string): void {

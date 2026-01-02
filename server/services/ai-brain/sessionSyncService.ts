@@ -84,11 +84,27 @@ class SessionSyncService {
     }
     
     const userSessions = this.userConnections.get(userId)!;
+    
+    const existingSession = userSessions.get(sessionId);
+    if (existingSession?.workspaceId && existingSession.workspaceId !== deviceInfo?.workspaceId) {
+      const oldWsUsers = this.workspaceUsers.get(existingSession.workspaceId);
+      if (oldWsUsers) {
+        const otherSessionsInOldWorkspace = Array.from(userSessions.values())
+          .filter(s => s.sessionId !== sessionId && s.workspaceId === existingSession.workspaceId);
+        if (otherSessionsInOldWorkspace.length === 0) {
+          oldWsUsers.delete(userId);
+        }
+      }
+      if (this.onWorkspaceSwitchCallback) {
+        this.onWorkspaceSwitchCallback(userId, existingSession.workspaceId, deviceInfo?.workspaceId || '', sessionId);
+      }
+    }
+    
     userSessions.set(sessionId, {
       ws,
       deviceType,
       sessionId,
-      connectedAt: new Date(),
+      connectedAt: existingSession?.connectedAt || new Date(),
       lastPing: new Date(),
       workspaceId: deviceInfo?.workspaceId,
     });
@@ -120,8 +136,10 @@ class SessionSyncService {
     if (!userSessions) return;
 
     const connection = userSessions.get(sessionId);
-    if (connection?.workspaceId) {
-      const wsUsers = this.workspaceUsers.get(connection.workspaceId);
+    const workspaceId = connection?.workspaceId;
+    
+    if (workspaceId) {
+      const wsUsers = this.workspaceUsers.get(workspaceId);
       if (wsUsers && userSessions.size <= 1) {
         wsUsers.delete(userId);
       }
@@ -134,6 +152,21 @@ class SessionSyncService {
     }
 
     console.log(`[SessionSync] User ${userId} disconnected (session: ${sessionId})`);
+    
+    if (this.onDisconnectCallback && workspaceId) {
+      this.onDisconnectCallback(userId, workspaceId, sessionId);
+    }
+  }
+
+  private onDisconnectCallback: ((userId: string, workspaceId: string, deviceId: string) => void) | null = null;
+  private onWorkspaceSwitchCallback: ((userId: string, oldWorkspaceId: string, newWorkspaceId: string, deviceId: string) => void) | null = null;
+
+  onDeviceDisconnect(callback: (userId: string, workspaceId: string, deviceId: string) => void): void {
+    this.onDisconnectCallback = callback;
+  }
+
+  onWorkspaceSwitch(callback: (userId: string, oldWorkspaceId: string, newWorkspaceId: string, deviceId: string) => void): void {
+    this.onWorkspaceSwitchCallback = callback;
   }
 
   broadcastToUser(userId: string, event: SyncEvent, excludeSessionId?: string): number {
