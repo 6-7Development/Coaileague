@@ -14368,6 +14368,74 @@ export type InsertInternalEmailRecipient = z.infer<typeof insertInternalEmailRec
 export type InternalEmailRecipient = typeof internalEmailRecipients.$inferSelect;
 
 // ============================================================================
+// INTERNAL EMAIL AUDIT TRAIL
+// Tracks all state transitions for emails - SOX compliance, searchable, immutable
+// ============================================================================
+
+export const internalEmailAuditActionEnum = pgEnum("internal_email_audit_action", [
+  'created',           // Email created/sent
+  'delivered',         // Delivered to recipient
+  'read',              // Marked as read
+  'unread',            // Marked as unread
+  'starred',           // Starred
+  'unstarred',         // Unstarred
+  'moved',             // Moved to folder
+  'archived',          // Archived
+  'soft_deleted',      // Soft deleted by end user (recoverable)
+  'restored',          // Restored from trash
+  'permanently_deleted', // Hard deleted by Trinity/support only
+  'flagged',           // Flagged for attention
+  'replied',           // Reply sent
+  'forwarded',         // Forwarded
+]);
+
+export const internalEmailAudit = pgTable("internal_email_audit", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // What was acted upon
+  emailId: varchar("email_id").notNull().references(() => internalEmails.id, { onDelete: 'cascade' }),
+  recipientId: varchar("recipient_id").references(() => internalEmailRecipients.id, { onDelete: 'set null' }),
+  mailboxId: varchar("mailbox_id").references(() => internalMailboxes.id, { onDelete: 'set null' }),
+  
+  // The action performed
+  action: internalEmailAuditActionEnum("action").notNull(),
+  previousValue: text("previous_value"), // JSON of previous state
+  newValue: text("new_value"), // JSON of new state
+  
+  // Who performed the action
+  actorId: varchar("actor_id").references(() => users.id, { onDelete: 'set null' }),
+  actorRole: varchar("actor_role"), // 'end_user', 'support', 'admin', 'trinity', 'system'
+  actorEmail: varchar("actor_email"),
+  
+  // Context
+  ipAddress: varchar("ip_address"),
+  userAgent: text("user_agent"),
+  sessionId: varchar("session_id"),
+  reason: text("reason"), // Optional reason for action (esp. for deletes)
+  
+  // Trinity orchestration tracking
+  trinityActionId: varchar("trinity_action_id"), // Links to aiBrainActionLogs if Trinity initiated
+  
+  // Timestamps (immutable - no updatedAt)
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("internal_email_audit_email_idx").on(table.emailId),
+  index("internal_email_audit_mailbox_idx").on(table.mailboxId),
+  index("internal_email_audit_actor_idx").on(table.actorId),
+  index("internal_email_audit_action_idx").on(table.action),
+  index("internal_email_audit_created_idx").on(table.createdAt),
+  index("internal_email_audit_trinity_idx").on(table.trinityActionId),
+]);
+
+export const insertInternalEmailAuditSchema = createInsertSchema(internalEmailAudit).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertInternalEmailAudit = z.infer<typeof insertInternalEmailAuditSchema>;
+export type InternalEmailAudit = typeof internalEmailAudit.$inferSelect;
+
+// ============================================================================
 // SUPPORT TICKET ESCALATION TRACKING (NEW - Tier 1 Critical Fix #5)
 // ============================================================================
 
