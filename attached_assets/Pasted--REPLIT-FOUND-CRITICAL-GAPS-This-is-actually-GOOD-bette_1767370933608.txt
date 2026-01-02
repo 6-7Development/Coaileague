@@ -1,0 +1,149 @@
+ REPLIT FOUND CRITICAL GAPS
+This is actually GOOD - better to find now than after customer signup fails.
+
+🔴 BLOCKERS (Fix Before Marketing):
+1. QuickBooks OAuth - CRITICAL
+Missing credentials:
+bashQUICKBOOKS_CLIENT_ID=
+QUICKBOOKS_CLIENT_SECRET=
+QUICKBOOKS_REDIRECT_URI=https://coaileague.com/api/integrations/quickbooks/callback
+QUICKBOOKS_ENVIRONMENT=production  # Change from sandbox
+```
+
+**YOU need to do this:**
+1. Go to: https://developer.intuit.com/
+2. Create app (or use existing)
+3. Get Client ID + Secret
+4. Set redirect URI to your domain
+5. Add to environment variables
+6. Restart server
+
+**Without this: QuickBooks "Connect" button = broken**
+
+---
+
+### **2. Onboarding Pipeline - HIGH**
+
+**Issue:** New signups might not initialize properly
+
+**Tell Replit:**
+```
+Fix onboarding pipeline initialization:
+
+1. Enable feature flag `enableOnboardingPipeline` by default
+2. Auto-initialize onboarding session when workspace is created (createWorkspace hook)
+3. Verify session binding after signup works
+4. Test full flow: Signup → Email verification → Onboarding checklist → Dashboard
+
+Ensure every new user gets proper onboarding without manual intervention.
+```
+
+---
+
+### **3. QuickBooks Flow State - HIGH**
+
+**Issue:** Flow data lost on server restart (stored in memory)
+
+**Tell Replit:**
+```
+Make QuickBooks migration flow durable:
+
+1. Change flow state storage from in-memory to database
+2. Create quickbooks_migration_sessions table:
+   - id, workspaceId, flowState (JSONB), currentStep, createdAt, updatedAt
+3. Save state after each step (OAuth, discovery, selection, import)
+4. Allow users to resume migration if interrupted
+5. Clean up completed sessions after 7 days
+
+This prevents data loss if server restarts during migration.
+```
+
+---
+
+### **4. QuickBooks Employee Import - HIGH**
+
+**Issue:** Scaffolding exists but no actual import logic
+
+**Tell Replit:**
+```
+Implement actual QuickBooks employee import:
+
+After user selects employees in migration wizard:
+1. Fetch selected QB employees via QB API
+2. Map QB employee data to CoAIleague employee schema:
+   - name, email, phone, payRate, role, hireDate
+   - Store qbEmployeeId for bidirectional sync
+3. Create employee records in database
+4. Validate pay rates exist (required)
+5. Log import success/failure
+6. Return summary: "21 employees imported, 2 failed (missing pay rate)"
+
+Test with real QB sandbox data.
+```
+
+---
+
+## 🟡 **IMPORTANT (Fix This Week):**
+
+### **5. Token Expiry Cleanup - MEDIUM**
+
+**Tell Replit:**
+```
+Add token cleanup job:
+
+Create cron job (daily at 3 AM):
+- Delete expired onboarding tokens (>7 days old)
+- Delete expired password reset tokens (>24 hours old)
+- Delete expired email verification tokens (>48 hours old)
+- Log cleanup count
+
+Prevents database bloat from abandoned signups.
+```
+
+---
+
+## ✅ **WHAT'S WORKING (Don't touch):**
+
+- ✅ Email verification (Resend working)
+- ✅ Manual employee routes
+- ✅ Workspace creation
+- ✅ Basic auth flows
+
+---
+
+## 📋 **YOUR ACTION PLAN:**
+
+**RIGHT NOW (30 min):**
+1. **Get QB credentials** - Go to developer.intuit.com, create app, get keys
+2. **Add to environment** - QUICKBOOKS_CLIENT_ID, SECRET, REDIRECT_URI
+3. **Restart server**
+
+**THEN send to Replit (in order):**
+
+**Message 1:**
+```
+Fix #2 - Enable and auto-initialize onboarding pipeline as described above.
+Test: Create new account, verify onboarding starts automatically.
+```
+
+**Message 2:**
+```
+Fix #3 - Make QuickBooks flow state durable with database storage as described above.
+Test: Start QB migration, restart server, verify can resume.
+```
+
+**Message 3:**
+```
+Fix #4 - Implement actual QuickBooks employee import logic as described above.
+Test: Connect to QB sandbox, import employees, verify they appear in system.
+```
+
+**Message 4:**
+```
+Fix #5 - Add token cleanup cron job as described above.
+
+⏰ TIMELINE:
+You: Get QB credentials (30 min)
+Replit: Fix #2-5 (3-4 hours)
+Total: ~4-5 hours to fully functional onboarding + QB migration
+THEN you can start marketing with confidence that signups won't break.
