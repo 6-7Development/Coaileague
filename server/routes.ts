@@ -18553,6 +18553,240 @@ Summary:`;
     }
   });
 
+
+  // ============================================================================
+  // SUPPORT SESSION MANAGEMENT - Cross-Org Administrative Access
+  // Platform staff must start a session before accessing org data
+  // ============================================================================
+
+  // Start a support session for a specific organization
+  app.post('/api/admin/support/sessions/start', requirePlatformStaff, async (req: AuthenticatedRequest, res) => {
+    try {
+      const adminUserId = req.user?.id;
+      const { workspaceId, scope = 'read_only', reason } = req.body;
+
+      if (!adminUserId || !workspaceId) {
+        return res.status(400).json({ message: "Missing adminUserId or workspaceId" });
+      }
+
+      // Check if admin already has an active session
+      const existingSession = await storage.getActiveSupportSessionByAdmin(adminUserId);
+      if (existingSession) {
+        return res.status(409).json({ 
+          message: "You already have an active support session",
+          activeSession: {
+            id: existingSession.id,
+            workspaceId: existingSession.workspaceId,
+            startedAt: existingSession.startedAt
+          }
+        });
+      }
+
+      // Validate workspace exists
+      const workspace = await storage.getWorkspace(workspaceId);
+      if (!workspace) {
+        return res.status(404).json({ message: "Workspace not found" });
+      }
+
+      // Create the support session
+      const session = await storage.createSupportSession({
+        adminUserId,
+        workspaceId,
+        scope,
+        reason: reason || 'Support access',
+        isOrgFrozen: false,
+      });
+
+      // Log the session start
+      await storage.createSupportAuditLog({
+        sessionId: session.id,
+        adminUserId,
+        workspaceId,
+        action: 'session_started',
+        severity: 'read',
+        metadata: { scope, reason },
+      });
+
+      console.log(`[SupportSession] Session started: ${session.id} by ${adminUserId} for ${workspaceId} (${scope})`);
+
+      res.json({ 
+        success: true, 
+        session: {
+          id: session.id,
+          workspaceId: session.workspaceId,
+          scope: session.scope,
+          startedAt: session.startedAt,
+        },
+        workspace: {
+          id: workspace.id,
+          name: workspace.companyName,
+        }
+      });
+    } catch (error) {
+      console.error("Error starting support session:", error);
+      res.status(500).json({ message: "Failed to start support session" });
+    }
+  });
+
+  // End the current support session
+  app.post('/api/admin/support/sessions/end', requirePlatformStaff, async (req: AuthenticatedRequest, res) => {
+    try {
+      const adminUserId = req.user?.id;
+      if (!adminUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const activeSession = await storage.getActiveSupportSessionByAdmin(adminUserId);
+      if (!activeSession) {
+        return res.status(404).json({ message: "No active support session found" });
+      }
+
+      // Get session audit logs for summary
+      const auditLogs = await storage.getSupportAuditLogs({
+        sessionId: activeSession.id,
+        limit: 100,
+      });
+
+      const actionsSummary = auditLogs.map(log => ({
+        action: log.action,
+        severity: log.severity,
+        timestamp: log.timestamp,
+      }));
+
+      // End the session
+      const endedSession = await storage.endSupportSession(activeSession.id, actionsSummary);
+
+      // Log the session end
+      await storage.createSupportAuditLog({
+        sessionId: activeSession.id,
+        adminUserId,
+        workspaceId: activeSession.workspaceId,
+        action: 'session_ended',
+        severity: 'read',
+        metadata: { 
+          duration: endedSession?.endedAt 
+            ? new Date(endedSession.endedAt).getTime() - new Date(activeSession.startedAt).getTime()
+            : 0,
+          actionCount: actionsSummary.length,
+        },
+      });
+
+      console.log(`[SupportSession] Session ended: ${activeSession.id}`);
+
+      res.json({ 
+        success: true, 
+        session: endedSession,
+        summary: {
+          duration: endedSession?.endedAt 
+            ? Math.round((new Date(endedSession.endedAt).getTime() - new Date(activeSession.startedAt).getTime()) / 1000 / 60) 
+            : 0,
+          actionCount: actionsSummary.length,
+        }
+      });
+    } catch (error) {
+      console.error("Error ending support session:", error);
+      res.status(500).json({ message: "Failed to end support session" });
+    }
+  });
+
+  // Get current active session for the admin
+  app.get('/api/admin/support/sessions/current', requirePlatformStaff, async (req: AuthenticatedRequest, res) => {
+    try {
+      const adminUserId = req.user?.id;
+      if (!adminUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const activeSession = await storage.getActiveSupportSessionByAdmin(adminUserId);
+      if (!activeSession) {
+        return res.json({ hasActiveSession: false });
+      }
+
+      // Get workspace info
+      const workspace = await storage.getWorkspace(activeSession.workspaceId);
+
+      res.json({ 
+        hasActiveSession: true,
+        session: {
+          id: activeSession.id,
+          workspaceId: activeSession.workspaceId,
+          workspaceName: workspace?.companyName,
+          scope: activeSession.scope,
+          startedAt: activeSession.startedAt,
+          isOrgFrozen: activeSession.isOrgFrozen,
+          freezeReason: activeSession.freezeReason,
+        }
+      });
+    } catch (error) {
+      console.error("Error getting current session:", error);
+      res.status(500).json({ message: "Failed to get current session" });
+    }
+  });
+
+  // Freeze/unfreeze organization during support session
+  app.post('/api/admin/support/sessions/freeze', requirePlatformStaff, async (req: AuthenticatedRequest, res) => {
+    try {
+      const adminUserId = req.user?.id;
+      const { freeze = true, reason } = req.body;
+
+      if (!adminUserId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const activeSession = await storage.getActiveSupportSessionByAdmin(adminUserId);
+      if (!activeSession) {
+        return res.status(403).json({ 
+          message: "Active support session required to freeze/unfreeze organization" 
+        });
+      }
+
+      const success = await storage.setOrgFrozen(activeSession.workspaceId, freeze, reason);
+      if (!success) {
+        return res.status(500).json({ message: "Failed to update freeze status" });
+      }
+
+      // Log the freeze action
+      await storage.createSupportAuditLog({
+        sessionId: activeSession.id,
+        adminUserId,
+        workspaceId: activeSession.workspaceId,
+        action: freeze ? 'org_frozen' : 'org_unfrozen',
+        severity: 'write',
+        metadata: { reason },
+      });
+
+      console.log(`[SupportSession] Org ${freeze ? 'frozen' : 'unfrozen'}: ${activeSession.workspaceId} (session: ${activeSession.id})`);
+
+      res.json({ 
+        success: true, 
+        frozen: freeze,
+        workspaceId: activeSession.workspaceId
+      });
+    } catch (error) {
+      console.error("Error updating freeze status:", error);
+      res.status(500).json({ message: "Failed to update freeze status" });
+    }
+  });
+
+  // Get support audit logs (for compliance/review)
+  app.get('/api/admin/support/audit-logs', requirePlatformStaff, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { workspaceId, sessionId, severity, limit = 100, offset = 0 } = req.query;
+
+      const logs = await storage.getSupportAuditLogs({
+        workspaceId: workspaceId as string,
+        sessionId: sessionId as string,
+        severity: severity as string,
+        limit: Number(limit),
+        offset: Number(offset),
+      });
+
+      res.json({ logs, count: logs.length });
+    } catch (error) {
+      console.error("Error fetching audit logs:", error);
+      res.status(500).json({ message: "Failed to fetch audit logs" });
+    }
+  });
   // DEMO WORKSPACE REFRESH - Idempotent data repopulation for testing
   // ⚠️  SECURITY: Only allowed in development/staging for E2E testing
   app.post('/api/admin/demo-workspace/refresh', requirePlatformAdmin, async (req: AuthenticatedRequest, res) => {
