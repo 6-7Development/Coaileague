@@ -2513,7 +2513,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             customerName: userName || 'Guest',
             customerEmail: userEmail || 'guest@anonymous',
             subject: `HelpAI Escalation - ${response.escalationReason}`,
-            status: 'active',
+            isActive: true,
             priority: 'normal',
           });
           
@@ -3457,8 +3457,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           firstName: firstName.trim(),
           lastName: lastName.trim(),
           email: email.toLowerCase(),
-          status: 'active',
-          role: 'org_owner',
+          isActive: true,
+          workspaceRole: 'org_owner',
           createdAt: new Date(),
         }).returning();
 
@@ -4328,6 +4328,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ownerId: userId,
         });
         
+        // Create employee record for owner with org_owner role (if not exists)
+        const existingEmployee = await storage.getEmployeeByUserId(userId, workspace.id);
+        if (!existingEmployee) {
+          await storage.createEmployee({
+            userId: userId,
+            workspaceId: workspace.id,
+            email: user.email,
+            firstName: user.firstName || 'Owner',
+            lastName: user.lastName || '',
+            workspaceRole: 'org_owner',
+            isActive: true,
+          });
+          console.log(`[Workspace Auto-Create] Created employee with org_owner role for user ${userId}`);
+        } else if (!existingEmployee.workspaceRole || existingEmployee.workspaceRole !== 'org_owner') {
+          // Fix existing employee missing org_owner role
+          await storage.updateEmployee(existingEmployee.id, { workspaceRole: 'org_owner' });
+          console.log(`[Workspace Auto-Create] Fixed org_owner role for existing employee ${existingEmployee.id}`);
+        }
+        
         // Clear historical platform updates for new workspace owner (UNS fresh start)
         const { onboardingOrchestrator } = await import('./services/ai-brain/subagents/onboardingOrchestrator');
         onboardingOrchestrator.clearPlatformUpdatesForNewUser(userId, workspace.id)
@@ -5084,6 +5103,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
         entityId: employeeId,
         details: { previousRole: targetEmployee.workspaceRole, newRole },
       });
+      
+      // Emit WebSocket event for real-time RBAC update
+      try {
+        const { broadcastToWorkspace } = await import('./websocket');
+        
+        // Notify the affected user to refresh their session
+        if (targetEmployee.userId) {
+          broadcastToWorkspace(workspaceId, {
+            type: 'RBAC_ROLE_CHANGED',
+            payload: {
+              employeeId,
+              userId: targetEmployee.userId,
+              previousRole: targetEmployee.workspaceRole,
+              newRole,
+              changedBy: userId,
+              timestamp: new Date().toISOString(),
+            },
+          });
+        }
+        
+        // Emit Trinity orchestration event
+        const { platformEventBus } = await import('./services/platformEventBus');
+        platformEventBus.emit('TRINITY_ACCESS_CHANGED', {
+          workspaceId,
+          employeeId,
+          userId: targetEmployee.userId,
+          previousRole: targetEmployee.workspaceRole,
+          newRole,
+          changedBy: userId,
+          reason: 'role_promotion',
+          timestamp: new Date().toISOString(),
+        });
+        
+        console.log(`[RBAC] Role changed: ${targetEmployee.email} ${targetEmployee.workspaceRole} -> ${newRole} by user ${userId}`);
+      } catch (wsError) {
+        console.error('[RBAC] Failed to emit role change events:', wsError);
+        // Non-fatal - continue with response
+      }
       
       res.json({ success: true, employee: updated });
     } catch (error: any) {
@@ -8468,7 +8525,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             shiftOfferId: offerId,
             assignedRate: currentOffer.offeredPayRate,
             assignedBy: shiftRequest.createdBy,
-            status: 'active',
+            isActive: true,
           }).returning();
           
           // 3. Update shift status
@@ -12487,7 +12544,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const conversationData: InsertChatConversation = {
         workspaceId,
         subject: subject || 'Team Chat',
-        status: 'active',
+        isActive: true,
         conversationType: conversationType || 'open_chat',
         shiftId: shiftId || null,
         isEncrypted: false, // Open chats are not encrypted
@@ -20444,7 +20501,7 @@ Summary:`;
           customerName: 'Main Chatroom',
           customerEmail: 'chatroom@workforceos.com',
           subject: 'CoAIleague™ Live Support Chat',
-          status: 'active',
+          isActive: true,
           priority: 'normal',
           isSilenced: false,
           lastMessageAt: new Date(),
@@ -20470,7 +20527,7 @@ Summary:`;
           customerName: 'Main Chatroom',
           customerEmail: 'chatroom@workforceos.com',
           subject: 'CoAIleague™ Live Support Chat',
-          status: 'active',
+          isActive: true,
           priority: 'normal',
           isSilenced: false,
           lastMessageAt: new Date(),
@@ -20506,7 +20563,7 @@ Summary:`;
           customerName: 'Main Chatroom',
           customerEmail: 'chatroom@workforceos.com',
           subject: 'CoAIleague™ Live Support Chat',
-          status: 'active',
+          isActive: true,
           priority: 'normal',
           isSilenced: false,
           lastMessageAt: new Date(),
@@ -23373,7 +23430,7 @@ Return ONLY valid JSON array with this exact structure:
               overageHours: overageHours.toString(),
               message: `${employee.firstName} ${employee.lastName} is over-allocated by ${overageHours} hours next week`,
               suggestedAction: `Consider redistributing ${overageHours} hours to other team members or adjusting deadlines`,
-              status: 'active',
+              isActive: true,
             })
             .returning();
 
@@ -28438,7 +28495,7 @@ Respond with valid JSON array only.`
               actionable: true,
               suggestedActions: insight.suggestedActions || [],
               estimatedImpact: insight.estimatedImpact || null,
-              status: 'active',
+              isActive: true,
             }).returning();
             insights.push(savedInsight[0]);
           }
@@ -28477,7 +28534,7 @@ Respond with valid JSON array only.`
               "Set up automated reporting"
             ],
             estimatedImpact: "Potential 15-25% efficiency gain",
-            status: 'active',
+            isActive: true,
           }).returning();
           insights.push(savingsInsight[0]);
         }
@@ -36144,7 +36201,7 @@ app.post("/api/alerts/test", requireAuth, mutationLimiter, async (req: Authentic
           lastName: user.lastName || 'Employee',
           email: user.email,
           workspaceRole: (invite.inviteeRole as any) || 'staff',
-          status: 'active',
+          isActive: true,
           hireDate: new Date().toISOString().split('T')[0],
         });
       });

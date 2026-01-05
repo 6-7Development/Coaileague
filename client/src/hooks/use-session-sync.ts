@@ -118,6 +118,29 @@ export function useSessionSync(options: SessionSyncOptions = {}) {
           if (message.type === 'session_sync' && message.payload) {
             handleSyncEvent(message.payload as SyncEvent);
           }
+          
+          // Handle RBAC role changes - refresh auth when role changes
+          if (message.type === 'RBAC_ROLE_CHANGED' && message.payload) {
+            const payload = message.payload;
+            const currentUserId = user?.id;
+            
+            // Only reload if this role change affects the current user
+            if (payload.userId === currentUserId) {
+              log('RBAC role change detected for current user, refreshing auth...');
+              queryClient.invalidateQueries({ queryKey: ['/api/auth/me'] });
+              queryClient.invalidateQueries({ queryKey: ['/api/workspace'] });
+              queryClient.invalidateQueries({ queryKey: ['/api/user/role'] });
+              
+              // Trigger page reload for full RBAC refresh after short delay
+              setTimeout(() => {
+                window.location.reload();
+              }, 1500);
+            } else {
+              // Just refresh employee list for other users' role changes
+              log('RBAC role change detected for another user, refreshing lists...');
+              queryClient.invalidateQueries({ queryKey: ['/api/employees'] });
+            }
+          }
         } catch (err) {
           // Not a session sync message, ignore
         }
