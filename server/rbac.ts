@@ -763,3 +763,203 @@ export async function reactivateWorkspace(workspaceId: string): Promise<boolean>
     return false;
   }
 }
+
+// ============================================================================
+// SUPPORT SESSION ENFORCEMENT
+// Controls cross-org admin access with audit logging and org freeze capability
+// ============================================================================
+
+import { storage } from './storage';
+
+// Extended request with support session context
+export interface SupportSessionRequest extends AuthenticatedRequest {
+  supportSession?: {
+    id: string;
+    adminUserId: string;
+    targetWorkspaceId: string;
+    scope: string;
+    isOrgFrozen: boolean;
+    freezeReason?: string;
+  };
+}
+
+/**
+ * Middleware: Check if organization is frozen (for regular users)
+ * During support sessions, platform staff can freeze an org to prevent
+ * concurrent modifications by regular users
+ */
+export const checkOrgFrozen: RequestHandler = async (req, res, next) => {
+  const authReq = req as AuthenticatedRequest;
+  
+  // Platform staff bypass org freeze checks
+  if (authReq.platformRole && hasPlatformWideAccess(authReq.platformRole)) {
+    return next();
+  }
+  
+  // Get workspace ID from various sources
+  const workspaceId = authReq.workspaceId || 
+    authReq.body?.workspaceId || 
+    authReq.query?.workspaceId || 
+    authReq.params?.workspaceId;
+  
+  if (!workspaceId) {
+    return next(); // No workspace context, nothing to check
+  }
+  
+  try {
+    const frozenStatus = await storage.isOrgFrozen(workspaceId as string);
+    
+    if (frozenStatus.frozen) {
+      return res.status(503).json({
+        code: 'ORGANIZATION_FROZEN',
+        message: 'This organization is temporarily locked for platform maintenance.',
+        reason: frozenStatus.reason,
+        retryAfter: 300 // Suggest retry after 5 minutes
+      });
+    }
+    
+    next();
+  } catch (error) {
+    console.error('[SupportSession] Error checking org frozen status:', error);
+    next(); // Fail open to avoid blocking all requests
+  }
+};
+
+/**
+ * Middleware: Attach support session context for platform staff
+ * When platform staff accesses a workspace, this middleware:
+ * 1. Finds or validates their active support session
+ * 2. Attaches session context for audit logging
+ */
+export const attachSupportSessionContext: RequestHandler = async (req, res, next) => {
+  const authReq = req as SupportSessionRequest;
+  
+  // Only applies to platform staff
+  if (!authReq.platformRole || !hasPlatformWideAccess(authReq.platformRole)) {
+    return next();
+  }
+  
+  const userId = authReq.user?.id;
+  if (!userId) {
+    return next();
+  }
+  
+  try {
+    // Check if admin has an active support session
+    const activeSession = await storage.getActiveSupportSessionByAdmin(userId);
+    
+    if (activeSession) {
+      authReq.supportSession = {
+        id: activeSession.id,
+        adminUserId: activeSession.adminUserId,
+        targetWorkspaceId: activeSession.workspaceId,
+        scope: activeSession.scope,
+        isOrgFrozen: activeSession.isOrgFrozen || false,
+        freezeReason: activeSession.freezeReason || undefined,
+      };
+    }
+    
+    next();
+  } catch (error) {
+    console.error('[SupportSession] Error attaching session context:', error);
+    next(); // Fail open
+  }
+};
+
+/**
+ * Require active support session for cross-org operations
+ * Platform staff must have an active session to access another org's data
+ */
+export const requireActiveSupport = (scopes: string[]): RequestHandler => {
+  return async (req, res, next) => {
+    const authReq = req as SupportSessionRequest;
+    
+    // Must be platform staff
+    if (!authReq.platformRole || !hasPlatformWideAccess(authReq.platformRole)) {
+      return res.status(403).json({ 
+        error: 'This operation requires platform staff role',
+        code: 'PLATFORM_ROLE_REQUIRED'
+      });
+    }
+    
+    const userId = authReq.user?.id;
+    if (!userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+    
+    try {
+      const activeSession = await storage.getActiveSupportSessionByAdmin(userId);
+      
+      if (!activeSession) {
+        return res.status(403).json({
+          error: 'Active support session required for this operation',
+          code: 'SUPPORT_SESSION_REQUIRED',
+          hint: 'Start a support session before accessing organization data'
+        });
+      }
+      
+      // Check if the scope is allowed
+      if (!scopes.includes(activeSession.scope)) {
+        return res.status(403).json({
+          error: `Operation requires scope: ${scopes.join(' or ')}`,
+          code: 'INSUFFICIENT_SCOPE',
+          currentScope: activeSession.scope
+        });
+      }
+      
+      // Attach session context
+      authReq.supportSession = {
+        id: activeSession.id,
+        adminUserId: activeSession.adminUserId,
+        targetWorkspaceId: activeSession.workspaceId,
+        scope: activeSession.scope,
+        isOrgFrozen: activeSession.isOrgFrozen || false,
+        freezeReason: activeSession.freezeReason || undefined,
+      };
+      
+      next();
+    } catch (error) {
+      console.error('[SupportSession] Error checking support session:', error);
+      return res.status(500).json({ error: 'Failed to validate support session' });
+    }
+  };
+};
+
+// Preset scopes for common operations
+export const requireReadOnlySupport = requireActiveSupport(['read_only', 'full_access', 'emergency']);
+export const requireFullAccessSupport = requireActiveSupport(['full_access', 'emergency']);
+export const requireEmergencySupport = requireActiveSupport(['emergency']);
+
+/**
+ * Helper to log support actions (use in route handlers)
+ * Creates an immutable audit trail for all support operations
+ */
+export async function logSupportAction(
+  sessionId: string,
+  adminUserId: string,
+  workspaceId: string,
+  action: string,
+  severity: 'read' | 'write' | 'delete',
+  details?: Record<string, any>
+): Promise<void> {
+  try {
+    await storage.createSupportAuditLog({
+      sessionId,
+      adminUserId,
+      workspaceId,
+      action,
+      severity,
+      targetResource: details?.targetResource,
+      targetId: details?.targetId,
+      previousState: details?.previousState,
+      newState: details?.newState,
+      ipAddress: details?.ipAddress,
+      userAgent: details?.userAgent,
+      metadata: details?.metadata,
+    });
+  } catch (error) {
+    // Never fail the request due to audit log failure - but do alert
+    console.error('[SupportAudit] CRITICAL: Failed to write audit log:', error);
+    console.error('[SupportAudit] Action:', { sessionId, adminUserId, workspaceId, action, severity });
+  }
+}
