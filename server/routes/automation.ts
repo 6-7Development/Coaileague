@@ -20,6 +20,10 @@ import { eq, and, sql } from 'drizzle-orm';
 import { createNotification } from '../services/notificationService';
 import { withCredits } from '../services/billing/creditWrapper';
 import { ComplianceMonitoringService } from '../services/complianceMonitoring';
+import { shiftMonitoringService } from '../services/automation/shiftMonitoringService';
+import { trinityAutomationToggle } from '../services/automation/trinityAutomationToggle';
+import { photoGeofenceService } from '../services/photoGeofenceService';
+import { quickbooksReceiptService } from '../services/quickbooksReceiptService';
 
 export const automationRouter = Router();
 
@@ -959,5 +963,419 @@ automationRouter.get('/compliance/recent', async (req: any, res: Response) => {
       error: 'Failed to fetch compliance data',
       message: error instanceof Error ? error.message : String(error),
     });
+  }
+});
+
+// ============================================================================
+// SHIFT MONITORING SERVICE
+// ============================================================================
+
+// RBAC helper for automation endpoints
+const AUTOMATION_ADMIN_ROLES = ['org_owner', 'org_admin', 'root_admin', 'platform_admin'];
+
+function isAutomationAdmin(user: any): boolean {
+  if (!user) return false;
+  const role = user.workspaceRole || user.platformRole;
+  return AUTOMATION_ADMIN_ROLES.includes(role);
+}
+
+// Validation schemas for automation endpoints
+const automationRequestSchema = z.object({
+  feature: z.enum(['scheduling', 'invoicing', 'payroll', 'time_tracking', 'shift_monitoring', 'quickbooks_sync']),
+  context: z.record(z.any()).optional(),
+});
+
+const photoValidationSchema = z.object({
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+  shiftId: z.string().optional(),
+  photoType: z.enum(['clock_in', 'clock_out', 'site_check', 'incident', 'task_completion']).optional(),
+  photoData: z.string().optional(),
+});
+
+/**
+ * GET /api/automation/shift-monitoring/status
+ * Get shift monitoring service status
+ */
+automationRouter.get('/shift-monitoring/status', async (req: any, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    if (!isAutomationAdmin(req.user)) {
+      return res.status(403).json({ error: 'Requires org admin or owner role' });
+    }
+
+    const status = shiftMonitoringService.getStatus();
+    return res.json(status);
+  } catch (error) {
+    console.error('Shift monitoring status error:', error);
+    return res.status(500).json({ error: 'Failed to get status' });
+  }
+});
+
+/**
+ * POST /api/automation/shift-monitoring/start
+ * Start shift monitoring service (platform admin only)
+ */
+automationRouter.post('/shift-monitoring/start', async (req: any, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    if (!isAutomationAdmin(req.user)) {
+      return res.status(403).json({ error: 'Requires org admin or owner role' });
+    }
+
+    await shiftMonitoringService.start();
+    return res.json({ success: true, message: 'Shift monitoring started' });
+  } catch (error) {
+    console.error('Shift monitoring start error:', error);
+    return res.status(500).json({ error: 'Failed to start monitoring' });
+  }
+});
+
+/**
+ * POST /api/automation/shift-monitoring/stop
+ * Stop shift monitoring service
+ */
+automationRouter.post('/shift-monitoring/stop', async (req: any, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    if (!isAutomationAdmin(req.user)) {
+      return res.status(403).json({ error: 'Requires org admin or owner role' });
+    }
+
+    shiftMonitoringService.stop();
+    return res.json({ success: true, message: 'Shift monitoring stopped' });
+  } catch (error) {
+    console.error('Shift monitoring stop error:', error);
+    return res.status(500).json({ error: 'Failed to stop monitoring' });
+  }
+});
+
+/**
+ * POST /api/automation/shift-monitoring/run-cycle
+ * Manually trigger a monitoring cycle
+ */
+automationRouter.post('/shift-monitoring/run-cycle', async (req: any, res: Response) => {
+  try {
+    if (!req.user || !req.user.currentWorkspaceId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    if (!isAutomationAdmin(req.user)) {
+      return res.status(403).json({ error: 'Requires org admin or owner role' });
+    }
+
+    const result = await shiftMonitoringService.runMonitoringCycle();
+    return res.json({ success: true, result });
+  } catch (error) {
+    console.error('Shift monitoring cycle error:', error);
+    return res.status(500).json({ error: 'Failed to run monitoring cycle' });
+  }
+});
+
+// ============================================================================
+// TRINITY AUTOMATION TOGGLE
+// ============================================================================
+
+/**
+ * GET /api/automation/trinity/settings
+ * Get automation settings for workspace
+ */
+automationRouter.get('/trinity/settings', async (req: any, res: Response) => {
+  try {
+    if (!req.user || !req.user.currentWorkspaceId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const settings = await trinityAutomationToggle.getSettings(req.user.currentWorkspaceId);
+    return res.json(settings);
+  } catch (error) {
+    console.error('Trinity settings fetch error:', error);
+    return res.status(500).json({ error: 'Failed to get settings' });
+  }
+});
+
+/**
+ * PATCH /api/automation/trinity/settings
+ * Update automation settings for workspace
+ */
+automationRouter.patch('/trinity/settings', async (req: any, res: Response) => {
+  try {
+    if (!req.user || !req.user.currentWorkspaceId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    if (!isAutomationAdmin(req.user)) {
+      return res.status(403).json({ error: 'Only org owners/admins can update automation settings' });
+    }
+
+    const settings = await trinityAutomationToggle.updateSettings(
+      req.user.currentWorkspaceId,
+      req.body
+    );
+    return res.json(settings);
+  } catch (error) {
+    console.error('Trinity settings update error:', error);
+    return res.status(500).json({ error: 'Failed to update settings' });
+  }
+});
+
+/**
+ * POST /api/automation/trinity/request
+ * Request Trinity automation for a feature
+ */
+automationRouter.post('/trinity/request', async (req: any, res: Response) => {
+  try {
+    if (!req.user || !req.user.currentWorkspaceId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const validation = automationRequestSchema.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json({
+        error: 'Invalid request',
+        details: fromZodError(validation.error).toString(),
+      });
+    }
+
+    const { feature, context } = validation.data;
+
+    const result = await trinityAutomationToggle.requestAutomation({
+      workspaceId: req.user.currentWorkspaceId,
+      feature,
+      requestedBy: req.user.id,
+      context: context || {},
+    });
+
+    return res.json(result);
+  } catch (error) {
+    console.error('Trinity automation request error:', error);
+    return res.status(500).json({ error: 'Failed to request automation' });
+  }
+});
+
+/**
+ * POST /api/automation/trinity/approve/:requestId
+ * Approve pending automation request
+ */
+automationRouter.post('/trinity/approve/:requestId', async (req: any, res: Response) => {
+  try {
+    if (!req.user || !req.user.currentWorkspaceId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    if (!isAutomationAdmin(req.user)) {
+      return res.status(403).json({ error: 'Only org owners/admins can approve automation' });
+    }
+
+    const result = await trinityAutomationToggle.approveAutomation(
+      req.params.requestId,
+      req.user.id
+    );
+
+    return res.json(result);
+  } catch (error: any) {
+    console.error('Trinity approval error:', error);
+    return res.status(500).json({ error: error.message || 'Failed to approve' });
+  }
+});
+
+/**
+ * POST /api/automation/trinity/reject/:requestId
+ * Reject pending automation request
+ */
+automationRouter.post('/trinity/reject/:requestId', async (req: any, res: Response) => {
+  try {
+    if (!req.user || !req.user.currentWorkspaceId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    if (!isAutomationAdmin(req.user)) {
+      return res.status(403).json({ error: 'Only org owners/admins can reject automation' });
+    }
+
+    const result = await trinityAutomationToggle.rejectAutomation(
+      req.params.requestId,
+      req.user.id,
+      req.body.reason
+    );
+
+    return res.json(result);
+  } catch (error: any) {
+    console.error('Trinity rejection error:', error);
+    return res.status(500).json({ error: error.message || 'Failed to reject' });
+  }
+});
+
+/**
+ * GET /api/automation/trinity/pending
+ * Get pending automation requests
+ */
+automationRouter.get('/trinity/pending', async (req: any, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const requests = trinityAutomationToggle.getAllPendingRequests(
+      req.user.currentWorkspaceId
+    );
+
+    return res.json(requests);
+  } catch (error) {
+    console.error('Trinity pending requests error:', error);
+    return res.status(500).json({ error: 'Failed to get pending requests' });
+  }
+});
+
+// ============================================================================
+// PHOTO GEOFENCE VALIDATION
+// ============================================================================
+
+/**
+ * POST /api/automation/photo/validate
+ * Validate photo submission location
+ */
+automationRouter.post('/photo/validate', async (req: any, res: Response) => {
+  try {
+    if (!req.user || !req.user.currentWorkspaceId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const validation = photoValidationSchema.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json({
+        error: 'Invalid request',
+        details: fromZodError(validation.error).toString(),
+      });
+    }
+
+    const { latitude, longitude, shiftId, photoType } = validation.data;
+
+    const employee = await storage.getEmployeeByUserId(req.user.id, req.user.currentWorkspaceId);
+    if (!employee) {
+      return res.status(403).json({ error: 'Employee record not found' });
+    }
+
+    const result = await photoGeofenceService.validatePhotoSubmission({
+      workspaceId: req.user.currentWorkspaceId,
+      employeeId: employee.id,
+      shiftId,
+      location: { latitude, longitude },
+      photoType: photoType || 'site_check',
+    });
+
+    return res.json(result);
+  } catch (error) {
+    console.error('Photo validation error:', error);
+    return res.status(500).json({ error: 'Failed to validate photo location' });
+  }
+});
+
+/**
+ * POST /api/automation/photo/submit
+ * Submit photo with geofence validation
+ */
+automationRouter.post('/photo/submit', async (req: any, res: Response) => {
+  try {
+    if (!req.user || !req.user.currentWorkspaceId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const validation = photoValidationSchema.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json({
+        error: 'Invalid request',
+        details: fromZodError(validation.error).toString(),
+      });
+    }
+
+    const { latitude, longitude, shiftId, photoType, photoData } = validation.data;
+
+    const employee = await storage.getEmployeeByUserId(req.user.id, req.user.currentWorkspaceId);
+    if (!employee) {
+      return res.status(403).json({ error: 'Employee record not found' });
+    }
+
+    const result = await photoGeofenceService.submitPhotoWithValidation({
+      workspaceId: req.user.currentWorkspaceId,
+      employeeId: employee.id,
+      shiftId,
+      location: { latitude, longitude },
+      photoType: photoType || 'site_check',
+      photoData,
+    });
+
+    if (!result.success) {
+      return res.status(403).json(result);
+    }
+
+    return res.json(result);
+  } catch (error) {
+    console.error('Photo submission error:', error);
+    return res.status(500).json({ error: 'Failed to submit photo' });
+  }
+});
+
+// ============================================================================
+// QUICKBOOKS RECEIPTS
+// ============================================================================
+
+/**
+ * GET /api/automation/quickbooks/receipts
+ * Get recent QuickBooks sync receipts for workspace
+ */
+automationRouter.get('/quickbooks/receipts', async (req: any, res: Response) => {
+  try {
+    if (!req.user || !req.user.currentWorkspaceId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const limit = parseInt(req.query.limit as string) || 10;
+    const receipts = quickbooksReceiptService.getRecentReceipts(
+      req.user.currentWorkspaceId,
+      limit
+    );
+
+    return res.json({
+      receipts,
+      formattedReceipts: receipts.map(r => quickbooksReceiptService.formatReceiptForDisplay(r)),
+    });
+  } catch (error) {
+    console.error('QuickBooks receipts error:', error);
+    return res.status(500).json({ error: 'Failed to get receipts' });
+  }
+});
+
+/**
+ * GET /api/automation/quickbooks/receipts/:receiptId
+ * Get specific QuickBooks sync receipt
+ */
+automationRouter.get('/quickbooks/receipts/:receiptId', async (req: any, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const receipt = quickbooksReceiptService.getReceipt(req.params.receiptId);
+    if (!receipt) {
+      return res.status(404).json({ error: 'Receipt not found' });
+    }
+
+    return res.json({
+      receipt,
+      formatted: quickbooksReceiptService.formatReceiptForDisplay(receipt),
+    });
+  } catch (error) {
+    console.error('QuickBooks receipt error:', error);
+    return res.status(500).json({ error: 'Failed to get receipt' });
   }
 });
