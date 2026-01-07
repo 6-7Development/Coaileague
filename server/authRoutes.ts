@@ -506,10 +506,15 @@ router.get("/api/auth/me", requireAuth, async (req, res) => {
 
 // ============================================================================
 // Update User Display Preferences
+// Supports workspace-aware view modes:
+// - User-level simpleMode (global fallback)
+// - Employee-level viewModePreference (per-workspace override)
+// - Workspace-level forceSimpleMode (org admin override)
 // ============================================================================
 
 const preferencesSchema = z.object({
   simpleMode: z.boolean().optional(),
+  viewModePreference: z.enum(['inherit', 'simple', 'pro']).optional(),
 });
 
 router.patch("/api/user/preferences", requireAuth, async (req, res) => {
@@ -517,24 +522,113 @@ router.patch("/api/user/preferences", requireAuth, async (req, res) => {
     const sessionUser = req.user as User;
     const data = preferencesSchema.parse(req.body);
     
-    const updates: Record<string, any> = {};
+    // Get current workspace to update employee-level preference
+    const workspaceId = sessionUser.currentWorkspaceId;
+    
+    // If viewModePreference is set and we have a workspace, update employee record
+    if (data.viewModePreference !== undefined && workspaceId) {
+      const [employee] = await db
+        .select()
+        .from(employees)
+        .where(and(
+          eq(employees.userId, sessionUser.id),
+          eq(employees.workspaceId, workspaceId)
+        ))
+        .limit(1);
+      
+      if (employee) {
+        await db
+          .update(employees)
+          .set({ 
+            viewModePreference: data.viewModePreference,
+            viewModeUpdatedAt: new Date(),
+            updatedAt: new Date()
+          })
+          .where(eq(employees.id, employee.id));
+      }
+    }
+    
+    // Update user-level simpleMode (global fallback)
+    const userUpdates: Record<string, any> = {};
     if (data.simpleMode !== undefined) {
-      updates.simpleMode = data.simpleMode;
+      userUpdates.simpleMode = data.simpleMode;
     }
     
-    if (Object.keys(updates).length === 0) {
-      return res.status(400).json({ message: "No valid preferences to update" });
+    if (Object.keys(userUpdates).length > 0) {
+      await db
+        .update(users)
+        .set(userUpdates)
+        .where(eq(users.id, sessionUser.id));
     }
     
-    await db
-      .update(users)
-      .set(updates)
-      .where(eq(users.id, sessionUser.id));
-    
-    res.json({ message: "Preferences updated", ...updates });
+    res.json({ 
+      message: "Preferences updated", 
+      simpleMode: data.simpleMode,
+      viewModePreference: data.viewModePreference
+    });
   } catch (error) {
     console.error("Preferences update error:", error);
     res.status(500).json({ message: "Failed to update preferences" });
+  }
+});
+
+// ============================================================================
+// Get Effective View Mode for Current Session
+// Resolves: Employee override → Workspace force → Workspace default → User fallback
+// ============================================================================
+
+router.get("/api/user/view-mode", requireAuth, async (req, res) => {
+  try {
+    const sessionUser = req.user as User;
+    const workspaceId = sessionUser.currentWorkspaceId;
+    
+    let effectiveMode: 'simple' | 'pro' = sessionUser.simpleMode ? 'simple' : 'pro';
+    let source = 'user_fallback';
+    
+    if (workspaceId) {
+      // Get workspace settings
+      const [workspace] = await db
+        .select()
+        .from(workspaces)
+        .where(eq(workspaces.id, workspaceId))
+        .limit(1);
+      
+      if (workspace) {
+        // Check if org forces simple mode
+        if (workspace.forceSimpleMode) {
+          effectiveMode = 'simple';
+          source = 'workspace_forced';
+        } else {
+          // Check employee-level preference
+          const [employee] = await db
+            .select()
+            .from(employees)
+            .where(and(
+              eq(employees.userId, sessionUser.id),
+              eq(employees.workspaceId, workspaceId)
+            ))
+            .limit(1);
+          
+          if (employee?.viewModePreference && employee.viewModePreference !== 'inherit') {
+            effectiveMode = employee.viewModePreference as 'simple' | 'pro';
+            source = 'employee_preference';
+          } else if (workspace.defaultViewMode && workspace.defaultViewMode !== 'auto') {
+            effectiveMode = workspace.defaultViewMode as 'simple' | 'pro';
+            source = 'workspace_default';
+          }
+        }
+      }
+    }
+    
+    res.json({
+      effectiveMode,
+      source,
+      isSimpleMode: effectiveMode === 'simple',
+      workspaceId,
+    });
+  } catch (error) {
+    console.error("View mode error:", error);
+    res.status(500).json({ message: "Failed to get view mode" });
   }
 });
 
