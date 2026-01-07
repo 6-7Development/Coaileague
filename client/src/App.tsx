@@ -31,7 +31,6 @@ import SeasonalEffectsLayer from "@/components/effects/SeasonalEffectsLayer";
 import { Button } from "@/components/ui/button";
 import { PaymentEnforcementProvider } from "@/hooks/use-payment-enforcement";
 import { ProtectedRoute } from "@/components/protected-route";
-import { ApprovalTray } from "@/components/approvals/ApprovalTray";
 import { LeaderRoute } from "@/components/leader-route";
 import { OwnerRoute } from "@/components/owner-route";
 import { PlatformAdminRoute } from "@/components/platform-admin-route";
@@ -1213,8 +1212,6 @@ function AppContent() {
           {/* PWA Install Prompt - Shows once for mobile users */}
           <PWAInstallPrompt />
         </div>
-      {/* Universal Approval Request Tray - Desktop */}
-      <ApprovalTray scope="admin" isMobile={false} />
         <OnboardingWizard isOpen={showOnboarding} onClose={() => setShowOnboarding(false)} />
       </ProtectedRoute>
     );
@@ -1534,9 +1531,6 @@ function AppContent() {
           </div>
         </div>
       </SidebarProvider>
-      
-      {/* Universal Approval Request Tray - Desktop */}
-      <ApprovalTray scope="admin" isMobile={false} />
       <OnboardingWizard isOpen={showOnboarding} onClose={() => setShowOnboarding(false)} />
     </ProtectedRoute>
   );
