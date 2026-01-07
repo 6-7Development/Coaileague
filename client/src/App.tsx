@@ -60,6 +60,7 @@ import CreditAnalyticsDashboard from "@/pages/credit-analytics-dashboard";
 import LeadersHub from "@/pages/leaders-hub";
 import TrinityInsights from "@/pages/trinity-insights";
 import Homepage from "@/pages/homepage";
+import TrinityChat from "@/pages/trinity-chat"; // Trinity Chat Interface with BUDDY metacognition
 import CustomLogin from "@/pages/custom-login";
 import CustomRegister from "@/pages/custom-register";
 import UniversalMarketing from "@/pages/universal-marketing";
@@ -928,6 +929,7 @@ function AppContent() {
         {/* Consolidated chat routes - ONE UNIVERSAL CHAT */}
         <Route path="/chat" component={HelpDesk} /> {/* Universal responsive chat with Gemini AI (works on desktop + mobile) */}
         <Route path="/mobile-chat"><Redirect to="/chat" /></Route> {/* Redirect to universal chat */}
+        <Route path="/trinity" component={TrinityChat} /> {/* Trinity Chat Interface with BUDDY metacognition */}
         <Route path="/live-chat"><Redirect to="/chat" /></Route>
         
         <Route path="/helpdesk5"><Redirect to="/chat" /></Route>
