@@ -486,9 +486,10 @@ export default function ScheduleMobileFirst() {
         </Tabs>
       </div>
 
-      {/* Quick Actions */}
+      {/* Quick Actions - Essential for all, advanced for managers */}
       <div className="bg-muted/50 border-b px-3 py-3">
         <div className="flex gap-2 overflow-x-auto pb-1">
+          {/* Manager-only actions */}
           {isManagerOrSupervisor && (
             <>
               <Button
@@ -526,18 +527,9 @@ export default function ScheduleMobileFirst() {
                 <BarChart3 className="h-4 w-4 text-blue-600" />
                 Reports
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setLocation('/employees')}
-                className="flex-shrink-0 gap-1.5"
-                data-testid="button-team"
-              >
-                <Users className="h-4 w-4 text-green-600" />
-                Team
-              </Button>
             </>
           )}
+          {/* Actions for all users */}
           <Button
             variant="outline"
             size="sm"
@@ -561,16 +553,19 @@ export default function ScheduleMobileFirst() {
             <Download className="h-4 w-4 text-indigo-600" />
             Calendar
           </Button>
-          <AskTrinityButton
-            onClick={() => setShowTrinityInsights(!showTrinityInsights)}
-            size="sm"
-            data-testid="button-trinity-mobile"
-          />
+          {/* Trinity for managers only */}
+          {isManagerOrSupervisor && (
+            <AskTrinityButton
+              onClick={() => setShowTrinityInsights(!showTrinityInsights)}
+              size="sm"
+              data-testid="button-trinity-mobile"
+            />
+          )}
         </div>
       </div>
       
-      {/* Mobile Conflict Alerts */}
-      {showConflicts && (
+      {/* Mobile Conflict Alerts - Managers only */}
+      {isManagerOrSupervisor && showConflicts && (
         <ConflictAlerts
           shifts={shifts}
           employees={employees}
@@ -586,8 +581,8 @@ export default function ScheduleMobileFirst() {
         />
       )}
       
-      {/* Mobile Trinity Insights (Collapsible) */}
-      {showTrinityInsights && (
+      {/* Mobile Trinity Insights - Managers only */}
+      {isManagerOrSupervisor && showTrinityInsights && (
         <div className="mx-3 mt-2">
           <TrinityInsightsPanel
             weekStart={weekStart}
