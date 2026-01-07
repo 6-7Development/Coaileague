@@ -373,18 +373,18 @@ export default function TrinityChat() {
                     <Settings className="h-4 w-4" />
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-xs p-3">
-                  <DialogHeader className="pb-1.5 space-y-0">
-                    <DialogTitle className="text-sm flex items-center gap-1.5">
-                      <Brain className="h-3.5 w-3.5" />
-                      Settings
+                <DialogContent className="max-w-sm p-4">
+                  <DialogHeader className="pb-2 space-y-0">
+                    <DialogTitle className="text-sm flex items-center gap-2">
+                      <Brain className="h-4 w-4" />
+                      Trinity Settings
                     </DialogTitle>
                   </DialogHeader>
 
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     {/* Personal Development Toggle */}
-                    <div className="flex items-center justify-between py-0.5">
-                      <Label className="text-xs">Personal Development</Label>
+                    <div className="flex items-center justify-between min-h-[44px]">
+                      <Label className="text-sm">Personal Development</Label>
                       <Switch
                         checked={buddySettings?.personalDevelopmentEnabled || false}
                         onCheckedChange={(checked) =>
@@ -399,32 +399,32 @@ export default function TrinityChat() {
                     {buddySettings?.personalDevelopmentEnabled && (
                       <>
                         <Separator />
-                        <div className="space-y-1">
-                          <Label className="text-[10px] text-muted-foreground uppercase tracking-wide">Guidance</Label>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs text-muted-foreground">Spiritual Guidance</Label>
                           <RadioGroup
                             value={buddySettings?.spiritualGuidance || 'none'}
                             onValueChange={(value) =>
                               settingsMutation.mutate({ spiritualGuidance: value as SpiritualGuidance })
                             }
-                            className="grid grid-cols-3 gap-0.5"
+                            className="grid grid-cols-3 gap-1"
                           >
-                            <Label htmlFor="spiritual-none" className="flex justify-center text-[10px] cursor-pointer px-1.5 py-1 rounded border hover:bg-muted [&:has([data-state=checked])]:border-primary [&:has([data-state=checked])]:bg-primary/10">
+                            <Label htmlFor="spiritual-none" className="flex justify-center items-center text-xs cursor-pointer min-h-[44px] rounded-md border hover:bg-muted [&:has([data-state=checked])]:border-primary [&:has([data-state=checked])]:bg-primary/10">
                               <RadioGroupItem value="none" id="spiritual-none" className="sr-only" />
                               None
                             </Label>
-                            <Label htmlFor="spiritual-general" className="flex justify-center text-[10px] cursor-pointer px-1.5 py-1 rounded border hover:bg-muted [&:has([data-state=checked])]:border-primary [&:has([data-state=checked])]:bg-primary/10">
+                            <Label htmlFor="spiritual-general" className="flex justify-center items-center text-xs cursor-pointer min-h-[44px] rounded-md border hover:bg-muted [&:has([data-state=checked])]:border-primary [&:has([data-state=checked])]:bg-primary/10">
                               <RadioGroupItem value="general" id="spiritual-general" className="sr-only" />
                               General
                             </Label>
-                            <Label htmlFor="spiritual-christian" className="flex justify-center text-[10px] cursor-pointer px-1.5 py-1 rounded border hover:bg-muted [&:has([data-state=checked])]:border-primary [&:has([data-state=checked])]:bg-primary/10">
+                            <Label htmlFor="spiritual-christian" className="flex justify-center items-center text-xs cursor-pointer min-h-[44px] rounded-md border hover:bg-muted [&:has([data-state=checked])]:border-primary [&:has([data-state=checked])]:bg-primary/10">
                               <RadioGroupItem value="christian" id="spiritual-christian" className="sr-only" />
                               Christian
                             </Label>
                           </RadioGroup>
                         </div>
 
-                        <div className="space-y-1">
-                          <Label className="text-[10px] text-muted-foreground uppercase tracking-wide">Accountability</Label>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs text-muted-foreground">Accountability Level</Label>
                           <RadioGroup
                             value={buddySettings?.accountabilityLevel || 'balanced'}
                             onValueChange={(value) =>
@@ -432,17 +432,17 @@ export default function TrinityChat() {
                                 accountabilityLevel: value as 'gentle' | 'balanced' | 'challenging',
                               })
                             }
-                            className="grid grid-cols-3 gap-0.5"
+                            className="grid grid-cols-3 gap-1"
                           >
-                            <Label htmlFor="acc-gentle" className="flex justify-center text-[10px] cursor-pointer px-1.5 py-1 rounded border hover:bg-muted [&:has([data-state=checked])]:border-primary [&:has([data-state=checked])]:bg-primary/10">
+                            <Label htmlFor="acc-gentle" className="flex justify-center items-center text-xs cursor-pointer min-h-[44px] rounded-md border hover:bg-muted [&:has([data-state=checked])]:border-primary [&:has([data-state=checked])]:bg-primary/10">
                               <RadioGroupItem value="gentle" id="acc-gentle" className="sr-only" />
                               Gentle
                             </Label>
-                            <Label htmlFor="acc-balanced" className="flex justify-center text-[10px] cursor-pointer px-1.5 py-1 rounded border hover:bg-muted [&:has([data-state=checked])]:border-primary [&:has([data-state=checked])]:bg-primary/10">
+                            <Label htmlFor="acc-balanced" className="flex justify-center items-center text-xs cursor-pointer min-h-[44px] rounded-md border hover:bg-muted [&:has([data-state=checked])]:border-primary [&:has([data-state=checked])]:bg-primary/10">
                               <RadioGroupItem value="balanced" id="acc-balanced" className="sr-only" />
                               Balanced
                             </Label>
-                            <Label htmlFor="acc-challenging" className="flex justify-center text-[10px] cursor-pointer px-1.5 py-1 rounded border hover:bg-muted [&:has([data-state=checked])]:border-primary [&:has([data-state=checked])]:bg-primary/10">
+                            <Label htmlFor="acc-challenging" className="flex justify-center items-center text-xs cursor-pointer min-h-[44px] rounded-md border hover:bg-muted [&:has([data-state=checked])]:border-primary [&:has([data-state=checked])]:bg-primary/10">
                               <RadioGroupItem value="challenging" id="acc-challenging" className="sr-only" />
                               Challenge
                             </Label>
@@ -454,18 +454,18 @@ export default function TrinityChat() {
                     <Separator />
 
                     {/* Metacognition Settings */}
-                    <div className="space-y-1">
-                      <Label className="text-[10px] text-muted-foreground uppercase tracking-wide">Display</Label>
-                      <div className="flex items-center justify-between py-0.5">
-                        <Label className="text-xs font-normal">Show Reasoning</Label>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Display</Label>
+                      <div className="flex items-center justify-between min-h-[44px]">
+                        <Label className="text-sm font-normal">Show Reasoning</Label>
                         <Switch
                           checked={buddySettings?.showThoughtProcess ?? true}
                           onCheckedChange={(checked) => settingsMutation.mutate({ showThoughtProcess: checked })}
                           data-testid="switch-thought-process"
                         />
                       </div>
-                      <div className="flex items-center justify-between py-0.5">
-                        <Label className="text-xs font-normal">Proactive Insights</Label>
+                      <div className="flex items-center justify-between min-h-[44px]">
+                        <Label className="text-sm font-normal">Proactive Insights</Label>
                         <Switch
                           checked={buddySettings?.proactiveInsights ?? true}
                           onCheckedChange={(checked) => settingsMutation.mutate({ proactiveInsights: checked })}
