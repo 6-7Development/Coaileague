@@ -65,6 +65,32 @@ CoAIleague features a multi-tenant architecture with RBAC security and isolation
 - **Financial Watchdog:** Platform Hours vs Invoice Hours reconciliation with Trinity Verified badges, widget toggles for Simple/Full views, and automatic discrepancy alerts (>5% variance)
 - **Capability Evidence Matrix:** See `TRINITY_CAPABILITY_MATRIX.md` for verified vs roadmap features
 
+**Trinity Chat Interface (/trinity):**
+The Trinity Chat Interface provides direct conversational access to Trinity with three distinct modes and metacognition capabilities.
+
+*Modes:*
+- **Business Mode (Blue):** Data-driven business advisor with real-time access to schedules, payroll, invoices, overtime, and QuickBooks financials. Answers questions with specific numbers and actionable insights.
+- **Personal Mode / BUDDY (Green):** Personal accountability partner and life coach. Three spiritual guidance options: None (secular), General (universal values), or Christian (biblical wisdom). Configurable accountability levels: Gentle, Balanced, or Challenging.
+- **Integrated Mode (Purple):** Full context of both business data AND personal conversations. Reveals connections between personal struggles and business performance.
+
+*Key Features:*
+- **RBAC Access:** org_owner, co_owner, manager only (supervisors and employees excluded)
+- **Metacognition Layer:** Pattern recognition, insight accumulation, consciousness continuity across sessions
+- **Real-Time Business Metrics:** Monthly revenue, invoice status, overtime hours, QuickBooks connection status
+- **Conversation History:** Persistent history with date grouping and session replay
+- **Proactive Insights:** Trinity notices patterns and brings up observations naturally
+- **Memory Profile Integration:** Recalls past conversations and user preferences
+
+*Spiritual Guidance (BUDDY Mode):*
+- **None:** Secular life coaching with evidence-based behavioral strategies
+- **General:** Universal values, purpose, meaning, gratitude - no religious specificity
+- **Christian:** Scripture references, prayer offerings, biblical wisdom with grace
+
+*Accountability Levels:*
+- **Gentle:** Supportive encouragement, soft nudges
+- **Balanced:** Encouragement with honest challenge
+- **Challenging:** Direct tough love, no sugarcoating
+
 **Roadmap Features (Not Yet Active):**
 - Business Pro Mode (Revenue Intelligence Engine)
 - Guru Mode (Strategic Advisory)
@@ -72,6 +98,9 @@ CoAIleague features a multi-tenant architecture with RBAC security and isolation
 - Self-Evolving Cognitive Architectures
 
 ## Recent Changes (January 2026)
+- **Trinity Chat Interface Complete:** 3-mode conversational interface (Business/Personal/Integrated) with BUDDY accountability coaching, spiritual guidance options (none/general/christian), and metacognition layer for pattern recognition and consciousness continuity
+- **Business Mode with Live Data:** Real-time QuickBooks connection status, monthly revenue, invoice stats, overtime hours injected into AI prompts
+- **RBAC Enforcement:** Trinity Chat restricted to org_owner, co_owner, manager roles only
 - **Employee Onboarding Pipeline Fixed:** Invite role/workspaceRole now flows through to employee creation, with getOnboardingInvite storage method and employee_created event emission
 - **QuickBooks Bidirectional Sync Complete:** Webhook service + polling fallback for real-time sync across mobile/desktop
 - **Rate Limiter Enforcement:** All QB API calls now use try/finally pattern with proper slot management (500 req/min)

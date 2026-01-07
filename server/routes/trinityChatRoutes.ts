@@ -2,13 +2,37 @@
  * TRINITY CHAT ROUTES
  * ===================
  * API endpoints for Trinity conversational interface with BUDDY mode support.
+ * 
+ * RBAC: org_owner, co_owner, manager only (supervisors and employees excluded)
  */
 
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { trinityChatService, ConversationMode } from '../services/ai-brain/trinityChatService';
 
 const router = Router();
+
+// RBAC Middleware - Only allow org_owner, co_owner, manager
+const requireTrinityAccess = (req: Request, res: Response, next: NextFunction) => {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+
+  const user = req.user as any;
+  const allowedRoles = ['org_owner', 'co_owner', 'manager', 'root_admin', 'co_admin', 'sysops'];
+  
+  // Check employee role if available
+  const userRole = user.role || user.employeeRole || user.workspaceRole;
+  
+  if (!allowedRoles.includes(userRole)) {
+    return res.status(403).json({ 
+      error: 'Access denied',
+      message: 'Trinity Chat is available for org owners, co-owners, and managers only',
+    });
+  }
+
+  next();
+};
 
 // Request schemas
 const chatSchema = z.object({
@@ -35,11 +59,8 @@ const updateSettingsSchema = z.object({
  * POST /api/trinity/chat
  * Send a message to Trinity and get a response
  */
-router.post('/chat', async (req: Request, res: Response) => {
+router.post('/chat', requireTrinityAccess, async (req: Request, res: Response) => {
   try {
-    if (!req.user) {
-      return res.status(401).json({ error: 'Authentication required' });
-    }
 
     const parsed = chatSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -73,11 +94,8 @@ router.post('/chat', async (req: Request, res: Response) => {
  * GET /api/trinity/history
  * Get user's conversation history
  */
-router.get('/history', async (req: Request, res: Response) => {
+router.get('/history', requireTrinityAccess, async (req: Request, res: Response) => {
   try {
-    if (!req.user) {
-      return res.status(401).json({ error: 'Authentication required' });
-    }
 
     const userId = (req.user as any).id;
     const workspaceId = (req.user as any).workspaceId;
@@ -99,11 +117,8 @@ router.get('/history', async (req: Request, res: Response) => {
  * GET /api/trinity/session/:sessionId/messages
  * Get messages for a specific session
  */
-router.get('/session/:sessionId/messages', async (req: Request, res: Response) => {
+router.get('/session/:sessionId/messages', requireTrinityAccess, async (req: Request, res: Response) => {
   try {
-    if (!req.user) {
-      return res.status(401).json({ error: 'Authentication required' });
-    }
 
     const { sessionId } = req.params;
     const messages = await trinityChatService.getSessionMessages(sessionId);
@@ -118,11 +133,8 @@ router.get('/session/:sessionId/messages', async (req: Request, res: Response) =
  * POST /api/trinity/mode
  * Switch conversation mode
  */
-router.post('/mode', async (req: Request, res: Response) => {
+router.post('/mode', requireTrinityAccess, async (req: Request, res: Response) => {
   try {
-    if (!req.user) {
-      return res.status(401).json({ error: 'Authentication required' });
-    }
 
     const { mode } = req.body;
     if (!['business', 'personal', 'integrated'].includes(mode)) {
@@ -148,11 +160,8 @@ router.post('/mode', async (req: Request, res: Response) => {
  * GET /api/trinity/settings
  * Get BUDDY settings for current user
  */
-router.get('/settings', async (req: Request, res: Response) => {
+router.get('/settings', requireTrinityAccess, async (req: Request, res: Response) => {
   try {
-    if (!req.user) {
-      return res.status(401).json({ error: 'Authentication required' });
-    }
 
     const userId = (req.user as any).id;
     const workspaceId = (req.user as any).workspaceId;
@@ -173,11 +182,8 @@ router.get('/settings', async (req: Request, res: Response) => {
  * PATCH /api/trinity/settings
  * Update BUDDY settings
  */
-router.patch('/settings', async (req: Request, res: Response) => {
+router.patch('/settings', requireTrinityAccess, async (req: Request, res: Response) => {
   try {
-    if (!req.user) {
-      return res.status(401).json({ error: 'Authentication required' });
-    }
 
     const parsed = updateSettingsSchema.safeParse(req.body);
     if (!parsed.success) {
