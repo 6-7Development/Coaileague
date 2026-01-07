@@ -32,6 +32,10 @@ import { ScheduleTemplates } from '@/components/schedule/ScheduleTemplates';
 import { CalendarSyncDialog } from '@/components/schedule/CalendarSyncDialog';
 import { ApprovalsDrawer } from '@/components/mobile/schedule/ApprovalsDrawer';
 import { ReportsSheet } from '@/components/mobile/schedule/ReportsSheet';
+import { WeekStatsBar } from '@/components/schedule/WeekStatsBar';
+import { ConflictAlerts } from '@/components/schedule/ConflictAlerts';
+import { TrinityInsightsPanel } from '@/components/schedule/TrinityInsightsPanel';
+import { AskTrinityButton } from '@/components/trinity-button';
 import type { Shift, Employee, Client } from '@shared/schema';
 
 export default function ScheduleMobileFirst() {
@@ -65,6 +69,10 @@ export default function ScheduleMobileFirst() {
   // Shift detail popup state
   const [selectedShift, setSelectedShift] = useState<Shift | null>(null);
   const [detailSheetOpen, setDetailSheetOpen] = useState(false);
+  
+  // GetSling-style feature panels for mobile
+  const [showConflicts, setShowConflicts] = useState(true);
+  const [showTrinityInsights, setShowTrinityInsights] = useState(false);
 
   // Fetch weekly stats
   const { data: stats, isLoading: statsLoading } = useQuery({
@@ -553,8 +561,45 @@ export default function ScheduleMobileFirst() {
             <Download className="h-4 w-4 text-indigo-600" />
             Calendar
           </Button>
+          <AskTrinityButton
+            onClick={() => setShowTrinityInsights(!showTrinityInsights)}
+            size="sm"
+            data-testid="button-trinity-mobile"
+          />
         </div>
       </div>
+      
+      {/* Mobile Conflict Alerts */}
+      {showConflicts && (
+        <ConflictAlerts
+          shifts={shifts}
+          employees={employees}
+          onResolve={(shiftId) => {
+            const shift = shifts.find(s => s.id === shiftId);
+            if (shift) {
+              setSelectedShift(shift);
+              setDetailSheetOpen(true);
+            }
+          }}
+          onDismiss={() => setShowConflicts(false)}
+          className="mx-3 mt-2"
+        />
+      )}
+      
+      {/* Mobile Trinity Insights (Collapsible) */}
+      {showTrinityInsights && (
+        <div className="mx-3 mt-2">
+          <TrinityInsightsPanel
+            weekStart={weekStart}
+            weekEnd={addDays(weekStart, 6)}
+            shifts={shifts}
+            employees={employees}
+            clients={clients}
+            isCollapsed={false}
+            onToggleCollapse={() => setShowTrinityInsights(false)}
+          />
+        </div>
+      )}
 
       {/* Shift Cards - Scrollable */}
       <ScrollArea className="flex-1">

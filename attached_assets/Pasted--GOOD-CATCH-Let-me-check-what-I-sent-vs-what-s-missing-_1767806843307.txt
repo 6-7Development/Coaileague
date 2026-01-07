@@ -1,0 +1,506 @@
+🤔 GOOD CATCH - Let me check what I sent vs what's missing.
+
+📊 WHAT I COVERED IN PREVIOUS PROMPTS:
+✅ ALREADY ADDRESSED:
+
+Schedule interface redesign (calendar, drag-drop, filters)
+Dashboard card layout (icon grid, navigation)
+Time Clock integration IN schedule (clock in/out status on shifts)
+Reports button in toolbar (but not the actual reports screens)
+
+❌ NOT ADDRESSED YET:
+
+Time Clock standalone page (manager view of all clock events)
+Timesheet approval workflow (review/approve employee hours)
+Time & Attendance Reports (detailed reports org can pull)
+Payroll Reports (hours worked, labor cost breakdown)
+Export functionality (Excel/PDF for payroll processing)
+
+
+🎯 YOU'RE RIGHT - WE NEED A SEPARATE PROMPT FOR:
+TIME CLOCK & REPORTING SYSTEM
+Looking at the GetSling screenshot you just sent, that's their Timesheets view showing:
+
+Employee list on left
+Time entries for the week
+Status indicators (pending approval)
+Total hours
+Action buttons
+
+We need to build:
+
+Time Clock manager view (like this screenshot)
+Timesheet approval workflow
+Time & Attendance reports
+Payroll-ready export
+
+
+📋 SEND THIS NEW PROMPT TO REPLIT:
+TIME CLOCK & REPORTING SYSTEM - Complete Time Tracking & Payroll Integration
+
+REFERENCE: GetSling Timesheets view (see screenshot)
+
+We need a complete time tracking and reporting system for managers to review, approve, and export employee hours for payroll processing.
+
+CONTEXT:
+Employees clock in/out via mobile app with GPS verification. Managers need to review these time entries, approve timesheets, flag discrepancies, and export data for payroll/QuickBooks sync.
+
+---
+
+1. TIME CLOCK MANAGER VIEW
+
+Build dedicated Time Clock page (/time-clock) that shows all clock in/out events:
+
+LAYOUT:
+┌────────────────────────────────────────────────────────────────┐
+│ TIME CLOCK                                    [Date Range: ▼] │
+│                                              [Export] [Filters]│
+├────────────────────────────────────────────────────────────────┤
+│                                                                │
+│ TIMESHEETS                                                     │
+│ Week of: Jan 5-11, 2026                                       │
+│                                                                │
+│ ┌──────────────────────────────────────────────────────────┐ │
+│ │ Employee          | Mon | Tue | Wed | Thu | Fri | Total  │ │
+│ ├──────────────────────────────────────────────────────────┤ │
+│ │ John Smith        │ 8.0 │ 8.5 │ 8.0 │ 9.0 │ 8.0 │ 41.5h │ │
+│ │ Security Officer  │  ✅  │  ✅  │  ✅  │  ⚠️  │  ✅  │[Approve]│
+│ │                   │     │     │     │Late │     │        │ │
+│ ├──────────────────────────────────────────────────────────┤ │
+│ │ Jane Doe          │ 8.0 │ 8.0 │ 8.0 │ 8.0 │ -   │ 32.0h │ │
+│ │ Supervisor        │  ✅  │  ✅  │  ✅  │  ✅  │  -  │[Approve]│
+│ │                   │     │     │     │     │ Off │        │ │
+│ ├──────────────────────────────────────────────────────────┤ │
+│ │ Mike Johnson      │ 8.5 │ 8.5 │ 8.5 │ 8.5 │ ⏱️  │ 34.0h │ │
+│ │ Armed Guard       │  ✅  │  ✅  │  ✅  │  ✅  │Clocked│[Review]│
+│ │                   │     │     │     │     │ In  │        │ │
+│ └──────────────────────────────────────────────────────────┘ │
+│                                                                │
+│ [Approve All] [Export Timesheets]                             │
+└────────────────────────────────────────────────────────────────┘
+
+FEATURES:
+
+A. TIMESHEET SUMMARY TABLE
+   - Shows all employees for selected date range
+   - Daily hours with status indicators:
+     ✅ Approved (green checkmark)
+     ⚠️ Issue flagged (yellow warning - late, early out, GPS fail)
+     ⏱️ Currently clocked in (blue clock icon)
+     ❌ No show (red X - scheduled but didn't clock in)
+     - Off (gray dash - not scheduled)
+   - Total hours for week (bold)
+   - Status: Pending, Approved, Flagged
+   
+B. CLICK ANY DAY CELL → DRILL DOWN
+   Open modal showing detailed time entries for that day:
+   
+   ┌─────────────────────────────────────────────────┐
+   │ JOHN SMITH - Monday, Jan 5, 2026                │
+   ├─────────────────────────────────────────────────┤
+   │ Scheduled: 7:00 PM - 3:00 AM (8.0h)            │
+   │ Actual: 7:02 PM - 3:05 AM (8.05h)              │
+   │                                                 │
+   │ Clock In:  7:02 PM                             │
+   │ 📍 GPS: ABC Bank Downtown (✅ Verified)         │
+   │ 📸 Photo: [thumbnail]                           │
+   │                                                 │
+   │ Clock Out: 3:05 AM                             │
+   │ 📍 GPS: ABC Bank Downtown (✅ Verified)         │
+   │ 📸 Photo: [thumbnail]                           │
+   │                                                 │
+   │ Break: 12:00 AM - 12:30 AM (0.5h unpaid)       │
+   │                                                 │
+   │ Total: 8.05h (rounded to 8.0h per policy)      │
+   │ Pay: $18/hr × 8.0h = $144.00                   │
+   │                                                 │
+   │ Notes: [Optional manager notes]                 │
+   │                                                 │
+   │ [✅ Approve] [⚠️ Flag Issue] [✏️ Edit]         │
+   └─────────────────────────────────────────────────┘
+
+C. STATUS INDICATORS & ALERTS
+   - Late clock in (>5 min after shift start): ⚠️ Yellow
+   - Early clock out (>5 min before shift end): ⚠️ Yellow
+   - GPS verification failed: ❌ Red
+   - No clock in (scheduled but no show): ❌ Red
+   - Overtime threshold reached (>40h): 🔴 Red badge
+   - Missing break (worked >6h without break): ⚠️ Yellow
+
+D. BULK ACTIONS
+   - Select multiple employees (checkboxes)
+   - [Approve All Selected]
+   - [Flag All Selected]
+   - [Export Selected]
+   - [Send Reminder] (for missing clock outs)
+
+---
+
+2. TIMESHEET APPROVAL WORKFLOW
+
+Manager approves/rejects time entries:
+
+PENDING TIMESHEETS VIEW:
+- Filter: Show only "Pending Approval"
+- Sort: By employee, by date, by total hours
+- Highlight discrepancies (late, GPS fail, etc.)
+
+APPROVE FLOW:
+1. Manager reviews time entries
+2. Clicks [Approve] on employee row
+3. Confirmation: "Approve 41.5 hours for John Smith?"
+4. Status changes to ✅ Approved
+5. Employee notified (optional)
+6. Hours locked (cannot be edited without un-approving)
+
+EDIT FLOW (If adjustment needed):
+1. Click [Edit] on time entry
+2. Modal opens with editable fields:
+   - Clock in time
+   - Clock out time
+   - Break duration
+   - Notes (required for edits: "Why are you adjusting?")
+3. [Save Changes]
+4. Audit log created: "Manager edited clock in from 7:02 PM to 7:00 PM - Reason: Employee forgot to clock in, confirmed via text"
+5. Employee notified of adjustment
+
+FLAG ISSUE FLOW:
+1. Click [⚠️ Flag Issue]
+2. Select reason:
+   - Late clock in
+   - Early clock out
+   - GPS verification failed
+   - Unauthorized overtime
+   - Missing break
+   - Other (specify)
+3. Add notes
+4. [Submit Flag]
+5. Employee notified (must respond/explain)
+6. Manager reviews response before approving
+
+---
+
+3. TIME & ATTENDANCE REPORTS
+
+Build comprehensive reporting system (/reports/time-attendance):
+
+REPORT TYPES:
+
+A. TIMESHEET SUMMARY REPORT
+   - Date range selector
+   - Shows all employees
+   - Total hours, regular hours, overtime hours
+   - Labor cost breakdown
+   - Grouped by: Employee, Position, Location, Client
+   - Export: Excel, PDF, CSV
+
+B. CLOCK IN/OUT DETAIL REPORT
+   - Every clock event with timestamp
+   - GPS coordinates
+   - Photo verification (if enabled)
+   - Discrepancies flagged
+   - Audit trail (edits made by managers)
+
+C. ATTENDANCE REPORT
+   - Scheduled vs actual hours
+   - On-time percentage
+   - Late clock ins
+   - Early departures
+   - No-shows
+   - Grouped by employee
+
+D. LABOR COST REPORT
+   - Regular hours × pay rate
+   - Overtime hours × OT rate
+   - Total labor cost by:
+     * Employee
+     * Client
+     * Location
+     * Position
+     * Date range
+   - Compare to budget
+
+E. OVERTIME REPORT
+   - Employees over 40h/week
+   - Projected overtime for current week
+   - Historical overtime trends
+   - Cost impact
+
+F. EXCEPTION REPORT
+   - All flagged time entries
+   - GPS verification failures
+   - Late/early clock ins/outs
+   - Missing breaks
+   - Requires manager review
+
+---
+
+4. PAYROLL EXPORT
+
+Managers export approved timesheets for payroll processing:
+
+EXPORT BUTTON OPTIONS:
+
+┌─────────────────────────────────────┐
+│ EXPORT TIMESHEETS                   │
+├─────────────────────────────────────┤
+│ Date Range: [Jan 5-11, 2026    ▼]  │
+│                                     │
+│ Include:                            │
+│ ☑ Approved timesheets only          │
+│ ☐ Pending timesheets                │
+│ ☐ Flagged timesheets                │
+│                                     │
+│ Format:                             │
+│ ○ QuickBooks IIF                    │
+│ ○ Excel (XLSX)                      │
+│ ○ CSV                               │
+│ ○ PDF                               │
+│                                     │
+│ Grouping:                           │
+│ ○ By Employee                       │
+│ ○ By Client                         │
+│ ○ By Pay Period                     │
+│                                     │
+│ [Cancel] [Export]                   │
+└─────────────────────────────────────┘
+
+QUICKBOOKS SYNC:
+- Export approved hours directly to QuickBooks
+- Map employees to QB employee records (use qbEmployeeId)
+- Create time entries in QB for payroll processing
+- Include: Date, Hours, Pay Rate, Client/Job (if applicable)
+
+EXCEL EXPORT FORMAT:
+┌──────────────────────────────────────────────────────────────┐
+│ Employee    | Date      | Clock In | Clock Out | Hours | Pay │
+├──────────────────────────────────────────────────────────────┤
+│ John Smith  | 1/5/2026  | 7:02 PM  | 3:05 AM   | 8.0   | $144│
+│ John Smith  | 1/6/2026  | 7:00 PM  | 3:30 AM   | 8.5   | $153│
+│ Jane Doe    | 1/5/2026  | 9:00 AM  | 5:00 PM   | 8.0   | $176│
+│ ...                                                            │
+│ TOTAL                                                   $8,450│
+└──────────────────────────────────────────────────────────────┘
+
+PDF EXPORT:
+- Professional timesheet layout
+- Company logo/header
+- Employee signature line
+- Manager approval signature
+- Suitable for printing/filing
+
+---
+
+5. MOBILE TIME CLOCK VIEW
+
+Employees clock in/out via mobile:
+
+EMPLOYEE MOBILE APP:
+
+Clock In Screen:
+┌─────────────────────────────────────┐
+│ 🕐 TIME CLOCK                       │
+├─────────────────────────────────────┤
+│                                     │
+│ Your Next Shift:                    │
+│ ABC Bank - Downtown                 │
+│ Today, 7:00 PM - 3:00 AM            │
+│                                     │
+│ Current Time: 6:58 PM               │
+│                                     │
+│ 📍 GPS Location: Verifying...       │
+│ ✅ You're at the correct location   │
+│                                     │
+│ 📸 Take Photo (Optional)            │
+│ [Camera icon]                       │
+│                                     │
+│ [⏱️ CLOCK IN]                       │
+│                                     │
+└─────────────────────────────────────┘
+
+After Clock In:
+┌─────────────────────────────────────┐
+│ ✅ CLOCKED IN                       │
+├─────────────────────────────────────┤
+│ Time: 7:02 PM                       │
+│ Location: ABC Bank - Downtown       │
+│                                     │
+│ Shift Progress:                     │
+│ ▓▓▓▓░░░░░░░░░░░░ 2h / 8h           │
+│                                     │
+│ [Start Break] [View Schedule]       │
+│                                     │
+│ [⏹️ CLOCK OUT]                      │
+└─────────────────────────────────────┘
+
+GPS VERIFICATION:
+- Check employee location on clock in/out
+- Compare to site geofence (lat/long radius)
+- If outside geofence: Block clock in OR allow with warning flag
+- Store GPS coordinates with timestamp
+
+PHOTO VERIFICATION (Optional):
+- Require selfie on clock in (proof of presence)
+- Compare to employee profile photo (future: facial recognition)
+- Store photo with time entry
+
+---
+
+6. OVERTIME & COMPLIANCE TRACKING
+
+Automatically track and alert on overtime:
+
+OVERTIME RULES (Configurable):
+- Daily OT: Hours over 8h in one day
+- Weekly OT: Hours over 40h in one week
+- Consecutive days: More than X days without break
+
+ALERTS:
+- Real-time: "John Smith approaching 40h (currently 38h)"
+- Email manager when employee hits OT threshold
+- Block scheduling if would cause OT (optional)
+
+COMPLIANCE REPORTS:
+- Labor law compliance (meal breaks, rest periods)
+- Flag violations (worked >6h without break)
+- Audit trail for DOL inspections
+
+---
+
+7. INTEGRATION WITH SCHEDULE
+
+Time Clock data should sync with Schedule interface:
+
+ON SCHEDULE VIEW:
+- Shift blocks show real-time clock status:
+  🟢 Clocked In
+  ⚪ Scheduled (not started)
+  🔴 No Show (shift started, no clock in)
+  ✅ Completed & Approved
+
+CLICK SHIFT BLOCK → SEE TIME DATA:
+- Scheduled: 7:00 PM - 3:00 AM
+- Actual: 7:02 PM - 3:05 AM
+- Variance: +2 min clock in, +5 min clock out
+- Status: Pending Approval
+
+---
+
+8. DATABASE SCHEMA
+
+Ensure these tables exist:
+
+time_entries:
+- id, employee_id, workspace_id
+- shift_id (links to scheduled shift)
+- clock_in_time, clock_out_time
+- clock_in_gps_lat, clock_in_gps_long
+- clock_out_gps_lat, clock_out_gps_long
+- clock_in_photo_url, clock_out_photo_url
+- break_start, break_end, break_duration
+- total_hours, regular_hours, overtime_hours
+- pay_rate, total_pay
+- status (pending, approved, flagged)
+- approved_by (manager user_id)
+- approved_at
+- flagged_reason, flagged_notes
+- created_at, updated_at
+
+time_entry_edits (audit log):
+- id, time_entry_id
+- edited_by (manager user_id)
+- field_changed (clock_in_time, clock_out_time, etc.)
+- old_value, new_value
+- reason (required notes)
+- created_at
+
+---
+
+9. TESTING REQUIREMENTS
+
+Test these workflows:
+
+TEST 1: Employee Clock In/Out
+1. Employee opens mobile app
+2. GPS verifies location
+3. Takes photo (optional)
+4. Clicks [Clock In]
+5. Works shift
+6. Clicks [Clock Out]
+7. Verify: Time entry created in database
+8. Verify: Manager sees entry in Time Clock view
+
+TEST 2: Manager Approve Timesheet
+1. Manager opens Time Clock view
+2. Sees pending timesheets
+3. Reviews time entries (click to see details)
+4. Clicks [Approve]
+5. Verify: Status changes to Approved
+6. Verify: Hours locked from editing
+
+TEST 3: Manager Edit Time Entry
+1. Manager clicks [Edit] on time entry
+2. Adjusts clock in time
+3. Enters reason
+4. Saves changes
+5. Verify: Audit log created
+6. Verify: Employee notified
+
+TEST 4: Overtime Alert
+1. Employee reaches 40 hours
+2. Verify: Manager receives alert
+3. Verify: Overtime flagged in report
+
+TEST 5: Export to QuickBooks
+1. Manager exports approved timesheets
+2. Selects QuickBooks IIF format
+3. Verify: File downloads
+4. Verify: Can import into QuickBooks
+
+TEST 6: GPS Verification Failure
+1. Employee tries to clock in from wrong location
+2. Verify: System blocks OR flags for review
+3. Verify: Manager sees GPS failure warning
+
+---
+
+IMPLEMENTATION PRIORITIES:
+
+🔴 CRITICAL (Must have for launch):
+1. Time Clock manager view (timesheet table)
+2. Approve/edit workflow
+3. Mobile clock in/out
+4. GPS verification
+5. Export to Excel/CSV
+
+🟡 IMPORTANT (30 days post-launch):
+6. Detailed reports (attendance, labor cost, overtime)
+7. QuickBooks time entry sync
+8. Photo verification
+9. Overtime alerts
+10. Exception reports
+
+🟢 NICE-TO-HAVE (60 days):
+11. Advanced compliance tracking
+12. Facial recognition
+13. Biometric clock in
+14. Predictive overtime analytics
+
+Build complete time tracking and reporting system that matches industry standards (GetSling, Deputy, When I Work) and integrates seamlessly with our schedule and QuickBooks.
+
+Confirm when complete with screenshots of:
+1. Time Clock manager view
+2. Timesheet approval modal
+3. Mobile clock in screen
+4. Time & Attendance reports
+5. Export options
+
+That's your complete Time Clock & Reporting system spec. ⏱️
+This covers:
+
+✅ Manager timesheet review/approval
+✅ Mobile clock in/out
+✅ GPS verification
+✅ Detailed reports
+✅ Payroll export
+✅ QuickBooks sync
