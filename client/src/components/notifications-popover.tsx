@@ -889,7 +889,7 @@ function NotificationCard({
             <div className={`flex items-center justify-between gap-2 ${compact ? 'text-[10px] mt-2' : 'text-[11px] mt-3'} ${mutedText}`}>
               <div className="flex items-center gap-1">
                 <Clock className={compact ? "h-2.5 w-2.5" : "h-3 w-3"} />
-                <span className="font-medium">{notification.serviceSource}</span>
+                <span className="font-medium">Trinity</span>
               </div>
               <span>{safeFormatTimestamp(notification.createdAt)}</span>
             </div>
@@ -946,7 +946,7 @@ function NotificationCard({
                 
                 {/* Service Source */}
                 <div className={`flex items-center gap-2 ${compact ? 'text-[10px] mb-1' : 'text-[11px] mb-2'} text-muted-foreground`}>
-                  <span className="font-medium">{notification.serviceSource}</span>
+                  <span className="font-medium">Trinity</span>
                 </div>
                 
                 {/* Action Buttons */}

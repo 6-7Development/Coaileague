@@ -746,7 +746,7 @@ Respond ONLY with valid JSON (no markdown, no explanations):
             impactDescription: summary.impactDescription,
             detailedCategory: summary.detailedCategory,
             sourceType: summary.sourceType,
-            sourceName: summary.sourceName,
+            sourceName: 'Trinity', // CRITICAL: Trinity is the single AI orchestrator for all user-facing communications
             timestamp: new Date().toISOString(),
           },
         }));
@@ -789,7 +789,7 @@ Respond ONLY with valid JSON (no markdown, no explanations):
           forceRefresh: true,
           // Enhanced attribution
           sourceType: summary.sourceType,
-          sourceName: summary.sourceName,
+          sourceName: 'Trinity', // CRITICAL: Trinity is the single AI orchestrator for all user-facing communications
           detailedCategory: summary.detailedCategory,
           technicalSummary: summary.summary,
           brokenDescription: summary.brokenDescription,
