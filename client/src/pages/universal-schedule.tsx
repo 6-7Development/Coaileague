@@ -44,6 +44,12 @@ import ScheduleMobileFirst from '@/pages/schedule-mobile-first';
 import { WorkspaceLayout } from '@/components/workspace-layout';
 import { HideInSimpleMode } from "@/components/SimpleMode";
 import { AskTrinityButton, TrinityIconStatic } from '@/components/trinity-button';
+import { ScheduleToolbar } from '@/components/schedule/ScheduleToolbar';
+import { ScheduleFilters, type ScheduleFilterState } from '@/components/schedule/ScheduleFilters';
+import { WeekStatsBar } from '@/components/schedule/WeekStatsBar';
+import { UnassignedShiftsPanel } from '@/components/schedule/UnassignedShiftsPanel';
+import { ConflictAlerts, getShiftConflictBadge, getShiftTimeClockStatus } from '@/components/schedule/ConflictAlerts';
+import { TrinityInsightsPanel } from '@/components/schedule/TrinityInsightsPanel';
 
 // Post order template data (will be pre-created in database)
 const POST_ORDER_TEMPLATES = [
@@ -393,6 +399,27 @@ export default function UniversalSchedule() {
   const [duplicateTargetEmployee, setDuplicateTargetEmployee] = useState<string | null>(null);
   const [swapReason, setSwapReason] = useState('');
   const [swapTargetEmployee, setSwapTargetEmployee] = useState<string | null>(null);
+  
+  // GetSling-style filter state
+  const [scheduleFilters, setScheduleFilters] = useState<ScheduleFilterState>({
+    searchQuery: '',
+    locations: [],
+    positions: [],
+    employeeStatuses: [],
+    skills: [],
+  });
+  const [showFiltersPanel, setShowFiltersPanel] = useState(true);
+  const [showTrinityInsights, setShowTrinityInsights] = useState(true);
+  const [showUnassignedPanel, setShowUnassignedPanel] = useState(true);
+  const [showConflictAlerts, setShowConflictAlerts] = useState(true);
+  
+  // Panel toggle handlers for toolbar actions
+  const [showTasksPanel, setShowTasksPanel] = useState(false);
+  const [showTimeClockPanel, setShowTimeClockPanel] = useState(false);
+  const [showMessagesPanel, setShowMessagesPanel] = useState(false);
+  const [showReportsPanel, setShowReportsPanel] = useState(false);
+  const [showAvailabilityPanel, setShowAvailabilityPanel] = useState(false);
+  const [showSettingsPanel, setShowSettingsPanel] = useState(false);
 
   const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
   const hours = Array.from({ length: 24 }, (_, i) => i);
@@ -438,6 +465,49 @@ export default function UniversalSchedule() {
   const { data: clients = [], isLoading: clientsLoading } = useClientLookup();
 
   const isLoading = shiftsLoading || employeesLoading || clientsLoading;
+
+  // Filter employees based on schedule filters
+  const filteredEmployees = useMemo(() => {
+    return employees.filter(emp => {
+      if (scheduleFilters.searchQuery) {
+        const searchLower = scheduleFilters.searchQuery.toLowerCase();
+        const fullName = `${emp.firstName} ${emp.lastName}`.toLowerCase();
+        if (!fullName.includes(searchLower)) return false;
+      }
+      if (scheduleFilters.locations.length > 0) {
+        if (!emp.city || !scheduleFilters.locations.includes(emp.city)) return false;
+      }
+      if (scheduleFilters.positions.length > 0) {
+        if (!emp.role && !emp.organizationalTitle) return false;
+        if (!scheduleFilters.positions.includes(emp.role || '') && 
+            !scheduleFilters.positions.includes(emp.organizationalTitle || '')) return false;
+      }
+      return true;
+    });
+  }, [employees, scheduleFilters]);
+
+  // Calculate schedule stats for toolbar
+  const scheduleStats = useMemo(() => {
+    const draftShifts = shifts.filter(s => s.status === 'draft').length;
+    const publishedShifts = shifts.filter(s => s.status === 'published' || s.status === 'scheduled').length;
+    let laborCost = 0;
+    
+    shifts.forEach(shift => {
+      const hours = (new Date(shift.endTime).getTime() - new Date(shift.startTime).getTime()) / (1000 * 60 * 60);
+      const employee = employees.find(e => e.id === shift.employeeId);
+      const rate = shift.hourlyRateOverride 
+        ? parseFloat(shift.hourlyRateOverride) 
+        : (employee?.hourlyRate ? parseFloat(employee.hourlyRate) : 15);
+      laborCost += hours * rate;
+    });
+
+    return {
+      totalShifts: shifts.length,
+      publishedShifts,
+      draftShifts,
+      laborCost: Math.round(laborCost),
+    };
+  }, [shifts, employees]);
 
   // Week navigation
   const goToPreviousWeek = () => {
@@ -494,7 +564,7 @@ export default function UniversalSchedule() {
     }
   });
 
-  // AI Fill mutation
+  // AI Fill mutation (single shift)
   const aiFillMutation = useMutation({
     mutationFn: async (shiftId: string) => {
       return await apiRequest('POST', `/api/shifts/${shiftId}/ai-fill`, {});
@@ -510,6 +580,54 @@ export default function UniversalSchedule() {
       toast({
         variant: 'destructive',
         title: 'AI fill failed',
+        description: error.message,
+      });
+    }
+  });
+
+  // Assign shift to employee mutation
+  const assignShiftMutation = useMutation({
+    mutationFn: async ({ shiftId, employeeId }: { shiftId: string; employeeId: string }) => {
+      return await apiRequest('PATCH', `/api/shifts/${shiftId}`, { 
+        employeeId,
+        status: 'scheduled'
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/shifts'] });
+      toast({
+        title: 'Shift assigned',
+        description: 'Employee has been assigned to the shift',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: 'destructive',
+        title: 'Failed to assign shift',
+        description: error.message,
+      });
+    }
+  });
+
+  // Trigger AI Fill for all unassigned shifts mutation
+  const triggerAIFillMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest('POST', '/api/trinity/scheduling/auto-fill', {
+        weekStart: weekStart.toISOString(),
+        weekEnd: weekEnd.toISOString(),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/shifts'] });
+      toast({
+        title: 'Trinity AI Auto-Fill Complete',
+        description: 'All unassigned shifts have been optimally assigned',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: 'destructive',
+        title: 'AI auto-fill failed',
         description: error.message,
       });
     }
@@ -792,17 +910,27 @@ export default function UniversalSchedule() {
         onDragEnd={handleDragEnd}
       >
         <div className="flex h-screen bg-background">
-        {/* Desktop Employee Sidebar */}
+        {/* Desktop Employee Sidebar with Filters */}
         {!isMobile && (
-        <div className="w-64 bg-card border-r flex flex-col">
+        <div className="w-72 bg-card border-r flex flex-col">
           <div className="p-4 border-b">
-            <h2 className="text-lg font-bold">Employees</h2>
-            <p className="text-sm text-muted-foreground">{employees.length} active</p>
+            <ScheduleFilters
+              filters={scheduleFilters}
+              onFiltersChange={setScheduleFilters}
+              employees={employees}
+              clients={clients}
+            />
           </div>
 
-          <ScrollArea className="flex-1 p-4">
+          <div className="p-3 border-b">
+            <h3 className="text-sm font-semibold mb-2">
+              Employees ({filteredEmployees.length})
+            </h3>
+          </div>
+
+          <ScrollArea className="flex-1 p-3">
             <div className="space-y-2">
-              {employees.map(employee => (
+              {filteredEmployees.map(employee => (
                 <DraggableEmployee
                   key={employee.id}
                   employee={employee}
@@ -814,17 +942,93 @@ export default function UniversalSchedule() {
             </div>
           </ScrollArea>
 
-          <div className="p-4 border-t">
-            <Button className="w-full" data-testid="button-add-employee">
-              <Plus className="w-4 h-4 mr-2" />
-              Add Employee
-            </Button>
+          <div className="p-3 border-t space-y-2">
+            <TrinityInsightsPanel
+              weekStart={weekStart}
+              weekEnd={weekEnd}
+              shifts={shifts}
+              employees={employees}
+              clients={clients}
+              isCollapsed={!showTrinityInsights}
+              onToggleCollapse={() => setShowTrinityInsights(!showTrinityInsights)}
+            />
           </div>
         </div>
       )}
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
+        {/* GetSling-style Toolbar */}
+        <ScheduleToolbar
+          weekStart={weekStart}
+          weekEnd={weekEnd}
+          onWeekChange={handleWeekChange}
+          onAddShift={() => {
+            setModalPosition({ day: 0, hour: 8 });
+            setShowShiftModal(true);
+          }}
+          onPublish={() => {
+            toast({ 
+              title: 'Publishing',
+              description: 'Publishing all draft shifts for this week'
+            });
+          }}
+          totalShifts={scheduleStats.totalShifts}
+          laborCost={scheduleStats.laborCost}
+          publishedShifts={scheduleStats.publishedShifts}
+          draftShifts={scheduleStats.draftShifts}
+          onShowTasks={() => setShowTasksPanel(!showTasksPanel)}
+          onShowTimeClock={() => setShowTimeClockPanel(!showTimeClockPanel)}
+          onShowMessages={() => setShowMessagesPanel(!showMessagesPanel)}
+          onShowReports={() => setShowReportsPanel(!showReportsPanel)}
+          onShowAvailability={() => setShowAvailabilityPanel(!showAvailabilityPanel)}
+          onShowSettings={() => setShowSettingsPanel(!showSettingsPanel)}
+        />
+        
+        {/* Week Stats Bar */}
+        <WeekStatsBar
+          shifts={shifts}
+          employees={employees}
+          clients={clients}
+          weekStart={weekStart}
+          weekEnd={weekEnd}
+        />
+        
+        {/* Conflict Alerts */}
+        {showConflictAlerts && (
+          <ConflictAlerts
+            shifts={shifts}
+            employees={employees}
+            onResolve={(shiftId) => {
+              toast({
+                title: 'Opening shift',
+                description: 'Edit shift to resolve the conflict'
+              });
+              const shift = shifts.find(s => s.id === shiftId);
+              if (shift) setSelectedShiftForAction(shift);
+            }}
+            onDismiss={() => setShowConflictAlerts(false)}
+            className="mx-4 mt-2"
+          />
+        )}
+        
+        {/* Unassigned Shifts Panel */}
+        {showUnassignedPanel && shifts.some(s => !s.employeeId) && (
+          <UnassignedShiftsPanel
+            shifts={shifts}
+            employees={employees}
+            clients={clients}
+            onAssign={(shiftId, employeeId) => {
+              assignShiftMutation.mutate({ shiftId, employeeId });
+            }}
+            onTriggerAIFill={() => {
+              triggerAIFillMutation.mutate();
+            }}
+            isAIFillPending={triggerAIFillMutation.isPending}
+            className="mx-4 mt-2"
+          />
+        )}
+        
         {/* Header */}
         <div className="bg-card border-b p-4">
           <div className="flex items-center justify-between gap-4 mb-4 flex-wrap">
@@ -1163,15 +1367,15 @@ export default function UniversalSchedule() {
               </div>
             </div>
 
-            {/* Employee Rows with Day Cells */}
+            {/* Employee Rows with Day Cells - Uses filtered employees */}
             <div className="divide-y">
-              {employees.length === 0 ? (
+              {filteredEmployees.length === 0 ? (
                 <div className="p-8 text-center text-muted-foreground col-span-8">
                   <Users className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                  <p>No employees found</p>
+                  <p>No employees match current filters</p>
                 </div>
               ) : (
-                employees.map((emp) => {
+                filteredEmployees.map((emp) => {
                   const empColor = getEmployeeColor(emp.id);
                   
                   return (
@@ -1237,11 +1441,13 @@ export default function UniversalSchedule() {
                                 const endTime = new Date(shift.endTime);
                                 const client = shift.clientId ? clients.find(c => c.id === shift.clientId) : null;
                                 const formatTime = (d: Date) => d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+                                const timeClockStatus = getShiftTimeClockStatus(shift);
+                                const conflictBadge = getShiftConflictBadge(shift, shifts, employees);
 
                                 return (
                                   <div
                                     key={shift.id}
-                                    className="rounded-md px-2 py-1.5 cursor-pointer transition-all hover:shadow-md hover:scale-[1.02] text-white text-xs"
+                                    className="rounded-md px-2 py-1.5 cursor-pointer transition-all hover:shadow-md hover:scale-[1.02] text-white text-xs relative"
                                     style={{ backgroundColor: empColor }}
                                     onClick={(e) => {
                                       e.stopPropagation();
@@ -1249,6 +1455,11 @@ export default function UniversalSchedule() {
                                     }}
                                     data-testid={`shift-${shift.id}`}
                                   >
+                                    {/* Time Clock Status Badge */}
+                                    <div className={`absolute -top-1 -right-1 px-1.5 py-0.5 rounded-full text-[9px] font-semibold ${timeClockStatus.bgColor} ${timeClockStatus.color}`}>
+                                      {timeClockStatus.label}
+                                    </div>
+                                    
                                     <div className="font-medium truncate">{shift.title || 'Shift'}</div>
                                     <div className="opacity-80 text-[10px]">
                                       {formatTime(startTime)} - {formatTime(endTime)}
@@ -1256,8 +1467,23 @@ export default function UniversalSchedule() {
                                     {client && (
                                       <div className="opacity-70 text-[10px] truncate">{client.companyName}</div>
                                     )}
+                                    
+                                    {/* Conflict Badge */}
+                                    {conflictBadge && (
+                                      <Badge 
+                                        variant="outline" 
+                                        className={`absolute -bottom-1 -left-1 text-[8px] px-1 py-0 ${
+                                          conflictBadge.severity === 'error' 
+                                            ? 'bg-red-100 border-red-500 text-red-700' 
+                                            : 'bg-yellow-100 border-yellow-500 text-yellow-700'
+                                        }`}
+                                      >
+                                        {conflictBadge.type}
+                                      </Badge>
+                                    )}
+                                    
                                     {shift.aiGenerated && (
-                                      <TrinityIconStatic size={12} className="absolute top-1 right-1" />
+                                      <TrinityIconStatic size={12} className="absolute top-1 right-8" />
                                     )}
                                   </div>
                                 );
