@@ -62,6 +62,7 @@ import LeadersHub from "@/pages/leaders-hub";
 import TrinityInsights from "@/pages/trinity-insights";
 import Homepage from "@/pages/homepage";
 import TrinityChat from "@/pages/trinity-chat"; // Trinity Chat Interface with BUDDY metacognition
+import TrinityFeatures from "@/pages/trinity-features"; // Trinity marketing features page
 import CustomLogin from "@/pages/custom-login";
 import CustomRegister from "@/pages/custom-register";
 import UniversalMarketing from "@/pages/universal-marketing";
@@ -369,7 +370,7 @@ function MascotRenderer() {
   const PUBLIC_ROUTES = useMemo(() => new Set([
     "/", "/login", "/register", "/pricing", "/contact", "/support",
     "/terms", "/privacy", "/chat", "/mobile-chat", "/live-chat",
-    "/helpdesk5", "/support/chat"
+    "/helpdesk5", "/support/chat", "/trinity-features"
   ]), []);
   
   const isPublicPage = PUBLIC_ROUTES.has(location) || 
@@ -887,6 +888,7 @@ function AppContent() {
     "/forgot-password",
     "/reset-password",
     "/pricing",
+    "/trinity-features",
     "/contact",
     "/support",
     "/terms",
@@ -921,6 +923,7 @@ function AppContent() {
         <Route path="/roi-calculator" component={ROICalculator} />
         <Route path="/compare" component={ComparePage} />
         <Route path="/compare/:competitor" component={ComparePage} />
+        <Route path="/trinity-features" component={TrinityFeatures} />
         <Route path="/templates" component={TemplatesPage} />
         <Route path="/templates/:templateId" component={TemplatesPage} />
         <Route path="/contact" component={Contact} />
@@ -1177,6 +1180,7 @@ function AppContent() {
         <Route path="/roi-calculator" component={ROICalculator} />
         <Route path="/compare" component={ComparePage} />
         <Route path="/compare/:competitor" component={ComparePage} />
+        <Route path="/trinity-features" component={TrinityFeatures} />
         <Route path="/templates" component={TemplatesPage} />
         <Route path="/templates/:templateId" component={TemplatesPage} />
               <Route path="/contact" component={Contact} />
@@ -1505,6 +1509,7 @@ function AppContent() {
         <Route path="/roi-calculator" component={ROICalculator} />
         <Route path="/compare" component={ComparePage} />
         <Route path="/compare/:competitor" component={ComparePage} />
+        <Route path="/trinity-features" component={TrinityFeatures} />
         <Route path="/templates" component={TemplatesPage} />
         <Route path="/templates/:templateId" component={TemplatesPage} />
                 <Route path="/contact" component={Contact} />
