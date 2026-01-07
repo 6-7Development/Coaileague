@@ -31,16 +31,16 @@ function TrinityIcon({ size = 16, className }: { size?: number; className?: stri
           <stop offset="50%" stopColor="#00BFFF" />
           <stop offset="100%" stopColor="#006699" />
         </radialGradient>
-        <linearGradient id="petalGold" x1="0%" y1="0%" x2="100%" y2="100%">
+        <linearGradient id="ribbonGold" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#FFD700" />
           <stop offset="100%" stopColor="#FFA500" />
         </linearGradient>
-        <linearGradient id="petalTeal" x1="0%" y1="0%" x2="100%" y2="100%">
+        <linearGradient id="ribbonTeal" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#00BFFF" />
           <stop offset="100%" stopColor="#008B8B" />
         </linearGradient>
         <filter id="glow">
-          <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+          <feGaussianBlur stdDeviation="1.5" result="coloredBlur"/>
           <feMerge>
             <feMergeNode in="coloredBlur"/>
             <feMergeNode in="SourceGraphic"/>
@@ -48,34 +48,47 @@ function TrinityIcon({ size = 16, className }: { size?: number; className?: stri
         </filter>
       </defs>
       
+      {/* Interwoven ribbon knot - 5 curved ribbon petals */}
       {[0, 72, 144, 216, 288].map((angle, i) => (
-        <ellipse
-          key={i}
-          cx="50"
-          cy="28"
-          rx="8"
-          ry="22"
-          fill={`url(#petal${i % 2 === 0 ? 'Gold' : 'Teal'})`}
-          transform={`rotate(${angle} 50 50)`}
-          filter="url(#glow)"
-          opacity="0.9"
-        />
+        <g key={i} transform={`rotate(${angle} 50 50)`}>
+          {/* Ribbon petal with curved path for knot effect */}
+          <path
+            d="M50,50 Q42,30 50,15 Q58,30 50,50"
+            fill="none"
+            stroke={`url(#ribbon${i % 2 === 0 ? 'Gold' : 'Teal'})`}
+            strokeWidth="6"
+            strokeLinecap="round"
+            filter="url(#glow)"
+            opacity="0.95"
+          />
+          {/* Outer ribbon arc for interwoven effect */}
+          <path
+            d="M45,45 Q35,25 50,12 Q65,25 55,45"
+            fill="none"
+            stroke={`url(#ribbon${i % 2 === 0 ? 'Teal' : 'Gold'})`}
+            strokeWidth="3"
+            strokeLinecap="round"
+            opacity="0.7"
+          />
+        </g>
       ))}
       
+      {/* Central knot core */}
       <circle 
         cx="50" 
         cy="50" 
-        r="12" 
+        r="10" 
         fill="url(#trinityCore)" 
         filter="url(#glow)"
       />
       
+      {/* Inner glow */}
       <circle 
         cx="50" 
         cy="50" 
-        r="6" 
+        r="5" 
         fill="#FFFFE0" 
-        opacity="0.8"
+        opacity="0.9"
       />
     </svg>
   );

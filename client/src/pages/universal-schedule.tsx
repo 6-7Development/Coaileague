@@ -203,6 +203,22 @@ export default function UniversalSchedule() {
   const isManager = ['manager', 'admin', 'owner', 'org_owner'].includes(effectiveRole);
   const isAdmin = ['admin', 'owner', 'org_owner'].includes(effectiveRole);
   
+  // Admin-only action handler with permission check
+  const handleAdminOnlyAction = (actionName: string) => {
+    if (!isAdmin) {
+      toast({
+        variant: 'destructive',
+        title: 'Permission Denied',
+        description: `${actionName} requires admin privileges`,
+      });
+      return;
+    }
+    toast({
+      title: actionName,
+      description: `Initiating ${actionName}...`,
+    });
+  };
+  
   // Automation toggle mutation
   const toggleAutomationMutation = useMutation({
     mutationFn: async (enabled: boolean) => {
