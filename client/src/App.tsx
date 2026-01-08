@@ -1,7 +1,7 @@
 // Multi-tenant SaaS Scheduling Platform
 
-import { Switch, Route, useLocation, Link } from "wouter";
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { Switch, Route, useLocation, Link, Redirect } from "wouter";
+import { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspense } from "react";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -27,7 +27,6 @@ import { UniversalAnimationProvider } from "@/contexts/universal-animation-conte
 import { SeasonalThemeProvider, useSeasonalTheme } from "@/context/SeasonalThemeContext";
 import { SimpleModeProvider } from "@/contexts/SimpleModeContext";
 import { SimpleModeToggle } from "@/components/SimpleModeToggle";
-import SeasonalEffectsLayer from "@/components/effects/SeasonalEffectsLayer";
 import { Button } from "@/components/ui/button";
 import { PaymentEnforcementProvider } from "@/hooks/use-payment-enforcement";
 import { ProtectedRoute } from "@/components/protected-route";
@@ -52,143 +51,154 @@ import { useTransition } from "@/contexts/transition-context";
 import { showLogoutTransition } from "@/lib/transition-utils";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { CoAIleagueLogo } from "@/components/coaileague-logo";
-import NotFound from "@/pages/not-found";
-import OwnerAnalytics from "@/pages/owner-analytics";
-import RootAdminDashboard from "@/pages/root-admin-dashboard";
-import SystemHealth from "@/pages/system-health";
-import Infrastructure from "@/pages/infrastructure";
-import CreditAnalyticsDashboard from "@/pages/credit-analytics-dashboard";
-import LeadersHub from "@/pages/leaders-hub";
-import TrinityInsights from "@/pages/trinity-insights";
-import Homepage from "@/pages/homepage";
-import TrinityChat from "@/pages/trinity-chat"; // Trinity Chat Interface with BUDDY metacognition
-import TrinityFeatures from "@/pages/trinity-features"; // Trinity marketing features page
-import CustomLogin from "@/pages/custom-login";
-import CustomRegister from "@/pages/custom-register";
-import UniversalMarketing from "@/pages/universal-marketing";
-import Contact from "@/pages/contact";
-import ROICalculator from "@/pages/roi-calculator"; // Marketing: ROI Calculator landing page
-import ComparePage from "@/pages/compare"; // Marketing: Competitor comparison pages
-import TemplatesPage from "@/pages/templates"; // Marketing: Industry-specific templates
-import Support from "@/pages/support";
-import TermsOfService from "@/pages/terms-of-service";
-import PrivacyPolicy from "@/pages/privacy-policy";
-import Dashboard from "@/pages/dashboard";
-import { Redirect } from "wouter";
-import UniversalSchedule from "@/pages/universal-schedule";
-import ScheduleMobileFirst from "@/pages/schedule-mobile-first";
-import WorkspaceSales from "@/pages/workspace-sales";
-import TimeTracking from "@/pages/time-tracking";
-import Employees from "@/pages/employees";
-import Clients from "@/pages/clients";
-import OrgManagement from "@/pages/org-management";
-import Invoices from "@/pages/invoices";
-import Analytics from "@/pages/analytics";
-import Settings from "@/pages/settings";
-import AlertSettings from "@/pages/alert-settings";
-import Reports from "@/pages/reports";
-import OnboardingPage from "@/pages/onboarding";
-import HiringWorkflowBuilder from "@/pages/hireos-workflow-builder";
-import EmployeeFileCabinet from "@/pages/employee-file-cabinet";
-import EmployeeProfile from "@/pages/employee-profile";
-import AdminUsage from "@/pages/admin-usage";
-import AdminCustomForms from "@/pages/admin-custom-forms";
-import PlatformAdmin from "@/pages/platform-admin";
-import PlatformUsers from "@/pages/platform-users";
-import EmployeePortal from "@/pages/employee-portal";
-import AuditorPortal from "@/pages/auditor-portal";
-import ClientPortal from "@/pages/client-portal";
-import Workspace from "@/pages/workspace";
-import Billing from "@/pages/billing";
-import UsageDashboard from "@/pages/usage-dashboard";
-import HRBenefits from "@/pages/hr-benefits";
-import HRReviews from "@/pages/hr-reviews";
-import HRPTO from "@/pages/hr-pto";
-import HRTerminations from "@/pages/hr-terminations";
-import HelpDesk from "@/pages/HelpDesk";
-import Chatrooms from "@/pages/chatrooms";
-import PayrollDashboard from "@/pages/payroll-dashboard";
-import HelpAIOrchestration from "@/pages/helpai-orchestration";
-import OrchestrationDashboard from "@/pages/orchestration-dashboard";
-import MyPaychecks from "@/pages/my-paychecks";
-import EngagementDashboard from "@/pages/engagement-dashboard";
-import EmployeeEngagement from "@/pages/engagement-employee";
-import AnalyticsReportsPage from "@/pages/analytics-reports";
-import Disputes from "@/pages/disputes";
-import MyAuditRecord from "@/pages/my-audit-record";
-import FileGrievance from "@/pages/file-grievance";
-import ReviewDisputes from "@/pages/review-disputes";
-import PayrollDeductions from "@/pages/payroll-deductions";
-import PayrollGarnishments from "@/pages/payroll-garnishments";
-import CommunicationsOnboarding from "@/pages/communications-onboarding";
-import Diagnostics from "@/pages/diagnostics";
-import PrivateMessages from "@/pages/private-messages";
-import WorkerDashboard from "@/pages/worker-dashboard";
-import WorkerIncidents from "@/pages/worker-incidents";
-import Training from "@/pages/training-os";
-import Budgeting from "@/pages/budgeting";
-import AIIntegrations from "@/pages/ai-integrations";
-import EmployeeRecognition from "@/pages/employee-recognition";
-import AlertConfiguration from "@/pages/alert-configuration";
-import AccountingIntegrations from "@/pages/accounting-integrations";
-import QuickBooksImport from "@/pages/quickbooks-import";
-import ResolutionInbox from "@/pages/resolution-inbox";
-import Records from "@/pages/records";
-import Insights from "@/pages/insights";
-import CommunicationFamilyPage from "@/pages/category-communication";
-import OperationsFamilyPage from "@/pages/category-operations";
-import GrowthFamilyPage from "@/pages/category-growth";
-import PlatformFamilyPage from "@/pages/category-platform";
-import Profile from "@/pages/profile";
-import Unavailability from "@/pages/unavailability";
-import AvailabilityPage from "@/pages/availability";
-import CreateOrg from "@/pages/create-org";
-import OnboardingStart from "@/pages/onboarding-start";
-import Updates from "@/pages/updates";
-import Help from "@/pages/help";
-import CompanyReports from "./pages/company-reports";
-import PayInvoice from "@/pages/pay-invoice";
-import ForgotPassword from "@/pages/forgot-password";
-import ResetPassword from "@/pages/reset-password";
-import Expenses from "@/pages/expenses";
-import ExpenseApprovals from "@/pages/expense-approvals";
-import SalesCRM from "@/pages/sales-crm";
-import DocumentLibrary from "@/pages/document-library";
-import FlexStaffing from "@/pages/flex-staffing";
-import ExternalEmail from "@/pages/external-email";
-import I9Compliance from "@/pages/i9-compliance";
-import ComplianceReports from "@/pages/compliance-reports";
-import Policies from "@/pages/policies";
-import RoleManagement from "@/pages/role-management";
-import ManagerDashboard from "@/pages/manager-dashboard";
-import PendingTimeEntries from "@/pages/pending-time-entries";
-import TimesheetApprovals from "@/pages/timesheet-approvals";
-import Error403 from "@/pages/error-403";
-import Error404 from "@/pages/error-404";
-import Error500 from "@/pages/error-500";
-import IntegrationsPage from "@/pages/integrations-page";
-import TrinitySelfEditGovernancePage from "@/pages/trinity-self-edit-governance";
-import OversightHub from "@/pages/oversight-hub";
-import WorkflowApprovals from "@/pages/workflow-approvals";
-import AICommandCenter from "@/pages/ai-command-center";
-import SupportCommandConsole from "@/pages/support-command-console";
-import SupportBugDashboard from "@/pages/support-bug-dashboard";
-import EndUserControls from "@/pages/end-user-controls";
-import TrinityCommandCenter from "@/pages/trinity-command-center";
-import AuditLogs from "@/pages/audit-logs";
-import AIAuditLogViewer from "@/pages/ai-audit-log-viewer";
-import AutomationControl from "@/pages/automation-control";
-import AdminBanners from "@/pages/admin-banners";
-import AdminTicketReviews from "@/pages/admin-ticket-reviews";
-import AutomationAuditLog from "@/pages/automation-audit-log";
-import AutomationSettings from "@/pages/automation-settings";
-import AIBrainDashboard from "@/pages/ai-brain-dashboard";
-import SupportAIConsole from "@/pages/support-ai-console";
-import AssistedOnboarding from "@/pages/assisted-onboarding";
-import WorkspaceOnboarding from "@/pages/workspace-onboarding";
-import AcceptHandoff from "@/pages/accept-handoff";
-import WorkboardDashboard from "@/components/workboard/WorkboardDashboard";
-import InboxPage from "@/pages/inbox";
+
+// Lazy-loaded seasonal effects (heavy component)
+const SeasonalEffectsLayer = lazy(() => import("@/components/effects/SeasonalEffectsLayer"));
+
+// Page loading fallback
+const PageLoader = () => (
+  <div className="flex items-center justify-center h-full min-h-[200px]">
+    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+  </div>
+);
+
+// LAZY LOADED PAGES - Code splitting for faster initial load
+const NotFound = lazy(() => import("@/pages/not-found"));
+const OwnerAnalytics = lazy(() => import("@/pages/owner-analytics"));
+const RootAdminDashboard = lazy(() => import("@/pages/root-admin-dashboard"));
+const SystemHealth = lazy(() => import("@/pages/system-health"));
+const Infrastructure = lazy(() => import("@/pages/infrastructure"));
+const CreditAnalyticsDashboard = lazy(() => import("@/pages/credit-analytics-dashboard"));
+const LeadersHub = lazy(() => import("@/pages/leaders-hub"));
+const TrinityInsights = lazy(() => import("@/pages/trinity-insights"));
+const Homepage = lazy(() => import("@/pages/homepage"));
+const TrinityChat = lazy(() => import("@/pages/trinity-chat"));
+const TrinityFeatures = lazy(() => import("@/pages/trinity-features"));
+const CustomLogin = lazy(() => import("@/pages/custom-login"));
+const CustomRegister = lazy(() => import("@/pages/custom-register"));
+const UniversalMarketing = lazy(() => import("@/pages/universal-marketing"));
+const Contact = lazy(() => import("@/pages/contact"));
+const ROICalculator = lazy(() => import("@/pages/roi-calculator"));
+const ComparePage = lazy(() => import("@/pages/compare"));
+const TemplatesPage = lazy(() => import("@/pages/templates"));
+const Support = lazy(() => import("@/pages/support"));
+const TermsOfService = lazy(() => import("@/pages/terms-of-service"));
+const PrivacyPolicy = lazy(() => import("@/pages/privacy-policy"));
+const Dashboard = lazy(() => import("@/pages/dashboard"));
+const UniversalSchedule = lazy(() => import("@/pages/universal-schedule"));
+const ScheduleMobileFirst = lazy(() => import("@/pages/schedule-mobile-first"));
+const WorkspaceSales = lazy(() => import("@/pages/workspace-sales"));
+const TimeTracking = lazy(() => import("@/pages/time-tracking"));
+const Employees = lazy(() => import("@/pages/employees"));
+const Clients = lazy(() => import("@/pages/clients"));
+const OrgManagement = lazy(() => import("@/pages/org-management"));
+const Invoices = lazy(() => import("@/pages/invoices"));
+const Analytics = lazy(() => import("@/pages/analytics"));
+const Settings = lazy(() => import("@/pages/settings"));
+const AlertSettings = lazy(() => import("@/pages/alert-settings"));
+const Reports = lazy(() => import("@/pages/reports"));
+const OnboardingPage = lazy(() => import("@/pages/onboarding"));
+const HiringWorkflowBuilder = lazy(() => import("@/pages/hireos-workflow-builder"));
+const EmployeeFileCabinet = lazy(() => import("@/pages/employee-file-cabinet"));
+const EmployeeProfile = lazy(() => import("@/pages/employee-profile"));
+const AdminUsage = lazy(() => import("@/pages/admin-usage"));
+const AdminCustomForms = lazy(() => import("@/pages/admin-custom-forms"));
+const PlatformAdmin = lazy(() => import("@/pages/platform-admin"));
+const PlatformUsers = lazy(() => import("@/pages/platform-users"));
+const EmployeePortal = lazy(() => import("@/pages/employee-portal"));
+const AuditorPortal = lazy(() => import("@/pages/auditor-portal"));
+const ClientPortal = lazy(() => import("@/pages/client-portal"));
+const Workspace = lazy(() => import("@/pages/workspace"));
+const Billing = lazy(() => import("@/pages/billing"));
+const UsageDashboard = lazy(() => import("@/pages/usage-dashboard"));
+const HRBenefits = lazy(() => import("@/pages/hr-benefits"));
+const HRReviews = lazy(() => import("@/pages/hr-reviews"));
+const HRPTO = lazy(() => import("@/pages/hr-pto"));
+const HRTerminations = lazy(() => import("@/pages/hr-terminations"));
+const HelpDesk = lazy(() => import("@/pages/HelpDesk"));
+const Chatrooms = lazy(() => import("@/pages/chatrooms"));
+const PayrollDashboard = lazy(() => import("@/pages/payroll-dashboard"));
+const HelpAIOrchestration = lazy(() => import("@/pages/helpai-orchestration"));
+const OrchestrationDashboard = lazy(() => import("@/pages/orchestration-dashboard"));
+const MyPaychecks = lazy(() => import("@/pages/my-paychecks"));
+const EngagementDashboard = lazy(() => import("@/pages/engagement-dashboard"));
+const EmployeeEngagement = lazy(() => import("@/pages/engagement-employee"));
+const AnalyticsReportsPage = lazy(() => import("@/pages/analytics-reports"));
+const Disputes = lazy(() => import("@/pages/disputes"));
+const MyAuditRecord = lazy(() => import("@/pages/my-audit-record"));
+const FileGrievance = lazy(() => import("@/pages/file-grievance"));
+const ReviewDisputes = lazy(() => import("@/pages/review-disputes"));
+const PayrollDeductions = lazy(() => import("@/pages/payroll-deductions"));
+const PayrollGarnishments = lazy(() => import("@/pages/payroll-garnishments"));
+const CommunicationsOnboarding = lazy(() => import("@/pages/communications-onboarding"));
+const Diagnostics = lazy(() => import("@/pages/diagnostics"));
+const PrivateMessages = lazy(() => import("@/pages/private-messages"));
+const WorkerDashboard = lazy(() => import("@/pages/worker-dashboard"));
+const WorkerIncidents = lazy(() => import("@/pages/worker-incidents"));
+const Training = lazy(() => import("@/pages/training-os"));
+const Budgeting = lazy(() => import("@/pages/budgeting"));
+const AIIntegrations = lazy(() => import("@/pages/ai-integrations"));
+const EmployeeRecognition = lazy(() => import("@/pages/employee-recognition"));
+const AlertConfiguration = lazy(() => import("@/pages/alert-configuration"));
+const AccountingIntegrations = lazy(() => import("@/pages/accounting-integrations"));
+const QuickBooksImport = lazy(() => import("@/pages/quickbooks-import"));
+const ResolutionInbox = lazy(() => import("@/pages/resolution-inbox"));
+const Records = lazy(() => import("@/pages/records"));
+const Insights = lazy(() => import("@/pages/insights"));
+const CommunicationFamilyPage = lazy(() => import("@/pages/category-communication"));
+const OperationsFamilyPage = lazy(() => import("@/pages/category-operations"));
+const GrowthFamilyPage = lazy(() => import("@/pages/category-growth"));
+const PlatformFamilyPage = lazy(() => import("@/pages/category-platform"));
+const Profile = lazy(() => import("@/pages/profile"));
+const Unavailability = lazy(() => import("@/pages/unavailability"));
+const AvailabilityPage = lazy(() => import("@/pages/availability"));
+const CreateOrg = lazy(() => import("@/pages/create-org"));
+const OnboardingStart = lazy(() => import("@/pages/onboarding-start"));
+const Updates = lazy(() => import("@/pages/updates"));
+const Help = lazy(() => import("@/pages/help"));
+const CompanyReports = lazy(() => import("@/pages/company-reports"));
+const PayInvoice = lazy(() => import("@/pages/pay-invoice"));
+const ForgotPassword = lazy(() => import("@/pages/forgot-password"));
+const ResetPassword = lazy(() => import("@/pages/reset-password"));
+const Expenses = lazy(() => import("@/pages/expenses"));
+const ExpenseApprovals = lazy(() => import("@/pages/expense-approvals"));
+const SalesCRM = lazy(() => import("@/pages/sales-crm"));
+const DocumentLibrary = lazy(() => import("@/pages/document-library"));
+const FlexStaffing = lazy(() => import("@/pages/flex-staffing"));
+const ExternalEmail = lazy(() => import("@/pages/external-email"));
+const I9Compliance = lazy(() => import("@/pages/i9-compliance"));
+const ComplianceReports = lazy(() => import("@/pages/compliance-reports"));
+const Policies = lazy(() => import("@/pages/policies"));
+const RoleManagement = lazy(() => import("@/pages/role-management"));
+const ManagerDashboard = lazy(() => import("@/pages/manager-dashboard"));
+const PendingTimeEntries = lazy(() => import("@/pages/pending-time-entries"));
+const TimesheetApprovals = lazy(() => import("@/pages/timesheet-approvals"));
+const Error403 = lazy(() => import("@/pages/error-403"));
+const Error404 = lazy(() => import("@/pages/error-404"));
+const Error500 = lazy(() => import("@/pages/error-500"));
+const IntegrationsPage = lazy(() => import("@/pages/integrations-page"));
+const TrinitySelfEditGovernancePage = lazy(() => import("@/pages/trinity-self-edit-governance"));
+const OversightHub = lazy(() => import("@/pages/oversight-hub"));
+const WorkflowApprovals = lazy(() => import("@/pages/workflow-approvals"));
+const AICommandCenter = lazy(() => import("@/pages/ai-command-center"));
+const SupportCommandConsole = lazy(() => import("@/pages/support-command-console"));
+const SupportBugDashboard = lazy(() => import("@/pages/support-bug-dashboard"));
+const EndUserControls = lazy(() => import("@/pages/end-user-controls"));
+const TrinityCommandCenter = lazy(() => import("@/pages/trinity-command-center"));
+const AuditLogs = lazy(() => import("@/pages/audit-logs"));
+const AIAuditLogViewer = lazy(() => import("@/pages/ai-audit-log-viewer"));
+const AutomationControl = lazy(() => import("@/pages/automation-control"));
+const AdminBanners = lazy(() => import("@/pages/admin-banners"));
+const AdminTicketReviews = lazy(() => import("@/pages/admin-ticket-reviews"));
+const AutomationAuditLog = lazy(() => import("@/pages/automation-audit-log"));
+const AutomationSettings = lazy(() => import("@/pages/automation-settings"));
+const AIBrainDashboard = lazy(() => import("@/pages/ai-brain-dashboard"));
+const SupportAIConsole = lazy(() => import("@/pages/support-ai-console"));
+const AssistedOnboarding = lazy(() => import("@/pages/assisted-onboarding"));
+const WorkspaceOnboarding = lazy(() => import("@/pages/workspace-onboarding"));
+const AcceptHandoff = lazy(() => import("@/pages/accept-handoff"));
+const WorkboardDashboard = lazy(() => import("@/components/workboard/WorkboardDashboard"));
+const InboxPage = lazy(() => import("@/pages/inbox"));
 import { HeaderChatButton } from "@/components/header-chat-button";
 import { ReenableChatButton } from "@/components/reenable-chat-button";
 import { FloatingSupportChat } from "@/components/floating-support-chat";
@@ -917,6 +927,7 @@ function AppContent() {
   // This prevents loading screens from appearing on public pages
   if (isPublicRoute) {
     return (
+      <Suspense fallback={<PageLoader />}>
       <Switch>
         <Route path="/" component={Homepage} />
         <Route path="/login" component={CustomLogin} />
@@ -955,6 +966,7 @@ function AppContent() {
         
         <Route component={Homepage} />
       </Switch>
+      </Suspense>
     );
   }
 
@@ -998,6 +1010,7 @@ function AppContent() {
           
           {/* Main content area - with bottom nav padding */}
           <main className="flex-1 overflow-x-hidden overflow-y-auto min-h-0 w-full max-w-full pb-20">
+            <Suspense fallback={<PageLoader />}>
             <Switch>
               <Route path="/" component={Dashboard} />
               <Route path="/login">
@@ -1219,6 +1232,7 @@ function AppContent() {
               
               <Route component={NotFound} />
             </Switch>
+            </Suspense>
           </main>
           
           {/* Mobile Bottom Navigation - Fixed at bottom */}
@@ -1335,6 +1349,7 @@ function AppContent() {
                 {/* Breadcrumb Navigation - helps users know where they are (desktop only) */}
                 {!isMobileChat && !isHelpDesk && !isMobile && <PageBreadcrumb />}
               
+              <Suspense fallback={<PageLoader />}>
               <Switch>
                 <Route path="/" component={Dashboard} />
                 <Route path="/login">
@@ -1544,6 +1559,7 @@ function AppContent() {
                 
                 <Route component={NotFound} />
               </Switch>
+              </Suspense>
               </main>
             </div>
           </div>
@@ -1577,8 +1593,10 @@ export default function App() {
                           <TrinityAnnouncementDisplay position="bottom-right" />
                         </ResponsiveAppFrame>
                         </SimpleModeProvider>
-                        {/* Seasonal effects layer - snowfall, ornaments, etc. */}
-                        <SeasonalEffectsLayer />
+                        {/* Seasonal effects layer - snowfall, ornaments, etc. - lazy loaded */}
+                        <Suspense fallback={null}>
+                          <SeasonalEffectsLayer />
+                        </Suspense>
                         {/* Floating Setup Guide - Stripe-style universal widget (positioned bottom-right) */}
                         <div className="fixed bottom-6 right-6 z-[70]">
                           <SetupGuidePanel />
