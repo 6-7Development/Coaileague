@@ -1221,8 +1221,8 @@ function AppContent() {
               <Route path="/contact" component={Contact} />
               <Route path="/terms" component={TermsOfService} />
               <Route path="/privacy" component={PrivacyPolicy} />
-              {/* Consolidated Chat Routes - ONE UNIVERSAL CHAT via HelpAI Orchestration */}
-              <Route path="/chat" component={HelpAIOrchestration} /> {/* HelpAI Orchestration - Universal chat and AI brain */}
+              {/* Consolidated Chat Routes - ONE UNIVERSAL CHAT via HelpDesk */}
+              <Route path="/chat" component={HelpDesk} /> {/* Universal responsive chat with Gemini AI (works on desktop + mobile) */}
               <Route path="/chat/:roomId">
                 {(params) => <HelpDesk key={params.roomId} roomId={params.roomId} />}
               </Route> {/* Individual chat room by ID - key forces remount */}
