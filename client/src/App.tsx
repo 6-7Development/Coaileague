@@ -201,7 +201,8 @@ const WorkboardDashboard = lazy(() => import("@/components/workboard/WorkboardDa
 const InboxPage = lazy(() => import("@/pages/inbox"));
 import { HeaderChatButton } from "@/components/header-chat-button";
 import { ReenableChatButton } from "@/components/reenable-chat-button";
-import { FloatingSupportChat } from "@/components/floating-support-chat";
+// Lazy-loaded heavy components
+const FloatingSupportChat = lazy(() => import("@/components/floating-support-chat").then(m => ({ default: m.FloatingSupportChat })));
 import { ChatroomNotificationListener } from "@/components/chatroom-notification-listener";
 import { OnboardingWizard } from "@/components/onboarding-wizard";
 import { HeaderBillboard } from "@/components/header-billboard";
@@ -209,11 +210,11 @@ import { WorkspaceSwitcher } from "@/components/workspace-switcher";
 import { PageBreadcrumb } from "@/components/page-breadcrumb";
 import { NotificationsPopover } from "@/components/notifications-popover";
 import { WorkspaceTabsNav } from "@/components/workspace-tabs-nav";
-import { SetupGuidePanel } from "@/components/setup-guide-panel";
-import TrinityRedesign from "@/components/trinity-redesign";
-import { CompactBubble } from "@/components/mascot/CompactBubble";
-import { FestiveDialogueBubble } from "@/components/mascot/FestiveDialogueBubble";
-import { MascotTaskBox } from "@/components/mascot-task-box";
+const SetupGuidePanel = lazy(() => import("@/components/setup-guide-panel").then(m => ({ default: m.SetupGuidePanel })));
+const TrinityRedesign = lazy(() => import("@/components/trinity-redesign"));
+const CompactBubble = lazy(() => import("@/components/mascot/CompactBubble").then(m => ({ default: m.CompactBubble })));
+const FestiveDialogueBubble = lazy(() => import("@/components/mascot/FestiveDialogueBubble").then(m => ({ default: m.FestiveDialogueBubble })));
+const MascotTaskBox = lazy(() => import("@/components/mascot-task-box").then(m => ({ default: m.MascotTaskBox })));
 import { useMascotMode } from "@/hooks/use-mascot-mode";
 import { useAIActivity } from "@/hooks/use-ai-activity";
 import { useMascotPosition } from "@/hooks/use-mascot-position";
@@ -760,42 +761,48 @@ function MascotRenderer() {
               WebkitClipPath: 'circle(42% at center)',
             } as React.CSSProperties}
           >
-            <TrinityRedesign 
-              mode={(voiceModeOverride as any) || currentMode}
-              size={bubbleSize}
-              mini={!isExpanded}
-              idleTimeout={30000}
-              cycleInterval={3000}
-            />
+            <Suspense fallback={null}>
+              <TrinityRedesign 
+                mode={(voiceModeOverride as any) || currentMode}
+                size={bubbleSize}
+                mini={!isExpanded}
+                idleTimeout={30000}
+                cycleInterval={3000}
+              />
+            </Suspense>
           </div>
           
           {!currentThought && workspaceId && (
-            <MascotTaskBox 
-              mascotRef={mascotContainerRef}
-              workspaceId={workspaceId}
-            />
+            <Suspense fallback={null}>
+              <MascotTaskBox 
+                mascotRef={mascotContainerRef}
+                workspaceId={workspaceId}
+              />
+            </Suspense>
           )}
         </div>
       </div>
       
-      {/* Dialogue bubble - uses festive version during holiday season (controlled by SeasonalSubagent) */}
-      {currentThought && isHoliday ? (
-        <FestiveDialogueBubble
-          thought={currentThought}
-          mascotPosition={{ x: effectiveX, y: effectiveY }}
-          mascotSize={bubbleSize}
-          isMobile={isMobile}
-          onDismiss={() => setCurrentThought(null)}
-        />
-      ) : currentThought ? (
-        <CompactBubble
-          thought={currentThought}
-          mascotPosition={{ x: effectiveX, y: effectiveY }}
-          mascotSize={bubbleSize}
-          mode={currentMode}
-          onDismiss={() => setCurrentThought(null)}
-        />
-      ) : null}
+      {/* Dialogue bubble - uses festive version during holiday season (controlled by SeasonalSubagent) - lazy loaded */}
+      <Suspense fallback={null}>
+        {currentThought && isHoliday ? (
+          <FestiveDialogueBubble
+            thought={currentThought}
+            mascotPosition={{ x: effectiveX, y: effectiveY }}
+            mascotSize={bubbleSize}
+            isMobile={isMobile}
+            onDismiss={() => setCurrentThought(null)}
+          />
+        ) : currentThought ? (
+          <CompactBubble
+            thought={currentThought}
+            mascotPosition={{ x: effectiveX, y: effectiveY }}
+            mascotSize={bubbleSize}
+            mode={currentMode}
+            onDismiss={() => setCurrentThought(null)}
+          />
+        ) : null}
+      </Suspense>
       
       {/* Mobile Voice Command Overlay - triggered by tapping Trinity on mobile */}
       <MobileVoiceCommandOverlay
@@ -1597,15 +1604,19 @@ export default function App() {
                         <Suspense fallback={null}>
                           <SeasonalEffectsLayer />
                         </Suspense>
-                        {/* Floating Setup Guide - Stripe-style universal widget (positioned bottom-right) */}
-                        <div className="fixed bottom-6 right-6 z-[70]">
-                          <SetupGuidePanel />
-                        </div>
+                        {/* Floating Setup Guide - Stripe-style universal widget (positioned bottom-right) - lazy loaded */}
+                        <Suspense fallback={null}>
+                          <div className="fixed bottom-6 right-6 z-[70]">
+                            <SetupGuidePanel />
+                          </div>
+                        </Suspense>
                         {/* Trinity AI Mascot - UNIVERSAL visibility on ALL pages including public/guest routes */}
                         <MascotRenderer />
-                        {/* Mini HelpAI Chat Bubble - ONLY for guests (not logged in) */}
+                        {/* Mini HelpAI Chat Bubble - ONLY for guests (not logged in) - lazy loaded */}
                         {/* Authenticated users access HelpDesk directly via main navigation */}
-                        <FloatingSupportChat />
+                        <Suspense fallback={null}>
+                          <FloatingSupportChat />
+                        </Suspense>
                         {/* Floating Trinity Button - Persistent AI chat access (RBAC-gated) */}
                         <FloatingTrinityButton />
                       </SeasonalThemeProvider>
