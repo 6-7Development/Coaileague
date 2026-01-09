@@ -47,6 +47,7 @@ import { MobileBottomNav } from "@/components/mobile/MobileBottomNav";
 import { MobileQuickActionsFAB } from "@/components/mobile/MobileQuickActionsFAB";
 import { PWAInstallPrompt } from "@/components/mobile/PWAInstallPrompt";
 import { FloatingTrinityButton } from "@/components/floating-trinity-button";
+import { HeaderTrinityButton } from "@/components/header-trinity-button";
 import { TrinityModalProvider } from "@/components/trinity-chat-modal";
 import { performLogout } from "@/lib/logoutHandler";
 import { useTransition } from "@/contexts/transition-context";
@@ -1017,6 +1018,8 @@ function AppContent() {
                 <div className="flex items-center gap-2">
                   {/* Easy View Toggle - Simplified interface for mobile */}
                   <SimpleModeToggle variant="compact" />
+                  {/* Trinity AI Assistant - Opens chat modal */}
+                  <HeaderTrinityButton />
                   {/* Chat Button - Header mounted for easy access */}
                   <HeaderChatButton />
                   {/* Inbox Button - Internal email system with unread badge */}
@@ -1291,6 +1294,8 @@ function AppContent() {
                   <div className="flex items-center gap-2">
                     {/* Easy View Toggle - Simplified interface for non-technical users */}
                     <SimpleModeToggle variant="compact" />
+                    {/* Trinity AI Assistant - Opens chat modal */}
+                    <HeaderTrinityButton />
                     {/* Chat Button - Header mounted in middle */}
                     <HeaderChatButton />
                     {/* Inbox Button - Internal email system with unread badge */}
