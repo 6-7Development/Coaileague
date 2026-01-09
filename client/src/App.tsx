@@ -46,6 +46,7 @@ import { MobileBottomNav } from "@/components/mobile/MobileBottomNav";
 import { MobileQuickActionsFAB } from "@/components/mobile/MobileQuickActionsFAB";
 import { PWAInstallPrompt } from "@/components/mobile/PWAInstallPrompt";
 import { FloatingTrinityButton } from "@/components/floating-trinity-button";
+import { TrinityModalProvider } from "@/components/trinity-chat-modal";
 import { performLogout } from "@/lib/logoutHandler";
 import { useTransition } from "@/contexts/transition-context";
 import { showLogoutTransition } from "@/lib/transition-utils";
@@ -700,8 +701,9 @@ function MascotRenderer() {
   // - Public pages: Everyone sees Trinity (showcase mode for marketing)
   // - Protected pages: Everyone sees Trinity, but only privileged users get AI integration
   // - Hidden routes: Trinity is hidden for all users (e.g., admin consoles)
+  // - Mobile: Trinity mascot is hidden (users access Trinity via chat modal instead)
   // The mascot renders for ALL users; RBAC gates the AI/API calls, not the visual component
-  if (!MASCOT_CONFIG.enabled || shouldHideMascot(location)) return null;
+  if (!MASCOT_CONFIG.enabled || shouldHideMascot(location) || isMobile) return null;
   
   // Apply overlay avoidance offset - shifts Trinity away from open popovers/dialogs
   const effectiveX = position.x + (isDragging ? 0 : floatOffsetRef.current.x + targetInfluence.x + overlayAvoidanceOffset.x);
@@ -1628,8 +1630,10 @@ export default function App() {
                         <Suspense fallback={null}>
                           <FloatingSupportChat />
                         </Suspense>
-                        {/* Floating Trinity Button - Persistent AI chat access (RBAC-gated) */}
-                        <FloatingTrinityButton />
+                        {/* Trinity Modal Provider + Floating Button - Opens chat modal instead of navigating */}
+                        <TrinityModalProvider>
+                          <FloatingTrinityButton />
+                        </TrinityModalProvider>
                       </SeasonalThemeProvider>
                     </UniversalAnimationProvider>
                   </TooltipProvider>

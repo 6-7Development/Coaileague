@@ -1,0 +1,70 @@
+PERFECT observation, Bryan. That's exactly how enterprise AI assistants should work - non-disruptive, contextual, and preserving work state.
+Here's your Replit Agent prompt:
+
+REPLIT AGENT INSTRUCTIONS: Trinity AI Modal Chat Interface
+OBJECTIVE: Replace the current "Ask Trinity" button navigation with a floating modal popup overlay that keeps users on their current page while chatting with Trinity AI.
+CURRENT PROBLEM:
+
+"Ask Trinity" button currently navigates users away from their work
+Users lose unsaved data and context when redirected to chat UI
+Disruptive UX that breaks workflow
+
+NEW IMPLEMENTATION:
+1. Create Trinity Chat Modal Component
+Create a new component: /components/TrinityModal.jsx
+
+Requirements:
+- Full-screen overlay with semi-transparent backdrop (rgba(0,0,0,0.5))
+- Centered modal window (max-width: 600px, height: 70vh)
+- Chat interface inside modal matching existing Trinity chat UI
+- Close button (X) in top-right corner
+- ESC key closes modal
+- Click outside modal closes it
+- Smooth fade-in animation on open
+- Mobile responsive (full screen on mobile)
+2. Modal Structure
+Modal should contain:
+- Header: "Trinity AI Assistant" with close button
+- Chat messages area (scrollable)
+- Input field at bottom with send button
+- Connected to existing Trinity AI backend (Google Gemini)
+- Maintains chat history during session
+- Clear chat option
+3. Update "Ask Trinity" Button Behavior
+Locate all "Ask Trinity" buttons in the app and:
+- Remove navigation logic (no more router.push or href)
+- Add onClick handler that triggers modal open
+- Add state management for modal visibility
+4. State Management
+Create global state for Trinity modal:
+- isTrinityModalOpen (boolean)
+- trinityMessages (array)
+- Keep modal state separate from page navigation
+- Preserve any unsaved form data when modal opens
+5. Integration Points
+Files to modify:
+1. Create: /components/TrinityModal.jsx
+2. Modify: App.jsx or root layout to include <TrinityModal />
+3. Modify: All components with "Ask Trinity" buttons
+4. Update: Context/state management for modal control
+6. User Experience Flow
+1. User clicks "Ask Trinity" while working on schedule/client/etc
+2. Modal fades in over current page
+3. User chats with Trinity without losing context
+4. User closes modal and continues work exactly where they left off
+5. No data loss, no navigation, no interruption
+7. Technical Specs
+- Use React state hooks for modal visibility
+- Use React Portal for modal rendering (renders outside normal DOM hierarchy)
+- Preserve scroll position when modal opens/closes
+- Disable background scrolling when modal is open
+- Use existing Trinity API integration
+- Add loading states for AI responses
+8. Accessibility
+- Focus trap inside modal when open
+- ESC key closes modal
+- ARIA labels for screen readers
+- Tab navigation works correctly
+- Close button clearly visible
+REFERENCE DESIGN: Similar to Google Gemini's floating chat overlay or Intercom's chat widget - non-intrusive, contextual, and preserves user workflow.
+PRIORITY: HIGH - This is critical UX for preventing user frustration and data loss.
