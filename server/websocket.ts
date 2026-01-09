@@ -552,6 +552,7 @@ export function broadcastToAllClients(message: any) {
 // SESSION SYNC: Multi-Device Real-Time Synchronization
 // =============================================================================
 import { sessionSyncService } from './services/ai-brain/sessionSyncService';
+import { platformEventBus } from './services/platformEventBus';
 
 /**
  * Register a WebSocket connection for session sync
@@ -1039,6 +1040,45 @@ export function setupWebSocket(server: Server) {
             if (ws.serverAuth?.userId) {
               sessionSyncService.updatePing(ws.serverAuth.userId, connectionId);
             }
+            break;
+          }
+          case 'trinity_agent_subscribe': {
+            // Subscribe to Trinity Agent execution updates
+            if (!ws.serverAuth?.userId) {
+              ws.send(JSON.stringify({
+                type: 'trinity_agent_error',
+                error: 'Authentication required for Trinity Agent',
+              }));
+              break;
+            }
+            
+            const trinityConversationId = (payload as any).conversationId;
+            if (!trinityConversationId) {
+              ws.send(JSON.stringify({
+                type: 'trinity_agent_error',
+                error: 'conversationId required',
+              }));
+              break;
+            }
+            
+            // Store Trinity subscription on the client
+            (ws as any).trinityConversationId = trinityConversationId;
+            
+            ws.send(JSON.stringify({
+              type: 'trinity_agent_subscribed',
+              conversationId: trinityConversationId,
+              userId: ws.serverAuth.userId,
+              timestamp: new Date().toISOString(),
+            }));
+            console.log(`[TrinityAgent] User ${ws.serverAuth.userId} subscribed to conversation ${trinityConversationId}`);
+            break;
+          }
+          case 'trinity_agent_ping': {
+            // Heartbeat for Trinity Agent connection
+            ws.send(JSON.stringify({
+              type: 'trinity_agent_pong',
+              timestamp: new Date().toISOString(),
+            }));
             break;
           }
           case 'join_conversation': {
@@ -5033,11 +5073,51 @@ export function setupWebSocket(server: Server) {
 
       console.log(`[WebSocket] Platform update sent to ${clientCount} clients`);
     },
+    
+    broadcastTrinityAgentEvent: (conversationId: string, event: {
+      type: string;
+      data: any;
+      timestamp?: number;
+    }) => {
+      const payload = JSON.stringify({
+        type: 'trinity_stream',
+        conversationId,
+        event: event.type.toLowerCase(),
+        data: event.data,
+        timestamp: event.timestamp || Date.now(),
+      });
+      
+      let clientCount = 0;
+      wss.clients.forEach((client: any) => {
+        if (client.readyState === WebSocket.OPEN) {
+          if ((client as any).trinityConversationId === conversationId) {
+            client.send(payload);
+            clientCount++;
+          }
+        }
+      });
+      
+      if (clientCount > 0) {
+        console.log(`[TrinityAgent] Broadcast ${event.type} to ${clientCount} clients for conversation ${conversationId}`);
+      }
+    },
   };
 
   // Initialize global broadcaster for use by other services (e.g., platformChangeMonitor)
   setGlobalBroadcaster(broadcaster);
   console.log('[WebSocket] Global broadcaster initialized');
+
+  // Subscribe to Trinity stream events from GoalExecutionService
+  platformEventBus.on('trinity:stream', (payload: { conversationId: string; event: any }) => {
+    if (payload?.conversationId && payload?.event) {
+      broadcaster.broadcastTrinityAgentEvent(payload.conversationId, {
+        type: payload.event.type,
+        data: payload.event.data,
+        timestamp: payload.event.timestamp
+      });
+    }
+  });
+  console.log('[WebSocket] Trinity stream event listener registered');
 
   return broadcaster;
 }

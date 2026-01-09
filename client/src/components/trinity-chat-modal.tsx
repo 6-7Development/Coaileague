@@ -55,6 +55,8 @@ import {
 } from 'lucide-react';
 import { TrinityIconStatic } from '@/components/trinity-button';
 import { TrinityAnimatedLogo } from '@/components/ui/trinity-animated-logo';
+import { TrinityAgentPanel } from '@/components/trinity';
+import { useTrinityState } from '@/hooks/use-trinity-state';
 
 // Mobile UI Modes
 type MobileMode = 'peek' | 'split' | 'immersive';
@@ -448,9 +450,23 @@ function TrinityModal({ onClose }: TrinityModalProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
   const [thinkingSteps, setThinkingSteps] = useState<ThinkingStep[]>([]);
+  const [agentModeActive, setAgentModeActive] = useState(false);
+  const [conversationId] = useState(() => `trinity-${Date.now()}`);
   const dragStart = useRef({ x: 0, y: 0 });
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const agentState = useTrinityState({
+    conversationId: agentModeActive ? conversationId : null,
+    onExecutionComplete: (success) => {
+      if (success) {
+        toast({
+          title: 'Goal Complete',
+          description: 'Trinity successfully completed the requested action.',
+        });
+      }
+    }
+  });
 
   const quickActions = useMemo(() => getQuickActions(location), [location]);
 
@@ -532,6 +548,9 @@ function TrinityModal({ onClose }: TrinityModalProps) {
     mutationFn: async (message: string) => {
       simulateThinking();
       
+      setAgentModeActive(true);
+      agentState.startExecution();
+      
       const pageContext = {
         currentPage: location,
         pageTitle: document.title,
@@ -545,6 +564,7 @@ function TrinityModal({ onClose }: TrinityModalProps) {
           message,
           mode,
           pageContext,
+          conversationId,
           conversationHistory: messages.slice(-10).map(m => ({
             role: m.role,
             content: m.content
@@ -554,6 +574,8 @@ function TrinityModal({ onClose }: TrinityModalProps) {
       return response;
     },
     onSuccess: (data: any) => {
+      agentState.stopExecution();
+      
       // Determine confidence based on response
       const confidence: ConfidenceLevel = 
         data.confidence === 'high' ? 'high' :
@@ -570,6 +592,8 @@ function TrinityModal({ onClose }: TrinityModalProps) {
       setMessages(prev => [...prev, assistantMessage]);
     },
     onError: () => {
+      agentState.stopExecution();
+      
       toast({
         title: 'Error',
         description: 'Failed to get response from Trinity',
@@ -819,6 +843,25 @@ function TrinityModal({ onClose }: TrinityModalProps) {
                   {isThinking && <ThinkingVisualization steps={thinkingSteps} mode={mode} />}
                 </div>
               </ScrollArea>
+            )}
+
+            {/* Agent Panel (shown when active - stays visible after execution completes) */}
+            {agentModeActive && (agentState.isExecuting || agentState.thinkingSteps.length > 0 || agentState.progress !== null) && (
+              <div className="border-t px-4 py-2 shrink-0 max-h-64 overflow-y-auto">
+                <TrinityAgentPanel 
+                  isExecuting={agentState.isExecuting}
+                  thinkingSteps={agentState.thinkingSteps}
+                  progress={agentState.progress}
+                  businessImpact={agentState.businessImpact}
+                  costs={agentState.costs}
+                  reversibleActions={agentState.reversibleActions}
+                  confidence={agentState.confidence}
+                  lastError={agentState.lastError}
+                  onUndoAction={agentState.undoAction}
+                  showSidebar={false}
+                  onToggleSidebar={() => setAgentModeActive(false)}
+                />
+              </div>
             )}
 
             {/* Input Area */}

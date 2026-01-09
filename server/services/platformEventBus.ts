@@ -108,6 +108,7 @@ export interface EventSubscriber {
 class PlatformEventBus {
   private subscribers: Map<string, EventSubscriber[]> = new Map();
   private wsHandler: ((event: PlatformEvent) => void) | null = null;
+  private internalListeners: Map<string, ((payload: any) => void)[]> = new Map();
 
   /**
    * Register the WebSocket broadcast handler
@@ -127,6 +128,32 @@ class PlatformEventBus {
     }
     this.subscribers.get(key)!.push(subscriber);
     console.log(`[EventBus] ${subscriber.name} subscribed to ${eventType}`);
+  }
+
+  /**
+   * Lightweight internal event emitter for service-to-service communication
+   * Does NOT persist to database or trigger notifications
+   */
+  emit(eventName: string, payload: any) {
+    const listeners = this.internalListeners.get(eventName) || [];
+    for (const listener of listeners) {
+      try {
+        listener(payload);
+      } catch (error) {
+        console.error(`[EventBus] Internal listener error for ${eventName}:`, error);
+      }
+    }
+  }
+
+  /**
+   * Register a lightweight internal listener
+   */
+  on(eventName: string, listener: (payload: any) => void) {
+    if (!this.internalListeners.has(eventName)) {
+      this.internalListeners.set(eventName, []);
+    }
+    this.internalListeners.get(eventName)!.push(listener);
+    console.log(`[EventBus] Internal listener registered for ${eventName}`);
   }
 
   /**
