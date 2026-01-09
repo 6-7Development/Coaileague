@@ -2,7 +2,7 @@
  * FLOATING TRINITY BUTTON
  * =======================
  * Persistent, always-visible Trinity Chat access point.
- * Appears across all workspace pages for easy navigation.
+ * Opens modal overlay instead of navigating away from current page.
  * RBAC-aware: only shows to allowed roles.
  */
 
@@ -12,9 +12,11 @@ import { X } from 'lucide-react';
 import { TrinityIconStatic } from '@/components/trinity-button';
 import { useWorkspaceAccess } from '@/hooks/useWorkspaceAccess';
 import { isTrinityAccessAllowed } from '@/config/trinity';
+import { useTrinityModal } from '@/components/trinity-chat-modal';
 
 export function FloatingTrinityButton() {
-  const [location, setLocation] = useLocation();
+  const [location] = useLocation();
+  const { openModal } = useTrinityModal();
   const [isDragging, setIsDragging] = useState(false);
   const [isClosed, setIsClosed] = useState(false);
   const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
@@ -101,7 +103,7 @@ export function FloatingTrinityButton() {
       hasMoved.current = false;
       return;
     }
-    setLocation('/trinity');
+    openModal();
   };
 
   const handleClose = (e: React.MouseEvent) => {
