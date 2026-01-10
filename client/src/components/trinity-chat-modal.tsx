@@ -30,7 +30,7 @@ import {
   TRINITY_MOBILE_CONFIG,
   type ConversationMode 
 } from '@/config/trinity';
-import { motion, AnimatePresence, PanInfo } from 'framer-motion';
+import { motion, AnimatePresence, PanInfo, useDragControls } from 'framer-motion';
 import {
   X,
   Send,
@@ -721,6 +721,9 @@ function TrinityModal({ onClose }: TrinityModalProps) {
 
   const modeConfig = TRINITY_MODES[mode];
 
+  // Mobile drag controls - restricts drag to handle only
+  const mobileDragControls = useDragControls();
+
   // MOBILE UI - 3-Mode Bottom Sheet with swipe gestures
   if (isMobile) {
     // Use dynamic config for heights
@@ -760,20 +763,23 @@ function TrinityModal({ onClose }: TrinityModalProps) {
             mobileMode === 'immersive' ? 'rounded-none' : ''
           }`}
           drag="y"
+          dragControls={mobileDragControls}
+          dragListener={false}
           dragConstraints={{ top: 0, bottom: 0 }}
           dragElastic={0.2}
           onDragEnd={handleDragEnd}
         >
-            {/* Drag Handle - Touch target for swipe */}
+            {/* Drag Handle - Touch target for swipe (ONLY this triggers drag) */}
             <div 
-              className="flex justify-center py-3 shrink-0 cursor-grab active:cursor-grabbing touch-pan-y"
-              style={{ touchAction: 'pan-y' }}
+              className="flex justify-center py-4 shrink-0 cursor-grab active:cursor-grabbing"
+              style={{ touchAction: 'none' }}
+              onPointerDown={(e) => mobileDragControls.start(e)}
             >
               <div className="w-12 h-1.5 bg-muted-foreground/40 rounded-full" />
             </div>
 
-            {/* Header */}
-            <div className="flex items-center justify-between px-4 pb-2 shrink-0">
+            {/* Header - touch-action prevents drag interference */}
+            <div className="flex items-center justify-between px-4 pb-2 shrink-0" style={{ touchAction: 'manipulation' }}>
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 flex items-center justify-center overflow-visible">
                   <TrinityRedesign size={36} mini mode={chatMutation.isPending ? "THINKING" : "IDLE"} />
@@ -834,9 +840,9 @@ function TrinityModal({ onClose }: TrinityModalProps) {
               </div>
             )}
 
-            {/* Messages (hidden in peek mode) */}
+            {/* Messages (hidden in peek mode) - touch-action prevents drag interference */}
             {mobileMode !== 'peek' && (
-              <ScrollArea className="flex-1 px-4" ref={scrollRef}>
+              <ScrollArea className="flex-1 px-4" ref={scrollRef} style={{ touchAction: 'pan-y' }}>
                 {messages.length === 0 && !isThinking && (
                   <div className="flex flex-col items-center justify-center h-full text-center py-8">
                     <div className="w-20 h-20 flex items-center justify-center mb-4 overflow-visible">
