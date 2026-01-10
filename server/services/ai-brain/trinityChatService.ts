@@ -796,24 +796,18 @@ class TrinityChatService {
     mode: ConversationMode
   ): Promise<string> {
     try {
-      // Use different model tiers based on mode
-      const modelTier = mode === 'business' ? 'CONVERSATIONAL' : 'CONVERSATIONAL';
-
-      const response = await geminiClient.generateContent({
-        modelTier,
-        systemInstruction: systemPrompt,
-        contents: [
-          ...history.map(h => ({
-            role: h.role === 'user' ? 'user' : 'model',
-            parts: [{ text: h.content }],
-          })),
-          { role: 'user', parts: [{ text: message }] },
-        ],
-        generationConfig: {
-          temperature: 0.9,
-          maxOutputTokens: 1024,
-          topP: 0.95,
-        },
+      // Use the unified geminiClient.generate() method
+      const response = await geminiClient.generate({
+        featureKey: 'trinity_chat',
+        systemPrompt,
+        userMessage: message,
+        conversationHistory: history.map(h => ({
+          role: h.role === 'user' ? 'user' as const : 'model' as const,
+          content: h.content,
+        })),
+        temperature: 0.9,
+        maxTokens: 1024,
+        modelTier: 'CONVERSATIONAL',
       });
 
       return response.text || "I'm sorry, I couldn't generate a response. Could you try rephrasing that?";
@@ -884,13 +878,13 @@ If no significant insight, respond with:
 {"detected": false}
 `;
 
-      const result = await geminiClient.generateContent({
+      const result = await geminiClient.generate({
+        featureKey: 'trinity_insight_analysis',
+        systemPrompt: 'You are an insight detection system. Respond only with valid JSON.',
+        userMessage: analysisPrompt,
+        temperature: 0.3,
+        maxTokens: 256,
         modelTier: 'SIMPLE',
-        contents: [{ role: 'user', parts: [{ text: analysisPrompt }] }],
-        generationConfig: {
-          temperature: 0.3,
-          maxOutputTokens: 256,
-        },
       });
 
       const parsed = JSON.parse(result.text || '{"detected": false}');
