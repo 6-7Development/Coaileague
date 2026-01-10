@@ -31,9 +31,10 @@ interface LoadingProps {
 
 export function ResponsiveLoading({
   isVisible = true,
-  message = "Loading...",
+  message,
   submessage,
   status = "loading",
+  progress,
 }: LoadingProps) {
   const { isLoadingBlocked } = useUniversalLoadingGate();
   
@@ -55,6 +56,8 @@ export function ResponsiveLoading({
       message={displayMessage}
       subMessage={submessage}
       variant="fullscreen"
+      status={status as any}
+      progress={progress}
     />
   );
 }
