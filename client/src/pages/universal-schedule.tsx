@@ -37,7 +37,7 @@ import {
   Calendar, Clock, Users, Edit2, Trash2, Copy, ChevronLeft, ChevronRight, Plus, Download,
   Bot, CheckCircle, AlertCircle, BarChart3, Play, X, Camera, MessageSquare, FileText,
   CheckSquare, MapPin, Menu, Sparkles, Zap, Bell, Settings, Shield, UserCheck, XCircle,
-  PauseCircle, Send, AlertTriangle, Repeat, ArrowRightLeft, CalendarDays, CopyPlus
+  PauseCircle, Send, AlertTriangle, Repeat, ArrowRightLeft, CalendarDays, CopyPlus, Loader2
 } from 'lucide-react';
 import type { Shift, Employee, Client, ShiftOrder, RecurringShiftPattern, ShiftSwapRequest } from '@shared/schema';
 import ScheduleMobileFirst from '@/pages/schedule-mobile-first';
@@ -291,6 +291,37 @@ export default function UniversalSchedule() {
         variant: 'destructive',
         title: 'Failed to publish schedule',
         description: error.message,
+      });
+    }
+  });
+
+  // Generate AI schedule mutation
+  const generateScheduleMutation = useMutation({
+    mutationFn: async () => {
+      if (!workspaceId) throw new Error('Workspace ID required');
+      const nextWeekStart = new Date(weekStart);
+      nextWeekStart.setDate(nextWeekStart.getDate() + 7);
+      return await apiRequest('POST', '/api/scheduleos/smart-generate', {
+        workspaceId,
+        openShiftIds: [], /* Will be auto-filled by AI */
+        constraints: {},
+      });
+    },
+    onSuccess: async (response) => {
+      const data = await response.json().catch(() => ({}));
+      queryClient.invalidateQueries({ queryKey: ['/api/shifts'] });
+      toast({
+        title: 'Schedule Generated',
+        description: data.message || 'Trinity AI has optimized next week\'s schedule',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: 'destructive',
+        title: 'Failed to generate schedule',
+        description: error.message?.includes('402') 
+          ? 'This feature requires a Professional subscription or credits' 
+          : error.message,
       });
     }
   });
@@ -1895,19 +1926,199 @@ export default function UniversalSchedule() {
             </div>
 
             <Button
-              className="w-full bg-gradient-to-r from-[#00BFFF] to-[#FFD700] hover:from-[#00BFFF]/90 hover:to-[#FFD700]/90"
-              onClick={() => {
-                const nextWeekStart = new Date(weekStart);
-                nextWeekStart.setDate(nextWeekStart.getDate() + 7);
-                toast({
-                  title: 'Generating Schedule...',
-                  description: 'Trinity AI is optimizing next week\'s schedule',
-                });
-              }}
+              className="w-full bg-gradient-to-r from-purple-500 via-teal-500 to-amber-500 hover:from-purple-500/90 hover:via-teal-500/90 hover:to-amber-500/90"
+              onClick={() => generateScheduleMutation.mutate()}
+              disabled={generateScheduleMutation.isPending}
               data-testid="button-generate-schedule"
             >
-              <Play className="w-4 h-4 mr-2" />
-              Generate Schedule for Next Week
+              {generateScheduleMutation.isPending ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Play className="w-4 h-4 mr-2" />
+              )}
+              {generateScheduleMutation.isPending ? 'Generating...' : 'Generate Schedule for Next Week'}
+            </Button>
+            <Button
+              className="w-full bg-gradient-to-r from-purple-500 via-teal-500 to-amber-500 hover:from-purple-500/90 hover:via-teal-500/90 hover:to-amber-500/90"
+              onClick={() => generateScheduleMutation.mutate()}
+              disabled={generateScheduleMutation.isPending}
+              data-testid="button-generate-schedule"
+            >
+              {generateScheduleMutation.isPending ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Play className="w-4 h-4 mr-2" />
+              )}
+              {generateScheduleMutation.isPending ? 'Generating...' : 'Generate Schedule for Next Week'}
+            </Button>
+            <Button
+              className="w-full bg-gradient-to-r from-purple-500 via-teal-500 to-amber-500 hover:from-purple-500/90 hover:via-teal-500/90 hover:to-amber-500/90"
+              onClick={() => generateScheduleMutation.mutate()}
+              disabled={generateScheduleMutation.isPending}
+              data-testid="button-generate-schedule"
+            >
+              {generateScheduleMutation.isPending ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Play className="w-4 h-4 mr-2" />
+              )}
+              {generateScheduleMutation.isPending ? 'Generating...' : 'Generate Schedule for Next Week'}
+            </Button>
+            <Button
+              className="w-full bg-gradient-to-r from-purple-500 via-teal-500 to-amber-500 hover:from-purple-500/90 hover:via-teal-500/90 hover:to-amber-500/90"
+              onClick={() => generateScheduleMutation.mutate()}
+              disabled={generateScheduleMutation.isPending}
+              data-testid="button-generate-schedule"
+            >
+              {generateScheduleMutation.isPending ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Play className="w-4 h-4 mr-2" />
+              )}
+              {generateScheduleMutation.isPending ? 'Generating...' : 'Generate Schedule for Next Week'}
+            </Button>
+            <Button
+              className="w-full bg-gradient-to-r from-purple-500 via-teal-500 to-amber-500 hover:from-purple-500/90 hover:via-teal-500/90 hover:to-amber-500/90"
+              onClick={() => generateScheduleMutation.mutate()}
+              disabled={generateScheduleMutation.isPending}
+              data-testid="button-generate-schedule"
+            >
+              {generateScheduleMutation.isPending ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Play className="w-4 h-4 mr-2" />
+              )}
+              {generateScheduleMutation.isPending ? 'Generating...' : 'Generate Schedule for Next Week'}
+            </Button>
+            <Button
+              className="w-full bg-gradient-to-r from-purple-500 via-teal-500 to-amber-500 hover:from-purple-500/90 hover:via-teal-500/90 hover:to-amber-500/90"
+              onClick={() => generateScheduleMutation.mutate()}
+              disabled={generateScheduleMutation.isPending}
+              data-testid="button-generate-schedule"
+            >
+              {generateScheduleMutation.isPending ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Play className="w-4 h-4 mr-2" />
+              )}
+              {generateScheduleMutation.isPending ? 'Generating...' : 'Generate Schedule for Next Week'}
+            </Button>
+            <Button
+              className="w-full bg-gradient-to-r from-purple-500 via-teal-500 to-amber-500 hover:from-purple-500/90 hover:via-teal-500/90 hover:to-amber-500/90"
+              onClick={() => generateScheduleMutation.mutate()}
+              disabled={generateScheduleMutation.isPending}
+              data-testid="button-generate-schedule"
+            >
+              {generateScheduleMutation.isPending ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Play className="w-4 h-4 mr-2" />
+              )}
+              {generateScheduleMutation.isPending ? 'Generating...' : 'Generate Schedule for Next Week'}
+            </Button>
+            <Button
+              className="w-full bg-gradient-to-r from-purple-500 via-teal-500 to-amber-500 hover:from-purple-500/90 hover:via-teal-500/90 hover:to-amber-500/90"
+              onClick={() => generateScheduleMutation.mutate()}
+              disabled={generateScheduleMutation.isPending}
+              data-testid="button-generate-schedule"
+            >
+              {generateScheduleMutation.isPending ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Play className="w-4 h-4 mr-2" />
+              )}
+              {generateScheduleMutation.isPending ? 'Generating...' : 'Generate Schedule for Next Week'}
+            </Button>
+            <Button
+              className="w-full bg-gradient-to-r from-purple-500 via-teal-500 to-amber-500 hover:from-purple-500/90 hover:via-teal-500/90 hover:to-amber-500/90"
+              onClick={() => generateScheduleMutation.mutate()}
+              disabled={generateScheduleMutation.isPending}
+              data-testid="button-generate-schedule"
+            >
+              {generateScheduleMutation.isPending ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Play className="w-4 h-4 mr-2" />
+              )}
+              {generateScheduleMutation.isPending ? 'Generating...' : 'Generate Schedule for Next Week'}
+            </Button>
+            <Button
+              className="w-full bg-gradient-to-r from-purple-500 via-teal-500 to-amber-500 hover:from-purple-500/90 hover:via-teal-500/90 hover:to-amber-500/90"
+              onClick={() => generateScheduleMutation.mutate()}
+              disabled={generateScheduleMutation.isPending}
+              data-testid="button-generate-schedule"
+            >
+              {generateScheduleMutation.isPending ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Play className="w-4 h-4 mr-2" />
+              )}
+              {generateScheduleMutation.isPending ? 'Generating...' : 'Generate Schedule for Next Week'}
+            </Button>
+            <Button
+              className="w-full bg-gradient-to-r from-purple-500 via-teal-500 to-amber-500 hover:from-purple-500/90 hover:via-teal-500/90 hover:to-amber-500/90"
+              onClick={() => generateScheduleMutation.mutate()}
+              disabled={generateScheduleMutation.isPending}
+              data-testid="button-generate-schedule"
+            >
+              {generateScheduleMutation.isPending ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Play className="w-4 h-4 mr-2" />
+              )}
+              {generateScheduleMutation.isPending ? 'Generating...' : 'Generate Schedule for Next Week'}
+            </Button>
+            <Button
+              className="w-full bg-gradient-to-r from-purple-500 via-teal-500 to-amber-500 hover:from-purple-500/90 hover:via-teal-500/90 hover:to-amber-500/90"
+              onClick={() => generateScheduleMutation.mutate()}
+              disabled={generateScheduleMutation.isPending}
+              data-testid="button-generate-schedule"
+            >
+              {generateScheduleMutation.isPending ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Play className="w-4 h-4 mr-2" />
+              )}
+              {generateScheduleMutation.isPending ? 'Generating...' : 'Generate Schedule for Next Week'}
+            </Button>
+            <Button
+              className="w-full bg-gradient-to-r from-purple-500 via-teal-500 to-amber-500 hover:from-purple-500/90 hover:via-teal-500/90 hover:to-amber-500/90"
+              onClick={() => generateScheduleMutation.mutate()}
+              disabled={generateScheduleMutation.isPending}
+              data-testid="button-generate-schedule"
+            >
+              {generateScheduleMutation.isPending ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Play className="w-4 h-4 mr-2" />
+              )}
+              {generateScheduleMutation.isPending ? 'Generating...' : 'Generate Schedule for Next Week'}
+            </Button>
+            <Button
+              className="w-full bg-gradient-to-r from-purple-500 via-teal-500 to-amber-500 hover:from-purple-500/90 hover:via-teal-500/90 hover:to-amber-500/90"
+              onClick={() => generateScheduleMutation.mutate()}
+              disabled={generateScheduleMutation.isPending}
+              data-testid="button-generate-schedule"
+            >
+              {generateScheduleMutation.isPending ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Play className="w-4 h-4 mr-2" />
+              )}
+              {generateScheduleMutation.isPending ? 'Generating...' : 'Generate Schedule for Next Week'}
+            </Button>
+            <Button
+              className="w-full bg-gradient-to-r from-purple-500 via-teal-500 to-amber-500 hover:from-purple-500/90 hover:via-teal-500/90 hover:to-amber-500/90"
+              onClick={() => generateScheduleMutation.mutate()}
+              disabled={generateScheduleMutation.isPending}
+              data-testid="button-generate-schedule"
+            >
+              {generateScheduleMutation.isPending ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Play className="w-4 h-4 mr-2" />
+              )}
+              {generateScheduleMutation.isPending ? 'Generating...' : 'Generate Schedule for Next Week'}
             </Button>
             
             <Button
