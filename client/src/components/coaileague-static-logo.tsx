@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
-import { logoConfig, getLogoSize } from "@/config/logoConfig";
+import { logoConfig } from "@/config/logoConfig";
+import { ColorfulCelticKnot } from "@/components/ui/colorful-celtic-knot";
 
 interface CoAIleagueStaticLogoProps {
   size?: "sm" | "md" | "lg" | "xl" | "hero";
@@ -9,6 +10,7 @@ interface CoAIleagueStaticLogoProps {
 
 /**
  * CoAIleague Static Logo - Non-Animated
+ * Uses the colorful 3-ribbon Celtic knot (purple/teal/gold)
  * Use this in forms, dialogs, modals, and places where animation doesn't fit
  */
 export function CoAIleagueStaticLogo({
@@ -16,32 +18,13 @@ export function CoAIleagueStaticLogo({
   variant = "icon",
   className,
 }: CoAIleagueStaticLogoProps) {
-  const sizeConfig = getLogoSize(size);
-
-  const StaticAFLogo = () => (
-    <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
-      <defs>
-        <linearGradient id="staticWhiteGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#FFFFFF" />
-          <stop offset="100%" stopColor="#F0F0F0" />
-        </linearGradient>
-      </defs>
-
-      {/* Letter A - Left side - CLEAN & STATIC */}
-      <g>
-        <line x1="32" y1="25" x2="18" y2="70" stroke="url(#staticWhiteGrad)" strokeWidth="5" strokeLinecap="round" />
-        <line x1="32" y1="25" x2="46" y2="70" stroke="url(#staticWhiteGrad)" strokeWidth="5" strokeLinecap="round" />
-        <line x1="23" y1="48" x2="41" y2="48" stroke="url(#staticWhiteGrad)" strokeWidth="5" strokeLinecap="round" />
-      </g>
-
-      {/* Letter F - Right side - CLEAN & STATIC */}
-      <g>
-        <line x1="68" y1="25" x2="68" y2="70" stroke="url(#staticWhiteGrad)" strokeWidth="5" strokeLinecap="round" />
-        <line x1="68" y1="25" x2="82" y2="25" stroke="url(#staticWhiteGrad)" strokeWidth="5" strokeLinecap="round" />
-        <line x1="68" y1="47" x2="80" y2="47" stroke="url(#staticWhiteGrad)" strokeWidth="5" strokeLinecap="round" />
-      </g>
-    </svg>
-  );
+  const knotSizeMap: Record<string, "xs" | "sm" | "md" | "lg" | "xl"> = {
+    sm: "xs",
+    md: "sm",
+    lg: "md",
+    xl: "lg",
+    hero: "xl",
+  };
 
   if (variant === "wordmark") {
     return (
@@ -61,36 +44,25 @@ export function CoAIleagueStaticLogo({
       <div
         className={cn(
           "relative inline-flex items-center justify-center",
-          logoConfig.badge.shape,
-          logoConfig.badge.gradient,
-          logoConfig.badge.shadow,
-          sizeConfig.container,
-          "border border-white/20",
           className
         )}
+        data-testid="coaileague-static-logo-icon"
       >
-        <div className="relative z-10 w-3/4 h-3/4">
-          <StaticAFLogo />
-        </div>
+        <ColorfulCelticKnot 
+          size={knotSizeMap[size] || "sm"}
+          animated={false}
+        />
       </div>
     );
   }
 
   return (
-    <div className={cn("flex items-center gap-4", className)}>
-      <div
-        className={cn(
-          "relative inline-flex items-center justify-center shrink-0",
-          logoConfig.badge.shape,
-          logoConfig.badge.gradient,
-          logoConfig.badge.shadow,
-          sizeConfig.container,
-          "border border-white/20"
-        )}
-      >
-        <div className="relative z-10 w-3/4 h-3/4">
-          <StaticAFLogo />
-        </div>
+    <div className={cn("flex items-center gap-4", className)} data-testid="coaileague-static-logo-full">
+      <div className="relative inline-flex items-center justify-center shrink-0">
+        <ColorfulCelticKnot 
+          size={knotSizeMap[size] || "sm"}
+          animated={false}
+        />
       </div>
 
       <div className="flex flex-col gap-0.5">
