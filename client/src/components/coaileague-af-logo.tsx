@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 import { logoConfig, getLogoSize } from "@/config/logoConfig";
-import { Sparkles } from "lucide-react";
+import { ColorfulCelticKnot } from "@/components/ui/colorful-celtic-knot";
 
 interface CoAIleagueAFLogoProps {
   size?: "sm" | "md" | "lg" | "xl" | "hero";
@@ -10,23 +10,21 @@ interface CoAIleagueAFLogoProps {
 }
 
 /**
- * CoAIleague Gradient Logo - Professional AI-themed gradient badge
- * Uses Sparkles icon instead of text for cleaner branding
+ * CoAIleague Logo - Uses the colorful 3-ribbon Celtic knot (purple/teal/gold)
+ * Unified branding with Trinity mascot
  */
 export function CoAIleagueAFLogo({
   size = "md",
   variant = "icon",
-  animated = true,
+  animated = false,
   className,
 }: CoAIleagueAFLogoProps) {
-  const sizeConfig = getLogoSize(size);
-
-  const iconSizes = {
-    sm: "h-3 w-3",
-    md: "h-4 w-4",
-    lg: "h-5 w-5",
-    xl: "h-6 w-6",
-    hero: "h-8 w-8",
+  const knotSizeMap: Record<string, "xs" | "sm" | "md" | "lg" | "xl"> = {
+    sm: "xs",
+    md: "sm",
+    lg: "md",
+    xl: "lg",
+    hero: "xl",
   };
 
   if (variant === "wordmark") {
@@ -47,37 +45,28 @@ export function CoAIleagueAFLogo({
       <div
         className={cn(
           "relative inline-flex items-center justify-center",
-          "rounded-full",
-          "bg-gradient-to-br from-teal-400 via-cyan-500 to-blue-600",
-          "shadow-lg border border-cyan-300/30",
-          "group hover:shadow-xl hover:shadow-cyan-500/30 transition-shadow",
-          sizeConfig.container,
           className
         )}
+        data-testid="coaileague-logo-icon"
       >
-        <div className="absolute inset-0 opacity-0 group-hover:opacity-40 bg-gradient-to-tr from-cyan-300 to-transparent transition-opacity duration-500 rounded-full blur-lg" />
-        <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-white/20 to-transparent opacity-40" />
-        <Sparkles className={cn("relative text-white z-10", iconSizes[size])} />
+        <ColorfulCelticKnot 
+          size={knotSizeMap[size] || "sm"}
+          animated={animated}
+          animationSpeed="slow"
+        />
       </div>
     );
   }
 
   // Full variant with text
   return (
-    <div className={cn("flex items-center gap-3 md:gap-4", className)}>
-      <div
-        className={cn(
-          "relative inline-flex items-center justify-center shrink-0",
-          "rounded-full",
-          "bg-gradient-to-br from-teal-400 via-cyan-500 to-blue-600",
-          "shadow-lg border border-cyan-300/30",
-          "group hover:shadow-xl hover:shadow-cyan-500/30 transition-all",
-          sizeConfig.container,
-        )}
-      >
-        <div className="absolute inset-0 opacity-0 group-hover:opacity-40 bg-gradient-to-tr from-cyan-300 to-transparent transition-opacity duration-500 rounded-full blur-lg" />
-        <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-white/20 to-transparent opacity-40" />
-        <Sparkles className={cn("relative text-white z-10", iconSizes[size])} />
+    <div className={cn("flex items-center gap-3 md:gap-4", className)} data-testid="coaileague-logo-full">
+      <div className="relative inline-flex items-center justify-center shrink-0">
+        <ColorfulCelticKnot 
+          size={knotSizeMap[size] || "sm"}
+          animated={animated}
+          animationSpeed="slow"
+        />
       </div>
 
       <div className="flex flex-col gap-0.5 min-w-0">
