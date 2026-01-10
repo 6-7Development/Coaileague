@@ -214,9 +214,16 @@ export function OverlayControllerProvider({ children }: { children: ReactNode })
       {activeOverlay ? (
         <TrinityLoadingOverlay
           isLoading={true}
-          message={activeOverlay.title || (activeOverlay.status === "success" ? "Success!" : activeOverlay.status === "error" ? "Error" : "Processing...")}
+          message={activeOverlay.title || (
+            activeOverlay.status === "success" ? "Success!" : 
+            activeOverlay.status === "error" ? "Error" : 
+            activeOverlay.status === "denied" ? "Access Denied" :
+            "Processing..."
+          )}
           subMessage={activeOverlay.submessage}
           variant="fullscreen"
+          status={activeOverlay.status as any || "loading"}
+          progress={activeOverlay.progress}
         />
       ) : null}
     </OverlayControllerContext.Provider>

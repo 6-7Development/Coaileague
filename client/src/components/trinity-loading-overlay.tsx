@@ -12,6 +12,8 @@ import { useEffect, useState, memo, useId } from 'react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 
+export type TrinityOverlayStatus = 'loading' | 'success' | 'error' | 'denied' | 'info';
+
 interface TrinityLoadingOverlayProps {
   isLoading: boolean;
   message?: string;
@@ -19,6 +21,8 @@ interface TrinityLoadingOverlayProps {
   variant?: 'fullscreen' | 'inline' | 'card';
   size?: 'sm' | 'md' | 'lg';
   className?: string;
+  status?: TrinityOverlayStatus;
+  progress?: number;
 }
 
 const LOADING_MESSAGES = [
@@ -145,6 +149,106 @@ function AnimatedTrinityLogo({ size = 80, isAnimating = true }: { size?: number;
   );
 }
 
+/**
+ * Status icon component for success/error/denied states
+ */
+function StatusIcon({ status, size }: { status: TrinityOverlayStatus; size: number }) {
+  const iconSize = size * 0.6;
+  
+  if (status === 'success') {
+    return (
+      <motion.div
+        initial={{ scale: 0 }}
+        animate={{ scale: 1 }}
+        transition={{ type: "spring", damping: 15, stiffness: 300 }}
+        className="rounded-full bg-gradient-to-br from-green-400 to-emerald-500 p-4"
+        style={{ width: size, height: size }}
+      >
+        <svg viewBox="0 0 24 24" fill="none" width={iconSize} height={iconSize} className="text-white mx-auto">
+          <motion.path
+            d="M5 13l4 4L19 7"
+            stroke="currentColor"
+            strokeWidth={3}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            initial={{ pathLength: 0 }}
+            animate={{ pathLength: 1 }}
+            transition={{ duration: 0.4, delay: 0.2 }}
+          />
+        </svg>
+      </motion.div>
+    );
+  }
+  
+  if (status === 'error') {
+    return (
+      <motion.div
+        initial={{ scale: 0 }}
+        animate={{ scale: 1 }}
+        transition={{ type: "spring", damping: 15, stiffness: 300 }}
+        className="rounded-full bg-gradient-to-br from-red-400 to-rose-500 p-4 flex items-center justify-center"
+        style={{ width: size, height: size }}
+      >
+        <svg viewBox="0 0 24 24" fill="none" width={iconSize} height={iconSize} className="text-white">
+          <motion.path
+            d="M6 6l12 12M6 18L18 6"
+            stroke="currentColor"
+            strokeWidth={3}
+            strokeLinecap="round"
+            initial={{ pathLength: 0 }}
+            animate={{ pathLength: 1 }}
+            transition={{ duration: 0.3, delay: 0.2 }}
+          />
+        </svg>
+      </motion.div>
+    );
+  }
+  
+  if (status === 'denied') {
+    return (
+      <motion.div
+        initial={{ scale: 0 }}
+        animate={{ scale: 1 }}
+        transition={{ type: "spring", damping: 15, stiffness: 300 }}
+        className="rounded-full bg-gradient-to-br from-amber-400 to-orange-500 p-4 flex items-center justify-center"
+        style={{ width: size, height: size }}
+      >
+        <svg viewBox="0 0 24 24" fill="none" width={iconSize} height={iconSize} className="text-white">
+          <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth={2.5} />
+          <motion.path
+            d="M12 8v4M12 16h.01"
+            stroke="currentColor"
+            strokeWidth={2.5}
+            strokeLinecap="round"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.3, delay: 0.3 }}
+          />
+        </svg>
+      </motion.div>
+    );
+  }
+  
+  if (status === 'info') {
+    return (
+      <motion.div
+        initial={{ scale: 0 }}
+        animate={{ scale: 1 }}
+        transition={{ type: "spring", damping: 15, stiffness: 300 }}
+        className="rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 p-4 flex items-center justify-center"
+        style={{ width: size, height: size }}
+      >
+        <svg viewBox="0 0 24 24" fill="none" width={iconSize} height={iconSize} className="text-white">
+          <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth={2.5} />
+          <path d="M12 16v-4M12 8h.01" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" />
+        </svg>
+      </motion.div>
+    );
+  }
+  
+  return null;
+}
+
 export const TrinityLoadingOverlay = memo(function TrinityLoadingOverlay({
   isLoading,
   message,
@@ -152,12 +256,14 @@ export const TrinityLoadingOverlay = memo(function TrinityLoadingOverlay({
   variant = 'fullscreen',
   size = 'md',
   className,
+  status = 'loading',
+  progress,
 }: TrinityLoadingOverlayProps) {
   const [messageIndex, setMessageIndex] = useState(0);
   const [dots, setDots] = useState('');
 
   useEffect(() => {
-    if (!isLoading) return;
+    if (!isLoading || status !== 'loading') return;
 
     const messageInterval = setInterval(() => {
       setMessageIndex(i => (i + 1) % LOADING_MESSAGES.length);
@@ -171,10 +277,21 @@ export const TrinityLoadingOverlay = memo(function TrinityLoadingOverlay({
       clearInterval(messageInterval);
       clearInterval(dotsInterval);
     };
-  }, [isLoading]);
+  }, [isLoading, status]);
 
   const logoSize = size === 'sm' ? 56 : size === 'lg' ? 140 : 100;
-  const displayMessage = message || LOADING_MESSAGES[messageIndex];
+  const displayMessage = message || (status === 'loading' ? LOADING_MESSAGES[messageIndex] : message);
+  
+  // Color theming based on status
+  const statusColors = {
+    loading: 'from-teal-500 via-cyan-500 to-blue-500',
+    success: 'from-green-500 via-emerald-500 to-teal-500',
+    error: 'from-red-500 via-rose-500 to-pink-500',
+    denied: 'from-amber-500 via-orange-500 to-red-500',
+    info: 'from-blue-500 via-indigo-500 to-purple-500',
+  };
+  
+  const isLoadingStatus = status === 'loading';
 
   // Fullscreen variant uses AnimatePresence for smooth transitions
   if (variant === 'fullscreen') {
@@ -193,7 +310,7 @@ export const TrinityLoadingOverlay = memo(function TrinityLoadingOverlay({
             )}
             data-testid="trinity-loading-overlay"
           >
-            {/* Centered Trinity Logo with GetSling-style animation */}
+            {/* Centered Logo or Status Icon */}
             <motion.div
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
@@ -205,8 +322,28 @@ export const TrinityLoadingOverlay = memo(function TrinityLoadingOverlay({
                 delay: 0.1
               }}
             >
-              <AnimatedTrinityLogo size={logoSize} isAnimating={isLoading} />
+              {isLoadingStatus ? (
+                <AnimatedTrinityLogo size={logoSize} isAnimating={true} />
+              ) : (
+                <StatusIcon status={status} size={logoSize} />
+              )}
             </motion.div>
+            
+            {/* Progress bar for loading with progress */}
+            {isLoadingStatus && progress !== undefined && progress > 0 && (
+              <motion.div
+                initial={{ opacity: 0, width: 0 }}
+                animate={{ opacity: 1, width: 200 }}
+                className="mt-4 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden"
+              >
+                <motion.div
+                  className="h-full bg-gradient-to-r from-teal-500 via-cyan-500 to-blue-500 rounded-full"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${progress}%` }}
+                  transition={{ duration: 0.3, ease: "easeOut" }}
+                />
+              </motion.div>
+            )}
             
             {/* Message below logo */}
             <motion.div
@@ -216,10 +353,11 @@ export const TrinityLoadingOverlay = memo(function TrinityLoadingOverlay({
               className="text-center space-y-2 mt-6"
             >
               <p className={cn(
-                'font-semibold bg-gradient-to-r from-teal-500 via-cyan-500 to-blue-500 bg-clip-text text-transparent',
+                'font-semibold bg-gradient-to-r bg-clip-text text-transparent',
+                statusColors[status],
                 size === 'sm' ? 'text-sm' : size === 'lg' ? 'text-xl' : 'text-base'
               )}>
-                {displayMessage}{dots}
+                {displayMessage}{isLoadingStatus ? dots : ''}
               </p>
               {subMessage && (
                 <p className="text-sm text-muted-foreground">{subMessage}</p>
