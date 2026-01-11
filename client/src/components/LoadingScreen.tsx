@@ -12,9 +12,9 @@ export function LoadingScreen() {
       <div className="relative mb-8">
         <ColorfulCelticKnot 
           size="2xl" 
-          state="loading" 
+          state="thinking" 
           animated={true}
-          className="animate-trinity-loading"
+          animationSpeed="normal"
         />
       </div>
 
