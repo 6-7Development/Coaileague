@@ -385,7 +385,7 @@ export default function ExpenseApprovalsPage() {
       </Tabs>
 
       <Dialog open={reviewDialogOpen} onOpenChange={handleCloseDialog}>
-        <DialogContent data-testid="dialog-review">
+        <DialogContent size="md" data-testid="dialog-review">
           <DialogHeader>
             <DialogTitle>
               {reviewAction === 'approve' ? 'Approve' : 'Reject'} Expense

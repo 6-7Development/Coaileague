@@ -116,7 +116,7 @@ export default function PlatformUsers() {
               Add Platform User
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent size="md">
             <DialogHeader>
               <DialogTitle>Create Platform User</DialogTitle>
               <DialogDescription>

@@ -807,7 +807,7 @@ export default function LeadersHub() {
 
       {/* Reset Password Dialog */}
       <Dialog open={resetPasswordDialog} onOpenChange={setResetPasswordDialog}>
-        <DialogContent data-testid="dialog-reset-password">
+        <DialogContent size="md" data-testid="dialog-reset-password">
           <DialogHeader>
             <DialogTitle>Reset Employee Password</DialogTitle>
             <DialogDescription>
@@ -872,7 +872,7 @@ export default function LeadersHub() {
 
       {/* Unlock Account Dialog */}
       <Dialog open={unlockAccountDialog} onOpenChange={setUnlockAccountDialog}>
-        <DialogContent data-testid="dialog-unlock-account">
+        <DialogContent size="md" data-testid="dialog-unlock-account">
           <DialogHeader>
             <DialogTitle>Unlock Employee Account</DialogTitle>
             <DialogDescription>
@@ -937,7 +937,7 @@ export default function LeadersHub() {
 
       {/* Update Contact Dialog */}
       <Dialog open={updateContactDialog} onOpenChange={setUpdateContactDialog}>
-        <DialogContent data-testid="dialog-update-contact">
+        <DialogContent size="md" data-testid="dialog-update-contact">
           <DialogHeader>
             <DialogTitle>Update Contact Information</DialogTitle>
             <DialogDescription>

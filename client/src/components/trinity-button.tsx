@@ -67,12 +67,13 @@ export function TrinityMiniButton({
       size="icon"
       variant="ghost"
       data-testid={testId}
+      title="Ask Trinity AI"
       className={cn(
-        'relative rounded-full hover:bg-blue-500/10',
+        'relative rounded-full hover:bg-blue-500/10 h-10 w-10',
         className
       )}
     >
-      <ColorfulCelticKnot size={20} />
+      <ColorfulCelticKnot size={26} />
     </Button>
   );
 }

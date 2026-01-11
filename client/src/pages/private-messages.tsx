@@ -726,7 +726,7 @@ export default function PrivateMessages() {
 
       {/* New Chat Dialog (Desktop) */}
       <Dialog open={showNewChatDialog && !isMobileDevice} onOpenChange={setShowNewChatDialog}>
-        <DialogContent data-testid="dialog-new-chat">
+        <DialogContent size="md" data-testid="dialog-new-chat">
           <DialogHeader>
             <DialogTitle>Start New Private Chat</DialogTitle>
             <DialogDescription>

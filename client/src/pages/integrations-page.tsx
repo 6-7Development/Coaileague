@@ -633,7 +633,7 @@ export default function IntegrationsPage() {
       </Card>
 
       <Dialog open={disconnectDialog.open} onOpenChange={(open) => setDisconnectDialog({ open, partner: null })}>
-        <DialogContent data-testid="dialog-disconnect">
+        <DialogContent size="md" data-testid="dialog-disconnect">
           <DialogHeader>
             <DialogTitle>Stop Using {disconnectDialog.partner === 'quickbooks' ? 'QuickBooks' : 'Gusto'}?</DialogTitle>
             <DialogDescription>
@@ -662,7 +662,7 @@ export default function IntegrationsPage() {
       </Dialog>
 
       <Dialog open={hrisDisconnectDialog.open} onOpenChange={(open) => setHrisDisconnectDialog({ open, provider: null })}>
-        <DialogContent data-testid="dialog-hris-disconnect">
+        <DialogContent size="md" data-testid="dialog-hris-disconnect">
           <DialogHeader>
             <DialogTitle>Disconnect HR System?</DialogTitle>
             <DialogDescription>

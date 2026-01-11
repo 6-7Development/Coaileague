@@ -216,7 +216,7 @@ export default function PoliciesPage() {
       </Tabs>
 
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent data-testid="dialog-create-policy">
+        <DialogContent size="md" data-testid="dialog-create-policy">
           <DialogHeader>
             <DialogTitle>Create New Policy</DialogTitle>
           </DialogHeader>
@@ -302,7 +302,7 @@ export default function PoliciesPage() {
       </Dialog>
 
       <Dialog open={showAcknowledgeDialog} onOpenChange={setShowAcknowledgeDialog}>
-        <DialogContent data-testid="dialog-acknowledge">
+        <DialogContent size="md" data-testid="dialog-acknowledge">
           <DialogHeader>
             <DialogTitle>{selectedPolicy?.title}</DialogTitle>
           </DialogHeader>

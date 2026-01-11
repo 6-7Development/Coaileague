@@ -314,7 +314,7 @@ export function TrinityCreditsCard() {
                 <KeyRound className="h-4 w-4" />
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent size="sm">
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
                   <KeyRound className="h-5 w-5" />

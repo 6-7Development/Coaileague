@@ -647,7 +647,7 @@ export default function AIIntegrations() {
 
       {/* Connect Integration Dialog */}
       <Dialog open={showConnectDialog} onOpenChange={setShowConnectDialog}>
-        <DialogContent data-testid="dialog-connect-integration">
+        <DialogContent size="md" data-testid="dialog-connect-integration">
           <DialogHeader>
             <DialogTitle>Connect {selectedIntegration?.name}</DialogTitle>
             <DialogDescription>
@@ -680,7 +680,7 @@ export default function AIIntegrations() {
 
       {/* Create API Key Dialog */}
       <Dialog open={showApiKeyDialog} onOpenChange={setShowApiKeyDialog}>
-        <DialogContent data-testid="dialog-create-api-key">
+        <DialogContent size="md" data-testid="dialog-create-api-key">
           <DialogHeader>
             <DialogTitle>Create API Key</DialogTitle>
             <DialogDescription>
@@ -716,7 +716,7 @@ export default function AIIntegrations() {
 
       {/* Create Webhook Dialog */}
       <Dialog open={showWebhookDialog} onOpenChange={setShowWebhookDialog}>
-        <DialogContent data-testid="dialog-create-webhook">
+        <DialogContent size="md" data-testid="dialog-create-webhook">
           <DialogHeader>
             <DialogTitle>Add Webhook</DialogTitle>
             <DialogDescription>
