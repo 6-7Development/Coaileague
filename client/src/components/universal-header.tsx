@@ -8,12 +8,14 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Menu, LogOut, LayoutDashboard, Mail } from "lucide-react";
+import { Menu, LogOut, LayoutDashboard, Mail, Bug } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { CoAIleagueLogo } from "@/components/coaileague-logo";
 import { performLogout } from "@/lib/logoutHandler";
 import { NotificationsPopover } from "@/components/notifications-popover";
 import { AISearchTrigger } from "@/components/ai-search";
+import { TrinityMiniButton } from "@/components/trinity-button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -179,6 +181,21 @@ export function UniversalHeader({ variant = "public" }: UniversalHeaderProps) {
                 <div className={`ml-auto flex items-center ${HEADER_SPACING.rightSideGap}`}>
                   {!user ? (
                     <>
+                      {/* Bug report for guests */}
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setLocation("/support")}
+                            data-testid="button-bug-report-guest"
+                            aria-label="Report an issue"
+                          >
+                            <Bug className="h-5 w-5" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Report an issue</TooltipContent>
+                      </Tooltip>
                       <Button
                         variant="ghost"
                         className="min-h-[44px] px-4"
@@ -199,6 +216,24 @@ export function UniversalHeader({ variant = "public" }: UniversalHeaderProps) {
                     <>
                       {showNotificationFeatures && (
                         <div className={`flex items-center ${HEADER_SPACING.mobileIconGap}`}>
+                          <TrinityMiniButton 
+                            onClick={() => setLocation("/trinity")} 
+                            data-testid="button-trinity-header"
+                          />
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => setLocation("/support")}
+                                data-testid="button-bug-report"
+                                aria-label="Report an issue"
+                              >
+                                <Bug className="h-5 w-5" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Report an issue</TooltipContent>
+                          </Tooltip>
                           <AISearchTrigger />
                           <Button
                             variant="ghost"
@@ -255,6 +290,19 @@ export function UniversalHeader({ variant = "public" }: UniversalHeaderProps) {
               <div className={`flex md:hidden items-center gap-1 shrink-0`}>
                 {showNotificationFeatures && (
                   <div className="flex items-center gap-1">
+                    <TrinityMiniButton 
+                      onClick={() => setLocation("/trinity")} 
+                      data-testid="mobile-button-trinity"
+                    />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setLocation("/support")}
+                      data-testid="mobile-button-bug-report"
+                      aria-label="Report an issue"
+                    >
+                      <Bug className="h-4 w-4" />
+                    </Button>
                     <AISearchTrigger />
                     <Button
                       variant="ghost"
@@ -267,6 +315,18 @@ export function UniversalHeader({ variant = "public" }: UniversalHeaderProps) {
                     </Button>
                     <NotificationsPopover />
                   </div>
+                )}
+                {/* Bug report for unauthenticated mobile users */}
+                {!user && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setLocation("/support")}
+                    data-testid="mobile-button-bug-report-guest"
+                    aria-label="Report an issue"
+                  >
+                    <Bug className="h-4 w-4" />
+                  </Button>
                 )}
                 {/* Visible Login button for unauthenticated mobile users */}
                 {!user && (
