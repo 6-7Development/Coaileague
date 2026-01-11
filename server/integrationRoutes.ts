@@ -288,7 +288,8 @@ router.get('/quickbooks/preview', requireAuth, requireWorkspaceMembership('query
     if (employeeResponse.ok) {
       const empData = await employeeResponse.json();
       const { testing } = INTEGRATIONS.quickbooks;
-      const isSandbox = connection.environment === 'sandbox';
+      // Detect sandbox from env var (connection doesn't store environment field)
+      const isSandbox = (process.env.QUICKBOOKS_ENVIRONMENT || 'sandbox') === 'sandbox';
       
       employees = (empData.QueryResponse?.Employee || []).map((e: any, index: number) => {
         // Get pay rate from QuickBooks if available
@@ -1116,7 +1117,8 @@ router.post('/quickbooks/import', requireAuth, requireWorkspaceMembership(), asy
     }
 
     const { employees: employeesTable, clients: clientsTable } = await import('@shared/schema');
-    const isSandbox = connection.environment === 'sandbox';
+    // Detect sandbox from env var (connection doesn't store environment field)
+    const isSandbox = (process.env.QUICKBOOKS_ENVIRONMENT || 'sandbox') === 'sandbox';
     const { testing } = INTEGRATIONS.quickbooks;
 
     // For sandbox: auto-assign pay rates to employees missing them (enables e2e testing)
