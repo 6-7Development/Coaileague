@@ -1,0 +1,184 @@
+{
+  "platform": "CoAIleague",
+  "version": "2.0",
+  "lastUpdated": "2026-01-11",
+  "totalComponents": 400,
+  "categories": {
+    "ui": {
+      "path": "client/src/components/ui",
+      "count": 55,
+      "description": "Shadcn/Radix-based reusable UI primitives",
+      "components": [
+        { "name": "accordion", "file": "accordion.tsx", "tags": ["layout", "disclosure"] },
+        { "name": "alert", "file": "alert.tsx", "tags": ["feedback", "notification"] },
+        { "name": "alert-dialog", "file": "alert-dialog.tsx", "tags": ["modal", "confirmation"] },
+        { "name": "avatar", "file": "avatar.tsx", "tags": ["display", "user"] },
+        { "name": "badge", "file": "badge.tsx", "tags": ["display", "status"] },
+        { "name": "breadcrumb", "file": "breadcrumb.tsx", "tags": ["navigation"] },
+        { "name": "button", "file": "button.tsx", "tags": ["input", "action"] },
+        { "name": "calendar", "file": "calendar.tsx", "tags": ["input", "date"] },
+        { "name": "card", "file": "card.tsx", "tags": ["layout", "container"] },
+        { "name": "carousel", "file": "carousel.tsx", "tags": ["display", "gallery"] },
+        { "name": "checkbox", "file": "checkbox.tsx", "tags": ["input", "form"] },
+        { "name": "collapsible", "file": "collapsible.tsx", "tags": ["layout", "disclosure"] },
+        { "name": "colorful-celtic-knot", "file": "colorful-celtic-knot.tsx", "tags": ["branding", "trinity", "logo"] },
+        { "name": "command", "file": "command.tsx", "tags": ["input", "search"] },
+        { "name": "context-menu", "file": "context-menu.tsx", "tags": ["menu", "action"] },
+        { "name": "dialog", "file": "dialog.tsx", "tags": ["modal", "overlay"] },
+        { "name": "drawer", "file": "drawer.tsx", "tags": ["modal", "mobile"] },
+        { "name": "dropdown-menu", "file": "dropdown-menu.tsx", "tags": ["menu", "action"] },
+        { "name": "form", "file": "form.tsx", "tags": ["input", "validation"] },
+        { "name": "hover-card", "file": "hover-card.tsx", "tags": ["overlay", "tooltip"] },
+        { "name": "input", "file": "input.tsx", "tags": ["input", "form"] },
+        { "name": "input-otp", "file": "input-otp.tsx", "tags": ["input", "auth"] },
+        { "name": "label", "file": "label.tsx", "tags": ["form", "accessibility"] },
+        { "name": "menubar", "file": "menubar.tsx", "tags": ["navigation", "menu"] },
+        { "name": "navigation-menu", "file": "navigation-menu.tsx", "tags": ["navigation"] },
+        { "name": "pagination", "file": "pagination.tsx", "tags": ["navigation", "data"] },
+        { "name": "popover", "file": "popover.tsx", "tags": ["overlay", "tooltip"] },
+        { "name": "progress", "file": "progress.tsx", "tags": ["feedback", "loading"] },
+        { "name": "radio-group", "file": "radio-group.tsx", "tags": ["input", "form"] },
+        { "name": "resizable", "file": "resizable.tsx", "tags": ["layout"] },
+        { "name": "scroll-area", "file": "scroll-area.tsx", "tags": ["layout", "container"] },
+        { "name": "select", "file": "select.tsx", "tags": ["input", "form"] },
+        { "name": "separator", "file": "separator.tsx", "tags": ["layout"] },
+        { "name": "sheet", "file": "sheet.tsx", "tags": ["modal", "mobile"] },
+        { "name": "sidebar", "file": "sidebar.tsx", "tags": ["layout", "navigation"] },
+        { "name": "skeleton", "file": "skeleton.tsx", "tags": ["feedback", "loading"] },
+        { "name": "slider", "file": "slider.tsx", "tags": ["input", "form"] },
+        { "name": "switch", "file": "switch.tsx", "tags": ["input", "form"] },
+        { "name": "table", "file": "table.tsx", "tags": ["data", "display"] },
+        { "name": "tabs", "file": "tabs.tsx", "tags": ["navigation", "layout"] },
+        { "name": "textarea", "file": "textarea.tsx", "tags": ["input", "form"] },
+        { "name": "toast", "file": "toast.tsx", "tags": ["feedback", "notification"] },
+        { "name": "toaster", "file": "toaster.tsx", "tags": ["feedback", "notification"] },
+        { "name": "toggle", "file": "toggle.tsx", "tags": ["input", "action"] },
+        { "name": "toggle-group", "file": "toggle-group.tsx", "tags": ["input", "action"] },
+        { "name": "tooltip", "file": "tooltip.tsx", "tags": ["overlay", "help"] }
+      ]
+    },
+    "schedule": {
+      "path": "client/src/components/schedule",
+      "count": 15,
+      "description": "Schedule management components",
+      "components": [
+        { "name": "CalendarSyncDialog", "file": "CalendarSyncDialog.tsx", "tags": ["modal", "sync"] },
+        { "name": "ConflictAlerts", "file": "ConflictAlerts.tsx", "tags": ["feedback", "validation"] },
+        { "name": "DayTabs", "file": "DayTabs.tsx", "tags": ["navigation", "date"] },
+        { "name": "EmployeeShiftCard", "file": "EmployeeShiftCard.tsx", "tags": ["display", "shift"] },
+        { "name": "ScheduleFilters", "file": "ScheduleFilters.tsx", "tags": ["input", "filter"] },
+        { "name": "ScheduleGrid", "file": "ScheduleGrid.tsx", "tags": ["display", "layout"] },
+        { "name": "ScheduleTemplates", "file": "ScheduleTemplates.tsx", "tags": ["templates"] },
+        { "name": "ScheduleToolbar", "file": "ScheduleToolbar.tsx", "tags": ["toolbar", "action"] },
+        { "name": "ShiftBottomSheet", "file": "ShiftBottomSheet.tsx", "tags": ["modal", "mobile"] },
+        { "name": "ShiftDetailModal", "file": "ShiftDetailModal.tsx", "tags": ["modal", "detail"] },
+        { "name": "ShiftDetailSheet", "file": "ShiftDetailSheet.tsx", "tags": ["modal", "mobile"] },
+        { "name": "ShiftSwapDrawer", "file": "ShiftSwapDrawer.tsx", "tags": ["modal", "swap"] },
+        { "name": "TrinityInsightsPanel", "file": "TrinityInsightsPanel.tsx", "tags": ["ai", "insights"] },
+        { "name": "UnassignedShiftsPanel", "file": "UnassignedShiftsPanel.tsx", "tags": ["display", "action"] },
+        { "name": "WeekHeader", "file": "WeekHeader.tsx", "tags": ["display", "date"] },
+        { "name": "WeekStatsBar", "file": "WeekStatsBar.tsx", "tags": ["display", "stats"] }
+      ]
+    },
+    "aiBrain": {
+      "path": "client/src/components/ai-brain",
+      "count": 10,
+      "description": "AI Brain dashboard and configuration components",
+      "components": [
+        { "name": "DocumentExtractionUpload", "file": "document-extraction-upload.tsx", "tags": ["ai", "upload"] },
+        { "name": "FastModeROIDashboard", "file": "FastModeROIDashboard.tsx", "tags": ["ai", "analytics"] },
+        { "name": "FastModeStatusWidget", "file": "FastModeStatusWidget.tsx", "tags": ["ai", "status"] },
+        { "name": "FastModeSuccessDigest", "file": "FastModeSuccessDigest.tsx", "tags": ["ai", "report"] },
+        { "name": "FastModeTierSelector", "file": "FastModeTierSelector.tsx", "tags": ["ai", "config"] },
+        { "name": "FastModeToggle", "file": "FastModeToggle.tsx", "tags": ["ai", "toggle"] },
+        { "name": "GuardrailsDashboard", "file": "guardrails-dashboard.tsx", "tags": ["ai", "safety"] },
+        { "name": "IssueDetectionViewer", "file": "issue-detection-viewer.tsx", "tags": ["ai", "monitoring"] },
+        { "name": "MigrationReview", "file": "migration-review.tsx", "tags": ["ai", "migration"] }
+      ]
+    },
+    "chat": {
+      "path": "client/src/components/chat",
+      "count": 4,
+      "description": "Chat and messaging components",
+      "components": [
+        { "name": "MacrosDrawer", "file": "MacrosDrawer.tsx", "tags": ["modal", "shortcuts"] },
+        { "name": "MessageBubble", "file": "MessageBubble.tsx", "tags": ["display", "message"] },
+        { "name": "ParticipantDrawer", "file": "ParticipantDrawer.tsx", "tags": ["modal", "users"] },
+        { "name": "TypingIndicator", "file": "TypingIndicator.tsx", "tags": ["feedback", "realtime"] }
+      ]
+    },
+    "mobile": {
+      "path": "client/src/components/mobile",
+      "count": 7,
+      "description": "Mobile-specific UI components",
+      "components": [
+        { "name": "MobileBottomNav", "file": "MobileBottomNav.tsx", "tags": ["navigation", "mobile"] },
+        { "name": "MobileQuickActionsFAB", "file": "MobileQuickActionsFAB.tsx", "tags": ["action", "mobile"] },
+        { "name": "MobileVoiceCommandOverlay", "file": "MobileVoiceCommandOverlay.tsx", "tags": ["input", "voice"] },
+        { "name": "MobileWorkerLayout", "file": "MobileWorkerLayout.tsx", "tags": ["layout", "mobile"] },
+        { "name": "PWAInstallPrompt", "file": "PWAInstallPrompt.tsx", "tags": ["pwa", "install"] },
+        { "name": "ApprovalsDrawer", "file": "schedule/ApprovalsDrawer.tsx", "tags": ["modal", "approval"] },
+        { "name": "ReportsSheet", "file": "schedule/ReportsSheet.tsx", "tags": ["modal", "reports"] }
+      ]
+    },
+    "errors": {
+      "path": "client/src/components/errors",
+      "count": 2,
+      "description": "Error handling and boundary components",
+      "components": [
+        { "name": "GlobalErrorBoundary", "file": "GlobalErrorBoundary.tsx", "tags": ["error", "boundary"] },
+        { "name": "ServiceFailureDialog", "file": "ServiceFailureDialog.tsx", "tags": ["modal", "error"] }
+      ]
+    }
+  },
+  "pages": {
+    "path": "client/src/pages",
+    "count": 136,
+    "categories": {
+      "dashboard": ["dashboard.tsx", "manager-dashboard.tsx", "worker-dashboard.tsx", "root-admin-dashboard.tsx"],
+      "scheduling": ["universal-schedule.tsx", "schedule-mobile-first.tsx", "availability.tsx", "unavailability.tsx", "timesheet-approvals.tsx"],
+      "payroll": ["payroll-dashboard.tsx", "payroll-deductions.tsx", "payroll-garnishments.tsx", "my-paychecks.tsx"],
+      "hr": ["employees.tsx", "hr-benefits.tsx", "hr-pto.tsx", "hr-reviews.tsx", "hr-terminations.tsx", "employee-recognition.tsx"],
+      "clients": ["clients.tsx", "client-portal.tsx", "invoices.tsx", "pay-invoice.tsx"],
+      "ai": ["ai-brain-dashboard.tsx", "ai-command-center.tsx", "ai-integrations.tsx", "trinity-chat.tsx", "trinity-command-center.tsx", "trinity-features.tsx", "trinity-insights.tsx"],
+      "support": ["support.tsx", "support-queue.tsx", "support-chatrooms.tsx", "support-bug-dashboard.tsx", "my-tickets.tsx", "HelpDesk.tsx"],
+      "admin": ["platform-admin.tsx", "platform-users.tsx", "org-management.tsx", "admin-usage.tsx", "admin-banners.tsx"],
+      "onboarding": ["onboarding.tsx", "onboarding-start.tsx", "assisted-onboarding.tsx", "workspace-onboarding.tsx", "communications-onboarding.tsx"],
+      "analytics": ["analytics.tsx", "analytics-reports.tsx", "owner-analytics.tsx", "engagement-dashboard.tsx", "usage-dashboard.tsx"],
+      "compliance": ["compliance-reports.tsx", "audit-logs.tsx", "i9-compliance.tsx", "policies.tsx", "disputes.tsx"],
+      "settings": ["settings.tsx", "profile.tsx", "alert-settings.tsx", "automation-settings.tsx"],
+      "integrations": ["integrations-page.tsx", "accounting-integrations.tsx", "quickbooks-import.tsx"],
+      "auth": ["custom-login.tsx", "custom-register.tsx", "forgot-password.tsx", "reset-password.tsx"],
+      "public": ["homepage.tsx", "contact.tsx", "privacy-policy.tsx", "terms-of-service.tsx", "compare.tsx"]
+    }
+  },
+  "services": {
+    "path": "server/services",
+    "count": 150,
+    "categories": {
+      "aiBrain": "server/services/ai-brain/",
+      "authentication": ["authService.ts", "replitAuth.ts"],
+      "scheduling": ["advancedSchedulingService.ts", "scheduleSmartAI.ts", "shiftApprovalService.ts"],
+      "payroll": ["payrollService.ts", "taxCalculator.ts"],
+      "notifications": ["universalNotificationEngine.ts", "pushNotificationService.ts", "smsService.ts", "emailService.ts"],
+      "integrations": ["quickbooksService.ts", "hrisIntegrationService.ts"],
+      "support": ["supportSessionService.ts", "helpAIOrchestrator.ts"]
+    }
+  },
+  "conventions": {
+    "naming": {
+      "components": "PascalCase with type suffix (e.g., ShiftModal, ScheduleTable)",
+      "pages": "kebab-case (e.g., schedule-mobile-first.tsx)",
+      "services": "camelCase with Service suffix (e.g., payrollService.ts)",
+      "hooks": "camelCase with use prefix (e.g., useSchedule.ts)"
+    },
+    "dialogs": {
+      "props": ["size: 'sm' | 'md' | 'lg' | 'xl' | 'full'"],
+      "location": "Inline within pages or components, not separate files"
+    },
+    "forms": {
+      "validation": "Zod schemas from @shared/schema.ts",
+      "library": "react-hook-form with @hookform/resolvers"
+    }
+  }
+}
