@@ -215,6 +215,7 @@ const WorkspaceOnboarding = lazy(() => import("@/pages/workspace-onboarding"));
 const AcceptHandoff = lazy(() => import("@/pages/accept-handoff"));
 const WorkboardDashboard = lazy(() => import("@/components/workboard/WorkboardDashboard"));
 const InboxPage = lazy(() => import("@/pages/inbox"));
+const UnifiedInbox = lazy(() => import("@/pages/unified-inbox"));
 import { HeaderChatButton } from "@/components/header-chat-button";
 import { ReenableChatButton } from "@/components/reenable-chat-button";
 // REMOVED: FloatingSupportChat - Trinity button handles all support
@@ -1234,7 +1235,8 @@ function AppContent() {
               {/* Org-isolated chat rooms (internal communication) */}
               <Route path="/chatrooms" component={Chatrooms} />
               <Route path="/chatroom"><Redirect to="/chatrooms" /></Route>
-              <Route path="/inbox" component={InboxPage} />
+              <Route path="/inbox" component={UnifiedInbox} />
+              <Route path="/inbox/legacy" component={InboxPage} />
               <Route path="/helpai-orchestration" component={HelpAIOrchestration} />
               
               {/* Legacy chat routes redirect to support page */}
@@ -1483,7 +1485,8 @@ function AppContent() {
                 <Route path="/communications/onboarding" component={CommunicationsOnboarding} />
                 <Route path="/chatrooms" component={Chatrooms} /> {/* Org-isolated chat room discovery */}
                 <Route path="/chatroom"><Redirect to="/chatrooms" /></Route>
-                <Route path="/inbox" component={InboxPage} />
+                <Route path="/inbox" component={UnifiedInbox} />
+                <Route path="/inbox/legacy" component={InboxPage} />
                 <Route path="/diagnostics" component={Diagnostics} />
                 <Route path="/messages" component={PrivateMessages} />
                 <Route path="/training" component={Training} />
