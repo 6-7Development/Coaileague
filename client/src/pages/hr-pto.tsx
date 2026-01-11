@@ -188,7 +188,7 @@ export default function HRPTO() {
                     <span className="sm:hidden">New</span>
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-2xl">
+                <DialogContent size="xl">
                 <DialogHeader>
                   <DialogTitle>Create PTO Request</DialogTitle>
                 </DialogHeader>

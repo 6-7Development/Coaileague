@@ -213,7 +213,7 @@ function CreateChatDialog({
       if (!isOpen) resetForm();
       onOpenChange(isOpen);
     }}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent size="xl" className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create Shift Chat</DialogTitle>
           <DialogDescription>
@@ -398,7 +398,7 @@ function AuditDataDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent size="full" className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Shift Audit Data</DialogTitle>
           <DialogDescription>

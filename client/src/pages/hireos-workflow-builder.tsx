@@ -150,7 +150,7 @@ function StepEditorDialog({ open, onOpenChange, step, onSave, reportTemplates }:
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent size="xl" className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{step ? 'Edit Step' : 'Add New Step'}</DialogTitle>
           <DialogDescription>

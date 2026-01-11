@@ -168,7 +168,7 @@ export default function DisputesPage() {
             </Button>
           </DialogTrigger>
           {/* Mobile: Full-screen dialog, Desktop: Standard modal */}
-          <DialogContent className="w-full h-full sm:h-auto sm:w-auto sm:max-w-2xl p-0 sm:p-6 overflow-hidden bottom-sheet-enter">
+          <DialogContent size="xl" className="w-full h-full sm:h-auto sm:w-auto p-0 sm:p-6 overflow-hidden bottom-sheet-enter">
             <div className="h-full overflow-y-auto p-4 sm:p-0">
             <DialogHeader>
               <DialogTitle>{disputeMessages.fileDialogTitle}</DialogTitle>
@@ -488,7 +488,7 @@ function DisputeDetailDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="w-full h-full sm:h-auto sm:w-auto sm:max-w-3xl p-0 sm:p-6">
+      <DialogContent size="full" className="w-full h-full sm:h-auto sm:w-auto p-0 sm:p-6">
         <div className="h-full overflow-y-auto p-4 sm:p-0">
         <DialogHeader>
           <DialogTitle>Dispute Details</DialogTitle>

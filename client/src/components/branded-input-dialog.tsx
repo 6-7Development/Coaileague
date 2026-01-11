@@ -54,7 +54,7 @@ export function BrandedInputDialog({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md bg-gradient-to-br from-slate-50 to-blue-50 border-2 border-blue-200">
+      <DialogContent size="md" className="bg-gradient-to-br from-slate-50 to-blue-50 border-2 border-blue-200">
         <DialogHeader>
           <div className="flex items-center gap-3 mb-2">
             <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center">
@@ -146,7 +146,7 @@ export function BrandedConfirmDialog({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md bg-gradient-to-br from-slate-50 to-blue-50 border-2 border-blue-200">
+      <DialogContent size="md" className="bg-gradient-to-br from-slate-50 to-blue-50 border-2 border-blue-200">
         <DialogHeader>
           <div className="flex items-center gap-3 mb-2">
             <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${

@@ -551,7 +551,7 @@ export default function AlertSettings() {
       </div>
 
       <Dialog open={!!selectedConfig} onOpenChange={(open) => !open && setSelectedConfig(null)}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent size="lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {selectedConfig && (
@@ -699,7 +699,7 @@ export default function AlertSettings() {
       </Dialog>
 
       <Dialog open={showAcknowledgeDialog} onOpenChange={setShowAcknowledgeDialog}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent size="md">
           <DialogHeader>
             <DialogTitle>Acknowledge Alert</DialogTitle>
             <DialogDescription>

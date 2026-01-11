@@ -173,7 +173,7 @@ function AccessLogDialog({ open, onOpenChange, documentId }: { open: boolean; on
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[80vh]">
+      <DialogContent size="full" className="max-h-[80vh]">
         <DialogHeader>
           <DialogTitle>Document Access Audit Trail</DialogTitle>
           <DialogDescription>Complete record of all access events for compliance</DialogDescription>

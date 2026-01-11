@@ -278,7 +278,7 @@ export function BannerManager({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] p-0 flex flex-col">
+      <DialogContent size="full" className="max-h-[90vh] p-0 flex flex-col">
         <DialogHeader className="p-6 pb-4 flex-shrink-0">
           <DialogTitle className="flex items-center gap-2 text-2xl">
             <Sparkles className="w-6 h-6 text-blue-600" />
@@ -541,7 +541,7 @@ export function BannerManager({
         {/* Preview Dialog */}
         {previewBanner && (
           <Dialog open={!!previewBanner} onOpenChange={() => setPreviewBanner(null)}>
-            <DialogContent className="max-w-2xl">
+            <DialogContent size="xl">
               <DialogHeader>
                 <DialogTitle>Banner Preview: {previewBanner.name}</DialogTitle>
               </DialogHeader>
@@ -574,7 +574,7 @@ export function BannerManager({
         {/* Edit Dialog */}
         {editingBanner && (
           <Dialog open={!!editingBanner} onOpenChange={() => setEditingBanner(null)}>
-            <DialogContent className="max-w-2xl">
+            <DialogContent size="xl">
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
                   <Edit className="w-5 h-5 text-blue-600" />

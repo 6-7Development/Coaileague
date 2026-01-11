@@ -95,7 +95,7 @@ export function ModalGuard({
     <ModalGuardContext.Provider value={contextValue}>
       {children}
       <AlertDialog open={showDiscardWarning} onOpenChange={setShowDiscardWarning}>
-        <AlertDialogContent className="max-w-[90vw] sm:max-w-md">
+        <AlertDialogContent size="md">
           <AlertDialogHeader>
             <AlertDialogTitle>{discardWarningTitle}</AlertDialogTitle>
             <AlertDialogDescription>{discardWarningDescription}</AlertDialogDescription>

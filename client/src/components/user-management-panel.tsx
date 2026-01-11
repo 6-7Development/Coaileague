@@ -441,7 +441,7 @@ export function UserManagementPanel() {
           handleOpenUserDetails();
         }
       }}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-slate-900 border-white/10 text-white">
+        <DialogContent size="full" className="max-h-[90vh] overflow-y-auto bg-slate-900 border-white/10 text-white">
           <DialogHeader>
             <DialogTitle className="text-white">User Details</DialogTitle>
             <DialogDescription className="text-slate-400">

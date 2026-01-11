@@ -371,7 +371,7 @@ export default function ResolutionInboxPage() {
       </Card>
 
       <Dialog open={!!selectedException} onOpenChange={() => setSelectedException(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent size="lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {selectedException && ERROR_TYPE_ICONS[selectedException.errorType] && (
