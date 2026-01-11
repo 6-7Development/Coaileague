@@ -65,9 +65,9 @@ const PageLoader = () => (
   <div className="flex flex-col items-center justify-center h-full min-h-[400px] gap-4">
     <ColorfulCelticKnot 
       size="xl" 
-      state="loading" 
+      state="thinking" 
       animated={true}
-      className="animate-trinity-loading"
+      animationSpeed="fast"
     />
     <span className="text-lg md:text-xl font-semibold bg-gradient-to-r from-purple-500 via-teal-500 to-amber-500 bg-clip-text text-transparent">
       Loading...

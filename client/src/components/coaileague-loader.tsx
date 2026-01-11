@@ -102,9 +102,9 @@ export function CoAIleagueLoader({
             >
               <ColorfulCelticKnot 
                 size="2xl" 
-                state="loading" 
+                state={scenario === "workspace" || scenario === "onboarding" ? "happy" : scenario === "analytics" ? "focused" : "thinking"} 
                 animated={true}
-                className="animate-trinity-loading"
+                animationSpeed={scenario === "onboarding" ? "fast" : "normal"}
               />
             </motion.div>
 
