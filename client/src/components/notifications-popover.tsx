@@ -850,10 +850,10 @@ function NotificationCard({
                 {/* Message Content */}
                 <div className="flex-1 min-w-0 w-full">
                   <span className={`font-bold ${compact ? 'text-xs' : 'text-sm'} leading-tight block ${textColor}`}>
-                    {notification.title}
+                    {humanizeTitle(notification.title)}
                   </span>
                   <p className={`${compact ? 'text-[11px] mt-0.5 leading-snug' : 'text-sm leading-relaxed mt-1'} ${mutedText}`}>
-                    {notification.message}
+                    {notification.metadata?.endUserSummary || humanizeText(notification.message)}
                   </p>
                 </div>
                 
@@ -925,7 +925,7 @@ function NotificationCard({
               <div className="flex-1 min-w-0 w-full">
                 <div className={`flex items-start justify-between gap-2 ${compact ? 'mb-0.5' : 'mb-1'}`}>
                   <span className={`font-semibold ${compact ? 'text-xs' : 'text-sm'} leading-tight min-w-0 flex-1 truncate`}>
-                    {notification.title}
+                    {humanizeTitle(notification.title)}
                   </span>
                   <div className={`flex items-center ${compact ? 'gap-1' : 'gap-2'} shrink-0`}>
                     {/* INFO Badge for info priority */}
@@ -942,7 +942,7 @@ function NotificationCard({
                 </div>
                 
                 <p className={`${compact ? 'text-[11px] leading-snug mb-1' : 'text-sm leading-relaxed mb-2'} text-muted-foreground`}>
-                  {notification.message}
+                  {notification.metadata?.endUserSummary || humanizeText(notification.message)}
                 </p>
                 
                 {/* Service Source */}
