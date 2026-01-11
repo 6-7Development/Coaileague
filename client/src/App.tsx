@@ -1015,7 +1015,7 @@ function AppContent() {
             <div className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 py-2">
               <div className="flex items-center justify-between gap-2">
                 <a href="/" data-testid="link-logo-mobile" className="flex-shrink-0">
-                  <CoAIleagueLogo width={140} height={46} showTagline={false} className="h-11 w-auto" />
+                  <CoAIleagueLogo width={40} height={40} onlyIcon={true} className="h-10 w-10" />
                 </a>
                 <div className="flex items-center gap-2">
                   {/* Easy View Toggle - Simplified interface for mobile */}
