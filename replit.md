@@ -132,6 +132,12 @@ The Trinity Chat Interface provides direct conversational access to Trinity with
 - **Integration Tests Added:** 4 tests for notification deduplication enforcement
 - **Capability Matrix Audit:** Full audit of 367+ actions, 7 domain subagents, QuickBooks integration
 - **TRINITY_FINANCIAL_CORE_V1 LOCKED:** Production sign-off artifacts created
+- **Trinity Autonomous Notifier:** Real-time alert system for support staff with WebSocket broadcasts
+  - Push notifications to support staff (root_admin, co_admin, sysops, platform_support, org_owner, co_owner)
+  - Auto-ticket creation for critical issues requiring human attention
+  - Low-risk hotpatch system with governance gate (trinityOrchestrationGovernance approval required)
+  - Rate-limited test-alert endpoint (5/min/user) with audit trail
+  - API endpoints: GET /api/trinity/alerts, GET /api/trinity/status, GET /api/trinity/hotpatches, POST /api/trinity/test-alert, POST /api/trinity/detect
 
 ## Compliance Documentation
 - `docs/TRINITY_FINANCIAL_CORE_V1_SIGNOFF.md` - Internal sign-off with scope and approvals

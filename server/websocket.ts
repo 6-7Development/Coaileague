@@ -554,6 +554,51 @@ export function broadcastToAllClients(message: any) {
 import { sessionSyncService } from './services/ai-brain/sessionSyncService';
 import { platformEventBus } from './services/platformEventBus';
 
+// Support roles that receive Trinity alerts
+const TRINITY_ALERT_ROLES = ['root_admin', 'co_admin', 'sysops', 'platform_support', 'org_owner', 'co_owner'];
+
+/**
+ * Broadcast Trinity alert to all connected support staff
+ * Uses existing broadcastToAllClients but filters by role
+ */
+export function broadcastTrinityAlertToSupport(message: any) {
+  if (!globalWSS) {
+    console.warn('[WebSocket] Global WSS not initialized for Trinity alert');
+    return 0;
+  }
+  
+  const payload = JSON.stringify(message);
+  
+  let sentCount = 0;
+  globalWSS.clients.forEach((client: any) => {
+    if (client.readyState === WebSocket.OPEN) {
+      const role = client.serverAuth?.role || client.serverAuth?.platformRole;
+      if (role && TRINITY_ALERT_ROLES.includes(role)) {
+        client.send(payload);
+        sentCount++;
+      }
+    }
+  });
+  
+  if (sentCount > 0) {
+    console.log(`🚨 [WebSocket] Trinity message broadcast to ${sentCount} support staff`);
+  }
+  return sentCount;
+}
+
+// Lazy-initialize Trinity notifier broadcast handler after server starts
+setTimeout(async () => {
+  try {
+    const { trinityAutonomousNotifier } = await import('./services/ai-brain/trinityAutonomousNotifier');
+    trinityAutonomousNotifier.setBroadcastHandler((message: any) => {
+      broadcastTrinityAlertToSupport(message);
+    });
+    console.log('[WebSocket] Trinity autonomous notifier broadcast handler registered');
+  } catch (error) {
+    console.warn('[WebSocket] Failed to register Trinity notifier:', error);
+  }
+}, 2000);
+
 /**
  * Register a WebSocket connection for session sync
  * Call this when a client connects to enable multi-device sync
@@ -977,6 +1022,15 @@ export function setupWebSocket(server: Server) {
         authenticatedAt: new Date(),
       };
       console.log(`New authenticated WebSocket connection from ${ipAddress} (user: ${authenticatedSession.userId}, platformRole: ${platformRole}, connection: ${connectionId})`);
+      
+      // TRINITY STAFF REGISTRATION: Register support staff for Trinity alerts
+      const staffRoles = ['root_admin', 'co_admin', 'sysops', 'platform_support', 'org_owner', 'co_owner'];
+      const userRole = ws.serverAuth.platformRole || ws.serverAuth.role;
+      if (userRole && staffRoles.includes(userRole)) {
+        import('./services/ai-brain/trinityAutonomousNotifier').then(({ registerSupportConnection }) => {
+          registerSupportConnection(authenticatedSession.userId, ws, userRole);
+        }).catch(() => {});
+      }
     } else {
       // Guest/anonymous connection - allowed for helpdesk but limited permissions
       console.log(`New guest WebSocket connection from ${ipAddress} (connection: ${connectionId})`);
@@ -4695,6 +4749,11 @@ export function setupWebSocket(server: Server) {
       // SESSION SYNC CLEANUP: Unregister from multi-device sync
       if (ws.serverAuth?.userId) {
         sessionSyncService.unregisterConnection(ws.serverAuth.userId, connectionId);
+        
+        // TRINITY STAFF CLEANUP: Unregister from Trinity alerts
+        import('./services/ai-brain/trinityAutonomousNotifier').then(({ unregisterSupportConnection }) => {
+          unregisterSupportConnection(ws.serverAuth!.userId);
+        }).catch(() => {});
       }
 
       // GLOBAL TRACKING CLEANUP: Remove from platform-wide stats
