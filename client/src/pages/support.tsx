@@ -99,8 +99,8 @@ export default function Support() {
       answer: "Trinity is your Fortune 500-grade AI orchestrator built to handle your entire workforce operations. It coordinates over 277 automated actions through specialized subagents for scheduling, payroll, compliance, invoicing, security, and analytics. Trinity operates in three modes: Demo (guided tutorials), Business Pro (daily operations), and Guru (strategic insights). The system learns from your patterns, detects anomalies, and handles 99% of operations autonomously with only 1% human oversight for critical decisions. All actions are logged, auditable, and can be approved or overridden by authorized managers.",
     },
     {
-      question: "What is HelpAI and how do I use it?",
-      answer: "HelpAI is your unified support chatbot accessible from any page. Simply click the chat icon to ask questions, request actions, or get help. HelpAI understands natural language, can execute platform actions on your behalf (with appropriate permissions), and routes complex issues to specialized domain agents or human support when needed.",
+      question: "How do I get help or submit a support request?",
+      answer: "You can submit a support ticket anytime from this Help Center. Our support team reviews all tickets with an average 1-hour response time. For urgent issues, Professional and Enterprise plans include priority phone support. Trinity AI also provides contextual guidance throughout the platform to help you complete tasks efficiently.",
     },
     {
       question: "How does QuickBooks integration automation work?",
@@ -149,161 +149,135 @@ export default function Support() {
   ];
 
   const statusItems = [
-    { label: "Automation Service Live", value: "Operational", status: "success" },
-    { label: "HelpDesk Live", value: "Operational", status: "success" },
-    { label: "Mobile App Live", value: "Operational", status: "success" },
-    { label: "Trinity™ Live", value: "Operational", status: "success" },
+    { label: "Platform Core", value: "Operational", status: "success" },
+    { label: "AI Services", value: "Operational", status: "success" },
+    { label: "Mobile Apps", value: "Operational", status: "success" },
+    { label: "Integrations", value: "Operational", status: "success" },
   ];
 
   return (
     <div className="min-h-screen bg-background dark:bg-background">
-      {/* Top Bar - Modern Trinity Branding */}
-      <nav className="fixed top-0 left-0 right-0 z-50 h-16 bg-background/95 backdrop-blur-sm border-b border-border flex items-center justify-between px-6">
-        <div className="flex items-center gap-3">
-          <div className="relative w-10 h-10 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-md shadow-violet-500/20">
-            <TrinityRedesign mode="IDLE" size={28} mini={true} />
+      {/* Top Bar - Fortune 500 Header with Branding */}
+      <nav className="fixed top-0 left-0 right-0 z-50 h-14 bg-background/95 backdrop-blur-sm border-b border-border flex items-center justify-between px-3 sm:px-6">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-md shadow-violet-500/20 shrink-0">
+            <TrinityRedesign mode="IDLE" size={24} mini={true} />
           </div>
-          <div className="flex flex-col">
-            <span className="font-bold text-lg bg-gradient-to-r from-violet-600 to-indigo-600 dark:from-violet-400 dark:to-indigo-400 bg-clip-text text-transparent">
+          <div className="flex flex-col min-w-0">
+            <span className="font-bold text-sm sm:text-base bg-gradient-to-r from-violet-600 to-indigo-600 dark:from-violet-400 dark:to-indigo-400 bg-clip-text text-transparent truncate">
               CoAIleague
             </span>
             <span className="text-[10px] text-muted-foreground -mt-0.5">Help Center</span>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1 sm:gap-2">
           <Button
             variant="ghost"
-            size="sm"
+            size="icon"
             onClick={() => window.location.href = "/"}
-            className="text-xs h-9"
+            className="h-9 w-9"
             data-testid="button-back"
           >
-            Back
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => window.location.href = "/contact"}
-            className="text-xs h-9"
-            data-testid="button-contact"
-          >
-            Contact
+            <ArrowRight className="h-4 w-4 rotate-180" />
           </Button>
           <Button
             size="sm"
             onClick={() => window.location.href = "/dashboard"}
-            className="h-9 text-xs bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-md"
+            className="h-9 text-xs bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-sm px-3"
             data-testid="button-launch-platform"
           >
-            <Sparkles className="h-3.5 w-3.5 mr-1.5" />
-            Launch Platform
+            <Sparkles className="h-3.5 w-3.5 sm:mr-1.5" />
+            <span className="hidden sm:inline">Platform</span>
           </Button>
         </div>
       </nav>
 
-      {/* Support Hero - Modern Trinity Gradient */}
-      <section className="container mx-auto px-6 pt-24 pb-16 bg-gradient-to-br from-violet-50/50 via-indigo-50/30 to-background dark:from-violet-950/20 dark:via-indigo-950/10 dark:to-background">
-        <div className="text-center space-y-4 mb-12">
-          <div className="flex items-center justify-center gap-3">
-            <div className="h-0.5 w-12 bg-gradient-to-r from-violet-500 to-indigo-500 rounded-full" />
-            <div className="flex items-center gap-2">
-              <TrinityBadge showLabel={false} />
-              <span className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
-                Help Center
-              </span>
-            </div>
-            <div className="h-0.5 w-12 bg-gradient-to-r from-indigo-500 to-violet-500 rounded-full" />
+      {/* Support Hero - Clean Minimal Design */}
+      <section className="container mx-auto px-4 sm:px-6 pt-20 pb-8 sm:pb-12">
+        <div className="text-center space-y-3 mb-8">
+          <div className="flex items-center justify-center gap-2">
+            <TrinityBadge showLabel={false} />
+            <span className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
+              Help Center
+            </span>
           </div>
-          <h1 className="text-4xl lg:text-5xl font-bold tracking-tight" data-testid="heading-support">
+          <h1 className="text-2xl sm:text-4xl font-bold tracking-tight" data-testid="heading-support">
             How Can We Help?
           </h1>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Search our knowledge base or browse resources to find answers
+          <p className="text-sm sm:text-base text-muted-foreground max-w-lg mx-auto">
+            Search our knowledge base or browse resources
           </p>
         </div>
 
         {/* Search Bar */}
-        <div className="max-w-2xl mx-auto mb-8">
+        <div className="max-w-xl mx-auto mb-6">
           <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search for help articles, guides, and FAQs..."
-              className="pl-12 h-14 text-base bg-background border-border"
+              placeholder="Search help articles..."
+              className="pl-10 h-11 text-sm bg-background border-border"
               data-testid="input-search"
             />
           </div>
         </div>
 
-        {/* Customer Support Portal CTA */}
-        <div className="max-w-2xl mx-auto mb-16">
-          <Card className="bg-gradient-to-br from-violet-50 to-indigo-50 dark:from-violet-950/30 dark:to-indigo-950/30 border border-violet-200 dark:border-violet-800 shadow-md hover-elevate active-elevate-2 cursor-pointer transition-all duration-200" data-testid="card-support-tickets">
-            <div className="p-6" onClick={() => window.location.href = "/support/tickets"}>
-              <div className="flex items-start justify-between gap-4 flex-wrap">
-                <div className="flex items-start gap-4">
-                  <div className="h-12 w-12 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center flex-shrink-0 shadow-md shadow-violet-500/20">
-                    <LifeBuoy className="h-6 w-6 text-white" />
+        {/* Support Ticket CTA - Fortune 500 Card with Explicit CTA */}
+        <div className="max-w-xl mx-auto mb-8">
+          <Card 
+            className="border border-violet-200 dark:border-violet-800" 
+            data-testid="card-support-tickets"
+          >
+            <div className="p-4 sm:p-5">
+              <div className="flex items-start gap-3 sm:gap-4">
+                <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shrink-0">
+                  <LifeBuoy className="h-5 w-5 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="text-sm font-semibold">Need Direct Support?</h3>
+                    <Badge className="bg-violet-100 text-violet-700 dark:bg-violet-900 dark:text-violet-300 text-[10px]">24/7</Badge>
                   </div>
-                  <div className="space-y-2">
-                    <h3 className="text-lg font-semibold flex items-center gap-2 flex-wrap">
-                      Need Direct Support?
-                      <Badge className="bg-gradient-to-r from-violet-500 to-indigo-600 text-white">24/7 Available</Badge>
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      Submit a support ticket and our team will assist you. Track all your tickets, get priority help, and receive expert guidance for technical issues, billing questions, or feature requests.
-                    </p>
-                    <div className="flex items-center gap-4 pt-2 flex-wrap">
-                      <span className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Zap className="h-3 w-3 text-amber-500" /> Average response: 1 hour
-                      </span>
-                      <span className="text-xs text-muted-foreground flex items-center gap-1">
-                        <MessageSquare className="h-3 w-3 text-violet-500" /> Phone & Email Support
-                      </span>
-                    </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Submit a ticket and our team will assist you. Track tickets, get priority help, and receive expert guidance.
+                  </p>
+                  <div className="flex items-center gap-3 mt-3 flex-wrap">
+                    <Button 
+                      size="sm"
+                      className="bg-gradient-to-r from-violet-500 to-indigo-600 hover:from-violet-600 hover:to-indigo-700 text-white"
+                      onClick={() => window.location.href = "/support/tickets"}
+                      data-testid="button-open-tickets"
+                    >
+                      Open Tickets
+                      <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+                    </Button>
+                    <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                      <Zap className="h-3 w-3 text-amber-500" /> Avg response: 1 hour
+                    </span>
                   </div>
                 </div>
-                <Button 
-                  className="bg-gradient-to-r from-violet-500 to-indigo-600 hover:from-violet-600 hover:to-indigo-700 text-white flex-shrink-0"
-                  data-testid="button-open-tickets"
-                >
-                  Open Tickets
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
               </div>
             </div>
           </Card>
         </div>
 
-        {/* System Status */}
-        <Card className="bg-card border-border mb-16" data-testid="card-status">
-          <div className="p-6">
-            <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                  <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-                </div>
-                <div>
-                  <h3 className="font-semibold">System Status</h3>
-                  <p className="text-sm text-muted-foreground">All systems operational</p>
-                </div>
+        {/* System Status - Clear Labels and Values */}
+        <Card className="bg-card border-border mb-8 max-w-xl mx-auto" data-testid="card-status">
+          <div className="p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                <span className="text-sm font-medium">All Systems Operational</span>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                data-testid="button-status-page"
-              >
-                <ExternalLink className="h-4 w-4 mr-2" />
-                Status Page
-              </Button>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 gap-3">
               {statusItems.map((item) => (
                 <div key={item.label} className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                  <div className="flex-1">
-                    <p className="text-xs text-muted-foreground">{item.label}</p>
-                    <p className="text-sm font-medium">{item.value}</p>
+                  <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-xs text-muted-foreground truncate">{item.label}</p>
+                    <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400">{item.value}</p>
                   </div>
                 </div>
               ))}
@@ -311,14 +285,14 @@ export default function Support() {
           </div>
         </Card>
 
-        {/* Resource Categories */}
-        <div className="mb-16">
-          <h2 className="text-2xl font-bold mb-6">Browse Resources</h2>
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Resource Categories - Compact Grid */}
+        <div className="mb-10">
+          <h2 className="text-lg sm:text-xl font-bold mb-4">Browse Resources</h2>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             {resourceCategories.map((category) => (
               <Card
                 key={category.title}
-                className="bg-card border border-border p-5 space-y-4 hover:border-violet-300 dark:hover:border-violet-700 hover-elevate active-elevate-2 transition-all duration-200 cursor-pointer"
+                className="bg-card border border-border p-3 sm:p-4 space-y-2 hover:border-violet-300 dark:hover:border-violet-700 hover-elevate active-elevate-2 cursor-pointer"
                 data-testid={`card-resource-${category.title.toLowerCase().replace(/\s+/g, "-")}`}
                 onClick={() => {
                   if (category.title === "Documentation") {
@@ -333,43 +307,35 @@ export default function Support() {
                   }
                 }}
               >
-                <div className="h-12 w-12 rounded-lg bg-gradient-to-br from-violet-100 to-indigo-100 dark:from-violet-900/30 dark:to-indigo-900/30 flex items-center justify-center">
-                  <category.icon className="h-6 w-6 text-violet-600 dark:text-violet-400" />
+                <div className="h-9 w-9 rounded-lg bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center">
+                  <category.icon className="h-4 w-4 text-violet-600 dark:text-violet-400" />
                 </div>
-                <div className="space-y-2">
-                  <h3 className="font-semibold">{category.title}</h3>
-                  <p className="text-sm text-muted-foreground">
+                <div>
+                  <h3 className="text-sm font-semibold">{category.title}</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
                     {category.description}
                   </p>
                 </div>
-                <ul className="space-y-1.5 pt-2 border-t border-border">
-                  {category.items.map((item) => (
-                    <li key={item} className="text-xs text-muted-foreground flex items-center gap-2 hover:text-foreground transition-colors">
-                      <ExternalLink className="h-3 w-3" />
-                      {item}
-                    </li>
-                  ))}
-                </ul>
               </Card>
             ))}
           </div>
         </div>
 
-        {/* Popular Topics */}
-        <div className="mb-16">
-          <h2 className="text-2xl font-bold mb-6">Popular Topics</h2>
-          <div className="grid md:grid-cols-3 gap-6">
+        {/* Popular Topics - Compact List */}
+        <div className="mb-10">
+          <h2 className="text-lg sm:text-xl font-bold mb-4">Popular Topics</h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
             {[
-              { icon: Users, title: "Employee Management", articles: 24, path: "/employees" },
-              { icon: Clock, title: "Time Tracking & GPS", articles: 18, path: "/time-tracking" },
-              { icon: DollarSign, title: "Invoicing & Payments", articles: 15, path: "/invoices" },
-              { icon: Settings, title: "Workspace Settings", articles: 21, path: "/settings" },
-              { icon: Shield, title: "Security & Compliance", articles: 12, action: () => window.open("/docs/SECURITY.md", "_blank") },
-              { icon: Zap, title: "Integrations & API", articles: 16, path: "/settings" },
+              { icon: Users, title: "Employees", path: "/employees" },
+              { icon: Clock, title: "Time Tracking", path: "/time-tracking" },
+              { icon: DollarSign, title: "Invoicing", path: "/invoices" },
+              { icon: Settings, title: "Settings", path: "/settings" },
+              { icon: Shield, title: "Security", action: () => window.open("/docs/SECURITY.md", "_blank") },
+              { icon: Zap, title: "Integrations", path: "/integrations" },
             ].map((topic) => (
               <Card
                 key={topic.title}
-                className="bg-card border border-border p-5 flex items-center gap-4 hover:border-violet-300 dark:hover:border-violet-700 hover-elevate active-elevate-2 transition-all duration-200 cursor-pointer"
+                className="bg-card border border-border p-3 flex items-center gap-2 hover:border-violet-300 dark:hover:border-violet-700 hover-elevate active-elevate-2 cursor-pointer"
                 data-testid={`card-topic-${topic.title.toLowerCase().replace(/\s+/g, "-")}`}
                 onClick={() => {
                   if (topic.action) {
@@ -379,28 +345,24 @@ export default function Support() {
                   }
                 }}
               >
-                <topic.icon className="h-5 w-5 text-violet-600 dark:text-violet-400" />
-                <div className="flex-1">
-                  <h3 className="font-semibold text-sm">{topic.title}</h3>
-                  <p className="text-xs text-muted-foreground">{topic.articles} articles</p>
-                </div>
-                <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                <topic.icon className="h-4 w-4 text-violet-600 dark:text-violet-400 shrink-0" />
+                <span className="text-sm font-medium truncate">{topic.title}</span>
               </Card>
             ))}
           </div>
         </div>
 
-        {/* FAQs */}
-        <div className="mb-16">
-          <h2 className="text-2xl font-bold mb-6">Frequently Asked Questions</h2>
+        {/* FAQs - Clean Accordion */}
+        <div className="mb-10">
+          <h2 className="text-lg sm:text-xl font-bold mb-4">Frequently Asked Questions</h2>
           <Card className="bg-card border-border">
             <Accordion type="single" collapsible className="w-full" data-testid="accordion-faq">
-              {faqs.map((faq, index) => (
+              {faqs.slice(0, 8).map((faq, index) => (
                 <AccordionItem key={index} value={`item-${index}`} className="border-border">
-                  <AccordionTrigger className="px-6 hover:no-underline hover:bg-muted/50" data-testid={`faq-question-${index}`}>
-                    <span className="text-left font-semibold">{faq.question}</span>
+                  <AccordionTrigger className="px-4 py-3 text-left hover:no-underline hover:bg-muted/50 text-sm" data-testid={`faq-question-${index}`}>
+                    <span className="font-medium">{faq.question}</span>
                   </AccordionTrigger>
-                  <AccordionContent className="px-6 pb-4 text-muted-foreground" data-testid={`faq-answer-${index}`}>
+                  <AccordionContent className="px-4 pb-3 text-xs text-muted-foreground" data-testid={`faq-answer-${index}`}>
                     {faq.answer}
                   </AccordionContent>
                 </AccordionItem>
@@ -409,62 +371,42 @@ export default function Support() {
           </Card>
         </div>
 
-        {/* Quick Actions */}
-        <div className="grid md:grid-cols-3 gap-6 mb-16">
-          <Card className="bg-card border border-border p-6 space-y-4">
-            <MessageSquare className="h-8 w-8 text-violet-600 dark:text-violet-400" />
-            <div className="space-y-2">
-              <h3 className="font-semibold">Still Have Questions?</h3>
-              <p className="text-sm text-muted-foreground">
-                Our support team is available 24/7 to help you succeed
-              </p>
+        {/* Quick Actions - Compact Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-10">
+          <Card 
+            className="bg-card border border-border p-4 flex items-center gap-3 hover-elevate active-elevate-2 cursor-pointer"
+            onClick={() => window.location.href = "/contact"}
+            data-testid="button-contact-support"
+          >
+            <MessageSquare className="h-5 w-5 text-violet-600 dark:text-violet-400 shrink-0" />
+            <div className="min-w-0">
+              <h3 className="text-sm font-semibold">Contact Support</h3>
+              <p className="text-xs text-muted-foreground">24/7 team support</p>
             </div>
-            <Button
-              className="w-full bg-gradient-to-r from-violet-500 to-indigo-600 hover:from-violet-600 hover:to-indigo-700 text-white shadow-md"
-              onClick={() => window.location.href = "/contact"}
-              data-testid="button-contact-support"
-            >
-              Contact Support
-            </Button>
           </Card>
 
-          <Card className="bg-card border border-border p-6 space-y-4">
-            <Download className="h-8 w-8 text-indigo-600 dark:text-indigo-400" />
-            <div className="space-y-2">
-              <h3 className="font-semibold">Download Resources</h3>
-              <p className="text-sm text-muted-foreground">
-                Get PDFs, templates, and guides for offline reference
-              </p>
+          <Card 
+            className="bg-card border border-border p-4 flex items-center gap-3 hover-elevate active-elevate-2 cursor-pointer"
+            onClick={() => window.open("/docs/FEATURES_SHOWCASE.md", "_blank")}
+            data-testid="button-download-resources"
+          >
+            <Download className="h-5 w-5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+            <div className="min-w-0">
+              <h3 className="text-sm font-semibold">Downloads</h3>
+              <p className="text-xs text-muted-foreground">PDFs and guides</p>
             </div>
-            <Button
-              variant="outline"
-              className="w-full border-indigo-500 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/30"
-              data-testid="button-download-resources"
-              onClick={() => {
-                window.open("/docs/FEATURES_SHOWCASE.md", "_blank");
-                setTimeout(() => window.open("/docs/LOGIN_GUIDE.md", "_blank"), 500);
-              }}
-            >
-              Browse Downloads
-            </Button>
           </Card>
 
-          <Card className="bg-card border border-border p-6 space-y-4">
-            <Video className="h-8 w-8 text-violet-600 dark:text-violet-400" />
-            <div className="space-y-2">
-              <h3 className="font-semibold">Video Walkthrough</h3>
-              <p className="text-sm text-muted-foreground">
-                Watch our comprehensive platform tutorial series
-              </p>
+          <Card 
+            className="bg-card border border-border p-4 flex items-center gap-3 hover-elevate active-elevate-2 cursor-pointer"
+            onClick={() => window.location.href = "/api/demo-login"}
+            data-testid="button-watch-tutorials"
+          >
+            <Video className="h-5 w-5 text-violet-600 dark:text-violet-400 shrink-0" />
+            <div className="min-w-0">
+              <h3 className="text-sm font-semibold">Tutorials</h3>
+              <p className="text-xs text-muted-foreground">Video walkthroughs</p>
             </div>
-            <Button
-              variant="outline"
-              className="w-full border-violet-500 text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950/30"
-              data-testid="button-watch-tutorials"
-              onClick={() => window.location.href = "/api/demo-login"}
-            >
-              Watch Tutorials
-            </Button>
           </Card>
         </div>
       </section>
