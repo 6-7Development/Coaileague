@@ -30,7 +30,7 @@ export function ChatConnectionErrorDialog({
 }: ChatConnectionErrorDialogProps) {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent className="max-w-md">
+      <AlertDialogContent size="md">
         <AlertDialogHeader>
           <div className="flex items-center gap-3 mb-2">
             <div className="p-3 rounded-full bg-destructive/10">

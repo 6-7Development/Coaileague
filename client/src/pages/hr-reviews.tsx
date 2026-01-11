@@ -238,7 +238,7 @@ export default function HRReviews() {
                   New Review
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+              <DialogContent size="full" className="max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>Create Performance Review</DialogTitle>
                 </DialogHeader>
@@ -427,7 +427,7 @@ export default function HRReviews() {
 
             {/* Dispute Filing Dialog */}
             <Dialog open={disputeDialogOpen} onOpenChange={setDisputeDialogOpen}>
-              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogContent size="xl" className="max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>File Dispute - Performance Review</DialogTitle>
                   <DialogDescription>

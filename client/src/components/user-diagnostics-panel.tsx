@@ -299,7 +299,7 @@ export function UserDiagnosticsPanel({
   // Desktop variant uses Dialog (modal)
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col overflow-hidden">
+      <DialogContent size="xl" className="max-h-[85vh] flex flex-col overflow-hidden">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <User className="w-5 h-5" />

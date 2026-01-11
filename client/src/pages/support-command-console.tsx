@@ -1078,7 +1078,7 @@ export default function SupportCommandConsole() {
 
       {/* Quick Fix Confirmation Dialog */}
       <Dialog open={showQuickFixDialog} onOpenChange={setShowQuickFixDialog}>
-        <DialogContent className="sm:max-w-md" showHomeButton={false}>
+        <DialogContent size="md" showHomeButton={false}>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Wrench className="w-5 h-5 text-orange-500" />

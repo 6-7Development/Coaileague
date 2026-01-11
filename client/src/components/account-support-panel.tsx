@@ -107,7 +107,7 @@ export function AccountSupportPanel({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] p-0 overflow-hidden">
+      <DialogContent size="full" className="max-h-[90vh] p-0 overflow-hidden">
         <DialogHeader className="p-6 pb-4 bg-gradient-to-r from-blue-600 to-indigo-700 text-white">
           <DialogTitle className="flex items-center gap-3 text-2xl">
             <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">

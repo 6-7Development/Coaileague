@@ -188,7 +188,7 @@ export default function AssistedOnboarding() {
                 New Assisted Workspace
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent size="md">
               <DialogHeader>
                 <DialogTitle>Create Assisted Workspace</DialogTitle>
                 <DialogDescription>

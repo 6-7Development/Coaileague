@@ -121,7 +121,7 @@ export function CameraCapture({ onCapture, onCancel }: CameraCaptureProps) {
       </Button>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="max-w-2xl p-0">
+        <DialogContent size="xl" className="p-0">
           <DialogHeader className="p-4 pb-0">
             <DialogTitle>Take Photo</DialogTitle>
           </DialogHeader>

@@ -154,7 +154,7 @@ export default function HRBenefits() {
                   Add Benefit
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogContent size="xl" className="max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>Create Benefit Enrollment</DialogTitle>
                 </DialogHeader>

@@ -754,7 +754,7 @@ function SupportSessionsManager() {
       )}
 
       <Dialog open={showStartDialog} onOpenChange={setShowStartDialog}>
-        <DialogContent className="max-w-md">
+        <DialogContent size="md">
           <DialogHeader>
             <DialogTitle>Start Support Session</DialogTitle>
             <DialogDescription>
@@ -803,7 +803,7 @@ function SupportSessionsManager() {
       </Dialog>
 
       <Dialog open={showAuditDialog} onOpenChange={setShowAuditDialog}>
-        <DialogContent className="max-w-2xl max-h-[80vh]">
+        <DialogContent size="xl" className="max-h-[80vh]">
           <DialogHeader>
             <DialogTitle>Session Audit Log</DialogTitle>
             <DialogDescription>
@@ -1265,7 +1265,7 @@ export default function PlatformAdmin() {
 
       {/* Platform Settings Dialog */}
       <Dialog open={showSettings} onOpenChange={setShowSettings}>
-        <DialogContent className="max-w-2xl max-h-[85vh]">
+        <DialogContent size="xl" className="max-h-[85vh]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Settings className="h-5 w-5" />
@@ -1403,7 +1403,7 @@ export default function PlatformAdmin() {
 
       {/* Support Queue Dialog */}
       <Dialog open={showSupportQueue} onOpenChange={setShowSupportQueue}>
-        <DialogContent className="max-w-4xl max-h-[80vh]">
+        <DialogContent size="full" className="max-h-[80vh]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Ticket className="h-5 w-5" />
