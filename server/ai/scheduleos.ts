@@ -938,6 +938,238 @@ RESPONSE FORMAT (JSON)
 }
 `;
   }
+
+  /**
+   * FILL OPEN SHIFTS - Assign employees to existing unassigned shifts
+   * Uses employee intelligence, availability, and skills matching
+   */
+  async fillOpenShifts(workspaceId: string, userId?: string): Promise<{
+    success: boolean;
+    shiftsProcessed: number;
+    shiftsFilled: number;
+    shiftsSkipped: number;
+    assignments: Array<{
+      shiftId: string;
+      shiftTitle: string;
+      employeeId: string;
+      employeeName: string;
+      confidenceScore: number;
+      matchReasons: string[];
+    }>;
+    unfilled: Array<{ shiftId: string; title: string; reason: string }>;
+    processingTimeMs: number;
+  }> {
+    const startTime = Date.now();
+    console.log(`[AI Scheduling™] Filling open shifts for workspace ${workspaceId}`);
+
+    // 1. Find all open shifts (no employee assigned, status = published)
+    const openShifts = await db
+      .select()
+      .from(shifts)
+      .where(
+        and(
+          eq(shifts.workspaceId, workspaceId),
+          sql`${shifts.employeeId} IS NULL`,
+          eq(shifts.status, 'published')
+        )
+      );
+
+    if (openShifts.length === 0) {
+      return {
+        success: true,
+        shiftsProcessed: 0,
+        shiftsFilled: 0,
+        shiftsSkipped: 0,
+        assignments: [],
+        unfilled: [],
+        processingTimeMs: Date.now() - startTime,
+      };
+    }
+
+    console.log(`[AI Scheduling™] Found ${openShifts.length} open shifts to fill`);
+
+    // 2. Gather employee intelligence
+    const employeeIntel = await this.gatherEmployeeIntelligence(workspaceId, new Date());
+    console.log(`[AI Scheduling™] Analyzed ${employeeIntel.length} available employees`);
+
+    // 3. Get employee skills for matching
+    const { employeeSkills } = await import('@shared/schema');
+    const allSkills = await db.select().from(employeeSkills);
+    const skillsByEmployee = new Map<string, string[]>();
+    for (const skill of allSkills) {
+      const existing = skillsByEmployee.get(skill.employeeId) || [];
+      existing.push(skill.skillName);
+      skillsByEmployee.set(skill.employeeId, existing);
+    }
+
+    // 4. Match employees to shifts
+    const assignments: Array<{
+      shiftId: string;
+      shiftTitle: string;
+      employeeId: string;
+      employeeName: string;
+      confidenceScore: number;
+      matchReasons: string[];
+    }> = [];
+    const unfilled: Array<{ shiftId: string; title: string; reason: string }> = [];
+    const assignedEmployeeIds = new Set<string>(); // Prevent double-booking
+
+    for (const shift of openShifts) {
+      const shiftDay = new Date(shift.startTime).getDay(); // 0-6
+      const shiftStartHour = new Date(shift.startTime).getHours();
+      const shiftEndHour = new Date(shift.endTime).getHours();
+      
+      // Parse skill requirements from description
+      const requiredSkills = this.parseSkillsFromDescription(shift.description || '');
+
+      // Score each employee for this shift
+      const candidates: Array<{
+        employee: EmployeeIntelligence;
+        score: number;
+        reasons: string[];
+      }> = [];
+
+      for (const emp of employeeIntel) {
+        if (assignedEmployeeIds.has(emp.employeeId)) continue; // Already assigned
+
+        const reasons: string[] = [];
+        let score = 50; // Base score
+
+        // Check day availability
+        const dayAvail = this.getDayAvailability(emp.availability, shiftDay);
+        if (!dayAvail.available) {
+          continue; // Skip unavailable employees
+        }
+        reasons.push('Available on scheduled day');
+        score += 10;
+
+        // Check time window
+        if (dayAvail.startTime && dayAvail.endTime) {
+          const empStart = parseInt(dayAvail.startTime.split(':')[0], 10);
+          const empEnd = parseInt(dayAvail.endTime.split(':')[0], 10);
+          if (shiftStartHour >= empStart && shiftEndHour <= empEnd) {
+            reasons.push('Shift within availability window');
+            score += 15;
+          } else {
+            score -= 10; // Partial overlap penalty
+          }
+        }
+
+        // Performance & reliability
+        if (emp.reliabilityScore >= 80) {
+          reasons.push(`High reliability (${emp.reliabilityScore}/100)`);
+          score += 20;
+        } else if (emp.reliabilityScore < 50) {
+          score -= 15;
+        }
+
+        // Skills matching
+        const empSkills = skillsByEmployee.get(emp.employeeId) || [];
+        const matchedSkills = requiredSkills.filter(s => 
+          empSkills.some(es => es.toLowerCase().includes(s.toLowerCase()))
+        );
+        if (matchedSkills.length > 0) {
+          reasons.push(`Skills match: ${matchedSkills.join(', ')}`);
+          score += matchedSkills.length * 10;
+        } else if (requiredSkills.length > 0) {
+          score -= 5; // No skills match penalty
+        }
+
+        // Low risk preference
+        if (emp.riskScore < 30) {
+          reasons.push('Low risk employee');
+          score += 10;
+        } else if (emp.riskScore > 70) {
+          score -= 20;
+        }
+
+        candidates.push({ employee: emp, score, reasons });
+      }
+
+      // Sort by score (highest first)
+      candidates.sort((a, b) => b.score - a.score);
+
+      if (candidates.length > 0 && candidates[0].score >= 50) {
+        const best = candidates[0];
+        assignments.push({
+          shiftId: shift.id,
+          shiftTitle: shift.title || 'Untitled Shift',
+          employeeId: best.employee.employeeId,
+          employeeName: best.employee.employeeName,
+          confidenceScore: Math.min(best.score / 100, 1),
+          matchReasons: best.reasons,
+        });
+        assignedEmployeeIds.add(best.employee.employeeId);
+      } else {
+        unfilled.push({
+          shiftId: shift.id,
+          title: shift.title || 'Untitled Shift',
+          reason: candidates.length === 0 
+            ? 'No available employees' 
+            : 'No suitable match found (score too low)',
+        });
+      }
+    }
+
+    // 5. Apply assignments to database
+    for (const assignment of assignments) {
+      await db
+        .update(shifts)
+        .set({
+          employeeId: assignment.employeeId,
+          status: 'scheduled',
+          aiGenerated: true,
+          aiConfidenceScore: String(assignment.confidenceScore),
+          updatedAt: new Date(),
+        })
+        .where(eq(shifts.id, assignment.shiftId));
+    }
+
+    const processingTimeMs = Date.now() - startTime;
+    console.log(`[AI Scheduling™] Filled ${assignments.length}/${openShifts.length} shifts in ${processingTimeMs}ms`);
+
+    return {
+      success: true,
+      shiftsProcessed: openShifts.length,
+      shiftsFilled: assignments.length,
+      shiftsSkipped: unfilled.length,
+      assignments,
+      unfilled,
+      processingTimeMs,
+    };
+  }
+
+  /**
+   * Parse skill requirements from shift description
+   */
+  private parseSkillsFromDescription(description: string): string[] {
+    const requiresMatch = description.match(/Requires?:\s*([^.]+)/i);
+    if (!requiresMatch) return [];
+    
+    return requiresMatch[1]
+      .split(/[,;]/)
+      .map(s => s.trim())
+      .filter(s => s.length > 0);
+  }
+
+  /**
+   * Get availability for a specific day
+   */
+  private getDayAvailability(
+    availability: EmployeeIntelligence['availability'],
+    dayOfWeek: number
+  ): { available: boolean; startTime?: string; endTime?: string } {
+    const dayMap: Record<number, keyof EmployeeIntelligence['availability']> = {
+      0: 'sunday',
+      1: 'monday',
+      2: 'tuesday',
+      3: 'wednesday',
+      4: 'thursday',
+      5: 'friday',
+      6: 'saturday',
+    };
+    return availability[dayMap[dayOfWeek]] || { available: false };
+  }
 }
 
 export const scheduleOSAI = new SchedulingAI();
