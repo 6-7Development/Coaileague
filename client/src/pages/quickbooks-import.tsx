@@ -345,7 +345,22 @@ export default function QuickBooksImportPage() {
     },
     onSuccess: (data) => {
       if (data.authorizationUrl) {
-        window.location.href = data.authorizationUrl;
+        // Open in popup window - Intuit blocks iframe embedding for security
+        // Popup is necessary because Replit's webview is an iframe
+        const width = 600;
+        const height = 700;
+        const left = window.screenX + (window.innerWidth - width) / 2;
+        const top = window.screenY + (window.innerHeight - height) / 2;
+        const popup = window.open(
+          data.authorizationUrl,
+          'QuickBooks Authorization',
+          `width=${width},height=${height},left=${left},top=${top},scrollbars=yes,resizable=yes`
+        );
+        
+        // If popup was blocked, fall back to new tab
+        if (!popup) {
+          window.open(data.authorizationUrl, '_blank');
+        }
       }
     },
     onError: (error: any) => {
