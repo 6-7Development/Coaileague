@@ -30628,6 +30628,32 @@ Respond with valid JSON array only.`
     }
   });
 
+  // Trinity AI: Fill open shifts - matches employees to unassigned shifts
+  app.post('/api/test/autonomous/fill-open-shifts', requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.query.workspaceId as string || req.body.workspaceId;
+      if (!workspaceId) {
+        return res.status(400).json({ success: false, message: 'workspaceId required' });
+      }
+      
+      console.log('🤖 Trinity: Fill open shifts requested by', req.user?.email, 'for workspace', workspaceId);
+      const { scheduleOSAI } = await import('./ai/scheduleos');
+      const result = await scheduleOSAI.fillOpenShifts(workspaceId, req.user?.id);
+      
+      res.json({ 
+        success: true, 
+        message: `Trinity filled ${result.shiftsFilled}/${result.shiftsProcessed} open shifts`,
+        ...result,
+      });
+    } catch (error: any) {
+      console.error('❌ Trinity fill open shifts failed:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: error.message 
+      });
+    }
+  });
+
   app.post('/api/test/autonomous/payroll', requireAuth, requirePlatformAdmin, async (req: AuthenticatedRequest, res) => {
     try {
       console.log('🧪 Manual trigger: Payroll processing requested by', req.user?.email);
