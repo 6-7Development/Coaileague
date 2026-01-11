@@ -336,6 +336,8 @@ export default function QuickBooksImportPage() {
     enabled: !!workspace?.id && isConnected && currentStep !== 'connect',
   });
 
+  const [qbEnvironment, setQbEnvironment] = useState<{ environment: string; note: string; apiBase: string } | null>(null);
+  
   const connectMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest('POST', '/api/integrations/quickbooks/connect', {
@@ -344,7 +346,24 @@ export default function QuickBooksImportPage() {
       return res.json();
     },
     onSuccess: (data) => {
+      // Store environment info for display
+      if (data.environment) {
+        setQbEnvironment({ 
+          environment: data.environment, 
+          note: data.note || '',
+          apiBase: data.apiBase || ''
+        });
+      }
+      
       if (data.authorizationUrl) {
+        // Show environment info in toast for awareness
+        if (data.environment === 'sandbox') {
+          toast({
+            title: 'Sandbox Mode',
+            description: data.note || 'Use sandbox test credentials to log in',
+          });
+        }
+        
         // Open in popup window - Intuit blocks iframe embedding for security
         // Popup is necessary because Replit's webview is an iframe
         const width = 600;
@@ -890,12 +909,28 @@ export default function QuickBooksImportPage() {
             <div className="mx-auto h-16 w-16 rounded-full bg-[#2CA01C]/10 flex items-center justify-center mb-4">
               <SiQuickbooks className="h-8 w-8 text-[#2CA01C]" />
             </div>
-            <CardTitle>Step 1: Connect to QuickBooks</CardTitle>
+            <CardTitle className="flex items-center justify-center gap-2">
+              Step 1: Connect to QuickBooks
+              <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-700">
+                Sandbox Mode
+              </Badge>
+            </CardTitle>
             <CardDescription>
               Authorize CoAIleague to access your QuickBooks data for intelligent migration
             </CardDescription>
           </CardHeader>
           <CardContent className="text-center space-y-4">
+            <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg text-sm text-amber-800 dark:text-amber-200">
+              <div className="flex items-center gap-2 justify-center mb-1">
+                <AlertTriangle className="h-4 w-4" />
+                <span className="font-medium">Sandbox Testing Mode</span>
+              </div>
+              <p className="text-xs text-amber-600 dark:text-amber-400">
+                Use your Intuit Developer Portal sandbox test credentials to log in.
+                Create a sandbox company in the Developer Portal if you don't have one.
+              </p>
+            </div>
+            
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div className="flex items-center gap-2 justify-center">
                 <CheckCircle2 className="h-4 w-4 text-green-500" />
@@ -926,7 +961,7 @@ export default function QuickBooksImportPage() {
               ) : (
                 <ExternalLink className="h-4 w-4 mr-2" />
               )}
-              Connect QuickBooks
+              Connect QuickBooks (Sandbox)
             </Button>
           </CardContent>
         </Card>

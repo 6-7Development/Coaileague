@@ -109,11 +109,23 @@ router.post('/quickbooks/connect', requireAuth, requireWorkspaceMembership(), as
       return res.status(400).json({ error: 'Missing workspaceId' });
     }
 
+    // Determine and log environment for debugging
+    const qbEnvironment = process.env.QUICKBOOKS_ENVIRONMENT || 'sandbox';
+    console.log(`[QuickBooks OAuth] Initiating connection in ${qbEnvironment.toUpperCase()} mode`);
+    console.log(`[QuickBooks OAuth] API Base: ${INTEGRATIONS.quickbooks.getApiBase()}`);
+    
     // Generate authorization URL
     const { url, state } = await quickbooksOAuthService.generateAuthorizationUrl(workspaceId);
 
-    // Return URL for frontend to redirect user
-    return res.json({ authorizationUrl: url });
+    // Return URL and environment for frontend to show user
+    return res.json({ 
+      authorizationUrl: url,
+      environment: qbEnvironment,
+      apiBase: INTEGRATIONS.quickbooks.getApiBase(),
+      note: qbEnvironment === 'sandbox' 
+        ? 'Use sandbox test credentials from Intuit Developer Portal to log in' 
+        : 'Production mode - connecting to live QuickBooks data'
+    });
   } catch (error: any) {
     console.error('QuickBooks connect error:', error);
     return res.status(500).json({ error: error.message || 'Failed to initiate QuickBooks connection' });
