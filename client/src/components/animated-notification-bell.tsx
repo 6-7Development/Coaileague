@@ -19,13 +19,14 @@ export function AnimatedNotificationBell({
       onClick={onClick}
       className={`relative inline-flex h-10 w-10 items-center justify-center rounded-md hover-elevate transition-all duration-200 ${className}`}
       aria-label={showAnimation ? `${notificationCount} new notifications` : "Notifications"}
+      title="Notifications"
       data-testid="button-notifications"
       style={{ willChange: 'auto' }}
     >
       <div className="relative inline-flex items-center justify-center">
         {/* Main bell icon with glow effect when notifications exist */}
         <Bell 
-          className={`h-5 w-5 transition-all duration-300 ${
+          className={`h-6 w-6 transition-all duration-300 ${
             showAnimation ? "animate-bell-ring-continuous text-amber-500" : "text-muted-foreground"
           }`}
           style={showAnimation ? { 

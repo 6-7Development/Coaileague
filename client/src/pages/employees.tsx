@@ -953,7 +953,7 @@ export default function Employees() {
 
         {/* Invite Dialog */}
         <Dialog open={isInviteDialogOpen} onOpenChange={setIsInviteDialogOpen}>
-          <DialogContent>
+          <DialogContent size="md">
             <DialogHeader>
               <DialogTitle>Send Onboarding Invitation</DialogTitle>
               <DialogDescription>
@@ -1004,7 +1004,7 @@ export default function Employees() {
 
         {/* Approval Dialog */}
         <Dialog open={isApprovalDialogOpen} onOpenChange={setIsApprovalDialogOpen}>
-          <DialogContent>
+          <DialogContent size="md">
             <DialogHeader>
               <DialogTitle>Approve Employee & Set Pay Rate</DialogTitle>
               <DialogDescription>

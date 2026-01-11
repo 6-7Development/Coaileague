@@ -190,11 +190,13 @@ export function UniversalHeader({ variant = "public" }: UniversalHeaderProps) {
                             onClick={() => setLocation("/support")}
                             data-testid="button-bug-report-guest"
                             aria-label="Report an issue"
+                            title="Get Help & Report Issues"
+                            className="h-10 w-10"
                           >
-                            <Bug className="h-5 w-5" />
+                            <Bug className="h-6 w-6" />
                           </Button>
                         </TooltipTrigger>
-                        <TooltipContent>Report an issue</TooltipContent>
+                        <TooltipContent>Get Help & Report Issues</TooltipContent>
                       </Tooltip>
                       <Button
                         variant="ghost"
@@ -228,22 +230,31 @@ export function UniversalHeader({ variant = "public" }: UniversalHeaderProps) {
                                 onClick={() => setLocation("/support")}
                                 data-testid="button-bug-report"
                                 aria-label="Report an issue"
+                                title="Get Help & Report Issues"
+                                className="h-10 w-10"
                               >
-                                <Bug className="h-5 w-5" />
+                                <Bug className="h-6 w-6" />
                               </Button>
                             </TooltipTrigger>
-                            <TooltipContent>Report an issue</TooltipContent>
+                            <TooltipContent>Get Help & Report Issues</TooltipContent>
                           </Tooltip>
                           <AISearchTrigger />
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setLocation("/inbox")}
-                            data-testid="button-inbox"
-                            aria-label="Inbox"
-                          >
-                            <Mail className="h-5 w-5" />
-                          </Button>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => setLocation("/inbox")}
+                                data-testid="button-inbox"
+                                aria-label="Inbox"
+                                title="Messages & Inbox"
+                                className="h-10 w-10"
+                              >
+                                <Mail className="h-6 w-6" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Messages & Inbox</TooltipContent>
+                          </Tooltip>
                           <NotificationsPopover />
                         </div>
                       )}
@@ -299,9 +310,11 @@ export function UniversalHeader({ variant = "public" }: UniversalHeaderProps) {
                       size="icon"
                       onClick={() => setLocation("/support")}
                       data-testid="mobile-button-bug-report"
-                      aria-label="Report an issue"
+                      aria-label="Get Help"
+                      title="Get Help"
+                      className="h-10 w-10"
                     >
-                      <Bug className="h-4 w-4" />
+                      <Bug className="h-6 w-6" />
                     </Button>
                     <AISearchTrigger />
                     <Button
@@ -310,8 +323,10 @@ export function UniversalHeader({ variant = "public" }: UniversalHeaderProps) {
                       onClick={() => setLocation("/inbox")}
                       data-testid="mobile-button-inbox"
                       aria-label="Inbox"
+                      title="Inbox"
+                      className="h-10 w-10"
                     >
-                      <Mail className="h-5 w-5" />
+                      <Mail className="h-6 w-6" />
                     </Button>
                     <NotificationsPopover />
                   </div>
@@ -323,9 +338,11 @@ export function UniversalHeader({ variant = "public" }: UniversalHeaderProps) {
                     size="icon"
                     onClick={() => setLocation("/support")}
                     data-testid="mobile-button-bug-report-guest"
-                    aria-label="Report an issue"
+                    aria-label="Get Help"
+                    title="Get Help"
+                    className="h-10 w-10"
                   >
-                    <Bug className="h-4 w-4" />
+                    <Bug className="h-6 w-6" />
                   </Button>
                 )}
                 {/* Visible Login button for unauthenticated mobile users */}

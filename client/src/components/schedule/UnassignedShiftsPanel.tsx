@@ -197,7 +197,7 @@ export function UnassignedShiftsPanel({
       </Collapsible>
 
       <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
-        <DialogContent>
+        <DialogContent size="md">
           <DialogHeader>
             <DialogTitle>Assign Shift</DialogTitle>
           </DialogHeader>

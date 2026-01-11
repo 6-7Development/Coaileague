@@ -627,7 +627,7 @@ export function ClientsTable() {
       </div>
 
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent data-testid="dialog-edit-client">
+        <DialogContent size="md" data-testid="dialog-edit-client">
           <DialogHeader>
             <DialogTitle>Edit Client</DialogTitle>
             <DialogDescription>Update client information</DialogDescription>

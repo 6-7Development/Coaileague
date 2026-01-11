@@ -82,7 +82,7 @@ export function FeedbackWidget() {
           <span className="text-xs">Send Feedback</span>
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent size="md">
         <DialogHeader>
           <DialogTitle>Send Feedback</DialogTitle>
           <DialogDescription>

@@ -245,7 +245,7 @@ export function ScheduleToolbar({
       </div>
 
       <Dialog open={showPublishDialog} onOpenChange={setShowPublishDialog}>
-        <DialogContent>
+        <DialogContent size="md">
           <DialogHeader>
             <DialogTitle>Publish Schedule</DialogTitle>
             <DialogDescription>

@@ -740,7 +740,7 @@ export default function TrinitySelfEditGovernancePage() {
       </Dialog>
 
       <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
-        <DialogContent data-testid="dialog-reject">
+        <DialogContent size="md" data-testid="dialog-reject">
           <DialogHeader>
             <DialogTitle>Reject Proposal</DialogTitle>
             <DialogDescription>

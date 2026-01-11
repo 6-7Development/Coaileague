@@ -239,7 +239,7 @@ export function AgentToolbelt({
 
       {/* Escalate Dialog */}
       <Dialog open={escalateDialog} onOpenChange={setEscalateDialog}>
-        <DialogContent data-testid="escalate-dialog">
+        <DialogContent size="md" data-testid="escalate-dialog">
           <DialogHeader>
             <DialogTitle>Escalate Ticket</DialogTitle>
             <DialogDescription>
@@ -290,7 +290,7 @@ export function AgentToolbelt({
 
       {/* Bug Report Dialog */}
       <Dialog open={bugDialog} onOpenChange={setBugDialog}>
-        <DialogContent data-testid="bug-dialog">
+        <DialogContent size="md" data-testid="bug-dialog">
           <DialogHeader>
             <DialogTitle>Create Bug Report</DialogTitle>
             <DialogDescription>

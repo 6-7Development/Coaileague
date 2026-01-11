@@ -327,7 +327,7 @@ export default function OversightHub() {
 
       {/* Review Dialog */}
       <Dialog open={reviewDialogOpen} onOpenChange={setReviewDialogOpen}>
-        <DialogContent data-testid="dialog-review">
+        <DialogContent size="md" data-testid="dialog-review">
           <DialogHeader>
             <DialogTitle>
               {reviewAction === 'approve' ? 'Approve Item' : 'Reject Item'}

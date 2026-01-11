@@ -313,7 +313,7 @@ export default function AvailabilityPage() {
                   Request Time Off
                 </Button>
               </DialogTrigger>
-              <DialogContent data-testid="dialog-add-exception">
+              <DialogContent size="md" data-testid="dialog-add-exception">
                 <DialogHeader>
                   <DialogTitle>Request Time Off</DialogTitle>
                   <DialogDescription>
@@ -460,7 +460,7 @@ export default function AvailabilityPage() {
                       Add Time Slot
                     </Button>
                   </DialogTrigger>
-                  <DialogContent data-testid="dialog-add-slot">
+                  <DialogContent size="md" data-testid="dialog-add-slot">
                     <DialogHeader>
                       <DialogTitle>Add Availability Slot</DialogTitle>
                       <DialogDescription>

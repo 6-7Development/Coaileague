@@ -334,13 +334,14 @@ export function AISearchTrigger() {
       <button
         onClick={() => setOpen(true)}
         className={cn(
-          "flex items-center gap-2 h-9 px-3 rounded-md border bg-background",
+          "flex items-center gap-2 h-10 px-3 rounded-md border bg-background",
           "text-sm text-muted-foreground hover:text-foreground hover:bg-accent",
           "transition-colors cursor-pointer"
         )}
+        title="AI Search (⌘K)"
         data-testid="button-ai-search"
       >
-        <Search className="h-4 w-4" />
+        <Search className="h-5 w-5" />
         <span className="hidden sm:inline">Search...</span>
         <kbd className="pointer-events-none hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium sm:flex">
           <span className="text-xs">⌘</span>K

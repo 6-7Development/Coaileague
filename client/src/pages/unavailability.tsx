@@ -70,7 +70,7 @@ export default function Unavailability() {
                 Add Unavailability
               </Button>
             </DialogTrigger>
-            <DialogContent data-testid="dialog-add-unavailability">
+            <DialogContent size="md" data-testid="dialog-add-unavailability">
               <DialogHeader>
                 <DialogTitle>Request Time Off</DialogTitle>
                 <DialogDescription>

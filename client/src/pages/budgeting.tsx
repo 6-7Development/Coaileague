@@ -436,7 +436,7 @@ export default function FinancialManagement() {
 
       {/* Create Budget Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent data-testid="dialog-create-budget">
+        <DialogContent size="md" data-testid="dialog-create-budget">
           <DialogHeader>
             <DialogTitle>Create New Budget</DialogTitle>
             <DialogDescription>
