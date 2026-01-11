@@ -26,6 +26,7 @@ import { setupAuth, isAuthenticated } from "./replitAuth";
 import { setupAuth as setupCustomAuth, requireAuth } from "./auth"; // Custom auth
 import authRoutes from "./authRoutes"; // Custom auth routes
 import mascotRouter from "./routes/mascot-routes"; // Trinity AI Mascot routes
+import trinityAlertsRouter from "./routes/trinity-alerts"; // Trinity Autonomous Alerts
 import { billingRouter } from "./billing-api"; // Billing API routes
 import { aiBrainRouter } from "./ai-brain-routes"; // Unified AI Brain System
 import { helpaiRouter } from "./helpai-routes"; // HelpAI Orchestration System (Phases 2-5)
@@ -3260,6 +3261,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/ai-brain', aiBrainRouter);
   app.use('/api/helpai', helpaiRouter);
   app.use('/api/mascot', mascotRouter); // Trinity AI Mascot
+  app.use('/api/trinity', trinityAlertsRouter); // Trinity Autonomous Alerts
   app.use('/api/bug-remediation', bugRemediationRouter); // Bug Report AI Analysis & Auto-Fix
 
   app.use("/api/platform", serviceControlRouter);
