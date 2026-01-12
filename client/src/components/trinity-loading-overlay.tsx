@@ -49,8 +49,7 @@ function AnimatedTrinityLogo({ size = 80, isAnimating = true }: { size?: number;
     <ColorfulCelticKnot 
       size={size} 
       animated={isAnimating} 
-      animationSpeed="slow"
-      state={isAnimating ? "thinking" : "idle"}
+      state={isAnimating ? "loading" : "idle"}
     />
   );
 }

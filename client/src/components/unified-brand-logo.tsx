@@ -116,7 +116,8 @@ export function UnifiedBrandLogo({
         size={config.knot}
         className="shrink-0"
         animated={animated}
-        animationSpeed="slow"
+        randomize={animated}
+        randomInterval={8000}
       />
 
       <div className="flex flex-col min-w-0">

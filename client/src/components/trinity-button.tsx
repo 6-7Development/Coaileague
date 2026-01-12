@@ -77,7 +77,7 @@ export function TrinityMiniButton({
         className
       )}
     >
-      <ColorfulCelticKnot size={32} animated={true} animationSpeed="slow" />
+      <ColorfulCelticKnot size={32} animated={true} randomize={true} randomInterval={6000} />
     </Button>
   );
 }
