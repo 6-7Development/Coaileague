@@ -943,6 +943,9 @@ export function setupWebSocket(server: Server) {
   
   // Track AI Dispatch™ connections by workspace ID
   const dispatchUpdateClients = new Map<string, Set<WebSocketClient>>();
+  
+  // Track Trinity scheduling progress connections by workspace ID
+  const schedulingProgressClients = new Map<string, Set<WebSocketClient>>();
 
   // =========================================================================
   // CHAT SERVER HUB INTEGRATION - Unified event broadcasting
@@ -4153,6 +4156,60 @@ export function setupWebSocket(server: Server) {
             break;
           }
 
+          case 'join_scheduling_progress': {
+            // Subscribe to Trinity scheduling progress updates for a workspace
+            // SECURITY: Require session authentication
+            
+            if (!ws.serverAuth) {
+              ws.send(JSON.stringify({
+                type: 'error',
+                message: 'Authentication required. Please log in first.',
+              }));
+              console.warn(`[SchedulingProgress] Rejected unauthenticated subscription from ${ws.ipAddress}`);
+              return;
+            }
+            
+            if (ws.serverAuth.userId.startsWith('guest-')) {
+              ws.send(JSON.stringify({
+                type: 'error',
+                message: 'Guests cannot subscribe to scheduling progress.',
+              }));
+              console.warn(`[SchedulingProgress] Rejected guest subscription from ${ws.ipAddress}`);
+              return;
+            }
+            
+            const userId = ws.serverAuth.userId;
+            const workspaceId = ws.serverAuth.workspaceId;
+            
+            if (!workspaceId) {
+              ws.send(JSON.stringify({
+                type: 'error',
+                message: 'Your session lacks workspace context. Please refresh and try again.',
+              }));
+              console.warn(`[SchedulingProgress] User ${userId} rejected - no workspace in session`);
+              return;
+            }
+
+            // Ensure ws has workspace context for cleanup
+            ws.workspaceId = workspaceId;
+            ws.userId = userId;
+
+            // Add to scheduling progress clients for this workspace
+            if (!schedulingProgressClients.has(workspaceId)) {
+              schedulingProgressClients.set(workspaceId, new Set());
+            }
+            schedulingProgressClients.get(workspaceId)!.add(ws);
+
+            console.log(`✅ User ${userId} subscribed to scheduling progress for workspace ${workspaceId}`);
+
+            // Send confirmation
+            ws.send(JSON.stringify({
+              type: 'scheduling_progress_subscribed',
+              workspaceId: workspaceId,
+            }));
+            break;
+          }
+
           case 'join_notifications': {
             // Subscribe to real-time notifications for a user
             // SECURITY: Require session authentication - no fallback to other sources
@@ -4786,6 +4843,16 @@ export function setupWebSocket(server: Server) {
         console.log(`🔌 Removed client from notifications for user ${ws.userId} in workspace ${ws.workspaceId}`);
       }
       
+      // SCHEDULING PROGRESS CLEANUP: Remove from scheduling progress clients
+      if (ws.workspaceId && schedulingProgressClients.has(ws.workspaceId)) {
+        const clients = schedulingProgressClients.get(ws.workspaceId)!;
+        clients.delete(ws);
+        if (clients.size === 0) {
+          schedulingProgressClients.delete(ws.workspaceId);
+        }
+        console.log(`🔌 Removed client from scheduling progress for workspace ${ws.workspaceId}`);
+      }
+      
       // Send leave announcement for main helpdesk room
       if (ws.conversationId === MAIN_ROOM_ID && ws.userId) {
         try {
@@ -5057,21 +5124,33 @@ export function setupWebSocket(server: Server) {
       });
     },
     broadcastToWorkspace: (workspaceId: string, data: any) => {
-      const clients = shiftUpdateClients.get(workspaceId);
-      if (!clients || clients.size === 0) {
-        return;
-      }
-
       const payload = JSON.stringify({
         ...data,
         timestamp: new Date().toISOString(),
       });
 
-      clients.forEach((client) => {
-        if (client.readyState === WebSocket.OPEN) {
-          client.send(payload);
+      // Send to shift update clients (for all shift CRUD events)
+      const shiftClients = shiftUpdateClients.get(workspaceId);
+      if (shiftClients && shiftClients.size > 0) {
+        shiftClients.forEach((client) => {
+          if (client.readyState === WebSocket.OPEN) {
+            client.send(payload);
+          }
+        });
+      }
+      
+      // Only send scheduling progress events to scheduling progress subscribers
+      // Filter to prevent unrelated shift CRUD events from being sent
+      if (data.type === 'trinity_scheduling_progress') {
+        const scheduleClients = schedulingProgressClients.get(workspaceId);
+        if (scheduleClients && scheduleClients.size > 0) {
+          scheduleClients.forEach((client) => {
+            if (client.readyState === WebSocket.OPEN) {
+              client.send(payload);
+            }
+          });
         }
-      });
+      }
     },
     // Platform-wide broadcast for What's New and announcements
     broadcastPlatformUpdate: (update: {

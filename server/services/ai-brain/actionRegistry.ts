@@ -228,8 +228,150 @@ class AIBrainActionRegistry {
       },
     };
 
+    // Create Open Shift and Auto-Fill with Trinity (with live streaming progress)
+    const createOpenShiftAndFill: ActionHandler = {
+      actionId: 'scheduling.create_open_shift_fill',
+      name: 'Create Open Shift & Auto-Fill',
+      category: 'scheduling',
+      description: 'Create an open shift and have Trinity automatically find the best employee match with live progress streaming',
+      requiredRoles: ['manager', 'owner', 'root_admin'],
+      handler: async (request: ActionRequest): Promise<ActionResult> => {
+        const start = Date.now();
+        const { schedulingSubagent } = await import('./subagents/schedulingSubagent');
+        const { broadcastShiftUpdate, broadcastToWorkspace } = require('../../websocket');
+        
+        try {
+          // Step 1: Create the open shift (no employee assigned)
+          const [openShift] = await db.insert(shifts).values({
+            workspaceId: request.workspaceId!,
+            employeeId: null, // Open shift - no employee yet
+            clientId: request.payload?.clientId || null,
+            startTime: new Date(request.payload?.startTime),
+            endTime: new Date(request.payload?.endTime),
+            title: request.payload?.title || 'Open Shift',
+            description: request.payload?.description || 'Auto-filling with Trinity AI',
+            status: 'draft',
+            aiGenerated: true,
+          }).returning();
+          
+          // Broadcast: Open shift created, Trinity is analyzing
+          broadcastToWorkspace(request.workspaceId!, {
+            type: 'trinity_scheduling_progress',
+            data: {
+              shiftId: openShift.id,
+              step: 'analyzing',
+              message: 'Trinity is analyzing available employees...',
+              progress: 20,
+            }
+          });
+          
+          // Step 2: Get strategic schedule for this shift
+          const shiftDuration = (new Date(request.payload?.endTime).getTime() - new Date(request.payload?.startTime).getTime()) / (1000 * 60 * 60);
+          
+          broadcastToWorkspace(request.workspaceId!, {
+            type: 'trinity_scheduling_progress',
+            data: {
+              shiftId: openShift.id,
+              step: 'matching',
+              message: 'Finding best employee match using AI optimization...',
+              progress: 50,
+            }
+          });
+          
+          const result = await schedulingSubagent.generateStrategicSchedule(
+            request.workspaceId!,
+            [{
+              shiftId: openShift.id,
+              clientId: request.payload?.clientId || '',
+              date: new Date(request.payload?.startTime),
+              startTime: request.payload?.startTime,
+              endTime: request.payload?.endTime,
+              durationHours: shiftDuration,
+            }]
+          );
+          
+          // Step 3: Apply the best assignment
+          if (result.schedule.length > 0) {
+            const assignment = result.schedule[0];
+            
+            broadcastToWorkspace(request.workspaceId!, {
+              type: 'trinity_scheduling_progress',
+              data: {
+                shiftId: openShift.id,
+                step: 'assigning',
+                message: `Assigning to ${assignment.employeeName} (score: ${assignment.assignmentScore.toFixed(0)})...`,
+                progress: 80,
+                assignedEmployee: {
+                  id: assignment.employeeId,
+                  name: assignment.employeeName,
+                  score: assignment.assignmentScore,
+                },
+              }
+            });
+            
+            // Update the shift with the assigned employee
+            const [filledShift] = await db.update(shifts)
+              .set({
+                employeeId: assignment.employeeId,
+                status: 'scheduled',
+                aiConfidenceScore: String(result.confidence.score),
+                updatedAt: new Date(),
+              })
+              .where(eq(shifts.id, openShift.id))
+              .returning();
+            
+            // Broadcast: Shift filled successfully
+            broadcastToWorkspace(request.workspaceId!, {
+              type: 'trinity_scheduling_progress',
+              data: {
+                shiftId: openShift.id,
+                step: 'complete',
+                message: `Shift assigned to ${assignment.employeeName}!`,
+                progress: 100,
+                shift: filledShift,
+                businessMetrics: result.businessMetrics,
+              }
+            });
+            
+            // Also broadcast standard shift update for cross-device sync
+            broadcastShiftUpdate(request.workspaceId!, 'shift_created', filledShift);
+            
+            return createResult(request.actionId, true, 
+              `Open shift created and assigned to ${assignment.employeeName} with ${(result.confidence.score * 100).toFixed(0)}% confidence`, 
+              { shift: filledShift, assignment, businessMetrics: result.businessMetrics, strategicDecisions: result.strategicDecisions },
+              start
+            );
+          } else {
+            // No suitable employee found
+            broadcastToWorkspace(request.workspaceId!, {
+              type: 'trinity_scheduling_progress',
+              data: {
+                shiftId: openShift.id,
+                step: 'no_match',
+                message: 'No suitable employee available for this shift',
+                progress: 100,
+                shift: openShift,
+              }
+            });
+            
+            broadcastShiftUpdate(request.workspaceId!, 'shift_created', openShift);
+            
+            return createResult(request.actionId, true, 
+              'Open shift created but no suitable employee found - shift remains open', 
+              { shift: openShift, alerts: result.alerts },
+              start
+            );
+          }
+        } catch (error: any) {
+          console.error('[ActionRegistry] Create open shift fill error:', error);
+          return createResult(request.actionId, false, error.message || 'Failed to create and fill shift', null, start);
+        }
+      },
+    };
+
     helpaiOrchestrator.registerAction(createShift);
     helpaiOrchestrator.registerAction(getShifts);
+    helpaiOrchestrator.registerAction(createOpenShiftAndFill);
   }
 
   // ============================================================================

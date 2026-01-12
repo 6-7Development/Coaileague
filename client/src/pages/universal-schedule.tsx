@@ -50,6 +50,7 @@ import { WeekStatsBar } from '@/components/schedule/WeekStatsBar';
 import { UnassignedShiftsPanel } from '@/components/schedule/UnassignedShiftsPanel';
 import { ConflictAlerts, getShiftConflictBadge, getShiftTimeClockStatus } from '@/components/schedule/ConflictAlerts';
 import { TrinityInsightsPanel } from '@/components/schedule/TrinityInsightsPanel';
+import { TrinitySchedulingProgress } from '@/components/schedule/TrinitySchedulingProgress';
 
 // Post order template data (will be pre-created in database)
 const POST_ORDER_TEMPLATES = [
@@ -2785,6 +2786,9 @@ export default function UniversalSchedule() {
       ) : null}
     </DragOverlay>
       </DndContext>
+      
+      {/* Trinity Live Scheduling Progress Indicator */}
+      <TrinitySchedulingProgress workspaceId={workspaceId} />
     </WorkspaceLayout>
   );
 }
