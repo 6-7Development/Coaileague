@@ -72,10 +72,14 @@ export function TrinityInsightsPanel({
 
   const askTrinityMutation = useMutation({
     mutationFn: async (question: string) => {
-      return await apiRequest('POST', '/api/trinity/scheduling/ask', { 
-        question,
-        weekStart: weekStart.toISOString(),
-        weekEnd: weekEnd.toISOString(),
+      return await apiRequest('/api/trinity/scheduling/ask', { 
+        method: 'POST',
+        body: JSON.stringify({
+          question,
+          weekStart: weekStart.toISOString(),
+          weekEnd: weekEnd.toISOString(),
+        }),
+        headers: { 'Content-Type': 'application/json' },
       });
     },
     onSuccess: (data) => {
@@ -88,9 +92,13 @@ export function TrinityInsightsPanel({
 
   const applyInsightMutation = useMutation({
     mutationFn: async (insight: TrinityInsight) => {
-      return await apiRequest('POST', '/api/schedules/apply-insight', {
-        insightId: insight.id,
-        actionData: insight.actionData,
+      return await apiRequest('/api/schedules/apply-insight', {
+        method: 'POST',
+        body: JSON.stringify({
+          insightId: insight.id,
+          actionData: insight.actionData,
+        }),
+        headers: { 'Content-Type': 'application/json' },
       });
     },
     onSuccess: () => {
