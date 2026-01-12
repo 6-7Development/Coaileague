@@ -225,7 +225,7 @@ export class ScenarioSeederService {
         description: `Training shift ${i + 1} - ${config.difficulty} difficulty`,
         startTime,
         endTime,
-        status: 'draft',
+        status: 'open', // Use 'open' so shifts appear on the schedule grid
         aiGenerated: false,
         isTrainingShift: true,
         scenarioId,
@@ -317,7 +317,7 @@ export class ScenarioSeederService {
     const clearedShifts = await db.update(shifts)
       .set({
         employeeId: null,
-        status: 'draft',
+        status: 'open', // Use 'open' so shifts appear on schedule grid
       })
       .where(and(
         eq(shifts.workspaceId, workspaceId),
