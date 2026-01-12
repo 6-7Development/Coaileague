@@ -969,12 +969,17 @@ export default function QuickBooksImportPage() {
             <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg text-sm text-amber-800 dark:text-amber-200">
               <div className="flex items-center gap-2 justify-center mb-1">
                 <AlertTriangle className="h-4 w-4" />
-                <span className="font-medium">Sandbox Testing Mode</span>
+                <span className="font-medium">Sandbox Testing Mode - Important!</span>
               </div>
-              <p className="text-xs text-amber-600 dark:text-amber-400">
-                Use your Intuit Developer Portal sandbox test credentials to log in.
-                Create a sandbox company in the Developer Portal if you don't have one.
-              </p>
+              <div className="text-xs text-amber-600 dark:text-amber-400 space-y-2">
+                <p className="font-medium">When the Intuit login opens:</p>
+                <ol className="list-decimal list-inside text-left space-y-1 pl-2">
+                  <li>Click <strong>"Use a different account"</strong> if your production account appears</li>
+                  <li>Log in with your <strong>Intuit Developer Portal sandbox credentials</strong></li>
+                  <li>Select your <strong>sandbox test company</strong> (not production)</li>
+                </ol>
+                <p className="mt-2 italic">Your sandbox login is different from your production QuickBooks login.</p>
+              </div>
             </div>
             
             <div className="grid grid-cols-2 gap-4 text-sm">
