@@ -84,6 +84,7 @@ export function TrinityTrainingPanel() {
     mutationFn: async (difficulty: DifficultyLevel) => {
       const res = await apiRequest("/api/trinity-training/seed", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ difficulty }),
       });
       return res.json();
@@ -133,6 +134,7 @@ export function TrinityTrainingPanel() {
     mutationFn: async (runId: string) => {
       const res = await apiRequest("/api/trinity-training/start-run", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ runId }),
       });
       return res.json();

@@ -50,6 +50,7 @@ import { WeekStatsBar } from '@/components/schedule/WeekStatsBar';
 import { UnassignedShiftsPanel } from '@/components/schedule/UnassignedShiftsPanel';
 import { ConflictAlerts, getShiftConflictBadge, getShiftTimeClockStatus } from '@/components/schedule/ConflictAlerts';
 import { TrinityInsightsPanel } from '@/components/schedule/TrinityInsightsPanel';
+import { TrinityTrainingPanel } from '@/components/schedule/TrinityTrainingPanel';
 import { TrinitySchedulingProgress } from '@/components/schedule/TrinitySchedulingProgress';
 
 // Post order template data (will be pre-created in database)
@@ -1729,7 +1730,7 @@ export default function UniversalSchedule() {
                 </Button>
               </div>
               <ScrollArea className="flex-1">
-                <div className="p-3">
+                <div className="p-3 space-y-4">
                   <TrinityInsightsPanel
                     weekStart={weekStart}
                     weekEnd={weekEnd}
@@ -1739,6 +1740,9 @@ export default function UniversalSchedule() {
                     isCollapsed={false}
                     onToggleCollapse={() => setShowTrinityInsights(!showTrinityInsights)}
                   />
+                  
+                  {/* Trinity Training Panel - AI Confidence Building */}
+                  <TrinityTrainingPanel />
                 </div>
               </ScrollArea>
             </div>
