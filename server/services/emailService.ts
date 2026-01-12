@@ -6,6 +6,7 @@
  * - Queue-compatible error handling
  * - Notification category abstraction
  * - Resend integration with proper error handling
+ * - SIMULATION MODE for testing (logs instead of sending)
  */
 
 import { db } from "../db";
@@ -13,6 +14,7 @@ import { emailEvents } from "@shared/schema";
 import { eq } from "drizzle-orm";
 // Reuse existing Resend client from email.ts (no duplication!)
 import { getUncachableResendClient, isResendConfigured } from "../email";
+import { FEATURES } from "@shared/platformConfig";
 
 // ============================================================================
 // BASE URL UTILITY
@@ -798,6 +800,7 @@ export class EmailService {
 
   /**
    * Send email via Resend with audit logging and automatic retry on failure
+   * SIMULATION MODE: If emailSimulationMode is enabled, logs email instead of sending
    */
   private async sendEmail(
     to: string,
@@ -807,6 +810,38 @@ export class EmailService {
     workspaceId?: string,
     userId?: string
   ): Promise<EmailResult> {
+    // Check simulation mode - log instead of actually sending
+    const isSimulation = FEATURES.emailSimulationMode || process.env.EMAIL_SIMULATION_MODE === 'true';
+    
+    if (isSimulation) {
+      // SIMULATION MODE: Log email details but don't actually send
+      console.log('═'.repeat(60));
+      console.log('📧 [EMAIL SIMULATION] Would send email:');
+      console.log(`   Type: ${emailType}`);
+      console.log(`   To: ${to}`);
+      console.log(`   Subject: ${subject}`);
+      console.log(`   WorkspaceId: ${workspaceId || 'N/A'}`);
+      console.log(`   UserId: ${userId || 'N/A'}`);
+      console.log('   HTML Preview (first 200 chars):');
+      console.log(`   ${html.replace(/<[^>]*>/g, ' ').substring(0, 200)}...`);
+      console.log('═'.repeat(60));
+      
+      // Log to database as simulated
+      const eventId = await this.logEmailEvent(
+        emailType,
+        to,
+        'sent', // Mark as sent in simulation
+        workspaceId,
+        userId,
+        `SIMULATED-${Date.now()}`
+      );
+      
+      return {
+        success: true,
+        resendId: `SIMULATED-${Date.now()}`,
+      };
+    }
+    
     // Create pending log entry
     const eventId = await this.logEmailEvent(
       emailType,
