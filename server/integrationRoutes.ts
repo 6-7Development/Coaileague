@@ -135,19 +135,68 @@ router.post('/quickbooks/connect', requireAuth, requireWorkspaceMembership(), as
 /**
  * GET /api/integrations/quickbooks/callback
  * 
- * OAuth callback from QuickBooks after user grants access
+ * OAuth callback from QuickBooks after user grants access.
+ * Returns HTML that closes the popup and notifies the parent window.
  */
 router.get('/quickbooks/callback', async (req: Request, res: Response) => {
+  // Helper to send popup-closing HTML response
+  const sendPopupResponse = (success: boolean, message: string, companyName?: string) => {
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+  <title>${success ? 'Connected' : 'Connection Failed'} - QuickBooks</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      background: ${success ? '#f0fdf4' : '#fef2f2'};
+      color: ${success ? '#166534' : '#991b1b'};
+    }
+    .icon { font-size: 64px; margin-bottom: 16px; }
+    .message { font-size: 20px; text-align: center; max-width: 320px; font-weight: 500; }
+    .closing { font-size: 14px; color: #6b7280; margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <div class="icon">${success ? '✓' : '✕'}</div>
+  <div class="message">${message}</div>
+  <div class="closing">This window will close automatically...</div>
+  <script>
+    // Notify parent window and close popup
+    if (window.opener) {
+      window.opener.postMessage({
+        type: 'quickbooks-oauth-complete',
+        success: ${success},
+        message: ${JSON.stringify(message)},
+        companyName: ${JSON.stringify(companyName || null)}
+      }, '*');
+    }
+    // Close popup after a brief delay so user sees the result
+    setTimeout(function() {
+      window.close();
+    }, 1500);
+  </script>
+</body>
+</html>`;
+    res.setHeader('Content-Type', 'text/html');
+    return res.send(html);
+  };
+
   try {
     const { code, state, realmId, error } = req.query;
 
     // Handle OAuth errors (user denied, etc.)
     if (error) {
-      return res.redirect(`/quickbooks-import?error=${encodeURIComponent(error as string)}`);
+      return sendPopupResponse(false, `Authorization failed: ${error}`);
     }
 
     if (!code || !state || !realmId) {
-      return res.redirect('/quickbooks-import?error=missing_parameters');
+      return sendPopupResponse(false, 'Missing required parameters from QuickBooks');
     }
 
     // Exchange code for tokens
@@ -157,11 +206,11 @@ router.get('/quickbooks/callback', async (req: Request, res: Response) => {
       realmId as string
     );
 
-    // Redirect to QuickBooks migration wizard with success message
-    return res.redirect('/quickbooks-import?success=connected');
+    // Success - close popup and notify parent
+    return sendPopupResponse(true, 'Successfully connected to QuickBooks!', connection?.companyName);
   } catch (error: any) {
     console.error('QuickBooks callback error:', error);
-    return res.redirect(`/quickbooks-import?error=${encodeURIComponent(error.message)}`);
+    return sendPopupResponse(false, error.message || 'Failed to connect to QuickBooks');
   }
 });
 
