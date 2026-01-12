@@ -804,7 +804,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Onboarding digest endpoint - Trinity welcome + last 3 What's New + system updates for new users
   app.get("/api/notifications/onboarding-digest", requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       if (!userId) {
         return res.status(401).json({ message: "Authentication required" });
       }
@@ -830,7 +830,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Send Trinity welcome notification to a user
   app.post("/api/notifications/trinity-welcome", requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const workspaceId = req.workspaceId || req.user?.defaultWorkspaceId;
       const { userName } = req.body;
 
@@ -2639,7 +2639,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create a new workspace/organization
   app.post('/api/workspaces', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const user = req.user;
       if (!userId || !user) {
         return res.status(401).json({ message: 'Unauthorized' });
@@ -2886,7 +2886,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const workspaceId = req.workspaceId;
       if (!workspaceId) {
       // Check if platform staff - they get platform-wide health view
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       if (userId) {
         const { getUserPlatformRole, hasPlatformWideAccess } = await import('./rbac');
         const platformRole = await getUserPlatformRole(userId);
@@ -3595,7 +3595,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const user = await storage.getUser(userId);
       res.json(user);
     } catch (error) {
@@ -4855,7 +4855,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Upgrade workspace billing tier
   app.post('/api/workspace/upgrade', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const workspace = await storage.getWorkspaceByOwnerId(userId);
       
       if (!workspace) {
@@ -6342,7 +6342,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update employee contact information (Employee Self-Service)
   app.patch('/api/employees/me/contact-info', isAuthenticated, async (req: AuthenticatedRequest, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       
       // Find employee by userId
       const employee = await storage.getEmployeeByUserId(userId);
@@ -6382,7 +6382,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get employee's own documents (Employee Self-Service)
   app.get('/api/hireos/documents/me', isAuthenticated, async (req: AuthenticatedRequest, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       
       // Find employee by userId
       const employee = await storage.getEmployeeByUserId(userId);
@@ -6404,7 +6404,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Approve employee and set pay rate (post-onboarding) - MANAGER/OWNER ONLY
   app.post('/api/employees/approve', requireManager, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const user = await storage.getUser(userId);
       
       if (!user?.currentWorkspaceId) {
@@ -6461,7 +6461,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.get('/api/benefits', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const workspace = await storage.getWorkspaceByOwnerId(userId);
       
       if (!workspace) {
@@ -6478,7 +6478,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/benefits/employee/:employeeId', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const workspace = await storage.getWorkspaceByOwnerId(userId);
       
       if (!workspace) {
@@ -6496,7 +6496,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/benefits', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const workspace = await storage.getWorkspaceByOwnerId(userId);
       
       if (!workspace) {
@@ -6521,7 +6521,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/benefits/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const workspace = await storage.getWorkspaceByOwnerId(userId);
       
       if (!workspace) {
@@ -6552,7 +6552,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/benefits/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const workspace = await storage.getWorkspaceByOwnerId(userId);
       
       if (!workspace) {
@@ -6579,7 +6579,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.get('/api/reviews', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const workspace = await storage.getWorkspaceByOwnerId(userId);
       
       if (!workspace) {
@@ -6596,7 +6596,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/reviews', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const workspace = await storage.getWorkspaceByOwnerId(userId);
       
       if (!workspace) {
@@ -6619,7 +6619,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/reviews/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const workspace = await storage.getWorkspaceByOwnerId(userId);
       
       if (!workspace) {
@@ -6654,7 +6654,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.get('/api/pto', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const workspace = await storage.getWorkspaceByOwnerId(userId);
       
       if (!workspace) {
@@ -6672,7 +6672,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/pto', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const workspace = await storage.getWorkspaceByOwnerId(userId);
       
       if (!workspace) {
@@ -6695,7 +6695,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/pto/:id/approve', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const workspace = await storage.getWorkspaceByOwnerId(userId);
       
       if (!workspace) {
@@ -6719,7 +6719,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/pto/:id/deny', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const workspace = await storage.getWorkspaceByOwnerId(userId);
       
       if (!workspace) {
@@ -6836,7 +6836,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.get('/api/terminations', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const workspace = await storage.getWorkspaceByOwnerId(userId);
       
       if (!workspace) {
@@ -6853,7 +6853,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/terminations', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const workspace = await storage.getWorkspaceByOwnerId(userId);
       
       if (!workspace) {
@@ -6876,7 +6876,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/terminations/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const workspace = await storage.getWorkspaceByOwnerId(userId);
       
       if (!workspace) {
@@ -6907,7 +6907,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/terminations/:id/complete', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const workspace = await storage.getWorkspaceByOwnerId(userId);
       
       if (!workspace) {
@@ -9083,7 +9083,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/scheduleos/ai/toggle', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
     try {
       const { enabled, workspaceId } = req.body;
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       
       if (!workspaceId) {
         return res.status(400).json({ message: "workspaceId is required" });
@@ -9159,7 +9159,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Generate AI Schedule with Smart Approval (99% AI, 1% Human Governance)
   app.post('/api/scheduleos/smart-generate', isAuthenticated, requireManager, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const [userWorkspace] = await db.select().from(workspaceMembers).where(eq(workspaceMembers.userId, userId)).limit(1);
       if (!userWorkspace) return res.status(404).json({ message: "Workspace not found" });
       const workspace = await storage.getWorkspace(userWorkspace.workspaceId);
@@ -9300,7 +9300,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // List All Schedule Proposals (for workflow approval page)
   app.get('/api/scheduleos/proposals', isAuthenticated, requireManager, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const [userWorkspace] = await db.select().from(workspaceMembers).where(eq(workspaceMembers.userId, userId)).limit(1);
       if (!userWorkspace) return res.status(404).json({ message: "Workspace not found" });
       
@@ -9356,7 +9356,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/scheduleos/proposals/:id', isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const [userWorkspace] = await db.select().from(workspaceMembers).where(eq(workspaceMembers.userId, userId)).limit(1);
       if (!userWorkspace) return res.status(404).json({ message: "Workspace not found" });
       
@@ -9383,7 +9383,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const { disclaimerAcknowledged } = req.body;
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const [userWorkspace] = await db.select().from(workspaceMembers).where(eq(workspaceMembers.userId, userId)).limit(1);
       if (!userWorkspace) return res.status(404).json({ message: "Workspace not found" });
       
@@ -9451,7 +9451,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const { reason } = req.body;
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const [userWorkspace] = await db.select().from(workspaceMembers).where(eq(workspaceMembers.userId, userId)).limit(1);
       if (!userWorkspace) return res.status(404).json({ message: "Workspace not found" });
       
@@ -9493,7 +9493,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // List All Invoice Proposals
   app.get('/api/invoices/proposals', isAuthenticated, requireManager, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const [userWorkspace] = await db.select().from(workspaceMembers).where(eq(workspaceMembers.userId, userId)).limit(1);
       if (!userWorkspace) return res.status(404).json({ message: "Workspace not found" });
       
@@ -9515,7 +9515,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/invoices/proposals/:id/approve', isAuthenticated, requireManager, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const [userWorkspace] = await db.select().from(workspaceMembers).where(eq(workspaceMembers.userId, userId)).limit(1);
       if (!userWorkspace) return res.status(404).json({ message: "Workspace not found" });
       
@@ -9557,7 +9557,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const { reason } = req.body;
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const [userWorkspace] = await db.select().from(workspaceMembers).where(eq(workspaceMembers.userId, userId)).limit(1);
       if (!userWorkspace) return res.status(404).json({ message: "Workspace not found" });
       
@@ -9599,7 +9599,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // List All Payroll Proposals
   app.get('/api/payroll/proposals', isAuthenticated, requireManager, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const [userWorkspace] = await db.select().from(workspaceMembers).where(eq(workspaceMembers.userId, userId)).limit(1);
       if (!userWorkspace) return res.status(404).json({ message: "Workspace not found" });
       
@@ -9621,7 +9621,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/payroll/proposals/:id/approve', isAuthenticated, requireManager, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const [userWorkspace] = await db.select().from(workspaceMembers).where(eq(workspaceMembers.userId, userId)).limit(1);
       if (!userWorkspace) return res.status(404).json({ message: "Workspace not found" });
       
@@ -9663,7 +9663,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const { reason } = req.body;
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const [userWorkspace] = await db.select().from(workspaceMembers).where(eq(workspaceMembers.userId, userId)).limit(1);
       if (!userWorkspace) return res.status(404).json({ message: "Workspace not found" });
       
@@ -9836,7 +9836,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Request Service Coverage
   app.post('/api/scheduleos/request-service', isAuthenticated, requireManager, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const [userWorkspace] = await db.select().from(workspaceMembers).where(eq(workspaceMembers.userId, userId)).limit(1);
       if (!userWorkspace) return res.status(404).json({ message: "Workspace not found" });
       const workspace = await storage.getWorkspace(userWorkspace.workspaceId);
@@ -9870,7 +9870,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Publish Schedule
   app.post('/api/schedules/publish', isAuthenticated, requireManager, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const [userWorkspace] = await db.select().from(workspaceMembers).where(eq(workspaceMembers.userId, userId)).limit(1);
       if (!userWorkspace) return res.status(404).json({ message: "Workspace not found" });
       const workspace = await storage.getWorkspace(userWorkspace.workspaceId);
@@ -9896,7 +9896,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Duplicate week shifts to next week
   app.post('/api/scheduling/duplicate-week', requireAuth, requireManager, async (req: AuthenticatedRequest, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       if (!userId) return res.status(401).json({ message: "Authentication required" });
       
       const { sourceWeekStart, targetWeekStart, skipExisting } = req.body;
@@ -9961,7 +9961,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Start 7-day free trial (any user can start)
   app.post('/api/scheduleos/start-trial', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const workspace = await storage.getWorkspaceByOwnerId(userId);
       
       if (!workspace) {
@@ -10005,7 +10005,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create Payment Intent for Scheduling Platform activation (SECURE: Server-side creation)
   app.post('/api/scheduleos/payment-intent', isAuthenticated, requireManager, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       
       // Get user's employee record to find their workspace
       const employee = await storage.getEmployeeByUserId(userId);
@@ -10120,7 +10120,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Activate AI Scheduling™ with payment (SECURE: Validates Payment Intent ownership and prevents reuse)
   app.post('/api/scheduleos/activate', isAuthenticated, requireManager, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       
       // Get user's employee record to find their workspace
       const employee = await storage.getEmployeeByUserId(userId);
@@ -10392,7 +10392,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.post('/api/scheduleos/generate', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const workspace = await storage.getWorkspaceByOwnerId(userId);
       
       if (!workspace) {
@@ -10605,7 +10605,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Acknowledge AI-generated shift (employee confirmation)
   app.post('/api/scheduleos/acknowledge/:shiftId', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const { shiftId } = req.params;
 
       // Find shift and verify employee access
@@ -10736,7 +10736,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.get('/api/shift-templates', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const workspace = await storage.getWorkspaceByOwnerId(userId);
       
       if (!workspace) {
@@ -10753,7 +10753,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/shift-templates', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const workspace = await storage.getWorkspaceByOwnerId(userId);
       
       if (!workspace) {
@@ -10773,7 +10773,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/shift-templates/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const workspace = await storage.getWorkspaceByOwnerId(userId);
       
       if (!workspace) {
@@ -11042,7 +11042,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.get('/api/time-entries', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const workspace = await storage.getWorkspaceByOwnerId(userId);
       
       if (!workspace) {
@@ -11059,7 +11059,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/time-entries', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const workspace = await storage.getWorkspaceByOwnerId(userId);
       
       if (!workspace) {
@@ -11227,7 +11227,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Send invoice email to client
   app.post('/api/invoices/:id/send-email', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const workspace = await storage.getWorkspaceByOwnerId(userId);
       
       if (!workspace) {
@@ -11340,7 +11340,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/invoices', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const workspace = await storage.getWorkspaceByOwnerId(userId);
       
       if (!workspace) {
@@ -11368,7 +11368,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/invoices/generate-from-time', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const workspace = await storage.getWorkspaceByOwnerId(userId);
       
       if (!workspace) {
@@ -11476,7 +11476,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Client Billing Rates Management
   app.post('/api/client-rates', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const workspace = await storage.getWorkspaceByOwnerId(userId);
       
       if (!workspace) {
@@ -11498,7 +11498,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/client-rates/:clientId', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const workspace = await storage.getWorkspaceByOwnerId(userId);
       
       if (!workspace) {
@@ -12356,7 +12356,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.get('/api/time-entries', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const workspace = await storage.getWorkspaceByOwnerId(userId);
       
       if (!workspace) {
@@ -12373,7 +12373,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/time-entries/clock-in', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const workspace = await storage.getWorkspaceByOwnerId(userId);
       
       if (!workspace) {
@@ -12416,7 +12416,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/time-entries/:id/clock-out', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const workspace = await storage.getWorkspaceByOwnerId(userId);
       
       if (!workspace) {
@@ -12727,7 +12727,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/shift-chatrooms/active', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const workspace = await storage.getWorkspaceByOwnerId(userId);
       
       if (!workspace) {
@@ -12744,7 +12744,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/shift-chatrooms/:shiftId/:timeEntryId', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const workspace = await storage.getWorkspaceByOwnerId(userId);
       
       if (!workspace) {
@@ -12772,7 +12772,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/shift-chatrooms/:conversationId/messages', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const employee = await storage.getEmployeeByUserId(userId);
       
       if (!employee) {
@@ -12807,7 +12807,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/time-entries/unbilled/:clientId', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const workspace = await storage.getWorkspaceByOwnerId(userId);
       
       if (!workspace) {
@@ -12955,7 +12955,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/onboarding/invite', isAuthenticated, requireManager, async (req: AuthenticatedRequest, res) => {
     try {
       const workspaceId = req.workspaceId!;
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       
       const { email, firstName, lastName, role, workspaceRole } = req.body;
       
@@ -13840,7 +13840,7 @@ ${application.email}`,
   app.post('/api/hireos/documents', isAuthenticated, async (req: AuthenticatedRequest, res) => {
     try {
       const crypto = require('crypto');
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const userEmail = req.user.claims.email;
       const userRole = req.user.role || 'employee';
       const ipAddress = req.ip || req.socket.remoteAddress || 'unknown';
@@ -13897,7 +13897,7 @@ ${application.email}`,
     try {
       const { employeeId } = req.params;
       const { documentType, status } = req.query;
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       
       // SECURITY: Resolve workspace from authenticated user
       const workspace = await storage.getWorkspaceByOwnerId(userId) || 
@@ -13932,7 +13932,7 @@ ${application.email}`,
     try {
       const { documentId } = req.params;
       const { approvalNotes } = req.body;
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
 
       // SECURITY: Resolve workspace from authenticated user
       const workspace = await storage.getWorkspaceByOwnerId(userId) || 
@@ -13961,7 +13961,7 @@ ${application.email}`,
     try {
       const { documentId } = req.params;
       const { rejectionReason } = req.body;
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
 
       if (!rejectionReason) {
         return res.status(400).json({ message: "Rejection reason is required" });
@@ -13994,7 +13994,7 @@ ${application.email}`,
     try {
       const { documentId } = req.params;
       const { accessType } = req.body; // 'view', 'download', 'print', 'share'
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const userEmail = req.user.claims.email;
       const userRole = req.user.role || 'employee';
       const ipAddress = req.ip || req.socket.remoteAddress || 'unknown';
@@ -14040,7 +14040,7 @@ ${application.email}`,
   app.get('/api/hireos/documents/:documentId/access-logs', isAuthenticated, requireHRManager, async (req: AuthenticatedRequest, res) => {
     try {
       const { documentId } = req.params;
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       
       // SECURITY: Resolve workspace from authenticated user
       const workspace = await storage.getWorkspaceByOwnerId(userId) || 
@@ -14067,7 +14067,7 @@ ${application.email}`,
   // Create/update onboarding workflow template (owner only)
   app.post('/api/hireos/workflow-templates', isAuthenticated, requireOwner, async (req: AuthenticatedRequest, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const workspace = await storage.getWorkspaceByOwnerId(userId);
       
       if (!workspace) {
@@ -14091,7 +14091,7 @@ ${application.email}`,
   // Get workflow templates
   app.get('/api/hireos/workflow-templates', isAuthenticated, async (req: AuthenticatedRequest, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const workspace = await storage.getWorkspaceByOwnerId(userId) || 
                         await storage.getWorkspaceByMembership(userId);
       
@@ -14111,7 +14111,7 @@ ${application.email}`,
   app.post('/api/hireos/checklists', isAuthenticated, requireManager, async (req: AuthenticatedRequest, res) => {
     try {
       const { applicationId, templateId } = req.body;
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       
       // SECURITY: Resolve workspace from authenticated user
       const workspace = await storage.getWorkspaceByOwnerId(userId) || 
@@ -14176,7 +14176,7 @@ ${application.email}`,
     try {
       const { checklistId } = req.params;
       const { checklistItems } = req.body;
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
 
       // SECURITY: Resolve workspace from authenticated user
       const workspace = await storage.getWorkspaceByOwnerId(userId) || 
@@ -14220,7 +14220,7 @@ ${application.email}`,
   // Get compliance report (I-9 expiry, missing docs, etc) - MANAGER/OWNER ONLY
   app.get('/api/hireos/compliance-report', isAuthenticated, requireManager, async (req: AuthenticatedRequest, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const workspace = await storage.getWorkspaceByOwnerId(userId) || 
                         await storage.getWorkspaceByMembership(userId);
       
@@ -14244,7 +14244,7 @@ ${application.email}`,
       const https = require('https');
       const http = require('http');
       const { employeeId } = req.params;
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       
       // SECURITY: Resolve workspace from authenticated user
       const workspace = await storage.getWorkspaceByOwnerId(userId) || 
@@ -14577,7 +14577,7 @@ ${application.email}`,
         });
       }
 
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const workspace = await storage.getWorkspaceByOwnerId(userId);
       
       if (!workspace) {
@@ -14628,7 +14628,7 @@ ${application.email}`,
         return res.status(503).json({ message: "Stripe keys required" });
       }
 
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const workspace = await storage.getWorkspaceByOwnerId(userId);
       
       if (!workspace || !workspace.stripeConnectedAccountId) {
@@ -14729,7 +14729,7 @@ ${application.email}`,
       }
 
       const { tier, paymentMethodId } = req.body;
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const workspace = await storage.getWorkspaceByOwnerId(userId);
       
       if (!workspace) {
@@ -15135,7 +15135,7 @@ ${application.email}`,
     try {
       const workspaceId = req.workspaceId!;
       const { employeeId } = req.params;
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const { employeePayrollInfo } = await import("@shared/schema");
 
       // SECURITY: Only allow viewing own payroll info unless manager+
@@ -15616,7 +15616,7 @@ ${application.email}`,
   app.post('/api/time-off-requests', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const workspaceId = req.workspaceId!;
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const { timeOffRequests, insertTimeOffRequestSchema } = await import("@shared/schema");
       
       // SECURITY: Employees can only submit for themselves, managers can submit for reports
@@ -15673,7 +15673,7 @@ ${application.email}`,
       const workspaceId = req.workspaceId!;
       const { id } = req.params;
       const { status, reviewNotes } = req.body;
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const { timeOffRequests, employees } = await import("@shared/schema");
 
       if (!['approved', 'denied'].includes(status)) {
@@ -15810,7 +15810,7 @@ ${application.email}`,
       const workspaceId = req.workspaceId!;
       const { id } = req.params;
       const { status, reviewNotes } = req.body;
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const { contractDocuments } = await import("@shared/schema");
 
       if (!['approved', 'rejected'].includes(status)) {
@@ -16296,7 +16296,7 @@ ${application.email}`,
   app.post('/api/organization-onboarding/start', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const workspaceId = req.workspaceId!;
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const {
         organizationName,
         industry,
@@ -16539,7 +16539,7 @@ ${application.email}`,
   app.post('/api/report-templates/:id/toggle', isAuthenticated, requireOwner, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const user = await storage.getUser(userId);
       
       const template = await storage.toggleReportTemplateActivation(id, user!.currentWorkspaceId!);
@@ -16553,7 +16553,7 @@ ${application.email}`,
   // Get report submissions (for employees/supervisors)
   app.get('/api/report-submissions', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const user = await storage.getUser(userId);
       if (!user?.currentWorkspaceId) {
         return res.status(403).json({ message: "No workspace selected" });
@@ -16574,7 +16574,7 @@ ${application.email}`,
   // Create new report submission
   app.post('/api/report-submissions', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const user = await storage.getUser(userId);
       if (!user?.currentWorkspaceId) {
         return res.status(403).json({ message: "No workspace selected" });
@@ -16610,7 +16610,7 @@ ${application.email}`,
     try {
       const { id } = req.params;
       const { approved, reviewNotes } = req.body;
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const user = await storage.getUser(userId);
 
       const submission = await storage.reviewReportSubmission(id, {
@@ -16630,7 +16630,7 @@ ${application.email}`,
   app.post('/api/report-submissions/:id/send-to-client', isAuthenticated, requireManager, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const user = await storage.getUser(userId);
       
       if (!user?.currentWorkspaceId) {
@@ -16771,7 +16771,7 @@ ${application.email}`,
   // COMPLIANCE & LEGAL REPORTS - Audit-Ready Reporting Suite
   app.get('/api/compliance-reports/labor-violations', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const user = await storage.getUser(userId);
       if (!user?.currentWorkspaceId) {
         return res.status(403).json({ message: "No workspace selected" });
@@ -16798,7 +16798,7 @@ ${application.email}`,
 
   app.get('/api/compliance-reports/tax-remittance', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const user = await storage.getUser(userId);
       if (!user?.currentWorkspaceId) {
         return res.status(403).json({ message: "No workspace selected" });
@@ -16825,7 +16825,7 @@ ${application.email}`,
 
   app.get('/api/compliance-reports/audit-log', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const user = await storage.getUser(userId);
       if (!user?.currentWorkspaceId) {
         return res.status(403).json({ message: "No workspace selected" });
@@ -16855,7 +16855,7 @@ ${application.email}`,
   // Compliance Summary - Certification Expiration Overview
   app.get('/api/compliance/summary', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const user = await storage.getUser(userId);
       if (!user?.currentWorkspaceId) {
         return res.status(403).json({ message: "No workspace selected" });
@@ -16874,7 +16874,7 @@ ${application.email}`,
   // KPI ALERTS - Real-Time Risk Notifications
   app.get('/api/kpi-alerts', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const user = await storage.getUser(userId);
       if (!user?.currentWorkspaceId) {
         return res.status(403).json({ message: "No workspace selected" });
@@ -16890,7 +16890,7 @@ ${application.email}`,
 
   app.post('/api/kpi-alerts', isAuthenticated, requireOwner, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const user = await storage.getUser(userId);
       if (!user?.currentWorkspaceId) {
         return res.status(403).json({ message: "No workspace selected" });
@@ -16911,7 +16911,7 @@ ${application.email}`,
 
   app.patch('/api/kpi-alerts/:id', isAuthenticated, requireOwner, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const user = await storage.getUser(userId);
       if (!user?.currentWorkspaceId) {
         return res.status(403).json({ message: "No workspace selected" });
@@ -16928,7 +16928,7 @@ ${application.email}`,
 
   app.delete('/api/kpi-alerts/:id', isAuthenticated, requireOwner, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const user = await storage.getUser(userId);
       if (!user?.currentWorkspaceId) {
         return res.status(403).json({ message: "No workspace selected" });
@@ -16949,7 +16949,7 @@ ${application.email}`,
 
   app.get('/api/kpi-alert-triggers', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const user = await storage.getUser(userId);
       if (!user?.currentWorkspaceId) {
         return res.status(403).json({ message: "No workspace selected" });
@@ -16966,7 +16966,7 @@ ${application.email}`,
 
   app.post('/api/kpi-alert-triggers/:id/acknowledge', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const { id } = req.params;
 
       const trigger = await storage.acknowledgeAlert(id, userId);
@@ -16980,7 +16980,7 @@ ${application.email}`,
   // AI EXECUTIVE SUMMARIES - GPT-4 Narrative Generation
   app.post('/api/reports/:id/generate-summary', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const user = await storage.getUser(userId);
       if (!user?.currentWorkspaceId) {
         return res.status(403).json({ message: "No workspace selected" });
@@ -17029,7 +17029,7 @@ Keep it professional, actionable, and under 250 words.`;
   // BENCHMARK METRICS - Peer Comparison Data
   app.get('/api/benchmark-metrics', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const user = await storage.getUser(userId);
       if (!user?.currentWorkspaceId) {
         return res.status(403).json({ message: "No workspace selected" });
@@ -17046,7 +17046,7 @@ Keep it professional, actionable, and under 250 words.`;
 
   app.post('/api/benchmark-metrics', isAuthenticated, requireOwner, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const user = await storage.getUser(userId);
       if (!user?.currentWorkspaceId) {
         return res.status(403).json({ message: "No workspace selected" });
@@ -17071,7 +17071,7 @@ Keep it professional, actionable, and under 250 words.`;
   // WORKFLOW CONFIGURATIONS
   app.get('/api/workflow-configs', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const user = await storage.getUser(userId);
       if (!user?.currentWorkspaceId) {
         return res.status(403).json({ message: "No workspace selected" });
@@ -17087,7 +17087,7 @@ Keep it professional, actionable, and under 250 words.`;
 
   app.post('/api/workflow-configs', isAuthenticated, requireOwner, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const user = await storage.getUser(userId);
       if (!user?.currentWorkspaceId) {
         return res.status(403).json({ message: "No workspace selected" });
@@ -17107,7 +17107,7 @@ Keep it professional, actionable, and under 250 words.`;
 
   app.patch('/api/workflow-configs/:id', isAuthenticated, requireOwner, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const user = await storage.getUser(userId);
       if (!user?.currentWorkspaceId) {
         return res.status(403).json({ message: "No workspace selected" });
@@ -17124,7 +17124,7 @@ Keep it professional, actionable, and under 250 words.`;
 
   app.delete('/api/workflow-configs/:id', isAuthenticated, requireOwner, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const user = await storage.getUser(userId);
       if (!user?.currentWorkspaceId) {
         return res.status(403).json({ message: "No workspace selected" });
@@ -17146,7 +17146,7 @@ Keep it professional, actionable, and under 250 words.`;
   // APPROVAL QUEUE & PROCESSING
   app.get('/api/approvals/pending', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const user = await storage.getUser(userId);
       if (!user?.currentWorkspaceId) {
         return res.status(403).json({ message: "No workspace selected" });
@@ -17162,7 +17162,7 @@ Keep it professional, actionable, and under 250 words.`;
 
   app.post('/api/approvals/:stepId/process', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const { stepId } = req.params;
       const { action, notes, rejectionReason } = req.body;
 
@@ -17208,7 +17208,7 @@ Keep it professional, actionable, and under 250 words.`;
   // LOCKED REPORT RECORDS (Audit Trail)
   app.get('/api/locked-reports', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const user = await storage.getUser(userId);
       if (!user?.currentWorkspaceId) {
         return res.status(403).json({ message: "No workspace selected" });
@@ -17249,7 +17249,7 @@ Keep it professional, actionable, and under 250 words.`;
   // REPORT ANALYTICS (Cross-Referenced Data)
   app.get('/api/report-analytics', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const user = await storage.getUser(userId);
       if (!user?.currentWorkspaceId) {
         return res.status(403).json({ message: "No workspace selected" });
@@ -17277,7 +17277,7 @@ Keep it professional, actionable, and under 250 words.`;
   // INDUSTRY TEMPLATES - Seed workspace with pre-built templates
   app.post('/api/report-templates/seed-industry', isAuthenticated, requireOwner, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const user = await storage.getUser(userId);
       if (!user?.currentWorkspaceId) {
         return res.status(403).json({ message: "No workspace selected" });
@@ -18139,7 +18139,7 @@ Summary:`;
   // GET /api/ai/audit-logs - Get AI Brain action logs (support only)
   app.get('/api/ai/audit-logs', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       if (!userId) {
         return res.status(401).json({ message: 'Unauthorized' });
       }
@@ -18199,7 +18199,7 @@ Summary:`;
   // GET /api/ai/audit-logs/stats - Get aggregate stats for dashboard (support only)
   app.get('/api/ai/audit-logs/stats', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       if (!userId) {
         return res.status(401).json({ message: 'Unauthorized' });
       }
@@ -18243,7 +18243,7 @@ Summary:`;
   // GET /api/ai/audit-logs/:id - Get single AI Brain action log (support only)
   app.get('/api/ai/audit-logs/:id', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       if (!userId) {
         return res.status(401).json({ message: 'Unauthorized' });
       }
@@ -18268,7 +18268,7 @@ Summary:`;
   // POST /api/ai/audit-logs/:id/review - Mark action as reviewed (support only)
   app.post('/api/ai/audit-logs/:id/review', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       if (!userId) {
         return res.status(401).json({ message: 'Unauthorized' });
       }
@@ -20664,7 +20664,7 @@ Summary:`;
     
     // Try Replit OAuth
     if (req.isAuthenticated() && req.user?.claims?.sub) {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
       if (user) {
         req.user = user;
@@ -20715,7 +20715,7 @@ Summary:`;
   // Create new conversation
   app.post('/api/chat/conversations', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const workspace = await storage.getWorkspaceByOwnerId(userId);
       
       if (!workspace) {
@@ -20811,7 +20811,7 @@ Summary:`;
   app.patch('/api/chat/conversations/:id', isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const workspace = await storage.getWorkspaceByOwnerId(userId);
       
       if (!workspace) {
@@ -20846,7 +20846,7 @@ Summary:`;
   app.post('/api/chat/conversations/:id/close', isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const workspace = await storage.getWorkspaceByOwnerId(userId);
       
       if (!workspace) {
@@ -20997,7 +20997,7 @@ Summary:`;
   app.post('/api/chat/conversations/:id/grant-voice', isAuthenticated, requireManager, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const userName = req.user.claims.name || req.user.claims.email || 'Support Agent';
       
       // Get conversation first to determine workspace
@@ -21047,7 +21047,7 @@ Summary:`;
   app.post('/api/chat/help-bot/respond', isAuthenticated, async (req: any, res) => {
     try {
       const { conversationId, userMessage, previousMessages } = req.body;
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const workspace = await storage.getWorkspaceByOwnerId(userId);
       
       if (!workspace) {
@@ -21116,7 +21116,7 @@ Summary:`;
         });
       }
 
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
 
       // Generate AI response with billing (workspace users only)
       const response = await generateGeminiResponse({
@@ -23185,7 +23185,7 @@ Return ONLY valid JSON array with this exact structure:
   app.get("/api/helpdesk/agreement/check/:roomSlug", async (req: any, res) => {
     try {
       const { roomSlug } = req.params;
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const sessionId = req.query.sessionId;
 
       if (!userId && !sessionId) {
@@ -26686,7 +26686,7 @@ Return ONLY valid JSON array with this exact structure:
   // Create a new dispute
   app.post('/api/disputes', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const user = await storage.getUser(userId);
       if (!user?.currentWorkspaceId) {
         return res.status(403).json({ message: "No workspace selected" });
@@ -26848,7 +26848,7 @@ Return ONLY valid JSON array with this exact structure:
   // Get all disputes for current workspace (with filters) - HR/Manager only
   app.get('/api/disputes', isAuthenticated, requireHRManager, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const user = await storage.getUser(userId);
       if (!user?.currentWorkspaceId) {
         return res.status(403).json({ message: "No workspace selected" });
@@ -26875,7 +26875,7 @@ Return ONLY valid JSON array with this exact structure:
   // Get disputes filed by current user
   app.get('/api/disputes/my-disputes', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const user = await storage.getUser(userId);
       if (!user?.currentWorkspaceId) {
         return res.status(403).json({ message: "No workspace selected" });
@@ -26892,7 +26892,7 @@ Return ONLY valid JSON array with this exact structure:
   // Get disputes for a specific target (e.g., all disputes for a performance review)
   app.get('/api/disputes/target/:targetType/:targetId', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const user = await storage.getUser(userId);
       if (!user?.currentWorkspaceId) {
         return res.status(403).json({ message: "No workspace selected" });
@@ -26910,7 +26910,7 @@ Return ONLY valid JSON array with this exact structure:
   // Get a single dispute by ID
   app.get('/api/disputes/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const user = await storage.getUser(userId);
       if (!user?.currentWorkspaceId) {
         return res.status(403).json({ message: "No workspace selected" });
@@ -26941,7 +26941,7 @@ Return ONLY valid JSON array with this exact structure:
   // Assign a dispute to an HR/Manager
   app.patch('/api/disputes/:id/assign', isAuthenticated, requireHRManager, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const user = await storage.getUser(userId);
       if (!user?.currentWorkspaceId) {
         return res.status(403).json({ message: "No workspace selected" });
@@ -26970,7 +26970,7 @@ Return ONLY valid JSON array with this exact structure:
   // Update a dispute (for adding notes, evidence, etc.)
   app.patch('/api/disputes/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const user = await storage.getUser(userId);
       if (!user?.currentWorkspaceId) {
         return res.status(403).json({ message: "No workspace selected" });
@@ -26993,7 +26993,7 @@ Return ONLY valid JSON array with this exact structure:
   // Resolve a dispute
   app.post('/api/disputes/:id/resolve', isAuthenticated, requireHRManager, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const user = await storage.getUser(userId);
       if (!user?.currentWorkspaceId) {
         return res.status(403).json({ message: "No workspace selected" });
@@ -27028,7 +27028,7 @@ Return ONLY valid JSON array with this exact structure:
   // Apply changes from a resolved dispute (update the original record)
   app.post('/api/disputes/:id/apply-changes', isAuthenticated, requireHRManager, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const user = await storage.getUser(userId);
       if (!user?.currentWorkspaceId) {
         return res.status(403).json({ message: "No workspace selected" });
@@ -27080,7 +27080,7 @@ Return ONLY valid JSON array with this exact structure:
   // Get pending disputes with AI summaries (Manager view)
   app.get('/api/disputes/pending-review', isAuthenticated, requireHRManager, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const user = await storage.getUser(userId);
       if (!user?.currentWorkspaceId) {
         return res.status(403).json({ message: "No workspace selected" });
@@ -27140,7 +27140,7 @@ Return ONLY valid JSON array with this exact structure:
   // Manager review and decision on dispute
   app.post('/api/disputes/:id/review', isAuthenticated, requireHRManager, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const user = await storage.getUser(userId);
       if (!user?.currentWorkspaceId) {
         return res.status(403).json({ message: "No workspace selected" });
@@ -27189,7 +27189,7 @@ Return ONLY valid JSON array with this exact structure:
   // Get employee's complete audit record (read-only view)
   app.get('/api/employee/audit-record', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const user = await storage.getUser(userId);
       if (!user?.currentWorkspaceId) {
         return res.status(403).json({ message: "No workspace selected" });
@@ -27284,7 +27284,7 @@ Return ONLY valid JSON array with this exact structure:
   // Get items that can be disputed (for grievance filing form)
   app.get('/api/employee/disputeable-items', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const user = await storage.getUser(userId);
       if (!user?.currentWorkspaceId) {
         return res.status(403).json({ message: "No workspace selected" });
@@ -28003,7 +28003,7 @@ ${context.performanceHistory.map((review: any) => `- Overall Rating: ${review.ov
   // Get employee reputation data (visible to hiring managers platform-wide)
   app.get('/api/employee-reputation/:employeeId', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const { employeeId } = req.params;
       
       // Check if user is authorized (HR/Manager/Owner can view reputation data)
@@ -36340,7 +36340,7 @@ app.post("/api/alerts/test", requireAuth, mutationLimiter, async (req: Authentic
   // Generate a new compliance report
   app.post('/api/compliance-reports/generate', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const user = await storage.getUser(userId);
       if (!user?.currentWorkspaceId) {
         return res.status(403).json({ message: "No workspace selected" });
@@ -36380,7 +36380,7 @@ app.post("/api/alerts/test", requireAuth, mutationLimiter, async (req: Authentic
   // List all compliance reports for workspace
   app.get('/api/compliance-reports/list', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const user = await storage.getUser(userId);
       if (!user?.currentWorkspaceId) {
         return res.status(403).json({ message: "No workspace selected" });
@@ -36406,7 +36406,7 @@ app.post("/api/alerts/test", requireAuth, mutationLimiter, async (req: Authentic
   // Get a specific compliance report with full data
   app.get('/api/compliance-reports/detail/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const user = await storage.getUser(userId);
       if (!user?.currentWorkspaceId) {
         return res.status(403).json({ message: "No workspace selected" });
@@ -36496,7 +36496,7 @@ app.post("/api/alerts/test", requireAuth, mutationLimiter, async (req: Authentic
   // Create an invite code (organization owners/admins only)
   app.post('/api/invites/create', isAuthenticated, async (req: AuthenticatedRequest, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       if (!userId) {
         return res.status(401).json({ message: "Unauthorized" });
       }
@@ -36565,7 +36565,7 @@ app.post("/api/alerts/test", requireAuth, mutationLimiter, async (req: Authentic
   // Accept an invite code (any authenticated user without a workspace)
   app.post('/api/invites/accept', isAuthenticated, async (req: AuthenticatedRequest, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       if (!userId) {
         return res.status(401).json({ message: "Unauthorized" });
       }
@@ -36664,7 +36664,7 @@ app.post("/api/alerts/test", requireAuth, mutationLimiter, async (req: Authentic
   // List invites for current workspace (org owners/admins only)
   app.get('/api/invites', isAuthenticated, async (req: AuthenticatedRequest, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       if (!userId) {
         return res.status(401).json({ message: "Unauthorized" });
       }
@@ -36709,7 +36709,7 @@ app.post("/api/alerts/test", requireAuth, mutationLimiter, async (req: Authentic
   // Revoke an invite (org owners/admins only)
   app.delete('/api/invites/:id', isAuthenticated, async (req: AuthenticatedRequest, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       if (!userId) {
         return res.status(401).json({ message: "Unauthorized" });
       }
@@ -36751,7 +36751,7 @@ app.post("/api/alerts/test", requireAuth, mutationLimiter, async (req: Authentic
 
   app.get('/api/trinity-training/status', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       if (!userId) {
         return res.status(401).json({ message: "Unauthorized" });
       }
@@ -36774,7 +36774,7 @@ app.post("/api/alerts/test", requireAuth, mutationLimiter, async (req: Authentic
   app.post('/api/trinity-training/seed', requireAuth, async (req: AuthenticatedRequest, res) => {
     console.log('[TrinityTraining:Seed] Route handler entered, body:', JSON.stringify(req.body));
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       if (!userId) {
         return res.status(401).json({ message: "Unauthorized" });
       }
@@ -36808,7 +36808,7 @@ app.post("/api/alerts/test", requireAuth, mutationLimiter, async (req: Authentic
 
   app.post('/api/trinity-training/clear', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       if (!userId) {
         return res.status(401).json({ message: "Unauthorized" });
       }
@@ -36835,7 +36835,7 @@ app.post("/api/alerts/test", requireAuth, mutationLimiter, async (req: Authentic
   });
   app.post('/api/trinity-training/reset', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       if (!userId) {
         return res.status(401).json({ message: "Unauthorized" });
       }
@@ -36863,7 +36863,7 @@ app.post("/api/alerts/test", requireAuth, mutationLimiter, async (req: Authentic
 
   app.post('/api/trinity-training/start-run', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || req.user?.claims?.sub;
       if (!userId) {
         return res.status(401).json({ message: "Unauthorized" });
       }
