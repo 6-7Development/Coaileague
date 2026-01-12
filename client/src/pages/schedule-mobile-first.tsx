@@ -36,7 +36,7 @@ import { WeekStatsBar } from '@/components/schedule/WeekStatsBar';
 import { ConflictAlerts } from '@/components/schedule/ConflictAlerts';
 import { TrinityInsightsPanel } from '@/components/schedule/TrinityInsightsPanel';
 import { TrinityTrainingPanel } from '@/components/schedule/TrinityTrainingPanel';
-import { AskTrinityButton } from '@/components/trinity-button';
+import { ColorfulCelticKnot } from '@/components/ui/colorful-celtic-knot';
 import { TrinityLoadingSpinner } from '@/components/trinity-loading-overlay';
 import { useSimpleMode } from '@/contexts/SimpleModeContext';
 import type { Shift, Employee, Client } from '@shared/schema';
@@ -569,13 +569,18 @@ export default function ScheduleMobileFirst() {
             <Download className="h-3.5 w-3.5 text-indigo-600" />
             Export
           </Button>
-          {/* Trinity for managers only */}
+          {/* Trinity for managers only - compact icon on mobile */}
           {isManagerOrSupervisor && (
-            <AskTrinityButton
-              onClick={() => setShowTrinityInsights(!showTrinityInsights)}
+            <Button
+              variant="ghost"
               size="sm"
+              onClick={() => setShowTrinityInsights(!showTrinityInsights)}
+              className="flex-shrink-0 gap-1 h-7 px-2 text-xs bg-gradient-to-r from-purple-500/10 via-teal-500/10 to-amber-500/10"
               data-testid="button-trinity-mobile"
-            />
+            >
+              <ColorfulCelticKnot size={14} animated={false} />
+              <span className="hidden sm:inline">Ask Trinity</span>
+            </Button>
           )}
         </div>
       </div>
