@@ -1842,6 +1842,18 @@ export const shifts = pgTable("shifts", {
   // Billing
   billableToClient: boolean("billable_to_client").default(true),
   hourlyRateOverride: decimal("hourly_rate_override", { precision: 10, scale: 2 }), // Override employee's default rate
+  
+  // Trinity Training System fields
+  travelPay: decimal("travel_pay", { precision: 10, scale: 2 }), // Travel compensation for this shift
+  contractRate: decimal("contract_rate", { precision: 10, scale: 2 }), // Client contract hourly rate
+  scenarioId: varchar("scenario_id"), // Links to training scenario
+  difficultyLevel: varchar("difficulty_level"), // 'easy', 'medium', 'hard'
+  isTrainingShift: boolean("is_training_shift").default(false), // Flag for seeded training data
+  requiredCertifications: jsonb("required_certifications").$type<string[]>(), // Certifications needed
+  preferredEmployeeIds: jsonb("preferred_employee_ids").$type<string[]>(), // Client-preferred officers
+  excludedEmployeeIds: jsonb("excluded_employee_ids").$type<string[]>(), // Client-excluded officers
+  travelDistanceMiles: decimal("travel_distance_miles", { precision: 8, scale: 2 }), // Distance from employee home
+  minimumScore: decimal("minimum_score", { precision: 3, scale: 2 }), // Min employee score required
 
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -1853,6 +1865,8 @@ export const shifts = pgTable("shifts", {
   index("shifts_status_idx").on(table.status),
   index("shifts_created_at_idx").on(table.createdAt),
   index("shifts_ai_generated_idx").on(table.aiGenerated),
+  index("shifts_scenario_idx").on(table.scenarioId),
+  index("shifts_training_idx").on(table.isTrainingShift),
 ]);
 
 // ============================================================================
@@ -1904,6 +1918,111 @@ export const insertShiftSchema = createInsertSchema(shifts).omit({
 
 export type InsertShift = z.infer<typeof insertShiftSchema>;
 export type Shift = typeof shifts.$inferSelect;
+
+// ============================================================================
+// TRINITY TRAINING SYSTEM - AI Confidence Building
+// ============================================================================
+
+export const trainingDifficultyEnum = pgEnum('training_difficulty', ['easy', 'medium', 'hard']);
+
+export const trainingScenarios = pgTable("training_scenarios", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  
+  name: varchar("name").notNull(),
+  description: text("description"),
+  difficulty: trainingDifficultyEnum("difficulty").notNull(),
+  
+  // Scenario configuration
+  totalShifts: integer("total_shifts").notNull().default(50),
+  constraintComplexity: integer("constraint_complexity").default(1), // 1-10 scale
+  employeeVariety: integer("employee_variety").default(5), // Number of varied employee types
+  clientVariety: integer("client_variety").default(3), // Number of varied client types
+  
+  // Constraint toggles
+  hasAvailabilityConflicts: boolean("has_availability_conflicts").default(false),
+  hasCertificationRequirements: boolean("has_certification_requirements").default(false),
+  hasClientPreferences: boolean("has_client_preferences").default(false),
+  hasClientExclusions: boolean("has_client_exclusions").default(false),
+  hasTravelPayConstraints: boolean("has_travel_pay_constraints").default(false),
+  hasOvertimeRisks: boolean("has_overtime_risks").default(false),
+  hasLowScoreEmployees: boolean("has_low_score_employees").default(false),
+  
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const trainingRuns = pgTable("training_runs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  scenarioId: varchar("scenario_id").references(() => trainingScenarios.id, { onDelete: 'cascade' }),
+  
+  difficulty: trainingDifficultyEnum("difficulty").notNull(),
+  status: varchar("status").default("pending"), // pending, running, completed, failed
+  
+  // Metrics
+  totalShifts: integer("total_shifts").default(0),
+  assignedShifts: integer("assigned_shifts").default(0),
+  failedShifts: integer("failed_shifts").default(0),
+  averageConfidence: decimal("average_confidence", { precision: 5, scale: 4 }),
+  totalCreditsUsed: decimal("total_credits_used", { precision: 10, scale: 2 }),
+  
+  // Trinity metacognition tracking
+  confidenceStart: decimal("confidence_start", { precision: 5, scale: 4 }),
+  confidenceEnd: decimal("confidence_end", { precision: 5, scale: 4 }),
+  confidenceDelta: decimal("confidence_delta", { precision: 5, scale: 4 }),
+  thoughtLog: jsonb("thought_log").$type<string[]>(), // Trinity's reasoning steps
+  lessonsLearned: jsonb("lessons_learned").$type<string[]>(), // What Trinity learned
+  
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const trainingAttempts = pgTable("training_attempts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  runId: varchar("run_id").notNull().references(() => trainingRuns.id, { onDelete: 'cascade' }),
+  shiftId: varchar("shift_id").references(() => shifts.id, { onDelete: 'cascade' }),
+  
+  // Attempt details
+  attemptNumber: integer("attempt_number").default(1),
+  success: boolean("success").default(false),
+  assignedEmployeeId: varchar("assigned_employee_id").references(() => employees.id),
+  
+  // Scores
+  confidenceScore: decimal("confidence_score", { precision: 5, scale: 4 }),
+  profitScore: decimal("profit_score", { precision: 5, scale: 4 }),
+  complianceScore: decimal("compliance_score", { precision: 5, scale: 4 }),
+  
+  // Trinity's thinking
+  thinkingSteps: jsonb("thinking_steps").$type<Array<{
+    id: string;
+    message: string;
+    status: 'pending' | 'active' | 'complete' | 'error';
+    timestamp: number;
+    type: 'analysis' | 'decision' | 'action' | 'review';
+  }>>(),
+  reasoningNotes: text("reasoning_notes"),
+  failureReason: text("failure_reason"),
+  
+  creditsUsed: decimal("credits_used", { precision: 8, scale: 2 }),
+  executionTimeMs: integer("execution_time_ms"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertTrainingScenarioSchema = createInsertSchema(trainingScenarios).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertTrainingRunSchema = createInsertSchema(trainingRuns).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertTrainingAttemptSchema = createInsertSchema(trainingAttempts).omit({ id: true, createdAt: true });
+
+export type InsertTrainingScenario = z.infer<typeof insertTrainingScenarioSchema>;
+export type TrainingScenario = typeof trainingScenarios.$inferSelect;
+export type InsertTrainingRun = z.infer<typeof insertTrainingRunSchema>;
+export type TrainingRun = typeof trainingRuns.$inferSelect;
+export type InsertTrainingAttempt = z.infer<typeof insertTrainingAttemptSchema>;
+export type TrainingAttempt = typeof trainingAttempts.$inferSelect;
 
 // ============================================================================
 // RECURRING SHIFT PATTERNS - Phase 2B Advanced Scheduling

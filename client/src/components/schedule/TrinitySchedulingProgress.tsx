@@ -1,12 +1,162 @@
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bot, CheckCircle2, Loader2, UserCheck, AlertCircle, Sparkles } from 'lucide-react';
+import { 
+  Bot, CheckCircle2, Loader2, UserCheck, AlertCircle, Sparkles, 
+  ChevronDown, ChevronUp, Brain, FileCode, Lightbulb, ClipboardCheck,
+  Zap, Timer
+} from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { useTrinitySchedulingProgress, type SchedulingProgressStep } from '@/hooks/use-trinity-scheduling-progress';
+import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { useTrinitySchedulingProgress, type SchedulingProgressStep, type ThinkingStep } from '@/hooks/use-trinity-scheduling-progress';
 
 interface TrinitySchedulingProgressProps {
   workspaceId?: string;
+}
+
+function ThinkingStepItem({ step }: { step: ThinkingStep }) {
+  const getTypeIcon = (type: ThinkingStep['type']) => {
+    switch (type) {
+      case 'analysis':
+        return <Brain className="h-3 w-3 text-purple-500" />;
+      case 'decision':
+        return <Lightbulb className="h-3 w-3 text-yellow-500" />;
+      case 'action':
+        return <FileCode className="h-3 w-3 text-blue-500" />;
+      case 'review':
+        return <ClipboardCheck className="h-3 w-3 text-green-500" />;
+      default:
+        return <Brain className="h-3 w-3 text-muted-foreground" />;
+    }
+  };
+
+  const getStatusStyle = (status: ThinkingStep['status']) => {
+    switch (status) {
+      case 'complete':
+        return 'border-l-green-500 bg-green-500/5';
+      case 'active':
+        return 'border-l-blue-500 bg-blue-500/5';
+      case 'error':
+        return 'border-l-red-500 bg-red-500/5';
+      default:
+        return 'border-l-muted-foreground bg-muted/20';
+    }
+  };
+
+  const getStatusIcon = (status: ThinkingStep['status']) => {
+    switch (status) {
+      case 'complete':
+        return <CheckCircle2 className="h-3 w-3 text-green-500" />;
+      case 'active':
+        return <Loader2 className="h-3 w-3 text-blue-500 animate-spin" />;
+      case 'error':
+        return <AlertCircle className="h-3 w-3 text-red-500" />;
+      default:
+        return <div className="h-3 w-3 rounded-full border border-muted-foreground/40" />;
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: -10 }}
+      animate={{ opacity: 1, x: 0 }}
+      className={`flex items-start gap-2 p-1.5 rounded-r border-l-2 ${getStatusStyle(step.status)}`}
+    >
+      <div className="flex items-center gap-1.5 shrink-0">
+        {getStatusIcon(step.status)}
+        {getTypeIcon(step.type)}
+      </div>
+      <span className="text-xs leading-relaxed">{step.message}</span>
+    </motion.div>
+  );
+}
+
+function ThoughtBox({ progress }: { progress: SchedulingProgressStep }) {
+  const [isOpen, setIsOpen] = useState(true);
+
+  const defaultThinkingSteps: ThinkingStep[] = [
+    {
+      id: '1',
+      message: 'Reading employee availability and preferences...',
+      status: progress.step === 'analyzing' ? 'active' : 'complete',
+      timestamp: Date.now() - 3000,
+      type: 'analysis',
+    },
+    {
+      id: '2',
+      message: 'Analyzing skill requirements and certifications...',
+      status: progress.step === 'analyzing' ? 'active' : 'complete',
+      timestamp: Date.now() - 2500,
+      type: 'analysis',
+    },
+    {
+      id: '3',
+      message: 'Checking overtime and compliance rules...',
+      status: progress.step === 'matching' ? 'active' : progress.step === 'analyzing' ? 'pending' : 'complete',
+      timestamp: Date.now() - 2000,
+      type: 'decision',
+    },
+    {
+      id: '4',
+      message: 'Calculating profit optimization scores...',
+      status: progress.step === 'matching' ? 'active' : progress.step === 'analyzing' ? 'pending' : 'complete',
+      timestamp: Date.now() - 1500,
+      type: 'decision',
+    },
+    {
+      id: '5',
+      message: progress.assignedEmployee 
+        ? `Assigning to ${progress.assignedEmployee.name} (best match)...`
+        : 'Finding best employee match...',
+      status: progress.step === 'assigning' ? 'active' : (progress.step === 'complete' ? 'complete' : 'pending'),
+      timestamp: Date.now() - 1000,
+      type: 'action',
+    },
+    {
+      id: '6',
+      message: 'Verifying assignment and updating schedule...',
+      status: progress.step === 'complete' ? 'complete' : 'pending',
+      timestamp: Date.now(),
+      type: 'review',
+    },
+  ];
+
+  const thinkingSteps = progress.thinkingSteps?.length ? progress.thinkingSteps : defaultThinkingSteps;
+  const completedSteps = thinkingSteps.filter(s => s.status === 'complete').length;
+
+  return (
+    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+      <CollapsibleTrigger asChild>
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className="w-full justify-between h-6 px-2 text-xs font-medium"
+          data-testid="button-thought-box-toggle"
+        >
+          <div className="flex items-center gap-1.5">
+            <Brain className="h-3 w-3 text-purple-500" />
+            <span>Trinity Thinking</span>
+            <Badge variant="outline" className="text-[10px] h-4 px-1">
+              {completedSteps}/{thinkingSteps.length}
+            </Badge>
+          </div>
+          {isOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+        </Button>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <ScrollArea className="h-32 mt-2">
+          <div className="space-y-1 pr-2">
+            {thinkingSteps.map(step => (
+              <ThinkingStepItem key={step.id} step={step} />
+            ))}
+          </div>
+        </ScrollArea>
+      </CollapsibleContent>
+    </Collapsible>
+  );
 }
 
 function ProgressItem({ progress }: { progress: SchedulingProgressStep }) {
@@ -19,13 +169,16 @@ function ProgressItem({ progress }: { progress: SchedulingProgressStep }) {
     error: <AlertCircle className="h-4 w-4 text-red-500" />,
   };
 
-  const stepColors = {
-    analyzing: 'bg-purple-500',
-    matching: 'bg-blue-500',
-    assigning: 'bg-teal-500',
-    complete: 'bg-green-500',
-    no_match: 'bg-orange-500',
-    error: 'bg-red-500',
+  const getModeIcon = (mode?: string) => {
+    switch (mode) {
+      case 'turbo':
+      case 'instant':
+        return <Zap className="h-3 w-3 text-yellow-500" />;
+      case 'fast':
+        return <Timer className="h-3 w-3 text-blue-500" />;
+      default:
+        return null;
+    }
   };
 
   return (
@@ -50,6 +203,12 @@ function ProgressItem({ progress }: { progress: SchedulingProgressStep }) {
             <div className="flex items-center gap-2 mb-1">
               {stepIcons[progress.step]}
               <span className="text-sm font-medium truncate">{progress.message}</span>
+              {progress.executionMode && progress.executionMode !== 'normal' && (
+                <Badge variant="secondary" className="text-[10px] h-4 px-1 flex items-center gap-0.5">
+                  {getModeIcon(progress.executionMode)}
+                  {progress.executionMode}
+                </Badge>
+              )}
             </div>
             
             <div className="flex items-center gap-2">
@@ -57,10 +216,17 @@ function ProgressItem({ progress }: { progress: SchedulingProgressStep }) {
                 value={progress.progress} 
                 className="h-1.5 flex-1"
               />
-              <Badge variant="outline" size="sm" className="text-xs">
+              <Badge variant="outline" className="text-xs h-5">
                 {progress.progress}%
               </Badge>
             </div>
+
+            {progress.creditsCharged && (
+              <div className="mt-1 text-xs text-muted-foreground flex items-center gap-1">
+                <Sparkles className="h-3 w-3 text-purple-400" />
+                <span>{progress.creditsCharged} credits</span>
+              </div>
+            )}
             
             {progress.assignedEmployee && (
               <motion.div 
@@ -70,7 +236,7 @@ function ProgressItem({ progress }: { progress: SchedulingProgressStep }) {
               >
                 <UserCheck className="h-3 w-3 text-teal-500" />
                 <span>{progress.assignedEmployee.name}</span>
-                <Badge variant="secondary" size="sm">
+                <Badge variant="secondary" className="text-xs h-4">
                   Score: {progress.assignedEmployee.score.toFixed(0)}
                 </Badge>
               </motion.div>
@@ -92,6 +258,12 @@ function ProgressItem({ progress }: { progress: SchedulingProgressStep }) {
             )}
           </div>
         </div>
+
+        {progress.step !== 'complete' && progress.step !== 'no_match' && progress.step !== 'error' && (
+          <div className="mt-3 pt-3 border-t border-purple-200/50 dark:border-purple-700/50">
+            <ThoughtBox progress={progress} />
+          </div>
+        )}
       </Card>
     </motion.div>
   );
@@ -105,7 +277,7 @@ export function TrinitySchedulingProgress({ workspaceId }: TrinitySchedulingProg
   }
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 w-80 space-y-2">
+    <div className="fixed bottom-4 right-4 z-50 w-80 space-y-2" data-testid="panel-trinity-scheduling-progress">
       <AnimatePresence mode="popLayout">
         {activeProgress.map((progress) => (
           <ProgressItem key={progress.shiftId} progress={progress} />

@@ -2,6 +2,14 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { queryClient } from '@/lib/queryClient';
 
+export interface ThinkingStep {
+  id: string;
+  message: string;
+  status: 'pending' | 'active' | 'complete' | 'error';
+  timestamp: number;
+  type: 'analysis' | 'decision' | 'action' | 'review';
+}
+
 export interface SchedulingProgressStep {
   shiftId: string;
   step: 'analyzing' | 'matching' | 'assigning' | 'complete' | 'no_match' | 'error';
@@ -19,6 +27,9 @@ export interface SchedulingProgressStep {
     totalProfit: number;
     avgProfitMargin: number;
   };
+  thinkingSteps?: ThinkingStep[];
+  executionMode?: string;
+  creditsCharged?: number;
 }
 
 export function useTrinitySchedulingProgress(workspaceId?: string) {

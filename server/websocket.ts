@@ -946,6 +946,9 @@ export function setupWebSocket(server: Server) {
   
   // Track Trinity scheduling progress connections by workspace ID
   const schedulingProgressClients = new Map<string, Set<WebSocketClient>>();
+  
+  // Track credit update connections by workspace ID for real-time balance sync
+  const creditUpdateClients = new Map<string, Set<WebSocketClient>>();
 
   // =========================================================================
   // CHAT SERVER HUB INTEGRATION - Unified event broadcasting
@@ -4210,6 +4213,60 @@ export function setupWebSocket(server: Server) {
             break;
           }
 
+          case 'join_credit_updates': {
+            // Subscribe to credit balance updates for real-time sync
+            // SECURITY: Require session authentication
+            
+            if (!ws.serverAuth) {
+              ws.send(JSON.stringify({
+                type: 'error',
+                message: 'Authentication required. Please log in first.',
+              }));
+              console.warn(`[CreditUpdates] Rejected unauthenticated subscription from ${ws.ipAddress}`);
+              return;
+            }
+            
+            if (ws.serverAuth.userId.startsWith('guest-')) {
+              ws.send(JSON.stringify({
+                type: 'error',
+                message: 'Guests cannot subscribe to credit updates.',
+              }));
+              console.warn(`[CreditUpdates] Rejected guest subscription from ${ws.ipAddress}`);
+              return;
+            }
+            
+            const userId = ws.serverAuth.userId;
+            const workspaceId = ws.serverAuth.workspaceId;
+            
+            if (!workspaceId) {
+              ws.send(JSON.stringify({
+                type: 'error',
+                message: 'Your session lacks workspace context. Please refresh and try again.',
+              }));
+              console.warn(`[CreditUpdates] User ${userId} rejected - no workspace in session`);
+              return;
+            }
+
+            // Ensure ws has workspace context for cleanup
+            ws.workspaceId = workspaceId;
+            ws.userId = userId;
+
+            // Add to credit update clients for this workspace
+            if (!creditUpdateClients.has(workspaceId)) {
+              creditUpdateClients.set(workspaceId, new Set());
+            }
+            creditUpdateClients.get(workspaceId)!.add(ws);
+
+            console.log(`✅ User ${userId} subscribed to credit updates for workspace ${workspaceId}`);
+
+            // Send confirmation
+            ws.send(JSON.stringify({
+              type: 'credit_update_subscribed',
+              workspaceId: workspaceId,
+            }));
+            break;
+          }
+
           case 'join_notifications': {
             // Subscribe to real-time notifications for a user
             // SECURITY: Require session authentication - no fallback to other sources
@@ -4853,6 +4910,16 @@ export function setupWebSocket(server: Server) {
         console.log(`🔌 Removed client from scheduling progress for workspace ${ws.workspaceId}`);
       }
       
+      // CREDIT UPDATES CLEANUP: Remove from credit update clients
+      if (ws.workspaceId && creditUpdateClients.has(ws.workspaceId)) {
+        const clients = creditUpdateClients.get(ws.workspaceId)!;
+        clients.delete(ws);
+        if (clients.size === 0) {
+          creditUpdateClients.delete(ws.workspaceId);
+        }
+        console.log(`🔌 Removed client from credit updates for workspace ${ws.workspaceId}`);
+      }
+      
       // Send leave announcement for main helpdesk room
       if (ws.conversationId === MAIN_ROOM_ID && ws.userId) {
         try {
@@ -5149,6 +5216,19 @@ export function setupWebSocket(server: Server) {
               client.send(payload);
             }
           });
+        }
+      }
+      
+      // Send credit update events to credit update subscribers
+      if (data.type === 'credit_balance_updated' || data.type === 'credits_deducted' || data.type === 'credits_added') {
+        const creditClients = creditUpdateClients.get(workspaceId);
+        if (creditClients && creditClients.size > 0) {
+          creditClients.forEach((client) => {
+            if (client.readyState === WebSocket.OPEN) {
+              client.send(payload);
+            }
+          });
+          console.log(`[CreditUpdates] Broadcast ${data.type} to ${creditClients.size} clients in workspace ${workspaceId}`);
         }
       }
     },
