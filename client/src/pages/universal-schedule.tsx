@@ -576,7 +576,7 @@ export default function UniversalSchedule() {
         description: `${shiftData.location ? shiftData.location + ' - ' : ''}${shiftData.notes}`,
         startTime: clockInDate.toISOString(),
         endTime: clockOutDate.toISOString(),
-        status: shiftData.isOpenShift ? 'open' : 'draft',
+        status: 'draft', // Open shifts are indicated by employeeId: null, not status
         aiGenerated: false,
         postOrders: shiftData.postOrders // ✅ CRITICAL: Include post orders array
       });

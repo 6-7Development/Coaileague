@@ -35,6 +35,7 @@ import { ReportsSheet } from '@/components/mobile/schedule/ReportsSheet';
 import { WeekStatsBar } from '@/components/schedule/WeekStatsBar';
 import { ConflictAlerts } from '@/components/schedule/ConflictAlerts';
 import { TrinityInsightsPanel } from '@/components/schedule/TrinityInsightsPanel';
+import { TrinityTrainingPanel } from '@/components/schedule/TrinityTrainingPanel';
 import { AskTrinityButton } from '@/components/trinity-button';
 import { TrinityLoadingSpinner } from '@/components/trinity-loading-overlay';
 import { useSimpleMode } from '@/contexts/SimpleModeContext';
@@ -586,7 +587,7 @@ export default function ScheduleMobileFirst() {
       
       {/* Mobile Trinity Insights - Managers only, Pro View only */}
       {isManagerOrSupervisor && showTrinityInsights && !isSimpleMode && (
-        <div className="mx-3 mt-2">
+        <div className="mx-3 mt-2 space-y-3">
           <TrinityInsightsPanel
             weekStart={weekStart}
             weekEnd={addDays(weekStart, 6)}
@@ -596,6 +597,7 @@ export default function ScheduleMobileFirst() {
             isCollapsed={false}
             onToggleCollapse={() => setShowTrinityInsights(false)}
           />
+          <TrinityTrainingPanel />
         </div>
       )}
 

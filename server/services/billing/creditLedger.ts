@@ -88,6 +88,22 @@ export class CreditLedgerService {
     // Check if we should send low balance alert
     await this.checkLowBalanceAlert(updatedWallet);
 
+    // Broadcast credit update via WebSocket for real-time cross-device sync
+    try {
+      const { broadcastToWorkspace } = require('../../websocket');
+      broadcastToWorkspace(workspaceId, {
+        type: 'credits_added',
+        data: {
+          newBalance: currentBalance + amount,
+          amountAdded: amount,
+          description,
+          isPurchase,
+        }
+      });
+    } catch (err) {
+      console.warn('[CreditLedger] Failed to broadcast credit update:', err);
+    }
+
     return updatedWallet;
   }
 
@@ -142,6 +158,21 @@ export class CreditLedgerService {
 
     // Check if auto-recharge is enabled
     await this.checkAutoRecharge(updatedWallet);
+
+    // Broadcast credit deduction via WebSocket for real-time cross-device sync
+    try {
+      const { broadcastToWorkspace } = require('../../websocket');
+      broadcastToWorkspace(workspaceId, {
+        type: 'credits_deducted',
+        data: {
+          newBalance: currentBalance - amount,
+          amountDeducted: amount,
+          description,
+        }
+      });
+    } catch (err) {
+      console.warn('[CreditLedger] Failed to broadcast credit deduction:', err);
+    }
 
     return updatedWallet;
   }

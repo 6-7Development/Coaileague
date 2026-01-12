@@ -274,6 +274,26 @@ class AIBrainActionRegistry {
           
           console.log(`[ActionRegistry] Charged ${totalCredits} credits for open shift fill (${executionMode} mode)`);
           
+          // Record usage event for telemetry (track the correct multiplied amount)
+          const { UsageMeteringService } = await import('../billing/usageMetering');
+          const usageMeteringService = new UsageMeteringService();
+          await usageMeteringService.recordUsage({
+            workspaceId: request.workspaceId!,
+            userId: request.userId,
+            featureKey: 'ai_open_shift_fill',
+            usageType: 'activity',
+            usageAmount: totalCredits, // Correct multiplied amount
+            usageUnit: 'credits',
+            metadata: {
+              executionMode,
+              baseCost,
+              creditMultiplier,
+              totalCredits,
+              actionId: request.actionId,
+            },
+            emitEvent: false, // Don't double-emit, credit deduction already handled
+          });
+          
           // Step 1: Create the open shift (no employee assigned)
           const [openShift] = await db.insert(shifts).values({
             workspaceId: request.workspaceId!,

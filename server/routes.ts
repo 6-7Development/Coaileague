@@ -8091,7 +8091,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const end = new Date(shift.endTime);
         const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
         
-        if (shift.status === 'open' || !shift.employeeId) {
+        if (!shift.employeeId) {
           openShifts++;
         } else {
           totalHours += hours;
@@ -8147,7 +8147,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Verify it's an open shift
-      if (shift.employeeId || shift.status !== 'open') {
+      if (shift.employeeId) {
         return res.status(400).json({ message: "Shift is already assigned or not an open shift" });
       }
 
@@ -8315,7 +8315,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Verify it's an open shift
-      if (shift.employeeId || shift.status !== 'open') {
+      if (shift.employeeId) {
         return res.status(400).json({ message: "Shift is already assigned or not an open shift" });
       }
 
@@ -36743,6 +36743,123 @@ app.post("/api/alerts/test", requireAuth, mutationLimiter, async (req: Authentic
     } catch (error) {
       console.error("Error revoking invite:", error);
       res.status(500).json({ message: "Failed to revoke invite" });
+    }
+  });
+
+  // ============================================================================
+  // TRINITY TRAINING SCENARIO API - AI Confidence Building
+  // ============================================================================
+
+  app.get('/api/trinity-training/status', isAuthenticated, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user?.currentWorkspaceId) {
+        return res.status(400).json({ message: "No workspace selected" });
+      }
+
+      const { scenarioSeederService } = await import('./services/training/scenarioSeeder');
+      const status = await scenarioSeederService.getTrainingStatus(user.currentWorkspaceId);
+
+      res.json(status);
+    } catch (error) {
+      console.error("[TrinityTraining] Error getting status:", error);
+      res.status(500).json({ message: "Failed to get training status" });
+    }
+  });
+
+  app.post('/api/trinity-training/seed', isAuthenticated, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user?.currentWorkspaceId) {
+        return res.status(400).json({ message: "No workspace selected" });
+      }
+
+      const { difficulty } = req.body;
+      if (!difficulty || !['easy', 'medium', 'hard'].includes(difficulty)) {
+        return res.status(400).json({ message: "Invalid difficulty. Must be 'easy', 'medium', or 'hard'" });
+      }
+
+      const { scenarioSeederService } = await import('./services/training/scenarioSeeder');
+      const result = await scenarioSeederService.seedScenario(user.currentWorkspaceId, difficulty);
+
+      console.log(`[TrinityTraining] Seeded ${result.shiftsCreated} ${difficulty} training shifts for workspace ${user.currentWorkspaceId}`);
+
+      res.json({
+        success: true,
+        ...result,
+        message: `Successfully created ${result.shiftsCreated} training shifts at ${difficulty} difficulty`,
+      });
+    } catch (error: any) {
+      console.error("[TrinityTraining] Error seeding scenario:", error);
+      res.status(500).json({ message: error.message || "Failed to seed training scenario" });
+    }
+  });
+
+  app.post('/api/trinity-training/reset', isAuthenticated, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user?.currentWorkspaceId) {
+        return res.status(400).json({ message: "No workspace selected" });
+      }
+
+      const { scenarioSeederService } = await import('./services/training/scenarioSeeder');
+      const result = await scenarioSeederService.resetTraining(user.currentWorkspaceId);
+
+      console.log(`[TrinityTraining] Reset training for workspace ${user.currentWorkspaceId}: ${result.shiftsDeleted} shifts deleted`);
+
+      res.json({
+        success: true,
+        ...result,
+        message: `Successfully reset training. Deleted ${result.shiftsDeleted} training shifts.`,
+      });
+    } catch (error) {
+      console.error("[TrinityTraining] Error resetting training:", error);
+      res.status(500).json({ message: "Failed to reset training" });
+    }
+  });
+
+  app.post('/api/trinity-training/start-run', isAuthenticated, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user?.currentWorkspaceId) {
+        return res.status(400).json({ message: "No workspace selected" });
+      }
+
+      const { runId } = req.body;
+      if (!runId) {
+        return res.status(400).json({ message: "runId is required" });
+      }
+
+      const { scenarioSeederService } = await import('./services/training/scenarioSeeder');
+      await scenarioSeederService.startTrainingRun(user.currentWorkspaceId, runId);
+
+      res.json({
+        success: true,
+        message: "Training run started. Trinity is now processing shifts.",
+      });
+    } catch (error) {
+      console.error("[TrinityTraining] Error starting run:", error);
+      res.status(500).json({ message: "Failed to start training run" });
     }
   });
 }
