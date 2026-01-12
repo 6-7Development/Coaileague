@@ -36773,6 +36773,7 @@ app.post("/api/alerts/test", requireAuth, mutationLimiter, async (req: Authentic
   });
 
   app.post('/api/trinity-training/seed', isAuthenticated, async (req: AuthenticatedRequest, res) => {
+    console.log('[TrinityTraining:Seed] Route handler entered, body:', JSON.stringify(req.body));
     try {
       const userId = req.user?.claims?.sub;
       if (!userId) {
