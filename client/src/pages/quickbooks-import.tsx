@@ -359,6 +359,35 @@ export default function QuickBooksImportPage() {
   
   const [oauthPopupOpen, setOauthPopupOpen] = useState(false);
   
+  // Listen for OAuth popup completion message
+  useEffect(() => {
+    const handleOAuthMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'quickbooks-oauth-complete') {
+        setOauthPopupOpen(false);
+        
+        if (event.data.success) {
+          queryClient.invalidateQueries({ queryKey: ['/api/integrations/status'] });
+          toast({
+            title: 'Connected!',
+            description: event.data.companyName 
+              ? `Connected to ${event.data.companyName}` 
+              : 'Successfully connected to QuickBooks',
+          });
+          setCurrentStep('discovery');
+        } else {
+          toast({
+            title: 'Connection Failed',
+            description: event.data.message || 'Failed to connect to QuickBooks',
+            variant: 'destructive',
+          });
+        }
+      }
+    };
+    
+    window.addEventListener('message', handleOAuthMessage);
+    return () => window.removeEventListener('message', handleOAuthMessage);
+  }, [toast, setCurrentStep]);
+  
   const connectMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest('POST', '/api/integrations/quickbooks/connect', {
@@ -384,20 +413,31 @@ export default function QuickBooksImportPage() {
         }
         
         setOauthPopupOpen(true);
-        const popup = window.open(data.authorizationUrl, '_blank', 'noopener,noreferrer');
+        
+        // Open as centered popup window (not a new tab) for better UX
+        const popupWidth = 600;
+        const popupHeight = 700;
+        const left = window.screenX + (window.outerWidth - popupWidth) / 2;
+        const top = window.screenY + (window.outerHeight - popupHeight) / 2;
+        const popupFeatures = `width=${popupWidth},height=${popupHeight},left=${left},top=${top},scrollbars=yes,resizable=yes,toolbar=no,menubar=no,location=yes,status=yes`;
+        
+        const popup = window.open(data.authorizationUrl, 'QuickBooksAuth', popupFeatures);
         
         if (!popup) {
           toast({
             title: 'Popup Blocked',
-            description: 'Please allow popups and try again, or click the link below',
+            description: 'Please allow popups for this site and try again',
             variant: 'destructive',
           });
           return;
         }
         
+        // Focus the popup and keep checking if it's closed
+        popup.focus();
+        
         toast({
-          title: 'QuickBooks Login Opened',
-          description: 'Complete login in the new tab, then return here',
+          title: 'QuickBooks Login',
+          description: 'Complete login in the popup window',
         });
         
         const pollInterval = setInterval(async () => {
@@ -1008,8 +1048,8 @@ export default function QuickBooksImportPage() {
                     <span className="font-medium text-blue-800 dark:text-blue-200">Waiting for QuickBooks Login</span>
                   </div>
                   <p className="text-sm text-blue-600 dark:text-blue-400">
-                    Complete the login in the new browser tab, then return here.
-                    This page will automatically detect when you're connected.
+                    Complete the login in the popup window. The window will close automatically 
+                    and this page will update when you're connected.
                   </p>
                 </div>
                 <Button
