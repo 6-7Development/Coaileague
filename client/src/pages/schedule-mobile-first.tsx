@@ -62,7 +62,7 @@ export default function ScheduleMobileFirst() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | undefined>();
   const [editingShift, setEditingShift] = useState<Shift | undefined>();
-  const [viewMode, setViewMode] = useState<'my' | 'full'>('full');
+  const [viewMode, setViewMode] = useState<'my' | 'full' | 'pending'>('full');
   const [showApprovals, setShowApprovals] = useState(false);
   const [showReports, setShowReports] = useState(false);
   const [showSwaps, setShowSwaps] = useState(false);
@@ -120,6 +120,12 @@ export default function ScheduleMobileFirst() {
   // Filter shifts for selected day
   const dayShifts = useMemo(() => {
     const selectedDayStr = format(selectedDate, 'yyyy-MM-dd');
+    
+    // Pending view shows all pending shifts for the week
+    if (viewMode === 'pending') {
+      return pendingShifts;
+    }
+    
     let filteredShifts = shifts.filter(shift => {
       const shiftDay = format(new Date(shift.startTime), 'yyyy-MM-dd');
       return shiftDay === selectedDayStr;
@@ -134,7 +140,7 @@ export default function ScheduleMobileFirst() {
     }
 
     return filteredShifts;
-  }, [shifts, selectedDate, viewMode, currentEmployee]);
+  }, [shifts, selectedDate, viewMode, currentEmployee, pendingShifts]);
 
   // Group shifts by employee
   const { employeeShiftsMap, openShifts } = useMemo(() => {
@@ -468,17 +474,23 @@ export default function ScheduleMobileFirst() {
         </div>
       </div>
 
-      {/* View Toggle - Compact Segmented Control */}
+      {/* View Toggle - GetSling-style 3 tabs */}
       <div className="border-b border-border/40 px-3 py-1.5">
-        <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as 'my' | 'full')}>
-          <TabsList className="w-full grid grid-cols-2 h-8">
-            <TabsTrigger value="my" className="text-xs gap-1.5 h-7" data-testid="tab-my-schedule">
-              <CalendarDays className="w-3.5 h-3.5 flex-shrink-0" />
-              <span>My Schedule</span>
+        <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as 'my' | 'full' | 'pending')}>
+          <TabsList className="w-full grid grid-cols-3 h-8">
+            <TabsTrigger value="my" className="text-xs h-7" data-testid="tab-my-schedule">
+              My schedule
             </TabsTrigger>
-            <TabsTrigger value="full" className="text-xs gap-1.5 h-7" data-testid="tab-full-schedule">
-              <Users className="w-3.5 h-3.5 flex-shrink-0" />
-              <span>Full Schedule</span>
+            <TabsTrigger value="full" className="text-xs h-7" data-testid="tab-full-schedule">
+              Full schedule
+            </TabsTrigger>
+            <TabsTrigger value="pending" className="text-xs h-7 relative" data-testid="tab-pending">
+              Pending
+              {pendingShifts.length > 0 && (
+                <Badge variant="destructive" className="absolute -top-1 -right-1 text-[9px] px-1 h-4 min-w-4">
+                  {pendingShifts.length}
+                </Badge>
+              )}
             </TabsTrigger>
           </TabsList>
         </Tabs>
@@ -603,7 +615,7 @@ export default function ScheduleMobileFirst() {
 
       {/* Shift Cards - Scrollable */}
       <ScrollArea className="flex-1">
-        <div className="px-3 py-3 space-y-3 pb-28">
+        <div className="pb-28">
           {shiftsLoading || (viewMode === 'my' && !currentEmployee?.id) ? (
             <div className="text-center py-8 text-muted-foreground">
               <TrinityLoadingSpinner size={48} className="mx-auto mb-3" />
@@ -611,109 +623,253 @@ export default function ScheduleMobileFirst() {
                 {shiftsLoading ? 'Loading shifts...' : 'Loading your schedule...'}
               </div>
             </div>
-          ) : viewMode === 'my' && dayShifts.length === 0 ? (
-            <Card className="p-6">
-              <div className="text-center text-muted-foreground">
-                <Calendar className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                <div className="font-medium mb-1">No shifts scheduled</div>
-                <div className="text-sm">You have no shifts on {format(selectedDate, 'EEEE, MMM d')}</div>
-                {openShifts.length > 0 && (
-                  <div className="mt-4">
-                    <Badge variant="outline" className="text-amber-600 border-amber-500">
-                      {openShifts.length} open {openShifts.length === 1 ? 'shift' : 'shifts'} available
-                    </Badge>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="block mx-auto mt-2 text-primary"
-                      onClick={() => setViewMode('full')}
+          ) : viewMode === 'pending' ? (
+            /* Pending View - GetSling style list */
+            <div className="divide-y divide-border">
+              {pendingShifts.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <CheckCircle className="w-12 h-12 mx-auto mb-3 text-green-500 opacity-50" />
+                  <div className="font-medium">All caught up!</div>
+                  <div className="text-sm">No pending shifts to review</div>
+                </div>
+              ) : (
+                pendingShifts.map(shift => {
+                  const start = new Date(shift.startTime);
+                  const end = new Date(shift.endTime);
+                  const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+                  const emp = employees.find(e => e.id === shift.employeeId);
+                  const client = clients.find(c => c.id === shift.clientId);
+                  
+                  return (
+                    <div
+                      key={shift.id}
+                      onClick={() => handleViewShift(shift)}
+                      className="flex items-stretch cursor-pointer active:bg-muted/50"
+                      data-testid={`pending-shift-${shift.id}`}
                     >
-                      View Full Schedule
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </Card>
-          ) : displayEmployees.length === 0 && openShifts.length === 0 ? (
-            <Card className="p-6">
+                      <div className="w-16 py-3 flex flex-col items-center justify-center text-primary flex-shrink-0">
+                        <span className="text-xl font-bold">{format(start, 'd')}</span>
+                        <span className="text-xs uppercase">{format(start, 'EEE')}</span>
+                      </div>
+                      <div className="flex-1 py-3 pr-3 bg-amber-100 dark:bg-amber-900/30 rounded-r-lg my-1">
+                        <div className="font-bold text-sm">
+                          {format(start, 'h:mm a')} - {format(end, 'h:mm a')} · {hours.toFixed(0)}h
+                        </div>
+                        <div className="text-sm font-medium">
+                          {emp ? `${emp.firstName} ${emp.lastName}` : 'Unassigned'}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {client?.companyName || 'No client'} · {shift.title || 'No position'}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          ) : displayEmployees.length === 0 && openShifts.length === 0 && viewMode === 'full' ? (
+            <Card className="p-6 mx-3 mt-3">
               <div className="text-center text-muted-foreground">
                 <Users className="w-12 h-12 mx-auto mb-3 opacity-30" />
                 <div className="font-medium mb-1">No employees found</div>
                 <div className="text-sm">Add employees to start scheduling</div>
               </div>
             </Card>
-          ) : (
-            <>
-              {/* Open Shifts - Always show at top */}
-              {openShifts.length > 0 && (
-                <Card className="border-amber-500/50 bg-amber-50/50 dark:bg-amber-950/20">
-                  <CardContent className="p-3">
-                    <div className="flex items-center gap-2 mb-3">
-                      <AlertCircle className="w-5 h-5 text-amber-600" />
-                      <span className="font-semibold text-amber-700 dark:text-amber-400">
-                        Open Shifts ({openShifts.length})
-                      </span>
-                    </div>
-                    <div className="space-y-2">
-                      {openShifts.map(shift => {
+          ) : viewMode === 'my' ? (
+            /* My Schedule View - Shows all days with current user's shifts */
+            <div className="divide-y divide-border">
+              {weekDays.map(day => {
+                const dayStr = format(day, 'yyyy-MM-dd');
+                const myDayShifts = shifts.filter(s => 
+                  format(new Date(s.startTime), 'yyyy-MM-dd') === dayStr && 
+                  s.employeeId === currentEmployee?.id
+                );
+                const dayIsToday = isToday(day);
+                
+                return (
+                  <div key={dayStr}>
+                    {myDayShifts.length > 0 ? (
+                      myDayShifts.map((shift, idx) => {
                         const start = new Date(shift.startTime);
                         const end = new Date(shift.endTime);
                         const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+                        const client = clients.find(c => c.id === shift.clientId);
+                        const bgColor = shift.status === 'confirmed' 
+                          ? 'bg-green-100 dark:bg-green-900/30'
+                          : shift.status === 'completed'
+                          ? 'bg-gray-100 dark:bg-gray-800/30'
+                          : 'bg-blue-100 dark:bg-blue-900/30';
                         
                         return (
                           <div
                             key={shift.id}
                             onClick={() => handleViewShift(shift)}
-                            className="bg-white dark:bg-card rounded-lg p-3 border border-amber-200 dark:border-amber-800 cursor-pointer active:scale-[0.98] transition-transform"
-                            data-testid={`open-shift-${shift.id}`}
+                            className="flex items-stretch cursor-pointer active:bg-muted/50"
+                            data-testid={`my-shift-${shift.id}`}
                           >
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <div className="font-bold text-base">
-                                  {format(start, 'h:mm a')} - {format(end, 'h:mm a')}
-                                </div>
-                                <div className="text-sm text-muted-foreground">
-                                  {shift.title || 'Unassigned'} | {hours.toFixed(1)} hrs
-                                </div>
+                            <div className={`w-16 py-3 flex flex-col items-center justify-center flex-shrink-0 ${dayIsToday ? 'text-primary' : ''}`}>
+                              {idx === 0 && (
+                                <>
+                                  <span className="text-xl font-bold">{format(day, 'd')}</span>
+                                  <span className="text-xs uppercase">{format(day, 'EEE')}</span>
+                                </>
+                              )}
+                            </div>
+                            <div className={`flex-1 py-3 pr-3 ${bgColor} rounded-r-lg my-1`}>
+                              <div className="font-bold text-sm">
+                                {format(start, 'h:mm a')} - {format(end, 'h:mm a')} · {hours.toFixed(0)}h
                               </div>
-                              <Button
-                                size="sm"
-                                className="bg-amber-600 hover:bg-amber-700"
-                                disabled={!currentEmployee?.id}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleClaimShift(shift);
-                                }}
-                                data-testid={`button-claim-${shift.id}`}
-                              >
-                                Claim
-                              </Button>
+                              <div className="text-xs text-muted-foreground">
+                                {client?.companyName || 'No client'} · {shift.title || 'No position'}
+                              </div>
                             </div>
                           </div>
                         );
-                      })}
+                      })
+                    ) : (
+                      <div className="flex items-center py-4 px-3">
+                        <div className={`w-12 text-center flex-shrink-0 ${dayIsToday ? 'text-primary' : ''}`}>
+                          <div className="text-xl font-bold">{format(day, 'd')}</div>
+                          <div className="text-xs uppercase">{format(day, 'EEE')}</div>
+                        </div>
+                        <div className="flex-1 ml-3">
+                          <span className="text-muted-foreground text-sm">
+                            {dayIsToday ? 'No shift today' : 'Day off'}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            /* Full Schedule View - Shows all shifts for the week grouped by day */
+            <div className="divide-y divide-border">
+              {weekDays.map(day => {
+                const dayStr = format(day, 'yyyy-MM-dd');
+                const dayIsToday = isToday(day);
+                const dayOpenShifts = shifts.filter(s => 
+                  format(new Date(s.startTime), 'yyyy-MM-dd') === dayStr && !s.employeeId
+                );
+                const dayAssignedShifts = shifts.filter(s => 
+                  format(new Date(s.startTime), 'yyyy-MM-dd') === dayStr && s.employeeId
+                );
+                const allDayShifts = [...dayOpenShifts, ...dayAssignedShifts];
+                
+                if (allDayShifts.length === 0) {
+                  return (
+                    <div key={dayStr} className="flex items-center py-4 px-3">
+                      <div className={`w-12 text-center flex-shrink-0 ${dayIsToday ? 'text-primary' : ''}`}>
+                        <div className="text-xl font-bold">{format(day, 'd')}</div>
+                        <div className="text-xs uppercase">{format(day, 'EEE')}</div>
+                      </div>
+                      <div className="flex-1 ml-3">
+                        <span className="text-muted-foreground text-sm">No shifts scheduled</span>
+                      </div>
                     </div>
-                  </CardContent>
-                </Card>
-              )}
-              
-              {/* Employee Cards */}
-              {displayEmployees.map(employee => (
-                <EmployeeShiftCard
-                  key={employee.id}
-                  employee={employee}
-                  shifts={employeeShiftsMap.get(employee.id) || []}
-                  weeklyHours={weeklyHoursMap.get(employee.id) || 0}
-                  onViewShift={handleViewShift}
-                  onEditShift={handleEditShift}
-                  onDeleteShift={handleDeleteShift}
-                  onAddShift={handleAddShift}
-                  onDuplicateShift={handleDuplicateShift}
-                  onSwapShift={handleRequestSwap}
-                  canEdit={canEdit}
-                />
-              ))}
-            </>
+                  );
+                }
+                
+                return (
+                  <div key={dayStr}>
+                    {/* Open Shifts for this day */}
+                    {dayOpenShifts.map((shift, idx) => {
+                      const start = new Date(shift.startTime);
+                      const end = new Date(shift.endTime);
+                      const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+                      const client = clients.find(c => c.id === shift.clientId);
+                      
+                      return (
+                        <div
+                          key={shift.id}
+                          onClick={() => handleViewShift(shift)}
+                          className="flex items-stretch cursor-pointer active:bg-muted/50"
+                          data-testid={`shift-row-${shift.id}`}
+                        >
+                          <div className={`w-16 py-3 flex flex-col items-center justify-center flex-shrink-0 ${dayIsToday ? 'text-primary' : ''}`}>
+                            {idx === 0 && dayAssignedShifts.length === 0 && (
+                              <>
+                                <span className="text-xl font-bold">{format(day, 'd')}</span>
+                                <span className="text-xs uppercase">{format(day, 'EEE')}</span>
+                              </>
+                            )}
+                          </div>
+                          <div className="flex-1 py-3 pr-3 bg-amber-100 dark:bg-amber-900/30 rounded-r-lg my-1">
+                            <div className="font-bold text-sm text-amber-800 dark:text-amber-200">
+                              {format(start, 'h:mm a')} - {format(end, 'h:mm a')} · {hours.toFixed(0)}h
+                            </div>
+                            <div className="text-sm font-medium text-amber-700 dark:text-amber-300">
+                              OPEN SHIFT
+                            </div>
+                            <div className="text-xs text-amber-600 dark:text-amber-400">
+                              {client?.companyName || 'No client'} · {shift.title || 'Position needed'}
+                            </div>
+                          </div>
+                          <Button
+                            size="sm"
+                            className="self-center mr-2 bg-amber-600 hover:bg-amber-700"
+                            disabled={!currentEmployee?.id}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleClaimShift(shift);
+                            }}
+                          >
+                            Claim
+                          </Button>
+                        </div>
+                      );
+                    })}
+                    
+                    {/* Assigned Shifts for this day */}
+                    {dayAssignedShifts.map((shift, idx) => {
+                      const start = new Date(shift.startTime);
+                      const end = new Date(shift.endTime);
+                      const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+                      const emp = employees.find(e => e.id === shift.employeeId);
+                      const client = clients.find(c => c.id === shift.clientId);
+                      const bgColor = shift.status === 'confirmed' 
+                        ? 'bg-green-100 dark:bg-green-900/30'
+                        : shift.status === 'completed'
+                        ? 'bg-gray-100 dark:bg-gray-800/30'
+                        : 'bg-blue-100 dark:bg-blue-900/30';
+                      
+                      return (
+                        <div
+                          key={shift.id}
+                          onClick={() => handleViewShift(shift)}
+                          className="flex items-stretch cursor-pointer active:bg-muted/50"
+                          data-testid={`shift-row-${shift.id}`}
+                        >
+                          <div className={`w-16 py-3 flex flex-col items-center justify-center flex-shrink-0 ${dayIsToday ? 'text-primary' : ''}`}>
+                            {idx === 0 && (
+                              <>
+                                <span className="text-xl font-bold">{format(day, 'd')}</span>
+                                <span className="text-xs uppercase">{format(day, 'EEE')}</span>
+                              </>
+                            )}
+                          </div>
+                          <div className={`flex-1 py-3 pr-3 ${bgColor} rounded-r-lg my-1`}>
+                            <div className="font-bold text-sm">
+                              {format(start, 'h:mm a')} - {format(end, 'h:mm a')} · {hours.toFixed(0)}h
+                            </div>
+                            <div className="text-sm font-medium truncate">
+                              {emp ? `${emp.firstName} ${emp.lastName}` : 'Unassigned'}
+                            </div>
+                            <div className="text-xs text-muted-foreground truncate">
+                              {client?.companyName || 'No client'} · {shift.title || 'No position'}
+                            </div>
+                          </div>
+                          <div className="self-center pr-2">
+                            <ArrowRightLeft className="w-4 h-4 text-muted-foreground" />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
       </ScrollArea>
