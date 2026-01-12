@@ -335,6 +335,10 @@ export const FEATURES = {
   enableEmailNotifications: true,
   enablePushNotifications: false,  // PWA push - future
   
+  // Email Testing Mode - logs emails instead of sending via Resend
+  // Set to true during development to save Resend credits
+  emailSimulationMode: process.env.EMAIL_SIMULATION_MODE === 'true' || false,
+  
   // Calendar Integration
   enableCalendarExport: true,  // ICS export
   enableGoogleCalendar: true,  // Google Calendar sync
