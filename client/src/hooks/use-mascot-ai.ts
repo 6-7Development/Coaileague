@@ -97,10 +97,11 @@ export function useMascotTasks(workspaceId?: string) {
   });
 }
 
-export function useHolidayStatus() {
+export function useHolidayStatus(isAuthenticated: boolean = false) {
   return useQuery<HolidayStatus>({
     queryKey: ['/api/mascot/holiday'],
     queryFn: () => fetchJSON<HolidayStatus>('/api/mascot/holiday'),
+    enabled: isAuthenticated,
     staleTime: 60 * 60 * 1000,
     refetchInterval: 60 * 60 * 1000,
     retry: false,
@@ -142,10 +143,10 @@ export function useCompleteMascotTask() {
   });
 }
 
-export function useMascotAIIntegration(workspaceId?: string) {
+export function useMascotAIIntegration(workspaceId?: string, isAuthenticated: boolean = false) {
   const { data: insightsData } = useMascotInsights(workspaceId);
   const { data: tasksData } = useMascotTasks(workspaceId);
-  const { data: holidayData } = useHolidayStatus();
+  const { data: holidayData } = useHolidayStatus(isAuthenticated);
   
   useEffect(() => {
     if (insightsData?.insights && insightsData.insights.length > 0) {

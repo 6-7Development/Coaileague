@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
+import { useAuth } from '@/hooks/useAuth';
 
 type ViewModePreference = 'inherit' | 'simple' | 'pro';
 type ViewModeSource = 'user_fallback' | 'workspace_default' | 'workspace_forced' | 'employee_preference';
@@ -26,6 +27,7 @@ interface SimpleModeContextType {
 const SimpleModeContext = createContext<SimpleModeContextType | undefined>(undefined);
 
 export function SimpleModeProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
   const [localSimpleMode, setLocalSimpleMode] = useState<boolean>(() => {
     const stored = localStorage.getItem('simpleMode');
     return stored === 'true';
@@ -33,9 +35,10 @@ export function SimpleModeProvider({ children }: { children: ReactNode }) {
   const [viewModeSource, setViewModeSource] = useState<ViewModeSource | null>(null);
   const [currentWorkspaceId, setCurrentWorkspaceId] = useState<string | null>(null);
 
-  // Fetch effective view mode from server (workspace-aware)
+  // Fetch effective view mode from server (workspace-aware) - only when authenticated
   const { data: viewMode, isLoading: viewModeLoading } = useQuery<ViewModeResponse>({
     queryKey: ['/api/user/view-mode'],
+    enabled: !!user,
     retry: false,
     staleTime: 30000, // Cache for 30 seconds
   });

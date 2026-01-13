@@ -264,7 +264,7 @@ import { MobileVoiceCommandOverlay } from "@/components/mobile/MobileVoiceComman
 function MascotRenderer() {
   const { user } = useAuth();
   const workspaceId = (user as any)?.activeWorkspaceId || (user as any)?.workspaceId;
-  useMascotAIIntegration(workspaceId);
+  useMascotAIIntegration(workspaceId, !!user);
   useMascotObserver(true);
   useCreditAwareness(); // Business Buddy credit awareness for low balance warnings
   
