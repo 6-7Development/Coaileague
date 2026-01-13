@@ -131,8 +131,10 @@ router.post("/api/auth/register", async (req, res) => {
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
+      console.error("[Registration] Zod validation failed:", error.errors);
+      const fieldErrors = error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
       return res.status(400).json({
-        message: "Validation error",
+        message: fieldErrors || "Please check your form fields",
         errors: error.errors,
       });
     }
