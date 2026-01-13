@@ -54,9 +54,10 @@ export class WorkflowRunner {
       };
     }
     
-    if (config.diagBypassCaptcha) {
+    const bypassSecret = process.env.DIAG_BYPASS_SECRET;
+    if (bypassSecret && bypassSecret.length >= 32) {
       contextOptions.extraHTTPHeaders = {
-        'X-Diagnostics-Runner': 'trinity-diagnostics-agent'
+        'X-Diagnostics-Runner': bypassSecret
       };
     }
     
