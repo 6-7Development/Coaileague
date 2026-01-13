@@ -8,7 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { VisuallyHidden } from '@/components/ui/visually-hidden';
-import { TrinityMascotAnimated } from '@/components/ui/trinity-mascot';
+import { Suspense, lazy } from 'react';
+const TrinityRedesign = lazy(() => import('@/components/trinity-redesign'));
 import { useToast } from '@/hooks/use-toast';
 import { 
   ArrowLeft, 
@@ -1823,11 +1824,12 @@ export default function QuickBooksImportPage() {
             {/* Header with Trinity Logo */}
             <div className="flex items-center gap-4">
               <div className="relative flex-shrink-0">
-                <TrinityMascotAnimated 
-                  size="xl" 
-                  state={pushProgress === 100 ? "success" : "thinking"}
-                  showSparkles={pushProgress !== 100}
-                />
+                <Suspense fallback={<div className="w-20 h-20" />}>
+                  <TrinityRedesign 
+                    size={80} 
+                    mode={pushProgress === 100 ? "ANALYZING" : "THINKING"}
+                  />
+                </Suspense>
                 {pushProgress === 100 && (
                   <div className="absolute -bottom-1 -right-1 bg-green-500 rounded-full p-1">
                     <Check className="h-3 w-3 text-white" />

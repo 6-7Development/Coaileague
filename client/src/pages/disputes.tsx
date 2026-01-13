@@ -19,7 +19,8 @@ import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { disputeStatusConfig, disputePriorityConfig, disputeTypesConfig, disputeMessages } from "@/config/disputeConfig";
-import { TrinityMascotAnimated } from "@/components/ui/trinity-mascot";
+import { Suspense, lazy } from "react";
+const TrinityRedesign = lazy(() => import("@/components/trinity-redesign"));
 
 export default function DisputesPage() {
   const { user } = useAuth();
@@ -145,7 +146,9 @@ export default function DisputesPage() {
     return (
       <div className="h-full flex flex-col">
         <div className="flex-1 flex flex-col items-center justify-center gap-3">
-          <TrinityMascotAnimated size="lg" state="thinking" showSparkles={true} />
+          <Suspense fallback={<div className="w-16 h-16" />}>
+            <TrinityRedesign size={64} mode="THINKING" />
+          </Suspense>
           <p className="text-muted-foreground">Loading disputes...</p>
         </div>
       </div>

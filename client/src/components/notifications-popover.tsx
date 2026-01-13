@@ -32,7 +32,8 @@ import { useNotificationWebSocket } from "@/hooks/use-notification-websocket";
 import { useTrinityContext } from "@/hooks/use-trinity-context";
 import { useNotificationSync } from "@/hooks/use-notification-sync";
 import { humanizeTitle, humanizeText, generateEndUserSummary } from "@shared/utils/humanFriendlyCopy";
-import { TrinityMascotAnimated } from "@/components/ui/trinity-mascot";
+import { Suspense, lazy } from "react";
+const TrinityRedesign = lazy(() => import("@/components/trinity-redesign"));
 
 // Priority levels for UNS cards
 type Priority = 'critical' | 'high' | 'medium' | 'info';
@@ -1643,7 +1644,9 @@ function NotificationsPopoverInner({ user }: { user: any }) {
         <div className="min-h-0">
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-12 gap-2">
-            <TrinityMascotAnimated size="md" state="thinking" showSparkles={true} />
+            <Suspense fallback={<div className="w-12 h-12" />}>
+              <TrinityRedesign size={48} mode="THINKING" />
+            </Suspense>
             <span className="text-xs text-muted-foreground">Loading...</span>
           </div>
         ) : sortedNotifications.length > 0 ? (

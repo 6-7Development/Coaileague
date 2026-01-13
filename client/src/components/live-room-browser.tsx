@@ -30,7 +30,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { TrinityMascotAnimated } from "@/components/ui/trinity-mascot";
+import { Suspense, lazy } from "react";
+const TrinityRedesign = lazy(() => import("@/components/trinity-redesign"));
 import { Loader2 } from "lucide-react";
 
 interface RoomMember {
@@ -159,7 +160,9 @@ export function LiveRoomBrowser({ onRoomSelect, filterByOrg = false, compact = f
   if (isAuthLoading || isRoomsLoading) {
     return (
       <div className="flex flex-col items-center justify-center p-12 gap-3">
-        <TrinityMascotAnimated size="lg" state="thinking" showSparkles={true} />
+        <Suspense fallback={<div className="w-16 h-16" />}>
+          <TrinityRedesign size={64} mode="THINKING" />
+        </Suspense>
         <p className="text-sm text-muted-foreground">
           {isAuthLoading ? 'Checking authentication...' : 'Loading rooms...'}
         </p>

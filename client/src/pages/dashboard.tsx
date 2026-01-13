@@ -13,7 +13,8 @@ import {
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { CoAIleagueAFLogo } from "@/components/coaileague-af-logo";
-import { TrinityMascotAnimated } from "@/components/ui/trinity-mascot";
+import { Suspense, lazy } from "react";
+const TrinityRedesign = lazy(() => import("@/components/trinity-redesign"));
 import { useTransition } from "@/contexts/transition-context";
 import { apiGet } from "@/lib/apiClient";
 import { queryKeys } from "@/config/queryKeys";
@@ -318,7 +319,9 @@ export default function Dashboard() {
   if (isLoading || !isAuthenticated) {
     return (
       <div className="flex flex-col items-center justify-center h-screen gap-4">
-        <TrinityMascotAnimated size="xl" state="thinking" showSparkles={true} />
+        <Suspense fallback={<div className="w-20 h-20" />}>
+          <TrinityRedesign size={80} mode="THINKING" />
+        </Suspense>
         <span className="text-muted-foreground">Loading...</span>
       </div>
     );
@@ -475,7 +478,9 @@ export default function Dashboard() {
       {/* Show Trinity loading for initial auth check */}
       {isLoadingDashboard && (
         <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm gap-4">
-          <TrinityMascotAnimated size="xl" state="thinking" showSparkles={true} />
+          <Suspense fallback={<div className="w-20 h-20" />}>
+            <TrinityRedesign size={80} mode="THINKING" />
+          </Suspense>
           <span className="text-muted-foreground">Loading dashboard...</span>
         </div>
       )}

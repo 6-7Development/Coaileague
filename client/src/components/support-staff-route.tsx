@@ -3,7 +3,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { ShieldAlert, ArrowLeft, HeadphonesIcon } from "lucide-react";
 import { Link } from "wouter";
-import { TrinityMascotAnimated } from "@/components/ui/trinity-mascot";
+import { Suspense, lazy } from "react";
+const TrinityRedesign = lazy(() => import("@/components/trinity-redesign"));
 
 const SUPPORT_STAFF_ROLES = ['root_admin', 'deputy_admin', 'sysop', 'support_manager', 'support_agent', 'compliance_officer'];
 
@@ -18,7 +19,9 @@ export function SupportStaffRoute({ children }: { children: React.ReactNode }) {
   if (isLoading) {
     return (
       <div className="h-screen flex flex-col items-center justify-center bg-background gap-3">
-        <TrinityMascotAnimated size="lg" state="thinking" showSparkles={true} />
+        <Suspense fallback={<div className="w-16 h-16" />}>
+          <TrinityRedesign size={64} mode="THINKING" />
+        </Suspense>
         <span className="text-sm text-muted-foreground">Loading...</span>
       </div>
     );
