@@ -5,7 +5,7 @@
 
 import { Router } from 'express';
 import { z } from 'zod';
-import { featureFlagsService } from '../services/featureFlagsService';
+import { trinityRuntimeFlagsService as featureFlagsService } from '../services/featureFlagsService';
 
 const router = Router();
 
