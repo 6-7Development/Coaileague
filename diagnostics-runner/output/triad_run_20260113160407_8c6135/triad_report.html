@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Trinity Debug Triad Report - run_20260113160407_6c03ac</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 20px; background: #0f172a; color: #e2e8f0; }
+    .container { max-width: 1400px; margin: 0 auto; }
+    h1 { color: #818cf8; border-bottom: 2px solid #818cf8; padding-bottom: 10px; }
+    h2 { color: #a5b4fc; margin-top: 30px; }
+    .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin: 20px 0; }
+    .summary-card { background: #1e293b; padding: 20px; border-radius: 12px; text-align: center; }
+    .summary-card h3 { margin: 0 0 10px 0; color: #94a3b8; font-size: 14px; }
+    .summary-card .value { font-size: 36px; font-weight: bold; }
+    .readiness { font-size: 24px; }
+    .readiness.ready { color: #22c55e; }
+    .readiness.needs-work { color: #eab308; }
+    .readiness.not-ready { color: #ef4444; }
+    table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #334155; }
+    th { background: #1e293b; color: #818cf8; }
+    tr:hover { background: #1e293b; }
+    .severity { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+    .severity.critical { background: #dc2626; color: white; }
+    .severity.high { background: #ea580c; color: white; }
+    .severity.medium { background: #ca8a04; color: white; }
+    .severity.low { background: #16a34a; color: white; }
+    .crawler { padding: 4px 8px; border-radius: 4px; font-size: 11px; }
+    .crawler.ui { background: #7c3aed; color: white; }
+    .crawler.api { background: #0891b2; color: white; }
+    .crawler.integration { background: #d97706; color: white; }
+    a { color: #60a5fa; }
+    .insights { background: linear-gradient(135deg, #312e81 0%, #1e1b4b 100%); padding: 20px; border-radius: 12px; margin: 20px 0; }
+    .insights h3 { color: #c4b5fd; margin-top: 0; }
+    .insights p { color: #e2e8f0; line-height: 1.6; }
+    .insights ul { color: #cbd5e1; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔱 Trinity Debug Triad Report</h1>
+    
+    <div class="summary-grid">
+      <div class="summary-card">
+        <h3>READINESS SCORE</h3>
+        <div class="value readiness needs-work">0%</div>
+      </div>
+      <div class="summary-card">
+        <h3>TOTAL ISSUES</h3>
+        <div class="value">81</div>
+      </div>
+      <div class="summary-card">
+        <h3>CRITICAL</h3>
+        <div class="value" style="color: #dc2626">0</div>
+      </div>
+      <div class="summary-card">
+        <h3>HIGH</h3>
+        <div class="value" style="color: #ea580c">55</div>
+      </div>
+      <div class="summary-card">
+        <h3>MEDIUM</h3>
+        <div class="value" style="color: #ca8a04">20</div>
+      </div>
+      <div class="summary-card">
+        <h3>LOW</h3>
+        <div class="value" style="color: #16a34a">6</div>
+      </div>
+    </div>
+    
+    <div class="insights">
+      <h3>🧠 Trinity Insights</h3>
+      <p><strong>Assessment:</strong> 55 high-priority issues should be addressed soon.</p>
+      <p><strong>Launch Status:</strong> <span class="readiness needs-work">NEEDS-WORK</span></p>
+      
+        <h4>Top Priorities:</h4>
+        <ul><li>GET https://coaileague.com/api/mascot/holiday returned 401</li><li>GET https://coaileague.com/api/mascot/seasonal/state returned 401</li><li>GET https://coaileague.com/api/auth/me returned 401</li><li>GET https://coaileague.com/api/user/view-mode returned 401</li><li>GET https://coaileague.com/api/workspace/theme returned 401</li></ul>
+      
+      
+        <h4>Quick Wins:</h4>
+        <ul><li>GET https://coaileague.com/api/mascot/seasonal/state returned 401</li><li>GET https://coaileague.com/api/mascot/holiday returned 401</li><li>GET https://coaileague.com/api/mascot/seasonal/state returned 401</li><li>GET https://coaileague.com/api/workspace/theme returned 401</li></ul>
+      
+    </div>
+    
+    <h2>All Issues (81)</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Severity</th>
+          <th>Crawler</th>
+          <th>Subsystem</th>
+          <th>Message</th>
+          <th>URL</th>
+          <th>Fix Recommendation</th>
+        </tr>
+      </thead>
+      <tbody>
+        
+      <tr>
+        <td><span class="severity high">HIGH</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>backend</td>
+        <td>GET https://coaileague.com/api/mascot/holiday returned 401</td>
+        <td><a href="https://coaileague.com" target="_blank">https://coaileague.com</a></td>
+        <td>[object Object]
+[object Object]
+[object Object]
+[object Object]
+[object Object]</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity high">HIGH</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>backend</td>
+        <td>GET https://coaileague.com/api/mascot/seasonal/state returned 401</td>
+        <td><a href="https://coaileague.com" target="_blank">https://coaileague.com</a></td>
+        <td>**1. Verify Frontend Token Attachment (React):** Ensure the React frontend is attaching the authentication token (e.g., JWT) to the `Authorization` header of the request for `/api/mascot/seasonal/state`. This is commonly done via an Axios interceptor or by manually adding the header to fetch requests.
+**2. Check Frontend Token Storage & Validity:** Confirm that the user is logged in and that a valid, non-expired authentication token is present in `localStorage`, `sessionStorage`, or a secure cookie within the React application. If the token is missing or expired, prompt the user to re-authenticate or implement a token refresh mechanism.
+**3. Inspect Backend Authentication Middleware (Express.js):** Review the Express.js backend's authentication middleware that protects the `/api/mascot/seasonal/state` route. Ensure it correctly:
+   a. Extracts the token from the `Authorization: Bearer <token>` header.
+   b. Verifies the token's signature using the correct `JWT_SECRET` (or equivalent).
+   c. Checks the token's expiration date.
+   d. Properly handles verification failures by returning a 401 status.
+**4. Cross-Origin Resource Sharing (CORS) Configuration:** While less direct for a 401, ensure your Express.js backend has appropriate CORS headers configured if the frontend is served from a different origin (especially during development). Incorrect CORS can sometimes prevent headers (like Authorization) from being sent correctly, though this usually manifests as preflight errors before a 401.
+**5. Error Logging:** Enhance logging in both the frontend (network errors, token presence) and backend (middleware errors, token verification failures) to get more specific insights into why the authentication failed.</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity high">HIGH</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>backend</td>
+        <td>GET https://coaileague.com/api/auth/me returned 401</td>
+        <td><a href="https://coaileague.com" target="_blank">https://coaileague.com</a></td>
+        <td>**1. Inspect Client-Side Request (Frontend - React):**
+   *   Open your browser's developer tools (Network tab) and re-attempt the action that triggers the `/api/auth/me` call.
+   *   Examine the `GET https://coaileague.com/api/auth/me` request headers. Verify if an `Authorization` header is present and if its value is in the format `Bearer <YOUR_JWT_TOKEN>`.
+   *   If the header is missing or the token is malformed/empty, proceed to step 2. If it's present and looks correct, proceed to step 3.
+**2. Verify Frontend Token Handling (client/):**
+   *   **Token Storage:** Check where the authentication token is supposed to be stored after login (e.g., `localStorage`, `sessionStorage`, or a cookie). Ensure the token is actually present and valid in this storage mechanism.
+   *   **API Interceptor/Service:** Locate the code responsible for making API requests (e.g., an Axios instance or a dedicated API service). Ensure it's configured to retrieve the token from storage and attach it as an `Authorization: Bearer <token>` header to all authenticated requests, especially to `/api/auth/me`.
+   *   **Token Expiration:** If the token is being sent but is expired, implement or verify a token refresh mechanism, or prompt the user to re-authenticate.
+**3. Review Backend Authentication Middleware (server/):**
+   *   **Middleware Application:** In your Express.js `server/` directory, locate the routes file that handles `/api/auth/me` (e.g., `authRoutes.js` or `userRoutes.js`). Ensure that the authentication middleware (e.g., a `protect` or `authenticate` function) is correctly applied to this route.
+   *   **Token Extraction & Validation:** Examine the authentication middleware itself (e.g., `server/middleware/auth.js`). Verify that it correctly extracts the token from the `Authorization` header, and that the JWT verification (e.g., `jwt.verify(token, process.env.JWT_SECRET)`) is using the correct secret key and handling potential errors like expired tokens (`TokenExpiredError`) or invalid signatures (`JsonWebTokenError`).
+   *   **JWT Secret:** Confirm that `process.env.JWT_SECRET` (or equivalent) in your backend environment configuration matches the secret used when the JWTs were issued during login. A mismatch will cause verification to fail.
+**4. Debug & Test:**
+   *   Add console logs or use a debugger in both your frontend's API call logic and your backend's authentication middleware to trace the token's presence, value, and validation outcome.
+   *   Test the login flow end-to-end to ensure a valid token is issued and then correctly used for subsequent authenticated requests.</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity high">HIGH</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>backend</td>
+        <td>GET https://coaileague.com/api/user/view-mode returned 401</td>
+        <td><a href="https://coaileague.com" target="_blank">https://coaileague.com</a></td>
+        <td>**1. Verify Frontend Authentication Token Handling:**
+   - **Check Token Presence:** Ensure the React frontend is actively retrieving the authentication token (e.g., from `localStorage`, `sessionStorage`, or an HTTP-only cookie) after a successful login.
+   - **Check Token Attachment:** Confirm that this token is being correctly attached to the `Authorization` header of outgoing requests to the backend API, typically in the format `Bearer YOUR_TOKEN_HERE`.
+   - **Check Token Expiration:** Review the frontend's logic for handling expired tokens. If the token is expired, the frontend should attempt to refresh it (if a refresh token mechanism exists) or prompt the user to log in again.
+**2. Debug Express.js Backend Authentication Middleware:**
+   - **Middleware Application:** Verify that the authentication middleware (e.g., JWT verification middleware) is correctly applied to the `/api/user/view-mode` route in your Express.js backend. Ensure it's executed before the route handler.
+   - **Token Extraction:** Confirm the middleware is correctly extracting the token from the `Authorization` header.
+   - **Token Validation:** Debug the `jwt.verify` (or equivalent) call. Check if the `JWT_SECRET` used for verification matches the secret used for signing the token. Inspect any errors returned by `jwt.verify` (e.g., `TokenExpiredError`, `JsonWebTokenError`).
+   - **Logging:** Add extensive logging within the authentication middleware to see the incoming token, the secret used, and the result of the verification process.
+**3. Cross-Origin Resource Sharing (CORS) Check (Less Likely, but possible):**
+   - While a 401 typically points to authentication, ensure your backend's CORS configuration allows requests from your frontend's origin, especially for preflight `OPTIONS` requests if custom headers like `Authorization` are used. Incorrect CORS can sometimes prevent headers from being sent.
+**4. Test User Session/Token State:**
+   - Try logging out and logging back in to generate a fresh token. If the issue resolves, it points to token expiration or invalidation.
+   - Use browser developer tools to inspect network requests and verify the `Authorization` header is present and contains a valid-looking token for the failing request.</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity high">HIGH</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>backend</td>
+        <td>GET https://coaileague.com/api/workspace/theme returned 401</td>
+        <td><a href="https://coaileague.com" target="_blank">https://coaileague.com</a></td>
+        <td>To resolve this, systematically check both the frontend and backend authentication mechanisms:
+
+1.  **Frontend (React/Vite) Check - Token Presence & Storage:**
+    *   Open browser developer tools (Network tab) when the error occurs. Inspect the request to `https://coaileague.com/api/workspace/theme`. Verify if an `Authorization: Bearer <token>` header (or a relevant session cookie) is present and correctly formatted.
+    *   If the token is missing, ensure the frontend logic (e.g., an Axios interceptor or a custom fetch wrapper) is correctly retrieving the authentication token from `localStorage`, `sessionStorage`, or cookies, and attaching it to outgoing requests.
+
+2.  **Frontend (React/Vite) Check - Token Validity:**
+    *   If a token is being sent, retrieve it from `localStorage`/`sessionStorage` and inspect its content (e.g., paste a JWT into `jwt.io`). Check the `exp` (expiration) claim. If the token is expired, the frontend should ideally handle this proactively by attempting a token refresh or prompting the user to re-login.
+    *   Ensure the frontend cleans up expired or invalid tokens from storage to prevent them from being sent repeatedly.
+
+3.  **Backend (Express.js) Check - Authentication Middleware:**
+    *   Review the Express.js authentication middleware (e.g., `auth.middleware.js`) that protects the `/api/workspace/theme` endpoint. Verify it correctly:
+        *   Extracts the token from the `Authorization` header or cookies.
+        *   Verifies the token's signature using the correct `JWT_SECRET`.
+        *   Checks for token expiration on the backend.
+        *   Attaches the authenticated user information to the `req` object.
+    *   Add temporary `console.log` statements within the middleware to trace the token extraction and verification process (e.g., `console.log('Token received:', token);`, `console.log('Verification result:', decodedToken);`).
+
+4.  **Backend (Express.js) Check - Environment Variables:**
+    *   Confirm that the `JWT_SECRET` (or similar encryption key) used for signing tokens during user login is *identical* to the `JWT_SECRET` used for verifying tokens in the authentication middleware. Discrepancies between development, staging, and production environments are a common cause of 401s.
+
+5.  **API Testing with Known States:**
+    *   Use a tool like Postman, Insomnia, or cURL to directly test the `https://coaileague.com/api/workspace/theme` endpoint:
+        *   First, make a request *without* any authentication header. Confirm it returns a `401`.
+        *   Then, make a request with a *known valid, non-expired* authentication token. Confirm it returns a `200 OK`.
+        *   Finally, make a request with a *known expired or intentionally invalid* token. Confirm it returns a `401`. This helps pinpoint if the issue is with all tokens, or specifically with the token the frontend is sending.</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity high">HIGH</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>backend</td>
+        <td>GET https://coaileague.com/api/mascot/holiday returned 401</td>
+        <td><a href="https://coaileague.com/login" target="_blank">https://coaileague.com/login</a></td>
+        <td>Implement robust authentication checks on the frontend to prevent API calls to protected resources when the user is not authenticated. Specifically, ensure that components or data fetching logic for '/api/mascot/holiday' are only triggered if an active and valid authentication token exists. If the user is on the login page, no authenticated API calls should be initiated.</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity high">HIGH</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>backend</td>
+        <td>GET https://coaileague.com/api/auth/me returned 401</td>
+        <td><a href="https://coaileague.com/login" target="_blank">https://coaileague.com/login</a></td>
+        <td>**Client-side (React/Vite) Token Management:**
+1.  **Verify Token Storage and Retrieval:** Ensure that the authentication token (e.g., JWT) is correctly stored (e.g., in `localStorage` or `sessionStorage` or HTTP-only cookies) after a successful login and retrieved reliably for subsequent authenticated requests.
+2.  **Implement HTTP Client Interceptor:** Configure an Axios (or your chosen HTTP client) request interceptor to automatically attach the `Authorization: Bearer <token>` header to all outgoing API requests that target protected endpoints. This ensures the token is always sent if available.
+3.  **Handle 401 Responses Gracefully:** Implement a response interceptor to specifically catch `401 Unauthorized` responses. When a 401 occurs, particularly for `GET /api/auth/me`, clear any existing invalid tokens from client storage (e.g., `localStorage.removeItem('jwtToken')`), update the user's authentication state to 'logged out', and redirect them to the `/login` page with an appropriate 'Session expired' message.
+4.  **Conditional `me` Call on Login Page:** Ensure that the `GET /api/auth/me` endpoint is explicitly *not* called when the user is already on the `/login` page, unless it's part of an explicit auto-login attempt with robust error handling for 401s.
+**Server-side (Express.js) Authentication Logic:**
+5.  **Review Authentication Middleware:** Verify the Express.js middleware responsible for authenticating requests to `/api/auth/me`. Ensure it correctly extracts the token from the `Authorization` header, validates its signature and expiration (e.g., using `jsonwebtoken` library), and consistently returns a `401 Unauthorized` status when the token is missing, invalid, or expired. Add detailed logging for failed authentication attempts.</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity high">HIGH</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>backend</td>
+        <td>GET https://coaileague.com/api/mascot/seasonal/state returned 401</td>
+        <td><a href="https://coaileague.com/login" target="_blank">https://coaileague.com/login</a></td>
+        <td>1.  **Adjust Frontend Logic:** Navigate to the `client/` directory. Identify where the `GET /api/mascot/seasonal/state` API call is being made. This is likely within `LoginPage.jsx` itself or a component rendered by it (e.g., `MascotDisplay.jsx`). Modify the frontend code to ensure this API call is only initiated *after* a user has successfully authenticated. This typically involves wrapping the fetch call in a conditional check for user authentication status and including the authentication token (e.g., JWT) in the request headers (e.g., as a Bearer token).
+2.  **(Conditional) Backend Route Review:** If, and *only if*, the `GET /api/mascot/seasonal/state` endpoint is explicitly intended to be publicly accessible (e.g., to display a generic mascot state on a landing page before login), then navigate to the `server/` directory. Locate the route definition for `GET /api/mascot/seasonal/state` (likely in `server/routes/api.js` or a dedicated `server/routes/mascot.js` file) and remove or conditionally apply the authentication middleware from this specific route. **However, the primary and recommended fix is to prevent the unauthenticated frontend call.**</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity high">HIGH</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>backend</td>
+        <td>GET https://coaileague.com/api/user/view-mode returned 401</td>
+        <td><a href="https://coaileague.com/login" target="_blank">https://coaileague.com/login</a></td>
+        <td>[object Object]
+[object Object]</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity high">HIGH</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>backend</td>
+        <td>GET https://coaileague.com/api/workspace/theme returned 401</td>
+        <td><a href="https://coaileague.com/login" target="_blank">https://coaileague.com/login</a></td>
+        <td>Implement conditional data fetching in the frontend to ensure the '/api/workspace/theme' endpoint is only called after a user has successfully authenticated and a valid authentication token is available. Simultaneously, verify the backend's authentication middleware configuration for the theme endpoint.</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity high">HIGH</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>backend</td>
+        <td>GET https://coaileague.com/api/auth/me returned 401</td>
+        <td><a href="https://coaileague.com/register" target="_blank">https://coaileague.com/register</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity high">HIGH</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>backend</td>
+        <td>GET https://coaileague.com/api/mascot/holiday returned 401</td>
+        <td><a href="https://coaileague.com/register" target="_blank">https://coaileague.com/register</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity high">HIGH</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>backend</td>
+        <td>GET https://coaileague.com/api/mascot/seasonal/state returned 401</td>
+        <td><a href="https://coaileague.com/register" target="_blank">https://coaileague.com/register</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity high">HIGH</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>backend</td>
+        <td>GET https://coaileague.com/api/workspace/theme returned 401</td>
+        <td><a href="https://coaileague.com/register" target="_blank">https://coaileague.com/register</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity high">HIGH</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>backend</td>
+        <td>GET https://coaileague.com/api/user/view-mode returned 401</td>
+        <td><a href="https://coaileague.com/register" target="_blank">https://coaileague.com/register</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity high">HIGH</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>backend</td>
+        <td>GET https://coaileague.com/api/user/view-mode returned 401</td>
+        <td><a href="https://coaileague.com/pricing" target="_blank">https://coaileague.com/pricing</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity high">HIGH</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>backend</td>
+        <td>GET https://coaileague.com/api/workspace/theme returned 401</td>
+        <td><a href="https://coaileague.com/pricing" target="_blank">https://coaileague.com/pricing</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity high">HIGH</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>backend</td>
+        <td>GET https://coaileague.com/api/mascot/holiday returned 401</td>
+        <td><a href="https://coaileague.com/pricing" target="_blank">https://coaileague.com/pricing</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity high">HIGH</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>backend</td>
+        <td>GET https://coaileague.com/api/auth/me returned 401</td>
+        <td><a href="https://coaileague.com/pricing" target="_blank">https://coaileague.com/pricing</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity high">HIGH</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>backend</td>
+        <td>GET https://coaileague.com/api/mascot/seasonal/state returned 401</td>
+        <td><a href="https://coaileague.com/pricing" target="_blank">https://coaileague.com/pricing</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity high">HIGH</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>backend</td>
+        <td>GET https://coaileague.com/api/mascot/holiday returned 401</td>
+        <td><a href="https://coaileague.com/trinity-features" target="_blank">https://coaileague.com/trinity-features</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity high">HIGH</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>backend</td>
+        <td>GET https://coaileague.com/api/user/view-mode returned 401</td>
+        <td><a href="https://coaileague.com/trinity-features" target="_blank">https://coaileague.com/trinity-features</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity high">HIGH</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>backend</td>
+        <td>GET https://coaileague.com/api/mascot/seasonal/state returned 401</td>
+        <td><a href="https://coaileague.com/trinity-features" target="_blank">https://coaileague.com/trinity-features</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity high">HIGH</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>backend</td>
+        <td>GET https://coaileague.com/api/auth/me returned 401</td>
+        <td><a href="https://coaileague.com/trinity-features" target="_blank">https://coaileague.com/trinity-features</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity high">HIGH</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>backend</td>
+        <td>GET https://coaileague.com/api/workspace/theme returned 401</td>
+        <td><a href="https://coaileague.com/trinity-features" target="_blank">https://coaileague.com/trinity-features</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity high">HIGH</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>backend</td>
+        <td>GET https://coaileague.com/api/auth/me returned 401</td>
+        <td><a href="https://coaileague.com/contact" target="_blank">https://coaileague.com/contact</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity high">HIGH</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>backend</td>
+        <td>GET https://coaileague.com/api/mascot/seasonal/state returned 401</td>
+        <td><a href="https://coaileague.com/contact" target="_blank">https://coaileague.com/contact</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity high">HIGH</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>backend</td>
+        <td>GET https://coaileague.com/api/user/view-mode returned 401</td>
+        <td><a href="https://coaileague.com/contact" target="_blank">https://coaileague.com/contact</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity high">HIGH</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>backend</td>
+        <td>GET https://coaileague.com/api/mascot/holiday returned 401</td>
+        <td><a href="https://coaileague.com/contact" target="_blank">https://coaileague.com/contact</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity high">HIGH</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>backend</td>
+        <td>GET https://coaileague.com/api/workspace/theme returned 401</td>
+        <td><a href="https://coaileague.com/contact" target="_blank">https://coaileague.com/contact</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity high">HIGH</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>backend</td>
+        <td>GET https://coaileague.com/api/auth/me returned 401</td>
+        <td><a href="https://coaileague.com/support" target="_blank">https://coaileague.com/support</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity high">HIGH</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>backend</td>
+        <td>GET https://coaileague.com/api/mascot/holiday returned 401</td>
+        <td><a href="https://coaileague.com/support" target="_blank">https://coaileague.com/support</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity high">HIGH</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>backend</td>
+        <td>GET https://coaileague.com/api/user/view-mode returned 401</td>
+        <td><a href="https://coaileague.com/support" target="_blank">https://coaileague.com/support</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity high">HIGH</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>backend</td>
+        <td>GET https://coaileague.com/api/mascot/seasonal/state returned 401</td>
+        <td><a href="https://coaileague.com/support" target="_blank">https://coaileague.com/support</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity high">HIGH</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>backend</td>
+        <td>GET https://coaileague.com/api/workspace/theme returned 401</td>
+        <td><a href="https://coaileague.com/support" target="_blank">https://coaileague.com/support</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity high">HIGH</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>backend</td>
+        <td>GET https://coaileague.com/api/auth/me returned 401</td>
+        <td><a href="https://coaileague.com/terms" target="_blank">https://coaileague.com/terms</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity high">HIGH</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>backend</td>
+        <td>GET https://coaileague.com/api/mascot/holiday returned 401</td>
+        <td><a href="https://coaileague.com/terms" target="_blank">https://coaileague.com/terms</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity high">HIGH</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>backend</td>
+        <td>GET https://coaileague.com/api/workspace/theme returned 401</td>
+        <td><a href="https://coaileague.com/terms" target="_blank">https://coaileague.com/terms</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity high">HIGH</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>backend</td>
+        <td>GET https://coaileague.com/api/user/view-mode returned 401</td>
+        <td><a href="https://coaileague.com/terms" target="_blank">https://coaileague.com/terms</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity high">HIGH</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>backend</td>
+        <td>GET https://coaileague.com/api/mascot/seasonal/state returned 401</td>
+        <td><a href="https://coaileague.com/terms" target="_blank">https://coaileague.com/terms</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity high">HIGH</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>backend</td>
+        <td>GET https://coaileague.com/api/auth/me returned 401</td>
+        <td><a href="https://coaileague.com/privacy" target="_blank">https://coaileague.com/privacy</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity high">HIGH</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>backend</td>
+        <td>GET https://coaileague.com/api/user/view-mode returned 401</td>
+        <td><a href="https://coaileague.com/privacy" target="_blank">https://coaileague.com/privacy</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity high">HIGH</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>backend</td>
+        <td>GET https://coaileague.com/api/workspace/theme returned 401</td>
+        <td><a href="https://coaileague.com/privacy" target="_blank">https://coaileague.com/privacy</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity high">HIGH</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>backend</td>
+        <td>GET https://coaileague.com/api/mascot/holiday returned 401</td>
+        <td><a href="https://coaileague.com/privacy" target="_blank">https://coaileague.com/privacy</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity high">HIGH</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>backend</td>
+        <td>GET https://coaileague.com/api/mascot/seasonal/state returned 401</td>
+        <td><a href="https://coaileague.com/privacy" target="_blank">https://coaileague.com/privacy</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity high">HIGH</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>backend</td>
+        <td>GET https://coaileague.com/api/auth/me returned 401</td>
+        <td><a href="https://coaileague.com/chat" target="_blank">https://coaileague.com/chat</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity high">HIGH</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>backend</td>
+        <td>GET https://coaileague.com/api/internal-email/mailbox/auto-create returned 401</td>
+        <td><a href="https://coaileague.com/chat" target="_blank">https://coaileague.com/chat</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity high">HIGH</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>backend</td>
+        <td>GET https://coaileague.com/api/ai-brain/system-status returned 401</td>
+        <td><a href="https://coaileague.com/chat" target="_blank">https://coaileague.com/chat</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity high">HIGH</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>backend</td>
+        <td>GET https://coaileague.com/api/mascot/holiday returned 401</td>
+        <td><a href="https://coaileague.com/chat" target="_blank">https://coaileague.com/chat</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity high">HIGH</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>backend</td>
+        <td>GET https://coaileague.com/api/user/view-mode returned 401</td>
+        <td><a href="https://coaileague.com/chat" target="_blank">https://coaileague.com/chat</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity high">HIGH</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>backend</td>
+        <td>GET https://coaileague.com/api/mascot/seasonal/state returned 401</td>
+        <td><a href="https://coaileague.com/chat" target="_blank">https://coaileague.com/chat</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity high">HIGH</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>backend</td>
+        <td>GET https://coaileague.com/api/workspace/theme returned 401</td>
+        <td><a href="https://coaileague.com/chat" target="_blank">https://coaileague.com/chat</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity high">HIGH</span></td>
+        <td><span class="crawler api">API</span></td>
+        <td>backend</td>
+        <td>Seasonal State - Unexpected status 401</td>
+        <td><a href="https://coaileague.com/api/mascot/seasonal/state" target="_blank">https://coaileague.com/api/mascot/seasonal/state</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity high">HIGH</span></td>
+        <td><span class="crawler integration">INTEGRATION</span></td>
+        <td>websocket</td>
+        <td>WebSocket Main WebSocket failed to connect</td>
+        <td><a href="wss://coaileague.com/ws" target="_blank">wss://coaileague.com/ws</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity high">HIGH</span></td>
+        <td><span class="crawler integration">INTEGRATION</span></td>
+        <td>websocket</td>
+        <td>WebSocket Chat WebSocket failed to connect</td>
+        <td><a href="wss://coaileague.com/ws/chat" target="_blank">wss://coaileague.com/ws/chat</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity medium">MEDIUM</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>frontend</td>
+        <td>Failed to load resource: the server responded with a status of 401 ()</td>
+        <td><a href="https://coaileague.com" target="_blank">https://coaileague.com</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity medium">MEDIUM</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>frontend</td>
+        <td>WebSocket connection to 'wss://coaileague.com/ws' failed: Error during WebSocket handshake: Unexpected response code: 400</td>
+        <td><a href="https://coaileague.com" target="_blank">https://coaileague.com</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity medium">MEDIUM</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>frontend</td>
+        <td>Failed to load resource: the server responded with a status of 401 ()</td>
+        <td><a href="https://coaileague.com/login" target="_blank">https://coaileague.com/login</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity medium">MEDIUM</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>frontend</td>
+        <td>WebSocket connection to 'wss://coaileague.com/ws' failed: Error during WebSocket handshake: Unexpected response code: 400</td>
+        <td><a href="https://coaileague.com/login" target="_blank">https://coaileague.com/login</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity medium">MEDIUM</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>frontend</td>
+        <td>Failed to load resource: the server responded with a status of 401 ()</td>
+        <td><a href="https://coaileague.com/register" target="_blank">https://coaileague.com/register</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity medium">MEDIUM</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>frontend</td>
+        <td>WebSocket connection to 'wss://coaileague.com/ws' failed: Error during WebSocket handshake: Unexpected response code: 400</td>
+        <td><a href="https://coaileague.com/register" target="_blank">https://coaileague.com/register</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity medium">MEDIUM</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>frontend</td>
+        <td>Failed to load resource: the server responded with a status of 401 ()</td>
+        <td><a href="https://coaileague.com/pricing" target="_blank">https://coaileague.com/pricing</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity medium">MEDIUM</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>frontend</td>
+        <td>WebSocket connection to 'wss://coaileague.com/ws' failed: Error during WebSocket handshake: Unexpected response code: 400</td>
+        <td><a href="https://coaileague.com/pricing" target="_blank">https://coaileague.com/pricing</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity medium">MEDIUM</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>frontend</td>
+        <td>Failed to load resource: the server responded with a status of 401 ()</td>
+        <td><a href="https://coaileague.com/trinity-features" target="_blank">https://coaileague.com/trinity-features</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity medium">MEDIUM</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>frontend</td>
+        <td>WebSocket connection to 'wss://coaileague.com/ws' failed: Error during WebSocket handshake: Unexpected response code: 400</td>
+        <td><a href="https://coaileague.com/trinity-features" target="_blank">https://coaileague.com/trinity-features</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity medium">MEDIUM</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>frontend</td>
+        <td>Failed to load resource: the server responded with a status of 401 ()</td>
+        <td><a href="https://coaileague.com/contact" target="_blank">https://coaileague.com/contact</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity medium">MEDIUM</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>frontend</td>
+        <td>WebSocket connection to 'wss://coaileague.com/ws' failed: Error during WebSocket handshake: Unexpected response code: 400</td>
+        <td><a href="https://coaileague.com/contact" target="_blank">https://coaileague.com/contact</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity medium">MEDIUM</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>frontend</td>
+        <td>Failed to load resource: the server responded with a status of 401 ()</td>
+        <td><a href="https://coaileague.com/support" target="_blank">https://coaileague.com/support</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity medium">MEDIUM</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>frontend</td>
+        <td>WebSocket connection to 'wss://coaileague.com/ws' failed: Error during WebSocket handshake: Unexpected response code: 400</td>
+        <td><a href="https://coaileague.com/support" target="_blank">https://coaileague.com/support</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity medium">MEDIUM</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>frontend</td>
+        <td>Failed to load resource: the server responded with a status of 401 ()</td>
+        <td><a href="https://coaileague.com/terms" target="_blank">https://coaileague.com/terms</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity medium">MEDIUM</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>frontend</td>
+        <td>WebSocket connection to 'wss://coaileague.com/ws' failed: Error during WebSocket handshake: Unexpected response code: 400</td>
+        <td><a href="https://coaileague.com/terms" target="_blank">https://coaileague.com/terms</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity medium">MEDIUM</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>frontend</td>
+        <td>Failed to load resource: the server responded with a status of 401 ()</td>
+        <td><a href="https://coaileague.com/privacy" target="_blank">https://coaileague.com/privacy</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity medium">MEDIUM</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>frontend</td>
+        <td>WebSocket connection to 'wss://coaileague.com/ws' failed: Error during WebSocket handshake: Unexpected response code: 400</td>
+        <td><a href="https://coaileague.com/privacy" target="_blank">https://coaileague.com/privacy</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity medium">MEDIUM</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>frontend</td>
+        <td>Failed to load resource: the server responded with a status of 401 ()</td>
+        <td><a href="https://coaileague.com/chat" target="_blank">https://coaileague.com/chat</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity medium">MEDIUM</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>frontend</td>
+        <td>WebSocket connection to 'wss://coaileague.com/ws' failed: Error during WebSocket handshake: Unexpected response code: 400</td>
+        <td><a href="https://coaileague.com/chat" target="_blank">https://coaileague.com/chat</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity low">LOW</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>frontend</td>
+        <td>Button has no accessible label</td>
+        <td><a href="https://coaileague.com/login" target="_blank">https://coaileague.com/login</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity low">LOW</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>frontend</td>
+        <td>Form input "unknown" lacks accessible label</td>
+        <td><a href="https://coaileague.com/login" target="_blank">https://coaileague.com/login</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity low">LOW</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>frontend</td>
+        <td>Button has no accessible label</td>
+        <td><a href="https://coaileague.com/register" target="_blank">https://coaileague.com/register</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity low">LOW</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>frontend</td>
+        <td>Form input "unknown" lacks accessible label</td>
+        <td><a href="https://coaileague.com/contact" target="_blank">https://coaileague.com/contact</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity low">LOW</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>frontend</td>
+        <td>Button has no accessible label</td>
+        <td><a href="https://coaileague.com/support" target="_blank">https://coaileague.com/support</a></td>
+        <td>-</td>
+      </tr>
+    
+      <tr>
+        <td><span class="severity low">LOW</span></td>
+        <td><span class="crawler ui">UI</span></td>
+        <td>frontend</td>
+        <td>Button has no accessible label</td>
+        <td><a href="https://coaileague.com/chat" target="_blank">https://coaileague.com/chat</a></td>
+        <td>-</td>
+      </tr>
+    
+      </tbody>
+    </table>
+    
+    <p style="color: #64748b; text-align: center; margin-top: 40px;">
+      Generated by Trinity Debug Triad v1.0 | Run ID: run_20260113160407_6c03ac | Duration: 228.2s
+    </p>
+  </div>
+</body>
+</html>

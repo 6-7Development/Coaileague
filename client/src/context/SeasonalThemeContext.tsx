@@ -12,6 +12,7 @@ import { createContext, useContext, useEffect, useState, useCallback, useRef } f
 import { useQuery } from '@tanstack/react-query';
 import { SEASONAL_EFFECTS_CONFIG } from '@/config/seasonalThemes';
 import { setGlobalSeasonalState, type HolidayKey } from '@/config/mascotConfig';
+import { useAuth } from '@/hooks/useAuth';
 
 export type SeasonId = 
   | 'winter' | 'christmas' | 'newYear' | 'valentines' 
@@ -139,12 +140,15 @@ const DEFAULT_PROFILE: SeasonalProfile = {
 const SeasonalThemeContext = createContext<SeasonalThemeContextValue | null>(null);
 
 export function SeasonalThemeProvider({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
   const [effectsEnabled, setEffectsEnabled] = useState(true);
   const darkModeAppliedRef = useRef(false);
   const previousThemeRef = useRef<'light' | 'dark' | null>(null);
   
+  // Only fetch seasonal state when user is authenticated
   const { data, isLoading, error, refetch } = useQuery<{ success: boolean; profile: SeasonalProfile }>({
     queryKey: ['/api/mascot/seasonal/state'],
+    enabled: !!user,
     staleTime: 0, // Always refetch to ensure server-controlled seasonal state
     gcTime: 60 * 1000, // Keep in cache for 1 minute for deduplication
     refetchInterval: 5 * 60 * 1000, // Check every 5 minutes for changes

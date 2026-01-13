@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { WorkspaceTheme } from "@shared/schema";
+import { useAuth } from "@/hooks/useAuth";
 
 interface ThemeContextValue {
   theme: WorkspaceTheme | null;
@@ -11,11 +12,13 @@ interface ThemeContextValue {
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
   const [appliedTheme, setAppliedTheme] = useState<WorkspaceTheme | null>(null);
 
+  // Only fetch workspace theme when user is authenticated
   const { data: theme, isLoading } = useQuery<WorkspaceTheme | null>({
     queryKey: ["/api/workspace/theme"],
-    enabled: true,
+    enabled: !!user,
     retry: false,
     staleTime: 5 * 60 * 1000,
   });
