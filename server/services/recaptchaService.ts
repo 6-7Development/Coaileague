@@ -36,13 +36,14 @@ export async function verifyRecaptcha(
   expectedAction?: string,
   diagnosticsHeader?: string | null
 ): Promise<VerificationResult> {
-  // Diagnostics bypass: Only when DIAG_BYPASS_CAPTCHA is set AND header matches
-  // This is secure because it requires both server-side env var AND correct header
-  const bypassEnabled = process.env.DIAG_BYPASS_CAPTCHA === 'true';
-  const headerValid = diagnosticsHeader === 'trinity-diagnostics-agent';
+  // Diagnostics bypass: Only when DIAG_BYPASS_SECRET is set AND header matches the secret
+  // This is secure because it requires a shared secret known only to the server and runner
+  const bypassSecret = process.env.DIAG_BYPASS_SECRET;
+  const bypassEnabled = bypassSecret && bypassSecret.length >= 32;
+  const headerValid = bypassEnabled && diagnosticsHeader === bypassSecret;
   
-  if (bypassEnabled && headerValid) {
-    console.log('[reCAPTCHA] Diagnostics bypass active - allowing test request');
+  if (headerValid) {
+    console.log('[reCAPTCHA] Diagnostics bypass active - secret verified');
     return {
       success: true,
       score: 1.0,

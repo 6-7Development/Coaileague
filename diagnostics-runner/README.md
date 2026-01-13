@@ -63,18 +63,23 @@ Set these in Replit Secrets:
 | `ENABLE_VIDEO` | Record video of tests | `false` |
 | `ENABLE_TRACE` | Save Playwright traces | `false` |
 | `ENABLE_SCREENSHOTS` | Capture screenshots | `true` |
-| `DIAG_BYPASS_CAPTCHA` | Send bypass header | `false` |
+| `DIAG_BYPASS_SECRET` | Shared secret for CAPTCHA bypass (32+ chars) | - |
 | `GEMINI_API_KEY` | For Trinity AI-powered analysis | - |
 
 ### CAPTCHA Bypass (Secure)
 
-For authenticated testing, you can bypass CAPTCHA with dual verification:
+For authenticated testing, you can bypass CAPTCHA using a shared secret:
 
-1. Set `DIAG_BYPASS_CAPTCHA=true` in the runner environment
-2. Set `DIAG_BYPASS_CAPTCHA=true` on the server (Replit Secrets)
-3. Server validates both the env var AND the `X-Diagnostics-Runner: trinity-diagnostics-agent` header
+1. Generate a strong random secret (32+ characters): `openssl rand -base64 32`
+2. Set `DIAG_BYPASS_SECRET=<your-secret>` in both Replit Secrets AND the runner environment
+3. Server validates the secret matches the `X-Diagnostics-Runner` header
 
-This is secure because both conditions must be true for bypass to work.
+This is secure because:
+- The secret must be at least 32 characters long
+- Both server and runner must know the same secret
+- The header value is not guessable
+
+**Never commit or log the secret! Keep it in Secrets only.**
 
 ### Trinity AI Analysis
 
