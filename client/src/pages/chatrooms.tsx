@@ -21,7 +21,8 @@ import {
 import { formatDistanceToNow } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { isSupportRole } from "@/config/chatroomsConfig";
-import { TrinityMascotAnimated } from "@/components/ui/trinity-mascot";
+import { Suspense, lazy } from "react";
+const TrinityRedesign = lazy(() => import("@/components/trinity-redesign"));
 
 interface ChatRoom {
   roomId?: string;
@@ -375,7 +376,9 @@ export default function Chatrooms() {
         <div className="flex-1 overflow-y-auto">
           {isLoading ? (
             <div className="flex flex-col items-center justify-center py-12 gap-3">
-              <TrinityMascotAnimated size="lg" state="thinking" showSparkles={true} />
+              <Suspense fallback={<div className="w-16 h-16" />}>
+                <TrinityRedesign size={64} mode="THINKING" />
+              </Suspense>
               <span className="text-sm text-muted-foreground">Loading chats...</span>
             </div>
           ) : error ? (
@@ -462,7 +465,9 @@ export default function Chatrooms() {
       <div className="flex-1 overflow-auto p-6">
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-12 gap-3">
-            <TrinityMascotAnimated size="xl" state="thinking" showSparkles={true} />
+            <Suspense fallback={<div className="w-20 h-20" />}>
+              <TrinityRedesign size={80} mode="THINKING" />
+            </Suspense>
             <span className="text-muted-foreground">Loading chat rooms...</span>
           </div>
         ) : error ? (

@@ -38,7 +38,8 @@ import {
   History, MessageCircle, ArrowUpCircle, Eye, RefreshCw, PackageCheck, FileSearch, Home, Check
 } from "lucide-react";
 import { CoAIleagueAFLogo } from "@/components/coaileague-af-logo";
-import { TrinityMascotAnimated } from "@/components/ui/trinity-mascot";
+import { Suspense, lazy } from "react";
+const TrinityRedesign = lazy(() => import("@/components/trinity-redesign"));
 import { SecureRequestDialog } from "@/components/secure-request-dialog";
 import { BrandedConfirmDialog } from "@/components/branded-input-dialog";
 import { KickDialog, SilenceDialog } from "@/components/moderation-dialogs";
@@ -2596,7 +2597,9 @@ export function HelpDesk(props?: HelpDeskProps & any) {
             ) : (
               /* Loading state with Trinity branding */
               <div className="text-center py-8 flex flex-col items-center gap-3">
-                <TrinityMascotAnimated size="lg" state="thinking" showSparkles={true} />
+                <Suspense fallback={<div className="w-16 h-16" />}>
+                  <TrinityRedesign size={64} mode="THINKING" />
+                </Suspense>
                 <p className="text-gray-600 text-sm font-medium">Loading user information...</p>
               </div>
             )}

@@ -138,8 +138,14 @@ export function TrinityMascotIcon({
 }
 
 /**
- * Animated Trinity Mascot - For loading, thinking, transitions
- * Features morphing petals, pulsing glow, and sparkle particles
+ * @deprecated DEPRECATED - Use TrinityRedesign from '@/components/trinity-redesign' instead
+ * 
+ * TrinityMascotAnimated is deprecated and should NOT be used.
+ * The official animated Trinity mascot is TrinityRedesign (canvas-based).
+ * 
+ * Migration:
+ * - Replace: <TrinityMascotAnimated size="xl" state="thinking" />
+ * - With: <TrinityRedesign size={64} mode="THINKING" />
  */
 export function TrinityMascotAnimated({ 
   size = "lg", 
@@ -147,6 +153,14 @@ export function TrinityMascotAnimated({
   state = "idle",
   showSparkles = true
 }: TrinityMascotProps) {
+  // DEPRECATED: Log warning in development
+  if (process.env.NODE_ENV === 'development') {
+    console.warn(
+      '[DEPRECATED] TrinityMascotAnimated is deprecated. Use TrinityRedesign from "@/components/trinity-redesign" instead.\n' +
+      'Migration: <TrinityRedesign size={64} mode="THINKING" />'
+    );
+  }
+  
   const numericSize = typeof size === "number" ? size : sizeMap[size];
   const id = useId();
   const [sparkles, setSparkles] = useState<Array<{ id: number; x: number; y: number; angle: number; delay: number }>>([]);

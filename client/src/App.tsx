@@ -59,16 +59,17 @@ import { CoAIleagueLogo } from "@/components/coaileague-logo";
 // Lazy-loaded seasonal effects (heavy component)
 const SeasonalEffectsLayer = lazy(() => import("@/components/effects/SeasonalEffectsLayer"));
 
-// Page loading fallback - Trinity Mascot (THE ONLY loading animation)
-import { TrinityMascotAnimated } from "@/components/ui/trinity-mascot";
+// Page loading fallback - Trinity Canvas Mascot (THE ONLY loading animation)
+const TrinityRedesignLoader = lazy(() => import("@/components/trinity-redesign"));
 
 const PageLoader = () => (
   <div className="flex flex-col items-center justify-center h-full min-h-[400px] gap-4">
-    <TrinityMascotAnimated 
-      size="xl" 
-      state="thinking" 
-      showSparkles={true}
-    />
+    <Suspense fallback={<div className="w-20 h-20" />}>
+      <TrinityRedesignLoader 
+        size={80} 
+        mode="THINKING"
+      />
+    </Suspense>
     <span className="text-lg md:text-xl font-semibold bg-gradient-to-r from-purple-500 via-teal-500 to-amber-500 bg-clip-text text-transparent">
       Loading...
     </span>
