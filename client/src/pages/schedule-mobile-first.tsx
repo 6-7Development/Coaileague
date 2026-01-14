@@ -604,11 +604,11 @@ export default function ScheduleMobileFirst() {
       <ScrollArea className="flex-1">
         <div className="pb-24">
           {shiftsLoading || (viewMode === 'my' && !currentEmployee?.id) ? (
-            <div className="text-center py-6 text-muted-foreground">
-              <TrinityLoadingSpinner size={36} className="mx-auto mb-2" />
-              <div className="text-xs font-medium bg-gradient-to-r from-teal-500 via-cyan-500 to-blue-500 bg-clip-text text-transparent">
-                {shiftsLoading ? 'Loading shifts...' : 'Loading your schedule...'}
-              </div>
+            <div className="px-3 py-4 space-y-2">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="h-16 bg-muted/50 rounded-lg animate-pulse" />
+              ))}
+              <p className="text-center text-xs text-muted-foreground mt-2">Loading schedule...</p>
             </div>
           ) : viewMode === 'pending' ? (
             /* Pending View - Compact list */

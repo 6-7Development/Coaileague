@@ -299,13 +299,6 @@ export function MobileNotificationHub() {
         )}
       </div>
       
-      <button
-        onClick={() => setLocation('/trinity-insights')}
-        className="fixed bottom-20 right-3 w-12 h-12 rounded-full bg-[#0095FF] text-white shadow-lg flex items-center justify-center z-50"
-        data-testid="button-quick-action"
-      >
-        <Plus className="w-6 h-6" />
-      </button>
     </div>
   );
 }

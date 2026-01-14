@@ -24,43 +24,45 @@ export function setLogoutAnimationContext(context: any) {
  * Usage: await performLogout()
  */
 export async function performLogout() {
-  // STEP 1: Show IMMEDIATE visual feedback - don't wait for anything
+  // STEP 1: Show visual feedback with graceful animation
   const showAnimation = animationContextRef?.show;
   if (showAnimation) {
     showAnimation({
       mode: 'warp',
       mainText: 'Signing Out...',
       subText: 'See you soon!',
-      duration: 1200,
+      duration: 2500,
       source: 'system'
     });
   }
 
-  // STEP 2: Clear auth cache IMMEDIATELY (synchronous, fast)
+  // STEP 2: Wait for backend to properly close connections
+  try {
+    await fetch(LOGOUT_CONFIG.endpoint, {
+      method: LOGOUT_CONFIG.method,
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch (error) {
+    console.warn('Logout API call failed:', error);
+  }
+
+  // STEP 3: Clear auth cache after backend confirms
   LOGOUT_CONFIG.cacheKeysToClear.forEach((key) => {
     queryClient.setQueryData([key], null);
   });
 
-  // STEP 3: Clear cookies immediately (synchronous)
+  // STEP 4: Clear cookies
   document.cookie = "connect.sid=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
 
-  // STEP 4: Start redirect timer EARLY - don't wait for API
-  const redirectDelay = showAnimation ? 1000 : 200;
+  // STEP 5: Invalidate queries
+  await queryClient.invalidateQueries().catch(() => {});
+
+  // STEP 6: Graceful redirect with time for animation to complete
+  const redirectDelay = showAnimation ? 2000 : 500;
   setTimeout(() => {
     window.location.href = LOGOUT_CONFIG.redirectPath;
   }, redirectDelay);
-
-  // STEP 5: Fire API call in background (don't await - user already sees feedback)
-  fetch(LOGOUT_CONFIG.endpoint, {
-    method: LOGOUT_CONFIG.method,
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-  }).catch((error) => {
-    console.warn('Logout API call failed (user already redirected):', error);
-  });
-
-  // STEP 6: Invalidate queries in background (non-blocking)
-  queryClient.invalidateQueries().catch(() => {});
 }
 
 /**
