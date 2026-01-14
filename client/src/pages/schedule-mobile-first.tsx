@@ -21,7 +21,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   Plus, ChevronLeft, ChevronRight, Menu,
   Users, Clock, BarChart3, CheckCircle,
-  ArrowRightLeft, LayoutTemplate, Download
+  ArrowRightLeft, LayoutTemplate, Download,
+  Check, X
 } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { EmployeeShiftCard } from '@/components/schedule/EmployeeShiftCard';
@@ -284,6 +285,37 @@ export default function ScheduleMobileFirst() {
     } catch (error) {
       toast({ 
         title: "Failed to claim shift", 
+        variant: "destructive" 
+      });
+    }
+  };
+
+  const handleAcceptShift = async (shift: Shift) => {
+    try {
+      await apiRequest('PATCH', `/api/shifts/${shift.id}`, { 
+        status: 'confirmed' 
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/shifts'] });
+      toast({ title: "Shift accepted" });
+    } catch (error) {
+      toast({ 
+        title: "Failed to accept shift", 
+        variant: "destructive" 
+      });
+    }
+  };
+
+  const handleDeclineShift = async (shift: Shift) => {
+    try {
+      await apiRequest('PATCH', `/api/shifts/${shift.id}`, { 
+        status: 'cancelled',
+        employeeId: null
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/shifts'] });
+      toast({ title: "Shift declined" });
+    } catch (error) {
+      toast({ 
+        title: "Failed to decline shift", 
         variant: "destructive" 
       });
     }
@@ -610,12 +642,41 @@ export default function ScheduleMobileFirst() {
                         <div className="font-bold text-xs">
                           {format(start, 'h:mma')}-{format(end, 'h:mma')} · {hours.toFixed(0)}h
                         </div>
-                        <div className="text-xs font-medium truncate">
+                        <div className="text-xs font-medium line-clamp-1">
                           {emp ? `${emp.firstName} ${emp.lastName}` : 'Unassigned'}
                         </div>
-                        <div className="text-[10px] text-muted-foreground truncate">
+                        <div className="text-[10px] text-muted-foreground line-clamp-2">
                           {client?.companyName || 'No client'} · {shift.title || 'No position'}
                         </div>
+                        {/* Workflow actions for draft/pending shifts */}
+                        {shift.status === 'draft' && (
+                          <div className="flex gap-2 mt-2">
+                            <Button
+                              size="lg"
+                              variant="default"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleAcceptShift(shift);
+                              }}
+                              data-testid={`btn-accept-${shift.id}`}
+                            >
+                              <Check className="w-4 h-4 mr-1" />
+                              Accept
+                            </Button>
+                            <Button
+                              size="lg"
+                              variant="outline"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeclineShift(shift);
+                              }}
+                              data-testid={`btn-decline-${shift.id}`}
+                            >
+                              <X className="w-4 h-4 mr-1" />
+                              Decline
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
@@ -674,9 +735,26 @@ export default function ScheduleMobileFirst() {
                               <div className="font-bold text-xs">
                                 {format(start, 'h:mma')}-{format(end, 'h:mma')} · {hours.toFixed(0)}h
                               </div>
-                              <div className="text-[10px] text-muted-foreground truncate">
+                              <div className="text-[10px] text-muted-foreground line-clamp-2">
                                 {client?.companyName || 'No client'} · {shift.title || 'No position'}
                               </div>
+                              {/* Workflow actions for My Schedule draft shifts */}
+                              {shift.status === 'draft' && (
+                                <div className="flex gap-2 mt-2">
+                                  <Button
+                                    size="lg"
+                                    variant="default"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleAcceptShift(shift);
+                                    }}
+                                    data-testid={`btn-confirm-${shift.id}`}
+                                  >
+                                    <Check className="w-4 h-4 mr-1" />
+                                    Confirm
+                                  </Button>
+                                </div>
+                              )}
                             </div>
                           </div>
                         );
@@ -757,7 +835,7 @@ export default function ScheduleMobileFirst() {
                             <div className="text-[10px] font-medium text-amber-700 dark:text-amber-300">
                               OPEN SHIFT
                             </div>
-                            <div className="text-[10px] text-amber-600 dark:text-amber-400 truncate">
+                            <div className="text-[10px] text-amber-600 dark:text-amber-400 line-clamp-2">
                               {client?.companyName || 'No client'} · {shift.title || 'Position needed'}
                             </div>
                           </div>
@@ -776,7 +854,7 @@ export default function ScheduleMobileFirst() {
                       );
                     })}
                     
-                    {/* Assigned Shifts for this day - Compact */}
+                    {/* Assigned Shifts for this day */}
                     {dayAssignedShifts.map((shift, idx) => {
                       const start = new Date(shift.startTime);
                       const end = new Date(shift.endTime);
@@ -808,12 +886,29 @@ export default function ScheduleMobileFirst() {
                             <div className="font-bold text-xs">
                               {format(start, 'h:mma')}-{format(end, 'h:mma')} · {hours.toFixed(0)}h
                             </div>
-                            <div className="text-xs font-medium truncate">
+                            <div className="text-xs font-medium line-clamp-1">
                               {emp ? `${emp.firstName} ${emp.lastName}` : 'Unassigned'}
                             </div>
-                            <div className="text-[10px] text-muted-foreground truncate">
+                            <div className="text-[10px] text-muted-foreground line-clamp-2">
                               {client?.companyName || 'No client'} · {shift.title || 'No position'}
                             </div>
+                            {/* Workflow actions for assigned draft shifts */}
+                            {shift.status === 'draft' && shift.employeeId === currentEmployee?.id && (
+                              <div className="flex gap-2 mt-2">
+                                <Button
+                                  size="lg"
+                                  variant="default"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleAcceptShift(shift);
+                                  }}
+                                  data-testid={`btn-confirm-full-${shift.id}`}
+                                >
+                                  <Check className="w-4 h-4 mr-1" />
+                                  Confirm
+                                </Button>
+                              </div>
+                            )}
                           </div>
                           <div className="self-center pr-1">
                             <ArrowRightLeft className="w-3 h-3 text-muted-foreground" />
