@@ -64,14 +64,17 @@ export function MobileQuickActionsFAB() {
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const { toast } = useToast();
 
-  const { data: clockStatus, isLoading: isClockStatusLoading } = useQuery<{ isClockedIn: boolean }>({
-    queryKey: ['/api/time-tracking/clock-status'],
+  const { data: clockStatus, isLoading: isClockStatusLoading } = useQuery<{ 
+    isClockedIn: boolean; 
+    activeTimeEntry?: { id: string } | null;
+  }>({
+    queryKey: ['/api/time-entries/status'],
     queryFn: async () => {
-      const response = await fetch('/api/time-tracking/clock-status', {
+      const response = await fetch('/api/time-entries/status', {
         credentials: 'include',
       });
       if (!response.ok) {
-        return { isClockedIn: false };
+        return { isClockedIn: false, activeTimeEntry: null };
       }
       return response.json();
     },
@@ -82,11 +85,17 @@ export function MobileQuickActionsFAB() {
 
   const clockMutation = useMutation({
     mutationFn: async (action: 'in' | 'out') => {
-      return apiRequest('POST', `/api/time-tracking/clock-${action}`);
+      if (action === 'in') {
+        return apiRequest('POST', '/api/time-entries/clock-in');
+      } else {
+        const entryId = clockStatus?.activeTimeEntry?.id;
+        if (!entryId) throw new Error('No active time entry');
+        return apiRequest('PATCH', `/api/time-entries/${entryId}/clock-out`);
+      }
     },
     onSuccess: (_, action) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/time-tracking/clock-status'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/time-tracking'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/time-entries/status'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/time-entries'] });
       toast({
         title: action === 'in' ? "Clocked In" : "Clocked Out",
         description: action === 'in' 
