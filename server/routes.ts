@@ -1339,6 +1339,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       switch (action) {
         case 'approve':
+        case 'accept_shift':
+        case 'accept_shift_invite':
+        case 'accept_swap':
         case 'accept':
           // Mark the notification as read and acknowledged
           await storage.markNotificationAsRead(id, userId);
@@ -1347,6 +1350,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           break;
           
         case 'deny':
+        case 'decline':
+        case 'decline_shift':
+        case 'decline_swap':
         case 'reject':
           // Mark as read and clear
           await storage.markNotificationAsRead(id, userId);
@@ -1355,11 +1361,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           break;
           
         case 'dismiss':
+        case 'acknowledge':
           // Just mark as read
           await storage.markNotificationAsRead(id, userId);
           actionResult = { success: true, message: 'Notification dismissed' };
           break;
           
+        case 'run_hotpatch':
+        case 'trinity_fix':
+        case 'apply_fix':
+          await storage.markNotificationAsRead(id, userId);
+          await storage.acknowledgeNotification(id, userId);
+          actionResult = { success: true, message: 'Fix applied' };
+          break;
+
         case 'view_details':
           // Mark as read
           await storage.markNotificationAsRead(id, userId);
