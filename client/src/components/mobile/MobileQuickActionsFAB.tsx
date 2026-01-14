@@ -95,7 +95,7 @@ export function MobileQuickActionsFAB() {
     },
     onSuccess: (_, action) => {
       queryClient.invalidateQueries({ queryKey: ['/api/time-entries/status'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/time-entries'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/time-entries/entries'] });
       toast({
         title: action === 'in' ? "Clocked In" : "Clocked Out",
         description: action === 'in' 
@@ -136,7 +136,7 @@ export function MobileQuickActionsFAB() {
   }
 
   // Hide FAB on pages with their own fixed bottom navigation/actions
-  const hiddenPaths = ['/chat', '/helpdesk', '/inbox', '/time-tracking', '/quickbooks-import'];
+  const hiddenPaths = ['/chat', '/helpdesk', '/inbox', '/time-tracking', '/quickbooks-import', '/schedule'];
   if (hiddenPaths.some(path => location.startsWith(path))) {
     return null;
   }
