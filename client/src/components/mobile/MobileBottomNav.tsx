@@ -169,9 +169,9 @@ export function MobileBottomNav({ onMenuOpen }: MobileBottomNavProps) {
   }
   
   // Primary nav: 4 essential items only (fits 320px screens)
-  // Notifications/Dashboard is the home hub on mobile (GetSling-style unified dashboard)
+  // Dashboard goes to main workspace page - notifications accessed via side menu
   const navItems = [
-    { icon: Bell, label: "Dashboard", href: "/mobile-hub" },
+    { icon: Home, label: "Dashboard", href: "/dashboard" },
     { icon: Clock, label: "Clock", href: "/time-tracking" },
     { icon: Calendar, label: "Schedule", href: "/schedule" },
     { icon: MessageSquare, label: "Rooms", href: "/chatrooms" },
@@ -179,15 +179,15 @@ export function MobileBottomNav({ onMenuOpen }: MobileBottomNavProps) {
   
   // Items moved to More menu - Trinity handled separately with branded component
   const menuItems = [
+    { icon: Bell, label: "Alerts", href: "/command-center" },
     { icon: Mail, label: "Inbox", href: "/inbox" },
-    { icon: HelpCircle, label: "Help", href: "/support" },
     { icon: User, label: "Profile", href: "/profile" },
     { icon: Settings, label: "Settings", href: "/settings" },
   ];
   
   const isActive = (href: string) => {
-    if (href === '/mobile-hub') {
-      return location === '/' || location === '/mobile-hub' || location === '/dashboard';
+    if (href === '/dashboard') {
+      return location === '/' || location === '/dashboard';
     }
     return location.startsWith(href);
   };

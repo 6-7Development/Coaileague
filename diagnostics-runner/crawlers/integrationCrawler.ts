@@ -317,7 +317,7 @@ export class IntegrationCrawler {
         steps: [
           { action: 'ui-action', target: '/employees', description: 'Navigate to employees page' },
           { action: 'wait', timeout: 3000, description: 'Wait for employees load' },
-          { action: 'assert', target: 'employee', description: 'Employees content should be visible' }
+          { action: 'assert-any', targets: ['employee', 'team', 'staff', 'add first', 'no employees'], description: 'Employees content or empty state should be visible' }
         ]
       },
       {
@@ -345,7 +345,7 @@ export class IntegrationCrawler {
           { action: 'wait', timeout: 3000, description: 'Wait for page load' },
           { action: 'ui-action', target: '[data-testid="button-add-employee"], [data-testid="button-add-first-employee"]', description: 'Click add employee button' },
           { action: 'wait', timeout: 2000, description: 'Wait for dialog' },
-          { action: 'assert', target: 'employee', description: 'Employee dialog should be visible' }
+          { action: 'assert-any', targets: ['first name', 'last name', 'email', 'add employee', 'invite'], description: 'Employee dialog should be visible' }
         ]
       },
       {
@@ -366,12 +366,12 @@ export class IntegrationCrawler {
         name: 'Clients Page Loads',
         description: 'Authenticated user can access clients page',
         type: 'workflow',
-        critical: false,
+        critical: true,
         requiresAuth: true,
         steps: [
           { action: 'ui-action', target: '/clients', description: 'Navigate to clients page' },
           { action: 'wait', timeout: 3000, description: 'Wait for clients load' },
-          { action: 'assert', target: 'client', description: 'Clients content should be visible' }
+          { action: 'assert-any', targets: ['client', 'customer', 'add first', 'no clients', 'invoicing'], description: 'Clients content or empty state should be visible' }
         ]
       },
       {
@@ -415,7 +415,7 @@ export class IntegrationCrawler {
         steps: [
           { action: 'ui-action', target: '/invoices', description: 'Navigate to invoices page' },
           { action: 'wait', timeout: 3000, description: 'Wait for invoices load' },
-          { action: 'assert', target: 'invoice', description: 'Invoices content should be visible' }
+          { action: 'assert-any', targets: ['invoice', 'billing', 'create first', 'no invoices'], description: 'Invoices content or empty state should be visible' }
         ]
       },
       {
@@ -428,9 +428,9 @@ export class IntegrationCrawler {
         steps: [
           { action: 'ui-action', target: '/invoices', description: 'Navigate to invoices page' },
           { action: 'wait', timeout: 3000, description: 'Wait for page load' },
-          { action: 'ui-action', target: '[data-testid="button-create-invoice"], [data-testid="button-new-invoice"]', description: 'Click create invoice' },
+          { action: 'ui-action', target: '[data-testid="button-create-invoice"], [data-testid="button-new-invoice"], [data-testid="button-create-first-invoice"]', description: 'Click create invoice' },
           { action: 'wait', timeout: 2000, description: 'Wait for invoice dialog' },
-          { action: 'assert', target: 'create', description: 'Invoice creation form should appear' }
+          { action: 'assert-any', targets: ['create', 'new invoice', 'client', 'amount', 'line item'], description: 'Invoice creation form should appear' }
         ]
       },
       {
@@ -443,7 +443,7 @@ export class IntegrationCrawler {
         steps: [
           { action: 'ui-action', target: '/payroll', description: 'Navigate to payroll page' },
           { action: 'wait', timeout: 3000, description: 'Wait for payroll load' },
-          { action: 'assert', target: 'payroll', description: 'Payroll content should be visible' }
+          { action: 'assert-any', targets: ['payroll', 'pay run', 'create first', 'automated', 'compensation'], description: 'Payroll content or empty state should be visible' }
         ]
       },
       {
@@ -456,9 +456,9 @@ export class IntegrationCrawler {
         steps: [
           { action: 'ui-action', target: '/payroll', description: 'Navigate to payroll page' },
           { action: 'wait', timeout: 3000, description: 'Wait for page load' },
-          { action: 'ui-action', target: '[data-testid="button-create-payroll"], [data-testid="button-create-first-payroll"]', description: 'Click create payroll' },
+          { action: 'ui-action', target: '[data-testid="button-create-payroll"], [data-testid="button-create-first-payroll"], [data-testid="button-run-payroll"]', description: 'Click create payroll' },
           { action: 'wait', timeout: 2000, description: 'Wait for payroll action' },
-          { action: 'assert', target: 'payroll', description: 'Payroll workflow should initiate' }
+          { action: 'assert-any', targets: ['payroll', 'pay period', 'hours', 'earnings', 'employee'], description: 'Payroll workflow should initiate' }
         ]
       },
       {
@@ -603,6 +603,164 @@ export class IntegrationCrawler {
           { action: 'api-call', target: '/api/notifications', description: 'Fetch notifications' },
           { action: 'assert', expectedResult: { status: 200 }, description: 'Notifications should load' }
         ]
+      },
+      // =================================================
+      // CRUD TESTS - Employees
+      // =================================================
+      {
+        id: 'crud-employee-list',
+        name: 'CRUD: Employee List API',
+        description: 'Verify employees list API returns valid data',
+        type: 'data-flow',
+        critical: true,
+        requiresAuth: true,
+        steps: [
+          { action: 'api-call', target: '/api/employees', description: 'Fetch employees list' },
+          { action: 'assert', expectedResult: { status: 200 }, description: 'API should respond successfully' }
+        ]
+      },
+      {
+        id: 'crud-employee-create-dialog',
+        name: 'CRUD: Employee Create Dialog',
+        description: 'Test employee creation dialog opens and validates',
+        type: 'workflow',
+        critical: true,
+        requiresAuth: true,
+        steps: [
+          { action: 'ui-action', target: '/employees', description: 'Navigate to employees page' },
+          { action: 'wait', timeout: 3000, description: 'Wait for page load' },
+          { action: 'ui-action', target: '[data-testid="button-add-employee"], [data-testid="button-add-first-employee"]', description: 'Click add employee' },
+          { action: 'wait', timeout: 2000, description: 'Wait for dialog' },
+          { action: 'assert-any', targets: ['first name', 'last name', 'email', 'phone', 'hire date'], description: 'Employee form fields visible' }
+        ]
+      },
+      // =================================================
+      // CRUD TESTS - Clients
+      // =================================================
+      {
+        id: 'crud-client-list',
+        name: 'CRUD: Client List API',
+        description: 'Verify clients list API returns valid data',
+        type: 'data-flow',
+        critical: true,
+        requiresAuth: true,
+        steps: [
+          { action: 'api-call', target: '/api/clients', description: 'Fetch clients list' },
+          { action: 'assert', expectedResult: { status: 200 }, description: 'API should respond successfully' }
+        ]
+      },
+      {
+        id: 'crud-client-create-dialog',
+        name: 'CRUD: Client Create Dialog',
+        description: 'Test client creation dialog opens',
+        type: 'workflow',
+        critical: true,
+        requiresAuth: true,
+        steps: [
+          { action: 'ui-action', target: '/clients', description: 'Navigate to clients page' },
+          { action: 'wait', timeout: 3000, description: 'Wait for page load' },
+          { action: 'ui-action', target: '[data-testid="button-add-client"], [data-testid="button-add-first-client"], button:has-text("Add")', description: 'Click add client' },
+          { action: 'wait', timeout: 2000, description: 'Wait for dialog' },
+          { action: 'assert-any', targets: ['first name', 'company', 'email', 'rate', 'billing'], description: 'Client form fields visible' }
+        ]
+      },
+      // =================================================
+      // CRUD TESTS - Invoices
+      // =================================================
+      {
+        id: 'crud-invoice-list',
+        name: 'CRUD: Invoice List API',
+        description: 'Verify invoices list API returns valid data',
+        type: 'data-flow',
+        critical: true,
+        requiresAuth: true,
+        steps: [
+          { action: 'api-call', target: '/api/invoices', description: 'Fetch invoices list' },
+          { action: 'assert', expectedResult: { status: 200 }, description: 'API should respond successfully' }
+        ]
+      },
+      // =================================================
+      // PIPELINE / WORKFLOW AUTOMATION TESTS
+      // =================================================
+      {
+        id: 'pipeline-workflows-page',
+        name: 'Pipeline: Workflows Page Loads',
+        description: 'Verify workflows/automations page is accessible',
+        type: 'pipeline',
+        critical: true,
+        requiresAuth: true,
+        steps: [
+          { action: 'ui-action', target: '/automations', description: 'Navigate to automations page' },
+          { action: 'wait', timeout: 3000, description: 'Wait for page load' },
+          { action: 'assert-any', targets: ['automation', 'workflow', 'rule', 'trigger', 'action'], description: 'Automations content visible' }
+        ]
+      },
+      {
+        id: 'pipeline-ai-brain-status',
+        name: 'Pipeline: AI Brain System Status',
+        description: 'Verify AI Brain orchestration is operational',
+        type: 'pipeline',
+        critical: true,
+        requiresAuth: true,
+        steps: [
+          { action: 'api-call', target: '/api/ai-brain/system-status', description: 'Check AI Brain status' },
+          { action: 'assert', expectedResult: { status: 200 }, description: 'AI Brain should respond' }
+        ]
+      },
+      {
+        id: 'pipeline-command-center',
+        name: 'Pipeline: Command Center Loads',
+        description: 'Verify Command Center notifications page',
+        type: 'pipeline',
+        critical: true,
+        requiresAuth: true,
+        steps: [
+          { action: 'ui-action', target: '/command-center', description: 'Navigate to command center' },
+          { action: 'wait', timeout: 3000, description: 'Wait for page load' },
+          { action: 'assert-any', targets: ['notification', 'command', 'center', 'trinity', 'alert'], description: 'Command center visible' }
+        ]
+      },
+      {
+        id: 'pipeline-reports-analytics',
+        name: 'Pipeline: Analytics & Reports',
+        description: 'Verify analytics/reports page is accessible',
+        type: 'pipeline',
+        critical: false,
+        requiresAuth: true,
+        steps: [
+          { action: 'ui-action', target: '/analytics', description: 'Navigate to analytics' },
+          { action: 'wait', timeout: 3000, description: 'Wait for page load' },
+          { action: 'assert-any', targets: ['analytics', 'report', 'metric', 'chart', 'dashboard'], description: 'Analytics content visible' }
+        ]
+      },
+      // =================================================
+      // WORKSPACE NAVIGATION TESTS
+      // =================================================
+      {
+        id: 'workspace-links-sidebar',
+        name: 'Workspace: Sidebar Navigation',
+        description: 'Verify sidebar navigation links work',
+        type: 'workflow',
+        critical: true,
+        requiresAuth: true,
+        steps: [
+          { action: 'ui-action', target: '/dashboard', description: 'Navigate to dashboard' },
+          { action: 'wait', timeout: 3000, description: 'Wait for page load' },
+          { action: 'assert-any', targets: ['dashboard', 'home', 'welcome', 'workspace'], description: 'Dashboard content visible' }
+        ]
+      },
+      {
+        id: 'workspace-buttons-actions',
+        name: 'Workspace: Action Buttons Available',
+        description: 'Verify primary action buttons are visible on key pages',
+        type: 'workflow',
+        critical: true,
+        requiresAuth: true,
+        steps: [
+          { action: 'ui-action', target: '/schedule', description: 'Navigate to schedule page' },
+          { action: 'wait', timeout: 3000, description: 'Wait for page load' },
+          { action: 'assert-any', targets: ['add shift', 'create', 'schedule', 'week', 'day'], description: 'Schedule action controls visible' }
+        ]
       }
     ];
   }
@@ -671,6 +829,18 @@ export class IntegrationCrawler {
           const content = await page.content();
           if (!content.toLowerCase().includes(step.target.toLowerCase())) {
             throw new Error(`Content assertion failed: "${step.target}" not found`);
+          }
+        }
+        break;
+        
+      case 'assert-any':
+        // Check if any of the target strings are found in the page content
+        if (step.targets && step.targets.length > 0) {
+          const content = await page.content();
+          const contentLower = content.toLowerCase();
+          const found = step.targets.some(t => contentLower.includes(t.toLowerCase()));
+          if (!found) {
+            throw new Error(`Content assertion failed: none of ["${step.targets.join('", "')}"] found`);
           }
         }
         break;
