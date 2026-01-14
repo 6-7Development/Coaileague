@@ -1640,8 +1640,10 @@ export default function App() {
                         </Suspense>
                         {/* DISABLED: Trinity floating mascot body - removed from screen */}
                         {/* <MascotRenderer /> */}
-                        {/* Floating Trinity Button - access point for Trinity chat */}
-                        <FloatingTrinityButton />
+                        {/* Floating Trinity Button - access point for Trinity chat (desktop only, hidden on mobile to reduce clutter) */}
+                        <div className="hidden md:block">
+                          <FloatingTrinityButton />
+                        </div>
                         </TrinityModalProvider>
                         </SimpleModeProvider>
                       </SeasonalThemeProvider>

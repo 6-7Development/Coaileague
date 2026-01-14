@@ -6,9 +6,9 @@ import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { X, Sparkles, CheckCircle2, ExternalLink } from "lucide-react";
+import { Sparkles, CheckCircle2, ExternalLink } from "lucide-react";
 
-type NotificationCategory = 'all' | 'alerts' | 'workflows' | 'system' | 'ai';
+type NotificationCategory = 'alerts' | 'workflows' | 'system' | 'ai';
 type NotificationPriority = 'critical' | 'high' | 'medium' | 'low';
 type NotificationType = 'alert' | 'workflow' | 'system' | 'ai';
 
@@ -133,8 +133,10 @@ function NotificationDetailModal({
           {notification.action && (
             <Button 
               className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500"
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 if (notification.action?.target) {
+                  onClose();
                   window.location.href = notification.action.target;
                 }
               }}
@@ -407,16 +409,14 @@ export function UNSCommandCenter({ isOpen = true, onClose, className, onAskTrini
   const criticalCount = roleFilteredNotifications.filter(n => n.priority === 'critical').length;
 
   const filteredNotifications = roleFilteredNotifications.filter(n => {
-    if (activeTab === 'all') return true;
     if (activeTab === 'alerts') return n.type === 'alert' || n.priority === 'critical';
     if (activeTab === 'workflows') return n.type === 'workflow';
     if (activeTab === 'system') return n.type === 'system';
     if (activeTab === 'ai') return n.type === 'ai';
-    return true;
+    return n.type === 'alert' || n.priority === 'critical'; // default to alerts
   });
 
   const tabs = [
-    { id: 'all' as const, label: 'All', count: roleFilteredNotifications.length },
     { id: 'alerts' as const, label: 'Alerts', count: roleFilteredNotifications.filter(n => n.type === 'alert').length, pulse: criticalCount > 0 },
     { id: 'workflows' as const, label: 'Workflows', count: roleFilteredNotifications.filter(n => n.type === 'workflow').length },
     { id: 'system' as const, label: 'System', count: roleFilteredNotifications.filter(n => n.type === 'system').length },
@@ -488,15 +488,18 @@ export function UNSCommandCenter({ isOpen = true, onClose, className, onAskTrini
             </div>
           </div>
           
-          {/* Notification Badge */}
+          {/* Notification Badge with Unread label */}
           <div className="flex items-center gap-2">
             {criticalCount > 0 && (
               <div className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full animate-pulse">
                 {criticalCount} Critical
               </div>
             )}
-            <div className="bg-white/20 backdrop-blur-sm text-white text-lg font-bold w-10 h-10 rounded-full flex items-center justify-center border border-white/30">
-              {unreadCount}
+            <div className="flex flex-col items-center">
+              <div className="bg-white/20 backdrop-blur-sm text-white text-lg font-bold w-10 h-10 rounded-full flex items-center justify-center border border-white/30">
+                {unreadCount}
+              </div>
+              <span className="text-white/60 text-[10px] mt-0.5">Unread</span>
             </div>
           </div>
         </div>
@@ -662,7 +665,7 @@ export function UNSCommandCenter({ isOpen = true, onClose, className, onAskTrini
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <h3 className="text-slate-300 font-medium text-lg">No {activeTab === 'all' ? '' : activeTab}</h3>
+            <h3 className="text-slate-300 font-medium text-lg">No {activeTab}</h3>
             <p className="text-slate-500 text-sm text-center mt-1">
               {activeTab === 'alerts' ? 'No payroll, schedule, or employee alerts at this time' :
                activeTab === 'workflows' ? 'No pending workflow approvals' :
@@ -688,6 +691,13 @@ export function UNSCommandCenter({ isOpen = true, onClose, className, onAskTrini
           Powered by Trinity &bull; Response time: ~2s
         </p>
       </div>
+
+      {/* Notification Detail Modal */}
+      <NotificationDetailModal
+        notification={selectedNotification}
+        isOpen={isDetailModalOpen}
+        onClose={() => setIsDetailModalOpen(false)}
+      />
     </div>
   );
 }
