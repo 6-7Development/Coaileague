@@ -1319,6 +1319,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============================================================================
+
+  // Notification action endpoint - handle workflow approvals, shift invites, etc.
+  app.post('/api/notifications/:id/action', requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: 'Unauthorized' });
+      }
+      
+      const { id } = req.params;
+      const { action, data } = req.body;
+      
+      if (!action) {
+        return res.status(400).json({ message: 'Action is required' });
+      }
+      
+      let actionResult: any = { success: true };
+      
+      switch (action) {
+        case 'approve':
+        case 'accept':
+          // Mark the notification as read and acknowledged
+          await storage.markNotificationAsRead(id, userId);
+          await storage.acknowledgeNotification(id, userId);
+          actionResult = { success: true, message: 'Approved successfully' };
+          break;
+          
+        case 'deny':
+        case 'reject':
+          // Mark as read and clear
+          await storage.markNotificationAsRead(id, userId);
+          await storage.clearNotification(id, userId);
+          actionResult = { success: true, message: 'Request denied' };
+          break;
+          
+        case 'dismiss':
+          // Just mark as read
+          await storage.markNotificationAsRead(id, userId);
+          actionResult = { success: true, message: 'Notification dismissed' };
+          break;
+          
+        case 'view_details':
+          // Mark as read
+          await storage.markNotificationAsRead(id, userId);
+          actionResult = { success: true };
+          break;
+          
+        default:
+          // Generic action - just mark as read
+          await storage.markNotificationAsRead(id, userId);
+          actionResult = { success: true, message: \`Action '\${action}' processed\` };
+      }
+      
+      // Broadcast updated count
+      const workspace = await storage.getWorkspaceByOwnerId(userId);
+      const member = !workspace ? await storage.getWorkspaceMemberByUserId(userId) : null;
+      const workspaceId = workspace?.id || member?.workspaceId;
+      if (workspaceId) {
+        const unreadCount = await storage.getUnreadNotificationCount(userId, workspaceId);
+        broadcastNotification(workspaceId, userId, 'notification_count_updated', undefined, unreadCount);
+      }
+      
+      res.json(actionResult);
+    } catch (error) {
+      console.error('Error processing notification action:', error);
+      res.status(500).json({ message: 'Failed to process action' });
+    }
+  });
   // CHAT MESSAGE MANAGEMENT ENDPOINTS
   // ============================================================================
 
