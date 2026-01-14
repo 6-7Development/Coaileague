@@ -488,20 +488,20 @@ export function MobileNotificationHub({ onClose }: MobileNotificationHubProps) {
         )}
       </div>
       
-      {/* Ask Trinity Button */}
+      {/* Ask Trinity Button - Blue/Cyan Fortune 500 branding */}
       <button
         onClick={handleAskTrinity}
-        className="mx-2 mt-3 flex items-center gap-3 p-3 rounded-xl bg-gradient-to-r from-purple-900/40 via-slate-800/60 to-cyan-900/40 border border-purple-500/20 active:scale-[0.98] transition-transform"
+        className="mx-2 mt-3 flex items-center gap-3 p-3 rounded-xl bg-gradient-to-r from-[#06b6d4]/20 via-slate-800/60 to-[#22d3ee]/20 border border-[#06b6d4]/30 active:scale-[0.98] transition-transform"
         data-testid="button-ask-trinity-notifications"
       >
         <TrinityMascotIcon size="sm" />
         <div className="flex-1 text-left">
-          <p className="text-sm font-medium bg-gradient-to-r from-purple-300 via-cyan-300 to-amber-300 bg-clip-text text-transparent">
+          <p className="text-sm font-medium bg-gradient-to-r from-[#06b6d4] via-[#22d3ee] to-[#2dd4bf] bg-clip-text text-transparent">
             Ask Trinity
           </p>
           <p className="text-xs text-muted-foreground">Get help with notifications</p>
         </div>
-        <Sparkles className="w-4 h-4 text-purple-400" />
+        <Sparkles className="w-4 h-4 text-[#22d3ee]" />
       </button>
       
       {/* Filter Tabs */}
@@ -512,7 +512,7 @@ export function MobileNotificationHub({ onClose }: MobileNotificationHubProps) {
             variant={activeFilter === filter ? 'default' : 'outline'}
             className={cn(
               "cursor-pointer whitespace-nowrap capitalize transition-all duration-200 px-4 py-1.5 font-bold tracking-tight",
-              activeTab === filter 
+              activeFilter === filter 
                 ? "bg-[#06b6d4] text-white shadow-lg scale-105" 
                 : "bg-transparent text-muted-foreground border-slate-200"
             )}

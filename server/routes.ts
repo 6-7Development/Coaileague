@@ -689,6 +689,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Batch mark-read endpoint for mobile notification hub
+  app.post('/api/notifications/mark-read-batch', requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user!.id;
+      const { ids } = req.body as { ids: string[] };
+      
+      if (!ids || !Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({ message: 'Missing or invalid notification IDs' });
+      }
+      
+      const workspace = await storage.getWorkspaceByOwnerId(userId);
+      const member = await storage.getWorkspaceMemberByUserId(userId);
+      const workspaceId = workspace?.id || member?.workspaceId;
+      
+      if (!workspaceId) {
+        return res.json({ success: true, markedRead: 0 });
+      }
+      
+      let markedCount = 0;
+      for (const id of ids) {
+        try {
+          await storage.markNotificationRead(id);
+          markedCount++;
+        } catch (err) {
+          console.error(`[Notifications] Failed to mark notification ${id} as read:`, err);
+        }
+      }
+      
+      broadcastNotification(workspaceId, userId, 'notification_count_updated', {
+        type: 'batch_mark_read',
+        count: markedCount,
+      }, 0);
+      
+      res.json({ success: true, markedRead: markedCount });
+    } catch (error) {
+      console.error('[Notifications] Batch mark-read error:', error);
+      res.status(500).json({ message: 'Failed to mark notifications as read' });
+    }
+  });
+
   // Alias route for acknowledge-all (frontend uses this endpoint)
   app.post('/api/notifications/acknowledge-all', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
