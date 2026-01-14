@@ -926,36 +926,50 @@ export default function ScheduleMobileFirst() {
         </div>
       </ScrollArea>
 
-      {/* Floating Action Buttons - Accessible touch targets */}
-      <div className="fixed bottom-16 left-2 right-2 z-40 flex justify-between pointer-events-none">
-        {/* Add Shift FAB - Left side */}
-        {canEdit && (
-          <Button
-            size="icon"
-            className="h-11 w-11 rounded-full shadow-lg pointer-events-auto"
-            onClick={() => {
-              setSelectedEmployee(undefined);
-              setEditingShift(undefined);
-              setSheetOpen(true);
-            }}
-            data-testid="fab-add-shift"
-          >
-            <Plus className="h-5 w-5" />
-          </Button>
-        )}
-        
-        {/* Manager Tools FAB - Right side - Accessible touch */}
-        {isManagerOrSupervisor && (
-          <Button
-            size="icon"
-            className="h-11 w-11 rounded-full shadow-lg pointer-events-auto bg-secondary text-secondary-foreground hover:bg-secondary/90"
-            onClick={() => setShowManagerTools(true)}
-            data-testid="fab-manager-tools"
-          >
-            <Menu className="h-4 w-4" />
-          </Button>
-        )}
-      </div>
+      {/* Sticky Bottom Action Bar - Clean, no overlaps */}
+      {(canEdit || isManagerOrSupervisor) && (
+        <div 
+          className="fixed left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm border-t border-slate-200 dark:border-slate-700 px-4 py-2"
+          style={{ bottom: 'calc(64px + env(safe-area-inset-bottom, 0px))' }}
+          data-testid="schedule-action-bar"
+        >
+          <div className="flex items-center justify-between gap-2">
+            {/* Add Shift Button - Primary action with Blue/Cyan branding */}
+            {canEdit && (
+              <Button
+                className="flex-1 h-11 bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-700 hover:to-cyan-600 text-white font-medium shadow-sm"
+                onClick={() => {
+                  setSelectedEmployee(undefined);
+                  setEditingShift(undefined);
+                  setSheetOpen(true);
+                }}
+                data-testid="btn-add-shift"
+              >
+                <Plus className="h-5 w-5 mr-2" />
+                Add Shift
+              </Button>
+            )}
+            
+            {/* Manager Tools Button - Secondary action */}
+            {isManagerOrSupervisor && (
+              <Button
+                variant="outline"
+                className="h-11 px-4 border-slate-300 dark:border-slate-600"
+                onClick={() => setShowManagerTools(true)}
+                data-testid="btn-manager-tools"
+              >
+                <Menu className="h-4 w-4 mr-2" />
+                Tools
+                {pendingShifts.length > 0 && (
+                  <Badge variant="destructive" className="ml-2 text-[10px] px-1.5 h-4">
+                    {pendingShifts.length}
+                  </Badge>
+                )}
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Manager Tools Drawer - Compact */}
       <Sheet open={showManagerTools} onOpenChange={setShowManagerTools}>
