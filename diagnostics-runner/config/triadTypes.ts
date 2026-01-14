@@ -89,8 +89,9 @@ export interface IntegrationTestCase {
 }
 
 export interface IntegrationStep {
-  action: 'api-call' | 'ui-action' | 'wait' | 'assert' | 'websocket-connect' | 'websocket-message' | 'db-check';
+  action: 'api-call' | 'ui-action' | 'wait' | 'assert' | 'assert-any' | 'websocket-connect' | 'websocket-message' | 'db-check';
   target?: string;
+  targets?: string[]; // For assert-any: check if any of these strings are in the page
   data?: any;
   expectedResult?: any;
   timeout?: number;

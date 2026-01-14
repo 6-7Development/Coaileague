@@ -42,7 +42,7 @@ export const navConfig = {
     reports: "/reports",
     chat: "/chat",
     chatrooms: "/chatrooms",
-    notifications: "/notifications",
+    notifications: "/command-center",
   },
 
   // Workspace Management
