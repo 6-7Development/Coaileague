@@ -69,7 +69,7 @@ export function useSessionSync(options: SessionSyncOptions = {}) {
         break;
       case 'timesheet_update':
         queryClient.invalidateQueries({ queryKey: ['/api/timesheets'] });
-        queryClient.invalidateQueries({ queryKey: ['/api/time-entries'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/time-entries/entries'] });
         break;
       case 'payroll_update':
         queryClient.invalidateQueries({ queryKey: ['/api/payroll'] });

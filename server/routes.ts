@@ -1331,8 +1331,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const { id } = req.params;
       
-      // Delete notification (storage will verify ownership)
-      const deleted = await storage.deleteNotification(id, userId);
+      // Try to delete from notifications table first
+      let deleted = await storage.deleteNotification(id, userId);
+      
+      // If not found in notifications, try platformUpdates table
+      if (!deleted) {
+        deleted = await storage.deletePlatformUpdate(id);
+      }
       
       if (!deleted) {
         return res.status(404).json({ message: 'Notification not found or unauthorized' });

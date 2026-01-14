@@ -853,6 +853,7 @@ export interface IStorage {
   markAllPlatformUpdatesAsViewed(userId: string, workspaceId?: string): Promise<number>;
   markPlatformUpdatesByCategories(userId: string, categories: string[], workspaceId?: string): Promise<number>;
   deletePlatformUpdatesByCategories(userId: string, categories: string[], workspaceId?: string): Promise<number>;
+  deletePlatformUpdate(id: string): Promise<boolean>;
   createPlatformUpdate(update: InsertPlatformUpdate): Promise<PlatformUpdate>;
 
   // ========================================================================
@@ -7082,6 +7083,16 @@ export class DatabaseStorage implements IStorage {
 
     console.log(`[Storage] Deleted ${updateIds.length} platform updates in categories: ${categories.join('\, ')}`);
     return updateIds.length;
+  }
+
+  async deletePlatformUpdate(id: string): Promise<boolean> {
+    // First delete any view records for this update
+    await db.delete(userPlatformUpdateViews).where(eq(userPlatformUpdateViews.updateId, id));
+    
+    // Then delete the actual platform update
+    const result = await db.delete(platformUpdates).where(eq(platformUpdates.id, id));
+    
+    return (result.rowCount || 0) > 0;
   }
 
   async createPlatformUpdate(update: InsertPlatformUpdate): Promise<PlatformUpdate> {

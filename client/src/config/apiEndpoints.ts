@@ -67,7 +67,7 @@ export const API_ENDPOINTS = {
 
   // Time Entries
   timeEntries: {
-    list: "/api/time-entries",
+    list: "/api/time-entries/entries",
     create: "/api/time-entries",
     get: "/api/time-entries/:id",
     update: "/api/time-entries/:id",
