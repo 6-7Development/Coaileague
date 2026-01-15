@@ -35,6 +35,7 @@ import { performLogout } from "@/lib/logoutHandler";
 import { TrinityMascotIcon } from "@/components/ui/trinity-mascot";
 import TrinityRedesign from "@/components/trinity-redesign";
 import { Suspense } from "react";
+import { useTrinityModal } from "@/components/trinity-chat-modal";
 
 interface NavItemProps {
   icon: LucideIcon;
@@ -99,12 +100,12 @@ function WorkerNavItem({ icon: Icon, label, href, isActive, badge, urgent }: Nav
 
 // Trinity-branded menu item for worker layout
 function WorkerTrinityMenuItem({ onClose }: { onClose: () => void }) {
-  const [, setLocation] = useLocation();
+  const { openModal: openTrinityModal } = useTrinityModal();
   const [isPressed, setIsPressed] = useState(false);
   
   return (
     <button
-      onClick={() => { setLocation("/trinity"); onClose(); }}
+      onClick={() => { openTrinityModal(); onClose(); }}
       onTouchStart={() => setIsPressed(true)}
       onTouchEnd={() => setIsPressed(false)}
       onMouseDown={() => setIsPressed(true)}

@@ -486,67 +486,72 @@ export function MobileNotificationHub({ onClose }: MobileNotificationHubProps) {
             </Button>
           </div>
         ) : (
-          <div className="flex items-center gap-1.5 text-white text-sm">
-            <Bell className="w-4 h-4 flex-shrink-0" />
-            <span className="flex-1 font-bold tracking-tight truncate">
-              {unreadCount === 0 
-                ? "Inbox Clear"
-                : `${unreadCount} Unread`
-              }
-            </span>
-            {/* Sync/Refresh */}
-            <Button
-              size="icon"
-              variant="ghost"
-              className="text-white hover:bg-white/20 h-8 w-8"
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-              data-testid="button-sync-notifications"
-              title="Sync"
-            >
-              <RefreshCw className={cn("w-4 h-4", isRefreshing ? 'animate-spin' : '')} />
-            </Button>
-            {/* Select All - enter selection mode */}
-            {allNotifications.length > 0 && (
+          <div className="flex items-center gap-2 text-white text-sm flex-wrap">
+            <div className="flex items-center gap-1 flex-shrink-0 min-w-0">
+              <Bell className="w-4 h-4 flex-shrink-0" />
+              <span className="font-bold tracking-tight truncate">
+                {unreadCount === 0 
+                  ? "Inbox Clear"
+                  : `${unreadCount} Unread`
+                }
+              </span>
+            </div>
+            {/* Action buttons - grouped with proper spacing */}
+            <div className="flex items-center gap-1 ml-auto flex-shrink-0">
+              {/* Sync/Refresh */}
               <Button
                 size="icon"
                 variant="ghost"
                 className="text-white hover:bg-white/20 h-8 w-8"
-                onClick={handleSelectAll}
-                data-testid="button-select-all"
-                title="Select All"
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                data-testid="button-sync-notifications"
+                title="Sync"
               >
-                <ListChecks className="w-4 h-4" />
+                <RefreshCw className={cn("w-4 h-4", isRefreshing ? 'animate-spin' : '')} />
               </Button>
-            )}
-            {/* Mark All Read */}
-            {unreadCount > 0 && (
-              <Button
-                size="icon"
-                variant="ghost"
-                className="text-white hover:bg-white/20 h-8 w-8"
-                onClick={handleMarkAllRead}
-                disabled={markAllReadMutation.isPending}
-                data-testid="button-mark-all-read"
-                title="Mark All Read"
-              >
-                <CheckCheck className="w-4 h-4" />
-              </Button>
-            )}
-            {/* Clear All/Delete All */}
-            {allNotifications.length > 0 && (
-              <Button
-                size="icon"
-                variant="ghost"
-                className="text-white hover:bg-white/20 h-8 w-8"
-                onClick={handleClearAll}
-                disabled={clearAllMutation.isPending}
-                data-testid="button-clear-all"
-                title="Delete All"
-              >
-                <Trash2 className="w-4 h-4" />
-              </Button>
-            )}
+              {/* Select All - enter selection mode */}
+              {allNotifications.length > 0 && (
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="text-white hover:bg-white/20 h-8 w-8"
+                  onClick={handleSelectAll}
+                  data-testid="button-select-all"
+                  title="Select All"
+                >
+                  <ListChecks className="w-4 h-4" />
+                </Button>
+              )}
+              {/* Mark All Read */}
+              {unreadCount > 0 && (
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="text-white hover:bg-white/20 h-8 w-8"
+                  onClick={handleMarkAllRead}
+                  disabled={markAllReadMutation.isPending}
+                  data-testid="button-mark-all-read"
+                  title="Mark All Read"
+                >
+                  <CheckCheck className="w-4 h-4" />
+                </Button>
+              )}
+              {/* Clear All/Delete All */}
+              {allNotifications.length > 0 && (
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="text-white hover:bg-white/20 h-8 w-8"
+                  onClick={handleClearAll}
+                  disabled={clearAllMutation.isPending}
+                  data-testid="button-clear-all"
+                  title="Delete All"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
           </div>
         )}
       </div>
