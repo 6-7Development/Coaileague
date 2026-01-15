@@ -17,6 +17,7 @@ import { MobileNotificationSheet } from "@/components/mobile/MobileNotificationS
 import { useIsMobile } from "@/hooks/use-mobile";
 import { AISearchTrigger } from "@/components/ai-search";
 import { TrinityMiniButton } from "@/components/trinity-button";
+import { useTrinityModal } from "@/components/trinity-chat-modal";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   DropdownMenu,
@@ -49,6 +50,7 @@ export function UniversalHeader({ variant = "auto" }: UniversalHeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isChristmas, setIsChristmas] = useState(false);
   const isMobile = useIsMobile();
+  const { openModal: openTrinityModal } = useTrinityModal();
   
   // Close mobile menu on route change
   useEffect(() => {
@@ -229,7 +231,7 @@ export function UniversalHeader({ variant = "auto" }: UniversalHeaderProps) {
                       {showNotificationFeatures && (
                         <div className={`flex items-center ${HEADER_SPACING.mobileIconGap}`}>
                           <TrinityMiniButton 
-                            onClick={() => setLocation("/trinity")} 
+                            onClick={openTrinityModal} 
                             data-testid="button-trinity-header"
                           />
                           <Tooltip>
@@ -313,7 +315,7 @@ export function UniversalHeader({ variant = "auto" }: UniversalHeaderProps) {
                 {user && showNotificationFeatures && (
                   <>
                     <TrinityMiniButton 
-                      onClick={() => setLocation("/trinity")} 
+                      onClick={openTrinityModal} 
                       className="h-9 w-9"
                       data-testid="button-mobile-trinity"
                     />
@@ -474,7 +476,7 @@ export function UniversalHeader({ variant = "auto" }: UniversalHeaderProps) {
               {/* Desktop workspace controls */}
               <div className="hidden md:flex items-center gap-3">
                 <TrinityMiniButton 
-                  onClick={() => setLocation("/trinity")} 
+                  onClick={openTrinityModal} 
                   data-testid="button-trinity-workspace"
                 />
                 <AISearchTrigger />
@@ -515,9 +517,18 @@ export function UniversalHeader({ variant = "auto" }: UniversalHeaderProps) {
               </div>
 
               {/* Mobile workspace navigation - Compact for small screens */}
-              {/* Mobile: No Trinity button - uses floating bottom drawer */}
-              {/* Mobile: No Notifications bell - uses GetSling-style hub via bottom nav */}
-              <div className="flex md:hidden items-center gap-0.5 sm:gap-1">
+              <div className="flex md:hidden items-center gap-1.5 shrink-0">
+                {/* Mobile quick actions: Trinity + Notifications */}
+                {user && showNotificationFeatures && (
+                  <>
+                    <TrinityMiniButton 
+                      onClick={openTrinityModal}
+                      className="h-9 w-9"
+                      data-testid="button-mobile-trinity-workspace"
+                    />
+                    <MobileNotificationSheet />
+                  </>
+                )}
                 <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
                   <SheetTrigger asChild>
                     <Button
