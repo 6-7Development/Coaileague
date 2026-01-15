@@ -12,7 +12,8 @@
  */
 
 import { useState, useRef, useEffect, useCallback, createContext, useContext, useMemo } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { queryClient } from '@/lib/queryClient';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -141,6 +142,9 @@ export function useTrinityModal() {
   return context;
 }
 
+// BroadcastChannel for cross-tab/device sync
+const TRINITY_CHANNEL_NAME = 'trinity-chat-sync';
+
 export function TrinityModalProvider({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -148,11 +152,98 @@ export function TrinityModalProvider({ children }: { children: React.ReactNode }
   const { user, isLoading: authLoading } = useAuth();
   const [location] = useLocation();
   const prevUserRef = useRef<typeof user>(undefined);
+  const channelRef = useRef<BroadcastChannel | null>(null);
+
+  // Load conversation history when user is available
+  const { data: sessionData } = useQuery<{
+    session?: { id: string; turns?: Array<{ role: string; content: string; createdAt: string }> };
+  }>({
+    queryKey: ['/api/trinity/session'],
+    enabled: !!user && !authLoading,
+    staleTime: 30000,
+  });
+
+  // Initialize messages from session data
+  useEffect(() => {
+    if (sessionData?.session?.turns && sessionData.session.turns.length > 0) {
+      const loadedMessages: Message[] = sessionData.session.turns.map((turn, idx) => ({
+        id: `loaded-${idx}-${turn.createdAt}`,
+        role: turn.role as 'user' | 'assistant',
+        content: turn.content,
+        timestamp: new Date(turn.createdAt),
+        confidence: turn.role === 'assistant' ? 'high' as ConfidenceLevel : undefined,
+      }));
+      setMessages(loadedMessages);
+    }
+  }, [sessionData]);
+
+  // Setup BroadcastChannel for cross-tab/device sync
+  useEffect(() => {
+    if (typeof BroadcastChannel !== 'undefined' && user) {
+      channelRef.current = new BroadcastChannel(TRINITY_CHANNEL_NAME);
+      
+      channelRef.current.onmessage = (event) => {
+        const { type, data, userId } = event.data;
+        // Only sync if same user
+        if (userId !== user.id) return;
+        
+        if (type === 'new_message') {
+          setMessages(prev => {
+            // Avoid duplicates
+            if (prev.some(m => m.id === data.id)) return prev;
+            return [...prev, data];
+          });
+        } else if (type === 'clear_messages') {
+          setMessages([]);
+        } else if (type === 'mode_change') {
+          setMode(data.mode);
+        }
+      };
+
+      return () => {
+        channelRef.current?.close();
+        channelRef.current = null;
+      };
+    }
+  }, [user]);
+
+  // Broadcast new messages to other tabs
+  const broadcastMessage = useCallback((message: Message) => {
+    if (channelRef.current && user) {
+      channelRef.current.postMessage({
+        type: 'new_message',
+        data: message,
+        userId: user.id,
+      });
+    }
+  }, [user]);
 
   const openModal = useCallback(() => setIsOpen(true), []);
   const closeModal = useCallback(() => setIsOpen(false), []);
   const toggleModal = useCallback(() => setIsOpen(prev => !prev), []);
-  const clearMessages = useCallback(() => setMessages([]), []);
+  
+  const clearMessages = useCallback(() => {
+    setMessages([]);
+    if (channelRef.current && user) {
+      channelRef.current.postMessage({
+        type: 'clear_messages',
+        userId: user.id,
+      });
+    }
+  }, [user]);
+
+  // Enhanced setMessages that broadcasts to other tabs
+  const setMessagesWithSync = useCallback((updater: React.SetStateAction<Message[]>) => {
+    setMessages(prev => {
+      const newMessages = typeof updater === 'function' ? updater(prev) : updater;
+      // Broadcast new messages
+      if (newMessages.length > prev.length) {
+        const addedMessages = newMessages.slice(prev.length);
+        addedMessages.forEach(msg => broadcastMessage(msg));
+      }
+      return newMessages;
+    });
+  }, [broadcastMessage]);
 
   // Clear state on logout
   useEffect(() => {
@@ -186,7 +277,7 @@ export function TrinityModalProvider({ children }: { children: React.ReactNode }
   return (
     <TrinityModalContext.Provider value={{ 
       isOpen, openModal, closeModal, toggleModal, 
-      messages, setMessages, clearMessages,
+      messages, setMessages: setMessagesWithSync, clearMessages,
       mode, setMode
     }}>
       {children}
