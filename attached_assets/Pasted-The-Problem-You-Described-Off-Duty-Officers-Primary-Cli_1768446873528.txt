@@ -1,0 +1,44 @@
+The Problem You Described:
+Off Duty Officers (Primary Client)
+  └── Dura Line LLC (Sub-Client)
+       └── Job ID: P2406-010125
+       └── Location: Gainesville, TX
+       └── Bill Rate: $35/hr
+       └── Schedule: 6pm-6am M-F
+       └── Service Dates: 1/5, 1/6, 1/7...
+The Solution:
+TablePurposeclientsPrimary clients (Off Duty Officers)sub_clientsTheir sub-clients (Dura Line LLC) with job IDs, locations, ratessitesPhysical locations with geofencingemployee_client_ratesCustom pay rates per client/sub-client/siteshiftsScheduled work with sub_client_idtime_entriesActual hours with sub_client_id + rates capturedinvoicesHeader infoinvoice_line_itemsTHE KEY - all the detail data in structured format
+
+Invoice Line Item Now Contains:
+javascript{
+  "job_id": "P2406-010125",
+  "sub_client_name": "Dura Line LLC",
+  "location": "2406 North I-35a, Gainesville TX 76240",
+  "schedule_description": "6pm-6am M-F / 6am-6pm 6pm-6am Sat-Sun",
+  "service_dates": [
+    {"date": "2026-01-05", "time": "6pm-6am"},
+    {"date": "2026-01-06", "time": "6pm-6am"}
+  ],
+  "officers": ["John Smith"] // when required
+}
+```
+
+---
+
+### Data Flow:
+```
+Sub-Client Setup → Shift Created → Clock In/Out → Time Entry
+                                                      ↓
+                                    ┌─────────────────┴─────────────────┐
+                                    ↓                                   ↓
+                              PAYROLL                              INVOICE
+                           (Pay employee)                      (Bill client)
+                                    ↓                                   ↓
+                              QB Payroll                          QB Invoice
+Critical: sub_client_id flows through EVERY step so nothing gets lost.
+
+Tell Replit:
+
+"Implement this invoice data architecture. The sub_client_id must be captured at every step - shift, time entry, invoice line item. Trinity automation must generate invoices grouped by sub-client with all required description fields. QuickBooks sync must create sub-customers under parent customers. Test the full flow: time tracking → payroll → invoicing → QB sync."
+
+This ensures zero money lost and full parity between your system and QuickBooks.

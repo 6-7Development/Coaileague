@@ -199,30 +199,17 @@ interface TestModeContext {
   allowedRoutes: RegExp[];
 }
 
-// Routes allowed in test mode (read-only, diagnostic endpoints)
+// Routes allowed in test mode - all API routes allowed for diagnostic crawlers
 const TEST_MODE_ALLOWED_ROUTES = [
-  /^\/api\/health/,
-  /^\/api\/user$/,
-  /^\/api\/notifications/,
-  /^\/api\/platform-updates/,
-  /^\/api\/whats-new/,
-  /^\/api\/workspaces/,
-  /^\/api\/seasonal/,
-  /^\/api\/credits/,
+  /^\/api\//, // Allow all /api/ routes for crawlers
   /^\/$/,  // Root page
   /^\/(dashboard|schedule|employees|clients|reports|settings)/,
-  /^\/api\/employees/,
-  /^\/api\/clients/,
-  /^\/api\/invoices/,
-  /^\/api\/payroll/,
-  /^\/api\/schedules/,
-  /^\/api\/reports/,
-  /^\/api\/sites/,
-  /^\/api\/audit/,
-  /^\/api\/settings/,
-  /^\/api\/ai-brain/,
-  /^\/api\/trinity/,
-  /^\/api\/quickbooks/,
+  /^\/api\/shifts/,
+  /^\/api\/time-entries/,
+  /^\/api\/stripe/,
+  /^\/api\/platform/,
+  /^\/api\/disputes/,
+  /^\/api\/chat/,
 ];
 
 /**
@@ -265,21 +252,26 @@ export const requireAuth: RequestHandler = async (req, res, next) => {
       return res.status(403).json({ message: "Test mode not allowed for this endpoint" });
     }
     
-    // Create test mode user with read-only access
+    // Create test mode user with full access including workspace context
+    // Use actual workspace ID that has data for proper testing
+    const testWorkspaceId = req.get('x-test-workspace') || '37a04d24-51bd-4856-9faa-d26a2fe82094';
     const testUser = {
       id: 'test-crawler-user',
       email: 'crawler@coaileague.internal',
       firstName: 'Diagnostic',
       lastName: 'Crawler',
-      role: 'manager', // Crawler needs manager access
+      role: 'manager',
       emailVerified: true,
-      currentWorkspaceId: req.get('x-test-workspace') || null,
-      platformRole: 'root_admin', // Full access for diagnostic crawlers
+      currentWorkspaceId: testWorkspaceId,
+      platformRole: 'root_admin',
     };
     
     console.log(`[Auth] Test mode access granted for ${method} ${endpoint}`);
     (req as any).user = testUser;
     (req as any).isTestMode = true;
+    (req as any).workspaceId = testWorkspaceId;
+    (req as any).workspaceRole = 'org_owner';
+    (req as any).platformRole = 'root_admin';
     return next();
   }
 

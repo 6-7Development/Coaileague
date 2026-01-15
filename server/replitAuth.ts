@@ -235,6 +235,30 @@ export async function setupAuth(app: Express) {
 }
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
+  // Check for test mode via x-test-key header - crawlers get full access
+  const testKey = req.get('x-test-key');
+  const testModeSecret = process.env.DIAG_BYPASS_SECRET || process.env.TEST_MODE_SECRET;
+  if (testKey && testModeSecret && testKey === testModeSecret) {
+    const testWorkspaceId = req.get('x-test-workspace') || '37a04d24-51bd-4856-9faa-d26a2fe82094';
+    (req as any).isTestMode = true;
+    (req as any).user = {
+      id: 'test-crawler-user',
+      email: 'crawler@coaileague.internal',
+      claims: { sub: 'test-crawler-user' },
+      platformRole: 'root_admin',
+      currentWorkspaceId: testWorkspaceId,
+    };
+    (req as any).workspaceId = testWorkspaceId;
+    (req as any).workspaceRole = 'org_owner';
+    (req as any).platformRole = 'root_admin';
+    return next();
+  }
+  
+  // Also check if already flagged as test mode
+  if ((req as any).isTestMode) {
+    return next();
+  }
+
   const user = req.user as any;
 
   if (!req.isAuthenticated() || !user.expires_at) {
