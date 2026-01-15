@@ -1,0 +1,981 @@
+# CoAIleague Invoice Data Architecture & Automation Spec
+
+## Overview
+
+CoAIleague must support complex billing scenarios where:
+- A **Primary Client** (e.g., "Off Duty Officers") has multiple **Sub-Clients** (e.g., "Dura Line LLC")
+- Each Sub-Client has their own job sites, bill rates, and job IDs
+- Invoices must include ALL relevant data for proper billing
+- Time tracking must flow correctly to payroll AND invoicing
+- QuickBooks sync must maintain full parity with all nested data
+
+**CRITICAL:** No money can be lost due to missing data, schema errors, or incomplete automation.
+
+---
+
+## Data Model
+
+### 1. Clients Table (Primary Clients)
+
+```sql
+CREATE TABLE clients (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID REFERENCES workspaces(id),
+  
+  -- Basic Info
+  name VARCHAR(255) NOT NULL,                    -- "Off Duty Officers"
+  email VARCHAR(255),                            -- "AP@offdutyofficers.com"
+  phone VARCHAR(50),
+  
+  -- Billing Address
+  billing_address_line1 VARCHAR(255),            -- "2365 La Mirada Dr"
+  billing_address_line2 VARCHAR(255),
+  billing_city VARCHAR(100),                     -- "Vista"
+  billing_state VARCHAR(50),                     -- "CA"
+  billing_zip VARCHAR(20),                       -- "92081"
+  
+  -- Shipping Address (if different)
+  shipping_address_line1 VARCHAR(255),
+  shipping_address_line2 VARCHAR(255),
+  shipping_city VARCHAR(100),
+  shipping_state VARCHAR(50),
+  shipping_zip VARCHAR(20),
+  
+  -- Billing Settings
+  default_bill_rate DECIMAL(10,2),               -- Default hourly rate for this client
+  default_payment_terms VARCHAR(50),             -- "Due on receipt", "Net 30", etc.
+  tax_exempt BOOLEAN DEFAULT false,
+  tax_rate DECIMAL(5,2) DEFAULT 0,
+  
+  -- QuickBooks Integration
+  qb_customer_id VARCHAR(100),                   -- QuickBooks Customer ID
+  qb_synced_at TIMESTAMP,
+  
+  -- Metadata
+  is_direct_client BOOLEAN DEFAULT true,         -- true = we bill them directly
+  has_sub_clients BOOLEAN DEFAULT false,         -- true = they have sub-clients we service
+  status VARCHAR(50) DEFAULT 'active',
+  notes TEXT,
+  
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+### 2. Sub-Clients Table (Client's Clients)
+
+```sql
+CREATE TABLE sub_clients (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID REFERENCES workspaces(id),
+  parent_client_id UUID REFERENCES clients(id) ON DELETE CASCADE,  -- "Off Duty Officers"
+  
+  -- Basic Info
+  name VARCHAR(255) NOT NULL,                    -- "Dura Line LLC"
+  client_job_id VARCHAR(100),                    -- "P2406-010125" (client's internal reference)
+  contact_name VARCHAR(255),
+  contact_email VARCHAR(255),
+  contact_phone VARCHAR(50),
+  
+  -- Service Location
+  location_name VARCHAR(255),                    -- "Gainesville Site"
+  location_address_line1 VARCHAR(255),           -- "2406 North I-35a"
+  location_address_line2 VARCHAR(255),
+  location_city VARCHAR(100),                    -- "Gainesville"
+  location_state VARCHAR(50),                    -- "TX"
+  location_zip VARCHAR(20),                      -- "76240"
+  
+  -- Geofencing (for GPS clock-in verification)
+  geofence_lat DECIMAL(10,7),
+  geofence_lng DECIMAL(10,7),
+  geofence_radius_meters INTEGER DEFAULT 100,
+  
+  -- Billing Settings (overrides parent client if set)
+  bill_rate DECIMAL(10,2),                       -- $35.00/hr for this sub-client
+  overtime_rate DECIMAL(10,2),                   -- Usually 1.5x bill_rate
+  holiday_rate DECIMAL(10,2),                    -- Usually 2x bill_rate
+  minimum_hours DECIMAL(5,2),                    -- Minimum billable hours per shift
+  
+  -- Service Schedule
+  default_schedule_description TEXT,             -- "6pm-6am M-F / 6am-6pm 6pm-6am Sat-Sun"
+  
+  -- QuickBooks Integration
+  qb_sub_customer_id VARCHAR(100),               -- QuickBooks Sub-Customer ID
+  qb_synced_at TIMESTAMP,
+  
+  -- Status
+  status VARCHAR(50) DEFAULT 'active',           -- active, paused, completed
+  contract_start_date DATE,
+  contract_end_date DATE,
+  notes TEXT,
+  
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_sub_clients_parent ON sub_clients(parent_client_id);
+CREATE INDEX idx_sub_clients_job_id ON sub_clients(client_job_id);
+```
+
+### 3. Sites Table (Physical Locations)
+
+```sql
+CREATE TABLE sites (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID REFERENCES workspaces(id),
+  
+  -- Can belong to client OR sub-client
+  client_id UUID REFERENCES clients(id),
+  sub_client_id UUID REFERENCES sub_clients(id),
+  
+  -- Site Info
+  name VARCHAR(255) NOT NULL,
+  address_line1 VARCHAR(255),
+  address_line2 VARCHAR(255),
+  city VARCHAR(100),
+  state VARCHAR(50),
+  zip VARCHAR(20),
+  
+  -- Geofencing
+  geofence_lat DECIMAL(10,7),
+  geofence_lng DECIMAL(10,7),
+  geofence_radius_meters INTEGER DEFAULT 100,
+  
+  -- Site-specific billing (overrides client/sub-client if set)
+  bill_rate DECIMAL(10,2),
+  
+  -- Site requirements
+  requires_photo_verification BOOLEAN DEFAULT false,
+  requires_gps_verification BOOLEAN DEFAULT true,
+  special_instructions TEXT,
+  
+  status VARCHAR(50) DEFAULT 'active',
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+### 4. Employees Table (Guards/Officers)
+
+```sql
+CREATE TABLE employees (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID REFERENCES workspaces(id),
+  user_id UUID REFERENCES users(id),
+  
+  -- Basic Info
+  employee_number VARCHAR(50),                   -- Internal employee ID
+  first_name VARCHAR(100),
+  last_name VARCHAR(100),
+  email VARCHAR(255),
+  phone VARCHAR(50),
+  
+  -- Pay Rates
+  default_pay_rate DECIMAL(10,2),                -- Base hourly pay
+  overtime_pay_rate DECIMAL(10,2),               -- Usually 1.5x
+  holiday_pay_rate DECIMAL(10,2),                -- Usually 2x
+  
+  -- Employment
+  employment_type VARCHAR(50),                   -- 'employee', 'contractor', '1099'
+  hire_date DATE,
+  termination_date DATE,
+  status VARCHAR(50) DEFAULT 'active',
+  
+  -- Certifications (may affect which sites they can work)
+  certifications JSONB DEFAULT '[]',
+  
+  -- QuickBooks
+  qb_employee_id VARCHAR(100),
+  qb_vendor_id VARCHAR(100),                     -- For 1099 contractors
+  qb_synced_at TIMESTAMP,
+  
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+### 5. Employee Pay Rates by Client/Site (Override Rates)
+
+```sql
+CREATE TABLE employee_client_rates (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  employee_id UUID REFERENCES employees(id) ON DELETE CASCADE,
+  
+  -- Can be set at client, sub-client, or site level
+  client_id UUID REFERENCES clients(id),
+  sub_client_id UUID REFERENCES sub_clients(id),
+  site_id UUID REFERENCES sites(id),
+  
+  -- Pay rates for this specific assignment
+  pay_rate DECIMAL(10,2) NOT NULL,
+  overtime_rate DECIMAL(10,2),
+  holiday_rate DECIMAL(10,2),
+  
+  effective_date DATE,
+  end_date DATE,
+  
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Rate lookup priority: site > sub_client > client > employee default
+```
+
+### 6. Shifts/Schedules Table
+
+```sql
+CREATE TABLE shifts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID REFERENCES workspaces(id),
+  
+  -- Assignment
+  employee_id UUID REFERENCES employees(id),
+  client_id UUID REFERENCES clients(id),
+  sub_client_id UUID REFERENCES sub_clients(id),          -- CRITICAL for sub-client billing
+  site_id UUID REFERENCES sites(id),
+  
+  -- Schedule
+  title VARCHAR(255),
+  shift_date DATE NOT NULL,
+  start_time TIME NOT NULL,
+  end_time TIME NOT NULL,
+  crosses_midnight BOOLEAN DEFAULT false,
+  
+  -- Calculated fields
+  scheduled_hours DECIMAL(5,2),
+  
+  -- Billing info (captured at time of shift creation)
+  bill_rate DECIMAL(10,2),                                -- Rate to charge client
+  pay_rate DECIMAL(10,2),                                 -- Rate to pay employee
+  
+  -- Status
+  status VARCHAR(50) DEFAULT 'scheduled',                 -- scheduled, confirmed, in_progress, completed, cancelled
+  
+  -- Notes
+  notes TEXT,
+  special_instructions TEXT,
+  
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_shifts_date ON shifts(shift_date);
+CREATE INDEX idx_shifts_employee ON shifts(employee_id);
+CREATE INDEX idx_shifts_client ON shifts(client_id);
+CREATE INDEX idx_shifts_sub_client ON shifts(sub_client_id);
+```
+
+### 7. Time Entries Table (Actual Hours Worked)
+
+```sql
+CREATE TABLE time_entries (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID REFERENCES workspaces(id),
+  
+  -- Links
+  shift_id UUID REFERENCES shifts(id),
+  employee_id UUID REFERENCES employees(id) NOT NULL,
+  client_id UUID REFERENCES clients(id),
+  sub_client_id UUID REFERENCES sub_clients(id),          -- CRITICAL for accurate billing
+  site_id UUID REFERENCES sites(id),
+  
+  -- Time Data
+  clock_in_at TIMESTAMP NOT NULL,
+  clock_out_at TIMESTAMP,
+  
+  -- GPS Verification
+  clock_in_lat DECIMAL(10,7),
+  clock_in_lng DECIMAL(10,7),
+  clock_in_verified BOOLEAN DEFAULT false,
+  clock_out_lat DECIMAL(10,7),
+  clock_out_lng DECIMAL(10,7),
+  clock_out_verified BOOLEAN DEFAULT false,
+  
+  -- Breaks
+  break_minutes INTEGER DEFAULT 0,
+  
+  -- Calculated Hours
+  total_minutes INTEGER,
+  regular_hours DECIMAL(5,2),
+  overtime_hours DECIMAL(5,2),
+  holiday_hours DECIMAL(5,2),
+  
+  -- Rates (captured at time of clock-in for historical accuracy)
+  bill_rate DECIMAL(10,2),                                -- What to charge client
+  pay_rate DECIMAL(10,2),                                 -- What to pay employee
+  overtime_bill_rate DECIMAL(10,2),
+  overtime_pay_rate DECIMAL(10,2),
+  
+  -- Calculated Amounts
+  billable_amount DECIMAL(10,2),                          -- Total to charge client
+  payable_amount DECIMAL(10,2),                           -- Total to pay employee
+  
+  -- Status
+  status VARCHAR(50) DEFAULT 'pending',                   -- pending, submitted, approved, rejected, invoiced, paid
+  
+  -- Approval
+  submitted_at TIMESTAMP,
+  approved_by UUID REFERENCES users(id),
+  approved_at TIMESTAMP,
+  rejection_reason TEXT,
+  
+  -- Invoice/Payroll Links
+  invoice_id UUID REFERENCES invoices(id),
+  invoice_line_item_id UUID,
+  payroll_run_id UUID REFERENCES payroll_runs(id),
+  
+  -- Notes
+  notes TEXT,
+  
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_time_entries_employee ON time_entries(employee_id);
+CREATE INDEX idx_time_entries_client ON time_entries(client_id);
+CREATE INDEX idx_time_entries_sub_client ON time_entries(sub_client_id);
+CREATE INDEX idx_time_entries_date ON time_entries(clock_in_at);
+CREATE INDEX idx_time_entries_status ON time_entries(status);
+```
+
+### 8. Invoices Table
+
+```sql
+CREATE TABLE invoices (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID REFERENCES workspaces(id),
+  
+  -- Invoice Identification
+  invoice_number VARCHAR(100) NOT NULL UNIQUE,            -- "SP8.2025.5025"
+  
+  -- Client (who we're billing)
+  client_id UUID REFERENCES clients(id) NOT NULL,         -- "Off Duty Officers"
+  
+  -- Billing Info (captured at invoice creation)
+  bill_to_name VARCHAR(255),
+  bill_to_email VARCHAR(255),
+  bill_to_address_line1 VARCHAR(255),
+  bill_to_address_line2 VARCHAR(255),
+  bill_to_city VARCHAR(100),
+  bill_to_state VARCHAR(50),
+  bill_to_zip VARCHAR(20),
+  
+  -- Shipping Info
+  ship_to_name VARCHAR(255),
+  ship_to_address_line1 VARCHAR(255),
+  ship_to_address_line2 VARCHAR(255),
+  ship_to_city VARCHAR(100),
+  ship_to_state VARCHAR(50),
+  ship_to_zip VARCHAR(20),
+  
+  -- Ship From (your company)
+  ship_from_address TEXT,                                 -- "3700 Fredericksburg Rd, San Antonio, TX 78201-3309"
+  
+  -- Dates
+  invoice_date DATE NOT NULL,
+  due_date DATE NOT NULL,
+  service_period_start DATE,
+  service_period_end DATE,
+  
+  -- Terms
+  payment_terms VARCHAR(50),                              -- "Due on receipt"
+  
+  -- Shipping (if applicable)
+  ship_via VARCHAR(100),
+  shipping_date DATE,
+  tracking_number VARCHAR(100),
+  
+  -- Totals
+  subtotal DECIMAL(12,2) DEFAULT 0,
+  tax_rate DECIMAL(5,2) DEFAULT 0,
+  tax_amount DECIMAL(12,2) DEFAULT 0,
+  discount_amount DECIMAL(12,2) DEFAULT 0,
+  total_amount DECIMAL(12,2) DEFAULT 0,
+  amount_paid DECIMAL(12,2) DEFAULT 0,
+  balance_due DECIMAL(12,2) DEFAULT 0,
+  
+  -- Status
+  status VARCHAR(50) DEFAULT 'draft',                     -- draft, pending, sent, viewed, partial, paid, overdue, void
+  
+  -- Payment Options
+  accept_credit_cards BOOLEAN DEFAULT true,
+  accept_bank_transfer BOOLEAN DEFAULT true,
+  
+  -- QuickBooks
+  qb_invoice_id VARCHAR(100),
+  qb_synced_at TIMESTAMP,
+  
+  -- Notes
+  customer_notes TEXT,
+  internal_notes TEXT,
+  
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW(),
+  sent_at TIMESTAMP,
+  paid_at TIMESTAMP
+);
+
+CREATE INDEX idx_invoices_client ON invoices(client_id);
+CREATE INDEX idx_invoices_status ON invoices(status);
+CREATE INDEX idx_invoices_date ON invoices(invoice_date);
+```
+
+### 9. Invoice Line Items Table (THE CRITICAL ONE)
+
+```sql
+CREATE TABLE invoice_line_items (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  invoice_id UUID REFERENCES invoices(id) ON DELETE CASCADE,
+  
+  -- Line Item Order
+  line_number INTEGER NOT NULL,
+  
+  -- Service Info
+  service_date DATE,                                      -- "01/05/2026"
+  
+  -- Product/Service (links to sub-client or direct service)
+  product_service_name VARCHAR(255),                      -- "Armed:Duraline ODO Armad"
+  sub_client_id UUID REFERENCES sub_clients(id),          -- Links to "Dura Line LLC"
+  site_id UUID REFERENCES sites(id),
+  
+  -- Description Block (ALL the detail)
+  description TEXT,                                       -- Contains:
+                                                          -- Job ID: P2406-010125
+                                                          -- Client: Dura Line LLC
+                                                          -- Location: 2406 North I-35a, Gainesville TX 76240
+                                                          -- Hours: 6pm-6am M-F / 6am-6pm 6pm-6am Sat-Sun
+                                                          -- Date list: 1/5/26 6pm-6am, 1/6/26 6pm-6am, etc.
+  
+  -- Structured Description Data (for automation)
+  description_data JSONB DEFAULT '{}',                    -- {
+                                                          --   "job_id": "P2406-010125",
+                                                          --   "sub_client_name": "Dura Line LLC",
+                                                          --   "location": "2406 North I-35a, Gainesville TX 76240",
+                                                          --   "schedule_description": "6pm-6am M-F / 6am-6pm 6pm-6am Sat-Sun",
+                                                          --   "service_dates": [
+                                                          --     {"date": "2026-01-05", "time": "6pm-6am"},
+                                                          --     {"date": "2026-01-06", "time": "6pm-6am"}
+                                                          --   ],
+                                                          --   "officers": ["John Smith", "Jane Doe"]
+                                                          -- }
+  
+  -- Billing
+  quantity DECIMAL(10,2),                                 -- 100 (hours)
+  rate DECIMAL(10,2),                                     -- $35.00
+  amount DECIMAL(12,2),                                   -- $3,500.00
+  
+  -- Tax
+  taxable BOOLEAN DEFAULT true,
+  tax_amount DECIMAL(10,2) DEFAULT 0,
+  
+  -- Time Entry Links (which time entries make up this line item)
+  time_entry_ids UUID[] DEFAULT '{}',                     -- Array of time_entry IDs
+  
+  -- Employee involved (if single officer line item)
+  employee_id UUID REFERENCES employees(id),
+  
+  -- QuickBooks
+  qb_line_id VARCHAR(100),
+  
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_invoice_line_items_invoice ON invoice_line_items(invoice_id);
+CREATE INDEX idx_invoice_line_items_sub_client ON invoice_line_items(sub_client_id);
+```
+
+---
+
+## Rate Lookup Logic
+
+When creating a shift or time entry, rates are looked up in this order:
+
+### Bill Rate (What to charge client)
+
+```javascript
+async function getBillRate(employeeId, clientId, subClientId, siteId) {
+  // 1. Check site-specific rate
+  if (siteId) {
+    const site = await db.sites.findById(siteId);
+    if (site.bill_rate) return site.bill_rate;
+  }
+  
+  // 2. Check sub-client rate
+  if (subClientId) {
+    const subClient = await db.subClients.findById(subClientId);
+    if (subClient.bill_rate) return subClient.bill_rate;
+  }
+  
+  // 3. Check client rate
+  if (clientId) {
+    const client = await db.clients.findById(clientId);
+    if (client.default_bill_rate) return client.default_bill_rate;
+  }
+  
+  // 4. Workspace default
+  const workspace = await db.workspaces.findById(workspaceId);
+  return workspace.default_bill_rate;
+}
+```
+
+### Pay Rate (What to pay employee)
+
+```javascript
+async function getPayRate(employeeId, clientId, subClientId, siteId) {
+  // 1. Check employee-specific rate for this site
+  const siteRate = await db.employeeClientRates.findOne({
+    employee_id: employeeId,
+    site_id: siteId
+  });
+  if (siteRate) return siteRate.pay_rate;
+  
+  // 2. Check employee-specific rate for this sub-client
+  const subClientRate = await db.employeeClientRates.findOne({
+    employee_id: employeeId,
+    sub_client_id: subClientId
+  });
+  if (subClientRate) return subClientRate.pay_rate;
+  
+  // 3. Check employee-specific rate for this client
+  const clientRate = await db.employeeClientRates.findOne({
+    employee_id: employeeId,
+    client_id: clientId
+  });
+  if (clientRate) return clientRate.pay_rate;
+  
+  // 4. Employee default rate
+  const employee = await db.employees.findById(employeeId);
+  return employee.default_pay_rate;
+}
+```
+
+---
+
+## Invoice Generation Automation
+
+### Trinity Auto-Invoice Generation
+
+```javascript
+async function generateInvoiceForClient(clientId, periodStart, periodEnd) {
+  // 1. Get all approved time entries for this client in the period
+  const timeEntries = await db.timeEntries.find({
+    client_id: clientId,
+    status: 'approved',
+    clock_in_at: { $gte: periodStart, $lte: periodEnd },
+    invoice_id: null  // Not yet invoiced
+  });
+  
+  if (timeEntries.length === 0) {
+    return { success: false, message: 'No approved time entries to invoice' };
+  }
+  
+  // 2. Group time entries by sub-client
+  const groupedBySubClient = groupBy(timeEntries, 'sub_client_id');
+  
+  // 3. Create invoice
+  const invoice = await db.invoices.create({
+    workspace_id: workspaceId,
+    client_id: clientId,
+    invoice_number: generateInvoiceNumber(),
+    invoice_date: new Date(),
+    due_date: calculateDueDate(client.default_payment_terms),
+    service_period_start: periodStart,
+    service_period_end: periodEnd,
+    // ... populate billing addresses from client
+  });
+  
+  // 4. Create line items for each sub-client
+  let lineNumber = 1;
+  let subtotal = 0;
+  
+  for (const [subClientId, entries] of Object.entries(groupedBySubClient)) {
+    const subClient = await db.subClients.findById(subClientId);
+    
+    // Calculate totals for this sub-client
+    const totalHours = entries.reduce((sum, e) => sum + e.regular_hours + e.overtime_hours, 0);
+    const totalAmount = entries.reduce((sum, e) => sum + e.billable_amount, 0);
+    
+    // Build description with all dates
+    const serviceDates = entries.map(e => ({
+      date: formatDate(e.clock_in_at),
+      time: `${formatTime(e.clock_in_at)}-${formatTime(e.clock_out_at)}`
+    }));
+    
+    // Get unique employees
+    const employeeIds = [...new Set(entries.map(e => e.employee_id))];
+    const employees = await db.employees.findByIds(employeeIds);
+    const officerNames = employees.map(e => `${e.first_name} ${e.last_name}`);
+    
+    // Build structured description
+    const descriptionData = {
+      job_id: subClient.client_job_id,
+      sub_client_name: subClient.name,
+      location: formatAddress(subClient),
+      schedule_description: subClient.default_schedule_description,
+      service_dates: serviceDates,
+      officers: officerNames
+    };
+    
+    // Build text description (for display)
+    const description = buildInvoiceDescription(descriptionData);
+    
+    // Create line item
+    await db.invoiceLineItems.create({
+      invoice_id: invoice.id,
+      line_number: lineNumber++,
+      service_date: periodStart,
+      product_service_name: `Armed:${subClient.name} ODO Armad`,
+      sub_client_id: subClientId,
+      description: description,
+      description_data: descriptionData,
+      quantity: totalHours,
+      rate: subClient.bill_rate,
+      amount: totalAmount,
+      time_entry_ids: entries.map(e => e.id)
+    });
+    
+    subtotal += totalAmount;
+    
+    // Mark time entries as invoiced
+    await db.timeEntries.updateMany(
+      { id: { $in: entries.map(e => e.id) } },
+      { invoice_id: invoice.id, status: 'invoiced' }
+    );
+  }
+  
+  // 5. Calculate totals
+  const taxAmount = client.tax_exempt ? 0 : subtotal * (client.tax_rate / 100);
+  const totalAmount = subtotal + taxAmount;
+  
+  await db.invoices.update(invoice.id, {
+    subtotal,
+    tax_amount: taxAmount,
+    total_amount: totalAmount,
+    balance_due: totalAmount
+  });
+  
+  return { success: true, invoice };
+}
+
+function buildInvoiceDescription(data) {
+  let desc = '';
+  
+  desc += `Job ID: ${data.job_id}\n\n`;
+  desc += `Client: ${data.sub_client_name}\n`;
+  desc += `Location: ${data.location}\n\n`;
+  desc += `Hours: ${data.schedule_description}\n`;
+  
+  // Add date list
+  for (const sd of data.service_dates) {
+    desc += `${sd.date} ${sd.time}\n`;
+  }
+  
+  // Add officers if required
+  if (data.officers && data.officers.length > 0) {
+    desc += `\nOfficers: ${data.officers.join(', ')}`;
+  }
+  
+  return desc;
+}
+```
+
+---
+
+## QuickBooks Sync
+
+### Invoice Sync to QuickBooks
+
+```javascript
+async function syncInvoiceToQuickBooks(invoiceId) {
+  const invoice = await db.invoices.findById(invoiceId);
+  const client = await db.clients.findById(invoice.client_id);
+  const lineItems = await db.invoiceLineItems.find({ invoice_id: invoiceId });
+  
+  // Ensure client exists in QB
+  if (!client.qb_customer_id) {
+    await syncClientToQuickBooks(client.id);
+  }
+  
+  // Build QB invoice object
+  const qbInvoice = {
+    CustomerRef: { value: client.qb_customer_id },
+    DocNumber: invoice.invoice_number,
+    TxnDate: formatDateForQB(invoice.invoice_date),
+    DueDate: formatDateForQB(invoice.due_date),
+    BillEmail: { Address: invoice.bill_to_email },
+    Line: []
+  };
+  
+  // Add line items
+  for (const item of lineItems) {
+    // Get or create QB product/service item
+    const qbItemId = await getOrCreateQBServiceItem(item.product_service_name);
+    
+    qbInvoice.Line.push({
+      DetailType: 'SalesItemLineDetail',
+      Amount: item.amount,
+      Description: item.description,
+      SalesItemLineDetail: {
+        ItemRef: { value: qbItemId },
+        Qty: item.quantity,
+        UnitPrice: item.rate
+      }
+    });
+  }
+  
+  // Create or update in QB
+  let qbResponse;
+  if (invoice.qb_invoice_id) {
+    // Update existing
+    qbResponse = await qb.updateInvoice(invoice.qb_invoice_id, qbInvoice);
+  } else {
+    // Create new
+    qbResponse = await qb.createInvoice(qbInvoice);
+  }
+  
+  // Store QB reference
+  await db.invoices.update(invoiceId, {
+    qb_invoice_id: qbResponse.Id,
+    qb_synced_at: new Date()
+  });
+  
+  return { success: true, qbInvoiceId: qbResponse.Id };
+}
+```
+
+### Sub-Client as QB Sub-Customer
+
+```javascript
+async function syncSubClientToQuickBooks(subClientId) {
+  const subClient = await db.subClients.findById(subClientId);
+  const parentClient = await db.clients.findById(subClient.parent_client_id);
+  
+  // Ensure parent exists in QB first
+  if (!parentClient.qb_customer_id) {
+    await syncClientToQuickBooks(parentClient.id);
+  }
+  
+  const qbSubCustomer = {
+    DisplayName: subClient.name,
+    CompanyName: subClient.name,
+    ParentRef: { value: parentClient.qb_customer_id },  // Links to parent
+    Job: true,  // Mark as sub-customer/job
+    BillAddr: {
+      Line1: subClient.location_address_line1,
+      City: subClient.location_city,
+      CountrySubDivisionCode: subClient.location_state,
+      PostalCode: subClient.location_zip
+    }
+  };
+  
+  let qbResponse;
+  if (subClient.qb_sub_customer_id) {
+    qbResponse = await qb.updateCustomer(subClient.qb_sub_customer_id, qbSubCustomer);
+  } else {
+    qbResponse = await qb.createCustomer(qbSubCustomer);
+  }
+  
+  await db.subClients.update(subClientId, {
+    qb_sub_customer_id: qbResponse.Id,
+    qb_synced_at: new Date()
+  });
+  
+  return { success: true, qbSubCustomerId: qbResponse.Id };
+}
+```
+
+---
+
+## Data Flow Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                           COAILEAGUE DATA FLOW                                   │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+1. SETUP (One-time)
+   ┌──────────┐     ┌─────────────┐     ┌───────┐     ┌───────────┐
+   │  Client  │────▶│  Sub-Client │────▶│ Site  │────▶│ Employees │
+   │(Off Duty)│     │ (Dura Line) │     │(Gnsvl)│     │ (Guards)  │
+   └──────────┘     └─────────────┘     └───────┘     └───────────┘
+        │                 │                 │               │
+        │    QB Sync      │    QB Sync      │               │   QB Sync
+        ▼                 ▼                 │               ▼
+   [QB Customer]    [QB Sub-Customer]       │         [QB Employee]
+
+2. SCHEDULING
+   ┌──────────┐
+   │  Shift   │ Contains:
+   └──────────┘ - employee_id
+        │       - client_id (Off Duty Officers)
+        │       - sub_client_id (Dura Line LLC) ← CRITICAL
+        │       - site_id (Gainesville)
+        │       - bill_rate (from sub-client)
+        │       - pay_rate (from employee/client rates)
+        ▼
+
+3. TIME TRACKING
+   ┌─────────────┐
+   │ Time Entry  │ Captures:
+   └─────────────┘ - All IDs from shift
+        │          - Actual clock in/out times
+        │          - GPS verification
+        │          - Calculated hours
+        │          - Rates at time of clock-in
+        │          - Billable & payable amounts
+        ▼
+
+4. APPROVAL
+   ┌─────────────┐
+   │  Timesheet  │ Status flow:
+   └─────────────┘ pending → submitted → approved
+        │
+        ├──────────────────┐
+        ▼                  ▼
+
+5A. PAYROLL                5B. INVOICING
+   ┌──────────────┐        ┌─────────────┐
+   │ Payroll Run  │        │   Invoice   │
+   └──────────────┘        └─────────────┘
+        │                        │
+        │                        │ Groups time entries by sub-client
+        │                        │ Creates line items with:
+        │                        │ - Job ID
+        │                        │ - Sub-client name
+        │                        │ - Location
+        │                        │ - Date/time list
+        │                        │ - Hours & rate
+        │                        ▼
+        │                  ┌─────────────────┐
+        │                  │ Invoice Line    │
+        │                  │ Items           │
+        │                  └─────────────────┘
+        │                        │
+        ▼                        ▼
+   [QB Payroll]            [QB Invoice]
+
+6. RECONCILIATION
+   ┌────────────────────────────────────────────────────────────┐
+   │ Trinity verifies:                                          │
+   │ - All approved time entries are invoiced                   │
+   │ - All approved time entries are in payroll                 │
+   │ - Invoice amounts match time entry billable_amount         │
+   │ - Payroll amounts match time entry payable_amount          │
+   │ - No orphaned records                                       │
+   │ - QB sync status on all records                            │
+   └────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Required Fields Validation
+
+### Before Invoice Generation, Verify:
+
+```javascript
+async function validateInvoiceData(clientId, periodStart, periodEnd) {
+  const errors = [];
+  const warnings = [];
+  
+  // 1. Client has billing info
+  const client = await db.clients.findById(clientId);
+  if (!client.billing_address_line1) errors.push('Client missing billing address');
+  if (!client.email) warnings.push('Client missing email');
+  
+  // 2. All time entries have required data
+  const timeEntries = await db.timeEntries.find({
+    client_id: clientId,
+    status: 'approved',
+    clock_in_at: { $gte: periodStart, $lte: periodEnd }
+  });
+  
+  for (const entry of timeEntries) {
+    if (!entry.sub_client_id) {
+      errors.push(`Time entry ${entry.id} missing sub_client_id`);
+    }
+    if (!entry.bill_rate) {
+      errors.push(`Time entry ${entry.id} missing bill_rate`);
+    }
+    if (!entry.billable_amount) {
+      errors.push(`Time entry ${entry.id} missing billable_amount`);
+    }
+  }
+  
+  // 3. All sub-clients have required data
+  const subClientIds = [...new Set(timeEntries.map(e => e.sub_client_id))];
+  for (const subClientId of subClientIds) {
+    const subClient = await db.subClients.findById(subClientId);
+    if (!subClient.client_job_id) {
+      warnings.push(`Sub-client ${subClient.name} missing job ID`);
+    }
+    if (!subClient.location_address_line1) {
+      warnings.push(`Sub-client ${subClient.name} missing location address`);
+    }
+    if (!subClient.bill_rate) {
+      errors.push(`Sub-client ${subClient.name} missing bill rate`);
+    }
+  }
+  
+  return { valid: errors.length === 0, errors, warnings };
+}
+```
+
+---
+
+## Testing Checklist
+
+### Schema Tests
+- [ ] clients table has all columns
+- [ ] sub_clients table has all columns with parent_client_id FK
+- [ ] invoice_line_items has sub_client_id FK
+- [ ] time_entries has sub_client_id FK
+- [ ] All indexes created
+
+### Data Flow Tests
+- [ ] Create client with sub-clients
+- [ ] Create shift assigned to sub-client
+- [ ] Clock in/out captures sub_client_id
+- [ ] Time entry has correct bill_rate from sub-client
+- [ ] Invoice generation groups by sub-client
+- [ ] Line item description includes all required fields
+- [ ] QuickBooks sync creates sub-customer under parent
+
+### Invoice Content Tests
+- [ ] Invoice shows: Job ID
+- [ ] Invoice shows: Sub-client name
+- [ ] Invoice shows: Location address
+- [ ] Invoice shows: Schedule description
+- [ ] Invoice shows: Individual service dates
+- [ ] Invoice shows: Officers (when required)
+- [ ] Invoice shows: Correct quantity (hours)
+- [ ] Invoice shows: Correct rate
+- [ ] Invoice shows: Correct amount
+- [ ] Subtotal calculates correctly
+- [ ] Tax calculates correctly (when applicable)
+
+### Payroll Parity Tests
+- [ ] Time entries used for invoice match payroll
+- [ ] No time entry invoiced but not in payroll
+- [ ] No time entry in payroll but not invoiced
+- [ ] Hours match between invoice and payroll
+- [ ] Employee pay calculated correctly
+
+---
+
+## Summary for Replit
+
+**Implement this complete data architecture to support:**
+
+1. **Clients with Sub-Clients** - Hierarchical customer structure
+2. **Rate Inheritance** - Site > Sub-Client > Client > Employee Default
+3. **Rich Invoice Line Items** - All required data for complex billing
+4. **Automated Invoice Generation** - Trinity groups by sub-client, builds descriptions
+5. **QuickBooks Parity** - Sub-customers, proper sync, no data loss
+6. **Full Audit Trail** - Every time entry links to invoice and payroll
+
+**Critical:** The `sub_client_id` field must flow through EVERY step:
+- Shift creation
+- Time entry (clock in/out)
+- Invoice line item
+- Payroll record
+
+**This ensures no money is lost and every hour is properly tracked, billed, and paid.**

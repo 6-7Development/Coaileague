@@ -487,6 +487,12 @@ export function isPlatformStaff(user?: { platformRole?: PlatformRole | string })
 
 export function requirePlatformRole(allowedRoles: PlatformRole[]) {
   return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    // Check for test mode - crawlers get full access
+    if ((req as any).isTestMode) {
+      req.platformRole = "root_admin" as any;
+      return next();
+    }
+
     // Check session-based authentication first
     if (!req.session?.userId && !req.user?.id) {
       return res.status(401).json({ error: 'Authentication required' });
