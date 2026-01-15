@@ -4,6 +4,7 @@ import { useLocation } from "wouter";
 import { formatDistanceToNow, parseISO, isValid } from "date-fns";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
+import { useNotificationSync } from "@/hooks/use-notification-sync";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -300,6 +301,7 @@ const getRoleBasedNotificationFilter = (
 
 export function UNSCommandCenter({ isOpen = true, onClose, className, onAskTrinity, platformRole, workspaceRole }: UNSCommandCenterProps) {
   const [, setLocation] = useLocation();
+  const { syncClearAll, syncNotificationCleared } = useNotificationSync();
   const [activeTab, setActiveTab] = useState<NotificationCategory>('all');
   const [pulseActive, setPulseActive] = useState(true);
   const [selectedNotification, setSelectedNotification] = useState<UNSNotification | null>(null);
@@ -353,6 +355,7 @@ export function UNSCommandCenter({ isOpen = true, onClose, className, onAskTrini
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/notifications/combined'] });
+      syncClearAll(); // Broadcast to sync other tabs/mobile
     }
   });
 
@@ -362,6 +365,7 @@ export function UNSCommandCenter({ isOpen = true, onClose, className, onAskTrini
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/notifications/combined'] });
+      syncClearAll(); // Broadcast to sync other tabs/mobile
     }
   });
 
@@ -380,8 +384,9 @@ export function UNSCommandCenter({ isOpen = true, onClose, className, onAskTrini
     mutationFn: async (id: string) => {
       await apiRequest('DELETE', `/api/notifications/${id}`);
     },
-    onSuccess: () => {
+    onSuccess: (_data, id) => {
       queryClient.invalidateQueries({ queryKey: ['/api/notifications/combined'] });
+      syncNotificationCleared(id); // Broadcast to sync other tabs/mobile
     }
   });
 
@@ -506,11 +511,12 @@ export function UNSCommandCenter({ isOpen = true, onClose, className, onAskTrini
     <div 
       ref={containerRef}
       className={cn(
-        "relative bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xl overflow-hidden w-full flex flex-col",
+        "relative bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xl overflow-hidden flex flex-col",
+        "w-[min(420px,calc(100vw-2rem))]",
         isDragging ? 'cursor-grabbing' : '',
         className
       )} 
-      style={{ transform: `translate(${position.x}px, ${position.y}px)` }}
+      style={{ transform: `translate(${position.x}px, ${position.y}px)`, maxHeight: 'min(85vh, 650px)' }}
       data-testid="uns-command-center"
     >
       
