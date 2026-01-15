@@ -33,7 +33,7 @@ export interface MeteredGenerateOptions {
   featureKey: string;
   prompt: string;
   systemInstruction?: string;
-  model?: 'gemini-1.5-flash' | 'gemini-1.5-pro' | 'gemini-2.0-flash-exp';
+  model?: 'gemini-1.5-flash' | 'gemini-1.5-pro' | 'gemini-2.0-flash-exp' | 'gemini-3-flash' | 'gemini-3-pro';
   temperature?: number;
   maxOutputTokens?: number;
   metadata?: Record<string, any>;
