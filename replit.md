@@ -108,6 +108,37 @@ curl -H "x-test-key: $DIAG_BYPASS_SECRET" http://localhost:5000/api/employees
 
 **Migration Note:** CloudEvents webhook format migration required by May 15, 2026.
 
+## AI Credit Billing (Subscriber-Pays-All Model)
+
+**Architecture:** All AI token usage is tracked and billed to workspaces via centralized metered client.
+- **meteredGeminiClient.ts**: Central gateway for all Gemini API calls
+- **aiCreditGateway.ts**: Pre-authorization and credit deduction
+- **creditManager.ts**: Balance management and tier allocations
+
+**Pricing Model (Jan 2026):**
+- 1 credit = $0.01
+- Based on Gemini 3 API costs with 4x margin
+- Gemini 3 Pro: $2/1M input, $12/1M output (thinking tokens billed at output rate)
+- Gemini 3 Flash: $0.50/1M input, $3/1M output
+
+**Credit Costs per Feature:**
+| Feature | Credits | Model |
+|---------|---------|-------|
+| ai_scheduling | 8 | Flash |
+| ai_analytics_report | 15 | Pro |
+| ai_migration (Vision) | 25 | Pro |
+| strategic_schedule_optimization | 20 | Pro |
+| ai_chat_query | 3 | Flash |
+
+**Tier Allocations (Monthly):**
+- Free: 150 credits (~18 schedules)
+- Trial: 500 credits (~62 schedules)
+- Starter: 2,000 credits (~250 schedules)
+- Professional: 10,000 credits
+- Enterprise: 50,000 credits
+
+**Credit-Exempt Features:** Trinity conversations, mascot interactions, guest demos (FREE - tokens used but not charged to encourage engagement).
+
 ## External Dependencies
 - **Stripe**: Payment processing, payroll, and financial integrations.
 - **Resend**: Email delivery and notification workflows.

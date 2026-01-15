@@ -91,49 +91,53 @@ export const UNLIMITED_CREDITS_BALANCE = 999999999;
 // Thinking mode adds 2K-5K extra output tokens per request
 // Pricing: Actual cost × 4x margin = fair credits
 // 
-// Example: Schedule generation (Gemini 3 Flash with thinking)
-//          2K input + 4K thinking + 1.5K response = $0.018 actual
-//          With 4x margin = $0.072, so ~7 credits is fair
+// GEMINI 3 PRO example (complex reasoning, ~2K input + 5K thinking + 2K response):
+//   Cost: (2K × $2/M) + (7K × $12/M) = $0.004 + $0.084 = $0.088
+//   With 4x margin = $0.35 → 35 credits
+// 
+// GEMINI 3 FLASH example (standard tasks, ~2K input + 3K thinking + 1.5K response):
+//   Cost: (2K × $0.50/M) + (4.5K × $3/M) = $0.001 + $0.0135 = $0.015
+//   With 4x margin = $0.06 → 6 credits
 export const CREDIT_COSTS = {
-  // AI Scheduling - Gemini 3 Flash with thinking (~7K output tokens)
-  'ai_scheduling': 7,             // Full schedule generation
-  'ai_schedule_optimization': 5,  // Optimize existing schedule
-  'ai_shift_matching': 2,         // Match employee to single shift
-  'ai_open_shift_fill': 3,        // AI-powered open shift auto-fill
+  // AI Scheduling - Gemini 3 Flash with thinking
+  'ai_scheduling': 8,             // Full schedule generation (Flash)
+  'ai_schedule_optimization': 6,  // Optimize existing schedule (Flash)
+  'ai_shift_matching': 3,         // Match employee to single shift (Flash)
+  'ai_open_shift_fill': 5,        // AI-powered open shift auto-fill (Flash)
   
-  // AI Invoicing - Gemini 3 Flash with thinking (~5K output tokens)
-  'ai_invoice_generation': 5,     // Generate invoice from timesheet
-  'ai_invoice_review': 2,         // Review invoice for errors
-  'invoice_gap_analysis': 3,      // Analyze unbilled revenue gaps
+  // AI Invoicing - Gemini 3 Flash with thinking
+  'ai_invoice_generation': 6,     // Generate invoice from timesheet (Flash)
+  'ai_invoice_review': 3,         // Review invoice for errors (Flash)
+  'invoice_gap_analysis': 5,      // Analyze unbilled revenue gaps (Flash)
   
-  // AI Payroll - Gemini 3 Flash with thinking (~6K output tokens)
-  'ai_payroll_processing': 6,     // Process payroll run
-  'ai_payroll_verification': 2,   // Verify payroll calculations
-  'payroll_anomaly_insights': 3,  // Anomaly detection insights
+  // AI Payroll - Gemini 3 Flash with thinking
+  'ai_payroll_processing': 8,     // Process payroll run (Flash)
+  'ai_payroll_verification': 3,   // Verify payroll calculations (Flash)
+  'payroll_anomaly_insights': 5,  // Anomaly detection insights (Flash)
   
-  // AI Communications - Gemini 3 Flash (~3K output tokens)
-  'ai_chat_query': 2,             // HelpAI or QueryOS chat message
-  'ai_email_generation': 3,       // Generate email content
+  // AI Communications - Gemini 3 Flash (no thinking for speed)
+  'ai_chat_query': 3,             // HelpAI or QueryOS chat message
+  'ai_email_generation': 4,       // Generate email content
   
-  // AI Analytics - Gemini 3 Flash with thinking (~5K output)
-  'ai_analytics_report': 5,       // Generate analytics report
-  'ai_predictions': 4,            // Predictive analytics
+  // AI Analytics - Gemini 3 Pro with thinking (complex reasoning)
+  'ai_analytics_report': 15,      // Generate analytics report (Pro)
+  'ai_predictions': 12,           // Predictive analytics (Pro)
   
-  // AI Migration - Gemini 3 Pro Vision (~4K output)
-  'ai_migration': 8,              // Gemini Vision data extraction (uses Pro)
+  // AI Migration - Gemini 3 Pro Vision (multimodal, expensive)
+  'ai_migration': 25,             // Gemini Vision data extraction (Pro Vision)
   
-  // QuickBooks Integration - Gemini 3 Flash (~4K output)
-  'quickbooks_error_analysis': 3, // Error analysis and retry strategy
+  // QuickBooks Integration - Gemini 3 Flash with thinking
+  'quickbooks_error_analysis': 5, // Error analysis and retry strategy (Flash)
   
-  // Scheduling Subagent - Gemini 3 Flash with thinking
-  'schedule_optimization': 5,     // Schedule optimization
-  'strategic_schedule_optimization': 7, // Strategic scheduling (Pro model)
+  // Scheduling Subagent - Model depends on complexity
+  'schedule_optimization': 6,     // Schedule optimization (Flash)
+  'strategic_schedule_optimization': 20, // Strategic scheduling (Pro with deep reasoning)
   
-  // Domain Operations - Gemini 3 Flash (~2K output)
-  'log_analysis': 2,              // Log analysis
+  // Domain Operations - Gemini 3 Flash
+  'log_analysis': 3,              // Log analysis (Flash)
   
-  // General AI - Gemini 3 Flash (~2K output)
-  'ai_general': 2,                // Generic AI operation
+  // General AI - Gemini 3 Flash
+  'ai_general': 3,                // Generic AI operation (Flash)
   
   // Trinity Conversations (FREE - no credits charged)
   'trinity_thought': 0,           // Trinity thought bubbles
@@ -166,13 +170,13 @@ export const CREDIT_EXEMPT_FEATURES = new Set([
 
 // Monthly credit allocation by subscription tier
 // Rebalanced Jan 2026 for Gemini 3 pricing (1 credit = $0.01)
-// Generous allocations so customers don't feel nickel-and-dimed
+// Higher costs per operation balanced by generous allocations
 export const TIER_CREDIT_ALLOCATIONS = {
-  'free': 100,          // ~14 schedules or 50 chats - enough to try the platform
-  'trial': 300,         // ~42 schedules - generous trial to fully test features
-  'starter': 1000,      // ~142 schedules/month ($10 value at cost)
-  'professional': 5000, // ~714 schedules/month - feels unlimited
-  'enterprise': 25000,  // ~3571 schedules/month - truly unlimited for large orgs
+  'free': 150,          // ~18 schedules or 50 chats - enough to try the platform
+  'trial': 500,         // ~62 schedules - generous trial to fully test features
+  'starter': 2000,      // ~250 schedules/month ($20 value at cost)
+  'professional': 10000, // ~1250 schedules/month - feels unlimited
+  'enterprise': 50000,  // ~6250 schedules/month - truly unlimited for large orgs
 } as const;
 
 export interface CreditCheckResult {
