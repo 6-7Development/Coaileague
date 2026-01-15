@@ -46,14 +46,18 @@ export const users = pgTable("users", {
   email: varchar("email").unique().notNull(),
 
   // Password authentication
-  passwordHash: varchar("password_hash"), // Bcrypt hash
+  passwordHash: varchar("password_hash"), // Bcrypt hash (cost 12)
   emailVerified: boolean("email_verified").default(false),
+  emailVerifiedAt: timestamp("email_verified_at"),
   verificationToken: varchar("verification_token"),
   verificationTokenExpiry: timestamp("verification_token_expiry"),
 
   // Password reset
   resetToken: varchar("reset_token"),
   resetTokenExpiry: timestamp("reset_token_expiry"),
+  
+  // Auth provider tracking for migration
+  authProvider: varchar("auth_provider").default("email"), // 'email', 'magic_link', 'replit_legacy'
 
   // Profile
   firstName: varchar("first_name"),
@@ -88,6 +92,69 @@ export const users = pgTable("users", {
 
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
+
+// ============================================================================
+// CUSTOM AUTH TABLES (Email/Password, Magic Link, Sessions)
+// ============================================================================
+
+// Token types for various auth flows
+export const tokenTypeEnum = pgEnum("token_type", [
+  "magic_link",
+  "password_reset", 
+  "email_verify",
+  "session"
+]);
+
+// Auth tokens for magic links, password reset, email verification
+export const authTokens = pgTable("auth_tokens", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  tokenHash: varchar("token_hash").notNull().unique(), // Hashed token (never store raw)
+  tokenType: tokenTypeEnum("token_type").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  usedAt: timestamp("used_at"),
+  metadata: jsonb("metadata").default({}),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_auth_tokens_hash").on(table.tokenHash),
+  index("idx_auth_tokens_user").on(table.userId),
+  index("idx_auth_tokens_type").on(table.tokenType),
+]);
+
+export type AuthToken = typeof authTokens.$inferSelect;
+export type InsertAuthToken = typeof authTokens.$inferInsert;
+
+// Custom auth sessions (separate from Replit sessions)
+export const authSessions = pgTable("auth_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  sessionToken: varchar("session_token").notNull().unique(), // Hashed session token
+  deviceInfo: jsonb("device_info").default({}),
+  ipAddress: varchar("ip_address"),
+  userAgent: text("user_agent"),
+  expiresAt: timestamp("expires_at").notNull(),
+  lastActivityAt: timestamp("last_activity_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+  isValid: boolean("is_valid").default(true),
+}, (table) => [
+  index("idx_auth_sessions_token").on(table.sessionToken),
+  index("idx_auth_sessions_user").on(table.userId),
+]);
+
+export type AuthSession = typeof authSessions.$inferSelect;
+export type InsertAuthSession = typeof authSessions.$inferInsert;
+
+// Insert schemas for validation
+export const insertAuthTokenSchema = createInsertSchema(authTokens).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertAuthSessionSchema = createInsertSchema(authSessions).omit({
+  id: true,
+  createdAt: true,
+  lastActivityAt: true,
+});
 
 // User onboarding progress tracking
 export const userOnboarding = pgTable("user_onboarding", {
