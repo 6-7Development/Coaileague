@@ -216,21 +216,38 @@ export const BILLING = {
   },
 
   // ==========================================================================
-  // CREDIT COSTS PER FEATURE
+  // CREDIT COSTS PER FEATURE (Synced with creditManager.ts - Jan 2026)
+  // 1 credit = $0.01 | Gemini 3 Pro vs Flash model usage with 4x margin
   // ==========================================================================
   creditCosts: {
-    ai_scheduling: 25,
-    ai_schedule_optimization: 15,
-    ai_shift_matching: 5,
-    ai_invoice_generation: 15,
+    // AI Scheduling (Flash)
+    ai_scheduling: 8,
+    ai_schedule_optimization: 6,
+    ai_shift_matching: 3,
+    ai_open_shift_fill: 5,
+    // AI Invoicing (Flash)
+    ai_invoice_generation: 6,
     ai_invoice_review: 3,
-    ai_payroll_processing: 15,
-    ai_payroll_verification: 5,
-    ai_chat_query: 5,
-    ai_email_generation: 8,
-    ai_analytics_report: 12,
-    ai_predictions: 10,
-    ai_migration: 10,
+    invoice_gap_analysis: 5,
+    // AI Payroll (Flash)
+    ai_payroll_processing: 8,
+    ai_payroll_verification: 3,
+    payroll_anomaly_insights: 5,
+    // AI Communications (Flash)
+    ai_chat_query: 3,
+    ai_email_generation: 4,
+    // AI Analytics (Pro - complex reasoning)
+    ai_analytics_report: 15,
+    ai_predictions: 12,
+    // AI Migration (Pro Vision)
+    ai_migration: 25,
+    // QuickBooks (Flash)
+    quickbooks_error_analysis: 5,
+    // Scheduling (Flash/Pro)
+    schedule_optimization: 6,
+    strategic_schedule_optimization: 20,
+    // Domain/General (Flash)
+    log_analysis: 3,
     ai_general: 3,
   },
 
