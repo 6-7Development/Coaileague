@@ -1857,6 +1857,68 @@ export type InsertClient = z.infer<typeof insertClientSchema>;
 export type Client = typeof clients.$inferSelect;
 
 // ============================================================================
+// SUB-CLIENTS TABLE (Client's Clients for complex billing scenarios)
+// Supports: Primary Client → Sub-Client → Job ID → Location → Bill Rates
+// ============================================================================
+
+export const subClients = pgTable("sub_clients", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  parentClientId: varchar("parent_client_id").notNull().references(() => clients.id, { onDelete: 'cascade' }),
+
+  // Basic Info
+  name: varchar("name").notNull(),
+  clientJobId: varchar("client_job_id"), // Client's internal reference (e.g., "P2406-010125")
+  contactName: varchar("contact_name"),
+  contactEmail: varchar("contact_email"),
+  contactPhone: varchar("contact_phone"),
+
+  // Service Location
+  locationName: varchar("location_name"),
+  locationAddressLine1: varchar("location_address_line1"),
+  locationAddressLine2: varchar("location_address_line2"),
+  locationCity: varchar("location_city"),
+  locationState: varchar("location_state"),
+  locationZip: varchar("location_zip"),
+
+  // Geofencing (for GPS clock-in verification)
+  geofenceLat: decimal("geofence_lat", { precision: 10, scale: 7 }),
+  geofenceLng: decimal("geofence_lng", { precision: 10, scale: 7 }),
+  geofenceRadiusMeters: integer("geofence_radius_meters").default(100),
+
+  // Billing Settings (overrides parent client if set)
+  billRate: decimal("bill_rate", { precision: 10, scale: 2 }),
+  overtimeRate: decimal("overtime_rate", { precision: 10, scale: 2 }),
+  holidayRate: decimal("holiday_rate", { precision: 10, scale: 2 }),
+  minimumHours: decimal("minimum_hours", { precision: 5, scale: 2 }),
+
+  // Service Schedule
+  defaultScheduleDescription: text("default_schedule_description"),
+
+  // QuickBooks Integration
+  qbSubCustomerId: varchar("qb_sub_customer_id"),
+  qbSyncedAt: timestamp("qb_synced_at"),
+
+  // Status
+  status: varchar("status").default("active"), // active, paused, completed
+  contractStartDate: timestamp("contract_start_date"),
+  contractEndDate: timestamp("contract_end_date"),
+  notes: text("notes"),
+
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertSubClientSchema = createInsertSchema(subClients).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertSubClient = z.infer<typeof insertSubClientSchema>;
+export type SubClient = typeof subClients.$inferSelect;
+
+// ============================================================================
 // SCHEDULING TABLES
 // ============================================================================
 
@@ -1880,6 +1942,11 @@ export const shifts = pgTable("shifts", {
   workspaceId: varchar("workspace_id").notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
   employeeId: varchar("employee_id").references(() => employees.id, { onDelete: 'cascade' }),
   clientId: varchar("client_id").references(() => clients.id, { onDelete: 'set null' }),
+  subClientId: varchar("sub_client_id").references(() => subClients.id, { onDelete: 'set null' }),
+
+  // Billing info (captured at time of shift creation)
+  billRate: decimal("bill_rate", { precision: 10, scale: 2 }),
+  payRate: decimal("pay_rate", { precision: 10, scale: 2 }),
 
   // Shift details
   title: varchar("title"),
@@ -2625,6 +2692,18 @@ export const timeEntries = pgTable("time_entries", {
   shiftId: varchar("shift_id").references(() => shifts.id, { onDelete: 'cascade' }),
   employeeId: varchar("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
   clientId: varchar("client_id").references(() => clients.id, { onDelete: 'set null' }),
+  subClientId: varchar("sub_client_id").references(() => subClients.id, { onDelete: 'set null' }),
+
+  // Rates (captured at time of clock-in for historical accuracy)
+  capturedBillRate: decimal("captured_bill_rate", { precision: 10, scale: 2 }),
+  capturedPayRate: decimal("captured_pay_rate", { precision: 10, scale: 2 }),
+  overtimeBillRate: decimal("overtime_bill_rate", { precision: 10, scale: 2 }),
+  overtimePayRate: decimal("overtime_pay_rate", { precision: 10, scale: 2 }),
+  regularHours: decimal("regular_hours", { precision: 5, scale: 2 }),
+  overtimeHours: decimal("overtime_hours", { precision: 5, scale: 2 }),
+  holidayHours: decimal("holiday_hours", { precision: 5, scale: 2 }),
+  billableAmount: decimal("billable_amount", { precision: 10, scale: 2 }),
+  payableAmount: decimal("payable_amount", { precision: 10, scale: 2 }),
 
   // Time tracking
   clockIn: timestamp("clock_in").notNull(),
@@ -3073,15 +3152,48 @@ export const invoiceLineItems = pgTable("invoice_line_items", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   invoiceId: varchar("invoice_id").notNull().references(() => invoices.id, { onDelete: 'cascade' }),
 
+  // Line Item Order
+  lineNumber: integer("line_number").default(1),
+
+  // Service Info
+  serviceDate: timestamp("service_date"),
+  productServiceName: varchar("product_service_name"),
+
+  // Sub-Client & Site Links
+  subClientId: varchar("sub_client_id").references(() => subClients.id, { onDelete: 'set null' }),
+  siteId: varchar("site_id").references(() => sites.id, { onDelete: 'set null' }),
+
   // Line item details
   description: text("description").notNull(),
   quantity: decimal("quantity", { precision: 10, scale: 2 }).notNull(),
   unitPrice: decimal("unit_price", { precision: 10, scale: 2 }).notNull(),
+  rate: decimal("rate", { precision: 10, scale: 2 }),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+
+  // Structured Description Data (for automation) - Contains job_id, location, schedule, dates, officers
+  descriptionData: jsonb("description_data").$type<{
+    job_id?: string;
+    sub_client_name?: string;
+    location?: string;
+    schedule_description?: string;
+    service_dates?: Array<{ date: string; time: string }>;
+    officers?: string[];
+  }>(),
+
+  // Tax
+  taxable: boolean("taxable").default(true),
+  taxAmount: decimal("tax_amount", { precision: 10, scale: 2 }),
+
+  // Time Entry Links (which time entries make up this line item)
+  timeEntryIds: varchar("time_entry_ids").array(),
 
   // Links
   timeEntryId: varchar("time_entry_id").references(() => timeEntries.id, { onDelete: 'set null' }),
   shiftId: varchar("shift_id").references(() => shifts.id, { onDelete: 'set null' }),
+  employeeId: varchar("employee_id").references(() => employees.id, { onDelete: 'set null' }),
+
+  // QuickBooks
+  qbLineId: varchar("qb_line_id"),
 
   createdAt: timestamp("created_at").defaultNow(),
 });

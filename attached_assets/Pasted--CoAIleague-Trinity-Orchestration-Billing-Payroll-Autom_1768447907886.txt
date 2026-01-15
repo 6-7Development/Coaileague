@@ -1,0 +1,531 @@
+# CoAIleague Trinity Orchestration - Billing & Payroll Automation
+
+## Overview
+
+This specification defines the **automated billing and payroll cycles** managed by Trinity AI Orchestration. Each client and organization has isolated settings that control:
+
+- **When** invoices are generated
+- **When** payroll runs
+- **When** data syncs to QuickBooks
+- **How** due dates are calculated
+
+**Trinity knows:**
+- Each org's payroll cycle
+- Each client's billing cycle
+- When the last invoice/payroll was processed
+- What's pending and what's due
+
+---
+
+## Database Schema Additions
+
+### 1. Organization Settings (Payroll Cycles)
+
+```sql
+CREATE TABLE organization_settings (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID REFERENCES workspaces(id) UNIQUE,
+  
+  -- ═══════════════════════════════════════════════════════════════
+  -- PAYROLL SETTINGS
+  -- ═══════════════════════════════════════════════════════════════
+  
+  payroll_cycle VARCHAR(50) NOT NULL DEFAULT 'bi_weekly',
+  -- Options: 'daily', 'weekly', 'bi_weekly', 'semi_monthly', 'monthly'
+  
+  payroll_day_of_week INTEGER,              -- 0=Sunday, 1=Monday..6=Sat (for weekly/bi_weekly)
+  payroll_day_of_month INTEGER,             -- 1-31 (for semi_monthly/monthly)
+  payroll_second_day_of_month INTEGER,      -- For semi_monthly (e.g., 15th and last day)
+  
+  payroll_cutoff_days INTEGER DEFAULT 2,    -- Days before payday to cutoff time entries
+  payroll_process_time TIME DEFAULT '06:00:00',  -- What time to run payroll automation
+  
+  -- Pay period tracking
+  current_pay_period_start DATE,
+  current_pay_period_end DATE,
+  last_payroll_run_at TIMESTAMP,
+  next_payroll_run_at TIMESTAMP,
+  
+  -- Overtime rules
+  overtime_threshold_weekly DECIMAL(5,2) DEFAULT 40,
+  overtime_multiplier DECIMAL(3,2) DEFAULT 1.5,
+  double_time_threshold DECIMAL(5,2),
+  double_time_multiplier DECIMAL(3,2) DEFAULT 2.0,
+  
+  -- QuickBooks Payroll Integration
+  qb_payroll_enabled BOOLEAN DEFAULT false,
+  qb_payroll_sync_auto BOOLEAN DEFAULT true,
+  
+  -- ═══════════════════════════════════════════════════════════════
+  -- DEFAULT BILLING SETTINGS (can be overridden per client)
+  -- ═══════════════════════════════════════════════════════════════
+  
+  default_billing_cycle VARCHAR(50) DEFAULT 'monthly',
+  default_payment_terms VARCHAR(50) DEFAULT 'net_30',
+  default_invoice_day INTEGER DEFAULT 1,
+  
+  -- ═══════════════════════════════════════════════════════════════
+  -- QUICKBOOKS SYNC SETTINGS
+  -- ═══════════════════════════════════════════════════════════════
+  
+  qb_sync_enabled BOOLEAN DEFAULT true,
+  qb_sync_frequency VARCHAR(50) DEFAULT 'realtime',
+  qb_last_sync_at TIMESTAMP,
+  qb_sync_errors JSONB DEFAULT '[]',
+  
+  -- ═══════════════════════════════════════════════════════════════
+  -- TRINITY AUTOMATION SETTINGS
+  -- ═══════════════════════════════════════════════════════════════
+  
+  trinity_auto_invoice BOOLEAN DEFAULT true,
+  trinity_auto_payroll BOOLEAN DEFAULT true,
+  trinity_auto_reminders BOOLEAN DEFAULT true,
+  trinity_approval_required BOOLEAN DEFAULT true,
+  
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+### 2. Client Billing Settings (Per-Client Override)
+
+```sql
+CREATE TABLE client_billing_settings (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  client_id UUID REFERENCES clients(id) ON DELETE CASCADE UNIQUE,
+  workspace_id UUID REFERENCES workspaces(id),
+  
+  -- ═══════════════════════════════════════════════════════════════
+  -- BILLING CYCLE
+  -- ═══════════════════════════════════════════════════════════════
+  
+  billing_cycle VARCHAR(50) NOT NULL DEFAULT 'monthly',
+  -- Options: 'daily', 'weekly', 'bi_weekly', 'semi_monthly', 'monthly', 'on_completion'
+  
+  billing_day_of_week INTEGER,
+  billing_day_of_month INTEGER,
+  billing_second_day_of_month INTEGER,
+  billing_process_time TIME DEFAULT '08:00:00',
+  
+  -- ═══════════════════════════════════════════════════════════════
+  -- PAYMENT TERMS & DUE DATES
+  -- ═══════════════════════════════════════════════════════════════
+  
+  payment_terms VARCHAR(50) NOT NULL DEFAULT 'net_30',
+  -- Options: 'due_on_receipt', 'net_7', 'net_15', 'net_30', 'net_45', 'net_60', 'custom'
+  
+  custom_due_days INTEGER,
+  due_date_type VARCHAR(50) DEFAULT 'from_invoice_date',
+  -- Options: 'from_invoice_date', 'from_service_end', 'fixed_day_of_month'
+  
+  fixed_due_day_of_month INTEGER,
+  
+  -- ═══════════════════════════════════════════════════════════════
+  -- INVOICE TRACKING
+  -- ═══════════════════════════════════════════════════════════════
+  
+  last_invoice_date DATE,
+  last_invoice_id UUID REFERENCES invoices(id),
+  last_service_period_start DATE,
+  last_service_period_end DATE,
+  next_invoice_date DATE,
+  
+  -- ═══════════════════════════════════════════════════════════════
+  -- AUTOMATION SETTINGS
+  -- ═══════════════════════════════════════════════════════════════
+  
+  auto_generate_invoice BOOLEAN DEFAULT true,
+  auto_send_invoice BOOLEAN DEFAULT false,
+  require_approval_before_send BOOLEAN DEFAULT true,
+  minimum_invoice_amount DECIMAL(10,2) DEFAULT 0,
+  consolidate_sub_clients BOOLEAN DEFAULT true,
+  separate_invoice_per_sub_client BOOLEAN DEFAULT false,
+  
+  -- ═══════════════════════════════════════════════════════════════
+  -- QUICKBOOKS SYNC
+  -- ═══════════════════════════════════════════════════════════════
+  
+  qb_auto_sync BOOLEAN DEFAULT true,
+  qb_sync_on_create BOOLEAN DEFAULT true,
+  qb_sync_on_payment BOOLEAN DEFAULT true,
+  
+  -- ═══════════════════════════════════════════════════════════════
+  -- REMINDERS
+  -- ═══════════════════════════════════════════════════════════════
+  
+  send_payment_reminders BOOLEAN DEFAULT true,
+  reminder_days_before_due INTEGER[] DEFAULT '{7, 3, 1}',
+  reminder_days_after_due INTEGER[] DEFAULT '{1, 7, 14, 30}',
+  
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_client_billing_next_invoice ON client_billing_settings(next_invoice_date);
+```
+
+### 3. Trinity Automation Queue
+
+```sql
+CREATE TABLE trinity_automation_queue (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID REFERENCES workspaces(id),
+  
+  task_type VARCHAR(100) NOT NULL,
+  -- Types: 'generate_invoice', 'send_invoice', 'run_payroll', 'sync_quickbooks',
+  --        'send_reminder', 'process_timesheet', 'reconcile_data'
+  
+  target_type VARCHAR(50),
+  target_id UUID,
+  
+  scheduled_for TIMESTAMP NOT NULL,
+  priority INTEGER DEFAULT 5,
+  
+  status VARCHAR(50) DEFAULT 'pending',
+  -- Options: 'pending', 'processing', 'completed', 'failed', 'cancelled', 'awaiting_approval'
+  
+  started_at TIMESTAMP,
+  completed_at TIMESTAMP,
+  retry_count INTEGER DEFAULT 0,
+  max_retries INTEGER DEFAULT 3,
+  
+  result JSONB,
+  error_message TEXT,
+  
+  requires_approval BOOLEAN DEFAULT false,
+  approved_by UUID REFERENCES users(id),
+  approved_at TIMESTAMP,
+  
+  metadata JSONB DEFAULT '{}',
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_automation_queue_status ON trinity_automation_queue(status, scheduled_for);
+```
+
+### 4. Payroll Items Table
+
+```sql
+CREATE TABLE payroll_items (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  payroll_run_id UUID REFERENCES payroll_runs(id) ON DELETE CASCADE,
+  employee_id UUID REFERENCES employees(id),
+  
+  -- Hours breakdown
+  regular_hours DECIMAL(10,2) DEFAULT 0,
+  overtime_hours DECIMAL(10,2) DEFAULT 0,
+  holiday_hours DECIMAL(10,2) DEFAULT 0,
+  
+  -- Rates used
+  regular_rate DECIMAL(10,2),
+  overtime_rate DECIMAL(10,2),
+  holiday_rate DECIMAL(10,2),
+  
+  -- Pay breakdown
+  regular_pay DECIMAL(12,2) DEFAULT 0,
+  overtime_pay DECIMAL(12,2) DEFAULT 0,
+  holiday_pay DECIMAL(12,2) DEFAULT 0,
+  gross_pay DECIMAL(12,2) DEFAULT 0,
+  
+  -- Deductions
+  deductions JSONB DEFAULT '[]',
+  total_deductions DECIMAL(12,2) DEFAULT 0,
+  net_pay DECIMAL(12,2) DEFAULT 0,
+  
+  -- Work breakdown by client/site
+  work_breakdown JSONB DEFAULT '[]',
+  -- Format: [{ sub_client_id, site_name, hours, amount }]
+  
+  -- QuickBooks
+  qb_employee_id VARCHAR(100),
+  qb_time_activity_id VARCHAR(100),
+  qb_synced_at TIMESTAMP,
+  
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_payroll_items_run ON payroll_items(payroll_run_id);
+CREATE INDEX idx_payroll_items_employee ON payroll_items(employee_id);
+```
+
+---
+
+## Payment Terms Reference
+
+| Term | Days | Description |
+|------|------|-------------|
+| due_on_receipt | 0 | Payment due immediately |
+| net_7 | 7 | Payment due in 7 days |
+| net_15 | 15 | Payment due in 15 days |
+| net_30 | 30 | Payment due in 30 days |
+| net_45 | 45 | Payment due in 45 days |
+| net_60 | 60 | Payment due in 60 days |
+| custom | N | Custom number of days |
+
+---
+
+## Billing Cycle Reference
+
+| Cycle | Description | Settings Used |
+|-------|-------------|---------------|
+| daily | Invoice every day | N/A |
+| weekly | Invoice every week | billing_day_of_week |
+| bi_weekly | Invoice every 2 weeks | billing_day_of_week |
+| semi_monthly | Invoice twice a month | billing_day_of_month, billing_second_day_of_month |
+| monthly | Invoice once a month | billing_day_of_month |
+| on_completion | Manual trigger only | N/A |
+
+---
+
+## Payroll Cycle Reference
+
+| Cycle | Description | Settings Used |
+|-------|-------------|---------------|
+| daily | Pay every day | N/A |
+| weekly | Pay every week | payroll_day_of_week |
+| bi_weekly | Pay every 2 weeks | payroll_day_of_week |
+| semi_monthly | Pay twice a month (e.g., 15th & last) | payroll_day_of_month, payroll_second_day_of_month |
+| monthly | Pay once a month | payroll_day_of_month |
+
+---
+
+## Trinity Orchestration Engine
+
+### Core Functions
+
+```javascript
+class TrinityOrchestrator {
+  
+  // Main scheduled job - runs every minute
+  async runScheduledTasks() {
+    await this.checkDueInvoices();
+    await this.checkDuePayroll();
+    await this.processAutomationQueue();
+    await this.checkPaymentReminders();
+    await this.processPendingQBSync();
+  }
+  
+  // Calculate next invoice date based on billing cycle
+  calculateNextInvoiceDate(settings, lastDate) {
+    switch (settings.billing_cycle) {
+      case 'daily': return addDays(lastDate, 1);
+      case 'weekly': return nextDayOfWeek(lastDate, settings.billing_day_of_week, 7);
+      case 'bi_weekly': return nextDayOfWeek(lastDate, settings.billing_day_of_week, 14);
+      case 'semi_monthly': return nextSemiMonthly(lastDate, settings);
+      case 'monthly': return nextMonthDay(lastDate, settings.billing_day_of_month);
+      case 'on_completion': return null;
+    }
+  }
+  
+  // Calculate due date based on payment terms
+  calculateDueDate(invoiceDate, servicePeriodEnd, settings) {
+    let baseDate = settings.due_date_type === 'from_service_end' 
+      ? servicePeriodEnd 
+      : invoiceDate;
+      
+    if (settings.due_date_type === 'fixed_day_of_month') {
+      return nextDayOfMonth(invoiceDate, settings.fixed_due_day_of_month);
+    }
+    
+    const days = settings.payment_terms === 'custom' 
+      ? settings.custom_due_days 
+      : PAYMENT_TERM_DAYS[settings.payment_terms];
+      
+    return addDays(baseDate, days);
+  }
+  
+  // Calculate pay period boundaries
+  calculatePayPeriod(settings, payrollDate) {
+    // Returns { periodStart, periodEnd } based on cycle
+  }
+  
+  // Generate invoice for client
+  async generateInvoice(clientId) {
+    // 1. Get uninvoiced time entries for this client
+    // 2. Group by sub-client
+    // 3. Create invoice with calculated due date
+    // 4. Create line items with full description data
+    // 5. Mark time entries as invoiced
+    // 6. Queue QuickBooks sync
+  }
+  
+  // Run payroll for workspace
+  async runPayroll(workspaceId, periodStart, periodEnd) {
+    // 1. Get approved time entries in period
+    // 2. Group by employee
+    // 3. Calculate regular, overtime, holiday hours
+    // 4. Apply correct pay rates
+    // 5. Create payroll items with work breakdown
+    // 6. Mark time entries as paid
+    // 7. Queue QuickBooks sync
+  }
+  
+  // Sync to QuickBooks
+  async syncToQuickBooks(targetType, targetId) {
+    // Handles: invoice, payroll_run, client, employee
+    // Uses correct QB IDs for matching
+  }
+}
+```
+
+---
+
+## Data Flow: Schedule to Payment
+
+```
+1. SCHEDULE CREATED
+   ├── employee_id
+   ├── client_id
+   ├── sub_client_id ← CRITICAL
+   ├── site_id
+   ├── bill_rate (from sub-client)
+   └── pay_rate (from employee/client rates)
+
+2. GUARD CLOCKS IN/OUT
+   ├── All IDs inherited from shift
+   ├── GPS verified
+   ├── Hours calculated
+   ├── billable_amount = hours × bill_rate
+   └── payable_amount = hours × pay_rate
+
+3. TIMESHEET APPROVED
+   └── time_entry.status = 'approved'
+
+4. TRINITY CHECKS AUTOMATION SCHEDULES
+   │
+   ├─── CLIENT BILLING CYCLE DUE?
+   │    └── Queue: generate_invoice
+   │
+   └─── ORG PAYROLL CYCLE DUE?
+        └── Queue: run_payroll
+
+5A. INVOICE GENERATED
+    ├── Grouped by sub_client_id
+    ├── Line items with full description:
+    │   ├── Job ID
+    │   ├── Sub-client name
+    │   ├── Location
+    │   ├── Date list
+    │   └── Hours × Rate
+    ├── Due date calculated from payment_terms
+    ├── time_entry.status = 'invoiced'
+    └── Queue: sync_quickbooks (invoice)
+
+5B. PAYROLL PROCESSED
+    ├── Grouped by employee_id
+    ├── Work breakdown by sub_client/site
+    ├── Overtime calculated per week
+    ├── time_entry.status = 'paid'
+    └── Queue: sync_quickbooks (payroll)
+
+6. QUICKBOOKS SYNC
+   ├── Invoice → QB Invoice (with correct customer/sub-customer)
+   ├── Payroll → QB Time Activities (with correct employee ID)
+   └── All IDs matched and tracked
+```
+
+---
+
+## API Endpoints
+
+### Organization Settings
+```
+GET  /api/settings/organization
+PUT  /api/settings/organization
+```
+
+### Client Billing Settings
+```
+GET  /api/clients/:id/billing-settings
+PUT  /api/clients/:id/billing-settings
+```
+
+### Automation Queue
+```
+GET  /api/automation/queue
+GET  /api/automation/queue/:id
+POST /api/automation/queue/:id/approve
+POST /api/automation/queue/:id/cancel
+POST /api/automation/trigger/:taskType  (manual trigger)
+```
+
+### Automation Logs
+```
+GET  /api/automation/logs
+GET  /api/automation/logs/:id
+```
+
+---
+
+## Testing Checklist
+
+### Billing Automation
+- [ ] Daily billing cycle triggers correctly
+- [ ] Weekly billing cycle triggers on correct day
+- [ ] Bi-weekly billing cycle triggers every 2 weeks
+- [ ] Semi-monthly billing triggers on both days
+- [ ] Monthly billing triggers on correct day
+- [ ] "On completion" only triggers manually
+
+### Payment Terms
+- [ ] Due on receipt = invoice date
+- [ ] Net 7/15/30/45/60 adds correct days
+- [ ] Custom days works
+- [ ] Fixed day of month works
+- [ ] From service end date works
+
+### Payroll Automation
+- [ ] Payroll cycles trigger correctly
+- [ ] Pay periods calculated correctly
+- [ ] Overtime calculated per week
+- [ ] Employee pay rates applied correctly
+- [ ] Work breakdown by client/site included
+
+### QuickBooks Sync
+- [ ] Invoice syncs with correct customer/sub-customer
+- [ ] Payroll syncs with correct employee ID
+- [ ] Sync timing respects settings
+- [ ] Failed syncs retry correctly
+
+### Data Integrity
+- [ ] No time entry invoiced twice
+- [ ] No time entry in payroll twice
+- [ ] All invoiced time has invoice_id
+- [ ] All paid time has payroll_run_id
+- [ ] sub_client_id flows through entire chain
+
+---
+
+## Summary for Replit
+
+**Implement this Trinity Orchestration system that:**
+
+1. **Organization Settings** - Each workspace has its own payroll cycle (daily/weekly/bi-weekly/semi-monthly/monthly)
+
+2. **Client Billing Settings** - Each client can have different:
+   - Billing cycle
+   - Payment terms (due on receipt, net 30, etc.)
+   - Auto-generate and auto-send settings
+   - Sub-client consolidation preference
+
+3. **Trinity Automation Queue** - Tasks scheduled and processed:
+   - generate_invoice
+   - run_payroll
+   - sync_quickbooks
+   - send_reminder
+
+4. **Trinity Orchestrator** - Engine that:
+   - Runs every minute checking for due tasks
+   - Respects each org/client's isolated settings
+   - Tracks last run dates and calculates next
+   - Queues tasks and processes them
+   - Handles approval workflows
+   - Syncs to QuickBooks at right times
+
+**Critical Integration Points:**
+- Uses sub_client_id from invoice data architecture
+- Uses correct employee IDs for QB payroll sync
+- Tracks work breakdown by site for accurate records
+- No data loss between time tracking → invoicing → payroll → QB
+
+**This connects to the invoice data architecture spec** - Together they form the complete billing and payroll automation system.
