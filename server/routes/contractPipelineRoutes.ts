@@ -139,7 +139,7 @@ router.delete('/templates/:id', async (req: AuthenticatedRequest, res: Response)
 // CONTRACTS (Proposals, Contracts, Amendments)
 // ============================================================================
 
-router.get('/contracts', async (req: AuthenticatedRequest, res: Response) => {
+router.get('/', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const workspaceId = req.session?.workspaceId;
     if (!workspaceId) {
@@ -163,7 +163,7 @@ router.get('/contracts', async (req: AuthenticatedRequest, res: Response) => {
   }
 });
 
-router.post('/contracts', async (req: AuthenticatedRequest, res: Response) => {
+router.post('/', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const workspaceId = req.session?.workspaceId;
     const userId = req.session?.userId;
@@ -205,7 +205,7 @@ router.post('/contracts', async (req: AuthenticatedRequest, res: Response) => {
   }
 });
 
-router.get('/contracts/:id', async (req: AuthenticatedRequest, res: Response) => {
+router.get('/:id', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const contract = await contractPipelineService.getContract(req.params.id);
     if (!contract) {
@@ -218,7 +218,7 @@ router.get('/contracts/:id', async (req: AuthenticatedRequest, res: Response) =>
   }
 });
 
-router.patch('/contracts/:id', async (req: AuthenticatedRequest, res: Response) => {
+router.patch('/:id', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const contract = await contractPipelineService.updateContract(
       req.params.id,
@@ -239,7 +239,7 @@ router.patch('/contracts/:id', async (req: AuthenticatedRequest, res: Response) 
 // PROPOSAL WORKFLOW
 // ============================================================================
 
-router.post('/contracts/:id/send', async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:id/send', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const result = await contractPipelineService.sendProposal(
       req.params.id,
@@ -252,7 +252,7 @@ router.post('/contracts/:id/send', async (req: AuthenticatedRequest, res: Respon
   }
 });
 
-router.post('/contracts/:id/accept', async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:id/accept', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const contract = await contractPipelineService.acceptProposal(
       req.params.id,
@@ -265,7 +265,7 @@ router.post('/contracts/:id/accept', async (req: AuthenticatedRequest, res: Resp
   }
 });
 
-router.post('/contracts/:id/request-changes', async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:id/request-changes', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { changesRequested } = req.body;
     if (!changesRequested) {
@@ -283,7 +283,7 @@ router.post('/contracts/:id/request-changes', async (req: AuthenticatedRequest, 
   }
 });
 
-router.post('/contracts/:id/decline', async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:id/decline', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { reason } = req.body;
     const contract = await contractPipelineService.declineProposal(
@@ -302,7 +302,7 @@ router.post('/contracts/:id/decline', async (req: AuthenticatedRequest, res: Res
 // SIGNATURES
 // ============================================================================
 
-router.get('/contracts/:id/signatures', async (req: AuthenticatedRequest, res: Response) => {
+router.get('/:id/signatures', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const signatures = await contractPipelineService.getSignatures(req.params.id);
     res.json({ signatures });
@@ -312,7 +312,7 @@ router.get('/contracts/:id/signatures', async (req: AuthenticatedRequest, res: R
   }
 });
 
-router.post('/contracts/:id/sign', async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:id/sign', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const schema = z.object({
       signerRole: z.enum(['company', 'client', 'witness', 'notary']),
@@ -352,7 +352,7 @@ router.post('/contracts/:id/sign', async (req: AuthenticatedRequest, res: Respon
 // AUDIT TRAIL
 // ============================================================================
 
-router.get('/contracts/:id/audit', async (req: AuthenticatedRequest, res: Response) => {
+router.get('/:id/audit', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const auditTrail = await contractPipelineService.getAuditTrail(req.params.id);
     res.json({ auditTrail });
@@ -366,7 +366,7 @@ router.get('/contracts/:id/audit', async (req: AuthenticatedRequest, res: Respon
 // EVIDENCE EXPORT
 // ============================================================================
 
-router.get('/contracts/:id/evidence', async (req: AuthenticatedRequest, res: Response) => {
+router.get('/:id/evidence', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const evidencePackage = await contractPipelineService.generateEvidencePackage(req.params.id);
     res.json(evidencePackage);
@@ -376,7 +376,7 @@ router.get('/contracts/:id/evidence', async (req: AuthenticatedRequest, res: Res
   }
 });
 
-router.get('/contracts/:id/verify', async (req: AuthenticatedRequest, res: Response) => {
+router.get('/:id/verify', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const verification = await contractPipelineService.verifyDocumentIntegrity(req.params.id);
     res.json(verification);
