@@ -233,13 +233,13 @@ export class APICrawler {
         description: 'Public Stripe configuration'
       },
       {
-        id: 'pricing-tiers',
-        name: 'Pricing Tiers',
-        endpoint: '/api/billing/plans',
+        id: 'billing-credits',
+        name: 'Billing Credits Balance',
+        endpoint: '/api/billing/credits/balance',
         method: 'GET',
-        expectedStatus: [200, 404],
-        requiresAuth: false,
-        description: 'Get subscription pricing tiers'
+        expectedStatus: [200, 401, 404, 503],
+        requiresAuth: true,
+        description: 'Get workspace credit balance'
       }
     ];
   }

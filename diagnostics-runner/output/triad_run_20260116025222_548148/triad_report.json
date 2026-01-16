@@ -1,0 +1,681 @@
+{
+  "runId": "run_20260116025222_4ebffe",
+  "startedAt": "2026-01-16T02:52:22.306Z",
+  "completedAt": "2026-01-16T02:52:23.991Z",
+  "duration": 1685,
+  "baseUrl": "http://localhost:5000",
+  "mode": "api-only",
+  "crawlerResults": {
+    "api": {
+      "endpointsTestedCount": 15,
+      "testResults": [
+        {
+          "testCase": {
+            "id": "health-check",
+            "name": "Health Check Endpoint",
+            "endpoint": "/api/health",
+            "method": "GET",
+            "expectedStatus": 200,
+            "requiresAuth": false,
+            "description": "Basic server health check"
+          },
+          "success": true,
+          "statusCode": 200,
+          "responseTime": 52,
+          "responseBody": {
+            "status": "healthy",
+            "timestamp": "2026-01-16T02:52:23.196Z",
+            "uptime": 42.023087561,
+            "version": "1.0.0",
+            "services": {
+              "database": {
+                "status": "up",
+                "message": "Database responding normally"
+              },
+              "websocket": {
+                "status": "up",
+                "message": "Chat WebSocket server ready (awaiting connections)"
+              },
+              "stripe": {
+                "status": "up",
+                "message": "Stripe API responding normally"
+              },
+              "gemini": {
+                "status": "up",
+                "message": "Gemini AI configured"
+              },
+              "resend": {
+                "status": "up"
+              }
+            }
+          },
+          "timestamp": "2026-01-16T02:52:23.201Z"
+        },
+        {
+          "testCase": {
+            "id": "health-summary",
+            "name": "Health Summary",
+            "endpoint": "/api/health/summary",
+            "method": "GET",
+            "expectedStatus": 200,
+            "requiresAuth": false,
+            "description": "Detailed health summary"
+          },
+          "success": true,
+          "statusCode": 200,
+          "responseTime": 51,
+          "responseBody": {
+            "overall": "operational",
+            "services": [
+              {
+                "service": "database",
+                "status": "operational",
+                "isCritical": true,
+                "message": "Database responding normally",
+                "lastChecked": "2026-01-16T02:52:04.621Z",
+                "latencyMs": 57
+              },
+              {
+                "service": "chat_websocket",
+                "status": "operational",
+                "isCritical": true,
+                "message": "Chat WebSocket server ready (awaiting connections)",
+                "lastChecked": "2026-01-16T02:52:04.564Z",
+                "metadata": {
+                  "activeConnections": 0,
+                  "averageMessageCount": 0,
+                  "averageConnectionDuration": 0
+                }
+              },
+              {
+                "service": "gemini_ai",
+                "status": "operational",
+                "isCritical": true,
+                "message": "Gemini AI configured",
+                "lastChecked": "2026-01-16T02:52:04.564Z"
+              },
+              {
+                "service": "object_storage",
+                "status": "operational",
+                "isCritical": false,
+                "message": "Object storage responding normally (files present)",
+                "lastChecked": "2026-01-16T02:52:04.716Z",
+                "latencyMs": 152,
+                "metadata": {
+                  "bucketId": "replit-objstore-ba88e5c1-1507-4dff-af10-a268378161f6",
+                  "hasFiles": true
+                }
+              },
+              {
+                "service": "stripe",
+                "status": "operational",
+                "isCritical": false,
+                "message": "Stripe API responding normally",
+                "lastChecked": "2026-01-16T02:52:04.837Z",
+                "latencyMs": 269
+              },
+              {
+                "service": "email",
+                "status": "operational",
+                "isCritical": false,
+                "message": "Email service configured",
+                "lastChecked": "2026-01-16T02:52:04.586Z"
+              },
+              {
+                "service": "quickbooks",
+                "status": "degraded",
+                "isCritical": false,
+                "message": "QuickBooks: 1 connection(s) need token refresh",
+                "lastChecked": "2026-01-16T02:52:09.513Z",
+                "metadata": {
+                  "connectedAccounts": 1,
+                  "expiringTokens": 1
+                }
+              },
+              {
+                "service": "gusto",
+                "status": "operational",
+                "isCritical": false,
+                "message": "Gusto integration ready (no active connections)",
+                "lastChecked": "2026-01-16T02:52:09.535Z",
+                "metadata": {
+                  "connectedAccounts": 0
+                }
+              }
+            ],
+            "timestamp": "2026-01-16T02:52:23.251Z",
+            "criticalServicesCount": 3,
+            "operationalServicesCount": 7
+          },
+          "timestamp": "2026-01-16T02:52:23.253Z"
+        },
+        {
+          "testCase": {
+            "id": "auth-check",
+            "name": "Auth Status Check",
+            "endpoint": "/api/auth/check",
+            "method": "GET",
+            "expectedStatus": [
+              200,
+              401
+            ],
+            "requiresAuth": false,
+            "description": "Check authentication status"
+          },
+          "success": true,
+          "statusCode": 200,
+          "responseTime": 48,
+          "responseBody": {
+            "authenticated": false
+          },
+          "timestamp": "2026-01-16T02:52:23.301Z"
+        },
+        {
+          "testCase": {
+            "id": "mascot-seasonal",
+            "name": "Seasonal State",
+            "endpoint": "/api/mascot/seasonal/state",
+            "method": "GET",
+            "expectedStatus": 200,
+            "requiresAuth": false,
+            "description": "Trinity mascot seasonal state"
+          },
+          "success": true,
+          "statusCode": 200,
+          "responseTime": 46,
+          "responseBody": {
+            "success": true,
+            "profile": {
+              "seasonId": "default",
+              "holidayName": null,
+              "isHoliday": false,
+              "theme": {
+                "forceDarkMode": false,
+                "primaryColor": "#38bdf8",
+                "secondaryColor": "#a855f7",
+                "accentColor": "#ffffff",
+                "glowColor": "#38bdf8"
+              },
+              "effects": {
+                "primary": "none",
+                "secondary": null,
+                "cadence": "medium",
+                "intensity": 0,
+                "accumulation": false,
+                "accumulationCycle": null
+              },
+              "ornaments": {
+                "enabled": false,
+                "types": [],
+                "colors": [],
+                "density": "sparse"
+              },
+              "mascotHints": {
+                "preferredZones": [
+                  "corners"
+                ],
+                "avoidEffectZones": true,
+                "seasonalEmotes": [],
+                "seasonalThoughts": [
+                  "Great day to work!",
+                  "Let's be productive!",
+                  "I'm here to help!",
+                  "What's the plan?"
+                ]
+              },
+              "validUntil": "2026-01-17T02:52:23.346Z",
+              "aiGenerated": false
+            },
+            "timestamp": "2026-01-16T02:52:23.346Z"
+          },
+          "timestamp": "2026-01-16T02:52:23.348Z"
+        },
+        {
+          "testCase": {
+            "id": "runtime-flags",
+            "name": "Runtime Flags",
+            "endpoint": "/api/runtime-flags",
+            "method": "GET",
+            "expectedStatus": 200,
+            "requiresAuth": false,
+            "description": "Trinity runtime configuration flags"
+          },
+          "success": true,
+          "statusCode": 200,
+          "responseTime": 89,
+          "responseBody": {
+            "success": true,
+            "flags": [
+              {
+                "id": "8b6a0c6d-a5b2-4927-bac2-54ad5bc42400",
+                "key": "trinity.autonomous_scheduling",
+                "label": "Trinity Autonomous Scheduling",
+                "description": "Allow Trinity to create and modify schedules automatically",
+                "category": "ai",
+                "flagType": "toggle",
+                "valueType": "boolean",
+                "currentValue": "true",
+                "defaultValue": "true",
+                "safetyLevel": "medium_risk",
+                "allowedActors": [
+                  "trinity",
+                  "admin"
+                ],
+                "requiresApproval": false,
+                "workspaceId": null,
+                "isEnabled": true,
+                "lastModifiedBy": "system",
+                "lastModifiedReason": null,
+                "createdAt": "2026-01-13T10:05:05.871Z",
+                "updatedAt": "2026-01-13T10:05:05.871Z"
+              },
+              {
+                "id": "aceddde3-80c5-4990-8667-62fbf9973653",
+                "key": "trinity.diagnostics_auto_fix",
+                "label": "Trinity Auto-Fix from Diagnostics",
+                "description": "Allow Trinity to automatically toggle flags based on diagnostic findings",
+                "category": "ai",
+                "flagType": "toggle",
+                "valueType": "boolean",
+                "currentValue": "true",
+                "defaultValue": "true",
+                "safetyLevel": "low_risk",
+                "allowedActors": [
+                  "trinity",
+                  "admin"
+                ],
+                "requiresApproval": false,
+                "workspaceId": null,
+                "isEnabled": true,
+                "lastModifiedBy": "system",
+                "lastModifiedReason": null,
+                "createdAt": "2026-01-13T10:05:05.871Z",
+                "updatedAt": "2026-01-13T10:05:05.871Z"
+              },
+              {
+                "id": "17e868cb-0a32-4a74-919a-50123c5ca623",
+                "key": "performance.rate_limit_multiplier",
+                "label": "Rate Limit Multiplier",
+                "description": "Multiply default rate limits (1.0 = normal, 0.5 = stricter)",
+                "category": "performance",
+                "flagType": "threshold",
+                "valueType": "number",
+                "currentValue": "1.0",
+                "defaultValue": "1.0",
+                "safetyLevel": "medium_risk",
+                "allowedActors": [
+                  "trinity",
+                  "admin"
+                ],
+                "requiresApproval": false,
+                "workspaceId": null,
+                "isEnabled": true,
+                "lastModifiedBy": "system",
+                "lastModifiedReason": null,
+                "createdAt": "2026-01-13T10:05:05.871Z",
+                "updatedAt": "2026-01-13T10:05:05.871Z"
+              },
+              {
+                "id": "a8d82e8e-ecbc-41e5-97f9-59678da58fe3",
+                "key": "integration.quickbooks_sync",
+                "label": "QuickBooks Auto-Sync",
+                "description": "Enable automatic QuickBooks synchronization",
+                "category": "integration",
+                "flagType": "toggle",
+                "valueType": "boolean",
+                "currentValue": "true",
+                "defaultValue": "true",
+                "safetyLevel": "medium_risk",
+                "allowedActors": [
+                  "trinity",
+                  "admin"
+                ],
+                "requiresApproval": false,
+                "workspaceId": null,
+                "isEnabled": true,
+                "lastModifiedBy": "system",
+                "lastModifiedReason": null,
+                "createdAt": "2026-01-13T10:05:05.871Z",
+                "updatedAt": "2026-01-13T10:05:05.871Z"
+              },
+              {
+                "id": "cebfd0b6-6e31-400a-96db-7c87e7ff396e",
+                "key": "ai.thought_rotation_interval",
+                "label": "Trinity Thought Rotation Interval",
+                "description": "Seconds between Trinity thought rotations",
+                "category": "ai",
+                "flagType": "threshold",
+                "valueType": "number",
+                "currentValue": "8",
+                "defaultValue": "8",
+                "safetyLevel": "low_risk",
+                "allowedActors": [
+                  "trinity",
+                  "admin"
+                ],
+                "requiresApproval": false,
+                "workspaceId": null,
+                "isEnabled": true,
+                "lastModifiedBy": "system",
+                "lastModifiedReason": null,
+                "createdAt": "2026-01-13T10:05:05.871Z",
+                "updatedAt": "2026-01-13T10:05:05.871Z"
+              },
+              {
+                "id": "1e58ea7a-34e7-4024-ac0f-8834adc8132f",
+                "key": "notifications.websocket_enabled",
+                "label": "WebSocket Notifications",
+                "description": "Enable real-time WebSocket notifications",
+                "category": "performance",
+                "flagType": "toggle",
+                "valueType": "boolean",
+                "currentValue": "true",
+                "defaultValue": "true",
+                "safetyLevel": "low_risk",
+                "allowedActors": [
+                  "trinity",
+                  "admin"
+                ],
+                "requiresApproval": false,
+                "workspaceId": null,
+                "isEnabled": true,
+                "lastModifiedBy": "system",
+                "lastModifiedReason": null,
+                "createdAt": "2026-01-13T10:05:05.871Z",
+                "updatedAt": "2026-01-13T10:05:05.871Z"
+              },
+              {
+                "id": "d719838c-d85b-44ec-a9a5-12f2b9939ab7",
+                "key": "ui.maintenance_mode",
+                "label": "Maintenance Mode",
+                "description": "Show maintenance banner and restrict certain features",
+                "category": "ui",
+                "flagType": "toggle",
+                "valueType": "boolean",
+                "currentValue": "false",
+                "defaultValue": "false",
+                "safetyLevel": "low_risk",
+                "allowedActors": [
+                  "trinity",
+                  "admin"
+                ],
+                "requiresApproval": false,
+                "workspaceId": null,
+                "isEnabled": true,
+                "lastModifiedBy": "trinity",
+                "lastModifiedReason": "Resetting after test",
+                "createdAt": "2026-01-13T10:05:05.871Z",
+                "updatedAt": "2026-01-13T10:08:18.035Z"
+              }
+            ]
+          },
+          "timestamp": "2026-01-16T02:52:23.437Z"
+        },
+        {
+          "testCase": {
+            "id": "workspaces-list",
+            "name": "List Workspaces",
+            "endpoint": "/api/workspaces/all",
+            "method": "GET",
+            "expectedStatus": [
+              200,
+              401
+            ],
+            "requiresAuth": true,
+            "description": "Get user workspaces"
+          },
+          "success": true,
+          "statusCode": 401,
+          "responseTime": 50,
+          "responseBody": {
+            "message": "Unauthorized - Please login"
+          },
+          "timestamp": "2026-01-16T02:52:23.487Z"
+        },
+        {
+          "testCase": {
+            "id": "current-workspace",
+            "name": "Current Workspace",
+            "endpoint": "/api/workspaces/current",
+            "method": "GET",
+            "expectedStatus": [
+              200,
+              401,
+              404
+            ],
+            "requiresAuth": true,
+            "description": "Get current workspace context"
+          },
+          "success": true,
+          "statusCode": 401,
+          "responseTime": 52,
+          "responseBody": {
+            "message": "Unauthorized - Please login"
+          },
+          "timestamp": "2026-01-16T02:52:23.540Z"
+        },
+        {
+          "testCase": {
+            "id": "employees-list",
+            "name": "List Employees",
+            "endpoint": "/api/employees",
+            "method": "GET",
+            "expectedStatus": [
+              200,
+              401
+            ],
+            "requiresAuth": true,
+            "description": "Get employee list"
+          },
+          "success": true,
+          "statusCode": 401,
+          "responseTime": 64,
+          "responseBody": {
+            "message": "Unauthorized - Please login"
+          },
+          "timestamp": "2026-01-16T02:52:23.604Z"
+        },
+        {
+          "testCase": {
+            "id": "schedules-current",
+            "name": "Current Schedules",
+            "endpoint": "/api/shifts",
+            "method": "GET",
+            "expectedStatus": [
+              200,
+              401
+            ],
+            "requiresAuth": true,
+            "description": "Get current schedules/shifts"
+          },
+          "success": true,
+          "statusCode": 401,
+          "responseTime": 50,
+          "responseBody": {
+            "message": "Unauthorized - Please login"
+          },
+          "timestamp": "2026-01-16T02:52:23.655Z"
+        },
+        {
+          "testCase": {
+            "id": "notifications-list",
+            "name": "Notifications",
+            "endpoint": "/api/notifications",
+            "method": "GET",
+            "expectedStatus": [
+              200,
+              401
+            ],
+            "requiresAuth": true,
+            "description": "Get user notifications"
+          },
+          "success": true,
+          "statusCode": 401,
+          "responseTime": 48,
+          "responseBody": {
+            "message": "Unauthorized - Please login"
+          },
+          "timestamp": "2026-01-16T02:52:23.703Z"
+        },
+        {
+          "testCase": {
+            "id": "invoices-list",
+            "name": "Invoices List",
+            "endpoint": "/api/invoices",
+            "method": "GET",
+            "expectedStatus": [
+              200,
+              401
+            ],
+            "requiresAuth": true,
+            "description": "Get invoice list"
+          },
+          "success": true,
+          "statusCode": 401,
+          "responseTime": 46,
+          "responseBody": {
+            "message": "Unauthorized - Please login"
+          },
+          "timestamp": "2026-01-16T02:52:23.750Z"
+        },
+        {
+          "testCase": {
+            "id": "billing-config",
+            "name": "Billing Configuration",
+            "endpoint": "/api/billing/status",
+            "method": "GET",
+            "expectedStatus": [
+              200,
+              401,
+              404
+            ],
+            "requiresAuth": true,
+            "description": "Get billing configuration"
+          },
+          "success": true,
+          "statusCode": 401,
+          "responseTime": 49,
+          "responseBody": {
+            "message": "Unauthorized - Please login"
+          },
+          "timestamp": "2026-01-16T02:52:23.799Z"
+        },
+        {
+          "testCase": {
+            "id": "ai-brain-status",
+            "name": "AI Brain Status",
+            "endpoint": "/api/trinity/status",
+            "method": "GET",
+            "expectedStatus": [
+              200,
+              401,
+              404
+            ],
+            "requiresAuth": true,
+            "description": "Trinity AI Brain system status"
+          },
+          "success": true,
+          "statusCode": 401,
+          "responseTime": 50,
+          "responseBody": {
+            "message": "Unauthorized - Please login"
+          },
+          "timestamp": "2026-01-16T02:52:23.850Z"
+        },
+        {
+          "testCase": {
+            "id": "stripe-config",
+            "name": "Stripe Configuration",
+            "endpoint": "/api/stripe/config",
+            "method": "GET",
+            "expectedStatus": [
+              200,
+              401
+            ],
+            "requiresAuth": false,
+            "description": "Public Stripe configuration"
+          },
+          "success": true,
+          "statusCode": 200,
+          "responseTime": 89,
+          "responseBody": {
+            "publishableKey": "mk_1SK1lG8XHrr8nNEqxDWh8ctS",
+            "isConfigured": true
+          },
+          "timestamp": "2026-01-16T02:52:23.939Z"
+        },
+        {
+          "testCase": {
+            "id": "billing-credits",
+            "name": "Billing Credits Balance",
+            "endpoint": "/api/billing/credits/balance",
+            "method": "GET",
+            "expectedStatus": [
+              200,
+              401,
+              404,
+              503
+            ],
+            "requiresAuth": true,
+            "description": "Get workspace credit balance"
+          },
+          "success": true,
+          "statusCode": 401,
+          "responseTime": 50,
+          "responseBody": {
+            "message": "Unauthorized - Please login"
+          },
+          "timestamp": "2026-01-16T02:52:23.990Z"
+        }
+      ],
+      "issues": [],
+      "authFlowsTestedCount": 2,
+      "averageResponseTime": 55.6,
+      "slowestEndpoints": [
+        {
+          "endpoint": "/api/runtime-flags",
+          "responseTime": 89
+        },
+        {
+          "endpoint": "/api/stripe/config",
+          "responseTime": 89
+        },
+        {
+          "endpoint": "/api/employees",
+          "responseTime": 64
+        },
+        {
+          "endpoint": "/api/health",
+          "responseTime": 52
+        },
+        {
+          "endpoint": "/api/workspaces/current",
+          "responseTime": 52
+        }
+      ]
+    }
+  },
+  "allIssues": [],
+  "summary": {
+    "totalIssuesFound": 0,
+    "criticalCount": 0,
+    "highCount": 0,
+    "mediumCount": 0,
+    "lowCount": 0,
+    "bySubsystem": {},
+    "byCrawler": {},
+    "readinessScore": 100,
+    "blockers": []
+  },
+  "prioritizedFixes": [],
+  "trinityInsights": {
+    "overallAssessment": "Platform is in good shape with minor issues to address.",
+    "topPriorities": [],
+    "quickWins": [],
+    "technicalDebt": [],
+    "launchReadiness": "ready",
+    "confidenceScore": 95
+  },
+  "artifactsPath": "/home/runner/workspace/diagnostics-runner/output/triad_run_20260116025222_548148",
+  "reportPath": "/home/runner/workspace/diagnostics-runner/output/triad_run_20260116025222_548148/triad_report.json"
+}
