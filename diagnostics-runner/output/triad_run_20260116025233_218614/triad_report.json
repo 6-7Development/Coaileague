@@ -1,0 +1,32 @@
+{
+  "runId": "run_20260116025233_4947e3",
+  "startedAt": "2026-01-16T02:52:33.101Z",
+  "completedAt": "2026-01-16T02:52:33.102Z",
+  "duration": 1,
+  "baseUrl": "http://localhost:5000",
+  "mode": "full",
+  "crawlerResults": {},
+  "allIssues": [],
+  "summary": {
+    "totalIssuesFound": 0,
+    "criticalCount": 0,
+    "highCount": 0,
+    "mediumCount": 0,
+    "lowCount": 0,
+    "bySubsystem": {},
+    "byCrawler": {},
+    "readinessScore": 100,
+    "blockers": []
+  },
+  "prioritizedFixes": [],
+  "trinityInsights": {
+    "overallAssessment": "Platform is in good shape with minor issues to address.",
+    "topPriorities": [],
+    "quickWins": [],
+    "technicalDebt": [],
+    "launchReadiness": "ready",
+    "confidenceScore": 95
+  },
+  "artifactsPath": "/home/runner/workspace/diagnostics-runner/output/triad_run_20260116025233_218614",
+  "reportPath": "/home/runner/workspace/diagnostics-runner/output/triad_run_20260116025233_218614/triad_report.json"
+}
