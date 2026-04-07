@@ -1,14 +1,24 @@
 /**
- * Credit Management Service
- * 
- * Core service for managing workspace automation credits:
- * - Check credit balance before AI operations
- * - Deduct credits when automations run
- * - Add credits from purchases or monthly allocation
- * - Track all credit transactions with full audit trail
- * 
- * Design: Credits are pre-paid "automation tokens" that users purchase to power AI features.
- * Each automation (scheduling, invoicing, payroll) costs a specific number of credits.
+ * Credit Management Service — LEGACY
+ *
+ * ⚠️  STATUS: LEGACY. The CoAIleague billing model has migrated to flat-rate
+ * monthly subscriptions with token tracking / allowed-action soft caps and
+ * overage charges rolled into the monthly invoice. Pre-paid credit purchases
+ * are no longer the primary metering mechanism.
+ *
+ * This file is kept in place for:
+ *   1. Backwards-compat with existing credit_transactions / credit_balances
+ *      data still in production databases
+ *   2. Audit trail integrity (existing transactions must remain queryable)
+ *   3. Internal/admin tooling that reads historical credit data
+ *
+ * NEW CODE SHOULD NOT INTRODUCE NEW CREDIT-CHECK CALLS. Use the flat-rate
+ * tier limits and soft-cap overage logic instead.
+ *
+ * To globally bypass all credit gating (e.g. while migrating callers off the
+ * credit model), set environment variable BILLING_LEGACY_CREDITS_DISABLED=1.
+ * When set, isUnlimitedCreditUser() returns true for everyone, effectively
+ * making credit checks a no-op without removing the code paths.
  */
 
 import { db } from '../../db';
@@ -42,6 +52,13 @@ const UNLIMITED_CREDIT_ROLES: PlatformRole[] = ['root_admin', 'deputy_admin', 's
  * Trial accounts should NOT get unlimited credits - they see their trial allocation
  */
 export async function isUnlimitedCreditUser(userId: string, workspaceId: string): Promise<boolean> {
+  // LEGACY BYPASS — see file header. When the credit system is disabled
+  // platform-wide via env var, every user is treated as unlimited so credit
+  // checks become a no-op. The flat-rate billing model handles enforcement.
+  if (process.env.BILLING_LEGACY_CREDITS_DISABLED === '1') {
+    return true;
+  }
+
   // Check platform role first (most privileged) - always unlimited
   const platformRole = await getUserPlatformRole(userId);
   if (hasPlatformWideAccess(platformRole)) {
@@ -53,11 +70,18 @@ export async function isUnlimitedCreditUser(userId: string, workspaceId: string)
     .from(workspaces)
     .where(eq(workspaces.id, workspaceId))
     .limit(1);
-  
+
   if (!workspace) {
     return false;
   }
-  
+
+  // Billing exempt workspaces (e.g. Statewide Protective Services, internal
+  // platform support orgs) bypass all credit/billing gates entirely. Set via
+  // root admin only — see workspaces.billingExempt column.
+  if ((workspace as any).billingExempt === true) {
+    return true;
+  }
+
   // Trial accounts do NOT get unlimited credits - they see their trial allocation
   // Only paid subscriptions get unlimited for owners
   const paidTiers = ['starter', 'professional', 'enterprise', 'unlimited'];

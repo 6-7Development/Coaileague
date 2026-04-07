@@ -43,15 +43,18 @@ export class QuickBooksOAuthService {
     this.clientId = process.env.QUICKBOOKS_CLIENT_ID || '';
     this.clientSecret = process.env.QUICKBOOKS_CLIENT_SECRET || '';
     
-    // Build redirect URI dynamically from Replit environment or use explicit setting
+    // Build redirect URI dynamically from hosting env, in priority order:
+    //   QUICKBOOKS_REDIRECT_URI (explicit) > APP_BASE_URL > Railway > Replit
     if (process.env.QUICKBOOKS_REDIRECT_URI) {
       this.redirectUri = process.env.QUICKBOOKS_REDIRECT_URI;
+    } else if (process.env.APP_BASE_URL) {
+      this.redirectUri = `${process.env.APP_BASE_URL}/api/integrations/quickbooks/callback`;
+    } else if (process.env.RAILWAY_PUBLIC_DOMAIN) {
+      this.redirectUri = `https://${process.env.RAILWAY_PUBLIC_DOMAIN}/api/integrations/quickbooks/callback`;
     } else if (process.env.REPLIT_DOMAINS) {
-      // Replit domains (primary domain is first)
       const primaryDomain = process.env.REPLIT_DOMAINS.split(',')[0];
       this.redirectUri = `https://${primaryDomain}/api/integrations/quickbooks/callback`;
     } else if (process.env.REPL_SLUG && process.env.REPL_OWNER) {
-      // Replit deployment URL pattern (legacy)
       this.redirectUri = `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co/api/integrations/quickbooks/callback`;
     } else {
       this.redirectUri = '';

@@ -20,9 +20,13 @@ import { db } from '../db';
 import { employees, shifts, workspaces, clients } from '@shared/schema';
 import { eq, and, inArray } from 'drizzle-orm';
 
-const APP_URL = process.env.REPLIT_DOMAINS?.split(',')[0] 
-  ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
-  : 'https://coaileague.replit.app';
+// Application base URL — checked across hosting providers in priority order:
+// APP_BASE_URL (explicit) > Railway > Replit > public coaileague.com
+const APP_URL =
+  process.env.APP_BASE_URL ||
+  (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : null) ||
+  (process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}` : null) ||
+  'https://www.coaileague.com';
 
 /**
  * Handle schedule published event - notify all affected employees
