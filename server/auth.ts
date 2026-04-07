@@ -13,6 +13,7 @@ import "./types";
 import { trinityOrchestration } from "./services/trinity/trinityOrchestrationAdapter";
 import { createLogger } from './lib/logger';
 import { AUTH } from './config/platformConfig';
+import { isProduction as isProductionEnv } from './lib/isProduction';
 
 const log = createLogger('auth');
 
@@ -314,8 +315,10 @@ export function getSession() {
 const TEST_MODE_SECRET = process.env.DIAG_BYPASS_SECRET || process.env.TEST_MODE_SECRET;
 // Playwright test key for development E2E testing - only works in development
 const PLAYWRIGHT_TEST_KEY = process.env.PLAYWRIGHT_TEST_KEY;
-const IS_DEVELOPMENT = process.env.NODE_ENV !== 'production';
-const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+// Use canonical isProduction() helper (CLAUDE.md Section A) so test-mode
+// bypass is correctly disabled on Railway/Cloud Run, not just on Replit.
+const IS_PRODUCTION = isProductionEnv();
+const IS_DEVELOPMENT = !IS_PRODUCTION;
 
 // ============================================================================
 // Trinity Bot / System Actor Bypass

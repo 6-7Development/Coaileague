@@ -798,11 +798,29 @@ router.post('/quickbooks/push', requireAuth, requireWorkspaceMembership(), async
     const realmId = connection.realmId!;
     const apiBase = getQuickBooksApiBase();
 
-    // Determine which workspace to fetch data from
-    const SANDBOX_WORKSPACE_ID = '37a04d24-51bd-4856-9faa-d26a2fe82094';
-    const sourceWorkspaceId = useSandboxData ? SANDBOX_WORKSPACE_ID : workspaceId;
-    
-    console.log(`[QuickBooks Push] Source workspace: ${useSandboxData ? 'SANDBOX TEST DATA' : 'real workspace'}`);
+    // 🔴 CLAUDE.md §12 / Section I — multi-tenant universalization:
+    // Determine which workspace to fetch data from. The legacy hardcoded
+    // SANDBOX_WORKSPACE_ID was the Statewide Protective Services production
+    // tenant — a flat violation of "zero agent contact, zero test data,
+    // zero writes, ever". The sandbox source workspace must come from an
+    // env var (QB_SANDBOX_WORKSPACE_ID). If sandbox mode is requested but
+    // the env var is not set, the request is refused — never silently fall
+    // back to the caller's workspace, never default to a hardcoded ID.
+    let sourceWorkspaceId: string;
+    if (useSandboxData) {
+      const envSandboxId = process.env.QB_SANDBOX_WORKSPACE_ID;
+      if (!envSandboxId) {
+        return res.status(400).json({
+          error: 'Sandbox mode requested but QB_SANDBOX_WORKSPACE_ID is not configured',
+          code: 'SANDBOX_NOT_CONFIGURED',
+        });
+      }
+      sourceWorkspaceId = envSandboxId;
+    } else {
+      sourceWorkspaceId = workspaceId;
+    }
+
+    console.log(`[QuickBooks Push] Source workspace: ${useSandboxData ? `sandbox (${sourceWorkspaceId})` : 'real workspace'}`);
 
     // Fetch data from CoAIleague
     const { clients, employees: dbEmployees, invoices } = await db.transaction(async (tx) => {
