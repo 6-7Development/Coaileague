@@ -284,8 +284,12 @@ async function createInvoiceFromBillableSummary(
   const taxAmount = subtotal * taxRate;
   const total = subtotal + taxAmount;
   
-  // Calculate platform fee
-  const platformFeePercentage = parseFloat(workspace?.platformFeePercentage || "3.00");
+  // Calculate platform fee — billing-exempt workspaces (internal/strategic
+  // accounts flagged by root admin) pay 0% middleware fee on invoicing.
+  const isBillingExempt = (workspace as any)?.billingExempt === true;
+  const platformFeePercentage = isBillingExempt
+    ? 0
+    : parseFloat(workspace?.platformFeePercentage || "3.00");
   const platformFeeAmount = total * (platformFeePercentage / 100);
   const businessAmount = total - platformFeeAmount;
   
@@ -408,9 +412,14 @@ async function sendInvoiceToClientPortal(invoice: Invoice) {
       .returning();
   }
   
-  // Send email notification
-  const portalUrl = `${process.env.REPLIT_DOMAINS?.split(',')[0]}/portal/client/${portalAccess.accessToken}`;
-  
+  // Send email notification — base URL detection: APP_BASE_URL > Railway > Replit > localhost
+  const appBaseUrl =
+    process.env.APP_BASE_URL ||
+    (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : null) ||
+    (process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}` : null) ||
+    'http://localhost:5000';
+  const portalUrl = `${appBaseUrl}/portal/client/${portalAccess.accessToken}`;
+
   await sendInvoiceEmail(invoice, portalAccess.email, portalUrl);
   
   // Mark invoice as sent
@@ -626,10 +635,13 @@ export async function processDelinquentInvoices(workspaceId: string) {
       continue;
     }
 
-    // Generate payment URL from configured base or Replit domains
-    const baseUrl = process.env.APP_BASE_URL || process.env.REPLIT_DOMAINS?.split(',')[0];
+    // Generate payment URL — base detection across hosting providers
+    const baseUrl =
+      process.env.APP_BASE_URL ||
+      (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : null) ||
+      (process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}` : null);
     if (!baseUrl) {
-      console.error('Cannot generate payment URL: APP_BASE_URL or REPLIT_DOMAINS not configured');
+      console.error('Cannot generate payment URL: set APP_BASE_URL, RAILWAY_PUBLIC_DOMAIN, or REPLIT_DOMAINS');
       continue;
     }
     const paymentUrl = `${baseUrl.startsWith('http') ? baseUrl : `https://${baseUrl}`}/pay-invoice/${invoice.id}`;

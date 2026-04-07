@@ -1118,6 +1118,9 @@ function getBaseUrl(): string {
   if (process.env.APP_BASE_URL) {
     return process.env.APP_BASE_URL;
   }
+  if (process.env.RAILWAY_PUBLIC_DOMAIN) {
+    return `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`;
+  }
   if (process.env.REPLIT_DOMAINS) {
     const domains = process.env.REPLIT_DOMAINS.split(',');
     return `https://${domains[0]}`;

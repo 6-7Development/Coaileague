@@ -518,6 +518,8 @@ class WeeklyBillingRunServiceImpl {
 
   /**
    * Get workspaces eligible for billing
+   * Excludes billing-exempt workspaces (internal/strategic accounts flagged
+   * by root admin — they never receive subscription invoices).
    */
   private async getEligibleWorkspaces(): Promise<Array<{ id: string; name: string | null }>> {
     const now = new Date();
@@ -530,6 +532,8 @@ class WeeklyBillingRunServiceImpl {
       .where(
         and(
           eq(workspaces.accountState, 'active'),
+          // Exclude billing-exempt workspaces — see workspaces.billingExempt
+          eq(workspaces.billingExempt, false),
           or(
             isNull(workspaces.nextInvoiceAt),
             lte(workspaces.nextInvoiceAt, now)

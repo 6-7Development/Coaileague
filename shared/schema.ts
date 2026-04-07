@@ -287,6 +287,18 @@ export const workspaces = pgTable("workspaces", {
   maxEmployees: integer("max_employees").default(5),
   maxClients: integer("max_clients").default(10),
 
+  // Billing exemption — for internal/strategic accounts (e.g. founder's own
+  // company, partner platforms, support orgs). When true:
+  //   - Subscription invoices are not generated/charged
+  //   - Token & action soft-cap overages do not roll into the monthly bill
+  //   - Middleware fees on invoicing/payroll are bypassed (use platformFeePercentage=0)
+  //   - Tier-based limits are still enforced unless tier='enterprise'
+  // Set via root admin only. NEVER expose in customer UI.
+  billingExempt: boolean("billing_exempt").default(false),
+  billingExemptReason: text("billing_exempt_reason"),
+  billingExemptAt: timestamp("billing_exempt_at"),
+  billingExemptBy: varchar("billing_exempt_by"), // root user id who flagged it
+
   // ============================================================================
   // COPILOT AUTOMATION GOVERNANCE (99% Automation / 1% Human Approval)
   // AI makes errors - every org must designate an approver for automated actions
@@ -10718,6 +10730,12 @@ export const platformUpdateCategoryEnum = pgEnum('platform_update_category', [
   'recovery',              // Recovery notifications
   'maintenance_update',    // Maintenance status updates
   'maintenance_postmortem',// Post-incident analysis
+  // Operational categories used by autonomous schedulers / billing automation
+  'billing',               // Invoicing, payment, credit, subscription updates
+  'scheduling',            // Schedule generation, shift updates
+  'payroll',               // Payroll runs, anomalies, approvals
+  'compliance',            // Compliance alerts, certifications
+  'notification',          // Generic notification category
 ]);
 
 // Tab group type for filtering What's New notifications

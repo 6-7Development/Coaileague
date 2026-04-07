@@ -21,27 +21,33 @@ import { FEATURES } from "@shared/platformConfig";
 // ============================================================================
 
 /**
- * Get application base URL for email links
- * Priority: APP_BASE_URL > REPLIT_DOMAINS > REPL construction > localhost
+ * Get application base URL for email links.
+ *
+ * Priority:
+ *   1. APP_BASE_URL (explicit, preferred — set in Railway/host env)
+ *   2. RAILWAY_PUBLIC_DOMAIN (Railway-injected — covers most Railway deploys)
+ *   3. REPLIT_DOMAINS (legacy Replit hosting)
+ *   4. REPL_SLUG/REPL_OWNER (legacy Replit dev)
+ *   5. http://localhost:5000 (local development)
  */
 function getAppBaseUrl(): string {
-  // Priority 1: Explicit APP_BASE_URL environment variable
   if (process.env.APP_BASE_URL) {
     return process.env.APP_BASE_URL;
   }
-  
-  // Priority 2: Replit domains (production deployment)
+
+  if (process.env.RAILWAY_PUBLIC_DOMAIN) {
+    return `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`;
+  }
+
   if (process.env.REPLIT_DOMAINS) {
     const domains = process.env.REPLIT_DOMAINS.split(',');
     return `https://${domains[0]}`;
   }
-  
-  // Priority 3: Construct from REPL environment (development)
+
   if (process.env.REPL_SLUG && process.env.REPL_OWNER) {
     return `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`;
   }
-  
-  // Fallback: localhost (local development)
+
   return 'http://localhost:5000';
 }
 

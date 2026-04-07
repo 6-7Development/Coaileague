@@ -17,12 +17,26 @@ const SENTINEL_USER_ID = 'root-user-00000000';
 const SENTINEL_EMAIL = 'root@getdc360.com';
 
 /**
+ * Detect production across hosting providers:
+ *   - NODE_ENV=production:        standard Node.js convention (Railway, generic hosts)
+ *   - REPLIT_DEPLOYMENT=1:        legacy Replit-specific marker (kept for back-compat)
+ *   - RAILWAY_ENVIRONMENT=production: Railway-injected env var
+ */
+function isProductionEnvironment(): boolean {
+  return (
+    process.env.NODE_ENV === 'production' ||
+    process.env.REPLIT_DEPLOYMENT === '1' ||
+    process.env.RAILWAY_ENVIRONMENT === 'production'
+  );
+}
+
+/**
  * One-time data corrections - runs on PRODUCTION startup only
  * Fixes existing records that were created with incorrect data
  * EXPORTED so it can be called independently in server/index.ts
  */
 export async function runDataCorrections(): Promise<void> {
-  const isProduction = process.env.REPLIT_DEPLOYMENT === '1';
+  const isProduction = isProductionEnvironment();
   if (!isProduction) return;
   
   console.log('🔧 Data Corrections Service: Starting...');
@@ -76,19 +90,81 @@ export async function runPasswordMigrations(): Promise<void> {
   console.log('🔑 Password Migration Service: Complete');
 }
 
+/**
+ * Enforce billing-exempt flags on strategic workspaces. Idempotent — runs on
+ * every production startup. Safe to call before or after the main seed.
+ *
+ * Strategic workspaces (founder's company, internal support orgs):
+ *   - subscriptionTier = enterprise (max)
+ *   - subscriptionStatus = active
+ *   - billingExempt = true (bypasses subscription invoicing + AI credit gates)
+ *   - platformFeePercentage = 0.00 (no middleware fee on invoicing/payroll)
+ *
+ * If the workspace row doesn't exist yet (drizzle-kit push hasn't run, or
+ * the workspace was deleted), this is a no-op for that row. If the
+ * billing_exempt column doesn't exist yet, the UPDATE silently fails and
+ * is logged but doesn't crash the boot.
+ */
+export async function enforceBillingExemptions(): Promise<void> {
+  console.log('💰 Enforcing billing exemptions on strategic workspaces...');
+
+  const STRATEGIC_WORKSPACES: Array<{ id: string; name: string; reason: string }> = [
+    { id: '37a04d24-51bd-4856-9faa-d26a2fe82094', name: 'Statewide Protective Services', reason: 'Founder strategic account — enterprise tier, no billing, no middleware fees' },
+    { id: 'ops-workspace-00000000',               name: 'CoAIleague Support',             reason: 'Internal platform support workspace' },
+    { id: 'demo-workspace-00000000',              name: 'Demo Workspace',                 reason: 'Demo / internal sandbox workspace' },
+    { id: 'autoforce-platform-workspace',         name: 'AutoForce Platform',             reason: 'Internal platform workspace' },
+    { id: 'coaileague-platform-workspace',        name: 'CoAIleague Platform',            reason: 'Internal HelpAI host workspace' },
+  ];
+
+  for (const ws of STRATEGIC_WORKSPACES) {
+    try {
+      const result = await db.execute(sql`
+        UPDATE workspaces
+        SET
+          subscription_tier = 'enterprise',
+          subscription_status = 'active',
+          billing_exempt = TRUE,
+          billing_exempt_reason = ${ws.reason},
+          billing_exempt_at = COALESCE(billing_exempt_at, NOW()),
+          billing_exempt_by = COALESCE(billing_exempt_by, 'root-user-00000000'),
+          platform_fee_percentage = '0.00',
+          updated_at = NOW()
+        WHERE id = ${ws.id}
+      `);
+      console.log(`💰 Billing exempt enforced: ${ws.name} (${ws.id})`);
+    } catch (err: any) {
+      // The column may not exist yet on first deploy after the schema change —
+      // drizzle-kit push will add it on the next start. Log + continue.
+      console.log(`💰 Billing exempt skipped for ${ws.name}: ${err?.message || err}`);
+    }
+  }
+
+  console.log('💰 Billing exemption enforcement complete');
+}
+
 export async function runProductionSeed(): Promise<{ success: boolean; message: string }> {
-  const isProduction = process.env.REPLIT_DEPLOYMENT === '1';
+  const isProduction = isProductionEnvironment();
   
-  console.log(`🌱 Production Seed: Environment check - REPLIT_DEPLOYMENT=${process.env.REPLIT_DEPLOYMENT}`);
-  
+  console.log(
+    `🌱 Production Seed: Environment check - NODE_ENV=${process.env.NODE_ENV} ` +
+    `REPLIT_DEPLOYMENT=${process.env.REPLIT_DEPLOYMENT} ` +
+    `RAILWAY_ENVIRONMENT=${process.env.RAILWAY_ENVIRONMENT}`
+  );
+
   if (!isProduction) {
-    console.log('🌱 Production Seed: Skipping (not in production deployment)');
+    console.log('🌱 Production Seed: Skipping (not in production)');
     return { success: true, message: 'Skipped - not in production' };
   }
-  
+
   // Always run password migrations first (for existing users)
   console.log('🔑 Running password migrations...');
   await runPasswordMigrations();
+
+  // Always enforce billing-exempt flags on strategic workspaces, even if the
+  // sentinel user already exists (i.e. seed has run before). This ensures the
+  // flag gets applied to existing rows after the column is added by drizzle-kit
+  // push, and protects against accidental UI/admin flips of the bit.
+  await enforceBillingExemptions();
   
   try {
     // Check if sentinel user already exists
@@ -156,19 +232,41 @@ export async function runProductionSeed(): Promise<{ success: boolean; message: 
       // =========================================================================
       console.log('🌱 Seeding workspaces...');
       
+      // Strategic / internal workspaces. Statewide Protective Services is the
+      // founder's real company — provisioned at enterprise tier, billing exempt,
+      // and 0% middleware fee on invoicing/payroll. The billingExempt flag ALSO
+      // bypasses AI credit gating (see creditManager.isUnlimitedCreditUser).
       const workspacesData = [
-        { id: 'ops-workspace-00000000', name: 'CoAIleague Support', ownerId: 'root-user-00000000', subscriptionTier: 'enterprise', subscriptionStatus: 'active' },
-        { id: 'demo-workspace-00000000', name: 'Demo Workspace', ownerId: 'root-user-00000000', subscriptionTier: 'enterprise', subscriptionStatus: 'active' },
-        { id: 'autoforce-platform-workspace', name: 'AutoForce Platform', ownerId: 'root-user-00000000', subscriptionTier: 'enterprise', subscriptionStatus: 'cancelled' },
-        { id: 'coaileague-platform-workspace', name: 'CoAIleague Platform', ownerId: 'root-user-00000000', subscriptionTier: 'enterprise', subscriptionStatus: 'cancelled' },
-        { id: '37a04d24-51bd-4856-9faa-d26a2fe82094', name: 'Statewide Protective Services', ownerId: '48003611', subscriptionTier: 'free', subscriptionStatus: 'trial' },
+        { id: 'ops-workspace-00000000',           name: 'CoAIleague Support',             ownerId: 'root-user-00000000', subscriptionTier: 'enterprise', subscriptionStatus: 'active',    billingExempt: true,  platformFeePercentage: '0.00', billingExemptReason: 'Internal platform support workspace' },
+        { id: 'demo-workspace-00000000',          name: 'Demo Workspace',                 ownerId: 'root-user-00000000', subscriptionTier: 'enterprise', subscriptionStatus: 'active',    billingExempt: true,  platformFeePercentage: '0.00', billingExemptReason: 'Demo / internal sandbox workspace' },
+        { id: 'autoforce-platform-workspace',     name: 'AutoForce Platform',             ownerId: 'root-user-00000000', subscriptionTier: 'enterprise', subscriptionStatus: 'cancelled', billingExempt: true,  platformFeePercentage: '0.00', billingExemptReason: 'Internal platform workspace' },
+        { id: 'coaileague-platform-workspace',    name: 'CoAIleague Platform',            ownerId: 'root-user-00000000', subscriptionTier: 'enterprise', subscriptionStatus: 'cancelled', billingExempt: true,  platformFeePercentage: '0.00', billingExemptReason: 'Internal HelpAI host workspace' },
+        { id: '37a04d24-51bd-4856-9faa-d26a2fe82094', name: 'Statewide Protective Services', ownerId: '48003611',           subscriptionTier: 'enterprise', subscriptionStatus: 'active',    billingExempt: true,  platformFeePercentage: '0.00', billingExemptReason: 'Founder strategic account — enterprise tier, no billing, no middleware fees' },
       ];
-      
+
       for (const ws of workspacesData) {
+        // INSERT for new rows; UPDATE the billing-exempt fields on existing rows
+        // so re-runs after the column was added still flip the bit.
         await tx.execute(sql`
-          INSERT INTO workspaces (id, name, owner_id, subscription_tier, subscription_status, created_at, updated_at)
-          VALUES (${ws.id}, ${ws.name}, ${ws.ownerId}, ${ws.subscriptionTier}, ${ws.subscriptionStatus}, NOW(), NOW())
-          ON CONFLICT (id) DO NOTHING
+          INSERT INTO workspaces (
+            id, name, owner_id, subscription_tier, subscription_status,
+            billing_exempt, billing_exempt_reason, billing_exempt_at, billing_exempt_by,
+            platform_fee_percentage, created_at, updated_at
+          )
+          VALUES (
+            ${ws.id}, ${ws.name}, ${ws.ownerId}, ${ws.subscriptionTier}, ${ws.subscriptionStatus},
+            ${ws.billingExempt}, ${ws.billingExemptReason}, NOW(), 'root-user-00000000',
+            ${ws.platformFeePercentage}, NOW(), NOW()
+          )
+          ON CONFLICT (id) DO UPDATE SET
+            subscription_tier = EXCLUDED.subscription_tier,
+            subscription_status = EXCLUDED.subscription_status,
+            billing_exempt = EXCLUDED.billing_exempt,
+            billing_exempt_reason = EXCLUDED.billing_exempt_reason,
+            billing_exempt_at = COALESCE(workspaces.billing_exempt_at, EXCLUDED.billing_exempt_at),
+            billing_exempt_by = COALESCE(workspaces.billing_exempt_by, EXCLUDED.billing_exempt_by),
+            platform_fee_percentage = EXCLUDED.platform_fee_percentage,
+            updated_at = NOW()
         `);
       }
       

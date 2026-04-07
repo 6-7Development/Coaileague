@@ -166,10 +166,14 @@ export function getSession() {
     tableName: "sessions",
   });
 
-  // Detect if running on Replit (always HTTPS) or locally
+  // Detect if running behind a TLS-terminating reverse proxy (Replit, Railway,
+  // Render, Heroku, Vercel, etc. all front the app with HTTPS). When true,
+  // session cookies must be `secure: true` and Express must trust the proxy.
   const isReplit = !!process.env.REPLIT_DOMAINS || !!process.env.REPL_ID;
+  const isRailway = !!process.env.RAILWAY_ENVIRONMENT || !!process.env.RAILWAY_PUBLIC_DOMAIN;
   const isProduction = process.env.NODE_ENV === "production";
-  
+  const behindHttpsProxy = isReplit || isRailway || isProduction;
+
   return session({
     secret: process.env.SESSION_SECRET!,
     store: sessionStore,
@@ -177,13 +181,13 @@ export function getSession() {
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      // Replit always uses HTTPS, so secure should be true when on Replit
-      secure: isReplit || isProduction,
+      // All hosted environments terminate TLS upstream — cookies must be Secure
+      secure: behindHttpsProxy,
       maxAge: sessionTtl,
       sameSite: "lax",
     },
-    // Trust proxy for Replit's reverse proxy
-    proxy: isReplit,
+    // Trust upstream reverse proxy so req.secure / req.ip are honest
+    proxy: behindHttpsProxy,
   } as any);
 }
 
