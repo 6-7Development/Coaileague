@@ -15,18 +15,6 @@ run = ["node", "dist/index.js"]
 localPort = 5000
 externalPort = 80
 
-[[ports]]
-localPort = 23636
-externalPort = 3001
-
-[[ports]]
-localPort = 23637
-externalPort = 3000
-
-[[ports]]
-localPort = 23638
-externalPort = 3002
-
 [env]
 PORT = "5000"
 
