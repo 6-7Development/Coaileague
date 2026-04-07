@@ -12,6 +12,7 @@ import { startAutonomousScheduler } from "./services/autonomousScheduler";
 import { ensureRequiredTables } from "./services/dbMigrationService";
 import { runLegacyBootstraps } from "./services/legacyBootstrapRegistry";
 import { ensureCriticalConstraints } from "./services/criticalConstraintsBootstrap";
+import { isProduction as isProductionEnv } from "./lib/isProduction";
 import { ensurePerformanceIndexes, registerNdsQueueMonitor } from "./services/performanceIndexService";
 import { validateAndLogConfiguration } from "./utils/configValidator";
 import { runArchitectureLint } from "./utils/architectureLinter";
@@ -286,7 +287,7 @@ app.get('/api/platform/readiness', rateLimitMiddleware(
   checks.aiEngine = { status: process.env.GEMINI_API_KEY ? 'configured' : 'MISSING' };
   checks.monitoringWebhook = { status: process.env.MONITORING_WEBHOOK_URL ? 'configured' : 'not-set', detail: 'For error alerts' };
   checks.nodeEnv = { status: process.env.NODE_ENV || 'development' };
-  checks.deployment = { status: process.env.REPLIT_DEPLOYMENT === '1' ? 'production' : 'development' };
+  checks.deployment = { status: isProductionEnv() ? 'production' : 'development' };
 
   const critical = ['database', 'sessionSecret', 'encryptionKey', 'corsOrigins', 'stripe', 'stripeWebhook', 'emailService', 'aiEngine'];
   const failures = critical.filter(k => checks[k].status === 'MISSING' || checks[k].status === 'WEAK' || checks[k].status === 'open');
@@ -500,7 +501,7 @@ app.use((req, res, next) => {
   next();
 });
 
-const isProdDeployment = process.env.NODE_ENV === 'production' || process.env.REPLIT_DEPLOYMENT === '1';
+const isProdDeployment = isProductionEnv();
 const explicitAllowedOrigins: string[] = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean)
   : [];
@@ -544,7 +545,7 @@ app.set('trust proxy', 1);
 
 // Startup configuration validation — catch misconfigs before they cause runtime failures
 const configValid = validateAndLogConfiguration();
-if (!configValid && (process.env.NODE_ENV === 'production' || process.env.REPLIT_DEPLOYMENT === '1')) {
+if (!configValid && isProductionEnv()) {
   log.error('[FATAL] Configuration validation failed in production — refusing to start');
   process.exit(1);
 }
