@@ -251,6 +251,13 @@ import {
   type InsertEmployee,
   type WorkspaceTheme,
   type SupportAuditLog,
+  employeeCertifications,
+  employeeBehaviorScores,
+  clientBillingSettings,
+  timeEntries,
+  employeeInvitations,
+  invoicePayments,
+  payrollDeductions,
 } from '@shared/schema';
 import type { PaginatedResponse, ClientWithInvoiceCount, WorkspaceRole } from "@shared/types";
 import type { ClientsQueryParams } from "@shared/validation/pagination";

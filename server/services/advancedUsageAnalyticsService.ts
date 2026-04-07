@@ -5,10 +5,11 @@
 
 import { db } from "../db";
 import { BILLING } from '../config/platformConfig';
-import { 
+import {
   users,
   employees,
-  workspaces
+  workspaces,
+  aiWorkboardTasks,
 } from '@shared/schema';
 import { creditManager } from "./billing/creditManager";
 import { eq, and, gte, lte, sql, count, sum, avg, desc, asc, ne } from "drizzle-orm";

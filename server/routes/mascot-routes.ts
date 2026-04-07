@@ -19,7 +19,7 @@ import { sanitizeError } from '../middleware/errorHandler';
 import { Router } from 'express';
 import { randomUUID } from 'crypto';
 import { db } from '../db';
-import { helposFaqs, workspaces, employees, shifts, notifications, users, timeOffRequests, shiftSwapRequests, userMascotPreferences, mascotInteractions, mascotSessions, mascotTasks } from '@shared/schema';
+import { helposFaqs, workspaces, employees, shifts, notifications, users, timeOffRequests, shiftSwapRequests, userMascotPreferences, mascotInteractions, mascotSessions, mascotTasks, employeeCertifications } from '@shared/schema';
 import { eq, desc, and, gte, lte, count, sql } from 'drizzle-orm';
 import { geminiClient } from '../services/ai-brain/providers/geminiClient';
 import { broadcastToAllClients } from '../websocket';

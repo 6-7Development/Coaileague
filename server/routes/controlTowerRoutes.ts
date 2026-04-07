@@ -19,6 +19,7 @@ import {
   timeEntries,
   ptoRequests,
   paymentRecords,
+  employeeCertifications,
 } from '@shared/schema';
 import { requireAuth } from '../auth';
 import { requirePlatformRole } from '../rbac';

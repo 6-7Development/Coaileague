@@ -19,7 +19,8 @@ import { db } from '../db';
 import {
   employees,
   employeeSkills,
-  users
+  users,
+  employeeCertifications,
 } from '@shared/schema';
 import { universalAudit } from '../services/universalAuditService';
 import { eq, and, isNull, lt, gte, isNotNull, or } from 'drizzle-orm';

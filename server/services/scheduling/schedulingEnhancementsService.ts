@@ -4,7 +4,8 @@ import {
   timeEntries,
   employees,
   clients,
-  employeeSkills
+  employeeSkills,
+  employeeCertifications,
 } from '@shared/schema';
 import { eq, and, gte, lte, sql, isNull, isNotNull } from 'drizzle-orm';
 

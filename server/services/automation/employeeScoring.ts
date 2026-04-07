@@ -26,8 +26,9 @@ import {
   shifts,
   clients,
   disciplinaryRecords,
+  employeeCertifications,
   type EmployeeSkill,
-  type EmployeeCertification
+  type EmployeeCertification,
 } from '@shared/schema';
 import { eq, and, sql, gte, lte, isNull, or } from "drizzle-orm";
 
