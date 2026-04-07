@@ -1,0 +1,673 @@
+2026-04-07T04:42:43.015443414Z [inf]  Starting Container
+2026-04-07T04:42:44.280515815Z [err]  npm warn config production Use `--omit=dev` instead.
+2026-04-07T04:42:44.280523327Z [inf]  
+2026-04-07T04:42:44.280528760Z [inf]  > rest-express@1.0.0 start
+2026-04-07T04:42:44.280533239Z [inf]  > NODE_ENV=production node dist/index.js
+2026-04-07T04:42:44.280538446Z [inf]  
+2026-04-07T04:42:45.213189914Z [inf]  📊 Database: Using standard pg driver (node-postgres)
+2026-04-07T04:42:45.213204942Z [inf]     Compatible with: Railway PostgreSQL, Render, Supabase, and any standard Postgres
+2026-04-07T04:42:45.240581725Z [err]  [replitAuth] REPLIT_DOMAINS not set — Replit OIDC auth is disabled. Using platform-native auth instead.
+2026-04-07T04:42:45.250574671Z [inf]  [AI Brain] UnifiedGeminiClient initialized with tiered architecture + humanized persona
+2026-04-07T04:42:45.250581535Z [inf]  [ChatServerHub] Initialized - Version 1.0.0
+2026-04-07T04:42:45.256626907Z [inf]  [SessionSync] Service initialized
+2026-04-07T04:42:45.256633956Z [inf]  [TrinityNotifier] Autonomous notifier initialized
+2026-04-07T04:42:46.457345616Z [err]      at rateLimit (file:///app/node_modules/express-rate-limit/dist/index.mjs:759:18)
+2026-04-07T04:42:46.457356188Z [err]      at file:///app/dist/index.js:163947:24
+2026-04-07T04:42:46.457362463Z [err]      at ModuleJob.run (node:internal/modules/esm/module_job:325:25)
+2026-04-07T04:42:46.457367706Z [err]      at async ModuleLoader.import (node:internal/modules/esm/loader:606:24)
+2026-04-07T04:42:46.457372702Z [err]      at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5) {
+2026-04-07T04:42:46.457383712Z [err]    code: 'ERR_ERL_KEY_GEN_IPV6',
+2026-04-07T04:42:46.457385407Z [err]  ValidationError: Custom keyGenerator appears to use request IP without calling the ipKeyGenerator helper function for IPv6 addresses. This could allow IPv6 users to bypass limits. See https://express-rate-limit.github.io/ERR_ERL_KEY_GEN_IPV6/ for more information.
+2026-04-07T04:42:46.457391107Z [err]    help: 'https://express-rate-limit.github.io/ERR_ERL_KEY_GEN_IPV6/'
+2026-04-07T04:42:46.457393885Z [err]      at Object.keyGeneratorIpFallback (file:///app/node_modules/express-rate-limit/dist/index.mjs:566:13)
+2026-04-07T04:42:46.457399064Z [err]  }
+2026-04-07T04:42:46.457402149Z [err]      at wrappedValidations.<computed> [as keyGeneratorIpFallback] (file:///app/node_modules/express-rate-limit/dist/index.mjs:609:22)
+2026-04-07T04:42:46.457407359Z [inf]  [KnowledgeOrchestration] Gemini 3 Pro AI Brain initialized
+2026-04-07T04:42:46.457410330Z [err]      at parseOptions (file:///app/node_modules/express-rate-limit/dist/index.mjs:678:16)
+2026-04-07T04:42:46.457415321Z [inf]  [KnowledgeOrchestration] Initialized 8 domain experts
+2026-04-07T04:42:46.457420927Z [inf]  [KnowledgeOrchestration] Initialized 4 base knowledge nodes
+2026-04-07T04:42:46.457425923Z [inf]  [Platform Action Hub] Initializing universal action handler...
+2026-04-07T04:42:46.457431074Z [inf]  [Platform Action Hub] Registered action: system.health_check
+2026-04-07T04:42:47.381053570Z [inf]  [Platform Action Hub] Registered action: test.send_notification
+2026-04-07T04:42:47.381308528Z [inf]  [Platform Action Hub] Registered action: code.get_pending
+2026-04-07T04:42:47.381311537Z [inf]  [Platform Action Hub] Registered action: test.send_maintenance_alert
+2026-04-07T04:42:47.381315920Z [inf]  [Platform Action Hub] Registered action: notifications.send_to_user
+2026-04-07T04:42:47.381322847Z [inf]  [Platform Action Hub] Registered action: code.approve
+2026-04-07T04:42:47.381329310Z [inf]  [Platform Action Hub] Registered action: system.push_update
+2026-04-07T04:42:47.381330305Z [inf]  [Platform Action Hub] Registered action: notifications.create_maintenance_alert
+2026-04-07T04:42:47.381335779Z [inf]  [Platform Action Hub] Registered action: code.reject
+2026-04-07T04:42:47.381341991Z [inf]  [Platform Action Hub] Registered action: notifications.get_stats
+2026-04-07T04:42:47.381350553Z [inf]  [Platform Action Hub] Registered action: code.apply
+2026-04-07T04:42:47.381353320Z [inf]  [Platform Action Hub] Registered action: notifications.force_clear_all
+2026-04-07T04:42:47.381362349Z [inf]  [Platform Action Hub] Registered action: support.broadcast
+2026-04-07T04:42:47.381364883Z [inf]  [Platform Action Hub] Registered action: code.rollback
+2026-04-07T04:42:47.381371117Z [inf]  [Platform Action Hub] Registered action: system.service_status
+2026-04-07T04:42:47.381377836Z [inf]  [Platform Action Hub] Registered action: admin.deactivate_workspace
+2026-04-07T04:42:47.381386651Z [inf]  [Platform Action Hub] Registered action: admin.reactivate_workspace
+2026-04-07T04:42:47.381388861Z [inf]  [Platform Action Hub] Registered action: idempotency.get_stats
+2026-04-07T04:42:47.381395001Z [inf]  [Platform Action Hub] Registered action: ai.query
+2026-04-07T04:42:47.381403878Z [inf]  [Platform Action Hub] Registered action: code.stage_change
+2026-04-07T04:42:47.381410914Z [inf]  [Platform Action Hub] Registered action: code.stage_batch
+2026-04-07T04:42:47.382829316Z [inf]  [Platform Action Hub] Registered action: idempotency.force_retry
+2026-04-07T04:42:47.382834418Z [inf]  [IdempotencyService] Registered 3 AI Brain actions
+2026-04-07T04:42:47.382862761Z [inf]  [Platform Action Hub] Registered action: idempotency.cleanup
+2026-04-07T04:42:47.382865826Z [inf]  [EventBus] HelpAI Orchestrator Error Handler subscribed to ai_error
+2026-04-07T04:42:47.382872121Z [inf]  [EventBus] HelpAI Orchestrator subscribed to ai_brain_action
+2026-04-07T04:42:47.382890259Z [inf]  [Platform Action Hub] Registered 23 built-in actions
+2026-04-07T04:42:47.382929808Z [inf]    syncVersion: 1,
+2026-04-07T04:42:47.382936844Z [inf]    featureCount: 15,
+2026-04-07T04:42:47.382947171Z [inf]    enabledCount: 15,
+2026-04-07T04:42:47.382949512Z [inf]  [PlatformFeatureRegistry] Initialized for Trinity orchestration: {
+2026-04-07T04:42:47.382960441Z [inf]    lastSyncedAt: 2026-04-07T04:42:45.292Z,
+2026-04-07T04:42:47.383072456Z [inf]      'reports',       'payroll',
+2026-04-07T04:42:47.383085843Z [inf]      'ai_features',   'communication',
+2026-04-07T04:42:47.383092207Z [inf]      'invoicing',     'availability',
+2026-04-07T04:42:47.383102917Z [inf]      'notifications', 'calendar',
+2026-04-07T04:42:47.383103094Z [inf]      'analytics',     'breaks',
+2026-04-07T04:42:47.383112709Z [inf]      'time_tracking', 'scheduling',
+2026-04-07T04:42:47.383116259Z [inf]      'employees',     'clients',
+2026-04-07T04:42:47.383156179Z [inf]  [AI Analytics Engine] Initialized
+2026-04-07T04:42:47.383161421Z [inf]      'integrations'
+2026-04-07T04:42:47.383164462Z [inf]    ]
+2026-04-07T04:42:47.383165172Z [inf]  [TrinityControlConsole] Initialized - Real-time cognitive streaming active
+2026-04-07T04:42:47.383169801Z [inf]  🏥 Running AI provider health check...
+2026-04-07T04:42:47.383184248Z [inf]  [TrinitySelfAssessment] Initializing self-assessment service...
+2026-04-07T04:42:47.383184754Z [inf]  }
+2026-04-07T04:42:47.383193753Z [inf]    categories: [
+2026-04-07T04:42:47.384320619Z [inf]  [QuickBooks OAuth] IMPORTANT: For sandbox testing, use Development app credentials from Intuit Developer Portal
+2026-04-07T04:42:47.384345331Z [err]  ⚠️  Gusto OAuth not configured - missing GUSTO_CLIENT_ID or GUSTO_CLIENT_SECRET
+2026-04-07T04:42:47.384351937Z [inf]  [TrinityPlatformConnector] Initializing platform connector...
+2026-04-07T04:42:47.384356630Z [inf]  [SubagentBanker] Initializing AI Brain Credit Management...
+2026-04-07T04:42:47.384361078Z [inf]  [WorkboardService] Initializing AI Brain Workboard...
+2026-04-07T04:42:47.384366042Z [inf]  [FastModeService] Initializing Trinity Fast Mode Service...
+2026-04-07T04:42:47.384371157Z [inf]  [TrinityNotificationBridge] Fortune 500-grade notification orchestration initialized
+2026-04-07T04:42:47.384376085Z [inf]  [TrinityNotificationWatchdog] Starting self-monitoring...
+2026-04-07T04:42:47.384380731Z [inf]  [TrinityThoughtEngine] Initializing metacognition system...
+2026-04-07T04:42:47.384385837Z [inf]  [TrinityGuardrails] Content guardrails initialized
+2026-04-07T04:42:47.384390953Z [inf]  [CircuitBreaker] Service initialized
+2026-04-07T04:42:47.384396014Z [inf]  [RateLimitQueue] Service initialized with 4 services
+2026-04-07T04:42:47.384401812Z [inf]  [WebhookVerifier] Service initialized
+2026-04-07T04:42:47.384406789Z [inf]  [ExchangeRate] Service initialized with 20 currencies
+2026-04-07T04:42:47.384439189Z [inf]  Generated ENCRYPTION_KEY (add to .env file):
+2026-04-07T04:42:47.384444104Z [inf]  ENCRYPTION_KEY=534f8041db541b44bb7ef45d74186dd76ee7cf4f2046d89c1c5a4e8dbaf250d3
+2026-04-07T04:42:47.384448371Z [inf]  
+2026-04-07T04:42:47.384455114Z [inf]  Example .env entry:
+2026-04-07T04:42:47.384459122Z [inf]  ENCRYPTION_KEY=364a02ae7c404a89b2112f60c3eff2c944d054cc87fc8b97801f2ef4ef206f7a
+2026-04-07T04:42:47.384463218Z [inf]  [QuickBooks OAuth] Environment: SANDBOX
+2026-04-07T04:42:47.384467728Z [inf]  [QuickBooks OAuth] Client ID prefix: ABW40IYH...
+2026-04-07T04:42:47.386713284Z [inf]  [FinancialAudit] SOX-compliant audit service initialized
+2026-04-07T04:42:47.386724168Z [inf]  [SessionCheckpoint] Service initialized
+2026-04-07T04:42:47.386731202Z [inf]  [WorkflowExecutor] Registered custom handler: log_message
+2026-04-07T04:42:47.386738666Z [inf]  [WorkflowExecutor] Registered custom handler: validate_json
+2026-04-07T04:42:47.386747386Z [inf]  [WorkflowExecutor] Registered custom handler: aggregate_results
+2026-04-07T04:42:47.386754252Z [inf]  [TestRunner] Registered test: api-health
+2026-04-07T04:42:47.386761891Z [inf]  [TestRunner] Registered test: db-connectivity
+2026-04-07T04:42:47.386768039Z [inf]  [TestRunner] Registered test: fs-read-access
+2026-04-07T04:42:47.386785109Z [inf]  [TestRunner] Registered test: fs-list-access
+2026-04-07T04:42:47.386792689Z [inf]  [TestRunner] Registered test: websocket-broadcast
+2026-04-07T04:42:47.386798644Z [inf]  [TestRunner] Registered test: env-secrets
+2026-04-07T04:42:47.386804054Z [inf]  [TestRunner] Registered test: schema-validation
+2026-04-07T04:42:47.386809946Z [inf]  [TestRunner] Registered test: api-response-time
+2026-04-07T04:42:47.386816935Z [inf]  [TestRunner] Registered 8 built-in tests
+2026-04-07T04:42:47.386822480Z [inf]  [AIExpenseCategorization] Service initialized
+2026-04-07T04:42:47.386827277Z [inf]  [AIDynamicPricing] Service initialized
+2026-04-07T04:42:47.386831718Z [inf]  [LLMJudgeEvaluator] Initializing evaluation subagent system...
+2026-04-07T04:42:47.386836280Z [inf]  [ScheduleLiveNotifier] Service initialized - Real-time schedule notifications ready
+2026-04-07T04:42:47.386840693Z [inf]  [IntegrationManagement] Service initialized
+2026-04-07T04:42:47.386845295Z [inf]  [IntegrationPartner] Service initialized
+2026-04-07T04:42:47.386850179Z [inf]  [SubagentSupervisor] Initializing subagent registry...
+2026-04-07T04:42:47.386854727Z [inf]  [BugReportOrchestrator] Initialized - Bug report analysis and remediation active
+2026-04-07T04:42:47.389829300Z [err]    length: 116,
+2026-04-07T04:42:47.389838226Z [err]    severity: 'ERROR',
+2026-04-07T04:42:47.389844779Z [err]    code: '42P01',
+2026-04-07T04:42:47.389845627Z [inf]  [CognitiveOnboardingService] Third-party API integration service initialized
+2026-04-07T04:42:47.389851729Z [err]    detail: undefined,
+2026-04-07T04:42:47.389857643Z [inf]  [Features] MVP Feature Flags loaded: 13 enabled, 23 disabled for enterprise tier
+2026-04-07T04:42:47.389858511Z [err]    hint: undefined,
+2026-04-07T04:42:47.389864920Z [err]    position: '206',
+2026-04-07T04:42:47.389867240Z [inf]  [MONITORING] CPU: 0%, Memory: 73.2%, Samples: 0
+2026-04-07T04:42:47.389872464Z [err]    internalPosition: undefined,
+2026-04-07T04:42:47.389876458Z [inf]  [PortManager] Starting port 8080 cleanup...
+2026-04-07T04:42:47.389884794Z [inf]  🧠 [AI Brain] Processing undefined request with 8-step workflow
+2026-04-07T04:42:47.389892467Z [inf]  [PortManager] Port 8080 is available
+2026-04-07T04:42:47.389898571Z [inf]  [PortManager] Lock file created: PID 15
+2026-04-07T04:42:47.389904188Z [inf]  [Startup] Phase 0: Registering routes...
+2026-04-07T04:42:47.389910408Z [inf]  Creating root user for Operations organization...
+2026-04-07T04:42:47.389917156Z [inf]  [EventBus] ChatServerHub subscribed to *
+2026-04-07T04:42:47.389923762Z [inf]  [ChatServerHub] Subscribed to Platform Event Bus
+2026-04-07T04:42:47.389930180Z [err]  [WhatsNew] Failed to check updates: error: relation "platform_updates" does not exist
+2026-04-07T04:42:47.389936123Z [err]      at /app/node_modules/pg-pool/index.js:45:11
+2026-04-07T04:42:47.389941854Z [err]      at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+2026-04-07T04:42:47.389948295Z [err]      at async file:///app/node_modules/drizzle-orm/node-postgres/session.js:83:22
+2026-04-07T04:42:47.389954929Z [err]      at async seedPlatformUpdates (file:///app/dist/index.js:106037:27) {
+2026-04-07T04:42:47.392265247Z [err]    internalQuery: undefined,
+2026-04-07T04:42:47.392276961Z [err]    where: undefined,
+2026-04-07T04:42:47.392284195Z [err]    schema: undefined,
+2026-04-07T04:42:47.392291656Z [err]    table: undefined,
+2026-04-07T04:42:47.392298143Z [err]    column: undefined,
+2026-04-07T04:42:47.392303873Z [err]    dataType: undefined,
+2026-04-07T04:42:47.392309672Z [err]    constraint: undefined,
+2026-04-07T04:42:47.392315275Z [err]    file: 'parse_relation.c',
+2026-04-07T04:42:47.392323970Z [err]    line: '1466',
+2026-04-07T04:42:47.392330423Z [err]    routine: 'parserOpenTable'
+2026-04-07T04:42:47.392336501Z [err]  }
+2026-04-07T04:42:47.392342240Z [err]  [SubagentSupervisor] Error seeding subagent SchedulingAgent: error: relation "ai_subagent_definitions" does not exist
+2026-04-07T04:42:47.392347726Z [err]      at /app/node_modules/pg-pool/index.js:45:11
+2026-04-07T04:42:47.392353334Z [err]      at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+2026-04-07T04:42:47.392359974Z [err]      at async file:///app/node_modules/drizzle-orm/node-postgres/session.js:83:22
+2026-04-07T04:42:47.392366277Z [err]      at async _SubagentSupervisor.seedDefaultSubagents (file:///app/dist/index.js:68206:30)
+2026-04-07T04:42:47.392371974Z [err]      at async _SubagentSupervisor.initialize (file:///app/dist/index.js:68197:9)
+2026-04-07T04:42:47.392379951Z [err]      at async file:///app/dist/index.js:197616:5 {
+2026-04-07T04:42:47.392385946Z [err]    length: 123,
+2026-04-07T04:42:47.392398822Z [err]    severity: 'ERROR',
+2026-04-07T04:42:47.392409409Z [err]    code: '42P01',
+2026-04-07T04:42:47.392415033Z [err]    detail: undefined,
+2026-04-07T04:42:47.392419987Z [err]    hint: undefined,
+2026-04-07T04:42:47.392424667Z [err]    position: '327',
+2026-04-07T04:42:47.392430129Z [err]    internalPosition: undefined,
+2026-04-07T04:42:47.392434580Z [err]    internalQuery: undefined,
+2026-04-07T04:42:47.394856117Z [err]    where: undefined,
+2026-04-07T04:42:47.394864639Z [err]    length: 105,
+2026-04-07T04:42:47.394864710Z [err]    schema: undefined,
+2026-04-07T04:42:47.394871660Z [err]    table: undefined,
+2026-04-07T04:42:47.394875584Z [err]    severity: 'ERROR',
+2026-04-07T04:42:47.394877373Z [err]    column: undefined,
+2026-04-07T04:42:47.394883326Z [err]    code: '42P01',
+2026-04-07T04:42:47.394883448Z [err]    dataType: undefined,
+2026-04-07T04:42:47.394892199Z [err]    constraint: undefined,
+2026-04-07T04:42:47.394897530Z [err]    detail: undefined,
+2026-04-07T04:42:47.394898689Z [err]    file: 'parse_relation.c',
+2026-04-07T04:42:47.394903830Z [err]    line: '1466',
+2026-04-07T04:42:47.394909556Z [err]    routine: 'parserOpenTable'
+2026-04-07T04:42:47.394910446Z [err]    hint: undefined,
+2026-04-07T04:42:47.394918374Z [err]  }
+2026-04-07T04:42:47.394919876Z [err]    position: '451',
+2026-04-07T04:42:47.394926191Z [err]  CRITICAL: Failed to register routes: error: relation "users" does not exist
+2026-04-07T04:42:47.394928906Z [err]    internalPosition: undefined,
+2026-04-07T04:42:47.394934068Z [err]      at /app/node_modules/pg-pool/index.js:45:11
+2026-04-07T04:42:47.394938366Z [err]    internalQuery: undefined,
+2026-04-07T04:42:47.394941755Z [err]      at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+2026-04-07T04:42:47.394949280Z [err]    where: undefined,
+2026-04-07T04:42:47.394949497Z [err]      at async file:///app/node_modules/drizzle-orm/node-postgres/session.js:83:22
+2026-04-07T04:42:47.394957598Z [err]      at async seedRootUser (file:///app/dist/index.js:127171:18)
+2026-04-07T04:42:47.394958414Z [err]    schema: undefined,
+2026-04-07T04:42:47.394964279Z [err]      at async registerRoutes (file:///app/dist/index.js:215012:3)
+2026-04-07T04:42:47.394970455Z [err]      at async file:///app/dist/index.js:245610:14 {
+2026-04-07T04:42:47.398077439Z [err]    table: undefined,
+2026-04-07T04:42:47.398081974Z [err]    column: undefined,
+2026-04-07T04:42:47.398090827Z [err]    dataType: undefined,
+2026-04-07T04:42:47.398095396Z [err]    constraint: undefined,
+2026-04-07T04:42:47.398100167Z [err]    file: 'parse_relation.c',
+2026-04-07T04:42:47.398104238Z [err]    line: '1466',
+2026-04-07T04:42:47.398109224Z [err]    routine: 'parserOpenTable'
+2026-04-07T04:42:47.398115162Z [err]  }
+2026-04-07T04:42:47.398121827Z [err]  Application cannot start without platform workspace. Exiting...
+2026-04-07T04:42:47.398127835Z [err]  npm warn config production Use `--omit=dev` instead.
+2026-04-07T04:42:47.398134535Z [inf]  
+2026-04-07T04:42:47.398141715Z [inf]  > rest-express@1.0.0 start
+2026-04-07T04:42:47.398147468Z [inf]  > NODE_ENV=production node dist/index.js
+2026-04-07T04:42:47.398153627Z [inf]  
+2026-04-07T04:42:49.239138802Z [inf]  📊 Database: Using standard pg driver (node-postgres)
+2026-04-07T04:42:49.239146093Z [inf]     Compatible with: Railway PostgreSQL, Render, Supabase, and any standard Postgres
+2026-04-07T04:42:49.239153662Z [err]  [replitAuth] REPLIT_DOMAINS not set — Replit OIDC auth is disabled. Using platform-native auth instead.
+2026-04-07T04:42:49.239318788Z [inf]  [AI Brain] UnifiedGeminiClient initialized with tiered architecture + humanized persona
+2026-04-07T04:42:49.239327835Z [inf]  [ChatServerHub] Initialized - Version 1.0.0
+2026-04-07T04:42:49.239336020Z [inf]  [SessionSync] Service initialized
+2026-04-07T04:42:49.239344435Z [inf]  [TrinityNotifier] Autonomous notifier initialized
+2026-04-07T04:42:49.239352135Z [err]  ValidationError: Custom keyGenerator appears to use request IP without calling the ipKeyGenerator helper function for IPv6 addresses. This could allow IPv6 users to bypass limits. See https://express-rate-limit.github.io/ERR_ERL_KEY_GEN_IPV6/ for more information.
+2026-04-07T04:42:49.239359787Z [err]      at Object.keyGeneratorIpFallback (file:///app/node_modules/express-rate-limit/dist/index.mjs:566:13)
+2026-04-07T04:42:49.239367663Z [err]      at wrappedValidations.<computed> [as keyGeneratorIpFallback] (file:///app/node_modules/express-rate-limit/dist/index.mjs:609:22)
+2026-04-07T04:42:49.239383183Z [err]      at parseOptions (file:///app/node_modules/express-rate-limit/dist/index.mjs:678:16)
+2026-04-07T04:42:49.239391815Z [err]      at rateLimit (file:///app/node_modules/express-rate-limit/dist/index.mjs:759:18)
+2026-04-07T04:42:49.239399920Z [err]      at file:///app/dist/index.js:163947:24
+2026-04-07T04:42:49.239408125Z [err]      at ModuleJob.run (node:internal/modules/esm/module_job:325:25)
+2026-04-07T04:42:49.239415883Z [err]      at async ModuleLoader.import (node:internal/modules/esm/loader:606:24)
+2026-04-07T04:42:49.239424067Z [err]      at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5) {
+2026-04-07T04:42:49.241339500Z [inf]  [Platform Action Hub] Registered action: support.broadcast
+2026-04-07T04:42:49.241354777Z [inf]  [Platform Action Hub] Registered action: system.service_status
+2026-04-07T04:42:49.241363690Z [inf]  [Platform Action Hub] Registered action: admin.deactivate_workspace
+2026-04-07T04:42:49.241387553Z [inf]  [Platform Action Hub] Initializing universal action handler...
+2026-04-07T04:42:49.241387995Z [inf]  [Platform Action Hub] Registered action: admin.reactivate_workspace
+2026-04-07T04:42:49.241403397Z [inf]  [Platform Action Hub] Registered action: ai.query
+2026-04-07T04:42:49.241405200Z [err]    code: 'ERR_ERL_KEY_GEN_IPV6',
+2026-04-07T04:42:49.241406581Z [inf]  [Platform Action Hub] Registered action: system.health_check
+2026-04-07T04:42:49.241414375Z [err]    help: 'https://express-rate-limit.github.io/ERR_ERL_KEY_GEN_IPV6/'
+2026-04-07T04:42:49.241418285Z [inf]  [Platform Action Hub] Registered action: test.send_notification
+2026-04-07T04:42:49.241422410Z [err]  }
+2026-04-07T04:42:49.241430131Z [inf]  [KnowledgeOrchestration] Gemini 3 Pro AI Brain initialized
+2026-04-07T04:42:49.241431437Z [inf]  [Platform Action Hub] Registered action: test.send_maintenance_alert
+2026-04-07T04:42:49.241437553Z [inf]  [KnowledgeOrchestration] Initialized 8 domain experts
+2026-04-07T04:42:49.241442463Z [inf]  [Platform Action Hub] Registered action: system.push_update
+2026-04-07T04:42:49.241446597Z [inf]  [KnowledgeOrchestration] Initialized 4 base knowledge nodes
+2026-04-07T04:42:49.241453242Z [inf]  [Platform Action Hub] Registered action: notifications.send_to_user
+2026-04-07T04:42:49.241460537Z [inf]  [Platform Action Hub] Registered action: notifications.create_maintenance_alert
+2026-04-07T04:42:49.241467340Z [inf]  [Platform Action Hub] Registered action: notifications.get_stats
+2026-04-07T04:42:49.241477430Z [inf]  [Platform Action Hub] Registered action: notifications.force_clear_all
+2026-04-07T04:42:49.248108729Z [inf]      'notifications', 'calendar',
+2026-04-07T04:42:49.248164000Z [inf]  [Platform Action Hub] Registered action: code.stage_change
+2026-04-07T04:42:49.248171758Z [inf]  [Platform Action Hub] Registered action: code.stage_batch
+2026-04-07T04:42:49.248177982Z [inf]  [Platform Action Hub] Registered action: code.get_pending
+2026-04-07T04:42:49.248184964Z [inf]  [Platform Action Hub] Registered action: code.approve
+2026-04-07T04:42:49.248191420Z [inf]  [Platform Action Hub] Registered action: code.reject
+2026-04-07T04:42:49.248198185Z [inf]  [Platform Action Hub] Registered action: code.apply
+2026-04-07T04:42:49.248204781Z [inf]  [Platform Action Hub] Registered action: code.rollback
+2026-04-07T04:42:49.248211278Z [inf]  [Platform Action Hub] Registered action: idempotency.get_stats
+2026-04-07T04:42:49.248218142Z [inf]  [Platform Action Hub] Registered action: idempotency.cleanup
+2026-04-07T04:42:49.248224014Z [inf]  [Platform Action Hub] Registered action: idempotency.force_retry
+2026-04-07T04:42:49.248230026Z [inf]  [IdempotencyService] Registered 3 AI Brain actions
+2026-04-07T04:42:49.248235349Z [inf]  [Platform Action Hub] Registered 23 built-in actions
+2026-04-07T04:42:49.248240418Z [inf]  [EventBus] HelpAI Orchestrator subscribed to ai_brain_action
+2026-04-07T04:42:49.248245562Z [inf]  [EventBus] HelpAI Orchestrator Error Handler subscribed to ai_error
+2026-04-07T04:42:49.248250025Z [inf]  [PlatformFeatureRegistry] Initialized for Trinity orchestration: {
+2026-04-07T04:42:49.248254821Z [inf]    lastSyncedAt: 2026-04-07T04:42:49.218Z,
+2026-04-07T04:42:49.248259777Z [inf]    syncVersion: 1,
+2026-04-07T04:42:49.248265376Z [inf]    featureCount: 15,
+2026-04-07T04:42:49.248270040Z [inf]    enabledCount: 15,
+2026-04-07T04:42:49.248274967Z [inf]    categories: [
+2026-04-07T04:42:49.248279595Z [inf]      'time_tracking', 'scheduling',
+2026-04-07T04:42:49.248284249Z [inf]      'invoicing',     'availability',
+2026-04-07T04:42:49.250489782Z [inf]      'analytics',     'breaks',
+2026-04-07T04:42:49.250497529Z [inf]      'employees',     'clients',
+2026-04-07T04:42:49.250502565Z [inf]      'reports',       'payroll',
+2026-04-07T04:42:49.250508006Z [inf]      'ai_features',   'communication',
+2026-04-07T04:42:49.250513304Z [inf]      'integrations'
+2026-04-07T04:42:49.250519119Z [inf]    ]
+2026-04-07T04:42:49.250524152Z [inf]  }
+2026-04-07T04:42:49.250529037Z [inf]  🏥 Running AI provider health check...
+2026-04-07T04:42:49.250535208Z [inf]  [TrinitySelfAssessment] Initializing self-assessment service...
+2026-04-07T04:42:49.250540048Z [inf]  [AI Analytics Engine] Initialized
+2026-04-07T04:42:49.250545382Z [inf]  [TrinityControlConsole] Initialized - Real-time cognitive streaming active
+2026-04-07T04:42:49.250550202Z [inf]  Generated ENCRYPTION_KEY (add to .env file):
+2026-04-07T04:42:49.250555441Z [inf]  ENCRYPTION_KEY=cf6b6573c5bbf04d008d99193fad8c4d8328f54c9e4b8d6181143ebd02a972d7
+2026-04-07T04:42:49.250560764Z [inf]  
+2026-04-07T04:42:49.250566166Z [inf]  Example .env entry:
+2026-04-07T04:42:49.250572959Z [inf]  ENCRYPTION_KEY=63d2bf2f23d96fc3b39afc59fb107bd70050d92448f1685431c25d4fcf702ff7
+2026-04-07T04:42:49.250582779Z [inf]  [QuickBooks OAuth] Environment: SANDBOX
+2026-04-07T04:42:49.250588710Z [inf]  [QuickBooks OAuth] Client ID prefix: ABW40IYH...
+2026-04-07T04:42:49.250593968Z [inf]  [QuickBooks OAuth] IMPORTANT: For sandbox testing, use Development app credentials from Intuit Developer Portal
+2026-04-07T04:42:49.250598757Z [err]  ⚠️  Gusto OAuth not configured - missing GUSTO_CLIENT_ID or GUSTO_CLIENT_SECRET
+2026-04-07T04:42:49.250603596Z [inf]  [TrinityPlatformConnector] Initializing platform connector...
+2026-04-07T04:42:49.250608238Z [inf]  [SubagentBanker] Initializing AI Brain Credit Management...
+2026-04-07T04:42:49.250613238Z [inf]  [WorkboardService] Initializing AI Brain Workboard...
+2026-04-07T04:42:49.259714439Z [inf]  [FastModeService] Initializing Trinity Fast Mode Service...
+2026-04-07T04:42:49.259723995Z [inf]  [TestRunner] Registered test: fs-read-access
+2026-04-07T04:42:49.259724645Z [inf]  [TrinityNotificationBridge] Fortune 500-grade notification orchestration initialized
+2026-04-07T04:42:49.259731221Z [inf]  [TrinityNotificationWatchdog] Starting self-monitoring...
+2026-04-07T04:42:49.259737500Z [inf]  [TrinityThoughtEngine] Initializing metacognition system...
+2026-04-07T04:42:49.259740161Z [inf]  [TestRunner] Registered test: fs-list-access
+2026-04-07T04:42:49.259746873Z [inf]  [TrinityGuardrails] Content guardrails initialized
+2026-04-07T04:42:49.259750473Z [inf]  [TestRunner] Registered test: websocket-broadcast
+2026-04-07T04:42:49.259753912Z [inf]  [CircuitBreaker] Service initialized
+2026-04-07T04:42:49.259759565Z [inf]  [RateLimitQueue] Service initialized with 4 services
+2026-04-07T04:42:49.259760682Z [inf]  [TestRunner] Registered test: env-secrets
+2026-04-07T04:42:49.259764923Z [inf]  [WebhookVerifier] Service initialized
+2026-04-07T04:42:49.259770074Z [inf]  [TestRunner] Registered test: schema-validation
+2026-04-07T04:42:49.259772067Z [inf]  [ExchangeRate] Service initialized with 20 currencies
+2026-04-07T04:42:49.259778426Z [inf]  [FinancialAudit] SOX-compliant audit service initialized
+2026-04-07T04:42:49.259780285Z [inf]  [TestRunner] Registered test: api-response-time
+2026-04-07T04:42:49.259784556Z [inf]  [SessionCheckpoint] Service initialized
+2026-04-07T04:42:49.259790245Z [inf]  [WorkflowExecutor] Registered custom handler: log_message
+2026-04-07T04:42:49.259794559Z [inf]  [WorkflowExecutor] Registered custom handler: validate_json
+2026-04-07T04:42:49.259799448Z [inf]  [WorkflowExecutor] Registered custom handler: aggregate_results
+2026-04-07T04:42:49.259803514Z [inf]  [TestRunner] Registered test: api-health
+2026-04-07T04:42:49.259808525Z [inf]  [TestRunner] Registered test: db-connectivity
+2026-04-07T04:42:49.267061144Z [inf]  [TestRunner] Registered 8 built-in tests
+2026-04-07T04:42:49.267076864Z [inf]  [AIExpenseCategorization] Service initialized
+2026-04-07T04:42:49.267085178Z [inf]  [AIDynamicPricing] Service initialized
+2026-04-07T04:42:49.267091436Z [inf]  [LLMJudgeEvaluator] Initializing evaluation subagent system...
+2026-04-07T04:42:49.267097730Z [inf]  [ScheduleLiveNotifier] Service initialized - Real-time schedule notifications ready
+2026-04-07T04:42:49.267104133Z [inf]  [IntegrationManagement] Service initialized
+2026-04-07T04:42:49.267110382Z [inf]  [IntegrationPartner] Service initialized
+2026-04-07T04:42:49.267117497Z [inf]  [SubagentSupervisor] Initializing subagent registry...
+2026-04-07T04:42:49.267123447Z [inf]  [BugReportOrchestrator] Initialized - Bug report analysis and remediation active
+2026-04-07T04:42:49.267129912Z [inf]  [CognitiveOnboardingService] Third-party API integration service initialized
+2026-04-07T04:42:49.284367724Z [inf]  [Features] MVP Feature Flags loaded: 13 enabled, 23 disabled for enterprise tier
+2026-04-07T04:42:49.294976938Z [inf]  [MONITORING] CPU: 0%, Memory: 73.2%, Samples: 0
+2026-04-07T04:42:49.301056402Z [inf]  [PortManager] Starting port 8080 cleanup...
+2026-04-07T04:42:49.319772532Z [inf]  🧠 [AI Brain] Processing undefined request with 8-step workflow
+2026-04-07T04:42:49.345252780Z [inf]  [PortManager] Port 8080 is available
+2026-04-07T04:42:49.345259470Z [inf]  [PortManager] Lock file created: PID 15
+2026-04-07T04:42:49.345264789Z [inf]  [Startup] Phase 0: Registering routes...
+2026-04-07T04:42:49.377282044Z [inf]  Creating root user for Operations organization...
+2026-04-07T04:42:49.377291381Z [inf]  [EventBus] ChatServerHub subscribed to *
+2026-04-07T04:42:49.377297599Z [inf]  [ChatServerHub] Subscribed to Platform Event Bus
+2026-04-07T04:42:49.400069430Z [err]    schema: undefined,
+2026-04-07T04:42:49.400080040Z [err]    table: undefined,
+2026-04-07T04:42:49.400082624Z [err]  [WhatsNew] Failed to check updates: error: relation "platform_updates" does not exist
+2026-04-07T04:42:49.400086386Z [err]    column: undefined,
+2026-04-07T04:42:49.400091684Z [err]      at /app/node_modules/pg-pool/index.js:45:11
+2026-04-07T04:42:49.400093563Z [err]    dataType: undefined,
+2026-04-07T04:42:49.400099133Z [err]      at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+2026-04-07T04:42:49.400100000Z [err]    constraint: undefined,
+2026-04-07T04:42:49.400108141Z [err]      at async file:///app/node_modules/drizzle-orm/node-postgres/session.js:83:22
+2026-04-07T04:42:49.400108572Z [err]    file: 'parse_relation.c',
+2026-04-07T04:42:49.400116748Z [err]      at async seedPlatformUpdates (file:///app/dist/index.js:106037:27) {
+2026-04-07T04:42:49.400117628Z [err]    line: '1466',
+2026-04-07T04:42:49.400124452Z [err]    routine: 'parserOpenTable'
+2026-04-07T04:42:49.400125198Z [err]    length: 116,
+2026-04-07T04:42:49.400132681Z [err]    severity: 'ERROR',
+2026-04-07T04:42:49.400133545Z [err]  }
+2026-04-07T04:42:49.400139915Z [err]    code: '42P01',
+2026-04-07T04:42:49.400146098Z [err]    detail: undefined,
+2026-04-07T04:42:49.400151782Z [err]    hint: undefined,
+2026-04-07T04:42:49.400157758Z [err]    position: '206',
+2026-04-07T04:42:49.400164890Z [err]    internalPosition: undefined,
+2026-04-07T04:42:49.400171317Z [err]    internalQuery: undefined,
+2026-04-07T04:42:49.400177480Z [err]    where: undefined,
+2026-04-07T04:42:49.420608084Z [err]    where: undefined,
+2026-04-07T04:42:49.420622159Z [err]  [SubagentSupervisor] Error seeding subagent SchedulingAgent: error: relation "ai_subagent_definitions" does not exist
+2026-04-07T04:42:49.420622572Z [err]    schema: undefined,
+2026-04-07T04:42:49.420632036Z [err]    table: undefined,
+2026-04-07T04:42:49.420634223Z [err]      at /app/node_modules/pg-pool/index.js:45:11
+2026-04-07T04:42:49.420638682Z [err]    column: undefined,
+2026-04-07T04:42:49.420648838Z [err]      at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+2026-04-07T04:42:49.420655904Z [err]    dataType: undefined,
+2026-04-07T04:42:49.420657544Z [err]      at async file:///app/node_modules/drizzle-orm/node-postgres/session.js:83:22
+2026-04-07T04:42:49.420664403Z [err]      at async _SubagentSupervisor.seedDefaultSubagents (file:///app/dist/index.js:68206:30)
+2026-04-07T04:42:49.420666769Z [err]    constraint: undefined,
+2026-04-07T04:42:49.420673532Z [err]      at async _SubagentSupervisor.initialize (file:///app/dist/index.js:68197:9)
+2026-04-07T04:42:49.420673716Z [err]    file: 'parse_relation.c',
+2026-04-07T04:42:49.420680847Z [err]    line: '1466',
+2026-04-07T04:42:49.420681728Z [err]      at async file:///app/dist/index.js:197616:5 {
+2026-04-07T04:42:49.420688397Z [err]    routine: 'parserOpenTable'
+2026-04-07T04:42:49.420689397Z [err]    length: 123,
+2026-04-07T04:42:49.420696223Z [err]    severity: 'ERROR',
+2026-04-07T04:42:49.420702666Z [err]    code: '42P01',
+2026-04-07T04:42:49.420708343Z [err]  }
+2026-04-07T04:42:49.420709178Z [err]    detail: undefined,
+2026-04-07T04:42:49.420715284Z [err]    hint: undefined,
+2026-04-07T04:42:49.420721179Z [err]    position: '327',
+2026-04-07T04:42:49.420727245Z [err]    internalPosition: undefined,
+2026-04-07T04:42:49.420733111Z [err]    internalQuery: undefined,
+2026-04-07T04:42:49.433641102Z [err]    constraint: undefined,
+2026-04-07T04:42:49.433650369Z [err]  CRITICAL: Failed to register routes: error: relation "users" does not exist
+2026-04-07T04:42:49.433655178Z [err]    file: 'parse_relation.c',
+2026-04-07T04:42:49.433663509Z [err]      at /app/node_modules/pg-pool/index.js:45:11
+2026-04-07T04:42:49.433666858Z [err]    line: '1466',
+2026-04-07T04:42:49.433675653Z [err]    routine: 'parserOpenTable'
+2026-04-07T04:42:49.433680536Z [err]      at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+2026-04-07T04:42:49.433685046Z [err]  }
+2026-04-07T04:42:49.433691883Z [err]      at async file:///app/node_modules/drizzle-orm/node-postgres/session.js:83:22
+2026-04-07T04:42:49.433697412Z [err]  Application cannot start without platform workspace. Exiting...
+2026-04-07T04:42:49.433703005Z [err]      at async seedRootUser (file:///app/dist/index.js:127171:18)
+2026-04-07T04:42:49.433709204Z [err]      at async registerRoutes (file:///app/dist/index.js:215012:3)
+2026-04-07T04:42:49.433715393Z [err]      at async file:///app/dist/index.js:245610:14 {
+2026-04-07T04:42:49.433722256Z [err]    length: 105,
+2026-04-07T04:42:49.433728848Z [err]    severity: 'ERROR',
+2026-04-07T04:42:49.433734882Z [err]    code: '42P01',
+2026-04-07T04:42:49.433742279Z [err]    detail: undefined,
+2026-04-07T04:42:49.433748413Z [err]    hint: undefined,
+2026-04-07T04:42:49.433754333Z [err]    position: '451',
+2026-04-07T04:42:49.433760672Z [err]    internalPosition: undefined,
+2026-04-07T04:42:49.433767219Z [err]    internalQuery: undefined,
+2026-04-07T04:42:49.433772959Z [err]    where: undefined,
+2026-04-07T04:42:49.433779310Z [err]    schema: undefined,
+2026-04-07T04:42:49.433785246Z [err]    table: undefined,
+2026-04-07T04:42:49.433791020Z [err]    column: undefined,
+2026-04-07T04:42:49.433798497Z [err]    dataType: undefined,
+2026-04-07T04:42:51.263424649Z [err]  npm warn config production Use `--omit=dev` instead.
+2026-04-07T04:42:51.263430066Z [inf]  
+2026-04-07T04:42:51.263435426Z [inf]  > rest-express@1.0.0 start
+2026-04-07T04:42:51.263439763Z [inf]  > NODE_ENV=production node dist/index.js
+2026-04-07T04:42:51.263444640Z [inf]  
+2026-04-07T04:42:53.179929013Z [inf]  [ChatServerHub] Initialized - Version 1.0.0
+2026-04-07T04:42:53.179939911Z [inf]  [SessionSync] Service initialized
+2026-04-07T04:42:53.179944688Z [err]    help: 'https://express-rate-limit.github.io/ERR_ERL_KEY_GEN_IPV6/'
+2026-04-07T04:42:53.179949556Z [inf]  [TrinityNotifier] Autonomous notifier initialized
+2026-04-07T04:42:53.179958395Z [err]  ValidationError: Custom keyGenerator appears to use request IP without calling the ipKeyGenerator helper function for IPv6 addresses. This could allow IPv6 users to bypass limits. See https://express-rate-limit.github.io/ERR_ERL_KEY_GEN_IPV6/ for more information.
+2026-04-07T04:42:53.179963624Z [err]  }
+2026-04-07T04:42:53.179972518Z [inf]  [KnowledgeOrchestration] Gemini 3 Pro AI Brain initialized
+2026-04-07T04:42:53.179980289Z [inf]  [KnowledgeOrchestration] Initialized 8 domain experts
+2026-04-07T04:42:53.179988411Z [inf]  [KnowledgeOrchestration] Initialized 4 base knowledge nodes
+2026-04-07T04:42:53.179997282Z [inf]  [Platform Action Hub] Initializing universal action handler...
+2026-04-07T04:42:53.180005593Z [inf]  [Platform Action Hub] Registered action: system.health_check
+2026-04-07T04:42:53.180009732Z [err]      at Object.keyGeneratorIpFallback (file:///app/node_modules/express-rate-limit/dist/index.mjs:566:13)
+2026-04-07T04:42:53.180013564Z [inf]  [Platform Action Hub] Registered action: test.send_notification
+2026-04-07T04:42:53.180026769Z [err]      at wrappedValidations.<computed> [as keyGeneratorIpFallback] (file:///app/node_modules/express-rate-limit/dist/index.mjs:609:22)
+2026-04-07T04:42:53.180039848Z [err]      at parseOptions (file:///app/node_modules/express-rate-limit/dist/index.mjs:678:16)
+2026-04-07T04:42:53.180039858Z [err]      at file:///app/dist/index.js:163947:24
+2026-04-07T04:42:53.180048917Z [err]      at rateLimit (file:///app/node_modules/express-rate-limit/dist/index.mjs:759:18)
+2026-04-07T04:42:53.180051004Z [inf]  [Platform Action Hub] Registered action: test.send_maintenance_alert
+2026-04-07T04:42:53.180059953Z [err]      at ModuleJob.run (node:internal/modules/esm/module_job:325:25)
+2026-04-07T04:42:53.180069286Z [inf]  [Platform Action Hub] Registered action: system.push_update
+2026-04-07T04:42:53.180073523Z [err]      at async ModuleLoader.import (node:internal/modules/esm/loader:606:24)
+2026-04-07T04:42:53.180081641Z [inf]  [Platform Action Hub] Registered action: notifications.send_to_user
+2026-04-07T04:42:53.180085316Z [err]      at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5) {
+2026-04-07T04:42:53.180090984Z [inf]  [Platform Action Hub] Registered action: notifications.create_maintenance_alert
+2026-04-07T04:42:53.180097894Z [inf]  [Platform Action Hub] Registered action: notifications.get_stats
+2026-04-07T04:42:53.180105635Z [inf]  [Platform Action Hub] Registered action: notifications.force_clear_all
+2026-04-07T04:42:53.180112704Z [inf]  [Platform Action Hub] Registered action: support.broadcast
+2026-04-07T04:42:53.180119142Z [inf]  [Platform Action Hub] Registered action: system.service_status
+2026-04-07T04:42:53.180127452Z [inf]  [Platform Action Hub] Registered action: admin.deactivate_workspace
+2026-04-07T04:42:53.180135578Z [inf]  [Platform Action Hub] Registered action: admin.reactivate_workspace
+2026-04-07T04:42:53.180142405Z [inf]  [Platform Action Hub] Registered action: ai.query
+2026-04-07T04:42:53.180212118Z [inf]     Compatible with: Railway PostgreSQL, Render, Supabase, and any standard Postgres
+2026-04-07T04:42:53.180226460Z [inf]  [AI Brain] UnifiedGeminiClient initialized with tiered architecture + humanized persona
+2026-04-07T04:42:53.180245166Z [err]    code: 'ERR_ERL_KEY_GEN_IPV6',
+2026-04-07T04:42:53.180249851Z [inf]  📊 Database: Using standard pg driver (node-postgres)
+2026-04-07T04:42:53.181452732Z [inf]  [Platform Action Hub] Registered action: code.stage_batch
+2026-04-07T04:42:53.181458011Z [inf]  [Platform Action Hub] Registered action: code.get_pending
+2026-04-07T04:42:53.181463561Z [inf]  [Platform Action Hub] Registered action: code.approve
+2026-04-07T04:42:53.181474140Z [inf]  [Platform Action Hub] Registered action: code.apply
+2026-04-07T04:42:53.181478874Z [inf]  [Platform Action Hub] Registered action: code.rollback
+2026-04-07T04:42:53.181483456Z [inf]  [Platform Action Hub] Registered action: idempotency.get_stats
+2026-04-07T04:42:53.181488463Z [inf]  [Platform Action Hub] Registered action: idempotency.cleanup
+2026-04-07T04:42:53.181535061Z [inf]  [IdempotencyService] Registered 3 AI Brain actions
+2026-04-07T04:42:53.181539742Z [inf]  [Platform Action Hub] Registered 23 built-in actions
+2026-04-07T04:42:53.181553833Z [inf]  [PlatformFeatureRegistry] Initialized for Trinity orchestration: {
+2026-04-07T04:42:53.181558115Z [inf]    lastSyncedAt: 2026-04-07T04:42:52.804Z,
+2026-04-07T04:42:53.181562748Z [inf]    syncVersion: 1,
+2026-04-07T04:42:53.181732468Z [inf]    enabledCount: 15,
+2026-04-07T04:42:53.181747090Z [inf]      'invoicing',     'availability',
+2026-04-07T04:42:53.181751757Z [inf]      'notifications', 'calendar',
+2026-04-07T04:42:53.184383357Z [inf]  [TrinityPlatformConnector] Initializing platform connector...
+2026-04-07T04:42:53.184401658Z [inf]  [WorkboardService] Initializing AI Brain Workboard...
+2026-04-07T04:42:53.184412851Z [inf]      'analytics',     'breaks',
+2026-04-07T04:42:53.184419421Z [inf]      'employees',     'clients',
+2026-04-07T04:42:53.184425318Z [inf]      'reports',       'payroll',
+2026-04-07T04:42:53.184431793Z [inf]      'ai_features',   'communication',
+2026-04-07T04:42:53.184437726Z [inf]      'integrations'
+2026-04-07T04:42:53.184442712Z [inf]    ]
+2026-04-07T04:42:53.184447655Z [inf]  }
+2026-04-07T04:42:53.184452334Z [inf]  🏥 Running AI provider health check...
+2026-04-07T04:42:53.184456865Z [inf]  [TrinitySelfAssessment] Initializing self-assessment service...
+2026-04-07T04:42:53.184464969Z [inf]  [TrinityControlConsole] Initialized - Real-time cognitive streaming active
+2026-04-07T04:42:53.184468839Z [inf]  Generated ENCRYPTION_KEY (add to .env file):
+2026-04-07T04:42:53.184477262Z [inf]  
+2026-04-07T04:42:53.184481659Z [inf]  Example .env entry:
+2026-04-07T04:42:53.184486125Z [inf]  ENCRYPTION_KEY=0975df32214bd1e08a171848b8a0b3b080825ac0ff0741d861150299de268638
+2026-04-07T04:42:53.184491577Z [inf]  [QuickBooks OAuth] Environment: SANDBOX
+2026-04-07T04:42:53.184497213Z [inf]  [QuickBooks OAuth] Client ID prefix: ABW40IYH...
+2026-04-07T04:42:53.184502407Z [inf]  [QuickBooks OAuth] IMPORTANT: For sandbox testing, use Development app credentials from Intuit Developer Portal
+2026-04-07T04:42:53.184508288Z [err]  ⚠️  Gusto OAuth not configured - missing GUSTO_CLIENT_ID or GUSTO_CLIENT_SECRET
+2026-04-07T04:42:53.189192192Z [inf]  [WorkflowExecutor] Registered custom handler: validate_json
+2026-04-07T04:42:53.189204940Z [inf]  [WorkflowExecutor] Registered custom handler: aggregate_results
+2026-04-07T04:42:53.189209772Z [inf]  [TrinityNotificationBridge] Fortune 500-grade notification orchestration initialized
+2026-04-07T04:42:53.189215875Z [inf]  [TestRunner] Registered test: api-health
+2026-04-07T04:42:53.189224722Z [inf]  [TestRunner] Registered test: db-connectivity
+2026-04-07T04:42:53.189225182Z [inf]  [TrinityThoughtEngine] Initializing metacognition system...
+2026-04-07T04:42:53.189234456Z [inf]  [TestRunner] Registered test: fs-read-access
+2026-04-07T04:42:53.189234622Z [inf]  [TrinityGuardrails] Content guardrails initialized
+2026-04-07T04:42:53.189243686Z [inf]  [TestRunner] Registered test: fs-list-access
+2026-04-07T04:42:53.189246312Z [inf]  [RateLimitQueue] Service initialized with 4 services
+2026-04-07T04:42:53.189252978Z [inf]  [TestRunner] Registered test: websocket-broadcast
+2026-04-07T04:42:53.189259385Z [inf]  [ExchangeRate] Service initialized with 20 currencies
+2026-04-07T04:42:53.189271578Z [inf]  [TestRunner] Registered test: schema-validation
+2026-04-07T04:42:53.189273503Z [inf]  [SessionCheckpoint] Service initialized
+2026-04-07T04:42:53.189278756Z [inf]  [WorkflowExecutor] Registered custom handler: log_message
+2026-04-07T04:42:53.189280795Z [inf]  [TestRunner] Registered test: api-response-time
+2026-04-07T04:42:53.192760313Z [inf]  [PortManager] Lock file created: PID 15
+2026-04-07T04:42:53.192764184Z [inf]  [TestRunner] Registered 8 built-in tests
+2026-04-07T04:42:53.192771650Z [inf]  [AIExpenseCategorization] Service initialized
+2026-04-07T04:42:53.192774030Z [inf]  [Startup] Phase 0: Registering routes...
+2026-04-07T04:42:53.192777195Z [inf]  [AIDynamicPricing] Service initialized
+2026-04-07T04:42:53.192783384Z [inf]  Creating root user for Operations organization...
+2026-04-07T04:42:53.192783457Z [inf]  [LLMJudgeEvaluator] Initializing evaluation subagent system...
+2026-04-07T04:42:53.192788924Z [inf]  [ScheduleLiveNotifier] Service initialized - Real-time schedule notifications ready
+2026-04-07T04:42:53.192793366Z [inf]  [EventBus] ChatServerHub subscribed to *
+2026-04-07T04:42:53.192797056Z [inf]  [IntegrationManagement] Service initialized
+2026-04-07T04:42:53.192801745Z [inf]  [ChatServerHub] Subscribed to Platform Event Bus
+2026-04-07T04:42:53.192802705Z [inf]  [IntegrationPartner] Service initialized
+2026-04-07T04:42:53.192810058Z [err]  [WhatsNew] Failed to check updates: error: relation "platform_updates" does not exist
+2026-04-07T04:42:53.192814144Z [inf]  [BugReportOrchestrator] Initialized - Bug report analysis and remediation active
+2026-04-07T04:42:53.192818821Z [inf]  [CognitiveOnboardingService] Third-party API integration service initialized
+2026-04-07T04:42:53.192823016Z [inf]  [Features] MVP Feature Flags loaded: 13 enabled, 23 disabled for enterprise tier
+2026-04-07T04:42:53.192827058Z [inf]  [MONITORING] CPU: 0%, Memory: 73.2%, Samples: 0
+2026-04-07T04:42:53.192835355Z [inf]  [PortManager] Starting port 8080 cleanup...
+2026-04-07T04:42:53.192840165Z [inf]  🧠 [AI Brain] Processing undefined request with 8-step workflow
+2026-04-07T04:42:53.192844562Z [inf]  [PortManager] Port 8080 is available
+2026-04-07T04:42:53.196437151Z [err]      at /app/node_modules/pg-pool/index.js:45:11
+2026-04-07T04:42:53.196452102Z [err]      at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+2026-04-07T04:42:53.196461312Z [err]      at async file:///app/node_modules/drizzle-orm/node-postgres/session.js:83:22
+2026-04-07T04:42:53.196469918Z [err]      at async seedPlatformUpdates (file:///app/dist/index.js:106037:27) {
+2026-04-07T04:42:53.196477664Z [err]    length: 116,
+2026-04-07T04:42:53.196486508Z [err]    severity: 'ERROR',
+2026-04-07T04:42:53.196494314Z [err]    code: '42P01',
+2026-04-07T04:42:53.196501540Z [err]    detail: undefined,
+2026-04-07T04:42:53.196517429Z [err]    position: '206',
+2026-04-07T04:42:53.196524554Z [err]    internalPosition: undefined,
+2026-04-07T04:42:53.196531645Z [err]    internalQuery: undefined,
+2026-04-07T04:42:53.196543938Z [err]    where: undefined,
+2026-04-07T04:42:53.196551154Z [err]    schema: undefined,
+2026-04-07T04:42:53.196559805Z [err]    table: undefined,
+2026-04-07T04:42:53.196567120Z [err]    column: undefined,
+2026-04-07T04:42:53.196582598Z [err]    constraint: undefined,
+2026-04-07T04:42:53.196597258Z [err]    line: '1466',
+2026-04-07T04:42:53.196611158Z [err]  }
+2026-04-07T04:42:53.196619007Z [err]  [SubagentSupervisor] Error seeding subagent SchedulingAgent: error: relation "ai_subagent_definitions" does not exist
+2026-04-07T04:42:53.196625884Z [err]      at /app/node_modules/pg-pool/index.js:45:11
+2026-04-07T04:42:53.196632280Z [err]      at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+2026-04-07T04:42:53.196639259Z [err]      at async file:///app/node_modules/drizzle-orm/node-postgres/session.js:83:22
+2026-04-07T04:42:53.199121889Z [err]      at async _SubagentSupervisor.seedDefaultSubagents (file:///app/dist/index.js:68206:30)
+2026-04-07T04:42:53.199131546Z [err]      at async _SubagentSupervisor.initialize (file:///app/dist/index.js:68197:9)
+2026-04-07T04:42:53.199139708Z [err]    column: undefined,
+2026-04-07T04:42:53.199139857Z [err]      at async file:///app/dist/index.js:197616:5 {
+2026-04-07T04:42:53.199153199Z [err]    dataType: undefined,
+2026-04-07T04:42:53.199156048Z [err]    severity: 'ERROR',
+2026-04-07T04:42:53.199163208Z [err]    constraint: undefined,
+2026-04-07T04:42:53.199163490Z [err]    code: '42P01',
+2026-04-07T04:42:53.199173151Z [err]    file: 'parse_relation.c',
+2026-04-07T04:42:53.199173520Z [err]    detail: undefined,
+2026-04-07T04:42:53.199183359Z [err]    hint: undefined,
+2026-04-07T04:42:53.199184759Z [err]    line: '1466',
+2026-04-07T04:42:53.199196267Z [err]    position: '327',
+2026-04-07T04:42:53.199198768Z [err]    routine: 'parserOpenTable'
+2026-04-07T04:42:53.199208094Z [err]  }
+2026-04-07T04:42:53.199211517Z [err]    internalPosition: undefined,
+2026-04-07T04:42:53.199216267Z [err]  CRITICAL: Failed to register routes: error: relation "users" does not exist
+2026-04-07T04:42:53.199226613Z [err]    internalQuery: undefined,
+2026-04-07T04:42:53.199226766Z [err]      at /app/node_modules/pg-pool/index.js:45:11
+2026-04-07T04:42:53.199238715Z [err]      at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+2026-04-07T04:42:53.199242564Z [err]    where: undefined,
+2026-04-07T04:42:53.199248848Z [err]      at async file:///app/node_modules/drizzle-orm/node-postgres/session.js:83:22
+2026-04-07T04:42:53.199257339Z [err]    schema: undefined,
+2026-04-07T04:42:53.199261608Z [err]      at async seedRootUser (file:///app/dist/index.js:127171:18)
+2026-04-07T04:42:53.199267313Z [err]    table: undefined,
+2026-04-07T04:42:53.203019454Z [err]    routine: 'parserOpenTable'
+2026-04-07T04:42:53.203030722Z [err]  }
+2026-04-07T04:42:53.203037506Z [err]  Application cannot start without platform workspace. Exiting...
+2026-04-07T04:42:53.203044949Z [err]      at async registerRoutes (file:///app/dist/index.js:215012:3)
+2026-04-07T04:42:53.203201199Z [err]      at async file:///app/dist/index.js:245610:14 {
+2026-04-07T04:42:53.203209679Z [err]    length: 105,
+2026-04-07T04:42:53.203222276Z [err]    code: '42P01',
+2026-04-07T04:42:53.203233143Z [err]    hint: undefined,
+2026-04-07T04:42:53.203239172Z [err]    position: '451',
+2026-04-07T04:42:53.203244833Z [err]    internalPosition: undefined,
+2026-04-07T04:42:53.203250106Z [err]    internalQuery: undefined,
+2026-04-07T04:42:53.203255535Z [err]    where: undefined,
+2026-04-07T04:42:53.203261392Z [err]    schema: undefined,
+2026-04-07T04:42:53.203272347Z [err]    column: undefined,
+2026-04-07T04:42:53.203278993Z [err]    dataType: undefined,
+2026-04-07T04:42:53.203284487Z [err]    constraint: undefined,
+2026-04-07T04:42:53.203290095Z [err]    file: 'parse_relation.c',
+2026-04-07T04:42:53.203296551Z [err]    line: '1466',
+2026-04-07T04:42:54.154015156Z [err]  npm warn config production Use `--omit=dev` instead.
+2026-04-07T04:42:54.154021622Z [inf]  
+2026-04-07T04:42:54.154028297Z [inf]  > rest-express@1.0.0 start
+2026-04-07T04:42:54.154034053Z [inf]  > NODE_ENV=production node dist/index.js
+2026-04-07T04:42:54.154039914Z [inf]  
+2026-04-07T04:42:56.239017011Z [inf]  📊 Database: Using standard pg driver (node-postgres)
+2026-04-07T04:42:56.275574052Z [inf]  [ChatServerHub] Initialized - Version 1.0.0
+2026-04-07T04:42:56.278016998Z [inf]  [TrinityNotifier] Autonomous notifier initialized
+2026-04-07T04:42:56.301219097Z [err]      at Object.keyGeneratorIpFallback (file:///app/node_modules/express-rate-limit/dist/index.mjs:566:13)
+2026-04-07T04:42:56.301224698Z [err]      at wrappedValidations.<computed> [as keyGeneratorIpFallback] (file:///app/node_modules/express-rate-limit/dist/index.mjs:609:22)
+2026-04-07T04:42:56.301233730Z [err]      at rateLimit (file:///app/node_modules/express-rate-limit/dist/index.mjs:759:18)
+2026-04-07T04:42:56.301250506Z [err]      at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5) {
+2026-04-07T04:42:56.301254572Z [err]    code: 'ERR_ERL_KEY_GEN_IPV6',
+2026-04-07T04:42:56.301263614Z [err]  }
+2026-04-07T04:42:56.306370489Z [inf]  [Platform Action Hub] Registered action: system.health_check
+2026-04-07T04:42:56.306395455Z [inf]  [Platform Action Hub] Registered action: notifications.send_to_user
+2026-04-07T04:42:56.306420445Z [inf]  [Platform Action Hub] Registered action: support.broadcast
+2026-04-07T04:42:56.306439205Z [inf]  [Platform Action Hub] Registered action: admin.reactivate_workspace
+2026-04-07T04:42:56.306445928Z [inf]  [Platform Action Hub] Registered action: ai.query
+2026-04-07T04:42:56.306453009Z [inf]  [Platform Action Hub] Registered action: code.stage_change
+2026-04-07T04:42:56.306466814Z [inf]  [Platform Action Hub] Registered action: code.get_pending
+2026-04-07T04:42:56.308577554Z [inf]  [Platform Action Hub] Registered action: code.reject
+2026-04-07T04:42:56.308597747Z [inf]  [Platform Action Hub] Registered action: idempotency.cleanup
+2026-04-07T04:42:56.308616469Z [inf]  [EventBus] HelpAI Orchestrator subscribed to ai_brain_action
+2026-04-07T04:42:56.317289363Z [inf]  [PlatformFeatureRegistry] Initialized for Trinity orchestration: {
+2026-04-07T04:42:56.317295361Z [inf]    ]
+2026-04-07T04:42:56.317302336Z [inf]    syncVersion: 1,
+2026-04-07T04:42:56.317315825Z [inf]    enabledCount: 15,
+2026-04-07T04:42:56.317320294Z [inf]  🏥 Running AI provider health check...
+2026-04-07T04:42:56.317329820Z [inf]  [TrinitySelfAssessment] Initializing self-assessment service...
+2026-04-07T04:42:56.317330698Z [inf]      'time_tracking', 'scheduling',
+2026-04-07T04:42:56.317338146Z [inf]      'invoicing',     'availability',
+2026-04-07T04:42:56.317367932Z [inf]      'integrations'
+2026-04-07T04:42:56.324041132Z [inf]  Generated ENCRYPTION_KEY (add to .env file):
+2026-04-07T04:42:56.324048467Z [inf]  ENCRYPTION_KEY=f6e766052206cc09e86f4aeba4666d0547f4381c90bfe1af3b59d21cf7cae736
+2026-04-07T04:42:56.324081856Z [inf]  [QuickBooks OAuth] Client ID prefix: ABW40IYH...
+2026-04-07T04:42:56.324087680Z [inf]  [QuickBooks OAuth] IMPORTANT: For sandbox testing, use Development app credentials from Intuit Developer Portal
+2026-04-07T04:42:56.324093908Z [err]  ⚠️  Gusto OAuth not configured - missing GUSTO_CLIENT_ID or GUSTO_CLIENT_SECRET
+2026-04-07T04:42:56.331017983Z [inf]  [SubagentBanker] Initializing AI Brain Credit Management...
+2026-04-07T04:42:56.331035223Z [inf]  [FastModeService] Initializing Trinity Fast Mode Service...
+2026-04-07T04:42:56.334179945Z [inf]  [TrinityGuardrails] Content guardrails initialized
+2026-04-07T04:42:56.334197847Z [inf]  [RateLimitQueue] Service initialized with 4 services
+2026-04-07T04:42:56.337039255Z [inf]  [WorkflowExecutor] Registered custom handler: validate_json
+2026-04-07T04:42:56.337054393Z [inf]  [TestRunner] Registered test: api-health
+2026-04-07T04:42:56.337071113Z [inf]  [TestRunner] Registered test: fs-read-access
+2026-04-07T04:42:56.337092960Z [inf]  [TestRunner] Registered test: env-secrets
+2026-04-07T04:42:56.339666862Z [inf]  [LLMJudgeEvaluator] Initializing evaluation subagent system...
+2026-04-07T04:42:56.339674547Z [inf]  [ScheduleLiveNotifier] Service initialized - Real-time schedule notifications ready
+2026-04-07T04:42:56.339685993Z [inf]  [IntegrationPartner] Service initialized
+2026-04-07T04:42:56.339690926Z [inf]  [SubagentSupervisor] Initializing subagent registry...
+2026-04-07T04:42:56.342977393Z [inf]  [BugReportOrchestrator] Initialized - Bug report analysis and remediation active
+2026-04-07T04:42:56.376996327Z [inf]  [PortManager] Starting port 8080 cleanup...
+2026-04-07T04:42:56.422135475Z [inf]  [PortManager] Lock file created: PID 15
+2026-04-07T04:42:56.459534281Z [inf]  [EventBus] ChatServerHub subscribed to *
+2026-04-07T04:42:56.459542073Z [inf]  [ChatServerHub] Subscribed to Platform Event Bus
+2026-04-07T04:42:57.328645935Z [err]      at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+2026-04-07T04:42:57.328675053Z [err]    position: '206',
+2026-04-07T04:42:57.328675291Z [err]    constraint: undefined,
+2026-04-07T04:42:57.328683976Z [err]    file: 'parse_relation.c',
+2026-04-07T04:42:57.328700234Z [err]    code: '42P01',
+2026-04-07T04:42:57.328708862Z [err]    table: undefined,
+2026-04-07T04:42:57.328715016Z [err]    column: undefined,
+2026-04-07T04:42:57.328720907Z [err]    dataType: undefined,
+2026-04-07T04:42:57.328751184Z [err]  }
+2026-04-07T04:42:57.328760041Z [err]  [SubagentSupervisor] Error seeding subagent SchedulingAgent: error: relation "ai_subagent_definitions" does not exist
+2026-04-07T04:42:57.328768745Z [err]  [WhatsNew] Failed to check updates: error: relation "platform_updates" does not exist
+2026-04-07T04:42:57.328780643Z [err]      at /app/node_modules/pg-pool/index.js:45:11
+2026-04-07T04:42:57.328788983Z [err]      at async seedPlatformUpdates (file:///app/dist/index.js:106037:27) {
+2026-04-07T04:42:57.332627315Z [err]      at /app/node_modules/pg-pool/index.js:45:11
+2026-04-07T04:42:57.332650576Z [err]      at async file:///app/node_modules/drizzle-orm/node-postgres/session.js:83:22
+2026-04-07T04:42:57.332655503Z [err]    position: '327',
+2026-04-07T04:42:57.332671392Z [err]      at async file:///app/node_modules/drizzle-orm/node-postgres/session.js:83:22
+2026-04-07T04:42:57.332679567Z [err]    internalPosition: undefined,
+2026-04-07T04:42:57.332692805Z [err]    internalQuery: undefined,
+2026-04-07T04:42:57.332719096Z [err]    schema: undefined,
+2026-04-07T04:42:57.332729825Z [err]    length: 123,
+2026-04-07T04:42:57.332763982Z [err]    column: undefined,
+2026-04-07T04:42:57.332768937Z [err]    code: '42P01',
+2026-04-07T04:42:57.332790055Z [err]    detail: undefined,
+2026-04-07T04:42:57.332809721Z [err]    line: '1466',
+2026-04-07T04:42:57.334787692Z [err]  Application cannot start without platform workspace. Exiting...
+2026-04-07T04:42:57.334792843Z [err]    code: '42P01',
+2026-04-07T04:42:57.334800477Z [err]    column: undefined,
+2026-04-07T04:42:57.334807370Z [err]    dataType: undefined,
+2026-04-07T04:42:57.334825215Z [err]    internalPosition: undefined,
+2026-04-07T04:42:57.334827510Z [err]    line: '1466',
+2026-04-07T04:42:57.334832139Z [err]    internalQuery: undefined,
+2026-04-07T04:42:57.334834308Z [err]    routine: 'parserOpenTable'
+2026-04-07T04:42:57.334846217Z [err]    schema: undefined,
+2026-04-07T04:42:57.334879056Z [err]      at async file:///app/dist/index.js:245610:14 {
