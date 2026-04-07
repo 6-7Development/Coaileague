@@ -1290,36 +1290,42 @@ export async function initializeAutonomousFixPipeline(): Promise<void> {
   autonomousFixPipeline.registerActions();
   
   // Subscribe to approval_approved events to automatically execute fixes
-  platformEventBus.subscribe('approval_approved', async (event: PlatformEvent) => {
-    const approvalId = event.metadata?.approvalId;
-    if (approvalId) {
-      console.log(`[AutonomousFix] Received approval_approved for ${approvalId} - auto-executing fix...`);
-      try {
-        const result = await autonomousFixPipeline.executeApprovedFix(approvalId);
-        if (result.success) {
-          console.log(`[AutonomousFix] Successfully executed approved fix: ${result.message}`);
-        } else {
-          console.error(`[AutonomousFix] Failed to execute approved fix: ${result.message}`);
+  platformEventBus.subscribe('approval_approved', {
+    name: 'AutonomousFixPipeline:approval_approved',
+    handler: async (event: PlatformEvent) => {
+      const approvalId = event.metadata?.approvalId;
+      if (approvalId) {
+        console.log(`[AutonomousFix] Received approval_approved for ${approvalId} - auto-executing fix...`);
+        try {
+          const result = await autonomousFixPipeline.executeApprovedFix(approvalId);
+          if (result.success) {
+            console.log(`[AutonomousFix] Successfully executed approved fix: ${result.message}`);
+          } else {
+            console.error(`[AutonomousFix] Failed to execute approved fix: ${result.message}`);
+          }
+        } catch (error) {
+          console.error('[AutonomousFix] Error auto-executing approved fix:', error);
         }
-      } catch (error) {
-        console.error('[AutonomousFix] Error auto-executing approved fix:', error);
       }
     }
   });
   console.log('[AutonomousFix] Subscribed to approval_approved events for auto-execution');
   
   // Subscribe to gap_intelligence_scan events to auto-process findings
-  platformEventBus.subscribe('gap_intelligence_scan', async (event: PlatformEvent) => {
-    const { newFindings, errorCount, criticalCount } = event.metadata || {};
-    
-    if (newFindings > 0 && (errorCount > 0 || criticalCount > 0)) {
-      console.log(`[AutonomousFix] Gap Intelligence detected ${newFindings} new issues (${criticalCount} critical, ${errorCount} errors) - auto-processing...`);
+  platformEventBus.subscribe('gap_intelligence_scan', {
+    name: 'AutonomousFixPipeline:gap_intelligence_scan',
+    handler: async (event: PlatformEvent) => {
+      const { newFindings, errorCount, criticalCount } = event.metadata || {};
       
-      try {
-        // Process outstanding high-confidence findings
-        await autonomousFixPipeline.processOutstandingFindings();
-      } catch (error) {
-        console.error('[AutonomousFix] Error auto-processing gap findings:', error);
+      if (newFindings > 0 && (errorCount > 0 || criticalCount > 0)) {
+        console.log(`[AutonomousFix] Gap Intelligence detected ${newFindings} new issues (${criticalCount} critical, ${errorCount} errors) - auto-processing...`);
+        
+        try {
+          // Process outstanding high-confidence findings
+          await autonomousFixPipeline.processOutstandingFindings();
+        } catch (error) {
+          console.error('[AutonomousFix] Error auto-processing gap findings:', error);
+        }
       }
     }
   });

@@ -183,6 +183,15 @@ curl -H "x-test-key: $DIAG_BYPASS_SECRET" http://localhost:5000/api/employees
 - `server/routes/contractPipelineRoutes.ts`: API endpoints
 - `server/services/ai-brain/actionRegistry.ts`: Trinity AI integration
 
+## Bug Fixes (2026-04-07)
+
+**DB Bootstrap & Runtime Fixes:**
+- Created `system_audit_logs`, `ai_workflow_approvals`, and `workspace_credits` tables in local dev DB (tables were missing, causing repeated "relation does not exist" errors from HealthCheck, ApprovalResumeOrchestrator, and MeteredGeminiClient services)
+- Fixed `domainOpsSubagents.ts`: removed reference to `aiGapFindings.occurrenceCount` (column does not exist in that table) — was generating `syntax error at or near "where"` (code 42601) on every Gap Intelligence scan
+- Fixed `autonomousFixPipeline.ts`: converted raw function callbacks in `platformEventBus.subscribe()` calls to proper `{name, handler}` objects — was causing `TypeError: subscriber.handler is not a function` on every gap scan event
+- Railway production DB confirmed to have all tables — no bootstrapping needed
+- Server now starts fully clean with `25/25 background services initialized` and zero DB errors
+
 ## External Dependencies
 - **Stripe**: Payment processing, payroll, and financial integrations.
 - **Resend**: Email delivery and notification workflows.

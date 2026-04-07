@@ -83,7 +83,7 @@ async function persistGapFinding(finding: GapFinding, detectedBy: string): Promi
         .update(aiGapFindings)
         .set({
           lastDetectedAt: new Date(),
-          occurrenceCount: sql`${aiGapFindings.occurrenceCount} + 1`,
+          updatedAt: new Date(),
         })
         .where(eq(aiGapFindings.id, existing[0].id));
       return existing[0].id;
