@@ -200,7 +200,10 @@ import { trinityKnowledgeService } from "./services/ai-brain/trinityKnowledgeSer
 import { complianceScoringBridge } from "./services/compliance/complianceScoringBridge";
 import { runProductionSeed, runPasswordMigrations, runDataCorrections, runWorkspaceHealthCorrections, runProductionDataCleanup } from "./services/productionSeed";
 import { runDevelopmentSeed, ensurePhase0Seed, ensurePhase0ExtendedSeed } from "./services/developmentSeed";
-import { assertEnvironment } from "./config/envValidation";
+// NOTE: assertEnvironment from ./config/envValidation is intentionally NOT
+// imported. The active validator is validateEnvironment from ./startup/
+// validateEnvironment which is called inside startServer(). Keeping a single
+// source of truth avoids drift between the two var lists.
 
 const log = createLogger('server');
 
@@ -484,14 +487,9 @@ app.use(helmet({
     includeSubDomains: true,
     preload: false,
   },
-  permissionsPolicy: {
-    features: {
-      camera: ["'none'"],
-      microphone: ["'self'"],
-      geolocation: ["'self'"],
-      payment: ["'self'"]
-    }
-  }
+  // NOTE: Permissions-Policy header is set by the manual middleware at the
+  // top of this file (see app.use at line ~211). Helmet 7+ does not accept a
+  // permissionsPolicy option — passing it here was silently ignored.
 }));
 
 // CRITICAL: Explicitly remove X-Frame-Options header to ensure Replit webview works

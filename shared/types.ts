@@ -88,7 +88,10 @@ export const TRINITY_ALLOWED_PLATFORM_ROLES: PlatformRole[] = [
   'compliance_officer'
 ];
 
-export const TRINITY_ALLOWED_WORKSPACE_ROLES: WorkspaceRole[] = ['org_owner', 'co_owner', 'admin'];
+// Trinity is accessible to org owners and co-owners. The previous list
+// included 'admin' which is not a member of WorkspaceRole — kept for reference
+// but removed because the type-mismatch silently broke Trinity access checks.
+export const TRINITY_ALLOWED_WORKSPACE_ROLES: WorkspaceRole[] = ['org_owner', 'co_owner'];
 
 export function canAccessTrinity(context: TrinityAccessContext): boolean {
   const { platformRole, workspaceRole, isOrgOwner } = context;
