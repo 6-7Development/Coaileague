@@ -79,29 +79,35 @@ function forceReleaseStaleLock() {
 }
 
 /**
- * Intercept touchmove in the BUBBLE phase at `document.body`.
+ * Intercept touchmove AND wheel in the BUBBLE phase at `document.body`.
  *
- * For touches that originate OUTSIDE an open dialog/sheet/alertdialog, stop
+ * For events that originate OUTSIDE an open dialog/sheet/alertdialog, stop
  * bubbling before the event reaches `document`. This prevents
  * react-remove-scroll's `shouldPrevent` handler from calling
- * `preventDefault()`, restoring one-finger native scroll everywhere.
+ * `preventDefault()`, restoring native scroll everywhere.
  *
- * For touches INSIDE a dialog, let the event bubble normally so Radix can
- * manage in-dialog scroll correctly (allowing scroll within the dialog while
+ * For events INSIDE a dialog, let them bubble normally so Radix can manage
+ * in-dialog scroll correctly (allowing scroll within the dialog while
  * preventing background bleed-through when the dialog's content is exhausted).
+ *
+ * Phase V6 (2026-04-07) — PREVIOUSLY this guard only covered `touchmove`,
+ * which fixed mobile pan-y scroll but LEFT DESKTOP MOUSE WHEEL BROKEN because
+ * react-remove-scroll blocks `wheel` events via the exact same non-passive
+ * document handler. Users reported "scrolling doesn't work even on desktop
+ * with mouse" — confirmed root cause. Extended to also intercept `wheel`.
  */
 function installScrollPassthrough() {
   const DIALOG_SELECTOR =
     '[role="dialog"], [role="alertdialog"], [data-vaul-dialog]';
 
-  function stopRemoveScrollBubble(e: TouchEvent) {
+  function stopRemoveScrollBubble(e: TouchEvent | WheelEvent) {
     const target = e.target as Element | null;
     if (!target) {
       e.stopPropagation();
       return;
     }
 
-    // Let react-remove-scroll handle touches that are genuinely inside an
+    // Let react-remove-scroll handle events that are genuinely inside an
     // open modal so it can prevent background bleed-through.
     if (target.closest(DIALOG_SELECTOR)) return;
 
@@ -110,13 +116,17 @@ function installScrollPassthrough() {
     e.stopPropagation();
   }
 
-  document.body.addEventListener("touchmove", stopRemoveScrollBubble, {
+  document.body.addEventListener("touchmove", stopRemoveScrollBubble as any, {
+    passive: true,
+  });
+  document.body.addEventListener("wheel", stopRemoveScrollBubble as any, {
     passive: true,
   });
 
   // Return cleanup function
   return () => {
-    document.body.removeEventListener("touchmove", stopRemoveScrollBubble);
+    document.body.removeEventListener("touchmove", stopRemoveScrollBubble as any);
+    document.body.removeEventListener("wheel", stopRemoveScrollBubble as any);
   };
 }
 
