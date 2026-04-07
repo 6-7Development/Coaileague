@@ -13850,6 +13850,7 @@ export const alertTypeEnum = pgEnum('alert_type', [
 export const alertSeverityEnum = pgEnum('alert_severity', [
   'low',
   'medium',
+  'warning',
   'high',
   'critical'
 ]);

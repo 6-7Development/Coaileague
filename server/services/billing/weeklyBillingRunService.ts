@@ -501,6 +501,11 @@ class WeeklyBillingRunServiceImpl {
         totalAmount,
       };
     } catch (error: any) {
+      // Duplicate invoice number = already billed this period — not a real error
+      if (error?.code === '23505' && error?.constraint?.includes('invoice_number')) {
+        console.warn(`[WeeklyBillingRun] Invoice already exists for workspace ${workspaceId} this period — skipping duplicate`);
+        return { workspaceId, success: true, skipped: true };
+      }
       console.error(`[WeeklyBillingRun] Error processing workspace ${workspaceId}:`, error.message);
       return {
         workspaceId,

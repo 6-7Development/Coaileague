@@ -163,7 +163,7 @@ export async function generateInvoiceFromTimesheets(
   const taxAmount = subtotal * (taxRate / 100);
   const total = subtotal + taxAmount;
 
-  const [invoice] = await db.insert(invoices)
+  const invoiceInsertResult = await db.insert(invoices)
     .values({
       workspaceId,
       clientId,
@@ -177,7 +177,15 @@ export async function generateInvoiceFromTimesheets(
       status: 'draft',
       notes: notes || `Services rendered ${format(startDate, 'MMM d')} - ${format(endDate, 'MMM d, yyyy')}`,
     })
-    .returning();
+    .returning()
+    .catch((err: any) => {
+      if (err?.code === '23505' && err?.constraint?.includes('invoice_number')) {
+        console.warn(`[TimesheetInvoice] Duplicate invoice number ${invoiceNumber} — already generated for this period`);
+        throw new Error('Invoice already generated for this period');
+      }
+      throw err;
+    });
+  const [invoice] = invoiceInsertResult;
 
   const insertedLineItems = await db.insert(invoiceLineItems)
     .values(
@@ -1018,7 +1026,7 @@ export async function generateInvoiceFromHours(input: GenerateFromHoursInput): P
   const taxAmount = subtotal * (taxRate / 100);
   const total = subtotal + taxAmount;
 
-  const [invoice] = await db.insert(invoices)
+  const invoiceInsertResult = await db.insert(invoices)
     .values({
       workspaceId,
       clientId,
@@ -1032,7 +1040,15 @@ export async function generateInvoiceFromHours(input: GenerateFromHoursInput): P
       status: 'draft',
       notes: notes || `Services rendered ${format(startDate, 'MMM d')} - ${format(endDate, 'MMM d, yyyy')}`,
     })
-    .returning();
+    .returning()
+    .catch((err: any) => {
+      if (err?.code === '23505' && err?.constraint?.includes('invoice_number')) {
+        console.warn(`[TimesheetInvoice] Duplicate invoice number ${invoiceNumber} — already generated for this period`);
+        throw new Error('Invoice already generated for this period');
+      }
+      throw err;
+    });
+  const [invoice] = invoiceInsertResult;
 
   const insertedLineItems = await db.insert(invoiceLineItems)
     .values(
