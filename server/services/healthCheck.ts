@@ -10,8 +10,11 @@ import { storage } from '../storage';
 import { getFeatureToggle } from '../../shared/config/featureToggleAccess';
 
 // Platform workspace ID for system-level support tickets
-// This should be configured during platform initialization
-const PLATFORM_WORKSPACE_ID = process.env.PLATFORM_WORKSPACE_ID || 'platform';
+// Sourced from the canonical seed-platform-workspace constant; env var override
+// allowed for tests. Falls back to the canonical UUID, NOT the literal 'platform'
+// (which has no row in the workspaces table and would FK-violate on insert).
+import { PLATFORM_WORKSPACE_ID as CANONICAL_PLATFORM_WORKSPACE_ID } from '../seed-platform-workspace';
+const PLATFORM_WORKSPACE_ID = process.env.PLATFORM_WORKSPACE_ID || CANONICAL_PLATFORM_WORKSPACE_ID;
 
 // Cache health check results to prevent thrashing
 // Don't cache failures so recovery is detected quickly

@@ -8,6 +8,7 @@ import {
 } from "@shared/schema";
 import { eq, and, or, desc, isNull, sql, lt, gte } from "drizzle-orm";
 import { meteredGemini } from './billing/meteredGeminiClient';
+import { PLATFORM_WORKSPACE_ID } from '../seed-platform-workspace';
 import { ANTI_YAP_PRESETS } from './ai-brain/providers/geminiClient';
 import { broadcastPlatformUpdateGlobal } from '../websocket';
 import { humanizeTitle, containsTechnicalJargon } from '@shared/utils/humanFriendlyCopy';
@@ -195,7 +196,7 @@ Write Trinity's notification (short, human, helpful):
 SUMMARY:`;
     
     const result = await meteredGemini.generate({
-      workspaceId: data.workspaceId || 'platform',
+      workspaceId: data.workspaceId || PLATFORM_WORKSPACE_ID,
       featureKey: 'ai_notification',
       prompt,
       model: 'gemini-1.5-flash',
@@ -666,7 +667,7 @@ export async function getNewUserWelcomeSummary(
       const prompt = `You are CoAIleague's friendly AI assistant. Create a brief, warm welcome message (max 2 sentences) for a new user, mentioning these platform highlights: ${updateTitles}. Be encouraging and helpful.`;
       
       const result = await meteredGemini.generate({
-        workspaceId: workspaceId || 'platform',
+        workspaceId: workspaceId || PLATFORM_WORKSPACE_ID,
         featureKey: 'ai_notification',
         prompt,
         model: 'gemini-1.5-flash',
