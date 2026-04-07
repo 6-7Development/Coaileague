@@ -15,7 +15,8 @@ import {
   employees,
   users,
   employeeSkills,
-  workspaces
+  workspaces,
+  employeeCertifications,
 } from '@shared/schema';
 import { eq, and, inArray, isNull, or, sql } from 'drizzle-orm';
 import { eventBus } from './trinity/eventBus';

@@ -251,6 +251,13 @@ import {
   type InsertEmployee,
   type WorkspaceTheme,
   type SupportAuditLog,
+  employeeCertifications,
+  employeeBehaviorScores,
+  clientBillingSettings,
+  timeEntries,
+  employeeInvitations,
+  invoicePayments,
+  payrollDeductions,
 } from '@shared/schema';
 import type { PaginatedResponse, ClientWithInvoiceCount, WorkspaceRole } from "@shared/types";
 import type { ClientsQueryParams } from "@shared/validation/pagination";
@@ -1048,7 +1055,9 @@ export class DatabaseStorage implements IStorage {
     error?: string;
   }> {
     // Root user always gets org_owner access to the default workspace
-    if (userId === 'root-user-00000000') {
+    // (sentinel ID — see server/lib/sentinels.ts)
+    const { ROOT_USER_SENTINEL_ID } = await import('./lib/sentinels');
+    if (userId === ROOT_USER_SENTINEL_ID) {
       const [workspace] = await db.select().from(workspaces).limit(1);
       if (workspace) {
         const employee = await db.query.employees.findFirst({

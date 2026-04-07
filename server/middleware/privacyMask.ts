@@ -17,6 +17,8 @@
  *   - Client billing address (if different): owner/manager only
  */
 
+import { SYSTEM_ACTOR_IDS } from '../lib/sentinels';
+
 /** Roles that can see all financial data in a workspace */
 const PRIVILEGED_ROLES = new Set([
   'org_owner',
@@ -27,13 +29,9 @@ const PRIVILEGED_ROLES = new Set([
   'department_manager',
 ]);
 
-/** System/platform identifiers that bypass all masking (Trinity, cron, support) */
-const SYSTEM_USER_IDS = new Set([
-  'root-user-00000000',
-  'trinity',
-  'system',
-  'support',
-]);
+/** System/platform identifiers that bypass all masking (Trinity, cron, support).
+ *  Canonical list lives in server/lib/sentinels.ts — do not duplicate. */
+const SYSTEM_USER_IDS = new Set<string>(SYSTEM_ACTOR_IDS);
 
 export interface PrivacyContext {
   requestingUserId?: string;

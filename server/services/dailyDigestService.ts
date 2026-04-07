@@ -9,9 +9,10 @@
  */
 
 import { db } from '../db';
-import { 
-  employees, shifts, timeEntries, notifications, 
+import {
+  employees, shifts, timeEntries, notifications,
   users, workspaces, shiftSwapRequests, timeOffRequests, idempotencyKeys,
+  employeeCertifications,
 } from '@shared/schema';
 import { eq, and, gte, lte, sql, desc, or } from 'drizzle-orm';
 import { sendCanSpamCompliantEmail } from './emailCore';

@@ -1,12 +1,13 @@
 import { db } from '../db';
-import { 
-  shifts, 
+import {
+  shifts,
   employees,
   auditLogs,
   workspaces,
   scheduledBreaks,
   laborLawRules,
   complianceReports,
+  employeeCertifications,
   type Shift,
   type ComplianceReport,
 } from '@shared/schema';
