@@ -57,6 +57,92 @@ const constraints: CriticalConstraint[] = [
       await pool.query(`CREATE EXTENSION IF NOT EXISTS btree_gist`);
     },
   },
+  // ── Phase T enum-value backfills (production log forensics 2026-04-07) ──
+  // The live PostgreSQL enums for `shift_status` and `audit_action` were
+  // missing values the application code references at runtime, producing
+  // "invalid input value for enum" errors every cycle and cascading
+  // "Audit log failed" spam in Railway production logs. ALTER TYPE ADD
+  // VALUE IF NOT EXISTS is idempotent and safe to run on every boot.
+  {
+    name: 'shift_status_value_confirmed',
+    rationale: 'shift-monitoring-cycle uses status="confirmed" but the live enum was missing it (production log error)',
+    isPresent: async () => {
+      const { rows } = await pool.query(
+        `SELECT 1 FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid
+         WHERE t.typname = 'shift_status' AND e.enumlabel = 'confirmed'`
+      );
+      return rows.length > 0;
+    },
+    apply: async () => {
+      await pool.query(`ALTER TYPE shift_status ADD VALUE IF NOT EXISTS 'confirmed'`);
+    },
+  },
+  {
+    name: 'audit_action_value_service_unhealthy',
+    rationale: 'healthCheckAggregation writes service_unhealthy audit rows but the live enum was missing it',
+    isPresent: async () => {
+      const { rows } = await pool.query(
+        `SELECT 1 FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid
+         WHERE t.typname = 'audit_action' AND e.enumlabel = 'service_unhealthy'`
+      );
+      return rows.length > 0;
+    },
+    apply: async () => {
+      await pool.query(`ALTER TYPE audit_action ADD VALUE IF NOT EXISTS 'service_unhealthy'`);
+    },
+  },
+  {
+    name: 'audit_action_value_alert_triggered',
+    rationale: 'metricsDashboard writes alert_triggered audit rows but the live enum was missing it',
+    isPresent: async () => {
+      const { rows } = await pool.query(
+        `SELECT 1 FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid
+         WHERE t.typname = 'audit_action' AND e.enumlabel = 'alert_triggered'`
+      );
+      return rows.length > 0;
+    },
+    apply: async () => {
+      await pool.query(`ALTER TYPE audit_action ADD VALUE IF NOT EXISTS 'alert_triggered'`);
+    },
+  },
+  {
+    name: 'audit_action_value_test_audit_schema_insert',
+    rationale: 'auditSchemaRegression test writes this value; missing from live enum',
+    isPresent: async () => {
+      const { rows } = await pool.query(
+        `SELECT 1 FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid
+         WHERE t.typname = 'audit_action' AND e.enumlabel = 'test_audit_schema_insert'`
+      );
+      return rows.length > 0;
+    },
+    apply: async () => {
+      await pool.query(`ALTER TYPE audit_action ADD VALUE IF NOT EXISTS 'test_audit_schema_insert'`);
+    },
+  },
+  // ── Phase X: Optimistic locking column (CLAUDE.md §15) ─────────────────
+  // Section 15 mandates optimistic locking for concurrent shift edits:
+  //   UPDATE shifts SET ..., version = version + 1
+  //   WHERE id = $1 AND version = $2 RETURNING *
+  //   → 0 rows → another edit won the race, return 409 Conflict
+  // This column is infrastructure — the route-level version-check pattern
+  // is a separate follow-up. Adding the column first is idempotent and
+  // non-breaking: unused columns default to 1 on existing rows.
+  {
+    name: 'shifts_version_column',
+    rationale: 'Optimistic locking for concurrent shift edits (CLAUDE.md §15)',
+    isPresent: async () => {
+      const { rows } = await pool.query(
+        `SELECT 1 FROM information_schema.columns
+         WHERE table_name = 'shifts' AND column_name = 'version'`
+      );
+      return rows.length > 0;
+    },
+    apply: async () => {
+      await pool.query(
+        `ALTER TABLE shifts ADD COLUMN IF NOT EXISTS version integer NOT NULL DEFAULT 1`
+      );
+    },
+  },
   {
     name: 'no_overlapping_employee_shifts',
     rationale: 'Sole atomic enforcement of shift overlap prevention (RC5 Phase 2 — see shiftRoutes.ts)',
