@@ -10,6 +10,7 @@ import { monitoringService } from "./monitoring";
 import { CACHING } from './config/platformConfig';
 import { startAutonomousScheduler } from "./services/autonomousScheduler";
 import { ensureRequiredTables } from "./services/dbMigrationService";
+import { runLegacyBootstraps } from "./services/legacyBootstrapRegistry";
 import { ensurePerformanceIndexes, registerNdsQueueMonitor } from "./services/performanceIndexService";
 import { validateAndLogConfiguration } from "./utils/configValidator";
 import { runArchitectureLint } from "./utils/architectureLinter";
@@ -713,6 +714,15 @@ async function initializeCriticalServices() {
     await ensureRequiredTables();
   } catch (error) {
     log.error('Database migration check failed', { error: error instanceof Error ? { message: error.message, stack: error.stack } : String(error) });
+  }
+
+  // Legacy table bootstraps — runs CREATE TABLE IF NOT EXISTS statements that
+  // were previously fired from module-load IIFEs in route files. Now collected
+  // into a single registry so they execute after the DB pool is verified up.
+  try {
+    await runLegacyBootstraps();
+  } catch (error) {
+    log.error('Legacy bootstrap phase failed', { error: error instanceof Error ? error.message : String(error) });
   }
 
   // Option B storage quota tables — create if not exists (idempotent)
