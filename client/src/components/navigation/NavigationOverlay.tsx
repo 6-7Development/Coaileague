@@ -135,6 +135,8 @@ export function NavigationOverlay({
   const currentFamily = families.find(f => f.id === activeFamilyId);
   const familyMeta = activeFamilyId ? FAMILY_META[activeFamilyId] : null;
 
+  // Keep the overlay in the DOM during the exit animation so opacity can
+  // fade out. Only unmount once the animation has completed.
   if (!isOpen && animationState === 'exited') return null;
 
   return (
@@ -146,8 +148,17 @@ export function NavigationOverlay({
           top: 'var(--header-height, 48px)',
           background: 'rgba(0,0,0,0.55)',
           backdropFilter: 'blur(3px)',
-          opacity: animationState === 'exiting' ? 0 : 1,
-          pointerEvents: animationState === 'exiting' ? 'none' : 'auto',
+          // Visual state tracks the animation (fades during exit).
+          opacity: isOpen && animationState !== 'exiting' ? 1 : 0,
+          // SCROLL FIX (2026-04-08): pointer-events is tied to `isOpen`
+          // (NOT animationState). The previous code used
+          //   pointerEvents: animationState === 'exiting' ? 'none' : 'auto'
+          // which left the backdrop interactive whenever animationState
+          // was stuck at 'idle'/'entering'/'entered' while isOpen was
+          // already false — blocking the entire viewport with a
+          // transparent click-eater. Now pointer-events is 'none'
+          // whenever isOpen is false, regardless of animationState.
+          pointerEvents: isOpen ? 'auto' : 'none',
           transition: 'opacity 150ms ease',
         }}
         onClick={onClose}
@@ -167,7 +178,11 @@ export function NavigationOverlay({
           borderBottom: `1px solid ${DS.border}`,
           boxShadow: '0 16px 48px rgba(0,0,0,0.5)',
           transform: animationState === 'exiting' ? 'translateY(-8px)' : 'translateY(0)',
-          opacity: animationState === 'exiting' ? 0 : 1,
+          opacity: isOpen && animationState !== 'exiting' ? 1 : 0,
+          // SCROLL FIX: same pattern as the backdrop — pointer-events
+          // tied to isOpen so the closed-but-mounted-during-exit panel
+          // can't accidentally eat touch/click events.
+          pointerEvents: isOpen ? 'auto' : 'none',
           transition: 'transform 180ms cubic-bezier(0.16,1,0.3,1), opacity 150ms ease',
           willChange: 'transform, opacity',
           ...(isMobile ? { bottom: 0, WebkitOverflowScrolling: 'touch' } : {}),
