@@ -30,6 +30,7 @@
 
 import { pool } from '../db';
 import { createLogger } from '../lib/logger';
+import { getTableConfig, PgTable } from 'drizzle-orm/pg-core';
 
 const log = createLogger('criticalConstraintsBootstrap');
 
@@ -547,6 +548,195 @@ async function backfillGenRandomUuidDefaults(): Promise<{ scanned: number; patch
   return { scanned, patched, failed };
 }
 
+/**
+ * GENERIC NOT NULL DRIFT SCANNER
+ *
+ * Root cause (same class as the varchar id-default issue): drizzle-kit
+ * push did not reliably propagate nullability changes from the Drizzle
+ * schema to the live database. Many tables have columns marked
+ * `notNull: false` in the Drizzle schema but NOT NULL in the live DB,
+ * left over from previous schema migrations. Every write that omits
+ * such a column fails with "null value in column ... violates not-null
+ * constraint". Individual symptoms we've seen include:
+ *   - audit_logs.user_id / user_email / user_role
+ *   - Trinity flush errors on trinity_requests (and related)
+ *   - UniversalStepLogger write failures
+ *   - Gap finding persistence failures
+ *
+ * This scanner uses Drizzle's getTableConfig() to introspect the
+ * schema at runtime, enumerate every column each imported table
+ * declares as nullable, and drop the NOT NULL constraint on any
+ * matching column in the live DB. Idempotent — subsequent runs skip
+ * columns that already match.
+ *
+ * We explicitly DO NOT touch:
+ *   - Columns that have `notNull: true` in Drizzle (legitimately required)
+ *   - Columns whose live DB is_nullable is already 'YES' (no drift)
+ *   - Columns named 'id' (primary keys are correctly NOT NULL)
+ *   - Columns named 'created_at' / 'updated_at' when they have a default
+ *     (typically NOT NULL with defaultNow(), which Drizzle also declares
+ *     NOT NULL so they won't be in our scan set anyway)
+ */
+/**
+ * GENERIC TIMESTAMP defaultNow() BACKFILL
+ *
+ * Same root cause class as the varchar id-default and NOT NULL drift
+ * issues: drizzle-kit push didn't reliably propagate default expressions
+ * to the live DB on some columns. Many tables have timestamp columns
+ * declared `defaultNow().notNull()` in Drizzle but no DEFAULT in the
+ * live DB. INSERTs that omit the timestamp then fail with
+ * "null value in column ... violates not-null constraint".
+ *
+ * Concrete example: token_usage_log.timestamp errored every time
+ * TokenUsageService.recordUsage() ran (every Trinity action, every
+ * email classification, every metered API call).
+ *
+ * This scanner finds every NOT NULL timestamp column on any
+ * Drizzle-mapped table that lacks a DEFAULT in the live DB and adds
+ * DEFAULT NOW(). Idempotent — subsequent runs skip columns that
+ * already have a default.
+ */
+async function scanTimestampDefaultDrift(schemaTables: Record<string, unknown>): Promise<{
+  tablesScanned: number;
+  columnsChecked: number;
+  columnsPatched: number;
+  columnsFailed: number;
+}> {
+  const result = { tablesScanned: 0, columnsChecked: 0, columnsPatched: 0, columnsFailed: 0 };
+
+  for (const [, value] of Object.entries(schemaTables)) {
+    if (!value || typeof value !== 'object') continue;
+    if (!(value instanceof PgTable)) continue;
+
+    let tableCfg;
+    try {
+      tableCfg = getTableConfig(value as PgTable);
+    } catch {
+      continue;
+    }
+    if (tableCfg.schema && tableCfg.schema !== 'public') continue;
+    result.tablesScanned++;
+
+    // Find columns that:
+    //   - Drizzle marks as NOT NULL
+    //   - Drizzle says hasDefault: true (so the schema author expected
+    //     a default value to be applied automatically)
+    //   - Are timestamp / timestamptz / date type
+    const candidateColumnNames: string[] = [];
+    for (const col of tableCfg.columns) {
+      if (!col.notNull) continue;
+      if (!(col as any).hasDefault) continue;
+      const colType = (col as any).columnType?.toLowerCase?.() ?? '';
+      const dataType = (col as any).dataType?.toLowerCase?.() ?? '';
+      const isTimeType =
+        colType.includes('timestamp') ||
+        dataType.includes('timestamp') ||
+        colType === 'pgdate' ||
+        dataType === 'date';
+      if (!isTimeType) continue;
+      candidateColumnNames.push(col.name);
+    }
+    if (candidateColumnNames.length === 0) continue;
+    result.columnsChecked += candidateColumnNames.length;
+
+    let driftRows;
+    try {
+      const { rows } = await pool.query(
+        `SELECT column_name, data_type FROM information_schema.columns
+         WHERE table_schema = 'public'
+           AND table_name = $1
+           AND column_name = ANY($2::text[])
+           AND (column_default IS NULL OR column_default = '')`,
+        [tableCfg.name, candidateColumnNames]
+      );
+      driftRows = rows;
+    } catch (err: any) {
+      log.warn(`[timestampDefaultDrift] Failed to scan ${tableCfg.name}: ${err?.message?.slice(0, 120)}`);
+      continue;
+    }
+
+    for (const r of driftRows) {
+      try {
+        await pool.query(
+          `ALTER TABLE "${tableCfg.name}" ALTER COLUMN "${r.column_name}" SET DEFAULT NOW()`
+        );
+        result.columnsPatched++;
+        log.info(`[timestampDefaultDrift] set DEFAULT NOW() on ${tableCfg.name}.${r.column_name}`);
+      } catch (err: any) {
+        result.columnsFailed++;
+        log.warn(`[timestampDefaultDrift] Failed on ${tableCfg.name}.${r.column_name}: ${err?.message?.slice(0, 120)}`);
+      }
+    }
+  }
+  return result;
+}
+
+async function scanNotNullDrift(schemaTables: Record<string, unknown>): Promise<{
+  tablesScanned: number;
+  columnsChecked: number;
+  columnsPatched: number;
+  columnsFailed: number;
+}> {
+  const result = { tablesScanned: 0, columnsChecked: 0, columnsPatched: 0, columnsFailed: 0 };
+
+  for (const [exportName, value] of Object.entries(schemaTables)) {
+    // Filter out non-table exports (enums, schemas, insertSchemas, types, etc)
+    if (!value || typeof value !== 'object') continue;
+    if (!(value instanceof PgTable)) continue;
+
+    let tableCfg;
+    try {
+      tableCfg = getTableConfig(value as PgTable);
+    } catch {
+      continue;
+    }
+    // Only scan public-schema base tables
+    if (tableCfg.schema && tableCfg.schema !== 'public') continue;
+
+    result.tablesScanned++;
+    const nullableColumnNames: string[] = [];
+    for (const col of tableCfg.columns) {
+      // Only scan columns the Drizzle schema declares as NULLABLE
+      if (col.notNull) continue;
+      nullableColumnNames.push(col.name);
+    }
+    if (nullableColumnNames.length === 0) continue;
+
+    // Single query per table: find columns that are NOT NULL in live DB
+    // AND appear in the Drizzle-nullable list
+    let driftRows;
+    try {
+      const { rows } = await pool.query(
+        `SELECT column_name FROM information_schema.columns
+         WHERE table_schema = 'public'
+           AND table_name = $1
+           AND is_nullable = 'NO'
+           AND column_name = ANY($2::text[])`,
+        [tableCfg.name, nullableColumnNames]
+      );
+      driftRows = rows;
+    } catch (err: any) {
+      log.warn(`[notNullDrift] Failed to scan ${tableCfg.name}: ${err?.message?.slice(0, 120)}`);
+      continue;
+    }
+
+    result.columnsChecked += nullableColumnNames.length;
+    for (const r of driftRows) {
+      try {
+        await pool.query(
+          `ALTER TABLE "${tableCfg.name}" ALTER COLUMN "${r.column_name}" DROP NOT NULL`
+        );
+        result.columnsPatched++;
+        log.info(`[notNullDrift] dropped NOT NULL on ${tableCfg.name}.${r.column_name} (schema says nullable, live DB had NOT NULL)`);
+      } catch (err: any) {
+        result.columnsFailed++;
+        log.warn(`[notNullDrift] Failed on ${tableCfg.name}.${r.column_name}: ${err?.message?.slice(0, 120)}`);
+      }
+    }
+  }
+  return result;
+}
+
 export async function ensureCriticalConstraints(): Promise<void> {
   log.info(`[criticalConstraints] Verifying ${constraints.length} critical constraints`);
   let installed = 0;
@@ -583,5 +773,44 @@ export async function ensureCriticalConstraints(): Promise<void> {
     );
   } else {
     log.info(`[idDefaultBackfill] All public-schema id columns have defaults — no patches needed`);
+  }
+
+  // Generic schema drift scanners — both lazy-import @shared/schema once
+  // and use Drizzle's getTableConfig() to introspect every table at runtime.
+  // Two distinct drift modes are checked:
+  //   1. NOT NULL drift — column is NOT NULL in live DB but the Drizzle
+  //      schema declares it nullable. Drops the constraint.
+  //   2. Timestamp default drift — column is NOT NULL with a Drizzle
+  //      `defaultNow()` annotation but no DEFAULT in the live DB.
+  //      Adds DEFAULT NOW().
+  // Both are root causes for the drizzle-kit-push-skipped-something class
+  // of errors that have been hitting production logs.
+  try {
+    const schemaModule = await import('@shared/schema');
+    const schemaRecord = schemaModule as Record<string, unknown>;
+
+    const nullDrift = await scanNotNullDrift(schemaRecord);
+    if (nullDrift.columnsPatched > 0 || nullDrift.columnsFailed > 0) {
+      log.info(
+        `[notNullDrift] Scanned ${nullDrift.tablesScanned} tables, ${nullDrift.columnsChecked} nullable columns — patched ${nullDrift.columnsPatched}, failed ${nullDrift.columnsFailed}`
+      );
+    } else {
+      log.info(
+        `[notNullDrift] Scanned ${nullDrift.tablesScanned} tables, ${nullDrift.columnsChecked} nullable columns — no drift detected`
+      );
+    }
+
+    const tsDrift = await scanTimestampDefaultDrift(schemaRecord);
+    if (tsDrift.columnsPatched > 0 || tsDrift.columnsFailed > 0) {
+      log.info(
+        `[timestampDefaultDrift] Scanned ${tsDrift.tablesScanned} tables, ${tsDrift.columnsChecked} candidate columns — patched ${tsDrift.columnsPatched}, failed ${tsDrift.columnsFailed}`
+      );
+    } else {
+      log.info(
+        `[timestampDefaultDrift] Scanned ${tsDrift.tablesScanned} tables, ${tsDrift.columnsChecked} candidate columns — no drift detected`
+      );
+    }
+  } catch (err: any) {
+    log.error(`[schemaDrift] Scan failed: ${err?.message}`, { error: err });
   }
 }
