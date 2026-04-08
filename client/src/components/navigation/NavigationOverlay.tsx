@@ -150,15 +150,13 @@ export function NavigationOverlay({
           backdropFilter: 'blur(3px)',
           // Visual state tracks the animation (fades during exit).
           opacity: isOpen && animationState !== 'exiting' ? 1 : 0,
-          // SCROLL FIX (2026-04-08): pointer-events is tied to `isOpen`
-          // (NOT animationState). The previous code used
-          //   pointerEvents: animationState === 'exiting' ? 'none' : 'auto'
-          // which left the backdrop interactive whenever animationState
-          // was stuck at 'idle'/'entering'/'entered' while isOpen was
-          // already false — blocking the entire viewport with a
-          // transparent click-eater. Now pointer-events is 'none'
-          // whenever isOpen is false, regardless of animationState.
-          pointerEvents: isOpen ? 'auto' : 'none',
+          // SCROLL FIX (2026-04-08): pointer-events must be `none` whenever
+          // the nav is NOT open OR is actively animating out. The ORIGINAL
+          // bug tied this to animationState only, leaving pointer-events:auto
+          // any time the nav wasn't actively exiting — including the entire
+          // idle closed state — so an invisible full-viewport backdrop
+          // intercepted every wheel/touch across the whole app.
+          pointerEvents: (!isOpen || animationState === 'exiting') ? 'none' : 'auto',
           transition: 'opacity 150ms ease',
         }}
         onClick={onClose}

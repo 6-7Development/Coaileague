@@ -6589,13 +6589,13 @@ select:focus-visible,
   min-height: 100% !important;
 }
 
-/* ======================================================================
-   PUBLIC PAGE SCROLL — scroll fix v7
-   ====================================================================== */
-body[data-public-route="true"] {
-  overflow-x: hidden !important;
-}
+/* SCROLL FIX (2026-04-08): the entire body[data-public-route] overflow
+   block was deleted per user directive. The previous versions tried to
+   force overflow-y:auto + height:auto on html/body/#root for public
+   routes, which destroyed the scroll container model — setting
+   height:auto unconstrained the flex chain, so .public-page-scroll-root
+   could never overflow and the wheel had nothing to scroll.
 
-body[data-public-route="true"] .public-page-scroll-root {
-  overflow: visible !important;
-}
+   The global defaults from the top of this file (no custom html/body/
+   #root rules) are the correct behavior: let the window scroll natively
+   the way every other website on the internet does. */
