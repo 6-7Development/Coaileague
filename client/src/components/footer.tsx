@@ -178,6 +178,27 @@ export function Footer({ variant = "dark" }: FooterProps) {
                   Cookie Policy
                 </button>
               </li>
+              <li>
+                {/* Static HTML asset served from dist/public — requires full page nav,
+                    not client-side wouter routing. Required for Twilio toll-free
+                    verification (see /sms-opt-in.html in client/public). */}
+                <a
+                  href="/sms-opt-in.html"
+                  className={linkClass}
+                  data-testid="footer-link-sms-optin"
+                >
+                  SMS Opt-In
+                </a>
+              </li>
+              <li>
+                <button
+                  onClick={() => setLocation("/sms-terms")}
+                  className={linkClass}
+                  data-testid="footer-link-sms-terms"
+                >
+                  SMS Terms
+                </button>
+              </li>
             </ul>
           </div>
 
