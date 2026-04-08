@@ -162,6 +162,20 @@ const constraints: CriticalConstraint[] = [
       await pool.query(`ALTER TYPE audit_action ADD VALUE IF NOT EXISTS 'test_audit_schema_insert'`);
     },
   },
+  {
+    name: 'payroll_status_value_completed',
+    rationale: 'payroll_status enum is declared with "completed" in shared/schema/enums.ts but the live Railway enum is missing it. Every payroll run transition to "completed" errors with "invalid input value for enum payroll_status" and cascades into autonomousScheduler audit log failures (production log forensics 2026-04-08).',
+    isPresent: async () => {
+      const { rows } = await pool.query(
+        `SELECT 1 FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid
+         WHERE t.typname = 'payroll_status' AND e.enumlabel = 'completed'`
+      );
+      return rows.length > 0;
+    },
+    apply: async () => {
+      await pool.query(`ALTER TYPE payroll_status ADD VALUE IF NOT EXISTS 'completed'`);
+    },
+  },
   // ── Phase X: Optimistic locking column (CLAUDE.md §15) ─────────────────
   // Section 15 mandates optimistic locking for concurrent shift edits:
   //   UPDATE shifts SET ..., version = version + 1
@@ -465,7 +479,7 @@ const constraints: CriticalConstraint[] = [
   },
   {
     name: 'no_overlapping_employee_shifts',
-    rationale: 'Sole atomic enforcement of shift overlap prevention (RC5 Phase 2 — see shiftRoutes.ts)',
+    rationale: 'Sole atomic enforcement of shift overlap prevention (RC5 Phase 2 — see shiftRoutes.ts). Picks tsrange vs tstzrange at install time based on the live start_time/end_time column type so the GIST expression stays IMMUTABLE.',
     isPresent: async () => {
       const { rows } = await pool.query(
         `SELECT 1 FROM pg_constraint WHERE conname = 'no_overlapping_employee_shifts'`
@@ -473,6 +487,33 @@ const constraints: CriticalConstraint[] = [
       return rows.length > 0;
     },
     apply: async () => {
+      // CRITICAL: `tstzrange(start_time, end_time)` requires timestamptz
+      // columns. If start_time / end_time are declared as `timestamp`
+      // without time zone (which the Drizzle schema currently does at
+      // shared/schema/domains/scheduling/index.ts:113-114), PostgreSQL
+      // inserts an implicit `timestamp → timestamptz` cast into the
+      // GIST expression. That cast is STABLE (depends on the session
+      // `TimeZone` GUC), NOT IMMUTABLE — and PostgreSQL refuses to use
+      // non-immutable functions in an index expression with:
+      //
+      //   "functions in index expression must be marked IMMUTABLE"
+      //
+      // Fix: detect the live column type and pick the matching range
+      // constructor. Both `tsrange` and `tstzrange` are IMMUTABLE when
+      // called with arguments of their native type.
+      const { rows } = await pool.query(`
+        SELECT data_type
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'shifts'
+          AND column_name = 'start_time'
+        LIMIT 1
+      `);
+      const liveType = (rows[0]?.data_type || '').toLowerCase();
+      const rangeFn = liveType.includes('with time zone') ? 'tstzrange' : 'tsrange';
+      log.info(
+        `[criticalConstraints] shifts.start_time live type is "${liveType}" — using ${rangeFn} for no_overlapping_employee_shifts`
+      );
       // Scoped by (workspace_id, employee_id), ranged by (start_time, end_time).
       // Cancelled and denied shifts are excluded so a replacement shift can
       // occupy the same window as a previously-rejected one.
@@ -482,7 +523,7 @@ const constraints: CriticalConstraint[] = [
           EXCLUDE USING gist (
             workspace_id WITH =,
             employee_id  WITH =,
-            tstzrange(start_time, end_time, '[)') WITH &&
+            ${rangeFn}(start_time, end_time, '[)') WITH &&
           )
           WHERE (
             employee_id IS NOT NULL
@@ -671,6 +712,196 @@ async function scanTimestampDefaultDrift(schemaTables: Record<string, unknown>):
   return result;
 }
 
+/**
+ * GENERIC MISSING-COLUMN DRIFT SCANNER
+ *
+ * Same root cause class as the other drift scanners: drizzle-kit push
+ * does not reliably propagate ADD COLUMN changes to the live database
+ * when the column was added after the table already existed. Columns
+ * the application expects (and writes to on every cycle) end up missing
+ * from the live schema, producing cascading "undefined column" errors
+ * across every write path that touches the table.
+ *
+ * Concrete example: `ai_brain_action_logs.action_type` — Drizzle declares
+ * it as `varchar(100) NOT NULL`, but drizzle-kit push never added it to
+ * the live Railway database. Every INSERT into the table failed, which
+ * cascaded into:
+ *   - "Audit log failed" (platformEventBus)
+ *   - "Audit log persistence failed" (autonomousScheduler)
+ *   - "[UniversalStepLogger] Failed to log to database"
+ *   - "[HelpAIProactiveMonitor] Cycle error"
+ * Every single automation cycle produced 8-12 of these errors on loop.
+ *
+ * This scanner walks every Drizzle-declared table via `getTableConfig()`,
+ * queries `information_schema.columns` to find columns declared in the
+ * schema but missing from the live DB, and runs idempotent
+ * `ALTER TABLE ... ADD COLUMN IF NOT EXISTS ...` using the column's own
+ * `getSQLType()` method so the added column matches Drizzle exactly.
+ *
+ * Guard rails:
+ *   - Only ADDs columns — never drops, never changes existing type
+ *   - Uses ADD COLUMN IF NOT EXISTS so concurrent bootstraps are safe
+ *   - If the Drizzle column has a default, applies it (so existing rows
+ *     backfill cleanly and NOT NULL constraints don't fail)
+ *   - If the Drizzle column is NOT NULL with no default, the column is
+ *     added as NULL-allowed and then tightened to NOT NULL only if the
+ *     table is empty — otherwise leave as nullable and log a warning so
+ *     ops can fix it manually (we never want to block an INSERT on a
+ *     drift-recovery step that nukes data)
+ *   - System tables (information_schema, pg_catalog) are skipped
+ *   - If `getSQLType()` throws for any reason, that column is skipped
+ *     and logged (better to leave the drift than crash the scanner)
+ */
+async function scanMissingColumns(schemaTables: Record<string, unknown>): Promise<{
+  tablesScanned: number;
+  columnsChecked: number;
+  columnsAdded: number;
+  columnsFailed: number;
+}> {
+  const result = { tablesScanned: 0, columnsChecked: 0, columnsAdded: 0, columnsFailed: 0 };
+
+  for (const [, value] of Object.entries(schemaTables)) {
+    if (!value || typeof value !== 'object') continue;
+    if (!(value instanceof PgTable)) continue;
+
+    let tableCfg;
+    try {
+      tableCfg = getTableConfig(value as PgTable);
+    } catch {
+      continue;
+    }
+    if (tableCfg.schema && tableCfg.schema !== 'public') continue;
+    result.tablesScanned++;
+
+    // Build the set of column names Drizzle declares for this table
+    const declaredColumns = tableCfg.columns;
+    if (declaredColumns.length === 0) continue;
+    const declaredNames = declaredColumns.map((c) => c.name);
+    result.columnsChecked += declaredNames.length;
+
+    // Find which of those columns are actually present in the live DB
+    let liveRows: Array<{ column_name: string }>;
+    try {
+      const { rows } = await pool.query(
+        `SELECT column_name FROM information_schema.columns
+         WHERE table_schema = 'public'
+           AND table_name = $1
+           AND column_name = ANY($2::text[])`,
+        [tableCfg.name, declaredNames]
+      );
+      liveRows = rows;
+    } catch (err: any) {
+      log.warn(`[missingColumnDrift] Failed to scan ${tableCfg.name}: ${err?.message?.slice(0, 120)}`);
+      continue;
+    }
+    const livePresent = new Set(liveRows.map((r) => r.column_name));
+
+    // Anything declared in Drizzle but absent from the live DB is drift
+    const missing = declaredColumns.filter((c) => !livePresent.has(c.name));
+    if (missing.length === 0) continue;
+
+    for (const col of missing) {
+      let sqlType: string;
+      try {
+        // `.getSQLType()` is a public method on every PgColumn subclass
+        // (varchar, text, integer, timestamp, jsonb, etc.) and returns
+        // the exact SQL type string we need for ADD COLUMN.
+        sqlType = (col as any).getSQLType();
+      } catch (err: any) {
+        log.warn(
+          `[missingColumnDrift] ${tableCfg.name}.${col.name}: could not resolve SQL type (${err?.message?.slice(0, 80)}), skipping`
+        );
+        result.columnsFailed++;
+        continue;
+      }
+      if (!sqlType || typeof sqlType !== 'string') {
+        log.warn(
+          `[missingColumnDrift] ${tableCfg.name}.${col.name}: getSQLType returned empty, skipping`
+        );
+        result.columnsFailed++;
+        continue;
+      }
+
+      // If Drizzle says the column has a default, pull it through so
+      // backfills don't explode on NOT NULL.
+      //
+      // We do NOT try to serialize arbitrary `default` expressions (too
+      // brittle across the Drizzle DSL). Instead we cover the three
+      // real-world cases: literal scalar, sql`...` template, and none.
+      let defaultClause = '';
+      const anyCol = col as any;
+      if (anyCol.hasDefault) {
+        const def = anyCol.default;
+        if (def && typeof def === 'object' && typeof def.queryChunks !== 'undefined') {
+          // Drizzle sql`...` template: serialize the string chunks.
+          try {
+            const chunks = def.queryChunks as unknown[];
+            const raw = chunks
+              .map((c) => (typeof c === 'string' ? c : (c as any)?.value?.[0] ?? ''))
+              .join('')
+              .trim();
+            if (raw) defaultClause = ` DEFAULT ${raw}`;
+          } catch {
+            // Give up and skip default — column added without it
+          }
+        } else if (typeof def === 'string') {
+          defaultClause = ` DEFAULT ${pgQuoteLiteral(def)}`;
+        } else if (typeof def === 'number' || typeof def === 'boolean') {
+          defaultClause = ` DEFAULT ${String(def)}`;
+        }
+      }
+
+      // Add the column NULL-allowed first (safe on non-empty tables).
+      // Then, if Drizzle marks it NOT NULL AND we can populate it, tighten.
+      // For NOT NULL columns with defaults, Postgres backfills on ALTER.
+      const addSql = `ALTER TABLE "${tableCfg.name}" ADD COLUMN IF NOT EXISTS "${col.name}" ${sqlType}${defaultClause}`;
+
+      try {
+        await pool.query(addSql);
+        result.columnsAdded++;
+        log.info(
+          `[missingColumnDrift] added column ${tableCfg.name}.${col.name} (${sqlType}${defaultClause ? ' w/ default' : ''})`
+        );
+      } catch (err: any) {
+        result.columnsFailed++;
+        log.warn(
+          `[missingColumnDrift] Failed on ${tableCfg.name}.${col.name}: ${err?.message?.slice(0, 160)}`
+        );
+        continue;
+      }
+
+      // If the column is NOT NULL per Drizzle AND we have a default,
+      // tighten the constraint. If no default, leave it nullable —
+      // tightening on an existing non-empty table without a default
+      // would throw and roll back the whole scan.
+      if (col.notNull && defaultClause) {
+        try {
+          await pool.query(
+            `ALTER TABLE "${tableCfg.name}" ALTER COLUMN "${col.name}" SET NOT NULL`
+          );
+          log.info(
+            `[missingColumnDrift] tightened ${tableCfg.name}.${col.name} to NOT NULL`
+          );
+        } catch (err: any) {
+          log.warn(
+            `[missingColumnDrift] Could not tighten ${tableCfg.name}.${col.name} to NOT NULL (existing NULL rows?): ${err?.message?.slice(0, 120)}`
+          );
+        }
+      }
+    }
+  }
+  return result;
+}
+
+/**
+ * Escape a string value for inline inclusion in a SQL DEFAULT clause.
+ * Used only by scanMissingColumns for literal-string defaults. Not a
+ * general-purpose SQL escape.
+ */
+function pgQuoteLiteral(value: string): string {
+  return `'${value.replace(/'/g, "''")}'`;
+}
+
 async function scanNotNullDrift(schemaTables: Record<string, unknown>): Promise<{
   tablesScanned: number;
   columnsChecked: number;
@@ -775,19 +1006,34 @@ export async function ensureCriticalConstraints(): Promise<void> {
     log.info(`[idDefaultBackfill] All public-schema id columns have defaults — no patches needed`);
   }
 
-  // Generic schema drift scanners — both lazy-import @shared/schema once
+  // Generic schema drift scanners — all lazy-import @shared/schema once
   // and use Drizzle's getTableConfig() to introspect every table at runtime.
-  // Two distinct drift modes are checked:
-  //   1. NOT NULL drift — column is NOT NULL in live DB but the Drizzle
+  // Three distinct drift modes are checked, in this order:
+  //   1. MISSING COLUMNS — column is declared in the Drizzle schema but
+  //      absent from the live DB. Adds the column via ALTER TABLE ADD
+  //      COLUMN IF NOT EXISTS. This must run FIRST so the NOT NULL and
+  //      timestamp-default scanners below can operate on complete tables.
+  //   2. NOT NULL drift — column is NOT NULL in live DB but the Drizzle
   //      schema declares it nullable. Drops the constraint.
-  //   2. Timestamp default drift — column is NOT NULL with a Drizzle
+  //   3. Timestamp default drift — column is NOT NULL with a Drizzle
   //      `defaultNow()` annotation but no DEFAULT in the live DB.
   //      Adds DEFAULT NOW().
-  // Both are root causes for the drizzle-kit-push-skipped-something class
-  // of errors that have been hitting production logs.
+  // All three are root causes for the drizzle-kit-push-skipped-something
+  // class of errors that have been hitting production logs.
   try {
     const schemaModule = await import('@shared/schema');
     const schemaRecord = schemaModule as Record<string, unknown>;
+
+    const missingDrift = await scanMissingColumns(schemaRecord);
+    if (missingDrift.columnsAdded > 0 || missingDrift.columnsFailed > 0) {
+      log.info(
+        `[missingColumnDrift] Scanned ${missingDrift.tablesScanned} tables, ${missingDrift.columnsChecked} declared columns — added ${missingDrift.columnsAdded}, failed ${missingDrift.columnsFailed}`
+      );
+    } else {
+      log.info(
+        `[missingColumnDrift] Scanned ${missingDrift.tablesScanned} tables, ${missingDrift.columnsChecked} declared columns — no drift detected`
+      );
+    }
 
     const nullDrift = await scanNotNullDrift(schemaRecord);
     if (nullDrift.columnsPatched > 0 || nullDrift.columnsFailed > 0) {

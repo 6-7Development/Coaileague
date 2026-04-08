@@ -590,7 +590,27 @@ class TrinityKnowledgeService {
         if ((err instanceof Error ? err.message : String(err))?.includes('unique') || err.code === '23505') {
           skipped++;
         } else {
-          log.error(`[TrinityKnowledge] Failed to seed module ${mod.moduleKey}:`, (err instanceof Error ? err.message : String(err)));
+          // OBSERVABILITY (Phase 1 Domain 1): surface the full PostgreSQL
+          // error context so the 6 modules that were silently failing at
+          // boot become visible. Previously this swallowed message-only
+          // which made it impossible to tell if the root cause was a
+          // missing column, a NOT NULL violation, a foreign-key failure,
+          // or something else entirely.
+          log.error(
+            `[TrinityKnowledge] Failed to seed module ${mod.moduleKey}`,
+            {
+              message: err instanceof Error ? err.message : String(err),
+              code: err?.code,
+              detail: err?.detail,
+              column: err?.column,
+              constraint: err?.constraint,
+              table: err?.table,
+              schema: err?.schema,
+              where: err?.where,
+              routine: err?.routine,
+              stack: err?.stack?.split('\n').slice(0, 6).join(' | '),
+            }
+          );
         }
       }
     }
