@@ -35,19 +35,22 @@
    CRITICAL: Never use 100vw (includes scrollbar width on Windows ~15-17px)
    ============================================================================ */
 
-/* SCROLL FIX v6 (2026-04-08) — all !important.
-   Three components (UniversalSheet, UniversalDrawer, MobileQuickActionsFAB)
-   set `document.body.style.overflow = 'hidden'` via inline style on
-   mount. Inline styles without !important are in the "author normal"
-   cascade level and beat non-important stylesheet rules of ANY
-   specificity. Marking these rules !important promotes them to the
-   "author important" level which beats inline non-important.
+/* SCROLL FIX v7 (2026-04-08) — THE REAL FIX.
+   DevTools diagnosis: body.clientHeight === body.scrollHeight === 3399.
+   Body grew to fit its content (via height: auto) AND had overflow-y: auto.
+   With body's height equaling its content height, body itself had nothing
+   to scroll — no overflow from its perspective. And because body was its
+   OWN scroll container (overflow-y: auto), the overflow stopped
+   propagating to the viewport, so the window didn't scroll either.
+   Result: everything was "scrollable in principle" but nothing actually
+   scrolled because every container exactly fit its content.
 
-   This is the global default. Modal-open and data-scroll-locked
-   explicit states are overridden by later rules later in the stylesheet. */
+   THE FIX: let the viewport be the scroll container like every other
+   website on the internet. No overflow rules on html/body/#root. Just
+   let the browser render the document and scroll the window natively.
+   This is the default behavior and needs zero CSS to work. */
 html {
-  height: auto !important;
-  min-height: 100% !important;
+  /* No height, no overflow. Let the browser handle viewport scroll. */
   -webkit-tap-highlight-color: transparent;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
@@ -55,12 +58,9 @@ html {
 }
 
 body {
-  height: auto !important;
-  min-height: 100% !important;
-  overflow-y: auto !important;
-  /* touch-action: pan-y so the browser knows vertical pan is allowed
-     on touch devices. Without this Radix's scroll-lock rules can
-     accidentally restrict it to none. */
+  /* No height, no overflow. Let the document grow with content and the
+     browser window scroll naturally. touch-action: pan-y so mobile
+     browsers know vertical pan is allowed. */
   touch-action: pan-y;
 }
 
@@ -152,12 +152,9 @@ body {
    Ensures React content is always visible after mounting
    ============================================================================ */
 #root {
-  /* SCROLL FIX v6: bulletproof !important rules so no inline style or
-     component can break the scroll model. #root grows with content,
-     never clips, and never owns scroll itself. */
-  height: auto !important;
-  min-height: 100% !important;
-  overflow: visible !important;
+  /* SCROLL FIX v7: no height, no overflow. #root is just a normal
+     block element that grows with its content. The window scrolls
+     when content overflows the viewport. */
   visibility: visible !important;
   opacity: 1 !important;
 }
@@ -1909,24 +1906,10 @@ body[data-public-route="true"] .fixed.inset-0.bg-background {
    touch-action: pan-y + -webkit-overflow-scrolling: touch = iOS momentum scroll. */
 
 .public-page-scroll-root {
-  /* SCROLL FIX v2 (2026-04-08): this element no longer owns the scroll.
-     #root above is now `overflow-y: auto` and acts as the canonical scroll
-     container for public pages. .public-page-scroll-root is just a layout
-     wrapper that provides full width and lets content flow naturally.
-
-     Why not let .public-page-scroll-root own the scroll?
-     - With `display: flex; flex-direction: column` + `height: 100%` +
-       `overflow-y: auto`, Chromium and Safari hit a wheel-scroll quirk
-       where text-drag autoscroll works but wheel events are ignored.
-     - With `min-height: 100%` + `overflow-y: auto`, the container grows
-       with content (defeating the height bound), so overflow never
-       triggers and scrollbar never appears.
-     The clean solution is to delegate scroll to #root and treat this
-     element as a pure layout wrapper. */
+  /* SCROLL FIX v7 (2026-04-08): just a layout wrapper with full width.
+     No min-height, no height, no overflow. Lets content flow naturally
+     and the browser window scrolls. */
   width: 100%;
-  min-height: 100%;
-  /* Reset any inherited touch-action restriction so the browser uses
-     #root's touch-action: pan-y for touch handling. */
   touch-action: pan-y;
 }
 
@@ -6578,34 +6561,17 @@ select:focus-visible,
 }
 
 /* ======================================================================
-   PUBLIC PAGE SCROLL — body is the scroll container for public routes.
-   Scroll fix v5 — explicit, high-specificity overrides guarantee no
-   ancestor/descendant rule can clip vertical scroll on public routes.
-   !important is required here because there are multiple earlier rules
-   (mobile breakpoints, dark mode, etc.) that set body properties and
-   could accidentally override the scroll model.
+   PUBLIC PAGE SCROLL — scroll fix v7
+   Do NOT set overflow or height on html/body/#root for public routes.
+   The global rules (no overflow, no height) let the window scroll
+   naturally. The only thing we need on public routes is to guarantee
+   the horizontal overflow is clipped (so wide marketing images don't
+   cause horizontal scroll).
    ====================================================================== */
 body[data-public-route="true"] {
-  overflow-y: auto !important;
   overflow-x: hidden !important;
-  height: auto !important;
-  min-height: 100vh !important;
-}
-
-html:has(body[data-public-route="true"]) {
-  overflow-y: auto !important;
-  height: auto !important;
-  min-height: 100% !important;
-}
-
-body[data-public-route="true"] #root {
-  overflow: visible !important;
-  height: auto !important;
-  min-height: 100% !important;
 }
 
 body[data-public-route="true"] .public-page-scroll-root {
   overflow: visible !important;
-  height: auto !important;
-  min-height: 100vh !important;
 }
