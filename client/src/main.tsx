@@ -5,6 +5,47 @@ import App from "./App";
 import "./index.css";
 import "./print-styles.css";
 
+// ============================================================================
+// NUCLEAR BODY OVERFLOW GUARD (scroll fix v8 — diagnostic + enforcement)
+// ============================================================================
+// Per user directive: install a setter trap on CSSStyleDeclaration.prototype
+// for the `overflow` property. Any attempt to set `document.body.style.overflow
+// = 'hidden'` is BLOCKED and a console.trace logs the full stack trace of the
+// caller so we can identify which library is doing it.
+//
+// Three components in client/src/ have been verified to set body.overflow only
+// inside `if (open)` checks. All other sources are third-party (Radix
+// react-remove-scroll-bar, vaul, framer-motion, etc.) — the trap will identify
+// which one and the trace will show the exact call site.
+//
+// MUST RUN BEFORE React renders. Installed at the very top of main.tsx,
+// before createRoot(). Inline `<script>` in index.html runs even earlier
+// (the EventTarget hijack from scroll fix v4) but cannot patch the CSS
+// setter because CSSStyleDeclaration is only available after the DOM is
+// constructed.
+try {
+  const desc = Object.getOwnPropertyDescriptor(CSSStyleDeclaration.prototype, 'overflow');
+  if (desc && desc.set) {
+    const origSet = desc.set;
+    Object.defineProperty(CSSStyleDeclaration.prototype, 'overflow', {
+      configurable: true,
+      enumerable: true,
+      get: desc.get,
+      set(val: string) {
+        if (val === 'hidden' && this === document.body.style) {
+          // eslint-disable-next-line no-console
+          console.trace('[scroll-guard] BLOCKED body.style.overflow = "hidden" from:');
+          return;
+        }
+        origSet.call(this, val);
+      },
+    });
+  }
+} catch (e) {
+  // eslint-disable-next-line no-console
+  console.warn('[scroll-guard] failed to install body overflow trap:', e);
+}
+
 // Suppress Vite HMR WebSocket errors in development
 if (import.meta.env.DEV) {
   window.addEventListener('unhandledrejection', (event: PromiseRejectionEvent) => {
