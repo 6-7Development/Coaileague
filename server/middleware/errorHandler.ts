@@ -6,6 +6,7 @@ import { Request, Response, NextFunction } from 'express';
 import { ZodError } from 'zod';
 import { createLogger } from '../lib/logger';
 import { monitoringService } from '../monitoring';
+import { isProduction as isProductionEnv } from '../lib/isProduction';
 
 const log = createLogger('ErrorHandler');
 
@@ -23,8 +24,8 @@ const log = createLogger('ErrorHandler');
  * In development: returns the real error.message for debugging.
  */
 export function sanitizeError(error: unknown, fallback = 'An unexpected error occurred'): string {
-  const isProduction = process.env.NODE_ENV === 'production' || !!process.env.REPLIT_DEPLOYMENT;
-  if (isProduction) return fallback;
+  // CLAUDE.md §A: production detection via canonical helper.
+  if (isProductionEnv()) return fallback;
   if (error instanceof Error) return error.message;
   if (typeof error === 'string') return error;
   return fallback;
@@ -57,8 +58,8 @@ export function globalErrorHandler(
 ): void {
   if (res.headersSent) return;
 
-  // Match sanitizeError: also treat Replit deployments as production
-  const isProd = process.env.NODE_ENV === 'production' || !!process.env.REPLIT_DEPLOYMENT;
+  // CLAUDE.md §A: production detection via canonical helper.
+  const isProd = isProductionEnv();
 
   // --- Zod validation errors ---
   if (err instanceof ZodError) {

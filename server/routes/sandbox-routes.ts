@@ -13,6 +13,7 @@ import { decryptToken } from '../security/tokenEncryption';
 import { INTEGRATIONS } from '@shared/platformConfig';
 import { requireAuth } from '../auth';
 import { requireWorkspaceId } from '../utils/apiResponse';
+import { isProduction } from '../lib/isProduction';
 
 import {
   seedAllRates,
@@ -731,10 +732,12 @@ router.post('/e2e-quickbooks-test', sandboxDevBypass, async (req: Request, res: 
       testLog,
     });
   } catch (error: unknown) {
-    const isProd = process.env.NODE_ENV === 'production' || !!process.env.REPLIT_DEPLOYMENT;
-    addLog('ERROR', 'failed', { 
-      error: sanitizeError(error), 
-      stack: isProd ? undefined : error.stack?.split('\n').slice(0, 5) 
+    // CLAUDE.md §A: production detection via canonical helper, never
+    // direct REPLIT_DEPLOYMENT checks (which don't fire on Railway/etc).
+    const isProd = isProduction();
+    addLog('ERROR', 'failed', {
+      error: sanitizeError(error),
+      stack: isProd ? undefined : error.stack?.split('\n').slice(0, 5)
     });
     res.status(500).json({ success: false, testLog, error: sanitizeError(error) });
   }

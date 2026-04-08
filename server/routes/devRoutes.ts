@@ -8,6 +8,7 @@ import { typedCount, typedExec, typedQuery } from '../lib/typedSql';
 import { quickbooksSyncReceipts, chatMessages as chatMessagesTable } from '@shared/schema';
 import { createLogger } from '../lib/logger';
 import { PLATFORM } from '../config/platformConfig';
+import { isProduction } from '../lib/isProduction';
 const log = createLogger('DevRoutes');
 
 
@@ -75,8 +76,11 @@ router.post('/seed-expired-keys', requireOwner, async (req: AuthenticatedRequest
 });
 
 router.post('/trigger-automation/:jobType', requireOwner, async (req: AuthenticatedRequest, res) => {
-  // Block in production — this is a development/ops convenience endpoint only
-  if (process.env.NODE_ENV === 'production' || process.env.REPLIT_DEPLOYMENT) {
+  // Block in production — this is a development/ops convenience endpoint only.
+  // Use canonical isProduction() helper (CLAUDE.md §A). Direct
+  // REPLIT_DEPLOYMENT checks are forbidden because they don't fire on
+  // Railway / Cloud Run / other hosts.
+  if (isProduction()) {
     return res.status(403).json({ error: 'Not available in production' });
   }
   try {
@@ -1473,7 +1477,10 @@ router.post('/seed-acme-demo', requirePlatformAdmin, async (_req, res) => {
 // ──────────────────────────────────────────────────────────────────────────────
 router.post('/seed/acme', requirePlatformAdmin, async (_req, res) => {
   try {
-    if (process.env.NODE_ENV === 'production' || process.env.REPLIT_DEPLOYMENT) {
+    // Production guard via canonical isProduction() helper (CLAUDE.md §A).
+    // Direct REPLIT_DEPLOYMENT checks are forbidden — they don't fire on
+    // Railway / Cloud Run / other hosts.
+    if (isProduction()) {
       return res.status(403).json({ error: 'Refused — production environment' });
     }
     const { seedAcmeComplete } = await import('../scripts/seedAcmeComplete');
@@ -1511,7 +1518,10 @@ router.get('/seed/acme/status', requirePlatformAdmin, async (_req, res) => {
 // ──────────────────────────────────────────────────────────────────────────────
 router.post('/trinity/trigger-demo-actions', requirePlatformAdmin, async (_req, res) => {
   try {
-    if (process.env.NODE_ENV === 'production' || process.env.REPLIT_DEPLOYMENT) {
+    // Production guard via canonical isProduction() helper (CLAUDE.md §A).
+    // Direct REPLIT_DEPLOYMENT checks are forbidden — they don't fire on
+    // Railway / Cloud Run / other hosts.
+    if (isProduction()) {
       return res.status(403).json({ error: 'Refused — production environment' });
     }
     // Simulate Trinity running its standard suite of background checks on ACME workspace

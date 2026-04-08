@@ -13,6 +13,7 @@ import { eq, and, or, sql, desc, inArray, gte, like } from 'drizzle-orm';
 import { quickbooksRateLimiter } from '../services/integrations/quickbooksRateLimiter';
 import { quickbooksTokenRefresh } from '../services/integrations/quickbooksTokenRefresh';
 import { onboardingQuickBooksFlow } from '../services/orchestration/onboardingQuickBooksFlow';
+import { isProduction } from '../lib/isProduction';
 import { platformEventBus } from '../services/platformEventBus';
 import { broadcastToWorkspace } from '../websocket';
 
@@ -130,8 +131,8 @@ router.get('/quickbooks/diagnostic', async (req: Request, res: Response) => {
     const qbEnvironment = INTEGRATIONS.quickbooks.getEnvironmentForDomain(canonicalHost);
     
     // Build expected redirect URI based on environment (matches buildRedirectUri logic)
-    const isProductionRuntime = process.env.REPLIT_DEPLOYMENT === '1' || 
-                                 process.env.NODE_ENV === 'production';
+    // CLAUDE.md §A: production detection via canonical helper, not raw env vars.
+    const isProductionRuntime = isProduction();
     let expectedRedirectUri: string;
     if (isProductionRuntime) {
       expectedRedirectUri = process.env.QUICKBOOKS_REDIRECT_URI || 
