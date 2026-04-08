@@ -1,8 +1,18 @@
 /**
  * UniversalSpinner — ONE loading spinner, everywhere.
  *
- * Wraps <CoAIleagueLogoMark> (the Trinity Triquetra brand mark) and drives
- * a rich CSS-only animation defined in `client/src/styles/universal-spinner.css`.
+ * Wraps <TrinityArrowMark> (the three-arrow Trinity AI Co-Pilot brand icon)
+ * and drives a rich CSS-only animation defined in
+ * `client/src/styles/universal-spinner.css`.
+ *
+ * Why the three-arrow and not the triquetra? The triquetra is the
+ * CoAIleague platform brand mark used in general UI (headers, avatars,
+ * navigation). The three-arrow is the Trinity sub-brand icon used for
+ * everything motion-related: splash, loading, transitions, spinners.
+ * Per user directive 2026-04-08: "use only the given logo for all
+ * animations spinners loading pages". The three-arrow SVG keeps its
+ * intentional brand colors (blue / gold / purple arrows with white
+ * center) — those are fixed brand colors, not theme colors.
  *
  * Animation is pure CSS keyframes — no framer-motion, no JS driver, no
  * external dependencies. The 2.5-second cycle is designed to be SLOW enough
@@ -29,7 +39,7 @@
  */
 
 import "@/styles/universal-spinner.css";
-import { CoAIleagueLogoMark } from "@/components/ui/coaileague-logo-mark";
+import { TrinityArrowMark } from "@/components/trinity-logo";
 import { cn } from "@/lib/utils";
 
 export type UniversalSpinnerSize = "sm" | "md" | "lg";
@@ -77,7 +87,7 @@ export function UniversalSpinner({
         className="coai-universal-spinner"
         style={{ width: px, height: px }}
       >
-        <CoAIleagueLogoMark size={px} />
+        <TrinityArrowMark size={px} />
       </span>
 
       {showLabel && (

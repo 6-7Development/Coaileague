@@ -240,8 +240,37 @@
     </script>
   </head>
   <body>
+    <script>
+      // Theme bootstrap — runs before the HTML loader paints so the
+      // pre-React splash matches the app's day/night mode on first paint.
+      // Resolution order: localStorage 'coaileague-theme' → 'system' →
+      // prefers-color-scheme. Writes the `dark` class to <html> so
+      // Tailwind dark-mode selectors also apply to the HTML loader
+      // element once the theme-aware stylesheet below kicks in.
+      (function () {
+        try {
+          var saved = localStorage.getItem('coaileague-theme');
+          var useDark;
+          if (saved === 'dark') useDark = true;
+          else if (saved === 'light') useDark = false;
+          else useDark = !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          if (useDark) document.documentElement.classList.add('dark');
+        } catch (e) {
+          // localStorage blocked — fall through to CSS prefers-color-scheme
+        }
+      })();
+    </script>
     <style>
-      /* ── HTML Loader Shell ── */
+      /* ── HTML Loader Shell (theme-aware) ──────────────────────────────
+         Pre-React splash. Paints BEFORE the React ThemeProvider runs, so
+         it can't use Tailwind theme tokens — instead we use CSS custom
+         properties on the #html-loader element that flip based on:
+           (1) the `dark` class set by the theme bootstrap inline script
+           (2) the OS `prefers-color-scheme` media query as fallback
+         All text/background colors reference these properties so the
+         splash matches day/night seamlessly.
+         The Trinity three-arrow SVG colors below are intentional brand
+         colors (blue / orange / purple / white center) — NOT themed. */
       #html-loader {
         position: fixed;
         inset: 0;
@@ -250,10 +279,35 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        background: linear-gradient(135deg, #0a1628 0%, #0f2247 50%, #0a1628 100%);
+        background: var(--hl-bg, #ffffff);
+        color: var(--hl-text-primary, #1e293b);
         transition: opacity 0.4s ease;
         font-family: system-ui, -apple-system, sans-serif;
         overflow: hidden;
+        --hl-bg: #ffffff;
+        --hl-text-primary: #1e293b;
+        --hl-text-muted: #64748b;
+        --hl-text-faint: #94a3b8;
+        --hl-bar-bg: rgba(0, 0, 0, 0.08);
+        --hl-ring-border: rgba(30, 41, 59, 0.08);
+      }
+      html.dark #html-loader {
+        --hl-bg: linear-gradient(135deg, #0a1628 0%, #0f2247 50%, #0a1628 100%);
+        --hl-text-primary: #f1f5f9;
+        --hl-text-muted: #94a3b8;
+        --hl-text-faint: #64748b;
+        --hl-bar-bg: rgba(255, 255, 255, 0.06);
+        --hl-ring-border: rgba(148, 163, 184, 0.08);
+      }
+      @media (prefers-color-scheme: dark) {
+        html:not(.light) #html-loader {
+          --hl-bg: linear-gradient(135deg, #0a1628 0%, #0f2247 50%, #0a1628 100%);
+          --hl-text-primary: #f1f5f9;
+          --hl-text-muted: #94a3b8;
+          --hl-text-faint: #64748b;
+          --hl-bar-bg: rgba(255, 255, 255, 0.06);
+          --hl-ring-border: rgba(148, 163, 184, 0.08);
+        }
       }
       #html-loader.fade-out { opacity: 0; pointer-events: none; }
       #html-loader.gone { display: none; }
@@ -272,9 +326,9 @@
         border-radius: 50%;
         animation: hl-ringPulse 3s ease-in-out infinite;
       }
-      .hl-ring-1 { width: 320px; height: 320px; border: 1px solid rgba(96,165,250,0.08); }
-      .hl-ring-2 { width: 220px; height: 220px; border: 1px solid rgba(251,146,60,0.08);  animation-delay: 1s; }
-      .hl-ring-3 { width: 150px; height: 150px; border: 1px solid rgba(167,139,250,0.08); animation-delay: 2s; }
+      .hl-ring-1 { width: 320px; height: 320px; border: 1px solid var(--hl-ring-border); }
+      .hl-ring-2 { width: 220px; height: 220px; border: 1px solid var(--hl-ring-border); animation-delay: 1s; }
+      .hl-ring-3 { width: 150px; height: 150px; border: 1px solid var(--hl-ring-border); animation-delay: 2s; }
 
       /* ── Logo wrap ── */
       .hl-logo-wrap {
@@ -301,9 +355,9 @@
         -webkit-background-clip: text; -webkit-text-fill-color: transparent;
         background-clip: text;
       }
-      .hl-trinity-sup { font-size: 10px; font-weight: 600; color: #94a3b8; vertical-align: super; }
+      .hl-trinity-sup { font-size: 10px; font-weight: 600; color: var(--hl-text-faint); vertical-align: super; }
       .hl-trinity-sub {
-        display: block; font-size: 9px; color: #475569;
+        display: block; font-size: 9px; color: var(--hl-text-muted);
         letter-spacing: 2px; text-transform: uppercase; margin-top: 1px;
       }
 
@@ -337,14 +391,14 @@
 
       /* ── Subtitle ── */
       .hl-subtitle {
-        color: #64748b; font-size: 10px; letter-spacing: 2.5px;
+        color: var(--hl-text-muted); font-size: 10px; letter-spacing: 2.5px;
         text-transform: uppercase; margin-bottom: 24px; margin-top: 0;
         animation: hl-fadeUp 0.6s ease both 0.1s;
       }
 
       /* ── Status text ── */
       .hl-status {
-        color: #64748b; font-size: 13px; margin-bottom: 20px; min-height: 20px;
+        color: var(--hl-text-muted); font-size: 13px; margin-bottom: 20px; min-height: 20px;
         text-align: center; padding: 0 16px;
         animation: hl-msgFade 0.4s ease both;
       }
@@ -362,7 +416,7 @@
       /* ── Progress shimmer bar ── */
       .hl-bar-wrap {
         width: 200px; max-width: 70vw; height: 3px;
-        background: rgba(255,255,255,0.06); border-radius: 99px; overflow: hidden;
+        background: var(--hl-bar-bg); border-radius: 99px; overflow: hidden;
       }
       .hl-bar {
         height: 100%; border-radius: 99px;
@@ -389,7 +443,7 @@
         display: flex; flex-direction: column; align-items: center; gap: 4px;
         animation: hl-fadeUp 0.8s ease both 0.3s;
       }
-      .hl-footer p { font-size: 10px; color: #1e293b; margin: 0; text-align: center; padding: 0 16px; }
+      .hl-footer p { font-size: 10px; color: var(--hl-text-muted); margin: 0; text-align: center; padding: 0 16px; }
       .hl-footer-trinity {
         font-weight: 700;
         background: linear-gradient(90deg,#60a5fa,#a78bfa,#fb923c);
