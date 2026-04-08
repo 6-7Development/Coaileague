@@ -1,4 +1,5 @@
 import { useState, Suspense, lazy } from "react";
+import { TrinityArrowMark } from "@/components/trinity-logo";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -21,8 +22,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { disputeStatusConfig, disputePriorityConfig, disputeTypesConfig, disputeMessages } from "@/config/disputeConfig";
 import { DsPageHeader, DsStatCard, DsTabBar, DsEmptyState, DsDataRow, DsSectionCard, DsBadge, DsPageWrapper } from "@/components/ui/ds-components";
-
-const TrinityRedesign = lazy(() => import("@/components/trinity-redesign"));
 
 export default function DisputesPage() {
   const { user } = useAuth();
@@ -129,7 +128,7 @@ export default function DisputesPage() {
       <DsPageWrapper className="flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <Suspense fallback={<div className="w-16 h-16" />}>
-            <TrinityRedesign size={64} mode="THINKING" />
+            <TrinityArrowMark size={64} />
           </Suspense>
           <p className="text-ds-text-secondary">Loading disputes...</p>
         </div>

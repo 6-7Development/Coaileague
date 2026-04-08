@@ -1,4 +1,5 @@
 import { secureFetch } from "@/lib/csrf";
+import { TrinityArrowMark } from "@/components/trinity-logo";
 import { useState, useEffect, Suspense, lazy } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
@@ -9,7 +10,6 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { UniversalModal, UniversalModalHeader, UniversalModalTitle, UniversalModalDescription, UniversalModalContent } from '@/components/ui/universal-modal';
 import { VisuallyHidden } from '@/components/ui/visually-hidden';
-const TrinityRedesign = lazy(() => import('@/components/trinity-redesign'));
 import { useToast } from '@/hooks/use-toast';
 import { CanvasHubPage, type CanvasPageConfig } from '@/components/canvas-hub';
 import { 
@@ -1922,16 +1922,10 @@ export default function QuickBooksImportPage() {
               <div className="relative flex-shrink-0">
                 <Suspense fallback={<div className="w-14 h-14 sm:w-20 sm:h-20" />}>
                   <div className="block sm:hidden">
-                    <TrinityRedesign 
-                      size={56} 
-                      mode={pushProgress === 100 ? "ANALYZING" : "THINKING"}
-                    />
+                    <TrinityArrowMark size={56} />
                   </div>
                   <div className="hidden sm:block">
-                    <TrinityRedesign 
-                      size={80} 
-                      mode={pushProgress === 100 ? "ANALYZING" : "THINKING"}
-                    />
+                    <TrinityArrowMark size={80} />
                   </div>
                 </Suspense>
                 {pushProgress === 100 && (

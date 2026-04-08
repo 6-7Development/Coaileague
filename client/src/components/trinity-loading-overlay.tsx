@@ -9,6 +9,7 @@
  */
 
 import { useEffect, useState, memo, useId } from 'react';
+import { TrinityArrowMark } from "@/components/trinity-logo";
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -42,15 +43,10 @@ const LOADING_MESSAGES = [
  * AnimatedTrinityLogo - Uses the REAL Trinity Redesign canvas mascot
  */
 import { Suspense, lazy } from 'react';
-const TrinityRedesign = lazy(() => import('@/components/trinity-redesign'));
-
 function AnimatedTrinityLogo({ size = 80, isAnimating = true }: { size?: number; isAnimating?: boolean }) {
   return (
     <Suspense fallback={<div style={{ width: size, height: size }} />}>
-      <TrinityRedesign 
-        size={size} 
-        mode={isAnimating ? "THINKING" : "IDLE"}
-      />
+      <TrinityArrowMark size={size} />
     </Suspense>
   );
 }

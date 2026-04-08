@@ -12,6 +12,7 @@
  */
 
 import { ReactNode, useState } from "react";
+import { TrinityArrowMark } from "@/components/trinity-logo";
 import { useLocation } from "wouter";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useIdentity } from "@/hooks/useIdentity";
@@ -34,7 +35,6 @@ import { UniversalModal, UniversalModalTrigger, UniversalModalTitle, UniversalMo
 import { performLogout, setLogoutTransitionLoader } from "@/lib/logoutHandler";
 import { useTransitionLoaderIfMounted } from "@/components/canvas-hub";
 import { TrinityLogo } from "@/components/ui/coaileague-logo-mark";
-import TrinityRedesign from "@/components/trinity-redesign";
 import { Suspense, useEffect } from "react";
 import { useTrinityModal } from "@/components/trinity-chat-modal";
 
@@ -124,7 +124,7 @@ function WorkerTrinityMenuItem({ onClose }: { onClose: () => void }) {
       
       {isPressed ? (
         <Suspense fallback={<div className="w-6 h-6" />}>
-          <TrinityRedesign size={24} mode="THINKING" />
+          <TrinityArrowMark size={24} />
         </Suspense>
       ) : (
         <TrinityLogo size={24} />

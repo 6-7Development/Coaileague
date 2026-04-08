@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo, createContext, useContext } from "react";
+import { TrinityArrowMark } from "@/components/trinity-logo";
 import { cn } from "@/lib/utils";
 import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -42,7 +43,6 @@ import { useChatDock } from "@/contexts/ChatDockContext";
 import { useTrinityModal } from "@/components/trinity-chat-modal";
 import { humanizeTitle, humanizeText, generateEndUserSummary, generateStructuredBreakdown, type StructuredBreakdown } from "@shared/utils/humanFriendlyCopy";
 import { Suspense, lazy } from "react";
-const TrinityRedesign = lazy(() => import("@/components/trinity-redesign"));
 import { UNSCommandCenter } from "./uns-command-center";
 import { SwipeToDelete } from "./swipe-to-delete";
 import { BroadcastNotificationAdapter } from "./broadcasts/BroadcastNotificationAdapter";
@@ -2430,7 +2430,7 @@ function NotificationsPopoverInner({ user }: { user: any }) {
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-12 gap-2">
             <Suspense fallback={<div className="w-12 h-12" />}>
-              <TrinityRedesign size={48} mode="THINKING" />
+              <TrinityArrowMark size={48} />
             </Suspense>
             <span className="text-xs text-muted-foreground">Loading...</span>
           </div>

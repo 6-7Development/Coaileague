@@ -12,6 +12,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback, createContext, useContext, useMemo } from 'react';
+import { TrinityArrowMark } from "@/components/trinity-logo";
 import { cn } from '@/lib/utils';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { queryClient } from '@/lib/queryClient';
@@ -65,7 +66,6 @@ import {
   X as XIcon,
 } from 'lucide-react';
 import { TrinityLogo } from '@/components/ui/coaileague-logo-mark';
-import TrinityRedesign from '@/components/trinity-redesign';
 import { Suspense } from 'react';
 import { TrinityAgentPanel } from '@/components/trinity';
 import { TrinityActionHistoryPanel } from '@/components/trinity/TrinityActionHistoryPanel';
@@ -575,7 +575,7 @@ function ThinkingVisualization({ steps, mode }: { steps: ThinkingStep[]; mode: C
       <div className="shrink-0">
         <div className="w-10 h-10 flex items-center justify-center">
           <Suspense fallback={<div className="w-10 h-10" />}>
-            <TrinityRedesign size={40} mode="THINKING" />
+            <TrinityArrowMark size={40} />
           </Suspense>
         </div>
       </div>
@@ -1422,7 +1422,7 @@ function TrinityModal({ onClose }: TrinityModalProps) {
                   <div className="flex flex-col items-center justify-center text-center py-6">
                     <div className="w-16 h-16 flex items-center justify-center mb-3">
                       <Suspense fallback={<div className="w-16 h-16" />}>
-                        <TrinityRedesign size={64} mode="ANALYZING" />
+                        <TrinityArrowMark size={64} />
                       </Suspense>
                     </div>
                     <h3 className="font-semibold text-lg mb-1">Ask Trinity Anything</h3>
@@ -1622,7 +1622,7 @@ function TrinityModal({ onClose }: TrinityModalProps) {
       >
         <div className="w-14 h-14 flex items-center justify-center">
           <Suspense fallback={<div className="w-14 h-14" />}>
-            <TrinityRedesign size={56} mode="ANALYZING" />
+            <TrinityArrowMark size={56} />
           </Suspense>
           {messages.length > 0 && (
             <div className="absolute -top-1 -right-1 w-5 h-5 bg-primary text-primary-foreground rounded-full text-xs flex items-center justify-center">

@@ -11,11 +11,11 @@
  */
 
 import { memo, useMemo } from 'react';
+import { TrinityArrowMark } from "@/components/trinity-logo";
 import { motion } from 'framer-motion';
 import { Sparkles, Bot, Zap, Brain, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TrinityLogo } from '@/components/ui/coaileague-logo-mark';
-import TrinityRedesign from '@/components/trinity-redesign';
 import { Suspense } from 'react';
 
 type TrinityVariant = 'badge' | 'compact' | 'standard' | 'hero' | 'inline';
@@ -176,10 +176,7 @@ const TrinityMarketingHero = memo(function TrinityMarketingHero({
       <div className="relative z-10 drop-shadow-sm">
         {animated ? (
           <Suspense fallback={<div className="w-12 h-12" />}>
-            <TrinityRedesign 
-              size={variant === 'badge' ? 24 : variant === 'compact' ? 32 : variant === 'inline' ? 24 : variant === 'hero' ? 64 : 48}
-              mode="ANALYZING"
-            />
+            <TrinityArrowMark size={variant === 'badge' ? 24 : variant === 'compact' ? 32 : variant === 'inline' ? 24 : variant === 'hero' ? 64 : 48} />
           </Suspense>
         ) : (
           <TrinityLogo 

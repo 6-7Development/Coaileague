@@ -10,6 +10,7 @@
  */
 
 import { useState } from 'react';
+import { TrinityArrowMark } from "@/components/trinity-logo";
 import { useLocation } from 'wouter';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { queryClient, apiRequest } from '@/lib/queryClient';
@@ -20,7 +21,6 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Sparkles, ArrowRight, Zap, RefreshCw, Check, AlertTriangle, Lightbulb, Trophy, Brain } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import TrinityRedesign from '@/components/trinity-redesign';
 import { CanvasHubPage, type CanvasPageConfig } from '@/components/canvas-hub';
 
 interface TrinityInsight {
@@ -176,11 +176,7 @@ export default function TrinityInsights() {
           </div>
           <div className="flex justify-center items-center" style={{ minHeight: '200px' }}>
             <div style={{ width: '180px', height: '180px', position: 'relative' }}>
-              <TrinityRedesign 
-                autoCycle={true}
-                cycleInterval={2500}
-                size={180}
-              />
+              <TrinityArrowMark size={180} />
             </div>
           </div>
         </Card>

@@ -7,6 +7,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { TrinityArrowMark } from "@/components/trinity-logo";
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -39,7 +40,6 @@ import {
   ListChecks,
 } from 'lucide-react';
 import { TrinityMascotIcon } from '@/components/ui/coaileague-logo-mark';
-import TrinityRedesign from '@/components/trinity-redesign';
 import { Suspense } from 'react';
 
 interface Message {
@@ -460,7 +460,7 @@ export function TrinityDialogue({
               <div className="flex gap-2 justify-start items-center">
                 <div className="h-8 w-8 shrink-0 flex items-center justify-center">
                   <Suspense fallback={<div className="w-8 h-8" />}>
-                    <TrinityRedesign size={32} mode="THINKING" />
+                    <TrinityArrowMark size={32} />
                   </Suspense>
                 </div>
                 <div className="bg-muted rounded-lg px-3 py-2">

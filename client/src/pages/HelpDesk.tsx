@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo, Suspense, lazy, type TouchEvent as ReactTouchEvent } from "react";
+import { TrinityArrowMark } from "@/components/trinity-logo";
 import { secureFetch } from "@/lib/csrf";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -56,7 +57,6 @@ const REACTION_ICONS: Record<string, { icon: typeof ThumbsUp; label: string }>= 
 };
 const QUICK_REACTIONS = Object.keys(REACTION_ICONS);
 import { UnifiedBrandLogo } from "@/components/unified-brand-logo";
-const TrinityRedesign = lazy(() =>import("@/components/trinity-redesign"));
 import { SecureRequestDialog } from "@/components/secure-request-dialog";
 import { BrandedConfirmDialog } from "@/components/branded-input-dialog";
 import { KickDialog, SilenceDialog, ResetEmailDialog, ReportIssueDialog } from "@/components/moderation-dialogs";
@@ -1928,7 +1928,7 @@ export function HelpDesk(props?: HelpDeskProps & any) {
  <ChevronLeft className="w-5 h-5" />
  </Button>
  <Suspense fallback={<div className="w-10 h-10 rounded-full bg-primary-foreground/20" />}>
- <TrinityRedesign size={40} mode="IDLE" />
+ <TrinityArrowMark size={40} />
  </Suspense>
  <div>
  <div className="flex items-center gap-2 flex-wrap">
@@ -3794,7 +3794,7 @@ export function HelpDesk(props?: HelpDeskProps & any) {
  /* Loading state with Trinity branding */
  <div className="text-center py-8 flex flex-col items-center gap-3">
  <Suspense fallback={<div className="w-16 h-16" />}>
- <TrinityRedesign size={64} mode="THINKING" />
+ <TrinityArrowMark size={64} />
  </Suspense>
  <p className="text-gray-600 dark:text-gray-400 text-sm font-medium"> Loading user information...</p>
  </div>

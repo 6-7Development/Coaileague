@@ -7,11 +7,10 @@
  */
 
 import { motion, AnimatePresence } from "framer-motion";
+import { TrinityArrowMark } from "@/components/trinity-logo";
 import { Suspense, lazy, useState, useEffect } from "react";
 import { useUniversalLoadingGate } from "@/contexts/universal-loading-gate";
 import { useMinimumLoadingTime, LOADING_DURATIONS } from "@/hooks/useMinimumLoadingTime";
-const TrinityRedesign = lazy(() => import("@/components/trinity-redesign"));
-
 export type LoadingScenario = 
   | "workspace" 
   | "onboarding" 
@@ -177,10 +176,7 @@ export function CoAIleagueLoader({
               transition={{ duration: 1.5, repeat: Infinity }}
             >
               <Suspense fallback={<div className="w-24 h-24" />}>
-                <TrinityRedesign 
-                  size={96} 
-                  mode={scenario === "workspace" || scenario === "onboarding" || scenario === "analytics" ? "THINKING" : "ANALYZING"} 
-                />
+                <TrinityArrowMark size={96} />
               </Suspense>
             </motion.div>
 

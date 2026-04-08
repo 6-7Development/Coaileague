@@ -18,9 +18,9 @@
  */
 
 import { useEffect, useRef, useCallback, useState, memo } from 'react';
+import { TrinityArrowMark } from "@/components/trinity-logo";
 import { motion, AnimatePresence } from 'framer-motion';
 import { useUniversalLoadingGate } from '@/contexts/universal-loading-gate';
-import TrinityRedesign from '@/components/trinity-redesign';
 import { Suspense } from 'react';
 
 export type AnimationMode = 'idle' | 'search' | 'analyze' | 'voice' | 'warp' | 'success' | 'error';
@@ -612,7 +612,7 @@ export function UniversalAnimationEngine({
             className="flex items-center justify-center"
           >
             <Suspense fallback={<div className="w-24 h-24" />}>
-              <TrinityRedesign size={96} mode="THINKING" />
+              <TrinityArrowMark size={96} />
             </Suspense>
           </motion.div>
 

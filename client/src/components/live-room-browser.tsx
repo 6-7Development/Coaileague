@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { TrinityArrowMark } from "@/components/trinity-logo";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { secureFetch } from "@/lib/csrf";
@@ -33,7 +34,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Suspense, lazy } from "react";
-const TrinityRedesign = lazy(() => import("@/components/trinity-redesign"));
 import { Loader2 } from "lucide-react";
 
 interface RoomMember {
@@ -164,7 +164,7 @@ export function LiveRoomBrowser({ onRoomSelect, filterByOrg = false, compact = f
     return (
       <div className="flex flex-col items-center justify-center p-12 gap-3">
         <Suspense fallback={<div className="w-16 h-16" />}>
-          <TrinityRedesign size={64} mode="THINKING" />
+          <TrinityArrowMark size={64} />
         </Suspense>
         <p className="text-sm text-muted-foreground">
           {isAuthLoading ? 'Checking authentication...' : 'Loading rooms...'}

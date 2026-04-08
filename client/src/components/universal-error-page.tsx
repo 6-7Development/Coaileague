@@ -1,4 +1,5 @@
 import { useLocation } from "wouter";
+import { TrinityArrowMark } from "@/components/trinity-logo";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,7 +18,6 @@ import {
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { TrinityLogo } from "@/components/ui/coaileague-logo-mark";
-import TrinityRedesign from "@/components/trinity-redesign";
 import { errorConfig, getErrorMessage, getRecoveryActions } from "@/config/errorConfig";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -155,7 +155,7 @@ export function UniversalErrorPage({
           </div>
 
           <div className="mx-auto mb-4 flex justify-center">
-            <TrinityRedesign mode={config.mascotMode} size={64} mini={true} />
+            <TrinityArrowMark size={64} />
           </div>
 
           <div className={`${config.bubbleStyle} border rounded-lg p-3 mb-4 mx-auto max-w-sm`}>

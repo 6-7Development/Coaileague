@@ -1,11 +1,10 @@
 import { useAuth } from "@/hooks/useAuth";
+import { TrinityArrowMark } from "@/components/trinity-logo";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ShieldAlert, ArrowLeft, HeadphonesIcon } from "lucide-react";
 import { Link } from "wouter";
 import { Suspense, lazy } from "react";
-const TrinityRedesign = lazy(() => import("@/components/trinity-redesign"));
-
 const SUPPORT_STAFF_ROLES = ['root_admin', 'deputy_admin', 'sysop', 'support_manager', 'support_agent', 'compliance_officer'];
 
 export function isSupportStaff(platformRole?: string | null): boolean {
@@ -20,7 +19,7 @@ export function SupportStaffRoute({ children }: { children: React.ReactNode }) {
     return (
       <div className="h-screen flex flex-col items-center justify-center bg-background gap-3">
         <Suspense fallback={<div className="w-16 h-16" />}>
-          <TrinityRedesign size={64} mode="THINKING" />
+          <TrinityArrowMark size={64} />
         </Suspense>
         <span className="text-sm text-muted-foreground">Loading...</span>
       </div>

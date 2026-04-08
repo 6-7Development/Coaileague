@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { TrinityArrowMark } from "@/components/trinity-logo";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,7 +13,6 @@ import {
   Globe, Layers, Star, Mail, Camera, BellRing, LayoutDashboard
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import TrinityRedesign from "@/components/trinity-redesign";
 import MASCOT_CONFIG from "@/config/mascotConfig";
 
 interface TourStep {
@@ -452,11 +452,7 @@ export function OnboardingTour({ forceShow = false, userId, workspaceId, onCompl
         className="relative rounded-full overflow-hidden bg-gradient-to-br from-purple-500/10 to-blue-500/10"
         style={{ width: size, height: size }}
       >
-        <TrinityRedesign 
-          mode={mode}
-          size={size}
-          mini={true}
-        />
+        <TrinityArrowMark size={size} />
       </div>
       {/* Animated glow ring */}
       <motion.div

@@ -6,12 +6,12 @@
  */
 
 import { useEffect, useRef } from 'react';
+import { TrinityArrowMark } from "@/components/trinity-logo";
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Check, Loader2, X, Circle, Brain } from 'lucide-react';
 import { TrinityLogo } from '@/components/ui/coaileague-logo-mark';
-import TrinityRedesign from '@/components/trinity-redesign';
 import { Suspense } from 'react';
 import type { ThinkingStep } from '@/hooks/use-trinity-state';
 
@@ -72,7 +72,7 @@ export function ThinkingStepsStream({
         <CardContent className="py-8 text-center">
           <div className="mx-auto w-12 h-12 mb-2 flex items-center justify-center">
             <Suspense fallback={<div className="w-12 h-12" />}>
-              <TrinityRedesign size={48} mode="ANALYZING" />
+              <TrinityArrowMark size={48} />
             </Suspense>
           </div>
           <p className="text-sm text-muted-foreground">

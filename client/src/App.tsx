@@ -2,6 +2,7 @@
 
 import './i18n';
 import { setLanguage } from './i18n';
+import { TrinityArrowMark } from "@/components/trinity-logo";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { Switch, Route, Redirect, useLocation } from "wouter";
 import { LegacyRedirectRoutes, HelpdeskRoomRedirect } from "@/lib/legacyRedirects";
@@ -438,7 +439,6 @@ import { PageBreadcrumb } from "@/components/page-breadcrumb";
 import { NotificationsPopover } from "@/components/notifications-popover";
 import { WorkspaceTabsNav } from "@/components/workspace-tabs-nav";
 const SetupGuidePanel = lazy(() => import("@/components/setup-guide-panel").then(m => ({ default: m.SetupGuidePanel })));
-const TrinityRedesign = lazy(() => import("@/components/trinity-redesign"));
 const CompactBubble = lazy(() => import("@/components/mascot/CompactBubble").then(m => ({ default: m.CompactBubble })));
 const FestiveDialogueBubble = lazy(() => import("@/components/mascot/FestiveDialogueBubble").then(m => ({ default: m.FestiveDialogueBubble })));
 const MascotTaskBox = lazy(() => import("@/components/mascot-task-box").then(m => ({ default: m.MascotTaskBox })));
@@ -957,13 +957,7 @@ function MascotRenderer() {
             } as CSSProperties}
           >
             <Suspense fallback={null}>
-              <TrinityRedesign 
-                mode={(voiceModeOverride as any) || currentMode}
-                size={bubbleSize}
-                mini={!isExpanded}
-                idleTimeout={30000}
-                cycleInterval={3000}
-              />
+              <TrinityArrowMark size={bubbleSize} />
             </Suspense>
           </div>
           

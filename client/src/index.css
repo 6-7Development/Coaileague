@@ -269,10 +269,8 @@ button, a, .interactive, .btn, [role="button"] {
   gap: 0.5rem;
 }
 
-.mobile-stack {
-  flex-direction: column;
-  align-items: stretch;
-}
+/* .mobile-stack canonical definition lives further down in the Responsive
+   Flex Utilities block (duplicate shim removed). */
 
 /* Trinity Mascot - Force default cursor (specific component, not global) */
 .mascot-container,
@@ -1292,18 +1290,6 @@ button, a, .interactive, .btn, [role="button"] {
   }
 }
 
-/* Heart float */
-@keyframes heartFloat {
-  0% {
-    transform: translateY(0) scale(1);
-    opacity: 1;
-  }
-  100% {
-    transform: translateY(-30px) scale(0.5);
-    opacity: 0;
-  }
-}
-
 /* Sun ray pulse */
 @keyframes sunRayPulse {
   0%, 100% {
@@ -1504,16 +1490,11 @@ button, a, .interactive, .btn, [role="button"] {
   animation: bounceSplat 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-/* Shimmer effect for new items */
-@keyframes shimmer {
-  0% {
-    background-position: -1000px 0;
-  }
-  100% {
-    background-position: 1000px 0;
-  }
-}
-
+/* Shimmer effect for new items.
+   NOTE: .animate-shimmer here deliberately shadows the logo-specific one
+   further up (line ~1230) so generic shimmer banners (promo-banner.tsx,
+   mini-ad-banner.tsx) get the 1000px slide. The @keyframes shimmer is
+   declared once here; a redundant later duplicate was removed. */
 .animate-shimmer {
   background-size: 200% 100%;
   animation: shimmer 2s infinite;
@@ -1841,15 +1822,9 @@ button, a, .interactive, .btn, [role="button"] {
   animation: savedFade 2.5s ease-in-out forwards;
 }
 
-/* Interactive Hover Lift */
-.hover-lift {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.hover-lift:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-}
+/* Interactive Hover Lift — canonical .hover-lift lives in the "ASMR Hover
+   Lift Effect" block below (duplicate shim removed; this earlier variant
+   was shadowed by the later definition per CSS cascade). */
 
 /* Button Click Feedback */
 .click-feedback:active {
@@ -3222,23 +3197,6 @@ body[data-public-route="true"] .fixed [data-testid*="banner"] {
   }
 }
 
-@keyframes heartFloat {
-  0% {
-    transform: translateY(100%) rotate(0deg);
-    opacity: 0;
-  }
-  10% {
-    opacity: 1;
-  }
-  90% {
-    opacity: 1;
-  }
-  100% {
-    transform: translateY(-150%) rotate(15deg);
-    opacity: 0;
-  }
-}
-
 @keyframes spookyFloat {
   0% {
     transform: translateY(-20px) rotate(0deg);
@@ -3308,14 +3266,8 @@ body[data-public-route="true"] .fixed [data-testid*="banner"] {
   }
 }
 
-/* Touch-friendly minimum sizes */
-.touch-target {
-  min-width: 44px;
-  min-height: 44px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
+/* Touch-friendly minimum sizes — canonical .touch-target lives in the
+   Touch-Friendly Interactions block below (duplicate shim removed). */
 
 /* Active state for touch feedback */
 .touch-active:active {
@@ -3417,22 +3369,8 @@ body[data-public-route="true"] .fixed [data-testid*="banner"] {
   }
 }
 
-/* Safe area insets for notched devices */
-.safe-top {
-  padding-top: max(env(safe-area-inset-top), 0.5rem);
-}
-
-.safe-bottom {
-  padding-bottom: max(env(safe-area-inset-bottom), 0.5rem);
-}
-
-.safe-left {
-  padding-left: max(env(safe-area-inset-left), 0.5rem);
-}
-
-.safe-right {
-  padding-right: max(env(safe-area-inset-right), 0.5rem);
-}
+/* Safe area insets for notched devices — see canonical definition in the
+   "MOBILE SAFE-AREA SHELL" block further down. Duplicate block removed. */
 
 /* WorkforceOS Logo Animations - Professional & Subtle */
 @keyframes float {
@@ -3634,22 +3572,8 @@ body[data-public-route="true"] .fixed [data-testid*="banner"] {
   overscroll-behavior-y: none;
 }
 
-/* Safe Area Support */
-.safe-top {
-  padding-top: env(safe-area-inset-top);
-}
-
-.safe-bottom {
-  padding-bottom: env(safe-area-inset-bottom);
-}
-
-.safe-left {
-  padding-left: env(safe-area-inset-left);
-}
-
-.safe-right {
-  padding-right: env(safe-area-inset-right);
-}
+/* Safe Area Support — duplicate block removed; see canonical .safe-* in
+   the "MOBILE SAFE-AREA SHELL" block further below. */
 
 /* Responsive Flex Utilities */
 .mobile-stack {

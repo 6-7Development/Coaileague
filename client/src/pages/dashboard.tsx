@@ -1,4 +1,5 @@
 import { useEffect, useState, Suspense, lazy } from "react";
+import { TrinityArrowMark } from "@/components/trinity-logo";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspaceAccess } from "@/hooks/useWorkspaceAccess";
 import { selectSidebarFamilies, type ModuleRoute } from "@/lib/sidebarModules";
@@ -16,7 +17,6 @@ import {
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { UnifiedBrandLogo } from "@/components/unified-brand-logo";
-const TrinityRedesign = lazy(() => import("@/components/trinity-redesign"));
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow } from "date-fns";
@@ -617,7 +617,7 @@ export default function Dashboard() {
     return (
       <div className="flex flex-col items-center justify-center h-screen gap-4">
         <Suspense fallback={<div className="w-20 h-20" />}>
-          <TrinityRedesign size={80} mode="THINKING" />
+          <TrinityArrowMark size={80} />
         </Suspense>
         <span className="text-muted-foreground">Loading...</span>
       </div>
@@ -975,7 +975,7 @@ export default function Dashboard() {
       {isLoadingDashboard && (
         <div className="fixed inset-0 z-[2500] flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm gap-4">
           <Suspense fallback={<div className="w-20 h-20" />}>
-            <TrinityRedesign size={80} mode="THINKING" />
+            <TrinityArrowMark size={80} />
           </Suspense>
           <span className="text-muted-foreground">Loading dashboard...</span>
         </div>

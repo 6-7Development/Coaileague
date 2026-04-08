@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from "react";
+import { TrinityArrowMark } from "@/components/trinity-logo";
 import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -32,7 +33,6 @@ import {
   Camera, MessageSquare, Bug, Lightbulb, HelpCircle, 
   Send, Trash2, Image, CheckCircle, Loader2, X, Sparkles, Search
 } from "lucide-react";
-import TrinityRedesign from "./trinity-redesign";
 import { BugReportTracker } from "./bug-report-tracker";
 
 type FeedbackType = 'bug' | 'feature' | 'question' | 'other';
@@ -289,7 +289,7 @@ export function FeedbackForm({ trigger, onSubmitSuccess }: FeedbackFormProps) {
           <DialogHeader className="space-y-2">
             <DialogTitle className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-full bg-primary/10 dark:bg-primary/20 flex items-center justify-center">
-                <TrinityRedesign mode="IDLE" size={28} mini={true} />
+                <TrinityArrowMark size={28} />
               </div>
               <div className="flex flex-col">
                 <span className="flex items-center gap-1.5">
