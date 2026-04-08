@@ -10,7 +10,7 @@ import { CanvasHubPage, type CanvasPageConfig } from "@/components/canvas-hub";
 import featuresOverviewImg from '@/assets/marketing/features-overview.png';
 import { SEO, PAGE_SEO, STRUCTURED_DATA } from '@/components/seo';
 import { useAuth } from '@/hooks/useAuth';
-import { UniversalLogoSpinner } from '@/components/ui/universal-logo-spinner';
+import { UniversalSpinner } from '@/components/ui/universal-spinner';
 
 const homepageConfig: CanvasPageConfig = {
   id: 'homepage',
@@ -46,7 +46,7 @@ export default function Homepage() {
   if (!isLoading && isAuthenticated) {
     return (
       <div className="h-screen w-full flex items-center justify-center bg-background">
-        <UniversalLogoSpinner size="lg" label="Redirecting to your dashboard…" />
+        <UniversalSpinner size="md" label="Redirecting to your dashboard…" />
       </div>
     );
   }

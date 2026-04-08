@@ -10,15 +10,20 @@
  *   light-mode visitors saw a dark backdrop and unreadable footer text.
  *
  *   Replaced with a theme-aware layout that reuses the single source of
- *   truth for loading motion: <UniversalLogoSpinner />. All colors flow
+ *   truth for loading motion: <UniversalSpinner />. All colors flow
  *   from CSS custom properties (`bg-background`, `text-foreground`,
  *   `text-muted-foreground`, `text-primary`) so both light and dark
  *   modes render correctly. The layout mirrors SplashScreen for
  *   perceptual continuity across boot → auth-loading → dashboard.
+ *
+ * SPINNER OVERHAUL v3 (2026-04-08): UniversalSpinner replaces the old
+ * UniversalLogoSpinner. New: CSS-only animation, no framer-motion, wraps
+ * the CoAIleague Trinity Triquetra logo mark instead of the three-blob
+ * Trinity mascot icon (wrong brand last round).
  */
 
 import { useState, useEffect } from "react";
-import { UniversalLogoSpinner } from "@/components/ui/universal-logo-spinner";
+import { UniversalSpinner } from "@/components/ui/universal-spinner";
 
 const PLATFORM_NAME =
   (import.meta.env.VITE_PLATFORM_NAME as string) || "CoAIleague";
@@ -52,7 +57,7 @@ export function LoadingScreen() {
       data-testid="loading-screen"
     >
       <div className="flex flex-col items-center gap-6 px-6">
-        <UniversalLogoSpinner size="xl" />
+        <UniversalSpinner size="lg" />
 
         {/* Wordmark — theme-aware, cyan accent pulled from --primary */}
         <div className="text-center">

@@ -6,7 +6,7 @@ import { usePageTitle } from "@/hooks/use-page-title";
 import { Switch, Route, Redirect, useLocation } from "wouter";
 import { LegacyRedirectRoutes, HelpdeskRoomRedirect } from "@/lib/legacyRedirects";
 import { useScrollLockGuard } from "@/hooks/useScrollLockGuard";
-import { UniversalLogoSpinner } from "@/components/ui/universal-logo-spinner";
+import { UniversalSpinner } from "@/components/ui/universal-spinner";
 import { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspense, type MouseEvent, type TouchEvent, type CSSProperties } from "react";
 // ─────────────────────────────────────────────────────────────────────────
 // AUTH PAGES — STATIC IMPORTS (NOT lazy)
@@ -126,7 +126,7 @@ const PageLoader = () => (
     data-testid="react-suspense-spinner"
     className="min-h-screen bg-background flex flex-col items-center justify-center gap-4"
   >
-    <UniversalLogoSpinner size="md" label="Loading…" />
+    <UniversalSpinner size="sm" label="Loading…" />
   </div>
 );
 

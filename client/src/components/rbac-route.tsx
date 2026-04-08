@@ -20,7 +20,7 @@ import { ShieldAlert, Lock, ArrowLeft, Home } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { navConfig } from "@/config/navigationConfig";
 import { useMinimumLoadingTime, LOADING_DURATIONS } from "@/hooks/useMinimumLoadingTime";
-import { UniversalLogoSpinner } from "@/components/ui/universal-logo-spinner";
+import { UniversalSpinner } from "@/components/ui/universal-spinner";
 
 export type RBACCapability = 
   | 'authenticated'      
@@ -221,7 +221,7 @@ export function RBACRoute({
     }
     return (
       <div className="h-screen flex flex-col items-center justify-center bg-background">
-        <UniversalLogoSpinner size="lg" label="Loading…" />
+        <UniversalSpinner size="md" label="Loading…" />
       </div>
     );
   }
@@ -243,7 +243,7 @@ export function RBACRoute({
       }
       return (
         <div className="h-screen flex flex-col items-center justify-center bg-background">
-          <UniversalLogoSpinner size="lg" label="Redirecting…" />
+          <UniversalSpinner size="md" label="Redirecting…" />
         </div>
       );
     }

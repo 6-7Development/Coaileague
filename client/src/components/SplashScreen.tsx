@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { UniversalLogoSpinner } from "@/components/ui/universal-logo-spinner";
+import { UniversalSpinner } from "@/components/ui/universal-spinner";
 
 const PLATFORM_NAME = (import.meta.env.VITE_PLATFORM_NAME as string) || "CoAIleague";
 
@@ -20,9 +20,9 @@ interface SplashScreenProps {
 // hardcoded navy `.overlay-blocking` class. Text colors use `text-foreground`
 // and `text-muted-foreground` so they stay readable in both modes.
 //
-// Task 2B/C: the bulky `.css-spinner` has been replaced with the new
-// <UniversalLogoSpinner size="xl" /> — one living animation source across
-// the entire app.
+// Spinner overhaul v3 (2026-04-08): uses <UniversalSpinner size="lg" /> —
+// CSS-only animation wrapping the CoAIleague Trinity Triquetra logo mark.
+// Single source of truth across splash, auth transition, in-page loaders.
 export function SplashScreen({ onComplete, minDisplayTime = 3000 }: SplashScreenProps) {
   const [isVisible, setIsVisible] = useState(true);
   const onCompleteRef = useRef(onComplete);
@@ -57,7 +57,7 @@ export function SplashScreen({ onComplete, minDisplayTime = 3000 }: SplashScreen
           data-testid="splash-screen"
         >
           <div className="flex flex-col items-center gap-8 pointer-events-auto">
-            <UniversalLogoSpinner size="xl" />
+            <UniversalSpinner size="lg" />
 
             <div className="text-center">
               <h2 className="text-2xl font-bold text-foreground mb-1">

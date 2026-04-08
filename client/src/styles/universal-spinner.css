@@ -1,0 +1,72 @@
+/*
+ * UniversalSpinner — CSS-only keyframe animation for the CoAIleague logo mark.
+ *
+ * All motion here is pure CSS. No framer-motion, no JS driver, no external
+ * dependencies. One 2.5-second cycle, ease-in-out, looping infinitely.
+ *
+ * Cycle breakdown (each percentage maps to a fraction of 2.5s):
+ *   0%  →  32% (0.8s)   clockwise 180° rotation
+ *   32% →  40% (0.2s)   pause at 180°
+ *   40% →  64% (0.6s)   counter-clockwise 90° (lands at 90°)
+ *   64% →  84% (0.5s)   Y-axis tilt / flip (rotateY 0° → 180°)
+ *   84% → 100% (0.4s)   return to center with scale pulse
+ *     ├ 92%  → scale 1.08 (midpoint of the pulse)
+ *     └ 100% → scale 1, rotate 0°, rotateY 0° (flat)
+ *
+ * Glow animation runs in parallel on the same element: a pulsing
+ * drop-shadow in CoAIleague brand gold (#F59E0B) that peaks near the
+ * Y-axis flip moment for visual emphasis.
+ */
+
+@keyframes coai-dance {
+  0% {
+    transform: perspective(500px) rotate(0deg) rotateY(0deg) scale(1);
+  }
+  32% {
+    transform: perspective(500px) rotate(180deg) rotateY(0deg) scale(1);
+  }
+  40% {
+    transform: perspective(500px) rotate(180deg) rotateY(0deg) scale(1);
+  }
+  64% {
+    transform: perspective(500px) rotate(90deg) rotateY(0deg) scale(1);
+  }
+  84% {
+    transform: perspective(500px) rotate(90deg) rotateY(180deg) scale(1);
+  }
+  92% {
+    transform: perspective(500px) rotate(45deg) rotateY(90deg) scale(1.08);
+  }
+  100% {
+    transform: perspective(500px) rotate(0deg) rotateY(0deg) scale(1);
+  }
+}
+
+@keyframes coai-glow {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 4px rgba(245, 158, 11, 0.22));
+  }
+  50% {
+    filter: drop-shadow(0 0 14px rgba(245, 158, 11, 0.55));
+  }
+  84% {
+    filter: drop-shadow(0 0 20px rgba(245, 158, 11, 0.75));
+  }
+}
+
+.coai-universal-spinner {
+  display: inline-flex;
+  transform-style: preserve-3d;
+  animation:
+    coai-dance 2.5s ease-in-out infinite,
+    coai-glow 2.5s ease-in-out infinite;
+  will-change: transform, filter;
+}
+
+/* Respect user motion preferences: flatten animation if requested. */
+@media (prefers-reduced-motion: reduce) {
+  .coai-universal-spinner {
+    animation: coai-glow 3.5s ease-in-out infinite;
+  }
+}
