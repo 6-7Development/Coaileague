@@ -733,7 +733,7 @@ router.post('/e2e-quickbooks-test', sandboxDevBypass, async (req: Request, res: 
     });
   } catch (error: unknown) {
     // CLAUDE.md §A: production detection via canonical helper, never
-    // direct REPLIT_DEPLOYMENT checks (which don't fire on Railway/etc).
+    // direct per-platform env checks. Use isProduction() helper instead.
     const isProd = isProduction();
     addLog('ERROR', 'failed', {
       error: sanitizeError(error),

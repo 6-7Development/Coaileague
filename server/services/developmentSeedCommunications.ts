@@ -15,7 +15,7 @@
  *
  * IDEMPOTENT: ON CONFLICT DO NOTHING on all inserts
  * SENTINEL: skips if orchestration_runs already seeded for workspace
- * PRODUCTION GUARD: never runs if REPLIT_DEPLOYMENT === '1'
+ * PRODUCTION GUARD: never runs when isProduction() returns true
  */
 
 import { db } from '../db';

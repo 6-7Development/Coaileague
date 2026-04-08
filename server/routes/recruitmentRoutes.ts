@@ -523,8 +523,8 @@ router.post('/candidates/:id/voice-session', async (req: Request, res: Response)
     const result = await createVoiceInterviewSession(candidate, workspaceId);
 
     const baseUrl = process.env.APP_BASE_URL
-      || (process.env.REPL_SLUG ? `https://${process.env.REPL_SLUG}.replit.app` : '')
-      || `https://${process.env.PLATFORM_DOMAIN || 'coaileague.replit.app'}`;
+
+      || `https://${process.env.PLATFORM_DOMAIN || 'coaileague.com'}`;
 
     res.status(201).json({
       ...result,

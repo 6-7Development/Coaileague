@@ -55,7 +55,7 @@ export async function verifyRecaptcha(
   }
   
   if (!RECAPTCHA_SECRET_KEY) {
-    const isProduction = process.env.NODE_ENV === 'production' || !!process.env.REPLIT_DEPLOYMENT;
+    const isProduction = process.env.NODE_ENV === 'production';
     if (isProduction) {
       log.warn('[reCAPTCHA] WARNING: No secret key configured in PRODUCTION - bot protection disabled. Set RECAPTCHA_SECRET_KEY for security.');
     } else {

@@ -240,7 +240,7 @@ router.post('/purchase', requireAuth, async (req: AuthenticatedRequest, res) => 
       try {
         const parsed = new URL(url);
         if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return false;
-        const devDomain = process.env.REPLIT_DEV_DOMAIN;
+        const devDomain = process.env.APP_BASE_URL;
         if (devDomain && (parsed.hostname === devDomain || parsed.hostname.endsWith(`.${devDomain}`))) return true;
         if (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') return true;
         if (parsed.hostname.endsWith('.replit.app')) return true;

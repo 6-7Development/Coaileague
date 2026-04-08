@@ -5673,12 +5673,12 @@ Provide your analysis in the following format:
         try {
           const status = {
             environment: process.env.NODE_ENV || 'development',
-            replitDeployment: !!process.env.REPLIT_DEPLOYMENT,
+            railwayEnvironment: process.env.RAILWAY_ENVIRONMENT || null,
             version: process.env.npm_package_version || '1.0.0',
             uptime: process.uptime(),
             nodeVersion: process.version,
             memoryUsage: process.memoryUsage(),
-            lastDeployAt: process.env.REPLIT_DEPLOYMENT ? new Date().toISOString() : null,
+            lastDeployAt: process.env.RAILWAY_DEPLOYMENT_ID ? new Date().toISOString() : null,
           };
           
           return {

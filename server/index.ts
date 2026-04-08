@@ -23,26 +23,20 @@ import * as fs from "fs";
 
 // ============================================================================
 // ROBUST PORT MANAGEMENT SYSTEM
-// DISABLED on Replit - causes intermittent 502 errors and blank pages
-// Replit's workflow system handles port management automatically
+// Railway-only. Railway binds the container port automatically and does
+// not require the host-level zombie-kill / lsof / fuser scrubbing that
+// the legacy Replit code path used. Cloud Run remains supported.
 // ============================================================================
 
 const PORT_LOCK_FILE = '/tmp/coaileague-port-5000.lock';
 let serverInstance: any = null;
 let isShuttingDown = false;
 
-// Detect Replit environment - skip aggressive port management
-const IS_REPLIT = !!(process.env.REPLIT_DOMAINS || process.env.REPL_ID || process.env.REPLIT_DEV_DOMAIN);
-
 // Detect Cloud Run environment - skip ALL port cleanup, bind immediately
 const IS_CLOUD_RUN = !!(process.env.K_SERVICE || process.env.K_REVISION || process.env.CLOUD_RUN_JOB);
 
 // Check if port is actually available by attempting exclusive bind
 async function isPortAvailable(port: number): Promise<boolean> {
-  // On Replit, skip port check - the workflow system manages this
-  if (IS_REPLIT) {
-    return true;
-  }
   return new Promise((resolve) => {
     const testServer = net.createServer();
     testServer.once('error', () => resolve(false));
@@ -54,14 +48,7 @@ async function isPortAvailable(port: number): Promise<boolean> {
 }
 
 // Kill processes using port with multiple strategies
-// DISABLED on Replit to prevent killing the active server
 function killPortProcesses(port: number): void {
-  // Skip on Replit - this causes blank pages and 502 errors
-  if (IS_REPLIT) {
-    log.info('Skipping port kill on Replit environment');
-    return;
-  }
-  
   try {
     // Strategy 1: Kill by port using lsof
     execSync(`lsof -ti:${port} | xargs -r kill -9 2>/dev/null || true`, { stdio: 'ignore' });
@@ -123,32 +110,6 @@ function removeLockFile(): void {
 
 // Comprehensive port cleanup with verification
 async function cleanupAndVerifyPort(port: number): Promise<boolean> {
-  // On Replit, do a lightweight zombie kill instead of full port management
-  if (IS_REPLIT) {
-    log.info('Replit environment - killing zombie processes on port', { port });
-    try {
-      const result = execSync(`lsof -ti:${port} 2>/dev/null || true`).toString().trim();
-      if (result) {
-        const pids = result.split('\n').filter(p => p && p !== String(process.pid));
-        if (pids.length > 0) {
-          log.info('Found zombie PIDs on port, killing', { port, pids: pids.join(', ') });
-          for (const pid of pids) {
-            try { execSync(`kill -9 ${pid} 2>/dev/null || true`, { stdio: 'ignore' }); } catch (e) { /* ignore */ }
-          }
-          await new Promise(resolve => setTimeout(resolve, 300));
-          log.info('Zombie processes killed, port should be free', { port });
-        } else {
-          log.info('Port is clean (only our process)', { port });
-        }
-      } else {
-        log.info('Port is free', { port });
-      }
-    } catch (e) {
-      log.info('Port check failed (non-fatal), proceeding...');
-    }
-    return true;
-  }
-  
   log.info('Starting port cleanup', { port });
   
   // First attempt - check if port is already free
@@ -430,18 +391,12 @@ app.use('/api', (_req, res, next) => {
 });
 
 // ============================================================================
-// CRITICAL: REPLIT WEBVIEW IFRAME EMBEDDING SUPPORT
+// IFRAME EMBEDDING POLICY
 // ============================================================================
-// DO NOT ADD X-Frame-Options header - it breaks Replit webview!
-// The Replit browser/webview loads apps in an iframe, and X-Frame-Options: SAMEORIGIN
-// blocks this, causing a white screen.
-// 
-// If the webview shows white screen, check:
-// 1. X-Frame-Options header is NOT being set (frameguard: false below)
-// 2. CSP frame-ancestors allows *.replit.dev, *.replit.app, *.repl.co
-// 3. No other middleware is adding X-Frame-Options
-//
-// Quick workaround: Click "Open in new tab" to bypass iframe restriction
+// X-Frame-Options is NOT set. We don't need SAMEORIGIN here — the CSP
+// frame-ancestors directive is the authoritative control. The legacy
+// Replit webview workaround (which required *.replit.dev, *.replit.app,
+// *.repl.co in frame-ancestors) has been removed.
 // ============================================================================
 
 // Security headers with helmet - protects against XSS, clickjacking, MIME sniffing

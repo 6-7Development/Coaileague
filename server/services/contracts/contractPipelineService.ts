@@ -624,10 +624,7 @@ class ContractPipelineService {
     if (contract.clientEmail) {
       try {
         const { emailService } = await import('../emailService');
-        const baseUrl = process.env.APP_URL ||
-          (process.env.REPLIT_DOMAINS
-            ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
-            : 'https://app.coaileague.com');
+        const baseUrl = process.env.APP_URL || process.env.APP_BASE_URL || 'https://app.coaileague.com';
         const fullPortalUrl = `${baseUrl}${portalUrl}`;
         const expiryDays = 30;
 

@@ -202,7 +202,10 @@ class ForceClockPdfService {
       try {
         const { Storage } = await import('@google-cloud/storage');
         const gcs = new Storage();
-        const bucketName = process.env.GCLOUD_STORAGE_BUCKET || `repl-default-bucket-${process.env.REPL_ID}`;
+        const bucketName = process.env.GCLOUD_STORAGE_BUCKET || process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID;
+        if (!bucketName) {
+          throw new Error('Object storage bucket not configured (set GCLOUD_STORAGE_BUCKET or DEFAULT_OBJECT_STORAGE_BUCKET_ID)');
+        }
         const gcsPath = `.private/force_clock_reports/${workspaceId}/weekly-${format(new Date(), 'yyyy-MM-dd')}.pdf`;
         const bucket = gcs.bucket(bucketName);
         const file = bucket.file(gcsPath);

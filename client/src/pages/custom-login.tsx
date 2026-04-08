@@ -122,7 +122,7 @@ export default function CustomLogin() {
           authTransition?.cancel();
           toast({
             title: "Password Required",
-            description: "This account was created via Replit login. Please reset your password to sign in with email.",
+            description: "This account was created via third-party OAuth. Please reset your password to sign in with email.",
             variant: "destructive",
             duration: 8000,
           });

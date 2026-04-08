@@ -386,8 +386,8 @@ router.post('/api/webhooks/twilio/sms', validateTwilioSignature, async (req: Req
 // ─────────────────────────────────────────────────────────────────────────────
 function getWebhookBase(): string {
   return process.env.APP_BASE_URL
-    || (process.env.REPL_SLUG ? `https://${process.env.REPL_SLUG}.replit.app` : '')
-    || 'https://coaileague.replit.app';
+
+    || 'https://coaileague.com';
 }
 
 /**

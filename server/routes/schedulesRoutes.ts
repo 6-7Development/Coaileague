@@ -204,9 +204,7 @@ router.post('/publish', requireManager, async (req: any, res) => {
     scheduleNonBlocking('schedules.publish-employee-emails', async () => {
       try {
         const { emailService } = await import('../services/emailService');
-        const appUrl = process.env.REPLIT_DOMAINS?.split(',')[0]
-          ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
-          : 'https://app.coaileague.com';
+        const appUrl = process.env.APP_BASE_URL || 'https://app.coaileague.com';
 
         // Fetch employee emails for those with linked userId accounts
         const linkedEmpIds = employeeRecordsForNotif

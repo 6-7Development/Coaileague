@@ -347,7 +347,7 @@ router.post('/send', requireAuth, requireManager, async (req: any, res) => {
         const docKey = docType as HrDocumentTypeKey;
         const doc = HR_DOCUMENT_TYPES[docKey];
         const requestId = randomUUID();
-        const uploadLink = `${process.env.REPLIT_DOMAINS?.split(',')[0] ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}` : ''}/employee-portal?request=${requestId}`;
+        const uploadLink = `${process.env.APP_BASE_URL || ''}/employee-portal?request=${requestId}`;
         const creditsForThis = doc.creditCost;
 
         try {

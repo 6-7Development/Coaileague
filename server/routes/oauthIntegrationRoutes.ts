@@ -133,17 +133,9 @@ router.get('/quickbooks/diagnostic', async (req: Request, res: Response) => {
     // Build expected redirect URI based on environment (matches buildRedirectUri logic)
     // CLAUDE.md §A: production detection via canonical helper, not raw env vars.
     const isProductionRuntime = isProduction();
-    let expectedRedirectUri: string;
-    if (isProductionRuntime) {
-      expectedRedirectUri = process.env.QUICKBOOKS_REDIRECT_URI || 
-        `https://${canonicalHost}/api/integrations/quickbooks/callback`;
-    } else {
-      const devDomain = process.env.REPLIT_DEV_DOMAIN || 
-                         (process.env.REPLIT_DOMAINS ? process.env.REPLIT_DOMAINS.split(',')[0] : '');
-      expectedRedirectUri = devDomain 
-        ? `https://${devDomain}/api/integrations/quickbooks/callback`
-        : `https://${canonicalHost}/api/integrations/quickbooks/callback`;
-    }
+    const expectedRedirectUri =
+      (isProductionRuntime && process.env.QUICKBOOKS_REDIRECT_URI) ||
+      `https://${canonicalHost}/api/integrations/quickbooks/callback`;
     
     // Check configuration - show the ACTUAL credentials that would be used for the detected environment
     const actualClientId = qbEnvironment === 'production'
@@ -157,10 +149,10 @@ router.get('/quickbooks/diagnostic', async (req: Request, res: Response) => {
     const clientIdPrefix = hasClientId ? actualClientId.substring(0, 10) + '...' : 'NOT SET';
     const explicitEnvironment = process.env.QUICKBOOKS_ENVIRONMENT || 'auto-detect';
     
-    // Domain analysis
-    const isProductionDomain = canonicalHost.includes('.replit.app') || 
-      (!canonicalHost.includes('.riker.') && !canonicalHost.includes('.replit.dev') && !canonicalHost.includes('localhost'));
-    const isDevDomain = canonicalHost.includes('.riker.') || canonicalHost.includes('.replit.dev');
+    // Domain analysis (Railway-only as of 2026-04-08; previously also
+    // recognised *.replit.dev / *.replit.app / *.riker. dev subdomains).
+    const isDevDomain = canonicalHost.includes('localhost') || canonicalHost.startsWith('127.0.0.1');
+    const isProductionDomain = !isDevDomain;
     
     // API base for detected environment
     const apiBase = qbEnvironment === 'production' 
@@ -218,8 +210,8 @@ router.get('/quickbooks/diagnostic', async (req: Request, res: Response) => {
       },
       
       // Instructions
-      instructions: qbEnvironment === 'sandbox' 
-        ? 'Access this app from your .replit.app production URL to switch to production mode'
+      instructions: qbEnvironment === 'sandbox'
+        ? 'Access this app from your production URL (https://coaileague.com) to switch to production mode'
         : 'Production mode active - ensure Intuit Developer Portal has this redirect URI registered',
     });
   } catch (error: unknown) {
@@ -385,8 +377,7 @@ router.get('/quickbooks/callback', async (req: Request, res: Response) => {
     log.info(`[QB Callback] canonicalHost: '${canonicalHost}'`);
     log.info(`[QB Callback] getEnvironmentForDomain result: ${INTEGRATIONS.quickbooks.getEnvironmentForDomain(canonicalHost)}`);
     log.info(`[QB Callback] isHostTrusted: ${isHostTrusted}`);
-    log.info(`[QB Callback] REPLIT_DEV_DOMAIN: '${process.env.REPLIT_DEV_DOMAIN || 'NOT SET'}'`);
-    log.info(`[QB Callback] REPLIT_DOMAINS first: '${(process.env.REPLIT_DOMAINS || '').split(',')[0]}'`);
+    log.info(`[QB Callback] APP_BASE_URL: '${process.env.APP_BASE_URL || 'NOT SET'}'`);
     log.info(`[QB Callback] code: ${(code as string)?.substring(0, 15)}... (${(code as string)?.length} chars)`);
     log.info(`[QB Callback] state: ${(state as string)?.substring(0, 15)}...`);
     log.info(`[QB Callback] realmId: ${realmId}`);

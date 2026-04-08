@@ -1,50 +1,29 @@
 // GitHub Integration Client
-// Uses Replit's GitHub connector for authentication
+//
+// Railway-only: the legacy Replit connector path
+// (REPLIT_CONNECTORS_HOSTNAME + REPL_IDENTITY) has been removed. GitHub
+// access is now driven exclusively by the GITHUB_TOKEN env variable.
+// Configure GITHUB_TOKEN in Railway → set it to a personal access token
+// or a fine-grained PAT with the scopes your use case needs (repo for
+// read/write, admin:org for org management, etc.).
 
 import { Octokit } from '@octokit/rest';
 import { PLATFORM } from '../../config/platformConfig';
 
-let connectionSettings: any;
-
-async function getAccessToken(): Promise<string> {
-  if (connectionSettings && connectionSettings.settings.expires_at && new Date(connectionSettings.settings.expires_at).getTime() > Date.now()) {
-    return connectionSettings.settings.access_token;
+function getGitHubToken(): string {
+  const token = process.env.GITHUB_TOKEN;
+  if (!token) {
+    throw new Error(
+      'GITHUB_TOKEN not configured. Set it in Railway env vars with the scopes required for GitHub operations.',
+    );
   }
-  
-  const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
-  const xReplitToken = process.env.REPL_IDENTITY 
-    ? 'repl ' + process.env.REPL_IDENTITY 
-    : process.env.WEB_REPL_RENEWAL 
-    ? 'depl ' + process.env.WEB_REPL_RENEWAL 
-    : null;
-
-  if (!xReplitToken) {
-    throw new Error('X_REPLIT_TOKEN not found for repl/depl');
-  }
-
-  connectionSettings = await fetch(
-    'https://' + hostname + '/api/v2/connection?include_secrets=true&connector_names=github',
-    {
-      headers: {
-        'Accept': 'application/json',
-        'X_REPLIT_TOKEN': xReplitToken
-      }
-    }
-  ).then(res => res.json()).then(data => data.items?.[0]);
-
-  const accessToken = connectionSettings?.settings?.access_token || connectionSettings.settings?.oauth?.credentials?.access_token;
-
-  if (!connectionSettings || !accessToken) {
-    throw new Error('GitHub not connected');
-  }
-  return accessToken;
+  return token;
 }
 
 // WARNING: Never cache this client.
-// Access tokens expire, so a new client must be created each time.
+// Tokens can be rotated; a new client each call picks up the rotation.
 export async function getUncachableGitHubClient(): Promise<Octokit> {
-  const accessToken = await getAccessToken();
-  return new Octokit({ auth: accessToken });
+  return new Octokit({ auth: getGitHubToken() });
 }
 
 // Get authenticated user info

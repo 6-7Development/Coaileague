@@ -408,7 +408,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ── PUBLIC ROUTES (no auth) — registered BEFORE domain mounts ─────────────
   // Phase 32: Platform capabilities — must be before any app.use("/api", requireAuth, ...)
   app.get("/api/auth/capabilities", (_req, res) => {
-    const devLoginEnabled = !process.env.REPLIT_DEPLOYMENT && process.env.NODE_ENV !== 'production';
+    const devLoginEnabled = process.env.NODE_ENV !== 'production';
     res.json({ devLoginEnabled });
   });
 

@@ -109,9 +109,7 @@ router.post('/invite', mutationLimiter, idempotencyMiddleware, requireManager, a
     } as any);
 
     const protocol = process.env.NODE_ENV === 'production' ? 'https' : req.protocol;
-    const host = process.env.NODE_ENV === 'production'
-      ? req.get('host')
-      : (process.env.REPL_SLUG ? `${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co` : req.get('host'));
+    const host = req.get('host');
     const onboardingUrl = `${protocol}://${host}/onboarding/${inviteToken}`;
 
     await sendOnboardingInviteEmail(email, {
@@ -193,9 +191,7 @@ router.post('/invite/:id/resend', async (req: AuthenticatedRequest, res) => {
 
     const workspace = await storage.getWorkspace(workspaceId);
     const protocol = process.env.NODE_ENV === 'production' ? 'https' : req.protocol;
-    const host = process.env.NODE_ENV === 'production'
-      ? req.get('host')
-      : (process.env.REPL_SLUG ? `${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co` : req.get('host'));
+    const host = req.get('host');
     const onboardingUrl = `${protocol}://${host}/onboarding/${newToken}`;
 
     await sendOnboardingInviteEmail(updatedInvite.email, {

@@ -64,7 +64,7 @@ export default function PrivacyPolicy() {
             <h3 className="text-xl font-semibold mb-3 mt-6">2.3 Information from Third Parties</h3>
             <ul className="list-disc pl-6 mb-4 text-foreground/90">
               <li>Data from integrated payroll systems (Gusto, QuickBooks, etc.)</li>
-              <li>OAuth authentication data (if using Replit Auth or other SSO)</li>
+              <li>OAuth authentication data (if using Google, Microsoft, or other SSO)</li>
               <li>Public information from business databases</li>
             </ul>
           </section>
@@ -180,7 +180,7 @@ export default function PrivacyPolicy() {
             <p className="text-foreground/90 mb-4">We share data with trusted third-party providers who assist in:</p>
             <ul className="list-disc pl-6 mb-4 text-foreground/90">
               <li><strong>Payment Processing:</strong> Stripe (credit card processing)</li>
-              <li><strong>Cloud Infrastructure:</strong> Replit, Google Cloud (hosting and storage)</li>
+              <li><strong>Cloud Infrastructure:</strong> Railway, Google Cloud (hosting and storage)</li>
               <li><strong>AI Services:</strong> Third-party AI providers (scheduling automation and support)</li>
               <li><strong>Email Delivery:</strong> Resend (transactional emails)</li>
               <li><strong>Analytics:</strong> Anonymous usage analytics (no personal data shared)</li>
@@ -209,7 +209,7 @@ export default function PrivacyPolicy() {
             <ul className="list-disc pl-6 mb-4 text-foreground/90">
               <li><strong>Encryption:</strong> AES-256 encryption at rest, TLS 1.2+ for data in transit</li>
               <li><strong>Access Controls:</strong> Role-based access control (RBAC), multi-factor authentication (MFA)</li>
-              <li><strong>Infrastructure:</strong> SOC 2 Type 2 certified hosting (Replit/Google Cloud)</li>
+              <li><strong>Infrastructure:</strong> SOC 2 Type 2 certified hosting (Railway/Google Cloud)</li>
               <li><strong>Monitoring:</strong> 24/7 security monitoring, automated threat detection</li>
               <li><strong>Compliance:</strong> ISO 27001 certified infrastructure, GDPR and CCPA compliant</li>
               <li><strong>Backups:</strong> Daily encrypted backups with 30-day retention</li>
@@ -446,7 +446,7 @@ export default function PrivacyPolicy() {
               <strong>Compliance Certifications:</strong>
             </p>
             <ul className="list-disc pl-6 text-sm text-muted-foreground">
-              <li>Infrastructure: SOC 2 Type 2 (via Replit/Google Cloud)</li>
+              <li>Infrastructure: SOC 2 Type 2 (via Railway/Google Cloud)</li>
               <li>Security: ISO 27001 certified hosting</li>
               <li>Privacy: GDPR and CCPA compliant</li>
               <li>Payment: PCI DSS compliant (via Stripe)</li>

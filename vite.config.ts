@@ -1,14 +1,13 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path, { dirname } from "path";
-import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 export default defineConfig({
-  plugins: [react(), runtimeErrorOverlay()],
+  plugins: [react()],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "client", "src"),
@@ -21,20 +20,13 @@ export default defineConfig({
     emptyOutDir: true,
   },
   server: {
-    // Fix for Replit environment - use proper host and port detection
     host: '0.0.0.0',
     port: 5173,
     strictPort: false,
-    // Fix HMR WebSocket connection
+    // HMR WebSocket — resolves the Vite client URL from the current page.
     hmr: {
       protocol: 'ws',
-      host: process.env.REPL_SLUG
-        ? `${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`
-        : 'localhost',
-      port: 443, // Replit forwards this properly
-      clientPort: 443,
     },
-    // Ensure proper proxy configuration
     proxy: {
       '/api': {
         target: 'http://localhost:5000',

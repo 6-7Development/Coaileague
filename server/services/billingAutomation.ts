@@ -1235,10 +1235,10 @@ export async function processDelinquentInvoices(workspaceId: string) {
       continue;
     }
 
-    // Generate payment URL from configured base or Replit domains
-    const baseUrl = process.env.APP_BASE_URL || process.env.REPLIT_DOMAINS?.split(',')[0];
+    // Generate payment URL from APP_BASE_URL env var
+    const baseUrl = process.env.APP_BASE_URL;
     if (!baseUrl) {
-      log.error('Cannot generate payment URL: APP_BASE_URL or REPLIT_DOMAINS not configured');
+      log.error('Cannot generate payment URL: APP_BASE_URL not configured');
       continue;
     }
     const paymentUrl = `${baseUrl.startsWith('http') ? baseUrl : `https://${baseUrl}`}/pay-invoice/${invoice.id}`;

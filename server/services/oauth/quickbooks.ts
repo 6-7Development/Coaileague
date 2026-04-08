@@ -140,8 +140,7 @@ export class QuickBooksOAuthService {
     if (storedEnvironment) {
       isProduction = storedEnvironment === 'production';
     } else {
-      isProduction = process.env.REPLIT_DEPLOYMENT === '1' || 
-                     process.env.NODE_ENV === 'production';
+      isProduction = process.env.NODE_ENV === 'production';
     }
     
     if (isProduction) {
@@ -159,18 +158,16 @@ export class QuickBooksOAuthService {
 
   /**
    * Build redirect URI — SINGLE SOURCE OF TRUTH
-   * 
-   * Dev mode: ALWAYS uses Replit dev domain
-   * Production mode: Uses QUICKBOOKS_REDIRECT_URI env var or canonical host
-   * 
+   *
+   * Production: uses QUICKBOOKS_REDIRECT_URI env var if set, else derives
+   * from the canonical host, else falls through to APP_BASE_URL.
+   * Development: falls through to APP_BASE_URL (localhost).
+   *
    * This is the ONE method that constructs the redirect URI.
    * No other file should construct a QuickBooks redirect URI.
    */
   buildRedirectUri(requestDomain?: string): string {
-    const isProductionRuntime = process.env.REPLIT_DEPLOYMENT === '1' || 
-                                 process.env.NODE_ENV === 'production';
-
-    if (isProductionRuntime) {
+    if (process.env.NODE_ENV === 'production') {
       if (process.env.QUICKBOOKS_REDIRECT_URI) {
         return process.env.QUICKBOOKS_REDIRECT_URI;
       }
@@ -178,15 +175,7 @@ export class QuickBooksOAuthService {
       if (canonicalHost) {
         return `https://${canonicalHost}/api/integrations/quickbooks/callback`;
       }
-      return `${getAppBaseUrl()}/api/integrations/quickbooks/callback`;
     }
-
-    const devDomain = process.env.REPLIT_DEV_DOMAIN || 
-                       (process.env.REPLIT_DOMAINS ? process.env.REPLIT_DOMAINS.split(',')[0] : '');
-    if (devDomain) {
-      return `https://${devDomain}/api/integrations/quickbooks/callback`;
-    }
-
     return `${getAppBaseUrl()}/api/integrations/quickbooks/callback`;
   }
 

@@ -86,8 +86,8 @@ export async function createChatInterviewRoom(
   // interview mode query-param ensures the copilot panel shows only to users
   // who are authenticated workspace members (recruiter side).
   const baseUrl = process.env.APP_BASE_URL
-    || (process.env.REPL_SLUG ? `https://${process.env.REPL_SLUG}.replit.app` : '')
-    || 'https://coaileague.replit.app';
+
+    || 'https://coaileague.com';
   const chatRoomUrl = `${baseUrl}/dock-chat?interview=${encodeURIComponent(room.id)}&candidate=${encodeURIComponent(candidate.id)}`;
 
   await db.update(interviewCandidates)

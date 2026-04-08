@@ -452,8 +452,7 @@ function testEmailDelivery(): void {
   logSubHeader('Test 3.4: Email Sending Capability Status');
   
   const hasResendApiKey = !!process.env.RESEND_API_KEY;
-  const hasAppBaseUrl = !!process.env.APP_BASE_URL || !!process.env.REPLIT_DOMAINS || 
-                        (!!process.env.REPL_SLUG && !!process.env.REPL_OWNER);
+  const hasAppBaseUrl = !!process.env.APP_BASE_URL;
   
   console.log('\n  Environment Configuration:');
   logValue('RESEND_API_KEY', hasResendApiKey ? 'Configured' : 'Not Configured');

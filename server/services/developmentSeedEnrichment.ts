@@ -4,7 +4,7 @@
  * Adds comprehensive realistic data to the dev sandbox so Trinity can 
  * truly exercise her scheduling, invoicing, and payroll capabilities.
  * 
- * PRODUCTION GUARD: Only runs when REPLIT_DEPLOYMENT !== '1'
+ * PRODUCTION GUARD: Only runs when isProduction() returns false
  * IDEMPOTENT: Uses ON CONFLICT DO NOTHING — safe to re-run
  * 
  * Data added:

@@ -294,7 +294,7 @@ function generateDigestEmailHtml(data: DigestData, workspaceName: string): strin
 
           <!-- CTA -->
           <div style="text-align: center; margin-top: 32px;">
-            <a href="${process.env.REPLIT_DEV_DOMAIN || PLATFORM.appUrl}/dashboard" 
+            <a href="${PLATFORM.appUrl}/dashboard" 
                style="display: inline-block; background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%); color: white; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600;">
               Open Dashboard
             </a>
@@ -307,7 +307,7 @@ function generateDigestEmailHtml(data: DigestData, workspaceName: string): strin
             This is an automated daily digest from ${workspaceName} via CoAIleague™
           </p>
           <p style="color: #94a3b8; font-size: 12px; margin: 8px 0 0 0;">
-            <a href="${process.env.REPLIT_DEV_DOMAIN || PLATFORM.appUrl}/settings/notifications" style="color: #64748b;">Manage notification preferences</a>
+            <a href="${PLATFORM.appUrl}/settings/notifications" style="color: #64748b;">Manage notification preferences</a>
           </p>
         </div>
       </div>

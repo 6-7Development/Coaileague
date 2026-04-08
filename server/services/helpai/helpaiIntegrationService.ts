@@ -224,10 +224,10 @@ export class HelpaiIntegrationService {
    * Derive encryption key from platform secret + keyId for deterministic key recovery
    */
   private deriveKey(keyId: string): Buffer {
-    const secret = process.env.SESSION_SECRET || process.env.REPL_ID;
+    const secret = process.env.SESSION_SECRET;
     if (!secret) {
-      log.error('[HelpAI] WARNING: Neither SESSION_SECRET nor REPL_ID is set — credential encryption key is undefined');
-      throw new Error('Cannot derive encryption key: SESSION_SECRET or REPL_ID required');
+      log.error('[HelpAI] WARNING: SESSION_SECRET is not set — credential encryption key is undefined. Configure SESSION_SECRET in Railway env vars.');
+      throw new Error('Cannot derive encryption key: SESSION_SECRET is required');
     }
     return crypto.scryptSync(secret, keyId, KEY_LENGTH);
   }

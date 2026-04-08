@@ -161,13 +161,9 @@ export class AuthService {
       }
 
       if (!user.passwordHash) {
-        if (user.authProvider === "replit_legacy") {
-          return {
-            success: false,
-            error: "Please use Replit login or set a password via forgot password",
-            code: "REPLIT_AUTH_REQUIRED",
-          };
-        }
+        // Legacy `authProvider === "replit_legacy"` accounts are now
+        // handled by the same code path as any other OAuth-only account:
+        // they must set a password via the forgot-password flow.
         return { success: false, error: "Password not set", code: "NO_PASSWORD" };
       }
 

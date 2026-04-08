@@ -521,7 +521,7 @@ async function phase7_integration_wiring() {
     severity: 'critical'
   });
 
-  const sessionSecret = !!process.env.SESSION_SECRET || !!process.env.REPL_ID;
+  const sessionSecret = !!process.env.SESSION_SECRET;
   record({
     name: 'Session Secret Available',
     phase: 'INTEGRATIONS',

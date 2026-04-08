@@ -75,7 +75,7 @@ export class GustoIntegration {
   private loadConfig(): void {
     const clientId = process.env.GUSTO_CLIENT_ID;
     const clientSecret = process.env.GUSTO_CLIENT_SECRET;
-    const redirectUri = process.env.GUSTO_REDIRECT_URI || `${process.env.REPLIT_DEPLOYMENT_URL || getAppBaseUrl()}/api/integrations/gusto/callback`;
+    const redirectUri = process.env.GUSTO_REDIRECT_URI || `${getAppBaseUrl()}/api/integrations/gusto/callback`;
     const environment = (process.env.GUSTO_ENVIRONMENT || 'sandbox') as 'sandbox' | 'production';
     
     if (clientId && clientSecret) {

@@ -80,7 +80,7 @@ router.get('/auth/:provider', requireAuth, async (req: Request, res: Response) =
       return res.status(400).json({ success: false, error: 'Invalid provider' });
     }
 
-    const redirectUri = `${process.env.REPLIT_DEV_DOMAIN || req.protocol + '://' + req.get('host')}/api/hris/callback/${provider}`;
+    const redirectUri = `${req.protocol + '://' + req.get('host')}/api/hris/callback/${provider}`;
     
     const { url, state } = hrisIntegrationService.generateAuthUrl({
       provider,
@@ -119,7 +119,7 @@ router.get('/callback/:provider', async (req: Request, res: Response) => {
     // Consume the state immediately so it cannot be replayed.
     (req.session as any).hrisOAuthState = undefined;
 
-    const redirectUri = `${process.env.REPLIT_DEV_DOMAIN || req.protocol + '://' + req.get('host')}/api/hris/callback/${provider}`;
+    const redirectUri = `${req.protocol + '://' + req.get('host')}/api/hris/callback/${provider}`;
 
     const result = await hrisIntegrationService.handleOAuthCallback({
       provider,

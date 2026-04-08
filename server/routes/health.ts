@@ -333,7 +333,7 @@ apiHealthRouter.get('/detailed', async (req: Request, res: Response) => {
     const geminiHealth = await checkGeminiAI();
     
     // Check if email service key exists
-    const emailConfigured = !!(process.env.RESEND_API_KEY || (process.env.REPLIT_CONNECTORS_HOSTNAME && process.env.REPL_IDENTITY));
+    const emailConfigured = !!process.env.RESEND_API_KEY;
 
     res.json({
       db: dbHealth,

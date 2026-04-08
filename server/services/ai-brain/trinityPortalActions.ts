@@ -284,9 +284,7 @@ export function registerPortalActions(): void {
         } as any).returning();
       }
 
-      const appBase = process.env.REPLIT_DOMAINS
-        ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
-        : 'https://coaileague.replit.app';
+      const appBase = process.env.APP_BASE_URL || 'https://coaileague.com';
       const portalUrl = `${appBase}/portal/client/${portalAccess.accessToken}`;
 
       return {
@@ -317,7 +315,7 @@ export function registerPortalActions(): void {
         recipientType: 'officer',
         recipientId: officer.id,
         email: officer.email,
-        message: `Officer ${officer.firstName} ${officer.lastName} uses standard workspace login — no separate portal link required. Direct them to ${process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}` : 'the platform URL'} to log in.`,
+        message: `Officer ${officer.firstName} ${officer.lastName} uses standard workspace login — no separate portal link required. Direct them to ${process.env.APP_BASE_URL || 'the platform URL'} to log in.`,
       };
     }
 

@@ -56,9 +56,9 @@ export interface RateLimitStats {
 const PLAN_LIMITS: Record<string, RateLimitConfig> = {
   free: {
     windowMs: 60000, // 1 minute
-    maxRequests: (!process.env.REPLIT_DEPLOYMENT && process.env.NODE_ENV !== 'production') ? 300 : 60,
-    burstLimit: (!process.env.REPLIT_DEPLOYMENT && process.env.NODE_ENV !== 'production') ? 50 : 10,
-    burstRefillRate: (!process.env.REPLIT_DEPLOYMENT && process.env.NODE_ENV !== 'production') ? 5 : 1
+    maxRequests: (process.env.NODE_ENV !== 'production') ? 300 : 60,
+    burstLimit: (process.env.NODE_ENV !== 'production') ? 50 : 10,
+    burstRefillRate: (process.env.NODE_ENV !== 'production') ? 5 : 1
   },
   starter: {
     windowMs: 60000,

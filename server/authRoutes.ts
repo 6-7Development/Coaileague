@@ -238,17 +238,17 @@ router.post("/api/auth/login", async (req, res) => {
       return res.status(403).json({ message: lockStatus.message });
     }
 
-    // Verify password - special message for users who signed up via OAuth (Replit Auth)
+    // OAuth-only accounts (signed up via SSO, no password set) must reset
+    // their password before they can log in with email. We surface a
+    // dedicated `needsPasswordReset` flag so the client can redirect to
+    // the forgot-password flow with a helpful message rather than a
+    // generic "invalid credentials" error.
     if (!user.passwordHash) {
-      console.warn(`[Login] User ${user.id} has no password set (likely OAuth-only account)`);
-      // Check if they have a Replit ID (signed up via Replit Auth)
-      if (user.replitId) {
-        return res.status(401).json({ 
-          message: "This account was created using Replit login. Please use 'Log in with Replit' or reset your password to set one.",
-          needsPasswordReset: true
-        });
-      }
-      return res.status(401).json({ message: "Invalid email or password" });
+      console.warn(`[Login] User ${user.id} has no password set (OAuth-only account)`);
+      return res.status(401).json({
+        message: "This account was created via third-party OAuth. Please reset your password to sign in with email.",
+        needsPasswordReset: true,
+      });
     }
 
     const isValidPassword = await verifyPassword(

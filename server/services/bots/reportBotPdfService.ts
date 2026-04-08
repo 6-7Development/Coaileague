@@ -188,7 +188,7 @@ class ReportBotPdfService {
       try {
         const { Storage } = await import('@google-cloud/storage');
         const gcs = new Storage();
-        const bucketId = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID || process.env.REPLIT_DEFAULT_BUCKET_ID;
+        const bucketId = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID;
         if (bucketId) {
           const bucket = gcs.bucket(bucketId);
           const file = bucket.file(filePath);

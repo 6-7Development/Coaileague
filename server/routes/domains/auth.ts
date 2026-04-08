@@ -39,7 +39,7 @@ export function mountAuthRoutes(app: Express): void {
 
   app.use("/api/session-checkpoints", requireAuth, ensureWorkspaceAccess, sessionCheckpointRouter);
   app.use("/api/admin/end-users", requireAuth, endUserControlRouter);
-  if (process.env.NODE_ENV !== 'production' && process.env.REPLIT_DEPLOYMENT !== '1') {
+  if (process.env.NODE_ENV !== 'production') {
     app.use("/api/dev", devRouter);
   }
 }

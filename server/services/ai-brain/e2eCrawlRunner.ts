@@ -64,7 +64,7 @@ class E2ECrawlRunner {
 
   constructor(baseUrl?: string) {
     // Use HTTPS Replit domain for session cookies to work (secure: true)
-    const replitDomain = process.env.REPLIT_DEV_DOMAIN;
+    const replitDomain = process.env.APP_BASE_URL;
     this.baseUrl = baseUrl || (replitDomain ? `https://${replitDomain}` : 'http://localhost:5000');
     console.log(`[E2E Crawl] Base URL: ${this.baseUrl}`);
     this.report = {

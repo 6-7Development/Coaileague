@@ -19,9 +19,7 @@ import { emailService } from '../emailService';
 
 const log = createLogger('PayrollDeadlineNudgeService');
 
-const APP_URL = process.env.REPLIT_DOMAINS?.split(',')[0]
-  ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
-  : '';
+const APP_URL = process.env.APP_BASE_URL || '';
 
 interface NudgeResult {
   nudgesSent: number;

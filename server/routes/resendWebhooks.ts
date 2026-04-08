@@ -1292,7 +1292,7 @@ router.post("/api/webhooks/resend/inbound/test", async (req, res) => {
  * Health check for inbound email configuration
  */
 router.get("/api/webhooks/resend/inbound/status", async (req, res) => {
-  const replitDomain = process.env.REPLIT_DOMAINS?.split(',')[0];
+  const replitDomain = process.env.APP_BASE_URL;
   const webhookUrl = replitDomain 
     ? `https://${replitDomain}/api/webhooks/resend/inbound`
     : 'https://your-app-url/api/webhooks/resend/inbound';

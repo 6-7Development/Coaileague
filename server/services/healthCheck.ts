@@ -602,45 +602,10 @@ export async function checkEmail(): Promise<ServiceHealth> {
       return result;
     }
     
-    // Try Replit connector system for Resend
-    const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
-    const xReplitToken = process.env.REPL_IDENTITY 
-      ? 'repl ' + process.env.REPL_IDENTITY 
-      : process.env.WEB_REPL_RENEWAL 
-      ? 'depl ' + process.env.WEB_REPL_RENEWAL 
-      : null;
-    
-    if (hostname && xReplitToken) {
-      try {
-        const connResponse = await fetch(
-          'https://' + hostname + '/api/v2/connection?include_secrets=true&connector_names=resend',
-          {
-            headers: {
-              'Accept': 'application/json',
-              'X_REPLIT_TOKEN': xReplitToken
-            }
-          }
-        );
-        const connData = await connResponse.json();
-        const connectionSettings = connData.items?.[0];
-        
-        if (connectionSettings?.settings?.api_key) {
-          const result: ServiceHealth = {
-            service: 'email',
-            status: 'operational',
-            isCritical: false,
-            message: 'Email service configured (Replit connector)',
-            lastChecked: new Date().toISOString(),
-          };
-          setCache('email', result, CACHE_TTL_MS);
-          return result;
-        }
-      } catch (connError) {
-        // Connector check failed, continue to fallback
-      }
-    }
-    
-    // Neither env var nor connector available
+    // Railway-only: the Replit connector fallback has been removed.
+    // Email is considered configured if RESEND_API_KEY is set (see the
+    // happy-path check earlier in this function). If we reach this point
+    // it means the env var is missing.
     const result: ServiceHealth = {
       service: 'email',
       status: 'down',

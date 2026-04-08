@@ -22,7 +22,6 @@ import { isProduction } from '../lib/isProduction';
 const log = createLogger('emailCore');
 
 
-let connectionSettings: any;
 let resendConfigured = false;
 
 // ============================================================================
@@ -441,82 +440,23 @@ async function sendMeteredEmail(
 }
 
 async function getCredentials() {
-  // Canonical production detection per CLAUDE.md §A. The previous local
-  // check `NODE_ENV === 'production' || REPLIT_DEPLOYMENT` does NOT detect
-  // Railway deployments — REPLIT_DEPLOYMENT is undefined on Railway and
-  // NODE_ENV may or may not be set. On a misdetected environment the
-  // caller falls through to a dev noop client that returns a fake success
-  // id, which is exactly the silent password-reset failure we chased down
-  // on 2026-04-08. Use the helper so new hosting environments are added
-  // in exactly one place.
+  // Railway-only deployment. The legacy Replit connector fallback
+  // (REPLIT_CONNECTORS_HOSTNAME + REPL_IDENTITY) has been removed —
+  // Resend is now configured exclusively via the RESEND_API_KEY env
+  // variable. Canonical production detection per CLAUDE.md §A.
   const isProd = isProduction();
-  const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
-  const xReplitToken = process.env.REPL_IDENTITY 
-    ? 'repl ' + process.env.REPL_IDENTITY 
-    : process.env.WEB_REPL_RENEWAL 
-    ? 'depl ' + process.env.WEB_REPL_RENEWAL 
-    : null;
-
-  if (hostname && xReplitToken) {
-    try {
-      const connResponse = await fetch(
-        'https://' + hostname + '/api/v2/connection?include_secrets=true&connector_names=resend',
-        {
-          headers: {
-            'Accept': 'application/json',
-            'X-Replit-Token': xReplitToken
-          }
-        }
-      );
-      
-      if (!connResponse.ok) {
-        const body = await connResponse.text().catch(() => '');
-        log.error(`[Email] Resend connector HTTP error: ${connResponse.status} ${connResponse.statusText} - ${body.substring(0, 200)}`);
-      } else {
-        const connData = await connResponse.json();
-        connectionSettings = connData.items?.[0];
-        
-        if (connectionSettings?.settings?.api_key) {
-          log.info('[Email] Resend credentials loaded via connector');
-          // Personal email domains (Gmail, Yahoo, etc.) cannot be used as Resend senders.
-          // The connector stores the user's account email in from_email, which may be personal.
-          // Only use it if it's a custom domain; otherwise fall back to our configured noreply.
-          const connFromEmail = connectionSettings.settings.from_email || '';
-          const personalDomains = ['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'aol.com', 'icloud.com'];
-          const isPersonalEmail = personalDomains.some(d => connFromEmail.toLowerCase().endsWith('@' + d));
-          const resolvedFromEmail = isPersonalEmail
-            ? (process.env.RESEND_FROM_EMAIL || EMAIL.senders.noreply)
-            : (connFromEmail || process.env.RESEND_FROM_EMAIL || EMAIL.senders.noreply);
-          if (isPersonalEmail) {
-            log.info(`[Email] Connector from_email (${connFromEmail}) is a personal address; using ${resolvedFromEmail} instead`);
-          }
-          return {
-            apiKey: connectionSettings.settings.api_key, 
-            fromEmail: resolvedFromEmail
-          };
-        } else {
-          log.error('[Email] Resend connector returned no api_key. items count:', connData.items?.length ?? 0, '| Full response keys:', Object.keys(connData));
-        }
-      }
-    } catch (connError: any) {
-      log.error('[Email] Resend connector fetch failed:', connError.message);
-    }
-  } else {
-    if (isProd) {
-      log.error('[Email] PRODUCTION: Missing REPLIT_CONNECTORS_HOSTNAME or auth token for Resend connector');
-    }
-  }
 
   if (process.env.RESEND_API_KEY) {
-    log.info('[Email] Using RESEND_API_KEY fallback');
     return {
       apiKey: process.env.RESEND_API_KEY,
-      fromEmail: process.env.RESEND_FROM_EMAIL || EMAIL.senders.noreply
+      fromEmail: process.env.RESEND_FROM_EMAIL || EMAIL.senders.noreply,
     };
   }
 
   if (isProd) {
-    log.error('[Email] CRITICAL: No Resend credentials available in PRODUCTION. Emails will NOT be sent.');
+    log.error(
+      '[Email] CRITICAL: RESEND_API_KEY not set in PRODUCTION. Emails will NOT be sent. Configure the env var in Railway and verify the sender domain in the Resend dashboard.',
+    );
   }
   return null;
 }

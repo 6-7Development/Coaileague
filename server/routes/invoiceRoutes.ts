@@ -908,7 +908,7 @@ import { createHash } from "crypto";
         }).returning();
       }
 
-      const portalDomain = (process.env.REPLIT_DOMAINS || '').split(',')[0] || process.env.APP_URL || 'https://app.coaileague.com';
+      const portalDomain = (process.env.APP_BASE_URL || '') || process.env.APP_URL || 'https://app.coaileague.com';
       const portalUrl = existingPortal ? `https://${portalDomain}/portal/client/${existingPortal.accessToken}` : undefined;
 
       // GAP-AUDIT-3 FIX: Stamp portal access token on invoice with workspace scope in WHERE.

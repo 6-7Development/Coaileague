@@ -920,7 +920,7 @@ export class EmailService {
     workspaceId?: string,
     userId?: string
   ): Promise<EmailResult> {
-    const isProduction = process.env.NODE_ENV === 'production' || !!process.env.REPLIT_DEPLOYMENT;
+    const isProduction = process.env.NODE_ENV === 'production';
     const isSimulation = !isProduction && (FEATURES.emailSimulationMode || process.env.EMAIL_SIMULATION_MODE === 'true');
 
     const result = await automationOrchestration.executeAutomation(

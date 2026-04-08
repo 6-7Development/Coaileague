@@ -1,4 +1,20 @@
-// Reference: blueprint:javascript_object_storage
+// Object storage (Google Cloud Storage)
+//
+// Railway-only: the legacy Replit-sidecar external_account credential
+// flow (http://127.0.0.1:1106/token) has been removed. Auth now uses the
+// GCS client's default credential discovery chain:
+//
+//   1. GOOGLE_APPLICATION_CREDENTIALS env var → path to a service account
+//      JSON file. RECOMMENDED for Railway — mount the service account JSON
+//      as a secret file and point the env var at it.
+//   2. GCE metadata service (if running on GCP directly).
+//   3. Anonymous credentials (read-only public buckets only).
+//
+// Railway setup: create a GCP service account with Storage Object Admin
+// on the target bucket, download the JSON key, mount it as a Railway
+// secret, set GOOGLE_APPLICATION_CREDENTIALS=/path/to/key.json, and set
+// DEFAULT_OBJECT_STORAGE_BUCKET_ID to the bucket name.
+
 import { createLogger } from './lib/logger';
 const log = createLogger('objectStorage');
 import { Storage, File } from "@google-cloud/storage";
@@ -12,26 +28,9 @@ import {
   setObjectAclPolicy,
 } from "./objectAcl";
 
-const REPLIT_SIDECAR_ENDPOINT = "http://127.0.0.1:1106";
-
-// The object storage client
-export const objectStorageClient = new Storage({
-  credentials: {
-    audience: "replit",
-    subject_token_type: "access_token",
-    token_url: `${REPLIT_SIDECAR_ENDPOINT}/token`,
-    type: "external_account",
-    credential_source: {
-      url: `${REPLIT_SIDECAR_ENDPOINT}/credential`,
-      format: {
-        type: "json",
-        subject_token_field_name: "access_token",
-      },
-    },
-    universe_domain: "googleapis.com",
-  },
-  projectId: "",
-});
+// The object storage client — credentials auto-discovered from the
+// GOOGLE_APPLICATION_CREDENTIALS env var or the GCE metadata service.
+export const objectStorageClient = new Storage();
 
 export class ObjectNotFoundError extends Error {
   constructor() {
@@ -272,29 +271,21 @@ async function signObjectURL({
   method: "GET" | "PUT" | "DELETE" | "HEAD";
   ttlSec: number;
 }): Promise<string> {
-  const request = {
-    bucket_name: bucketName,
-    object_name: objectName,
-    method,
-    expires_at: new Date(Date.now() + ttlSec * 1000).toISOString(),
-  };
-  const response = await fetch(
-    `${REPLIT_SIDECAR_ENDPOINT}/object-storage/signed-object-url`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(request),
-    }
-  );
-  if (!response.ok) {
-    throw new Error(
-      `Failed to sign object URL, errorcode: ${response.status}`
-    );
-  }
-
-  const { signed_url: signedURL } = await response.json();
+  // Use GCS native signed URL API. Requires the underlying credential
+  // to have `iam.serviceAccounts.signBlob` permission (Storage Object
+  // Admin + "Service Account Token Creator" on itself is the typical
+  // combination). The Replit sidecar's REPLIT_SIDECAR_ENDPOINT has been
+  // removed — this is now a pure GCS SDK call.
+  const bucket = objectStorageClient.bucket(bucketName);
+  const file = bucket.file(objectName);
+  const [signedURL] = await file.getSignedUrl({
+    version: "v4",
+    action: method === "GET" ? "read"
+      : method === "PUT" ? "write"
+      : method === "DELETE" ? "delete"
+      : "read",
+    expires: Date.now() + ttlSec * 1000,
+  });
   return signedURL;
 }
 

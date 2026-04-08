@@ -24,9 +24,7 @@ import { employees, shifts, workspaces, clients, users, auditLogs } from '@share
 import { eq, and, inArray, gte, sql } from 'drizzle-orm';
 import { PLATFORM } from '../config/platformConfig';
 
-const APP_URL = process.env.REPLIT_DOMAINS?.split(',')[0] 
-  ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
-  : PLATFORM.appUrl;
+const APP_URL = process.env.APP_BASE_URL || PLATFORM.appUrl;
 
 // ── payroll_run_paid dedup guard ───────────────────────────────────────────
 // payroll_run_paid can fire from two independent sources (payrollAutomation

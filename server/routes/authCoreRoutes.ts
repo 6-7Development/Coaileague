@@ -383,17 +383,15 @@ router.post("/api/auth/login", async (req, res) => {
       return res.status(403).json({ message: lockStatus.message });
     }
 
-    // Verify password - special message for users who signed up via OAuth (Replit Auth)
+    // OAuth-only accounts (no password set) trigger the reset-password
+    // flow via the `needsPasswordReset` flag; all other cases return a
+    // generic "invalid credentials" to prevent enumeration.
     if (!user.passwordHash) {
-      log.warn(`[Login] User ${user.id} has no password set (likely OAuth-only account)`);
-      // Check if they have a Replit ID (signed up via Replit Auth)
-      if (user.replitId) {
-        return res.status(401).json({ 
-          message: "Invalid email or password",
-          needsPasswordReset: true
-        });
-      }
-      return res.status(401).json({ message: "Invalid email or password" });
+      log.warn(`[Login] User ${user.id} has no password set (OAuth-only account)`);
+      return res.status(401).json({
+        message: "Invalid email or password",
+        needsPasswordReset: true,
+      });
     }
 
     const isValidPassword = await verifyPassword(
@@ -741,7 +739,7 @@ const DEV_ACCOUNTS = {
 } as const;
 
 async function devLoginById(userId: string, targetWorkspaceId: string, label: string, req: any, res: any) {
-  if (process.env.NODE_ENV === 'production' || process.env.REPLIT_DEPLOYMENT) {
+  if (process.env.NODE_ENV === 'production') {
     return res.status(404).json({ message: "Not found" });
   }
 
@@ -1546,7 +1544,7 @@ router.patch("/api/auth/language-preference", async (req, res) => {
 // ============================================================================
 
 router.get("/api/auth/capabilities", (_req, res) => {
-  const devLoginEnabled = !process.env.REPLIT_DEPLOYMENT && process.env.NODE_ENV !== 'production';
+  const devLoginEnabled = process.env.NODE_ENV !== 'production';
   res.json({ devLoginEnabled });
 });
 

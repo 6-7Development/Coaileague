@@ -122,12 +122,12 @@ async function resolvePortalUrl(inv: OverdueInvoice, clientEmail: string): Promi
       }).returning();
     }
 
-    const domain = (process.env.REPLIT_DOMAINS || '').split(',')[0];
+    const domain = (process.env.APP_BASE_URL || '');
     const base = domain ? `https://${domain}` : '';
     return `${base}/portal/client/${portal.accessToken}`;
   } catch (err: any) {
     log.error('[OverdueCollections] resolvePortalUrl failed — falling back to ID-based URL:', (err instanceof Error ? err.message : String(err)));
-    const fallbackDomain = (process.env.REPLIT_DOMAINS || '').split(',')[0];
+    const fallbackDomain = (process.env.APP_BASE_URL || '');
     const fallbackBase = fallbackDomain ? `https://${fallbackDomain}` : '';
     return fallbackBase ? `${fallbackBase}/pay/${inv.id}` : `/pay/${inv.id}`;
   }

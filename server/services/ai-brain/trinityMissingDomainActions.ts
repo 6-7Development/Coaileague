@@ -299,9 +299,7 @@ const esignatureRemind: ActionHandler = {
       }
 
       const { emailService } = await import('../../services/emailService');
-      const appUrl = process.env.REPLIT_DOMAINS?.split(',')[0]
-        ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
-        : 'https://app.coaileague.com';
+      const appUrl = process.env.APP_BASE_URL || 'https://app.coaileague.com';
 
       let reminded = 0;
       for (const sig of sigResult.rows) {
