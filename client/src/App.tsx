@@ -132,7 +132,6 @@ const PageLoader = () => (
 
 // LAZY LOADED PAGES - Code splitting for faster initial load
 const GoLivePage = lazy(() => import("@/pages/go-live"));
-const AcmeSimulationPage = lazy(() => import("@/pages/acme-simulation"));
 const ShiftAcceptPage = lazy(() => import("@/pages/shift-accept"));
 const ComplianceScenariosPage = lazy(() => import("@/pages/compliance-scenarios"));
 const NotFound = lazy(() => import("@/pages/not-found"));
@@ -2253,7 +2252,6 @@ function AppContent() {
                 <Route path="/admin/support-console/workspace">{(params) => <ErrorBoundary componentName="Support Console Workspace"><SupportConsoleWorkspacePage {...params} /></ErrorBoundary>}</Route>
                 <Route path="/schedule-mobile">{(params) => <ErrorBoundary componentName="Mobile Schedule"><ScheduleMobileFirst {...params} /></ErrorBoundary>}</Route>
                 <Route path="/go-live">{(params) => <ErrorBoundary componentName="Go Live"><GoLivePage {...params} /></ErrorBoundary>}</Route>
-                <Route path="/acme-simulation">{(params) => <ErrorBoundary componentName="Acme Simulation"><AcmeSimulationPage {...params} /></ErrorBoundary>}</Route>
                 <Route path="/compliance-scenarios">{(params) => <ErrorBoundary componentName="Compliance Scenarios"><ComplianceScenariosPage {...params} /></ErrorBoundary>}</Route>
 
                 {/* Parity routes — accessible on both mobile and desktop */}
