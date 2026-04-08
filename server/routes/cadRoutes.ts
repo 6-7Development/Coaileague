@@ -10,6 +10,7 @@ import { platformEventBus } from "../services/platformEventBus";
 import { broadcastToWorkspace } from "../websocket";
 import { typedPool } from '../lib/typedSql';
 import { createLogger } from '../lib/logger';
+import { clampLimit, clampOffset } from '../utils/pagination';
 const log = createLogger('CadRoutes');
 
 export const cadRouter = Router();
@@ -61,7 +62,8 @@ cadRouter.get("/calls", requireAuth as any, ensureWorkspaceAccess as any, async 
     if (status) { query += ` AND cc.status=$${i++}`; params.push(status); }
     if (priority) { query += ` AND cc.priority=$${i++}`; params.push(priority); }
     if (siteId) { query += ` AND cc.site_id=$${i++}`; params.push(siteId); }
-    query += ` ORDER BY cc.received_at DESC LIMIT ${Number(limit)} OFFSET ${Number(offset)}`;
+    // Clamp pagination to safe bounds (Phase 7 security audit)
+    query += ` ORDER BY cc.received_at DESC LIMIT ${clampLimit(limit)} OFFSET ${clampOffset(offset)}`;
     res.json({ calls: await q(query, params) });
   } catch (e: unknown) { res.status(500).json({ error: sanitizeError(e) }); }
 });

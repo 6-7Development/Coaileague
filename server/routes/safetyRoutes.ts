@@ -8,6 +8,7 @@ import { randomUUID } from "crypto";
 import { platformEventBus } from "../services/platformEventBus";
 import { typedPool } from '../lib/typedSql';
 import { createLogger } from '../lib/logger';
+import { clampLimit, clampOffset } from '../utils/pagination';
 const log = createLogger('SafetyRoutes');
 
 
@@ -46,7 +47,7 @@ safetyRouter.get("/panic", requireAuth as any, ensureWorkspaceAccess as any, asy
     let query = `SELECT * FROM panic_alerts WHERE workspace_id=$1`;
     const params: any[] = [workspaceId];
     if (status) { query += ` AND status=$2`; params.push(status); }
-    query += ` ORDER BY triggered_at DESC LIMIT ${Number(limit)} OFFSET ${Number(offset)}`;
+    query += ` ORDER BY triggered_at DESC LIMIT ${clampLimit(limit)} OFFSET ${clampOffset(offset)}`;
     res.json({ alerts: await q(query, params) });
   } catch (e: unknown) { res.status(500).json({ error: sanitizeError(e) }); }
 });
@@ -219,7 +220,7 @@ safetyRouter.get("/sla", requireAuth as any, ensureWorkspaceAccess as any, async
     let i = 2;
     if (clientId) { query += ` AND client_id=$${i++}`; params.push(clientId); }
     if (isActive !== undefined) { query += ` AND is_active=$${i++}`; params.push(isActive === "true"); }
-    query += ` ORDER BY created_at DESC LIMIT ${Number(limit)} OFFSET ${Number(offset)}`;
+    query += ` ORDER BY created_at DESC LIMIT ${clampLimit(limit)} OFFSET ${clampOffset(offset)}`;
     res.json({ contracts: await q(query, params) });
   } catch (e: unknown) { res.status(500).json({ error: sanitizeError(e) }); }
 });
@@ -282,7 +283,7 @@ safetyRouter.get("/sla-breaches", requireAuth as any, ensureWorkspaceAccess as a
     let query = `SELECT * FROM sla_breach_log WHERE workspace_id=$1`;
     const params: any[] = [workspaceId];
     if (slaContractId) { query += ` AND sla_contract_id=$2`; params.push(slaContractId); }
-    query += ` ORDER BY detected_at DESC LIMIT ${Number(limit)}`;
+    query += ` ORDER BY detected_at DESC LIMIT ${clampLimit(limit)}`;
     res.json({ breaches: await q(query, params) });
   } catch (e: unknown) { res.status(500).json({ error: sanitizeError(e) }); }
 });

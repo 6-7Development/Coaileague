@@ -13,6 +13,7 @@ import { broadcastToWorkspace } from "../websocket";
 import { stampNewReport, stampReportHash } from "../services/reportIntegrityService";
 import { typedPool } from '../lib/typedSql';
 import { createLogger } from '../lib/logger';
+import { clampLimit, clampOffset } from '../utils/pagination';
 import { PLATFORM } from '../config/platformConfig';
 const log = createLogger('RmsRoutes');
 
@@ -981,7 +982,7 @@ rmsRouter.get("/key-control", requireAuth as any, ensureWorkspaceAccess as any, 
     let query = `SELECT * FROM key_control_logs WHERE workspace_id=$1`;
     const params: any[] = [workspaceId];
     if (siteId) { query += ` AND site_id=$2`; params.push(siteId); }
-    query += ` ORDER BY checked_out_at DESC LIMIT ${Number(limit)} OFFSET ${Number(offset)}`;
+    query += ` ORDER BY checked_out_at DESC LIMIT ${clampLimit(limit)} OFFSET ${clampOffset(offset)}`;
     res.json({ keys: await q(query, params) });
   } catch (e: unknown) { res.status(500).json({ error: sanitizeError(e) }); }
 });
@@ -1017,7 +1018,7 @@ rmsRouter.get("/lost-found", requireAuth as any, ensureWorkspaceAccess as any, a
     let query = `SELECT * FROM lost_found_items WHERE workspace_id=$1`;
     const params: any[] = [workspaceId];
     if (status) { query += ` AND status=$2`; params.push(status); }
-    query += ` ORDER BY found_at DESC LIMIT ${Number(limit)} OFFSET ${Number(offset)}`;
+    query += ` ORDER BY found_at DESC LIMIT ${clampLimit(limit)} OFFSET ${clampOffset(offset)}`;
     res.json({ items: await q(query, params) });
   } catch (e: unknown) { res.status(500).json({ error: sanitizeError(e) }); }
 });
@@ -1056,7 +1057,7 @@ rmsRouter.get("/trespass", requireAuth as any, ensureWorkspaceAccess as any, asy
     let i = 2;
     if (status) { query += ` AND status=$${i++}`; params.push(status); }
     if (siteId) { query += ` AND site_id=$${i++}`; params.push(siteId); }
-    query += ` ORDER BY issued_at DESC LIMIT ${Number(limit)} OFFSET ${Number(offset)}`;
+    query += ` ORDER BY issued_at DESC LIMIT ${clampLimit(limit)} OFFSET ${clampOffset(offset)}`;
     res.json({ notices: await q(query, params) });
   } catch (e: unknown) { res.status(500).json({ error: sanitizeError(e) }); }
 });
@@ -1086,7 +1087,7 @@ rmsRouter.get("/cases", requireAuth as any, ensureWorkspaceAccess as any, async 
     let i = 2;
     if (status) { query += ` AND status=$${i++}`; params.push(status); }
     if (priority) { query += ` AND priority=$${i++}`; params.push(priority); }
-    query += ` ORDER BY created_at DESC LIMIT ${Number(limit)} OFFSET ${Number(offset)}`;
+    query += ` ORDER BY created_at DESC LIMIT ${clampLimit(limit)} OFFSET ${clampOffset(offset)}`;
     res.json({ cases: await q(query, params) });
   } catch (e: unknown) { res.status(500).json({ error: sanitizeError(e) }); }
 });
@@ -1148,7 +1149,7 @@ rmsRouter.get("/bolo", requireAuth as any, ensureWorkspaceAccess as any, async (
     let query = `SELECT * FROM bolo_alerts WHERE workspace_id=$1`;
     const params: any[] = [workspaceId];
     if (active === 'true') { query += ` AND is_active=true AND (expires_at IS NULL OR expires_at > NOW())`; }
-    query += ` ORDER BY created_at DESC LIMIT ${Number(limit)} OFFSET ${Number(offset)}`;
+    query += ` ORDER BY created_at DESC LIMIT ${clampLimit(limit)} OFFSET ${clampOffset(offset)}`;
     res.json({ bolos: await q(query, params) });
   } catch (e: unknown) { res.status(500).json({ error: sanitizeError(e) }); }
 });
@@ -1188,7 +1189,7 @@ rmsRouter.get("/evidence", requireAuth as any, ensureWorkspaceAccess as any, asy
     let i = 2;
     if (caseId) { query += ` AND case_id=$${i++}`; params.push(caseId); }
     if (status) { query += ` AND status=$${i++}`; params.push(status); }
-    query += ` ORDER BY created_at DESC LIMIT ${Number(limit)} OFFSET ${Number(offset)}`;
+    query += ` ORDER BY created_at DESC LIMIT ${clampLimit(limit)} OFFSET ${clampOffset(offset)}`;
     const items = await q(query, params);
     res.json({ evidence: items });
   } catch (e: unknown) { res.status(500).json({ error: sanitizeError(e) }); }

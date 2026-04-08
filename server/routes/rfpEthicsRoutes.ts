@@ -6,6 +6,7 @@ import { sanitizeError } from "../middleware/errorHandler";
 import { randomUUID } from "crypto";
 import { typedPool } from '../lib/typedSql';
 import { createLogger } from '../lib/logger';
+import { clampLimit, clampOffset } from '../utils/pagination';
 const log = createLogger('RfpEthicsRoutes');
 
 
@@ -24,8 +25,25 @@ async function q(text: string, params: any[] = []) {
 
 rfpEthicsRouter.post("/ethics/report", async (req: any, res: any) => {
   try {
-    const { workspaceId, category, severity, description, siteName, occurredAt, reporterEmail } = req.body;
+    // Phase 7 security audit: client-supplied workspaceId removed.
+    // Anonymous reporters must identify the company via a verified
+    // workspace SLUG (the same slug used for tenant subdomains and email
+    // routing — public information). The slug is resolved server-side to
+    // an actual workspace_id; an unknown slug results in workspace_id=null
+    // (the report goes to the platform-level review queue). This stops
+    // attackers from filing false reports against arbitrary workspace IDs.
+    const { workspaceSlug, category, severity, description, siteName, occurredAt, reporterEmail } = req.body;
     if (!description || description.length < 10) return res.status(400).json({ error: "Description too short" });
+    let workspaceId: string | null = null;
+    if (workspaceSlug && typeof workspaceSlug === 'string') {
+      const slug = workspaceSlug.trim().toLowerCase().replace(/[^a-z0-9-]/g, '');
+      if (slug) {
+        try {
+          const wsRows = await q(`SELECT id FROM workspaces WHERE slug = $1 LIMIT 1`, [slug]);
+          if (wsRows.length) workspaceId = (wsRows[0] as any).id;
+        } catch { /* fall through to platform queue */ }
+      }
+    }
     const id = randomUUID();
     const reportCode = `ETH-${Date.now().toString(36).toUpperCase()}`;
     const followUpToken = randomUUID();
@@ -68,7 +86,7 @@ rfpEthicsRouter.get("/ethics/reports", requireAuth as any, ensureWorkspaceAccess
     let query = `SELECT * FROM anonymous_reports WHERE (workspace_id = $1 OR workspace_id IS NULL)`;
     const params: any[] = [workspaceId];
     if (status) { query += ` AND status = $2`; params.push(status); }
-    query += ` ORDER BY created_at DESC LIMIT ${Number(limit)} OFFSET ${Number(offset)}`;
+    query += ` ORDER BY created_at DESC LIMIT ${clampLimit(limit)} OFFSET ${clampOffset(offset)}`;
     res.json({ reports: await q(query, params) });
   } catch (e: unknown) { res.status(500).json({ error: sanitizeError(e) }); }
 });
@@ -92,7 +110,7 @@ rfpEthicsRouter.get("/rfp", requireAuth as any, ensureWorkspaceAccess as any, as
     let query = `SELECT * FROM rfp_documents WHERE workspace_id = $1`;
     const params: any[] = [workspaceId];
     if (status) { query += ` AND status = $2`; params.push(status); }
-    query += ` ORDER BY created_at DESC LIMIT ${Number(limit)} OFFSET ${Number(offset)}`;
+    query += ` ORDER BY created_at DESC LIMIT ${clampLimit(limit)} OFFSET ${clampOffset(offset)}`;
     res.json({ rfps: await q(query, params) });
   } catch (e: unknown) { res.status(500).json({ error: sanitizeError(e) }); }
 });
@@ -164,7 +182,7 @@ rfpEthicsRouter.get("/coverage-marketplace", requireAuth as any, ensureWorkspace
     let query = `SELECT * FROM shift_coverage_claims WHERE workspace_id=$1`;
     const params: any[] = [workspaceId];
     if (status) { query += ` AND status=$2`; params.push(status); }
-    query += ` ORDER BY created_at DESC LIMIT ${Number(limit)} OFFSET ${Number(offset)}`;
+    query += ` ORDER BY created_at DESC LIMIT ${clampLimit(limit)} OFFSET ${clampOffset(offset)}`;
     res.json({ shifts: await q(query, params) });
   } catch (e: unknown) { res.status(500).json({ error: sanitizeError(e) }); }
 });
