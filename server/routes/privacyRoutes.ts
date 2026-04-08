@@ -120,16 +120,19 @@ async function generateOfficerExport(employeeId: string, workspaceId: string): P
                 WHERE s.employee_id=$1 AND s.workspace_id=$2
                 ORDER BY s.date DESC LIMIT 500`, [employeeId, workspaceId]),
 
-    // 3. Pay history
+    // 3. Pay history — Phase 7 audit fix: workspace_id was missing from
+    // this query, allowing cross-workspace payroll fetches when an
+    // attacker knew an employee_id from another workspace. Now scoped.
     pool.query(`SELECT id, paid_period_start, paid_period_end, net_pay, federal_tax, state_tax,
                        social_security, medicare, adjustments
-                FROM payroll_entries WHERE employee_id=$1
-                ORDER BY paid_period_start DESC LIMIT 500`, [employeeId]),
+                FROM payroll_entries WHERE employee_id=$1 AND workspace_id=$2
+                ORDER BY paid_period_start DESC LIMIT 500`, [employeeId, workspaceId]),
 
-    // 4. Licenses
+    // 4. Licenses — Phase 7 audit fix: workspace_id was missing, same
+    // cross-workspace leak. Now scoped to the calling workspace.
     pool.query(`SELECT id, guard_card_number, guard_card_issue_date, guard_card_expiry_date,
                        license_type, armed_license_verified, guard_card_verified, is_armed
-                FROM employees WHERE id=$1`, [employeeId]),
+                FROM employees WHERE id=$1 AND workspace_id=$2`, [employeeId, workspaceId]),
 
     // 5. Incidents
     pool.query(`SELECT id, incident_number, title, incident_type, status, location_address,
