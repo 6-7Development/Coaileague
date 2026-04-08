@@ -245,6 +245,51 @@ const constraints: CriticalConstraint[] = [
     },
   },
   {
+    name: 'audit_logs_user_email_nullable',
+    rationale: 'audit_logs.user_email is NOT NULL in live DB but Drizzle declares it nullable. System-actor writes omit user_email and fail with "null value in column user_email violates not-null constraint" — testCorrectSchemaInsert regression test fails because of this. Drop the constraint.',
+    isPresent: async () => {
+      const { rows } = await pool.query(
+        `SELECT 1 FROM information_schema.columns
+         WHERE table_name = 'audit_logs' AND column_name = 'user_email'
+           AND is_nullable = 'YES'`
+      );
+      return rows.length > 0;
+    },
+    apply: async () => {
+      await pool.query(
+        `ALTER TABLE audit_logs ALTER COLUMN user_email DROP NOT NULL`
+      );
+    },
+  },
+  {
+    name: 'token_usage_monthly_ws_month_unique',
+    rationale: 'tokenUsageMonthly.upsertMonthlyUsage() uses ON CONFLICT (workspace_id, month_year) DO UPDATE which requires a unique constraint or index on exactly those columns. The Drizzle schema declares unique("uq_token_usage_monthly_ws_month") but drizzle-kit push did not propagate it to the live DB, so monthly token rollups error every time TokenUsageService.recordUsage() runs.',
+    isPresent: async () => {
+      const { rows } = await pool.query(
+        `SELECT 1 FROM pg_indexes
+         WHERE tablename = 'token_usage_monthly'
+           AND indexname = 'token_usage_monthly_ws_month_unique'`
+      );
+      return rows.length > 0;
+    },
+    apply: async () => {
+      // Dedupe any existing rows that would violate the new unique
+      // constraint before installing it. Without this, CREATE on a
+      // dirty table errors.
+      await pool.query(`
+        DELETE FROM token_usage_monthly a
+        USING token_usage_monthly b
+        WHERE a.ctid < b.ctid
+          AND a.workspace_id = b.workspace_id
+          AND a.month_year = b.month_year
+      `);
+      await pool.query(
+        `CREATE UNIQUE INDEX IF NOT EXISTS token_usage_monthly_ws_month_unique
+           ON token_usage_monthly (workspace_id, month_year)`
+      );
+    },
+  },
+  {
     name: 'cron_run_log_id_default',
     rationale: 'cron_run_log.id missing default — autonomousScheduler.trackJobExecution INSERT fails with "Failed to insert initial cron_run_log" because the id column lacks gen_random_uuid() default in the live DB.',
     isPresent: async () => {
