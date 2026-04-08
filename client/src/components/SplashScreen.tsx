@@ -8,10 +8,12 @@ interface SplashScreenProps {
   minDisplayTime?: number;
 }
 
-// Default minimum display time bumped from 800ms → 1800ms after user feedback
-// that the splash flickered past too fast to register the brand. The minimum
-// exists so the splash is always perceived as deliberate, never a flash.
-export function SplashScreen({ onComplete, minDisplayTime = 1800 }: SplashScreenProps) {
+// Default minimum display time bumped from 800ms → 1800ms → 3000ms after
+// repeated user feedback that the splash flickered past too fast to register
+// the brand. 3000ms matches the HTML-loader floor in index.html so there is
+// no perceptible jump between the two phases. The minimum exists so the
+// splash is always perceived as deliberate, never a flash.
+export function SplashScreen({ onComplete, minDisplayTime = 3000 }: SplashScreenProps) {
   const [isVisible, setIsVisible] = useState(true);
   const onCompleteRef = useRef(onComplete);
   const hasCompletedRef = useRef(false);
