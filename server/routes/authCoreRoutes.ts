@@ -20,6 +20,33 @@ import {
 } from '../services/auth/twoFactorSessionService';
 import { verifyMfaToken } from '../services/auth/mfa';
 import { requireAuth } from '../auth';
+import { isProduction } from '../lib/isProduction';
+
+/**
+ * Canonical cookie options for the auth_token cookie. Centralized so the
+ * login and MFA-verify handlers can't drift. Mirrors the express-session
+ * cookie config in server/auth.ts:
+ *   - secure in production (HTTPS only)
+ *   - sameSite 'lax' so the cookie rides top-level navigations (the only
+ *     correct setting for an app session — 'strict' breaks magic-link
+ *     style flows and most CSRF-safe app patterns)
+ *   - explicit domain in production so the cookie is shared across
+ *     coaileague.com / www.coaileague.com / *.coaileague.com (subdomain
+ *     client portals). Override via SESSION_COOKIE_DOMAIN env var.
+ */
+function authCookieOptions() {
+  const inProd = isProduction();
+  const domain = process.env.SESSION_COOKIE_DOMAIN
+    || (inProd ? '.coaileague.com' : undefined);
+  return {
+    httpOnly: true,
+    secure: inProd,
+    sameSite: 'lax' as const,
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+    path: '/',
+    ...(domain ? { domain } : {}),
+  };
+}
 
 // ── Per-IP rate limiter for pre-auth endpoints (no workspace/session context) ─
 // The global tenant-based rate limiter does not apply to unauthenticated routes.
@@ -427,18 +454,14 @@ router.post("/api/auth/login", async (req, res) => {
     // SECURITY: Ensure session is regenerated on every login
     log.info(`[Auth] Session regenerated for user ${user.id}`);
 
-    // SECURITY: Enforce sameSite: strict on auth_token cookie
+    // Issue auth_token cookie with canonical cross-subdomain options.
+    // Was previously sameSite:'strict' + no domain, which broke session
+    // sending on Railway with the custom domain (CLAUDE.md §A).
     try {
       const { authService } = await import('../services/authService');
       const sessionResult = await authService.createSessionToken(user.id, req.ip || req.socket?.remoteAddress, req.get('user-agent'));
       if (sessionResult.sessionToken) {
-        res.cookie('auth_token', sessionResult.sessionToken, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production' || !!process.env.REPLIT_DOMAINS,
-          sameSite: 'strict',
-          maxAge: 7 * 24 * 60 * 60 * 1000,
-          path: '/',
-        });
+        res.cookie('auth_token', sessionResult.sessionToken, authCookieOptions());
       }
     } catch (tokenErr) {
       log.warn('[Auth] Failed to create auth_token cookie:', tokenErr);
@@ -575,18 +598,12 @@ router.post("/api/auth/mfa/verify", async (req, res) => {
 
     log.info(`[MFA Verify] Session regenerated for user ${user.id}`);
 
-    // SECURITY: Issue auth_token cookie with sameSite: strict
+    // Issue auth_token cookie with canonical cross-subdomain options.
     try {
       const { authService } = await import('../services/authService');
       const sessionResult = await authService.createSessionToken(user.id, req.ip || req.socket?.remoteAddress, req.get('user-agent'));
       if (sessionResult.sessionToken) {
-        res.cookie('auth_token', sessionResult.sessionToken, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production' || !!process.env.REPLIT_DOMAINS,
-          sameSite: 'strict',
-          maxAge: 7 * 24 * 60 * 60 * 1000,
-          path: '/',
-        });
+        res.cookie('auth_token', sessionResult.sessionToken, authCookieOptions());
       }
     } catch (tokenErr) {
       log.warn('[Auth] Failed to create auth_token cookie after MFA:', tokenErr);
@@ -854,8 +871,13 @@ router.post("/api/auth/logout", async (req, res) => {
     if (err) {
       return res.status(500).json({ message: "Logout failed" });
     }
-    res.clearCookie("connect.sid");
-    res.clearCookie("auth_token", { path: '/' });
+    // Clear cookies with the same domain they were set with so the
+    // browser actually removes them on the production custom domain.
+    const inProd = isProduction();
+    const domain = process.env.SESSION_COOKIE_DOMAIN
+      || (inProd ? '.coaileague.com' : undefined);
+    res.clearCookie("connect.sid", domain ? { path: '/', domain } : { path: '/' });
+    res.clearCookie("auth_token", domain ? { path: '/', domain } : { path: '/' });
     res.json({ message: "Logout successful" });
   });
 });

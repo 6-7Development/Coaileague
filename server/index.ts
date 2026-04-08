@@ -220,9 +220,10 @@ app.use((req, res, next) => {
   res.setHeader('X-XSS-Protection', '1; mode=block');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(self), geolocation=(self), payment=(self)');
-  // CSP on every route including /health — helmet will override with full policy on subsequent routes
+  // CSP on every route including /health — helmet will override with full
+  // policy on subsequent routes. Replit dev domains removed (legacy).
   if (!res.getHeader('Content-Security-Policy')) {
-    res.setHeader('Content-Security-Policy', "default-src 'self'; frame-ancestors 'self' https://*.replit.dev https://*.replit.app https://*.repl.co");
+    res.setHeader('Content-Security-Policy', "default-src 'self'; frame-ancestors 'self'");
   }
   next();
 });
@@ -454,21 +455,34 @@ app.use(helmet({
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://unpkg.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
       imgSrc: ["'self'", "data:", "blob:", "https:", "https://*.tile.openstreetmap.org"],
+      // CSP allowlist (CLAUDE.md §6 platform identity): only the
+      // production-relevant SaaS partners. Replit dev domains have been
+      // removed — they were a legacy artifact from the Replit hosting
+      // era and are no longer needed on Railway production.
       connectSrc: [
-        "'self'", 
-        "wss:", 
-        "https://api.resend.com", 
-        "https://api.openai.com", 
-        "https://api.anthropic.com", 
+        "'self'",
+        "wss:",
+        "https://coaileague.com",
+        "https://*.coaileague.com",
+        "https://api.anthropic.com",
+        "https://api.openai.com",
         "https://generativelanguage.googleapis.com",
-        "https://*.replit.dev",
-        "https://*.replit.app",
-        "https://*.repl.co"
+        "https://api.resend.com",
+        "https://api.stripe.com",
+        "https://*.stripe.com",
+        "https://production.plaid.com",
+        "https://sandbox.plaid.com",
+        "https://development.plaid.com",
+        "https://api.twilio.com",
+        "https://*.twilio.com",
       ],
       mediaSrc: ["'self'", "blob:"],
       workerSrc: ["'self'", "blob:"],
-      frameSrc: ["'self'", "https:"],
-      frameAncestors: ["'self'", "https://*.replit.dev", "https://*.replit.app", "https://*.repl.co"],
+      frameSrc: ["'self'", "https://js.stripe.com", "https://hooks.stripe.com"],
+      // frame-ancestors only allows self — Replit webview embedding is no
+      // longer needed on Railway. If we ever need to embed in a partner
+      // site, add the explicit origin here.
+      frameAncestors: ["'self'"],
       objectSrc: ["'none'"],
       baseUri: ["'self'"],
       formAction: ["'self'"],
@@ -508,7 +522,7 @@ const explicitAllowedOrigins: string[] = process.env.ALLOWED_ORIGINS
   : [];
 
 if (isProdDeployment && explicitAllowedOrigins.length === 0) {
-  log.warn('[CORS] WARNING: No ALLOWED_ORIGINS set in production — falling back to Replit domain patterns. Set ALLOWED_ORIGINS to your production domain(s) for proper lockdown.');
+  log.warn('[CORS] WARNING: No ALLOWED_ORIGINS set in production — falling back to coaileague.com patterns. Set ALLOWED_ORIGINS to your production domain(s) for proper lockdown.');
 }
 
 app.use(cors({
@@ -525,10 +539,11 @@ app.use(cors({
       return callback(null, isAllowed);
     }
 
+    // CORS allowlist (CLAUDE.md §6 platform identity): only coaileague.com
+    // and dev-host loopbacks. Replit domains removed.
     const allowedPatterns = [
-      /\.replit\.dev$/,
-      /\.replit\.app$/,
-      /\.repl\.co$/,
+      /^https?:\/\/(www\.)?coaileague\.com$/,
+      /\.coaileague\.com$/,
       /^https?:\/\/localhost/,
       /^https?:\/\/127\.0\.0\.1/,
       /^https?:\/\/0\.0\.0\.0/,

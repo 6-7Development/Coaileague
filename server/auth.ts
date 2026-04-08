@@ -287,10 +287,23 @@ export function getSession() {
 
   const sessionStore = new FaultTolerantStore(pgStoreInstance, 1500);
 
-  // Detect if running on Replit (always HTTPS) or locally
-  const isReplit = !!process.env.REPLIT_DOMAINS || !!process.env.REPL_ID;
-  const isProduction = process.env.NODE_ENV === "production";
-  
+  // Production-aware cookie config (CLAUDE.md §A canonical isProduction).
+  // The previous config had sameSite:'strict' + no domain, which broke
+  // session sending on Railway with the custom domain because:
+  //   1. sameSite:'strict' refused the cookie on subdomain navigations
+  //   2. no explicit domain meant the cookie was scoped to the bare host
+  //      and not shared across coaileague.com / www.coaileague.com /
+  //      *.coaileague.com (subdomain client portals).
+  // Switching to sameSite:'lax' allows top-level GET navigation to send
+  // the cookie (the standard for app sessions), and adding the leading-
+  // dot domain in production scopes the cookie to all subdomains.
+  const inProd = isProductionEnv();
+  // Allow operators to override the cookie domain via env (e.g. for
+  // multi-tenant subdomain deployments). Default to .coaileague.com in
+  // prod, undefined (host-only) in dev.
+  const cookieDomain = process.env.SESSION_COOKIE_DOMAIN
+    || (inProd ? '.coaileague.com' : undefined);
+
   return session({
     secret: process.env.SESSION_SECRET!,
     store: sessionStore,
@@ -298,13 +311,15 @@ export function getSession() {
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      // Replit always uses HTTPS, so secure should be true when on Replit
-      secure: isReplit || isProduction,
+      secure: inProd, // HTTPS-only in production
       maxAge: sessionTtl,
-      sameSite: "strict",
+      sameSite: 'lax', // 'lax' lets the cookie ride top-level GETs (auth flows)
+      ...(cookieDomain ? { domain: cookieDomain } : {}),
     },
-    // Trust proxy for Replit's reverse proxy
-    proxy: isReplit,
+    // Trust proxy for Railway / Cloud Run / any reverse-proxied host so
+    // express-session sees the original protocol (HTTPS) and sets secure
+    // cookies correctly.
+    proxy: inProd,
   } as any);
 }
 
