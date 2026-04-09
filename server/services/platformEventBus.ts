@@ -438,10 +438,10 @@ export type EventCategory =
 export type EventVisibility = 'all' | 'staff' | 'supervisor' | 'manager' | 'org_leadership' | 'platform_staff' | 'admin';
 
 export interface PlatformEvent {
-  type: PlatformEventType;
-  category: EventCategory;
-  title: string;
-  description: string;
+  type: PlatformEventType | string;
+  category?: EventCategory | string;
+  title?: string;
+  description?: string;
   version?: string;
   workspaceId?: string; // null = global/platform-wide, set = workspace-specific
   userId?: string;
