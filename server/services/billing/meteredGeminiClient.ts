@@ -44,6 +44,7 @@ export interface MeteredGenerateOptions {
   temperature?: number;
   maxOutputTokens?: number;
   metadata?: Record<string, any>;
+  feature?: string;
   /** When true, forces the model to return valid JSON (responseMimeType: application/json) */
   jsonMode?: boolean;
 }
