@@ -158,7 +158,7 @@ class TrinityOrchestrationGateway {
   }
 
   private subscribeToEvents(): void {
-    platformEventBus.subscribe('feature_blocked', async (data) => {
+    platformEventBus.subscribe('feature_blocked', async (data: any) => {
       await this.trackRequest({
         workspaceId: data.workspaceId,
         userId: data.userId,
@@ -179,7 +179,7 @@ class TrinityOrchestrationGateway {
       });
     });
 
-    platformEventBus.subscribe('rate_limit_hit', async (data) => {
+    platformEventBus.subscribe('rate_limit_hit', async (data: any) => {
       await this.trackRequest({
         workspaceId: data.workspaceId,
         userId: data.userId,
@@ -190,7 +190,7 @@ class TrinityOrchestrationGateway {
       });
     });
 
-    platformEventBus.subscribe('quota_exceeded', async (data) => {
+    platformEventBus.subscribe('quota_exceeded', async (data: any) => {
       await this.detectUpsellOpportunity({
         workspaceId: data.workspaceId,
         painPointId: `quota_${data.quotaType}`,
