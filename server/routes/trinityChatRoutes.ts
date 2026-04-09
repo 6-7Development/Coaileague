@@ -34,7 +34,7 @@ const requireTrinityAccess = (req: Request, res: Response, next: NextFunction) =
   // Check workspaceRole from attachWorkspaceId middleware (req.workspaceRole)
   // This is properly resolved from workspace ownership or employee record
   const orgRole = authReq.workspaceRole;
-  const platformRole = authReq.platformRole || (authReq.user).platformRole;
+  const platformRole = (authReq as any).platformRole || (authReq.user).platformRole;
   
   // Allow if user has an allowed org role OR platform role
   const hasOrgAccess = orgRole && allowedOrgRoles.includes(orgRole);

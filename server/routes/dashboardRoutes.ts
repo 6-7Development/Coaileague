@@ -20,7 +20,7 @@ router.get("/", requireAuth, async (req: Request, res: Response) => {
   try {
     const user = req.user;
     const isPlatformAdmin = hasPlatformWideAccess(user?.platformRole);
-    const workspaceId = (isPlatformAdmin && req.query.workspaceId as string) || user?.currentWorkspaceId || user?.workspaceId || req.workspaceId;
+    const workspaceId = (isPlatformAdmin && (req.query as any).workspaceId as string) || user?.currentWorkspaceId || user?.workspaceId || req.workspaceId;
     
     if (!workspaceId) {
       if (isPlatformAdmin) {
@@ -60,7 +60,7 @@ router.get("/summary", requireAuth, async (req: Request, res: Response) => {
     // SECURITY: query param workspaceId is only honoured for platform admins.
     // Non-admin users are always scoped to their session workspace to prevent
     // cross-tenant data leakage via query param injection.
-    const workspaceId = (isPlatformAdmin && req.query.workspaceId as string) || user?.currentWorkspaceId || user?.workspaceId || req.workspaceId;
+    const workspaceId = (isPlatformAdmin && (req.query as any).workspaceId as string) || user?.currentWorkspaceId || user?.workspaceId || req.workspaceId;
 
     if (!workspaceId) return res.status(400).json({ error: "workspaceId required" });
 
@@ -117,7 +117,7 @@ router.get("/metrics", requireAuth, async (req: Request, res: Response) => {
     
     // Platform admins can view any workspace via query param, or their own if set
     const isPlatformAdmin = hasPlatformWideAccess(user?.platformRole);
-    const workspaceId = (isPlatformAdmin && req.query.workspaceId as string) || user?.currentWorkspaceId || user?.workspaceId || req.workspaceId;
+    const workspaceId = (isPlatformAdmin && (req.query as any).workspaceId as string) || user?.currentWorkspaceId || user?.workspaceId || req.workspaceId;
     
     if (!workspaceId) {
       // For platform admins without a workspace context, return aggregate or empty data
@@ -276,7 +276,7 @@ router.get("/layout", requireAuth, async (req: Request, res: Response) => {
     const user = req.user;
     if (!user?.id) return res.status(401).json({ error: "Unauthorized" });
 
-    const workspaceId = user.currentWorkspaceId || user.workspaceId || req.workspaceId;
+    const workspaceId = user.currentWorkspaceId || (user as any).workspaceId || req.workspaceId;
     if (!workspaceId) return res.status(400).json({ error: "No workspace context" });
 
     const [saved] = await db
@@ -302,7 +302,7 @@ router.post("/layout", requireAuth, async (req: Request, res: Response) => {
     const user = req.user;
     if (!user?.id) return res.status(401).json({ error: "Unauthorized" });
 
-    const workspaceId = user.currentWorkspaceId || user.workspaceId || req.workspaceId;
+    const workspaceId = user.currentWorkspaceId || (user as any).workspaceId || req.workspaceId;
     if (!workspaceId) return res.status(400).json({ error: "No workspace context" });
 
     const { widgets } = req.body;

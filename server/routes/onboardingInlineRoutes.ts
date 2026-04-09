@@ -1221,7 +1221,7 @@ router.post('/test-workflow', async (req, res) => {
     const { onboardingOrchestrator } = await import('../services/ai-brain/subagents/onboardingOrchestrator');
     const result = await onboardingOrchestrator.testInvitationWorkflow({
       testUserId: user.id,
-      testWorkspaceId: testWorkspaceId || user.activeWorkspaceId,
+      testWorkspaceId: testWorkspaceId || (user as any).activeWorkspaceId,
       testWorkspaceName: testWorkspaceName || 'Test Organization',
       testOwnerName: testOwnerName || user.firstName || 'Test User',
       dryRun,
@@ -1255,7 +1255,7 @@ router.post('/initialize-trinity', async (req, res) => {
 
     const { onboardingOrchestrator } = await import('../services/ai-brain/subagents/onboardingOrchestrator');
     const result = await onboardingOrchestrator.initializeWorkspaceTrinity({
-      workspaceId: workspaceId || user.activeWorkspaceId,
+      workspaceId: workspaceId || (user as any).activeWorkspaceId,
       workspaceName: workspaceName || 'My Organization',
       ownerId: user.id,
       ownerName: ownerName || user.firstName || 'User',
@@ -1272,7 +1272,7 @@ router.post('/initialize-trinity', async (req, res) => {
 router.get('/status', async (req, res) => {
   try {
     const user = req.user;
-    const workspaceId = req.workspaceId || user.activeWorkspaceId || user.defaultWorkspaceId;
+    const workspaceId = req.workspaceId || (user as any).activeWorkspaceId || user.defaultWorkspaceId;
 
     if (!workspaceId) {
       return res.json({ status: 'not_started' });

@@ -77,7 +77,7 @@ router.post('/employees/:id/reactivate', async (req, res) => {
       return res.status(403).json({ message: 'Manager access required' });
     }
 
-    const workspaceId = (req as any).workspaceId || user.workspaceId || user.currentWorkspaceId;
+    const workspaceId = (req as any).workspaceId || (user as any).workspaceId || user.currentWorkspaceId;
     if (!workspaceId) return res.status(400).json({ message: 'No workspace context' });
 
     // ── Phase 30: Seat limit enforcement ──────────────────────────────────────

@@ -1163,7 +1163,7 @@ router.patch("/api/user/preferences", requireAuth, async (req, res) => {
     const data = preferencesSchema.parse(req.body);
     
     // Get current workspace to update employee-level preference
-    const workspaceId = req.workspaceId || sessionUser.workspaceId || sessionUser.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (sessionUser as any).workspaceId || sessionUser.currentWorkspaceId;
     
     // If viewModePreference is set and we have a workspace, update employee record
     if (data.viewModePreference !== undefined && workspaceId) {
@@ -1220,7 +1220,7 @@ router.patch("/api/user/preferences", requireAuth, async (req, res) => {
 router.get("/api/user/view-mode", requireAuth, async (req, res) => {
   try {
     const sessionUser = req.user as User;
-    const workspaceId = req.workspaceId || sessionUser.workspaceId || sessionUser.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (sessionUser as any).workspaceId || sessionUser.currentWorkspaceId;
     
     let effectiveMode: 'simple' | 'pro' = sessionUser.simpleMode ? 'simple' : 'pro';
     let source = 'user_fallback';

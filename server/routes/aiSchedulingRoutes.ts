@@ -190,7 +190,7 @@ router.post("/apply-suggestion", async (req: Request, res: Response) => {
       return res.status(400).json({ error: "suggestionId is required" });
     }
     
-    log.info(`[AI Scheduling] User ${user.id} acknowledged suggestion: ${suggestionId} in workspace ${user.workspaceId}`);
+    log.info(`[AI Scheduling] User ${user.id} acknowledged suggestion: ${suggestionId} in workspace ${(user as any).workspaceId}`);
 
     res.json({ 
       success: true, 
@@ -212,7 +212,7 @@ router.get("/optimization-report", async (req: Request, res: Response) => {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    const workspaceId = user.workspaceId;
+    const workspaceId = (user as any).workspaceId;
     const now = new Date();
     const weekAgo = new Date(now);
     weekAgo.setDate(weekAgo.getDate() - 7);

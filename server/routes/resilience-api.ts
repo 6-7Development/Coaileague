@@ -24,7 +24,7 @@ const requireRole = (allowedRoles: string[]): RequestHandler => {
     if (!user) {
       return res.status(401).json({ success: false, error: 'Authentication required' });
     }
-    const userRole = user.platformRole || user.role || '';
+    const userRole = (user as any).platformRole || user.role || '';
     if (!allowedRoles.includes(userRole)) {
       return res.status(403).json({ success: false, error: 'Insufficient permissions' });
     }

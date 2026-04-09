@@ -242,7 +242,7 @@ router.get("/leaderboard", requireAuth, async (req: Request, res: Response) => {
       })
       .from(employees)
       .leftJoin(timeEntries, eq(employees.id, timeEntries.employeeId))
-      .where(eq(employees.workspaceId, user.workspaceId))
+      .where(eq((employees as any).workspaceId, (user as any).workspaceId))
       .groupBy(employees.id, employees.firstName, employees.lastName, employees.userId)
       .orderBy(sql`COALESCE(SUM(CAST(${timeEntries.totalHours} AS float)), 0) DESC`)
       .limit(10);

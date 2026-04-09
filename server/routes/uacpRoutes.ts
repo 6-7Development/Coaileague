@@ -52,7 +52,7 @@ const requireAdminAccess = (req: any, res: any, next: any) => {
 router.get('/dashboard', requireAdminAccess, async (req, res) => {
   try {
     const user = req.user;
-    const workspaceId = req.workspaceId || user.workspaceId || user.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as any).workspaceId || user.currentWorkspaceId;
 
     // Count agents by status
     const agentStats = await db.select({
@@ -360,7 +360,7 @@ router.get('/attributes/:entityType/:entityId', requireAdminAccess, async (req, 
         eq(entityAttributes.isActive, true),
         or(
           isNull(entityAttributes.workspaceId),
-          eq(entityAttributes.workspaceId, req.workspaceId || user.workspaceId || user.currentWorkspaceId || 'no-workspace')
+          eq((entityAttributes as any).workspaceId, req.workspaceId || (user as any).workspaceId || user.currentWorkspaceId || 'no-workspace')
         )
       ))
       .orderBy(entityAttributes.attributeName);
@@ -418,7 +418,7 @@ router.post('/attributes', requireAdminAccess, async (req, res) => {
 router.delete('/attributes/:id', requireAdminAccess, async (req, res) => {
   try {
     const user = req.user;
-    const workspaceId = req.workspaceId || user.workspaceId || user.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as any).workspaceId || user.currentWorkspaceId;
 
     await db.update(entityAttributes)
       .set({ isActive: false, updatedAt: new Date() })
@@ -450,7 +450,7 @@ router.get('/policies', requireAdminAccess, async (req, res) => {
       .from(accessPolicies)
       .where(or(
         eq(accessPolicies.isGlobal, true),
-        eq(accessPolicies.workspaceId, req.workspaceId || user.workspaceId || user.currentWorkspaceId || 'no-workspace')
+        eq((accessPolicies as any).workspaceId, req.workspaceId || (user as any).workspaceId || user.currentWorkspaceId || 'no-workspace')
       ))
       .orderBy(accessPolicies.priority);
 
@@ -483,7 +483,7 @@ router.post('/policies', requireAdminAccess, async (req, res) => {
     // Only root/platform admins can create global policies
     if (isGlobal) {
       const adminRoles = ['root', 'platform_admin', 'root_admin'];
-      if (!adminRoles.includes(user.role) && !adminRoles.includes(user.platformRole)) {
+      if (!adminRoles.includes(user.role) && !adminRoles.includes((user as any).platformRole)) {
         return res.status(403).json({ error: 'Only platform admins can create global policies' });
       }
     }
@@ -524,7 +524,7 @@ router.patch('/policies/:id', requireAdminAccess, async (req, res) => {
   try {
     const user = req.user;
     const updates = req.body;
-    const workspaceId = req.workspaceId || user.workspaceId || user.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as any).workspaceId || user.currentWorkspaceId;
 
     await db.update(accessPolicies)
       .set({ ...updates, updatedAt: new Date() })
@@ -552,7 +552,7 @@ router.patch('/policies/:id', requireAdminAccess, async (req, res) => {
 router.delete('/policies/:id', requireAdminAccess, async (req, res) => {
   try {
     const user = req.user;
-    const workspaceId = req.workspaceId || user.workspaceId || user.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as any).workspaceId || user.currentWorkspaceId;
     await db.update(accessPolicies)
       .set({ isActive: false, updatedAt: new Date() })
       .where(and(eq(accessPolicies.id, req.params.id), eq(accessPolicies.workspaceId, workspaceId)));
@@ -584,7 +584,7 @@ router.get('/events', requireAdminAccess, async (req, res) => {
       .from(accessControlEvents)
       .where(or(
         isNull(accessControlEvents.workspaceId),
-        eq(accessControlEvents.workspaceId, req.workspaceId || user.workspaceId || user.currentWorkspaceId || 'no-workspace')
+        eq((accessControlEvents as any).workspaceId, req.workspaceId || (user as any).workspaceId || user.currentWorkspaceId || 'no-workspace')
       ))
       .orderBy(desc(accessControlEvents.createdAt))
       .limit(Math.min(Number(limit) || 50, 500));
@@ -621,7 +621,7 @@ router.get('/users', requireAdminAccess, async (req, res) => {
       lastLoginAt: users.lastLoginAt,
     })
     .from(users)
-    .where(eq(users.currentWorkspaceId, req.workspaceId || user.workspaceId || user.currentWorkspaceId || 'no-workspace'))
+    .where(eq(users.currentWorkspaceId, req.workspaceId || (user as any).workspaceId || user.currentWorkspaceId || 'no-workspace'))
     .orderBy(users.email);
 
     res.json({ users: userList });
@@ -740,7 +740,7 @@ router.post('/seed-agents', requireAdminAccess, async (req, res) => {
     
     // Only root/platform admins can seed agents
     const adminRoles = ['root', 'platform_admin', 'root_admin'];
-    if (!adminRoles.includes(user.role) && !adminRoles.includes(user.platformRole)) {
+    if (!adminRoles.includes(user.role) && !adminRoles.includes((user as any).platformRole)) {
       return res.status(403).json({ error: 'Only platform admins can seed agents' });
     }
 

@@ -459,7 +459,7 @@ router.get("/api/shift-actions/pending", requireManager, async (req: Authenticat
 
     const enriched = await Promise.all(
       pendingActions.map(async (action) => {
-        const employee = await storage.getEmployee(action.employeeId, workspaceId);
+        const employee = await storage.getEmployee((action as any).employeeId, workspaceId);
         const shift = action.shiftId
           ? await db
               .select()
@@ -602,7 +602,7 @@ router.get("/api/timesheet-edit-requests/pending", requireManager, async (req: A
 
     const enriched = await Promise.all(
       requests.map(async (request) => {
-        const employee = await storage.getEmployee(request.employeeId, workspaceId);
+        const employee = await storage.getEmployee((request as any).employeeId, workspaceId);
         return {
           ...request,
           employeeName: employee ? `${employee.firstName} ${employee.lastName}` : "Unknown",

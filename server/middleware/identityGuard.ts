@@ -28,7 +28,7 @@ function resolveTargetUserId(req: AuthenticatedRequest, paramName: string): stri
   const raw: string | undefined =
     (req.params as any)[paramName] ||
     (req.body as any)?.[paramName] ||
-    (req.query as any)?.[paramName];
+    ((req.query as any))?.[paramName];
 
   if (!raw || raw === 'me') {
     return req.user?.id || null;
