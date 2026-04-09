@@ -585,7 +585,7 @@ advancedSchedulingRouter.post('/swap-requests/:swapId/approve', requireManager, 
     if (isGamificationEnabled('enableGamification') && swapRequest) {
       try {
         // Award points to both employees involved in the swap
-        const requesterId = swapRequest.requestingEmployeeId;
+        const requesterId = (swapRequest as any).requestingEmployeeId;
         const accepterId = swapRequest.targetEmployeeId;
         
         if (requesterId) {

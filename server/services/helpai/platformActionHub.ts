@@ -2280,12 +2280,12 @@ class PlatformActionHub {
     if (request.workspaceId) {
       try {
         const preExecResult = await validateBeforeExecution(request.actionId, request.payload ?? {}, request.workspaceId);
-        if (!preExecResult.valid) {
+        if (!(preExecResult as any).valid) {
           return {
             success: false,
             actionId: request.actionId,
             message: preExecResult.reason ?? 'Pre-execution validation failed',
-            data: { preExecCode: preExecResult.code },
+            data: { preExecCode: (preExecResult as any).code },
             executionTimeMs: Date.now() - startTime,
           };
         }
@@ -2570,7 +2570,7 @@ class PlatformActionHub {
           missingDataPoints: 0,
           edgeCasesDetected: [],
           hasHistoricalPrecedent: true,
-          financialImpact: (request.payload as any)?.amount ?? 0,
+          financialImpact: (request as any).payload?.amount ?? 0,
           hasRegulatoryImplications: DUAL_AI_REQUIRED_CATEGORIES.has(handler.category),
           anomalyScore: 0,
           affectsMultipleUsers: 1,

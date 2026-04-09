@@ -97,7 +97,7 @@ billingRouter.use((req, res, next) => {
 billingRouter.use(async (req, res, next) => {
   const authReq = req as AuthenticatedRequest;
   
-  if (req.requireAuth && req.requireAuth()) {
+  if (req.requireAuth && (req as any).requireAuth()) {
     if (authReq.user?.currentWorkspaceId) {
       authReq.currentWorkspaceId = authReq.user.currentWorkspaceId;
     }
@@ -433,10 +433,10 @@ billingRouter.get('/credits/balance', async (req: AuthenticatedRequest, res: Res
 
     res.json({
       currentBalance,
-      totalPurchased: account?.totalPurchased || 0,
-      totalUsed: account?.totalUsed || 0,
-      monthlyIncludedCredits: account?.monthlyIncludedCredits || 0,
-      monthlyCreditsUsed: account?.monthlyCreditsUsed || 0,
+      totalPurchased: (account as any)?.totalPurchased || 0,
+      totalUsed: (account as any)?.totalUsed || 0,
+      monthlyIncludedCredits: (account as any)?.monthlyIncludedCredits || 0,
+      monthlyCreditsUsed: (account as any)?.monthlyCreditsUsed || 0,
       monthlyCreditsRemaining: Math.max(0, (account?.monthlyIncludedCredits || 0) - (account?.monthlyCreditsUsed || 0)),
     });
   } catch (error: unknown) {
@@ -516,8 +516,8 @@ billingRouter.post('/credits/purchase', async (req: AuthenticatedRequest, res: R
     const { emailService } = await import('../services/emailService');
 
     let baseUrl = `${req.protocol}://${req.get('host')}`;
-    if (emailService && typeof emailService.getAppBaseUrl === 'function') {
-      baseUrl = emailService.getAppBaseUrl();
+    if (emailService && typeof (emailService as any).getAppBaseUrl === 'function') {
+      baseUrl = (emailService as any).getAppBaseUrl();
     }
 
     // Create Stripe Checkout session
@@ -536,8 +536,8 @@ billingRouter.post('/credits/purchase', async (req: AuthenticatedRequest, res: R
 
       res.json({ 
         success: true, 
-        sessionUrl: session.sessionUrl,
-        checkoutUrl: session.sessionUrl,
+        sessionUrl: (session as any).sessionUrl,
+        checkoutUrl: (session as any).sessionUrl,
         sessionId: session.sessionId,
       });
     } catch (packError: unknown) {
@@ -581,7 +581,7 @@ billingRouter.get('/credits/auto-recharge', async (req: AuthenticatedRequest, re
     if (!workspaceId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
-    const config = await creditManager.getAutoRechargeConfig(workspaceId);
+    const config = await (creditManager as any).getAutoRechargeConfig(workspaceId);
     res.json({ success: true, config });
   } catch (error: unknown) {
     log.error('Failed to get auto-recharge config:', error);
@@ -621,7 +621,7 @@ billingRouter.post('/credits/auto-recharge', async (req: AuthenticatedRequest, r
       creditPackId: z.string().optional(),
     }).parse(req.body);
 
-    const updated = await creditManager.configureAutoRecharge(
+    const updated = await (creditManager as any).configureAutoRecharge(
       workspaceId,
       input.enabled,
       input.threshold,
@@ -1480,7 +1480,7 @@ billingRouter.get('/trinity-credits/packages', async (req: AuthenticatedRequest,
       .where(eq(workspaces.id, workspaceId))
       .limit(1);
 
-    const packages = await creditManager.getAvailablePackages(
+    const packages = await (creditManager as any).getAvailablePackages(
       workspace?.subscriptionTier || 'free'
     );
     res.json({ success: true, packages });
@@ -1531,7 +1531,7 @@ billingRouter.post('/trinity-credits/purchase', async (req: AuthenticatedRequest
       stripePaymentIntentId: z.string().optional(),
     }).parse(req.body);
 
-    const result = await creditManager.purchaseCreditsFromPackage(
+    const result = await (creditManager as any).purchaseCreditsFromPackage(
       workspaceId,
       input.packageId,
       userId,
@@ -1560,7 +1560,7 @@ billingRouter.post('/trinity-credits/redeem-code', async (req: AuthenticatedRequ
       code: z.string().min(4),
     }).parse(req.body);
 
-    const result = await creditManager.redeemUnlockCode(
+    const result = await (creditManager as any).redeemUnlockCode(
       workspaceId,
       input.code,
       userId
@@ -1752,7 +1752,7 @@ billingRouter.post('/trinity-credits/generate-code', async (req: AuthenticatedRe
       maxRedemptions: z.number().optional(),
     }).parse(req.body);
 
-    const code = await creditManager.generateUnlockCode(
+    const code = await (creditManager as any).generateUnlockCode(
       input.codeType,
       userId,
       input

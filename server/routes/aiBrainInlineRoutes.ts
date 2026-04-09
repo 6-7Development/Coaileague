@@ -951,7 +951,7 @@ router.post("/actions/execute", requireAuth, workspaceTrinityLimiter, async (req
       name,
       payload: { ...payload, workspaceId },
       userId,
-      userRole: req.userRole || 'employee',
+      userRole: (req as any).userRole || 'employee',
       priority: 'medium',
     });
     res.json({ success: result.success, message: result.message, data: result.data ?? result });
@@ -1037,8 +1037,8 @@ router.get("/growth-log", requireManager, async (req: AuthenticatedRequest, res)
         id: r.id,
         entryType: r.entry_type,
         subtype: r.decision_type,
-        title: `Decision: ${r.chosen_option?.substring(0, 80) || r.decision_type}`,
-        description: r.reasoning?.substring(0, 200) || `Domain: ${r.domain}`,
+        title: `Decision: ${(r as any).chosen_option?.substring(0, 80) || r.decision_type}`,
+        description: (r as any).reasoning?.substring(0, 200) || `Domain: ${r.domain}`,
         outcome: r.outcome_status,
         confidence: r.confidence_score,
         humanIntervention: r.human_override,

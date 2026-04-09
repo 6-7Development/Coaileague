@@ -1057,7 +1057,7 @@ async function applyAutomationUpdate(params: {
 
       try {
         const { emailProvisioningService } = await import('../services/email/emailProvisioningService');
-        const emailSlug = newSubOrg.emailSlug || newSubOrg.id.replace(/[^a-z0-9]/gi, '').slice(0, 20).toLowerCase();
+        const emailSlug = (newSubOrg as any).emailSlug || newSubOrg.id.replace(/[^a-z0-9]/gi, '').slice(0, 20).toLowerCase();
         await emailProvisioningService.provisionWorkspaceAddresses(newSubOrg.id, emailSlug);
         log.info(`[SubOrg] Email addresses provisioned for sub-org ${newSubOrg.id}`);
       } catch (emailError: unknown) {
@@ -1412,7 +1412,7 @@ async function applyAutomationUpdate(params: {
             workspaceId: wsId,
             workspaceName: wsName,
             success: true,
-            payrollRunId: payrollRun.id,
+            payrollRunId: (payrollRun as any).id,
           });
         } catch (err: unknown) {
           results.push({

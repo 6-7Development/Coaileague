@@ -11,7 +11,7 @@ const router = Router();
 
 /**
  * Resolve the active workspace from the request.
- * Priority: (req.user as any)?.currentWorkspaceId (session-bound) → req.workspaceId (middleware) → resolveWorkspaceForUser
+ * Priority: (req as any).user?.currentWorkspaceId (session-bound) → req.workspaceId (middleware) → resolveWorkspaceForUser
  * This enforces session isolation so multi-workspace users see the correct org's data.
  */
 async function resolveActiveWorkspace(req: AuthenticatedRequest): Promise<{ workspaceId: string | null; error?: string }> {

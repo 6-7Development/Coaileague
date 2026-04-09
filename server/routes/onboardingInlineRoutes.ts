@@ -927,7 +927,7 @@ By signing below, I authorize my employer to withhold federal income tax from my
 Form W-9 - Internal Revenue Service
 
 Name: ${application.firstName} ${application.lastName}
-Business name (if different): ${application.businessName || '[Individual]'}
+Business name (if different): ${(application as any).businessName || '[Individual]'}
 Tax Classification: ☐ Individual/sole proprietor ☐ LLC ☐ Corporation
 
 Federal Tax Classification: Independent Contractor
@@ -1272,7 +1272,7 @@ router.post('/initialize-trinity', async (req, res) => {
 router.get('/status', async (req, res) => {
   try {
     const user = req.user;
-    const workspaceId = req.workspaceId || (user as any).activeWorkspaceId || user.defaultWorkspaceId;
+    const workspaceId = req.workspaceId || (user as any).activeWorkspaceId || (user as any).defaultWorkspaceId;
 
     if (!workspaceId) {
       return res.json({ status: 'not_started' });

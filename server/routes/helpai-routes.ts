@@ -727,7 +727,7 @@ helpaiRouter.post('/chat', async (req: Request, res: Response) => {
     // Try custom auth first (session-based)
     if (authReq.session?.userId) {
       userId = authReq.session.userId;
-      userName = authReq.session.userName || 'User';
+      userName = (authReq as any).session.userName || 'User';
       workspaceId = authReq.session.workspaceId || workspaceId;
     }
     // Try Replit Auth (OIDC)

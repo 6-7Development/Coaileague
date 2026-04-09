@@ -148,7 +148,7 @@ router.get('/conversations/:id/messages', async (req: AuthenticatedRequest, res)
         return {
           ...msg,
           role: senderRole || 'guest',
-          userType: userInfo?.userType || 'guest'
+          userType: (userInfo as any)?.userType || 'guest'
         };
       }));
 
@@ -181,7 +181,7 @@ router.get('/conversations/:id/messages', async (req: AuthenticatedRequest, res)
       return {
         ...msg,
         role: senderRole || 'guest',
-        userType: userInfo?.userType || 'guest'
+        userType: (userInfo as any)?.userType || 'guest'
       };
     }));
 
@@ -308,7 +308,7 @@ router.get('/main-room/messages', async (req: AuthenticatedRequest, res) => {
       return {
         ...msg,
         role: senderRole || 'guest',
-        userType: userInfo?.userType || 'guest'
+        userType: (userInfo as any)?.userType || 'guest'
       };
     }));
 
@@ -856,8 +856,8 @@ router.post('/conversations/:id/typing', async (req: AuthenticatedRequest, res) 
       return res.status(404).json({ message: "Conversation not found" });
     }
 
-    const isParticipant = conversation.participantIds?.includes(userId);
-    const isCreator = conversation.creatorId === userId;
+    const isParticipant = (conversation as any).participantIds?.includes(userId);
+    const isCreator = (conversation as any).creatorId === userId;
     let isWorkspaceMember = false;
 
     if (!isParticipant && !isCreator && conversation.workspaceId) {
@@ -888,13 +888,13 @@ router.post('/conversations/:id/typing', async (req: AuthenticatedRequest, res) 
         workspaceId: workspaceId,
         conversationId,
         userId,
-        userName: user.displayName || user.username || "Anonymous",
+        userName: (user as any).displayName || user.username || "Anonymous",
       })
       .onConflictDoUpdate({
         target: [typingIndicators.conversationId, typingIndicators.userId],
         set: {
           startedAt: sql`NOW()`,
-          userName: user.displayName || user.username || "Anonymous",
+          userName: (user as any).displayName || user.username || "Anonymous",
         },
       });
 
@@ -920,8 +920,8 @@ router.delete('/conversations/:id/typing', async (req: AuthenticatedRequest, res
       return res.status(404).json({ message: "Conversation not found" });
     }
 
-    const isParticipant = conversation.participantIds?.includes(userId);
-    const isCreator = conversation.creatorId === userId;
+    const isParticipant = (conversation as any).participantIds?.includes(userId);
+    const isCreator = (conversation as any).creatorId === userId;
     let isWorkspaceMember = false;
 
     if (!isParticipant && !isCreator && conversation.workspaceId) {
@@ -1138,8 +1138,8 @@ router.get('/room/:roomId/motd', async (req: AuthenticatedRequest, res) => {
       return res.status(404).json({ message: 'Room not found' });
     }
 
-    const roomModes = (conversation.metadata as any)?.modes || [RoomMode.ORG];
-    const activeBots = (conversation.metadata as any)?.activeBots || [];
+    const roomModes = (conversation as any).metadata?.modes || [RoomMode.ORG];
+    const activeBots = (conversation as any).metadata?.activeBots || [];
     const roomName = conversation.subject || 'Chat Room';
 
     const motd = generateMOTD(roomName, roomModes, activeBots);
@@ -1218,8 +1218,8 @@ router.get('/room/:roomId/bots', async (req: AuthenticatedRequest, res) => {
       return res.status(404).json({ message: 'Room not found' });
     }
 
-    const roomModes = (conversation.metadata as any)?.modes || [RoomMode.ORG];
-    const activeBots = (conversation.metadata as any)?.activeBots || [];
+    const roomModes = (conversation as any).metadata?.modes || [RoomMode.ORG];
+    const activeBots = (conversation as any).metadata?.activeBots || [];
 
     const availableBots = new Set<string>();
     for (const mode of roomModes) {

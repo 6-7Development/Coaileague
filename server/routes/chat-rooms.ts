@@ -2390,9 +2390,9 @@ router.get(
       const rooms = await db
         .select({
           id: organizationChatRooms.id,
-          name: organizationChatRooms.name,
+          name: (organizationChatRooms as any).name,
           workspaceId: organizationChatRooms.workspaceId,
-          roomType: organizationChatRooms.roomType,
+          roomType: (organizationChatRooms as any).roomType,
           createdAt: organizationChatRooms.createdAt,
         })
         .from(organizationChatRooms)
@@ -2539,13 +2539,13 @@ router.get(
         exportedAt: new Date().toISOString(),
         exportedBy: authReq.user,
         roomId,
-        roomName: room?.name || 'Unknown Room',
+        roomName: (room as any)?.name || 'Unknown Room',
         messageCount: messages.length,
         messages: messages.map(m => ({
           id: m.id,
           senderId: m.senderId,
           senderName: m.senderName,
-          content: m.content,
+          content: (m as any).content,
           messageType: m.messageType,
           createdAt: m.createdAt,
         })),

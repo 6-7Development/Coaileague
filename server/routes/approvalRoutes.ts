@@ -195,7 +195,7 @@ router.get("/:id", async (req, res) => {
       approval: {
         ...approval,
         createdAt: approval.createdAt?.toISOString(),
-        decisionAt: approval.decisionAt?.toISOString(),
+        decisionAt: (approval as any).decisionAt?.toISOString(),
         expiresAt: approval.expiresAt?.toISOString(),
       },
     });

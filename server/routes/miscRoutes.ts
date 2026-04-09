@@ -713,7 +713,7 @@ router.get("/api/device/profile", requireAuth, async (req: AuthenticatedRequest,
     res.json({
       userId: user?.id,
       email: user?.email,
-      displayName: user?.displayName || `${user?.firstName} ${user?.lastName}`.trim(),
+      displayName: (user as any)?.displayName || `${user?.firstName} ${user?.lastName}`.trim(),
       preferences: {},
     });
   } catch (error: unknown) {
@@ -746,7 +746,7 @@ router.get("/api/identity/me", requireAuth, async (req: any, res) => {
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
-        displayName: user.displayName,
+        displayName: (user as any).displayName,
         role: user.role,
         platformRole: (user as any).platformRole,
         currentWorkspaceId: user.currentWorkspaceId,
@@ -757,7 +757,7 @@ router.get("/api/identity/me", requireAuth, async (req: any, res) => {
             id: employee.id,
             workspaceRole: employee.workspaceRole || employee.role,
             position: employee.position,
-            department: employee.department,
+            department: (employee as any).department,
           }
         : null,
       workspace: workspace
@@ -1188,7 +1188,7 @@ router.post("/api/knowledge/ask", requireAuth, async (req: AuthenticatedRequest,
     if (!userId) {
       return res.status(401).json({ message: "Unauthorized" });
     }
-    const workspaceId = req.workspaceId?.id;
+    const workspaceId = (req as any).workspaceId?.id;
 
     const schema = z.object({
       query: z.string().min(1, "Question is required"),
@@ -1283,7 +1283,7 @@ router.post("/api/knowledge/ask", requireAuth, async (req: AuthenticatedRequest,
 
 router.get("/api/knowledge/articles", requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
-    const workspaceId = req.workspaceId?.id;
+    const workspaceId = (req as any).workspaceId?.id;
         if (!workspaceId) return res.status(403).json({ error: 'Workspace context required' });
     const { category, search } = req.query;
 
@@ -1315,7 +1315,7 @@ router.get("/api/knowledge/articles", requireAuth, async (req: AuthenticatedRequ
 
 router.post("/api/knowledge/articles", requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
-    const workspaceId = req.workspaceId?.id;
+    const workspaceId = (req as any).workspaceId?.id;
     const { title, content, category, summary, tags, isPublic } = req.body;
 
     if (!title || !content) {
@@ -1387,7 +1387,7 @@ router.post("/api/search", requireAuth, async (req, res) => {
         type: "client",
         id: client.id,
         title: client.companyName,
-        subtitle: client.industry || "Client",
+        subtitle: (client as any).industry || "Client",
         relevance: 0.85,
       });
     }
@@ -1632,7 +1632,7 @@ router.post("/api/escalation/check-sla", requireAuth, readLimiter, async (req: A
 router.post("/api/migrations/employee-match", requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const { employeeName, workspaceId: reqWorkspaceId } = req.body;
-    const workspaceId = reqWorkspaceId || req.workspaceId?.id;
+    const workspaceId = reqWorkspaceId || (req as any).workspaceId?.id;
     if (!workspaceId || !employeeName) return res.status(400).json({ error: "Workspace and employeeName required" });
 
     const allEmployees = await db.select().from(employees).where(eq(employees.workspaceId, workspaceId));
@@ -2269,7 +2269,7 @@ router.get("/api/search/suggestions", requireAuth, async (req: AuthenticatedRequ
       .select({
         id: clients.id,
         companyName: clients.companyName,
-        industry: clients.industry,
+        industry: (clients as any).industry,
       })
       .from(clients)
       .where(and(eq(clients.workspaceId, workspaceId), ilike(clients.companyName, pattern)))

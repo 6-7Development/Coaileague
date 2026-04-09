@@ -264,7 +264,7 @@ router.post('/', requireManagerOrPlatformStaff, async (req: AuthenticatedRequest
 
     if (validated.email) {
       const { emailService } = await import('../services/emailService');
-      const _clientWelcomeEmail = emailService.buildClientWelcomeEmail(client.id, validated.email, validated.name || 'Valued Client', validated.companyName || '', workspace.name || '');
+      const _clientWelcomeEmail = emailService.buildClientWelcomeEmail(client.id, validated.email, (validated as any).name || 'Valued Client', validated.companyName || '', workspace.name || '');
       NotificationDeliveryService.send({ type: 'client_welcome', workspaceId: workspaceId || 'system', recipientUserId: client.id, channel: 'email', body: _clientWelcomeEmail })
         .catch(err => log.error('[Client Creation] Failed to queue welcome email:', err));
     }
@@ -273,7 +273,7 @@ router.post('/', requireManagerOrPlatformStaff, async (req: AuthenticatedRequest
     entityCreationNotifier.notifyNewClient({
       clientId: client.id,
       workspaceId,
-      name: validated.name || validated.companyName || 'New Client',
+      name: (validated as any).name || validated.companyName || 'New Client',
       contactEmail: validated.email,
       address: validated.address,
       createdBy: userId || 'system',

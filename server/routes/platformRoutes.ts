@@ -766,8 +766,8 @@ function normalizeEmail(email: string | null | undefined): string | null {
           workspaceName: r.workspace?.name,
           companyName: r.workspace?.companyName,
           role: r.employee.workspaceRole,
-          title: r.employee.title,
-          department: r.employee.department,
+          title: (r as any).employee.title,
+          department: (r as any).employee.department,
         })),
       });
     } catch (error: unknown) {
@@ -1372,14 +1372,14 @@ router.get('/team', requirePlatformStaff, async (req: AuthenticatedRequest, res)
       .select({
         userId: platformRoles.userId,
         role: platformRoles.role,
-        grantedAt: platformRoles.grantedAt,
+        grantedAt: (platformRoles as any).grantedAt,
         grantedBy: platformRoles.grantedBy,
         revokedAt: platformRoles.revokedAt,
         email: users.email,
         firstName: users.firstName,
         lastName: users.lastName,
-        isSuspended: users.isSuspended,
-        lastActiveAt: users.lastActiveAt,
+        isSuspended: (users as any).isSuspended,
+        lastActiveAt: (users as any).lastActiveAt,
       })
       .from(platformRoles)
       .innerJoin(users, eq(users.id, platformRoles.userId))

@@ -831,7 +831,7 @@ import { createHash } from "crypto";
       // ── WRITE-PROTECT: Closed invoices cannot be re-sent ──────────────────────
       // GAP-31 FIX: Added 'refunded' — a refunded invoice must not be re-sent to client.
       const SEND_BLOCKED_STATUSES = ['paid', 'void', 'cancelled', 'refunded', 'disputed'] as const;
-      if (SEND_BLOCKED_STATUSES.includes(invoice.status as any)) {
+      if (SEND_BLOCKED_STATUSES.includes(invoice as any).status) {
         return res.status(403).json({
           message: "This record has been closed and cannot be modified",
           code: 'RECORD_CLOSED',
@@ -1318,7 +1318,7 @@ import { createHash } from "crypto";
       // GAP-32 FIX: Added 'refunded' — a refunded invoice is a closed accounting record
       // and must not be mutated via PATCH. Issue a new credit memo to correct it.
       const CLOSED_STATUSES = ['paid', 'cancelled', 'void', 'refunded', 'disputed'] as const;
-      if (CLOSED_STATUSES.includes(frozenCheck.status as any)) {
+      if (CLOSED_STATUSES.includes(frozenCheck as any).status) {
         return res.status(409).json({
           message: `Invoice ${frozenCheck.invoiceNumber || id} has status '${frozenCheck.status}' and cannot be modified. To correct a paid invoice, issue a credit memo or adjustment.`,
           code: 'INVOICE_CLOSED',

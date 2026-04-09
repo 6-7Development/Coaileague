@@ -298,7 +298,7 @@ router.get('/audit-logs/stats', requireAuth, async (req: AuthenticatedRequest, r
     for (const log of recentLogs) {
       const actionPrefix = log.actorType?.split('.')[0] || 'unknown';
       actionTypeCounts[actionPrefix] = (actionTypeCounts[actionPrefix] || 0) + 1;
-      const resultKey = log.result || 'unknown';
+      const resultKey = (log as any).result || 'unknown';
       resultCounts[resultKey] = (resultCounts[resultKey] || 0) + 1;
     }
 

@@ -175,7 +175,7 @@ router.post('/ai/toggle', requireManager, async (req: AuthenticatedRequest, res)
       const hasSmartScheduleAccess = 
         workspace.subscriptionTier === 'professional' || 
         workspace.subscriptionTier === 'enterprise' ||
-        workspace.enabledAddons?.includes('smart_schedule_ai');
+        (workspace as any).enabledAddons?.includes('smart_schedule_ai');
 
       if (!hasSmartScheduleAccess) {
         return res.status(402).json({ 

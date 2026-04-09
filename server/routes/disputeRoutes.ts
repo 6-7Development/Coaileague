@@ -80,11 +80,11 @@ router.post('/', async (req: any, res) => {
     let complianceData: any = null;
     
     try {
-      complianceData = detectComplianceCategory(data.reason, data.type);
+      complianceData = detectComplianceCategory(data.reason, (data as any).type);
       aiAnalysis = await analyzeDispute(
         data.title,
         data.reason,
-        data.type,
+        (data as any).type,
         data.requestedOutcome || null,
         data.evidence || null
       );
@@ -187,7 +187,7 @@ router.post('/', async (req: any, res) => {
         details: {
           title: data.title,
           type: data.disputeType,
-          amount: data.amountDisputed,
+          amount: (data as any).amountDisputed,
           filedBy: employee.firstName,
         },
       });
@@ -727,7 +727,7 @@ router.post('/:id/ai-analysis', async (req: any, res) => {
 
     let sentimentResult = null;
     try {
-      sentimentResult = await sentimentAnalyzer.analyze(dispute.reason);
+      sentimentResult = await (sentimentAnalyzer as any).analyze(dispute.reason);
     } catch (sentError) {
       log.error('Sentiment analysis failed:', sentError);
     }

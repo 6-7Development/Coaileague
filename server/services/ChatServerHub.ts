@@ -1235,7 +1235,7 @@ class ChatServerHubClass {
       switch (event.type) {
         case 'message_posted':
           // Extract sentiment if available in metadata
-          const sentiment = (event.metadata as any).sentiment || 'neutral';
+          const sentiment = (event as any).metadata.sentiment || 'neutral';
           await roomAnalyticsService.trackMessagePosted(workspaceId, conversationId, sentiment);
           break;
 
@@ -1255,7 +1255,7 @@ class ChatServerHubClass {
 
         case 'ticket_resolved':
           // Calculate resolution time in hours
-          const createdAt = (event.metadata as any).createdAt || new Date();
+          const createdAt = (event as any).metadata.createdAt || new Date();
           const resolvedAt = new Date();
           const resolutionTimeHours = (resolvedAt.getTime() - new Date(createdAt).getTime()) / (1000 * 60 * 60);
           await roomAnalyticsService.trackTicketResolved(workspaceId, conversationId, resolutionTimeHours);

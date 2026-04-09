@@ -525,10 +525,10 @@ router.put("/api/shift-actions/:id/approve", requireManager, async (req: Authent
       .where(eq(shiftActions.id, id))
       .returning();
 
-    if (approved && action.actionType === "swap" && action.shiftId && action.targetShiftId) {
+    if (approved && action.actionType === "swap" && action.shiftId && (action as any).targetShiftId) {
       try {
         const [shift1] = await db.select().from(shifts).where(eq(shifts.id, action.shiftId));
-        const [shift2] = await db.select().from(shifts).where(eq(shifts.id, action.targetShiftId));
+        const [shift2] = await db.select().from(shifts).where(eq(shifts.id, (action as any).targetShiftId));
 
         if (shift1 && shift2) {
           await db
@@ -538,7 +538,7 @@ router.put("/api/shift-actions/:id/approve", requireManager, async (req: Authent
           await db
             .update(shifts)
             .set({ employeeId: shift1.employeeId })
-            .where(eq(shifts.id, action.targetShiftId));
+            .where(eq(shifts.id, (action as any).targetShiftId));
         }
       } catch (swapError) {
         log.error("Error executing shift swap:", swapError);

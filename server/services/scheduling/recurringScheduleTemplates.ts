@@ -114,7 +114,7 @@ class RecurringScheduleTemplateService {
         clientId: shift.clientId,
         position: shift.title || undefined,
         requiredEmployees: 1,
-        notes: shift.notes || undefined,
+        notes: (shift as any).notes || undefined,
       };
     });
 

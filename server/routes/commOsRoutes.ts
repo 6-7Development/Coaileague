@@ -110,7 +110,7 @@ router.get('/rooms/live', requireAuth, async (req: AuthenticatedRequest, res) =>
           isStaff: u.isStaff,
         })),
         isJoined: connectionData.onlineUsers.some(u => u.id === userId),
-        unreadCount: connectionData.unreadCounts?.[userId] || 0,
+        unreadCount: (connectionData as any).unreadCounts?.[userId] || 0,
         lastActivity: room.updatedAt || room.createdAt,
       };
     });
@@ -236,7 +236,7 @@ router.get('/messages/search', requireAuth, async (req: AuthenticatedRequest, re
       if (query) {
         const searchTerm = (query as string).toLowerCase();
         filteredMessages = filteredMessages.filter(m => 
-          m.messageContent?.toLowerCase().includes(searchTerm) ||
+          (m as any).messageContent?.toLowerCase().includes(searchTerm) ||
           m.senderName?.toLowerCase().includes(searchTerm)
         );
       }

@@ -198,7 +198,7 @@ class LoneWorkerService {
       type: 'lone_worker_missed_checkin',
       category: 'automation',
       title: `${urgency}: Lone Worker Missed Check-In`,
-      description: `${s.employee_name || 'Officer'} has missed ${missedCount} check-in(s). Escalating to ${level}.`,
+      description: `${(s as any).employee_name || 'Officer'} has missed ${missedCount} check-in(s). Escalating to ${level}.`,
       workspaceId,
       metadata: { sessionId, employeeId: s.employeeId, missedCount, level, requiresImmediateResponse: missedCount >= 3 },
     });
@@ -210,7 +210,7 @@ class LoneWorkerService {
     });
 
     // Real-time escalation via WebSocket broadcast — supervisors monitoring the dashboard see the alert
-    log.warn(`Lone worker missed check-in escalated to ${level}: ${s.employee_name || 'officer'}, missed=${missedCount}`);
+    log.warn(`Lone worker missed check-in escalated to ${level}: ${(s as any).employee_name || 'officer'}, missed=${missedCount}`);
   }
 
   async listActiveSessions(workspaceId: string): Promise<LoneWorkerSession[]> {

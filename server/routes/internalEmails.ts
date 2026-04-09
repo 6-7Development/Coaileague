@@ -976,7 +976,7 @@ router.post("/send", requireAuth, async (req: Request, res: Response) => {
             'internal_external',
             workspaceId
           );
-          if (result.messageId) lastMessageId = result.messageId;
+          if (result.messageId) lastMessageId = (result as any).messageId;
         }
 
         externalResult = {

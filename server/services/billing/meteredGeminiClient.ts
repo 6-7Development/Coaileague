@@ -269,9 +269,9 @@ class MeteredGeminiClient {
   } {
     const summary = aiCreditGateway.getBillingSummary(featureKey);
     return {
-      isFree: summary.isFree,
-      tier: summary.tier,
-      estimatedCredits: summary.creditCost
+      isFree: (summary as any).isFree,
+      tier: (summary as any).tier,
+      estimatedCredits: (summary as any).creditCost
     };
   }
 

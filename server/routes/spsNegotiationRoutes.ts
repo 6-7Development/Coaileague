@@ -287,8 +287,8 @@ spsNegotiationRouter.post('/:id/convert-to-contract', async (req: any, res) => {
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 14);
 
-    const agreedTerms = (thread.agreedTerms as any) || {};
-    const proposalData = (thread.proposalData as any) || {};
+    const agreedTerms = (thread as any).agreedTerms || {};
+    const proposalData = (thread as any).proposalData || {};
 
     const [doc] = await db.insert(spsDocuments).values({
       id: randomUUID(),

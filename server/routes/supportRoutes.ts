@@ -78,7 +78,7 @@ router.post('/create-ticket', async (req, res) => {
     }
     else if (authReq.requireAuth?.() && authReq.user?.id) {
       userId = authReq.user.id;
-      userEmail = (authReq.user as any)?.claims?.email || userEmail;
+      userEmail = (authReq as any).user?.claims?.email || userEmail;
     }
 
     const { PLATFORM_WORKSPACE_ID } = await import('../services/billing/billingConstants');

@@ -747,8 +747,8 @@ const router = Router();
       }
       
       // SECURITY: Verify user is a participant or workspace member
-      const isParticipant = conversation.participantIds?.includes(userId);
-      const isCreator = conversation.creatorId === userId;
+      const isParticipant = (conversation as any).participantIds?.includes(userId);
+      const isCreator = (conversation as any).creatorId === userId;
       let isWorkspaceMember = false;
       
       if (!isParticipant && !isCreator && conversation.workspaceId) {
@@ -781,13 +781,13 @@ const router = Router();
           workspaceId: workspaceId,
           conversationId,
           userId,
-          userName: user.displayName || user.username || "Anonymous",
+          userName: (user as any).displayName || user.username || "Anonymous",
         })
         .onConflictDoUpdate({
           target: [typingIndicators.conversationId, typingIndicators.userId],
           set: {
             startedAt: sql`NOW()`,
-            userName: user.displayName || user.username || "Anonymous",
+            userName: (user as any).displayName || user.username || "Anonymous",
           },
         });
       
@@ -876,7 +876,7 @@ const router = Router();
             // For now, just track in memory
             addedParticipants.push({
               id: participant.id,
-              name: participant.displayName || participant.email,
+              name: (participant as any).displayName || participant.email,
               email: participant.email
             });
           }
@@ -904,7 +904,7 @@ const router = Router();
       }
       
       // Send welcome system message
-      const userName = user.displayName || user.email;
+      const userName = (user as any).displayName || user.email;
       const welcomeMessage = `Chat created by ${userName}. Type: ${chatType}`;
       
       await storage.createChatMessage({
@@ -1392,8 +1392,8 @@ router.get("/api/chat/room/:roomId/motd", requireAnyAuth, async (req: Authentica
       return res.status(404).json({ message: "Room not found" });
     }
     
-    const roomModes = (conversation.metadata as any)?.modes || [RoomMode.ORG];
-    const activeBots = (conversation.metadata as any)?.activeBots || [];
+    const roomModes = (conversation as any).metadata?.modes || [RoomMode.ORG];
+    const activeBots = (conversation as any).metadata?.activeBots || [];
     const roomName = conversation.subject || "Chat Room";
     
     const motd = generateMOTD(roomName, roomModes, activeBots);
@@ -1478,8 +1478,8 @@ router.get("/api/chat/room/:roomId/bots", requireAnyAuth, async (req: Authentica
       return res.status(404).json({ message: "Room not found" });
     }
     
-    const roomModes = (conversation.metadata as any)?.modes || [RoomMode.ORG];
-    const activeBots = (conversation.metadata as any)?.activeBots || [];
+    const roomModes = (conversation as any).metadata?.modes || [RoomMode.ORG];
+    const activeBots = (conversation as any).metadata?.activeBots || [];
     
     const availableBots = new Set<string>();
     for (const mode of roomModes) {

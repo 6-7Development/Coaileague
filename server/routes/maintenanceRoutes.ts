@@ -111,7 +111,7 @@ router.post('/api/maintenance/activate', requireAuth, requirePlatformAdmin, asyn
       activatedBy: {
         type: 'admin',
         id: user.id,
-        name: user.email || user.username
+        name: user.email || (user as any).username
       },
       statusMessage: data.statusMessage,
       triadReportId: data.triadReportId

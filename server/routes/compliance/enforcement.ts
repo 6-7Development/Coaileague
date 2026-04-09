@@ -125,7 +125,7 @@ function resolveAuditorId(req: Request): string | null {
 async function requireAuditorOrStandardAuth(req: Request, res: Response, next: Function) {
   const auditorId = resolveAuditorId(req);
   if (auditorId) {
-    req.auditorId = auditorId;
+    (req as any).auditorId = auditorId;
     // Property 1 + 2: enforce DB-level isActive and expiresAt
     return enforceAuditorSession(req, res, next);
   }
@@ -135,7 +135,7 @@ async function requireAuditorOrStandardAuth(req: Request, res: Response, next: F
 async function requireAuditorOrManagerAuth(req: Request, res: Response, next: Function) {
   const auditorId = resolveAuditorId(req);
   if (auditorId) {
-    req.auditorId = auditorId;
+    (req as any).auditorId = auditorId;
     // Property 1 + 2: enforce DB-level isActive and expiresAt
     return enforceAuditorSession(req, res, next);
   }

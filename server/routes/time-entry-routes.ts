@@ -2328,7 +2328,7 @@ timeEntryRouter.get('/workspace/all', requireWorkspaceRole(['org_owner', 'co_own
     }
 
     if (conditions.length > 0) {
-      query = query.where(and(...conditions) as any);
+      query = (query as any).where(and(...conditions) as any);
     }
 
     const entries = await query.orderBy(desc(timeEntries.clockIn)).limit(pageSize).offset(offset);
@@ -2339,7 +2339,7 @@ timeEntryRouter.get('/workspace/all', requireWorkspaceRole(['org_owner', 'co_own
       .where(eq(timeEntries.workspaceId, workspaceId));
 
     if (conditions.length > 0) {
-      countQuery = countQuery.where(and(...conditions) as any);
+      countQuery = (countQuery as any).where(and(...conditions) as any);
     }
 
     const [{ count }] = await countQuery;

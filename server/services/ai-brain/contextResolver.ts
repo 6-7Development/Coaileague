@@ -129,7 +129,7 @@ class ContextResolverService {
       if (context.workspaceId && input.userId) {
         const member = await storage.getWorkspaceMemberByUserId(input.userId);
         if (member) {
-          context.workspaceRole = member.role;
+          context.workspaceRole = (member as any).role;
         }
 
         const employee = await storage.getEmployeeByUserId(input.userId, context.workspaceId);
