@@ -130,11 +130,11 @@ export interface ActionRequest {
 
 export interface ActionResult {
   success: boolean;
-  actionId: string;
+  actionId?: string;
   message: string;
   data?: any;
   error?: string;
-  executionTimeMs: number;
+  executionTimeMs?: number;
   notificationSent?: boolean;
   broadcastSent?: boolean;
   requiresHumanConfirmation?: boolean;
@@ -145,7 +145,7 @@ export interface ActionHandler {
   name: string;
   category: ActionCategory;
   description: string;
-  requiredRoles: string[];
+  requiredRoles?: string[];
   inputSchema?: Record<string, unknown>;
   outputSchema?: Record<string, unknown>;
   healthProbe?: () => Promise<boolean>;
