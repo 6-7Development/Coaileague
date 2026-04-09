@@ -1095,7 +1095,7 @@ router.get('/preferences', requireTrinityAccess, async (req, res) => {
   const result = await executeMascotAction('mascot.get_preferences', async () => {
     const dbResult = await db.select().from(userMascotPreferences).where(eq(userMascotPreferences.userId, userId));
     
-    const prefs = dbResult.rows?.[0];
+    const prefs = (dbResult as any).rows?.[0];
     
     if (!prefs) {
       // Return default preferences
@@ -1990,10 +1990,10 @@ router.post('/sessions', requireTrinityAccess, async (req, res) => {
       LIMIT 1
     `);
     
-    if (existingSession.rows?.length > 0) {
+    if ((existingSession as any).rows?.length > 0) {
       return res.json({ 
         success: true, 
-        session: existingSession.rows[0],
+        session: (existingSession as any).rows[0],
         isNew: false
       });
     }
@@ -2045,11 +2045,11 @@ router.get('/sessions/active', requireTrinityAccess, async (req, res) => {
       LIMIT 1
     `);
     
-    if (!result.rows?.length) {
+    if (!(result as any).rows?.length) {
       return res.json({ session: null });
     }
     
-    res.json({ session: result.rows[0] });
+    res.json({ session: (result as any).rows[0] });
   } catch (error) {
     log.error('[Mascot Sessions] Get active session error:', error);
     res.status(500).json({ error: 'Failed to get session' });
@@ -2379,7 +2379,7 @@ router.get('/generated-tasks', requireTrinityAccess, async (req, res) => {
       LIMIT 20
     `);
     
-    res.json({ tasks: result.rows || [] });
+    res.json({ tasks: (result as any).rows || [] });
   } catch (error) {
     log.error('[Mascot Tasks] Get tasks error:', error);
     res.status(500).json({ error: 'Failed to get tasks' });
@@ -2506,7 +2506,7 @@ router.get('/sessions/:id/interactions', requireTrinityAccess, async (req, res) 
     
     res.json({ 
       success: true,
-      interactions: result.rows || [] 
+      interactions: (result as any).rows || [] 
     });
   } catch (error) {
     log.error('[Mascot Sessions] Get interactions error:', error);

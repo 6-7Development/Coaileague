@@ -1601,7 +1601,7 @@ router.get('/data-readiness', requireAuth, async (req: AuthenticatedRequest, res
       JOIN employees e ON e.id = epi.employee_id
       WHERE e.workspace_id = ${workspaceId} AND e.status = 'active'
     `);
-    const pr = (payrollInfoRows.rows?.[0] || {}) as any;
+    const pr = ((payrollInfoRows as any).rows?.[0] || {}) as any;
 
     // Build readiness report
     const orgChecks = [

@@ -501,9 +501,9 @@ router.get('/dashboard/:workspaceId/overview', requireAuditorPortalAuth, async (
         stateLicenseState: ws.stateLicenseState,
         stateLicenseExpiry: ws.stateLicenseExpiry,
         registeredOn: ws.createdAt,
-        employeeBreakdown: (activeEmpCount.rows || (activeEmpCount as any)) ?? [],
-        activeClients: Number((clientCount.rows || (clientCount as any))?.[0]?.count ?? 0),
-        activeSites: Number((siteCount.rows || (siteCount as any))?.[0]?.count ?? 0),
+        employeeBreakdown: ((activeEmpCount as any).rows || (activeEmpCount as any)) ?? [],
+        activeClients: Number(((clientCount as any).rows || (clientCount as any))?.[0]?.count ?? 0),
+        activeSites: Number(((siteCount as any).rows || (siteCount as any))?.[0]?.count ?? 0),
         auditReadinessScore: readinessData?.score ?? 0,
         overallComplianceScore: readinessData?.score ?? 0,
       },
@@ -868,7 +868,7 @@ router.post('/dashboard/:workspaceId/report', requireAuditorPortalAuth, async (r
       WHERE wu.workspace_id = ${workspaceId} AND wu.role = 'org_owner'
       LIMIT 1
     `);
-    const owner = (ownerResult.rows || (ownerResult as any))?.[0];
+    const owner = ((ownerResult as any).rows || (ownerResult as any))?.[0];
 
     if (owner) {
       await createNotification({
@@ -1082,7 +1082,7 @@ async function notifyOrgOwnerOfAuditRequest(
     WHERE wu.workspace_id = ${workspaceId} AND wu.role = 'org_owner'
     LIMIT 1
   `);
-  const owner = (ownerResult.rows || (ownerResult as any))?.[0];
+  const owner = ((ownerResult as any).rows || (ownerResult as any))?.[0];
   if (!owner) return;
 
   await createNotification({
@@ -1157,7 +1157,7 @@ router.post('/complete-report', async (req: Request, res: Response) => {
       WHERE wu.workspace_id = ${request.workspaceId} AND wu.role = 'org_owner'
       LIMIT 1
     `);
-    const owner = (ownerResult.rows || (ownerResult as any))?.[0];
+    const owner = ((ownerResult as any).rows || (ownerResult as any))?.[0];
 
     if (owner) {
       await createNotification({

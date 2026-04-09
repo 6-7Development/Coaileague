@@ -2508,7 +2508,7 @@ router.get('/quickbooks/compliance-telemetry', requireAuth, requirePlatformStaff
         WHERE partner_type = 'quickbooks'
         ORDER BY created_at DESC`
       );
-      credentialsHealth = (credsResult.rows || []).map((row: any) => ({
+      credentialsHealth = ((credsResult as any).rows || []).map((row: any) => ({
         realmId: row.workspaceId,
         isHealthy: !row.expiresAt || new Date(row.expiresAt) > new Date(),
         expiresAt: row.expiresAt,
@@ -2590,7 +2590,7 @@ router.get('/quickbooks/usage-logs/:realmId', requireAuth, requirePlatformStaff,
     
     return res.json({
       success: true,
-      logs: usageResult.rows || [],
+      logs: (usageResult as any).rows || [],
       realmId,
     });
   } catch (error: unknown) {

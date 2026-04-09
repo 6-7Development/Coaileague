@@ -1284,12 +1284,12 @@ export class DatabaseStorage implements IStorage {
         SELECT sess FROM sessions WHERE sid = ${sessionId} AND expire > NOW()
       `);
       
-      if (!result.rows || result.rows.length === 0) {
+      if (!(result as any).rows || (result as any).rows.length === 0) {
         return null;
       }
       
       // The sess column contains the session data as JSON
-      const sessionData = result.rows[0].sess as {passport?: {user?: string}};
+      const sessionData = (result as any).rows[0].sess as {passport?: {user?: string}};
       return sessionData;
     } catch (error) {
       log.error('[SECURITY] Failed to fetch session:', error);
