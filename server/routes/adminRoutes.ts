@@ -116,7 +116,7 @@ router.get('/platform/activities', async (req, res) => {
     const liveActivities = activities.map((event) => ({
       id: event.id,
       timestamp: event.createdAt?.toISOString() || new Date().toISOString(),
-      user: (event as any).actorName || event.actorId || 'System',
+      user: (event as any).actorName || (event as any).actorId || 'System',
       action: (event as any).payload?.description || `${(event as any).eventType}: ${(event as any).aggregateType}`,
       workspace: event.workspaceId || 'Platform',
       type: mapEventTypeToActivityType(event.eventType),

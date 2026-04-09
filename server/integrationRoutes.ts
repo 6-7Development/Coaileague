@@ -1237,7 +1237,7 @@ router.post('/quickbooks/import', requireAuth, requireWorkspaceMembership(), asy
     
     const existingByQboIdEmp = new Map(
       existingEmployees
-        .filter(e => (e as any).partnerEmployeeId && e.partnerType === 'quickbooks')
+        .filter(e => (e as any).partnerEmployeeId && (e as any).partnerType === 'quickbooks')
         .map(e => [(e as any).partnerEmployeeId, e])
     );
     const existingByEmailEmp = new Map(
@@ -1252,7 +1252,7 @@ router.post('/quickbooks/import', requireAuth, requireWorkspaceMembership(), asy
     
     const existingByQboIdClient = new Map(
       existingClients
-        .filter(c => (c as any).partnerCustomerId && c.partnerType === 'quickbooks')
+        .filter(c => (c as any).partnerCustomerId && (c as any).partnerType === 'quickbooks')
         .map(c => [(c as any).partnerCustomerId, c])
     );
     const existingByName = new Map(

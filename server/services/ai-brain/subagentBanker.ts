@@ -533,7 +533,7 @@ class SubagentBanker {
       type: tx.amount >= 0 ? 'credit' : 'debit',
       amount: Math.abs(tx.amount),
       balanceAfter: tx.balanceAfter,
-      category: (tx as any).featureKey || tx.transactionType,
+      category: (tx as any).featureKey || (tx as any).transactionType,
       description: (tx as any).description || '',
       taskId: (tx as any).relatedEntityId || undefined,
       metadata: (tx as any).metadata as Record<string, any> | undefined,

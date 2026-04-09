@@ -24,7 +24,7 @@ const log = createLogger('auditorGuard');
  * enforcement-route auth (auditorId).
  */
 function resolveAuditorAccountId(req: Request): string | null {
-  return (req as any).auditorAccountId || req.auditorId || null;
+  return (req as any).auditorAccountId || (req as any).auditorId || null;
 }
 
 /**

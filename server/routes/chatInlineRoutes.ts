@@ -888,13 +888,13 @@ router.post('/conversations/:id/typing', async (req: AuthenticatedRequest, res) 
         workspaceId: workspaceId,
         conversationId,
         userId,
-        userName: (user as any).displayName || user.username || "Anonymous",
+        userName: (user as any).displayName || (user as any).username || "Anonymous",
       })
       .onConflictDoUpdate({
         target: [typingIndicators.conversationId, typingIndicators.userId],
         set: {
           startedAt: sql`NOW()`,
-          userName: (user as any).displayName || user.username || "Anonymous",
+          userName: (user as any).displayName || (user as any).username || "Anonymous",
         },
       });
 

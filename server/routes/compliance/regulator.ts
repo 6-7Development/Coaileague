@@ -391,7 +391,7 @@ router.get("/portal/:token/employee/:employeeId/documents", async (req: Request,
       return res.status(403).json({ success: false, error: "Employee not in authorized scope" });
     }
     
-    if (!(access as any).canViewAllEmployees && !access.employeeIds?.includes(employeeId)) {
+    if (!(access as any).canViewAllEmployees && !(access as any).employeeIds?.includes(employeeId)) {
       return res.status(403).json({ success: false, error: "Access denied for this employee" });
     }
     

@@ -341,7 +341,7 @@ export class InboundOpportunityAgent {
                     clientEmail: processResult.senderEmail,
                     location: shift.location || '',
                     shiftDate: shift.date || '',
-                    shiftDescription: (shift as any).description || shift.duties,
+                    shiftDescription: (shift as any).description || (shift as any).duties,
                   }).catch(err => log.warn('Claim registration failed (non-blocking):', (err instanceof Error ? err.message : String(err))));
                 }
 

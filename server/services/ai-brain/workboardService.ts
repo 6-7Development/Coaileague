@@ -1127,7 +1127,7 @@ class WorkboardService {
       } else if (task.status === 'failed' || task.status === 'escalated') {
         stats.failed++;
       }
-      stats.totalTokens += (task as any).actualTokens || task.estimatedTokens || 0;
+      stats.totalTokens += (task as any).actualTokens || (task as any).estimatedTokens || 0;
     }
 
     return stats;

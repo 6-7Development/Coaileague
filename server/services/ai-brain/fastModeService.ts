@@ -1150,7 +1150,7 @@ class FastModeService {
     const categoryCounts: Record<string, number> = {};
     fastModeTasks.forEach(t => {
       if (t.category) {
-        categoryCounts[(t as any).category] = (categoryCounts[t.category] || 0) + 1;
+        categoryCounts[(t as any).category] = (categoryCounts[(t as any).category] || 0) + 1;
       }
     });
     const tasksByCategory = Object.entries(categoryCounts)

@@ -659,7 +659,7 @@ class StrategicOptimizationService {
       const noShows = (m as any)?.noShowCount || 0;
       const callIns = (m as any)?.lastMinuteCancellations || 0;
       const lateArrivals = (m as any)?.tardinessCount || 0;
-      const totalShiftsAssigned = (m as any)?.totalShiftsAssigned || m?.shiftsCompleted || 0;
+      const totalShiftsAssigned = (m as any)?.totalShiftsAssigned || (m as any)?.shiftsCompleted || 0;
       const shiftsCompleted = (m as any)?.shiftsCompleted || 0;
       const clientComplaints = (m as any)?.clientComplaints || 0;
       const clientPraise = (m as any)?.clientPraise || 0;

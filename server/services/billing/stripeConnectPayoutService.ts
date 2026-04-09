@@ -280,7 +280,7 @@ class StripeConnectPayoutService {
         amount: amountCents,
         currency: 'usd',
         destination: connectAccountId,
-        description: `Payroll: ${(entry as any).periodStart} - ${entry.periodEnd}`,
+        description: `Payroll: ${(entry as any).periodStart} - ${(entry as any).periodEnd}`,
         metadata: {
           payrollEntryId,
           employeeId: entry.employeeId,
@@ -362,7 +362,7 @@ class StripeConnectPayoutService {
           workspaceId,
           payoutId: payrollEntryId,
           payoutAmountCents: amountCents,
-          recipientName: `${(entry as any).firstName || ''} ${entry.lastName || ''}`.trim() || undefined,
+          recipientName: `${(entry as any).firstName || ''} ${(entry as any).lastName || ''}`.trim() || undefined,
         });
         if (feeResult.success && feeResult.amountCents > 0) {
           log.info(`[StripeConnect] Payout fee charged: $${(feeResult.amountCents / 100).toFixed(2)} for entry ${payrollEntryId}`);

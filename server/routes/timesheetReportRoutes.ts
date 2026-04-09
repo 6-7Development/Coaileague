@@ -288,7 +288,7 @@ timesheetReportRouter.get('/export/pdf', requireManager, async (req: Request, re
     if (report.summary.breakDeductions) {
       doc.text(`Break Deductions: ${(report as any).summary.breakDeductions.toFixed(2)} hours`);
     }
-    doc.text(`Status: Approved (${(report as any).summary.statusBreakdown?.approved || 0}) | Pending (${(report as any).summary.statusBreakdown?.pending || 0}) | (Rejected as any) (${report.summary.statusBreakdown?.rejected || 0})`);
+    doc.text(`Status: Approved (${(report as any).summary.statusBreakdown?.approved || 0}) | Pending (${(report as any).summary.statusBreakdown?.pending || 0}) | (Rejected as any) (${(report.summary as any).statusBreakdown?.rejected || 0})`);
     doc.moveDown(2);
 
     doc.fontSize(14).text('Time Entries', { underline: true });

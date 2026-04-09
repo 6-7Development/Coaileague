@@ -340,8 +340,8 @@ class FinancialAuditService {
         violations.push('SOD-002: Processor must be different from creator and approver');
       }
 
-      if (actionType === 'approve' && recentEvents.filter(e => 
-        (e as any).eventType.includes('(APPROVED as any)') && e.actorId === actorId
+      if (actionType === 'approve' && recentEvents.filter(e =>
+        (e as any).eventType.includes('APPROVED') && (e as any).actorId === actorId
       ).length >= 10) {
         violations.push('SOD-003: Approval concentration detected - consider rotation');
       }

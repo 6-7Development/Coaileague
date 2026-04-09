@@ -1989,7 +1989,7 @@ class AIBrainActionRegistry {
         const start = Date.now();
         const { contractPipelineService } = await import('../contracts/contractPipelineService');
         const contracts = await contractPipelineService.getContracts(request.workspaceId!, { status: 'pending_signatures' });
-        return createResult(request.actionId, true, `Found ${(contracts as any).length} contracts awaiting signatures`, { contracts, count: contracts.length }, start);
+        return createResult(request.actionId, true, `Found ${(contracts as any).length} contracts awaiting signatures`, { contracts, count: (contracts as any).length }, start);
       },
     };
 
@@ -2005,7 +2005,7 @@ class AIBrainActionRegistry {
         const thirtyDaysFromNow = new Date();
         thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
         const contracts = await contractPipelineService.getContracts(request.workspaceId!, { expiresBy: thirtyDaysFromNow });
-        return createResult(request.actionId, true, `Found ${(contracts as any).length} contracts expiring in next 30 days`, { contracts, count: contracts.length }, start);
+        return createResult(request.actionId, true, `Found ${(contracts as any).length} contracts expiring in next 30 days`, { contracts, count: (contracts as any).length }, start);
       },
     };
 

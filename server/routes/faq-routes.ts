@@ -584,7 +584,7 @@ app.post('/api/helpos/faqs/bulk-import', requirePlatformStaff, async (req: Authe
         // Generate embedding
         const embeddingResponse = await bulkEmbeddingClient.embeddings.create({
           model: 'text-embedding-3-small',
-          input: `${(validated as any).question} ${validated.answer}`,
+          input: `${(validated as any).question} ${(validated as any).answer}`,
         });
 
         // Create FAQ

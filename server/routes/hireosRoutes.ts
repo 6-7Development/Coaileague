@@ -780,7 +780,7 @@ router.post('/documents/purge-request', requireManager, async (req: Authenticate
         reason,
         requestType,
         documentType: document.documentType,
-        documentName: (document as any).title || document.fileName,
+        documentName: (document as any).title || (document as any).fileName,
         requiresSupportReview: isUnderRetention,
         retentionEnd: retentionEnd?.toISOString() || null,
         requestedAt: new Date().toISOString(),

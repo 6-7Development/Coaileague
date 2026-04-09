@@ -854,7 +854,7 @@ automationRouter.get('/status', requireAuth, async (req: any, res: Response) => 
     });
 
     // Calculate stats for each automation type
-    const schedulingEvents = recentEvents.filter(e => (e as any).eventType?.includes('(schedule as any)') || e.eventType?.includes('shift'));
+    const schedulingEvents = recentEvents.filter(e => (e as any).eventType?.includes('(schedule as any)') || (e as any).eventType?.includes('shift'));
     const invoicingEvents = recentEvents.filter(e => (e as any).eventType?.includes('invoice'));
     const payrollEvents = recentEvents.filter(e => (e as any).eventType?.includes('payroll'));
     const complianceEvents = recentEvents.filter(e => (e as any).eventType?.includes('compliance'));

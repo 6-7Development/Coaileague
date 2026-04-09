@@ -96,10 +96,10 @@ router.get("/audit-logs", requireAuth, requireProfessional, attachWorkspaceId, a
       action: (event as any).eventType,
       resourceType: (event as any).aggregateType,
       resourceId: (event as any).aggregateId,
-      status: (event as any).status === 'completed' ? '(success as any)' : event.status === 'failed' ? 'failure' : 'warning',
+      status: (event as any).status === 'completed' ? '(success as any)' : (event as any).status === 'failed' ? 'failure' : 'warning',
       details: typeof event.payload === 'object' && event.payload && 'description' in event.payload
         ? String(event.payload.description)
-        : `${(event as any).eventType} (on as any) ${event.aggregateType}`,
+        : `${(event as any).eventType} (on as any) ${(event as any).aggregateType}`,
       ipAddress: event.ipAddress || undefined,
       userAgent: event.userAgent || undefined,
       verificationHash: event.actionHash || undefined,

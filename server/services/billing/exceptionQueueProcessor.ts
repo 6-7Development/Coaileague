@@ -365,8 +365,8 @@ class ExceptionQueueProcessor {
     const byPriority: Record<string, number> = {};
 
     for (const e of allExceptions) {
-      byType[(e as any).exceptionType] = (byType[e.exceptionType] || 0) + 1;
-      byPriority[(e as any).priority] = (byPriority[e.priority] || 0) + 1;
+      byType[(e as any).exceptionType] = (byType[(e as any).exceptionType] || 0) + 1;
+      byPriority[(e as any).priority] = (byPriority[(e as any).priority] || 0) + 1;
     }
 
     return {

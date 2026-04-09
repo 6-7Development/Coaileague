@@ -37,7 +37,7 @@ function getIntegrationContext(req: Request): IntegrationAccessContext {
   const user = req.user || {};
   return {
     userId: (user as any).id || '',
-    workspaceId: req.workspaceId || (user as any).workspaceId || (user as any).activeWorkspaceId || user.currentWorkspaceId || '',
+    workspaceId: req.workspaceId || (user as any).workspaceId || (user as any).activeWorkspaceId || (user as any).currentWorkspaceId || '',
     platformRole: (user as any).platformRole || '',
     workspaceRole: (user as any).workspaceRole || '',
     accessLevel: integrationManagementService.determineAccessLevel(
