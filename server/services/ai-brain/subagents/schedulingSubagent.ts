@@ -710,7 +710,7 @@ Generate a JSON schedule with format:
       .where(eq(employees.workspaceId, workspaceId))
       .limit(1);
     
-    const jurisdiction = workspace[0]?.laborLawJurisdiction || 'US-FEDERAL';
+    const jurisdiction = (workspace as any)?.[0]?.laborLawJurisdiction || 'US-FEDERAL';
     
     return await db.select()
       .from(laborLawRules)

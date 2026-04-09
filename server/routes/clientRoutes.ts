@@ -286,7 +286,7 @@ router.post('/', requireManagerOrPlatformStaff, async (req: AuthenticatedRequest
     try {
       const { platformEventBus } = await import('../services/platformEventBus');
       const clientRates = await storage.getClientRates(workspaceId, client.id);
-      const contractRate = clientRates?.[0]?.rate || null;
+      const contractRate = (clientRates as any)?.[0]?.rate || null;
       platformEventBus.publish({
         type: 'client.created',
         workspaceId,
