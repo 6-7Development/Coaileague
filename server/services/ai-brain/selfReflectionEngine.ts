@@ -36,6 +36,7 @@ export interface ReflectionContext {
   executedSteps: ExecutedStep[];
   currentOutput: any;
   expectedSchema?: Record<string, any>;
+  goal?: string;
 }
 
 export interface ExecutedStep {

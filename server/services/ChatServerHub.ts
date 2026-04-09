@@ -100,6 +100,14 @@ export interface ChatEventMetadata {
   timeoutMs?: number;
   executionTimeMs?: number;
   confidenceScore?: number;
+  // Ticket lifecycle context
+  oldStatus?: string;
+  newStatus?: string;
+  updatedBy?: string;
+  subject?: string;
+  deletedBy?: string;
+  // Room context
+  roomMode?: string;
 }
 
 export interface ChatEvent {

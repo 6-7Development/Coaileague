@@ -465,7 +465,7 @@ router.get('/seat-hard-cap', async (req: any, res) => {
     const [row] = await dbInner.execute(drizzleSql`
       SELECT seat_hard_cap_enabled, max_employees, current_employees
       FROM subscriptions WHERE workspace_id = ${workspaceId} LIMIT 1
-    `) as any[];
+    `) as unknown as any[];
 
     res.json({
       seatHardCapEnabled: row?.seat_hard_cap_enabled === true,
