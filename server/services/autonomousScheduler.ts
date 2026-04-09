@@ -4140,7 +4140,18 @@ export function startAutonomousScheduler() {
   log.info('Autonomous scheduler running successfully');
   
   } catch (error) {
-    log.error('Critical error during scheduler initialization', { error: error instanceof Error ? error.message : String(error) });
+    // Capture full diagnostic detail — the prior single-line log lost the stack
+    // and caller line, which made the root cause undiagnosable from Railway logs.
+    const errObj = error instanceof Error ? error : new Error(String(error));
+    log.error('Critical error during scheduler initialization', {
+      errorName: errObj.name,
+      errorMessage: errObj.message,
+      stack: errObj.stack,
+      cause: (errObj as { cause?: unknown }).cause,
+    });
+    // Do not swallow: the scheduler owns dozens of cron jobs, and a half-initialized
+    // scheduler is worse than a visible hard failure. Re-throw so startup surfaces it.
+    throw errObj;
   }
 }
 

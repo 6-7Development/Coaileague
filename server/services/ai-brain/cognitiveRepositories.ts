@@ -486,7 +486,7 @@ export class RLLoopRepository {
         domain: 'general',
         data: JSON.parse(payload),
       }).onConflictDoNothing({ target: aiLearningEvents.id }).returning({ id: aiLearningEvents.id });
-      log.info(`[RLRepo] Experience persisted: ${exp.agentId}/${exp.actionType} -> ${exp.outcome}`);
+      log.verbose(`[RLRepo] Experience persisted: ${exp.agentId}/${exp.actionType} -> ${exp.outcome}`);
       return result?.[0] ?? null;
     } catch (error: any) {
       log.error(`[RLRepo] Failed to persist experience:`, (error instanceof Error ? error.message : String(error)));
@@ -580,7 +580,7 @@ export class RLLoopRepository {
           updated_at = NOW()
         RETURNING id
       `);
-      log.info(`[RLRepo] Confidence model upserted: ${model.agentId}/${model.actionType}`);
+      log.verbose(`[RLRepo] Confidence model upserted: ${model.agentId}/${model.actionType}`);
       return (result as any[])[0] ?? null;
     } catch (error: any) {
       log.error(`[RLRepo] Failed to upsert confidence model:`, (error instanceof Error ? error.message : String(error)));

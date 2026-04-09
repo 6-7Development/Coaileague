@@ -126,7 +126,7 @@ class AutomationExecutionTrackerService {
         queuedAt: new Date(),
       });
 
-      log.info(`[AutomationExecutionTracker] Created execution ${executionId}:`, {
+      log.verbose(`[AutomationExecutionTracker] Created execution ${executionId}:`, {
         actionType: params.actionType,
         actionName: params.actionName,
         workspaceId: params.workspaceId,
@@ -161,7 +161,7 @@ class AutomationExecutionTrackerService {
       return;
     }
 
-    log.info(`[AutomationExecutionTracker] Started execution ${executionId}`);
+    log.verbose(`[AutomationExecutionTracker] Started execution ${executionId}`);
   }
 
   async completeExecution(executionId: string, params: UpdateExecutionParams): Promise<void> {
@@ -199,7 +199,7 @@ class AutomationExecutionTrackerService {
       })
       .where(eq(automationExecutions.id, executionId));
 
-    log.info(`[AutomationExecutionTracker] Completed execution ${executionId}:`, {
+    log.verbose(`[AutomationExecutionTracker] Completed execution ${executionId}:`, {
       status: finalStatus,
       itemsProcessed: params.itemsProcessed,
       processingTimeMs,
