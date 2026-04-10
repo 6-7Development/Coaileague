@@ -20,10 +20,10 @@ import { pool } from "./db";
 import bcrypt from "bcryptjs";
 import { randomUUID } from "crypto";
 
-// ─── Constants ───────────────────────────────────────────────────────────────
+// ─── Constants (dev-only — never import these in production code) ─────────────
 
-export const STATEWIDE_WORKSPACE_ID = "test-statewide-ws-00000000000001";
-export const STATEWIDE_OWNER_USER_ID = "test-statewide-owner-000000000001";
+const STATEWIDE_WORKSPACE_ID = "test-statewide-ws-00000000000001";
+const STATEWIDE_OWNER_USER_ID = "test-statewide-owner-000000000001";
 
 // ─── Name pools ──────────────────────────────────────────────────────────────
 
@@ -105,10 +105,22 @@ function randPhone(): string {
   return `${area}-${prefix}-${line}`;
 }
 
+// Known-valid ABA routing numbers for test/dev use only
+const TEST_ROUTING_NUMBERS = [
+  "021000021", // JPMorgan Chase
+  "021001208", // Citibank
+  "026009593", // Bank of America
+  "121000248", // Wells Fargo
+  "122105155", // US Bank
+  "071000013", // Chase (IL)
+  "322271627", // Chase (CA)
+  "267084131", // Bank of America (FL)
+  "063100277", // Bank of America (GA)
+  "111000025", // US Bank (TX)
+];
+
 function randRoutingNumber(): string {
-  // 9 digits, first two digits are 01-12 or 21-32 (US routing prefixes)
-  const prefixes = ["01","02","03","04","05","06","07","08","21","22","23","24","25","26","27","28","29","30","31","32"];
-  return `${pick(prefixes)}${String(randInt(1000000, 9999999))}`;
+  return TEST_ROUTING_NUMBERS[randInt(0, TEST_ROUTING_NUMBERS.length - 1)];
 }
 
 function randAccountNumber(): string {
@@ -154,14 +166,10 @@ async function seedStatewideDevData(): Promise<void> {
   await cascadeDelete("clients");
   await cascadeDelete("workspace_members");
 
-  // Delete users created for this workspace
+  // Delete users created for this workspace (including the owner)
   await pool.query(
-    `DELETE FROM users WHERE current_workspace_id = $1 AND id != $2`,
+    `DELETE FROM users WHERE current_workspace_id = $1 OR id = $2`,
     [STATEWIDE_WORKSPACE_ID, STATEWIDE_OWNER_USER_ID]
-  );
-  await pool.query(
-    `DELETE FROM users WHERE id = $1`,
-    [STATEWIDE_OWNER_USER_ID]
   );
   await pool.query(
     `DELETE FROM workspaces WHERE id = $1`,
@@ -170,6 +178,8 @@ async function seedStatewideDevData(): Promise<void> {
   console.log("✅ [STATEWIDE] Prior data cleared");
 
   // ── 1. Owner user ─────────────────────────────────────────────────────────
+  // A single password hash is computed once and reused across all dev accounts
+  // for performance — intentional dev-only shortcut, never replicate in production code.
   const passwordHash = await bcrypt.hash("Statewide2024!", 10);
   await pool.query(`
     INSERT INTO users (
@@ -234,7 +244,7 @@ async function seedStatewideDevData(): Promise<void> {
     const requiresArmed = i <= 8;
     clientArmedMap.push(requiresArmed);
 
-    const contractRate = (40 + Math.floor((i - 1) * 3.21)).toFixed(2); // $40–$85 spread
+    const contractRate = (40 + Math.floor((i - 1) * 3.21)).toFixed(2); // $40–$84 spread across 15 clients
     const minimumStaffing = ((i % 3) + 1); // 1, 2, 3 cycling
 
     await pool.query(`
@@ -323,8 +333,7 @@ async function seedStatewideDevData(): Promise<void> {
     empUserIds.push(userId);
 
     const firstName = FIRST_NAMES[i % FIRST_NAMES.length];
-    const lastName  = LAST_NAMES[Math.floor(i / FIRST_NAMES.length) % LAST_NAMES.length] ||
-                      LAST_NAMES[i % LAST_NAMES.length];
+    const lastName  = LAST_NAMES[Math.floor(i / FIRST_NAMES.length) % LAST_NAMES.length];
     const email = `test${i + 1}@example.com`;
     const phone = randPhone();
 
