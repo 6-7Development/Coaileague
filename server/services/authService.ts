@@ -434,7 +434,7 @@ export class AuthService {
       const normalizedEmail = email.toLowerCase().trim();
 
       const [user] = await db
-        .select({ id: users.id, email: users.email, firstName: users.firstName, emailVerified: users.emailVerified, lockedUntil: users.lockedUntil })
+        .select({ id: users.id, email: users.email, firstName: users.firstName })
         .from(users)
         .where(eq(users.email, normalizedEmail))
         .limit(1);
@@ -463,12 +463,7 @@ export class AuthService {
       });
 
       const { emailService } = await import('./emailService');
-      const emailResult = await emailService.sendPasswordResetEmail(user.id, user.email, token, user.firstName ?? undefined);
-
-      if (!emailResult?.success) {
-        log.error("[AuthService] Password reset email failed for", user.email, emailResult?.error);
-        return { success: false, error: "Could not send reset email. Try again later.", code: "email_failed" };
-      }
+      await emailService.sendPasswordResetEmail(user.id, user.email, token, user.firstName ?? undefined);
 
       return { success: true };
     } catch (error: unknown) {

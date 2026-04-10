@@ -15,8 +15,7 @@ import { eq } from "drizzle-orm";
 // Reuse existing Resend client from email.ts (no duplication!)
 // CAN-SPAM: Use sendCanSpamCompliantEmail for all outgoing emails
 import { getUncachableResendClient, isResendConfigured, sendCanSpamCompliantEmail, isEmailUnsubscribed } from "./emailCore";
-import { FEATURES, PLATFORM } from "@shared/platformConfig";
-import { EMAIL as EMAIL_CONFIG } from '../config/platformConfig';
+import { EMAIL, FEATURES, PLATFORM } from "@shared/platformConfig";
 import { automationOrchestration } from "./orchestration/automationOrchestration";
 import { getAppBaseUrl } from "../utils/getAppBaseUrl";
 import { isProduction } from "../lib/isProduction";
@@ -1078,8 +1077,8 @@ export class EmailService {
       'password_reset',
       undefined,
       userId,
-      EMAIL_CONFIG.senders.support,
-      EMAIL_CONFIG.senders.support
+      EMAIL.senders.support,
+      EMAIL.senders.support
     );
   }
 
