@@ -125,10 +125,7 @@ class TrinityCounterfactualEngine {
     .where(and(
       eq(shifts.workspaceId, workspaceId),
       sql`${shifts.startTime} BETWEEN NOW() - INTERVAL '7 days' AND NOW()`,
-      sql`NOT EXISTS (
-        SELECT 1 FROM shift_assignments sa
-        WHERE sa.shift_id = ${shifts.id} AND sa.status NOT IN ('no_show', 'declined')
-      )`
+      sql`${shifts.status} IN ('no_show', 'calloff', 'cancelled')`
     ))
     .limit(3)
     .catch(() => []);
