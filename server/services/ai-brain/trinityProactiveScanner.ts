@@ -1520,7 +1520,7 @@ class TrinityProactiveScannerService {
             source: 'TrinityProactiveScanner',
             notificationType: `trinity_scan_failure_${scanType}`,
           },
-        }).catch((err) => log.warn('[trinityProactiveScanner] Fire-and-forget failed:', err));
+        }).catch((err) => log.warn('[trinityProactiveScanner] Notification failed (non-fatal):', err));
       }
     } catch {
       // Notification failure must never break the scan loop

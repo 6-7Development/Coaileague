@@ -312,16 +312,16 @@ class TrinityCalloffPredictor {
     factors: string[];
   } | null> {
     try {
-      // CATEGORY C — Raw SQL retained: LIMIT | Tables: employee_profiles | Verified: 2026-03-23
+      // CATEGORY C — Raw SQL retained: LIMIT | Tables: employee_profiles | Verified: 2026-04-10
       const result = await typedPool(`
         SELECT
           ep.reliability_score::float as reliability_score,
           ep.calloff_count::int as calloff_count,
           ep.total_shifts::int as total_shifts
         FROM employee_profiles ep
-        WHERE ep.employee_id = $1
+        WHERE ep.employee_id = $1 AND ep.workspace_id = $2
         LIMIT 1
-      `, [employeeId]);
+      `, [employeeId, workspaceId]);
 
       if (!(result as unknown as any[]).length) return null;
 
