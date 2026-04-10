@@ -178,17 +178,16 @@ class TrinityCuriosityEngine {
 
   private async investigateCalloffPattern(workspaceId: string, question: string): Promise<{ finding: string; confidence: number; significance: string }> {
     // Converted to Drizzle ORM: INTERVAL → sql fragment
-    // CATEGORY C — Raw SQL retained: GROUP BY | Tables: shift_assignments, shifts, employees | Verified: 2026-03-23
+    // CATEGORY C — Raw SQL retained: GROUP BY | Tables: shifts, employees | Verified: 2026-03-23
     const { rows } = await db.execute(sql`
       SELECT
         e.first_name, e.last_name,
         COUNT(sa.id) as calloffs,
-        TO_CHAR(MAX(s.start_time), 'Day') as most_common_day
-      FROM shift_assignments sa
-      JOIN shifts s ON s.id = sa.shift_id
+        TO_CHAR(MAX(sa.start_time), 'Day') as most_common_day
+      FROM shifts sa
       JOIN employees e ON e.id = sa.employee_id
-      WHERE s.workspace_id = ${workspaceId} AND sa.status = 'no_show'
-        AND s.start_time >= NOW() - INTERVAL '60 days'
+      WHERE sa.workspace_id = ${workspaceId} AND sa.status = 'no_show'
+        AND sa.start_time >= NOW() - INTERVAL '60 days'
       GROUP BY e.id, e.first_name, e.last_name
       HAVING COUNT(sa.id) >= 2
       ORDER BY calloffs DESC
@@ -230,16 +229,15 @@ class TrinityCuriosityEngine {
 
   private async investigateSitePattern(workspaceId: string, question: string): Promise<{ finding: string; confidence: number; significance: string }> {
     // Converted to Drizzle ORM: INTERVAL → sql fragment
-    // CATEGORY C — Raw SQL retained: GROUP BY | Tables: shift_assignments, shifts, locations | Verified: 2026-03-23
+    // CATEGORY C — Raw SQL retained: GROUP BY | Tables: shifts, locations | Verified: 2026-03-23
     const { rows } = await db.execute(sql`
       SELECT
         l.name as site_name,
         COUNT(sa.id) FILTER (WHERE sa.status = 'no_show') as calloffs,
         COUNT(sa.id) as total_assignments
-      FROM shift_assignments sa
-      JOIN shifts s ON s.id = sa.shift_id
-      LEFT JOIN locations l ON l.id = s.location_id
-      WHERE s.workspace_id = ${workspaceId} AND s.start_time >= NOW() - INTERVAL '60 days'
+      FROM shifts sa
+      LEFT JOIN locations l ON l.id = sa.site_id
+      WHERE sa.workspace_id = ${workspaceId} AND sa.start_time >= NOW() - INTERVAL '60 days'
       GROUP BY l.id, l.name
       HAVING COUNT(sa.id) > 3
       ORDER BY calloffs DESC
@@ -261,14 +259,14 @@ class TrinityCuriosityEngine {
 
   private async investigateCoveragePattern(workspaceId: string, question: string): Promise<{ finding: string; confidence: number; significance: string }> {
     // Converted to Drizzle ORM: INTERVAL → sql fragment
-    // CATEGORY C — Raw SQL retained: EXISTS ( SELECT | Tables: shifts, shift_assignments | Verified: 2026-03-23
+    // CATEGORY C — Raw SQL retained: EXISTS ( SELECT | Tables: shifts | Verified: 2026-03-23
     const { rows } = await db.execute(sql`
       SELECT COUNT(*) as gaps FROM shifts s
       WHERE s.workspace_id = ${workspaceId}
         AND s.start_time >= NOW() - INTERVAL '30 days'
         AND NOT EXISTS (
-          SELECT 1 FROM shift_assignments sa
-          WHERE sa.shift_id = s.id AND sa.status NOT IN ('no_show', 'declined')
+          SELECT 1 FROM shifts sa
+          WHERE sa.id = s.id AND sa.status NOT IN ('no_show', 'declined')
         )
     `).catch(() => ({ rows: [{ gaps: 0 }] }));
 
@@ -312,15 +310,14 @@ class TrinityCuriosityEngine {
 
     // Check for unusual day-of-week patterns in calloffs
     // Converted to Drizzle ORM: INTERVAL → sql fragment
-    // CATEGORY C — Raw SQL retained: GROUP BY | Tables: s, shift_assignments, shifts | Verified: 2026-03-23
+    // CATEGORY C — Raw SQL retained: GROUP BY | Tables: shifts | Verified: 2026-03-23
     const { rows: dayPatterns } = await db.execute(sql`
       SELECT
-        EXTRACT(DOW FROM s.start_time) as day_of_week,
+        EXTRACT(DOW FROM sa.start_time) as day_of_week,
         COUNT(*) FILTER (WHERE sa.status = 'no_show') as calloffs,
         COUNT(*) as total
-      FROM shift_assignments sa
-      JOIN shifts s ON s.id = sa.shift_id
-      WHERE s.workspace_id = ${workspaceId} AND s.start_time >= NOW() - INTERVAL '90 days'
+      FROM shifts sa
+      WHERE sa.workspace_id = ${workspaceId} AND sa.start_time >= NOW() - INTERVAL '90 days'
       GROUP BY day_of_week
       HAVING COUNT(*) > 5
       ORDER BY (COUNT(*) FILTER (WHERE sa.status = 'no_show')::float / COUNT(*)) DESC
