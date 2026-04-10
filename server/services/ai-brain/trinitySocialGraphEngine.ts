@@ -88,14 +88,13 @@ class TrinitySocialGraphEngine {
         AND created_at >= NOW() - INTERVAL '30 days'
     `, [workspaceId, emp.id]).catch(() => ({ rows: [{ message_count: 0, active_weeks: 0 }] }));
 
-    // CATEGORY C — Raw SQL retained: COUNT( | Tables: shift_assignments, shifts | Verified: 2026-03-23
+    // CATEGORY C — Raw SQL retained: COUNT( | Tables: shifts | Verified: 2026-03-23
     const { rows: coverageActivity } = await typedPool(`
       SELECT COUNT(*) as times_covered_for
-      FROM shift_assignments sa
-      JOIN shifts s ON s.id = sa.shift_id
-      WHERE s.workspace_id = $1 AND sa.employee_id = $2
+      FROM shifts sa
+      WHERE sa.workspace_id = $1 AND sa.employee_id = $2
         AND sa.status = 'covered'
-        AND s.start_time >= NOW() - INTERVAL '60 days'
+        AND sa.start_time >= NOW() - INTERVAL '60 days'
     `, [workspaceId, emp.id]).catch(() => ({ rows: [{ times_covered_for: 0 }] }));
 
     // @ts-expect-error — TS migration: fix in refactoring sprint

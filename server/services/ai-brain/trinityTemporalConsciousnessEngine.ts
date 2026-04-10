@@ -197,12 +197,11 @@ class TrinityTemporalConsciousnessEngine {
       FROM employees WHERE workspace_id = $1
     `, [workspaceId]).catch(() => ({ rows: [] }));
 
-    // CATEGORY C — Raw SQL retained: COUNT( | Tables: shift_assignments, shifts | Verified: 2026-03-23
+    // CATEGORY C — Raw SQL retained: COUNT( | Tables: shifts | Verified: 2026-03-23
     const { rows: calloffs } = await typedPool(`
-      SELECT COUNT(*) as count FROM shift_assignments sa
-      JOIN shifts s ON s.id = sa.shift_id
-      WHERE s.workspace_id = $1 AND sa.status = 'no_show'
-        AND s.start_time >= NOW() - INTERVAL '30 days'
+      SELECT COUNT(*) as count FROM shifts sa
+      WHERE sa.workspace_id = $1 AND sa.status = 'no_show'
+        AND sa.start_time >= NOW() - INTERVAL '30 days'
     `, [workspaceId]).catch(() => ({ rows: [] }));
 
     // @ts-expect-error — TS migration: fix in refactoring sprint
@@ -242,12 +241,11 @@ class TrinityTemporalConsciousnessEngine {
   private async getOfficerMetrics(workspaceId: string, employeeId: string, days: number): Promise<OfficerMetrics> {
     const since = `NOW() - INTERVAL '${days} days'`;
 
-    // CATEGORY C — Raw SQL retained: COUNT( | Tables: shift_assignments, shifts | Verified: 2026-03-23
+    // CATEGORY C — Raw SQL retained: COUNT( | Tables: shifts | Verified: 2026-03-23
     const { rows: calloffRows } = await typedPool(`
-      SELECT COUNT(*) as count FROM shift_assignments sa
-      JOIN shifts s ON s.id = sa.shift_id
-      WHERE s.workspace_id = $1 AND sa.employee_id = $2
-        AND sa.status = 'no_show' AND s.start_time >= ${since}
+      SELECT COUNT(*) as count FROM shifts sa
+      WHERE sa.workspace_id = $1 AND sa.employee_id = $2
+        AND sa.status = 'no_show' AND sa.start_time >= ${since}
     `, [workspaceId, employeeId]).catch(() => ({ rows: [{ count: 0 }] }));
 
     // CATEGORY C — Raw SQL retained: COUNT( | Tables: time_entries, shifts | Verified: 2026-03-23
