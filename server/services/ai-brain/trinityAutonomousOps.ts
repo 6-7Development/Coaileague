@@ -343,8 +343,8 @@ class TrinityAutonomousOps {
           port,
           timestamp: new Date().toISOString(),
         },
-      }).catch((err) => log.warn('[trinityAutonomousOps] Fire-and-forget failed:', err));
-      
+      }).catch((err) => log.warn('[trinityAutonomousOps] Event publish failed (non-fatal):', err));
+
       return true;
     } catch (error) {
       log.error('[TrinityAutonomousOps] Port conflict resolution failed:', error);
@@ -469,7 +469,7 @@ class TrinityAutonomousOps {
         `Critical Security Threat Auto-Blocked`,
         `Trinity detected and blocked a critical attack from IP ${ip} at ${method} ${path}. Primary threat type: ${primaryThreat?.type}. The IP has been automatically blocked for 24 hours.`,
         undefined
-      ).catch((err) => log.warn('[trinityAutonomousOps] Fire-and-forget failed:', err));
+      ).catch((err) => log.warn('[trinityAutonomousOps] Escalation failed (non-fatal):', err));
     } else {
       log.warn(`[TrinityAutonomousOps] Security threat logged: ${primaryThreat?.type} from ${ip} at ${path}`);
     }

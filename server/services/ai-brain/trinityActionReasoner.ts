@@ -215,39 +215,47 @@ class TrinityActionReasonerService {
     // Fix: was .emit() (internal EventEmitter only) — now .publish() so it reaches
     // subscribers, DB persistence, and manager notifications.
     if (aiResult.laborLawFlags.length > 0) {
-      platformEventBus.publish({
-        type: 'trinity_labor_law_flag',
-        category: 'trinity',
-        title: 'Labor Law Violation Detected',
-        description: `Trinity flagged ${aiResult.laborLawFlags.length} labor law issue(s) in ${ctx.domain}: ${aiResult.laborLawFlags.slice(0, 2).join('; ')}`,
-        workspaceId: ctx.workspaceId,
-        metadata: {
-          domain: ctx.domain,
-          flags: aiResult.laborLawFlags,
-          decision: aiResult.decision,
-          severity: 'high',
-          audience: 'manager',
-        },
-      }).catch((err: any) => log.warn('[ActionReasoner] Failed to publish trinity_labor_law_flag:', err.message));
+      try {
+        await platformEventBus.publish({
+          type: 'trinity_labor_law_flag',
+          category: 'trinity',
+          title: 'Labor Law Violation Detected',
+          description: `Trinity flagged ${aiResult.laborLawFlags.length} labor law issue(s) in ${ctx.domain}: ${aiResult.laborLawFlags.slice(0, 2).join('; ')}`,
+          workspaceId: ctx.workspaceId,
+          metadata: {
+            domain: ctx.domain,
+            flags: aiResult.laborLawFlags,
+            decision: aiResult.decision,
+            severity: 'high',
+            audience: 'manager',
+          },
+        });
+      } catch (err: any) {
+        log.warn('[ActionReasoner] Failed to publish trinity_labor_law_flag (non-fatal):', err?.message);
+      }
     }
 
     // --- BROADCAST block events for visibility ---
     // Fix: was .emit() — now .publish() so blocked actions create audit trail and alert managers.
     if (aiResult.decision === 'block') {
-      platformEventBus.publish({
-        type: 'trinity_action_blocked',
-        category: 'trinity',
-        title: 'Trinity Blocked Action — Compliance',
-        description: `Trinity blocked a ${ctx.domain} action: ${aiResult.blockReason || 'policy violation'}`,
-        workspaceId: ctx.workspaceId,
-        metadata: {
-          domain: ctx.domain,
-          reason: aiResult.blockReason,
-          actionSummary: ctx.actionSummary,
-          severity: 'medium',
-          audience: 'manager',
-        },
-      }).catch((err: any) => log.warn('[ActionReasoner] Failed to publish trinity_action_blocked:', err.message));
+      try {
+        await platformEventBus.publish({
+          type: 'trinity_action_blocked',
+          category: 'trinity',
+          title: 'Trinity Blocked Action — Compliance',
+          description: `Trinity blocked a ${ctx.domain} action: ${aiResult.blockReason || 'policy violation'}`,
+          workspaceId: ctx.workspaceId,
+          metadata: {
+            domain: ctx.domain,
+            reason: aiResult.blockReason,
+            actionSummary: ctx.actionSummary,
+            severity: 'medium',
+            audience: 'manager',
+          },
+        });
+      } catch (err: any) {
+        log.warn('[ActionReasoner] Failed to publish trinity_action_blocked (non-fatal):', err?.message);
+      }
     }
 
     log.info(`[TrinityActionReasoner] ${ctx.domain} → ${aiResult.decision.toUpperCase()} (confidence: ${(aiResult.confidence * 100).toFixed(0)}%, ${Date.now() - startMs}ms, aiUsed: ${aiResult.aiUsed})`);

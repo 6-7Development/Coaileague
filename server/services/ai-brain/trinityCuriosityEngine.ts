@@ -85,10 +85,10 @@ class TrinityCuriosityEngine {
 
   /** Investigate a queued curiosity item using available data */
   private async investigateItem(workspaceId: string, row: any): Promise<CuriosityItem> {
-    // CATEGORY C — Raw SQL retained: AI brain engine status UPDATE | Tables: curiosity_queue | Verified: 2026-03-23
+    // CATEGORY C — Raw SQL retained: AI brain engine status UPDATE | Tables: curiosity_queue | Verified: 2026-04-10
     await typedPoolExec(`
-      UPDATE curiosity_queue SET status = 'investigating' WHERE id = $1
-    `, [row.id]);
+      UPDATE curiosity_queue SET status = 'investigating' WHERE id = $1 AND workspace_id = $2
+    `, [row.id, workspaceId]);
 
     let finding: string | null = null;
     let confidence: number | null = null;
@@ -119,12 +119,16 @@ class TrinityCuriosityEngine {
       .where(eq(curiosityQueue.id, row.id));
 
     if (status === 'answered' && significance !== 'low') {
-      platformEventBus.publish({
-        eventType: 'curiosity_finding',
-        title: `Trinity Discovery: ${row.question.slice(0, 60)}`,
-        description: finding || '',
-        data: { workspaceId, question: row.question, finding, confidence }
-      }).catch(() => null);
+      try {
+        await platformEventBus.publish({
+          eventType: 'curiosity_finding',
+          title: `Trinity Discovery: ${row.question.slice(0, 60)}`,
+          description: finding || '',
+          data: { workspaceId, question: row.question, finding, confidence }
+        });
+      } catch (err) {
+        log.warn('[CuriosityEngine] Failed to publish curiosity_finding (non-fatal):', (err instanceof Error ? err.message : String(err)));
+      }
     }
 
     return {
