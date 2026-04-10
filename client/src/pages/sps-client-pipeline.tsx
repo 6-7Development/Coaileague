@@ -405,7 +405,7 @@ function NewProposalSheet({ onClose }: { onClose: () => void }) {
             <div className="space-y-2">
               <Label>Legal Disclosures</Label>
               <div className="p-3 bg-muted rounded-md text-[10px] leading-relaxed text-muted-foreground border">
-                // @ts-ignore — TS migration: fix in refactoring sprint
+                {/* @ts-ignore */}
                 {LEGAL_BLOCK}
               </div>
             </div>

@@ -302,12 +302,10 @@ class TrinityACCService {
   private async isEmployeeTerminated(employeeId: string, workspaceId: string): Promise<boolean> {
     try {
       // CATEGORY C — Raw SQL retained: LIMIT | Tables: employees | Verified: 2026-03-23
-      const [row] = await typedQuery(`
+      const [row] = await (typedQuery as any)(`
         SELECT status FROM employees
         WHERE id = $1 AND workspace_id = $2 LIMIT 1
-      // @ts-expect-error — TS migration: fix in refactoring sprint
-    // @ts-ignore — TS migration: fix in refactoring sprint
-      ` as any, [employeeId, workspaceId]);
+      `, [employeeId, workspaceId]);
       return (row as any)?.status === 'terminated' || (row as any)?.status === 'inactive';
     } catch {
       return false;
@@ -327,7 +325,7 @@ class TrinityACCService {
       const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
       // CATEGORY C — Raw SQL retained: ILIKE | Tables: system_audit_logs | Verified: 2026-03-23
-      const [recentDecision] = await typedQuery(`
+      const [recentDecision] = await (typedQuery as any)(`
         SELECT action_type, metadata, created_at
         FROM system_audit_logs
         WHERE workspace_id = $1
@@ -338,8 +336,6 @@ class TrinityACCService {
           )
         ORDER BY created_at DESC
         LIMIT 1
-      // @ts-expect-error — TS migration: fix in refactoring sprint
-    // @ts-ignore — TS migration: fix in refactoring sprint
       ` as any, [
         action.workspaceId,
         yesterday.toISOString(),

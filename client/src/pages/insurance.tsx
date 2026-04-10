@@ -340,7 +340,7 @@ export default function InsurancePage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              // @ts-ignore — TS migration: fix in refactoring sprint
+              {/* @ts-ignore */}
               {policies?.map((policy: any) => (
                 <Card key={policy.id} className="relative">
                   <CardHeader className="pb-2">
@@ -384,7 +384,7 @@ export default function InsurancePage() {
                   </CardContent>
                 </Card>
               ))}
-              // @ts-ignore — TS migration: fix in refactoring sprint
+              {/* @ts-ignore */}
               {policies?.length === 0 && (
                 <div className="col-span-2 text-center py-12 text-muted-foreground border-2 border-dashed rounded-lg">
                   No insurance policies found. Add your first policy to track coverage.
@@ -416,7 +416,7 @@ export default function InsurancePage() {
                     <div className="text-sm text-muted-foreground">Compliance Score</div>
                   </div>
                   <div className="space-y-3">
-                    // @ts-ignore — TS migration: fix in refactoring sprint
+                    {/* @ts-ignore */}
                     {compliance?.requiredTypes.map((type: string) => {
                       // @ts-expect-error — TS migration: fix in refactoring sprint
                       const isCovered = compliance.coveredTypes.includes(type);

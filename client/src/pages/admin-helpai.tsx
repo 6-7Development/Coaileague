@@ -357,10 +357,10 @@ export default function AdminHelpAI() {
               <Activity className="h-4 w-4 mr-1" />
               HelpAI Activity
               // @ts-ignore — TS migration: fix in refactoring sprint
-              {activityData?.summary?.pendingAlerts > 0 && (
+              {(activityData?.summary?.pendingAlerts ?? 0) > 0 && (
                 <Badge variant="destructive" className="ml-2 text-xs">
                   // @ts-ignore — TS migration: fix in refactoring sprint
-                  {activityData.summary.pendingAlerts}
+                  {activityData?.summary?.pendingAlerts}
                 </Badge>
               )}
             </TabsTrigger>
@@ -813,10 +813,10 @@ export default function AdminHelpAI() {
                         <ArrowRight className="h-4 w-4 text-muted-foreground" />
                         Command Bus
                         // @ts-ignore — TS migration: fix in refactoring sprint
-                        {activityData?.summary?.commandBusPending > 0 && (
+                        {(activityData?.summary?.commandBusPending ?? 0) > 0 && (
                           <Badge variant="destructive" className="ml-auto text-xs">
                             // @ts-ignore — TS migration: fix in refactoring sprint
-                            {activityData.summary.commandBusPending} pending
+                            {activityData?.summary?.commandBusPending} pending
                           </Badge>
                         )}
                       </CardTitle>

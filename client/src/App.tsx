@@ -1311,7 +1311,7 @@ function AppContent() {
               <Route path="/templates/:templateId" component={TemplatesPage} />
               <Route path="/contact" component={Contact} />
               <Route path="/support" component={Support} />
-              // @ts-ignore — TS migration: fix in refactoring sprint
+              {/* @ts-ignore */}
               <Route path="/client-status-lookup" component={ClientStatusLookup} />
               <Route path="/features-showcase" component={FeaturesShowcase} />
               <Route path="/universal-marketing" component={UniversalMarketing} />

@@ -1305,7 +1305,7 @@ export default function Invoices() {
                         <FormItem>
                           <FormLabel>Due Date *</FormLabel>
                           <FormControl>
-                            // @ts-ignore — TS migration: fix in refactoring sprint
+                            {/* @ts-ignore */}
                             <Input type="date" {...field} aria-required="true" />
                           </FormControl>
                           <FormMessage />
@@ -1333,7 +1333,7 @@ export default function Invoices() {
                       <FormItem>
                         <FormLabel>Tax Rate (%)</FormLabel>
                         <FormControl>
-                          // @ts-ignore — TS migration: fix in refactoring sprint
+                          {/* @ts-ignore */}
                           <Input type="number" step="0.1" {...field} />
                         </FormControl>
                         <FormMessage />
@@ -1416,7 +1416,7 @@ export default function Invoices() {
                         <FormItem>
                           <FormLabel>Due Date *</FormLabel>
                           <FormControl>
-                            // @ts-ignore — TS migration: fix in refactoring sprint
+                            {/* @ts-ignore */}
                             <Input type="date" {...field} data-testid="input-create-duedate" />
                           </FormControl>
                           <FormMessage />
@@ -1444,7 +1444,7 @@ export default function Invoices() {
                       <FormItem>
                         <FormLabel>Tax Rate (%)</FormLabel>
                         <FormControl>
-                          // @ts-ignore — TS migration: fix in refactoring sprint
+                          {/* @ts-ignore */}
                           <Input type="number" step="0.1" {...field} data-testid="input-create-tax" />
                         </FormControl>
                         <FormMessage />
@@ -1794,7 +1794,7 @@ export default function Invoices() {
         </Tabs>
 
         {/* Invoice Detail Dialog */}
-        // @ts-ignore — TS migration: fix in refactoring sprint
+        {/* @ts-ignore */}
         <ResponsiveDialog 
           open={isDetailDialogOpen} 
           onOpenChange={setIsDetailDialogOpen}

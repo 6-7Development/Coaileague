@@ -143,9 +143,9 @@ function DeactivatedClientsView({ workspaceId }: { workspaceId?: string }) {
                     {client.collectionsStatus === 'active' ? 'In Collections' : client.collectionsStatus === 'written_off' ? 'Written Off' : client.collectionsStatus === 'resolved' ? 'Resolved' : client.collectionsStatus}
                   </Badge>
                 )}
-                // @ts-ignore — TS migration: fix in refactoring sprint
+                {/* @ts-ignore */}
                 <AlertDialog>
-                  // @ts-ignore — TS migration: fix in refactoring sprint
+                  {/* @ts-ignore */}
                   <AlertDialogTrigger asChild>
                     <Button
                       size="sm"
@@ -153,42 +153,42 @@ function DeactivatedClientsView({ workspaceId }: { workspaceId?: string }) {
                       disabled={isAnyClientMutationPending}
                       data-testid={`button-reactivate-${client.id}`}
                     >
-                      // @ts-ignore — TS migration: fix in refactoring sprint
+                      {/* @ts-ignore */}
                       {(reactivateMutation as any).isPending && reactivatingId === (client as any).id ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
                       {reactivateMutation.isPending && reactivatingId === client.id ? 'Reactivating...' : 'Reactivate'}
                     </Button>
-                  // @ts-ignore — TS migration: fix in refactoring sprint
+                  {/* @ts-ignore */}
                   </AlertDialogTrigger>
-                  // @ts-ignore — TS migration: fix in refactoring sprint
+                  {/* @ts-ignore */}
                   <AlertDialogContent>
-                    // @ts-ignore — TS migration: fix in refactoring sprint
+                    {/* @ts-ignore */}
                     <AlertDialogHeader>
-                      // @ts-ignore — TS migration: fix in refactoring sprint
+                      {/* @ts-ignore */}
                       <AlertDialogTitle>Reactivate Client?</AlertDialogTitle>
-                      // @ts-ignore — TS migration: fix in refactoring sprint
+                      {/* @ts-ignore */}
                       <AlertDialogDescription>
                         Are you sure you want to reactivate {client.companyName || `${client.firstName || ''} ${client.lastName || ''}`.trim()}? They will be restored to active status.
-                      // @ts-ignore — TS migration: fix in refactoring sprint
+                      {/* @ts-ignore */}
                       </AlertDialogDescription>
-                    // @ts-ignore — TS migration: fix in refactoring sprint
+                    {/* @ts-ignore */}
                     </AlertDialogHeader>
-                    // @ts-ignore — TS migration: fix in refactoring sprint
+                    {/* @ts-ignore */}
                     <AlertDialogFooter>
-                      // @ts-ignore — TS migration: fix in refactoring sprint
+                      {/* @ts-ignore */}
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      // @ts-ignore — TS migration: fix in refactoring sprint
+                      {/* @ts-ignore */}
                       <AlertDialogAction onClick={() => {
                         setReactivatingId(client.id);
                         reactivateMutation.mutate(client.id);
                       }}>
                         Reactivate
-                      // @ts-ignore — TS migration: fix in refactoring sprint
+                      {/* @ts-ignore */}
                       </AlertDialogAction>
-                    // @ts-ignore — TS migration: fix in refactoring sprint
+                    {/* @ts-ignore */}
                     </AlertDialogFooter>
-                  // @ts-ignore — TS migration: fix in refactoring sprint
+                  {/* @ts-ignore */}
                   </AlertDialogContent>
-                // @ts-ignore — TS migration: fix in refactoring sprint
+                {/* @ts-ignore */}
                 </AlertDialog>
               </div>
             </div>
@@ -1048,7 +1048,7 @@ export default function Clients() {
                   disabled={isAnyClientMutationPending}
                   data-testid="button-save-client"
                 >
-                  // @ts-ignore — TS migration: fix in refactoring sprint
+                  {/* @ts-ignore */}
                   {(createMutation as any).isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
                   {createMutation.isPending ? "Saving..." : `Save ${qb.entity('client')}`}
                 </Button>

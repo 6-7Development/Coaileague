@@ -673,8 +673,7 @@ function CreateDisciplinaryDialog({ open, onClose }: { open: boolean; onClose: (
           <DialogTitle>Issue Disciplinary Record</DialogTitle>
         </DialogHeader>
         <Form {...form}>
-          // @ts-ignore — TS migration: fix in refactoring sprint
-          <form onSubmit={form.handleSubmit((data) => mutation.mutate(data))} className="space-y-4">
+          <form onSubmit={form.handleSubmit((data) => mutation.mutate(data as any))} className="space-y-4">
             <FormField
               control={form.control}
               name="employeeId"
@@ -845,7 +844,7 @@ function CreateReviewDialog({ open, onClose }: { open: boolean; onClose: () => v
           <DialogTitle>Submit Performance Review</DialogTitle>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit((data) => mutation.mutate(data))} className="space-y-4">
+          <form onSubmit={form.handleSubmit((data) => mutation.mutate(data as any))} className="space-y-4">
             <FormField
               control={form.control}
               name="employeeId"

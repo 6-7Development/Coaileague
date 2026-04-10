@@ -480,10 +480,8 @@ class OnboardingStateMachine {
   private async loadState(workspaceId: string): Promise<OnboardingState | null> {
     try {
       // CATEGORY C — Raw SQL retained: Orchestration state loader | Tables: workspace_onboarding_states | Verified: 2026-03-23
-      const result = await typedQuery(`
+      const result = await (typedQuery as any)(`
         SELECT state_data FROM workspace_onboarding_states WHERE workspace_id = $1
-      // @ts-expect-error — TS migration: fix in refactoring sprint
-    // @ts-ignore — TS migration: fix in refactoring sprint
       `, [workspaceId]);
       
       if (result && (result as any[]).length > 0) {

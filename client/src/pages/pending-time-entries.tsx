@@ -458,7 +458,7 @@ export default function PendingTimeEntries() {
                               {entry.client ? (
                                 <div className="flex items-center gap-2">
                                   <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
-                                  // @ts-ignore — TS migration: fix in refactoring sprint
+                                  {/* @ts-ignore */}
                                   <span>{entry.client.companyName || `${entry.client.firstName || ''} ${entry.client.lastName || ''}`.trim() || 'Unknown Client'}</span>
                                 </div>
                               ) : (
@@ -655,7 +655,7 @@ export default function PendingTimeEntries() {
                 </p>
                 {selectedEntry.client && (
                   <p className="text-sm">
-                    // @ts-ignore — TS migration: fix in refactoring sprint
+                    {/* @ts-ignore */}
                     Client: {selectedEntry.client.companyName || `${selectedEntry.client.firstName || ''} ${selectedEntry.client.lastName || ''}`.trim() || 'Unknown Client'}
                   </p>
                 )}

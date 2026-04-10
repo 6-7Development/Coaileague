@@ -49,7 +49,7 @@ export function HelpDropdown() {
             <Book className="mr-2 h-4 w-4" />
             <span>Documentation</span>
           </DropdownMenuItem>
-          // @ts-ignore — TS migration: fix in refactoring sprint
+          {/* @ts-ignore */}
           <DropdownMenuItem onClick={() => window.location.href = navConfig.app.chat}>
             <MessageSquare className="mr-2 h-4 w-4" />
             <span>Live Chat Support</span>

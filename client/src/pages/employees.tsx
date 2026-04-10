@@ -1233,7 +1233,7 @@ export default function Employees() {
                   </SortableHeader>
                 </div>
                 <div className="flex items-center">
-                  // @ts-ignore — TS migration: fix in refactoring sprint
+                  {/* @ts-ignore */}
                   <SortableHeader column="startDate" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort}>
                     Hire Date
                   </SortableHeader>
@@ -1357,7 +1357,7 @@ export default function Employees() {
                         data-testid="button-bulk-export"
                         className="h-8"
                       >
-                        // @ts-ignore — TS migration: fix in refactoring sprint
+                        {/* @ts-ignore */}
                         <Download className="mr-2 h-3.5 w-3.5" />
                         Export
                       </Button>
@@ -1368,7 +1368,7 @@ export default function Employees() {
                         data-testid="button-bulk-deselect"
                         className="h-8"
                       >
-                        // @ts-ignore — TS migration: fix in refactoring sprint
+                        {/* @ts-ignore */}
                         <X className="mr-2 h-3.5 w-3.5" />
                         Deselect
                       </Button>

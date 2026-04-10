@@ -307,7 +307,7 @@ export default function CompanyReports() {
           // @ts-expect-error — TS migration: fix in refactoring sprint
           ) : reportData?.details ? (
             <div className="space-y-4">
-              // @ts-ignore — TS migration: fix in refactoring sprint
+              {/* @ts-ignore */}
               {reportData.details.map((item: any, index: number) => (
                 <div key={index} className="flex items-center justify-between gap-2 p-4 border rounded-lg">
                   <div>

@@ -249,14 +249,14 @@ export default function TrinityMemoryPage() {
                 </Card>
 
                 // @ts-ignore — TS migration: fix in refactoring sprint
-                {(knowledge as any).topCategories && knowledge.topCategories.length > 0 && (
+                {(knowledge as any).topCategories && (knowledge as any).topCategories.length > 0 && (
                   <Card>
                     <CardHeader className="pb-3">
                       <CardTitle className="text-base">Top Categories</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-2">
                       // @ts-ignore — TS migration: fix in refactoring sprint
-                      {knowledge.topCategories.map((cat: any, idx: number) => (
+                      {(knowledge as any).topCategories.map((cat: any, idx: number) => (
                         <div key={idx} className="flex items-center justify-between gap-3" data-testid={`row-category-${idx}`}>
                           <span className="text-sm truncate min-w-0">{cat.name}</span>
                           <div className="flex items-center gap-2 shrink-0">

@@ -190,7 +190,7 @@ export default function WellnessPage() {
             Overdue Alerts
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            // @ts-ignore — TS migration: fix in refactoring sprint
+            {/* @ts-ignore */}
             {overdue?.map((session: any) => (
               <Card key={session.id} className="border-amber-200 bg-amber-50/30 dark:border-amber-900/30 dark:bg-amber-950/20">
                 <CardContent className="pt-6">
@@ -330,7 +330,7 @@ export default function WellnessPage() {
             </div>
             <div className="space-y-1">
               <Label className="text-muted-foreground">Supervisor Notifications</Label>
-              // @ts-ignore — TS migration: fix in refactoring sprint
+              {/* @ts-ignore */}
               <div className="text-lg font-medium" data-testid="text-config-notify">{config?.supervisor_notification_enabled !== false ? "Enabled" : "Disabled"}</div>
             </div>
             <div className="space-y-1">

@@ -789,7 +789,7 @@ function ProviderDirectoryTab() {
       ))}
       {providers.length === 0 && (
         <div className="col-span-full">
-          // @ts-ignore — TS migration: fix in refactoring sprint
+          {/* @ts-ignore */}
           <DsEmptyState icon={Users} title="No providers registered" description="Approved training providers will appear here." />
         </div>
       )}
@@ -1034,7 +1034,7 @@ export default function TrainingPage() {
   if (!module?.enabled) {
     return (
       <DsPageWrapper>
-        // @ts-ignore — TS migration: fix in refactoring sprint
+        {/* @ts-ignore */}
         <DsEmptyState icon={Lock} title="Module Disabled" description="The training management module is not enabled for your organization." />
       </DsPageWrapper>
     );
@@ -1122,7 +1122,7 @@ export default function TrainingPage() {
                   </div>
                   <div className="flex gap-2">
                      <Input placeholder="Search..." className="w-64" data-testid="input-search-sessions" />
-                     // @ts-ignore — TS migration: fix in refactoring sprint
+                     {/* @ts-ignore */}
                      <DsButton variant="outline" size="icon">
                        <Filter className="h-4 w-4" />
                      </DsButton>

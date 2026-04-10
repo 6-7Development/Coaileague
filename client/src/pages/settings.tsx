@@ -677,7 +677,7 @@ function WorkspaceSettingsForm({ workspace }: { workspace: Workspace }) {
                   </>
                 ) : (
                   <>
-                    // @ts-ignore — TS migration: fix in refactoring sprint
+                    {/* @ts-ignore */}
                     <Save className="h-4 w-4 mr-2" />
                     Save Workspace Changes
                   </>

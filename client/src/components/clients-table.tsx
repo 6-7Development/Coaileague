@@ -847,7 +847,7 @@ export function ClientsTable({ workspaceId }: ClientsTableProps) {
                 </div>
               )}
               <div className="grid gap-4">
-                // @ts-ignore — TS migration: fix in refactoring sprint
+                {/* @ts-ignore */}
                 {group.items.map(client => (
                   <MobileClientCard
                     key={client.id}
@@ -923,7 +923,7 @@ export function ClientsTable({ workspaceId }: ClientsTableProps) {
                         </TableCell>
                       </TableRow>
                     )}
-                    // @ts-ignore — TS migration: fix in refactoring sprint
+                    {/* @ts-ignore */}
                     {group.items.map(client => (
                   <TableRow key={client.id} data-testid={`row-client-${client.id}`}>
                     <TableCell className="font-medium" data-testid={`text-client-name-${client.id}`}>
@@ -1320,7 +1320,7 @@ export function ClientsTable({ workspaceId }: ClientsTableProps) {
                 className="h-8 w-8 -mr-2"
                 onClick={handleClose}
               >
-                // @ts-ignore — TS migration: fix in refactoring sprint
+                {/* @ts-ignore */}
                 <X className="h-4 w-4" />
               </Button>
             </div>

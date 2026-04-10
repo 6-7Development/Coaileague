@@ -1425,7 +1425,7 @@ export default function RMSHub() {
       {activeTab !== "incidents" && activeTab !== "visitors" && (
                 <TabsContent value={activeTab} className="m-0">
                   <DsSectionCard title={tabs.find(t => t.id === activeTab)?.label}>
-                    // @ts-ignore — TS migration: fix in refactoring sprint
+                    {/* @ts-ignore */}
                     <DsEmptyState 
                       icon={FileText} 
                       title={`${tabs.find(t => t.id === activeTab)?.label} Module`}
@@ -1622,7 +1622,7 @@ export default function RMSHub() {
         </UniversalModalContent>
       </UniversalModal>
 
-      // @ts-ignore — TS migration: fix in refactoring sprint
+      {/* @ts-ignore */}
       <QuickIncidentReportFAB workspaceId={workspaceId} />
     </DsPageWrapper>
   );

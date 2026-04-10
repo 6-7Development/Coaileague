@@ -293,17 +293,17 @@ export default function RootAdminDashboard() {
           data-testid="button-notifications-desktop"
         >
           <Bell className="h-5 w-5" />
-          // @ts-ignore — TS migration: fix in refactoring sprint
+          {/* @ts-ignore */}
           {personalData && (personalData.assignedTickets + (personalData as any).newSupportTickets) > 0 && (
             <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 text-[10px] font-bold flex items-center justify-center text-white">
-              // @ts-ignore — TS migration: fix in refactoring sprint
+              {/* @ts-ignore */}
               {personalData.assignedTickets + (personalData as any).newSupportTickets}
             </span>
           )}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-80">
-        // @ts-ignore — TS migration: fix in refactoring sprint
+        {/* @ts-ignore */}
         {personalData && personalData.assignedTickets > 0 && (
           <DropdownMenuItem>
             <div className="flex flex-col gap-1">
@@ -313,7 +313,7 @@ export default function RootAdminDashboard() {
             </div>
           </DropdownMenuItem>
         )}
-        // @ts-ignore — TS migration: fix in refactoring sprint
+        {/* @ts-ignore */}
         {personalData && personalData.newSupportTickets > 0 && (
           <DropdownMenuItem>
             <div className="flex flex-col gap-1">
@@ -323,7 +323,7 @@ export default function RootAdminDashboard() {
             </div>
           </DropdownMenuItem>
         )}
-        // @ts-ignore — TS migration: fix in refactoring sprint
+        {/* @ts-ignore */}
         {(!personalData || (personalData.assignedTickets === 0 && personalData.newSupportTickets === 0)) && (
           <DropdownMenuItem>
             <p className="text-sm text-muted-foreground">No new notifications</p>
@@ -1007,7 +1007,7 @@ export default function RootAdminDashboard() {
                       </span>
                     </div>
                   ))}
-                  // @ts-ignore — TS migration: fix in refactoring sprint
+                  {/* @ts-ignore */}
                   {(!(stats as any)?.recentActivity || stats.recentActivity.length === 0) && (
                     <div className="text-center text-muted-foreground py-8">
                       <Activity className="h-8 w-8 mx-auto mb-2 opacity-50" />
