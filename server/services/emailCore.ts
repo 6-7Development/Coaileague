@@ -295,6 +295,10 @@ export interface CanSpamEmailOptions {
   workspaceId?: string;
   /** Skip unsubscribe check for transactional emails */
   skipUnsubscribeCheck?: boolean;
+  /** Reply-To address (e.g. support@coaileague.com) */
+  replyTo?: string;
+  /** BCC address(es) for audit copies */
+  bcc?: string | string[];
   /**
    * Resend tags for delivery-webhook tracking.
    * Each tag becomes a key/value pair on the Resend message so the
@@ -314,7 +318,7 @@ export interface CanSpamEmailOptions {
 export async function sendCanSpamCompliantEmail(
   options: CanSpamEmailOptions
 ): Promise<{ success: boolean; data?: any; error?: any; skipped?: boolean; reason?: string }> {
-  const { to, subject, html, emailType, workspaceId, skipUnsubscribeCheck, tags } = options;
+  const { to, subject, html, emailType, workspaceId, skipUnsubscribeCheck, tags, replyTo, bcc } = options;
   const isTransactional = isTransactionalEmail(emailType);
 
   // Email format validation
@@ -390,6 +394,8 @@ export async function sendCanSpamCompliantEmail(
       subject,
       html: finalHtml,
       text: plainText,
+      reply_to: replyTo,
+      bcc: bcc ? (Array.isArray(bcc) ? bcc : [bcc]) : undefined,
       headers: Object.keys(headers).length > 0 ? headers : undefined,
       tags: tags && tags.length > 0 ? tags : undefined,
     });

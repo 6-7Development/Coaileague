@@ -15,7 +15,7 @@ import { eq } from "drizzle-orm";
 // Reuse existing Resend client from email.ts (no duplication!)
 // CAN-SPAM: Use sendCanSpamCompliantEmail for all outgoing emails
 import { getUncachableResendClient, isResendConfigured, sendCanSpamCompliantEmail, isEmailUnsubscribed } from "./emailCore";
-import { FEATURES, PLATFORM } from "@shared/platformConfig";
+import { EMAIL, FEATURES, PLATFORM } from "@shared/platformConfig";
 import { automationOrchestration } from "./orchestration/automationOrchestration";
 import { getAppBaseUrl } from "../utils/getAppBaseUrl";
 import { isProduction } from "../lib/isProduction";
@@ -919,7 +919,9 @@ export class EmailService {
     html: string,
     emailType: string,
     workspaceId?: string,
-    userId?: string
+    userId?: string,
+    replyTo?: string,
+    bcc?: string | string[]
   ): Promise<EmailResult> {
     const isSimulation = !isProduction() && (FEATURES.emailSimulationMode || process.env.EMAIL_SIMULATION_MODE === 'true');
 
@@ -975,6 +977,8 @@ export class EmailService {
           html,
           emailType,
           workspaceId,
+          replyTo,
+          bcc,
         });
 
         if (sendResult.skipped) {
@@ -1072,7 +1076,9 @@ export class EmailService {
       template.html,
       'password_reset',
       undefined,
-      userId
+      userId,
+      EMAIL.senders.support,
+      EMAIL.senders.support
     );
   }
 
