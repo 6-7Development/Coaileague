@@ -199,9 +199,9 @@ class TrinityTemporalConsciousnessEngine {
 
     // CATEGORY C — Raw SQL retained: COUNT( | Tables: shifts | Verified: 2026-03-23
     const { rows: calloffs } = await typedPool(`
-      SELECT COUNT(*) as count FROM shifts sa
-      WHERE sa.workspace_id = $1 AND sa.status = 'no_show'
-        AND sa.start_time >= NOW() - INTERVAL '30 days'
+      SELECT COUNT(*) as count FROM shifts
+      WHERE workspace_id = $1 AND status = 'no_show'
+        AND start_time >= NOW() - INTERVAL '30 days'
     `, [workspaceId]).catch(() => ({ rows: [] }));
 
     // @ts-expect-error — TS migration: fix in refactoring sprint
@@ -243,9 +243,9 @@ class TrinityTemporalConsciousnessEngine {
 
     // CATEGORY C — Raw SQL retained: COUNT( | Tables: shifts | Verified: 2026-03-23
     const { rows: calloffRows } = await typedPool(`
-      SELECT COUNT(*) as count FROM shifts sa
-      WHERE sa.workspace_id = $1 AND sa.employee_id = $2
-        AND sa.status = 'no_show' AND sa.start_time >= ${since}
+      SELECT COUNT(*) as count FROM shifts
+      WHERE workspace_id = $1 AND employee_id = $2
+        AND status = 'no_show' AND start_time >= ${since}
     `, [workspaceId, employeeId]).catch(() => ({ rows: [{ count: 0 }] }));
 
     // CATEGORY C — Raw SQL retained: COUNT( | Tables: time_entries, shifts | Verified: 2026-03-23

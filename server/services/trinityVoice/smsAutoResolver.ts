@@ -196,10 +196,7 @@ async function getEmployeeContext(employeeId: string, workspaceId: string): Prom
         SELECT s.start_time, s.end_time, s.location, s.status
         FROM shifts s
         WHERE s.workspace_id = $1
-          AND EXISTS (
-            SELECT 1 FROM shifts sa
-            WHERE sa.id = s.id AND sa.employee_id = $2
-          )
+          AND s.employee_id = $2
           AND s.start_time >= NOW() - INTERVAL '1 day'
           AND s.start_time <= NOW() + INTERVAL '14 days'
         ORDER BY s.start_time ASC

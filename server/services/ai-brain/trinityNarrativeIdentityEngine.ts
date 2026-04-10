@@ -128,9 +128,9 @@ class TrinityNarrativeIdentityEngine {
       // Converted to Drizzle ORM: INTERVAL → sql fragment
       // CATEGORY C — Raw SQL retained: COUNT( | Tables: shifts | Verified: 2026-03-23
       db.execute(sql`
-        SELECT COUNT(*) as count FROM shifts sa
-        WHERE sa.workspace_id = ${workspaceId} AND sa.status = 'no_show'
-          AND sa.start_time >= NOW() - INTERVAL '30 days'
+        SELECT COUNT(*) as count FROM shifts
+        WHERE workspace_id = ${workspaceId} AND status = 'no_show'
+          AND start_time >= NOW() - INTERVAL '30 days'
       `).catch(() => ({ rows: [{ count: 0 }] })),
       // Converted to Drizzle ORM: INTERVAL → sql fragment
       // CATEGORY C — Raw SQL retained: FILTER (WHERE | Tables: milestone_tracker | Verified: 2026-03-23

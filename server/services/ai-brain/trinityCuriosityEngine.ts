@@ -264,10 +264,7 @@ class TrinityCuriosityEngine {
       SELECT COUNT(*) as gaps FROM shifts s
       WHERE s.workspace_id = ${workspaceId}
         AND s.start_time >= NOW() - INTERVAL '30 days'
-        AND NOT EXISTS (
-          SELECT 1 FROM shifts sa
-          WHERE sa.id = s.id AND sa.status NOT IN ('no_show', 'declined')
-        )
+        AND s.status IN ('no_show', 'calloff', 'cancelled')
     `).catch(() => ({ rows: [{ gaps: 0 }] }));
 
     const gaps = parseInt((rows as any[])[0]?.gaps || '0', 10);

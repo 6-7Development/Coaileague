@@ -65,7 +65,7 @@ export const ptoStatusEnum = pgEnum('pto_status', ['pending', 'approved', 'denie
 export const ptoTypeEnum = pgEnum('pto_type', ['vacation', 'sick', 'personal', 'bereavement', 'unpaid']);
 export const terminationTypeEnum = pgEnum('termination_type', ['voluntary', 'involuntary', 'retirement', 'layoff', 'end_of_contract']);
 export const terminationStatusEnum = pgEnum('termination_status', ['pending', 'in_progress', 'completed']);
-export const shiftStatusEnum = pgEnum('shift_status', ['draft', 'published', 'scheduled', 'in_progress', 'completed', 'cancelled', 'confirmed', 'pending', 'approved', 'auto_approved']);
+export const shiftStatusEnum = pgEnum('shift_status', ['draft', 'published', 'scheduled', 'in_progress', 'completed', 'cancelled', 'confirmed', 'pending', 'approved', 'auto_approved', 'no_show', 'calloff']);
 export const shiftCategoryEnum = pgEnum('shift_category', [
   'general',        // Default - uses client/employee color
   'tech_support',   // Royal blue (#3b82f6)
