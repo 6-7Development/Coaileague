@@ -27,7 +27,7 @@ import { requireAuth } from "../auth";
 import { broadcastService } from "../services/broadcastService";
 import { createLogger } from '../lib/logger';
 import { PLATFORM_WORKSPACE_ID } from '../services/billing/billingConstants';
-import { getStripe } from '../services/billing/stripeClient';
+import { getStripe, isStripeConfigured } from '../services/billing/stripeClient';
 const log = createLogger('PlatformRoutes');
 
 // All valid platform roles in descending authority order
@@ -370,6 +370,10 @@ router.patch('/master-keys/organizations/:id', async (req: AuthenticatedRequest,
       } else {
         // SECURITY: Attempt Stripe sync with proper error handling
         try {
+          // Guard: Stripe must be configured before attempting API calls
+          if (!isStripeConfigured()) {
+            log.warn('[Stripe] Not configured — skipping subscription sync for workspace:', id);
+          } else {
           const { TIER_PRICING } = await import('../services/billing/subscriptionManager');
 
 
@@ -425,6 +429,7 @@ router.patch('/master-keys/organizations/:id', async (req: AuthenticatedRequest,
             }],
             proration_behavior: 'create_prorations', // Pro-rate the change
           });
+          } // end isStripeConfigured guard
 
         } catch (stripeError: unknown) {
           log.error('[Stripe] Failed to update subscription:', stripeError);
