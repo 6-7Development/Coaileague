@@ -21,12 +21,15 @@ import { eq, and } from 'drizzle-orm';
 import { auditLogger } from '../audit-logger';
 import { providerPreferenceService } from './providerPreferenceService';
 import { getAppBaseUrl } from '../../utils/getAppBaseUrl';
+import { getStripe, isStripeConfigured } from './stripeClient';
 
 const log = createLogger('stripeConnectPayoutService');
-// Initialize Stripe with API key
-const stripe = process.env.STRIPE_SECRET_KEY 
-  ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2025-01-27.acacia' as any, timeout: 10000, maxNetworkRetries: 2 })
-  : null;
+// Lazy proxy: avoids module-load crash if STRIPE_SECRET_KEY is missing (CLAUDE.md §F).
+const stripe = new Proxy({} as Stripe, {
+  get(_t, prop) {
+    return (getStripe() as any)[prop];
+  },
+});
 
 export interface ConnectAccountStatus {
   hasAccount: boolean;
@@ -49,7 +52,7 @@ class StripeConnectPayoutService {
    * Check if Stripe Connect is available
    */
   isAvailable(): boolean {
-    return !!stripe;
+    return isStripeConfigured();
   }
 
   /**
@@ -61,10 +64,10 @@ class StripeConnectPayoutService {
     employeeEmail: string,
     employeeName: string
   ): Promise<ConnectAccountStatus> {
-    if (!stripe) {
-      return { 
-        hasAccount: false, 
-        payoutsEnabled: false, 
+    if (!isStripeConfigured()) {
+      return {
+        hasAccount: false,
+        payoutsEnabled: false,
         requiresOnboarding: true,
         error: 'Stripe not configured'
       } as ConnectAccountStatus & { error: string };
@@ -188,7 +191,7 @@ class StripeConnectPayoutService {
    * Create onboarding link for employee to complete account setup
    */
   private async createOnboardingLink(accountId: string, workspaceId: string): Promise<string> {
-    if (!stripe) throw new Error('Stripe not configured');
+    if (!isStripeConfigured()) throw new Error('Stripe not configured');
 
     const baseUrl = getAppBaseUrl();
 
@@ -213,7 +216,7 @@ class StripeConnectPayoutService {
     payrollEntryId: string,
     workspaceId: string
   ): Promise<PayoutResult> {
-    if (!stripe) {
+    if (!isStripeConfigured()) {
       return { success: false, amount: 0, currency: 'usd', error: 'Stripe not configured' };
     }
 
@@ -307,21 +310,23 @@ class StripeConnectPayoutService {
       } catch (err: any) {
         log.error('[StripeConnect] Could not update payroll entry disbursement fields:', err);
         // Notify org owner — payout succeeded but tracking record failed (reconciliation risk)
-        // @ts-expect-error — TS migration: fix in refactoring sprint
-        import('../notificationService').then(({ notificationService }) =>
-          import('@shared/schema').then(({ workspaces }) =>
-            import('drizzle-orm').then(({ eq: eqOp }) =>
-              db.select({ ownerId: workspaces.ownerId }).from(workspaces).where(eqOp(workspaces.id, workspaceId)).limit(1)
-                .then(([ws]) => ws?.ownerId && notificationService.createNotification({
-                  userId: ws.ownerId, workspaceId,
-                  type: 'payroll_tracking_error',
-                  title: 'Payroll Tracking Error',
-                  message: `Stripe payout ${transfer.id} succeeded for entry ${payrollEntryId}, but the internal tracking record failed to update. Please verify disbursement in your payroll records. Error: ${(err instanceof Error ? err.message : String(err))}`,
-                  priority: 'high',
-                }))
-            )
-          )
-        ).catch((err) => log.warn('[stripeConnectPayoutService] Fire-and-forget failed:', err));
+        try {
+          const { notificationService } = await import('../notificationService');
+          const { workspaces: wsTable } = await import('@shared/schema');
+          const { eq: eqOp } = await import('drizzle-orm');
+          const [ws] = await db.select({ ownerId: wsTable.ownerId }).from(wsTable).where(eqOp(wsTable.id, workspaceId)).limit(1);
+          if (ws?.ownerId) {
+            await notificationService.createNotification({
+              userId: ws.ownerId, workspaceId,
+              type: 'payroll_tracking_error',
+              title: 'Payroll Tracking Error',
+              message: `Stripe payout ${transfer.id} succeeded for entry ${payrollEntryId}, but the internal tracking record failed to update. Please verify disbursement in your payroll records. Error: ${(err instanceof Error ? err.message : String(err))}`,
+              priority: 'high',
+            });
+          }
+        } catch (notifyErr: any) {
+          log.warn('[StripeConnect] Notification for tracking error also failed (non-fatal):', notifyErr?.message);
+        }
       }
 
       try {
@@ -342,21 +347,23 @@ class StripeConnectPayoutService {
       } catch (err: any) {
         log.error('[StripeConnect] Could not insert payroll payout record:', err);
         // Notify org owner — payout succeeded but payout log insert failed (audit gap)
-        // @ts-expect-error — TS migration: fix in refactoring sprint
-        import('../notificationService').then(({ notificationService }) =>
-          import('@shared/schema').then(({ workspaces }) =>
-            import('drizzle-orm').then(({ eq: eqOp }) =>
-              db.select({ ownerId: workspaces.ownerId }).from(workspaces).where(eqOp(workspaces.id, workspaceId)).limit(1)
-                .then(([ws]) => ws?.ownerId && notificationService.createNotification({
-                  userId: ws.ownerId, workspaceId,
-                  type: 'payroll_tracking_error',
-                  title: 'Payroll Payout Log Error',
-                  message: `Stripe payout ${transfer.id} succeeded for entry ${payrollEntryId}, but the payout audit log failed to record. Manual reconciliation may be needed. Error: ${(err instanceof Error ? err.message : String(err))}`,
-                  priority: 'high',
-                }))
-            )
-          )
-        ).catch((err) => log.warn('[stripeConnectPayoutService] Fire-and-forget failed:', err));
+        try {
+          const { notificationService } = await import('../notificationService');
+          const { workspaces: wsTable } = await import('@shared/schema');
+          const { eq: eqOp } = await import('drizzle-orm');
+          const [ws] = await db.select({ ownerId: wsTable.ownerId }).from(wsTable).where(eqOp(wsTable.id, workspaceId)).limit(1);
+          if (ws?.ownerId) {
+            await notificationService.createNotification({
+              userId: ws.ownerId, workspaceId,
+              type: 'payroll_tracking_error',
+              title: 'Payroll Payout Log Error',
+              message: `Stripe payout ${transfer.id} succeeded for entry ${payrollEntryId}, but the payout audit log failed to record. Manual reconciliation may be needed. Error: ${(err instanceof Error ? err.message : String(err))}`,
+              priority: 'high',
+            });
+          }
+        } catch (notifyErr: any) {
+          log.warn('[StripeConnect] Notification for payout log error also failed (non-fatal):', notifyErr?.message);
+        }
       }
 
       try {
@@ -369,11 +376,29 @@ class StripeConnectPayoutService {
         });
         if (feeResult.success && feeResult.amountCents > 0) {
           log.info(`[StripeConnect] Payout fee charged: $${(feeResult.amountCents / 100).toFixed(2)} for entry ${payrollEntryId}`);
-          // Platform revenue tracking: write to platform_revenue table (non-blocking)
-          import('../finance/middlewareFeeService').then(({ recordMiddlewareFeeCharge }) =>
-            recordMiddlewareFeeCharge(workspaceId, 'payout_processing', feeResult.amountCents, payrollEntryId)
-              .catch((err: Error) => log.warn('[StripeConnect] Payout revenue record failed (non-blocking):', err.message))
-          ).catch((err: Error) => log.warn('[StripeConnect] Payout revenue import failed:', err.message));
+
+          // Internal fee ledger: record in financialProcessingFees for reconciliation
+          try {
+            const { financialProcessingFeeService } = await import('./financialProcessingFeeService');
+            await financialProcessingFeeService.recordFee({
+              workspaceId,
+              feeType: 'payout_processing',
+              amountCents: feeResult.amountCents,
+              referenceId: payrollEntryId,
+              referenceType: 'payroll_entry',
+              description: `Stripe Connect payout fee: $${(feeResult.amountCents / 100).toFixed(2)}`,
+            });
+          } catch (ledgerErr: any) {
+            log.warn('[StripeConnect] Payout fee ledger record failed (non-fatal):', ledgerErr?.message);
+          }
+
+          // Platform revenue tracking: write to platform_revenue table
+          try {
+            const { recordMiddlewareFeeCharge } = await import('../finance/middlewareFeeService');
+            await recordMiddlewareFeeCharge(workspaceId, 'payout_processing', feeResult.amountCents, payrollEntryId);
+          } catch (revenueErr: any) {
+            log.warn('[StripeConnect] Payout revenue record failed (non-fatal):', revenueErr?.message);
+          }
         }
       } catch (feeErr) {
         log.warn('[StripeConnect] Payout middleware fee failed (non-blocking):', feeErr);
@@ -510,7 +535,7 @@ class StripeConnectPayoutService {
     employeeId: string,
     limit: number = 10
   ): Promise<Array<{ id: string; amount: number; status: string; created: Date }>> {
-    if (!stripe) return [];
+    if (!isStripeConfigured()) return [];
 
     try {
       const [employee] = await db.select()

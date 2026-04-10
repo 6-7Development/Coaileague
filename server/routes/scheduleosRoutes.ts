@@ -20,6 +20,7 @@ import { creditManager } from '../services/billing/creditManager';
 import { sql, eq, and, or, isNull, isNotNull, inArray, desc, gte, lte } from "drizzle-orm";
 import { z } from "zod";
 import { stripe } from "../routes";
+import { isStripeConfigured } from "../services/billing/stripeClient";
 import * as notificationHelpers from "../notifications";
 import { createLogger } from '../lib/logger';
 const log = createLogger('ScheduleosRoutes');
@@ -737,7 +738,7 @@ router.post('/ai/toggle', requireManager, async (req: AuthenticatedRequest, res)
         });
       }
 
-      if (!stripe) {
+      if (!isStripeConfigured()) {
         return res.status(500).json({ error: "Payment processing is not configured" });
       }
 
@@ -858,7 +859,7 @@ router.post('/ai/toggle', requireManager, async (req: AuthenticatedRequest, res)
 
       const SCHEDULEOS_ACTIVATION_FEE = 9900;
 
-      if (!stripe) {
+      if (!isStripeConfigured()) {
         return res.status(500).json({ error: "Payment processing is not configured" });
       }
 
