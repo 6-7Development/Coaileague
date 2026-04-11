@@ -164,6 +164,7 @@ const DPA = lazy(() => import("@/pages/dpa"));
 const PrivacyPolicyEs = lazy(() => import("@/pages/privacy-policy-es"));
 const TermsOfServiceEs = lazy(() => import("@/pages/terms-of-service-es"));
 const SmsConsent = lazy(() => import("@/pages/sms-consent"));
+const SmsOptOut = lazy(() => import("@/pages/sms-opt-out"));
 const StatusPage = lazy(() => import("@/pages/status"));
 const PublicFormPage = lazy(() => import("@/pages/public-form"));
 const InterviewChatroomPage = lazy(() => import("@/pages/interview-chatroom"));
@@ -613,7 +614,7 @@ function MascotRenderer() {
   // PUBLIC ROUTES for showcase mode detection
   const PUBLIC_ROUTES = useMemo(() => new Set([
     "/", "/login", "/register", "/pricing", "/contact", "/support",
-    "/terms", "/privacy", "/sms-terms", "/sms-consent", "/trinity-features",
+    "/terms", "/privacy", "/sms-terms", "/sms-consent", "/sms-opt-out", "/trinity-features",
     "/cookie-policy", "/dpa", "/privacy-es", "/terms-es",
     "/legal/aup", "/legal/security"
   ]), []);
@@ -1191,6 +1192,7 @@ function AppContent() {
     "/privacy",
     "/sms-terms",
     "/sms-consent",
+    "/sms-opt-out",
     "/cookie-policy",
     "/dpa",
     "/privacy-es",
@@ -1325,6 +1327,7 @@ function AppContent() {
               <Route path="/privacy-es" component={PrivacyPolicyEs} />
               <Route path="/terms-es" component={TermsOfServiceEs} />
               <Route path="/sms-consent" component={SmsConsent} />
+              <Route path="/sms-opt-out" component={SmsOptOut} />
               <Route path="/status" component={StatusPage} />
               {/* Chat routes - HelpDesk IRC/MSN interface with roomId */}
               <Route path="/chat/:roomId">{(params: { roomId: string }) => <ErrorBoundary><Suspense fallback={<PageLoader />}><HelpDesk roomId={params.roomId} /></Suspense></ErrorBoundary>}</Route>
