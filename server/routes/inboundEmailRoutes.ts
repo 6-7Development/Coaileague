@@ -35,18 +35,13 @@ const WEBHOOK_SECRET = process.env.RESEND_WEBHOOK_SECRET || '';
 /**
  * Verify Resend inbound webhook signature.
  * Resend delivers inbound webhooks via Svix; the signed content is
- * "{svix-timestamp}.{rawBody}" and the secret is base64-encoded (with an
+ * "{svix-timestamp}.{rawBody}" and the secret is UTF-8 (with an
  * optional "whsec_" prefix).  The header is svix-signature: v1,<base64-sig>.
  */
 function verifyResendSignature(rawBody: Buffer | string, headers: Record<string, string | string[] | undefined>): boolean {
-  console.log('X-Resend-Signature:', headers['x-resend-signature']);
-  console.log('Secret exists:', !!WEBHOOK_SECRET);
-
   if (!WEBHOOK_SECRET) {
     log.warn('[InboundEmail] RESEND_WEBHOOK_SECRET not set — skipping signature verification in dev');
-    const allowed = !isProduction();
-    console.log('Signature valid:', allowed, '(no secret — dev bypass)');
-    return allowed;
+    return !isProduction();
   }
 
   // Svix delivers: svix-id, svix-timestamp, svix-signature
@@ -55,21 +50,15 @@ function verifyResendSignature(rawBody: Buffer | string, headers: Record<string,
   const tsHeader = headers['svix-timestamp'] || '';
   const timestamp = Array.isArray(tsHeader) ? tsHeader[0] : String(tsHeader);
 
-  console.log('svix-signature:', signature);
-  console.log('svix-timestamp:', timestamp);
-
   if (!signature || !timestamp) {
     log.warn('[InboundEmail] Missing svix-signature or svix-timestamp header');
-    const allowed = !isProduction();
-    console.log('Signature valid:', allowed, '(missing headers — dev bypass)');
-    return allowed;
+    return !isProduction();
   }
 
   // Replay protection: reject webhooks older than 5 minutes
   const timestampMs = parseInt(timestamp, 10) * 1000;
   if (isNaN(timestampMs) || Math.abs(Date.now() - timestampMs) > 5 * 60 * 1000) {
     log.warn('[InboundEmail] Svix timestamp too old or invalid — possible replay attack');
-    console.log('Signature valid:', false, '(timestamp out of range)');
     return false;
   }
 
@@ -78,11 +67,10 @@ function verifyResendSignature(rawBody: Buffer | string, headers: Record<string,
     const bodyStr = Buffer.isBuffer(rawBody) ? rawBody.toString('utf8') : rawBody;
     const signedContent = `${timestamp}.${bodyStr}`;
 
-    // Decode the secret: strip optional "whsec_" prefix then base64-decode
+    // Strip optional "whsec_" prefix; secret is plain UTF-8, not base64
     const secretKey = WEBHOOK_SECRET.startsWith('whsec_')
       ? WEBHOOK_SECRET.slice(6)
       : WEBHOOK_SECRET;
-    // RESEND sends the secret as plain UTF-8 text, NOT base64
     const secretBuffer = Buffer.from(secretKey, 'utf8');
 
     const expectedSig = createHmac('sha256', secretBuffer)
@@ -98,7 +86,6 @@ function verifyResendSignature(rawBody: Buffer | string, headers: Record<string,
         const a = Buffer.from(sigValue);
         const b = Buffer.from(expectedSig);
         if (a.length === b.length && timingSafeEqual(a, b)) {
-          console.log('Signature valid:', true);
           return true;
         }
       } catch {
@@ -107,11 +94,9 @@ function verifyResendSignature(rawBody: Buffer | string, headers: Record<string,
     }
 
     log.warn('[InboundEmail] No matching svix signature found');
-    console.log('Signature valid:', false);
     return false;
   } catch (err: any) {
     log.error('[InboundEmail] Signature verification error:', err.message);
-    console.log('Signature valid:', false, '(exception)');
     return false;
   }
 }
