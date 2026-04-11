@@ -79,10 +79,18 @@ export async function runStatewideWorkspaceBootstrap(): Promise<void> {
   const USER_ID  = process.env.GRANDFATHERED_TENANT_OWNER_ID || '48003611';
   const EMP_ID   = '3fd50980-85f8-4f18-8b7a-5906ba8ccfe0';
   const EMAIL    = 'txpsinvestigations@gmail.com';
-  // Known bcrypt hash for Statewide owner (from production-migration.sql).
-  // Only used when creating a brand-new user row; existing password hashes are
-  // never overwritten here — use the password-reset flow to change a password.
-  const PW_HASH  = '$2b$10$r3GT8OdoCwxosnHVWfQmFeMRnvv1BOhJIKA5BjWQ3g2eG3LQ4ko0K';
+  // Bcrypt hash of the temporary login password "Statewide2026!" (bcryptjs cost 12).
+  // This replaces the stale cost-10 hash that shipped in production-migration.sql,
+  // which did NOT match "Statewide2026!" and caused login to fail.
+  // GRANDFATHERED TENANT EXCEPTION (Section I): hardcoded credentials are
+  // permitted only for this one grandfathered tenant — the same exception that
+  // covers WS_ID and USER_ID above.
+  const PW_HASH  = '$2b$12$F/GGRAFBVQW7.opHUvwyXO5HvbG7pPvkejwUDMFbf8kr2eTIRakCe';
+  // The stale hash from production-migration.sql — used only to detect rows
+  // that still need the one-time migration to the correct temp-password hash.
+  // Remove this constant (and the CASE below) once the migration has run in
+  // production and the owner has changed their password.
+  const STALE_PW_HASH = '$2b$10$r3GT8OdoCwxosnHVWfQmFeMRnvv1BOhJIKA5BjWQ3g2eG3LQ4ko0K';
 
   console.log(`🏢 [StatewideBootstrap] Starting — workspace=${WS_ID}, owner=${USER_ID}`);
 
@@ -140,10 +148,21 @@ export async function runStatewideWorkspaceBootstrap(): Promise<void> {
             login_attempts       = 0,
             locked_until         = NULL,
             current_workspace_id = ${WS_ID},
+            -- One-time migration: if the row still holds the stale cost-10 hash
+            -- that shipped in production-migration.sql (which did NOT match the
+            -- "Statewide2026!" temp password), replace it with the correct hash.
+            -- Once the owner has set a real password this CASE becomes a no-op
+            -- and their custom password is preserved across deployments.
+            password_hash        = CASE
+                                     WHEN users.password_hash = ${STALE_PW_HASH}
+                                     THEN ${PW_HASH}
+                                     ELSE users.password_hash
+                                   END,
             updated_at           = NOW()
         WHERE users.email_verified   IS NOT TRUE
            OR users.login_attempts   > 0
            OR users.locked_until     IS NOT NULL
+           OR users.password_hash    = ${STALE_PW_HASH}
     `);
     console.log(`🏢 [StatewideBootstrap] Owner user upserted (email_verified=TRUE)`);
   } catch (err) {
