@@ -82,7 +82,8 @@ function verifyResendSignature(rawBody: Buffer | string, headers: Record<string,
     const secretKey = WEBHOOK_SECRET.startsWith('whsec_')
       ? WEBHOOK_SECRET.slice(6)
       : WEBHOOK_SECRET;
-    const secretBuffer = Buffer.from(secretKey, 'base64');
+    // RESEND sends the secret as plain UTF-8 text, NOT base64
+    const secretBuffer = Buffer.from(secretKey, 'utf8');
 
     const expectedSig = createHmac('sha256', secretBuffer)
       .update(signedContent)
