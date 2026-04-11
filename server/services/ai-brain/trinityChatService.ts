@@ -77,7 +77,15 @@ import { employeeBehaviorScoring } from '../employeeBehaviorScoring';
 import { typedExec, typedPool, typedPoolExec, typedQuery } from '../../lib/typedSql';
 import { trinityPeripheralSurfaced } from '@shared/schema/domains/trinity/extended';
 import { createLogger } from '../../lib/logger';
+import type { KnowledgeDomain } from './sharedKnowledgeGraph';
+import { trinityDeliberationLoop } from './trinityDeliberationLoop';
 const log = createLogger('TrinityChatService');
+
+// === MODULE-SCOPE CONSTANTS ===
+// Compiled once at module load — not on every chat interaction.
+// HIGH_STAKES_KEYWORDS triggers the deliberation loop auto-trigger for manager-level
+// chats that reference financial/legal/compliance-critical topics.
+const HIGH_STAKES_KEYWORDS = /\b(terminate|termination|lawsuit|legal|sue|compliance\s+violation|audit|penalty|fine|breach|payroll\s+error|overpayment|underpayment|discrimination|harassment|injury|accident|incident\s+report|license\s+suspended|contract\s+breach)\b/i;
 
 // ============================================================================
 // TYPES
@@ -1071,11 +1079,9 @@ class TrinityChatService {
     //   • Message explicitly references financial, compliance, or legal risk keywords
     //   • Somatic marker fired (indicates Trinity detected a risk pattern)
     // Non-blocking: if deliberation fails the response still proceeds normally.
-    const HIGH_STAKES_KEYWORDS = /\b(terminate|termination|lawsuit|legal|sue|compliance\s+violation|audit|penalty|fine|breach|payroll\s+error|overpayment|underpayment|discrimination|harassment|injury|accident|incident\s+report|license\s+suspended|contract\s+breach)\b/i;
     const isHighStakes = isManagerLevel && (isStrategic || HIGH_STAKES_KEYWORDS.test(message) || somaticFlag.fired);
     if (mode === 'business' && isHighStakes && workspaceId) {
       try {
-        const { trinityDeliberationLoop } = await import('./trinityDeliberationLoop');
         const deliberationResult = await trinityDeliberationLoop.deliberate({
           type: 'workspace_health_degraded',
           workspaceId,
@@ -1290,7 +1296,7 @@ Do NOT skip steps — decompose fully before concluding.`;
     // The RL loop tracks success rates per domain/action to adapt Trinity's strategy
     // and calibrate confidence over time. Non-blocking — never affects response delivery.
     try {
-      const chatDomain: import('./sharedKnowledgeGraph').KnowledgeDomain = isStrategic ? 'analytics' : hasActions ? 'scheduling' : 'general';
+      const chatDomain: KnowledgeDomain = isStrategic ? 'analytics' : hasActions ? 'scheduling' : 'general';
       reinforcementLearningLoop.recordExperience({
         agentId: 'trinity_chat',
         workspaceId,
