@@ -752,6 +752,11 @@ export default function Dashboard() {
                       <p className="text-xs truncate mt-0.5" style={{ color: 'rgba(240,246,252,0.55)' }} data-testid="text-org-role">
                         {workspace?.name || 'Loading...'} · {(displayRole || '').replace(/_/g, ' ')}
                       </p>
+                      {licenseNumber && (
+                        <p className="text-[11px] truncate mt-0.5 font-mono" style={{ color: 'rgba(240,246,252,0.5)' }} data-testid="text-mobile-license">
+                          License: {licenseNumber}{licenseState ? ` (${licenseState})` : ''}
+                        </p>
+                      )}
                     </div>
                   </div>
                   {/* Row 2: status + shift info */}
