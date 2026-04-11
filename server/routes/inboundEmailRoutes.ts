@@ -34,10 +34,9 @@ const WEBHOOK_SECRET = process.env.RESEND_WEBHOOK_SECRET || '';
 
 /**
  * Verify Resend inbound webhook signature.
- * Resend signs inbound webhooks with HMAC-SHA256 using the secret from
- * RESEND_WEBHOOK_SECRET directly (no base64 decoding).
- * Header format: x-resend-signature: v1,<base64_signature>
- * Signed content: the raw request body bytes (before JSON parsing).
+ * Resend delivers inbound webhooks via Svix; the signed content is
+ * "{svix-timestamp}.{rawBody}" and the secret is UTF-8 (with an
+ * optional "whsec_" prefix).  The header is svix-signature: v1,<base64-sig>.
  */
 function verifyResendSignature(rawBody: Buffer | string, headers: Record<string, string | string[] | undefined>): boolean {
   if (!WEBHOOK_SECRET) {
@@ -45,40 +44,57 @@ function verifyResendSignature(rawBody: Buffer | string, headers: Record<string,
     return !isProduction();
   }
 
-  const sigHeader = headers['x-resend-signature'];
-  const signature = Array.isArray(sigHeader) ? sigHeader[0] : (sigHeader as string | undefined);
+  // Svix delivers: svix-id, svix-timestamp, svix-signature
+  const sigHeader = headers['svix-signature'] || headers['x-resend-signature'] || '';
+  const signature = Array.isArray(sigHeader) ? sigHeader[0] : String(sigHeader);
+  const tsHeader = headers['svix-timestamp'] || '';
+  const timestamp = Array.isArray(tsHeader) ? tsHeader[0] : String(tsHeader);
 
-  if (!signature) {
-    log.warn('[InboundEmail] Missing x-resend-signature header');
-    return false;
+  if (!signature || !timestamp) {
+    log.warn('[InboundEmail] Missing svix-signature or svix-timestamp header');
+    return !isProduction();
   }
 
-  const commaIdx = signature.indexOf(',');
-  if (commaIdx === -1) {
-    log.warn('[InboundEmail] Malformed x-resend-signature header (no comma)');
-    return false;
-  }
-  const version = signature.slice(0, commaIdx);
-  const hash = signature.slice(commaIdx + 1);
-
-  if (version !== 'v1' || !hash) {
-    log.warn('[InboundEmail] Unexpected signature version (expected v1)');
+  // Replay protection: reject webhooks older than 5 minutes
+  const timestampMs = parseInt(timestamp, 10) * 1000;
+  if (isNaN(timestampMs) || Math.abs(Date.now() - timestampMs) > 5 * 60 * 1000) {
+    log.warn('[InboundEmail] Svix timestamp too old or invalid — possible replay attack');
     return false;
   }
 
   try {
-    const body = Buffer.isBuffer(rawBody) ? rawBody.toString('utf8') : rawBody;
-    const computed = createHmac('sha256', WEBHOOK_SECRET)
-      .update(body)
+    // Svix signed content: "{timestamp}.{rawBody}"
+    const bodyStr = Buffer.isBuffer(rawBody) ? rawBody.toString('utf8') : rawBody;
+    const signedContent = `${timestamp}.${bodyStr}`;
+
+    // Strip optional "whsec_" prefix; secret is plain UTF-8, not base64
+    const secretKey = WEBHOOK_SECRET.startsWith('whsec_')
+      ? WEBHOOK_SECRET.slice(6)
+      : WEBHOOK_SECRET;
+    const secretBuffer = Buffer.from(secretKey, 'utf8');
+
+    const expectedSig = createHmac('sha256', secretBuffer)
+      .update(signedContent)
       .digest('base64');
 
-    const a = Buffer.from(hash);
-    const b = Buffer.from(computed);
-    if (a.length !== b.length) {
-      log.warn('[InboundEmail] Signature length mismatch');
-      return false;
+    // svix-signature may contain space-separated "v1,<base64sig>" tokens
+    const candidates = signature.split(' ');
+    for (const candidate of candidates) {
+      const [version, sigValue] = candidate.split(',');
+      if (version !== 'v1' || !sigValue) continue;
+      try {
+        const a = Buffer.from(sigValue);
+        const b = Buffer.from(expectedSig);
+        if (a.length === b.length && timingSafeEqual(a, b)) {
+          return true;
+        }
+      } catch {
+        // length mismatch — try next candidate
+      }
     }
-    return timingSafeEqual(a, b);
+
+    log.warn('[InboundEmail] No matching svix signature found');
+    return false;
   } catch (err: any) {
     log.error('[InboundEmail] Signature verification error:', err.message);
     return false;
