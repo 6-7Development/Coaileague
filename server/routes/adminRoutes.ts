@@ -29,6 +29,73 @@ function normalizeEmail(email: string | null | undefined): string | null {
 
 const router = Router();
 
+// =========================================================================
+// DEV SCRIPT EXECUTION ENDPOINT
+// =========================================================================
+// Security: Only available when ADMIN_SCRIPT_TOKEN is configured.
+// Authentication: x-admin-token header (constant-time comparison).
+// Whitelist-only: only pre-approved commands can run — no arbitrary execution.
+// Usage: POST /api/admin/dev-execute
+//        Headers: x-admin-token: <ADMIN_SCRIPT_TOKEN>
+//        Body: { "command": "npx tsx create-dev-accounts.ts" }
+// NOTE: Registered before requirePlatformStaff so the token auth is the sole guard.
+// =========================================================================
+
+const DEV_EXECUTE_ALLOWED_COMMANDS: Record<string, () => Promise<string>> = {
+  'npx tsx create-dev-accounts.ts': async () => {
+    const lines: string[] = [];
+    const capture = (...args: unknown[]) => {
+      const line = args.map((a) => String(a)).join(' ');
+      lines.push(line);
+      process.stdout.write(line + '\n');
+    };
+    const { createDevAccounts } = await import('../../create-dev-accounts');
+    await createDevAccounts(capture);
+    return lines.join('\n');
+  },
+};
+
+router.post('/dev-execute', async (req: AuthenticatedRequest, res) => {
+  const expectedToken = process.env.ADMIN_SCRIPT_TOKEN;
+  if (!expectedToken) {
+    return res.status(503).json({ error: 'ADMIN_SCRIPT_TOKEN is not configured on this server.' });
+  }
+  const provided = req.headers['x-admin-token'];
+  if (!provided || typeof provided !== 'string') {
+    log.warn('[DevExecute] Rejected — missing x-admin-token');
+    return res.status(401).json({ error: 'Invalid or missing x-admin-token header.' });
+  }
+  try {
+    const providedBuf = Buffer.from(provided);
+    const expectedBuf = Buffer.from(expectedToken);
+    if (providedBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(providedBuf, expectedBuf)) {
+      log.warn('[DevExecute] Rejected — invalid x-admin-token');
+      return res.status(401).json({ error: 'Invalid or missing x-admin-token header.' });
+    }
+  } catch {
+    return res.status(401).json({ error: 'Invalid or missing x-admin-token header.' });
+  }
+
+  const { command } = req.body ?? {};
+  if (!command || typeof command !== 'string') {
+    return res.status(400).json({ error: 'Request body must include a "command" string.' });
+  }
+  const handler = DEV_EXECUTE_ALLOWED_COMMANDS[command.trim()];
+  if (!handler) {
+    log.warn(`[DevExecute] Rejected disallowed command: ${command}`);
+    return res.status(400).json({ error: `Command not allowed: "${command}". Check the server whitelist.` });
+  }
+  try {
+    log.info(`[DevExecute] Running: ${command}`);
+    const output = await handler();
+    log.info('[DevExecute] Completed successfully');
+    return res.json({ success: true, command, output });
+  } catch (error: unknown) {
+    log.error('[DevExecute] Command failed:', error);
+    return res.status(500).json({ success: false, command, error: sanitizeError(error) });
+  }
+});
+
 router.use(requirePlatformStaff);
 
 router.patch('/workspace/:workspaceId', async (req: AuthenticatedRequest, res) => {
