@@ -1,5 +1,5 @@
 import { Badge } from "@/components/ui/badge";
-import { Crown, Star, Sparkles, Lock, Cpu } from "lucide-react";
+import { Crown, Star, Sparkles, Lock, Cpu, Coins } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,

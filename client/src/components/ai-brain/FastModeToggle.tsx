@@ -155,7 +155,6 @@ export function FastModeToggle({
             id="fast-mode-toggle"
             checked={enabled}
             onCheckedChange={handleToggle}
-            disabled={!hasEnoughCredits && !enabled}
             data-testid="switch-fast-mode"
           />
         </div>

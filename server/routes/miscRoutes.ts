@@ -30,6 +30,8 @@ import {
 } from "@shared/schema";
 import { orgSubscriptions, subscriptionTiers, invoices } from "@shared/schema/domains/billing";
 import { timeEntries } from "@shared/schema/domains/time";
+import { supportRegistry } from "@shared/schema/domains/support";
+import { getExternalId } from "../services/identityService";
 import { eq, and, or, desc, asc, sql, ilike, isNull, inArray } from "drizzle-orm";
 import { requireAuth } from "../auth";
 import {
@@ -742,41 +744,112 @@ router.get("/api/identity/me", requireAuth, async (req: any, res) => {
       return res.status(404).json({ message: "User not found" });
     }
     const workspaceId = req.workspaceId || (user as any)?.workspaceId || user.currentWorkspaceId;
-    let employee = null;
-    let workspace = null;
+    let employee: any = null;
+    let workspace: any = null;
     if (workspaceId) {
       employee = await storage.getEmployeeByUserId(userId, workspaceId);
       const [ws] = await db.select().from(workspaces).where(eq(workspaces.id, workspaceId)).limit(1);
       workspace = ws;
     }
+
+    // Resolve human-readable external IDs (ORG-XXXX, EMP-XXXX-00001, SUP-XXXX)
+    // These live in the external_identifiers + support_registry tables. All
+    // lookups are best-effort — missing rows just leave the field null so the
+    // dashboard can gracefully hide the badge.
+    const orgExternalId = workspaceId ? await getExternalId('org', workspaceId) : null;
+    const employeeExternalId = employee?.id ? await getExternalId('employee', employee.id) : null;
+
+    let supportCode: string | null = null;
+    try {
+      const [sup] = await db
+        .select({ supportCode: supportRegistry.supportCode })
+        .from(supportRegistry)
+        .where(eq(supportRegistry.userId, userId))
+        .limit(1);
+      supportCode = sup?.supportCode ?? null;
+    } catch {
+      supportCode = null;
+    }
+
+    const platformRole = (user as any).platformRole ?? null;
+    const isPlatformStaff = !!platformRole &&
+      ['root_admin', 'deputy_admin', 'support_manager', 'sysop', 'support_agent'].includes(platformRole);
+    const userType: 'employee' | 'support_agent' | 'client' | 'platform_admin' | 'guest' =
+      isPlatformStaff
+        ? (platformRole === 'support_agent' || platformRole === 'support_manager' ? 'support_agent' : 'platform_admin')
+        : employee
+          ? 'employee'
+          : 'guest';
+
+    // Primary external ID — prefer employee code, fall back to org code
+    const primaryExternalId = employeeExternalId || orgExternalId || supportCode;
+
     res.json({
-      user: {
-        id: user.id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        displayName: (user as any).displayName,
-        role: user.role,
-        platformRole: (user as any).platformRole,
-        currentWorkspaceId: user.currentWorkspaceId,
-        profileImageUrl: user.profileImageUrl,
-      },
-      employee: employee
-        ? {
-            id: employee.id,
-            workspaceRole: employee.workspaceRole || employee.role,
-            position: employee.position,
-            department: (employee as any).department,
-          }
+      userType,
+
+      // External IDs for RBAC tracking
+      externalId: primaryExternalId,
+      employeeId: employeeExternalId,
+      supportCode,
+      clientId: null,
+      orgId: orgExternalId || workspace?.orgId || null,
+
+      // State licensing (regulated industries — e.g. security, healthcare)
+      // Pulled from the workspaces table so every member of a licensed org
+      // can display the company's license badge in the hero.
+      licenseNumber: workspace?.stateLicenseNumber ?? null,
+      licenseState: workspace?.stateLicenseState ?? null,
+      licenseExpiry: workspace?.stateLicenseExpiry
+        ? new Date(workspace.stateLicenseExpiry).toISOString()
         : null,
+      licenseVerified: !!workspace?.stateLicenseVerified,
+      licenseVerifiedAt: workspace?.stateLicenseVerifiedAt
+        ? new Date(workspace.stateLicenseVerifiedAt).toISOString()
+        : null,
+
+      // Database IDs for support/admin visibility
+      dbUserId: user.id,
+      dbWorkspaceId: workspaceId ?? null,
+
+      // Roles
+      platformRole,
+      workspaceRole: employee?.workspaceRole || employee?.role || null,
+
+      // Workspace details for hero display
       workspace: workspace
         ? {
             id: workspace.id,
             name: workspace.name,
             orgCode: workspace.orgCode,
             subscriptionTier: workspace.subscriptionTier,
+            stateLicenseNumber: workspace.stateLicenseNumber,
+            stateLicenseState: workspace.stateLicenseState,
+            stateLicenseVerified: workspace.stateLicenseVerified,
           }
         : null,
+
+      // Full details for downstream consumers
+      details: {
+        user: {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          displayName: (user as any).displayName,
+          role: user.role,
+          platformRole,
+          currentWorkspaceId: user.currentWorkspaceId,
+          profileImageUrl: user.profileImageUrl,
+        },
+        employee: employee
+          ? {
+              id: employee.id,
+              workspaceRole: employee.workspaceRole || employee.role,
+              position: employee.position,
+              department: (employee as any).department,
+            }
+          : null,
+      },
     });
   } catch (error: unknown) {
     log.error("Error fetching identity:", error);
