@@ -52,10 +52,12 @@ const USER_ID = process.env.GRANDFATHERED_TENANT_OWNER_ID || DEFAULT_USER_ID;
 const EMP_ID  = DEFAULT_EMP_ID;
 const EMAIL   = 'txpsinvestigations@gmail.com';
 
-// The known bcrypt hash for this account (from production-migration.sql).
-// Only inserted when creating a brand-new row AND TEMP_PASSWORD is not set —
-// preserves Bryan's current password on idempotent re-runs.
-const PW_HASH = '$2b$10$r3GT8OdoCwxosnHVWfQmFeMRnvv1BOhJIKA5BjWQ3g2eG3LQ4ko0K';
+// Bcrypt hash of the temporary login password "Statewide2026!" (bcryptjs cost 12).
+// Used as the fallback INSERT hash when TEMP_PASSWORD is not set, so new-row
+// installs always boot with a working credential.
+// GRANDFATHERED TENANT EXCEPTION (CLAUDE.md Section I): hardcoded credential
+// is permitted for this one grandfathered tenant bootstrap script only.
+const PW_HASH = '$2b$12$F/GGRAFBVQW7.opHUvwyXO5HvbG7pPvkejwUDMFbf8kr2eTIRakCe';
 
 // Optional temp-password override. If SET_TEMP_PASSWORD=1 (or TEMP_PASSWORD is
 // provided), the script force-updates password_hash on both INSERT and UPDATE
