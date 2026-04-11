@@ -752,6 +752,11 @@ export default function Dashboard() {
                       <p className="text-xs truncate mt-0.5" style={{ color: 'rgba(240,246,252,0.55)' }} data-testid="text-org-role">
                         {workspace?.name || 'Loading...'} · {(displayRole || '').replace(/_/g, ' ')}
                       </p>
+                      {licenseNumber && (
+                        <p className="text-[11px] truncate mt-0.5 font-mono" style={{ color: 'rgba(240,246,252,0.5)' }} data-testid="text-mobile-license">
+                          License: {licenseNumber}{licenseState ? ` (${licenseState})` : ''}
+                        </p>
+                      )}
                     </div>
                   </div>
                   {/* Row 2: status + shift info */}
@@ -1023,6 +1028,27 @@ export default function Dashboard() {
                   <h2 className="text-2xl sm:text-3xl font-bold text-white leading-tight truncate" data-testid="text-desktop-greeting">
                     {(() => { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'; })()}, {firstName}
                   </h2>
+                  {workspace?.name && (
+                    <p className="text-base sm:text-lg font-semibold text-white/95 mt-1 truncate" data-testid="text-desktop-workspace-name">
+                      {workspace.name}
+                    </p>
+                  )}
+                  {licenseNumber && (
+                    <p className="text-xs sm:text-sm text-white/80 mt-0.5" data-testid="text-desktop-license">
+                      License:{' '}
+                      <span className="font-mono font-medium text-white/95">
+                        {licenseNumber}
+                      </span>
+                      {licenseState && (
+                        <span className="text-white/70"> ({licenseState})</span>
+                      )}
+                    </p>
+                  )}
+                  {dbWorkspaceId && (
+                    <p className="text-[11px] sm:text-xs text-white/60 mt-0.5 font-mono truncate" data-testid="text-desktop-org-id">
+                      Org ID: {dbWorkspaceId}
+                    </p>
+                  )}
                   <p className="text-sm text-white/60 mt-1" data-testid="text-desktop-role">
                     {displayRole ? displayRole.replace(/_/g, ' ') : 'Team Member'}
                   </p>
