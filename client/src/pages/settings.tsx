@@ -86,6 +86,9 @@ import {
   Wallet,
   HardDrive,
   Database,
+  Lock,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -148,10 +151,26 @@ const payrollFinancialsSchema = z.object({
   payrollMemo: z.string().optional().or(z.literal("")),
 });
 
+const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Current password is required"),
+  newPassword: z.string()
+    .min(8, "Password must be at least 8 characters")
+    .max(72, "Password must not exceed 72 characters")
+    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+    .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+    .regex(/[0-9]/, "Password must contain at least one number")
+    .regex(/[!@#$%^&*(),.?":{}|<>]/, "Password must contain at least one special character"),
+  confirmPassword: z.string().min(1, "Please confirm your new password"),
+}).refine((d) => d.newPassword === d.confirmPassword, {
+  message: "Passwords do not match",
+  path: ["confirmPassword"],
+});
+
 type ProfileFormValues = z.infer<typeof profileSchema>;
 type WorkspaceFormValues = z.infer<typeof workspaceSchema>;
 type InvoiceFinancialsFormValues = z.infer<typeof invoiceFinancialsSchema>;
 type PayrollFinancialsFormValues = z.infer<typeof payrollFinancialsSchema>;
+type ChangePasswordFormValues = z.infer<typeof changePasswordSchema>;
 
 // Settings section configuration for navigation
 const SETTINGS_SECTIONS = [
@@ -367,6 +386,201 @@ function ProfileTabContent() {
                   <>
                     <Check className="h-4 w-4 mr-2" />
                     Save Profile
+                  </>
+                )}
+              </Button>
+            </div>
+          </form>
+        </Form>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ChangePasswordCard() {
+  const { toast } = useToast();
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+
+  const form = useForm<ChangePasswordFormValues>({
+    resolver: zodResolver(changePasswordSchema),
+    defaultValues: { currentPassword: '', newPassword: '', confirmPassword: '' },
+  });
+
+  const changePasswordMutation = useMutation({
+    mutationFn: async (data: ChangePasswordFormValues) => {
+      const res = await secureFetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword: data.currentPassword, newPassword: data.newPassword }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.message || 'Password change failed');
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      setSaveSuccess(true);
+      form.reset();
+      toast({
+        title: "Password Changed",
+        description: "Your password has been updated. Please log in again.",
+      });
+      // Session was destroyed server-side; redirect to login after a short delay
+      setTimeout(() => {
+        window.location.href = '/login';
+      }, 1500);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Password Change Failed",
+        description: error.message || "Please check your current password and try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const onSubmit = (values: ChangePasswordFormValues) => {
+    changePasswordMutation.mutate(values);
+  };
+
+  return (
+    <Card data-testid="card-change-password">
+      <CardHeader className="p-4 sm:p-6 pb-3 sm:pb-4">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <Lock className="h-4 w-4 sm:h-5 sm:w-5 text-primary shrink-0" />
+          <div className="min-w-0">
+            <CardTitle className="text-base sm:text-lg">Change Password</CardTitle>
+            <CardDescription className="text-xs sm:text-sm">Update your login password. You will be logged out after changing it.</CardDescription>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="p-4 sm:p-6 pt-0">
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="currentPassword"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-xs sm:text-sm">Current Password</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                      <Input
+                        type={showCurrent ? 'text' : 'password'}
+                        placeholder="Enter current password"
+                        className="pl-9 pr-9"
+                        data-testid="input-current-password"
+                        autoComplete="current-password"
+                        {...field}
+                      />
+                      <button
+                        type="button"
+                        tabIndex={-1}
+                        aria-label={showCurrent ? 'Hide password' : 'Show password'}
+                        onClick={() => setShowCurrent((v) => !v)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        {showCurrent ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                      </button>
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="newPassword"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs sm:text-sm">New Password</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                        <Input
+                          type={showNew ? 'text' : 'password'}
+                          placeholder="8+ chars, upper, lower, number, symbol"
+                          className="pl-9 pr-9"
+                          data-testid="input-new-password"
+                          autoComplete="new-password"
+                          {...field}
+                        />
+                        <button
+                          type="button"
+                          tabIndex={-1}
+                          aria-label={showNew ? 'Hide password' : 'Show password'}
+                          onClick={() => setShowNew((v) => !v)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        >
+                          {showNew ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                        </button>
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="confirmPassword"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs sm:text-sm">Confirm New Password</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                        <Input
+                          type={showConfirm ? 'text' : 'password'}
+                          placeholder="Re-enter new password"
+                          className="pl-9 pr-9"
+                          data-testid="input-confirm-password"
+                          autoComplete="new-password"
+                          {...field}
+                        />
+                        <button
+                          type="button"
+                          tabIndex={-1}
+                          aria-label={showConfirm ? 'Hide password' : 'Show password'}
+                          onClick={() => setShowConfirm((v) => !v)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        >
+                          {showConfirm ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                        </button>
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <div className="flex justify-end pt-2">
+              <Button
+                type="submit"
+                disabled={changePasswordMutation.isPending || saveSuccess}
+                data-testid="button-change-password"
+                variant={saveSuccess ? "outline" : "default"}
+                className={saveSuccess ? "border-green-500 text-green-600 dark:text-green-400" : ""}
+              >
+                {changePasswordMutation.isPending ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                    Updating...
+                  </>
+                ) : saveSuccess ? (
+                  <>
+                    <CheckCircle2 className="h-4 w-4 mr-2" />
+                    Password Changed
+                  </>
+                ) : (
+                  <>
+                    <Lock className="h-4 w-4 mr-2" />
+                    Change Password
                   </>
                 )}
               </Button>
@@ -2325,6 +2539,7 @@ export default function Settings() {
         {/* Profile Section */}
         <TabsContent value="profile" className="mt-4 sm:mt-6 space-y-4 sm:space-y-6">
           <ProfileTabContent />
+          <ChangePasswordCard />
         </TabsContent>
 
         {/* Quick Settings Section */}
