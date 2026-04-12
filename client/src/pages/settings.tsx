@@ -196,7 +196,7 @@ function ProfileTabContent() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const u = (session as any)?.user || session;
+  const currentUser = (session as any)?.user || session;
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
@@ -209,12 +209,12 @@ function ProfileTabContent() {
   });
 
   useEffect(() => {
-    if (u) {
+    if (currentUser) {
       form.reset({
-        firstName: u?.firstName || '',
-        lastName: u?.lastName || '',
-        email: u?.email || '',
-        phone: u?.phone || '',
+        firstName: currentUser?.firstName || '',
+        lastName: currentUser?.lastName || '',
+        email: currentUser?.email || '',
+        phone: currentUser?.phone || '',
       });
     }
   }, [session, form]);
@@ -239,6 +239,7 @@ function ProfileTabContent() {
 
   const updateProfileMutation = useMutation({
     mutationFn: async (data: ProfileFormValues) => {
+      // Email is intentionally excluded — changes are handled via the verified email-change flow
       const res = await apiRequest('PATCH', '/api/auth/profile', {
         firstName: data.firstName,
         lastName: data.lastName,
@@ -306,8 +307,8 @@ function ProfileTabContent() {
   const handleRequestEmailChange = () => {
     const trimmed = newEmailInput.trim();
     if (!trimmed) return;
-    const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRe.test(trimmed)) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmed)) {
       toast({ variant: "destructive", title: "Invalid Email", description: "Please enter a valid email address." });
       return;
     }
@@ -318,15 +319,15 @@ function ProfileTabContent() {
     return <SettingsCardSkeleton />;
   }
 
-  const firstName = u?.firstName || '';
-  const lastName = u?.lastName || '';
+  const firstName = currentUser?.firstName || '';
+  const lastName = currentUser?.lastName || '';
   const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || '?';
-  const displayName = [firstName, lastName].filter(Boolean).join(' ') || u?.email || 'User';
-  const pendingEmail = u?.pendingEmail || null;
-  const emailVerified = u?.emailVerified ?? false;
-  const workspaceRole = u?.workspaceRole || u?.role || null;
-  const organizationalTitle = u?.organizationalTitle || null;
-  const userNumber = u?.userNumber || null;
+  const displayName = [firstName, lastName].filter(Boolean).join(' ') || currentUser?.email || 'User';
+  const pendingEmail = currentUser?.pendingEmail || null;
+  const emailVerified = currentUser?.emailVerified ?? false;
+  const workspaceRole = currentUser?.workspaceRole || currentUser?.role || null;
+  const organizationalTitle = currentUser?.organizationalTitle || null;
+  const userNumber = currentUser?.userNumber || null;
 
   const roleLabel = organizationalTitle
     ? organizationalTitle.charAt(0).toUpperCase() + organizationalTitle.slice(1)
@@ -342,7 +343,7 @@ function ProfileTabContent() {
           <div className="flex items-start gap-4">
             <Avatar className="h-16 w-16 sm:h-20 sm:w-20 ring-2 ring-primary/20 shrink-0">
               <AvatarImage
-                src={u?.profileImageUrl || ''}
+                src={currentUser?.profileImageUrl || ''}
                 alt={displayName}
                 data-testid="avatar-profile-image"
               />
@@ -365,7 +366,7 @@ function ProfileTabContent() {
                   className="text-xs sm:text-sm text-muted-foreground truncate"
                   data-testid="text-profile-email"
                 >
-                  {u?.email}
+                  {currentUser?.email}
                 </span>
                 {emailVerified ? (
                   <Badge
@@ -558,7 +559,7 @@ function ProfileTabContent() {
         <CardContent className="p-4 sm:p-6 pt-0 space-y-3">
           <div className="flex items-center gap-3 p-3 rounded-md bg-muted/50 border">
             <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
-            <span className="text-sm font-medium flex-1 truncate" data-testid="text-current-email">{u?.email}</span>
+            <span className="text-sm font-medium flex-1 truncate" data-testid="text-current-email">{currentUser?.email}</span>
             {emailVerified ? (
               <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" aria-label="Email verified" />
             ) : (
