@@ -741,14 +741,14 @@ emailRouter.post('/support-inbox/:emailId/reply', async (req: any, res) => {
     }
 
     // Send via Resend
-    const resend = getUncachableResendClient();
+    const { client: resendClient } = await getUncachableResendClient();
     const headers: Record<string, string> = {};
     if (original.message_id) {
       headers['In-Reply-To'] = original.message_id;
       headers['References'] = original.message_id;
     }
 
-    const sent = await resend.emails.send({
+    const sent = await resendClient.emails.send({
       from: `${agentDisplayName} via CoAIleague Support <${SUPPORT_EMAIL_ADDRESS}>`,
       to: [original.from_address],
       subject: replySubject,
