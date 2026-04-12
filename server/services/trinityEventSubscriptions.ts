@@ -540,6 +540,31 @@ async function onWorkspaceCreated(event: PlatformEvent): Promise<void> {
   } catch (emailErr: any) {
     log.warn(`[TrinityEvents] Email provisioning failed for workspace ${workspaceId} (non-fatal):`, emailErr?.message);
   }
+
+  // Send Trinity welcome email to workspace owner
+  try {
+    const { ownerId, workspaceName } = event.metadata || {};
+    if (ownerId) {
+      const { db: ownerDb } = await import('../db');
+      const { users: usersTable } = await import('../../shared/schema');
+      const { eq: eqOp } = await import('drizzle-orm');
+      const [owner] = await ownerDb.select().from(usersTable).where(eqOp(usersTable.id, String(ownerId))).limit(1);
+      if (owner?.email) {
+        const { sendTrinityWelcomeEmail } = await import('./trinityWelcomeService');
+        await sendTrinityWelcomeEmail({
+          workspaceId: String(workspaceId),
+          userId: String(ownerId),
+          userEmail: owner.email,
+          userType: 'tenant_owner',
+          workspaceName: String(workspaceName || 'Your Workspace'),
+          userName: owner.firstName || 'there',
+        });
+        log.info(`[TrinityEvents] Trinity welcome email sent to workspace owner: ${ownerId}`);
+      }
+    }
+  } catch (welcomeErr: any) {
+    log.warn(`[TrinityEvents] Trinity welcome email failed for workspace ${workspaceId} (non-fatal):`, welcomeErr?.message);
+  }
 }
 
 /**

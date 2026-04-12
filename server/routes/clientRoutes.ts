@@ -268,6 +268,22 @@ router.post('/', requireManagerOrPlatformStaff, async (req: AuthenticatedRequest
       const _clientWelcomeEmail = emailService.buildClientWelcomeEmail(client.id, validated.email, (validated as any).name || 'Valued Client', validated.companyName || '', workspace.name || '');
       NotificationDeliveryService.send({ type: 'client_welcome', workspaceId: workspaceId || 'system', recipientUserId: client.id, channel: 'email', body: _clientWelcomeEmail })
         .catch(err => log.error('[Client Creation] Failed to queue welcome email:', err));
+
+      // Send Trinity-branded welcome email to client
+      try {
+        const { sendTrinityWelcomeEmail } = await import('../services/trinityWelcomeService');
+        await sendTrinityWelcomeEmail({
+          workspaceId: workspaceId || 'system',
+          userId: client.id,
+          userEmail: validated.email,
+          userType: 'client',
+          workspaceName: workspace.name || 'Your Organization',
+          userName: (validated as any).name || validated.companyName || 'Valued Client',
+          customContext: { tenantName: workspace.name || 'Your Organization' },
+        });
+      } catch (trinityEmailErr) {
+        log.warn('[Client Creation] Trinity welcome email failed (non-blocking):', trinityEmailErr);
+      }
     }
 
     const { entityCreationNotifier } = await import('../services/entityCreationNotifier');
