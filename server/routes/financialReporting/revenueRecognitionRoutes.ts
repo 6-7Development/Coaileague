@@ -122,8 +122,6 @@ registerLegacyBootstrap('revenue_recognition_tables', async (pool) => {
   `);
 });
 
-const log = createLogger('RevenueRecognitionRoutes');
-
 const router = Router();
 
 // Auth middleware applied by billing domain mount — but double-check workspace
@@ -460,13 +458,8 @@ router.get('/pl/detail', async (req: any, res: any) => {
             id: e.id,
             description: e.description,
             amount: parseFloat(String(e.amount ?? 0)),
-            category: e.categoryId ?? 'operating',
-            date: e.expenseDate,
-            status: e.status,
-            description: e.description,
-            amount: parseFloat(String(e.amount ?? 0)),
-            category: e.category ?? 'operating',
-            date: e.date,
+            category: e.categoryId ?? e.category ?? 'operating',
+            date: e.expenseDate ?? e.date,
             status: e.status,
           })),
         },
