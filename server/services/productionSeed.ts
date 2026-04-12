@@ -623,14 +623,16 @@ export async function runProductionSeed(): Promise<{ success: boolean; message: 
       console.log('🌱 Seeding workspaces...');
       
       for (const ws of [
-        { id: PLATFORM_WORKSPACE_ID, name: 'CoAIleague Platform', ownerId: 'root-user-00000000', subscriptionTier: 'enterprise', subscriptionStatus: 'active' },
+        { id: PLATFORM_WORKSPACE_ID, name: 'CoAIleague Support', ownerId: 'root-user-00000000', subscriptionTier: 'enterprise', subscriptionStatus: 'active' },
       ]) {
         await tx.execute(sql`
           INSERT INTO workspaces (id, name, owner_id, subscription_tier, subscription_status, inbound_email_forward_to, created_at, updated_at)
           VALUES (${ws.id}, ${ws.name}, ${ws.ownerId}, ${ws.subscriptionTier}, ${ws.subscriptionStatus}, 'txpsinvestigations@gmail.com', NOW(), NOW())
           ON CONFLICT (id) DO UPDATE
-            SET inbound_email_forward_to = 'txpsinvestigations@gmail.com'
-            WHERE workspaces.inbound_email_forward_to IS DISTINCT FROM 'txpsinvestigations@gmail.com'
+            SET name = 'CoAIleague Support',
+                inbound_email_forward_to = 'txpsinvestigations@gmail.com'
+            WHERE workspaces.name IS DISTINCT FROM 'CoAIleague Support'
+               OR workspaces.inbound_email_forward_to IS DISTINCT FROM 'txpsinvestigations@gmail.com'
         `);
       }
       
@@ -657,7 +659,7 @@ export async function runProductionSeed(): Promise<{ success: boolean; message: 
     console.log('✅ Production Seed: Database migration completed successfully!');
     console.log('   - Users: 2 (root admin + helpai bot)');
     console.log('   - Platform Roles: 1 (root_admin)');
-    console.log('   - Workspaces: 1 (CoAIleague Platform)');
+    console.log('   - Workspaces: 1 (CoAIleague Support)');
     console.log('   - Employees: 3 (root admin + 2 AI bots)');
     
     return { success: true, message: 'Production database seeded successfully' };
