@@ -126,10 +126,9 @@ router.post("/policies/:id/acknowledge", requireAuth, async (req: AuthenticatedR
 
     const { signatureUrl, userAgent } = req.body;
 
-    // Derive IP server-side — never trust client-supplied ipAddress, which can be spoofed.
-    const rawForwardedFor = req.headers['x-forwarded-for'];
-    const forwardedFor = Array.isArray(rawForwardedFor) ? rawForwardedFor[0] : rawForwardedFor;
-    const ipAddress = (forwardedFor?.split(',')[0]?.trim()) || req.ip || null;
+    // Derive IP server-side — never trust client-provided ipAddress from req.body
+    // req.ip is populated by Express using the trusted proxy chain (trust proxy: 1)
+    const ipAddress = req.ip || req.socket?.remoteAddress || null;
 
     const acknowledgment = await storage.createPolicyAcknowledgment({
       workspaceId,
