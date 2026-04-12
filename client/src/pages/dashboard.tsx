@@ -461,6 +461,15 @@ export default function Dashboard() {
   // HelpDesk ticket modal state
   const [helpDeskModalOpen, setHelpDeskModalOpen] = useState(false);
 
+  // Fetch email inbox unread count for support staff
+  const { data: supportEmailData } = useQuery<{ emails: any[]; total: number }>({
+    queryKey: ['/api/email/inbox', { folder: 'inbox', limit: 5 }],
+    enabled: isAuthenticated && !!isPlatformStaff,
+    staleTime: 60000,
+  });
+  const supportEmailUnread = supportEmailData?.emails?.filter((e: any) => !e.is_read).length ?? 0;
+  const supportEmailTotal = supportEmailData?.total ?? 0;
+
   // Get current user and workspace
   const { data: workspace, error: workspaceError } = useQuery<{ id: string; name?: string; orgCode?: string }>({ 
     queryKey: ['/api/workspace/current'],
@@ -1698,6 +1707,39 @@ export default function Dashboard() {
                 </div>
               </div>
 
+              {/* Support Manager Email Inbox */}
+              <div className="mb-6">
+                <div className="bg-card border border-border rounded-lg p-4 flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-100 dark:bg-blue-900/40 rounded-lg">
+                      <Mail className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">support@coaileague.com</p>
+                      <p className="text-xs text-muted-foreground">
+                        {supportEmailUnread > 0
+                          ? `${supportEmailUnread} unread · ${supportEmailTotal} total`
+                          : `${supportEmailTotal} emails in inbox`}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {supportEmailUnread > 0 && (
+                      <Badge className="bg-blue-600 text-white text-xs">{supportEmailUnread}</Badge>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setLocation('/inbox')}
+                      className="text-xs"
+                    >
+                      <Mail className="w-3 h-3 mr-1" />
+                      Open Inbox
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
               {/* Support Manager Access Notice */}
               <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
                 <div className="flex items-start gap-3">
@@ -1765,6 +1807,39 @@ export default function Dashboard() {
                   </div>
                   <p className="text-2xl font-bold text-foreground lg:text-center">Monitor</p>
                   <p className="text-xs text-muted-foreground mt-1 lg:text-center">My metrics</p>
+                </div>
+              </div>
+
+              {/* Support Agent Email Inbox */}
+              <div className="mb-6">
+                <div className="bg-card border border-border rounded-lg p-4 flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-teal-100 dark:bg-teal-900/40 rounded-lg">
+                      <Mail className="w-5 h-5 text-teal-600 dark:text-teal-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">support@coaileague.com</p>
+                      <p className="text-xs text-muted-foreground">
+                        {supportEmailUnread > 0
+                          ? `${supportEmailUnread} unread · ${supportEmailTotal} total`
+                          : `${supportEmailTotal} emails in inbox`}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {supportEmailUnread > 0 && (
+                      <Badge className="bg-teal-600 text-white text-xs">{supportEmailUnread}</Badge>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setLocation('/inbox')}
+                      className="text-xs"
+                    >
+                      <Mail className="w-3 h-3 mr-1" />
+                      Open Inbox
+                    </Button>
+                  </div>
                 </div>
               </div>
 
