@@ -428,12 +428,12 @@ export function UniversalHeader({ variant = "auto" }: UniversalHeaderProps) {
                             className="justify-start text-xs sm:text-sm w-full h-auto py-2.5 px-3 rounded-md min-w-0"
                             onClick={() => {
                               setMobileMenuOpen(false);
-                              window.dispatchEvent(new CustomEvent('open-ai-search'));
+                              (window as any).openCommandPalette?.();
                             }}
                             data-testid="mobile-menu-search"
                           >
                             <Search className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
-                            <span className="truncate">AI Search</span>
+                            <span className="truncate">Search</span>
                           </Button>
                         </>
                       )}
@@ -608,6 +608,15 @@ export function UniversalHeader({ variant = "auto" }: UniversalHeaderProps) {
                       className={HEADER_HEIGHTS.iconButton}
                       data-testid="button-mobile-trinity-workspace"
                     />
+                    <button
+                      className="inline-flex items-center justify-center w-8 h-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                      onClick={() => { (window as any).openCommandPalette?.(); }}
+                      data-testid="button-mobile-search"
+                      aria-label="Search"
+                      title="Search"
+                    >
+                      <Search className="h-4 w-4" />
+                    </button>
                     <NotificationsPopover />
                   </>
                 )}
