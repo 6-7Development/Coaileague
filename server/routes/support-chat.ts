@@ -17,7 +17,6 @@ import { AuthenticatedRequest, requirePlatformStaff } from '../rbac';
 import { storage } from '../storage';
 import { requireAuth } from '../auth';
 import { createLogger } from '../lib/logger';
-import { summonHelpAIForConversation } from '../services/botSummonService';
 const log = createLogger('SupportChat');
 
 
@@ -49,22 +48,6 @@ router.post('/session', async (req: Request, res: Response) => {
         ticketNumber: session.ticketNumber,
       },
     });
-
-    // Summon HelpAI for this support session (non-fatal, runs after response)
-    const sessionWorkspaceId = (authReq.workspaceId || workspaceId) as string | undefined;
-    if (session.id && sessionWorkspaceId) {
-      try {
-        await summonHelpAIForConversation(
-          session.id,
-          'support_chat',
-          sessionWorkspaceId,
-          // @ts-expect-error — TS migration: fix in refactoring sprint
-          authReq.user?.id ?? authReq.user ?? undefined
-        );
-      } catch (summonErr: unknown) {
-        log.warn('[BotSummon] HelpAI summon failed for support session (non-fatal):', (summonErr as any)?.message);
-      }
-    }
   } catch (error: unknown) {
     log.error('[SupportChat] Failed to create session:', error);
     res.status(500).json({ success: false, error: sanitizeError(error) });
