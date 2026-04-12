@@ -188,6 +188,20 @@ emailRouter.post('/send', async (req: any, res) => {
       inReplyTo = parent.rows[0]?.message_id || null;
     }
 
+    // Auto-append email signature if configured
+    let finalBodyHtml = bodyHtml || '';
+    let finalBodyText = bodyText || '';
+    if (addr.signature_html) {
+      finalBodyHtml = finalBodyHtml
+        ? `${finalBodyHtml}\n<br/><div class="email-signature" style="margin-top:16px;padding-top:8px;border-top:1px solid #e5e7eb;">${addr.signature_html}</div>`
+        : `<div class="email-signature">${addr.signature_html}</div>`;
+    }
+    if (addr.signature_text) {
+      finalBodyText = finalBodyText
+        ? `${finalBodyText}\n\n--\n${addr.signature_text}`
+        : `--\n${addr.signature_text}`;
+    }
+
     // Send via Resend
     const { client, fromEmail } = await getUncachableResendClient();
     const sentFrom = addr.display_name ? `${addr.display_name} <${from}>` : from;
@@ -199,8 +213,8 @@ emailRouter.post('/send', async (req: any, res) => {
         to: Array.isArray(to) ? to : [to],
         cc: cc || [],
         subject,
-        html: bodyHtml,
-        text: bodyText,
+        html: finalBodyHtml || undefined,
+        text: finalBodyText || undefined,
         ...(inReplyTo && { replyTo: inReplyTo }),
       });
     } catch (sendErr: any) {
@@ -228,9 +242,9 @@ emailRouter.post('/send', async (req: any, res) => {
       Array.isArray(to) ? to : [to],
       Array.isArray(cc) ? cc : [],
       subject,
-      bodyHtml,
-      bodyText,
-      (bodyText || '').slice(0, 200),
+      finalBodyHtml,
+      finalBodyText,
+      (finalBodyText || '').slice(0, 200),
       userId,
     ]);
 
@@ -470,5 +484,85 @@ emailRouter.post('/activate-all', async (req: any, res) => {
     return res.json({ success: true, activated });
   } catch (err: any) {
     return res.status(500).json({ error: 'Failed to bulk activate' });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PER-ADDRESS SETTINGS (forwarding + signature)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ─── GET /api/email/addresses/:id/settings ────────────────────────────────────
+emailRouter.get('/addresses/:id/settings', async (req: any, res) => {
+  try {
+    const { workspaceId } = req.user;
+    const { id } = req.params;
+
+    const result = await pool.query(`
+      SELECT
+        id, address, display_name, address_type,
+        forwarding_address, forwarding_enabled,
+        signature_text, signature_html
+      FROM platform_email_addresses
+      WHERE id = $1 AND workspace_id = $2
+    `, [id, workspaceId]);
+
+    if (!result.rows[0]) return res.status(404).json({ error: 'Address not found' });
+
+    return res.json(result.rows[0]);
+  } catch (err: any) {
+    log.error('[EmailRoutes] get settings error:', err);
+    return res.status(500).json({ error: 'Failed to fetch address settings' });
+  }
+});
+
+// ─── PUT /api/email/addresses/:id/settings ────────────────────────────────────
+emailRouter.put('/addresses/:id/settings', async (req: any, res) => {
+  try {
+    const { workspaceId, id: userId } = req.user;
+    const { id } = req.params;
+    const {
+      forwarding_address,
+      forwarding_enabled,
+      signature_text,
+      signature_html,
+      display_name,
+    } = req.body;
+
+    // Verify address belongs to workspace
+    const check = await pool.query(
+      `SELECT id FROM platform_email_addresses WHERE id = $1 AND workspace_id = $2`,
+      [id, workspaceId]
+    );
+    if (!check.rows[0]) return res.status(404).json({ error: 'Address not found' });
+
+    const updates: string[] = [];
+    const values: any[] = [];
+    let idx = 1;
+
+    if (forwarding_address !== undefined) { updates.push(`forwarding_address = $${idx++}`); values.push(forwarding_address || null); }
+    if (forwarding_enabled !== undefined) { updates.push(`forwarding_enabled = $${idx++}`); values.push(!!forwarding_enabled); }
+    if (signature_text !== undefined)     { updates.push(`signature_text = $${idx++}`);     values.push(signature_text || null); }
+    if (signature_html !== undefined)     { updates.push(`signature_html = $${idx++}`);     values.push(signature_html || null); }
+    if (display_name !== undefined)       { updates.push(`display_name = $${idx++}`);       values.push(display_name || null); }
+
+    if (!updates.length) return res.status(400).json({ error: 'No settings provided' });
+
+    updates.push(`updated_at = NOW()`);
+    values.push(id, workspaceId);
+
+    await pool.query(
+      `UPDATE platform_email_addresses SET ${updates.join(', ')} WHERE id = $${idx} AND workspace_id = $${idx + 1}`,
+      values
+    );
+
+    await pool.query(`
+      INSERT INTO universal_audit_log (workspace_id, entity_type, entity_id, action_type, actor_id, new_value)
+      VALUES ($1, 'email_address', $2, 'email_settings_updated', $3, $4)
+    `, [workspaceId, id, userId, JSON.stringify({ forwarding_enabled, has_signature: !!(signature_text || signature_html) })]);
+
+    return res.json({ success: true });
+  } catch (err: any) {
+    log.error('[EmailRoutes] put settings error:', err);
+    return res.status(500).json({ error: 'Failed to update address settings' });
   }
 });
