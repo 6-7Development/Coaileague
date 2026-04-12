@@ -47,6 +47,20 @@ registerLegacyBootstrap('search_infrastructure', async (pool) => {
   // ── 3. GIN trigram indexes on searchable text columns ────────────────────
   // Each index is CONCURRENT and IF NOT EXISTS — safe on every boot.
   // Tables that may not yet exist in some envs are skipped gracefully.
+  //
+  // SECURITY NOTE: ginIndexes is a build-time constant defined in this file.
+  // The `table`, `name`, and `expr` fields are never sourced from user input,
+  // the database, or any external system — they are literal TypeScript string
+  // constants. Identifier validation below is a defence-in-depth guard; the
+  // expr field contains only PostgreSQL built-in functions (coalesce, ||) and
+  // column names — no untrusted content is ever interpolated.
+  //
+  // DDL statements like CREATE INDEX do not support parameterized identifiers
+  // in PostgreSQL, so template-literal interpolation is the correct approach
+  // here. Never add entries to ginIndexes from external/user-supplied data.
+
+  // Regex compiled once outside the loop for efficiency
+  const SAFE_IDENT_RE = /^[a-z_][a-z0-9_]*$/;
 
   const ginIndexes: Array<{ table: string; name: string; expr: string }> = [
     {
@@ -88,10 +102,9 @@ registerLegacyBootstrap('search_infrastructure', async (pool) => {
 
   for (const idx of ginIndexes) {
     try {
-      // Validate that table and index names are safe SQL identifiers before
-      // interpolating — these come from the hardcoded array above but we guard
-      // defensively in case this pattern is reused with dynamic input.
-      const SAFE_IDENT_RE = /^[a-z_][a-z0-9_]*$/;
+      // Validate table and index names are safe SQL identifiers.
+      // Defence-in-depth: these are hardcoded above but guard against accidental
+      // mutation of ginIndexes with externally-sourced values.
       if (!SAFE_IDENT_RE.test(idx.table) || !SAFE_IDENT_RE.test(idx.name)) {
         log.warn(`[searchBootstrap] Skipping GIN index with unsafe identifier: ${idx.name}`);
         continue;
