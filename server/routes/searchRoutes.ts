@@ -9,6 +9,8 @@ import type { Express, Request, Response } from 'express';
 import express from 'express';
 import { pool } from '../db';
 import { createLogger } from '../lib/logger';
+// Register the search infrastructure bootstrap (pg_trgm, search_query_log, GIN indexes)
+import '../services/searchBootstrap';
 const log = createLogger('SearchRoutes');
 
 
