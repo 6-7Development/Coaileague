@@ -99,18 +99,29 @@ export function statewideWriteGuard(
     return;
   }
 
-  const isAuthRoute       = req.path.startsWith('/api/auth');
-  const isHealthRoute     = req.path === '/health' || req.path === '/api/platform/readiness';
-  const isWebhookRoute    = req.path.startsWith('/api/webhook') || req.path.startsWith('/api/stripe');
-  const isAutomation      = isAutomationRoute(req.path);
+  // Use req.originalUrl (without query string) so that the full path is available
+  // regardless of where in the middleware chain this guard is mounted.
+  // req.path strips the mount prefix (e.g. /api) which would break all /api/... checks.
+  const fullPath = req.originalUrl.split('?')[0];
+
+  const isAuthRoute    = fullPath.startsWith('/api/auth');
+  const isHealthRoute  = fullPath === '/health' || fullPath === '/api/platform/readiness';
+  const isWebhookRoute = fullPath.startsWith('/api/webhook') || fullPath.startsWith('/api/stripe');
+  const isAutomation   = isAutomationRoute(fullPath);
 
   if (isAuthRoute || isHealthRoute || isWebhookRoute || isAutomation) {
     next();
     return;
   }
 
-  log.error('PRODUCTION TENANT WRITE BLOCKED', {
-    path: req.path,
+  // Determine which protected workspace triggered the block for accurate logging
+  const tenantLabel = GRANDFATHERED_TENANT_ID && workspaceId === GRANDFATHERED_TENANT_ID
+    ? 'grandfathered_tenant'
+    : 'platform_workspace';
+
+  log.error('PROTECTED TENANT WRITE BLOCKED', {
+    tenant: tenantLabel,
+    path: fullPath,
     method: req.method,
     workspaceId,
     userId: (req as any).user?.userId,
@@ -120,18 +131,19 @@ export function statewideWriteGuard(
 
   pool.query(
     `INSERT INTO admin_audit_log (action, actor_id, metadata, created_at)
-     VALUES ('grandfathered_tenant_write_blocked', $1, $2, NOW())`,
+     VALUES ('protected_tenant_write_blocked', $1, $2, NOW())`,
     [
       (req as any).user?.userId || 'anonymous',
       JSON.stringify({
-        path: req.path,
+        tenant: tenantLabel,
+        path: fullPath,
         method: req.method,
         workspaceId,
         ip: req.ip,
       }),
     ]
   ).catch((err) => {
-    log.warn('grandfatheredTenantGuard audit log write failed', { err: err?.message });
+    log.warn('protectedTenantGuard audit log write failed', { err: err?.message });
   });
 
   res.status(403).json({
