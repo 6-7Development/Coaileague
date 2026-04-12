@@ -974,6 +974,20 @@ const constraints: CriticalConstraint[] = [
       `);
     },
   },
+  {
+    name: 'shifts_deleted_at_column',
+    rationale: 'Soft-delete column added after initial schema definition; ALTER TABLE is idempotent via IF NOT EXISTS',
+    isPresent: async () => {
+      const { rows } = await pool.query(
+        `SELECT 1 FROM information_schema.columns
+         WHERE table_name = 'shifts' AND column_name = 'deleted_at'`
+      );
+      return rows.length > 0;
+    },
+    apply: async () => {
+      await pool.query(`ALTER TABLE shifts ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP`);
+    },
+  },
 ];
 
 /**
