@@ -541,25 +541,47 @@ async function onWorkspaceCreated(event: PlatformEvent): Promise<void> {
     log.warn(`[TrinityEvents] Email provisioning failed for workspace ${workspaceId} (non-fatal):`, emailErr?.message);
   }
 
-  // Send Trinity welcome email to workspace owner
+  // Reserve personal email address for workspace owner and send Trinity welcome
   try {
     const { ownerId, workspaceName } = event.metadata || {};
     if (ownerId) {
       const { db: ownerDb } = await import('../db');
-      const { users: usersTable } = await import('../../shared/schema');
+      const { users: usersTable, workspaces: wsTable } = await import('../../shared/schema');
       const { eq: eqOp } = await import('drizzle-orm');
       const [owner] = await ownerDb.select().from(usersTable).where(eqOp(usersTable.id, String(ownerId))).limit(1);
-      if (owner?.email) {
-        const { sendTrinityWelcomeEmail } = await import('./trinityWelcomeService');
-        await sendTrinityWelcomeEmail({
-          workspaceId: String(workspaceId),
-          userId: String(ownerId),
-          userEmail: owner.email,
-          userType: 'tenant_owner',
-          workspaceName: String(workspaceName || 'Your Workspace'),
-          userName: owner.firstName || 'there',
-        });
-        log.info(`[TrinityEvents] Trinity welcome email sent to workspace owner: ${ownerId}`);
+      if (owner) {
+        // Reserve owner's personal @coaileague.com email address
+        if (owner.firstName && owner.lastName) {
+          try {
+            const { pool: pgPool } = await import('../db');
+            const wsRow = await pgPool.query(`SELECT email_slug FROM workspaces WHERE id = $1`, [workspaceId]);
+            const ownerEmailSlug = wsRow.rows[0]?.email_slug;
+            if (ownerEmailSlug) {
+              const { emailProvisioningService } = await import('./email/emailProvisioningService');
+              await emailProvisioningService.reserveUserEmailAddress(
+                String(workspaceId), String(ownerId),
+                owner.firstName, owner.lastName, ownerEmailSlug,
+              );
+              log.info(`[TrinityEvents] Reserved personal email for workspace owner: ${ownerId}`);
+            }
+          } catch (ownerEmailErr: any) {
+            log.warn(`[TrinityEvents] Owner email reservation failed (non-fatal):`, ownerEmailErr?.message);
+          }
+        }
+
+        // Send Trinity welcome email
+        if (owner.email) {
+          const { sendTrinityWelcomeEmail } = await import('./trinityWelcomeService');
+          await sendTrinityWelcomeEmail({
+            workspaceId: String(workspaceId),
+            userId: String(ownerId),
+            userEmail: owner.email,
+            userType: 'tenant_owner',
+            workspaceName: String(workspaceName || 'Your Workspace'),
+            userName: owner.firstName || 'there',
+          });
+          log.info(`[TrinityEvents] Trinity welcome email sent to workspace owner: ${ownerId}`);
+        }
       }
     }
   } catch (welcomeErr: any) {

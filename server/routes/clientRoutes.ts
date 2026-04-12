@@ -295,6 +295,29 @@ router.post('/', requireManagerOrPlatformStaff, async (req: AuthenticatedRequest
       address: validated.address,
       createdBy: userId || 'system',
     }).catch(err => log.error('[Client Creation] Failed to notify Trinity:', err));
+
+    // Reserve email address for client portal — non-blocking
+    try {
+      const { pool: pgPool } = await import('../db');
+      const wsRow = await pgPool.query(
+        `SELECT email_slug FROM workspaces WHERE id = $1`,
+        [workspaceId]
+      );
+      const emailSlug = wsRow.rows[0]?.email_slug;
+      if (emailSlug) {
+        const { emailProvisioningService } = await import('../services/email/emailProvisioningService');
+        const clientName = validated.companyName || (validated as any).name || `client-${client.id.slice(0, 8)}`;
+        await emailProvisioningService.reserveClientEmailAddress(
+          workspaceId,
+          client.id,
+          clientName,
+          emailSlug,
+        );
+        log.info(`[EmailProvisioning] Reserved @coaileague.com seat for client ${client.id}`);
+      }
+    } catch (emailProvErr) {
+      log.warn('[Client Creation] Email seat provisioning failed (non-blocking):', (emailProvErr as Error).message);
+    }
     
     const { broadcastToWorkspace } = await import('../websocket');
     broadcastToWorkspace(workspaceId, { type: 'clients_updated', action: 'created' });
