@@ -1,67 +1,29 @@
-import { Request, Response, NextFunction } from 'express';
-import { createLogger } from '../lib/logger';
-import { pool } from '../db';
-import { GRANDFATHERED_TENANT_ID } from '../services/billing/billingConstants';
+/**
+ * statewideGuard — REMOVED (kept as no-op for import compatibility)
+ *
+ * History: This file previously contained a `statewideWriteGuard` that blocked
+ * ALL POST/PUT/PATCH/DELETE mutations on the GRANDFATHERED_TENANT_ID workspace,
+ * returning 403 TENANT_PROTECTED.
+ *
+ * Why it was removed:
+ *   "Protected status" means billing-exempt + permanent enterprise tier access ONLY.
+ *   It must NOT restrict any features, workflows, automations, pipelines, or Trinity
+ *   orchestration. The write-block directly prevented those orgs from using the platform.
+ *
+ * What "protected" actually means (enforced elsewhere):
+ *   - Billing exempt: server/services/billing/founderExemption.ts
+ *   - Enterprise tier: server/tierGuards.ts (GRANDFATHERED_TENANT_ID bypass)
+ *   - No suspension/cancellation: server/middleware/subscriptionGuard.ts
+ *   - Support org (coaileague-platform-workspace): server/services/billing/billingConstants.ts NON_BILLING_WORKSPACE_IDS
+ */
 
-const log = createLogger('grandfatheredTenantGuard');
+import type { Request, Response, NextFunction } from 'express';
 
+/** @deprecated No-op. Write guard was removed — protected orgs are fully functional. */
 export function statewideWriteGuard(
-  req: Request,
-  res: Response,
-  next: NextFunction
+  _req: Request,
+  _res: Response,
+  next: NextFunction,
 ): void {
-  if (!GRANDFATHERED_TENANT_ID) {
-    next();
-    return;
-  }
-
-  const workspaceId =
-    (req as any).user?.workspaceId ||
-    (req as any).body?.workspaceId ||
-    req.params?.workspaceId ||
-    (req.query?.workspaceId as string | undefined);
-
-  const isMutation = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method);
-  const isAuthRoute = req.path.startsWith('/api/auth');
-  const isHealthRoute = req.path === '/health' || req.path === '/api/platform/readiness';
-  const isWebhookRoute = req.path.startsWith('/api/webhook') || req.path.startsWith('/api/stripe');
-
-  if (
-    workspaceId === GRANDFATHERED_TENANT_ID &&
-    isMutation &&
-    !isAuthRoute &&
-    !isHealthRoute &&
-    !isWebhookRoute
-  ) {
-    log.error('PRODUCTION TENANT WRITE BLOCKED', {
-      path: req.path,
-      method: req.method,
-      userId: (req as any).user?.userId,
-      body: JSON.stringify((req as any).body || {}).slice(0, 200),
-      ip: req.ip,
-    });
-
-    pool.query(
-      `INSERT INTO admin_audit_log (action, actor_id, metadata, created_at)
-       VALUES ('grandfathered_tenant_write_blocked', $1, $2, NOW())`,
-      [
-        (req as any).user?.userId || 'anonymous',
-        JSON.stringify({
-          path: req.path,
-          method: req.method,
-          ip: req.ip,
-        }),
-      ]
-    ).catch((err) => {
-      log.warn('grandfatheredTenantGuard audit log write failed', { err: err?.message });
-    });
-
-    res.status(403).json({
-      error: 'Write operations are blocked on this workspace.',
-      code: 'TENANT_PROTECTED',
-    });
-    return;
-  }
-
   next();
 }

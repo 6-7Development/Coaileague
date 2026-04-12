@@ -154,7 +154,7 @@ import "./services/scheduleLiveNotifier";
 import { tracingMiddleware } from "./services/infrastructure/distributedTracing";
 import { maintenanceMiddleware, maintenanceStatusHeader } from './middleware/maintenanceMiddleware';
 import { requestIdMiddleware } from './middleware/requestId';
-import { statewideWriteGuard } from './middleware/statewideGuard';
+// statewideWriteGuard import removed — protected status is billing-only, not read-only
 import { validateEnvironment } from './startup/validateEnvironment';
 import { globalErrorHandler, notFoundHandler } from './middleware/errorHandler';
 import { rateLimitMiddleware, rateLimiting } from "./services/infrastructure/rateLimiting";
@@ -441,9 +441,10 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Request ID middleware — attaches UUID to every request for tracing
 app.use(requestIdMiddleware);
 
-// Production tenant write guard — blocks all mutations against the grandfathered production tenant
-// This runs early (before all route handlers) to protect the production-only workspace
-app.use('/api', statewideWriteGuard);
+// NOTE: statewideWriteGuard was removed.
+// Protected status (GRANDFATHERED_TENANT_ID) means billing-exempt + enterprise tier only.
+// It does NOT mean read-only. Workflows, automations, pipelines, and Trinity orchestration
+// must be able to write data on the protected org. See server/middleware/statewideGuard.ts.
 
 // Cache-Control: no-store on all API responses — prevents sensitive data caching
 // by proxies, CDNs, or shared browser caches.

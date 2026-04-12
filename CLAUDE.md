@@ -292,6 +292,40 @@ seeds, all of which are gated by `isProduction()` per Section A.
 
 ---
 
+## Section I-B — Protected Status Is Billing-Only (Phase T)
+
+**The law:** "Protected status" on the statewide org (GRANDFATHERED_TENANT_ID) and support org
+means **billing-exempt + permanent enterprise tier access only**. It must NEVER block any
+feature, workflow, automation, pipeline, or Trinity orchestration.
+
+**The bug it prevents:** `server/middleware/statewideGuard.ts` previously contained a
+`statewideWriteGuard` that returned `403 TENANT_PROTECTED` on ALL POST/PUT/PATCH/DELETE
+mutations for the grandfathered tenant. This blocked the org from creating automations,
+running pipelines, letting Trinity write tasks/schedules, and using any write-capable feature.
+
+**The fix:** `statewideWriteGuard` was converted to a no-op pass-through. The import in
+`server/index.ts` was left as a comment to record history.
+
+**What protected status DOES enforce (these are correct and must stay):**
+- `server/services/billing/founderExemption.ts` — `billingExempt=true`, `founderExemption=true`
+- `server/tierGuards.ts` — GRANDFATHERED_TENANT_ID bypasses ALL tier gates (treated as enterprise)
+- `server/middleware/subscriptionGuard.ts` — exempt from suspension/cancellation guards
+- `server/services/billing/billingConstants.ts` — `NON_BILLING_WORKSPACE_IDS` covers support org
+
+**Forbidden pattern (do not re-introduce):**
+```ts
+// 🔴 forbidden — blocks protected org from using the platform
+if (workspaceId === GRANDFATHERED_TENANT_ID && isMutation) {
+  return res.status(403).json({ code: 'TENANT_PROTECTED' });
+}
+```
+
+**Files governed:**
+- `server/middleware/statewideGuard.ts` (now a no-op)
+- `server/index.ts` (write guard registration removed)
+
+---
+
 ## Section J — Process for Adding New Verified Laws
 
 When Claude Code (or any future debug session) discovers a new architectural
@@ -344,4 +378,5 @@ valid.
 | J | `cfc388d` | RBAC SSOT consolidation |
 | P | `e15b65d` | tenant isolation in 8 raw SQL queries |
 | Q | `e61b53a` | mobile scroll + footer + splash |
-| R | (this commit) | CLAUDE.md verified-laws encoding |
+| R | (prev commit) | CLAUDE.md verified-laws encoding |
+| T | (this commit) | remove statewideWriteGuard — protected = billing-only |
