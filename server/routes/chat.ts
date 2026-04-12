@@ -26,6 +26,7 @@ import { createLogger } from '../lib/logger';
 import { PLATFORM_WORKSPACE_ID } from '../services/billing/billingConstants';
 import { PLATFORM } from '../config/platformConfig';
 import { InsertChatConversation } from '@shared/schema';
+import { summonHelpAIForConversation } from '../services/botSummonService';
 const log = createLogger('Chat');
 
 
@@ -89,6 +90,19 @@ const router = Router();
       });
 
       const conversation = await storage.createChatConversation(validated);
+
+      // Summon HelpAI for supported conversation types
+      try {
+        await summonHelpAIForConversation(
+          conversation.id,
+          conversation.conversationType ?? 'open_chat',
+          workspace.id,
+          userId
+        );
+      } catch (summonErr: unknown) {
+        log.warn('[BotSummon] HelpAI summon failed (non-fatal):', (summonErr as any)?.message);
+      }
+
       res.status(201).json(conversation);
     } catch (error: unknown) {
       log.error("Error creating conversation:", error);
@@ -933,6 +947,18 @@ const router = Router();
         isSystemMessage: true,
         isEncrypted: false
       });
+
+      // Summon HelpAI for supported conversation types
+      try {
+        await summonHelpAIForConversation(
+          conversation.id,
+          conversation.conversationType ?? conversationType ?? 'open_chat',
+          workspaceId,
+          userId
+        );
+      } catch (summonErr: unknown) {
+        log.warn('[BotSummon] HelpAI summon failed (non-fatal):', (summonErr as any)?.message);
+      }
       
       res.json({
         conversation,

@@ -1,6 +1,7 @@
 import { sanitizeError } from '../middleware/errorHandler';
 import { Router } from "express";
 import { db } from "../db";
+import { summonHelpAIForConversation } from '../services/botSummonService';
 import { broadcastToWorkspace } from "../websocket";
 import { roomPresence } from "../services/ircEventRegistry";
 import { 
@@ -514,6 +515,18 @@ router.post(
         }
       } catch (botErr: unknown) {
         log.error('[BotDeploy] Auto-deploy failed (non-blocking):', (botErr as any)?.message);
+      }
+
+      // Summon HelpAI bot for conversations where Trinity assistance is appropriate
+      try {
+        await summonHelpAIForConversation(
+          conversation.id,
+          conversation.conversationType ?? 'open_chat',
+          workspaceId,
+          userId
+        );
+      } catch (summonErr: unknown) {
+        log.warn('[BotSummon] HelpAI summon failed (non-fatal):', (summonErr as any)?.message);
       }
 
       // Create audit event
