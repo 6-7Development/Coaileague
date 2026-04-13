@@ -154,6 +154,7 @@ import "./services/scheduleLiveNotifier";
 import { tracingMiddleware } from "./services/infrastructure/distributedTracing";
 import { maintenanceMiddleware, maintenanceStatusHeader } from './middleware/maintenanceMiddleware';
 import { requestIdMiddleware } from './middleware/requestId';
+import { trinityTokenTracking } from './middleware/trinityTokenTrackingMiddleware';
 // statewideWriteGuard import removed — protected status is billing-only, not read-only
 import { validateEnvironment } from './startup/validateEnvironment';
 import { globalErrorHandler, notFoundHandler } from './middleware/errorHandler';
@@ -440,6 +441,8 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Request ID middleware — attaches UUID to every request for tracing
 app.use(requestIdMiddleware);
+// Trinity token tracking — attaches trinityOperationId for token metering (Phase 16A)
+app.use(trinityTokenTracking);
 
 // NOTE: statewideWriteGuard was removed.
 // Protected status (GRANDFATHERED_TENANT_ID) means billing-exempt + enterprise tier only.
