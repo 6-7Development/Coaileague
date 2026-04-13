@@ -28,6 +28,7 @@ import revenueRecognitionRouter from "../financialReporting/revenueRecognitionRo
 import { billingReconciliation } from "../../services/billing/billingReconciliation";
 import { orgBillingService } from "../../services/billing/orgBillingService";
 import { blockFinancialData } from "../../middleware/auditorGuard";
+import { trinityTokenMeteringService } from "../../services/billing/trinityTokenMeteringService";
 
 export function mountBillingRoutes(app: Express): void {
   // Property 3: Block auditor sessions from ALL financial paths automatically.
@@ -169,4 +170,44 @@ export function mountBillingRoutes(app: Express): void {
   app.use("/api/finance", requireAuth, ensureWorkspaceAccess, financeNewRouter);
   app.use("/api/finance", requireAuth, ensureWorkspaceAccess, revenueRecognitionRouter);
   app.use(icalPublicRouter);
+
+  // ── Phase 16A: Trinity Token Metering ────────────────────────────────────
+  // GET /api/billing/trinity/today — daily token usage report
+  app.get("/api/billing/trinity/today", requireAuth, ensureWorkspaceAccess, requireManager, async (req: any, res: any) => {
+    try {
+      const workspaceId = req.workspaceId as string;
+      if (!workspaceId) return res.status(400).json({ error: "Workspace required" });
+      const report = await trinityTokenMeteringService.getDailyReport(workspaceId, new Date());
+      res.json(report);
+    } catch (error: unknown) { res.status(500).json({ error: sanitizeError(error) }); }
+  });
+
+  // GET /api/billing/trinity/month/:year/:month — monthly token usage report
+  app.get("/api/billing/trinity/month/:year/:month", requireAuth, ensureWorkspaceAccess, requireManager, async (req: any, res: any) => {
+    try {
+      const workspaceId = req.workspaceId as string;
+      if (!workspaceId) return res.status(400).json({ error: "Workspace required" });
+      const year = parseInt(req.params.year as string, 10);
+      const month = parseInt(req.params.month as string, 10);
+      if (isNaN(year) || isNaN(month) || month < 1 || month > 12) {
+        return res.status(400).json({ error: "Invalid year or month" });
+      }
+      const report = await trinityTokenMeteringService.getMonthlyReport(workspaceId, year, month);
+      res.json(report);
+    } catch (error: unknown) { res.status(500).json({ error: sanitizeError(error) }); }
+  });
+
+  // GET /api/billing/trinity/unbilled — unbilled usage ready for invoicing
+  app.get("/api/billing/trinity/unbilled", requireAuth, ensureWorkspaceAccess, requireManager, async (req: any, res: any) => {
+    try {
+      const workspaceId = req.workspaceId as string;
+      if (!workspaceId) return res.status(400).json({ error: "Workspace required" });
+      const unbilled = await trinityTokenMeteringService.getUnbilledUsage(workspaceId);
+      res.json({
+        workspaceId,
+        ...unbilled,
+        readyToInvoice: unbilled.totalCostUsd > 0,
+      });
+    } catch (error: unknown) { res.status(500).json({ error: sanitizeError(error) }); }
+  });
 }

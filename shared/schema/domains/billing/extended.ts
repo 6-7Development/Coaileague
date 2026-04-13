@@ -271,3 +271,38 @@ export const invoiceProposals = pgTable("invoice_proposals", {
 export const insertInvoiceProposalSchema = createInsertSchema(invoiceProposals).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertInvoiceProposal = z.infer<typeof insertInvoiceProposalSchema>;
 export type InvoiceProposal = typeof invoiceProposals.$inferSelect;
+
+// ============================================================================
+// TRINITY TOKEN LEDGER — Phase 16A
+// Every Trinity AI token consumed by a billable tenant is recorded here.
+// Free tenants (platform workspace, grandfathered) are recorded with
+// should_bill=FALSE and cost_usd=0 so usage is still auditable.
+// ============================================================================
+export const trinityTokenLedger = pgTable("trinity_token_ledger", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id").notNull(),
+  userId: varchar("user_id"),
+  endUserId: varchar("end_user_id"),
+  feature: text("feature").notNull(),
+  model: text("model").notNull(), // 'claude' | 'gemini' | 'openai' | 'pinecone'
+  inputTokens: integer("input_tokens").notNull(),
+  outputTokens: integer("output_tokens").notNull(),
+  totalTokens: integer("total_tokens").notNull(),
+  costUsd: decimal("cost_usd", { precision: 10, scale: 4 }).notNull().default("0"),
+  timestamp: timestamp("timestamp", { withTimezone: true }).notNull().defaultNow(),
+  operationId: text("operation_id").notNull().unique(),
+  shouldBill: boolean("should_bill").notNull().default(true),
+  billed: boolean("billed").notNull().default(false),
+  invoiceId: text("invoice_id"),
+  billedAt: timestamp("billed_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  index("trinity_token_ledger_workspace_idx").on(table.workspaceId),
+  index("trinity_token_ledger_timestamp_idx").on(table.timestamp),
+  index("trinity_token_ledger_billing_idx").on(table.billed, table.shouldBill),
+  index("trinity_token_ledger_operation_idx").on(table.operationId),
+]);
+
+export type TrinityTokenLedger = typeof trinityTokenLedger.$inferSelect;
+export const insertTrinityTokenLedgerSchema = createInsertSchema(trinityTokenLedger).omit({ id: true, createdAt: true });
+export type InsertTrinityTokenLedger = z.infer<typeof insertTrinityTokenLedgerSchema>;
