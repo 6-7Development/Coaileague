@@ -1418,7 +1418,7 @@ class AIBrainActionRegistry {
 
         const logoutTime = clockOutTime ? new Date(clockOutTime) : new Date();
         const [updated] = await db.update(timeEntries)
-          .set({ 
+          .set({
             clockOut: logoutTime,
             status: 'completed',
             updatedAt: new Date()
@@ -1426,7 +1426,37 @@ class AIBrainActionRegistry {
           .where(and(eq(timeEntries.id, timeEntryId), eq(timeEntries.workspaceId, request.workspaceId!)))
           .returning();
 
-        if (!updated) return createResult(request.actionId, false, 'Time entry not found or access denied', null, start);
+        if (!updated) {
+          await logActionAudit({
+            actionId: request.actionId,
+            workspaceId: request.workspaceId,
+            userId: request.userId,
+            userRole: request.userRole,
+            platformRole: request.platformRole,
+            entityType: 'time_entry',
+            entityId: timeEntryId,
+            success: false,
+            errorMessage: 'Time entry not found or access denied',
+            payload: { timeEntryId, clockOutTime },
+            durationMs: Date.now() - start,
+          });
+          return createResult(request.actionId, false, 'Time entry not found or access denied', null, start);
+        }
+
+        await logActionAudit({
+          actionId: request.actionId,
+          workspaceId: request.workspaceId,
+          userId: request.userId,
+          userRole: request.userRole,
+          platformRole: request.platformRole,
+          entityType: 'time_entry',
+          entityId: timeEntryId,
+          success: true,
+          message: `Officer clocked out at ${logoutTime.toISOString()}`,
+          changesAfter: updated as any,
+          durationMs: Date.now() - start,
+        });
+
         return createResult(request.actionId, true, `Officer clocked out at ${logoutTime.toISOString()}`, updated, start);
       },
     };
@@ -1442,31 +1472,61 @@ class AIBrainActionRegistry {
         const start = Date.now();
         const { title, description, severity, relatedEntityId, relatedEntityType } = request.payload || {};
         if (request.workspaceId) await assertWorkspaceActive(request.workspaceId, { bypassForSystemActor: true });
-        
-        const { complianceService } = await import('../compliance/complianceService');
-        const alert = await complianceService.createAlert({
-          workspaceId: request.workspaceId!,
-          title: title || 'Compliance Escalation',
-          description: description || 'Manual escalation via Trinity AI',
-          severity: severity || 'high',
-          status: 'open',
-          relatedEntityId,
-          relatedEntityType,
-          createdBy: request.userId
-        });
 
-        await universalNotificationEngine.sendNotification({
-          type: 'compliance_alert',
-          title: `Compliance Escalation: ${(alert as any).title}`,
-          message: (alert as any).description,
-          workspaceId: request.workspaceId!,
-          // @ts-expect-error — TS migration: fix in refactoring sprint
-          severity: alert.severity === 'critical' ? 'high' : 'medium',
-          source: 'trinity_compliance_escalation',
-          metadata: { alertId: alert.id }
-        });
+        try {
+          const { complianceService } = await import('../compliance/complianceService');
+          const alert = await complianceService.createAlert({
+            workspaceId: request.workspaceId!,
+            title: title || 'Compliance Escalation',
+            description: description || 'Manual escalation via Trinity AI',
+            severity: severity || 'high',
+            status: 'open',
+            relatedEntityId,
+            relatedEntityType,
+            createdBy: request.userId
+          });
 
-        return createResult(request.actionId, true, 'Compliance issue escalated', alert, start);
+          await universalNotificationEngine.sendNotification({
+            type: 'compliance_alert',
+            title: `Compliance Escalation: ${(alert as any).title}`,
+            message: (alert as any).description,
+            workspaceId: request.workspaceId!,
+            // @ts-expect-error — TS migration: fix in refactoring sprint
+            severity: alert.severity === 'critical' ? 'high' : 'medium',
+            source: 'trinity_compliance_escalation',
+            metadata: { alertId: alert.id }
+          });
+
+          await logActionAudit({
+            actionId: request.actionId,
+            workspaceId: request.workspaceId,
+            userId: request.userId,
+            userRole: request.userRole,
+            platformRole: request.platformRole,
+            entityType: 'compliance_alert',
+            entityId: (alert as any)?.id ?? null,
+            success: true,
+            message: 'Compliance issue escalated',
+            changesAfter: alert as any,
+            durationMs: Date.now() - start,
+          });
+
+          return createResult(request.actionId, true, 'Compliance issue escalated', alert, start);
+        } catch (err: any) {
+          await logActionAudit({
+            actionId: request.actionId,
+            workspaceId: request.workspaceId,
+            userId: request.userId,
+            userRole: request.userRole,
+            platformRole: request.platformRole,
+            entityType: 'compliance_alert',
+            success: false,
+            errorMessage: err?.message ?? String(err),
+            payload: { title, severity, relatedEntityId, relatedEntityType },
+            durationMs: Date.now() - start,
+          });
+          throw err;
+        }
       },
     };
 
