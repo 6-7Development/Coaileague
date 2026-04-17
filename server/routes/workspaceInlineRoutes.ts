@@ -315,6 +315,95 @@ async function applyAutomationUpdate(params: {
     }
   });
 
+  // GET /workspace/branding — available to all tiers
+  router.get('/branding', requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+      const wsId = req.workspaceId || req.user?.currentWorkspaceId;
+      if (!wsId) return res.status(400).json({ message: 'No workspace context' });
+      const [ws] = await db
+        .select({
+          logoUrl: workspaces.logoUrl,
+          brandColor: workspaces.brandColor,
+          companyName: workspaces.companyName,
+          name: workspaces.name,
+          stateLicenseNumber: workspaces.stateLicenseNumber,
+          brandingBlob: workspaces.brandingBlob,
+        })
+        .from(workspaces)
+        .where(eq(workspaces.id, wsId))
+        .limit(1);
+      if (!ws) return res.status(404).json({ message: 'Workspace not found' });
+      const blob = (ws.brandingBlob || {}) as Record<string, any>;
+      res.json({
+        logoUrl: ws.logoUrl || blob.logoUrl || null,
+        brandColor: ws.brandColor || blob.primaryColor || null,
+        primaryColor: blob.primaryColor || ws.brandColor || null,
+        accentColor: blob.accentColor || null,
+        displayName: blob.displayName || ws.companyName || ws.name || null,
+        hidePoweredBy: blob.hidePoweredBy || false,
+        customDomain: blob.customDomain || null,
+        stateLicenseNumber: ws.stateLicenseNumber || null,
+      });
+    } catch (error) {
+      log.error('Workspace branding fetch error:', error);
+      res.status(500).json({ message: 'Failed to fetch branding' });
+    }
+  });
+
+  // POST /workspace/branding — available to all tiers; org owners/admins only
+  router.post('/branding', requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+      const wsId = req.workspaceId || req.user?.currentWorkspaceId;
+      if (!wsId) return res.status(400).json({ message: 'No workspace context' });
+
+      const { role } = await resolveWorkspaceForUser(userId, wsId);
+      if (!['org_owner', 'co_owner', 'org_admin'].includes(role || '')) {
+        return res.status(403).json({ message: 'Only organization owners and admins can update branding' });
+      }
+
+      const { logoUrl, brandColor, primaryColor, accentColor, displayName, hidePoweredBy, customDomain } = req.body;
+
+      const [existing] = await db
+        .select({ brandingBlob: workspaces.brandingBlob })
+        .from(workspaces)
+        .where(eq(workspaces.id, wsId))
+        .limit(1);
+      const current = ((existing?.brandingBlob || {}) as Record<string, any>);
+      const updatedBlob: Record<string, any> = { ...current, updatedAt: new Date().toISOString() };
+      if (logoUrl !== undefined) updatedBlob.logoUrl = logoUrl;
+      if (primaryColor !== undefined) updatedBlob.primaryColor = primaryColor;
+      if (brandColor !== undefined) updatedBlob.primaryColor = brandColor;
+      if (accentColor !== undefined) updatedBlob.accentColor = accentColor;
+      if (displayName !== undefined) updatedBlob.displayName = displayName;
+      if (hidePoweredBy !== undefined) updatedBlob.hidePoweredBy = hidePoweredBy;
+      if (customDomain !== undefined) updatedBlob.customDomain = customDomain;
+
+      const directUpdates: Record<string, any> = { brandingBlob: updatedBlob };
+      if (logoUrl !== undefined) directUpdates.logoUrl = logoUrl || null;
+      if (brandColor !== undefined) directUpdates.brandColor = brandColor || null;
+      if (primaryColor !== undefined) directUpdates.brandColor = primaryColor || null;
+
+      await db.update(workspaces).set(directUpdates).where(eq(workspaces.id, wsId));
+
+      res.json({
+        logoUrl: logoUrl ?? updatedBlob.logoUrl ?? null,
+        brandColor: directUpdates.brandColor ?? null,
+        primaryColor: updatedBlob.primaryColor ?? null,
+        accentColor: updatedBlob.accentColor ?? null,
+        displayName: updatedBlob.displayName ?? null,
+        hidePoweredBy: updatedBlob.hidePoweredBy ?? false,
+        customDomain: updatedBlob.customDomain ?? null,
+      });
+    } catch (error) {
+      log.error('Workspace branding update error:', error);
+      res.status(500).json({ message: 'Failed to save branding' });
+    }
+  });
+
   router.get('/', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const authReq = req as AuthenticatedRequest;

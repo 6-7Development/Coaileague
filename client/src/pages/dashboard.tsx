@@ -471,11 +471,19 @@ export default function Dashboard() {
   const supportEmailTotal = supportEmailData?.total ?? 0;
 
   // Get current user and workspace
-  const { data: workspace, error: workspaceError } = useQuery<{ id: string; name?: string; orgCode?: string }>({ 
+  const { data: workspace, error: workspaceError } = useQuery<{ id: string; name?: string; orgCode?: string; logoUrl?: string | null; stateLicenseNumber?: string | null }>({
     queryKey: ['/api/workspace/current'],
     enabled: isAuthenticated,
   });
   const orgCode = workspace?.orgCode || 'N/A';
+
+  // Fetch branding (logo, colors) — available to all tiers
+  const { data: brandingData } = useQuery<{ logoUrl?: string | null; primaryColor?: string | null; displayName?: string | null; hidePoweredBy?: boolean }>({
+    queryKey: ['/api/workspace/branding'],
+    enabled: isAuthenticated,
+    staleTime: 5 * 60 * 1000,
+  });
+  const tenantLogoUrl = brandingData?.logoUrl || workspace?.logoUrl || null;
 
   // Fetch subscription details for plan/trial badge
   const { data: subscriptionData } = useQuery<{
@@ -1007,20 +1015,32 @@ export default function Dashboard() {
             <div className="absolute bottom-0 left-0 w-48 h-48 rounded-full opacity-10 pointer-events-none" style={{ background: "radial-gradient(circle, #a5b4fc 0%, transparent 70%)", transform: "translate(-30%, 40%)" }} />
 
             <div className="relative z-10 p-6 sm:p-8">
-              {/* Top row: logo + org name */}
-              <div className="flex items-center justify-between gap-4 mb-6 flex-wrap">
+              {/* Top row: CoAIleague logo (left) + license number + tenant logo (right) */}
+              <div className="flex items-start justify-between gap-4 mb-6 flex-wrap">
                 <div className="opacity-90 brightness-0 invert transform hover:scale-105 transition-transform duration-300">
                   <UnifiedBrandLogo variant="full" size="sm" />
                 </div>
-                {workspace?.name && (
-                  <Badge
-                    className="text-xs px-3 py-1 font-semibold border-white/30 text-white"
-                    style={{ background: "rgba(255,255,255,0.15)" }}
-                    data-testid="text-org-name"
-                  >
-                    {workspace.name}
-                  </Badge>
-                )}
+                <div className="flex flex-col items-end gap-2">
+                  {(licenseNumber || workspace?.stateLicenseNumber || workspace?.name) && (
+                    <Badge
+                      className="text-xs px-3 py-1 font-semibold border-white/30 text-white font-mono"
+                      style={{ background: "rgba(255,255,255,0.15)" }}
+                      data-testid="text-org-license-badge"
+                    >
+                      {licenseNumber || workspace?.stateLicenseNumber || workspace?.name}
+                    </Badge>
+                  )}
+                  {tenantLogoUrl && (
+                    <img
+                      src={tenantLogoUrl}
+                      alt="Organization logo"
+                      className="h-10 max-w-[120px] object-contain rounded"
+                      style={{ filter: "brightness(0) invert(1)", opacity: 0.9 }}
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                      data-testid="img-tenant-logo"
+                    />
+                  )}
+                </div>
               </div>
 
               {/* Avatar + greeting row */}

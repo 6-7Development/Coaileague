@@ -9,17 +9,17 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Paintbrush, Save, Eye, Globe, Image, Palette } from "lucide-react";
+import { Paintbrush, Save, Eye, Globe, Image, Palette, Building2, ShieldCheck } from "lucide-react";
 import { CanvasHubPage, type CanvasPageConfig } from "@/components/canvas-hub";
 
 interface BrandingData {
-  id?: string;
   displayName: string;
   logoUrl: string;
   primaryColor: string;
   accentColor: string;
   hidePoweredBy: boolean;
   customDomain: string;
+  stateLicenseNumber?: string | null;
 }
 
 const DEFAULT_BRANDING: BrandingData = {
@@ -37,7 +37,7 @@ export default function WhiteLabelBranding() {
   const [form, setForm] = useState<BrandingData>(DEFAULT_BRANDING);
 
   const { data: branding, isLoading } = useQuery<BrandingData | null>({
-    queryKey: ["/api/enterprise-features/branding"],
+    queryKey: ["/api/workspace/branding"],
   });
 
   useEffect(() => {
@@ -55,13 +55,14 @@ export default function WhiteLabelBranding() {
 
   const saveMutation = useMutation({
     mutationFn: async (data: BrandingData) => {
-      return await apiRequest("POST", "/api/enterprise-features/branding", data);
+      return await apiRequest("POST", "/api/workspace/branding", data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/enterprise-features/branding"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/workspace/branding"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/workspace/current"] });
       toast({
         title: "Branding Saved",
-        description: "Your white-label branding settings have been updated.",
+        description: "Your branding settings are now active on the dashboard.",
       });
     },
     onError: (error: any) => {
@@ -80,7 +81,7 @@ export default function WhiteLabelBranding() {
   const pageConfig: CanvasPageConfig = {
     id: "white-label-branding",
     title: "White-Label Branding",
-    subtitle: "Customize your workspace appearance and branding for a seamless client experience",
+    subtitle: "Upload your logo and customize colors — your brand shows live on the dashboard header",
     category: "settings" as any,
     showHeader: true,
   };
@@ -94,15 +95,31 @@ export default function WhiteLabelBranding() {
               <Paintbrush className="h-5 w-5" />
               Branding Settings
             </CardTitle>
-            <CardDescription>Configure how your workspace appears to users</CardDescription>
+            <CardDescription>
+              Your logo appears in the dashboard header below your license number. Available on all plans.
+            </CardDescription>
           </CardHeader>
           <CardContent>
             {isLoading ? (
               <div className="text-center py-8 text-muted-foreground">Loading branding settings...</div>
             ) : (
               <div className="space-y-5">
+                {/* License number info (read-only display) */}
+                {branding?.stateLicenseNumber && (
+                  <div className="flex items-center gap-2 p-3 rounded-md bg-muted/50 border">
+                    <ShieldCheck className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">State License (shown in header badge)</p>
+                      <p className="text-sm font-mono font-semibold">{branding.stateLicenseNumber}</p>
+                    </div>
+                  </div>
+                )}
+
                 <div className="space-y-2">
-                  <Label htmlFor="displayName">Display Name</Label>
+                  <Label htmlFor="displayName" className="flex items-center gap-2">
+                    <Building2 className="h-4 w-4" />
+                    Display Name
+                  </Label>
                   <Input
                     id="displayName"
                     placeholder="Your Company Name"
@@ -110,6 +127,9 @@ export default function WhiteLabelBranding() {
                     onChange={(e) => setForm({ ...form, displayName: e.target.value })}
                     data-testid="input-display-name"
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Overrides workspace name in branded interfaces
+                  </p>
                 </div>
 
                 <div className="space-y-2">
@@ -124,6 +144,28 @@ export default function WhiteLabelBranding() {
                     onChange={(e) => setForm({ ...form, logoUrl: e.target.value })}
                     data-testid="input-logo-url"
                   />
+                  <p className="text-xs text-muted-foreground">
+                    PNG or SVG with transparent background recommended. Displays below the license number badge on the dashboard header.
+                  </p>
+                  {form.logoUrl && (
+                    <div className="mt-2 p-3 rounded border bg-slate-800 flex items-center justify-center min-h-[60px]">
+                      <img
+                        src={form.logoUrl}
+                        alt="Logo preview"
+                        className="h-10 max-w-[160px] object-contain"
+                        style={{ filter: "brightness(0) invert(1)", opacity: 0.9 }}
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = "none";
+                        }}
+                        data-testid="img-logo-header-preview"
+                      />
+                    </div>
+                  )}
+                  {form.logoUrl && (
+                    <p className="text-xs text-muted-foreground">
+                      Preview above shows how your logo looks on the dark dashboard header.
+                    </p>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-4 flex-wrap">
@@ -215,59 +257,72 @@ export default function WhiteLabelBranding() {
               <Eye className="h-5 w-5" />
               Live Preview
             </CardTitle>
-            <CardDescription>See how your branding will appear to users</CardDescription>
+            <CardDescription>Dashboard header preview with your branding applied</CardDescription>
           </CardHeader>
           <CardContent>
+            {/* Dashboard header simulation */}
             <div
-              className="rounded-md border p-6 space-y-4"
+              className="rounded-md overflow-hidden"
               data-testid="branding-preview"
             >
-              <div className="flex items-center gap-3 flex-wrap">
-                {form.logoUrl ? (
-                  <img
-                    src={form.logoUrl}
-                    alt="Logo preview"
-                    className="h-10 w-10 rounded-md object-contain"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = "none";
-                    }}
-                    data-testid="img-logo-preview"
-                  />
-                ) : (
-                  <div
-                    className="h-10 w-10 rounded-md flex items-center justify-center text-white font-bold text-lg"
-                    style={{ backgroundColor: form.primaryColor }}
-                  >
-                    {form.displayName ? form.displayName[0].toUpperCase() : "C"}
+              {/* Simulated hero banner */}
+              <div
+                className="p-4 rounded-md"
+                style={{ background: "linear-gradient(135deg, #1d4ed8 0%, #2563EB 40%, #4f46e5 100%)" }}
+              >
+                <div className="flex items-start justify-between gap-3 flex-wrap">
+                  <div className="text-white/80 text-sm font-semibold">CoAIleague™</div>
+                  <div className="flex flex-col items-end gap-2">
+                    <span
+                      className="text-xs px-2.5 py-0.5 rounded-full font-mono font-semibold text-white border border-white/30"
+                      style={{ background: "rgba(255,255,255,0.15)" }}
+                      data-testid="text-preview-license"
+                    >
+                      {branding?.stateLicenseNumber || "C11608501"}
+                    </span>
+                    {form.logoUrl ? (
+                      <img
+                        src={form.logoUrl}
+                        alt="Logo preview"
+                        className="h-8 max-w-[100px] object-contain rounded"
+                        style={{ filter: "brightness(0) invert(1)", opacity: 0.9 }}
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = "none";
+                        }}
+                        data-testid="img-logo-preview"
+                      />
+                    ) : (
+                      <div
+                        className="h-8 w-24 rounded flex items-center justify-center text-white/40 text-[10px] border border-white/20"
+                        style={{ background: "rgba(255,255,255,0.08)" }}
+                      >
+                        your logo
+                      </div>
+                    )}
                   </div>
-                )}
-                <div>
-                  <h3 className="font-semibold text-lg" data-testid="text-preview-name">
-                    {form.displayName || "Your Company"}
-                  </h3>
-                  {form.customDomain && (
-                    <p className="text-xs text-muted-foreground" data-testid="text-preview-domain">
-                      {form.customDomain}
-                    </p>
-                  )}
+                </div>
+                <div className="mt-3">
+                  <p className="text-white font-bold text-lg">Good afternoon, User</p>
+                  <p className="text-white/80 text-sm mt-0.5">
+                    {form.displayName || "Your Company Name"}
+                  </p>
                 </div>
               </div>
 
-              <div className="space-y-3">
-                <div
-                  className="h-2 rounded-full"
-                  style={{ backgroundColor: form.primaryColor }}
-                />
+              {/* Color swatches */}
+              <div className="space-y-3 mt-4 p-3 border rounded-md bg-muted/30">
                 <div className="flex items-center gap-2 flex-wrap">
                   <div
                     className="px-3 py-1 rounded-md text-white text-sm font-medium"
                     style={{ backgroundColor: form.primaryColor }}
+                    data-testid="preview-primary-btn"
                   >
                     Primary Button
                   </div>
                   <div
                     className="px-3 py-1 rounded-md text-white text-sm font-medium"
                     style={{ backgroundColor: form.accentColor }}
+                    data-testid="preview-accent-btn"
                   >
                     Accent Button
                   </div>
@@ -279,29 +334,27 @@ export default function WhiteLabelBranding() {
                   <Badge variant="outline">Pending</Badge>
                 </div>
               </div>
-
-              {!form.hidePoweredBy && (
-                <p className="text-xs text-muted-foreground text-center pt-4 border-t">
-                  Powered by CoAIleague
-                </p>
-              )}
             </div>
 
-            {branding ? (
-              <div className="mt-4 flex items-center gap-2 flex-wrap">
-                <Badge variant="default">Active</Badge>
-                <span className="text-sm text-muted-foreground">
-                  Custom branding is applied to your workspace
-                </span>
-              </div>
-            ) : (
-              <div className="mt-4 flex items-center gap-2 flex-wrap">
-                <Badge variant="outline">Default</Badge>
-                <span className="text-sm text-muted-foreground">
-                  Using default CoAIleague branding
-                </span>
-              </div>
+            {!form.hidePoweredBy && (
+              <p className="text-xs text-muted-foreground text-center pt-3 border-t mt-4">
+                Powered by CoAIleague
+              </p>
             )}
+
+            <div className="mt-4 flex items-center gap-2 flex-wrap">
+              {branding?.logoUrl ? (
+                <>
+                  <Badge variant="default">Active</Badge>
+                  <span className="text-sm text-muted-foreground">Custom branding is live</span>
+                </>
+              ) : (
+                <>
+                  <Badge variant="outline">Default</Badge>
+                  <span className="text-sm text-muted-foreground">Add a logo URL above to activate</span>
+                </>
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>
