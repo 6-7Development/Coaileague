@@ -228,6 +228,42 @@ export async function initializeVoiceTables(): Promise<void> {
         ALTER TABLE voice_call_sessions ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW();
         ALTER TABLE voice_call_sessions ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW();
       `).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+
+      // Seed the platform-wide CoAIleague number — idempotent, never duplicates
+      const platformWorkspaceId = process.env.PLATFORM_DEFAULT_WORKSPACE_ID;
+      if (platformWorkspaceId) {
+        await client.query(`
+          INSERT INTO workspace_phone_numbers (
+            id,
+            workspace_id,
+            phone_number,
+            friendly_name,
+            twilio_sid,
+            country,
+            capabilities,
+            is_active,
+            is_primary,
+            extension_config
+          )
+          VALUES (
+            gen_random_uuid()::text,
+            $1,
+            '+18664644151',
+            'CoAIleague Main Line',
+            'platform-main-line',
+            'US',
+            '{"voice": true}',
+            true,
+            true,
+            '{"sales": true, "support": true, "employment_verification": true, "staff": true, "emergency": true, "careers": true}'
+          )
+          ON CONFLICT (phone_number) DO NOTHING;
+        `, [platformWorkspaceId]);
+        log.info('[VoiceRoutes] Platform number +18664644151 seeded (or already present)');
+      } else {
+        log.warn('[VoiceRoutes] PLATFORM_DEFAULT_WORKSPACE_ID not set — skipping platform number seed');
+      }
+
       log.info('[VoiceRoutes] Voice tables initialized');
     } finally {
       client.release();
