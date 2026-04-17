@@ -63,6 +63,50 @@ function createResult(
 }
 
 // ============================================================================
+// AUDIT WRAP HELPER (Phase 18)
+// Wraps any ActionHandler with logActionAudit on both success and failure paths.
+// Do NOT use on handlers that already contain explicit logActionAudit calls.
+// ============================================================================
+
+function withAuditWrap(action: ActionHandler, entityType: string): ActionHandler {
+  const originalHandler = action.handler;
+  return {
+    ...action,
+    handler: async (request: ActionRequest): Promise<ActionResult> => {
+      const start = Date.now();
+      try {
+        const result = await originalHandler(request);
+        await logActionAudit({
+          actionId: request.actionId,
+          workspaceId: request.workspaceId,
+          userId: request.userId,
+          userRole: request.userRole,
+          platformRole: request.platformRole,
+          entityType,
+          success: result.success,
+          message: result.message,
+          changesAfter: result.data,
+          durationMs: Date.now() - start,
+        });
+        return result;
+      } catch (err: any) {
+        await logActionAudit({
+          actionId: request.actionId,
+          workspaceId: request.workspaceId,
+          userId: request.userId,
+          entityType,
+          success: false,
+          errorMessage: err?.message,
+          payload: request.payload,
+          durationMs: Date.now() - start,
+        });
+        throw err;
+      }
+    },
+  };
+}
+
+// ============================================================================
 // ACTION REGISTRY CLASS
 // ============================================================================
 
@@ -152,9 +196,9 @@ class AIBrainActionRegistry {
       },
     };
 
-    helpaiOrchestrator.registerAction(getServiceStatus);
-    helpaiOrchestrator.registerAction(getAllServicesStatus);
-    helpaiOrchestrator.registerAction(restartService);
+    helpaiOrchestrator.registerAction(withAuditWrap(getServiceStatus, 'service'));
+    helpaiOrchestrator.registerAction(withAuditWrap(getAllServicesStatus, 'service'));
+    helpaiOrchestrator.registerAction(withAuditWrap(restartService, 'service'));
   }
 
   // ============================================================================
@@ -208,9 +252,9 @@ class AIBrainActionRegistry {
       },
     };
 
-    helpaiOrchestrator.registerAction(getFeature);
-    helpaiOrchestrator.registerAction(setFeature);
-    helpaiOrchestrator.registerAction(listFeatures);
+    helpaiOrchestrator.registerAction(withAuditWrap(getFeature, 'feature'));
+    helpaiOrchestrator.registerAction(withAuditWrap(setFeature, 'feature'));
+    helpaiOrchestrator.registerAction(withAuditWrap(listFeatures, 'feature'));
   }
 
   // ============================================================================
@@ -478,9 +522,9 @@ class AIBrainActionRegistry {
       },
     };
 
-    helpaiOrchestrator.registerAction(createShift);
-    helpaiOrchestrator.registerAction(getShifts);
-    helpaiOrchestrator.registerAction(createOpenShiftAndFill);
+    helpaiOrchestrator.registerAction(createShift); // explicit audit inside handler
+    helpaiOrchestrator.registerAction(withAuditWrap(getShifts, 'shift'));
+    helpaiOrchestrator.registerAction(withAuditWrap(createOpenShiftAndFill, 'shift'));
   }
 
   // ============================================================================
@@ -505,7 +549,7 @@ class AIBrainActionRegistry {
       },
     };
 
-    helpaiOrchestrator.registerAction(getPayrollRuns);
+    helpaiOrchestrator.registerAction(withAuditWrap(getPayrollRuns, 'payroll_run'));
   }
 
   // ============================================================================
@@ -754,14 +798,14 @@ class AIBrainActionRegistry {
       },
     };
 
-    helpaiOrchestrator.registerAction(listEmployees);
-    helpaiOrchestrator.registerAction(getEmployee);
-    helpaiOrchestrator.registerAction(createEmployee);
-    helpaiOrchestrator.registerAction(activateEmployee);
-    helpaiOrchestrator.registerAction(deactivateEmployee);
-    helpaiOrchestrator.registerAction(updateEmployee);
-    helpaiOrchestrator.registerAction(getEmployeeLifecycleHistory);
-    helpaiOrchestrator.registerAction(getClientLifecycleHistory);
+    helpaiOrchestrator.registerAction(withAuditWrap(listEmployees, 'employee'));
+    helpaiOrchestrator.registerAction(withAuditWrap(getEmployee, 'employee'));
+    helpaiOrchestrator.registerAction(createEmployee); // explicit audit inside handler
+    helpaiOrchestrator.registerAction(withAuditWrap(activateEmployee, 'employee'));
+    helpaiOrchestrator.registerAction(withAuditWrap(deactivateEmployee, 'employee'));
+    helpaiOrchestrator.registerAction(updateEmployee); // explicit audit inside handler
+    helpaiOrchestrator.registerAction(withAuditWrap(getEmployeeLifecycleHistory, 'employee'));
+    helpaiOrchestrator.registerAction(withAuditWrap(getClientLifecycleHistory, 'client'));
   }
 
   // ============================================================================
@@ -784,7 +828,7 @@ class AIBrainActionRegistry {
       },
     };
 
-    helpaiOrchestrator.registerAction(listClients);
+    helpaiOrchestrator.registerAction(withAuditWrap(listClients, 'client'));
 
     const createClient: ActionHandler = {
       actionId: 'clients.create',
@@ -965,10 +1009,10 @@ class AIBrainActionRegistry {
       },
     };
 
-    helpaiOrchestrator.registerAction(createClient);
-    helpaiOrchestrator.registerAction(createPortalInvite);
-    helpaiOrchestrator.registerAction(scanOpenShifts);
-    helpaiOrchestrator.registerAction(detectDemandChange);
+    helpaiOrchestrator.registerAction(withAuditWrap(createClient, 'client'));
+    helpaiOrchestrator.registerAction(withAuditWrap(createPortalInvite, 'client'));
+    helpaiOrchestrator.registerAction(withAuditWrap(scanOpenShifts, 'shift'));
+    helpaiOrchestrator.registerAction(withAuditWrap(detectDemandChange, 'shift'));
   }
 
   // ============================================================================
@@ -1024,8 +1068,8 @@ class AIBrainActionRegistry {
       },
     };
 
-    helpaiOrchestrator.registerAction(getTimeEntries);
-    helpaiOrchestrator.registerAction(editTimeEntry);
+    helpaiOrchestrator.registerAction(withAuditWrap(getTimeEntries, 'time_entry'));
+    helpaiOrchestrator.registerAction(withAuditWrap(editTimeEntry, 'time_entry'));
   }
 
   // ============================================================================
@@ -1230,9 +1274,9 @@ class AIBrainActionRegistry {
       },
     };
 
-    helpaiOrchestrator.registerAction(sendNotification);
-    helpaiOrchestrator.registerAction(manageNotifications);
-    helpaiOrchestrator.registerAction(deliveryStats);
+    helpaiOrchestrator.registerAction(withAuditWrap(sendNotification, 'notification'));
+    helpaiOrchestrator.registerAction(withAuditWrap(manageNotifications, 'notification'));
+    helpaiOrchestrator.registerAction(withAuditWrap(deliveryStats, 'notification'));
     // helpaiOrchestrator.registerAction(markAllRead); // consolidated into notify.manage
   }
 
@@ -1725,14 +1769,14 @@ class AIBrainActionRegistry {
       },
     };
 
-    helpaiOrchestrator.registerAction(fillOpenShift);
-    helpaiOrchestrator.registerAction(approveTimesheet);
-    helpaiOrchestrator.registerAction(createInvoice);
-    helpaiOrchestrator.registerAction(addInvoiceLineItems);
+    helpaiOrchestrator.registerAction(withAuditWrap(fillOpenShift, 'shift'));
+    helpaiOrchestrator.registerAction(approveTimesheet); // explicit audit inside handler
+    helpaiOrchestrator.registerAction(createInvoice); // explicit audit inside handler
+    helpaiOrchestrator.registerAction(addInvoiceLineItems); // explicit audit inside handler
     // billing.invoice_send canonical is in trinityInvoiceEmailActions.ts — not registering here
     // helpaiOrchestrator.registerAction(sendInvoice);
-    helpaiOrchestrator.registerAction(clockOutOfficer);
-    helpaiOrchestrator.registerAction(escalateCompliance);
+    helpaiOrchestrator.registerAction(clockOutOfficer); // explicit audit inside handler
+    helpaiOrchestrator.registerAction(escalateCompliance); // explicit audit inside handler
   }
 
   // ============================================================================
@@ -2087,7 +2131,7 @@ class AIBrainActionRegistry {
     // helpaiOrchestrator.registerAction(getChecklist);
 
     // onboarding.invite — consolidated action (replaces send_invitation, resend_invitation, revoke_invitation, send_client_welcome)
-    helpaiOrchestrator.registerAction(sendInvitation);
+    helpaiOrchestrator.registerAction(withAuditWrap(sendInvitation, 'invitation'));
 
     // onboarding.resend_invitation — CONSOLIDATED into onboarding.invite (action='resend')
     // helpaiOrchestrator.registerAction(resendInvitation);
@@ -2172,8 +2216,8 @@ class AIBrainActionRegistry {
       },
     };
 
-    helpaiOrchestrator.registerAction(bulkImportEmployees);
-    helpaiOrchestrator.registerAction(bulkExportEmployees);
+    helpaiOrchestrator.registerAction(withAuditWrap(bulkImportEmployees, 'employee'));
+    helpaiOrchestrator.registerAction(withAuditWrap(bulkExportEmployees, 'employee'));
   }
 
   // ============================================================================
@@ -2219,8 +2263,8 @@ class AIBrainActionRegistry {
       },
     };
 
-    helpaiOrchestrator.registerAction(getIntegrationStatus);
-    helpaiOrchestrator.registerAction(listIntegrations);
+    helpaiOrchestrator.registerAction(withAuditWrap(getIntegrationStatus, 'integration'));
+    helpaiOrchestrator.registerAction(withAuditWrap(listIntegrations, 'integration'));
   }
 
   // ============================================================================
@@ -2356,14 +2400,14 @@ class AIBrainActionRegistry {
       },
     };
 
-    helpaiOrchestrator.registerAction(generateStrategicSchedule);
-    helpaiOrchestrator.registerAction(getEmployeeBusinessMetrics);
-    helpaiOrchestrator.registerAction(getClientBusinessMetrics);
-    helpaiOrchestrator.registerAction(getStrategicContext);
-    helpaiOrchestrator.registerAction(calculateShiftProfit);
-    helpaiOrchestrator.registerAction(getAtRiskClients);
-    helpaiOrchestrator.registerAction(getTopPerformers);
-    helpaiOrchestrator.registerAction(getProblematicEmployees);
+    helpaiOrchestrator.registerAction(withAuditWrap(generateStrategicSchedule, 'schedule'));
+    helpaiOrchestrator.registerAction(withAuditWrap(getEmployeeBusinessMetrics, 'employee'));
+    helpaiOrchestrator.registerAction(withAuditWrap(getClientBusinessMetrics, 'client'));
+    helpaiOrchestrator.registerAction(withAuditWrap(getStrategicContext, 'workspace'));
+    helpaiOrchestrator.registerAction(withAuditWrap(calculateShiftProfit, 'shift'));
+    helpaiOrchestrator.registerAction(withAuditWrap(getAtRiskClients, 'client'));
+    helpaiOrchestrator.registerAction(withAuditWrap(getTopPerformers, 'employee'));
+    helpaiOrchestrator.registerAction(withAuditWrap(getProblematicEmployees, 'employee'));
   }
 
   // ============================================================================
@@ -2483,13 +2527,13 @@ class AIBrainActionRegistry {
       },
     };
 
-    helpaiOrchestrator.registerAction(getContractStats);
-    helpaiOrchestrator.registerAction(getPendingSignatures);
-    helpaiOrchestrator.registerAction(getExpiringContracts);
-    helpaiOrchestrator.registerAction(getContractUsage);
-    helpaiOrchestrator.registerAction(getContractTemplates);
-    helpaiOrchestrator.registerAction(searchContracts);
-    helpaiOrchestrator.registerAction(getContractAuditTrail);
+    helpaiOrchestrator.registerAction(withAuditWrap(getContractStats, 'contract'));
+    helpaiOrchestrator.registerAction(withAuditWrap(getPendingSignatures, 'contract'));
+    helpaiOrchestrator.registerAction(withAuditWrap(getExpiringContracts, 'contract'));
+    helpaiOrchestrator.registerAction(withAuditWrap(getContractUsage, 'contract'));
+    helpaiOrchestrator.registerAction(withAuditWrap(getContractTemplates, 'contract'));
+    helpaiOrchestrator.registerAction(withAuditWrap(searchContracts, 'contract'));
+    helpaiOrchestrator.registerAction(withAuditWrap(getContractAuditTrail, 'contract'));
   }
 
   // ============================================================================
@@ -2599,11 +2643,11 @@ class AIBrainActionRegistry {
       },
     };
 
-    helpaiOrchestrator.registerAction(getMemoryHealth);
-    helpaiOrchestrator.registerAction(optimizeMemory);
-    helpaiOrchestrator.registerAction(optimizeDryRun);
-    helpaiOrchestrator.registerAction(getRetentionPolicies);
-    helpaiOrchestrator.registerAction(getOptimizationHistory);
+    helpaiOrchestrator.registerAction(withAuditWrap(getMemoryHealth, 'memory'));
+    helpaiOrchestrator.registerAction(withAuditWrap(optimizeMemory, 'memory'));
+    helpaiOrchestrator.registerAction(withAuditWrap(optimizeDryRun, 'memory'));
+    helpaiOrchestrator.registerAction(withAuditWrap(getRetentionPolicies, 'memory'));
+    helpaiOrchestrator.registerAction(withAuditWrap(getOptimizationHistory, 'memory'));
   }
 
   // ============================================================================
@@ -2946,7 +2990,7 @@ class AIBrainActionRegistry {
       },
     };
 
-    helpaiOrchestrator.registerAction(getWorkspaceBillingSettings); // billing.settings (consolidated)
+    helpaiOrchestrator.registerAction(withAuditWrap(getWorkspaceBillingSettings, 'billing_settings')); // billing.settings (consolidated)
     // Consolidated into billing.settings — not registering separately:
     // helpaiOrchestrator.registerAction(setWorkspaceBillingSettings);
     // helpaiOrchestrator.registerAction(getClientBillingSettings);
@@ -3015,7 +3059,7 @@ class AIBrainActionRegistry {
         }
       },
     };
-    helpaiOrchestrator.registerAction(getWorkspaceTierStatus); // workspace.tier.status
+    helpaiOrchestrator.registerAction(withAuditWrap(getWorkspaceTierStatus, 'workspace')); // workspace.tier.status
   }
 
   // ============================================================================
@@ -3118,10 +3162,10 @@ class AIBrainActionRegistry {
       },
     };
 
-    helpaiOrchestrator.registerAction(listInvoices); // billing.invoice (consolidated — replaces invoices_list + invoices_get)
+    helpaiOrchestrator.registerAction(withAuditWrap(listInvoices, 'invoice')); // billing.invoice (consolidated — replaces invoices_list + invoices_get)
     // billing.invoices_get consolidated into billing.invoice above — not registering separately:
     // helpaiOrchestrator.registerAction(getInvoice);
-    helpaiOrchestrator.registerAction(getInvoiceSummary); // billing.invoice_summary
+    helpaiOrchestrator.registerAction(withAuditWrap(getInvoiceSummary, 'invoice')); // billing.invoice_summary
     log.info('[AI Brain] Invoice & analytics actions registered (2 actions)');
   }
 
@@ -3358,12 +3402,12 @@ export async function registerAutonomousSchedulingBrainActions(): Promise<void> 
   };
   
   // Register all autonomous scheduling actions with Trinity's brain
-  helpaiOrchestrator.registerAction(executeAutonomousScheduling);
-  helpaiOrchestrator.registerAction(getSchedulingStatus);
-  helpaiOrchestrator.registerAction(enableBackgroundScheduling);
-  helpaiOrchestrator.registerAction(disableBackgroundScheduling);
-  helpaiOrchestrator.registerAction(importHistoricalPatterns);
-  helpaiOrchestrator.registerAction(createRecurringTemplate);
+  helpaiOrchestrator.registerAction(withAuditWrap(executeAutonomousScheduling, 'schedule'));
+  helpaiOrchestrator.registerAction(withAuditWrap(getSchedulingStatus, 'schedule'));
+  helpaiOrchestrator.registerAction(withAuditWrap(enableBackgroundScheduling, 'schedule'));
+  helpaiOrchestrator.registerAction(withAuditWrap(disableBackgroundScheduling, 'schedule'));
+  helpaiOrchestrator.registerAction(withAuditWrap(importHistoricalPatterns, 'schedule'));
+  helpaiOrchestrator.registerAction(withAuditWrap(createRecurringTemplate, 'schedule'));
   
   log.info('[AI Brain] Autonomous scheduling actions registered (6 new actions)');
 }
@@ -3498,10 +3542,10 @@ export function registerUniversalIdActions(): void {
     },
   };
 
-  helpaiOrchestrator.registerAction(resolveEntityAction);
-  helpaiOrchestrator.registerAction(lookupByIdAction);
-  helpaiOrchestrator.registerAction(backfillIdsAction);
-  helpaiOrchestrator.registerAction(systemResolveIdAction);
+  helpaiOrchestrator.registerAction(withAuditWrap(resolveEntityAction, 'entity'));
+  helpaiOrchestrator.registerAction(withAuditWrap(lookupByIdAction, 'entity'));
+  helpaiOrchestrator.registerAction(withAuditWrap(backfillIdsAction, 'entity'));
+  helpaiOrchestrator.registerAction(withAuditWrap(systemResolveIdAction, 'entity'));
 
   log.info('[AI Brain] Phase 57 Universal ID Resolver actions registered (4 actions: universal.resolve_entity, universal.lookup_by_id, universal.backfill_ids, system.resolve_id)');
 }
