@@ -13,7 +13,12 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { apiRequest } from '@/lib/queryClient';
+
+async function fetchJson<T>(url: string): Promise<T> {
+  const res = await fetch(url, { credentials: 'include' });
+  if (!res.ok) throw new Error(`${res.status}: ${(await res.text()) || res.statusText}`);
+  return (await res.json()) as T;
+}
 import {
   Card,
   CardContent,
@@ -138,7 +143,7 @@ export default function TrinityTransparencyDashboard() {
   const { data: overviewData, isLoading: overviewLoading, refetch: refetchOverview } =
     useQuery<{ success: boolean; overview: OverviewData }>({
       queryKey: ['/api/trinity/transparency/overview'],
-      queryFn: () => apiRequest('/api/trinity/transparency/overview'),
+      queryFn: () => fetchJson('/api/trinity/transparency/overview'),
       refetchInterval: 60_000,
     });
 
@@ -146,14 +151,14 @@ export default function TrinityTransparencyDashboard() {
     useQuery<CostBreakdown>({
       queryKey: ['/api/trinity/transparency/cost-breakdown', selectedMonth],
       queryFn: () =>
-        apiRequest(`/api/trinity/transparency/cost-breakdown?month=${selectedMonth}`),
+        fetchJson(`/api/trinity/transparency/cost-breakdown?month=${selectedMonth}`),
     });
 
   const { data: actionsData, isLoading: actionsLoading } =
     useQuery<{ success: boolean; actions: ActionLog[]; total: number }>({
       queryKey: ['/api/trinity/transparency/actions', actionsPage],
       queryFn: () =>
-        apiRequest(
+        fetchJson(
           `/api/trinity/transparency/actions?limit=20&offset=${actionsPage * 20}`,
         ),
     });
@@ -161,7 +166,7 @@ export default function TrinityTransparencyDashboard() {
   const { data: decisionsData, isLoading: decisionsLoading } =
     useQuery<{ success: boolean; decisions: Decision[]; total: number }>({
       queryKey: ['/api/trinity/transparency/decisions'],
-      queryFn: () => apiRequest('/api/trinity/transparency/decisions?limit=20'),
+      queryFn: () => fetchJson('/api/trinity/transparency/decisions?limit=20'),
     });
 
   const overview = overviewData?.overview;
@@ -595,7 +600,7 @@ function ServiceRegistryPanel() {
     serviceCountByDomain: Record<string, number>;
   }>({
     queryKey: ['/api/trinity/transparency/service-registry'],
-    queryFn: () => apiRequest('/api/trinity/transparency/service-registry'),
+    queryFn: () => fetchJson('/api/trinity/transparency/service-registry'),
   });
 
   if (isLoading) {

@@ -18,7 +18,8 @@
  */
 
 import { Router, Response } from 'express';
-import { requireAuth, type AuthenticatedRequest } from '../auth';
+import { requireAuth } from '../auth';
+import type { AuthenticatedRequest } from '../rbac';
 import { sanitizeError } from '../middleware/errorHandler';
 import { pool } from '../db';
 import { createLogger } from '../lib/logger';

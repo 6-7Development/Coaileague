@@ -3555,7 +3555,6 @@ export async function registerAutonomousSchedulingBrainActions(): Promise<void> 
           actionId: request.actionId, workspaceId: request.workspaceId, userId: request.userId,
           userRole: request.userRole, platformRole: request.platformRole,
           entityType: 'schedule', entityId: null,
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           success: result.success,
           // @ts-expect-error — TS migration: fix in refactoring sprint
           message: result.summary,
