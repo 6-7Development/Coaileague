@@ -471,7 +471,7 @@ voiceRouter.post('/language-select', twilioSignatureMiddleware, async (req: Requ
 
 voiceRouter.post('/caller-identify', twilioSignatureMiddleware, async (req: Request, res: Response) => {
   try {
-    const { CallSid, Digits, To } = req.body;
+    const { CallSid, Digits, To, From } = req.body;
     const lang = getLang(req);
     const baseUrl = getBaseUrl(req);
 
@@ -485,9 +485,20 @@ voiceRouter.post('/caller-identify', twilioSignatureMiddleware, async (req: Requ
     const langCode = lang === 'es' ? 'es-US' : 'en-US';
 
     if (Digits === '1') {
+      // Phase 18C anti-fraud — the personalized lane is gated on phone-on-profile.
+      const { verifyCaller, verificationFailureMessageVoice } = await import('../services/trinityVoice/trinityCallerVerification');
+      const v = await verifyCaller(From || '');
+      if (!v.verified) {
+        log.info(`[VoiceRoutes] Caller verification failed for ${From} (${v.reason}) — routing to general menu`);
+        return xmlResponse(res, twiml(
+          say(verificationFailureMessageVoice(lang), voiceId, langCode) +
+          redirect(`${baseUrl}/api/voice/general-menu?lang=${lang}`)
+        ));
+      }
+
       const prompt = lang === 'es'
-        ? 'Por favor diga su nombre completo o número de empleado para que pueda ayudarle de manera personalizada.'
-        : 'Please say your full name or employee number so I can pull up your information and assist you personally.';
+        ? `Hola ${v.firstName}, qué bueno escucharle. Por favor diga su número de empleado o el motivo de su llamada para ayudarle más rápido.`
+        : `Hi ${v.firstName}, great to hear from you. Please say your employee number or the reason for your call so I can help you faster.`;
 
       const action = `${baseUrl}/api/voice/staff-identify?sessionId=${encodeURIComponent(sessionId)}&workspaceId=${encodeURIComponent(workspaceId)}&lang=${lang}`;
       return xmlResponse(res, twiml(

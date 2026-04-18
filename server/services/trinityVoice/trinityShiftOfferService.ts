@@ -20,6 +20,7 @@
  */
 
 import { sendSMSToEmployee } from '../smsService';
+import { verifyCaller, verificationFailureMessageSms } from './trinityCallerVerification';
 import { createLogger } from '../../lib/logger';
 const log = createLogger('trinityShiftOffer');
 
@@ -173,27 +174,23 @@ export async function acceptShiftOffer(params: {
   await ensureTable();
 
   try {
-    const { pool } = await import('../../db');
-    const digits = fromPhone.replace(/\D/g, '').replace(/^1/, '');
-    if (digits.length < 7) return null;
-
-    // Find the officer by phone (across all workspaces — phone numbers are unique per person)
-    const officerRes = await pool.query(
-      `SELECT id, first_name, last_name, workspace_id
-         FROM employees
-        WHERE REGEXP_REPLACE(coalesce(phone, ''), '[^0-9]', '', 'g') LIKE $1
-          AND is_active = true
-        ORDER BY updated_at DESC NULLS LAST
-        LIMIT 1`,
-      [`%${digits.slice(-10)}`]
-    );
-
-    if (!officerRes.rows.length) {
-      // No employee match — let the generic SMS resolver take this message.
-      return null;
+    // Anti-fraud — only the verified officer (phone on file + claimed user_id)
+    // can accept a shift offer. A friend's phone with the same area code can't.
+    const v = await verifyCaller(fromPhone);
+    if (!v.verified) {
+      // Phone not on any active employee profile — let the generic resolver respond.
+      if (v.reason === 'no_phone_match') return null;
+      // Phone matched but unclaimed/inactive — return the friendly verification copy.
+      return verificationFailureMessageSms();
     }
 
-    const officer = officerRes.rows[0];
+    const { pool } = await import('../../db');
+    const officer = {
+      id: v.employeeId!,
+      first_name: v.firstName!,
+      last_name: v.lastName ?? '',
+      workspace_id: v.workspaceId!,
+    };
     const workspaceId = params.workspaceId || officer.workspace_id;
 
     // Find the most recent pending shift offer for this officer.
@@ -308,32 +305,24 @@ export async function declineShiftOffer(params: {
 }): Promise<string | null> {
   await ensureTable();
   try {
+    const v = await verifyCaller(params.fromPhone);
+    if (!v.verified) {
+      if (v.reason === 'no_phone_match') return null;
+      return verificationFailureMessageSms();
+    }
+
     const { pool } = await import('../../db');
-    const digits = params.fromPhone.replace(/\D/g, '').replace(/^1/, '');
-    if (digits.length < 7) return null;
-
-    const officerRes = await pool.query(
-      `SELECT id, first_name FROM employees
-        WHERE REGEXP_REPLACE(coalesce(phone, ''), '[^0-9]', '', 'g') LIKE $1
-          AND is_active = true
-        ORDER BY updated_at DESC NULLS LAST
-        LIMIT 1`,
-      [`%${digits.slice(-10)}`]
-    );
-    if (!officerRes.rows.length) return null;
-
-    const officer = officerRes.rows[0];
     const updated = await pool.query(
       `UPDATE trinity_shift_offers
           SET status = 'declined', responded_at = NOW()
         WHERE employee_id = $1
           AND status = 'pending'
           AND expires_at > NOW()`,
-      [officer.id]
+      [v.employeeId]
     );
     if ((updated.rowCount ?? 0) === 0) return null;
 
-    return `No problem, ${officer.first_name}! We'll reach out when another opportunity comes up. — Trinity`;
+    return `No problem, ${v.firstName}! We'll reach out when another opportunity comes up. — Trinity`;
   } catch (err: any) {
     log.warn('[ShiftOffer] Decline error:', err.message);
     return null;

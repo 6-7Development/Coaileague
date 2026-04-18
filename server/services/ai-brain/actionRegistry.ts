@@ -3522,6 +3522,10 @@ aiBrainActionRegistry.initialize().then(async () => {
   // Phase 18B — Trinity outbound shift offers + outbound welfare-check calls
   const { registerShiftOfferAndOutboundActions } = await import('./trinityShiftOfferActions');
   registerShiftOfferAndOutboundActions();
+
+  // Phase 18C — Regulatory auditor intake, listing, close, expire
+  const { registerTrinityAuditorActions } = await import('./trinityAuditorActions');
+  registerTrinityAuditorActions();
 }).catch((e: any) => log.error(e instanceof Error ? e.message : String(e)));
 
 export default aiBrainActionRegistry;

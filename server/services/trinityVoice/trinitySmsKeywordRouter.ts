@@ -23,6 +23,7 @@
 
 import bcrypt from 'bcryptjs';
 import { createLogger } from '../../lib/logger';
+import { verifyCaller, verificationFailureMessageSms } from './trinityCallerVerification';
 const log = createLogger('TrinitySmsKeywordRouter');
 
 const RECOGNIZED = new Set([
@@ -33,6 +34,9 @@ const RECOGNIZED = new Set([
   'VERIFY', 'EVERIFY', 'VERIFICATION',
   'STATUS',
   'HELP', 'COMMANDS', 'COMMAND',
+  // Phase 18C — Emergency escalation keywords. Intentionally NOT gated behind
+  // phone verification so an officer under duress can always reach help.
+  'EMERGENCY', 'PANIC', 'DURESS', 'SOS', 'HELP911', '911',
 ]);
 
 function normalizeKeyword(token: string): string {
@@ -260,10 +264,68 @@ function helpReply(): string {
     `Trinity commands: ` +
     `CLOCKIN <emp#> <pin>, CLOCKOUT <emp#> <pin>, ` +
     `COMPLAINT <message>, REQUEST <message>, VERIFY <emp# or name>, ` +
-    `STATUS, HELP. ` +
+    `STATUS, HELP, EMERGENCY <location>. ` +
     `Reply STOP to opt out of texts.`
   );
 }
+
+/**
+ * Emergency / panic / duress fallback. Never gated — if an officer is under
+ * threat and texts EMERGENCY, Trinity must respond and create a high-priority
+ * case regardless of phone-verification status.
+ */
+async function handleEmergency(args: string[], body: string, fromPhone: string): Promise<string> {
+  try {
+    const { pool } = await import('../../db');
+    const officer = await findEmployeeByPhone(fromPhone);
+    const workspaceId = officer?.workspace_id || 'platform';
+    const callerName = officer ? `${officer.first_name} ${officer.last_name}`.trim() : undefined;
+    const locationHint = args.join(' ').trim().slice(0, 300) || body.slice(0, 300);
+
+    const { createSupportCase, notifyHumanAgents } = await import('./supportCaseService');
+    const sc = await createSupportCase({
+      workspaceId,
+      callerNumber: fromPhone,
+      callerName,
+      issueSummary: `[EMERGENCY/DURESS via SMS] ${locationHint || 'officer requested immediate help'}`,
+      aiResolutionAttempted: false,
+      language: 'en',
+    });
+
+    // Fire the notification non-blocking — speed matters here.
+    notifyHumanAgents({ supportCase: sc, workspaceId }).catch((e: any) =>
+      log.warn('[KeywordRouter] emergency notify failed (non-fatal):', e?.message)
+    );
+
+    // Best-effort: publish a high-priority platform event too.
+    try {
+      await pool.query(
+        `INSERT INTO voice_call_actions (call_session_id, workspace_id, action, payload, outcome, occurred_at)
+         VALUES ('sms_emergency', $1, 'officer_emergency_sms', $2, 'pending', NOW())`,
+        [workspaceId, JSON.stringify({ fromPhone, locationHint, caseNumber: sc.case_number })]
+      );
+    } catch { /* table/column variance — not critical */ }
+
+    return (
+      `Trinity: Your emergency alert is received. Case ${sc.case_number} is active and the on-call team has been paged. ` +
+      `If you are in immediate danger, call 9-1-1 now. Reply SAFE when you're no longer in danger.`
+    );
+  } catch (err: any) {
+    log.error('[KeywordRouter] emergency handler failed:', err?.message);
+    return `Trinity: Your emergency alert is received. If you are in immediate danger, call 9-1-1 now. Our on-call team has been paged.`;
+  }
+}
+
+// Sensitive keywords require verified phone-on-profile. The list is conservative —
+// HELP and the auditor-style VERIFY request are intentionally excluded so people
+// without an account can still reach Trinity for assistance / regulatory intake.
+const REQUIRES_VERIFICATION = new Set([
+  'CLOCKIN', 'CLOCK-IN', 'CLOCK_IN', 'IN',
+  'CLOCKOUT', 'CLOCK-OUT', 'CLOCK_OUT', 'OUT',
+  'COMPLAINT',
+  'REQUEST', 'TICKET',
+  'STATUS',
+]);
 
 export async function handleTrinitySmsKeyword(params: {
   fromPhone: string;
@@ -276,10 +338,29 @@ export async function handleTrinitySmsKeyword(params: {
   const head = normalizeKeyword(tokens[0] || '');
   if (!RECOGNIZED.has(head)) return null;
 
+  // Anti-fraud gate — block sensitive commands when the caller's phone is not
+  // on file for an active, claimed employee profile.
+  if (REQUIRES_VERIFICATION.has(head)) {
+    const v = await verifyCaller(params.fromPhone);
+    if (!v.verified) {
+      log.info(`[KeywordRouter] Verification failed for ${params.fromPhone} (${v.reason}) — keyword=${head}`);
+      return verificationFailureMessageSms();
+    }
+  }
+
   const officer = await findEmployeeByPhone(params.fromPhone);
   const args = tokens.slice(1);
 
   switch (head) {
+    // Emergency first — routed before verification, intentionally.
+    case 'EMERGENCY':
+    case 'PANIC':
+    case 'DURESS':
+    case 'SOS':
+    case 'HELP911':
+    case '911':
+      return handleEmergency(args, body, params.fromPhone);
+
     case 'CLOCKIN':
     case 'CLOCK-IN':
     case 'CLOCK_IN':
