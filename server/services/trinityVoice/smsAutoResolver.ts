@@ -227,14 +227,14 @@ async function handleShiftOfferAcceptance(
   lang: 'en' | 'es' = 'en'
 ): Promise<SmsResolverResult> {
   try {
+    // Pull the most recent offer for this employee regardless of status/expiry so
+    // we can recognize late YES replies and respond with a graceful message.
     const offer = await pool.query(`
-      SELECT ao.id, ao.staged_shift_id, s.start_time, s.end_time, s.location,
-             s.workspace_id
+      SELECT ao.id, ao.staged_shift_id, ao.status, ao.offer_expires_at,
+             s.start_time, s.end_time, s.location, s.workspace_id
       FROM automated_shift_offers ao
       LEFT JOIN shifts s ON s.id = ao.staged_shift_id
       WHERE ao.employee_id = $1
-        AND ao.status = 'pending_response'
-        AND (ao.offer_expires_at IS NULL OR ao.offer_expires_at > NOW())
       ORDER BY ao.created_at DESC
       LIMIT 1
     `, [identity.employeeId]);
@@ -244,7 +244,7 @@ async function handleShiftOfferAcceptance(
         resolved: true,
         reply: t(
           `Hi ${identity.firstName}! Thanks for the YES, but I don't see any active shift offers for you right now. I'll reach out when something comes up! — Trinity`,
-          `¡Hola ${identity.firstName}! Gracias por aceptar, pero no veo ofertas de turno activas para ti en este momento. ¡Me comunicaré contigo cuando haya algo! — Trinity`,
+          `¡Hola ${identity.firstName}! Gracias por decir SÍ, pero no veo ninguna oferta de turno activa para ti ahora mismo. ¡Te avisaré cuando surja algo! — Trinity`,
           lang
         ),
         method: 'auto_action',
@@ -254,6 +254,53 @@ async function handleShiftOfferAcceptance(
     }
 
     const row = offer.rows[0];
+
+    // Late YES — the offer was already claimed or withdrawn by someone else
+    if (['accepted', 'withdrawn'].includes(row.status)) {
+      log.info(`[SMS] Late YES from ${identity.firstName} — offer ${row.id} already ${row.status}`);
+      return {
+        resolved: true,
+        reply: t(
+          `Hi ${identity.firstName}! This shift has already been filled — you were just a moment too late. Don't worry, I'll send you the next opportunity! — Trinity`,
+          `¡Hola ${identity.firstName}! Este turno ya fue asignado — llegaste un momento tarde. ¡No te preocupes, te enviaré la próxima oportunidad! — Trinity`,
+          lang
+        ),
+        method: 'auto_action',
+        workspaceId: identity.workspaceId,
+        employeeId: identity.employeeId,
+      };
+    }
+
+    // Expired offer
+    if (row.status === 'expired' || (row.offer_expires_at && new Date(row.offer_expires_at) < new Date())) {
+      log.info(`[SMS] Late YES from ${identity.firstName} — offer ${row.id} expired`);
+      return {
+        resolved: true,
+        reply: t(
+          `Hi ${identity.firstName}! This shift offer has expired. Keep an eye out — I'll text you when the next one comes up! — Trinity`,
+          `¡Hola ${identity.firstName}! Esta oferta de turno ha vencido. ¡Estate atento, te escribiré cuando salga la próxima! — Trinity`,
+          lang
+        ),
+        method: 'auto_action',
+        workspaceId: identity.workspaceId,
+        employeeId: identity.employeeId,
+      };
+    }
+
+    // Only pending_response offers proceed from here
+    if (row.status !== 'pending_response') {
+      return {
+        resolved: true,
+        reply: t(
+          `Hi ${identity.firstName}! Thanks for the YES — I'll check with your supervisor and follow up. — Trinity`,
+          `¡Hola ${identity.firstName}! Gracias por el SÍ — consultaré con tu supervisor y te avisaré. — Trinity`,
+          lang
+        ),
+        method: 'auto_action',
+        workspaceId: identity.workspaceId,
+        employeeId: identity.employeeId,
+      };
+    }
 
     await pool.query(`
       UPDATE automated_shift_offers SET status = 'accepted', responded_at = NOW()
@@ -290,24 +337,31 @@ async function handleShiftOfferAcceptance(
       log.warn('[SMS] Supervisor notification failed (non-fatal):', nErr?.message);
     }
 
+    // Trigger Stage C — InboundOpportunityAgent auto-staffing pipeline for any
+    // staged-shift rows now ready to be validated/assigned. Non-fatal on failure.
+    try {
+      const { inboundOpportunityAgent } = await import('../inboundOpportunityAgent');
+      await inboundOpportunityAgent.triggerAutoStaffing(identity.workspaceId);
+      log.info(`[SMS] Stage C triggered for workspace ${identity.workspaceId}`);
+    } catch (stageErr: any) {
+      log.warn('[SMS] Stage C trigger failed (non-fatal):', stageErr?.message);
+    }
+
     log.info(`[SMS] ${identity.firstName} accepted shift ${row.staged_shift_id}`);
 
     const startFormatted = row.start_time
       ? new Date(row.start_time).toLocaleString(lang === 'es' ? 'es-US' : 'en-US', {
           weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
         })
-      : (lang === 'es' ? 'tu hora programada' : 'your scheduled time');
-
-    const siteLabelEn = row.location || 'your assigned site';
-    const siteLabelEs = row.location || 'tu sitio asignado';
+      : t('your scheduled time', 'tu hora programada', lang);
 
     return {
       resolved: true,
       reply: t(
-        `You're confirmed, ${identity.firstName}! Shift at ${siteLabelEn} starting ${startFormatted}. ` +
-        `Your supervisor has been notified. Text HELP if you need anything before your shift. — Trinity`,
-        `¡Confirmado, ${identity.firstName}! Turno en ${siteLabelEs} comenzando ${startFormatted}. ` +
-        `Tu supervisor ha sido notificado. Envía AYUDA si necesitas algo antes de tu turno. — Trinity`,
+        `You're confirmed, ${identity.firstName}! Shift at ${row.location || 'your assigned site'} starting ${startFormatted}. ` +
+          `Your supervisor has been notified. Text HELP if you need anything before your shift. — Trinity`,
+        `¡Estás confirmado, ${identity.firstName}! Turno en ${row.location || 'tu sitio asignado'} comenzando ${startFormatted}. ` +
+          `Tu supervisor ha sido notificado. Escribe HELP si necesitas algo antes de tu turno. — Trinity`,
         lang
       ),
       method: 'auto_action',
@@ -320,7 +374,7 @@ async function handleShiftOfferAcceptance(
       resolved: true,
       reply: t(
         `Thanks ${identity.firstName}! There was a brief issue confirming your shift. Please confirm directly with your supervisor. — Trinity`,
-        `¡Gracias ${identity.firstName}! Hubo un breve problema al confirmar tu turno. Por favor confirma directamente con tu supervisor. — Trinity`,
+        `¡Gracias ${identity.firstName}! Hubo un problema momentáneo al confirmar tu turno. Por favor confirma directamente con tu supervisor. — Trinity`,
         lang
       ),
       method: 'error',
