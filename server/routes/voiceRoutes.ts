@@ -26,6 +26,7 @@ import { Router, type Request, type Response, type NextFunction } from 'express'
 import { PLATFORM } from '../config/platformConfig';
 import { createLogger } from '../lib/logger';
 import { scheduleNonBlocking } from '../lib/scheduleNonBlocking';
+import { PLATFORM_WORKSPACE_ID } from '../services/billing/billingConstants';
 const log = createLogger('VoiceRoutes');
 
 import { db } from '../db';
@@ -230,7 +231,11 @@ export async function initializeVoiceTables(): Promise<void> {
       `).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
 
       // Seed the platform-wide CoAIleague number — idempotent, never duplicates
-      const platformWorkspaceId = process.env.PLATFORM_DEFAULT_WORKSPACE_ID;
+      // Uses PLATFORM_WORKSPACE_ID (env: PLATFORM_WORKSPACE_ID, default: 'coaileague-platform-workspace')
+      // Override via PLATFORM_DEFAULT_WORKSPACE_ID for Railway deployments with a UUID-based workspace.
+      const platformWorkspaceId =
+        process.env.PLATFORM_DEFAULT_WORKSPACE_ID ||
+        PLATFORM_WORKSPACE_ID;
       if (platformWorkspaceId) {
         await client.query(`
           INSERT INTO workspace_phone_numbers (
@@ -259,9 +264,7 @@ export async function initializeVoiceTables(): Promise<void> {
           )
           ON CONFLICT (phone_number) DO NOTHING;
         `, [platformWorkspaceId]);
-        log.info('[VoiceRoutes] Platform number +18664644151 seeded (or already present)');
-      } else {
-        log.warn('[VoiceRoutes] PLATFORM_DEFAULT_WORKSPACE_ID not set — skipping platform number seed');
+        log.info(`[VoiceRoutes] Platform number +18664644151 seeded (or already present) under workspace: ${platformWorkspaceId}`);
       }
 
       log.info('[VoiceRoutes] Voice tables initialized');
@@ -275,12 +278,13 @@ export async function initializeVoiceTables(): Promise<void> {
 
 // ─── Twilio Signature Validation (using official Twilio SDK) ─────────────────
 
-const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN || '';
-
 async function validateTwilioSignature(req: Request): Promise<boolean> {
-  if (!TWILIO_AUTH_TOKEN) {
+  // Read lazily — avoids module-load timing issues when env is populated after import
+  const authToken = process.env.TWILIO_AUTH_TOKEN || '';
+
+  if (!authToken) {
     if (process.env.NODE_ENV === 'production') {
-      log.error('[VoiceRoutes] TWILIO_AUTH_TOKEN not set in production!');
+      log.error('[VoiceRoutes] TWILIO_AUTH_TOKEN not set in production — rejecting request');
       return false;
     }
     log.warn('[VoiceRoutes] TWILIO_AUTH_TOKEN not set — skipping signature validation in dev');
@@ -288,7 +292,10 @@ async function validateTwilioSignature(req: Request): Promise<boolean> {
   }
 
   const twilioSig = req.headers['x-twilio-signature'] as string;
-  if (!twilioSig) return false;
+  if (!twilioSig) {
+    log.warn('[VoiceRoutes] Missing x-twilio-signature header');
+    return false;
+  }
 
   const url = `${getBaseUrl(req)}${req.originalUrl}`;
   const params = req.body || {};
@@ -297,7 +304,11 @@ async function validateTwilioSignature(req: Request): Promise<boolean> {
     // Use Twilio's official validateRequest to match their exact HMAC algorithm
     // including URL normalization and parameter serialization edge-cases.
     const { default: twilio } = await import('twilio');
-    return twilio.validateRequest(TWILIO_AUTH_TOKEN, twilioSig, url, params);
+    const valid = twilio.validateRequest(authToken, twilioSig, url, params);
+    if (!valid) {
+      log.warn(`[VoiceRoutes] Twilio signature mismatch — validated against URL: ${url}`);
+    }
+    return valid;
   } catch (err: any) {
     log.warn('[VoiceRoutes] Twilio validateRequest error:', err.message);
     return false;
@@ -321,8 +332,13 @@ function twilioSignatureMiddleware(req: Request, res: Response, next: NextFuncti
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function getBaseUrl(req: Request): string {
-  return process.env.BASE_URL ||
-    `${req.protocol}://${req.get('host')}`;
+  if (process.env.BASE_URL) return process.env.BASE_URL.replace(/\/$/, '');
+  // Prefer x-forwarded-proto directly so https is preserved behind Railway/Render/Replit
+  // proxies even when Express trust-proxy doesn't propagate it to req.protocol.
+  const proto = ((req.headers['x-forwarded-proto'] as string | undefined) || req.protocol)
+    .split(',')[0]
+    .trim();
+  return `${proto}://${req.get('host')}`;
 }
 
 function xmlResponse(res: Response, xml: string): void {
