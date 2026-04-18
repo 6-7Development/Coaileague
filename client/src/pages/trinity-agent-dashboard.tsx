@@ -14,6 +14,12 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
+
+async function fetchJson<T>(url: string): Promise<T> {
+  const res = await fetch(url, { credentials: 'include' });
+  if (!res.ok) throw new Error(`${res.status}: ${(await res.text()) || res.statusText}`);
+  return (await res.json()) as T;
+}
 import {
   Card,
   CardContent,
@@ -135,10 +141,11 @@ function ActionDialog({ item, mode, onClose }: ActionDialogProps) {
   const mutation = useMutation({
     mutationFn: (body: { actionId: string; reason: string }) =>
       apiRequest(
+        'POST',
         mode === 'approve'
           ? '/api/trinity/agent-dashboard/approve'
           : '/api/trinity/agent-dashboard/override',
-        { method: 'POST', body: JSON.stringify(body) },
+        body,
       ),
     onSuccess: () => {
       toast({
@@ -258,7 +265,7 @@ function ReasoningDrawer({
   }>({
     queryKey: ['/api/trinity/agent-dashboard/reasoning', actionId],
     queryFn: () =>
-      apiRequest(`/api/trinity/agent-dashboard/reasoning/${actionId}`),
+      fetchJson(`/api/trinity/agent-dashboard/reasoning/${actionId}`),
   });
 
   const reasoning = data?.reasoning;
@@ -421,21 +428,21 @@ export default function TrinityAgentDashboard() {
   const { data: queueData, isLoading: queueLoading, refetch: refetchQueue } =
     useQuery<{ success: boolean; queue: QueueItem[]; count: number }>({
       queryKey: ['/api/trinity/agent-dashboard/queue'],
-      queryFn: () => apiRequest('/api/trinity/agent-dashboard/queue'),
+      queryFn: () => fetchJson('/api/trinity/agent-dashboard/queue'),
       refetchInterval: 30_000,
     });
 
   const { data: escalationsData, isLoading: escalationsLoading } =
     useQuery<{ success: boolean; escalations: Escalation[]; count: number }>({
       queryKey: ['/api/trinity/agent-dashboard/escalations'],
-      queryFn: () => apiRequest('/api/trinity/agent-dashboard/escalations'),
+      queryFn: () => fetchJson('/api/trinity/agent-dashboard/escalations'),
       refetchInterval: 60_000,
     });
 
   const { data: feedData, isLoading: feedLoading } =
     useQuery<{ success: boolean; feed: ActivityItem[] }>({
       queryKey: ['/api/trinity/agent-dashboard/activity-feed'],
-      queryFn: () => apiRequest('/api/trinity/agent-dashboard/activity-feed'),
+      queryFn: () => fetchJson('/api/trinity/agent-dashboard/activity-feed'),
       refetchInterval: 30_000,
     });
 
