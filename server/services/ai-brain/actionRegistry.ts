@@ -3526,6 +3526,10 @@ aiBrainActionRegistry.initialize().then(async () => {
   // Phase 18C — Regulatory auditor intake, listing, close, expire
   const { registerTrinityAuditorActions } = await import('./trinityAuditorActions');
   registerTrinityAuditorActions();
+
+  // Phase 18D — Security actions (overrides, allow-list, caller-ID lookup)
+  const { registerTrinitySecurityActions } = await import('./trinitySecurityActions');
+  registerTrinitySecurityActions();
 }).catch((e: any) => log.error(e instanceof Error ? e.message : String(e)));
 
 export default aiBrainActionRegistry;

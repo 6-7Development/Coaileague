@@ -707,6 +707,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const { auditorRouter } = await import('./routes/auditorRoutes');
   app.use('/api/auditor', auditorRouter);
 
+  // Phase 18D — Workspace security admin (break-glass overrides + auditor allow-list).
+  const { securityAdminRouter } = await import('./routes/securityAdminRoutes');
+  app.use('/api/security-admin', securityAdminRouter);
+
   // Phase 13: Inbound email webhook receivers (calloffs@, incidents@, docs@, support@)
   // No auth required — Resend POSTs here; signature verification is internal.
   app.use('/api/inbound/email', inboundEmailRouter);

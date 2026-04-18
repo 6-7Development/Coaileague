@@ -318,6 +318,11 @@ const RegulatorPortal = lazy(() => import("@/pages/compliance/regulator-portal")
 const EmployeeOnboardingPacket = lazy(() => import("@/pages/compliance/employee-onboarding-packet"));
 const AuditorPortal = lazy(() => import("@/pages/compliance/auditor-portal"));
 const AuditorLogin = lazy(() => import("@/pages/auditor-login"));
+// Phase 18C/D — Co-League Compliance Concierge (Trinity-driven auditor portal)
+const CoAuditorClaim = lazy(() => import("@/pages/co-auditor-claim"));
+const CoAuditorLogin = lazy(() => import("@/pages/co-auditor-login"));
+const CoAuditorDashboard = lazy(() => import("@/pages/co-auditor-dashboard"));
+const AdminSecurity = lazy(() => import("@/pages/admin-security"));
 // Phase 33 — SRA (State Regulatory Auditor) Partner Portal
 const SRALogin = lazy(() => import("@/pages/sra/SRALogin"));
 const SRAApply = lazy(() => import("@/pages/sra/SRAApply"));
@@ -1294,6 +1299,11 @@ function AppContent() {
               <Route path="/" component={Homepage} />
               <Route path="/login" component={CustomLogin} />
               <Route path="/auditor/login" component={AuditorLogin} />
+              {/* Phase 18C/D — Trinity Compliance Concierge auditor portal */}
+              <Route path="/co-auditor/login" component={CoAuditorLogin} />
+              <Route path="/co-auditor/claim" component={CoAuditorClaim} />
+              <Route path="/co-auditor/dashboard" component={CoAuditorDashboard} />
+              <Route path="/admin/security" component={AdminSecurity} />
               {/* Phase 33 — SRA Partner Portal (government blue, outside main auth) */}
               <Route path="/regulatory-audit/login" component={SRALogin} />
               <Route path="/regulatory-audit/apply" component={SRAApply} />

@@ -421,6 +421,29 @@ voiceRouter.post('/inbound', twilioSignatureMiddleware, async (req: Request, res
 
     log.info(`[VoiceRoutes] Inbound call: ${From} → ${To} (${CallSid})`);
 
+    // Phase 18D — fire-and-forget caller-ID risk lookup. Result is cached and
+    // available to downstream verifiers and the dashboard via session metadata.
+    void (async () => {
+      try {
+        const { lookupCallerId } = await import('../services/trinityVoice/callerIdLookup');
+        const r = await lookupCallerId(From || '');
+        if (r.risk === 'high') {
+          const { pool } = await import('../db');
+          await pool.query(
+            `UPDATE voice_call_sessions
+                SET metadata = COALESCE(metadata, '{}'::jsonb) ||
+                               jsonb_build_object('caller_id_risk', $1::text,
+                                                  'line_type', $2::text,
+                                                  'carrier', $3::text)
+              WHERE twilio_call_sid = $4`,
+            [r.risk, r.lineType || null, r.carrierName || null, CallSid]
+          );
+        }
+      } catch (e: any) {
+        log.warn('[VoiceRoutes] Caller-ID lookup background failed:', e?.message);
+      }
+    })();
+
     const xml = await handleInbound({ to: To, from: From, callSid: CallSid, baseUrl });
     xmlResponse(res, xml);
   } catch (err: any) {
@@ -982,6 +1005,20 @@ voiceRouter.post('/transcription-done', twilioSignatureMiddleware, async (req: R
     if (TranscriptionStatus === 'completed' && TranscriptionText && CallSid) {
       await updateCallSession(CallSid, { transcript: TranscriptionText });
       log.info(`[VoiceRoutes] Transcript saved for callSid=${CallSid} (${TranscriptionText.length} chars)`);
+
+      // Phase 18D — sentiment / priority classification + multi-speaker flag
+      try {
+        const { classifyAndPersist } = await import('../services/trinityVoice/voicemailSentimentService');
+        const sent = await classifyAndPersist({ callSid: CallSid, transcript: TranscriptionText });
+        if (sent.priority === 'urgent' || sent.priority === 'high') {
+          log.info(`[VoiceRoutes] Voicemail flagged ${sent.priority} for callSid=${CallSid}: ${sent.reasonTerms.join(', ')}`);
+        }
+        const { estimateSpeakerCountFromTranscript, flagMultipleSpeakers } = await import('../services/trinityVoice/callerIdLookup');
+        const speakers = estimateSpeakerCountFromTranscript(TranscriptionText);
+        if (speakers > 1) await flagMultipleSpeakers({ callSid: CallSid, speakerCount: speakers });
+      } catch (e: any) {
+        log.warn('[VoiceRoutes] Sentiment/speaker post-processing failed:', e?.message);
+      }
     } else if (TranscriptionStatus === 'failed') {
       log.warn(`[VoiceRoutes] Transcription failed for callSid=${CallSid} recordingSid=${RecordingSid}`);
     }
@@ -1687,7 +1724,7 @@ voiceRouter.post('/sms-inbound', twilioSignatureMiddleware, async (req: Request,
     // the platform is unreachable from the user's device.
     try {
       const { handleTrinitySmsKeyword } = await import('../services/trinityVoice/trinitySmsKeywordRouter');
-      const keyworded = await handleTrinitySmsKeyword({ fromPhone: From, rawBody: Body || '' });
+      const keyworded = await handleTrinitySmsKeyword({ fromPhone: From, rawBody: Body || '', baseUrl: getBaseUrl(req) });
       if (keyworded) {
         const safe = keyworded.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         res.type('text/xml').send(

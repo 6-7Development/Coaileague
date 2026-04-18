@@ -24,6 +24,12 @@
 import bcrypt from 'bcryptjs';
 import { createLogger } from '../../lib/logger';
 import { verifyCaller, verificationFailureMessageSms } from './trinityCallerVerification';
+import {
+  checkAndRecordRate,
+  rateLimitMessage,
+  recordVerificationFailure,
+  placeSupervisorWelfareCall,
+} from './smsAbusePrevention';
 const log = createLogger('TrinitySmsKeywordRouter');
 
 const RECOGNIZED = new Set([
@@ -330,6 +336,7 @@ const REQUIRES_VERIFICATION = new Set([
 export async function handleTrinitySmsKeyword(params: {
   fromPhone: string;
   rawBody: string;
+  baseUrl?: string;
 }): Promise<string | null> {
   const body = (params.rawBody || '').trim();
   if (!body) return null;
@@ -338,12 +345,35 @@ export async function handleTrinitySmsKeyword(params: {
   const head = normalizeKeyword(tokens[0] || '');
   if (!RECOGNIZED.has(head)) return null;
 
+  // Phase 18D rate limit — except emergency keywords, which are never gated.
+  const isEmergency = ['EMERGENCY', 'PANIC', 'DURESS', 'SOS', 'HELP911', '911'].includes(head);
+  if (!isEmergency) {
+    const rate = await checkAndRecordRate(params.fromPhone, head);
+    if (!rate.allowed) {
+      log.info(`[KeywordRouter] Rate-limited ${params.fromPhone} (${rate.countLastHour}/hour)`);
+      return rateLimitMessage();
+    }
+  }
+
   // Anti-fraud gate — block sensitive commands when the caller's phone is not
   // on file for an active, claimed employee profile.
   if (REQUIRES_VERIFICATION.has(head)) {
     const v = await verifyCaller(params.fromPhone);
     if (!v.verified) {
       log.info(`[KeywordRouter] Verification failed for ${params.fromPhone} (${v.reason}) — keyword=${head}`);
+      const fail = await recordVerificationFailure({
+        fromPhone: params.fromPhone,
+        reason: v.reason,
+        keyword: head,
+      });
+      if (fail.triggerWelfareCheck && params.baseUrl) {
+        // Fire-and-await — but tolerate failure so the caller still gets a reply.
+        try {
+          await placeSupervisorWelfareCall({ fromPhone: params.fromPhone, baseUrl: params.baseUrl });
+        } catch (e: any) {
+          log.warn('[KeywordRouter] Welfare call failed (non-fatal):', e?.message);
+        }
+      }
       return verificationFailureMessageSms();
     }
   }

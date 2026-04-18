@@ -54,6 +54,75 @@ export function isRegulatoryEmail(email: string): boolean {
   return regulatoryDomains().some(d => domain === d.replace(/^\./, '') || domain.endsWith(d));
 }
 
+/**
+ * Per-workspace allow-list — a tenant can explicitly whitelist named
+ * regulatory contacts (full email addresses). Returns true if the email
+ * is on the workspace's allow-list, OR if it passes the global
+ * regulatory-domain heuristic.
+ */
+export async function isAuditorEmailAllowed(email: string, workspaceId: string): Promise<boolean> {
+  if (!email) return false;
+  if (isRegulatoryEmail(email)) return true;
+  try {
+    await ensureTables();
+    const { pool } = await import('../../db');
+    const r = await pool.query(
+      `SELECT 1 FROM workspace_auditor_allowlist
+        WHERE workspace_id = $1 AND LOWER(email) = LOWER($2) AND is_active = true
+        LIMIT 1`,
+      [workspaceId, email]
+    );
+    return r.rows.length > 0;
+  } catch (err: any) {
+    log.warn('[AuditorAccess] allowlist check failed (deny-fallback):', err?.message);
+    return false;
+  }
+}
+
+export async function addAuditorAllowlist(params: {
+  workspaceId: string;
+  email: string;
+  fullName?: string;
+  agencyName?: string;
+  notes?: string;
+  addedBy?: string;
+}): Promise<{ success: boolean }> {
+  await ensureTables();
+  try {
+    const { pool } = await import('../../db');
+    await pool.query(
+      `INSERT INTO workspace_auditor_allowlist
+          (workspace_id, email, full_name, agency_name, notes, added_by)
+       VALUES ($1, LOWER($2), $3, $4, $5, $6)
+       ON CONFLICT (workspace_id, email) DO UPDATE SET
+         full_name = EXCLUDED.full_name,
+         agency_name = EXCLUDED.agency_name,
+         notes = EXCLUDED.notes,
+         is_active = true,
+         updated_at = NOW()`,
+      [params.workspaceId, params.email, params.fullName || null, params.agencyName || null, params.notes || null, params.addedBy || null]
+    );
+    return { success: true };
+  } catch (err: any) {
+    log.warn('[AuditorAccess] addAllowlist failed:', err?.message);
+    return { success: false };
+  }
+}
+
+export async function removeAuditorAllowlist(workspaceId: string, email: string): Promise<{ success: boolean }> {
+  await ensureTables();
+  try {
+    const { pool } = await import('../../db');
+    await pool.query(
+      `UPDATE workspace_auditor_allowlist
+          SET is_active = false, updated_at = NOW()
+        WHERE workspace_id = $1 AND LOWER(email) = LOWER($2)`,
+      [workspaceId, email]
+    );
+    return { success: true };
+  } catch { return { success: false }; }
+}
+
 let bootstrapped = false;
 async function ensureTables(): Promise<void> {
   if (bootstrapped) return;
@@ -111,6 +180,22 @@ async function ensureTables(): Promise<void> {
       );
       CREATE INDEX IF NOT EXISTS auditor_session_log_auditor_idx ON auditor_session_log(auditor_id);
       CREATE INDEX IF NOT EXISTS auditor_session_log_audit_idx ON auditor_session_log(audit_id);
+
+      CREATE TABLE IF NOT EXISTS workspace_auditor_allowlist (
+        id           VARCHAR PRIMARY KEY DEFAULT gen_random_uuid()::text,
+        workspace_id VARCHAR NOT NULL,
+        email        VARCHAR NOT NULL,
+        full_name    VARCHAR,
+        agency_name  VARCHAR,
+        notes        TEXT,
+        is_active    BOOLEAN NOT NULL DEFAULT true,
+        added_by     VARCHAR,
+        created_at   TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at   TIMESTAMP NOT NULL DEFAULT NOW(),
+        UNIQUE (workspace_id, email)
+      );
+      CREATE INDEX IF NOT EXISTS workspace_auditor_allowlist_workspace_idx
+        ON workspace_auditor_allowlist(workspace_id);
     `);
     bootstrapped = true;
     log.info('[AuditorAccess] Bootstrap complete');
@@ -150,9 +235,9 @@ export async function processAuditorIntake(params: IntakeParams): Promise<{
 }> {
   await ensureTables();
   const { email, fullName, agencyName, workspaceId, licenseNumber, orderDocUrl, baseUrl, notes } = params;
-  if (!isRegulatoryEmail(email)) {
-    log.warn(`[AuditorAccess] Intake rejected — non-regulatory domain: ${email}`);
-    return { success: false, reason: 'Email is not from a recognized regulatory domain' };
+  if (!(await isAuditorEmailAllowed(email, workspaceId))) {
+    log.warn(`[AuditorAccess] Intake rejected — not regulatory and not on workspace allow-list: ${email}`);
+    return { success: false, reason: 'Email is not from a recognized regulatory domain or this workspace\'s allow-list' };
   }
 
   try {
@@ -205,8 +290,8 @@ export async function processAuditorIntake(params: IntakeParams): Promise<{
 
     // Email the auditor with a magic link (or login link if already active).
     const link = inviteToken
-      ? `${baseUrl}/auditor/claim?token=${inviteToken}`
-      : `${baseUrl}/auditor/login`;
+      ? `${baseUrl}/co-auditor/claim?token=${inviteToken}`
+      : `${baseUrl}/co-auditor/login`;
     const subject = inviteToken
       ? 'Co-League: Auditor account invitation'
       : 'Co-League: New audit assignment available';

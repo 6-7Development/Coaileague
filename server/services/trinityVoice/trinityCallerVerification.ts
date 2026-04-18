@@ -56,7 +56,31 @@ export async function verifyCaller(fromPhone: string): Promise<CallerVerificatio
         LIMIT 1`,
       [`%${digits.slice(-10)}`]
     );
-    if (!r.rows.length) return { verified: false, reason: 'no_phone_match' };
+    if (!r.rows.length) {
+      // Phone not on any profile — second chance: check break-glass override.
+      const { isPhoneOverridden } = await import('./verificationOverrideService');
+      const ovr = await isPhoneOverridden(fromPhone);
+      if (ovr.overridden && ovr.employeeId) {
+        const e = await pool.query(
+          `SELECT id, workspace_id, user_id, first_name, last_name, employee_number, is_active
+             FROM employees WHERE id = $1 LIMIT 1`,
+          [ovr.employeeId]
+        );
+        if (e.rows.length && e.rows[0].is_active) {
+          const row = e.rows[0];
+          return {
+            verified: true,
+            employeeId: row.id,
+            userId: row.user_id,
+            workspaceId: row.workspace_id,
+            firstName: row.first_name,
+            lastName: row.last_name,
+            employeeNumber: row.employee_number,
+          };
+        }
+      }
+      return { verified: false, reason: 'no_phone_match' };
+    }
 
     const row = r.rows[0];
     if (!row.is_active) return { verified: false, reason: 'inactive' };
