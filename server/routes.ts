@@ -700,6 +700,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     voiceRouter(req, res, next);
   });
 
+  // Phase 18C — Regulatory auditor portal API. Mounted before requireAuth
+  // catch-alls because /intake, /claim, /login are intentionally public; the
+  // remaining endpoints are guarded by the per-route requireAuditor middleware
+  // that checks req.session.auditorId.
+  const { auditorRouter } = await import('./routes/auditorRoutes');
+  app.use('/api/auditor', auditorRouter);
+
+  // Phase 18D — Workspace security admin (break-glass overrides + auditor allow-list).
+  const { securityAdminRouter } = await import('./routes/securityAdminRoutes');
+  app.use('/api/security-admin', securityAdminRouter);
+
   // Phase 13: Inbound email webhook receivers (calloffs@, incidents@, docs@, support@)
   // No auth required — Resend POSTs here; signature verification is internal.
   app.use('/api/inbound/email', inboundEmailRouter);
