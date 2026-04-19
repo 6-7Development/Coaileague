@@ -16,7 +16,7 @@
  */
 
 import { secureFetch } from "@/lib/csrf";
-import { X, Clock, CalendarDays, CalendarPlus, MessageCircle, AlertTriangle, type LucideIcon } from "lucide-react";
+import { X, Clock, CalendarDays, CalendarPlus, MessageCircle, AlertTriangle, ShieldAlert, type LucideIcon } from "lucide-react";
 import { useLocation } from "wouter";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
@@ -450,6 +450,18 @@ export function UniversalFAB() {
                 color="bg-violet-600"
                 testId="fab-action-pto"
               />
+
+              {/* Panic / SOS — always available to on-shift workers */}
+              {isClockedIn && (
+                <QuickActionItem
+                  icon={ShieldAlert}
+                  label="PANIC / SOS"
+                  sublabel="Emergency alert"
+                  onClick={() => { setIsExpanded(false); setLocation("/worker/panic"); }}
+                  color="bg-red-600"
+                  testId="fab-action-panic"
+                />
+              )}
             </div>
           </>
         )}

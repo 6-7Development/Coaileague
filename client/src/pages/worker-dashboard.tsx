@@ -685,8 +685,43 @@ export default function WorkerDashboard() {
         {/* ── Main Scroll Area ───────────────────────── */}
         <div className="px-4 py-4 space-y-4 max-w-5xl mx-auto">
 
+          {/* Readiness Section 27 #1 — panic-link shortcut, always visible
+              while the officer is clocked-in. Red strip. Impossible to miss. */}
+          {clockStatus?.isClockedIn && (
+            <button
+              type="button"
+              onClick={() => setLocation("/worker/panic")}
+              className="w-full rounded-md border-2 border-red-700 bg-red-600 hover:bg-red-700 text-white px-4 py-3 font-semibold text-sm flex items-center justify-between gap-3 shadow"
+              data-testid="worker-dashboard-panic-link"
+              aria-label="Go to panic / SOS page"
+            >
+              <span className="flex items-center gap-2">
+                <Shield className="h-4 w-4" />
+                Emergency SOS — tap for panic page
+              </span>
+              <span className="text-xs uppercase tracking-wider opacity-80">Press & hold to send</span>
+            </button>
+          )}
+
           {/* Readiness Section 15 — pending shift offers (visible only when ≥1) */}
           <PendingOfferBanner />
+
+          {/* Readiness Section 27 #4 — Guard tour check-in link (only while on shift) */}
+          {clockStatus?.isClockedIn && (
+            <button
+              type="button"
+              onClick={() => setLocation("/worker/guard-tour/scan")}
+              className="w-full rounded-md border px-4 py-2.5 text-sm font-medium flex items-center justify-between gap-2 hover:bg-muted/50"
+              data-testid="worker-dashboard-guard-tour-link"
+              aria-label="Open guard tour scanner"
+            >
+              <span className="flex items-center gap-2">
+                <MapPin className="h-4 w-4" />
+                Guard Tour — scan next checkpoint
+              </span>
+              <span className="text-xs text-muted-foreground">Open scanner →</span>
+            </button>
+          )}
 
           {/* ── Block 1: Greeting Hero Banner ─────────── */}
           <div
