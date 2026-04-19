@@ -8,9 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, AlertTriangle, Clock, Shield, Eye, EyeOff, Lock } from "lucide-react";
+import { CheckCircle, AlertTriangle, Shield, Eye, EyeOff, Lock, Send } from "lucide-react";
 import { SignatureField } from "@/components/documents/fields/SignatureField";
-import { SiCodefactor } from "react-icons/si";
+import { FormShell, FormPrimaryButton } from "@/components/forms/FormShell";
 
 interface FormField {
   id: string;
@@ -364,33 +364,46 @@ export default function PublicFormPage() {
   // ─── Error ────────────────────────────────────────────────────────────────────
   if (error && !formData) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <div className="w-full max-w-sm mx-auto border rounded-md p-6 space-y-4 text-center bg-card">
-          <AlertTriangle className="w-10 h-10 text-destructive mx-auto" />
-          <h2 className="text-base font-semibold">Form Unavailable</h2>
-          <p className="text-muted-foreground text-sm leading-snug">{error}</p>
-          <p className="text-xs text-muted-foreground">
+      <FormShell
+        variant="public"
+        title="Form Unavailable"
+        description={error || undefined}
+      >
+        <div className="flex flex-col items-center gap-3 py-4 text-center">
+          <div className="h-12 w-12 rounded-full bg-destructive/10 grid place-items-center">
+            <AlertTriangle className="h-6 w-6 text-destructive" />
+          </div>
+          <p className="text-sm text-muted-foreground max-w-sm">
             Contact the organization that sent this link for assistance.
           </p>
         </div>
-      </div>
+      </FormShell>
     );
   }
 
   // ─── Success ──────────────────────────────────────────────────────────────────
   if (submitted) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <div className="w-full max-w-sm mx-auto border rounded-md p-6 space-y-4 text-center bg-card">
-          <CheckCircle className="w-12 h-12 text-green-500 mx-auto" />
-          <h2 className="text-lg font-semibold">Submitted!</h2>
-          <p className="text-muted-foreground text-sm leading-snug">{successMessage}</p>
-          <Badge variant="secondary" className="gap-1 mx-auto">
-            <Shield className="w-3 h-3" />
+      <FormShell
+        variant="public"
+        title="Submission received"
+        description={successMessage || "Thank you — your form has been submitted securely."}
+        branding={formData?.branding || null}
+      >
+        <div className="flex flex-col items-center gap-4 py-6 text-center">
+          <div className="h-16 w-16 rounded-full bg-green-500/10 grid place-items-center ring-4 ring-green-500/10">
+            <CheckCircle className="h-8 w-8 text-green-600 dark:text-green-400" />
+          </div>
+          <Badge variant="secondary" className="gap-1">
+            <Shield className="h-3 w-3" />
             Secured by CoAIleague
           </Badge>
+          <p className="text-xs text-muted-foreground max-w-sm">
+            A copy of your submission is retained in our encrypted audit
+            trail. Contact the organization if you need a receipt.
+          </p>
         </div>
-      </div>
+      </FormShell>
     );
   }
 
@@ -398,111 +411,87 @@ export default function PublicFormPage() {
 
   // ─── Form ─────────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-muted/30 py-6 px-3 sm:px-4">
-      <div className="w-full max-w-xl mx-auto space-y-4">
-
-        {/* Branding */}
-        <div className="flex items-center gap-2 justify-center">
-          <div className="w-5 h-5 bg-primary rounded-sm flex items-center justify-center shrink-0">
-            <SiCodefactor className="w-3 h-3 text-primary-foreground" />
-          </div>
-          <span className="text-xs font-medium text-muted-foreground truncate">
-            {formData.branding?.companyName
-              ? `${formData.branding.companyName} — Secure Form`
-              : "CoAIleague Secure Form"}
+    <FormShell
+      variant="public"
+      title={formData.title}
+      description={formData.description || undefined}
+      expiresAt={formData.expiresAt}
+      branding={formData.branding || null}
+      subtitle={
+        formData.sentToName ? (
+          <span>
+            Prepared for: <span className="font-medium">{formData.sentToName}</span>
           </span>
+        ) : null
+      }
+      actions={
+        <FormPrimaryButton
+          loading={submitting}
+          loadingLabel="Submitting…"
+          icon={<Send className="h-4 w-4" />}
+          testId="button-submit-form"
+          onClick={() => {
+            const formEl = document.getElementById("public-form-body") as HTMLFormElement | null;
+            formEl?.requestSubmit();
+          }}
+          type="button"
+        >
+          Submit Form
+        </FormPrimaryButton>
+      }
+      trustNotes={
+        <div className="flex items-center gap-1.5">
+          <Shield className="h-3 w-3" />
+          This form is encrypted end-to-end. Do not share the URL.
         </div>
+      }
+    >
+      <form id="public-form-body" onSubmit={handleSubmit} className="space-y-4">
+        {/* All non-checkbox fields */}
+        {nonCheckboxFields.map(renderField)}
 
-        {/* Card */}
-        <div className="bg-card border rounded-md overflow-hidden">
-
-          {/* Card Header */}
-          <div className="px-4 pt-4 pb-3 sm:px-5 border-b space-y-1">
-            <div className="flex items-start justify-between gap-2 flex-wrap">
-              <h1 className="text-base font-semibold leading-snug break-words flex-1 min-w-0" data-testid="form-title">
-                {formData.title}
-              </h1>
-              <div className="flex items-center gap-1 text-xs text-muted-foreground shrink-0 whitespace-nowrap">
-                <Clock className="w-3 h-3 shrink-0" />
-                <span>Exp. {new Date(formData.expiresAt).toLocaleDateString()}</span>
-              </div>
-            </div>
-            {formData.description && (
-              <p className="text-sm text-muted-foreground leading-snug">{formData.description}</p>
-            )}
-            {formData.sentToName && (
-              <p className="text-xs text-muted-foreground">
-                Prepared for: <span className="font-medium">{formData.sentToName}</span>
-              </p>
-            )}
+        {/* Signature block */}
+        {formData.requiresSignature && (
+          <div className="space-y-2 pt-2 border-t">
+            <SignatureField
+              id="form-signature"
+              label={formData.signatureLabel || "Your Signature"}
+              required
+              value={signature}
+              onChange={(data) => {
+                setSignature(data);
+                if (data) {
+                  setValidationErrors((prev) => {
+                    const u = { ...prev };
+                    delete u["__signature__"];
+                    return u;
+                  });
+                }
+              }}
+              error={validationErrors["__signature__"]}
+            />
+            <p className="text-xs text-muted-foreground flex items-start gap-1 leading-snug">
+              <Shield className="w-3 h-3 shrink-0 mt-0.5" />
+              By signing, you agree this is your legal electronic signature per the ESIGN Act and UETA.
+            </p>
           </div>
+        )}
 
-          {/* Card Body */}
-          <form onSubmit={handleSubmit} className="px-4 py-4 sm:px-5 space-y-4">
+        {/* Checkbox fields */}
+        {checkboxFields.length > 0 && (
+          <div className="space-y-3 pt-2 border-t">
+            {checkboxFields.map(renderField)}
+          </div>
+        )}
 
-            {/* All non-checkbox fields */}
-            {nonCheckboxFields.map(renderField)}
-
-            {/* Signature block */}
-            {formData.requiresSignature && (
-              <div className="space-y-2 pt-2 border-t">
-                <SignatureField
-                  id="form-signature"
-                  label={formData.signatureLabel || "Your Signature"}
-                  required
-                  value={signature}
-                  onChange={(data) => {
-                    setSignature(data);
-                    if (data) {
-                      setValidationErrors((prev) => {
-                        const u = { ...prev };
-                        delete u["__signature__"];
-                        return u;
-                      });
-                    }
-                  }}
-                  error={validationErrors["__signature__"]}
-                />
-                <p className="text-xs text-muted-foreground flex items-start gap-1 leading-snug">
-                  <Shield className="w-3 h-3 shrink-0 mt-0.5" />
-                  By signing, you agree this is your legal electronic signature per the ESIGN Act and UETA.
-                </p>
-              </div>
-            )}
-
-            {/* Checkbox fields */}
-            {checkboxFields.length > 0 && (
-              <div className="space-y-3 pt-2 border-t">
-                {checkboxFields.map(renderField)}
-              </div>
-            )}
-
-            {/* Error banner */}
-            {error && (
-              <div className="flex items-start gap-2 text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">
-                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-                <span className="break-words">{error}</span>
-              </div>
-            )}
-
-            {/* Submit row */}
-            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between pt-1">
-              <p className="text-xs text-muted-foreground flex items-center gap-1">
-                <Shield className="w-3 h-3 shrink-0" />
-                This form is encrypted and secure
-              </p>
-              <Button
-                type="submit"
-                data-testid="button-submit-form"
-                disabled={submitting}
-                className="w-full sm:w-auto"
-              >
-                {submitting ? "Submitting..." : "Submit Form"}
-              </Button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
+        {/* Error banner */}
+        {error && (
+          <div className="flex items-start gap-2 text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">
+            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+            <span className="break-words">{error}</span>
+          </div>
+        )}
+      </form>
+    </FormShell>
   );
 }

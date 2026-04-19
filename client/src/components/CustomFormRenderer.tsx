@@ -26,8 +26,9 @@ import {
 import { Card } from "@/components/ui/card";
 import { ESignature } from "./ESignature";
 import { DocumentUpload } from "./DocumentUpload";
-import { Loader2 } from "lucide-react";
+import { Loader2, Send } from "lucide-react";
 import { CoAIleagueLogo } from "./coaileague-logo";
+import { FormShell, FormPrimaryButton } from "./forms/FormShell";
 
 export interface FormField {
   id: string;
@@ -330,44 +331,28 @@ export function CustomFormRenderer({
   };
 
   return (
-    <Card className="p-6">
-      <div className="space-y-6">
-        {/* Logo Header */}
-        <div className="flex justify-center pb-4">
-          <CoAIleagueLogo width={200} height={50} showTagline={false} />
-        </div>
-        
-        {/* Form Header */}
-        <div>
-          <h2 className="text-2xl font-bold text-foreground" data-testid="text-form-title">
-            {template.title}
-          </h2>
-          {template.description && (
-            <p className="text-sm text-muted-foreground mt-2" data-testid="text-form-description">
-              {template.description}
-            </p>
-          )}
-        </div>
-
-        {/* Form Fields */}
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-            {template.fields.map(renderField)}
-
-            {/* Submit Button */}
-            <div className="flex justify-end pt-4">
-              <Button
-                type="submit"
-                disabled={isSubmitting}
-                data-testid="button-submit-form"
-              >
-                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {submitLabel}
-              </Button>
-            </div>
-          </form>
-        </Form>
-      </div>
-    </Card>
+    <FormShell
+      variant="internal"
+      title={template.title}
+      description={template.description || undefined}
+      actions={
+        <FormPrimaryButton
+          loading={isSubmitting}
+          loadingLabel="Submitting…"
+          icon={<Send className="h-4 w-4" />}
+          testId="button-submit-form"
+          type="button"
+          onClick={() => form.handleSubmit(handleSubmit)()}
+        >
+          {submitLabel}
+        </FormPrimaryButton>
+      }
+    >
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+          {template.fields.map(renderField)}
+        </form>
+      </Form>
+    </FormShell>
   );
 }
