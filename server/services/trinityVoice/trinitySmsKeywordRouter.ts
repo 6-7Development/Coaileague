@@ -24,6 +24,7 @@
 import bcrypt from 'bcryptjs';
 import { createLogger } from '../../lib/logger';
 import { verifyCaller, verificationFailureMessageSms } from './trinityCallerVerification';
+import { verifyByPhone } from './smsIdentityService';
 import {
   checkAndRecordRate,
   rateLimitMessage,
@@ -46,9 +47,10 @@ const RECOGNIZED = new Set([
   // Phase 20 — calloff workflow. Officer texts CALLOFF [optional reason] to
   // trigger Trinity's autonomous coverage workflow.
   'CALLOFF', 'CALLOUT', 'CALLINSICK', 'SICK',
-  // Phase 24 — self-service schedule and payroll lookups (verified callers).
+  // Phase 23 — self-service data lookups for officers on their personal phones.
+  // Phase 24 — additional natural-language aliases so variants resolve too.
   'SCHEDULE', 'SHIFTS', 'MYSCHEDULE', 'WHENDOIWORK', 'WHENDOIWRK',
-  'PAY', 'PAYCHECK', 'PAYDAY', 'MYPAY', 'HOURS', 'PAYSTUB', 'PAYROLL',
+  'PAY', 'PAYCHECK', 'PAYSTUB', 'PAYDAY', 'MYPAY', 'HOURS', 'PAYROLL',
 ]);
 
 function normalizeKeyword(token: string): string {
@@ -275,8 +277,7 @@ function helpReply(): string {
   return (
     `Trinity commands: ` +
     `CLOCKIN <emp#> <pin>, CLOCKOUT <emp#> <pin>, ` +
-    `SCHEDULE, PAY, ` +
-    `CALLOFF <reason>, ` +
+    `CALLOFF <reason>, SCHEDULE, PAY, ` +
     `COMPLAINT <message>, REQUEST <message>, VERIFY <emp# or name>, ` +
     `STATUS, HELP, EMERGENCY <location>. ` +
     `Reply STOP to opt out of texts.`
@@ -342,10 +343,10 @@ const REQUIRES_VERIFICATION = new Set([
   // Phase 20 — calloff must be tied to a verified officer profile so an
   // attacker can't trigger false calloffs from a random number.
   'CALLOFF', 'CALLOUT', 'CALLINSICK', 'SICK',
-  // Phase 24 — schedule and pay lookups expose personal data; require the
-  // caller's phone to be on file for an active claimed employee profile.
+  // Phase 23 — schedule and pay reveal personal data; require Tier 1 phone verification.
+  // Phase 24 — additional natural-language aliases kept under the same gate.
   'SCHEDULE', 'SHIFTS', 'MYSCHEDULE', 'WHENDOIWORK', 'WHENDOIWRK',
-  'PAY', 'PAYCHECK', 'PAYDAY', 'MYPAY', 'HOURS', 'PAYSTUB', 'PAYROLL',
+  'PAY', 'PAYCHECK', 'PAYSTUB', 'PAYDAY', 'MYPAY', 'HOURS', 'PAYROLL',
 ]);
 
 export async function handleTrinitySmsKeyword(params: {
@@ -445,26 +446,119 @@ export async function handleTrinitySmsKeyword(params: {
     case 'SICK':
       return handleCalloff(args, body, officer, params.fromPhone);
 
-    // Phase 24 — self-service schedule lookup for a verified officer.
+    // Phase 23 — self-service data lookups (Tier 1 phone-verified).
+    // Phase 24 — natural-language aliases route to the same handlers.
     case 'SCHEDULE':
     case 'SHIFTS':
     case 'MYSCHEDULE':
     case 'WHENDOIWORK':
     case 'WHENDOIWRK':
-      return handleSchedule(officer, params.fromPhone);
+      return handleSchedule(params.fromPhone);
 
-    // Phase 24 — self-service payroll summary for a verified officer.
     case 'PAY':
     case 'PAYCHECK':
+    case 'PAYSTUB':
     case 'PAYDAY':
     case 'MYPAY':
     case 'HOURS':
-    case 'PAYSTUB':
     case 'PAYROLL':
-      return handlePay(officer, params.fromPhone);
+      return handlePay(params.fromPhone);
 
     default:
       return null;
+  }
+}
+
+// ─── Phase 23: SCHEDULE / PAY handlers ───────────────────────────────────────
+// Self-service data lookups for officers on personal phones. Tier 1 phone
+// verification (verifyByPhone) resolves the officer identity and also prevents
+// anyone whose number isn't on an active employee record from pulling personal
+// data. REQUIRES_VERIFICATION above additionally runs verifyCaller as a second
+// gate (adds welfare-check escalation on repeat failures).
+
+async function handleSchedule(fromPhone: string): Promise<string> {
+  const v = await verifyByPhone(fromPhone);
+  if (!v.verified || !v.identity) {
+    return `Trinity: I couldn't match this phone to an active officer profile, so I can't pull your schedule. Contact your supervisor to verify your phone number on file.`;
+  }
+  const { employeeId, workspaceId, firstName } = v.identity;
+
+  try {
+    const { pool } = await import('../../db');
+    const r = await pool.query(
+      `SELECT s.start_time, s.end_time, s.status, s.title, s.site_id
+         FROM shifts s
+        WHERE s.workspace_id = $1
+          AND s.employee_id = $2
+          AND s.start_time >= NOW()
+          AND s.start_time <= NOW() + INTERVAL '7 days'
+          AND COALESCE(s.status, '') NOT IN ('cancelled', 'denied')
+        ORDER BY s.start_time ASC
+        LIMIT 5`,
+      [workspaceId, employeeId]
+    );
+
+    if (!r.rows.length) {
+      return `Trinity: ${firstName}, no shifts scheduled in the next 7 days. Reply REQUEST <details> if you think that's wrong.`;
+    }
+
+    const lines = r.rows.map((row: any) => {
+      const start = new Date(row.start_time);
+      const day = start.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+      const time = start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      return `${day} ${time}${row.title ? ` — ${row.title}` : ''}`;
+    });
+    return `Trinity: ${firstName}, your next shifts: ${lines.join('; ')}. Full detail in the app.`;
+  } catch (err: any) {
+    log.warn('[KeywordRouter] SCHEDULE lookup failed:', err?.message);
+    return `Trinity: I couldn't pull your schedule right now. Please try again in a moment or open the app.`;
+  }
+}
+
+async function handlePay(fromPhone: string): Promise<string> {
+  const v = await verifyByPhone(fromPhone);
+  if (!v.verified || !v.identity) {
+    return `Trinity: I couldn't match this phone to an active officer profile, so I can't pull your pay info. Contact your supervisor to verify your phone number on file.`;
+  }
+  const { employeeId, workspaceId, firstName } = v.identity;
+
+  try {
+    const { pool } = await import('../../db');
+    const r = await pool.query(
+      `SELECT period_start, period_end, regular_hours, overtime_hours,
+              gross_pay, net_pay, pay_date
+         FROM employee_payroll_records
+        WHERE workspace_id = $1
+          AND employee_id = $2
+        ORDER BY COALESCE(period_end, pay_date, created_at) DESC NULLS LAST
+        LIMIT 1`,
+      [workspaceId, employeeId]
+    );
+
+    if (!r.rows.length) {
+      return `Trinity: ${firstName}, no pay records on file yet. Your first pay stub will appear in the app's Payroll section after your first pay period closes.`;
+    }
+
+    const row = r.rows[0];
+    const periodEnd = row.period_end
+      ? new Date(row.period_end).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+      : null;
+    const regular = row.regular_hours != null ? parseFloat(row.regular_hours).toFixed(1) : null;
+    const overtime = row.overtime_hours != null ? parseFloat(row.overtime_hours).toFixed(1) : null;
+    const net = row.net_pay != null ? parseFloat(row.net_pay).toFixed(2) : null;
+    const gross = row.gross_pay != null ? parseFloat(row.gross_pay).toFixed(2) : null;
+
+    const parts: string[] = [];
+    if (periodEnd) parts.push(`period ending ${periodEnd}`);
+    if (regular) parts.push(`${regular}h regular${overtime && parseFloat(overtime) > 0 ? ` + ${overtime}h OT` : ''}`);
+    if (net) parts.push(`net $${net}`);
+    else if (gross) parts.push(`gross $${gross}`);
+
+    const summary = parts.length ? parts.join(', ') : 'details available in the app';
+    return `Trinity: ${firstName}, your most recent pay: ${summary}. Full stub in the app under Payroll > Pay Stubs.`;
+  } catch (err: any) {
+    log.warn('[KeywordRouter] PAY lookup failed:', err?.message);
+    return `Trinity: I couldn't pull your pay info right now. Please try again in a moment or open the app.`;
   }
 }
 
@@ -510,110 +604,5 @@ async function handleCalloff(
   } catch (err: any) {
     log.error('[KeywordRouter] CALLOFF workflow error:', err?.message);
     return `Trinity: We received your calloff but hit an error routing coverage. Your supervisor has been paged.`;
-  }
-}
-
-// ─── Phase 24: SCHEDULE handler ───────────────────────────────────────────────
-// Officer SMS: "SCHEDULE" — returns the next 5 upcoming shifts in the next 7
-// days. Caller must already be verified (REQUIRES_VERIFICATION gate). If the
-// phone→officer mapping somehow fails after verification, fall back to the
-// universal-code prompt used by other handlers.
-async function handleSchedule(
-  officer: Awaited<ReturnType<typeof findEmployeeByPhone>>,
-  fromPhone: string,
-): Promise<string> {
-  if (!officer?.id || !officer?.workspace_id) {
-    return `Trinity: I need to verify who you are first. Reply with your employee number (for example EMP-ACM-00001) so I can pull your schedule.`;
-  }
-
-  try {
-    const { pool } = await import('../../db');
-    const shifts = await pool.query(
-      `SELECT id, start_time, end_time, status, title,
-              site_id, client_id
-         FROM shifts
-        WHERE employee_id = $1
-          AND workspace_id = $2
-          AND deleted_at IS NULL
-          AND start_time >= NOW()
-          AND start_time <= NOW() + INTERVAL '7 days'
-          AND status NOT IN ('cancelled', 'denied')
-        ORDER BY start_time ASC
-        LIMIT 5`,
-      [officer.id, officer.workspace_id],
-    );
-
-    const firstName = officer.first_name || 'there';
-
-    if (!shifts.rows.length) {
-      return `Hi ${firstName}! No shifts scheduled in the next 7 days. If this seems wrong, contact your supervisor. — Trinity`;
-    }
-
-    const lines = shifts.rows.map((s: any) => {
-      const d = new Date(s.start_time);
-      const date = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-      const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-      const label = s.title ? ` — ${String(s.title).slice(0, 32)}` : '';
-      return `${date} ${time}${label}`;
-    });
-
-    return (
-      `Hi ${firstName}! Your next shifts:\n${lines.join('\n')}\n` +
-      `Reply CALLOFF <reason> if you can't make one. — Trinity`
-    );
-  } catch (err: any) {
-    log.warn('[KeywordRouter] SCHEDULE lookup failed:', err?.message);
-    return `Trinity: I couldn't pull your schedule right now. Try again in a moment, or check the Co-League app.`;
-  }
-}
-
-// ─── Phase 24: PAY handler ────────────────────────────────────────────────────
-// Officer SMS: "PAY" — returns the most recent processed/approved payroll
-// entry for the verified officer. Joins payroll_entries to payroll_runs for
-// the pay period dates; payroll_entries holds the per-officer amounts.
-async function handlePay(
-  officer: Awaited<ReturnType<typeof findEmployeeByPhone>>,
-  fromPhone: string,
-): Promise<string> {
-  if (!officer?.id || !officer?.workspace_id) {
-    return `Trinity: I need to verify who you are first. Reply with your employee number to check your pay info.`;
-  }
-
-  try {
-    const { pool } = await import('../../db');
-    const pay = await pool.query(
-      `SELECT pr.period_start, pr.period_end, pr.status,
-              pe.gross_pay, pe.net_pay, pe.regular_hours, pe.overtime_hours
-         FROM payroll_entries pe
-         JOIN payroll_runs pr ON pr.id = pe.payroll_run_id
-        WHERE pe.employee_id = $1
-          AND pe.workspace_id = $2
-        ORDER BY pr.period_end DESC NULLS LAST
-        LIMIT 1`,
-      [officer.id, officer.workspace_id],
-    );
-
-    const firstName = officer.first_name || 'there';
-
-    if (!pay.rows.length) {
-      return `Hi ${firstName}! No payroll records found yet. If you believe this is wrong, contact your manager or reply REQUEST with details. — Trinity`;
-    }
-
-    const p = pay.rows[0];
-    const end = new Date(p.period_end).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    const gross = parseFloat(p.gross_pay || '0').toFixed(2);
-    const net = parseFloat(p.net_pay || '0').toFixed(2);
-    const regHours = parseFloat(p.regular_hours || '0').toFixed(2);
-    const otHours = parseFloat(p.overtime_hours || '0').toFixed(2);
-    const otLine = Number(otHours) > 0 ? ` (+${otHours} OT)` : '';
-
-    return (
-      `Hi ${firstName}! Last pay period ending ${end}: ` +
-      `${regHours}h${otLine}, Gross $${gross}, Net $${net} (${p.status || 'pending'}). ` +
-      `Questions? Reply REQUEST with the issue. — Trinity`
-    );
-  } catch (err: any) {
-    log.warn('[KeywordRouter] PAY lookup failed:', err?.message);
-    return `Trinity: I couldn't pull your pay info right now. Try again shortly, or check your Co-League dashboard.`;
   }
 }
