@@ -4309,6 +4309,26 @@ export function startAutonomousScheduler() {
   });
   log.info('Trinity Payroll Anomaly Scan registered', { schedule: '0 * * * *' });
 
+  // ════════════════════════════════════════════════════════════════════════════
+  // Phase 24 — Trinity Proactive Intelligence monitors
+  // ════════════════════════════════════════════════════════════════════════════
+  // Five proactive monitors (pre-shift intel, revenue-at-risk, officer wellness,
+  // anomaly watch, weekly brief) are registered in one shot by the orchestrator
+  // so their cron schedules live alongside the existing Phase 20 workflows and
+  // feed the same job-history tracking surface. Load via dynamic import to keep
+  // the scheduler's module-load cost unchanged.
+  (async () => {
+    try {
+      const { registerProactiveMonitors } = await import('./trinity/proactive/proactiveOrchestrator');
+      registerProactiveMonitors({ registerJobInfo, trackJobExecution });
+      log.info('Trinity Phase 24 proactive monitors registered');
+    } catch (err: any) {
+      log.error('Failed to register Phase 24 proactive monitors', {
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  })();
+
   isSchedulerRunning = true;
 
   log.info('Autonomous scheduler running successfully');

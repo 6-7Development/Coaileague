@@ -4158,6 +4158,12 @@ aiBrainActionRegistry.initialize().then(async () => {
   //   trinity.process_payroll_anomalies
   const { registerTrinityWorkflowActions } = await import('../trinity/workflows/workflowOrchestrator');
   registerTrinityWorkflowActions();
+
+  // Phase 24 — Trinity proactive monitor actions:
+  //   trinity.run_pre_shift_intel, trinity.run_revenue_scan,
+  //   trinity.send_weekly_brief, trinity.run_anomaly_watch
+  const { registerProactiveActions } = await import('../trinity/proactive/proactiveOrchestrator');
+  registerProactiveActions();
 }).catch((e: any) => log.error(e instanceof Error ? e.message : String(e)));
 
 export default aiBrainActionRegistry;
