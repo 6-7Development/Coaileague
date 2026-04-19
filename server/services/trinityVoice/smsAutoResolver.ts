@@ -695,13 +695,53 @@ export async function resolveInboundSms(params: {
   // Trinity AI with full context — reply matches resolved language
   const ctx = await getEmployeeContext(identity.employeeId, identity.workspaceId);
   const contextualMessage = ctx ? `${trimmed}\n\n[Context: ${ctx}]` : trimmed;
-  const aiAnswer = await tryTrinityAI(contextualMessage, identity.workspaceId, identity.firstName, lang);
+
+  // Token hard-cap pre-check — free/trial tenants at cap must not invoke AI.
+  // aiMeteringService.checkUsageAllowedById is the same gate used by every
+  // AI provider through aiCreditGateway.preAuthorize(). Protected workspaces
+  // (platform + grandfathered) are internally bypassed by that service.
+  let tokenCapExhausted = false;
+  if (identity.workspaceId && identity.workspaceId !== 'platform') {
+    try {
+      const { aiMeteringService } = await import('../billing/aiMeteringService');
+      const guard = await aiMeteringService.checkUsageAllowedById(identity.workspaceId);
+      if (!guard.allowed) {
+        tokenCapExhausted = true;
+        log.warn(`[SmsAutoResolver] Token hard cap exhausted for workspace ${identity.workspaceId} — falling through to ticket`);
+      }
+    } catch (capErr: any) {
+      log.warn('[SmsAutoResolver] Token cap check failed (non-fatal):', capErr?.message);
+    }
+  }
+
+  const aiAnswer = tokenCapExhausted
+    ? null
+    : await tryTrinityAI(contextualMessage, identity.workspaceId, identity.firstName, lang);
 
   if (aiAnswer) {
     const prefix = t(`Hi ${identity.firstName}, `, `Hola ${identity.firstName}, `, lang);
     const reply = (prefix + aiAnswer).slice(0, 320);
     void flagFaqCandidate(trimmed, identity.workspaceId, category);
     log.info(`[SmsAutoResolver] AI resolved for ${fromPhone} (lang=${lang})`);
+
+    // Record AI-resolved SMS for billing/metering (non-fatal on failure).
+    // Uses the existing recordSmsMessage signature — we supply a synthetic
+    // message sid so the row can be inserted. twilioCostCents=0 because the
+    // outbound carrier cost is recorded separately by the SMS sender.
+    void (async () => {
+      try {
+        const { voiceSmsMeteringService } = await import('../billing/voiceSmsMeteringService');
+        await voiceSmsMeteringService.recordSmsMessage({
+          workspaceId: identity.workspaceId,
+          messageSid: `ai-sms-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+          callType: 'trinity_ai_response',
+          twilioCostCents: 0,
+        });
+      } catch (e: any) {
+        log.warn('[SmsAutoResolver] SMS metering failed (non-fatal):', e?.message);
+      }
+    })();
+
     return {
       resolved: true,
       reply,

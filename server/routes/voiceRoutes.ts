@@ -56,6 +56,7 @@ import {
 const VOICE = 'Polly.Joanna-Neural';
 const VOICE_ES = 'Polly.Lupe-Neural';
 import { voiceSmsMeteringService } from '../services/billing/voiceSmsMeteringService';
+import { universalAudit } from '../services/universalAuditService';
 import { handleSales } from '../services/trinityVoice/extensions/salesExtension';
 import { handleClientSupport } from '../services/trinityVoice/extensions/clientExtension';
 import { handleEmploymentVerification } from '../services/trinityVoice/extensions/verifyExtension';
@@ -437,6 +438,37 @@ voiceRouter.post('/inbound', twilioSignatureMiddleware, async (req: Request, res
     const baseUrl = getBaseUrl(req);
 
     log.info(`[VoiceRoutes] Inbound call: ${From} → ${To} (${CallSid})`);
+
+    // ── SUBSCRIPTION GATE ────────────────────────────────────────────────────
+    // Resolve workspace + subscription status before any Trinity service is
+    // invoked. Protected workspaces (platform + grandfathered) always pass
+    // through. For all others: only 'active' and 'trial' subscriptions get
+    // Trinity service. Suspended/cancelled get a graceful professional end.
+    const workspace = await resolveWorkspaceFromPhoneNumber(To);
+    if (!workspace) {
+      log.warn(`[VoiceRoutes] Unknown phone number: ${To}`);
+      return xmlResponse(res, twiml(
+        '<Say voice="Polly.Joanna-Neural" language="en-US">This number is not configured. Goodbye.</Say>'
+      ));
+    }
+
+    if (!workspace.isProtected && !['active', 'trial', 'free_trial'].includes(workspace.subscriptionStatus)) {
+      const isSuspended = workspace.subscriptionStatus === 'suspended';
+      const message = isSuspended
+        ? 'Hello! Your organization\'s Co-League account is currently on hold due to a billing issue. ' +
+          'Please have your administrator log in to Co-League and update your payment information to restore service. ' +
+          'We apologize for any inconvenience. Goodbye.'
+        : 'Hello! Your organization\'s Co-League account is no longer active. ' +
+          'Please have your administrator contact us at support at co-league dot com to restore access. ' +
+          'Thank you for calling. Goodbye.';
+
+      log.warn(`[VoiceRoutes] Blocked call from inactive workspace ${workspace.workspaceId} (${workspace.subscriptionStatus})`);
+
+      return xmlResponse(res, twiml(
+        `<Say voice="Polly.Joanna-Neural" language="en-US">${message}</Say>`
+      ));
+    }
+    // ── END SUBSCRIPTION GATE ────────────────────────────────────────────────
 
     // Phase 18D — fire-and-forget caller-ID risk lookup. Result is cached and
     // available to downstream verifiers and the dashboard via session metadata.
@@ -1483,6 +1515,23 @@ voiceRouter.post('/support-resolve', twilioSignatureMiddleware, async (req: Requ
         outcome: 'success',
       }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
 
+      // Workspace-scoped audit log so every Trinity voice AI resolution is
+      // visible in the universal audit trail (not just the per-call log).
+      void universalAudit.log({
+        workspaceId,
+        actorType: 'trinity',
+        action: 'trinity.voice_ai_resolved',
+        entityType: 'voice_call',
+        entityId: sessionId,
+        changeType: 'action',
+        metadata: {
+          model: aiResult.modelUsed,
+          responseTimeMs: aiResult.responseTimeMs,
+          channel: 'voice',
+          extension: 'support',
+        },
+      }).catch(() => {});
+
       return xmlResponse(res, twiml(
         `<Gather input="dtmf" action="${confirmAction}" method="POST" numDigits="1" timeout="10">` +
         (lang === 'es' ? sayEs(answer) : sayEn(answer)) +
@@ -1984,6 +2033,26 @@ voiceRouter.post('/sms-inbound', twilioSignatureMiddleware, async (req: Request,
       return;
     }
 
+    // ── SUBSCRIPTION GATE ────────────────────────────────────────────────────
+    // Resolve workspace from the dialed number (To) to verify subscription
+    // status before invoking any Trinity-capable path (shift offers, keyword
+    // router, AI auto-resolver). STOP is handled above for TCPA compliance
+    // regardless of subscription state. Protected workspaces (platform +
+    // grandfathered) always pass.
+    const smsWorkspace = await resolveWorkspaceFromPhoneNumber(To);
+    if (smsWorkspace && !smsWorkspace.isProtected) {
+      if (!['active', 'trial', 'free_trial'].includes(smsWorkspace.subscriptionStatus)) {
+        log.warn(`[VoiceRoutes] Blocked SMS from inactive workspace ${smsWorkspace.workspaceId} (${smsWorkspace.subscriptionStatus})`);
+        res.type('text/xml').send(
+          `<?xml version="1.0" encoding="UTF-8"?><Response><Message>` +
+          `We're unable to process your request at this time. Please contact your organization's administrator. — Trinity` +
+          `</Message></Response>`
+        );
+        return;
+      }
+    }
+    // ── END SUBSCRIPTION GATE ────────────────────────────────────────────────
+
     // YES / Y / ACCEPT — first check if it's a shift offer acceptance.
     // Fall back to opt-in handling only if there's no live offer.
     if (['YES', 'Y', 'ACCEPT', 'ACCEPTED'].includes(body)) {
@@ -2282,6 +2351,26 @@ async function runTrinityTalkTurn(params: {
   }).catch((e: any) => log.warn('[VoiceRoutes] trinity-talk audit failed:', e?.message));
 
   const aiResult = await resolveWithTrinityBrain({ issue, workspaceId, language: lang });
+
+  // Workspace-scoped audit log for every resolved Trinity-talk turn, so AI
+  // invocations on this channel are visible in the universal audit trail.
+  if (aiResult.canResolve) {
+    void universalAudit.log({
+      workspaceId,
+      actorType: 'trinity',
+      action: 'trinity.voice_ai_resolved',
+      entityType: 'voice_call',
+      entityId: sessionId,
+      changeType: 'action',
+      metadata: {
+        model: aiResult.modelUsed,
+        responseTimeMs: aiResult.responseTimeMs,
+        channel: 'voice',
+        extension: 'trinity_talk',
+        turn,
+      },
+    }).catch(() => {});
+  }
 
   const issueEncoded = encodeURIComponent(issue.slice(0, 500));
   const nameAction = `${baseUrl}/api/voice/support-gather-name?sessionId=${encodeURIComponent(sessionId)}&workspaceId=${encodeURIComponent(workspaceId)}&lang=${lang}&issue=${issueEncoded}&aiAttempted=true&aiModel=${aiResult.modelUsed || 'none'}`;

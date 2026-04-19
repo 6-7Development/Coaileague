@@ -17,9 +17,14 @@ import {
   voiceCallActions,
   type VoiceCallSession,
 } from '../../../shared/schema/domains/voice';
+import { workspaces } from '../../../shared/schema/domains/orgs';
 import { eq, and, desc } from 'drizzle-orm';
 import { createLogger } from '../../lib/logger';
 import { trinityHelpaiCommandBus } from '../helpai/trinityHelpaiCommandBus';
+import {
+  PLATFORM_WORKSPACE_ID,
+  GRANDFATHERED_TENANT_ID,
+} from '../billing/billingConstants';
 const log = createLogger('voiceOrchestrator');
 
 
@@ -93,17 +98,39 @@ function pause(seconds: number = 1): string {
 export async function resolveWorkspaceFromPhoneNumber(to: string): Promise<{
   workspaceId: string;
   phoneRecord: typeof workspacePhoneNumbers.$inferSelect;
+  subscriptionStatus: string;   // 'active' | 'suspended' | 'cancelled' | 'trial'
+  subscriptionTier: string;     // 'free' | 'trial' | 'starter' | 'professional' | 'business' | 'enterprise'
+  isProtected: boolean;         // grandfathered or platform — always serve
 } | null> {
-  const [phoneRecord] = await db.select()
+  const rows = await db
+    .select({
+      phoneRecord: workspacePhoneNumbers,
+      subscriptionStatus: workspaces.subscriptionStatus,
+      subscriptionTier: workspaces.subscriptionTier,
+    })
     .from(workspacePhoneNumbers)
+    .innerJoin(workspaces, eq(workspaces.id, workspacePhoneNumbers.workspaceId))
     .where(and(
       eq(workspacePhoneNumbers.phoneNumber, to),
       eq(workspacePhoneNumbers.isActive, true),
     ))
     .limit(1);
 
-  if (!phoneRecord) return null;
-  return { workspaceId: phoneRecord.workspaceId, phoneRecord };
+  if (!rows.length) return null;
+
+  const { phoneRecord, subscriptionStatus, subscriptionTier } = rows[0];
+  const workspaceId = phoneRecord.workspaceId;
+  const isProtected =
+    workspaceId === PLATFORM_WORKSPACE_ID ||
+    (!!GRANDFATHERED_TENANT_ID && workspaceId === GRANDFATHERED_TENANT_ID);
+
+  return {
+    workspaceId,
+    phoneRecord,
+    subscriptionStatus: subscriptionStatus ?? 'active',
+    subscriptionTier: subscriptionTier ?? 'starter',
+    isProtected,
+  };
 }
 
 // ─── Main Menu Builder ────────────────────────────────────────────────────────
