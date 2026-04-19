@@ -48,8 +48,9 @@ const RECOGNIZED = new Set([
   // trigger Trinity's autonomous coverage workflow.
   'CALLOFF', 'CALLOUT', 'CALLINSICK', 'SICK',
   // Phase 23 — self-service data lookups for officers on their personal phones.
-  'SCHEDULE', 'SHIFTS',
-  'PAY', 'PAYCHECK', 'PAYSTUB',
+  // Phase 24 — additional natural-language aliases so variants resolve too.
+  'SCHEDULE', 'SHIFTS', 'MYSCHEDULE', 'WHENDOIWORK', 'WHENDOIWRK',
+  'PAY', 'PAYCHECK', 'PAYSTUB', 'PAYDAY', 'MYPAY', 'HOURS', 'PAYROLL',
 ]);
 
 function normalizeKeyword(token: string): string {
@@ -343,8 +344,9 @@ const REQUIRES_VERIFICATION = new Set([
   // attacker can't trigger false calloffs from a random number.
   'CALLOFF', 'CALLOUT', 'CALLINSICK', 'SICK',
   // Phase 23 — schedule and pay reveal personal data; require Tier 1 phone verification.
-  'SCHEDULE', 'SHIFTS',
-  'PAY', 'PAYCHECK', 'PAYSTUB',
+  // Phase 24 — additional natural-language aliases kept under the same gate.
+  'SCHEDULE', 'SHIFTS', 'MYSCHEDULE', 'WHENDOIWORK', 'WHENDOIWRK',
+  'PAY', 'PAYCHECK', 'PAYSTUB', 'PAYDAY', 'MYPAY', 'HOURS', 'PAYROLL',
 ]);
 
 export async function handleTrinitySmsKeyword(params: {
@@ -445,13 +447,21 @@ export async function handleTrinitySmsKeyword(params: {
       return handleCalloff(args, body, officer, params.fromPhone);
 
     // Phase 23 — self-service data lookups (Tier 1 phone-verified).
+    // Phase 24 — natural-language aliases route to the same handlers.
     case 'SCHEDULE':
     case 'SHIFTS':
+    case 'MYSCHEDULE':
+    case 'WHENDOIWORK':
+    case 'WHENDOIWRK':
       return handleSchedule(params.fromPhone);
 
     case 'PAY':
     case 'PAYCHECK':
     case 'PAYSTUB':
+    case 'PAYDAY':
+    case 'MYPAY':
+    case 'HOURS':
+    case 'PAYROLL':
       return handlePay(params.fromPhone);
 
     default:

@@ -586,6 +586,41 @@ voiceRouter.post('/caller-identify', twilioSignatureMiddleware, async (req: Requ
         ));
       }
 
+      // Phase 24 — owner PIN gate. If the verified caller is the workspace
+      // owner (and their owner PIN is set), offer an optional PIN step before
+      // the staff menu. Authenticated owners get elevated authority for the
+      // sensitive Trinity voice actions (approve payroll runs, trigger
+      // workflows, override assignments) that downstream extensions check for.
+      try {
+        if (v.userId && v.workspaceId) {
+          const { pool } = await import('../db');
+          const ownerRow = await pool.query(
+            `SELECT 1
+               FROM workspaces
+              WHERE id = $1
+                AND owner_id = $2
+                AND owner_pin_hash IS NOT NULL
+              LIMIT 1`,
+            [v.workspaceId, v.userId],
+          );
+          if (ownerRow.rowCount && ownerRow.rowCount > 0) {
+            const pinAction = `${baseUrl}/api/voice/owner-pin-verify?sessionId=${encodeURIComponent(sessionId)}&workspaceId=${encodeURIComponent(v.workspaceId)}&lang=${lang}`;
+            const skipAction = `${baseUrl}/api/voice/staff-identify?sessionId=${encodeURIComponent(sessionId)}&workspaceId=${encodeURIComponent(v.workspaceId)}&lang=${lang}`;
+            const pinPrompt = lang === 'es'
+              ? `Hola ${v.firstName}. Para acceso con autoridad completa, marque su código PIN de propietario seguido de la tecla numeral. O marque cero para continuar sin PIN.`
+              : `Hi ${v.firstName}. For full-authority access, please enter your owner PIN followed by the pound key. Or press zero to continue without a PIN.`;
+            return xmlResponse(res, twiml(
+              `<Gather input="dtmf" action="${pinAction}" method="POST" timeout="10" finishOnKey="#" numDigits="9">` +
+              say(pinPrompt, voiceId, langCode) +
+              `</Gather>` +
+              redirect(skipAction)
+            ));
+          }
+        }
+      } catch (pinErr: any) {
+        log.warn('[VoiceRoutes] Owner-PIN gate check failed (non-fatal):', pinErr?.message);
+      }
+
       const prompt = lang === 'es'
         ? `Hola ${v.firstName}, qué bueno escucharle. Por favor diga su número de empleado o el motivo de su llamada para ayudarle más rápido.`
         : `Hi ${v.firstName}, great to hear from you. Please say your employee number or the reason for your call so I can help you faster.`;
@@ -683,6 +718,100 @@ voiceRouter.post('/staff-identify', twilioSignatureMiddleware, async (req: Reque
     ));
   } catch (err: any) {
     log.error('[VoiceRoutes] staff-identify error:', err.message);
+    xmlResponse(res, twiml('<Say>An error occurred. Goodbye.</Say>'));
+  }
+});
+
+// ─── 2c-bis. OWNER PIN VERIFY (Phase 24) ──────────────────────────────────────
+// Optional PIN step after Digit-1 + phone-verified + owner-of-workspace.
+// Verifies the PIN against workspaces.owner_pin_hash via entityPinService,
+// stamps the call session's metadata with owner_pin_verified=true for
+// downstream extensions that elevate authority, and redirects to the normal
+// staff-identify flow. On failure / skip, still continues to staff identify
+// so the caller is never blocked — voice is a fallback channel.
+
+voiceRouter.post('/owner-pin-verify', twilioSignatureMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { CallSid, To } = req.body;
+    const Digits: string = (req.body.Digits as string) || '';
+    const lang = getLang(req);
+    const baseUrl = getBaseUrl(req);
+
+    const workspace = await resolveWorkspaceFromPhoneNumber(To);
+    if (!workspace) return xmlResponse(res, twiml('<Say>Configuration error. Goodbye.</Say>'));
+
+    const { workspaceId } = workspace;
+    const session = await getSession(CallSid);
+    const sessionId = session?.id || CallSid;
+    const voiceId = lang === 'es' ? VOICE_ES : VOICE;
+    const langCode = lang === 'es' ? 'es-US' : 'en-US';
+
+    const staffIdentify = `${baseUrl}/api/voice/staff-identify?sessionId=${encodeURIComponent(sessionId)}&workspaceId=${encodeURIComponent(workspaceId)}&lang=${lang}`;
+
+    // 0 = skip. Empty = timeout (treat as skip). Anything shorter than 4 digits
+    // is not a valid PIN; skip straight to staff identify.
+    const trimmed = (Digits || '').replace(/\D/g, '');
+    if (!trimmed || trimmed === '0' || trimmed.length < 4) {
+      return xmlResponse(res, twiml(
+        say(lang === 'es'
+          ? 'Continuando al menú de personal.'
+          : 'Continuing to the staff menu.', voiceId, langCode) +
+        redirect(staffIdentify)
+      ));
+    }
+
+    // Verify PIN against the workspace owner record. Tenant-scoped by design —
+    // entityPinService enforces workspace match inside the SQL WHERE clause.
+    let verified = false;
+    try {
+      const { verifyEntityPin } = await import('../services/entityPinService');
+      const result = await verifyEntityPin({
+        entity: 'owner',
+        entityId: workspaceId,
+        workspaceId,
+        pin: trimmed,
+      });
+      verified = result.valid;
+      log.info(`[VoiceRoutes] owner-pin-verify: workspace=${workspaceId} valid=${verified} reason=${result.reason}`);
+    } catch (pinErr: any) {
+      log.warn('[VoiceRoutes] owner-pin-verify call failed (non-fatal):', pinErr?.message);
+    }
+
+    // Stamp the session so downstream extensions (staff menu, payroll approval,
+    // etc.) can check whether this call is owner-PIN-elevated without re-doing
+    // the bcrypt work. Fire-and-await but tolerate metadata write failures.
+    if (verified) {
+      try {
+        const { pool } = await import('../db');
+        await pool.query(
+          `UPDATE voice_call_sessions
+              SET metadata = COALESCE(metadata, '{}'::jsonb)
+                             || jsonb_build_object(
+                                  'owner_pin_verified', true,
+                                  'owner_pin_verified_at', NOW()::text
+                                )
+            WHERE twilio_call_sid = $1`,
+          [CallSid],
+        );
+      } catch (metaErr: any) {
+        log.warn('[VoiceRoutes] owner-pin session stamp failed (non-fatal):', metaErr?.message);
+      }
+    }
+
+    const ack = verified
+      ? (lang === 'es'
+          ? 'PIN verificado. Tiene autoridad completa para esta llamada.'
+          : 'PIN verified. You have full authority for this call.')
+      : (lang === 'es'
+          ? 'No pude verificar ese PIN. Continuaré sin autoridad elevada.'
+          : 'I could not verify that PIN. Continuing without elevated authority.');
+
+    return xmlResponse(res, twiml(
+      say(ack, voiceId, langCode) +
+      redirect(staffIdentify)
+    ));
+  } catch (err: any) {
+    log.error('[VoiceRoutes] owner-pin-verify error:', err.message);
     xmlResponse(res, twiml('<Say>An error occurred. Goodbye.</Say>'));
   }
 });
