@@ -544,8 +544,16 @@ timeEntryRouter.post('/clock-in', requireAuth, mutationLimiter, async (req: Auth
         gpsVerificationStatus = 'gps_error';
       }
     } else if (isFeatureEnabled('enableGPS') && !(latitude && longitude)) {
-      // GPS enforcement is on but no coordinates were supplied — log for supervisor audit
-      log.warn(`[GPS] Clock-in allowed without coordinates for employee ${employee.id} (workspace ${workspaceId}). gpsVerificationStatus=no_gps_provided`);
+      // GPS enforcement is on but no coordinates were supplied. Owners/co-owners
+      // are exempt (they may clock in from a desk during admin work); everyone
+      // else must provide GPS so the geo-compliance audit trail stays intact.
+      if (!isOwner) {
+        log.warn(`[GPS] Clock-in rejected — no coordinates for employee ${employee.id} (workspace ${workspaceId})`);
+        return res.status(400).json({
+          error: 'GPS_COORDINATES_REQUIRED',
+          message: 'GPS is required to clock in. Enable location services and try again.',
+        });
+      }
     }
 
     // Snapshot bill rate from client contract at clock-in time — prevents rate drift at invoice time

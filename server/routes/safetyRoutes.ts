@@ -6,6 +6,7 @@ import { requireAuth } from "../auth";
 import { ensureWorkspaceAccess } from "../middleware/workspaceScope";
 import { randomUUID } from "crypto";
 import { platformEventBus } from "../services/platformEventBus";
+import { panicAlertService } from "../services/ops/panicAlertService";
 import { typedPool } from '../lib/typedSql';
 import { createLogger } from '../lib/logger';
 import { clampLimit, clampOffset } from '../utils/pagination';
@@ -69,43 +70,37 @@ safetyRouter.post("/panic", requireAuth as any, ensureWorkspaceAccess as any, as
     if (!parsed.success) {
       return res.status(400).json({ error: 'Invalid panic alert data', details: parsed.error.flatten().fieldErrors });
     }
-    const { employeeId, employeeName, siteId, siteName, latitude, longitude, locationAccuracy } = parsed.data;
-    if (!employeeName) return res.status(400).json({ error: "employeeName required" });
-    const id = randomUUID();
-    const alertNumber = `SOS-${Date.now().toString(36).toUpperCase()}`;
-    await q(`INSERT INTO panic_alerts (id,workspace_id,alert_number,employee_id,employee_name,site_id,site_name,latitude,longitude,location_accuracy,triggered_at,status,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,NOW(),'active',NOW())`,
-      [id, workspaceId, alertNumber, employeeId||null, employeeName, siteId||null, siteName||null, latitude||null, longitude||null, locationAccuracy||null]);
-    const rows = await q(`SELECT * FROM panic_alerts WHERE id=$1`, [id]);
-    broadcast(req, "panic_alert", rows[0]);
 
-    // CANONICAL: publish to platformEventBus so TrinityFieldIntelligence subscriber fires
-    platformEventBus.publish({
-      type: 'panic_alert_triggered',
-      category: 'automation',
-      title: `Panic Alert — ${alertNumber}`,
-      description: `${employeeName} triggered a SOS panic alert${siteName ? ` at ${siteName}` : ''}`,
+    // Delegate to the canonical panic service — inserts the row, SMS-blasts the
+    // full MANAGER+OWNER supervisory chain, auto-creates a priority-1 CAD call,
+    // publishes the `panic_alert_triggered` event (so TrinityFieldIntelligence
+    // fires too), and broadcasts the WS notification. Previously this route did
+    // only the INSERT + event publish, so the SMS blast promised by the panic
+    // protocol never reached off-shift supervisors.
+    const alert = await panicAlertService.triggerAlert({
       workspaceId,
-      metadata: {
-        alertId: id,
-        alertNumber,
-        employeeId: employeeId || null,
-        employeeName,
-        siteId: siteId || null,
-        siteName: siteName || null,
-        latitude: latitude || null,
-        longitude: longitude || null,
-      },
-    }).catch((err: unknown) => log.warn('[SafetyRoutes] panic_alert_triggered publish failed (non-blocking):', sanitizeError(err)));
+      employeeId: parsed.data.employeeId ?? null,
+      employeeName: parsed.data.employeeName,
+      siteId: parsed.data.siteId ?? null,
+      siteName: parsed.data.siteName ?? null,
+      latitude: parsed.data.latitude ?? null,
+      longitude: parsed.data.longitude ?? null,
+      locationAccuracy: parsed.data.locationAccuracy ?? null,
+      triggeredByUserId: req.user?.id,
+    });
 
-    res.status(201).json(rows[0]);
+    res.status(201).json(alert);
   } catch (e: unknown) { res.status(400).json({ error: sanitizeError(e) }); }
 });
 
 safetyRouter.post("/panic/:id/acknowledge", requireAuth as any, ensureWorkspaceAccess as any, async (req: any, res: any) => {
   try {
+    const workspaceId = wid(req);
     const { acknowledgedBy } = req.body;
-    await q(`UPDATE panic_alerts SET status='acknowledged', acknowledged_at=NOW(), acknowledged_by=$1 WHERE id=$2 AND workspace_id=$3`, [acknowledgedBy||null, req.params.id, wid(req)]);
-    const rows = await q(`SELECT * FROM panic_alerts WHERE id=$1`, [req.params.id]);
+    await q(`UPDATE panic_alerts SET status='acknowledged', acknowledged_at=NOW(), acknowledged_by=$1 WHERE id=$2 AND workspace_id=$3`, [acknowledgedBy||null, req.params.id, workspaceId]);
+    // Tenant-scoped SELECT — the raw `WHERE id=$1` previously leaked cross-tenant rows.
+    const rows = await q(`SELECT * FROM panic_alerts WHERE id=$1 AND workspace_id=$2`, [req.params.id, workspaceId]);
+    if (!rows.length) return res.status(404).json({ error: 'Panic alert not found' });
     broadcast(req, "panic_acknowledged", rows[0]);
 
     // CANONICAL: publish to platformEventBus so TrinityFieldIntelligence acknowledge subscriber fires
@@ -114,7 +109,7 @@ safetyRouter.post("/panic/:id/acknowledge", requireAuth as any, ensureWorkspaceA
       category: 'automation',
       title: `Panic Alert Acknowledged — ${req.params.id}`,
       description: `Panic alert acknowledged${acknowledgedBy ? ` by ${acknowledgedBy}` : ''}`,
-      workspaceId: wid(req),
+      workspaceId,
       metadata: {
         alertId: req.params.id,
         acknowledgedBy: acknowledgedBy || null,
@@ -128,11 +123,32 @@ safetyRouter.post("/panic/:id/acknowledge", requireAuth as any, ensureWorkspaceA
 
 safetyRouter.post("/panic/:id/resolve", requireAuth as any, ensureWorkspaceAccess as any, async (req: any, res: any) => {
   try {
+    const workspaceId = wid(req);
     const { resolvedBy, responseNotes, cadCallId, incidentReportId } = req.body;
     await q(`UPDATE panic_alerts SET status='resolved', resolved_at=NOW(), resolved_by=$1, response_notes=$2, cad_call_id=$3, incident_report_id=$4 WHERE id=$5 AND workspace_id=$6`,
-      [resolvedBy||null, responseNotes||null, cadCallId||null, incidentReportId||null, req.params.id, wid(req)]);
-    const rows = await q(`SELECT * FROM panic_alerts WHERE id=$1`, [req.params.id]);
+      [resolvedBy||null, responseNotes||null, cadCallId||null, incidentReportId||null, req.params.id, workspaceId]);
+    // Tenant-scoped SELECT — the raw `WHERE id=$1` previously leaked cross-tenant rows.
+    const rows = await q(`SELECT * FROM panic_alerts WHERE id=$1 AND workspace_id=$2`, [req.params.id, workspaceId]);
+    if (!rows.length) return res.status(404).json({ error: 'Panic alert not found' });
     broadcast(req, "panic_resolved", rows[0]);
+
+    // Matches the acknowledge path — Trinity downstream subscribers need to see resolution too.
+    platformEventBus.publish({
+      type: 'panic_alert_resolved',
+      category: 'automation',
+      title: `Panic Alert Resolved — ${req.params.id}`,
+      description: `Panic alert resolved${resolvedBy ? ` by ${resolvedBy}` : ''}`,
+      workspaceId,
+      metadata: {
+        alertId: req.params.id,
+        resolvedBy: resolvedBy || null,
+        responseNotes: responseNotes || null,
+        cadCallId: cadCallId || null,
+        incidentReportId: incidentReportId || null,
+        alert: rows[0] || null,
+      },
+    }).catch((err: unknown) => log.warn('[SafetyRoutes] panic_alert_resolved publish failed (non-blocking):', sanitizeError(err)));
+
     res.json(rows[0]);
   } catch (e: unknown) { res.status(500).json({ error: sanitizeError(e) }); }
 });
