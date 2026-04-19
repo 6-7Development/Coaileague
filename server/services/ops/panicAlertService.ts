@@ -2,8 +2,40 @@
  * Panic Alert Service
  * ====================
  * Manages officer panic/duress SOS alerts.
- * All panic alerts are routed through the Trinity amygdala priority layer as
- * the highest urgency signal — no panic ever fails silently.
+ *
+ * ──────────────────────────────────────────────────────────────────────────────
+ * SCOPE & LIABILITY — READ FIRST
+ * ──────────────────────────────────────────────────────────────────────────────
+ * This service is a **human-supervisor notification channel, nothing more.**
+ *
+ *  - It does NOT contact 911, dispatch, law enforcement, fire, EMS, medical,
+ *    or any emergency service.
+ *  - It does NOT guarantee an officer's safety, rescue, welfare, or recovery.
+ *  - It does NOT create a duty of care to the officer, the client, the public,
+ *    or any third party on the part of CoAIleague or the tenant organization.
+ *  - It is NOT a substitute for human supervision. Every tenant organization
+ *    is required — by Texas Occupations Code Chapter 1702 and by the analogous
+ *    regulatory framework of every other U.S. state that licenses private
+ *    security — to maintain adequate licensed human supervision at all times.
+ *    This platform cannot and does not replace that obligation.
+ *  - A panic alert reaching a supervisor does NOT mean the supervisor acted.
+ *    Supervisor acknowledgement, response, dispatch of help, and contact with
+ *    911 are the sole responsibility of human personnel at the tenant
+ *    organization.
+ *  - Delivery of SMS/WS notifications is best-effort. Cellular networks, carrier
+ *    policy, device state, "Do Not Disturb," blocked numbers, silent mode, and
+ *    app-kill behavior may all prevent a notification from being seen in time.
+ *    CoAIleague does not warrant timely delivery.
+ *
+ * In short: **officers in life-threatening danger should call 911 directly.**
+ * This service notifies designated humans that help may be needed. It is not,
+ * and will never be, a rescue mechanism.
+ *
+ * Every outgoing SMS carries a short version of this disclaimer, every API
+ * response returns a `notice` field, and every tenant-facing panic UI must
+ * render <EmergencyDisclaimer />. Do not remove any of these surfaces without
+ * explicit written legal approval.
+ * ──────────────────────────────────────────────────────────────────────────────
  *
  * Domain: ops
  * Tables: panic_alerts
@@ -16,8 +48,28 @@ import { broadcastToWorkspace } from '../../websocket';
 import { createLogger } from '../../lib/logger';
 import { platformActionHub } from '../helpai/platformActionHub';
 import { typedPool, typedPoolExec } from '../../lib/typedSql';
-import { panicAlerts } from '@shared/schema';
-import { eq, sql, and } from 'drizzle-orm';
+import { panicAlerts, employees } from '@shared/schema';
+import { eq, sql, and, inArray } from 'drizzle-orm';
+import { NotificationDeliveryService } from '../notificationDeliveryService';
+import { MANAGER_ROLES, OWNER_ROLES } from '@shared/lib/rbac/roleDefinitions';
+
+/**
+ * Canonical liability notice returned with every panic API response and
+ * surfaced on every tenant-facing panic UI. Exported so the HTTP layer, the
+ * mobile client, and any downstream integration share one string.
+ *
+ * Change only with written legal approval — see CLAUDE.md Section O.
+ */
+export const PANIC_LIABILITY_NOTICE =
+  'This panic alert is a notification to designated human supervisors only. ' +
+  'CoAIleague does not contact 911, emergency services, law enforcement, fire, ' +
+  'or EMS, and does not guarantee officer safety, response, or outcome. ' +
+  'Responding to the alert, contacting emergency services, and supervising the ' +
+  'officer are the sole responsibility of the tenant organization and its ' +
+  'licensed human personnel. Human supervision is required at all times by ' +
+  'applicable state law (e.g. Texas Occupations Code Chapter 1702) and is not ' +
+  'replaced by this platform. Officers in life-threatening situations should ' +
+  'call 911 directly.';
 
 const log = createLogger('PanicAlertService');
 
@@ -46,6 +98,16 @@ export interface PanicAlert {
   status: 'active' | 'acknowledged' | 'resolved';
   triggeredAt: Date;
   createdAt: Date;
+}
+
+/**
+ * HTTP response shape for POST /api/safety/panic. Always bundles the liability
+ * notice with the alert — no caller should ever display or forward panic
+ * metadata without the notice attached.
+ */
+export interface PanicAlertResponse {
+  alert: PanicAlert;
+  notice: typeof PANIC_LIABILITY_NOTICE;
 }
 
 class PanicAlertService {
@@ -82,8 +144,11 @@ class PanicAlertService {
       createdAt: sql`now()`,
     });
 
-    const rows = await db.select().from(panicAlerts).where(eq(panicAlerts.id, id));
-    const alert = (rows as any).rows[0] as PanicAlert;
+    const rows = await db.select().from(panicAlerts).where(eq(panicAlerts.id, id)).limit(1);
+    const alert = rows[0] as unknown as PanicAlert;
+    if (!alert) {
+      throw new Error(`Panic alert ${id} failed to persist`);
+    }
 
     // Notify all supervisors and managers immediately
     await this.notifyEmergencyContacts(payload.workspaceId, alert);
@@ -129,8 +194,8 @@ class PanicAlertService {
       status: 'acknowledged',
       resolvedBy: acknowledgedBy,
     }).where(and(eq(panicAlerts.id, alertId), eq(panicAlerts.workspaceId, workspaceId)));
-    const rows = await db.select().from(panicAlerts).where(eq(panicAlerts.id, alertId));
-    const alert = (rows as any).rows[0] as PanicAlert;
+    const rows = await db.select().from(panicAlerts).where(eq(panicAlerts.id, alertId)).limit(1);
+    const alert = rows[0] as unknown as PanicAlert;
 
     await platformEventBus.publish({
       type: 'panic_alert_acknowledged',
@@ -152,8 +217,8 @@ class PanicAlertService {
       resolvedAt: sql`now()`,
       resolvedBy: resolvedBy,
     }).where(and(eq(panicAlerts.id, alertId), eq(panicAlerts.workspaceId, workspaceId)));
-    const rows = await db.select().from(panicAlerts).where(eq(panicAlerts.id, alertId));
-    const alert = (rows as any).rows[0] as PanicAlert;
+    const rows = await db.select().from(panicAlerts).where(eq(panicAlerts.id, alertId)).limit(1);
+    const alert = rows[0] as unknown as PanicAlert;
 
     await platformEventBus.publish({
       type: 'panic_alert_resolved',
@@ -179,9 +244,65 @@ class PanicAlertService {
   }
 
   private async notifyEmergencyContacts(workspaceId: string, alert: PanicAlert) {
-    // WebSocket broadcast is the primary notification channel for panic alerts
-    // The safetyRoutes.ts broadcast covers real-time supervisor notification
-    log.info(`Panic alert ${alert.alertNumber} — supervisors notified via WebSocket broadcast`);
+    // SMS blast to the entire supervisory chain. WebSocket broadcast alone is
+    // not sufficient — supervisors may be off-shift, not looking at the app,
+    // or on a mobile browser where the WS connection is closed. A panic alert
+    // is the single highest-priority signal on the platform; every manager and
+    // owner must get a phone-level ping awaited before the handler returns.
+    const chainRoles = Array.from(new Set([...MANAGER_ROLES, ...OWNER_ROLES]));
+    const chain = await db
+      .select({
+        id: employees.id,
+        userId: employees.userId,
+        phone: employees.phone,
+        firstName: employees.firstName,
+        lastName: employees.lastName,
+      })
+      .from(employees)
+      .where(
+        and(
+          eq(employees.workspaceId, workspaceId),
+          inArray(employees.workspaceRole, chainRoles),
+        ),
+      );
+
+    const locationLine = alert.latitude != null && alert.longitude != null
+      ? `GPS ${Number(alert.latitude).toFixed(4)},${Number(alert.longitude).toFixed(4)}`
+      : alert.siteName || 'location unknown';
+    // Liability language is MANDATORY in the SMS body. Recipients must know this
+    // notification is informational only — they are the responders, and calling
+    // 911 is their judgment call, not the platform's. Do not shorten.
+    const smsBody =
+      `COALEAGUE SUPERVISOR ALERT: ${alert.employeeName} pressed the panic button. ` +
+      `${locationLine}. You are a designated supervisor. ` +
+      `Contact the officer now and decide whether to call 911. ` +
+      `This is a notification only — CoAIleague does NOT contact emergency services ` +
+      `and does NOT guarantee officer safety. Human response is required.`;
+
+    let reachableCount = 0;
+    for (const recipient of chain) {
+      if (!recipient.phone || !recipient.userId) continue;
+      try {
+        await NotificationDeliveryService.send({
+          type: 'incident_alert',
+          workspaceId,
+          recipientUserId: recipient.userId,
+          channel: 'sms',
+          body: { to: recipient.phone, body: smsBody },
+          idempotencyKey: `panic_sms_${alert.id}_${recipient.id}`,
+        });
+        reachableCount++;
+      } catch (err: any) {
+        log.warn(
+          `[PanicAlert] SMS dispatch failed for ${recipient.firstName} ${recipient.lastName} (non-fatal):`,
+          err?.message,
+        );
+      }
+    }
+
+    log.info(
+      `Panic alert ${alert.alertNumber} — SMS blast: ${reachableCount}/${chain.length} supervisory-chain recipients with a phone on file.`,
+    );
   }
 
   private async autoCreateCadCall(alert: PanicAlert) {

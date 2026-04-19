@@ -707,11 +707,15 @@ const router = Router();
       const ipAddress = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.ip || req.connection.remoteAddress;
       
       // GEO-COMPLIANCE: Extract GPS coordinates from request
-      const { gpsLatitude, gpsLongitude, gpsAccuracy } = req.body;
-      
+      // Accept both `gpsLatitude` (web UI) and `latitude` (mobile/offline replay) shapes.
+      const gpsLatitude = req.body.gpsLatitude ?? req.body.latitude;
+      const gpsLongitude = req.body.gpsLongitude ?? req.body.longitude;
+      const gpsAccuracy = req.body.gpsAccuracy ?? req.body.accuracy;
+      const photoUrl = typeof req.body.photoUrl === 'string' ? req.body.photoUrl : null;
+
       // Validate GPS accuracy (must be <= 50m for compliance)
       if (gpsAccuracy && parseFloat(gpsAccuracy) > 50) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           message: "GPS accuracy too low. Please ensure location services are enabled and try again in an area with better signal.",
           requiredAccuracy: 50,
           currentAccuracy: gpsAccuracy
@@ -721,7 +725,7 @@ const router = Router();
       const clockOut = new Date();
       const clockIn = new Date(timeEntry.clockIn);
       const totalHours = ((clockOut.getTime() - clockIn.getTime()) / (1000 * 60 * 60)).toFixed(2);
-      
+
       const hourlyRate = timeEntry.hourlyRate || "0";
       const totalAmount = (parseFloat(totalHours) * parseFloat(hourlyRate as string)).toFixed(2);
 
@@ -733,6 +737,7 @@ const router = Router();
         clockOutLatitude: gpsLatitude,
         clockOutLongitude: gpsLongitude,
         clockOutAccuracy: gpsAccuracy,
+        clockOutPhotoUrl: photoUrl,
       });
 
       // GEO-COMPLIANCE: Detect IP anomaly (different IP between clock-in and clock-out)

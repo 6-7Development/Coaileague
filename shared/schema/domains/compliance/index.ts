@@ -47,10 +47,14 @@ export const securityIncidents = pgTable("security_incidents", {
   resolvedAt: timestamp("resolved_at"),
   resolvedBy: varchar("resolved_by"),
   resolutionNotes: text("resolution_notes"),
-  
+
+  // Photographic evidence attached by the reporting officer (data URLs or CDN URLs).
+  // Previously accepted by the mobile incident endpoint but never persisted.
+  photos: jsonb("photos").$type<string[]>().default(sql`'[]'::jsonb`),
+
   shiftId: varchar("shift_id"),
   clientId: varchar("client_id"),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
