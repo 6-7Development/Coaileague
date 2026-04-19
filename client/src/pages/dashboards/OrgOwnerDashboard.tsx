@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { formatCurrency } from "@/lib/formatters";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { toast } from "@/hooks/use-toast";
+import { ComplianceScoreWidget } from "@/components/dashboard/ComplianceScoreWidget";
 
 const pageConfig: CanvasPageConfig = {
   id: "org-owner-dashboard",
@@ -249,6 +250,9 @@ export default function OrgOwnerDashboard() {
             <p className="text-2xl font-bold text-foreground">{invoiceList.length || "—"}</p>
           </div>
         </div>
+
+        {/* Readiness Section 27 #9 — compliance score widget */}
+        <ComplianceScoreWidget />
 
         {/* Data cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

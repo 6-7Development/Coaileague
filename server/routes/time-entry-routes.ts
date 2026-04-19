@@ -304,6 +304,14 @@ timeEntryRouter.post('/clock-in', requireAuth, mutationLimiter, async (req: Auth
     }
 
     // Validate request body
+    // Accept both payload shapes — web time-tracking UI sends `gpsLatitude/gpsLongitude/gpsAccuracy/photoUrl`,
+    // while offline-queue replays and older callers send `latitude/longitude/accuracy`. Previously only the
+    // second shape was read, so every GPS+photo from the main UI was silently discarded.
+    const rawLatitude = req.body.gpsLatitude ?? req.body.latitude;
+    const rawLongitude = req.body.gpsLongitude ?? req.body.longitude;
+    const rawAccuracy = req.body.gpsAccuracy ?? req.body.accuracy;
+    const rawPhotoUrl = typeof req.body.photoUrl === 'string' ? req.body.photoUrl : null;
+
     const clockInSchema = insertTimeEntrySchema.pick({
       shiftId: true,
       clientId: true,
@@ -316,9 +324,9 @@ timeEntryRouter.post('/clock-in', requireAuth, mutationLimiter, async (req: Auth
     const validation = clockInSchema.safeParse({
       shiftId: req.body.shiftId,
       clientId: req.body.clientId,
-      clockInLatitude: req.body.latitude,
-      clockInLongitude: req.body.longitude,
-      clockInAccuracy: req.body.accuracy,
+      clockInLatitude: rawLatitude,
+      clockInLongitude: rawLongitude,
+      clockInAccuracy: rawAccuracy,
       notes: req.body.notes,
     });
 
@@ -536,8 +544,16 @@ timeEntryRouter.post('/clock-in', requireAuth, mutationLimiter, async (req: Auth
         gpsVerificationStatus = 'gps_error';
       }
     } else if (isFeatureEnabled('enableGPS') && !(latitude && longitude)) {
-      // GPS enforcement is on but no coordinates were supplied — log for supervisor audit
-      log.warn(`[GPS] Clock-in allowed without coordinates for employee ${employee.id} (workspace ${workspaceId}). gpsVerificationStatus=no_gps_provided`);
+      // GPS enforcement is on but no coordinates were supplied. Owners/co-owners
+      // are exempt (they may clock in from a desk during admin work); everyone
+      // else must provide GPS so the geo-compliance audit trail stays intact.
+      if (!isOwner) {
+        log.warn(`[GPS] Clock-in rejected — no coordinates for employee ${employee.id} (workspace ${workspaceId})`);
+        return res.status(400).json({
+          error: 'GPS_COORDINATES_REQUIRED',
+          message: 'GPS is required to clock in. Enable location services and try again.',
+        });
+      }
     }
 
     // Snapshot bill rate from client contract at clock-in time — prevents rate drift at invoice time
@@ -582,6 +598,7 @@ timeEntryRouter.post('/clock-in', requireAuth, mutationLimiter, async (req: Auth
         clockInLongitude: longitude || null,
         clockInAccuracy: accuracy || null,
         clockInIpAddress: req.ip || null,
+        clockInPhotoUrl: rawPhotoUrl,
         hourlyRate: employee.hourlyRate || null,
         billableToClient: !!(clientId || resolvedShift?.clientId),
         capturedPayRate: employee.hourlyRate || null,
@@ -933,7 +950,12 @@ timeEntryRouter.post('/clock-out', requireAuth, mutationLimiter, async (req: Aut
       return res.status(400).json({ error: 'No workspace selected' });
     }
 
-    // Validate request body
+    // Validate request body — accept both payload shapes (see clock-in handler above).
+    const rawLatitude = req.body.gpsLatitude ?? req.body.latitude;
+    const rawLongitude = req.body.gpsLongitude ?? req.body.longitude;
+    const rawAccuracy = req.body.gpsAccuracy ?? req.body.accuracy;
+    const rawPhotoUrl = typeof req.body.photoUrl === 'string' ? req.body.photoUrl : null;
+
     const clockOutSchema = insertTimeEntrySchema.pick({
       clockOutLatitude: true,
       clockOutLongitude: true,
@@ -942,9 +964,9 @@ timeEntryRouter.post('/clock-out', requireAuth, mutationLimiter, async (req: Aut
     }).partial();
 
     const validation = clockOutSchema.safeParse({
-      clockOutLatitude: req.body.latitude,
-      clockOutLongitude: req.body.longitude,
-      clockOutAccuracy: req.body.accuracy,
+      clockOutLatitude: rawLatitude,
+      clockOutLongitude: rawLongitude,
+      clockOutAccuracy: rawAccuracy,
       notes: req.body.notes,
     });
 
@@ -1036,6 +1058,7 @@ timeEntryRouter.post('/clock-out', requireAuth, mutationLimiter, async (req: Aut
           clockOutLongitude: longitude || null,
           clockOutAccuracy: accuracy || null,
           clockOutIpAddress: req.ip || null,
+          clockOutPhotoUrl: rawPhotoUrl,
           totalHours: netHours.toString(), // NET hours (breaks deducted)
           totalAmount: activeEntry.hourlyRate
             ? (parseFloat(activeEntry.hourlyRate) * netHours).toFixed(2) // Pay for NET hours only
@@ -1223,7 +1246,7 @@ timeEntryRouter.post('/clock-out', requireAuth, mutationLimiter, async (req: Aut
 timeEntryRouter.patch('/geofence-override/:timeEntryId', requireWorkspaceRole('manager'), async (req: AuthenticatedRequest, res) => {
   try {
     const user = req.user!;
-    // @ts-expect-error — TS migration: fix in refactoring sprint
+    const workspaceId = req.workspaceId || (user as any)?.workspaceId || user?.currentWorkspaceId;
     if (!workspaceId) return res.status(400).json({ error: 'No workspace selected' });
     const { approved, reason } = req.body;
     if (typeof approved !== 'boolean') return res.status(400).json({ error: 'approved (boolean) required' });
@@ -1236,14 +1259,12 @@ timeEntryRouter.patch('/geofence-override/:timeEntryId', requireWorkspaceRole('m
       geofenceOverrideAt: new Date(),
     }).where(and(
       eq(timeEntries.id, req.params.timeEntryId),
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       eq(timeEntries.workspaceId, workspaceId),
       eq(timeEntries.geofenceOverrideRequired, true)
     ));
 
     platformEventBus.publish({
       type: 'geofence_override_resolved',
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       workspaceId: workspaceId,
       payload: { timeEntryId: req.params.timeEntryId, approved, reason, resolvedBy: user.id },
     }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
@@ -1252,6 +1273,54 @@ timeEntryRouter.patch('/geofence-override/:timeEntryId', requireWorkspaceRole('m
   } catch (error) {
     log.error('Error resolving geofence override:', error);
     res.status(500).json({ error: 'Failed to resolve geofence override' });
+  }
+});
+
+/**
+ * POST /api/time-entries/geofence-override/:timeEntryId/submit
+ * Officer-facing: attach an explanation reason to an outside-geofence
+ * clock event. Moves status from 'required' → 'pending' so a manager
+ * sees it in the approval queue.
+ *
+ * Readiness Section 9 bug #1 — the original single-PATCH endpoint was
+ * gated to manager role, so the officer's explanation POST 403'd
+ * silently and the modal got stuck.
+ */
+timeEntryRouter.post('/geofence-override/:timeEntryId/submit', async (req: AuthenticatedRequest, res) => {
+  try {
+    const user = req.user;
+    if (!user) return res.status(401).json({ error: 'Not authenticated' });
+    const workspaceId = req.workspaceId || (user as any)?.workspaceId || user?.currentWorkspaceId;
+    if (!workspaceId) return res.status(400).json({ error: 'No workspace selected' });
+    const { reason } = req.body || {};
+    if (!reason || typeof reason !== 'string' || reason.trim().length < 5) {
+      return res.status(400).json({ error: 'reason (min 5 chars) required' });
+    }
+
+    const updated = await db.update(timeEntries).set({
+      geofenceOverrideStatus: 'pending',
+      geofenceOverrideReason: reason.trim(),
+      geofenceOverrideAt: new Date(),
+    }).where(and(
+      eq(timeEntries.id, req.params.timeEntryId),
+      eq(timeEntries.workspaceId, workspaceId),
+      eq(timeEntries.geofenceOverrideRequired, true),
+    )).returning();
+
+    if (updated.length === 0) {
+      return res.status(404).json({ error: 'Time entry not found or not awaiting an override' });
+    }
+
+    platformEventBus.publish({
+      type: 'geofence_override_submitted',
+      workspaceId,
+      payload: { timeEntryId: req.params.timeEntryId, reason: reason.trim(), submittedBy: user.id },
+    }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+
+    res.json({ success: true, message: 'Explanation submitted to supervisor for review.' });
+  } catch (error) {
+    log.error('Error submitting geofence override:', error);
+    res.status(500).json({ error: 'Failed to submit explanation' });
   }
 });
 
