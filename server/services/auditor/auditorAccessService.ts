@@ -196,6 +196,23 @@ async function ensureTables(): Promise<void> {
       );
       CREATE INDEX IF NOT EXISTS workspace_auditor_allowlist_workspace_idx
         ON workspace_auditor_allowlist(workspace_id);
+
+      -- Readiness Section 3 — auditor NDA gate.
+      -- An auditor may not see tenant data until they've acknowledged the
+      -- current NDA. The current version lives in AUDITOR_NDA_VERSION env;
+      -- if the stored accepted_version < current, re-acceptance is required.
+      CREATE TABLE IF NOT EXISTS auditor_nda_acceptances (
+        id                VARCHAR PRIMARY KEY DEFAULT gen_random_uuid()::text,
+        auditor_id        VARCHAR NOT NULL,
+        nda_version       VARCHAR NOT NULL,
+        accepted_at       TIMESTAMP NOT NULL DEFAULT NOW(),
+        accepted_ip       VARCHAR,
+        accepted_user_agent TEXT,
+        signature_name    VARCHAR,
+        UNIQUE (auditor_id, nda_version)
+      );
+      CREATE INDEX IF NOT EXISTS auditor_nda_acceptances_auditor_idx
+        ON auditor_nda_acceptances(auditor_id);
     `);
     bootstrapped = true;
     log.info('[AuditorAccess] Bootstrap complete');
@@ -514,6 +531,248 @@ export async function extendAudit(auditId: string, days = 30): Promise<{ success
 /**
  * Idempotent close-out for any audit past its window. Safe to run on a cron.
  */
+// ─── NDA GATE (Readiness Section 3) ──────────────────────────────────────────
+
+/**
+ * The current NDA version. Pinned to env so counsel can rev the NDA text
+ * without a code change — any bump invalidates prior acceptances for the
+ * purpose of the gate check.
+ */
+export function currentNdaVersion(): string {
+  return (process.env.AUDITOR_NDA_VERSION || '2026-04-19-v1').trim();
+}
+
+/**
+ * True iff the auditor has accepted the current NDA version.
+ * Required before any tenant data may be returned from the auditor surface.
+ */
+export async function hasAcceptedCurrentNda(auditorId: string): Promise<boolean> {
+  await ensureTables();
+  const { pool } = await import('../../db');
+  const r = await pool.query(
+    `SELECT 1 FROM auditor_nda_acceptances
+      WHERE auditor_id = $1 AND nda_version = $2 LIMIT 1`,
+    [auditorId, currentNdaVersion()],
+  );
+  return (r.rowCount ?? 0) > 0;
+}
+
+export async function recordNdaAcceptance(params: {
+  auditorId: string;
+  ip?: string;
+  userAgent?: string;
+  signatureName?: string;
+}): Promise<{ success: boolean; version: string }> {
+  await ensureTables();
+  const { pool } = await import('../../db');
+  const version = currentNdaVersion();
+  try {
+    await pool.query(
+      `INSERT INTO auditor_nda_acceptances
+         (auditor_id, nda_version, accepted_ip, accepted_user_agent, signature_name)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (auditor_id, nda_version) DO NOTHING`,
+      [params.auditorId, version, params.ip || null, params.userAgent || null, params.signatureName || null],
+    );
+    return { success: true, version };
+  } catch (err: any) {
+    log.warn('[AuditorAccess] recordNdaAcceptance failed:', err?.message);
+    return { success: false, version };
+  }
+}
+
+// ─── MULTI-TENANT AUDITOR ROLLUP (Readiness Section 3) ───────────────────────
+
+/**
+ * Every workspace an auditor has ever had an audit (any status) against.
+ * Used for the cross-company rollup view — a PSB auditor with credentials
+ * for 5 Texas companies sees all 5 here, filtered to what they're
+ * actually licensed to see via auditor_audits.
+ */
+export async function listWorkspacesForAuditor(auditorId: string): Promise<Array<{
+  workspaceId: string;
+  companyName: string | null;
+  activeAudits: number;
+  lastAuditAt: Date | null;
+}>> {
+  await ensureTables();
+  const { pool } = await import('../../db');
+  const r = await pool.query(
+    `SELECT
+        aa.workspace_id as workspace_id,
+        w.company_name as company_name,
+        COUNT(*) FILTER (WHERE aa.status IN ('open', 'active')) AS active_audits,
+        MAX(aa.opened_at) AS last_audit_at
+      FROM auditor_audits aa
+      LEFT JOIN workspaces w ON w.id = aa.workspace_id
+      WHERE aa.auditor_id = $1
+      GROUP BY aa.workspace_id, w.company_name
+      ORDER BY MAX(aa.opened_at) DESC NULLS LAST`,
+    [auditorId],
+  );
+  return r.rows.map((row: any) => ({
+    workspaceId: row.workspace_id,
+    companyName: row.company_name,
+    activeAudits: Number(row.active_audits || 0),
+    lastAuditAt: row.last_audit_at,
+  }));
+}
+
+/**
+ * True iff the given auditor has (or has had) an audit against the given
+ * workspace. Auditor queries are cross-tenant by design; this guards the
+ * per-workspace data endpoints.
+ */
+export async function auditorHasAuditForWorkspace(
+  auditorId: string,
+  workspaceId: string,
+): Promise<boolean> {
+  await ensureTables();
+  const { pool } = await import('../../db');
+  const r = await pool.query(
+    `SELECT 1 FROM auditor_audits
+      WHERE auditor_id = $1 AND workspace_id = $2 LIMIT 1`,
+    [auditorId, workspaceId],
+  );
+  return (r.rowCount ?? 0) > 0;
+}
+
+// ─── COMPLIANCE SCORE (Readiness Section 3) ──────────────────────────────────
+
+export interface ComplianceScoreBreakdown {
+  workspaceId: string;
+  score: number; // 0-100 composite
+  components: {
+    licensing: number;        // active workspace license / insurance
+    qualifications: number;   // % officers with active weapon qualification
+    inspections: number;      // % weapons inspected within 90 days
+    insurance: number;        // insurance policy not expired
+    incidents: number;        // inverse — fewer recent incidents = higher
+  };
+  notes: string[];
+}
+
+/**
+ * Composite 0-100 compliance score for a single workspace. Inputs are
+ * narrow, documented, and read-only — this is what the auditor sees.
+ * Missing inputs reduce the component to 0 rather than throwing.
+ */
+export async function computeComplianceScore(workspaceId: string): Promise<ComplianceScoreBreakdown> {
+  await ensureTables();
+  const { pool } = await import('../../db');
+  const notes: string[] = [];
+
+  // 1. Licensing — binary: workspace has non-expired license?
+  let licensing = 0;
+  try {
+    const r = await pool.query(
+      `SELECT 1 FROM workspaces
+        WHERE id = $1
+          AND (license_expiry IS NULL OR license_expiry > NOW())`,
+      [workspaceId],
+    );
+    licensing = (r.rowCount ?? 0) > 0 ? 100 : 0;
+    if (licensing === 0) notes.push('workspace license missing or expired');
+  } catch {
+    notes.push('licensing check unavailable');
+  }
+
+  // 2. Officer qualifications — % of active employees with an active,
+  //    non-expired weapon qualification. Reads the new weapon_qualifications
+  //    table from Section 2.
+  let qualifications = 100;
+  try {
+    const r = await pool.query(
+      `SELECT
+         COALESCE((
+           SELECT 100 * COUNT(DISTINCT wq.employee_id)
+                       / NULLIF((SELECT COUNT(*) FROM employees e
+                                  WHERE e.workspace_id = $1 AND e.status = 'active'), 0)
+             FROM weapon_qualifications wq
+            WHERE wq.workspace_id = $1
+              AND wq.status = 'active'
+              AND wq.expires_at > NOW()
+         ), 0) AS pct`,
+      [workspaceId],
+    );
+    qualifications = Math.round(Number(r.rows[0]?.pct || 0));
+  } catch {
+    qualifications = 0;
+    notes.push('qualification data unavailable');
+  }
+
+  // 3. Inspections — % of active weapons with an inspection in the last 90d.
+  let inspections = 100;
+  try {
+    const r = await pool.query(
+      `SELECT
+         COALESCE((
+           SELECT 100 * COUNT(DISTINCT wi.weapon_id)
+                       / NULLIF((SELECT COUNT(*) FROM weapons w
+                                  WHERE w.workspace_id = $1 AND w.status != 'retired'), 0)
+             FROM weapon_inspections wi
+            WHERE wi.workspace_id = $1
+              AND wi.inspected_at > NOW() - INTERVAL '90 days'
+         ), 0) AS pct`,
+      [workspaceId],
+    );
+    inspections = Math.round(Number(r.rows[0]?.pct || 0));
+  } catch {
+    inspections = 0;
+    notes.push('inspection data unavailable');
+  }
+
+  // 4. Insurance — non-expired policy exists?
+  let insurance = 0;
+  try {
+    const r = await pool.query(
+      `SELECT 1 FROM insurance_policies
+        WHERE workspace_id = $1
+          AND status = 'active'
+          AND expires_at > NOW()
+        LIMIT 1`,
+      [workspaceId],
+    );
+    insurance = (r.rowCount ?? 0) > 0 ? 100 : 0;
+    if (insurance === 0) notes.push('no active insurance policy on file');
+  } catch {
+    notes.push('insurance check unavailable');
+  }
+
+  // 5. Incidents — inverse score. 100 at zero incidents, -5 per incident in
+  //    the last 30 days, floored at 0.
+  let incidents = 100;
+  try {
+    const r = await pool.query(
+      `SELECT COUNT(*)::int AS n
+         FROM incidents
+        WHERE workspace_id = $1
+          AND occurred_at > NOW() - INTERVAL '30 days'`,
+      [workspaceId],
+    );
+    const n = Number(r.rows[0]?.n || 0);
+    incidents = Math.max(0, 100 - n * 5);
+    if (n > 0) notes.push(`${n} incident(s) in last 30 days`);
+  } catch {
+    incidents = 100;
+  }
+
+  const score = Math.round(
+    licensing * 0.25 +
+      qualifications * 0.25 +
+      inspections * 0.20 +
+      insurance * 0.15 +
+      incidents * 0.15,
+  );
+
+  return {
+    workspaceId,
+    score,
+    components: { licensing, qualifications, inspections, insurance, incidents },
+    notes,
+  };
+}
+
 export async function expireOldAudits(): Promise<{ closed: number }> {
   await ensureTables();
   try {

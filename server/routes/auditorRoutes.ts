@@ -31,6 +31,12 @@ import {
   closeAudit,
   extendAudit,
   isRegulatoryEmail,
+  hasAcceptedCurrentNda,
+  recordNdaAcceptance,
+  currentNdaVersion,
+  listWorkspacesForAuditor,
+  auditorHasAuditForWorkspace,
+  computeComplianceScore,
 } from '../services/auditor/auditorAccessService';
 
 const log = createLogger('AuditorRoutes');
@@ -54,6 +60,34 @@ function requireAuditor(req: any, res: Response, next: NextFunction): void {
     return;
   }
   next();
+}
+
+// Readiness Section 3 — NDA gate.
+// An auditor is authenticated but they cannot see tenant data until they
+// have accepted the current NDA version. 403 NDA_REQUIRED is the signal
+// to the frontend to show the NDA-acceptance modal.
+async function requireNdaAccepted(req: any, res: Response, next: NextFunction): Promise<void> {
+  const auditorId = req.session?.auditorId;
+  if (!auditorId) {
+    res.status(401).json({ ok: false, error: 'Not signed in as auditor' });
+    return;
+  }
+  try {
+    const accepted = await hasAcceptedCurrentNda(auditorId);
+    if (!accepted) {
+      res.status(403).json({
+        ok: false,
+        code: 'NDA_REQUIRED',
+        error: 'NDA acceptance required',
+        version: currentNdaVersion(),
+      });
+      return;
+    }
+    next();
+  } catch (err: any) {
+    log.warn('[AuditorRoutes] NDA gate check failed:', err?.message);
+    res.status(500).json({ ok: false, error: 'NDA gate failed' });
+  }
 }
 
 // ─── 1. INTAKE ────────────────────────────────────────────────────────────────
@@ -142,13 +176,50 @@ auditorRouter.post('/logout', (req: any, res: Response) => {
 
 // ─── 5. ME ────────────────────────────────────────────────────────────────────
 
-auditorRouter.get('/me', requireAuditor, (req: any, res: Response) => {
-  res.json({ ok: true, auditorId: req.session.auditorId });
+auditorRouter.get('/me', requireAuditor, async (req: any, res: Response) => {
+  const auditorId = req.session.auditorId;
+  const ndaAccepted = await hasAcceptedCurrentNda(auditorId).catch(() => false);
+  res.json({
+    ok: true,
+    auditorId,
+    ndaAccepted,
+    ndaVersion: currentNdaVersion(),
+  });
+});
+
+// ─── 5b. NDA ACCEPTANCE (Readiness Section 3) ────────────────────────────────
+// Gate for every data-bearing endpoint below. Records IP + UA + signature
+// name for the legal audit trail.
+
+auditorRouter.get('/nda/current', requireAuditor, (_req: Request, res: Response) => {
+  res.json({ ok: true, version: currentNdaVersion() });
+});
+
+auditorRouter.post('/nda/accept', requireAuditor, async (req: any, res: Response) => {
+  try {
+    const signatureName = typeof req.body?.signatureName === 'string'
+      ? req.body.signatureName.trim()
+      : undefined;
+    if (!signatureName || signatureName.length < 2) {
+      return res.status(400).json({ ok: false, error: 'signatureName required' });
+    }
+    const r = await recordNdaAcceptance({
+      auditorId: req.session.auditorId,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+      signatureName,
+    });
+    if (!r.success) return res.status(500).json({ ok: false, error: 'Failed to record NDA acceptance' });
+    res.json({ ok: true, version: r.version });
+  } catch (err: any) {
+    log.error('[AuditorRoutes] NDA accept error:', err.message);
+    res.status(500).json({ ok: false, error: 'NDA accept failed' });
+  }
 });
 
 // ─── 6. LIST AUDITS ───────────────────────────────────────────────────────────
 
-auditorRouter.get('/me/audits', requireAuditor, async (req: any, res: Response) => {
+auditorRouter.get('/me/audits', requireAuditor, requireNdaAccepted, async (req: any, res: Response) => {
   try {
     const audits = await listAuditsForAuditor(req.session.auditorId);
     res.json({ ok: true, audits });
@@ -158,9 +229,45 @@ auditorRouter.get('/me/audits', requireAuditor, async (req: any, res: Response) 
   }
 });
 
+// ─── 6b. MULTI-TENANT ROLLUP (Readiness Section 3) ───────────────────────────
+// Every workspace the auditor has ever been licensed to audit.
+auditorRouter.get('/me/workspaces', requireAuditor, requireNdaAccepted, async (req: any, res: Response) => {
+  try {
+    const workspaces = await listWorkspacesForAuditor(req.session.auditorId);
+    res.json({ ok: true, workspaces });
+  } catch (err: any) {
+    log.error('[AuditorRoutes] list workspaces error:', err.message);
+    res.status(500).json({ ok: false, error: 'Failed to list workspaces' });
+  }
+});
+
+// ─── 6c. COMPLIANCE SCORE (Readiness Section 3) ──────────────────────────────
+// 0-100 composite score per workspace. Auditor must have a valid audit
+// history with the workspace (cross-tenant access only after licensing).
+auditorRouter.get(
+  '/compliance-score/:workspaceId',
+  requireAuditor,
+  requireNdaAccepted,
+  async (req: any, res: Response) => {
+    try {
+      const auditorId = req.session.auditorId;
+      const workspaceId = req.params.workspaceId;
+      const allowed = await auditorHasAuditForWorkspace(auditorId, workspaceId);
+      if (!allowed) {
+        return res.status(403).json({ ok: false, error: 'No audit history with this workspace' });
+      }
+      const score = await computeComplianceScore(workspaceId);
+      res.json({ ok: true, ...score });
+    } catch (err: any) {
+      log.error('[AuditorRoutes] compliance score error:', err.message);
+      res.status(500).json({ ok: false, error: 'Failed to compute score' });
+    }
+  },
+);
+
 // ─── 7. REQUEST NEW AUDIT ─────────────────────────────────────────────────────
 
-auditorRouter.post('/audits', requireAuditor, async (req: any, res: Response) => {
+auditorRouter.post('/audits', requireAuditor, requireNdaAccepted, async (req: any, res: Response) => {
   try {
     const { workspaceId, licenseNumber, orderDocUrl, notes } = req.body || {};
     if (!workspaceId) return res.status(400).json({ ok: false, error: 'workspaceId required' });
