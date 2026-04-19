@@ -186,6 +186,23 @@ export async function initializeVoiceTables(): Promise<void> {
         CREATE INDEX IF NOT EXISTS voice_verification_log_employee_idx ON voice_verification_log(employee_id);
         CREATE INDEX IF NOT EXISTS voice_verification_log_session_idx ON voice_verification_log(call_session_id);
 
+        -- Phase 21 — voice 2FA code storage. DB-backed so codes survive across
+        -- instances in a load-balanced deploy. TTL is enforced by expires_at.
+        CREATE TABLE IF NOT EXISTS voice_verification_codes (
+          id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid()::text,
+          employee_id VARCHAR NOT NULL,
+          workspace_id VARCHAR NOT NULL,
+          code_hash VARCHAR NOT NULL,
+          attempts INTEGER NOT NULL DEFAULT 0,
+          expires_at TIMESTAMP NOT NULL,
+          consumed_at TIMESTAMP,
+          created_at TIMESTAMP DEFAULT NOW()
+        );
+        CREATE INDEX IF NOT EXISTS voice_verification_codes_employee_idx
+          ON voice_verification_codes(employee_id, expires_at);
+        CREATE INDEX IF NOT EXISTS voice_verification_codes_workspace_idx
+          ON voice_verification_codes(workspace_id);
+
         CREATE TABLE IF NOT EXISTS voice_support_cases (
           id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid()::text,
           workspace_id VARCHAR NOT NULL,
@@ -515,8 +532,25 @@ voiceRouter.post('/caller-identify', twilioSignatureMiddleware, async (req: Requ
       const { detectVoiceIntent } = await import('../services/trinityVoice/voiceIntentDetector');
       const intent = detectVoiceIntent(spoken, lang);
       log.info(`[VoiceRoutes] caller-identify speech intent: "${spoken}" → ${intent}`);
+      if (intent === 'emergency') {
+        // Route straight to emergency — do NOT detour through the general menu.
+        return xmlResponse(res, twiml(redirect(`${baseUrl}/api/voice/main-menu-route?lang=${lang}&_d=5`)));
+      }
       if (intent === 'employee') Digits = '1';
       else if (intent === 'client') Digits = '2';
+      else if (intent === 'sales') {
+        return xmlResponse(res, twiml(redirect(`${baseUrl}/api/voice/main-menu-route?lang=${lang}&_d=1`)));
+      }
+      else if (intent === 'careers') {
+        return xmlResponse(res, twiml(redirect(`${baseUrl}/api/voice/main-menu-route?lang=${lang}&_d=6`)));
+      }
+      else if (intent === 'verify') {
+        return xmlResponse(res, twiml(redirect(`${baseUrl}/api/voice/main-menu-route?lang=${lang}&_d=3`)));
+      }
+      else if (intent === 'support') {
+        // "I need help" — drop them into free conversational mode with Trinity.
+        return xmlResponse(res, twiml(redirect(`${baseUrl}/api/voice/main-menu-route?lang=${lang}&_d=0`)));
+      }
       else Digits = '3';
     }
 
@@ -765,11 +799,34 @@ voiceRouter.post('/general-menu', twilioSignatureMiddleware, async (req: Request
 
 voiceRouter.post('/main-menu-route', twilioSignatureMiddleware, async (req: Request, res: Response) => {
   try {
-    const { CallSid, To } = req.body;
+    const { CallSid, To, SpeechResult } = req.body;
     // Allow upstream identify routes to bridge into the menu via a `_d` query param.
-    const Digits: string = req.body.Digits || (req.query._d as string) || '';
+    let Digits: string = req.body.Digits || (req.query._d as string) || '';
     const lang = getLang(req);
     const baseUrl = getBaseUrl(req);
+
+    // Phase 21 — if the caller spoke instead of pressing a digit, translate
+    // the intent onto the equivalent menu option so the flow continues
+    // naturally. Language-switch ("english" / "español") is handled here too.
+    const spokenMenu = (SpeechResult || '').toLowerCase().trim();
+    if (!Digits && spokenMenu) {
+      if (/\b(english|ingl[eé]s)\b/.test(spokenMenu) || /\b(espa[nñ]ol|spanish)\b/.test(spokenMenu)) {
+        Digits = '9';
+      } else {
+        const { detectVoiceIntent } = await import('../services/trinityVoice/voiceIntentDetector');
+        const intent = detectVoiceIntent(spokenMenu, lang);
+        const intentToDigit: Record<string, string> = {
+          sales: '1',
+          client: '2',
+          verify: '3',
+          employee: '4',
+          emergency: '5',
+          careers: '6',
+          support: '0',
+        };
+        Digits = intentToDigit[intent] || '';
+      }
+    }
 
     const workspace = await resolveWorkspaceFromPhoneNumber(To);
     if (!workspace) {
@@ -849,19 +906,7 @@ voiceRouter.post('/main-menu-route', twilioSignatureMiddleware, async (req: Requ
         ));
       }
       case '0': {
-        // Phase 21 — by default, digit 0 enters free conversational mode with
-        // Trinity. The legacy PIN-gated agent case management flow is still
-        // reachable when the inbound link sets ?agentMode=1.
-        if (req.query.agentMode === '1') {
-          const agentClearAction = `${baseUrl}/api/voice/agent-clear?workspaceId=${encodeURIComponent(workspaceId)}&sessionId=${encodeURIComponent(sessionId)}`;
-          return xmlResponse(res, twiml(
-            `<Gather input="dtmf" action="${agentClearAction}&step=pin" method="POST" numDigits="4" timeout="10">` +
-            say('Agent case management. Please enter your 4-digit PIN.') +
-            `</Gather>` +
-            say('No PIN entered. Goodbye.')
-          ));
-        }
-
+        // Phase 21 — digit 0 enters free conversational mode with Trinity.
         const talkAction = `${baseUrl}/api/voice/trinity-talk?sessionId=${encodeURIComponent(sessionId)}&workspaceId=${encodeURIComponent(workspaceId)}&lang=${lang}&turn=1`;
         const invite = lang === 'es'
           ? 'Claro. Dígame, ¿en qué puedo ayudarle hoy? Puede hablar libremente, le estoy escuchando.'
@@ -1981,9 +2026,14 @@ voiceRouter.post('/send-verification', twilioSignatureMiddleware, async (req: Re
     const result = await sendVerificationCode({ employeeId, workspaceId, lang });
 
     if (!result.sent) {
-      const failMsg = lang === 'es'
-        ? 'Lo siento, no pude enviar el código en este momento. Pasando al menú general.'
-        : 'I\'m sorry, I could not send the code at this time. Taking you to the general menu.';
+      const rateLimited = result.reason === 'rate_limited';
+      const failMsg = rateLimited
+        ? (lang === 'es'
+            ? 'Ha solicitado varios códigos recientemente. Por favor espere unos minutos antes de intentar de nuevo. Pasando al menú general.'
+            : 'You\'ve requested several codes recently. Please wait a few minutes before trying again. Taking you to the general menu.')
+        : (lang === 'es'
+            ? 'Lo siento, no pude enviar el código en este momento. Pasando al menú general.'
+            : 'I\'m sorry, I could not send the code at this time. Taking you to the general menu.');
       return xmlResponse(res, twiml(
         say(failMsg, voiceId, langCode) +
         redirect(`${baseUrl}/api/voice/general-menu?lang=${lang}`)
@@ -2029,7 +2079,7 @@ voiceRouter.post('/verify-code', twilioSignatureMiddleware, async (req: Request,
     }
 
     const { verifyCode } = await import('../services/trinityVoice/voiceVerificationCodeService');
-    const ok = verifyCode(employeeId, submitted);
+    const ok = await verifyCode(employeeId, submitted);
 
     if (ok) {
       await updateCallSession(CallSid, {
@@ -2083,9 +2133,60 @@ voiceRouter.post('/verify-code', twilioSignatureMiddleware, async (req: Request,
 // Trinity. Routes through the full Trinity AI resolver, then loops up to 5
 // turns before escalating to a support case.
 
+async function runTrinityTalkTurn(params: {
+  issue: string;
+  sessionId: string;
+  workspaceId: string;
+  lang: 'en' | 'es';
+  turn: number;
+  baseUrl: string;
+}): Promise<string> {
+  const { issue, sessionId, workspaceId, lang, turn, baseUrl } = params;
+  const voiceId = lang === 'es' ? VOICE_ES : VOICE;
+  const langCode = lang === 'es' ? 'es-US' : 'en-US';
+
+  logCallAction({
+    callSessionId: sessionId,
+    workspaceId,
+    action: 'trinity_talk_turn',
+    payload: { turn, issue: issue.slice(0, 300) },
+  }).catch((e: any) => log.warn('[VoiceRoutes] trinity-talk audit failed:', e?.message));
+
+  const aiResult = await resolveWithTrinityBrain({ issue, workspaceId, language: lang });
+
+  const issueEncoded = encodeURIComponent(issue.slice(0, 500));
+  const nameAction = `${baseUrl}/api/voice/support-gather-name?sessionId=${encodeURIComponent(sessionId)}&workspaceId=${encodeURIComponent(workspaceId)}&lang=${lang}&issue=${issueEncoded}&aiAttempted=true&aiModel=${aiResult.modelUsed || 'none'}`;
+  const escalationPhrase = lang === 'es' ? getEscalationPhraseEs() : getEscalationPhraseEn();
+  const namePhrase = lang === 'es' ? getNameGatherPhraseEs() : getNameGatherPhraseEn();
+
+  // If the AI cannot resolve it, or we've reached the 5-turn ceiling, stop
+  // looping and escalate directly to a support case.
+  if (!aiResult.canResolve || turn >= 5) {
+    return twiml(
+      say(aiResult.answer, voiceId, langCode) +
+      `<Gather input="speech" action="${nameAction}" method="POST" timeout="8" speechTimeout="auto">` +
+      say(escalationPhrase + ' ' + namePhrase, voiceId, langCode) +
+      `</Gather>` +
+      redirect(`${nameAction}&skipMessage=true`)
+    );
+  }
+
+  const confirmAction = `${baseUrl}/api/voice/trinity-talk-confirm?sessionId=${encodeURIComponent(sessionId)}&workspaceId=${encodeURIComponent(workspaceId)}&lang=${lang}&turn=${turn + 1}&issue=${issueEncoded}&aiModel=${aiResult.modelUsed || 'none'}`;
+  const followUpPrompt = lang === 'es'
+    ? `${aiResult.answer} ¿Le ayudó eso? Marque 1 si sí, o simplemente haga otra pregunta y le escucharé.`
+    : `${aiResult.answer} Was that helpful? Press 1 for yes, or just ask another question and I'll keep listening.`;
+
+  return twiml(
+    `<Gather input="speech dtmf" numDigits="1" action="${confirmAction}" method="POST" timeout="10" speechTimeout="auto">` +
+    say(followUpPrompt, voiceId, langCode) +
+    `</Gather>` +
+    redirect(`${baseUrl}/api/voice/general-menu?lang=${lang}`)
+  );
+}
+
 voiceRouter.post('/trinity-talk', twilioSignatureMiddleware, async (req: Request, res: Response) => {
   try {
-    const { CallSid, SpeechResult, To } = req.body;
+    const { SpeechResult, To } = req.body;
     const { sessionId, workspaceId: wsFromQs } = extractQS(req);
     const lang = getLang(req);
     const baseUrl = getBaseUrl(req);
@@ -2097,6 +2198,9 @@ voiceRouter.post('/trinity-talk', twilioSignatureMiddleware, async (req: Request
     if (!workspaceId && To) {
       const ws = await resolveWorkspaceFromPhoneNumber(To);
       if (ws) workspaceId = ws.workspaceId;
+    }
+    if (!workspaceId) {
+      return xmlResponse(res, twiml('<Say>Configuration error. Goodbye.</Say>'));
     }
 
     const issue = (SpeechResult || '').trim();
@@ -2114,41 +2218,8 @@ voiceRouter.post('/trinity-talk', twilioSignatureMiddleware, async (req: Request
       ));
     }
 
-    logCallAction({
-      callSessionId: sessionId,
-      workspaceId,
-      action: 'trinity_talk_turn',
-      payload: { turn, issue: issue.slice(0, 300) },
-    }).catch((e: any) => log.warn('[VoiceRoutes] trinity-talk audit failed:', e?.message));
-
-    // Run the full AI resolver (Gemini → Claude → OpenAI)
-    const aiResult = await resolveWithTrinityBrain({ issue, workspaceId, language: lang });
-
-    // If we've already had 5 conversational turns, escalate to a case rather
-    // than looping further — this prevents indefinite calls.
-    if (turn >= 5) {
-      const escalationPhrase = lang === 'es' ? getEscalationPhraseEs() : getEscalationPhraseEn();
-      const namePhrase = lang === 'es' ? getNameGatherPhraseEs() : getNameGatherPhraseEn();
-      const issueEncoded = encodeURIComponent(issue.slice(0, 500));
-      const nameAction = `${baseUrl}/api/voice/support-gather-name?sessionId=${encodeURIComponent(sessionId)}&workspaceId=${encodeURIComponent(workspaceId)}&lang=${lang}&issue=${issueEncoded}&aiAttempted=true&aiModel=${aiResult.modelUsed || 'none'}`;
-      return xmlResponse(res, twiml(
-        `<Gather input="speech" action="${nameAction}" method="POST" timeout="8" speechTimeout="auto">` +
-        say(escalationPhrase + ' ' + namePhrase, voiceId, langCode) +
-        `</Gather>`
-      ));
-    }
-
-    const followUpAction = `${baseUrl}/api/voice/trinity-talk?sessionId=${encodeURIComponent(sessionId)}&workspaceId=${encodeURIComponent(workspaceId)}&lang=${lang}&turn=${turn + 1}`;
-    const followUpPrompt = lang === 'es'
-      ? `${aiResult.answer} ¿Le ayudó eso? Marque 1 si sí, o simplemente haga otra pregunta y le escucharé.`
-      : `${aiResult.answer} Was that helpful? Press 1 for yes, or just ask another question and I'll keep listening.`;
-
-    return xmlResponse(res, twiml(
-      `<Gather input="speech dtmf" numDigits="1" action="${baseUrl}/api/voice/trinity-talk-confirm?sessionId=${encodeURIComponent(sessionId)}&workspaceId=${encodeURIComponent(workspaceId)}&lang=${lang}&turn=${turn + 1}&followUp=${encodeURIComponent(followUpAction)}" method="POST" timeout="10" speechTimeout="auto">` +
-      say(followUpPrompt, voiceId, langCode) +
-      `</Gather>` +
-      redirect(`${baseUrl}/api/voice/general-menu?lang=${lang}`)
-    ));
+    const xml = await runTrinityTalkTurn({ issue, sessionId, workspaceId, lang, turn, baseUrl });
+    xmlResponse(res, xml);
   } catch (err: any) {
     log.error('[VoiceRoutes] trinity-talk error:', err.message);
     xmlResponse(res, twiml('<Say>An error occurred. Goodbye.</Say>'));
@@ -2156,7 +2227,8 @@ voiceRouter.post('/trinity-talk', twilioSignatureMiddleware, async (req: Request
 });
 
 // POST /api/voice/trinity-talk-confirm — handles "was that helpful?" reply.
-// Press 1 → satisfied, goodbye. Speech → treat as next question (continue loop).
+// Press 1 → satisfied, goodbye. Speech → treat as next question and run the
+// next AI turn inline (preserves the caller's speech across the round-trip).
 
 voiceRouter.post('/trinity-talk-confirm', twilioSignatureMiddleware, async (req: Request, res: Response) => {
   try {
@@ -2168,6 +2240,10 @@ voiceRouter.post('/trinity-talk-confirm', twilioSignatureMiddleware, async (req:
     const voiceId = lang === 'es' ? VOICE_ES : VOICE;
     const langCode = lang === 'es' ? 'es-US' : 'en-US';
 
+    if (!workspaceId) {
+      return xmlResponse(res, twiml('<Say>Configuration error. Goodbye.</Say>'));
+    }
+
     if (Digits === '1') {
       const goodbye = lang === 'es'
         ? '¡Excelente! Me alegra haberle podido ayudar. Que tenga un día maravilloso. Adiós.'
@@ -2175,24 +2251,26 @@ voiceRouter.post('/trinity-talk-confirm', twilioSignatureMiddleware, async (req:
       return xmlResponse(res, twiml(say(goodbye, voiceId, langCode)));
     }
 
-    // Treat speech as the next question — chain back into trinity-talk.
+    // Treat speech as the next question — run the AI turn inline so the
+    // caller's words aren't lost on a Twilio round-trip.
     const next = (SpeechResult || '').trim();
-    const talkAction = `${baseUrl}/api/voice/trinity-talk?sessionId=${encodeURIComponent(sessionId)}&workspaceId=${encodeURIComponent(workspaceId)}&lang=${lang}&turn=${turn}`;
-    if (next) {
-      // Re-invoke trinity-talk by redirecting with the speech in body.
-      // Since Twilio re-POSTs to the redirect, we need to gather first.
-      return xmlResponse(res, twiml(
-        `<Gather input="speech" action="${talkAction}" method="POST" timeout="2" speechTimeout="auto">` +
-        say(lang === 'es' ? 'Entendido, déjeme pensar.' : 'Got it, let me think.', voiceId, langCode) +
-        `</Gather>` +
-        redirect(`${baseUrl}/api/voice/general-menu?lang=${lang}`)
-      ));
+    if (next && next.length >= 3) {
+      const xml = await runTrinityTalkTurn({
+        issue: next,
+        sessionId,
+        workspaceId,
+        lang,
+        turn,
+        baseUrl,
+      });
+      return xmlResponse(res, xml);
     }
 
-    // No input — give them another chance, then bow out.
+    // No clear input — give them one more chance, then bow out.
+    const talkAction = `${baseUrl}/api/voice/trinity-talk?sessionId=${encodeURIComponent(sessionId)}&workspaceId=${encodeURIComponent(workspaceId)}&lang=${lang}&turn=${turn}`;
     return xmlResponse(res, twiml(
       `<Gather input="speech dtmf" numDigits="1" action="${talkAction}" method="POST" timeout="10" speechTimeout="auto">` +
-      say(lang === 'es' ? '¿Hay algo más?' : 'Anything else?', voiceId, langCode) +
+      say(lang === 'es' ? '¿Hay algo más en lo que pueda ayudarle?' : 'Anything else I can help with?', voiceId, langCode) +
       `</Gather>` +
       say(lang === 'es' ? 'Gracias por llamar. Adiós.' : 'Thank you for calling. Goodbye.', voiceId, langCode)
     ));
@@ -2363,7 +2441,8 @@ voiceRouter.post('/schedule-callback', twilioSignatureMiddleware, async (req: Re
 
       log.info(`[VoiceRoutes] Callback request ${ticketNumber} created for workspace ${workspaceId}`);
 
-      // Best-effort agent notification
+      // Best-effort agent notification — awaited per CLAUDE.md §B
+      // (non-fatal try/catch; failure is warn-logged, not thrown).
       try {
         const { notifyHumanAgents } = await import('../services/trinityVoice/supportCaseService');
         await notifyHumanAgents({

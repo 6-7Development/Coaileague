@@ -46,8 +46,8 @@ export function detectVoiceIntent(
   }
 
   if (
-    /\b(join|sign up|register|interested in|learn about|partnership|new company|coaileague|co-?league|demo)\b/.test(s) ||
-    /\b(unirse|registrar|interesado|nueva empresa|asociarme)\b/.test(s)
+    /\b(join|sign up|register|interested in|learn about|partnership|new company|coaileague|co-?league|demo|pricing|quote|buy|purchase|cost|price|plans?|subscription)\b/.test(s) ||
+    /\b(unirse|registrar|interesado|nueva empresa|asociarme|precio|precios|comprar|costo|cotizaci[oó]n|suscripci[oó]n)\b/.test(s)
   ) {
     return 'sales';
   }
