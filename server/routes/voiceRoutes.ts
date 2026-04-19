@@ -988,6 +988,51 @@ voiceRouter.post('/recording-done', twilioSignatureMiddleware, async (req: Reque
     }
 
     log.info(`[VoiceRoutes] Recording done for ext=${ext} callSid=${CallSid} duration=${RecordingDuration}s`);
+
+    // Phase 20 — voice calloff (extension 4→2) triggers the autonomous
+    // coverage workflow. We look up the caller's employee profile via the
+    // call session and hand off to executeCalloffCoverageWorkflow. Scheduled
+    // non-blocking (not fire-and-forget — scheduleNonBlocking is the
+    // platform-approved wrapper, per CLAUDE.md §F) so Twilio gets a fast
+    // TwiML response while the fan-out runs in the background.
+    if (ext === 'calloff') {
+      scheduleNonBlocking('voice.calloff-workflow', async () => {
+        try {
+          const [session] = await db
+            .select({
+              workspaceId: voiceCallSessions.workspaceId,
+              callerNumber: voiceCallSessions.callerNumber,
+            })
+            .from(voiceCallSessions)
+            .where(eq(voiceCallSessions.twilioCallSid, CallSid))
+            .limit(1);
+          if (!session?.workspaceId || !session.callerNumber) return;
+          const { pool } = await import('../db');
+          const digits = session.callerNumber.replace(/\D/g, '').replace(/^1/, '');
+          const emp = await pool.query(
+            `SELECT id FROM employees
+              WHERE workspace_id = $1
+                AND is_active = true
+                AND regexp_replace(coalesce(phone, ''), '[^0-9]', '', 'g') LIKE $2
+              LIMIT 1`,
+            [session.workspaceId, `%${digits}%`],
+          );
+          if (!emp.rows.length) return;
+          const { executeCalloffCoverageWorkflow } = await import(
+            '../services/trinity/workflows/calloffCoverageWorkflow'
+          );
+          await executeCalloffCoverageWorkflow({
+            workspaceId: session.workspaceId,
+            employeeId: emp.rows[0].id,
+            triggerSource: 'voice_calloff',
+            reason: `Voice calloff (recording ${RecordingSid})`,
+          });
+        } catch (err: any) {
+          log.warn('[VoiceRoutes] Voice calloff workflow error (non-fatal):', err?.message);
+        }
+      });
+    }
+
     xmlResponse(res, twiml('<Say>Thank you. Goodbye.</Say>'));
   } catch (err: any) {
     log.error('[VoiceRoutes] Recording-done error:', err.message);

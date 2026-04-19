@@ -4150,6 +4150,14 @@ aiBrainActionRegistry.initialize().then(async () => {
   // Phase 18D — Security actions (overrides, allow-list, caller-ID lookup)
   const { registerTrinitySecurityActions } = await import('./trinitySecurityActions');
   registerTrinitySecurityActions();
+
+  // Phase 20 — Trinity autonomous workflow actions:
+  //   trinity.execute_calloff_coverage, trinity.scan_stale_calloffs,
+  //   trinity.missed_clockin_check, trinity.send_shift_reminders,
+  //   trinity.run_invoice_lifecycle, trinity.run_compliance_scan,
+  //   trinity.process_payroll_anomalies
+  const { registerTrinityWorkflowActions } = await import('../trinity/workflows/workflowOrchestrator');
+  registerTrinityWorkflowActions();
 }).catch((e: any) => log.error(e instanceof Error ? e.message : String(e)));
 
 export default aiBrainActionRegistry;

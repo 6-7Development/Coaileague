@@ -4189,6 +4189,126 @@ export function startAutonomousScheduler() {
   });
   log.info('Client Collections Outreach cron registered', { schedule: CRON.collectionsOutreach });
 
+  // ════════════════════════════════════════════════════════════════════════════
+  // Phase 20 — Trinity autonomous workflow crons
+  // ════════════════════════════════════════════════════════════════════════════
+
+  // Missed clock-in sweep — every 5 minutes. For each shift started >15 min ago
+  // without a clock-in, Trinity texts the officer, then calls, then escalates
+  // to a supervisor. State machine lives in the workflow audit row's metadata.
+  registerJobInfo(
+    'Trinity Missed Clock-In Sweep',
+    '*/5 * * * *',
+    'Detects officers who haven\'t clocked in and runs Trinity\'s welfare-check cascade',
+    true,
+  );
+  cron.schedule('*/5 * * * *', () => {
+    trackJobExecution('Trinity Missed Clock-In Sweep', async () => {
+      const { runMissedClockInSweep } = await import('./trinity/workflows/missedClockInWorkflow');
+      const result = await runMissedClockInSweep();
+      emitAutomationEvent({
+        jobName: 'Trinity Missed Clock-In Sweep',
+        category: 'scheduling',
+        success: result.errors.length === 0,
+        recordsProcessed: result.scanned,
+        details: result as any,
+      });
+    });
+  });
+  log.info('Trinity Missed Clock-In Sweep registered', { schedule: '*/5 * * * *' });
+
+  // Stale calloff escalation — every 5 minutes. Finds calloff workflows past
+  // their 15-minute SLA and fires the escalation path.
+  registerJobInfo(
+    'Trinity Stale Calloff Escalation',
+    '*/5 * * * *',
+    'Escalates calloff workflows that remain unfilled past the 15-minute SLA',
+    true,
+  );
+  cron.schedule('*/5 * * * *', () => {
+    trackJobExecution('Trinity Stale Calloff Escalation', async () => {
+      const { scanStaleCalloffWorkflows } = await import('./trinity/workflows/calloffCoverageWorkflow');
+      const result = await scanStaleCalloffWorkflows();
+      emitAutomationEvent({
+        jobName: 'Trinity Stale Calloff Escalation',
+        category: 'scheduling',
+        success: true,
+        recordsProcessed: result.scanned,
+        details: result as any,
+      });
+    });
+  });
+  log.info('Trinity Stale Calloff Escalation registered', { schedule: '*/5 * * * *' });
+
+  // Trinity shift reminders — every 5 minutes. 4h and 1h reminder buckets
+  // (idempotent via shift-reminder audit rows).
+  registerJobInfo(
+    'Trinity Shift Reminders',
+    '*/5 * * * *',
+    'Sends 4-hour and 1-hour shift reminder SMS; CALLOFF-enabled replies',
+    true,
+  );
+  cron.schedule('*/5 * * * *', () => {
+    trackJobExecution('Trinity Shift Reminders', async () => {
+      const { runShiftReminderSweep } = await import('./trinity/workflows/shiftReminderWorkflow');
+      const result = await runShiftReminderSweep();
+      emitAutomationEvent({
+        jobName: 'Trinity Shift Reminders',
+        category: 'notification',
+        success: result.errors.length === 0,
+        recordsProcessed: result.fourHourSent + result.oneHourSent,
+        details: result as any,
+      });
+    });
+  });
+  log.info('Trinity Shift Reminders registered', { schedule: '*/5 * * * *' });
+
+  // Trinity compliance expiry monitor — daily at 6 AM. Tiered notifications
+  // at 30/15/7/1d + expired.
+  registerJobInfo(
+    'Trinity Compliance Expiry Monitor',
+    '0 6 * * *',
+    'Daily cert / license / insurance expiry scan with tiered notifications',
+    true,
+  );
+  cron.schedule('0 6 * * *', () => {
+    trackJobExecution('Trinity Compliance Expiry Monitor', async () => {
+      const { runComplianceMonitorWorkflow } = await import('./trinity/workflows/complianceMonitorWorkflow');
+      const result = await runComplianceMonitorWorkflow();
+      emitAutomationEvent({
+        jobName: 'Trinity Compliance Expiry Monitor',
+        category: 'compliance',
+        success: result.errors.length === 0,
+        recordsProcessed: result.notified,
+        details: result as any,
+      });
+    });
+  });
+  log.info('Trinity Compliance Expiry Monitor registered', { schedule: '0 6 * * *' });
+
+  // Trinity payroll anomaly scan — hourly while approvals are possible. Scans
+  // pending runs; each gets a severity-graded response.
+  registerJobInfo(
+    'Trinity Payroll Anomaly Scan',
+    '0 * * * *',
+    'Hourly anomaly scan across pending payroll runs; flags/blocks per severity',
+    true,
+  );
+  cron.schedule('0 * * * *', () => {
+    trackJobExecution('Trinity Payroll Anomaly Scan', async () => {
+      const { runPayrollAnomalyScan } = await import('./trinity/workflows/payrollAnomalyWorkflow');
+      const result = await runPayrollAnomalyScan();
+      emitAutomationEvent({
+        jobName: 'Trinity Payroll Anomaly Scan',
+        category: 'payroll',
+        success: result.errors.length === 0,
+        recordsProcessed: result.scanned,
+        details: result as any,
+      });
+    });
+  });
+  log.info('Trinity Payroll Anomaly Scan registered', { schedule: '0 * * * *' });
+
   isSchedulerRunning = true;
 
   log.info('Autonomous scheduler running successfully');
