@@ -167,6 +167,7 @@ export class IncidentRoutingService {
       longitude: data.longitude?.toString(),
       shiftId: data.shiftId,
       status: 'open',
+      photos: data.photos && data.photos.length > 0 ? data.photos : [],
     }).returning();
 
     routingDetails.push(`Incident created: ${incident.id}`);

@@ -304,6 +304,14 @@ timeEntryRouter.post('/clock-in', requireAuth, mutationLimiter, async (req: Auth
     }
 
     // Validate request body
+    // Accept both payload shapes — web time-tracking UI sends `gpsLatitude/gpsLongitude/gpsAccuracy/photoUrl`,
+    // while offline-queue replays and older callers send `latitude/longitude/accuracy`. Previously only the
+    // second shape was read, so every GPS+photo from the main UI was silently discarded.
+    const rawLatitude = req.body.gpsLatitude ?? req.body.latitude;
+    const rawLongitude = req.body.gpsLongitude ?? req.body.longitude;
+    const rawAccuracy = req.body.gpsAccuracy ?? req.body.accuracy;
+    const rawPhotoUrl = typeof req.body.photoUrl === 'string' ? req.body.photoUrl : null;
+
     const clockInSchema = insertTimeEntrySchema.pick({
       shiftId: true,
       clientId: true,
@@ -316,9 +324,9 @@ timeEntryRouter.post('/clock-in', requireAuth, mutationLimiter, async (req: Auth
     const validation = clockInSchema.safeParse({
       shiftId: req.body.shiftId,
       clientId: req.body.clientId,
-      clockInLatitude: req.body.latitude,
-      clockInLongitude: req.body.longitude,
-      clockInAccuracy: req.body.accuracy,
+      clockInLatitude: rawLatitude,
+      clockInLongitude: rawLongitude,
+      clockInAccuracy: rawAccuracy,
       notes: req.body.notes,
     });
 
@@ -582,6 +590,7 @@ timeEntryRouter.post('/clock-in', requireAuth, mutationLimiter, async (req: Auth
         clockInLongitude: longitude || null,
         clockInAccuracy: accuracy || null,
         clockInIpAddress: req.ip || null,
+        clockInPhotoUrl: rawPhotoUrl,
         hourlyRate: employee.hourlyRate || null,
         billableToClient: !!(clientId || resolvedShift?.clientId),
         capturedPayRate: employee.hourlyRate || null,
@@ -933,7 +942,12 @@ timeEntryRouter.post('/clock-out', requireAuth, mutationLimiter, async (req: Aut
       return res.status(400).json({ error: 'No workspace selected' });
     }
 
-    // Validate request body
+    // Validate request body — accept both payload shapes (see clock-in handler above).
+    const rawLatitude = req.body.gpsLatitude ?? req.body.latitude;
+    const rawLongitude = req.body.gpsLongitude ?? req.body.longitude;
+    const rawAccuracy = req.body.gpsAccuracy ?? req.body.accuracy;
+    const rawPhotoUrl = typeof req.body.photoUrl === 'string' ? req.body.photoUrl : null;
+
     const clockOutSchema = insertTimeEntrySchema.pick({
       clockOutLatitude: true,
       clockOutLongitude: true,
@@ -942,9 +956,9 @@ timeEntryRouter.post('/clock-out', requireAuth, mutationLimiter, async (req: Aut
     }).partial();
 
     const validation = clockOutSchema.safeParse({
-      clockOutLatitude: req.body.latitude,
-      clockOutLongitude: req.body.longitude,
-      clockOutAccuracy: req.body.accuracy,
+      clockOutLatitude: rawLatitude,
+      clockOutLongitude: rawLongitude,
+      clockOutAccuracy: rawAccuracy,
       notes: req.body.notes,
     });
 
@@ -1036,6 +1050,7 @@ timeEntryRouter.post('/clock-out', requireAuth, mutationLimiter, async (req: Aut
           clockOutLongitude: longitude || null,
           clockOutAccuracy: accuracy || null,
           clockOutIpAddress: req.ip || null,
+          clockOutPhotoUrl: rawPhotoUrl,
           totalHours: netHours.toString(), // NET hours (breaks deducted)
           totalAmount: activeEntry.hourlyRate
             ? (parseFloat(activeEntry.hourlyRate) * netHours).toFixed(2) // Pay for NET hours only
