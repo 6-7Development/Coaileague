@@ -17,6 +17,7 @@ import { z } from "zod";
 import { notifyTimesheetRejected } from "../services/automation/notificationEventCoverage";
 import { platformEventBus } from "../services/platformEventBus";
 import { typedPoolExec } from '../lib/typedSql';
+import { scheduleNonBlocking } from '../lib/scheduleNonBlocking';
 import { createLogger } from '../lib/logger';
 const log = createLogger('TimeEntryRoutes');
 
@@ -280,6 +281,20 @@ const router = Router();
         metadata: { source: 'timeEntryRoutes.single_approve' },
       }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
 
+      // Phase 20 — Trinity invoice lifecycle workflow. Scheduled non-blocking
+      // so the approval HTTP response doesn't wait on PDF / email dispatch.
+      scheduleNonBlocking('trinity.invoice_lifecycle', async () => {
+        const { executeInvoiceLifecycleWorkflow } = await import(
+          '../services/trinity/workflows/invoiceLifecycleWorkflow'
+        );
+        await executeInvoiceLifecycleWorkflow({
+          workspaceId,
+          timeEntryId: updated.id,
+          triggerSource: 'time_entry_approved',
+          userId,
+        });
+      });
+
       res.json(updated);
     } catch (error: unknown) {
       log.error("Error approving time entry:", error);
@@ -503,6 +518,22 @@ const router = Router();
           payload: { count: updated.length, entryIds: updated.map(e => e.id), approvedBy: userId },
           metadata: { source: 'timeEntryRoutes.bulk_approve' },
         }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+
+        // Phase 20 — Trinity invoice lifecycle workflow per entry (de-duped
+        // inside the workflow if the client is already invoiced for the day).
+        for (const entry of updated) {
+          scheduleNonBlocking('trinity.invoice_lifecycle.bulk', async () => {
+            const { executeInvoiceLifecycleWorkflow } = await import(
+              '../services/trinity/workflows/invoiceLifecycleWorkflow'
+            );
+            await executeInvoiceLifecycleWorkflow({
+              workspaceId,
+              timeEntryId: entry.id,
+              triggerSource: 'time_entry_approved',
+              userId,
+            });
+          });
+        }
       }
 
       const gpsWarnings = updated

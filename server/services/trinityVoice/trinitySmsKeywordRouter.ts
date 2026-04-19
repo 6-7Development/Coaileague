@@ -43,6 +43,9 @@ const RECOGNIZED = new Set([
   // Phase 18C — Emergency escalation keywords. Intentionally NOT gated behind
   // phone verification so an officer under duress can always reach help.
   'EMERGENCY', 'PANIC', 'DURESS', 'SOS', 'HELP911', '911',
+  // Phase 20 — calloff workflow. Officer texts CALLOFF [optional reason] to
+  // trigger Trinity's autonomous coverage workflow.
+  'CALLOFF', 'CALLOUT', 'CALLINSICK', 'SICK',
 ]);
 
 function normalizeKeyword(token: string): string {
@@ -269,6 +272,7 @@ function helpReply(): string {
   return (
     `Trinity commands: ` +
     `CLOCKIN <emp#> <pin>, CLOCKOUT <emp#> <pin>, ` +
+    `CALLOFF <reason>, ` +
     `COMPLAINT <message>, REQUEST <message>, VERIFY <emp# or name>, ` +
     `STATUS, HELP, EMERGENCY <location>. ` +
     `Reply STOP to opt out of texts.`
@@ -331,6 +335,9 @@ const REQUIRES_VERIFICATION = new Set([
   'COMPLAINT',
   'REQUEST', 'TICKET',
   'STATUS',
+  // Phase 20 — calloff must be tied to a verified officer profile so an
+  // attacker can't trigger false calloffs from a random number.
+  'CALLOFF', 'CALLOUT', 'CALLINSICK', 'SICK',
 ]);
 
 export async function handleTrinitySmsKeyword(params: {
@@ -423,7 +430,59 @@ export async function handleTrinitySmsKeyword(params: {
     case 'COMMAND':
       return helpReply();
 
+    // Phase 20 — CALLOFF: trigger Trinity's autonomous coverage workflow.
+    case 'CALLOFF':
+    case 'CALLOUT':
+    case 'CALLINSICK':
+    case 'SICK':
+      return handleCalloff(args, body, officer, params.fromPhone);
+
     default:
       return null;
+  }
+}
+
+// ─── Phase 20: CALLOFF handler ────────────────────────────────────────────────
+// Officer SMS: "CALLOFF" or "CALLOFF flu" or "SICK tonight"
+// Runs Trinity's calloff-coverage workflow inline. The reply is intentionally
+// short so Twilio accepts it even on a budget throttled number.
+async function handleCalloff(
+  args: string[],
+  rawBody: string,
+  officer: Awaited<ReturnType<typeof findEmployeeByPhone>>,
+  fromPhone: string,
+): Promise<string> {
+  if (!officer) {
+    return 'Trinity: We could not match this phone to an active officer profile. Please contact your supervisor directly.';
+  }
+
+  const reason = args.length > 0 ? args.join(' ').slice(0, 200) : rawBody.slice(0, 200);
+
+  try {
+    const { executeCalloffCoverageWorkflow } = await import(
+      '../trinity/workflows/calloffCoverageWorkflow'
+    );
+    const result = await executeCalloffCoverageWorkflow({
+      workspaceId: officer.workspace_id,
+      employeeId: officer.id,
+      reason: reason || undefined,
+      triggerSource: 'sms_calloff',
+    });
+
+    if (!result.success) {
+      return `Trinity: Calloff received but we could not locate your upcoming shift. A supervisor has been notified. (${result.summary})`;
+    }
+
+    if (result.offersSent === 0) {
+      return `Trinity: Calloff recorded. No replacements were reachable — your supervisor has been paged for manual coverage.`;
+    }
+
+    return (
+      `Trinity: Calloff received, ${officer.first_name ?? ''}. We've texted ${result.offersSent} qualified officers for coverage. ` +
+      `Supervisor notified. Rest up.`
+    ).trim();
+  } catch (err: any) {
+    log.error('[KeywordRouter] CALLOFF workflow error:', err?.message);
+    return `Trinity: We received your calloff but hit an error routing coverage. Your supervisor has been paged.`;
   }
 }
