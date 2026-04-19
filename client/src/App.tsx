@@ -248,6 +248,10 @@ const CommunicationsOnboarding = lazy(() => import("@/pages/communications-onboa
 const Diagnostics = lazy(() => import("@/pages/diagnostics"));
 const PrivateMessages = lazy(() => import("@/pages/private-messages"));
 const WorkerDashboard = lazy(() => import("@/pages/worker-dashboard"));
+const WorkerPanic = lazy(() => import("@/pages/worker-panic"));
+const GuardTourScan = lazy(() => import("@/pages/guard-tours-scan"));
+const PlatformOps = lazy(() => import("@/pages/platform-ops"));
+const SettingsDataPrivacy = lazy(() => import("@/pages/settings-data-privacy"));
 const WorkerIncidents = lazy(() => import("@/pages/worker-incidents"));
 const TeamSchedule = lazy(() => import("@/pages/team-schedule"));
 const ApprovalsHub = lazy(() => import("@/pages/approvals-hub"));
@@ -381,7 +385,9 @@ const GateDuty = lazy(() => import("@/pages/gate-duty"));
 const WellnessPage = lazy(() => import("@/pages/wellness"));
 const SiteSurveyPage = lazy(() => import("@/pages/site-survey"));
 const FleetManagement = lazy(() => import("@/pages/fleet-management"));
+const FleetCompliance = lazy(() => import("@/pages/fleet-compliance"));
 const ArmoryManagement = lazy(() => import("@/pages/armory-management"));
+const ArmoryCompliance = lazy(() => import("@/pages/armory-compliance"));
 const SSOConfiguration = lazy(() => import("@/pages/sso-configuration"));
 const AccountManager = lazy(() => import("@/pages/account-manager"));
 const BackgroundChecks = lazy(() => import("@/pages/background-checks"));
@@ -1436,6 +1442,10 @@ function AppContent() {
                 <Route path="/command-center"><ErrorBoundary><CommandCenter /></ErrorBoundary></Route>
                 <Route path="/commands"><ErrorBoundary><CommandDocumentation /></ErrorBoundary></Route>
                 <Route path="/worker"><ErrorBoundary><WorkerDashboard /></ErrorBoundary></Route>
+                <Route path="/worker/panic"><ErrorBoundary><WorkerPanic /></ErrorBoundary></Route>
+                <Route path="/worker/guard-tour/scan"><ErrorBoundary><GuardTourScan /></ErrorBoundary></Route>
+                <Route path="/admin/platform-ops"><ErrorBoundary><PlatformOps /></ErrorBoundary></Route>
+                <Route path="/settings/data-privacy"><ErrorBoundary><SettingsDataPrivacy /></ErrorBoundary></Route>
                 <Route path="/worker/incidents"><ErrorBoundary><WorkerIncidents /></ErrorBoundary></Route>
                 <Route path="/schedule"><ErrorBoundary componentName="Schedule Board"><UniversalSchedule /></ErrorBoundary></Route>
                 <Route path="/shift-marketplace"><ErrorBoundary><ShiftMarketplace /></ErrorBoundary></Route>
@@ -1745,7 +1755,9 @@ function AppContent() {
                 <Route path="/onboarding-forms"><ErrorBoundary><Suspense fallback={<PageLoader />}><OnboardingForms /></Suspense></ErrorBoundary></Route>
                 <Route path="/enterprise/branding"><ErrorBoundary><WhiteLabelBranding /></ErrorBoundary></Route>
                 <Route path="/enterprise/fleet"><ErrorBoundary><FleetManagement /></ErrorBoundary></Route>
+                <Route path="/enterprise/fleet/compliance"><ErrorBoundary><FleetCompliance /></ErrorBoundary></Route>
                 <Route path="/enterprise/armory"><ErrorBoundary><ArmoryManagement /></ErrorBoundary></Route>
+                <Route path="/enterprise/armory/compliance"><ErrorBoundary><ArmoryCompliance /></ErrorBoundary></Route>
                 <Route path="/enterprise/sso"><ErrorBoundary><SSOConfiguration /></ErrorBoundary></Route>
                 <Route path="/enterprise/account-manager"><ErrorBoundary><AccountManager /></ErrorBoundary></Route>
                 <Route path="/enterprise/background-checks"><ErrorBoundary><BackgroundChecks /></ErrorBoundary></Route>
@@ -1926,6 +1938,10 @@ function AppContent() {
                 <Route path="/command-center"><ErrorBoundary><CommandCenter /></ErrorBoundary></Route>
                 <Route path="/commands"><ErrorBoundary><CommandDocumentation /></ErrorBoundary></Route>
                 <Route path="/worker"><ErrorBoundary><WorkerDashboard /></ErrorBoundary></Route>
+                <Route path="/worker/panic"><ErrorBoundary><WorkerPanic /></ErrorBoundary></Route>
+                <Route path="/worker/guard-tour/scan"><ErrorBoundary><GuardTourScan /></ErrorBoundary></Route>
+                <Route path="/admin/platform-ops"><ErrorBoundary><PlatformOps /></ErrorBoundary></Route>
+                <Route path="/settings/data-privacy"><ErrorBoundary><SettingsDataPrivacy /></ErrorBoundary></Route>
                 <Route path="/worker/incidents"><ErrorBoundary><WorkerIncidents /></ErrorBoundary></Route>
                 <Route path="/schedule"><ErrorBoundary componentName="Schedule Board"><UniversalSchedule /></ErrorBoundary></Route>
                 <Route path="/shift-marketplace"><ErrorBoundary><ShiftMarketplace /></ErrorBoundary></Route>
@@ -2229,7 +2245,9 @@ function AppContent() {
                 <Route path="/settings"><ErrorBoundary componentName="Settings"><Settings /></ErrorBoundary></Route>
                 <Route path="/enterprise/branding"><ErrorBoundary><WhiteLabelBranding /></ErrorBoundary></Route>
                 <Route path="/enterprise/fleet"><ErrorBoundary><FleetManagement /></ErrorBoundary></Route>
+                <Route path="/enterprise/fleet/compliance"><ErrorBoundary><FleetCompliance /></ErrorBoundary></Route>
                 <Route path="/enterprise/armory"><ErrorBoundary><ArmoryManagement /></ErrorBoundary></Route>
+                <Route path="/enterprise/armory/compliance"><ErrorBoundary><ArmoryCompliance /></ErrorBoundary></Route>
                 <Route path="/enterprise/sso"><ErrorBoundary><SSOConfiguration /></ErrorBoundary></Route>
                 <Route path="/enterprise/account-manager"><ErrorBoundary><AccountManager /></ErrorBoundary></Route>
                 <Route path="/enterprise/background-checks"><ErrorBoundary><BackgroundChecks /></ErrorBoundary></Route>
