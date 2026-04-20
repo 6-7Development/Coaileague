@@ -1023,6 +1023,10 @@ export const BILLING = {
   // Designed to undercut QB, Gusto, Patriot, and Square on every line item.
   // ==========================================================================
   middlewareFees: {
+    // INVOICE PAYMENT PROCESSING
+    // Our cost: Stripe 2.9% + $0.30 per card / 0.8% max $5 ACH
+    // We charge: 3.4% + $0.80 card / 1.3% max $10 ACH
+    // Margin:    ~0.5% + $0.50 card / ~0.5% + $5 ACH
     invoiceProcessing: {
       ratePercent: 3.4,   // 2.9% Stripe cost + 0.5% margin
       flatFeeCents: 80,   // $0.80 total: $0.30 Stripe cost + $0.50 margin
@@ -1033,15 +1037,27 @@ export const BILLING = {
       capCents: 1000,     // $10 cap — Stripe caps at $5, $5 margin at cap
       description: "Invoice payment — ACH bank transfer",
     },
+
+    // PAYROLL PROCESSING
+    // Our cost: Plaid ~$0.50–$1.00 per employee transfer
+    // We charge: $3.50 starter / $2.975 professional / $2.80 business (post-discount)
+    // Margin:    $2.50–$3.00 per employee per run
     payrollMiddleware: {
       baseMonthly: 0,
       perEmployeeCents: 350,   // $3.50/employee — margin $2.50–$3.00 per employee
       description: "Payroll processing — per employee per run",
     },
+
+    // DIRECT DEPOSIT / STRIPE CONNECT PAYOUTS
+    // Our cost: Stripe Connect 0.25%
+    // We charge: 0.75% — covers cost + 0.50% margin
     stripePayouts: {
       ratePercent: 0.75,   // Stripe Connect 0.25% cost + 0.50% margin
       description: "Direct-to-bank payout processing",
     },
+
+    // TAX FORM FEES
+    // Our cost: ~$0.10 per form (pdfkit generation); we charge per form at year-end.
     taxForms: {
       w2PerFormCents: 500,        // $5.00/W-2 — our cost ~$0.10 (pdfkit)
       form1099PerFormCents: 300,  // $3.00/1099-NEC — our cost ~$0.10
@@ -1049,13 +1065,15 @@ export const BILLING = {
       form940Cents: 0,            // Free — included in payroll processing fee
       description: "Year-end tax form generation and delivery",
     },
+
+    // TIER DISCOUNTS — loyal customers pay less
     tierDiscounts: {
       free: 0,
       trial: 0,
       starter: 0,
-      professional: 15,   // was 10 → 15% off all middleware fees
-      business: 20,       // add missing business tier
-      enterprise: 25,     // was 20 → 25% off
+      professional: 15,   // 15% off all middleware fees
+      business: 20,       // 20% off
+      enterprise: 25,     // 25% off
       strategic: 30,      // custom enterprise — 30% off
     } as Record<string, number>,
   },

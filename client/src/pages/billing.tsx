@@ -1800,6 +1800,7 @@ export default function Billing() {
                     <li className="flex items-center gap-2"><Check className="h-3 w-3 text-primary" /> Payroll processing fee ($3.50/employee/run via middleware)</li>
                     <li className="flex items-center gap-2"><Check className="h-3 w-3 text-primary" /> Invoice payment processing (3.4% + $0.80 card / 1.3% ACH)</li>
                     <li className="flex items-center gap-2"><Check className="h-3 w-3 text-primary" /> Direct-to-bank payout fee (0.75% via Stripe Connect)</li>
+                    <li className="flex items-center gap-2"><Check className="h-3 w-3 text-primary" /> Year-end W-2: $5.00/form | 1099-NEC: $3.00/form</li>
                   </ul>
                 </div>
               </div>
