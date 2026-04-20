@@ -24,6 +24,7 @@ import { AuthenticatedRequest } from "../rbac";
 import { ROLES, OWNER_ROLES, ADMIN_ROLES } from "@shared/platformConfig";
 import rateLimit from "express-rate-limit";
 import { requireAuth } from '../auth';
+import { softDelete } from '../lib/softDelete';
 import { createLogger } from '../lib/logger';
 const log = createLogger('ChatRooms');
 
@@ -1847,8 +1848,25 @@ router.delete(
           return res.status(403).json({ error: "Only workspace admins can clean up orphaned rooms" });
         }
         if (resolved.roomType === 'org') {
-          await db.delete(organizationRoomMembers).where(eq(organizationRoomMembers.roomId, roomId));
-          await db.delete(organizationChatRooms).where(eq(organizationChatRooms.id, roomId));
+          // CLAUDE.md Section R / Law P1 — soft delete (room history retained)
+          await softDelete({
+            table: organizationRoomMembers,
+            where: eq(organizationRoomMembers.roomId, roomId),
+            userId: userId ?? 'unknown',
+            workspaceId: workspaceId!,
+            entityType: 'organization_room_member',
+            entityId: roomId,
+            reason: 'orphaned_room_cleanup',
+          });
+          await softDelete({
+            table: organizationChatRooms,
+            where: eq(organizationChatRooms.id, roomId),
+            userId: userId ?? 'unknown',
+            workspaceId: workspaceId!,
+            entityType: 'organization_chat_room',
+            entityId: roomId,
+            reason: 'orphaned_room_cleanup',
+          });
         }
         return res.json({
           success: true,

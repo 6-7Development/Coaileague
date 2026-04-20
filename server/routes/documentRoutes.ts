@@ -8,6 +8,7 @@ import { readLimiter } from "../middleware/rateLimiter";
 import { requireAuth, type AuthenticatedRequest } from "../rbac";
 import { documentExtractionService } from "../services/documentExtraction";
 import { bridgeFileCabinetToEmployeeDocument } from "../services/compliance/documentPipelineBridge";
+import { softDelete } from "../lib/softDelete";
 import { createLogger } from '../lib/logger';
 const log = createLogger('DocumentRoutes');
 
@@ -96,7 +97,15 @@ router.delete("/api/file-cabinet/:employeeId/:fileId", requireAuth, async (req: 
       .limit(1);
 
     if (vaultDoc) {
-      await db.delete(documentVault).where(and(eq(documentVault.id, fileId), eq(documentVault.workspaceId, workspaceId)));
+      // CLAUDE.md Section R / Law P1 — soft delete (legal docs retained for audit)
+      await softDelete({
+        table: documentVault,
+        where: and(eq(documentVault.id, fileId), eq(documentVault.workspaceId, workspaceId))!,
+        userId: req.user!.id,
+        workspaceId,
+        entityType: 'document_vault',
+        entityId: fileId,
+      });
       return res.json({ success: true, message: "Document deleted successfully", source: "document_vault" });
     }
 
@@ -109,7 +118,15 @@ router.delete("/api/file-cabinet/:employeeId/:fileId", requireAuth, async (req: 
       .limit(1);
 
     if (empDoc) {
-      await db.delete(employeeDocuments).where(eq(employeeDocuments.id, fileId));
+      // CLAUDE.md Section R / Law P1 — soft delete (HR records retained for compliance)
+      await softDelete({
+        table: employeeDocuments,
+        where: and(eq(employeeDocuments.id, fileId), eq(employeeDocuments.employeeId, employeeId))!,
+        userId: req.user!.id,
+        workspaceId,
+        entityType: 'employee_document',
+        entityId: fileId,
+      });
       return res.json({ success: true, message: "Employee document deleted successfully", source: "employee_documents" });
     }
 

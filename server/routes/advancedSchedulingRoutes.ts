@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { requireAuth } from '../auth';
 import { requireManager, requireOwner } from '../rbac';
 import { requireProfessional } from '../tierGuards';
+import { softDelete } from '../lib/softDelete';
 import { emitGamificationEvent } from '../services/gamification/eventTracker';
 import { isFeatureEnabled as isGamificationEnabled } from '@shared/platformConfig';
 
@@ -1103,16 +1104,27 @@ advancedSchedulingRouter.delete('/templates/:templateId', requireManager, async 
 
     const { templateId } = req.params;
 
-    const [deleted] = await db.delete(scheduleTemplates)
+    // CLAUDE.md Section R / Law P1 — soft delete (template history retained)
+    const [existing] = await db.select({ id: scheduleTemplates.id })
+      .from(scheduleTemplates)
       .where(and(
         eq(scheduleTemplates.id, templateId),
-        eq(scheduleTemplates.workspaceId, workspaceId)
+        eq(scheduleTemplates.workspaceId, workspaceId),
       ))
-      .returning();
+      .limit(1);
 
-    if (!deleted) {
+    if (!existing) {
       return res.status(404).json({ error: 'Template not found' });
     }
+
+    await softDelete({
+      table: scheduleTemplates,
+      where: and(eq(scheduleTemplates.id, templateId), eq(scheduleTemplates.workspaceId, workspaceId))!,
+      userId: user?.id ?? 'unknown',
+      workspaceId,
+      entityType: 'schedule_template',
+      entityId: templateId,
+    });
 
     res.json({
       success: true,
