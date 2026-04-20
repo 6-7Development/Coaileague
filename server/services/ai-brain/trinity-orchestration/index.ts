@@ -13,13 +13,24 @@
  * - Support path        — customer support, knowledge synthesis, training
  *
  * Folder renamed from `dualai/` → `trinity-orchestration/` in Phase 4A
- * (see CLAUDE.md Section S Trinity Unity Law). The legacy name mis-implied
+ * (see TRINITY.md §S Trinity Unity Law). The legacy name mis-implied
  * multiple agents; all callers now import from `trinity-orchestration`.
  */
 
 export { unifiedAIOrchestrator } from './unifiedAIOrchestrator';
 export type { OrchestratorRequest, OrchestratorResponse, ExecutionResult } from './unifiedAIOrchestrator';
 
+// Canonical (Trinity-unified) names. Use these in new code.
+export { trinityValidationService } from './trinityValidationService';
+export type {
+  TrinityValidationRequest,
+  TrinityValidationResponse,
+  TrinityValidationConsultation,
+} from './trinityValidationService';
+
+export { trinityVerificationService } from './trinityVerificationService';
+
+// Back-compat aliases — do not use in new code, migrate existing imports.
 export { claudeService } from './trinityValidationService';
 export type { ClaudeRequest, ClaudeResponse, ClaudeConsultation } from './trinityValidationService';
 

@@ -102,13 +102,20 @@ router.post("/process", requireAuth, async (req: Request, res: Response) => {
       amountOverride: creditInfo.amount,
     }).catch((billErr: unknown) => { log.error('[AI Orchestrator] Credit deduction failed (non-blocking):', (billErr as any)?.message); });
 
+    // TRINITY.md §S: tenant-facing response must not expose which
+    // internal reasoning path handled the request. primaryAi / supportAi
+    // / collaborationType are retained on the server-side log stream
+    // (via aiActionLogger) for debug and billing audit.
+    log.info('[AIOrchestrator] Trinity handled request', {
+      primaryAi: result.primaryAi,
+      supportAi: result.supportAi,
+      collaborationType: result.collaborationType,
+      sessionId: result.sessionId,
+    });
     return res.json({
       success: true,
       result: {
         content: result.content,
-        primaryAi: result.primaryAi,
-        supportAi: result.supportAi,
-        collaborationType: result.collaborationType,
         creditsUsed: result.creditsUsed,
         latencyMs: result.latencyMs,
         sessionId: result.sessionId,

@@ -2737,7 +2737,7 @@ export function startAutonomousScheduler() {
         const result = await sendContractSigningReminders();
         emitAutomationEvent({
           jobName: 'Contract Signing Reminder',
-          category: 'automation',
+          category: 'notification',
           success: true,
           duration: Date.now() - startTime,
           recordsProcessed: result.sent,
@@ -2746,7 +2746,7 @@ export function startAutonomousScheduler() {
       } catch (err: unknown) {
         emitAutomationEvent({
           jobName: 'Contract Signing Reminder',
-          category: 'automation',
+          category: 'notification',
           success: false,
           details: { error: err instanceof Error ? err.message : String(err) },
         });
