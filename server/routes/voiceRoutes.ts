@@ -2435,10 +2435,18 @@ async function runTrinityTalkTurn(params: {
   const namePhrase = lang === 'es' ? getNameGatherPhraseEs() : getNameGatherPhraseEn();
 
   // If the AI cannot resolve it, or we've reached the 5-turn ceiling, stop
-  // looping and escalate directly to a support case.
+  // looping and escalate directly to a support case. `aiResult.answer` is
+  // empty when resolveWithTrinityBrain short-circuits on the subscription
+  // gate — use a graceful fallback so the caller hears a real sentence
+  // instead of dead air before the escalation gather.
   if (!aiResult.canResolve || turn >= 5) {
+    const spokenAnswer = aiResult.answer && aiResult.answer.trim().length > 0
+      ? aiResult.answer
+      : (lang === 'es'
+          ? 'Déjame conectarte con un especialista humano que podrá ayudarte.'
+          : 'Let me connect you with a human specialist who can help.');
     return twiml(
-      say(aiResult.answer, voiceId, langCode) +
+      say(spokenAnswer, voiceId, langCode) +
       `<Gather input="speech" action="${nameAction}" method="POST" timeout="8" speechTimeout="auto">` +
       say(escalationPhrase + ' ' + namePhrase, voiceId, langCode) +
       `</Gather>` +
