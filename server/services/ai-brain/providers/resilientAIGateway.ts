@@ -479,8 +479,22 @@ class ResilientAIGateway {
           request.workspaceId,
           request.userId,
           featureKey,
-          estimatedCredits
+          totalTokens,
+          { inputTokens, outputTokens, model: 'claude' },
         );
+        // Mirror Gemini path — record to the primary metering ledger with
+        // real input/output tokens so tenant usage, overage, and tier caps
+        // reflect actual Claude consumption.
+        import('../../billing/aiMeteringService').then(({ aiMeteringService }) => {
+          aiMeteringService.recordAiCall({
+            workspaceId: request.workspaceId!,
+            modelName: 'claude',
+            callType: featureKey,
+            inputTokens,
+            outputTokens,
+            triggeredByUserId: request.userId,
+          });
+        }).catch((err: any) => log.warn('[AIMeter] claude recordAiCall failed (non-blocking):', err?.message));
         log.info(`[BillingGate] Trinity specialist [${featureKey}] - ${totalTokens} tokens (${estimatedCredits} credits) billed to workspace: ${request.workspaceId}`);
       }
     }

@@ -78,12 +78,14 @@ import { ChatDockProvider } from "@/contexts/ChatDockContext";
 import { UnifiedChatBubble } from "@/components/chatdock/ChatDock";
 import { TrinityAmbientFAB } from "@/components/trinity/TrinityAmbientFAB";
 import { TrinityActivityBar } from "@/components/trinity/TrinityActivityBar";
+import { TrinityTaskWidget } from "@/components/trinity/TrinityTaskWidget";
 // FloatingTrinityButton removed - redundant with header Trinity access
 import { HeaderTrinityButton } from "@/components/header-trinity-button";
 import { UniversalHeader } from "@/components/universal-header";
 import { ProgressiveHeader } from "@/components/navigation/ProgressiveHeader";
 import { MVP_FEATURE_FLAGS } from "@/config/mvpFeatures";
 import { TrinityModalProvider } from "@/components/trinity-chat-modal";
+import { TrinitySessionProvider } from "@/contexts/TrinitySessionContext";
 import { LayerManagerProvider } from "@/components/canvas-hub/LayerManager";
 import { TransitionLoaderProvider } from "@/components/canvas-hub";
 import { performLogout } from "@/lib/logoutHandler";
@@ -1407,9 +1409,16 @@ function AppContent() {
     "--sidebar-width-icon": "3.5rem", // 56px collapsed (matches old peek rail)
   };
 
+  // Global overlays — rendered exactly once per session, regardless of layout.
+  // Mobile and desktop branches are mutually exclusive, so this JSX is used
+  // in only one of the two returns at runtime.
+  const trinityGlobalWidget = <TrinityTaskWidget />;
+
   // Render mobile layout (NO Sidebar component - only UniversalNavHeader + BottomNav)
   if (isMobile) {
     return (
+      <>
+      {trinityGlobalWidget}
       <ProtectedRoute>
         <SessionTimeoutWarning />
         <GlobalErrorBoundary>
@@ -1422,7 +1431,7 @@ function AppContent() {
             ) : (
               <UniversalHeader variant="workspace" />
             )}
-            
+
             {/* Trinity activity bar — below nav, above content */}
             <TrinityActivityBar />
 
@@ -1802,11 +1811,14 @@ function AppContent() {
           />
         </GlobalErrorBoundary>
       </ProtectedRoute>
+      </>
     );
   }
 
   // Desktop layout with SidebarProvider
   return (
+    <>
+    {trinityGlobalWidget}
     <ProtectedRoute>
       <CommandPalette />
       <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-4 focus:bg-background focus:text-foreground">Skip to main content</a>
@@ -2348,6 +2360,7 @@ function AppContent() {
       {/* TrinityAmbientFAB — desktop only (returns null on mobile internally) */}
       <TrinityAmbientFAB />
     </ProtectedRoute>
+    </>
   );
 }
 
@@ -2409,6 +2422,7 @@ export default function App() {
                         <LayerManagerProvider>
                         <TransitionLoaderProvider>
                         <TrinityModalProvider>
+                        <TrinitySessionProvider>
                         <ChatDockProvider>
                         <ResponsiveAppFrame>
                           {showSplash && <SplashScreen onComplete={handleSplashComplete} minDisplayTime={3000} />}
@@ -2447,6 +2461,7 @@ export default function App() {
                         {/* DISABLED: Trinity floating mascot body - removed from screen */}
                         {/* <MascotRenderer /> */}
                         </ChatDockProvider>
+                        </TrinitySessionProvider>
                         </TrinityModalProvider>
                         </TransitionLoaderProvider>
                         </LayerManagerProvider>
