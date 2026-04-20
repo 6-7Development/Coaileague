@@ -39,6 +39,33 @@ employeeOnboardingRoutes.get('/me', async (req: AuthenticatedRequest, res: Respo
   }
 });
 
+// Get employee-specific required onboarding documents for checklist UI
+employeeOnboardingRoutes.get('/required-documents', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    // @ts-expect-error — TS migration: fix in refactoring sprint
+    const userId = req.user?.id || (req.user)?.claims?.sub;
+    const employee = await storage.getEmployeeByUserId(userId);
+    if (!employee) return res.json([]);
+
+    const status = await employeeDocumentOnboardingService.getEmployeeOnboardingStatus(employee.id);
+    if (!status) return res.json([]);
+
+    const docs = status.requirements.map((item) => ({
+      id: item.requirement.id,
+      displayName: item.requirement.name || item.requirement.documentType,
+      category: item.requirement.category,
+      required: true,
+      status: item.status === 'approved' ? 'approved' : 'pending',
+      uploadRoute: `/onboarding-forms?step=${item.requirement.id}`,
+    }));
+
+    res.json(docs);
+  } catch (error: unknown) {
+    log.error("Error fetching required onboarding documents:", error);
+    res.status(500).json({ message: "Failed to fetch required documents" });
+  }
+});
+
 // Get required documents list by position (before :employeeId route to avoid conflict)
 employeeOnboardingRoutes.get('/requirements/:position', async (req: AuthenticatedRequest, res: Response) => {
   try {

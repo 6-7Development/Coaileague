@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { CanvasHubPage, type CanvasPageConfig } from '@/components/canvas-hub';
@@ -7,12 +7,15 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
+import { apiRequest } from "@/lib/queryClient";
 import {
   Calendar,
+  Circle,
   Clock,
   FileText,
   Download,
@@ -85,8 +88,14 @@ export default function EmployeePortal() {
     select: (res) => res?.data ?? [],
   });
 
-  const { data: onboardingStatus, isLoading: onboardingLoading } = useQuery<any>({
+  const { data: onboardingProgress, isLoading: onboardingLoading } = useQuery<any>({
     queryKey: ["/api/employee-onboarding/me"],
+  });
+  const onboardingStatus = onboardingProgress;
+  const { data: requiredDocs = [] } = useQuery<any[]>({
+    queryKey: ["/api/employee-onboarding/required-documents"],
+    queryFn: () => apiRequest("GET", "/api/employee-onboarding/required-documents").then(r => r.json()),
+    enabled: !!onboardingProgress && (onboardingProgress.completionPercentage ?? 0) < 100,
   });
 
   const isLoading = employeesLoading || shiftsLoading || entriesLoading;
@@ -203,6 +212,38 @@ export default function EmployeePortal() {
             </p>
           </div>
         </div>
+      )}
+
+      {onboardingProgress && (onboardingProgress.completionPercentage ?? 0) < 100 && (
+        <Card className="border-amber-500/40 bg-amber-950/20 mb-4">
+          <CardHeader>
+            <CardTitle className="text-amber-400 flex items-center gap-2">
+              <ClipboardList className="h-5 w-5" />
+              Complete Your Onboarding
+              <Badge variant="outline" className="ml-auto">
+                {onboardingProgress.totalDocumentsCompleted ?? 0}/{onboardingProgress.totalDocumentsRequired ?? 0} done
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Progress value={onboardingProgress.completionPercentage ?? 0} className="mb-3" />
+            {requiredDocs.map((doc: any) => (
+              <div key={doc.id} className="flex items-center gap-3 py-2 border-b border-border/40">
+                {doc.status === 'approved'
+                  ? <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  : <Circle className="h-4 w-4 text-muted-foreground" />}
+                <span className={doc.status === 'approved' ? 'line-through text-muted-foreground' : ''}>
+                  {doc.displayName}
+                </span>
+                {doc.status !== 'approved' && (
+                  <Button size="sm" variant="outline" className="ml-auto" asChild>
+                    <Link to={doc.uploadRoute}>Upload</Link>
+                  </Button>
+                )}
+              </div>
+            ))}
+          </CardContent>
+        </Card>
       )}
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">

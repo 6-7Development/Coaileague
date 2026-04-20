@@ -7,6 +7,7 @@ import { storage } from "../storage";
 import { db } from "../db";
 import {
   employees,
+  employeeOnboardingProgress,
   workspaces,
   users,
   ptoRequests,
@@ -31,6 +32,8 @@ import { z } from "zod";
 import { cacheManager } from "../services/platform/cacheManager";
 import crypto from "crypto";
 import { emailService } from "../services/emailService";
+import { employeeDocumentOnboardingService } from '../services/employeeDocumentOnboardingService';
+import { getAppBaseUrl } from '../utils/getAppBaseUrl';
 import { getAllPtoBalances, calculatePtoAccrual, runWeeklyPtoAccrual } from "../services/ptoAccrual";
 import { getReviewReminderSummary, getOverdueReviews, getUpcomingReviews } from "../services/performanceReviewReminders";
 import { createLogger } from '../lib/logger';
@@ -940,6 +943,7 @@ router.post("/invites/accept", requireAuth, async (req: AuthenticatedRequest, re
       return res.status(404).json({ message: "Organization no longer exists" });
     }
 
+    let newEmployeeId: string | null = null;
     await db.transaction(async (tx) => {
       await tx.update(workspaceInvites)
         .set({
@@ -954,7 +958,7 @@ router.post("/invites/accept", requireAuth, async (req: AuthenticatedRequest, re
         .where(eq(users.id, userId));
 
       // @ts-expect-error — TS migration: fix in refactoring sprint
-      await tx.insert(employees).values({
+      const [createdEmployee] = await tx.insert(employees).values({
         workspaceId: invite.workspaceId,
         userId: userId,
         firstName: user.firstName || 'New',
@@ -963,8 +967,59 @@ router.post("/invites/accept", requireAuth, async (req: AuthenticatedRequest, re
         workspaceRole: (invite as any).inviteeRole || 'staff',
         isActive: true,
         hireDate: new Date().toISOString().split('T')[0],
-      });
+      }).returning({ id: employees.id });
+
+      newEmployeeId = createdEmployee?.id || null;
+
+      if (newEmployeeId) {
+        const position = employeeDocumentOnboardingService.getPositionFromRole((invite as any).inviteeRole || 'staff');
+        const requiredDocs = employeeDocumentOnboardingService.getRequiredDocuments(position);
+        const requiredStepIds = requiredDocs.map((doc) => doc.id);
+
+        await tx.insert(employeeOnboardingProgress).values({
+          workspaceId: invite.workspaceId,
+          employeeId: newEmployeeId,
+          status: requiredStepIds.length > 0 ? 'in_progress' : 'complete',
+          stepsCompleted: [],
+          stepsRemaining: requiredStepIds,
+          overallProgressPct: 0,
+          invitationAcceptedAt: new Date(),
+          lastUpdatedAt: new Date(),
+        }).onConflictDoNothing();
+      }
     });
+
+    if (newEmployeeId) {
+      const inviteEmail = invite.inviteeEmail || user.email;
+      if (!inviteEmail) {
+        log.warn('[Invite] Onboarding welcome email skipped: missing invitee email');
+      } else {
+      const employeeName = `${user.firstName || 'New'} ${user.lastName || 'Employee'}`.trim();
+      const position = employeeDocumentOnboardingService.getPositionFromRole((invite as any).inviteeRole || 'staff');
+      const requiredDocs = employeeDocumentOnboardingService.getRequiredDocuments(position);
+      const onboardingToken = invite.inviteCode;
+      const portalUrl = `${getAppBaseUrl()}/employee-portal?token=${onboardingToken}`;
+      const deadlineDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+        .toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+      const requiredList = requiredDocs.map((doc) => `<li>${doc.name}</li>`).join('');
+
+      await emailService.sendCustomEmail(
+        inviteEmail,
+        `Welcome to ${workspace.name} — Complete Your Onboarding`,
+        `
+          <p>Hi ${employeeName},</p>
+          <p>Welcome to ${workspace.name}. Complete your onboarding to start taking shifts.</p>
+          <p><a href="${portalUrl}">Open your onboarding portal</a></p>
+          <p><strong>Required documents:</strong></p>
+          <ul>${requiredList}</ul>
+          <p>Please complete everything by <strong>${deadlineDate}</strong>.</p>
+        `,
+        'employee_onboarding_welcome',
+        invite.workspaceId,
+        userId,
+      ).catch((err: Error) => log.warn('[Invite] Onboarding welcome email failed:', sanitizeError(err)));
+      }
+    }
 
 
     res.json({

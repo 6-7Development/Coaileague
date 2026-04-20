@@ -15,10 +15,11 @@
 
 import type { ActionRequest, ActionResult } from '../helpai/platformActionHub';
 import { db } from '../../db';
-import { employees, orgDocuments, orgDocumentSignatures, employeeCertifications, hrDocumentRequests, workspaces } from '@shared/schema';
-import { eq, and, lt, isNull, isNotNull, desc, inArray } from 'drizzle-orm';
+import { employees, orgDocuments, orgDocumentSignatures, employeeCertifications, hrDocumentRequests, workspaces, aiApprovals } from '@shared/schema';
+import { eq, and, lt, isNull, isNotNull, desc, inArray, sql } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { universalAudit } from '../universalAuditService';
+import { format } from 'date-fns';
 import { createLogger } from '../../lib/logger';
 const log = createLogger('trinityDocumentActions');
 
@@ -629,4 +630,54 @@ export function registerTrinityDocumentActions(orchestrator: any): void {
       }
     },
   });
+}
+
+export async function scanOverdueI9s(workspaceId: string): Promise<void> {
+  const overdue = await db.execute(sql`
+    SELECT e.id, e.first_name, e.last_name, e.hire_date, p.i9_complete
+    FROM employees e
+    LEFT JOIN employee_onboarding_progress p ON p.employee_id = e.id AND p.workspace_id = e.workspace_id
+    WHERE e.workspace_id = ${workspaceId}
+      AND e.is_active = true
+      AND e.hire_date IS NOT NULL
+      AND e.hire_date > NOW() - INTERVAL '90 days'
+      AND (p.i9_complete IS NULL OR p.i9_complete = false)
+      AND e.hire_date < NOW() - INTERVAL '3 days'
+  `);
+
+  const rows = (overdue as any).rows || [];
+  for (const emp of rows) {
+    const title = `I-9 Overdue: ${emp.first_name} ${emp.last_name}`;
+    const [existing] = await db.select({ id: aiApprovals.id })
+      .from(aiApprovals)
+      .where(and(
+        eq(aiApprovals.workspaceId, workspaceId),
+        eq(aiApprovals.status, 'pending'),
+        eq(aiApprovals.requestType, 'compliance_alert'),
+        eq(aiApprovals.title, title),
+      ))
+      .limit(1);
+
+    if (existing) continue;
+
+    await db.insert(aiApprovals).values({
+      workspaceId,
+      approvalKind: 'compliance',
+      title,
+      description: `I-9 not completed. Hired ${format(new Date(emp.hire_date), 'MMM d')}. Federal law requires completion within 3 days of hire. Risk: ICE audit liability.`,
+      requestType: 'compliance_alert',
+      priority: 'urgent',
+      sourceSystem: 'trinity',
+      status: 'pending',
+      riskLevel: 'high',
+      payload: {
+        employeeId: emp.id,
+        employeeName: `${emp.first_name} ${emp.last_name}`.trim(),
+        alertType: 'i9_overdue',
+      },
+      expiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+  }
 }
