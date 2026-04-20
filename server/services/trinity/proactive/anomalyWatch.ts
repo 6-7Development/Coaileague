@@ -363,9 +363,8 @@ async function findBillingAnomalies(workspaceId: string): Promise<Anomaly[]> {
 
 async function notify(a: Anomaly): Promise<boolean> {
   const managers = await fetchManagers(a.workspaceId);
-  let delivered = false;
 
-  await Promise.allSettled(
+  const inAppResults = await Promise.allSettled(
     managers.map((recipientUserId) =>
       NotificationDeliveryService.send({
         type: 'trinity_alert',
@@ -382,27 +381,47 @@ async function notify(a: Anomaly): Promise<boolean> {
           details: a.details ?? null,
         },
         idempotencyKey: `anomaly-${a.dedupKey}-${recipientUserId}`,
-      }).then(() => {
-        delivered = true;
       }),
     ),
   );
 
+  const inAppDelivered = inAppResults.filter((r) => r.status === 'fulfilled').length;
+  const inAppFailed = inAppResults.filter((r) => r.status === 'rejected').length;
+  for (const r of inAppResults) {
+    if (r.status === 'rejected') {
+      log.warn('[anomalyWatch] in-app notify failed (non-fatal):', (r.reason as any)?.message ?? r.reason);
+    }
+  }
+
+  let smsDelivered = 0;
+  let smsFailed = 0;
+  let smsAttempted = 0;
   if (a.severity === 'high') {
     const supervisors = await fetchSupervisorPhones(a.workspaceId);
-    await Promise.allSettled(
-      supervisors.slice(0, 3).map((sup) =>
+    const smsTargets = supervisors.slice(0, 3);
+    smsAttempted = smsTargets.length;
+    const smsResults = await Promise.allSettled(
+      smsTargets.map((sup) =>
         sendSMSToEmployee(
           sup.id,
           `Trinity anomaly: ${a.summary}`,
           `anomaly_${a.code}`,
           a.workspaceId,
-        ).then(() => {
-          delivered = true;
-        }),
+        ),
       ),
     );
+    smsDelivered = smsResults.filter((r) => r.status === 'fulfilled' && (r.value as any)?.success).length;
+    smsFailed = smsResults.length - smsDelivered;
+    for (const r of smsResults) {
+      if (r.status === 'rejected') {
+        log.warn('[anomalyWatch] supervisor SMS threw (non-fatal):', (r.reason as any)?.message ?? r.reason);
+      } else if (!(r.value as any)?.success) {
+        log.info('[anomalyWatch] supervisor SMS not sent:', (r.value as any)?.error);
+      }
+    }
   }
+
+  const delivered = inAppDelivered > 0 || smsDelivered > 0;
 
   try {
     await platformEventBus.publish({
@@ -422,9 +441,21 @@ async function notify(a: Anomaly): Promise<boolean> {
     workspaceId: a.workspaceId,
     entityType: a.entityType,
     entityId: a.entityId,
-    success: true,
+    success: delivered,
     message: a.summary,
-    payload: { code: a.code, severity: a.severity, details: a.details ?? null },
+    payload: {
+      code: a.code,
+      severity: a.severity,
+      details: a.details ?? null,
+      delivery: {
+        inAppAttempted: managers.length,
+        inAppDelivered,
+        inAppFailed,
+        smsAttempted,
+        smsDelivered,
+        smsFailed,
+      },
+    },
   });
 
   return delivered;

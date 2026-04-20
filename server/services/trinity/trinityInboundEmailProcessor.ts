@@ -398,7 +398,10 @@ async function processIncident(
       log.warn(`[TrinityInboundEmail] Attachment rejected — exceeds 10 MB per-attachment cap (att: ${att.filename}, size: ${attBytes}, workspace: ${workspaceId})`);
       continue;
     }
-    const quotaCheck = await checkCategoryQuota(workspaceId, 'email', attBytes).catch(() => ({ allowed: true }));
+    const quotaCheck = await checkCategoryQuota(workspaceId, 'email', attBytes).catch((err: unknown) => {
+      log.warn(`[TrinityInboundEmail] Quota service unavailable for incident attachment — failing open for workspace ${workspaceId}:`, err instanceof Error ? err.message : String(err));
+      return { allowed: true };
+    });
     if (!quotaCheck.allowed) {
       log.warn(`[TrinityInboundEmail] Incident attachment rejected — email quota exceeded for workspace ${workspaceId} (att: ${att.filename}, size: ${attBytes})`);
       continue;
@@ -502,7 +505,10 @@ async function processDocs(
       log.warn(`[TrinityInboundEmail] Docs@ attachment rejected — exceeds 10 MB per-attachment cap (att: ${att.filename}, size: ${attBytes}, workspace: ${workspaceId})`);
       continue;
     }
-    const quotaCheck = await checkDocQuota(workspaceId, 'email', attBytes).catch(() => ({ allowed: true }));
+    const quotaCheck = await checkDocQuota(workspaceId, 'email', attBytes).catch((err: unknown) => {
+      log.warn(`[TrinityInboundEmail] Quota service unavailable for docs@ attachment — failing open for workspace ${workspaceId}:`, err instanceof Error ? err.message : String(err));
+      return { allowed: true };
+    });
     if (!quotaCheck.allowed) {
       log.warn(`[TrinityInboundEmail] Docs@ attachment rejected — email quota exceeded for workspace ${workspaceId} (att: ${att.filename}, size: ${attBytes})`);
       continue;
