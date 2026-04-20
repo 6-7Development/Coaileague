@@ -29,10 +29,11 @@ import { AccountStateService } from './accountState';
 import { universalNotificationEngine } from '../universalNotificationEngine';
 import { createLogger } from '../../lib/logger';
 import { getStripe, isStripeConfigured } from './stripeClient';
+import { cacheManager } from '../platform/cacheManager';
 
 const log = createLogger('StripeEventBridge');
 
-// Lazy proxy: avoids module-load crash if STRIPE_SECRET_KEY is missing (CLAUDE.md §F).
+// Lazy proxy: avoids module-load crash if STRIPE_SECRET_KEY is missing (TRINITY.md §F).
 const stripe = new Proxy({} as Stripe, {
   get(_t, prop) {
     return (getStripe() as any)[prop];
@@ -248,32 +249,17 @@ class StripeEventBridge {
     await db.update(workspaces)
       .set({ subscriptionStatus: 'active' })
       .where(eq(workspaces.id, workspace.id));
+    cacheManager.invalidateWorkspace(workspace.id); // Phase 26: refresh Trinity gate
 
     await db.update(subscriptions)
       .set({ status: 'active' })
       .where(eq(subscriptions.workspaceId, workspace.id));
 
-    // CREDIT RESET — fires on subscription renewal events only.
-    // Guarantees credits reset is tied to actual Stripe payment, not just a cron date.
-    // 'subscription_cycle' = renewal; 'subscription_create' = first payment (no reset yet).
+    // Token allowance is tracked per calendar month via token_usage_monthly —
+    // no renewal-triggered reset needed (a fresh row is created at the start
+    // of each billing period automatically).
     const billingReason = (invoice as any).billing_reason as string | undefined;
     const isRenewal = billingReason === 'subscription_cycle';
-    if (isRenewal) {
-      try {
-        const { resetCreditsNow } = await import('./creditResetCron');
-        await resetCreditsNow(workspace.id);
-        log.info('[StripeEventBridge] Credit reset triggered on subscription renewal', {
-          workspaceId: workspace.id,
-          invoiceId: invoice.id,
-          billingReason,
-        });
-      } catch (resetErr: any) {
-        log.warn('[StripeEventBridge] Credit reset failed on invoice.paid — cron fallback will handle on 1st of month', {
-          workspaceId: workspace.id,
-          error: resetErr.message,
-        });
-      }
-    }
 
     await platformEventBus.publish({
       type: 'invoice_paid',
@@ -318,6 +304,7 @@ class StripeEventBridge {
     await db.update(workspaces)
       .set({ subscriptionStatus: 'past_due' })
       .where(eq(workspaces.id, workspace.id));
+    cacheManager.invalidateWorkspace(workspace.id); // Phase 26: refresh Trinity gate
 
     await this.notifyWorkspaceOwner(workspace.id, {
       type: 'billing',
@@ -361,11 +348,12 @@ class StripeEventBridge {
     }
 
     await db.update(workspaces)
-      .set({ 
+      .set({
         subscriptionStatus: subscription.status,
         stripeSubscriptionId: subscription.id,
       })
       .where(eq(workspaces.id, workspace.id));
+    cacheManager.invalidateWorkspace(workspace.id); // Phase 26: refresh Trinity gate
 
     await platformEventBus.publish({
       type: 'subscription_created',
@@ -403,6 +391,7 @@ class StripeEventBridge {
     await db.update(workspaces)
       .set({ subscriptionStatus: subscription.status })
       .where(eq(workspaces.id, workspace.id));
+    cacheManager.invalidateWorkspace(workspace.id); // Phase 26: refresh Trinity gate
 
     await db.update(subscriptions)
       // @ts-expect-error — TS migration: fix in refactoring sprint
@@ -430,20 +419,19 @@ class StripeEventBridge {
     }
 
     await db.update(workspaces)
-      .set({ 
+      .set({
         subscriptionStatus: 'canceled',
         subscriptionTier: 'free',
       })
       .where(eq(workspaces.id, workspace.id));
+    cacheManager.invalidateWorkspace(workspace.id); // Phase 26: refresh Trinity gate
 
     await db.update(subscriptions)
       // @ts-expect-error — TS migration: fix in refactoring sprint
       .set({ status: 'canceled' })
       .where(eq(subscriptions.workspaceId, workspace.id));
 
-    // GAP-10 FIX: Clear credits on cancellation
-    const { creditManager } = await import('./creditManager');
-    await creditManager.downgradeCreditsOnCancellation(workspace.id);
+    // Free-tier token allowance applies automatically once subscriptionTier is 'free'.
 
     await platformEventBus.publish({
       type: 'subscription_canceled',
@@ -584,6 +572,7 @@ class StripeEventBridge {
         await db.update(workspaces)
           .set({ subscriptionStatus: subscription.status })
           .where(eq(workspaces.id, workspaceId));
+        cacheManager.invalidateWorkspace(workspaceId); // Phase 26: refresh Trinity gate
 
         return { success: true, actionId: request.actionId, message: `Synced: ${subscription.status}`, data: { status: subscription.status } };
       },

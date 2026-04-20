@@ -78,12 +78,14 @@ import { ChatDockProvider } from "@/contexts/ChatDockContext";
 import { UnifiedChatBubble } from "@/components/chatdock/ChatDock";
 import { TrinityAmbientFAB } from "@/components/trinity/TrinityAmbientFAB";
 import { TrinityActivityBar } from "@/components/trinity/TrinityActivityBar";
+import { TrinityTaskWidget } from "@/components/trinity/TrinityTaskWidget";
 // FloatingTrinityButton removed - redundant with header Trinity access
 import { HeaderTrinityButton } from "@/components/header-trinity-button";
 import { UniversalHeader } from "@/components/universal-header";
 import { ProgressiveHeader } from "@/components/navigation/ProgressiveHeader";
 import { MVP_FEATURE_FLAGS } from "@/config/mvpFeatures";
 import { TrinityModalProvider } from "@/components/trinity-chat-modal";
+import { TrinitySessionProvider } from "@/contexts/TrinitySessionContext";
 import { LayerManagerProvider } from "@/components/canvas-hub/LayerManager";
 import { TransitionLoaderProvider } from "@/components/canvas-hub";
 import { performLogout } from "@/lib/logoutHandler";
@@ -92,6 +94,7 @@ import { UnifiedBrandLogo } from "@/components/unified-brand-logo";
 import { OfflineIndicator } from "@/components/ui/offline-indicator";
 import { ConnectionStatusBanner } from "@/components/connection-status";
 import { SWUpdateBanner } from "@/components/ui/sw-update-notice";
+import { ServiceWorkerMessageListener } from "@/components/sw-notification-listener";
 import { listenForTabEvents } from "@/lib/tabSync";
 import { SessionTimeoutWarning } from "@/components/session-timeout-warning";
 import { SplashScreen } from "@/components/SplashScreen";
@@ -231,6 +234,7 @@ const HRTerminations = lazy(() => import("@/pages/hr-terminations"));
 const Chatrooms = lazy(() => import("@/pages/chatrooms"));
 const Broadcasts = lazy(() => import("@/pages/broadcasts"));
 const PayrollDashboard = lazy(() => import("@/pages/payroll-dashboard"));
+const TaxCenter = lazy(() => import("@/pages/tax-center"));
 const PayrollTimesheets = lazy(() => import("@/pages/payroll-timesheets"));
 const OrchestrationDashboard = lazy(() => import("@/pages/orchestration-dashboard"));
 const MyPaychecks = lazy(() => import("@/pages/my-paychecks"));
@@ -248,6 +252,10 @@ const CommunicationsOnboarding = lazy(() => import("@/pages/communications-onboa
 const Diagnostics = lazy(() => import("@/pages/diagnostics"));
 const PrivateMessages = lazy(() => import("@/pages/private-messages"));
 const WorkerDashboard = lazy(() => import("@/pages/worker-dashboard"));
+const WorkerPanic = lazy(() => import("@/pages/worker-panic"));
+const GuardTourScan = lazy(() => import("@/pages/guard-tours-scan"));
+const PlatformOps = lazy(() => import("@/pages/platform-ops"));
+const SettingsDataPrivacy = lazy(() => import("@/pages/settings-data-privacy"));
 const WorkerIncidents = lazy(() => import("@/pages/worker-incidents"));
 const TeamSchedule = lazy(() => import("@/pages/team-schedule"));
 const ApprovalsHub = lazy(() => import("@/pages/approvals-hub"));
@@ -318,6 +326,11 @@ const RegulatorPortal = lazy(() => import("@/pages/compliance/regulator-portal")
 const EmployeeOnboardingPacket = lazy(() => import("@/pages/compliance/employee-onboarding-packet"));
 const AuditorPortal = lazy(() => import("@/pages/compliance/auditor-portal"));
 const AuditorLogin = lazy(() => import("@/pages/auditor-login"));
+// Phase 18C/D — Co-League Compliance Concierge (Trinity-driven auditor portal)
+const CoAuditorClaim = lazy(() => import("@/pages/co-auditor-claim"));
+const CoAuditorLogin = lazy(() => import("@/pages/co-auditor-login"));
+const CoAuditorDashboard = lazy(() => import("@/pages/co-auditor-dashboard"));
+const AdminSecurity = lazy(() => import("@/pages/admin-security"));
 // Phase 33 — SRA (State Regulatory Auditor) Partner Portal
 const SRALogin = lazy(() => import("@/pages/sra/SRALogin"));
 const SRAApply = lazy(() => import("@/pages/sra/SRAApply"));
@@ -376,7 +389,9 @@ const GateDuty = lazy(() => import("@/pages/gate-duty"));
 const WellnessPage = lazy(() => import("@/pages/wellness"));
 const SiteSurveyPage = lazy(() => import("@/pages/site-survey"));
 const FleetManagement = lazy(() => import("@/pages/fleet-management"));
+const FleetCompliance = lazy(() => import("@/pages/fleet-compliance"));
 const ArmoryManagement = lazy(() => import("@/pages/armory-management"));
+const ArmoryCompliance = lazy(() => import("@/pages/armory-compliance"));
 const SSOConfiguration = lazy(() => import("@/pages/sso-configuration"));
 const AccountManager = lazy(() => import("@/pages/account-manager"));
 const BackgroundChecks = lazy(() => import("@/pages/background-checks"));
@@ -1294,6 +1309,11 @@ function AppContent() {
               <Route path="/" component={Homepage} />
               <Route path="/login" component={CustomLogin} />
               <Route path="/auditor/login" component={AuditorLogin} />
+              {/* Phase 18C/D — Trinity Compliance Concierge auditor portal */}
+              <Route path="/co-auditor/login" component={CoAuditorLogin} />
+              <Route path="/co-auditor/claim" component={CoAuditorClaim} />
+              <Route path="/co-auditor/dashboard" component={CoAuditorDashboard} />
+              <Route path="/admin/security" component={AdminSecurity} />
               {/* Phase 33 — SRA Partner Portal (government blue, outside main auth) */}
               <Route path="/regulatory-audit/login" component={SRALogin} />
               <Route path="/regulatory-audit/apply" component={SRAApply} />
@@ -1389,9 +1409,16 @@ function AppContent() {
     "--sidebar-width-icon": "3.5rem", // 56px collapsed (matches old peek rail)
   };
 
+  // Global overlays — rendered exactly once per session, regardless of layout.
+  // Mobile and desktop branches are mutually exclusive, so this JSX is used
+  // in only one of the two returns at runtime.
+  const trinityGlobalWidget = <TrinityTaskWidget />;
+
   // Render mobile layout (NO Sidebar component - only UniversalNavHeader + BottomNav)
   if (isMobile) {
     return (
+      <>
+      {trinityGlobalWidget}
       <ProtectedRoute>
         <SessionTimeoutWarning />
         <GlobalErrorBoundary>
@@ -1404,7 +1431,7 @@ function AppContent() {
             ) : (
               <UniversalHeader variant="workspace" />
             )}
-            
+
             {/* Trinity activity bar — below nav, above content */}
             <TrinityActivityBar />
 
@@ -1426,6 +1453,10 @@ function AppContent() {
                 <Route path="/command-center"><ErrorBoundary><CommandCenter /></ErrorBoundary></Route>
                 <Route path="/commands"><ErrorBoundary><CommandDocumentation /></ErrorBoundary></Route>
                 <Route path="/worker"><ErrorBoundary><WorkerDashboard /></ErrorBoundary></Route>
+                <Route path="/worker/panic"><ErrorBoundary><WorkerPanic /></ErrorBoundary></Route>
+                <Route path="/worker/guard-tour/scan"><ErrorBoundary><GuardTourScan /></ErrorBoundary></Route>
+                <Route path="/admin/platform-ops"><ErrorBoundary><PlatformOps /></ErrorBoundary></Route>
+                <Route path="/settings/data-privacy"><ErrorBoundary><SettingsDataPrivacy /></ErrorBoundary></Route>
                 <Route path="/worker/incidents"><ErrorBoundary><WorkerIncidents /></ErrorBoundary></Route>
                 <Route path="/schedule"><ErrorBoundary componentName="Schedule Board"><UniversalSchedule /></ErrorBoundary></Route>
                 <Route path="/shift-marketplace"><ErrorBoundary><ShiftMarketplace /></ErrorBoundary></Route>
@@ -1535,6 +1566,7 @@ function AppContent() {
                 <Route path="/policies"><ErrorBoundary><Policies /></ErrorBoundary></Route>
                 <Route path="/payroll/pay-stubs/:id">{(params: any) => <ErrorBoundary componentName="Pay Stub"><PayStubDetail {...params} /></ErrorBoundary>}</Route>
                 <Route path="/payroll/timesheets"><ErrorBoundary componentName="Payroll Timesheets"><PayrollTimesheets /></ErrorBoundary></Route>
+                <Route path="/payroll/tax-center"><ErrorBoundary componentName="Tax Center"><TaxCenter /></ErrorBoundary></Route>
                 <Route path="/payroll"><ErrorBoundary componentName="Payroll Dashboard"><PayrollDashboard /></ErrorBoundary></Route>
                 <Route path="/my-paychecks"><ErrorBoundary><MyPaychecks /></ErrorBoundary></Route>
                 <Route path="/leaders-hub">
@@ -1735,7 +1767,9 @@ function AppContent() {
                 <Route path="/onboarding-forms"><ErrorBoundary><Suspense fallback={<PageLoader />}><OnboardingForms /></Suspense></ErrorBoundary></Route>
                 <Route path="/enterprise/branding"><ErrorBoundary><WhiteLabelBranding /></ErrorBoundary></Route>
                 <Route path="/enterprise/fleet"><ErrorBoundary><FleetManagement /></ErrorBoundary></Route>
+                <Route path="/enterprise/fleet/compliance"><ErrorBoundary><FleetCompliance /></ErrorBoundary></Route>
                 <Route path="/enterprise/armory"><ErrorBoundary><ArmoryManagement /></ErrorBoundary></Route>
+                <Route path="/enterprise/armory/compliance"><ErrorBoundary><ArmoryCompliance /></ErrorBoundary></Route>
                 <Route path="/enterprise/sso"><ErrorBoundary><SSOConfiguration /></ErrorBoundary></Route>
                 <Route path="/enterprise/account-manager"><ErrorBoundary><AccountManager /></ErrorBoundary></Route>
                 <Route path="/enterprise/background-checks"><ErrorBoundary><BackgroundChecks /></ErrorBoundary></Route>
@@ -1777,11 +1811,14 @@ function AppContent() {
           />
         </GlobalErrorBoundary>
       </ProtectedRoute>
+      </>
     );
   }
 
   // Desktop layout with SidebarProvider
   return (
+    <>
+    {trinityGlobalWidget}
     <ProtectedRoute>
       <CommandPalette />
       <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-4 focus:bg-background focus:text-foreground">Skip to main content</a>
@@ -1916,6 +1953,10 @@ function AppContent() {
                 <Route path="/command-center"><ErrorBoundary><CommandCenter /></ErrorBoundary></Route>
                 <Route path="/commands"><ErrorBoundary><CommandDocumentation /></ErrorBoundary></Route>
                 <Route path="/worker"><ErrorBoundary><WorkerDashboard /></ErrorBoundary></Route>
+                <Route path="/worker/panic"><ErrorBoundary><WorkerPanic /></ErrorBoundary></Route>
+                <Route path="/worker/guard-tour/scan"><ErrorBoundary><GuardTourScan /></ErrorBoundary></Route>
+                <Route path="/admin/platform-ops"><ErrorBoundary><PlatformOps /></ErrorBoundary></Route>
+                <Route path="/settings/data-privacy"><ErrorBoundary><SettingsDataPrivacy /></ErrorBoundary></Route>
                 <Route path="/worker/incidents"><ErrorBoundary><WorkerIncidents /></ErrorBoundary></Route>
                 <Route path="/schedule"><ErrorBoundary componentName="Schedule Board"><UniversalSchedule /></ErrorBoundary></Route>
                 <Route path="/shift-marketplace"><ErrorBoundary><ShiftMarketplace /></ErrorBoundary></Route>
@@ -2094,6 +2135,7 @@ function AppContent() {
                 <Route path="/policies"><ErrorBoundary><Policies /></ErrorBoundary></Route>
                 <Route path="/payroll/pay-stubs/:id">{(params: any) => <ErrorBoundary componentName="Pay Stub"><PayStubDetail {...params} /></ErrorBoundary>}</Route>
                 <Route path="/payroll/timesheets"><ErrorBoundary componentName="Payroll Timesheets"><PayrollTimesheets /></ErrorBoundary></Route>
+                <Route path="/payroll/tax-center"><ErrorBoundary componentName="Tax Center"><TaxCenter /></ErrorBoundary></Route>
                 <Route path="/payroll"><ErrorBoundary componentName="Payroll Dashboard"><PayrollDashboard /></ErrorBoundary></Route>
                 <Route path="/my-paychecks"><ErrorBoundary><MyPaychecks /></ErrorBoundary></Route>
                 <Route path="/leaders-hub">
@@ -2219,7 +2261,9 @@ function AppContent() {
                 <Route path="/settings"><ErrorBoundary componentName="Settings"><Settings /></ErrorBoundary></Route>
                 <Route path="/enterprise/branding"><ErrorBoundary><WhiteLabelBranding /></ErrorBoundary></Route>
                 <Route path="/enterprise/fleet"><ErrorBoundary><FleetManagement /></ErrorBoundary></Route>
+                <Route path="/enterprise/fleet/compliance"><ErrorBoundary><FleetCompliance /></ErrorBoundary></Route>
                 <Route path="/enterprise/armory"><ErrorBoundary><ArmoryManagement /></ErrorBoundary></Route>
+                <Route path="/enterprise/armory/compliance"><ErrorBoundary><ArmoryCompliance /></ErrorBoundary></Route>
                 <Route path="/enterprise/sso"><ErrorBoundary><SSOConfiguration /></ErrorBoundary></Route>
                 <Route path="/enterprise/account-manager"><ErrorBoundary><AccountManager /></ErrorBoundary></Route>
                 <Route path="/enterprise/background-checks"><ErrorBoundary><BackgroundChecks /></ErrorBoundary></Route>
@@ -2316,6 +2360,7 @@ function AppContent() {
       {/* TrinityAmbientFAB — desktop only (returns null on mobile internally) */}
       <TrinityAmbientFAB />
     </ProtectedRoute>
+    </>
   );
 }
 
@@ -2377,12 +2422,14 @@ export default function App() {
                         <LayerManagerProvider>
                         <TransitionLoaderProvider>
                         <TrinityModalProvider>
+                        <TrinitySessionProvider>
                         <ChatDockProvider>
                         <ResponsiveAppFrame>
                           {showSplash && <SplashScreen onComplete={handleSplashComplete} minDisplayTime={3000} />}
                           <ConnectionStatusBanner />
                           <OfflineIndicator />
                           <SWUpdateBanner />
+                          <ServiceWorkerMessageListener />
                           <ChatroomNotificationListener />
                           <LanguageSync />
                           <Suspense fallback={<PageLoader />}>
@@ -2414,6 +2461,7 @@ export default function App() {
                         {/* DISABLED: Trinity floating mascot body - removed from screen */}
                         {/* <MascotRenderer /> */}
                         </ChatDockProvider>
+                        </TrinitySessionProvider>
                         </TrinityModalProvider>
                         </TransitionLoaderProvider>
                         </LayerManagerProvider>

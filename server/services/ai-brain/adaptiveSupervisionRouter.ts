@@ -19,7 +19,8 @@
 
 import { platformEventBus } from '../platformEventBus';
 import { db } from '../../db';
-import { systemAuditLogs } from '@shared/schema';
+import { systemAuditLogs, supervisorHandoffs } from '@shared/schema';
+import { eq } from 'drizzle-orm';
 import { GeminiModelTier } from './providers/geminiClient';
 import crypto from 'crypto';
 import { createLogger } from '../../lib/logger';
@@ -286,8 +287,26 @@ class AdaptiveSupervisionRouter {
 
     log.info(`[AdaptiveSupervisionRouter] Handoff: ${request.sourceSubagent} -> ${request.targetSubagent}`);
 
-    // Store active handoff
+    // Store active handoff (in-memory for fast lookup)
     this.activeHandoffs.set(handoffId, request);
+
+    // TRINITY.md Section R / Law P2: write-through to supervisor_handoffs so
+    // an in-flight handoff that vanishes on restart leaves a row that
+    // runStartupRecovery() can mark `interrupted`.
+    try {
+      await db.insert(supervisorHandoffs).values({
+        id: handoffId,
+        workspaceId: request.workspaceId,
+        fromAgent: request.sourceSubagent,
+        toAgent: request.targetSubagent,
+        reason: request.type,
+        payload: { context: request.context, request: request.request },
+        status: 'active',
+        createdAt: new Date(),
+      });
+    } catch (persistErr: any) {
+      log.warn('[Handoff] Persist start failed (non-fatal):', persistErr?.message);
+    }
 
     try {
       // Validate target subagent availability
@@ -345,6 +364,14 @@ class AdaptiveSupervisionRouter {
 
     } finally {
       this.activeHandoffs.delete(handoffId);
+      // Mark resolved in DB
+      try {
+        await db.update(supervisorHandoffs)
+          .set({ status: 'resolved', resolvedAt: new Date() })
+          .where(eq(supervisorHandoffs.id, handoffId));
+      } catch (persistErr: any) {
+        log.warn('[Handoff] Persist resolve failed (non-fatal):', persistErr?.message);
+      }
     }
   }
 

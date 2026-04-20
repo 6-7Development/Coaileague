@@ -28,6 +28,10 @@ const BILLING_EXEMPT_PREFIXES = [
   '/api/platform',
   '/api/health',
   '/api/auth',
+  // Trinity Voice + SMS Twilio webhooks — unauthenticated by design, HMAC-verified
+  '/api/voice',
+  '/api/sms/inbound',
+  '/api/sms/status',
 ];
 
 // Routes always exempt for cancelled workspaces (auth + health + billing recovery)
@@ -41,6 +45,10 @@ const CANCELLED_EXEMPT_PREFIXES = [
   '/api/webhooks',
   '/api/platform',
   '/api/csrf-token',
+  // Trinity Voice + SMS Twilio webhooks — unauthenticated by design, HMAC-verified
+  '/api/voice',
+  '/api/sms/inbound',
+  '/api/sms/status',
 ];
 
 // HTTP methods that mutate state
@@ -55,6 +63,7 @@ interface AuthenticatedRequest extends Request {
   workspaceId?: string;
   currentWorkspaceId?: string;
   user?: { workspaceId?: string };
+  isTrinityBot?: boolean;
 }
 
 export function subscriptionReadOnlyGuard(
@@ -67,6 +76,9 @@ export function subscriptionReadOnlyGuard(
 
   // Exempt billing/payment recovery routes
   if (isBillingExempt(req.path)) return next();
+
+  // System bots (Trinity, HelpAI) operate with platform authority — never blocked
+  if ((req as any).isTrinityBot) return next();
 
   const workspaceId =
     req.workspaceId || req.currentWorkspaceId || req.user?.workspaceId;
@@ -124,6 +136,9 @@ export function cancelledWorkspaceGuard(
 ): void {
   // Exempt auth/health/billing — always pass through
   if (CANCELLED_EXEMPT_PREFIXES.some(p => req.path.startsWith(p))) return next();
+
+  // System bots (Trinity, HelpAI) operate with platform authority — never blocked
+  if ((req as any).isTrinityBot) return next();
 
   const workspaceId =
     req.workspaceId || req.currentWorkspaceId || req.user?.workspaceId;

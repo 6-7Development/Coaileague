@@ -9,10 +9,14 @@
 import { sanitizeError } from '../middleware/errorHandler';
 import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { trinityChatService, ConversationMode } from '../services/ai-brain/trinityChatService';
+import { trinityChatService } from '../services/ai-brain/trinityChatService';
 import { attachWorkspaceId, AuthenticatedRequest } from '../rbac';
 import { requireAuth } from '../auth';
 import { createLogger } from '../lib/logger';
+import { db } from '../db';
+import { trinityThoughtSignatures } from '@shared/schema';
+import { and, desc, eq, gte } from 'drizzle-orm';
+import { trinityGlobalWorkspace } from '../services/ai-brain/trinityGlobalWorkspace';
 const log = createLogger('TrinityChatRoutes');
 
 
@@ -57,16 +61,17 @@ const requireTrinityAccess = (req: Request, res: Response, next: NextFunction) =
 };
 
 // Request schemas
+// Mode is dissolved: Trinity is ONE unified intelligence. Contextual depth
+// (guru-level reasoning, hypothesis engine, etc.) activates automatically
+// from org state + emotional signals + keyword stakes — not a UI toggle.
 const chatSchema = z.object({
   message: z.string().min(1).max(10000),
-  mode: z.enum(['business', 'personal', 'integrated', 'guru']).default('business'),
   sessionId: z.string().optional(),
   images: z.array(z.string()).max(5).optional(),
 });
 
 const updateSettingsSchema = z.object({
   personalDevelopmentEnabled: z.boolean().optional(),
-  spiritualGuidance: z.enum(['none', 'general', 'christian']).optional(),
   accountabilityLevel: z.enum(['gentle', 'balanced', 'challenging']).optional(),
   weeklyCheckInEnabled: z.boolean().optional(),
   checkInDay: z.string().optional(),
@@ -90,7 +95,7 @@ router.post('/chat', attachWorkspaceId, requireTrinityAccess, async (req: Reques
       return res.status(400).json({ error: 'Invalid request', details: parsed.error.issues });
     }
 
-    const { message, mode, sessionId, images } = parsed.data;
+    const { message, sessionId, images } = parsed.data;
     const userId = authReq.user!.id;
     const workspaceId = authReq.workspaceId;
 
@@ -108,7 +113,6 @@ router.post('/chat', attachWorkspaceId, requireTrinityAccess, async (req: Reques
       userId,
       workspaceId,
       message,
-      mode: mode as ConversationMode,
       sessionId,
       images,
       isSupportMode,
@@ -159,32 +163,9 @@ router.get('/session/:sessionId/messages', attachWorkspaceId, requireTrinityAcce
   }
 });
 
-/**
- * POST /api/trinity/chat/mode
- * Switch conversation mode
- */
-router.post('/mode', attachWorkspaceId, requireTrinityAccess, async (req: Request, res: Response) => {
-  try {
-    const authReq = req as AuthenticatedRequest;
-    const { mode } = req.body;
-    if (!['business', 'personal', 'integrated', 'guru'].includes(mode)) {
-      return res.status(400).json({ error: 'Invalid mode' });
-    }
-
-    const userId = authReq.user!.id;
-    const workspaceId = authReq.workspaceId;
-
-    if (!workspaceId) {
-      return res.status(400).json({ error: 'Workspace context required' });
-    }
-
-    const session = await trinityChatService.switchMode(userId, workspaceId, mode as ConversationMode);
-    return res.json({ session, mode });
-  } catch (error: unknown) {
-    log.error('[TrinityChat] Mode switch error:', error);
-    return res.status(500).json({ error: 'Failed to switch mode' });
-  }
-});
+// Legacy POST /api/trinity/chat/mode removed. Trinity has no "modes" —
+// she is one unified intelligence that calibrates depth, warmth, and
+// rigor from context automatically.
 
 /**
  * GET /api/trinity/chat/settings
@@ -232,6 +213,71 @@ router.patch('/settings', attachWorkspaceId, requireTrinityAccess, async (req: R
   } catch (error: unknown) {
     log.error('[TrinityChat] Settings update error:', error);
     return res.status(500).json({ error: 'Failed to update settings' });
+  }
+});
+
+/**
+ * GET /api/trinity/chat/thought-stream?sessionId=<id>
+ *
+ * Returns Trinity's active thought phase plus the most recent thought
+ * entries from the thought engine for the session. Used by the
+ * TrinityThoughtBar to render "Reading your message / Considering options /
+ * Forming a plan / Taking action" in real time while a chat request is
+ * in-flight.
+ */
+router.get('/thought-stream', attachWorkspaceId, requireTrinityAccess, async (req: Request, res: Response) => {
+  try {
+    const authReq = req as AuthenticatedRequest;
+    const workspaceId = authReq.workspaceId;
+    const sessionId = typeof req.query.sessionId === 'string' ? req.query.sessionId : null;
+
+    if (!workspaceId) {
+      return res.status(400).json({ error: 'Workspace context required' });
+    }
+
+    // Look for thoughts in the last 2 minutes for this session/workspace.
+    const since = new Date(Date.now() - 120_000);
+    const conditions = sessionId
+      ? and(
+          eq(trinityThoughtSignatures.workspaceId, workspaceId),
+          eq(trinityThoughtSignatures.sessionId, sessionId),
+          gte(trinityThoughtSignatures.createdAt, since),
+        )
+      : and(
+          eq(trinityThoughtSignatures.workspaceId, workspaceId),
+          gte(trinityThoughtSignatures.createdAt, since),
+        );
+
+    const rows = await db
+      .select()
+      .from(trinityThoughtSignatures)
+      .where(conditions)
+      .orderBy(desc(trinityThoughtSignatures.createdAt))
+      .limit(8);
+
+    const mostRecent = rows[0] ?? null;
+    // @ts-expect-error — context is jsonb
+    const currentPhase: string | null = mostRecent?.context?.phase ?? null;
+
+    return res.json({
+      sessionId,
+      workspaceId,
+      currentPhase,
+      isThinking: rows.length > 0,
+      lastThoughtAt: mostRecent?.createdAt ?? null,
+      thoughts: rows.map((r: any) => ({
+        id: r.id,
+        thoughtType: r.thoughtType,
+        content: String(r.content ?? '').substring(0, 240),
+        confidence: r.confidence,
+        phase: r.context?.phase ?? null,
+        createdAt: r.createdAt,
+      })),
+      activeSignals: trinityGlobalWorkspace.getSignalSummary(workspaceId),
+    });
+  } catch (error: unknown) {
+    log.error('[TrinityChat] Thought stream error:', error);
+    return res.status(500).json({ error: 'Failed to get thought stream' });
   }
 });
 

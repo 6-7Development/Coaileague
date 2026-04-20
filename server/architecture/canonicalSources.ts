@@ -21,7 +21,7 @@ export const CANONICAL_SOURCES = {
     // NOTE: /api/billing/credits* and /api/billing/subscription.credits are
     // derived views for the billing UI only. They MUST NOT be used by widgets,
     // dashboard cards, or any component that displays a credit number to the user.
-    service:       'server/services/billing/creditManager.ts',
+    service:       'server/services/billing/tokenManager.ts',
   },
 
   // ─── SUBSCRIPTIONS ────────────────────────────────────────────────────────
@@ -213,8 +213,11 @@ export const CANONICAL_SOURCES = {
   },
 
   // ─── SCHEDULING AI (orchestrated / AI-powered) ────────────────────────────
+  // Canonical feature: CoAIleague Smart Scheduling. The `scheduleos` path
+  // segment and route file are internal names preserved for URL stability;
+  // callers should refer to the feature as Smart Scheduling in user copy.
   schedulingAI: {
-    proposals:     'GET /api/scheduleos/proposals',     // scheduleosRoutes.ts
+    proposals:     'GET /api/scheduleos/proposals',     // scheduleosRoutes.ts (internal route name)
     smartGenerate: 'POST /api/scheduleos/smart-generate',
     // /api/orchestrated-schedule = execution layer; /api/scheduleos = AI decision layer
     service:       'server/routes/scheduleosRoutes.ts',

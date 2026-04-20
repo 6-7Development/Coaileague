@@ -1,3 +1,20 @@
+// ── GCS credential bootstrap ──────────────────────────────────────────────────
+// If the service account JSON is stored as GCS_KEY_JSON env var (Railway secret),
+// write it to a temp file and set GOOGLE_APPLICATION_CREDENTIALS before any
+// GCS client initializes.
+if (process.env.GCS_KEY_JSON && !process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+  const _fs = require('fs');
+  const _path = require('path');
+  const _keyPath = _path.join('/tmp', 'gcs-service-account.json');
+  try {
+    _fs.writeFileSync(_keyPath, process.env.GCS_KEY_JSON, { mode: 0o600 });
+    process.env.GOOGLE_APPLICATION_CREDENTIALS = _keyPath;
+    console.log('[GCS] Credentials written from GCS_KEY_JSON env var');
+  } catch (e) {
+    console.error('[GCS] Failed to write credentials:', e);
+  }
+}
+
 import express, { type Request, Response, NextFunction } from "express";
 import helmet from "helmet";
 import cors from "cors";
@@ -13,6 +30,8 @@ import { ensureRequiredTables } from "./services/dbMigrationService";
 import { runLegacyBootstraps } from "./services/legacyBootstrapRegistry";
 import { ensureCriticalConstraints } from "./services/criticalConstraintsBootstrap";
 import { ensureWorkspaceIndexes } from "./services/workspaceIndexBootstrap";
+import { ensureIdentityIntegrity } from "./services/identityIntegrityBootstrap";
+import { runStartupRecovery, checkObjectStorageConfig } from "./lib/startupRecovery";
 import { isProduction as isProductionEnv } from "./lib/isProduction";
 import { ensurePerformanceIndexes, registerNdsQueueMonitor } from "./services/performanceIndexService";
 import { validateAndLogConfiguration } from "./utils/configValidator";
@@ -175,7 +194,7 @@ const log = createLogger('server');
 const app = express();
 
 // Trust proxy MUST be set before any middleware reads req.ip (rate limiting, CORS origin logging).
-// CLAUDE.md §A: use isProductionEnv() from lib/isProduction — not process.env.REPLIT_DEPLOYMENT.
+// TRINITY.md §A: use isProductionEnv() from lib/isProduction — not process.env.REPLIT_DEPLOYMENT.
 app.set('trust proxy', 1);
 
 // Phase 97 security: remove framework fingerprint and add critical headers for ALL routes
@@ -319,7 +338,7 @@ app.use(cors({
       return callback(null, isAllowed);
     }
 
-    // CORS allowlist (CLAUDE.md §6 platform identity): only coaileague.com
+    // CORS allowlist (TRINITY.md §6 platform identity): only coaileague.com
     // and dev-host loopbacks. Replit domains removed.
     const allowedPatterns = [
       /^https?:\/\/(www\.)?coaileague\.com$/,
@@ -344,7 +363,9 @@ app.use(cors({
 // ============================================================================
 app.use((req, res, next) => {
   const host = req.hostname;
-  if (host === 'coaileague.com') {
+  // Exempt ALL /api/ paths from redirect — webhooks must never be redirected.
+  // Twilio, Plaid, Stripe, Resend all call /api/* and cannot follow redirects.
+  if (host === 'coaileague.com' && !req.path.startsWith('/api/')) {
     const wwwUrl = `https://www.coaileague.com${req.originalUrl}`;
     return res.redirect(301, wwwUrl);
   }
@@ -477,7 +498,7 @@ app.use(helmet({
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://unpkg.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
       imgSrc: ["'self'", "data:", "blob:", "https:", "https://*.tile.openstreetmap.org"],
-      // CSP allowlist (CLAUDE.md §6 platform identity): only the
+      // CSP allowlist (TRINITY.md §6 platform identity): only the
       // production-relevant SaaS partners. Replit dev domains have been
       // removed — they were a legacy artifact from the Replit hosting
       // era and are no longer needed on Railway production.
@@ -547,9 +568,12 @@ if (!configValid && isProductionEnv()) {
   process.exit(1);
 }
 
-// Service Worker handling - proper headers for PWA detection
-// This ensures PWABuilder and browsers can properly detect the service worker
-app.get('/service-worker.js', (req, res, next) => {
+// Service Worker handling - proper headers for PWA detection.
+// /sw.js is the canonical SW (registered by client/src/main.tsx). The
+// /service-worker.js path is kept as a header passthrough so legacy clients
+// that still have the old SW URL cached can fetch a 404 with the correct
+// content-type / scope headers and unregister cleanly.
+app.get(['/sw.js', '/service-worker.js'], (req, res, next) => {
   res.setHeader('Content-Type', 'application/javascript');
   res.setHeader('Service-Worker-Allowed', '/');
   res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
@@ -734,11 +758,22 @@ async function initializeCriticalServices() {
 
   // workspace_id performance indexes — installs btree indexes on every
   // multi-tenant table that lacks one in the Drizzle schema declaration.
-  // CLAUDE.md §9: All workspace_id columns indexed.
+  // TRINITY.md §9: All workspace_id columns indexed.
   try {
     await ensureWorkspaceIndexes();
   } catch (error) {
     log.error('Workspace index bootstrap failed', { error: error instanceof Error ? error.message : String(error) });
+  }
+
+  // Universal identity invariants — workspace-scoped uniqueness on the
+  // three identity columns (workspaces.org_id, employees.employee_number,
+  // clients.client_number), an immutability trigger that blocks direct
+  // UPDATEs to them unless the session opens an authorized override, and
+  // a backfill sweep that populates any row still missing its ID.
+  try {
+    await ensureIdentityIntegrity();
+  } catch (error) {
+    log.error('Identity integrity bootstrap failed', { error: error instanceof Error ? error.message : String(error) });
   }
 
   // Option B storage quota tables — create if not exists (idempotent)
@@ -748,6 +783,19 @@ async function initializeCriticalServices() {
   } catch (error) {
     log.error('Storage quota table init failed', { error: error instanceof Error ? error.message : String(error) });
   }
+
+  // TRINITY.md Section R / Law P4 — startup recovery: clear stale payroll
+  // locks, mark interrupted goals & supervisor handoffs from the prior boot.
+  // Non-fatal — degraded recovery is preferable to a stalled boot.
+  try {
+    await runStartupRecovery();
+  } catch (error) {
+    log.error('Startup recovery failed (non-fatal)', { error: error instanceof Error ? error.message : String(error) });
+  }
+
+  // TRINITY.md Section R / Law P3 — surface missing object-storage configuration
+  // at boot so file-upload failures do not appear as silent 500s later.
+  checkObjectStorageConfig();
 
   // FOUNDER EXEMPTION GUARANTEE: Ensure the grandfathered founding tenant always has
   // founder_exemption=true and billing_exempt=true. Safe to run in dev —

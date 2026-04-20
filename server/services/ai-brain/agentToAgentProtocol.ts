@@ -15,6 +15,9 @@
 import { platformEventBus } from '../platformEventBus';
 import { sharedKnowledgeGraph, type KnowledgeDomain, type LearningEntry } from './sharedKnowledgeGraph';
 import { a2aProtocolRepository } from './cognitiveRepositories';
+import { db } from '../../db';
+import { a2aMessages } from '@shared/schema';
+import { eq } from 'drizzle-orm';
 import crypto from 'crypto';
 import { createLogger } from '../../lib/logger';
 const log = createLogger('agentToAgentProtocol');
@@ -280,10 +283,30 @@ class AgentToAgentProtocol {
       status: 'pending',
     };
 
-    // Add to recipient's queue
+    // Add to recipient's queue (in-memory for fast handler invocation)
     const queue = this.messageQueues.get(to) || [];
     queue.push(message);
     this.messageQueues.set(to, queue);
+
+    // TRINITY.md Section R / Law P2: persist to a2a_messages BEFORE processing
+    // so an in-flight message survives a Railway redeploy and can be re-queued
+    // by runStartupRecovery() / requeuePendingMessages().
+    try {
+      await db.insert(a2aMessages).values({
+        id: message.id,
+        fromAgent: message.fromAgent,
+        toAgent: message.toAgent,
+        type: message.type as any,
+        priority: message.priority as any,
+        payload: message.payload,
+        correlationId: message.correlationId,
+        replyTo: message.replyTo,
+        status: 'pending',
+        expiresAt: message.expiresAt,
+      });
+    } catch (persistErr: any) {
+      log.warn('[A2A] Persist message failed (non-fatal):', persistErr?.message);
+    }
 
     // Update sender stats
     fromAgent.messagesSent++;
@@ -296,9 +319,10 @@ class AgentToAgentProtocol {
         message.status = 'delivered';
         toAgent.messagesReceived++;
         toAgent.lastActiveAt = new Date();
-        
+
         const response = await handler(message);
         message.status = 'processed';
+        await this.markMessagePersisted(message.id, 'processed');
         
         // If this was a request, send response back
         if (type === 'request' || type === 'validation_request') {
@@ -314,7 +338,8 @@ class AgentToAgentProtocol {
       } catch (error: any) {
         message.status = 'failed';
         message.metadata = { error: (error instanceof Error ? error.message : String(error)) };
-        
+        await this.markMessagePersisted(message.id, 'failed');
+
         // Update failure rate
         const totalMessages = fromAgent.messagesSent;
         const failures = Math.round(totalMessages * (1 - fromAgent.successRate)) + 1;
@@ -323,6 +348,20 @@ class AgentToAgentProtocol {
     }
 
     return message;
+  }
+
+  /**
+   * Mark a persisted A2A message with its final status (TRINITY.md Section R / Law P2).
+   * Non-fatal — DB outage cannot break message processing.
+   */
+  private async markMessagePersisted(messageId: string, status: 'delivered' | 'processed' | 'failed' | 'expired'): Promise<void> {
+    try {
+      await db.update(a2aMessages)
+        .set({ status: status as any, processedAt: new Date() })
+        .where(eq(a2aMessages.id, messageId));
+    } catch (persistErr: any) {
+      log.warn('[A2A] Mark message persisted failed (non-fatal):', persistErr?.message);
+    }
   }
 
   /**

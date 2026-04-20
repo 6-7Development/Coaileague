@@ -30,7 +30,7 @@ import { eq, and, sql, gte, lte } from 'drizzle-orm';
 import { 
   PREMIUM_FEATURES, 
   canAccessFeature, 
-  getFeatureCreditCost,
+  getFeatureTokenCost,
   isPremiumFeature,
   isEliteFeature,
   mapAddonKeyToFeatureId,
@@ -44,7 +44,8 @@ import {
   type StepStatus 
 } from './orchestration/universalStepLogger';
 import { createLogger } from '../lib/logger';
-import { creditManager } from './billing/creditManager';
+import { tokenManager } from './billing/tokenManager';
+import { calculateEliteCharge } from './billing/eliteFeatureService';
 const log = createLogger('premiumFeatureGating');
 
 
@@ -58,9 +59,16 @@ export interface PremiumAccessResult {
   requiresUpgrade?: boolean;
   suggestedTier?: SubscriptionTier;
   suggestedAddon?: string;
+  // Elite per-tier USD surcharge (cents) owed for units beyond the monthly quota.
+  // Populated by the elite billing path; `billableUnits` is the slice of `units`
+  // that lands outside the included cap. Consumers (e.g. actionRegistry handlers)
+  // must charge this via Stripe off-session before running the elite action.
+  eliteSurchargeCents?: number;
+  eliteBillableUnits?: number;
+  eliteSurchargePerUnitCents?: number;
 }
 
-export interface CreditDeductionResult {
+export interface TokenUsageResult {
   success: boolean;
   creditsBefore: number;
   creditsAfter: number;
@@ -231,28 +239,51 @@ class PremiumFeatureGatingService {
 
       // STEP 4: PROCESS - Calculate access decision
       await this.logStep(orchContext, 'PROCESS', 'started', { tier, credits, currentUsage, units });
-      
+
+      // Elite per-tier USD surcharge: when a tenant blows past the monthly
+      // included quota on an elite feature, charge `eliteSurchargeCents[tier]`
+      // per additional use instead of deducting credits. This is the primary
+      // monetization path for the Apr-2026 elite pricing matrix.
+      const eliteCharge = feature.featureType === 'elite'
+        ? calculateEliteCharge({ featureId, tier, currentUsage, requestedUnits: units })
+        : null;
+      const hasEliteSurcharge = eliteCharge !== null && eliteCharge.billableUnits > 0;
+
       const accessCheck = canAccessFeature(featureId, tier, currentUsage, credits, units, purchasedAddons);
-      
-      await this.logStep(orchContext, 'PROCESS', 'completed', {}, { 
-        allowed: accessCheck.allowed, 
+
+      await this.logStep(orchContext, 'PROCESS', 'completed', {}, {
+        allowed: accessCheck.allowed,
         creditsRequired: accessCheck.creditsRequired,
-        tierEligible: accessCheck.tierEligible
+        tierEligible: accessCheck.tierEligible,
+        eliteSurchargeCents: eliteCharge?.totalCents,
+        eliteBillableUnits: eliteCharge?.billableUnits,
       });
 
       // STEP 5: MUTATE - Skip for read-only access check
       await this.logStep(orchContext, 'MUTATE', 'skipped', {}, { reason: 'read_only_check' });
 
       // STEP 6: CONFIRM - Return access result
-      if (accessCheck.allowed) {
+      // If the tier is eligible for the elite feature and a per-use USD surcharge
+      // is configured for the tier, the request is allowed regardless of credit
+      // balance — the caller charges the surcharge via Stripe off-session.
+      const eliteAllowsOverage = accessCheck.tierEligible === true && hasEliteSurcharge;
+
+      if (accessCheck.allowed || eliteAllowsOverage) {
         const result: PremiumAccessResult = {
           allowed: true,
           creditCost: accessCheck.creditsRequired || 0,
           remainingCredits: credits - (accessCheck.creditsRequired || 0),
           usageThisMonth: currentUsage,
           monthlyLimit,
+          eliteSurchargeCents: eliteCharge?.totalCents ?? 0,
+          eliteBillableUnits: eliteCharge?.billableUnits ?? 0,
+          eliteSurchargePerUnitCents: eliteCharge?.surchargeCents ?? 0,
         };
-        await this.logStep(orchContext, 'CONFIRM', 'completed', {}, { allowed: true, creditCost: result.creditCost });
+        await this.logStep(orchContext, 'CONFIRM', 'completed', {}, {
+          allowed: true,
+          creditCost: result.creditCost,
+          eliteSurchargeCents: result.eliteSurchargeCents,
+        });
         await this.logStep(orchContext, 'NOTIFY', 'skipped', {}, { reason: 'access_granted' });
         return result;
       }
@@ -301,16 +332,16 @@ class PremiumFeatureGatingService {
   }
 
   /**
-   * Deduct credits for a premium feature usage
+   * Record token usage for a premium feature.
    * Follows full 7-step pattern: TRIGGER -> FETCH -> VALIDATE -> PROCESS -> MUTATE -> CONFIRM -> NOTIFY
    */
-  async deductCredits(
+  async recordUsage(
     workspaceId: string,
     featureId: string,
     units: number = 1,
     userId?: string,
     metadata?: Record<string, any>
-  ): Promise<CreditDeductionResult> {
+  ): Promise<TokenUsageResult> {
     // Create orchestration context for 7-step logging
     const orchContext = this.createOrchestrationContext(
       `premium_credit_deduction:${featureId}`,
@@ -398,15 +429,15 @@ class PremiumFeatureGatingService {
       const creditsAfter = creditsBefore - creditsToDeduct;
       await this.logStep(orchContext, 'PROCESS', 'completed', {}, { creditsAfter });
 
-      // STEP 5: MUTATE - Deduct credits via universal creditManager (ensures WebSocket broadcast + transaction logging)
+      // STEP 5: MUTATE - Deduct credits via universal tokenManager (ensures WebSocket broadcast + transaction logging)
       await this.logStep(orchContext, 'MUTATE', 'started', { workspaceId, creditsToDeduct });
       
-      const { creditManager, CREDIT_COSTS } = await import('./billing/creditManager');
-      const featureKeyForManager = (featureId in CREDIT_COSTS) 
-        ? featureId as keyof typeof CREDIT_COSTS 
-        : 'premium_feature' as keyof typeof CREDIT_COSTS;
+      const { tokenManager, TOKEN_COSTS } = await import('./billing/tokenManager');
+      const featureKeyForManager = (featureId in TOKEN_COSTS) 
+        ? featureId as keyof typeof TOKEN_COSTS 
+        : 'premium_feature' as keyof typeof TOKEN_COSTS;
       
-      const cmResult = await creditManager.deductCredits({
+      const cmResult = await tokenManager.recordUsage({
         workspaceId,
         userId,
         featureKey: featureKeyForManager,
@@ -433,14 +464,14 @@ class PremiumFeatureGatingService {
 
       await this.logUsage(workspaceId, featureId, creditsToDeduct, units, userId, metadata);
       
-      await this.logStep(orchContext, 'MUTATE', 'completed', {}, { 
-        creditsDeducted: creditsToDeduct, 
+      await this.logStep(orchContext, 'MUTATE', 'completed', {}, {
+        tokensUsed: creditsToDeduct,
         usageLogged: true,
-        transactionId: cmResult.transactionId,
+        usageEventId: cmResult.usageEventId,
       });
 
       // STEP 6: CONFIRM - Return success result
-      const result: CreditDeductionResult = {
+      const result: TokenUsageResult = {
         success: true,
         creditsBefore,
         creditsAfter,
@@ -488,7 +519,7 @@ class PremiumFeatureGatingService {
    */
   async getAvailableCredits(workspaceId: string): Promise<number> {
     try {
-      return await creditManager.getBalance(workspaceId);
+      return await tokenManager.getBalance(workspaceId);
     } catch (error) {
       log.error('[PremiumGating] Error getting credits:', error);
       return 0;
@@ -603,7 +634,7 @@ class PremiumFeatureGatingService {
   ): Promise<{ success: boolean; newBalance: number }> {
     // Flat seat-fee model: credits are tier-allocated, not purchased individually
     // workspace_credits table dropped (Phase 16)
-    const balance = await creditManager.getBalance(workspaceId);
+    const balance = await tokenManager.getBalance(workspaceId);
     return { success: true, newBalance: balance };
   }
 

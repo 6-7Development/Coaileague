@@ -616,15 +616,36 @@ export default function ClientPortal() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
 
+  // Phase 25 — client identity PIN
+  const [showPinDialog, setShowPinDialog] = useState(false);
+  const [pinInput, setPinInput] = useState("");
+  const [pinInputConfirm, setPinInputConfirm] = useState("");
+
   const { data: invoices = [] } = useQuery<Invoice[]>({ queryKey: ["/api/invoices"] });
   const { data: clients = [] } = useClientLookup();
   const currentClient = clients.find(c => c.email === user?.email);
 
   interface ClientReport { id: number; title: string; reportType: string; status: string; employeeName?: string; createdAt: string; data: Record<string, any>; }
-  const { data: clientReports = [], isLoading: reportsLoading } = useQuery<ClientReport[]>({
+  interface ClientGuardTour { id: string; tour_name?: string; status: string; completed_at?: string; completion_percentage?: string; officer_name?: string; }
+  interface ClientDar { id: string; report_number?: string; site_name?: string; shift_date?: string; employee_name?: string; status?: string; pdf_url?: string; photo_count?: number; }
+  interface ClientIncident { id: string; title: string; incident_type?: string; severity?: string; occurred_at?: string; location?: string; status?: string; site_id?: string; officer_name?: string; }
+  interface ClientTransparencyPdf { id: string; report_number?: string; site_name?: string; shift_date?: string; employee_name?: string; pdf_url?: string; photo_count?: number; status?: string; }
+  interface ClientReportsResponse {
+    reports: ClientReport[];
+    guardTours: ClientGuardTour[];
+    dars: ClientDar[];
+    incidents: ClientIncident[];
+    transparencyPdfs: ClientTransparencyPdf[];
+  }
+  const { data: clientReportsData, isLoading: reportsLoading } = useQuery<ClientReportsResponse>({
     queryKey: ["/api/client-reports"],
     enabled: !!currentClient,
   });
+  const clientReports: ClientReport[] = clientReportsData?.reports ?? [];
+  const clientGuardTours: ClientGuardTour[] = clientReportsData?.guardTours ?? [];
+  const clientDars: ClientDar[] = clientReportsData?.dars ?? [];
+  const clientIncidents: ClientIncident[] = clientReportsData?.incidents ?? [];
+  const clientTransparencyPdfs: ClientTransparencyPdf[] = clientReportsData?.transparencyPdfs ?? [];
 
   interface Contract { id: string; title: string; status: string; clientEmail: string; createdAt: string; expiresAt?: string; docType?: string; }
   const { data: contractsData } = useQuery<{ contracts: Contract[] }>({
@@ -760,6 +781,41 @@ export default function ClientPortal() {
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
+  // Phase 25 — Client identity PIN (self-service)
+  const { data: pinStatus } = useQuery<{ pinSet: boolean; clientId?: string }>({
+    queryKey: ["/api/identity/pin/client/self/status"],
+    enabled: !!currentClient,
+  });
+
+  const setPinMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/identity/pin/client/self/set", { pin: pinInput }),
+    onSuccess: () => {
+      toast({ title: "PIN Saved", description: "Your client PIN is set. Keep it private." });
+      queryClient.invalidateQueries({ queryKey: ["/api/identity/pin/client/self/status"] });
+      setShowPinDialog(false);
+      setPinInput("");
+      setPinInputConfirm("");
+    },
+    onError: (e: any) => toast({
+      title: "Could not save PIN",
+      description: e?.message || "Please try again.",
+      variant: "destructive",
+    }),
+  });
+
+  const clearPinMutation = useMutation({
+    mutationFn: () => apiRequest("DELETE", "/api/identity/pin/client/self"),
+    onSuccess: () => {
+      toast({ title: "PIN Removed", description: "Your client PIN has been cleared." });
+      queryClient.invalidateQueries({ queryKey: ["/api/identity/pin/client/self/status"] });
+    },
+    onError: (e: any) => toast({
+      title: "Could not remove PIN",
+      description: e?.message || "Please try again.",
+      variant: "destructive",
+    }),
+  });
+
   const downloadPdf = (invoiceId: number) => {
     window.open(`/api/invoices/${invoiceId}/pdf`, "_blank");
   };
@@ -837,7 +893,11 @@ export default function ClientPortal() {
               <TabsTrigger value="payments" data-testid="tab-payments">Payments</TabsTrigger>
               <TabsTrigger value="reports" data-testid="tab-reports">
                 Reports
-                {clientReports.length > 0 && <Badge variant="secondary" className="ml-1.5 h-5 px-1.5 text-xs">{clientReports.length}</Badge>}
+                {(clientReports.length + clientTransparencyPdfs.length + clientDars.length) > 0 && (
+                  <Badge variant="secondary" className="ml-1.5 h-5 px-1.5 text-xs">
+                    {clientReports.length + clientTransparencyPdfs.length + clientDars.length}
+                  </Badge>
+                )}
               </TabsTrigger>
               <TabsTrigger value="contracts" data-testid="tab-contracts">
                 Contracts
@@ -1110,17 +1170,138 @@ export default function ClientPortal() {
           </TabsContent>
 
           {/* ── FIELD REPORTS ────────────────────────────────────────────── */}
-          <TabsContent value="reports" className="mt-6">
+          <TabsContent value="reports" className="mt-6 space-y-6">
+            {/* 1. Shift Transparency Reports — chronological proof-of-service PDFs */}
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2"><ClipboardCheck className="h-5 w-5 text-indigo-500" /> Field Reports</CardTitle>
-                <CardDescription>View approved field reports from your service team</CardDescription>
+                <CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5 text-indigo-500" /> Shift Transparency Reports</CardTitle>
+                <CardDescription>Chronological proof-of-service with GPS-stamped photos for every hour of every shift at your sites.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {reportsLoading ? (
+                  <div className="flex justify-center py-8"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
+                ) : clientTransparencyPdfs.length === 0 ? (
+                  <div className="text-center py-8 text-sm text-muted-foreground">No shift reports yet — generated automatically at the end of each shift.</div>
+                ) : (
+                  <div className="space-y-2">
+                    {clientTransparencyPdfs.map(pdf => (
+                      <div key={pdf.id} className="flex items-center justify-between gap-3 p-3 rounded-md border" data-testid={`card-transparency-${pdf.id}`}>
+                        <div className="min-w-0">
+                          <p className="font-semibold truncate">{pdf.site_name || 'Site'} — {pdf.shift_date ? formatDate(pdf.shift_date) : ''}</p>
+                          <p className="text-sm text-muted-foreground">
+                            Officer: {pdf.employee_name || 'On-Duty Officer'} · {pdf.photo_count ?? 0} photos
+                          </p>
+                        </div>
+                        {pdf.pdf_url && (
+                          <Button asChild size="sm" variant="outline" data-testid={`button-transparency-pdf-${pdf.id}`}>
+                            <a href={pdf.pdf_url} target="_blank" rel="noreferrer"><Download className="h-3.5 w-3.5 mr-1" /> Download PDF</a>
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* 2. Guard Patrol Tours — completion rates */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><Shield className="h-5 w-5 text-indigo-500" /> Guard Patrol Tours</CardTitle>
+                <CardDescription>Patrol completion for your sites — missed checkpoints flagged.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {clientGuardTours.length === 0 ? (
+                  <div className="text-center py-8 text-sm text-muted-foreground">No completed patrol tours yet.</div>
+                ) : (
+                  <div className="space-y-2">
+                    {clientGuardTours.map(tour => {
+                      const pct = Number(tour.completion_percentage ?? 0);
+                      const complete = pct >= 100;
+                      return (
+                        <div key={tour.id} className="flex items-center justify-between gap-3 p-3 rounded-md border" data-testid={`card-tour-${tour.id}`}>
+                          <div className="min-w-0">
+                            <p className="font-medium truncate">{tour.tour_name || 'Patrol Tour'}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {tour.completed_at ? formatDate(tour.completed_at) : 'In progress'} · {tour.officer_name || 'Officer'}
+                            </p>
+                          </div>
+                          <Badge variant={complete ? 'secondary' : 'destructive'}>
+                            {Math.round(pct)}% complete
+                          </Badge>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* 3. Daily Activity Reports */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><ClipboardCheck className="h-5 w-5 text-indigo-500" /> Daily Activity Reports</CardTitle>
+                <CardDescription>Supervisor-reviewed DARs for every shift at your sites.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {clientDars.length === 0 ? (
+                  <div className="text-center py-8 text-sm text-muted-foreground">No DARs yet.</div>
+                ) : (
+                  <div className="space-y-2">
+                    {clientDars.map(dar => (
+                      <div key={dar.id} className="flex items-center justify-between gap-3 p-3 rounded-md border" data-testid={`card-dar-${dar.id}`}>
+                        <div className="min-w-0">
+                          <p className="font-medium truncate">{dar.site_name || 'Site'}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {dar.shift_date ? formatDate(dar.shift_date) : ''} · {dar.employee_name || 'Officer'}
+                          </p>
+                        </div>
+                        {dar.pdf_url && (
+                          <Button asChild size="sm" variant="ghost" data-testid={`button-dar-pdf-${dar.id}`}>
+                            <a href={dar.pdf_url} target="_blank" rel="noreferrer"><Eye className="h-3.5 w-3.5 mr-1" /> View PDF</a>
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* 4. Incident Reports (client-safe view) */}
+            {clientIncidents.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2"><AlertTriangle className="h-5 w-5 text-red-500" /> Incident Reports</CardTitle>
+                  <CardDescription>Incidents at your sites — client-safe view only (no internal investigation notes).</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {clientIncidents.map(inc => (
+                      <div key={inc.id} className="p-3 rounded-md border border-l-4 border-l-red-400" data-testid={`card-incident-${inc.id}`}>
+                        <p className="font-medium">{inc.title}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {inc.incident_type || 'incident'} · {inc.occurred_at ? formatDate(inc.occurred_at) : 'time unknown'}
+                          {inc.status ? <> · <Badge variant={inc.status === 'closed' ? 'outline' : 'secondary'} className="ml-1">{inc.status}</Badge></> : null}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* 5. Field Report Submissions — legacy reports view */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><ClipboardCheck className="h-5 w-5 text-indigo-500" /> Field Report Submissions</CardTitle>
+                <CardDescription>Approved field reports from your service team.</CardDescription>
               </CardHeader>
               <CardContent>
                 {reportsLoading ? (
                   <div className="flex justify-center py-8"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
                 ) : clientReports.length === 0 ? (
-                  <div className="text-center py-12"><ClipboardCheck className="h-12 w-12 text-muted-foreground mx-auto mb-3" /><p className="text-muted-foreground">No reports submitted yet</p></div>
+                  <div className="text-center py-8 text-sm text-muted-foreground">No field reports yet.</div>
                 ) : clientReports.map(r => {
                   const cfg = reportTypeConfig[r.reportType] || reportTypeConfig.other;
                   const Icon = cfg.icon;
@@ -1139,6 +1320,103 @@ export default function ClientPortal() {
                     </div>
                   );
                 })}
+              </CardContent>
+            </Card>
+
+            {/* Guard Tours — proof of patrol */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><Shield className="h-5 w-5 text-emerald-600" /> Guard Tours</CardTitle>
+                <CardDescription>Patrol routes and checkpoint scans at your sites</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {clientGuardTours.length === 0 ? (
+                  <div className="text-center py-8"><Shield className="h-10 w-10 text-muted-foreground mx-auto mb-2" /><p className="text-muted-foreground text-sm">No guard tours logged yet</p></div>
+                ) : clientGuardTours.map(t => (
+                  <div key={t.id} className="flex items-start gap-4 p-4 rounded-md border mb-2" data-testid={`card-guardtour-${t.id}`}>
+                    <div className="h-9 w-9 rounded-md bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center shrink-0"><Shield className="h-4 w-4 text-emerald-600" /></div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <p className="font-semibold truncate">{t.tour_name || 'Guard Tour'}</p>
+                        {t.status && <Badge variant="secondary">{t.status}</Badge>}
+                        {t.completion_percentage && <Badge variant="outline">{t.completion_percentage}% complete</Badge>}
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {t.officer_name && `Officer: ${t.officer_name}`}
+                        {t.completed_at && ` • Completed ${formatDate(t.completed_at)}`}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
+            {/* Daily Activity Reports */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5 text-indigo-600" /> Daily Activity Reports</CardTitle>
+                <CardDescription>Verified shift reports delivered from the field</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {clientDars.length === 0 ? (
+                  <div className="text-center py-8"><FileText className="h-10 w-10 text-muted-foreground mx-auto mb-2" /><p className="text-muted-foreground text-sm">No daily activity reports yet</p></div>
+                ) : clientDars.map(d => (
+                  <div key={d.id} className="flex items-start gap-4 p-4 rounded-md border mb-2" data-testid={`card-dar-${d.id}`}>
+                    <div className="h-9 w-9 rounded-md bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center shrink-0"><FileText className="h-4 w-4 text-indigo-600" /></div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <p className="font-semibold truncate">{d.report_number || `DAR — ${d.site_name || 'Site'}`}</p>
+                        {d.status && <Badge variant="secondary">{d.status}</Badge>}
+                        {d.photo_count ? <Badge variant="outline">{d.photo_count} photos</Badge> : null}
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {d.employee_name && `By ${d.employee_name} • `}
+                        {d.shift_date && formatDate(d.shift_date)}
+                        {d.site_name && ` • ${d.site_name}`}
+                      </p>
+                    </div>
+                    {d.pdf_url && (
+                      <Button size="sm" variant="outline" asChild data-testid={`button-view-dar-${d.id}`}>
+                        <a href={d.pdf_url} target="_blank" rel="noopener noreferrer"><Download className="h-3.5 w-3.5 mr-1" />PDF</a>
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
+            {/* Incidents */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><AlertTriangle className="h-5 w-5 text-amber-600" /> Incidents at Your Sites</CardTitle>
+                <CardDescription>Redacted incident summaries — detailed notes available on request</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {clientIncidents.length === 0 ? (
+                  <div className="text-center py-8"><AlertTriangle className="h-10 w-10 text-muted-foreground mx-auto mb-2" /><p className="text-muted-foreground text-sm">No incidents to report</p></div>
+                ) : clientIncidents.map(i => (
+                  <div key={i.id} className="flex items-start gap-4 p-4 rounded-md border mb-2" data-testid={`card-incident-${i.id}`}>
+                    <div className="h-9 w-9 rounded-md bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center shrink-0"><AlertTriangle className="h-4 w-4 text-amber-600" /></div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <p className="font-semibold truncate">{i.title}</p>
+                        {i.severity && (
+                          <Badge variant="outline" className={
+                            i.severity === "critical" ? "border-rose-400 text-rose-600" :
+                            i.severity === "high" ? "border-amber-400 text-amber-600" :
+                            ""
+                          }>{i.severity}</Badge>
+                        )}
+                        {i.incident_type && <Badge variant="secondary">{i.incident_type}</Badge>}
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {i.occurred_at && formatDate(i.occurred_at)}
+                        {i.location && ` • ${i.location}`}
+                        {i.officer_name && ` • ${i.officer_name}`}
+                      </p>
+                    </div>
+                  </div>
+                ))}
               </CardContent>
             </Card>
           </TabsContent>
@@ -1757,6 +2035,91 @@ export default function ClientPortal() {
               </CardContent>
             </Card>
 
+            {/* Phase 25 — Client Identity & PIN */}
+            <Card data-testid="card-client-identity">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <ShieldCheck className="h-4 w-4 text-emerald-500" />
+                  Your Client Identity
+                </CardTitle>
+                <CardDescription>
+                  Use your client number when contacting your security provider by phone
+                  or email for verified assistance.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label>Client Number</Label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <code
+                      className="px-3 py-2 bg-muted rounded text-sm font-mono flex-1"
+                      data-testid="text-client-number"
+                    >
+                      {(currentClient as any)?.clientNumber ||
+                        (currentClient as any)?.externalId ||
+                        "Not assigned yet"}
+                    </code>
+                    {((currentClient as any)?.clientNumber || (currentClient as any)?.externalId) && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        data-testid="button-copy-client-number"
+                        onClick={() => {
+                          const n = (currentClient as any)?.clientNumber || (currentClient as any)?.externalId;
+                          if (n) {
+                            navigator.clipboard.writeText(n);
+                            toast({ title: "Copied", description: "Client number copied to clipboard." });
+                          }
+                        }}
+                      >
+                        Copy
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <Label>Client PIN</Label>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Set a PIN to verify your identity when calling (866) 464-4151.
+                    Never share your PIN with anyone.
+                  </p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Badge variant={pinStatus?.pinSet ? "default" : "secondary"} data-testid="badge-pin-status">
+                      {pinStatus?.pinSet ? "PIN set" : "No PIN set"}
+                    </Badge>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      data-testid="button-set-pin"
+                      onClick={() => {
+                        setPinInput("");
+                        setPinInputConfirm("");
+                        setShowPinDialog(true);
+                      }}
+                    >
+                      {pinStatus?.pinSet ? "Update PIN" : "Set PIN"}
+                    </Button>
+                    {pinStatus?.pinSet && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-destructive"
+                        data-testid="button-remove-pin"
+                        disabled={clearPinMutation.isPending}
+                        onClick={() => clearPinMutation.mutate()}
+                      >
+                        {clearPinMutation.isPending ? (
+                          <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                        ) : null}
+                        Remove
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Password */}
             <Card>
               <CardHeader>
@@ -1854,6 +2217,73 @@ export default function ClientPortal() {
         clientName={currentClient.companyName || `${currentClient.firstName || ""} ${currentClient.lastName || ""}`.trim()}
         clientEmail={currentClient.email || user?.email || ""}
       />
+
+      {/* Phase 25 — Set/Update PIN dialog */}
+      <UniversalModal open={showPinDialog} onOpenChange={setShowPinDialog}>
+        <UniversalModalContent>
+          <UniversalModalHeader>
+            <UniversalModalTitle>
+              {pinStatus?.pinSet ? "Update Your Client PIN" : "Set Your Client PIN"}
+            </UniversalModalTitle>
+            <UniversalModalDescription>
+              Choose a 4–8 digit PIN. You'll use it to verify your identity when calling
+              or messaging your security provider.
+            </UniversalModalDescription>
+          </UniversalModalHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1.5">
+              <Label>New PIN</Label>
+              <Input
+                type="password"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                autoComplete="new-password"
+                maxLength={8}
+                value={pinInput}
+                onChange={e => setPinInput(e.target.value.replace(/[^0-9]/g, ""))}
+                data-testid="input-client-pin"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Confirm PIN</Label>
+              <Input
+                type="password"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                autoComplete="new-password"
+                maxLength={8}
+                value={pinInputConfirm}
+                onChange={e => setPinInputConfirm(e.target.value.replace(/[^0-9]/g, ""))}
+                data-testid="input-client-pin-confirm"
+              />
+            </div>
+          </div>
+          <UniversalModalFooter>
+            <Button variant="ghost" onClick={() => setShowPinDialog(false)}>
+              Cancel
+            </Button>
+            <Button
+              data-testid="button-save-client-pin"
+              disabled={
+                setPinMutation.isPending ||
+                pinInput.length < 4 ||
+                pinInput.length > 8 ||
+                pinInput !== pinInputConfirm
+              }
+              onClick={() => {
+                if (pinInput !== pinInputConfirm) {
+                  toast({ title: "PINs do not match", variant: "destructive" });
+                  return;
+                }
+                setPinMutation.mutate();
+              }}
+            >
+              {setPinMutation.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+              Save PIN
+            </Button>
+          </UniversalModalFooter>
+        </UniversalModalContent>
+      </UniversalModal>
 
       {/* Dialogs */}
       <COIRequestDialog open={coiDialogOpen} onOpenChange={setCoiDialogOpen} />

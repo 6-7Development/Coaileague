@@ -761,7 +761,7 @@ export const BILLING = {
   },
 
   // ==========================================================================
-  // CREDIT COSTS PER FEATURE (Synced with creditManager.ts - Jan 2026)
+  // CREDIT COSTS PER FEATURE (Synced with tokenManager.ts - Jan 2026)
   // 1 credit = $0.01 | Gemini 3 Pro vs Flash model usage with 4x margin
   // ==========================================================================
   creditCosts: {
@@ -776,7 +776,7 @@ export const BILLING = {
 
     // =========================================================================
     // AI Scheduling — PER-SHIFT BILLING (Mar 2026 Rebalance)
-    // Cost is per shift scheduled/optimized by Trinity AI. Multiplied by quantity in creditManager.
+    // Cost is per shift scheduled/optimized by Trinity AI. Multiplied by quantity in tokenManager.
     // $0.20/shift is 1-3% of typical shift revenue — massive value for automation.
     // =========================================================================
     ai_scheduling: 20,             // 20 credits ($0.20) per shift scheduled — replaces $150-250/week scheduling labor
@@ -1023,30 +1023,58 @@ export const BILLING = {
   // Designed to undercut QB, Gusto, Patriot, and Square on every line item.
   // ==========================================================================
   middlewareFees: {
+    // INVOICE PAYMENT PROCESSING
+    // Our cost: Stripe 2.9% + $0.30 per card / 0.8% max $5 ACH
+    // We charge: 3.4% + $0.80 card / 1.3% max $10 ACH
+    // Margin:    ~0.5% + $0.50 card / ~0.5% + $5 ACH
     invoiceProcessing: {
-      ratePercent: 2.9,
-      flatFeeCents: 25,
-      description: "Credit/debit card payment processing",
+      ratePercent: 3.4,   // 2.9% Stripe cost + 0.5% margin
+      flatFeeCents: 80,   // $0.80 total: $0.30 Stripe cost + $0.50 margin
+      description: "Invoice payment — card processing",
     },
     achPayments: {
-      ratePercent: 1.0,
-      capCents: 1000,
-      description: "ACH bank transfer processing",
+      ratePercent: 1.3,   // Stripe ACH 0.8% cost + 0.5% margin
+      capCents: 1000,     // $10 cap — Stripe caps at $5, $5 margin at cap
+      description: "Invoice payment — ACH bank transfer",
     },
+
+    // PAYROLL PROCESSING
+    // Our cost: Plaid ~$0.50–$1.00 per employee transfer
+    // We charge: $3.50 starter / $2.975 professional / $2.80 business (post-discount)
+    // Margin:    $2.50–$3.00 per employee per run
     payrollMiddleware: {
       baseMonthly: 0,
-      perEmployeeCents: 250,
-      description: "Per-employee payroll processing fee",
+      perEmployeeCents: 350,   // $3.50/employee — margin $2.50–$3.00 per employee
+      description: "Payroll processing — per employee per run",
     },
+
+    // DIRECT DEPOSIT / STRIPE CONNECT PAYOUTS
+    // Our cost: Stripe Connect 0.25%
+    // We charge: 0.75% — covers cost + 0.50% margin
     stripePayouts: {
-      ratePercent: 0.25,
-      description: "Direct-to-bank payout via Stripe Connect",
+      ratePercent: 0.75,   // Stripe Connect 0.25% cost + 0.50% margin
+      description: "Direct-to-bank payout processing",
     },
+
+    // TAX FORM FEES
+    // Our cost: ~$0.10 per form (pdfkit generation); we charge per form at year-end.
+    taxForms: {
+      w2PerFormCents: 500,        // $5.00/W-2 — our cost ~$0.10 (pdfkit)
+      form1099PerFormCents: 300,  // $3.00/1099-NEC — our cost ~$0.10
+      form941Cents: 0,            // Free — included in payroll processing fee
+      form940Cents: 0,            // Free — included in payroll processing fee
+      description: "Year-end tax form generation and delivery",
+    },
+
+    // TIER DISCOUNTS — loyal customers pay less
     tierDiscounts: {
       free: 0,
+      trial: 0,
       starter: 0,
-      professional: 10,
-      enterprise: 20,
+      professional: 15,   // 15% off all middleware fees
+      business: 20,       // 20% off
+      enterprise: 25,     // 25% off
+      strategic: 30,      // custom enterprise — 30% off
     } as Record<string, number>,
   },
 
@@ -1247,11 +1275,12 @@ export function getMiddlewareFees(tierId: TierKey) {
   const ach = BILLING.middlewareFees.achPayments;
   const payroll = BILLING.middlewareFees.payrollMiddleware;
   const payout = BILLING.middlewareFees.stripePayouts;
+  const tax = BILLING.middlewareFees.taxForms;
 
   return {
     invoiceProcessing: {
       ratePercent: +(inv.ratePercent * (1 - discount / 100)).toFixed(2),
-      flatFeeCents: inv.flatFeeCents,
+      flatFeeCents: Math.round(inv.flatFeeCents * (1 - discount / 100)),
       description: inv.description,
     },
     achPayments: {
@@ -1267,6 +1296,13 @@ export function getMiddlewareFees(tierId: TierKey) {
     stripePayouts: {
       ratePercent: +(payout.ratePercent * (1 - discount / 100)).toFixed(2),
       description: payout.description,
+    },
+    taxForms: {
+      w2PerFormCents: Math.round(tax.w2PerFormCents * (1 - discount / 100)),
+      form1099PerFormCents: Math.round(tax.form1099PerFormCents * (1 - discount / 100)),
+      form941Cents: tax.form941Cents,
+      form940Cents: tax.form940Cents,
+      description: tax.description,
     },
     tierDiscount: discount,
   };

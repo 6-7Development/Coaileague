@@ -325,7 +325,7 @@ export async function sendSMS(message: SMSMessage): Promise<SMSResult> { // infr
     log.info(`[SMS] Sent to ${maskedPhone}: ${result.sid}`);
 
     if (message.workspaceId) {
-      // Cost ledger write is awaited (no fire-and-forget per CLAUDE.md §9).
+      // Cost ledger write is awaited (no fire-and-forget per TRINITY.md §9).
       // Failure is logged but does not fail the send — the SMS already
       // succeeded and the attempt is tracked in smsAttemptLog.
       try {
@@ -344,7 +344,7 @@ export async function sendSMS(message: SMSMessage): Promise<SMSResult> { // infr
           workspaceId: message.workspaceId,
           messageSid: result.sid,
           callType: message.type || 'sms_notification',
-          twilioCostCents: 104,
+          twilioCostCents: 1, // Twilio SMS ~$0.0079/msg → 1 cent (ceil)
         });
       } catch (e: any) {
         log.warn('[smsService] SMS metering error:', e?.message || String(e));
@@ -409,7 +409,7 @@ export async function sendSMSToUser(userId: string, body: string, type: string =
 export async function sendSMSToEmployee(employeeId: string, body: string, type: string = 'notification', workspaceId?: string): Promise<SMSResult> { // infra
   try {
     const employee = await db.query.employees.findFirst({
-      where: workspaceId 
+      where: workspaceId
         ? and(eq(employees.id, employeeId), eq(employees.workspaceId, workspaceId))
         : eq(employees.id, employeeId),
     });
@@ -420,6 +420,23 @@ export async function sendSMSToEmployee(employeeId: string, body: string, type: 
 
     if (!employee.phone) {
       return { success: false, error: 'Employee has no phone number' };
+    }
+
+    // ── Phase 26: Subscription gate ─────────────────────────────────────────
+    // Trinity-proactive SMS paths (shift reminders, cron workflows, etc.)
+    // route through this function. Block per-tenant when the workspace's
+    // subscription is inactive. Emergency / safety SMS routes through
+    // sendSMSToUser → NotificationDeliveryService and is unaffected by this
+    // gate. workspaceId is optional; if absent we fail open so existing
+    // callers that rely on the old behavior keep working.
+    const effectiveWorkspaceId = workspaceId || employee.workspaceId || null;
+    if (effectiveWorkspaceId) {
+      const { isWorkspaceServiceable } = await import('./billing/billingConstants');
+      const serviceable = await isWorkspaceServiceable(effectiveWorkspaceId);
+      if (!serviceable) {
+        log.info(`[SMS] Subscription gate blocked employee SMS for workspace ${effectiveWorkspaceId} (type=${type})`);
+        return { success: false, error: 'SUBSCRIPTION_INACTIVE' };
+      }
     }
 
     // Phase B — Consent gate

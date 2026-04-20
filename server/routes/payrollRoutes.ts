@@ -22,27 +22,82 @@ import {
   employeeBankAccounts,
   timeEntries,
   billingAuditLog,
+  payrollRunLocks,
 } from '@shared/schema';
 import { encryptToken, decryptToken } from '../security/tokenEncryption';
 import * as taxCalculator from "../services/taxCalculator";
 import { calculateStateTax, calculateBonusTaxation } from "../services/taxCalculator";
 import { getWorkspaceTier, hasTierAccess, requirePlan } from "../tierGuards";
 import { payrollDeductions } from '@shared/schema';
+import { registerLegacyBootstrap } from '../services/legacyBootstrapRegistry';
 
-const payrollRunLocks = new Map<string, { userId: string; startedAt: number }>();
+// Plaid compensating-transaction ledger: pending row is written BEFORE the
+// Plaid API call, flipped to initiated / failed after. See payrollAutomation.ts.
+registerLegacyBootstrap('plaid_transfer_attempts', async (p) => {
+  await p.query(`
+    CREATE TABLE IF NOT EXISTS plaid_transfer_attempts (
+      id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+      workspace_id VARCHAR NOT NULL,
+      employee_id VARCHAR NOT NULL,
+      payroll_run_id VARCHAR,
+      payroll_entry_id VARCHAR,
+      amount NUMERIC(10,2) NOT NULL,
+      transfer_id VARCHAR,
+      status VARCHAR NOT NULL DEFAULT 'pending',
+      error_message TEXT,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      initiated_at TIMESTAMPTZ,
+      completed_at TIMESTAMPTZ
+    );
+    CREATE INDEX IF NOT EXISTS plaid_transfer_attempts_workspace_idx ON plaid_transfer_attempts(workspace_id);
+    CREATE INDEX IF NOT EXISTS plaid_transfer_attempts_employee_idx ON plaid_transfer_attempts(employee_id);
+    CREATE INDEX IF NOT EXISTS plaid_transfer_attempts_run_idx ON plaid_transfer_attempts(payroll_run_id);
+    CREATE INDEX IF NOT EXISTS plaid_transfer_attempts_status_idx ON plaid_transfer_attempts(status);
+  `);
+});
+
+// TRINITY.md Section R / Law P2: payroll run lock is DB-backed so a Railway
+// redeploy mid-run cannot let a second request start a duplicate concurrent
+// payroll run for the same workspace + period.
 const PAYROLL_RUN_LOCK_TTL_MS = 5 * 60 * 1000;
 
-function acquirePayrollRunLock(workspaceId: string, userId: string): { acquired: boolean; holder?: string } {
-  const existing = payrollRunLocks.get(workspaceId);
-  if (existing && Date.now() - existing.startedAt < PAYROLL_RUN_LOCK_TTL_MS) {
-    return { acquired: false, holder: existing.userId };
+async function acquirePayrollRunLock(
+  workspaceId: string,
+  userId: string,
+): Promise<{ acquired: boolean; holder?: string }> {
+  const now = new Date();
+  const expiresAt = new Date(Date.now() + PAYROLL_RUN_LOCK_TTL_MS);
+
+  // Clear any stale lock first so a crashed prior run cannot wedge the workspace.
+  await db.delete(payrollRunLocks)
+    .where(and(
+      eq(payrollRunLocks.workspaceId, workspaceId),
+      lte(payrollRunLocks.expiresAt, now),
+    ));
+
+  try {
+    await db.insert(payrollRunLocks).values({
+      workspaceId,
+      lockedBy: userId,
+      lockedAt: now,
+      expiresAt,
+    });
+    return { acquired: true };
+  } catch {
+    const [existing] = await db.select()
+      .from(payrollRunLocks)
+      .where(eq(payrollRunLocks.workspaceId, workspaceId))
+      .limit(1);
+    return { acquired: false, holder: existing?.lockedBy };
   }
-  payrollRunLocks.set(workspaceId, { userId, startedAt: Date.now() });
-  return { acquired: true };
 }
 
-function releasePayrollRunLock(workspaceId: string) {
-  payrollRunLocks.delete(workspaceId);
+async function releasePayrollRunLock(workspaceId: string): Promise<void> {
+  try {
+    await db.delete(payrollRunLocks).where(eq(payrollRunLocks.workspaceId, workspaceId));
+  } catch (err: any) {
+    log.warn('[PayrollLock] Release failed (non-fatal):', err?.message);
+  }
 }
 import {
   addDeduction,
@@ -480,7 +535,7 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
         });
       }
 
-      const lockResult = acquirePayrollRunLock(workspaceId, userId);
+      const lockResult = await acquirePayrollRunLock(workspaceId, userId);
       if (!lockResult.acquired) {
         return res.status(409).json({ error: "A payroll run is already being created for this workspace", lockedBy: lockResult.holder });
       }
@@ -516,7 +571,7 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
 
       const periodViolation = validatePayrollPeriod(periodStart, periodEnd);
       if (periodViolation) {
-        releasePayrollRunLock(workspaceId);
+        await releasePayrollRunLock(workspaceId);
         if (businessRuleResponse(res, [periodViolation])) return;
       }
 
@@ -529,8 +584,8 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
         .limit(1);
 
       if (overlappingRun.length > 0) {
-        releasePayrollRunLock(workspaceId);
-        return res.status(409).json({ 
+        await releasePayrollRunLock(workspaceId);
+        return res.status(409).json({
           message: "Payroll period overlaps with an existing run",
           existingRunId: overlappingRun[0].id 
         });
@@ -597,7 +652,7 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
         ));
 
       if (!approvedHoursCheck || approvedHoursCheck.approvedCount === 0) {
-        releasePayrollRunLock(workspaceId);
+        await releasePayrollRunLock(workspaceId);
         return res.status(422).json({
           error: 'ZERO_APPROVED_HOURS',
           message: `No approved timesheets found for ${periodStart.toLocaleDateString()} – ${periodEnd.toLocaleDateString()}. Approve timesheets before running payroll.`,
@@ -714,7 +769,7 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
       res.status(500).json({ message: (error instanceof Error ? sanitizeError(error) : null) || "Failed to create payroll run" });
     } finally {
       const workspaceId = req.workspaceId;
-      if (workspaceId) releasePayrollRunLock(workspaceId);
+      if (workspaceId) await releasePayrollRunLock(workspaceId);
     }
   });
 
@@ -978,10 +1033,10 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
 
       // LAYER 2: Credits from org balance — AI token usage at cost (no markup)
       try {
-        const { creditManager, CREDIT_COSTS } = await import('../services/billing/creditManager');
+        const { tokenManager, TOKEN_COSTS } = await import('../services/billing/tokenManager');
 
-        const sessionFee = CREDIT_COSTS['payroll_session_fee'] || 35;
-        await creditManager.deductCredits({
+        const sessionFee = TOKEN_COSTS['payroll_session_fee'] || 35;
+        await tokenManager.recordUsage({
           workspaceId,
           userId: userId || 'system',
           featureKey: 'payroll_session_fee',
@@ -1512,8 +1567,8 @@ router.get('/tax-filing/guide/:formType', async (req: AuthenticatedRequest, res)
 
     if (workspaceId) {
       try {
-        const { creditManager } = await import('../services/billing/creditManager');
-        await creditManager.deductCredits({
+        const { tokenManager } = await import('../services/billing/tokenManager');
+        await tokenManager.recordUsage({
           workspaceId,
           userId: req.user?.id || 'system',
           featureKey: 'tax_filing_assistance',
@@ -1555,6 +1610,131 @@ router.get('/tax-filing/state-portals', async (req: AuthenticatedRequest, res) =
   } catch (error: unknown) {
     log.error('Error fetching state portals:', error);
     res.status(500).json({ message: 'Failed to fetch state portals' });
+  }
+});
+
+// ============================================================================
+// TAX CENTER — consolidated view of tax obligations, forms, deadlines, fees
+// ============================================================================
+router.get('/tax-center', async (req: AuthenticatedRequest, res) => {
+  try {
+    const roleCheck = checkManagerRole(req);
+    if (!roleCheck.allowed) return res.status(roleCheck.status || 403).json({ message: roleCheck.error });
+
+    const workspaceId = req.workspaceId;
+    if (!workspaceId) return res.status(400).json({ message: 'Workspace context required' });
+
+    const currentYear = new Date().getFullYear();
+    const priorYear = currentYear - 1;
+    const taxYear = req.query.taxYear ? parseInt(req.query.taxYear as string, 10) : priorYear;
+
+    // 1. Classify employees (W-2 vs 1099) for the current roster
+    const roster = await db
+      .select({
+        id: employees.id,
+        workerType: employees.workerType,
+        firstName: employees.firstName,
+        lastName: employees.lastName,
+      })
+      .from(employees)
+      .where(and(eq(employees.workspaceId, workspaceId), eq(employees.isActive, true)));
+
+    const w2Employees = roster.filter(e => (e.workerType || 'employee') !== 'contractor');
+    const contractorRoster = roster.filter(e => (e.workerType || 'employee') === 'contractor');
+
+    // 2. Scan prior-year payroll totals for contractors and find $600+ candidates
+    const FORM_1099_THRESHOLD = 600;
+    const yearStart = new Date(taxYear, 0, 1);
+    const yearEnd = new Date(taxYear, 11, 31, 23, 59, 59);
+
+    let contractorsAbove600 = 0;
+    const contractorDetails: Array<{ employeeId: string; name: string; totalPaid: number; requiresFiling: boolean }> = [];
+
+    for (const contractor of contractorRoster) {
+      try {
+        const totals = await db
+          .select({ totalPaid: sql<string>`COALESCE(SUM(${payrollEntries.grossPay}), 0)` })
+          .from(payrollEntries)
+          .innerJoin(payrollRuns, eq(payrollEntries.payrollRunId, payrollRuns.id))
+          .where(
+            and(
+              eq(payrollEntries.employeeId, contractor.id),
+              eq(payrollRuns.workspaceId, workspaceId),
+              gte(payrollRuns.periodStart, yearStart),
+              lte(payrollRuns.periodEnd, yearEnd),
+            )
+          );
+        const totalPaid = parseFloat(totals[0]?.totalPaid || '0');
+        const requiresFiling = totalPaid >= FORM_1099_THRESHOLD;
+        if (requiresFiling) contractorsAbove600 += 1;
+        contractorDetails.push({
+          employeeId: contractor.id,
+          name: `${contractor.firstName || ''} ${contractor.lastName || ''}`.trim(),
+          totalPaid,
+          requiresFiling,
+        });
+      } catch (err: unknown) {
+        log.warn('Tax center contractor total calc failed', { employeeId: contractor.id });
+      }
+    }
+
+    // 3. Generated forms for the tax year
+    const { employeeTaxForms } = await import('@shared/schema');
+    const forms = await db
+      .select()
+      .from(employeeTaxForms)
+      .where(
+        and(
+          eq(employeeTaxForms.workspaceId, workspaceId),
+          eq(employeeTaxForms.taxYear, taxYear),
+        )
+      );
+    const w2sGenerated = forms.filter(f => f.formType === 'w2').length;
+    const form1099sGenerated = forms.filter(f => f.formType === '1099').length;
+
+    // 4. Deadlines
+    const { taxFilingAssistanceService } = await import('../services/taxFilingAssistanceService');
+    const deadlines = taxFilingAssistanceService.getFilingDeadlines(taxYear);
+
+    // 5. Fees — pull tier discount and compute
+    const tierId = (await getWorkspaceTier(workspaceId)) as any;
+    const { getMiddlewareFees } = await import('@shared/billingConfig');
+    const fees = getMiddlewareFees(tierId);
+    const w2PerFormDollars = fees.taxForms.w2PerFormCents / 100;
+    const form1099PerFormDollars = fees.taxForms.form1099PerFormCents / 100;
+
+    return res.json({
+      taxYear,
+      employees: {
+        w2Count: w2Employees.length,
+        total1099Count: contractorRoster.length,
+        contractorsAbove600,
+        contractorDetails,
+      },
+      forms: {
+        w2sGenerated,
+        form1099sGenerated,
+        w2sExpected: w2Employees.length,
+        form1099sExpected: contractorsAbove600,
+      },
+      deadlines,
+      filingGuides: {
+        w2:       { url: 'https://www.ssa.gov/employer',              label: 'SSA Business Services Online' },
+        form1099: { url: 'https://www.irs.gov/filing/e-file-providers', label: 'IRS FIRE System' },
+        form941:  { url: 'https://www.eftps.gov',                     label: 'Electronic Federal Tax System (EFTPS)' },
+        texasTWC: { url: 'https://apps.twc.state.tx.us',              label: 'Texas Workforce Commission' },
+      },
+      fees: {
+        w2PerForm: w2PerFormDollars,
+        form1099PerForm: form1099PerFormDollars,
+        tierDiscountPercent: fees.tierDiscount,
+        estimatedTotal: +(w2Employees.length * w2PerFormDollars + contractorsAbove600 * form1099PerFormDollars).toFixed(2),
+      },
+      disclaimer: `${PLATFORM.name} is middleware — we generate and deliver tax forms but do not file them with the IRS, SSA, or state agencies. Verify all figures with your CPA or tax professional before filing.`,
+    });
+  } catch (error: unknown) {
+    log.error('Error fetching tax center data:', error);
+    res.status(500).json({ message: sanitizeError(error) || 'Failed to fetch tax center data' });
   }
 });
 
@@ -1866,8 +2046,8 @@ router.post('/tax-forms/941', async (req: AuthenticatedRequest, res) => {
     }
 
     try {
-      const { creditManager } = await import('../services/billing/creditManager');
-      await creditManager.deductCredits({
+      const { tokenManager } = await import('../services/billing/tokenManager');
+      await tokenManager.recordUsage({
         workspaceId,
         userId: req.user?.id || 'system',
         featureKey: 'tax_prep_941',
@@ -1977,10 +2157,10 @@ router.post('/tax-forms/generate', async (req: AuthenticatedRequest, res) => {
     }
 
     try {
-      const { creditManager } = await import('../services/billing/creditManager');
+      const { tokenManager } = await import('../services/billing/tokenManager');
       const creditKey = formType === 'w2' ? 'tax_prep_w2' : 'tax_prep_1099';
       const formLabel = formType === 'w2' ? 'W-2 Employee Tax Form' : '1099-NEC Contractor Tax Form';
-      await creditManager.deductCredits({
+      await tokenManager.recordUsage({
         workspaceId,
         userId: req.user?.id || 'system',
         featureKey: creditKey,
@@ -2068,8 +2248,8 @@ router.post('/tax-forms/940', async (req: AuthenticatedRequest, res) => {
     }
 
     try {
-      const { creditManager } = await import('../services/billing/creditManager');
-      await creditManager.deductCredits({
+      const { tokenManager } = await import('../services/billing/tokenManager');
+      await tokenManager.recordUsage({
         workspaceId,
         userId: req.user?.id || 'system',
         featureKey: 'tax_prep_940',
@@ -2209,8 +2389,8 @@ router.post('/runs/:id/execute-internal', async (req: AuthenticatedRequest, res)
 
       if (result.processedEntries > 0) {
         try {
-          const { creditManager } = await import('../services/billing/creditManager');
-          await creditManager.deductCredits({
+          const { tokenManager } = await import('../services/billing/tokenManager');
+          await tokenManager.recordUsage({
             workspaceId,
             userId: userId || 'system',
             featureKey: 'ai_payroll_processing',
@@ -2551,20 +2731,58 @@ router.post('/runs/:id/retry-failed-transfers', async (req: AuthenticatedRequest
         }
 
         const netPay = parseFloat(String(stub.netPay ?? 0));
+
+        // Compensating-transaction step 1: write PENDING row BEFORE touching Plaid.
+        // Mirrors the main disbursement path in payrollAutomation.ts. If this
+        // retry loop crashes between Plaid success and pay-stub UPDATE, the
+        // attempt row with its transfer_id is the only authoritative record
+        // reconciliation can use to find the in-flight transfer.
+        const { plaidTransferAttempts } = await import('@shared/schema');
+        const [pendingRecord] = await db.insert(plaidTransferAttempts).values({
+          workspaceId,
+          employeeId: empId,
+          payrollRunId: runId,
+          payrollEntryId: null,
+          amount: netPay.toFixed(2),
+          status: 'pending',
+        } as any).returning().catch(() => [null as any]);
+
         // GAP-AUDIT-1 FIX: Pass stub-derived idempotencyKey so Plaid can deduplicate
         // at the API level if this retry loop executes twice (e.g. user double-clicks,
         // network timeout causes client to re-POST, or server restarts mid-loop).
         // Without this, two concurrent retry requests for the same failed stub would
         // produce two Plaid transfer authorizations for the same employee — double pay.
-        const transfer = await initiateTransfer({
-          accessToken: empAccessToken,
-          accountId: empBank.plaidAccountId!,
-          amount: netPay.toFixed(2),
-          description: 'Payroll Retry',
-          legalName: empId,
-          type: 'credit',
-          idempotencyKey: `retry-${stub.id}`,
-        });
+        let transfer: Awaited<ReturnType<typeof initiateTransfer>>;
+        try {
+          transfer = await initiateTransfer({
+            accessToken: empAccessToken,
+            accountId: empBank.plaidAccountId!,
+            amount: netPay.toFixed(2),
+            description: 'Payroll Retry',
+            legalName: empId,
+            type: 'credit',
+            idempotencyKey: `retry-${stub.id}`,
+          });
+
+          // Compensating-transaction step 2: Plaid accepted — mark INITIATED
+          // with the transfer ID. The webhook will later flip this to completed.
+          if (pendingRecord?.id) {
+            await db.update(plaidTransferAttempts).set({
+              status: 'initiated',
+              transferId: transfer.transferId,
+              initiatedAt: new Date(),
+            } as any).where(eq(plaidTransferAttempts.id, pendingRecord.id)).catch(() => null);
+          }
+        } catch (plaidErr: any) {
+          // Compensating-transaction step 3: Plaid rejected — no money moved.
+          if (pendingRecord?.id) {
+            await db.update(plaidTransferAttempts).set({
+              status: 'failed',
+              errorMessage: plaidErr?.message ?? String(plaidErr),
+            } as any).where(eq(plaidTransferAttempts.id, pendingRecord.id)).catch(() => null);
+          }
+          throw plaidErr;
+        }
 
         // GAP-49 FIX: The DB update that persists the transferId is now wrapped in its own
         // try/catch SEPARATE from the initiateTransfer() call above.
@@ -2583,8 +2801,8 @@ router.post('/runs/:id/retry-failed-transfers', async (req: AuthenticatedRequest
           } as any).where(eq(payStubs.id, stub.id));
         } catch (dbErr: unknown) {
           log.error(
-            '[FinancialAudit] CRITICAL: Plaid transfer initiated but pay stub DB update failed — transfer ID may be orphaned. Manual reconciliation required.',
-            { payStubId: stub.id, employeeId: empId, transferId: transfer.transferId, amount: netPay, runId, error: (dbErr as any)?.message }
+            '[FinancialAudit] CRITICAL: Plaid transfer initiated but pay stub DB update failed — attempt row holds transfer_id for reconciliation.',
+            { payStubId: stub.id, employeeId: empId, transferId: transfer.transferId, attemptId: pendingRecord?.id, amount: netPay, runId, error: (dbErr as any)?.message }
           );
           // Fall through: transfer IS in flight, we report it as retried despite tracking failure
         }

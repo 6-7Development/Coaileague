@@ -8,10 +8,11 @@
 import { NotificationDeliveryService } from './notificationDeliveryService';
 import { db } from "../db";
 import { securityIncidents, employees, clients, notifications, shifts, managerAssignments } from "@shared/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, inArray } from "drizzle-orm";
 import { platformEventBus } from "./platformEventBus";
 import { smsService } from "./smsService";
 import { universalNotificationEngine } from "./universalNotificationEngine";
+import { MANAGER_ROLES } from "@shared/lib/rbac/roleDefinitions";
 import { createLogger } from '../lib/logger';
 const log = createLogger('incidentRoutingService');
 
@@ -116,13 +117,17 @@ export class IncidentRoutingService {
   }
 
   /**
-   * Get all managers in the workspace
+   * Get all managers in the workspace.
+   * Uses the canonical MANAGER_ROLES list (org_owner, co_owner, org_admin, org_manager,
+   * manager, department_manager, supervisor) instead of the single `department_manager`
+   * string — companies with `manager` or `org_manager` titles were previously skipped
+   * entirely for critical/high incident escalation.
    */
   async getManagers(workspaceId: string) {
     return db.query.employees.findMany({
       where: and(
         eq(employees.workspaceId, workspaceId),
-        eq(employees.workspaceRole, 'department_manager')
+        inArray(employees.workspaceRole, [...MANAGER_ROLES])
       ),
     });
   }
@@ -167,6 +172,7 @@ export class IncidentRoutingService {
       longitude: data.longitude?.toString(),
       shiftId: data.shiftId,
       status: 'open',
+      photos: data.photos && data.photos.length > 0 ? data.photos : [],
     }).returning();
 
     routingDetails.push(`Incident created: ${incident.id}`);

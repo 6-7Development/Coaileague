@@ -6,6 +6,7 @@ import { NotificationDeliveryService } from '../services/notificationDeliverySer
 import { storage } from "../storage";
 import { trimStrings } from "../utils/sanitize";
 import { db } from "../db";
+import { softDelete } from "../lib/softDelete";
 import { eq, and, desc, sql, gte, inArray } from "drizzle-orm";
 import {
   users,
@@ -251,12 +252,21 @@ router.post('/', requireManagerOrPlatformStaff, async (req: AuthenticatedRequest
         // Rate creation failed — clean up orphaned client record to maintain referential integrity.
         // T009: Ideally both operations should share a DB transaction; this manual rollback is the
         // next-best safeguard — but must itself succeed for the system to stay consistent.
-        log.error('[Client Creation] Rate creation failed, removing orphaned client:', rateErr);
+        log.error('[Client Creation] Rate creation failed, soft-deleting orphaned client:', rateErr);
         try {
-          await db.delete(clients).where(and(eq(clients.id, client.id), eq(clients.workspaceId, workspaceId)));
+          // TRINITY.md Section R / Law P1 — soft delete (audit trail of failed creates retained)
+          await softDelete({
+            table: clients,
+            where: and(eq(clients.id, client.id), eq(clients.workspaceId, workspaceId))!,
+            userId: req.user?.id ?? 'system',
+            workspaceId,
+            entityType: 'client',
+            entityId: client.id,
+            reason: 'creation_rollback_rate_failure',
+          });
         } catch (cleanupErr) {
-          // Cleanup failed — the client record is now orphaned. Log for manual remediation.
-          log.error('[Client Creation] CRITICAL: Orphaned client cleanup failed — client.id=%s workspaceId=%s needs manual deletion', client.id, workspaceId, cleanupErr);
+          // Cleanup failed — the client record remains visible. Log for manual remediation.
+          log.error('[Client Creation] CRITICAL: Orphaned client soft-delete failed — client.id=%s workspaceId=%s needs manual cleanup', client.id, workspaceId, cleanupErr);
         }
         throw rateErr;
       }

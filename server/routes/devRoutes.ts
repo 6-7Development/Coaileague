@@ -78,7 +78,7 @@ router.post('/seed-expired-keys', requireOwner, async (req: AuthenticatedRequest
 
 router.post('/trigger-automation/:jobType', requireOwner, async (req: AuthenticatedRequest, res) => {
   // Block in production — this is a development/ops convenience endpoint only.
-  // Use canonical isProduction() helper (CLAUDE.md §A). Direct
+  // Use canonical isProduction() helper (TRINITY.md §A). Direct
   // Direct NODE_ENV/Railway env checks are forbidden because they don't fire consistently on
   // Railway / Cloud Run / other hosts.
   if (isProduction()) {
@@ -1485,7 +1485,7 @@ router.post('/seed-acme-demo', requirePlatformAdmin, async (_req, res) => {
 // ──────────────────────────────────────────────────────────────────────────────
 router.post('/seed/acme', requirePlatformAdmin, async (_req, res) => {
   try {
-    // Production guard via canonical isProduction() helper (CLAUDE.md §A).
+    // Production guard via canonical isProduction() helper (TRINITY.md §A).
     // Direct platform-env checks are forbidden — they don't fire consistently on
     // Railway / Cloud Run / other hosts.
     if (isProduction()) {
@@ -1526,7 +1526,7 @@ router.get('/seed/acme/status', requirePlatformAdmin, async (_req, res) => {
 // ──────────────────────────────────────────────────────────────────────────────
 router.post('/trinity/trigger-demo-actions', requirePlatformAdmin, async (_req, res) => {
   try {
-    // Production guard via canonical isProduction() helper (CLAUDE.md §A).
+    // Production guard via canonical isProduction() helper (TRINITY.md §A).
     // Direct platform-env checks are forbidden — they don't fire consistently on
     // Railway / Cloud Run / other hosts.
     if (isProduction()) {
@@ -1772,6 +1772,80 @@ router.get('/test/email/status', requireAuth, requirePlatformAdmin, async (req: 
     });
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * POST /api/dev/demo-tenant-seed — Readiness Section 16
+ * Creates the generic 'Demo Security Services' workspace sales uses to
+ * demo without exposing Statewide's real data. Admin-gated. Idempotent:
+ * re-calls return { created: false } without modifying anything.
+ *
+ * Unlike the dev seeds above, this endpoint is NOT gated on
+ * NODE_ENV=production — sales demos run in the live environment.
+ */
+router.post("/demo-tenant-seed", requirePlatformAdmin, async (_req: AuthenticatedRequest, res) => {
+  try {
+    const { seedDemoTenant } = await import("../services/demoTenantSeed");
+    const result = await seedDemoTenant();
+    if (!result.success) return res.status(500).json(result);
+    res.json(result);
+  } catch (err: any) {
+    log.error('[DevRoutes] demo-tenant-seed failed:', err?.message);
+    res.status(500).json({ error: err?.message || 'Demo tenant seed failed' });
+  }
+});
+
+/**
+ * POST /api/dev/compliance-snapshot/:workspaceId — Readiness Section 17
+ * Takes a compliance-score snapshot and fires an owner notification if
+ * the score dropped ≥ 10 points vs the prior snapshot. Typically run by
+ * a nightly cron, exposed here for admin-triggered verification.
+ */
+router.post("/compliance-snapshot/:workspaceId", requirePlatformAdmin, async (req: AuthenticatedRequest, res) => {
+  try {
+    const { snapshotAndMonitor } = await import("../services/complianceScoreMonitor");
+    const result = await snapshotAndMonitor(req.params.workspaceId);
+    res.json(result);
+  } catch (err: any) {
+    log.error('[DevRoutes] compliance-snapshot failed:', err?.message);
+    res.status(500).json({ error: err?.message || 'Compliance snapshot failed' });
+  }
+});
+
+/**
+ * POST /api/dev/seed-multi-state-regulatory — Readiness Section 24
+ * Adds California (BSIS) + Florida (DACS-DOL) rows to compliance_states.
+ * Idempotent via ON CONFLICT(state_code) DO NOTHING. Texas is already
+ * seeded elsewhere.
+ */
+router.post("/seed-multi-state-regulatory", requirePlatformAdmin, async (_req: AuthenticatedRequest, res) => {
+  try {
+    const { seedMultiStateRegulatory } = await import("../services/multiStateRegulatorySeed");
+    const result = await seedMultiStateRegulatory();
+    res.json(result);
+  } catch (err: any) {
+    log.error('[DevRoutes] multi-state seed failed:', err?.message);
+    res.status(500).json({ error: err?.message || 'Multi-state seed failed' });
+  }
+});
+
+/**
+ * POST /api/dev/retention-scan — Readiness Section 27 #11
+ * Runs the pure-function retention policy from §23 across every
+ * workspace and returns the non-retain decisions. Dry-run only; an
+ * archival/deletion executor is a separate (non-engineering-in-this-
+ * branch) step. Called manually from platform-ops UI; scheduled
+ * monthly via cron when wired.
+ */
+router.post("/retention-scan", requirePlatformAdmin, async (_req: AuthenticatedRequest, res) => {
+  try {
+    const { runRetentionScan } = await import("../services/retentionPolicyService");
+    const result = await runRetentionScan();
+    res.json(result);
+  } catch (err: any) {
+    log.error('[DevRoutes] retention-scan failed:', err?.message);
+    res.status(500).json({ error: err?.message || 'Retention scan failed' });
   }
 });
 

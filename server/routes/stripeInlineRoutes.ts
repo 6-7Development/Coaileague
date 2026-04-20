@@ -33,7 +33,7 @@ function _pruneStripeEventCache() {
 }
 setInterval(_pruneStripeEventCache, 60 * 60 * 1000).unref(); // hourly cleanup
 
-// Lazy proxy: avoids module-load crash if STRIPE_SECRET_KEY is missing (CLAUDE.md §F).
+// Lazy proxy: avoids module-load crash if STRIPE_SECRET_KEY is missing (TRINITY.md §F).
 const stripe = new Proxy({} as Stripe, {
   get(_t, prop) {
     return (getStripe() as any)[prop];
@@ -454,12 +454,7 @@ router.post('/create-subscription', requireAuth, async (req: any, res) => {
       platformFeePercentage: platformFeeMap[tier as keyof typeof platformFeeMap] || "5",
     });
 
-    try {
-      const { creditManager } = await import('../services/billing/creditManager');
-      await creditManager.initializeCredits(workspace.id, tier as any);
-    } catch (creditErr) {
-      log.error('[Stripe] Credit initialization error (non-blocking):', creditErr);
-    }
+    // Token tracking is event-driven — no per-subscription initialization needed.
 
     // Publish subscription_created event so Trinity and billing subscribers react (non-blocking)
     import('../services/platformEventBus').then(({ platformEventBus }) =>

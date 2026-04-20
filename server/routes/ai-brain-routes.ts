@@ -15,7 +15,7 @@ import { getModelRouterStatus, getChainForRole, routeByRole, type ModelRole } fr
 import { trinityScanOrchestrator } from '../services/ai-brain/trinityScanOrchestrator';
 import { costOptimizedRouter, classifyTask, getCostRoutingAnalytics } from '../services/ai-brain/costOptimizedRouter';
 import { aiProviderBalanceService } from '../services/ai-brain/aiProviderBalances';
-import { creditManager } from '../services/billing/creditManager';
+import { tokenManager } from '../services/billing/tokenManager';
 import { 
   aiBrainJobs, 
   aiCheckpoints, 
@@ -284,7 +284,7 @@ aiBrainRouter.get('/skills', requireAuth, async (req: Request, res: Response) =>
       skills,
       descriptions: {
         helpos_support: 'AI-powered customer support with FAQ learning',
-        scheduleos_generation: 'AI-powered schedule generation and optimization',
+        scheduleos_generation: 'CoAIleague Smart Scheduling — AI schedule generation',
         intelligenceos_prediction: 'Predictive analytics and forecasting',
         business_insight: 'Business insights for sales, finance, operations, automation, growth',
         platform_recommendation: 'Platform feature recommendations based on user needs',
@@ -688,7 +688,7 @@ aiBrainRouter.post('/checkpoints/:id/resume', requireAuth, async (req: Request, 
 
     // Check if workspace has enough credits (aiUsageEvents-backed)
     const creditsNeeded = (checkpoint as any).creditsRequired || 0;
-    const currentBalance = await creditManager.getBalance(workspaceId);
+    const currentBalance = await tokenManager.getBalance(workspaceId);
 
     if (currentBalance < creditsNeeded) {
       return res.status(400).json({ 
@@ -1505,18 +1505,23 @@ aiBrainRouter.post('/routing/execute', requireAuth, async (req: Request, res: Re
         featureKey: 'cost_optimized_routing',
       });
       
+      // TRINITY.md §S: tenant-facing response must not expose which
+      // internal backend (provider/model) served the request. Trinity
+      // speaks as one agent. Backend identifiers stay in server logs.
+      log.info('[ai-brain] Trinity cost-optimized + verified', {
+        provider: result.provider,
+        model: result.model,
+        agreementScore: result.agreementScore,
+      });
       return res.json({
         success: true,
         result: {
           content: result.content,
-          provider: result.provider,
-          model: result.model,
           confidence: result.confidence,
           agreementScore: result.agreementScore,
           escalated: result.escalated,
           escalationReason: result.escalationReason,
           tokensUsed: result.tokensUsed,
-          creditsCharged: result.creditsCharged,
           latencyMs: result.latencyMs,
         },
       });
@@ -1532,17 +1537,21 @@ aiBrainRouter.post('/routing/execute', requireAuth, async (req: Request, res: Re
       forceProvider,
     });
     
+    // TRINITY.md §S: tenant-facing response must not expose which
+    // internal backend (provider/model) served the request. Trinity
+    // speaks as one agent. Backend identifiers stay in server logs.
+    log.info('[ai-brain] Trinity cost-optimized route', {
+      provider: result.provider,
+      model: result.model,
+    });
     res.json({
       success: true,
       result: {
         content: result.content,
-        provider: result.provider,
-        model: result.model,
         confidence: result.confidence,
         escalated: result.escalated,
         escalationReason: result.escalationReason,
         tokensUsed: result.tokensUsed,
-        creditsCharged: result.creditsCharged,
         latencyMs: result.latencyMs,
       },
     });

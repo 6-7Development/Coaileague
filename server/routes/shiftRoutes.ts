@@ -12,6 +12,7 @@ import {
   contractorPool,
   employees,
   insertShiftSchema,
+  shiftChatrooms,
   shiftCoverageRequests,
   shiftOffers,
   shiftOrders,
@@ -697,6 +698,21 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
         log.warn('[Shifts] Failed to log webhook error to audit log', { error: webhookErr.message });
       }
 
+      // Pre-provision a pending shift chatroom so manager↔officer messaging
+      // works the moment the shift hits the schedule — before clock-in.
+      // Awaited try/catch (non-fatal): per TRINITY.md §B no fire-and-forget.
+      try {
+        const { shiftChatroomWorkflowService } = await import('../services/shiftChatroomWorkflowService');
+        await shiftChatroomWorkflowService.provisionChatroom({
+          shiftId: shift.id,
+          workspaceId,
+          siteId: shift.siteId ?? undefined,
+          assignedEmployeeId: shift.employeeId ?? undefined,
+        });
+      } catch (provisionErr: any) {
+        log.warn('[ShiftChatroom] provisionChatroom failed (non-blocking):', provisionErr?.message);
+      }
+
       // Notify assigned employees about new shift
       try {
         // @ts-expect-error — TS migration: fix in refactoring sprint
@@ -855,6 +871,9 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
       
       // 📡 REAL-TIME: Broadcast shift creation ONLY after successful DB operation
       broadcastShiftUpdate(workspaceId, 'shift_created', shift);
+
+      // Note: chatroom is pre-provisioned at the top of this handler (see
+      // provisionChatroom call above) — no duplicate provision needed here.
 
       // 🧠 TRINITY: Publish to platformEventBus so Trinity and all service monitors see this shift
       platformEventBus.publish({
@@ -2809,6 +2828,107 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
     }
   });
 
+  // POST /api/shifts/:shiftId/proof-of-service
+  // Officer-side proof-of-service photo capture. Stores the photo as a
+  // chatroom photo message (audit-protected, flows into the DAR photo manifest).
+  // Broadcasts so the client portal and managers see it in real time.
+  router.post('/:shiftId/proof-of-service', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user?.id || req.user?.claims?.sub;
+      if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+      const employee = await storage.getEmployeeByUserId(userId);
+      if (!employee) return res.status(404).json({ message: 'Employee not found' });
+
+      const shiftId = req.params.shiftId;
+      const accessCheck = await validateShiftAccess(shiftId, employee.id, employee.workspaceId, storage);
+      if (!accessCheck.authorized) return res.status(403).json({ message: accessCheck.reason });
+
+      const workspaceId = employee.workspaceId;
+      const { photoUrl, latitude, longitude, notes, capturedAt } = req.body || {};
+      if (!photoUrl || typeof photoUrl !== 'string') {
+        return res.status(400).json({ message: 'photoUrl required' });
+      }
+
+      // Ensure a chatroom exists for this shift (provisioned at creation, promoted
+      // at clock-in; create on demand if neither ran yet)
+      const [existingRoom] = await db.select()
+        .from(shiftChatrooms)
+        .where(and(
+          eq(shiftChatrooms.shiftId, shiftId),
+          eq(shiftChatrooms.workspaceId, workspaceId),
+        ))
+        .limit(1);
+
+      let chatroomId: string | null = existingRoom?.id ?? null;
+      if (!chatroomId) {
+        const provision = await shiftChatroomWorkflowService.provisionChatroom({
+          shiftId,
+          workspaceId,
+          siteId: accessCheck.shift?.siteId ?? undefined,
+          assignedEmployeeId: employee.id,
+        });
+        chatroomId = provision.chatroomId;
+      }
+
+      if (!chatroomId) {
+        return res.status(500).json({ message: 'Failed to resolve shift chatroom for proof-of-service' });
+      }
+
+      const sendResult = await shiftChatroomWorkflowService.sendMessage(
+        chatroomId,
+        userId,
+        {
+          content: notes || 'Proof of service photo',
+          messageType: 'photo',
+          attachmentUrl: photoUrl,
+          attachmentType: 'image/jpeg',
+          metadata: {
+            proofOfService: true,
+            gps: (typeof latitude === 'number' && typeof longitude === 'number')
+              ? { lat: latitude, lng: longitude }
+              : null,
+            capturedAt: capturedAt || new Date().toISOString(),
+            officerEmployeeId: employee.id,
+          },
+        }
+      );
+
+      if (!sendResult.success) {
+        return res.status(400).json({ message: sendResult.error || 'Failed to store proof-of-service photo' });
+      }
+
+      // Broadcast so managers + client portal see it immediately
+      broadcastToWorkspace(workspaceId, {
+        type: 'proof_of_service_submitted',
+        shiftId,
+        chatroomId,
+        officerId: userId,
+        photoUrl,
+        timestamp: new Date().toISOString(),
+      });
+
+      platformEventBus.publish({
+        type: 'proof_of_service_submitted',
+        category: 'automation',
+        title: 'Proof of Service Submitted',
+        description: `Officer submitted proof-of-service photo for shift ${shiftId}`,
+        workspaceId,
+        metadata: { shiftId, chatroomId, officerEmployeeId: employee.id, photoUrl },
+      }).catch((err: any) => log.warn('[ProofOfService] publish failed (non-blocking):', err?.message));
+
+      res.status(201).json({
+        success: true,
+        messageId: sendResult.messageId,
+        chatroomId,
+        shiftId,
+      });
+    } catch (error: unknown) {
+      log.error('Error capturing proof-of-service:', error);
+      res.status(500).json({ message: sanitizeError(error) || 'Failed to capture proof-of-service' });
+    }
+  });
+
   router.get('/:shiftId/site-info', requireAuth, async (req: any, res) => {
     try {
       const siteInfo = await shiftChatroomWorkflowService.getSiteInfo(req.params.shiftId);
@@ -3023,6 +3143,65 @@ router.post("/send-reminders/upcoming", requireManager, async (req: Authenticate
 // SHIFT OFFER ENDPOINTS — officer accepts/declines via UNS or email reply
 // offerId is the notif.relatedEntityId set when coverage_offer UNS is fired
 // ============================================================================
+
+/**
+ * GET /api/shifts/offers/my/pending — Readiness Section 15
+ * Lists the authenticated worker's open (not accepted, not declined, not
+ * expired) shift offers. The worker-dashboard banner calls this to surface
+ * day-one shift offers instead of relying on SMS.
+ */
+router.get("/offers/my/pending", requireAuth, async (req: AuthenticatedRequest, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: 'Not authenticated' });
+    const workspaceId = req.workspaceId;
+    if (!workspaceId) return res.status(400).json({ error: 'No workspace' });
+
+    const { notifications } = await import('@shared/schema');
+    const { and, eq, desc } = await import('drizzle-orm');
+
+    const rows = await db
+      .select()
+      .from(notifications)
+      .where(
+        and(
+          eq(notifications.workspaceId, workspaceId),
+          eq(notifications.userId, userId),
+          eq(notifications.type, 'coverage_offer'),
+        ),
+      )
+      .orderBy(desc(notifications.createdAt))
+      .limit(25);
+
+    const now = Date.now();
+    const offers = rows
+      .map((n) => {
+        const meta = (n as any).metadata || {};
+        const expiresAt = meta.expiresAt ? new Date(meta.expiresAt).getTime() : null;
+        const expired = expiresAt !== null && expiresAt < now;
+        const accepted = !!meta.accepted;
+        const declined = !!meta.declined;
+        return {
+          offerId: n.relatedEntityId,
+          workflowId: meta.workflowId || '',
+          location: meta.location || 'See details',
+          date: meta.date || null,
+          startTime: meta.startTime || null,
+          endTime: meta.endTime || null,
+          positionType: meta.positionType || 'Security Officer',
+          officerPayRate: meta.officerPayRate ? parseFloat(meta.officerPayRate) : undefined,
+          expiresAt: meta.expiresAt || null,
+          status: accepted ? 'accepted' : declined ? 'declined' : expired ? 'expired' : 'pending',
+        };
+      })
+      .filter((o) => o.status === 'pending' && o.offerId);
+
+    res.json({ offers, count: offers.length });
+  } catch (error: unknown) {
+    log.error('[ShiftOffer] list-my-pending error:', error);
+    res.status(500).json({ error: 'Failed to list pending offers' });
+  }
+});
 
 router.get("/offers/:offerId", requireAuth, async (req: AuthenticatedRequest, res) => {
   try {

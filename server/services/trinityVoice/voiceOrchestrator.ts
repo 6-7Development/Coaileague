@@ -20,6 +20,11 @@ import {
 import { eq, and, desc } from 'drizzle-orm';
 import { createLogger } from '../../lib/logger';
 import { trinityHelpaiCommandBus } from '../helpai/trinityHelpaiCommandBus';
+import {
+  PLATFORM_WORKSPACE_ID,
+  GRANDFATHERED_TENANT_ID,
+} from '../billing/billingConstants';
+import { cacheManager } from '../platform/cacheManager';
 const log = createLogger('voiceOrchestrator');
 
 
@@ -35,8 +40,27 @@ export function twiml(xml: string): string {
   return `<?xml version="1.0" encoding="UTF-8"?>\n<Response>${xml}</Response>`;
 }
 
+// SSML prosody wrapping makes Trinity sound warm and human instead of robotic.
+// - rate="92%" slightly slower than default for natural cadence
+// - pitch="+2%" adds subtle warmth
+// - <break> tags insert natural pauses after punctuation
 export function say(text: string, voice: string = VOICE, language: string = 'en-US'): string {
-  return `<Say voice="${voice}" language="${language}">${text}</Say>`;
+  const ssmlText = text
+    .replace(/\. /g, '.<break time="400ms"/> ')
+    .replace(/\? /g, '?<break time="400ms"/> ')
+    .replace(/! /g, '!<break time="300ms"/> ')
+    .replace(/, /g, ',<break time="150ms"/> ');
+  return `<Say voice="${voice}" language="${language}"><prosody rate="92%" pitch="+2%">${ssmlText}</prosody></Say>`;
+}
+
+// Quicker cadence for short acknowledgements / confirmations
+export function sayFast(text: string, voice: string = VOICE, language: string = 'en-US'): string {
+  return `<Say voice="${voice}" language="${language}"><prosody rate="100%">${text}</prosody></Say>`;
+}
+
+// Warmer, slower cadence for emotional / support / emergency contexts
+export function sayWarm(text: string, voice: string = VOICE, language: string = 'en-US'): string {
+  return `<Say voice="${voice}" language="${language}"><prosody rate="88%" pitch="+4%">${text}</prosody></Say>`;
 }
 
 function gather(opts: {
@@ -74,8 +98,12 @@ function pause(seconds: number = 1): string {
 export async function resolveWorkspaceFromPhoneNumber(to: string): Promise<{
   workspaceId: string;
   phoneRecord: typeof workspacePhoneNumbers.$inferSelect;
+  subscriptionStatus: string;   // 'active' | 'trial' | 'suspended' | 'cancelled' | etc.
+  subscriptionTier: string;     // 'free' | 'trial' | 'starter' | 'professional' | 'business' | 'enterprise'
+  isProtected: boolean;         // grandfathered or platform — always serve
 } | null> {
-  const [phoneRecord] = await db.select()
+  const [phoneRecord] = await db
+    .select()
     .from(workspacePhoneNumbers)
     .where(and(
       eq(workspacePhoneNumbers.phoneNumber, to),
@@ -84,60 +112,144 @@ export async function resolveWorkspaceFromPhoneNumber(to: string): Promise<{
     .limit(1);
 
   if (!phoneRecord) return null;
-  return { workspaceId: phoneRecord.workspaceId, phoneRecord };
+
+  const workspaceId = phoneRecord.workspaceId;
+  const isProtected =
+    workspaceId === PLATFORM_WORKSPACE_ID ||
+    (!!GRANDFATHERED_TENANT_ID && workspaceId === GRANDFATHERED_TENANT_ID);
+
+  // Subscription status comes from the shared tier cache (10-min TTL) so
+  // Trinity webhooks don't stampede the workspaces table and stay in sync
+  // with the HTTP tier guards. On cache miss or DB failure we default to
+  // 'active' / 'starter' so a transient lookup failure can't lock out a
+  // legitimate tenant.
+  const tierInfo = await cacheManager.getWorkspaceTierWithStatus(workspaceId);
+
+  return {
+    workspaceId,
+    phoneRecord,
+    subscriptionStatus: tierInfo?.status ?? 'active',
+    subscriptionTier: tierInfo?.tier ?? 'starter',
+    isProtected,
+  };
 }
 
 // ─── Main Menu Builder ────────────────────────────────────────────────────────
 
-// extEnabled: optional map from extension key to boolean (defaults to all enabled)
+// Phase 18B — Trinity introduces herself by name, then routes the caller to a
+// personalized lane (employee, client, general). The actual menu options live
+// in buildGeneralMenu (called after caller identification, or directly when
+// the caller chooses "general services").
 export function buildMainIVR(
+  lang: 'en' | 'es',
+  baseUrl: string,
+  _extEnabled: Record<string, boolean> = {}
+): string {
+  // Phase 21 — accept speech OR digit on the main IVR. Trinity listens for any
+  // of the well-known caller categories so a guest who says "I want to join
+  // Co-League" or "I'm an employee" routes correctly without pressing a key.
+  const hintsEn = 'one,two,three,employee,staff,officer,client,sales,emergency,help,join,sign up,careers';
+  const hintsEs = 'uno,dos,tres,empleado,oficial,cliente,ventas,emergencia,ayuda,unirme,carreras,trabajo';
+
+  if (lang === 'es') {
+    const greeting =
+      'Hola, soy Trinity, la asistente de inteligencia artificial de Co-League. ' +
+      'Puedo ayudarle de manera personalizada si se identifica primero. ' +
+      'Si es un empleado o usuario de la plataforma y desea ayuda personalizada, marque 1. ' +
+      'Si es un cliente que necesita asistencia de su proveedor de seguridad, marque 2. ' +
+      'Para servicios generales, marque 3. ' +
+      'Por favor tome su tiempo. También puede simplemente decirme en qué puedo ayudarle, o enviarnos un mensaje de texto a este número en cualquier momento.';
+
+    return twiml(
+      `<Gather input="speech dtmf" action="${baseUrl}/api/voice/caller-identify?lang=es" method="POST" numDigits="1" timeout="15" speechTimeout="auto" hints="${hintsEs}">` +
+      say(greeting, VOICE_ES, 'es-US') +
+      `</Gather>` +
+      redirect(`${baseUrl}/api/voice/caller-identify?lang=es`)
+    );
+  }
+
+  const greeting =
+    'Hi! My name is Trinity, Co-League\'s artificial intelligence assistant. ' +
+    'I can provide you with personalized help if you identify yourself first. ' +
+    'If you\'re a platform user or employee of an organization and would like personalized assistance, press 1. ' +
+    'If you\'re a client needing assistance from your security provider, press 2. ' +
+    'For general services and information, press 3. ' +
+    'Please take your time. You can also just tell me what you need help with, or text this number at any time for immediate assistance from me.';
+
+  return twiml(
+    `<Gather input="speech dtmf" action="${baseUrl}/api/voice/caller-identify?lang=en" method="POST" numDigits="1" timeout="15" speechTimeout="auto" hints="${hintsEn}">` +
+    say(greeting) +
+    `</Gather>` +
+    redirect(`${baseUrl}/api/voice/caller-identify?lang=en`)
+  );
+}
+
+// Phase 18B — Numbered service menu, presented after the caller chooses
+// "general services" (or as a fallback after identification times out).
+export function buildGeneralMenu(
   lang: 'en' | 'es',
   baseUrl: string,
   extEnabled: Record<string, boolean> = {}
 ): string {
   const enabled = (key: string) => extEnabled[key] !== false;
 
+  // Phase 21 — accept speech OR digit. The new "press 0" option lets any
+  // caller skip the menu and just talk to Trinity conversationally.
+  const hintsEn = 'sales,client,support,employment,staff,clock in,call off,emergency,careers,job,case,callback,trinity,help,join';
+  const hintsEs = 'ventas,cliente,soporte,empleo,personal,ausencia,emergencia,carreras,trabajo,caso,llamada,trinity,ayuda,unirme';
+
   if (lang === 'es') {
-    const parts: string[] = ['Hola, soy Trinity. Estoy aquí para ayudarle. '];
-    if (enabled('sales'))                   parts.push('Para ventas, marque 1. ');
+    const parts: string[] = ['Aquí están sus opciones. '];
+    if (enabled('sales'))                   parts.push('Para consultas de ventas y nuevos servicios, marque 1. ');
     if (enabled('client_support'))          parts.push('Para soporte al cliente, marque 2. ');
     if (enabled('employment_verification')) parts.push('Para verificación de empleo, marque 3. ');
-    if (enabled('staff'))                   parts.push('Para personal, marque 4. ');
+    if (enabled('staff'))                   parts.push('Para empleados: reloj de entrada, reportar ausencia o soporte, marque 4. ');
     if (enabled('emergency'))               parts.push('Para emergencias, marque 5. ');
-    if (enabled('careers'))                 parts.push('Para carreras profesionales, marque 6. ');
+    if (enabled('careers'))                 parts.push('Para oportunidades de empleo, marque 6. ');
     parts.push('Para verificar el estado de un caso de soporte, marque 7. ');
-    parts.push('Para inglés, marque 9. Por favor, tome su tiempo.');
+    parts.push('Para programar una llamada con un humano, marque 8. ');
+    parts.push('Para hablar conmigo libremente sobre cualquier tema, marque 0. ');
+    parts.push('Recuerde que también puede simplemente decirme lo que necesita, o enviarnos un mensaje de texto a este número en cualquier momento. ');
+    parts.push('Para inglés, marque 9.');
 
     return twiml(
-      gather({ action: `${baseUrl}/api/voice/main-menu-route?lang=es`, numDigits: 1, timeout: 12 },
-        say(parts.join(''), VOICE_ES, 'es-US')
-      ) +
+      `<Gather input="speech dtmf" action="${baseUrl}/api/voice/main-menu-route?lang=es" method="POST" numDigits="1" timeout="15" speechTimeout="auto" hints="${hintsEs}">` +
+      say(parts.join(''), VOICE_ES, 'es-US') +
+      `</Gather>` +
       redirect(`${baseUrl}/api/voice/main-menu-route?lang=es`)
     );
   }
 
-  const parts: string[] = ['Hi, I\'m Trinity. I\'m here to help you. '];
-  if (enabled('sales'))                   parts.push('For Sales, press 1. ');
-  if (enabled('client_support'))          parts.push('For Client Support, press 2. ');
-  if (enabled('employment_verification')) parts.push('For Employment Verification, press 3. ');
-  if (enabled('staff'))                   parts.push('For Staff, press 4. ');
-  if (enabled('emergency'))               parts.push('For Emergencies, press 5. ');
-  if (enabled('careers'))                 parts.push('For Careers and Employment, press 6. ');
+  const parts: string[] = ['Here are your options. '];
+  if (enabled('sales'))                   parts.push('For sales inquiries and new services, press 1. ');
+  if (enabled('client_support'))          parts.push('For client support, press 2. ');
+  if (enabled('employment_verification')) parts.push('For employment verification, press 3. ');
+  if (enabled('staff'))                   parts.push('For staff — clock in, report an absence, or get support, press 4. ');
+  if (enabled('emergency'))               parts.push('For emergencies, press 5. ');
+  if (enabled('careers'))                 parts.push('For employment opportunities and careers, press 6. ');
   parts.push('To check the status of a support case, press 7. ');
-  parts.push('Para Español, marque 9. Please take your time.');
+  parts.push('To schedule a callback with a human, press 8. ');
+  parts.push('To talk directly with me about anything, press 0. ');
+  parts.push('Remember, you can also just tell me what you need, or text this number at any time for immediate assistance. ');
+  parts.push('Para Español, marque 9.');
 
   return twiml(
-    gather({ action: `${baseUrl}/api/voice/main-menu-route?lang=en`, numDigits: 1, timeout: 12 },
-      say(parts.join(''))
-    ) +
+    `<Gather input="speech dtmf" action="${baseUrl}/api/voice/main-menu-route?lang=en" method="POST" numDigits="1" timeout="15" speechTimeout="auto" hints="${hintsEn}">` +
+    say(parts.join('')) +
+    `</Gather>` +
     redirect(`${baseUrl}/api/voice/main-menu-route?lang=en`)
   );
 }
 
 export function buildLanguageSelect(baseUrl: string): string {
   return twiml(
-    gather({ action: `${baseUrl}/api/voice/language-select`, numDigits: 1, timeout: 10 },
-      say('Hello, you\'ve reached Trinity. Press 1 for English, or Marque 2 para Español.')
+    gather(
+      { action: `${baseUrl}/api/voice/language-select`, numDigits: 1, timeout: 8 },
+      say(
+        'Hi! Thank you for calling Co-League — where intelligent workforce management meets real results. ' +
+        'Press 1 for English. ' +
+        'Marque 2 para Español.'
+      )
     ) +
     redirect(`${baseUrl}/api/voice/language-select`)
   );
@@ -281,14 +393,18 @@ export async function handleInbound(params: {
     }
   })();
 
-  // 4. Build greeting + language select
-  const greetingEn = phoneRecord.greetingScript ||
-    'Hello, thank you for calling. I\'m Trinity, your AI assistant. I\'m here to help.';
+  // 4. Build greeting + language select (Phase 18B — warm branded greeting).
+  // If the workspace overrides greetingScript we still play it first, then the
+  // language prompt, so per-tenant branding still works.
+  const customGreeting = phoneRecord.greetingScript || '';
+  const brandedGreeting =
+    'Hi! Thank you for calling Co-League — where intelligent workforce management meets real results. ' +
+    'Press 1 for English. Marque 2 para Español.';
 
   return twiml(
-    gather({ action: `${baseUrl}/api/voice/language-select`, numDigits: 1, timeout: 10 },
-      say(greetingEn) +
-      say('Press 1 for English, or Marque 2 para Español.')
+    gather({ action: `${baseUrl}/api/voice/language-select`, numDigits: 1, timeout: 8 },
+      (customGreeting ? say(customGreeting) : '') +
+      say(brandedGreeting)
     ) +
     redirect(`${baseUrl}/api/voice/language-select`)
   );

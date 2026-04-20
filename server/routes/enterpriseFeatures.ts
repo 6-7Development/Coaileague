@@ -28,6 +28,7 @@ import {
   apiKeyUsageLogs,
   users
 } from '@shared/schema';
+import { softDelete } from '../lib/softDelete';
 
 interface AuthenticatedRequest extends Request {
   user?: any;
@@ -169,7 +170,15 @@ enterpriseRouter.delete('/vehicles/:id', async (req: AuthenticatedRequest, res: 
   try {
     const wsId = requireWorkspace(req, res);
     if (!wsId) return;
-    await db.delete(vehicles).where(and(eq(vehicles.id, req.params.id), eq(vehicles.workspaceId, wsId)));
+    // TRINITY.md Section R / Law P1 — soft delete (vehicle record retained for audit)
+    await softDelete({
+      table: vehicles,
+      where: and(eq(vehicles.id, req.params.id), eq(vehicles.workspaceId, wsId))!,
+      userId: req.user?.id ?? 'unknown',
+      workspaceId: wsId,
+      entityType: 'vehicle',
+      entityId: req.params.id,
+    });
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ message: 'Failed to delete vehicle' });
@@ -302,7 +311,15 @@ enterpriseRouter.delete('/weapons/:id', async (req: AuthenticatedRequest, res: R
   try {
     const wsId = requireWorkspace(req, res);
     if (!wsId) return;
-    await db.delete(weapons).where(and(eq(weapons.id, req.params.id), eq(weapons.workspaceId, wsId)));
+    // TRINITY.md Section R / Law P1 — soft delete (armory record retained for audit)
+    await softDelete({
+      table: weapons,
+      where: and(eq(weapons.id, req.params.id), eq(weapons.workspaceId, wsId))!,
+      userId: req.user?.id ?? 'unknown',
+      workspaceId: wsId,
+      entityType: 'weapon',
+      entityId: req.params.id,
+    });
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ message: 'Failed to delete weapon' });

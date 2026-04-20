@@ -48,6 +48,10 @@ export const clients = pgTable("clients", {
   // Format: CLT-[ORG_SHORT]-[NNNNN]  e.g. CLT-ACM-00891
   // ============================================================================
   clientNumber: varchar("client_number"), // e.g. CLT-ACM-00891 — canonical human-readable ID
+  // Phase 23 — identity PIN. bcrypt hash of a 4–8 digit code the client sets
+  // during onboarding. Required secondary factor when a client identifies
+  // themselves to Trinity or a support agent by clientNumber.
+  clientPinHash: varchar("client_pin_hash"),
 
   // External ID (CLI-XXXX-NNNNN format)
   clientCode: varchar("client_code"),
@@ -306,6 +310,9 @@ export const clients = pgTable("clients", {
   billingCity: varchar("billing_city"),
   billingState: varchar("billing_state"),
   billingZip: varchar("billing_zip"),
+  // TRINITY.md Section R / Law P1 — soft delete (no hard delete on clients)
+  deletedAt: timestamp("deleted_at"),
+  deletedBy: varchar("deleted_by"),
 }, (table) => ({
   // Add index on userId for performance
   userIdIdx: index("clients_user_id_idx").on(table.userId),

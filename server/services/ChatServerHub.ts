@@ -494,7 +494,7 @@ class ChatServerHubClass {
 
   getAIFallbackMessage(context: string): string {
     const fallbackMessages: Record<string, string> = {
-      'chat_response': 'Our AI assistant is temporarily unavailable. A support agent will be with you shortly.',
+      'chat_response': 'Trinity is temporarily unavailable. A support agent will be with you shortly.',
       'sentiment_analysis': 'Sentiment analysis is temporarily paused. Messages are still being delivered normally.',
       'auto_escalation': 'Automatic escalation is temporarily unavailable. Please use manual escalation if needed.',
       'suggestion': 'AI suggestions are temporarily unavailable. Please proceed with your best judgment.',
@@ -1355,6 +1355,8 @@ class ChatServerHubClass {
         const severity = severityMapping[event.type] || 'info';
         
         // Route through Trinity AI for contextual enrichment
+        // ChatDock deep link: `/chatrooms?room={roomId}` so push taps open the correct room.
+        // pushTag collapses multiple pushes from the same room into one notification.
         await universalNotificationEngine.sendNotification({
           workspaceId: event.metadata.workspaceId,
           userId: event.metadata.targetUserId,
@@ -1362,9 +1364,12 @@ class ChatServerHubClass {
           title: event.title,
           message: event.description,
           severity,
-          actionUrl: event.metadata.ticketNumber 
+          actionUrl: event.metadata.ticketNumber
             ? `/support/tickets/${event.metadata.ticketNumber}`
-            : `/chat/${event.metadata.conversationId}`,
+            : `/chatrooms?room=${event.metadata.conversationId}`,
+          pushTag: event.metadata.conversationId
+            ? `chat-room-${event.metadata.conversationId}`
+            : undefined,
           metadata: { 
             chatEventType: event.type, 
             originalNotificationType: notificationType,

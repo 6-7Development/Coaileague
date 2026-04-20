@@ -1,11 +1,27 @@
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { DollarSign, Users, Building2, FileText, AlertCircle, Receipt, Activity } from "lucide-react";
+import { DollarSign, Users, Building2, FileText, AlertCircle, Receipt, Activity, ShieldCheck, Copy, KeyRound, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { CanvasHubPage, type CanvasPageConfig } from "@/components/canvas-hub";
 import { useAuth } from "@/hooks/useAuth";
 import { formatCurrency } from "@/lib/formatters";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import { toast } from "@/hooks/use-toast";
+import { ComplianceScoreWidget } from "@/components/dashboard/ComplianceScoreWidget";
+
+const PIN_SETUP_DISMISSED_KEY = "pin-setup-dismissed";
 
 const pageConfig: CanvasPageConfig = {
   id: "org-owner-dashboard",
@@ -19,10 +35,77 @@ export default function OrgOwnerDashboard() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
 
-  const { data: workspace } = useQuery<{ id: string; name?: string }>({
+  const { data: workspace } = useQuery<{ id: string; name?: string; orgId?: string; organizationId?: string }>({
     queryKey: ["/api/workspace/current"],
     staleTime: 5 * 60 * 1000,
   });
+
+  const { data: pinStatus } = useQuery<{ hasPin: boolean }>({
+    queryKey: ["/api/identity/pin/owner/status"],
+    staleTime: 30_000,
+  });
+
+  const [pinInput, setPinInput] = useState("");
+  const [pinCopied, setPinCopied] = useState(false);
+
+  // Phase 25 — first-login PIN setup modal
+  const [showPinSetupModal, setShowPinSetupModal] = useState(false);
+  const [modalPinInput, setModalPinInput] = useState("");
+  const [modalPinConfirm, setModalPinConfirm] = useState("");
+
+  useEffect(() => {
+    if (!pinStatus) return;
+    if (pinStatus.hasPin) return;
+    const dismissed = typeof window !== "undefined" &&
+      window.localStorage.getItem(PIN_SETUP_DISMISSED_KEY) === "1";
+    if (dismissed) return;
+    setShowPinSetupModal(true);
+  }, [pinStatus?.hasPin]);
+
+  const setPinMutation = useMutation({
+    mutationFn: async (pin: string) => {
+      const res = await apiRequest("POST", "/api/identity/pin/owner/set", { pin });
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Owner PIN saved", description: "Trinity and support agents can now verify you with this PIN." });
+      setPinInput("");
+      queryClient.invalidateQueries({ queryKey: ["/api/identity/pin/owner/status"] });
+    },
+    onError: (err: any) => {
+      toast({
+        title: "Could not save PIN",
+        description: err?.message || "Please try again",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const clearPinMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("DELETE", "/api/identity/pin/owner");
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Owner PIN cleared" });
+      queryClient.invalidateQueries({ queryKey: ["/api/identity/pin/owner/status"] });
+    },
+    onError: (err: any) => {
+      toast({
+        title: "Could not clear PIN",
+        description: err?.message || "Please try again",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const orgCode = workspace?.orgId || workspace?.organizationId || null;
+  const copyOrgCode = () => {
+    if (!orgCode) return;
+    navigator.clipboard.writeText(orgCode);
+    setPinCopied(true);
+    setTimeout(() => setPinCopied(false), 1500);
+  };
 
   const { data: clients } = useQuery<{ data: any[] } | any[]>({
     queryKey: ["/api/clients"],
@@ -57,6 +140,102 @@ export default function OrgOwnerDashboard() {
           <p className="text-sm text-muted-foreground mt-1">
             Welcome back, {user?.firstName || user?.email?.split("@")[0] || "Owner"}
           </p>
+        </div>
+
+        {/* Identity & PIN — tenant universal code + secondary factor */}
+        <div className="bg-card border border-border rounded-lg p-5">
+          <div className="flex items-start gap-3 mb-4">
+            <div className="p-2 bg-muted rounded-lg">
+              <ShieldCheck className="w-5 h-5 text-foreground" />
+            </div>
+            <div className="flex-1">
+              <p className="font-semibold text-foreground">Tenant Identity &amp; Owner PIN</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Your organization code is how Trinity, HelpAI, and human support agents identify
+                your tenant across voice, SMS, email, and dockchat. Set an owner PIN so nobody
+                can impersonate you even if they know your code.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="rounded-md border border-border bg-background p-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+                Organization Code
+              </p>
+              <div className="flex items-center gap-2">
+                <code
+                  className="font-mono text-sm text-foreground break-all"
+                  data-testid="owner-dashboard-org-code"
+                >
+                  {orgCode || "Not assigned — contact support"}
+                </code>
+                {orgCode && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={copyOrgCode}
+                    className="h-7 px-2"
+                    data-testid="copy-org-code-button"
+                  >
+                    {pinCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                  </Button>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                Share this with support so they can find your tenant instantly.
+              </p>
+            </div>
+
+            <div className="rounded-md border border-border bg-background p-3">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Owner Verification PIN
+                </p>
+                {pinStatus?.hasPin ? (
+                  <Badge variant="secondary" className="text-xs">PIN set</Badge>
+                ) : (
+                  <Badge variant="destructive" className="text-xs">Not set</Badge>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <Input
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={8}
+                  placeholder="4–8 digits"
+                  value={pinInput}
+                  onChange={(e) => setPinInput(e.target.value.replace(/\D/g, ""))}
+                  className="h-8 text-sm font-mono"
+                  data-testid="owner-pin-input"
+                />
+                <Button
+                  size="sm"
+                  onClick={() => setPinMutation.mutate(pinInput)}
+                  disabled={pinInput.length < 4 || setPinMutation.isPending}
+                  data-testid="set-owner-pin-button"
+                >
+                  <KeyRound className="w-3.5 h-3.5 mr-1" />
+                  {pinStatus?.hasPin ? "Update" : "Set PIN"}
+                </Button>
+                {pinStatus?.hasPin && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => clearPinMutation.mutate()}
+                    disabled={clearPinMutation.isPending}
+                    data-testid="clear-owner-pin-button"
+                  >
+                    Clear
+                  </Button>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                Never share your PIN. Support will only ask for it to verify your identity,
+                never to perform an action for you.
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Metrics row */}
@@ -96,6 +275,9 @@ export default function OrgOwnerDashboard() {
             <p className="text-2xl font-bold text-foreground">{invoiceList.length || "—"}</p>
           </div>
         </div>
+
+        {/* Readiness Section 27 #9 — compliance score widget */}
+        <ComplianceScoreWidget />
 
         {/* Data cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -206,6 +388,87 @@ export default function OrgOwnerDashboard() {
           </div>
         </div>
       </div>
+
+      {/* Phase 25 — first-login Owner PIN setup prompt */}
+      <Dialog open={showPinSetupModal} onOpenChange={setShowPinSetupModal}>
+        <DialogContent data-testid="dialog-owner-pin-setup">
+          <DialogHeader>
+            <DialogTitle>Set Your Owner PIN</DialogTitle>
+            <DialogDescription>
+              Your Owner PIN lets Trinity verify your identity when you call
+              (866) 464-4151 for account management. Takes 30 seconds to set up.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1.5">
+              <Label>New PIN (4–8 digits)</Label>
+              <Input
+                type="password"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={8}
+                autoComplete="new-password"
+                value={modalPinInput}
+                onChange={(e) => setModalPinInput(e.target.value.replace(/\D/g, ""))}
+                data-testid="input-owner-pin-modal"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Confirm PIN</Label>
+              <Input
+                type="password"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={8}
+                autoComplete="new-password"
+                value={modalPinConfirm}
+                onChange={(e) => setModalPinConfirm(e.target.value.replace(/\D/g, ""))}
+                data-testid="input-owner-pin-modal-confirm"
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setShowPinSetupModal(false);
+                if (typeof window !== "undefined") {
+                  window.localStorage.setItem(PIN_SETUP_DISMISSED_KEY, "1");
+                }
+              }}
+              data-testid="button-owner-pin-modal-remind-later"
+            >
+              Remind me later
+            </Button>
+            <Button
+              disabled={
+                setPinMutation.isPending ||
+                modalPinInput.length < 4 ||
+                modalPinInput.length > 8 ||
+                modalPinInput !== modalPinConfirm
+              }
+              data-testid="button-owner-pin-modal-save"
+              onClick={async () => {
+                if (modalPinInput !== modalPinConfirm) {
+                  toast({ title: "PINs do not match", variant: "destructive" });
+                  return;
+                }
+                try {
+                  await setPinMutation.mutateAsync(modalPinInput);
+                  setShowPinSetupModal(false);
+                  setModalPinInput("");
+                  setModalPinConfirm("");
+                } catch {
+                  /* toast handled in mutation */
+                }
+              }}
+            >
+              <KeyRound className="w-3.5 h-3.5 mr-1" />
+              Save PIN
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </CanvasHubPage>
   );
 }

@@ -6,7 +6,7 @@ import { ensureWorkspaceAccess } from "../middleware/workspaceScope";
 import { sanitizeError } from "../middleware/errorHandler";
 import { z } from "zod";
 import { randomUUID } from "crypto";
-import { creditManager } from "../services/billing/creditManager";
+import { tokenManager } from "../services/billing/tokenManager";
 import { typedPool } from '../lib/typedSql';
 import { createLogger } from '../lib/logger';
 const log = createLogger('IncidentPipelineRoutes');
@@ -250,7 +250,7 @@ incidentPipelineRouter.patch("/:id/status", requireAuth as any, ensureWorkspaceA
     }
 
     // Tenant isolation: enforce workspace_id in WHERE clause atomically
-    // even though row was already verified above (CLAUDE.md §1).
+    // even though row was already verified above (TRINITY.md §1).
     params.push(workspaceId);
     await q(
       `UPDATE incident_reports SET ${updates.join(", ")} WHERE id = $1 AND workspace_id = $${pi}`,
@@ -294,7 +294,7 @@ incidentPipelineRouter.post("/:id/trinity-polish", requireAuth as any, ensureWor
     if (!rawText) return res.status(400).json({ error: "No raw description to polish" });
 
     try {
-      await creditManager.deductCredits({
+      await tokenManager.recordUsage({
         workspaceId,
         userId,
         featureKey: "ai_document_processing",
@@ -309,7 +309,7 @@ incidentPipelineRouter.post("/:id/trinity-polish", requireAuth as any, ensureWor
       return res.status(402).json({ error: "Insufficient credits", message: sanitizeError(creditError), creditsRequired: 10 });
     }
 
-    // Tenant isolation: enforce workspace_id atomically (CLAUDE.md §1)
+    // Tenant isolation: enforce workspace_id atomically (TRINITY.md §1)
     await q(
       `UPDATE incident_reports SET status = 'trinity_processing', updated_at = NOW() WHERE id = $1 AND workspace_id = $2`,
       [req.params.id, workspaceId]
@@ -333,7 +333,7 @@ incidentPipelineRouter.post("/:id/trinity-polish", requireAuth as any, ensureWor
     // @ts-expect-error — TS migration: fix in refactoring sprint
     const revisionCount = (incident.trinity_revision_count || 0) + 1;
 
-    // Tenant isolation: enforce workspace_id atomically (CLAUDE.md §1)
+    // Tenant isolation: enforce workspace_id atomically (TRINITY.md §1)
     await q(
       `UPDATE incident_reports SET
         polished_description = $2, polished_summary = $3,

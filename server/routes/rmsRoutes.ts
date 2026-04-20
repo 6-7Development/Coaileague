@@ -123,6 +123,87 @@ rmsRouter.post("/incidents", requireAuth as any, ensureWorkspaceAccess as any, a
       workspaceId,
       metadata: { incidentId: id, incidentNumber, incidentType: resolvedIncidentType, severity: resolvedSeverity, title, siteId: siteId || null, siteName: siteName || null, reportedBy: resolvedReportedBy, latitude: gpsLatitude || latitude || null, longitude: gpsLongitude || longitude || null }
     }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+
+    // Notify supervisors + org owner + client portal per §7 RMS pipeline.
+    // All NDS calls awaited with non-fatal try/catch (TRINITY.md §B).
+    try {
+      const supervisors = await q(
+        `SELECT id FROM users
+           WHERE workspace_id = $1
+             AND workspace_role IN ('supervisor', 'manager', 'department_manager', 'org_manager')
+           LIMIT 20`,
+        [workspaceId]
+      );
+      for (const sup of supervisors as any[]) {
+        try {
+          await NotificationDeliveryService.send({
+            type: 'incident_submitted',
+            workspaceId,
+            recipientUserId: sup.id,
+            channel: 'in_app',
+            subject: `Incident Reported: ${resolvedIncidentType}`,
+            body: {
+              title: `Incident Reported: ${resolvedIncidentType}`,
+              message: `${reportedByName || 'An officer'} reported an incident${siteName ? ` at ${siteName}` : ''}. Requires your review.`,
+              url: `/rms/incidents/${id}`,
+              incidentId: id,
+              incidentNumber,
+              severity: resolvedSeverity,
+              actionButtons: [{ label: 'Review Now', action: 'open_incident', data: { incidentId: id } }],
+            },
+          });
+        } catch (err: any) {
+          log.warn('[Incident] supervisor NDS failed (non-fatal):', err?.message);
+        }
+      }
+
+      if (['high', 'critical'].includes(String(resolvedSeverity).toLowerCase())) {
+        const owners = await q(
+          `SELECT id FROM users
+             WHERE workspace_id = $1
+               AND workspace_role IN ('org_owner', 'co_owner', 'org_admin')
+             LIMIT 5`,
+          [workspaceId]
+        );
+        for (const owner of owners as any[]) {
+          try {
+            await NotificationDeliveryService.send({
+              type: 'incident_high_severity',
+              workspaceId,
+              recipientUserId: owner.id,
+              channel: 'in_app',
+              subject: `⚠️ High Severity Incident — ${siteName || 'Your site'}`,
+              body: {
+                title: `⚠️ High Severity Incident — ${siteName || 'Your site'}`,
+                message: title,
+                url: `/rms/incidents/${id}`,
+                incidentId: id,
+                incidentNumber,
+                severity: resolvedSeverity,
+              },
+            });
+          } catch (err: any) {
+            log.warn('[Incident] owner NDS failed (non-fatal):', err?.message);
+          }
+        }
+      }
+
+      try {
+        await platformEventBus.publish({
+          type: 'incident_available_to_client',
+          category: 'client_transparency',
+          title: `Incident Available — ${incidentNumber}`,
+          description: `Incident ${incidentNumber} visible to client`,
+          workspaceId,
+          metadata: { incidentId: id, siteId: siteId || null, severity: resolvedSeverity },
+        });
+      } catch (pubErr: any) {
+        log.warn('[EventBus] incident_available_to_client publish failed (non-fatal):', pubErr?.message);
+      }
+    } catch (err: any) {
+      log.warn('[Incident] notification pipeline failed (non-fatal):', err?.message);
+    }
+
     const result = rows[0];
     // Store in idempotency cache for 5 minutes
     if (idemKey) rmsIdempotencyCache.set(`${workspaceId}:${idemKey}`, { result, expiresAt: Date.now() + 5 * 60 * 1000 });
@@ -174,7 +255,7 @@ rmsRouter.post("/incidents/:id/ai-narrative", requireAuth as any, ensureWorkspac
     const aiNarrativeResult = await meteredGemini.generate({ workspaceId, userId: req.user?.id || req.session?.userId || "system", featureKey: "rms_narrative_polish", prompt });
     const aiNarrative = aiNarrativeResult.text;
     // Tenant isolation: enforce workspace_id in the UPDATE WHERE clause
-    // (CLAUDE.md §1 — every query scoped by workspace_id, no exceptions)
+    // (TRINITY.md §1 — every query scoped by workspace_id, no exceptions)
     await q(`UPDATE incident_reports SET ai_narrative = $1, updated_at = NOW() WHERE id = $2 AND workspace_id = $3`, [aiNarrative, req.params.id, workspaceId]);
     res.json({ aiNarrative });
   } catch (e: unknown) { res.status(500).json({ error: sanitizeError(e) }); }
@@ -280,7 +361,7 @@ rmsRouter.post("/dars/:id/submit", requireAuth as any, ensureWorkspaceAccess as 
     // Trinity Claude articulation pass — improve activity_summary for professional articulation
     if (dar.activity_summary && dar.activity_summary.trim().length > 20) {
       try {
-        const { claudeService } = await import("../services/ai-brain/dualai/claudeService");
+        const { claudeService } = await import("../services/ai-brain/trinity-orchestration/trinityValidationService");
         if (claudeService.isAvailable()) {
           const claudeResult = await claudeService.processRequest({
             task: `You are a professional security report editor. Improve the following field officer's activity summary for a formal Daily Activity Report (DAR). Keep all facts intact, maintain accuracy, and improve professionalism and clarity. Do not add information not present. Return only the improved text with no preamble.\n\nOriginal activity summary:\n${dar.activity_summary}`,
@@ -336,6 +417,70 @@ rmsRouter.post("/dars/:id/verify", requireAuth as any, ensureWorkspaceAccess as 
     const rows = await q(`SELECT * FROM daily_activity_reports WHERE id=$1`, [req.params.id]);
     if (!rows.length) return res.status(404).json({ error: "Not found" });
     const dar = rows[0] as any;
+
+    // 1. Auto-generate PDF if not already produced so the client portal
+    //    sees a downloadable report the moment the DAR is verified.
+    if (!dar.pdf_url) {
+      try {
+        const { generateDarPdf } = await import("../services/darPdfService");
+        const pdfUrl = await generateDarPdf(req.params.id, workspaceId);
+        if (pdfUrl) {
+          await q(
+            `UPDATE daily_activity_reports SET pdf_url=$1, pdf_generated_at=NOW(), updated_at=NOW() WHERE id=$2`,
+            [pdfUrl, req.params.id]
+          );
+          dar.pdf_url = pdfUrl;
+        }
+      } catch (pdfErr: any) {
+        log.error('[DAR] Auto PDF generation failed (non-blocking):', pdfErr?.message);
+      }
+    }
+
+    // 2. Signal the client-transparency subscribers (portal refresh, etc.)
+    //    so the client portal picks the new DAR up without a reload cycle.
+    platformEventBus.publish({
+      type: 'dar_available_to_client',
+      category: 'client_transparency',
+      title: `DAR Available — ${dar.report_number}`,
+      description: `DAR ${dar.report_number} verified and now visible in client portal`,
+      workspaceId,
+      metadata: { darId: req.params.id, clientId: dar.client_id, siteId: dar.site_id },
+    }).catch((err: any) => log.warn('[EventBus] dar_available_to_client publish failed:', err?.message));
+
+    // 3. Optional auto-send per workspace setting. Stored in the
+    //    automation_policy_blob JSONB so we don't need a new column.
+    try {
+      const settingRows = await q(
+        `SELECT (automation_policy_blob->>'auto_send_dars_to_client')::boolean AS auto_send_dars_to_client
+           FROM workspaces WHERE id = $1`,
+        [workspaceId]
+      );
+      const autoSend = (settingRows?.[0] as any)?.auto_send_dars_to_client === true;
+      if (autoSend && dar.client_email) {
+        const darHtml = `<h2>Daily Activity Report</h2>
+          <p><strong>Officer:</strong> ${dar.employee_name}</p>
+          <p><strong>Site:</strong> ${dar.site_name || 'N/A'}</p>
+          <p><strong>Date:</strong> ${dar.shift_date || 'N/A'}</p>
+          <p><strong>Report #:</strong> ${dar.report_number}</p>
+          <hr/>
+          <p>${dar.activity_summary || 'No activity summary provided.'}</p>
+          ${dar.pdf_url ? `<p><a href="${dar.pdf_url}">Download Full PDF Report</a></p>` : ''}`;
+        await NotificationDeliveryService.send({
+          type: 'dar_delivered',
+          workspaceId,
+          recipientUserId: dar.client_email,
+          channel: 'email',
+          body: {
+            to: dar.client_email,
+            subject: `Daily Activity Report — ${dar.site_name || 'Site'} — ${dar.shift_date || new Date().toLocaleDateString()}`,
+            html: darHtml,
+          },
+        });
+      }
+    } catch (autoSendErr: any) {
+      log.warn('[DAR] Auto-send check failed (non-fatal):', autoSendErr?.message);
+    }
+
     platformEventBus.publish({ type: 'dar_verified', category: 'automation', title: `DAR Verified — ${dar.report_number}`, description: `${dar.report_number} verified by ${verifierName || verifierId}`, workspaceId, metadata: { darId: req.params.id, reportNumber: dar.report_number, verifiedBy: verifierName || verifierId } }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
     res.json(dar);
   } catch (e: unknown) { res.status(500).json({ error: sanitizeError(e) }); }
@@ -707,7 +852,7 @@ rmsRouter.post("/shift-reports/:id/submit", requireAuth as any, ensureWorkspaceA
     // Trinity Claude articulation pass — improve summary for professional articulation
     if (report.summary && report.summary.trim().length > 20) {
       try {
-        const { claudeService } = await import("../services/ai-brain/dualai/claudeService");
+        const { claudeService } = await import("../services/ai-brain/trinity-orchestration/trinityValidationService");
         if (claudeService.isAvailable()) {
           const claudeResult = await claudeService.processRequest({
             task: `You are a professional security report editor. Improve the following shift report summary for a formal Daily Activity Report (DAR). Keep all facts intact, maintain accuracy, and improve professionalism and clarity. Do not add information not present. Return only the improved text with no preamble.\n\nOriginal summary:\n${report.summary}`,

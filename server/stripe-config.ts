@@ -100,7 +100,9 @@ export const STRIPE_PRODUCTS = {
   
   ADDONS: {
     CLAUDE_PREMIUM: {
-      priceId: process.env.STRIPE_ADDON_CLAUDE_PREMIUM_PRICE_ID || null,
+      priceId: process.env.STRIPE_ADDON_TRINITY_PREMIUM_PRICE_ID
+        || process.env.STRIPE_ADDON_CLAUDE_PREMIUM_PRICE_ID
+        || null,
       amount: BILLING.addons.claude_premium_unlimited.monthlyPrice,
       name: BILLING.addons.claude_premium_unlimited.name,
       description: BILLING.addons.claude_premium_unlimited.description,

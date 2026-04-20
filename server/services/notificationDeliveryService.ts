@@ -99,7 +99,15 @@ export type NotificationDeliveryType =
   | 'email_fair_use_warning'
   | 'client_portal_report'
   | 'client_portal_dispute'
-  | 'trinity_welcome_email';
+  | 'trinity_welcome_email'
+  | 'proof_of_service_prompt'
+  | 'shift_trade_request'
+  | 'shift_trade_accepted'
+  | 'shift_trade_declined'
+  | 'shift_trade_approved'
+  | 'incident_submitted'
+  | 'incident_high_severity'
+  | 'dar_delivered';
 
 export type NotificationDeliveryChannel = 'email' | 'sms' | 'websocket' | 'in_app' | 'push';
 
@@ -111,6 +119,39 @@ export const CRITICAL_NOTIFICATION_TYPES: NotificationDeliveryType[] = [
   // @ts-expect-error — TS migration: fix in refactoring sprint
   'panic_alert',
 ];
+
+// Action buttons rendered on web-push notifications. The service worker
+// (client/public/sw.js) handles "accept", "decline", "approve", "view", "sign",
+// "clock_in", "reply", "acknowledge", "respond", "dismiss" click targets;
+// entries here must match those handlers.
+export const NOTIFICATION_ACTION_MAP: Partial<Record<NotificationDeliveryType, Array<{ action: string; title: string }>>> = {
+  shift_offer_notification: [
+    { action: 'accept', title: 'Accept Shift' },
+    { action: 'decline', title: 'Decline' },
+  ],
+  shift_assignment: [
+    { action: 'accept', title: 'Accept' },
+    { action: 'view', title: 'View Shift' },
+  ],
+  payroll_approval_required: [
+    { action: 'approve', title: 'Approve' },
+    { action: 'view', title: 'Review First' },
+  ],
+  document_requires_signature: [
+    { action: 'sign', title: 'Sign Now' },
+    { action: 'view', title: 'View Document' },
+  ],
+  calloff_received: [
+    { action: 'view', title: 'Find Coverage' },
+  ],
+  coverage_needed: [
+    { action: 'view', title: 'Find Coverage' },
+  ],
+  shift_reminder: [
+    { action: 'clock_in', title: 'Clock In' },
+    { action: 'view', title: 'View Shift' },
+  ],
+};
 
 export interface SendNotificationPayload {
   type: NotificationDeliveryType;
@@ -381,12 +422,27 @@ export class NotificationDeliveryService {
     const userId = record.recipientUserId;
     if (!userId) throw new Error('No recipient userId for push delivery');
     const { PLATFORM } = await import('../config/platformConfig');
+    const actions = NOTIFICATION_ACTION_MAP[record.notificationType as NotificationDeliveryType];
     await sendPushToUser(userId, {
       title: record.subject ?? String(payload.title ?? `${PLATFORM.name} Notification`),
       body: String(payload.body ?? payload.message ?? record.subject ?? ''),
       type: record.notificationType,
       url: String(payload.url ?? payload.actionUrl ?? '/'),
-      data: { workspaceId: record.workspaceId, type: record.notificationType, notificationId: record.id },
+      data: {
+        workspaceId: record.workspaceId,
+        type: record.notificationType,
+        notificationId: record.id,
+        // Entity refs so the client-side use-service-worker-messages hook can
+        // fire the right mutation when the user taps an action button. Only
+        // the fields present on the payload are forwarded.
+        ...(payload.offerId ? { offerId: payload.offerId } : {}),
+        ...(payload.shiftId ? { shiftId: payload.shiftId } : {}),
+        ...(payload.documentId ? { documentId: payload.documentId } : {}),
+        ...(payload.approvalId ? { approvalId: payload.approvalId } : {}),
+        ...(payload.entityId ? { entityId: payload.entityId } : {}),
+        ...(payload.entityType ? { entityType: payload.entityType } : {}),
+      },
+      ...(actions && actions.length ? { actions } : {}),
     });
   }
 

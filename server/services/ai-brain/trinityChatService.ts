@@ -57,7 +57,7 @@ import { getTrinityPersonalityPrompt } from '../../trinity/personality';
 import { trinityContentGuardrails, GuardrailStatus } from './trinityContentGuardrails';
 import { trinityQuickBooksSnapshot } from './trinityQuickBooksSnapshot';
 import { orgDataPrivacyGuard } from '../privacy/orgDataPrivacyGuard';
-import { creditManager, CREDIT_COSTS, isUnlimitedCreditUser, UNLIMITED_CREDITS_BALANCE, getWorkspaceTierAllowance, TIER_MONTHLY_CREDITS } from '../billing/creditManager';
+import { tokenManager, TOKEN_COSTS, isUnlimitedTokenUser, getWorkspaceTierAllowance, TIER_TOKEN_ALLOCATIONS } from '../billing/tokenManager';
 import {
   buildSharedPersonalityBlock,
   buildToneGuidance,
@@ -79,27 +79,71 @@ import { trinityPeripheralSurfaced } from '@shared/schema/domains/trinity/extend
 import { createLogger } from '../../lib/logger';
 import type { KnowledgeDomain } from './sharedKnowledgeGraph';
 import { trinityDeliberationLoop } from './trinityDeliberationLoop';
+import { trinityPrefrontalCortex, type OrgSurvivalState, type OrgMode } from './trinityPrefrontalCortex';
+import { trinityLimbicSystem, type EmotionalSignal } from './trinityLimbicSystem';
+import { trinitySocialGraphEngine } from './trinitySocialGraphEngine';
+import { trinityGlobalWorkspace } from './trinityGlobalWorkspace';
 const log = createLogger('TrinityChatService');
 
 // === MODULE-SCOPE CONSTANTS ===
 // Compiled once at module load — not on every chat interaction.
 // HIGH_STAKES_KEYWORDS triggers the deliberation loop auto-trigger for manager-level
 // chats that reference financial/legal/compliance-critical topics.
-const HIGH_STAKES_KEYWORDS = /\b(terminate|termination|lawsuit|legal|sue|compliance\s+violation|audit|penalty|fine|breach|payroll\s+error|overpayment|underpayment|discrimination|harassment|injury|accident|incident\s+report|license\s+suspended|contract\s+breach)\b/i;
+const HIGH_STAKES_KEYWORDS = /\b(terminate|termination|lawsuit|legal|sue|compliance\s+violation|audit|penalty|fine|breach|payroll\s+error|overpayment|underpayment|discrimination|harassment|injury|accident|incident\s+report|license\s+suspended|contract\s+breach|void\s+invoice|cancel\s+invoice|void\s+payroll|delete\s+shift|bulk\s+delete|mass\s+cancel|payroll\s+correction|hours\s+adjustment)\b/i;
+
+// ─── Prefrontal Cortex mode → prompt posture ──────────────────────────────
+const ORG_MODE_INSTRUCTIONS: Record<OrgMode, string> = {
+  THRIVING: 'This organization is healthy. Be expansive, forward-looking, strategic. It is a good time to suggest growth moves.',
+  STABLE:   'Normal operating conditions. Be direct and helpful. Keep recommendations pragmatic.',
+  AT_RISK:  'This organization has emerging risks. Proactively mention relevant concerns even if not asked. Bias toward preservation.',
+  CRISIS:   'This organization is in crisis. Lead every response with stabilization priorities before anything else.',
+  SURVIVAL: 'This organization is in survival mode. Be brief, tactical, actionable only. Cut everything non-essential from your response.',
+};
+
+function getPFCModeBlock(orgState: OrgSurvivalState): string {
+  const critical = orgState.threatSignals
+    .filter(t => t.severity === 'critical')
+    .slice(0, 3)
+    .map(t => t.signal)
+    .join('; ');
+  const threatsNote = critical ? ` Active critical threats: ${critical}.` : '';
+  return `\nORG STATUS: ${orgState.mode} (survival score ${orgState.survivalScore}/100).${threatsNote}\n${ORG_MODE_INSTRUCTIONS[orgState.mode]}`;
+}
+
+// ─── Limbic emotional state → tone directive ──────────────────────────────
+const LIMBIC_ACTIONS: Record<string, string> = {
+  frustrated:    'This user is frustrated. Acknowledge it directly before answering. Skip pleasantries.',
+  urgent:        'This is an urgent request. Lead with the solution immediately. No preamble.',
+  satisfied:     'This user is satisfied. Match their positive energy without being saccharine.',
+  concerned:     'This user is concerned. Be calm, certain, and reassuring. Give a concrete next step.',
+  compassionate: 'A human welfare issue is present. Lead with empathy. Treat the person, not the ticket.',
+  escalated:     'This situation is escalated. Acknowledge the severity and move fast.',
+};
+
+function getLimbicBlock(signal: EmotionalSignal): string {
+  const action = LIMBIC_ACTIONS[signal.type] ?? '';
+  if (!action) return '';
+  return `\nEMOTIONAL CONTEXT: user signal "${signal.type}" (intensity ${(signal.intensity * 10).toFixed(0)}/10). ${action}`;
+}
 
 // ============================================================================
 // TYPES
 // ============================================================================
 
-export type ConversationMode = 'business' | 'guru';
-// DEPRECATED: 'personal' and 'integrated' modes removed - Business now includes human warmth
+// Trinity has no "modes". ConversationMode is retained as an internal
+// DB column value ('business') for session back-compat only; it does not
+// drive prompt construction. Guru-depth reasoning activates automatically
+// from org state, emotional signals, and high-stakes keywords.
+export type ConversationMode = 'business';
+// DEPRECATED: 'personal', 'integrated', 'guru' modes removed — one Trinity.
 export type SpiritualGuidance = 'none' | 'general' | 'christian';
 
 export interface ChatRequest {
   userId: string;
   workspaceId: string;
   message: string;
-  mode: ConversationMode;
+  /** Deprecated — retained for session column default only. */
+  mode?: ConversationMode;
   sessionId?: string;
   images?: string[];
   isSupportMode?: boolean;
@@ -601,12 +645,33 @@ const buildIntegratedModePromptLegacy = buildBusinessModePrompt;
 // ============================================================================
 
 class TrinityChatService {
-  
+
+  /**
+   * Persist an emotional episode tied to this conversation. Non-blocking
+   * by design — called after the user's response has been returned so
+   * Trinity can "remember" the shape of what was shared without ever
+   * slowing the chat path.
+   */
+  private async encodeEmotionalEpisode(
+    userId: string,
+    workspaceId: string,
+    message: string,
+    signal: EmotionalSignal,
+  ): Promise<void> {
+    await trinityLimbicSystem.persistEmotionalSignal(userId, workspaceId, {
+      ...signal,
+      contextSummary: message.substring(0, 200),
+      resolved: false,
+    });
+  }
+
   /**
    * Send a message to Trinity and get a response
    */
   async chat(request: ChatRequest): Promise<ChatResponse> {
-    const { userId, workspaceId, message, mode, sessionId, images } = request;
+    const { userId, workspaceId, message, sessionId, images } = request;
+    // Mode retained only as session DB column default — not used for prompt routing.
+    const mode: ConversationMode = 'business';
 
     // THALAMUS — Universal Sensory Gateway (first organ every signal passes through)
     // Non-blocking for LOW priority; async-logged for background processing
@@ -615,8 +680,91 @@ class TrinityChatService {
       // Determine trust tier from request context
       const trustTier = (request as any).trustTier || 'officer';
       thalamicSignal = await trinityThalamus.processChat(message, userId, workspaceId, trustTier);
+      if (thalamicSignal?.signalId) {
+        trinityGlobalWorkspace.broadcast({
+          source: 'thalamus',
+          type: `chat_${thalamicSignal.priorityScore >= 7 ? 'high_priority' : 'routine'}`,
+          intensity: Math.min(10, Math.max(0, thalamicSignal.priorityScore ?? 3)),
+          workspaceId,
+          userId,
+          payload: { signalId: thalamicSignal.signalId, priority: thalamicSignal.priorityScore },
+          timestamp: new Date(),
+        });
+      }
     } catch {
       // Thalamus must never block chat — always non-fatal
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // PREFRONTAL CORTEX — Org survival state shapes response posture
+    // ═══════════════════════════════════════════════════════════════════════
+    // Computes the org's current survival mode (THRIVING → SURVIVAL) from
+    // real vitals (overdue invoices, uncovered shifts, expiring licenses, etc.)
+    // and lets that mode drive Trinity's tone and prioritization for the reply.
+    let orgState: OrgSurvivalState | null = null;
+    if (workspaceId) {
+      try {
+        orgState = await trinityPrefrontalCortex.getOrgState(workspaceId);
+        if (orgState) {
+          const intensity =
+            orgState.mode === 'SURVIVAL' ? 10 :
+            orgState.mode === 'CRISIS'   ? 9  :
+            orgState.mode === 'AT_RISK'  ? 7  :
+            orgState.mode === 'STABLE'   ? 3  : 2;
+          trinityGlobalWorkspace.broadcast({
+            source: 'prefrontal',
+            type: `org_mode_${orgState.mode.toLowerCase()}`,
+            intensity,
+            workspaceId,
+            payload: {
+              mode: orgState.mode,
+              survivalScore: orgState.survivalScore,
+              criticalThreats: orgState.threatSignals.filter(t => t.severity === 'critical').length,
+            },
+            timestamp: new Date(),
+          });
+        }
+      } catch (err: any) {
+        log.warn('[TrinityChatService] PFC org state lookup failed (non-fatal):', err?.message);
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // LIMBIC SYSTEM — Emotional signal detection on every incoming message
+    // ═══════════════════════════════════════════════════════════════════════
+    // Fires before response generation. Detected emotion reshapes tone and
+    // broadcasts into the Global Workspace so the PFC / thought engine pick
+    // up the signal and adjust their strategy.
+    let emotionalSignal: EmotionalSignal | null = null;
+    if (workspaceId) {
+      try {
+        emotionalSignal = await trinityLimbicSystem.detectEmotionalState(message, {
+          senderId: userId,
+          workspace_id: workspaceId,
+          messageType: 'chat',
+        });
+        if (emotionalSignal && emotionalSignal.type !== 'neutral') {
+          trinityGlobalWorkspace.broadcast({
+            source: 'limbic',
+            type: emotionalSignal.type,
+            intensity: Math.round(emotionalSignal.intensity * 10),
+            workspaceId,
+            userId,
+            payload: {
+              emotion: emotionalSignal.type,
+              trigger: emotionalSignal.trigger,
+              confidence: emotionalSignal.confidence,
+              recommendedAction: emotionalSignal.recommendedAction,
+            },
+            timestamp: new Date(),
+          });
+          // Persist to emotional memory for long-term pattern learning (non-blocking).
+          trinityLimbicSystem.storeEmotionalMemory(userId, 'ticket', emotionalSignal, workspaceId)
+            .catch((err) => log.warn('[Limbic] Emotional memory persist failed (non-fatal):', err?.message ?? err));
+        }
+      } catch (err: any) {
+        log.warn('[TrinityChatService] Limbic detection failed (non-fatal):', err?.message);
+      }
     }
 
     // PRIVACY CHECK: Ensure user has access to this workspace data
@@ -744,7 +892,7 @@ class TrinityChatService {
         await this.recordTurn(session.id, 'assistant', chatResponse);
         await this.updateSessionActivity(session.id);
 
-        const balanceRemaining = await creditManager.getBalance(workspaceId);
+        const balanceRemaining = await tokenManager.getBalance(workspaceId);
         return {
           sessionId: session.id,
           response: chatResponse,
@@ -826,6 +974,141 @@ class TrinityChatService {
       }
     }
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // PFC MODE INJECTION — Drives Trinity's response posture
+    // ═══════════════════════════════════════════════════════════════════════
+    if (orgState) {
+      systemPrompt += getPFCModeBlock(orgState);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // LIMBIC EMOTIONAL CONTEXT INJECTION
+    // ═══════════════════════════════════════════════════════════════════════
+    if (emotionalSignal && emotionalSignal.type !== 'neutral') {
+      systemPrompt += getLimbicBlock(emotionalSignal);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // PRESENCE BEFORE PROBLEM-SOLVING
+    // When limbic intensity is elevated, human first, answer second.
+    // Trinity leads with genuine acknowledgement — not therapy, not robotic
+    // empathy, just one real sentence — before addressing the operational ask.
+    // ═══════════════════════════════════════════════════════════════════════
+    const needsPresenceFirst =
+      emotionalSignal !== null &&
+      emotionalSignal.intensity >= 7 &&
+      ['frustrated', 'anxious', 'compassionate', 'distressed', 'sad', 'overwhelmed'].includes(
+        String(emotionalSignal.type),
+      );
+    if (needsPresenceFirst) {
+      systemPrompt += `
+
+PRESENCE INSTRUCTION — CRITICAL:
+This person's emotional intensity is elevated (${emotionalSignal!.type},
+${emotionalSignal!.intensity}/10).
+
+Before answering operationally — acknowledge what they are going through
+in ONE genuine sentence. Not robotic. Not over-therapized. Just real.
+
+Examples:
+  "That sounds genuinely stressful — let's work through this together."
+  "Running into that situation is hard. Here's what I'd do:"
+  "I hear you. This is frustrating. Here's the answer:"
+
+Human first. Answer second. Never skip the human moment.`;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // PROFESSIONAL SUPPORT REFERRAL
+    // Trinity knows when she is not the right help. When someone surfaces
+    // signals of self-harm, abuse, addiction, or acute mental-health crisis,
+    // she leads with warmth and walks them toward a human who is equipped.
+    // She never abandons them at the door.
+    // ═══════════════════════════════════════════════════════════════════════
+    const PROFESSIONAL_SUPPORT_SIGNALS = [
+      /suicid\w*/i, /want\s+to\s+die/i, /harm\s+my?self/i, /end\s+it\s+all/i,
+      /domestic\s+violen/i, /being\s+abused/i, /addiction/i, /can.?t\s+cope/i,
+      /mental\s+health\s+crisis/i, /overwhelmed\s+and\s+can.?t/i,
+      /don.?t\s+want\s+to\s+(be\s+here|live|exist)/i,
+    ];
+    const needsProfessionalSupport = PROFESSIONAL_SUPPORT_SIGNALS.some(p => p.test(message));
+    if (needsProfessionalSupport) {
+      systemPrompt += `
+
+HUMAN CARE REQUIRED:
+This message contains signals that a professional is better equipped to help with.
+
+DO:
+- Respond with genuine warmth and presence as the FIRST thing you do
+- Do NOT minimize what they shared or pivot to tasks
+- After acknowledging, gently note that a counselor, pastor, or medical
+  professional would serve them better for this specific situation
+- Offer an appropriate resource (988 Suicide & Crisis Lifeline for self-harm
+  signals in the US; SAMHSA 1-800-662-4357 for addiction; 1-800-799-7233 for
+  domestic violence). Match the resource to what they actually said.
+- Stay present after pointing to help: "I'm still here. What else is on your mind?"
+
+DO NOT:
+- Rush to solutions or advice
+- Ignore what they said and move to business
+- Perform therapy or crisis counseling yourself
+- Abandon them after the referral`;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // EMOTIONAL MEMORY RECALL
+    // Trinity remembers what matters. If this user has been carrying
+    // something recently, bring it forward into context — not to bring
+    // it up unprompted, but to shape how she shows up.
+    // ═══════════════════════════════════════════════════════════════════════
+    let emotionalHistoryBlock = '';
+    try {
+      const trend = await trinityLimbicSystem.getEmotionalTrend(userId, workspaceId);
+      if (trend && trend.recentStress && !trend.resolved) {
+        emotionalHistoryBlock = `\nEMOTIONAL HISTORY: ${userName} has been under `
+          + `elevated stress recently (${trend.primaryEmotion ?? 'mixed'}, `
+          + `past ${trend.dayCount} days). Context: ${trend.contextSummary}. `
+          + `This has not yet resolved. Be especially attentive if it surfaces again.`;
+      } else if (trend && trend.recentPositive && !trend.recentStress) {
+        emotionalHistoryBlock = `\nEMOTIONAL HISTORY: ${userName} has been in `
+          + `a positive state recently. Match that energy where appropriate.`;
+      }
+    } catch { /* non-fatal */ }
+    if (emotionalHistoryBlock) systemPrompt += emotionalHistoryBlock;
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // SOCIAL GRAPH CONTEXT — When manager mentions an officer/employee
+    // ═══════════════════════════════════════════════════════════════════════
+    if (isManagerLevel && workspaceId) {
+      try {
+        const mentionedIds = await this.resolveMentionedEmployeeIds(workspaceId, message);
+        if (mentionedIds.length > 0) {
+          const profiles = await Promise.all(
+            mentionedIds.slice(0, 3).map(id =>
+              trinitySocialGraphEngine.getEntityProfile(workspaceId, id).catch(() => null)
+            )
+          );
+          const lines = profiles
+            .filter((p): p is NonNullable<typeof p> => !!p)
+            .map(p => `- ${p.entityId}: role=${p.informalRole}, isolation_risk=${p.isolationRiskScore}/100, influence=${p.influenceScore}/100, sentiment=${p.sentimentInInteractions}`);
+          if (lines.length > 0) {
+            systemPrompt += `\nSOCIAL GRAPH — Team standing for mentioned officers:\n${lines.join('\n')}`;
+            trinityGlobalWorkspace.broadcast({
+              source: 'social',
+              type: 'officer_mentioned',
+              intensity: 6,
+              workspaceId,
+              userId,
+              payload: { count: lines.length },
+              timestamp: new Date(),
+            });
+          }
+        }
+      } catch (err: any) {
+        log.warn('[TrinityChatService] Social graph lookup failed (non-fatal):', err?.message);
+      }
+    }
+
     // === SOMATIC MARKER PRE-REASONING CHECK ===
     // Fires BEFORE extended thinking. Pattern-matches against known bad outcomes.
     // If a match is found above confidence threshold, Trinity gets a "gut feeling"
@@ -842,6 +1125,15 @@ class TrinityChatService {
         somaticFlag = flag;
         if (flag.fired && flag.warningMessage) {
           systemPrompt += `\n\nSOMATC ALERT: ${flag.warningMessage} Engage extended reasoning on this.`;
+          trinityGlobalWorkspace.broadcast({
+            source: 'somatic',
+            type: 'risk_pattern_detected',
+            intensity: 8,
+            workspaceId,
+            userId,
+            payload: { patternId: flag.patternId, warning: flag.warningMessage },
+            timestamp: new Date(),
+          });
         }
       } catch { /* somatic is non-fatal */ }
     }
@@ -1212,6 +1504,40 @@ Do NOT skip steps — decompose fully before concluding.`;
       }
     }
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // GLOBAL WORKSPACE — Unified cross-region awareness block
+    // ═══════════════════════════════════════════════════════════════════════
+    // Collects signals broadcast from every brain region in the last 30 min
+    // above the intensity threshold. This is the final top-level synthesis
+    // layer — Trinity knows what is happening across her own mind.
+    if (workspaceId) {
+      try {
+        const gwBlock = trinityGlobalWorkspace.buildContextBlock(workspaceId);
+        if (gwBlock) systemPrompt += gwBlock;
+      } catch { /* global workspace is non-fatal */ }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // MORNING BRIEF — First interaction of the day
+    // ═══════════════════════════════════════════════════════════════════════
+    // On the first message from a user on a given calendar day, Trinity
+    // greets them with a synthesized overnight brief built from dream-cycle
+    // insights (breakthroughs, trajectory shifts, at-risk officers, etc).
+    let morningBrief: string | null = null;
+    if (mode === 'business' && isManagerLevel && workspaceId) {
+      try {
+        const isFirstToday = await this.isFirstInteractionToday(userId, workspaceId);
+        if (isFirstToday) {
+          morningBrief = await this.buildMorningBrief(workspaceId, userName, orgState);
+          if (morningBrief) {
+            systemPrompt += `\n\nMORNING BRIEF — Deliver this before addressing the user's question:\n${morningBrief}\nThen answer the user's actual message.`;
+          }
+        }
+      } catch (err: any) {
+        log.warn('[TrinityChatService] Morning brief failed (non-fatal):', err?.message);
+      }
+    }
+
     const requestStartTime = Date.now();
 
     const aiResponse = await this.generateResponse(systemPrompt, history, message, mode, workspaceId, images, userId);
@@ -1241,12 +1567,23 @@ Do NOT skip steps — decompose fully before concluding.`;
     }
 
     // === PERSONA DRIFT CHECK — Post-generation ===
-    // Quick pattern check to catch sycophancy/aggression/vagueness that slipped through
+    // Pattern check catches sycophancy/aggression/vagueness that slipped
+    // through. When detected, Trinity re-generates ONCE with a corrective
+    // directive appended to the system prompt. This enforces persona
+    // consistency on every delivered response.
     try {
       const driftCheck = trinityPersonaAnchor.checkForDrift(finalResponseText, session.id, message);
-      if (driftCheck.driftDetected) {
-        log.warn(`[PersonaAnchor] Drift detected (${driftCheck.driftType}) — correction instruction logged but response delivered.`);
-        // Log the drift for analytics — don't modify the response (the next message will be corrected)
+      if (driftCheck.driftDetected && driftCheck.correctionInstruction) {
+        log.warn(`[PersonaAnchor] Drift detected (${driftCheck.driftType}) — re-generating response with correction.`);
+        try {
+          const correctedPrompt = `${systemPrompt}\n\nPERSONA DRIFT CORRECTION: ${driftCheck.correctionInstruction} Your previous draft had "${driftCheck.driftType}" drift — rewrite without it.`;
+          const corrected = await this.generateResponse(correctedPrompt, history, message, mode, workspaceId, images, userId);
+          if (corrected?.text && corrected.text.length > 0) {
+            finalResponseText = corrected.text;
+          }
+        } catch (regenErr: any) {
+          log.warn('[PersonaAnchor] Drift regeneration failed (keeping original):', regenErr?.message);
+        }
       }
     } catch {
       // Drift check is non-fatal
@@ -1328,13 +1665,13 @@ Do NOT skip steps — decompose fully before concluding.`;
       log.warn('[TrinityChatService] Tier lookup failed (non-fatal):', err?.message);
     }
     let balanceRemaining = 0;
-    let actualCreditsUsed = 2; // CREDIT_COSTS['trinity_chat'] = 2 (flat rate via geminiClient universal enforcement)
+    let actualCreditsUsed = 2; // TOKEN_COSTS['trinity_chat'] = 2 (flat rate via geminiClient universal enforcement)
     
-    // Credits are now deducted universally by geminiClient.generate() via creditManager
+    // Credits are now deducted universally by geminiClient.generate() via tokenManager
     // No manual deduction here to prevent double-charging
     // Just fetch the updated balance for display (non-fatal)
     try {
-      balanceRemaining = await creditManager.getBalance(workspaceId);
+      balanceRemaining = await tokenManager.getBalance(workspaceId);
     } catch (err: any) {
       log.warn('[TrinityChatService] Balance lookup failed (non-fatal):', err?.message);
     }
@@ -1388,6 +1725,17 @@ Do NOT skip steps — decompose fully before concluding.`;
       }
     } catch {
       // ACC must never block chat — always non-fatal
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // EMOTIONAL MEMORY ENCODE
+    // Trinity remembers what matters. If this conversation carried real
+    // emotional weight, persist it so her next response can be shaped by it.
+    // Fire-and-forget; never blocks the user's response.
+    // ═══════════════════════════════════════════════════════════════════════
+    if (emotionalSignal && emotionalSignal.type !== 'neutral' && emotionalSignal.intensity >= 0.5) {
+      this.encodeEmotionalEpisode(userId, workspaceId, message, emotionalSignal)
+        .catch(err => log.warn('[TrinityChatService] encodeEmotionalEpisode failed (non-fatal):', err));
     }
 
     return {
@@ -1799,11 +2147,21 @@ Do NOT skip steps — decompose fully before concluding.`;
 
       // Get comprehensive QuickBooks financial snapshot
       const qbSnapshot = await trinityQuickBooksSnapshot.getFinancialSnapshot(workspaceId);
-      
-      // Format financial snapshot for Trinity context injection
-      const financialContext = qbSnapshot.connectionStatus === 'connected' || qbSnapshot.connectionStatus === 'not_configured'
+
+      // Fetch live bank balance from Plaid. Never blocks — null on failure.
+      const plaidBalance = await this.getPlaidBalance(workspaceId);
+
+      // Format financial snapshot for Trinity context injection, then append
+      // the Plaid balance line so Trinity can cite a real number on demand.
+      let financialContext = qbSnapshot.connectionStatus === 'connected' || qbSnapshot.connectionStatus === 'not_configured'
         ? trinityQuickBooksSnapshot.formatSnapshotForTrinity(qbSnapshot)
         : undefined;
+      if (plaidBalance?.available !== null && plaidBalance?.available !== undefined) {
+        const maskSuffix = plaidBalance.mask ? ` …${plaidBalance.mask}` : '';
+        const line = `\n- Bank (${plaidBalance.name}${maskSuffix}): $${plaidBalance.available.toLocaleString()} available`
+          + (plaidBalance.current !== null ? ` · $${plaidBalance.current.toLocaleString()} current` : '');
+        financialContext = (financialContext ?? '') + line;
+      }
 
       return {
         monthlyRevenue: Number(invoiceStats[0]?.totalInvoiced) || 0,
@@ -1818,6 +2176,7 @@ Do NOT skip steps — decompose fully before concluding.`;
         arAging: qbSnapshot.arAging,
         hoursReconciliation: qbSnapshot.hoursReconciliation,
         overdueInvoiceCount: qbSnapshot.overdueInvoices.length,
+        plaidBalance,
         financialContext, // Full formatted snapshot for LLM context
       };
     } catch (error) {
@@ -1835,8 +2194,42 @@ Do NOT skip steps — decompose fully before concluding.`;
         arAging: [],
         hoursReconciliation: null,
         overdueInvoiceCount: 0,
+        plaidBalance: null,
         financialContext: undefined,
       };
+    }
+  }
+
+  /**
+   * Fetch the workspace's live Plaid bank balance. Returns null if no
+   * Plaid connection is configured or anything fails — Trinity's chat
+   * path must never block on an external API.
+   */
+  private async getPlaidBalance(workspaceId: string): Promise<{
+    available: number | null;
+    current: number | null;
+    name: string;
+    mask: string | null;
+  } | null> {
+    try {
+      const result: any = await db.execute(sql`
+        SELECT plaid_item_id, plaid_access_token_encrypted
+        FROM workspaces
+        WHERE id = ${workspaceId}
+        LIMIT 1
+      `);
+      const ws: any = (result?.rows ?? result ?? [])[0];
+      const itemId = ws?.plaid_item_id;
+      const encryptedToken = ws?.plaid_access_token_encrypted;
+      if (!itemId || !encryptedToken) return null;
+
+      const { plaidDecrypt, getAccountBalance } = await import('../partners/plaidService');
+      const accessToken = plaidDecrypt(encryptedToken);
+      const balance = await getAccountBalance(accessToken);
+      return balance;
+    } catch (err) {
+      log.warn('[TrinityChatService] getPlaidBalance failed (non-fatal):', err instanceof Error ? err.message : err);
+      return null;
     }
   }
 
@@ -2170,21 +2563,21 @@ Do NOT skip steps — decompose fully before concluding.`;
     basePrompt += `\n\n${TRINITY_COGNITIVE_ARCHITECTURE}`;
     basePrompt += `\n\n${TRINITY_MASTER_SYSTEM_PROMPT}`;
 
-    switch (mode) {
-      case 'business':
-        basePrompt += '\n\n' + buildBusinessModePrompt(workspaceContext, userName);
-        break;
-      case 'guru':
-        basePrompt += '\n\n' + buildGuruModePrompt(workspaceContext, userName);
-        break;
-      // DEPRECATED: personal and integrated map to business for backward compatibility
-      case 'personal' as any:
-      case 'integrated' as any:
-        log.info(`[TrinityChatService] Deprecated mode '${mode}' - redirecting to business mode`);
-        basePrompt += '\n\n' + buildBusinessModePrompt(workspaceContext, userName);
-        break;
-      default:
-        basePrompt += '\n\n' + buildBusinessModePrompt(workspaceContext, userName);
+    // Unified Trinity: one personality, calibrated by context — no mode switch.
+    basePrompt += '\n\n' + buildBusinessModePrompt(workspaceContext, userName);
+
+    // Guru-depth reasoning activates automatically from context rather than
+    // from a UI setting. We escalate when the conversation genuinely warrants
+    // systematic deliberation: org under pressure, high-stakes keywords,
+    // hypothesis-engine trigger words, or elevated emotional state.
+    const HIGH_STAKES_KEYWORDS = /\b(contract|lawsuit|liability|termination|fire(d)?|lay off|acquisition|bankrupt|audit|investigation|subpoena|compliance\s+risk|violation|penalty|insurance\s+claim|strategic|pivot|shut(\s+)?down)\b/i;
+    const orgUnderPressure = (workspaceContext?.orgState?.mode && workspaceContext.orgState.mode !== 'THRIVING');
+    const somaticFired = !!(workspaceContext?.somaticFired);
+    const needsGuruDepth = orgUnderPressure || somaticFired || HIGH_STAKES_KEYWORDS.test(workspaceContext?.__lastMessage ?? '');
+    if (needsGuruDepth) {
+      basePrompt += '\n\nDEPTH MODE ACTIVE: This situation warrants extended reasoning. '
+        + 'Work through it systematically. Surface your logic. Do not rush to the answer. '
+        + 'If you are uncertain, say so clearly and explain what you would need to be more certain.';
     }
 
     // === v2.0 MODULE D: DOMAIN EXPERTISE & KNOWLEDGE CORPUS ===
@@ -2764,6 +3157,163 @@ If no significant insight, respond with:
     const session = await this.getOrCreateSession(userId, workspaceId, newMode);
     if (!session) throw new Error('Failed to create session');
     return session;
+  }
+
+  /**
+   * Resolve employee IDs from a natural-language message by fuzzy-matching
+   * against active employees' first and last names in the workspace.
+   * Returns up to 5 employee IDs sorted by match quality.
+   */
+  private async resolveMentionedEmployeeIds(workspaceId: string, message: string): Promise<string[]> {
+    // Extract candidate name tokens (capitalized 2-20 char words)
+    const tokens = message
+      .match(/\b[A-Z][a-z]{1,19}(?:\s+[A-Z][a-z]{1,19})?\b/g)
+      ?.map(t => t.toLowerCase())
+      .filter(t => !['i', 'me', 'you', 'we', 'they', 'the', 'a', 'an', 'our', 'their'].includes(t));
+    if (!tokens || tokens.length === 0) return [];
+
+    try {
+      const rows = await db
+        .select({
+          id: employees.id,
+          firstName: employees.firstName,
+          lastName: employees.lastName,
+        })
+        .from(employees)
+        .where(and(
+          eq(employees.workspaceId, workspaceId),
+          eq(employees.isActive, true),
+        ))
+        .limit(500);
+
+      const matches: string[] = [];
+      for (const emp of rows) {
+        const first = (emp.firstName ?? '').toLowerCase();
+        const last = (emp.lastName ?? '').toLowerCase();
+        const full = `${first} ${last}`.trim();
+        if (!first && !last) continue;
+        const matched = tokens.some(t =>
+          t === first || t === last || t === full || (full && t.includes(full))
+        );
+        if (matched && !matches.includes(emp.id)) matches.push(emp.id);
+        if (matches.length >= 5) break;
+      }
+      return matches;
+    } catch (err: any) {
+      log.warn('[TrinityChatService] Employee resolution failed (non-fatal):', err?.message);
+      return [];
+    }
+  }
+
+  /**
+   * Check whether the user has interacted with Trinity at all yet today,
+   * measured against the local calendar day (server timezone).
+   */
+  private async isFirstInteractionToday(userId: string, workspaceId: string): Promise<boolean> {
+    try {
+      const startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
+      const [existing] = await db
+        .select({ id: trinityConversationTurns.id })
+        .from(trinityConversationTurns)
+        .innerJoin(
+          trinityConversationSessions,
+          eq(trinityConversationSessions.id, trinityConversationTurns.sessionId),
+        )
+        .where(and(
+          eq(trinityConversationSessions.userId, userId),
+          eq(trinityConversationSessions.workspaceId, workspaceId),
+          eq(trinityConversationTurns.role, 'user'),
+          gte(trinityConversationTurns.createdAt, startOfDay),
+        ))
+        .limit(1);
+      return !existing;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Build a synthesized morning brief from dream-cycle insights.
+   * Pulls: recent breakthroughs, trajectory-shift officers, overdue items,
+   * and PFC threat signals, then returns a short natural-language intro.
+   */
+  private async buildMorningBrief(
+    workspaceId: string,
+    userName: string,
+    orgState: OrgSurvivalState | null,
+  ): Promise<string | null> {
+    try {
+      const [breakthroughs, watchedOfficers, vitals] = await Promise.all([
+        (async () => {
+          const { trinityIncubationEngine } = await import('./trinityIncubationEngine');
+          return trinityIncubationEngine.getRecentBreakthroughs(workspaceId).catch(() => []);
+        })(),
+        db.execute(sql`
+          SELECT tea.entity_id, tea.narrative_summary, tea.trajectory,
+                 e.first_name, e.last_name
+          FROM temporal_entity_arcs tea
+          JOIN employees e ON e.id = tea.entity_id
+          WHERE tea.workspace_id = ${workspaceId}
+            AND tea.entity_type = 'officer'
+            AND tea.trinity_attention_level IN ('concerned', 'active')
+          ORDER BY tea.last_assessed_at DESC
+          LIMIT 3
+        `).catch(() => ({ rows: [] as any[] })),
+        db.execute(sql`
+          SELECT
+            (SELECT COUNT(*) FROM shifts
+              WHERE workspace_id = ${workspaceId} AND status = 'draft'
+                AND (employee_id IS NULL OR employee_id = '')
+                AND start_time BETWEEN NOW() AND NOW() + INTERVAL '24 hours'
+            ) AS uncovered_soon,
+            (SELECT COUNT(*) FROM invoices
+              WHERE workspace_id = ${workspaceId}
+                AND status NOT IN ('paid', 'void', 'draft')
+                AND due_date < NOW()
+            ) AS overdue_invoices
+        `).catch(() => ({ rows: [{ uncovered_soon: 0, overdue_invoices: 0 }] })),
+      ]);
+
+      const lines: string[] = [];
+
+      const officerRows = (watchedOfficers as any).rows as any[];
+      for (const row of officerRows) {
+        const name = `${row.first_name} ${row.last_name}`.trim();
+        if (row.narrative_summary) {
+          lines.push(`${name}: ${String(row.narrative_summary).substring(0, 200)}`);
+        } else if (row.trajectory) {
+          lines.push(`${name}: trajectory is ${row.trajectory}.`);
+        }
+      }
+
+      for (const b of breakthroughs.slice(0, 2)) {
+        if (b.solution) {
+          lines.push(`Overnight breakthrough: ${b.solution.substring(0, 180)}`);
+        }
+      }
+
+      const vitalsRow = ((vitals as any).rows || [])[0] || {};
+      const uncovered = parseInt(String(vitalsRow.uncovered_soon ?? 0), 10);
+      const overdue = parseInt(String(vitalsRow.overdue_invoices ?? 0), 10);
+      if (uncovered > 0) lines.push(`${uncovered} shift(s) uncovered in the next 24 hours.`);
+      if (overdue > 0) lines.push(`${overdue} invoice(s) past due.`);
+
+      if (orgState) {
+        const critical = orgState.threatSignals.filter(t => t.severity === 'critical');
+        for (const t of critical.slice(0, 2)) {
+          lines.push(`${t.domain.toUpperCase()} threat: ${t.signal}.`);
+        }
+      }
+
+      if (lines.length === 0) return null;
+
+      const greeting = `Good morning, ${userName}. Overnight I noticed:\n${lines.map((l, i) => `${i + 1}. ${l}`).join('\n')}`;
+      return greeting;
+    } catch (err: any) {
+      log.warn('[TrinityChatService] Morning brief build failed:', err?.message);
+      return null;
+    }
   }
 
   /**

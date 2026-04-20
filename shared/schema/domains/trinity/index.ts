@@ -965,39 +965,6 @@ export const subagentTelemetry = pgTable("subagent_telemetry", {
   index("subagent_telemetry_created_idx").on(table.createdAt),
 ]);
 
-export const trinityUnlockCodes = pgTable("trinity_unlock_codes", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  
-  // Code details
-  code: varchar("code", { length: 50 }).notNull().unique(), // Format: TRIN-XXXX-XXXX-XXXX
-  codeType: varchar("code_type", { length: 30 }).notNull(), // 'credits', 'feature_unlock', 'trial_extension', 'addon_activation'
-  
-  // Value
-  credits: integer("credits"), // Credits to add (for credit codes)
-  featureKey: varchar("feature_key", { length: 100 }), // Feature to unlock (for feature codes)
-  addonKey: varchar("addon_key", { length: 100 }), // Addon to activate
-  daysValid: integer("days_valid"), // Days the feature/addon stays active
-  
-  // Restrictions
-  workspaceId: varchar("workspace_id"), // If null, usable by any workspace
-  maxRedemptions: integer("max_redemptions").default(1), // How many times code can be used
-  currentRedemptions: integer("current_redemptions").default(0),
-  
-  // Validity
-  isActive: boolean("is_active").default(true),
-  expiresAt: timestamp("expires_at"), // When code expires
-  
-  // Audit
-  createdBy: varchar("created_by"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-}, (table) => [
-  index("trinity_unlock_codes_code_idx").on(table.code),
-  index("trinity_unlock_codes_type_idx").on(table.codeType),
-  index("trinity_unlock_codes_workspace_idx").on(table.workspaceId),
-  index("trinity_unlock_codes_active_idx").on(table.isActive),
-]);
-
 export const automationActionLedger = pgTable("automation_action_ledger", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id"),
@@ -2721,44 +2688,6 @@ export const trinityKnowledgeBase = pgTable("trinity_knowledge_base", {
   index("idx_kb_active").on(table.isActive),
 ]);
 
-// ─── Recovered unmapped tables ─────────────────────────────────────────────
-
-export const trinityCreditTransactions = pgTable("trinity_credit_transactions", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  workspaceId: varchar("workspace_id").notNull(),
-  userId: varchar("user_id"), // User who triggered transaction
-  
-  // Transaction details
-  transactionType: varchar("transaction_type", { length: 30 }).notNull(), // 'purchase', 'usage', 'refund', 'bonus', 'expiry', 'code_redemption'
-  credits: integer("credits").notNull(), // Amount (positive for add, negative for deduct)
-  balanceAfter: integer("balance_after").notNull(), // Balance after transaction
-  
-  // Context
-  description: text("description"), // Human-readable description
-  actionType: varchar("action_type", { length: 100 }), // Which Trinity action consumed credits
-  actionId: varchar("action_id"), // Reference to the specific action
-  
-  // For purchases
-  packageId: varchar("package_id"),
-  stripePaymentId: varchar("stripe_payment_id"), // Stripe payment intent ID
-  priceUsd: decimal("price_usd", { precision: 10, scale: 2 }),
-  
-  // For code redemptions
-  unlockCodeId: varchar("unlock_code_id"),
-  
-  // Metadata
-  metadata: jsonb("metadata"),
-  ipAddress: varchar("ip_address", { length: 45 }),
-  
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-}, (table) => [
-  index("trinity_transactions_workspace_idx").on(table.workspaceId),
-  index("trinity_transactions_user_idx").on(table.userId),
-  index("trinity_transactions_type_idx").on(table.transactionType),
-  index("trinity_transactions_created_idx").on(table.createdAt),
-]);
-
 export const trinityMeetingRecordings = pgTable("trinity_meeting_recordings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull(),
@@ -2982,5 +2911,58 @@ export const trinityAuditLogs = pgTable("trinity_audit_logs", {
 
 export type TrinityAuditLog = typeof trinityAuditLogs.$inferSelect;
 export type InsertTrinityAuditLog = typeof trinityAuditLogs.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// trinity_goal_executions (Persistence Phase — TRINITY.md Section R, Law P2)
+// Mirror of goalExecutionService.activeExecutions Map. Write-through on
+// start/complete so a Railway redeploy mid-run leaves a row that
+// runStartupRecovery() can mark `interrupted` and notify the workspace owner.
+// ─────────────────────────────────────────────────────────────────────────────
+export const trinityGoalExecutions = pgTable("trinity_goal_executions", {
+  id: varchar("id").primaryKey(),
+  workspaceId: varchar("workspace_id").notNull(),
+  userId: varchar("user_id"),
+  conversationId: varchar("conversation_id"),
+  goalDescription: text("goal_description").notNull(),
+  priority: varchar("priority").notNull().default("medium"),
+  status: varchar("status").notNull().default("running"),
+  startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+  errorMessage: text("error_message"),
+  attempts: integer("attempts").notNull().default(0),
+  metadata: jsonb("metadata").default('{}'),
+}, (table) => [
+  index("trinity_goal_executions_workspace_idx").on(table.workspaceId),
+  index("trinity_goal_executions_status_idx").on(table.status),
+  index("trinity_goal_executions_started_idx").on(table.startedAt),
+]);
+
+export type TrinityGoalExecution = typeof trinityGoalExecutions.$inferSelect;
+export type InsertTrinityGoalExecution = typeof trinityGoalExecutions.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// supervisor_handoffs (Persistence Phase — TRINITY.md Section R, Law P2)
+// Mirror of adaptiveSupervisionRouter.activeHandoffs Map. An in-flight
+// handoff that vanishes on restart leaves both agents unaware of state.
+// ─────────────────────────────────────────────────────────────────────────────
+export const supervisorHandoffs = pgTable("supervisor_handoffs", {
+  id: varchar("id").primaryKey(),
+  workspaceId: varchar("workspace_id"),
+  fromAgent: varchar("from_agent").notNull(),
+  toAgent: varchar("to_agent").notNull(),
+  reason: text("reason"),
+  payload: jsonb("payload").default('{}'),
+  status: varchar("status").notNull().default("active"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+}, (table) => [
+  index("supervisor_handoffs_workspace_idx").on(table.workspaceId),
+  index("supervisor_handoffs_status_idx").on(table.status),
+  index("supervisor_handoffs_from_idx").on(table.fromAgent),
+  index("supervisor_handoffs_to_idx").on(table.toAgent),
+]);
+
+export type SupervisorHandoff = typeof supervisorHandoffs.$inferSelect;
+export type InsertSupervisorHandoff = typeof supervisorHandoffs.$inferInsert;
 
 export * from './extended';

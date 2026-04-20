@@ -27,7 +27,7 @@ import {
 } from '@shared/schema';
 import { eq, and, sql, lt, not, inArray, isNull } from 'drizzle-orm';
 import { subscriptionManager, type SubscriptionTier } from './subscriptionManager';
-import { creditManager } from './creditManager';
+import { tokenManager } from './tokenManager';
 import { createLogger } from '../../lib/logger';
 import { writeLedgerEntry } from '../orgLedgerService';
 import { createNotification } from '../notificationService';
@@ -35,6 +35,7 @@ import { broadcastToWorkspace } from '../../websocket';
 import { PLATFORM } from '../../config/platformConfig';
 import { platformEventBus } from '../platformEventBus';
 import { withDistributedLock, LOCK_KEYS } from '../distributedLock';
+import { cacheManager } from '../platform/cacheManager';
 
 const log = createLogger('StripeWebhookService');
 
@@ -263,15 +264,7 @@ export class StripeWebhookService {
 
     log.info('Subscription created', { workspaceId, tier });
 
-    // GAP-39 FIX (part 2): Run initializeCredits BEFORE db.update(workspaces).
-    // If the credit initialization fails (e.g. credit service throws), the workspace tier
-    // is never upgraded — so Stripe retries the webhook and both operations run again.
-    // initializeCredits is idempotent (UPSERT logic) so a retry is always safe.
-    // Previously the order was reversed: workspace was updated first, then initializeCredits
-    // was called. If initializeCredits failed, workspace was left with a new tier but zero
-    // credit balance — the org owner had a paid plan but Trinity returned "no credits".
-    await creditManager.initializeCredits(workspaceId, tier);
-
+    // Token tracking is event-driven; no per-workspace initialization needed.
     await db.update(workspaces)
       .set({
         subscriptionTier: tier,
@@ -280,7 +273,11 @@ export class StripeWebhookService {
         updatedAt: new Date(),
       })
       .where(eq(workspaces.id, workspaceId));
-    
+    // Phase 26: invalidate the shared tier cache so the Trinity
+    // subscription gate sees the new status within seconds, not up to the
+    // 10-min TTL of cacheManager.getWorkspaceTierWithStatus.
+    cacheManager.invalidateWorkspace(workspaceId);
+
     await this.logSubscriptionPayment({
       workspaceId,
       stripeSubscriptionId: subscription.id,
@@ -342,12 +339,8 @@ export class StripeWebhookService {
     
     const previousTier = currentWorkspace?.subscriptionTier;
 
-    // GAP-39 extension: if tier changed, update credit allocation BEFORE workspace update.
-    // updateTierAllocation is idempotent (UPSERT) — safe to retry if workspace update fails.
-    if (previousTier !== tier) {
-      await creditManager.updateTierAllocation(workspaceId, tier);
-    }
-
+    // Token allowance is tier-driven via TIER_TOKEN_ALLOCATIONS; no separate
+    // allocation record to update on tier change.
     await db.update(workspaces)
       .set({
         subscriptionTier: tier,
@@ -356,9 +349,12 @@ export class StripeWebhookService {
         updatedAt: new Date(),
       })
       .where(eq(workspaces.id, workspaceId));
-    
+    // Phase 26: flush cached tier/status so Trinity picks up upgrades,
+    // downgrades, and pending_cancel transitions without a 10-min lag.
+    cacheManager.invalidateWorkspace(workspaceId);
+
     if (previousTier !== tier) {
-      
+
       const isUpgrade = this.isUpgrade(previousTier as SubscriptionTier, tier);
       await this.sendSubscriptionEmail(workspaceId, isUpgrade ? 'subscription_upgraded' : 'subscription_downgraded', {
         previousTier,
@@ -430,9 +426,13 @@ export class StripeWebhookService {
         updatedAt: new Date(),
       })
       .where(eq(workspaces.id, workspaceId));
-    
-    await creditManager.downgradeCreditsOnCancellation(workspaceId);
-    
+    // Phase 26: drop cached tier/status so the Trinity gate stops serving
+    // this workspace on the very next inbound call/SMS.
+    cacheManager.invalidateWorkspace(workspaceId);
+
+    // Free-tier token allowance applies automatically once subscriptionTier
+    // is set to 'free' above — no separate balance operation required.
+
     await this.sendSubscriptionEmail(workspaceId, 'subscription_cancelled', {});
 
     // In-platform notification + WebSocket broadcast
@@ -504,6 +504,9 @@ export class StripeWebhookService {
     await db.update(workspaces)
       .set({ subscriptionStatus: 'active', updatedAt: new Date() })
       .where(eq(workspaces.id, workspaceId));
+    // Phase 26: past_due → active recovery must clear the tier cache
+    // immediately so Trinity resumes service on the next inbound call.
+    cacheManager.invalidateWorkspace(workspaceId);
 
     // 2. Revenue ledger entry for subscription renewal payment
     try {
@@ -634,6 +637,10 @@ export class StripeWebhookService {
           updatedAt: new Date(),
         })
         .where(eq(workspaces.id, workspaceId));
+      // Phase 26: payment-failed → past_due must invalidate cache so the
+      // Trinity gate transitions this workspace to the "on hold" grace
+      // path on the next inbound call/SMS without a 10-min stale window.
+      cacheManager.invalidateWorkspace(workspaceId);
 
       await this.sendSubscriptionEmail(workspaceId, 'payment_failed', {
         amount: amountDue,
@@ -1148,10 +1155,14 @@ export class StripeWebhookService {
     
     log.info('Checkout session completed', { sessionId: session.id });
     
+    // Credit packs are retired. If a legacy checkout.session includes creditPackId,
+    // acknowledge the webhook without side effects — purchase fulfillment is no-op.
     if (creditPackId && workspaceId && userId) {
-      const { creditPurchaseService } = await import('./creditPurchase');
-      await (creditPurchaseService as any).handlePaymentSuccess(session);
-      return { success: true, handled: true, message: 'Credit purchase fulfilled' };
+      log.warn('[stripeWebhooks] Ignoring legacy credit-pack checkout session — credit packs retired', {
+        sessionId: session.id,
+        workspaceId,
+      });
+      return { success: true, handled: true, message: 'Credit-pack checkout ignored — feature retired' };
     }
 
     // Subscription checkout completed — activate workspace
@@ -1185,12 +1196,11 @@ export class StripeWebhookService {
         }
 
         await storage.updateWorkspace(workspaceId, updatePayload);
+        // Phase 26: checkout-session activation must flush the tier cache
+        // so the Trinity gate starts serving this workspace immediately.
+        cacheManager.invalidateWorkspace(workspaceId);
 
-        // 2. Reinitialize credits for the new tier
-        try {
-          const { creditManager } = await import('./creditManager');
-          await creditManager.initializeCredits(workspaceId, tier as any);
-        } catch (_) { /* non-fatal */ }
+        // Token tracking is event-driven — no initialization needed for the new tier.
         log.info('Workspace activated via checkout', { workspaceId, tier, customerId: session.customer });
 
         // 3. Fire welcome subscription email to org_owner
@@ -1818,6 +1828,9 @@ export class StripeWebhookService {
     await db.update(workspaces)
       .set({ subscriptionStatus: 'suspended', updatedAt: new Date() })
       .where(eq(workspaces.id, workspaceId));
+    // Phase 26: suspension must flip the Trinity gate to the "on hold"
+    // message on the very next inbound call/SMS — flush cache immediately.
+    cacheManager.invalidateWorkspace(workspaceId);
 
     // Notify owner
     try {
@@ -1872,6 +1885,9 @@ export class StripeWebhookService {
     await db.update(workspaces)
       .set({ subscriptionStatus: 'active', updatedAt: new Date() })
       .where(eq(workspaces.id, workspaceId));
+    // Phase 26: resumption must lift the Trinity gate immediately — no
+    // 10-min stale window where a paid-up workspace is still blocked.
+    cacheManager.invalidateWorkspace(workspaceId);
 
     // Notify owner
     try {

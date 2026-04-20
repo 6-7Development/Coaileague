@@ -17,6 +17,7 @@ import { z } from "zod";
 import { notifyTimesheetRejected } from "../services/automation/notificationEventCoverage";
 import { platformEventBus } from "../services/platformEventBus";
 import { typedPoolExec } from '../lib/typedSql';
+import { scheduleNonBlocking } from '../lib/scheduleNonBlocking';
 import { createLogger } from '../lib/logger';
 const log = createLogger('TimeEntryRoutes');
 
@@ -280,6 +281,20 @@ const router = Router();
         metadata: { source: 'timeEntryRoutes.single_approve' },
       }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
 
+      // Phase 20 — Trinity invoice lifecycle workflow. Scheduled non-blocking
+      // so the approval HTTP response doesn't wait on PDF / email dispatch.
+      scheduleNonBlocking('trinity.invoice_lifecycle', async () => {
+        const { executeInvoiceLifecycleWorkflow } = await import(
+          '../services/trinity/workflows/invoiceLifecycleWorkflow'
+        );
+        await executeInvoiceLifecycleWorkflow({
+          workspaceId,
+          timeEntryId: updated.id,
+          triggerSource: 'time_entry_approved',
+          userId,
+        });
+      });
+
       res.json(updated);
     } catch (error: unknown) {
       log.error("Error approving time entry:", error);
@@ -503,6 +518,22 @@ const router = Router();
           payload: { count: updated.length, entryIds: updated.map(e => e.id), approvedBy: userId },
           metadata: { source: 'timeEntryRoutes.bulk_approve' },
         }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+
+        // Phase 20 — Trinity invoice lifecycle workflow per entry (de-duped
+        // inside the workflow if the client is already invoiced for the day).
+        for (const entry of updated) {
+          scheduleNonBlocking('trinity.invoice_lifecycle.bulk', async () => {
+            const { executeInvoiceLifecycleWorkflow } = await import(
+              '../services/trinity/workflows/invoiceLifecycleWorkflow'
+            );
+            await executeInvoiceLifecycleWorkflow({
+              workspaceId,
+              timeEntryId: entry.id,
+              triggerSource: 'time_entry_approved',
+              userId,
+            });
+          });
+        }
       }
 
       const gpsWarnings = updated
@@ -676,11 +707,15 @@ const router = Router();
       const ipAddress = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.ip || req.connection.remoteAddress;
       
       // GEO-COMPLIANCE: Extract GPS coordinates from request
-      const { gpsLatitude, gpsLongitude, gpsAccuracy } = req.body;
-      
+      // Accept both `gpsLatitude` (web UI) and `latitude` (mobile/offline replay) shapes.
+      const gpsLatitude = req.body.gpsLatitude ?? req.body.latitude;
+      const gpsLongitude = req.body.gpsLongitude ?? req.body.longitude;
+      const gpsAccuracy = req.body.gpsAccuracy ?? req.body.accuracy;
+      const photoUrl = typeof req.body.photoUrl === 'string' ? req.body.photoUrl : null;
+
       // Validate GPS accuracy (must be <= 50m for compliance)
       if (gpsAccuracy && parseFloat(gpsAccuracy) > 50) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           message: "GPS accuracy too low. Please ensure location services are enabled and try again in an area with better signal.",
           requiredAccuracy: 50,
           currentAccuracy: gpsAccuracy
@@ -690,7 +725,7 @@ const router = Router();
       const clockOut = new Date();
       const clockIn = new Date(timeEntry.clockIn);
       const totalHours = ((clockOut.getTime() - clockIn.getTime()) / (1000 * 60 * 60)).toFixed(2);
-      
+
       const hourlyRate = timeEntry.hourlyRate || "0";
       const totalAmount = (parseFloat(totalHours) * parseFloat(hourlyRate as string)).toFixed(2);
 
@@ -702,6 +737,7 @@ const router = Router();
         clockOutLatitude: gpsLatitude,
         clockOutLongitude: gpsLongitude,
         clockOutAccuracy: gpsAccuracy,
+        clockOutPhotoUrl: photoUrl,
       });
 
       // GEO-COMPLIANCE: Detect IP anomaly (different IP between clock-in and clock-out)

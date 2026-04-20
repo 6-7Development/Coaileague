@@ -16,7 +16,7 @@
  */
 
 import { secureFetch } from "@/lib/csrf";
-import { X, Clock, CalendarDays, CalendarPlus, MessageCircle, AlertTriangle, type LucideIcon } from "lucide-react";
+import { X, Clock, CalendarDays, CalendarPlus, MessageCircle, AlertTriangle, ShieldAlert, type LucideIcon } from "lucide-react";
 import { useLocation } from "wouter";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
@@ -273,16 +273,20 @@ export function UniversalFAB() {
     if (!geofenceTimeEntryId || !geofenceReason.trim()) return;
     setGeofenceSubmitting(true);
     try {
-      await apiRequest("PATCH", `/api/time-entries/geofence-override/${geofenceTimeEntryId}`, { approved: true, reason: geofenceReason.trim() });
+      // Readiness Section 9 bug #1 — officer-facing submit endpoint.
+      // The old PATCH was manager-role-gated and silently 403'd.
+      await apiRequest("POST", `/api/time-entries/geofence-override/${geofenceTimeEntryId}/submit`, { reason: geofenceReason.trim() });
       toast({ title: "Request Submitted", description: "Your location explanation has been sent to your supervisor for approval." });
-      setGeofenceWarning(null);
-      setGeofenceReason("");
-      setGeofenceTimeEntryId(null);
       queryClient.invalidateQueries({ queryKey: ["/api/time-entries/status"] });
     } catch {
       toast({ title: "Submission Failed", description: "Could not submit your explanation. Please contact your supervisor directly.", variant: "destructive" });
     } finally {
+      // Always clear modal state — success or failure. User can retry by
+      // clocking again if needed; trapping them in the modal is worse UX.
       setGeofenceSubmitting(false);
+      setGeofenceWarning(null);
+      setGeofenceReason("");
+      setGeofenceTimeEntryId(null);
     }
   };
 
@@ -446,6 +450,18 @@ export function UniversalFAB() {
                 color="bg-violet-600"
                 testId="fab-action-pto"
               />
+
+              {/* Panic / SOS — always available to on-shift workers */}
+              {isClockedIn && (
+                <QuickActionItem
+                  icon={ShieldAlert}
+                  label="PANIC / SOS"
+                  sublabel="Emergency alert"
+                  onClick={() => { setIsExpanded(false); setLocation("/worker/panic"); }}
+                  color="bg-red-600"
+                  testId="fab-action-panic"
+                />
+              )}
             </div>
           </>
         )}

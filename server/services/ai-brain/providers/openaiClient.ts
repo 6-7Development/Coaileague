@@ -11,7 +11,7 @@
  */
 
 import OpenAI from 'openai';
-import { aiCreditGateway } from '../../billing/aiCreditGateway';
+import { aiTokenGateway } from '../../billing/aiTokenGateway';
 import { aiMeteringService } from '../../billing/aiMeteringService';
 import { createLogger } from '../../../lib/logger';
 const log = createLogger('openaiClient');
@@ -113,9 +113,9 @@ class OpenAIClient {
     
     if (apiKey) {
       this.client = new OpenAI({ apiKey });
-      log.info('[OpenAI] Client initialized');
+      log.info('[Trinity:support-backend] Client initialized');
     } else {
-      log.warn('[OpenAI] No API key found - OpenAI features disabled');
+      log.warn('[Trinity:support-backend] No API key found - support-reasoning backend disabled');
     }
   }
 
@@ -148,7 +148,7 @@ class OpenAIClient {
     const userId = request.context?.userId;
     const featureKey = request.context?.featureKey || 'ai_general';
 
-    const preAuth = await aiCreditGateway.preAuthorize(workspaceId, userId, featureKey);
+    const preAuth = await aiTokenGateway.preAuthorize(workspaceId, userId, featureKey);
     if (!preAuth.authorized) {
       throw new Error(preAuth.reason || 'Insufficient credits for OpenAI request');
     }
@@ -179,7 +179,7 @@ class OpenAIClient {
 
       this.recordSuccess(modelId, latencyMs);
 
-      await aiCreditGateway.finalizeBilling(workspaceId, userId, featureKey, inputTokens + outputTokens, {
+      await aiTokenGateway.finalizeBilling(workspaceId, userId, featureKey, inputTokens + outputTokens, {
         inputTokens,
         outputTokens,
         model: modelId,
@@ -194,7 +194,7 @@ class OpenAIClient {
           outputTokens,
           triggeredByUserId: userId,
         // @ts-expect-error — TS migration: fix in refactoring sprint
-        }).catch((e: Error) => log.error('[OpenAI] Token metering error:', e.message));
+        }).catch((e: Error) => log.error('[Trinity:support-backend] Token metering error:', e.message));
       }
 
       return {
@@ -223,7 +223,7 @@ class OpenAIClient {
         return await this.generate(request);
       } catch (error: any) {
         lastError = error;
-        log.warn(`[OpenAI] Attempt ${attempt}/${retries} failed:`, (error instanceof Error ? error.message : String(error)));
+        log.warn(`[Trinity:support-backend] Attempt ${attempt}/${retries} failed:`, (error instanceof Error ? error.message : String(error)));
         
         if (attempt < retries) {
           await this.delay(this.RETRY_DELAY_MS * attempt);

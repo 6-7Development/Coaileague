@@ -16,6 +16,7 @@ import { EMAIL, PLATFORM } from '../config/platformConfig';
 import { createLogger } from '../lib/logger';
 import { scheduleNonBlocking } from '../lib/scheduleNonBlocking';
 import { isProduction } from '../lib/isProduction';
+import { detectEmailLanguage } from '../services/trinityVoice/smsLanguageDetector';
 const log = createLogger('ResendWebhooks');
 
 
@@ -949,6 +950,7 @@ router.post("/api/webhooks/resend/inbound", async (req, res) => {
       if (['docs', 'documents'].includes(local)) return 'document';
       if (['support', 'help'].includes(local)) return 'support';
       if (['billing'].includes(local)) return 'billing';
+      if (['verify', 'verification', 'verifications'].includes(local)) return 'verification';
       return 'staffing';
     })();
 
@@ -1013,6 +1015,26 @@ router.post("/api/webhooks/resend/inbound", async (req, res) => {
     const emailBody = inboundEmail.text || inboundEmail.html?.replace(/<[^>]*>/g, ' ') || '';
 
     // ============================================================================
+    // EMPLOYMENT VERIFICATION — verify@{slug}.coaileague.com
+    // FCRA-compliant workflow: Trinity parses the request (requester, employee,
+    // authorization), creates a VER-XXXXXX ticket, alerts management with
+    // approve/deny links, and auto-acknowledges the requester. No employment
+    // detail is disclosed until a manager explicitly approves.
+    // ============================================================================
+    if (emailCategory === 'verification' && slug && workspaceId) {
+      log.info(`[Resend Inbound] Employment verification email detected → ${slug} / ${workspaceId}`);
+      try {
+        const { handleEmploymentVerificationEmail } = await import(
+          '../services/trinity/employmentVerificationService'
+        );
+        await handleEmploymentVerificationEmail(inboundEmail as any, slug, workspaceId);
+      } catch (verifyErr: any) {
+        log.warn('[Resend Inbound] Employment verification handler failed (non-fatal):', verifyErr?.message);
+      }
+      return res.status(200).json({ received: true, routed: 'employment_verification' });
+    }
+
+    // ============================================================================
     // TRINITY EMAIL REPLY HANDLER
     // If client replies to a Trinity email (reference number detected in subject),
     // Trinity handles the conversation using org credits. Complaints are auto-filed.
@@ -1050,9 +1072,18 @@ router.post("/api/webhooks/resend/inbound", async (req, res) => {
 
         const complaintDetected = isLikelyComplaint(emailBody);
 
+        // Detect language of the inbound reply so Trinity can respond in the
+        // same language (Spanish or English).
+        const emailLang = detectEmailLanguage(inboundSubject, emailBody);
+        const languageInstruction = emailLang === 'es'
+          ? 'IMPORTANT LANGUAGE RULE: The client wrote in Spanish. Your ENTIRE response MUST be written in Spanish. Do not mix languages.'
+          : 'Respond in English.';
+
         // Build Trinity's context-aware prompt
         const wsDetails = await getWorkspaceDetails(workspaceId);
         const prompt = `You are Trinity, the AI staffing coordinator for ${wsDetails.name}, a CoAIleague member security provider.
+
+${languageInstruction}
 
 A client has replied to your previous email regarding reference ${trinityRef}.
 
@@ -1069,7 +1100,9 @@ ALWAYS end your response by recommending they use the Client Portal for all ongo
 Keep your response concise (3-5 sentences), professional, and warm. Do NOT make promises about specific staff members or schedules. Sign off as: Trinity | AI Staffing Coordinator — ${wsDetails.name}`;
 
         // Generate Trinity's response using org credits
-        let trinityReply = `Thank you for reaching out. Your message has been received and our team will follow up shortly. For faster response and full tracking of your request, we recommend using your Client Portal. — Trinity | AI Staffing Coordinator — ${wsDetails.name}`;
+        let trinityReply = emailLang === 'es'
+          ? `Gracias por comunicarse. Hemos recibido su mensaje y nuestro equipo se comunicará con usted en breve. Para una respuesta más rápida y un seguimiento completo de su solicitud, le recomendamos utilizar su Portal del Cliente. — Trinity | Coordinadora IA de Personal — ${wsDetails.name}`
+          : `Thank you for reaching out. Your message has been received and our team will follow up shortly. For faster response and full tracking of your request, we recommend using your Client Portal. — Trinity | AI Staffing Coordinator — ${wsDetails.name}`;
 
         try {
           const aiResp = await meteredGemini.generate({
@@ -1110,23 +1143,29 @@ Keep your response concise (3-5 sentences), professional, and warm. Do NOT make 
           }
         }
 
-        // Send Trinity's reply back to the client
+        // Send Trinity's reply back to the client (bilingual subject + greeting)
+        const replySubject = emailLang === 'es'
+          ? `Re: Su solicitud de personal — ${wsDetails.name} [Ref: ${trinityRef}]`
+          : `Re: Your Staffing Request — ${wsDetails.name} [Ref: ${trinityRef}]`;
+        const greeting = emailLang === 'es' ? 'Hola' : 'Hello';
+        const networkLabel = emailLang === 'es' ? 'Red de Personal' : 'Staffing Network';
+
         await emailService.sendCustomEmail( // infra
           senderEmail,
-          `Re: Your Staffing Request — ${wsDetails.name} [Ref: ${trinityRef}]`,
+          replySubject,
           `<table width="100%" cellpadding="0" cellspacing="0" style="font-family:Arial,sans-serif;background-color:#e8edf2;">
             <tr><td align="center" style="padding:8px 6px;">
             <div style="max-width:600px;width:100%;margin:0 auto;">
             <div style="background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #1e40af 100%); padding: 20px; border-radius: 12px 12px 0 0; text-align: center;">
-              <p style="color:#93c5fd;margin:0 0 4px 0;font-size:12px;letter-spacing:2px;text-transform:uppercase;">${PLATFORM.name} Staffing Network</p>
+              <p style="color:#93c5fd;margin:0 0 4px 0;font-size:12px;letter-spacing:2px;text-transform:uppercase;">${PLATFORM.name} ${networkLabel}</p>
               <h2 style="color:white;margin:0;font-size:20px;font-weight:700;">${wsDetails.name}</h2>
             </div>
             <div style="padding:24px 16px;background-color:#f8fafc;border-radius:0 0 12px 12px;">
-              <p style="font-size:15px;color:#1e293b;margin:0 0 16px 0;">Hello ${senderName || 'there'},</p>
+              <p style="font-size:15px;color:#1e293b;margin:0 0 16px 0;">${greeting} ${senderName || (emailLang === 'es' ? 'estimado/a' : 'there')},</p>
               <div style="color:#334155;font-size:14px;line-height:1.8;white-space:pre-line;">${trinityReply}</div>
               <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0 16px 0;">
               <p style="color:#94a3b8;font-size:11px;margin:0;text-align:center;">
-                ${wsDetails.name} | ${PLATFORM.name} Staffing Network | Ref: ${trinityRef}
+                ${wsDetails.name} | ${PLATFORM.name} ${networkLabel} | Ref: ${trinityRef}
               </p>
             </div>
             </div>
@@ -1193,17 +1232,35 @@ Keep your response concise (3-5 sentences), professional, and warm. Do NOT make 
 
             log.info(`[Resend Inbound] Officer ${officer.firstName} ${officer.lastName} accepted shift ${openShift.id}`);
 
-            // Send confirmation to the officer
-            await emailService.sendCustomEmail( // infra
-              senderEmail,
-              `Assignment Confirmed — ${workspaceName || 'Your Staffing Agency'}`,
-              `<div style="font-family:Arial,sans-serif;max-width:500px;margin:0 auto;padding:30px;">
+            // Send confirmation to the officer in their preferred language
+            // (falls back to email-body detection when not set).
+            const officerLang: 'en' | 'es' =
+              officer.preferredLanguage === 'es'
+                ? 'es'
+                : detectEmailLanguage(inboundEmail.subject || '', emailBody);
+            const confSubject = officerLang === 'es'
+              ? `Asignación confirmada — ${workspaceName || 'Su agencia de personal'}`
+              : `Assignment Confirmed — ${workspaceName || 'Your Staffing Agency'}`;
+            const confHtml = officerLang === 'es'
+              ? `<div style="font-family:Arial,sans-serif;max-width:500px;margin:0 auto;padding:30px;">
+                <h2 style="color:#16a34a;">¡Asignación confirmada!</h2>
+                <p>Hola ${officer.firstName || acceptanceResult.name},</p>
+                <p>Hemos recibido tu aceptación. Estás confirmado para la asignación. Los detalles completos seguirán en breve.</p>
+                <p style="color:#64748b;font-size:13px;">Gracias por tu respuesta rápida.</p>
+                <p style="color:#64748b;font-size:13px;">— ${workspaceName || 'Tu equipo de personal'}</p>
+              </div>`
+              : `<div style="font-family:Arial,sans-serif;max-width:500px;margin:0 auto;padding:30px;">
                 <h2 style="color:#16a34a;">Assignment Confirmed!</h2>
                 <p>Hi ${officer.firstName || acceptanceResult.name},</p>
                 <p>Your acceptance has been received. You are confirmed for the assignment. Full details will follow shortly.</p>
                 <p style="color:#64748b;font-size:13px;">Thank you for your prompt response.</p>
                 <p style="color:#64748b;font-size:13px;">— ${workspaceName || 'Your Staffing Team'}</p>
-              </div>`,
+              </div>`;
+
+            await emailService.sendCustomEmail( // infra
+              senderEmail,
+              confSubject,
+              confHtml,
               'officer_acceptance_confirmation',
               workspaceId
             );
@@ -1234,13 +1291,24 @@ Keep your response concise (3-5 sentences), professional, and warm. Do NOT make 
       const orgEmailAddress = inboundEmail.to?.[0] || `staffing@coaileague.com`;
       const rawBody = inboundEmail.text || inboundEmail.html?.replace(/<[^>]*>/g, ' ') || '';
 
+      // Detect the inbound email language so Trinity greets in the same language.
+      const greetingLang = detectEmailLanguage(inboundEmail.subject || '', rawBody);
+
       // Generate concise job summary with Gemini (non-blocking fallback on error)
-      let jobSummary = rawBody.length > 20 ? rawBody.substring(0, 600) : 'No additional details were provided in the request.';
+      const fallbackSummary = greetingLang === 'es'
+        ? 'No se proporcionaron detalles adicionales en la solicitud.'
+        : 'No additional details were provided in the request.';
+      let jobSummary = rawBody.length > 20 ? rawBody.substring(0, 600) : fallbackSummary;
       try {
+        const summaryLangDirective = greetingLang === 'es'
+          ? 'IMPORTANT: The client wrote in Spanish. Write the summary ENTIRELY in Spanish. Do not mix languages.'
+          : 'Write the summary in English.';
         const geminiResp = await meteredGemini.generate({
           workspaceId,
           feature: 'trinity_staffing',
           prompt: `You are Trinity, an AI staffing coordinator for a security company. A client just sent the following staffing request email. Write a short, professional 3–5 sentence summary of what they need. Include: the type of officer requested (armed/unarmed/etc), location if mentioned, date(s) and hours if mentioned, number of officers, and any special requirements. Be factual and concise. Do NOT add any headers or salutations — just the summary paragraph.
+
+${summaryLangDirective}
 
 Client email:
 """
@@ -1265,8 +1333,9 @@ ${rawBody.substring(0, 2000)}
         referenceNumber: preRef,
         orgEmail: orgEmailAddress,
         jobSummary,
+        language: greetingLang,
       });
-      log.info(`[Resend Inbound] Trinity AI greeting sent to ${senderEmail} [Ref: ${preRef}]`);
+      log.info(`[Resend Inbound] Trinity AI greeting sent to ${senderEmail} [Ref: ${preRef}, lang=${greetingLang}]`);
     } catch (greetErr: unknown) {
       log.warn('[Resend Inbound] Failed to send Trinity AI greeting:', (greetErr instanceof Error ? greetErr.message : String(greetErr)));
     }
@@ -1339,6 +1408,52 @@ ${rawBody.substring(0, 2000)}
       log.warn('[Resend Inbound] Prospect detection error (non-blocking):', (prospectErr instanceof Error ? prospectErr.message : String(prospectErr)));
     }
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // TRINITY INBOUND EMAIL PROCESSOR — routes to calloff/incident/docs/support/careers
+    // Canonical pipeline for every workspace-scoped inbound email. Runs
+    // non-blocking so the webhook ACKs Resend in <200ms while Trinity does
+    // the heavy downstream work (coverage search, incident creation, etc).
+    // ═══════════════════════════════════════════════════════════════════════
+    if (workspaceId && emailCategory !== 'verification') {
+      scheduleNonBlocking('resend-inbound.trinity-processor', async () => {
+        try {
+          const { processInboundEmail } = await import(
+            '../services/trinity/trinityInboundEmailProcessor'
+          );
+
+          const result = await processInboundEmail({
+            messageId: inboundEmail.message_id || `resend-${Date.now()}`,
+            fromEmail: senderEmail || inboundEmail.from || 'unknown@unknown.com',
+            fromName: senderName || undefined,
+            toEmail: toAddrs[0] || inboundEmail.to?.[0] || '',
+            subject: inboundEmail.subject || '(no subject)',
+            bodyText: emailBody,
+            bodyHtml: inboundEmail.html || undefined,
+            attachments: (inboundEmail.attachments || []).map((a: any) => ({
+              filename: a.filename || a.name || 'attachment',
+              contentType: a.contentType || a.content_type || 'application/octet-stream',
+              size: a.size,
+              content: a.content,
+              url: a.url,
+            })),
+            receivedAt: new Date(),
+            rawPayload: inboundEmail as unknown as Record<string, unknown>,
+          });
+
+          log.info(`[Resend→Trinity] processInboundEmail complete: ${emailCategory} → ${result.status}`, {
+            workspaceId,
+            category: emailCategory,
+            logId: result.logId,
+            downstreamRecordId: result.downstreamRecordId,
+          });
+        } catch (err: unknown) {
+          log.error('[Resend→Trinity] processInboundEmail failed (non-fatal):',
+            err instanceof Error ? err.message : String(err),
+            { workspaceId, category: emailCategory });
+        }
+      });
+    }
+
     res.status(200).json({
       received: true,
       processed: true,
@@ -1348,6 +1463,8 @@ ${rawBody.substring(0, 2000)}
       orgCode: orgCode || undefined,
       isNewProspect,
       prospectTempCode: prospectTempCode || undefined,
+      trinityProcessingScheduled: workspaceId && emailCategory !== 'verification',
+      category: emailCategory,
       result,
     });
   } catch (error: unknown) {
@@ -1506,7 +1623,7 @@ router.get("/api/webhooks/resend/inbound/status", async (req, res) => {
  *     `webhookPathsNeedingRawBody`, so express.json's verify callback will
  *     populate `req.rawBody` identically to production.
  *
- * Gated by isProduction() per CLAUDE.md §A so we never expose this surface on
+ * Gated by isProduction() per TRINITY.md §A so we never expose this surface on
  * customer deployments.
  */
 router.get("/api/webhooks/resend/diagnostic", (_req, res) => {

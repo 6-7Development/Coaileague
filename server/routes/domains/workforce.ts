@@ -38,6 +38,8 @@ import onboardingTaskRouter from "../onboardingTaskRoutes";
 import performanceRouter from "../performanceRoutes";
 import recognitionRouter from "../recognitionRoutes";
 import { clockinPinRouter } from "../clockinPinRoutes";
+import { identityPinRouter } from "../identityPinRoutes";
+import { employmentVerifyRouter } from "../employmentVerifyRoutes";
 import recruitmentRouter from "../recruitmentRoutes";
 import wellnessRouter from "../wellnessRoutes";
 
@@ -53,7 +55,9 @@ export function mountWorkforceRoutes(app: Express): void {
   app.use("/api/owner-employee", requireAuth, ensureWorkspaceAccess, ownerEmployeeRouter);
   app.use(officerScoreRouter);
   // Phase 11: Officer Intelligence Dashboard — AI-driven insights and recommendations
-  app.use(requireAuth, ensureWorkspaceAccess, officerIntelligenceRouter);
+  // Router defines full /api/officers/... paths internally, so scope auth to /api
+  // to avoid swallowing the root request (which served JSON 401 for coaileague.com).
+  app.use("/api", requireAuth, ensureWorkspaceAccess, officerIntelligenceRouter);
   app.use("/api/employees", requireAuth, ensureWorkspaceAccess, employeeRouter);
   app.use("/api/engagement", requireAuth, ensureWorkspaceAccess, engagementRouter);
   app.use("/api/gamification/enhanced", requireAuth, ensureWorkspaceAccess, gamificationEnhancedRoutes);
@@ -95,6 +99,16 @@ export function mountWorkforceRoutes(app: Express): void {
   app.use("/api/recognition", requireAuth, ensureWorkspaceAccess, recognitionRouter);
   // Phase 57: Clock-in PIN management (set/verify/clear/status per employee)
   app.use("/api/employees", requireAuth, ensureWorkspaceAccess, clockinPinRouter);
+  // Phase 23: Universal identity PINs (owner, client, combined verify)
+  // Note: individual routes inside apply their own auth — /verify-with-pin
+  // is intentionally unauthenticated because Trinity and HelpAI call it with
+  // just (code, pin) from inbound channels. Rate limiting is enforced at the
+  // route level.
+  app.use("/api/identity", identityPinRouter);
+  // Phase 27: Employment verification — manager-facing approve/deny endpoints
+  // for verify@{slug}.coaileague.com inbound requests. FCRA-compliant: only
+  // employment dates, title, status, pay band, and officer score are shared.
+  app.use("/api/employment-verify", requireAuth, ensureWorkspaceAccess, employmentVerifyRouter);
   // Phase 58: Trinity Interview Pipeline — Recruitment API
   app.use("/api/recruitment", requireAuth, ensureWorkspaceAccess, recruitmentRouter);
 }

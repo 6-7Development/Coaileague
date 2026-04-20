@@ -41,11 +41,10 @@ import { storage } from '../storage';
 import { executeIdempotencyCheck, updateIdempotencyResult } from './autonomy/helpers';
 import { runWebSocketConnectionCleanup } from './wsConnectionCleanup';
 import { runShiftCompletionBridge } from './automation/shiftCompletionBridge';
-import { resetMonthlyCredits } from './billing/creditResetCron';
 import { platformServicesMeter } from './billing/platformServicesMeter';
 import crypto from 'crypto';
 import { createNotification } from './notificationService';
-import { withCredits } from './billing/creditWrapper';
+import { withTokens } from './billing/tokenWrapper';
 import { sendMonitoringAlert } from './externalMonitoring';
 import { syncInvoiceToQuickBooks, syncPayrollToQuickBooks } from './quickbooksClientBillingSync';
 import { checkDatabase, checkChatWebSocket, checkStripe } from './healthCheck';
@@ -330,7 +329,7 @@ async function applyGovernanceGate(
 
 interface AutomationEventData {
   jobName: string;
-  category: 'billing' | 'scheduling' | 'payroll' | 'compliance' | 'maintenance' | 'notification';
+  category: 'billing' | 'scheduling' | 'payroll' | 'compliance' | 'maintenance' | 'notification' | 'automation' | 'governance';
   success: boolean;
   recordsProcessed?: number;
   duration?: number;
@@ -663,11 +662,6 @@ const SCHEDULER_CONFIG = {
     enabled: true,
     schedule: '*/5 * * * *', // Every 5 minutes
     description: 'Auto-close orphaned WebSocket connections (>5min) and purge stale records (>24h)'
-  },
-  creditReset: {
-    enabled: true,
-    schedule: '0 0 1 * *', // Midnight on 1st of every month
-    description: 'Monthly refill of automation credits based on subscription tier'
   },
   visualQa: {
     enabled: true,
@@ -1319,8 +1313,8 @@ async function runWeeklyScheduleGeneration() {
                     const owner = workspaceEmployees.find(e => e.workspaceRole === 'org_owner');
                     const ownerUserId = owner?.userId || undefined;
                     
-                    // Call AI Brain WITH CREDIT DEDUCTION
-                    const creditResult = await withCredits(
+                    // Call AI Brain WITH TOKEN USAGE TRACKING
+                    const creditResult = await withTokens(
                       {
                         workspaceId: workspace.id,
                         featureKey: 'ai_scheduling',
@@ -1401,7 +1395,7 @@ async function runWeeklyScheduleGeneration() {
                       // AI Brain processes job immediately and returns result
                       if (result.status === 'completed') {
                         shiftsGenerated = result.output?.assignments?.length || 0;
-                        log.info('AI Brain generated shift assignments', { shiftsGenerated, creditsDeducted: creditResult.creditsDeducted });
+                        log.info('AI Brain generated shift assignments', { shiftsGenerated, creditsDeducted: creditResult.tokensUsed });
                       } else if (result.status === 'failed') {
                         log.error('AI Brain job failed', { error: result.error });
                       }
@@ -2360,7 +2354,6 @@ export function startAutonomousScheduler() {
     cleanup: { enabled: true, schedule: CRON.idempotencyCleanup, description: 'Idempotency key cleanup' },
     roomAutoClose: { enabled: true, schedule: CRON.chatAutoClose, description: 'Room auto-close' },
     wsConnectionCleanup: { enabled: true, schedule: CRON.wsCleanup, description: 'WebSocket cleanup' },
-    creditReset: { enabled: true, schedule: CRON.monthlyCreditReset, description: 'Monthly credit reset' },
     visualQa: { enabled: true, schedule: CRON.visualQa, description: 'Daily visual QA scanning' },
     autoClockOut: { enabled: true, schedule: '*/30 * * * *', description: 'Auto clock-out officers whose shift ended >30 minutes ago with no clock-out' },
     shiftCompletionBridge: { enabled: true, schedule: '*/30 * * * *', description: 'Create pending time entries for assigned shifts with no clock-in/out recorded' },
@@ -2381,10 +2374,10 @@ export function startAutonomousScheduler() {
   log.info('CoAIleague autonomous scheduler starting');
 
   // 1. Nightly Invoice Generation (2 AM daily)
-  registerJobInfo('Smart Billing (BillOS)', SCHEDULER_CONFIG.invoicing.schedule, SCHEDULER_CONFIG.invoicing.description, SCHEDULER_CONFIG.invoicing.enabled);
+  registerJobInfo('CoAIleague Smart Billing', SCHEDULER_CONFIG.invoicing.schedule, SCHEDULER_CONFIG.invoicing.description, SCHEDULER_CONFIG.invoicing.enabled);
   if (SCHEDULER_CONFIG.invoicing.enabled) {
     cron.schedule(SCHEDULER_CONFIG.invoicing.schedule, () => {
-      trackJobExecution('Smart Billing (BillOS)', async () => {
+      trackJobExecution('CoAIleague Smart Billing', async () => {
         log.debug('Invoice generation triggered', { timestamp: new Date().toISOString() });
         const startTime = Date.now();
         try {
@@ -2395,14 +2388,14 @@ export function startAutonomousScheduler() {
             log.warn('Client timesheet invoice auto-generation failed (non-blocking)', { error: err.message });
           });
           emitAutomationEvent({
-            jobName: 'Smart Billing (BillOS)',
+            jobName: 'CoAIleague Smart Billing',
             category: 'billing',
             success: true,
             duration: Date.now() - startTime,
           });
         } catch (err: any) {
           emitAutomationEvent({
-            jobName: 'Smart Billing (BillOS)',
+            jobName: 'CoAIleague Smart Billing',
             category: 'billing',
             success: false,
             details: { error: (err instanceof Error ? err.message : String(err)) },
@@ -2638,7 +2631,6 @@ export function startAutonomousScheduler() {
           const expiredCount = await approvalRequestService.expireOldApprovals();
           emitAutomationEvent({
             jobName: 'Approval Expiry Sweep',
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             category: 'governance',
             success: true,
             duration: Date.now() - startTime,
@@ -2648,7 +2640,6 @@ export function startAutonomousScheduler() {
         } catch (err: any) {
           emitAutomationEvent({
             jobName: 'Approval Expiry Sweep',
-            // @ts-expect-error — TS migration: fix in refactoring sprint
             category: 'governance',
             success: false,
             details: { error: (err instanceof Error ? err.message : String(err)) },
@@ -2730,6 +2721,73 @@ export function startAutonomousScheduler() {
   });
   log.info('Terminated Access Expiry registered', { schedule: '30 4 * * *' });
 
+  // 4b-2. Contract Signing Reminder (Daily 10 AM UTC)
+  // Scans pending contract signatures and sends chase emails at D+3/7/14 with
+  // the portal link. Idempotent via idempotencyKey so reruns are safe.
+  registerJobInfo('Contract Signing Reminder', '0 10 * * *', 'Email pending contract signers at D+3/7/14', true);
+  cron.schedule('0 10 * * *', () => {
+    trackJobExecution('Contract Signing Reminder', async () => {
+      const startTime = Date.now();
+      try {
+        const { sendContractSigningReminders } = await import(
+          './contracts/contractPipelineService'
+        );
+        const result = await sendContractSigningReminders();
+        emitAutomationEvent({
+          jobName: 'Contract Signing Reminder',
+          category: 'notification',
+          success: true,
+          duration: Date.now() - startTime,
+          recordsProcessed: result.sent,
+          details: { scanned: result.scanned, sent: result.sent },
+        });
+      } catch (err: unknown) {
+        emitAutomationEvent({
+          jobName: 'Contract Signing Reminder',
+          category: 'notification',
+          success: false,
+          details: { error: err instanceof Error ? err.message : String(err) },
+        });
+        throw err;
+      }
+    });
+  });
+  log.info('Contract Signing Reminder registered', { schedule: '0 10 * * *' });
+
+  // 4c. Hourly Proof-of-Service Prompt (Every 15 minutes)
+  // Scans active shift chatrooms and nudges officers who have gone >60 min
+  // without submitting a GPS photo. Escalates to supervisors at >120 min.
+  registerJobInfo(
+    'Hourly Proof-of-Service Prompt',
+    '*/15 * * * *',
+    'Prompts officers in active shifts to submit GPS photo if none in last 60 min',
+    true,
+  );
+  cron.schedule('*/15 * * * *', () => {
+    trackJobExecution('Hourly Proof-of-Service Prompt', async () => {
+      try {
+        const { promptOverdueShiftPhotos } = await import('./automation/shiftPhotoPromptService');
+        const result = await promptOverdueShiftPhotos();
+        emitAutomationEvent({
+          jobName: 'Hourly Proof-of-Service Prompt',
+          category: 'scheduling',
+          success: true,
+          recordsProcessed: result.prompted,
+          details: { checked: result.checked, prompted: result.prompted, supervisorAlerts: result.supervisorAlerts },
+        });
+      } catch (err: any) {
+        log.error('[PhotoPrompt] cron failed', { error: err instanceof Error ? err.message : String(err) });
+        emitAutomationEvent({
+          jobName: 'Hourly Proof-of-Service Prompt',
+          category: 'scheduling',
+          success: false,
+          details: { error: err instanceof Error ? err.message : String(err) },
+        });
+      }
+    });
+  });
+  log.info('Hourly Proof-of-Service Prompt registered', { schedule: '*/15 * * * *' });
+
   // 5. Chat Workroom Auto-Close (Every 5 minutes)
   registerJobInfo('Room Auto-Close', SCHEDULER_CONFIG.roomAutoClose.schedule, SCHEDULER_CONFIG.roomAutoClose.description, SCHEDULER_CONFIG.roomAutoClose.enabled);
   if (SCHEDULER_CONFIG.roomAutoClose.enabled) {
@@ -2748,17 +2806,9 @@ export function startAutonomousScheduler() {
     log.info('WebSocket Connection Cleanup registered', { schedule: SCHEDULER_CONFIG.wsConnectionCleanup.schedule, description: SCHEDULER_CONFIG.wsConnectionCleanup.description });
   }
 
-  // 7. Monthly Credit Reset (1st of month at midnight)
-  registerJobInfo('Monthly Credit Reset', SCHEDULER_CONFIG.creditReset.schedule, SCHEDULER_CONFIG.creditReset.description, SCHEDULER_CONFIG.creditReset.enabled);
-  if (SCHEDULER_CONFIG.creditReset.enabled) {
-    cron.schedule(SCHEDULER_CONFIG.creditReset.schedule, () => {
-      trackJobExecution('Monthly Credit Reset', async () => {
-        log.debug('Credit reset triggered', { timestamp: new Date().toISOString() });
-        await resetMonthlyCredits();
-      });
-    });
-    log.info('Monthly Credit Reset registered', { schedule: SCHEDULER_CONFIG.creditReset.schedule, description: SCHEDULER_CONFIG.creditReset.description });
-  }
+  // Token allowance resets naturally via token_usage_monthly (a new row is
+  // created on the 1st of each month as soon as the first AI call of the
+  // month runs) — no dedicated cron is required.
 
   // 7b. Monthly Platform Infrastructure Billing (1st of month at 1 AM)
   registerJobInfo('Platform Infrastructure Billing', CRON.monthlyInfraBilling, 'Cost recovery for email, domain, and infrastructure', true);
@@ -2767,13 +2817,13 @@ export function startAutonomousScheduler() {
       log.debug('Platform infrastructure billing triggered', { timestamp: new Date().toISOString() });
       try {
         const result = await platformServicesMeter.chargeMonthlyInfrastructure();
-        log.info('Platform billing complete', { workspacesProcessed: result.processed, creditsCharged: result.totalCredits });
+        log.info('Platform billing complete', { workspacesProcessed: result.processed, tokensUsed: result.totalCredits });
         emitAutomationEvent({
           jobName: 'Monthly Platform Infrastructure Billing',
           category: 'billing',
           success: true,
           recordsProcessed: result.processed,
-          details: { creditsCharged: result.totalCredits },
+          details: { tokensUsed: result.totalCredits },
         });
       } catch (error: any) {
         log.error('Platform billing error', { error: (error instanceof Error ? error.message : String(error)) });
@@ -3985,6 +4035,139 @@ export function startAutonomousScheduler() {
   });
   log.info('Trinity Weekly Intelligence Scan registered', { schedule: '0 7 * * 1', description: 'Monday weekly: OT risk, open shifts, compliance 30d, workforce summary, SLA check' });
 
+  // ════════════════════════════════════════════════════════════════════════════
+  // TRINITY DREAM CYCLE — Nightly cognitive overnight processing (2–5:30 AM)
+  // ════════════════════════════════════════════════════════════════════════════
+  // While the org sleeps, Trinity's brain continues working: memory consolidation,
+  // social graph recalculation, incubation problem solving, temporal arc updates,
+  // and narrative self-reflection. The insights produced flow into the first
+  // user interaction of the day via buildMorningBrief().
+
+  const loadActiveWorkspaceIds = async (): Promise<string[]> => {
+    const rows = await db
+      .select({ id: workspaces.id })
+      .from(workspaces)
+      .where(and(
+        eq(workspaces.isSuspended, false),
+        eq(workspaces.isFrozen, false),
+        eq(workspaces.isLocked, false),
+        ne(workspaces.subscriptionStatus, 'cancelled'),
+      ))
+      .catch(() => []);
+    return rows.map(r => r.id).filter((id): id is string => typeof id === 'string');
+  };
+
+  // 2:00 AM — Memory consolidation (compression, decay, pattern surfacing)
+  registerJobInfo(
+    'Trinity Memory Consolidation',
+    '0 2 * * *',
+    'Nightly memory compression, decay, and pattern surfacing for all workspaces',
+    true,
+  );
+  cron.schedule('0 2 * * *', () => {
+    trackJobExecution('Trinity Memory Consolidation', async () => {
+      const { trinityMemoryOptimizer } = await import('./ai-brain/trinityMemoryOptimizer');
+      const workspaceIds = await loadActiveWorkspaceIds();
+      let processed = 0;
+      for (const wsId of workspaceIds) {
+        await trinityMemoryOptimizer.runNightlyConsolidation(wsId)
+          .then(() => { processed++; })
+          .catch((e) => log.warn('DreamCycle memory consolidation failed', { wsId, error: e?.message ?? e }));
+      }
+      log.info('Trinity Memory Consolidation complete', { workspacesProcessed: processed });
+    });
+  });
+
+  // 2:30 AM — Social graph recalculation (influence, isolation risk, connectors)
+  registerJobInfo(
+    'Trinity Social Graph Recalculation',
+    '30 2 * * *',
+    'Rebuild team relationship graphs, isolation risk, and influence scores for all workspaces',
+    true,
+  );
+  cron.schedule('30 2 * * *', () => {
+    trackJobExecution('Trinity Social Graph Recalculation', async () => {
+      const { trinitySocialGraphEngine } = await import('./ai-brain/trinitySocialGraphEngine');
+      const workspaceIds = await loadActiveWorkspaceIds();
+      let totalInsights = 0;
+      for (const wsId of workspaceIds) {
+        const insights = await trinitySocialGraphEngine.recalculateWorkspaceGraph(wsId)
+          .catch((e) => {
+            log.warn('DreamCycle social graph recalc failed', { wsId, error: e?.message ?? e });
+            return [] as any[];
+          });
+        totalInsights += insights.length;
+      }
+      log.info('Trinity Social Graph Recalculation complete', { workspaces: workspaceIds.length, totalInsights });
+    });
+  });
+
+  // 3:00 AM — Incubation cycle (Trinity works on hard problems overnight)
+  registerJobInfo(
+    'Trinity Incubation Cycle',
+    '0 3 * * *',
+    'Background problem solving — Trinity approaches queued problems from new angles',
+    true,
+  );
+  cron.schedule('0 3 * * *', () => {
+    trackJobExecution('Trinity Incubation Cycle', async () => {
+      const { trinityIncubationEngine } = await import('./ai-brain/trinityIncubationEngine');
+      const workspaceIds = await loadActiveWorkspaceIds();
+      let totalBreakthroughs = 0;
+      for (const wsId of workspaceIds) {
+        const breakthroughs = await trinityIncubationEngine.runDreamCycle(wsId)
+          .catch((e) => {
+            log.warn('DreamCycle incubation failed', { wsId, error: e?.message ?? e });
+            return [] as any[];
+          });
+        totalBreakthroughs += breakthroughs.length;
+      }
+      log.info('Trinity Incubation Cycle complete', { workspaces: workspaceIds.length, totalBreakthroughs });
+    });
+  });
+
+  // 3:30 AM — Temporal arc updates (officer/client/org trajectories)
+  registerJobInfo(
+    'Trinity Temporal Arc Update',
+    '30 3 * * *',
+    'Update officer, client, and org temporal trajectory arcs for all workspaces',
+    true,
+  );
+  cron.schedule('30 3 * * *', () => {
+    trackJobExecution('Trinity Temporal Arc Update', async () => {
+      const { trinityTemporalConsciousnessEngine } = await import('./ai-brain/trinityTemporalConsciousnessEngine');
+      const workspaceIds = await loadActiveWorkspaceIds();
+      let processed = 0;
+      for (const wsId of workspaceIds) {
+        await trinityTemporalConsciousnessEngine.runNightlyArcUpdate(wsId)
+          .then(() => { processed++; })
+          .catch((e) => log.warn('DreamCycle arc update failed', { wsId, error: e?.message ?? e }));
+      }
+      log.info('Trinity Temporal Arc Update complete', { workspacesProcessed: processed });
+    });
+  });
+
+  // 5:00 AM — Narrative identity update (Trinity writes today's chapter)
+  registerJobInfo(
+    'Trinity Narrative Update',
+    '0 5 * * *',
+    'Trinity reflects on yesterday and writes a daily chapter in her workspace narrative',
+    true,
+  );
+  cron.schedule('0 5 * * *', () => {
+    trackJobExecution('Trinity Narrative Update', async () => {
+      const { trinityNarrativeIdentityEngine } = await import('./ai-brain/trinityNarrativeIdentityEngine');
+      const workspaceIds = await loadActiveWorkspaceIds();
+      let processed = 0;
+      for (const wsId of workspaceIds) {
+        await trinityNarrativeIdentityEngine.writeNightlyChapter(wsId)
+          .then(() => { processed++; })
+          .catch((e) => log.warn('DreamCycle narrative update failed', { wsId, error: e?.message ?? e }));
+      }
+      log.info('Trinity Narrative Update complete', { workspacesProcessed: processed });
+    });
+  });
+
   // Trinity Monthly Business Cycle — 25th of each month at 6am
   registerJobInfo('Trinity Monthly Business Cycle', '0 6 25 * *', 'Monthly 25th: build next month schedule, generate payroll, send invoices, QB sync, executive summary to owner', true);
   cron.schedule('0 6 25 * *', () => {
@@ -4189,6 +4372,234 @@ export function startAutonomousScheduler() {
   });
   log.info('Client Collections Outreach cron registered', { schedule: CRON.collectionsOutreach });
 
+  // ════════════════════════════════════════════════════════════════════════════
+  // Phase 20 — Trinity autonomous workflow crons
+  // ════════════════════════════════════════════════════════════════════════════
+
+  // Missed clock-in sweep — every 5 minutes. For each shift started >15 min ago
+  // without a clock-in, Trinity texts the officer, then calls, then escalates
+  // to a supervisor. State machine lives in the workflow audit row's metadata.
+  registerJobInfo(
+    'Trinity Missed Clock-In Sweep',
+    '*/5 * * * *',
+    'Detects officers who haven\'t clocked in and runs Trinity\'s welfare-check cascade',
+    true,
+  );
+  cron.schedule('*/5 * * * *', () => {
+    trackJobExecution('Trinity Missed Clock-In Sweep', async () => {
+      const { runMissedClockInSweep } = await import('./trinity/workflows/missedClockInWorkflow');
+      const result = await runMissedClockInSweep();
+      emitAutomationEvent({
+        jobName: 'Trinity Missed Clock-In Sweep',
+        category: 'scheduling',
+        success: result.errors.length === 0,
+        recordsProcessed: result.scanned,
+        details: result as any,
+      });
+    });
+  });
+  log.info('Trinity Missed Clock-In Sweep registered', { schedule: '*/5 * * * *' });
+
+  // Stale calloff escalation — every 5 minutes. Finds calloff workflows past
+  // their 15-minute SLA and fires the escalation path.
+  registerJobInfo(
+    'Trinity Stale Calloff Escalation',
+    '*/5 * * * *',
+    'Escalates calloff workflows that remain unfilled past the 15-minute SLA',
+    true,
+  );
+  cron.schedule('*/5 * * * *', () => {
+    trackJobExecution('Trinity Stale Calloff Escalation', async () => {
+      const { scanStaleCalloffWorkflows } = await import('./trinity/workflows/calloffCoverageWorkflow');
+      const result = await scanStaleCalloffWorkflows();
+      emitAutomationEvent({
+        jobName: 'Trinity Stale Calloff Escalation',
+        category: 'scheduling',
+        success: true,
+        recordsProcessed: result.scanned,
+        details: result as any,
+      });
+    });
+  });
+  log.info('Trinity Stale Calloff Escalation registered', { schedule: '*/5 * * * *' });
+
+  // Trinity shift reminders — every 5 minutes. 4h and 1h reminder buckets
+  // (idempotent via shift-reminder audit rows).
+  registerJobInfo(
+    'Trinity Shift Reminders',
+    '*/5 * * * *',
+    'Sends 4-hour and 1-hour shift reminder SMS; CALLOFF-enabled replies',
+    true,
+  );
+  cron.schedule('*/5 * * * *', () => {
+    trackJobExecution('Trinity Shift Reminders', async () => {
+      const { runShiftReminderSweep } = await import('./trinity/workflows/shiftReminderWorkflow');
+      const result = await runShiftReminderSweep();
+      emitAutomationEvent({
+        jobName: 'Trinity Shift Reminders',
+        category: 'notification',
+        success: result.errors.length === 0,
+        recordsProcessed: result.fourHourSent + result.oneHourSent,
+        details: result as any,
+      });
+    });
+  });
+  log.info('Trinity Shift Reminders registered', { schedule: '*/5 * * * *' });
+
+  // Trinity compliance expiry monitor — daily at 6 AM. Tiered notifications
+  // at 30/15/7/1d + expired.
+  registerJobInfo(
+    'Trinity Compliance Expiry Monitor',
+    '0 6 * * *',
+    'Daily cert / license / insurance expiry scan with tiered notifications',
+    true,
+  );
+  cron.schedule('0 6 * * *', () => {
+    trackJobExecution('Trinity Compliance Expiry Monitor', async () => {
+      const { runComplianceMonitorWorkflow } = await import('./trinity/workflows/complianceMonitorWorkflow');
+      const result = await runComplianceMonitorWorkflow();
+      emitAutomationEvent({
+        jobName: 'Trinity Compliance Expiry Monitor',
+        category: 'compliance',
+        success: result.errors.length === 0,
+        recordsProcessed: result.notified,
+        details: result as any,
+      });
+    });
+  });
+  log.info('Trinity Compliance Expiry Monitor registered', { schedule: '0 6 * * *' });
+
+  // Annual 1099 contractor scan — runs Jan 1 at 6 AM.
+  // Flags prior-year contractors who exceeded $600 with a filing-deadline
+  // reminder to the org owner. Filing deadline: Jan 31.
+  registerJobInfo(
+    '1099 January Contractor Scan',
+    '0 6 1 1 *',
+    'Annual scan of prior-year contractor payroll for 1099-NEC filing candidates',
+    true,
+  );
+  cron.schedule('0 6 1 1 *', () => {
+    trackJobExecution('1099 January Contractor Scan', async () => {
+      const { run1099JanuaryScan } = await import('./billing/contractorTaxAutomationService');
+      const priorYear = new Date().getFullYear() - 1;
+      const result = await run1099JanuaryScan(priorYear);
+      emitAutomationEvent({
+        jobName: '1099 January Contractor Scan',
+        category: 'payroll',
+        success: true,
+        recordsProcessed: result.flagged,
+        details: result as any,
+      });
+    });
+  });
+  log.info('1099 January Contractor Scan registered', { schedule: '0 6 1 1 *' });
+
+  // Trinity tax deadline monitor — daily at 7 AM. Alerts org owners at
+  // 30/14/7/1 days before federal filing deadlines (W-2, 1099-NEC, 941, 940).
+  registerJobInfo(
+    'Trinity Tax Deadline Monitor',
+    '0 7 * * *',
+    'Daily tax filing deadline alerts (30/14/7/1 day warnings to owners)',
+    true,
+  );
+  cron.schedule('0 7 * * *', () => {
+    trackJobExecution('Trinity Tax Deadline Monitor', async () => {
+      const { runTaxDeadlineMonitor } = await import('./trinity/workflows/taxDeadlineMonitor');
+      const result = await runTaxDeadlineMonitor();
+      emitAutomationEvent({
+        jobName: 'Trinity Tax Deadline Monitor',
+        category: 'compliance',
+        success: result.errors.length === 0,
+        recordsProcessed: result.notified,
+        details: result as any,
+      });
+    });
+  });
+  log.info('Trinity Tax Deadline Monitor registered', { schedule: '0 7 * * *' });
+
+  // Trinity payroll anomaly scan — hourly while approvals are possible. Scans
+  // pending runs; each gets a severity-graded response.
+  registerJobInfo(
+    'Trinity Payroll Anomaly Scan',
+    '0 * * * *',
+    'Hourly anomaly scan across pending payroll runs; flags/blocks per severity',
+    true,
+  );
+  cron.schedule('0 * * * *', () => {
+    trackJobExecution('Trinity Payroll Anomaly Scan', async () => {
+      const { runPayrollAnomalyScan } = await import('./trinity/workflows/payrollAnomalyWorkflow');
+      const result = await runPayrollAnomalyScan();
+      emitAutomationEvent({
+        jobName: 'Trinity Payroll Anomaly Scan',
+        category: 'payroll',
+        success: result.errors.length === 0,
+        recordsProcessed: result.scanned,
+        details: result as any,
+      });
+    });
+  });
+  log.info('Trinity Payroll Anomaly Scan registered', { schedule: '0 * * * *' });
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // Phase 24 — Trinity Proactive Intelligence monitors
+  // ════════════════════════════════════════════════════════════════════════════
+  // Five proactive monitors (pre-shift intel, revenue-at-risk, officer wellness,
+  // anomaly watch, weekly brief) are registered in one shot by the orchestrator
+  // so their cron schedules live alongside the existing Phase 20 workflows and
+  // feed the same job-history tracking surface. Load via dynamic import to keep
+  // the scheduler's module-load cost unchanged.
+  (async () => {
+    try {
+      const { registerProactiveMonitors } = await import('./trinity/proactive/proactiveOrchestrator');
+      registerProactiveMonitors({ registerJobInfo, trackJobExecution });
+      log.info('Trinity Phase 24 proactive monitors registered');
+    } catch (err: any) {
+      log.error('Failed to register Phase 24 proactive monitors', {
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  })();
+
+  // ══════════════════════════════════════════════════════════════════════
+  // TRINITY ANNUAL LEGAL KNOWLEDGE REVIEW
+  // Every January 1st at 06:00, Trinity re-verifies every regulatory rule
+  // older than 365 days against its authoritative source URL. Stale rules
+  // get refreshed in place; ones that no longer return a match are flagged
+  // in logs for human review. The chat path never depends on this cron.
+  // ══════════════════════════════════════════════════════════════════════
+  registerJobInfo(
+    'Trinity Annual Legal Knowledge Review',
+    '0 6 1 1 *',
+    'Re-verify all regulatory_rules against source URLs; update stale entries',
+    true,
+  );
+  cron.schedule('0 6 1 1 *', () => {
+    trackJobExecution('Trinity Annual Legal Knowledge Review', async () => {
+      const { trinityLegalResearch } = await import('./ai-brain/trinityLegalResearch');
+      const { lt } = await import('drizzle-orm');
+      const { regulatoryRules } = await import('@shared/schema');
+      const staleCutoff = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .substring(0, 10);
+
+      const stale = await db.select()
+        .from(regulatoryRules)
+        .where(lt(regulatoryRules.lastVerified, staleCutoff));
+
+      let updated = 0;
+      for (const rule of stale) {
+        const result = await trinityLegalResearch.researchAndLearn({
+          question: rule.ruleName,
+          state: rule.state,
+          category: rule.category,
+          workspaceId: 'system',
+        }).catch(() => ({ found: false }));
+        if (result.found) updated++;
+      }
+      log.info(`[LegalReview] Updated ${updated}/${stale.length} stale regulatory rules`);
+    });
+  });
+
   isSchedulerRunning = true;
 
   log.info('Autonomous scheduler running successfully');
@@ -4220,7 +4631,6 @@ export const manualTriggers = {
   roomAutoClose: runRoomAutoClose,
   wsConnectionCleanup: runWebSocketConnectionCleanup,
   compliance: checkExpiringCertifications,
-  creditReset: resetMonthlyCredits,
   gamificationWeeklyReset: async () => {
     await gamificationService.resetWeeklyPoints();
     return { success: true, resetType: 'weekly', resetAt: new Date().toISOString() };
@@ -4243,10 +4653,6 @@ export const manualTriggers = {
   engagementAlerts: async (workspaceId: string) => {
     const { checkEngagementAlertsForWorkspace } = await import('./engagementCalculations');
     return checkEngagementAlertsForWorkspace(workspaceId);
-  },
-  resetCreditsNow: async (workspaceId: string) => {
-    const { resetCreditsNow } = await import('./billing/creditResetCron');
-    return resetCreditsNow(workspaceId);
   },
   trinityProactiveScan: async () => {
     const { aiAnalyticsEngine } = await import('./ai-brain/aiAnalyticsEngine');

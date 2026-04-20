@@ -92,7 +92,7 @@ import { sendInvoiceGeneratedEmail } from "../services/emailCore";
 import { requireAuth } from "../auth";
 import { getStripe, isStripeConfigured } from "../services/billing/stripeClient";
 
-// Lazy proxy: avoids module-load crash if STRIPE_SECRET_KEY is missing (CLAUDE.md §F).
+// Lazy proxy: avoids module-load crash if STRIPE_SECRET_KEY is missing (TRINITY.md §F).
 const stripe = new Proxy({} as Stripe, {
   get(_t, prop) {
     return (getStripe() as any)[prop];
@@ -1683,6 +1683,10 @@ import { createHash } from "crypto";
         }
       }
 
+      // Atomicity: invoice UPDATE, paymentRecords INSERT, and AR ledger INSERT all
+      // run inside a single DB transaction so financial state is never partially
+      // committed. If any write fails the entire mark-paid rolls back.
+      const { writeLedgerEntry } = await import('../services/orgLedgerService');
       const { updated, paymentRow } = await db.transaction(async (tx) => {
         const [updated] = await tx.update(invoices)
           .set({
@@ -1716,16 +1720,9 @@ import { createHash } from "crypto";
           notes: notes || null,
         }).returning();
 
-        return { updated, paymentRow };
-      });
-
-      if (!updated) {
-        return res.status(409).json({ message: "Invoice could not be marked as paid" });
-      }
-
-      // Spec Section 4.4: Write ledger entry for payment received (cash in, AR reduced)
-      try {
-        const { writeLedgerEntry } = await import('../services/orgLedgerService');
+        // AR ledger entry — payment_received reduces the outstanding balance.
+        // Inside the TX so an ledger failure rolls back the invoice/payment record
+        // rather than leaving AR out of sync with the invoice status.
         await writeLedgerEntry({
           workspaceId: workspace.id,
           entryType: 'payment_received',
@@ -1736,10 +1733,19 @@ import { createHash } from "crypto";
           invoiceId: id,
           description: `Payment received for ${updated.invoiceNumber} via ${paymentMethod}${referenceNumber ? ` (ref: ${referenceNumber})` : ''} — $${updated.total}`,
           metadata: { paymentMethod, referenceNumber, paymentRecordId: paymentRow?.id },
+          tx,
         });
-      } catch (ledgerErr: unknown) {
-        log.warn('[FinancialLedger] Payment ledger write failed:', (ledgerErr instanceof Error ? ledgerErr.message : String(ledgerErr)));
+
+        return { updated, paymentRow };
+      });
+
+      if (!updated) {
+        return res.status(409).json({ message: "Invoice could not be marked as paid" });
       }
+
+      // QuickBooks sync — fires after the TX commits so we never write to QB
+      // for a rolled-back payment. Routed via platformEventBus `invoice_paid`
+      // (published below), which QuickBooks integration listeners consume.
 
       // Recognize cash-method revenue on payment (Issue #5: invoice-to-revenue linking)
       try {
@@ -1883,7 +1889,45 @@ import { createHash } from "crypto";
         }
       })();
 
-      // Charge middleware processing fee for non-manual invoice payments (awaited per CLAUDE.md §B).
+      // NDS in-app notification to workspace owner so the dashboard reflects
+      // the paid state even when the email is unread. Complements the
+      // platformEventBus 'invoice_paid' event which drives QB sync and role-
+      // targeted notifications — this is a direct owner ping with the
+      // transactional detail attached.
+      (async () => {
+        try {
+          const { NotificationDeliveryService } = await import('../services/notificationDeliveryService');
+          const { workspaces: workspacesSchema } = await import('@shared/schema');
+          const [ws] = await db
+            .select({ ownerId: workspacesSchema.ownerId })
+            .from(workspacesSchema)
+            .where(eq(workspacesSchema.id, workspace.id))
+            .limit(1);
+          if (ws?.ownerId) {
+            await NotificationDeliveryService.send({
+              type: 'invoice_paid',
+              workspaceId: workspace.id,
+              recipientUserId: ws.ownerId,
+              channel: 'in_app',
+              subject: `Invoice ${updated.invoiceNumber} marked paid`,
+              body: {
+                invoiceId: id,
+                invoiceNumber: updated.invoiceNumber,
+                amount: updated.total,
+                paymentMethod,
+                referenceNumber: referenceNumber || null,
+                paidAt: paidAt.toISOString(),
+                paymentRecordId: paymentRow?.id || null,
+              },
+              idempotencyKey: `invoice_paid-${id}-${paidAt.getTime()}`,
+            });
+          }
+        } catch (ndsErr: unknown) {
+          log.warn('[InvoiceRoutes] NDS invoice_paid notification failed (non-blocking):', (ndsErr instanceof Error ? ndsErr.message : String(ndsErr)));
+        }
+      })();
+
+      // Charge middleware processing fee for non-manual invoice payments (awaited per TRINITY.md §B).
       // Manual payments have no processing fee (no card/ACH network involved).
       // chargeInvoiceMiddlewareFee uses idempotencyKey `invoice_${workspaceId}_${invoiceId}`,
       // so even if this runs twice for the same invoice, Stripe deduplicates the charge.

@@ -8,6 +8,10 @@ import { pool } from "../db";
 import { platformActionHub } from "../services/helpai/platformActionHub";
 import { requireAuth, requireManager, type AuthenticatedRequest } from "../rbac";
 import { createNotification } from "../services/notificationService";
+import { NotificationDeliveryService } from "../services/notificationDeliveryService";
+import { createLogger } from '../lib/logger';
+
+const log = createLogger('ShiftTradingRoutes');
 
 const router = Router();
 
@@ -171,22 +175,52 @@ router.post("/trades", requireAuth, async (req: AuthenticatedRequest, res) => {
        reason || null, expiresAt || null]
     );
 
+    // Resolve shift date/site for richer notification text.
+    const shiftRow = shiftCheck.rows[0];
+    const shiftDate = shiftRow?.date || (shiftRow?.start_time ? new Date(shiftRow.start_time).toLocaleDateString() : 'their');
+    const siteName = shiftRow?.site_name || 'their site';
+    const tradeId = rows[0].id;
+    const requesterName = emp[0]?.first_name || 'A colleague';
+
     // Notify target officer if specified, otherwise notify managers
     if (targetOfficerId) {
-      // Tenant isolation: enforce workspace_id (CLAUDE.md §1)
+      // Tenant isolation: enforce workspace_id (TRINITY.md §1)
       const targetUser = await pool.query(`SELECT user_id FROM employees WHERE id=$1 AND workspace_id=$2`, [targetOfficerId, wid]);
       if (targetUser.rows[0]?.user_id) {
         await createNotification({
           userId: targetUser.rows[0].user_id,
           workspaceId: wid,
           title: "Shift Trade Request",
-          message: `${emp[0].first_name || "A colleague"} wants to trade a shift with you.`,
+          message: `${requesterName} wants to trade a shift with you.`,
           type: "shift_trade",
           actionUrl: `/shift-trading?tab=received`,
         }).catch(() => null);
+        // NDS: deliver through the canonical sender (TRINITY.md §B) so
+        // delivery is logged and push/in-app channels are respected.
+        try {
+          await NotificationDeliveryService.send({
+            type: 'shift_trade_request',
+            workspaceId: wid,
+            recipientUserId: targetUser.rows[0].user_id,
+            channel: 'in_app',
+            subject: 'Shift Trade Request',
+            body: {
+              title: 'Shift Trade Request',
+              message: `${requesterName} wants to trade their ${shiftDate} shift at ${siteName}.`,
+              url: `/shift-marketplace`,
+              tradeId,
+              actionButtons: [
+                { label: 'Accept', action: 'accept_trade', data: { tradeId } },
+                { label: 'Decline', action: 'decline_trade', data: { tradeId } },
+              ],
+            },
+          });
+        } catch (ndsErr: any) {
+          console.warn('[ShiftTrade] NDS shift_trade_request failed (non-fatal):', ndsErr?.message);
+        }
       }
     } else {
-      // Open marketplace — notify managers
+      // Open marketplace — notify managers (in-app only; no push spam)
       const managers = await pool.query(
         `SELECT u.id FROM users u WHERE u.workspace_id=$1 AND u.role IN ('owner','co_owner','org_admin','manager') LIMIT 10`,
         [wid]
@@ -198,6 +232,23 @@ router.post("/trades", requireAuth, async (req: AuthenticatedRequest, res) => {
           message: `An officer posted a shift for trading on the marketplace.`,
           type: "shift_trade", actionUrl: `/shift-trading`,
         }).catch(() => null);
+        try {
+          await NotificationDeliveryService.send({
+            type: 'shift_trade_request',
+            workspaceId: wid,
+            recipientUserId: m.id,
+            channel: 'in_app',
+            subject: 'Open Shift Trade',
+            body: {
+              title: 'Open Shift Trade',
+              message: `${requesterName} posted their ${shiftDate} shift for trading.`,
+              url: `/shift-marketplace`,
+              tradeId,
+            },
+          });
+        } catch (ndsErr: any) {
+          console.warn('[ShiftTrade] NDS manager notify failed (non-fatal):', ndsErr?.message);
+        }
       }
     }
     res.status(201).json(rows[0]);
@@ -221,7 +272,7 @@ router.post("/trades/:id/accept", requireAuth, async (req: AuthenticatedRequest,
     );
     if (!rows[0]) return res.status(404).json({ error: "Trade request not found or not pending" });
 
-    // Notify requester (workspace_id enforced for tenant isolation per CLAUDE.md §1)
+    // Notify requester (workspace_id enforced for tenant isolation per TRINITY.md §1)
     const requester = await pool.query(`SELECT user_id FROM employees WHERE id=$1 AND workspace_id=$2`, [rows[0].requesting_officer_id, wid]);
     if (requester.rows[0]?.user_id) {
       await createNotification({
@@ -230,6 +281,32 @@ router.post("/trades/:id/accept", requireAuth, async (req: AuthenticatedRequest,
         message: "Your shift trade request has been accepted. Awaiting manager approval.",
         type: "shift_trade", actionUrl: `/shift-trading`,
       }).catch(() => null);
+      try {
+        const acceptorName = (await pool.query(
+          `SELECT first_name FROM employees WHERE id=$1 AND workspace_id=$2`,
+          [emp[0].id, wid]
+        )).rows[0]?.first_name || 'Another officer';
+        const shiftDate = (await pool.query(
+          `SELECT date, start_time FROM shifts WHERE id=$1 AND workspace_id=$2`,
+          [rows[0].requested_shift_id, wid]
+        )).rows[0];
+        const dateLabel = shiftDate?.date || (shiftDate?.start_time ? new Date(shiftDate.start_time).toLocaleDateString() : 'your');
+        await NotificationDeliveryService.send({
+          type: 'shift_trade_accepted',
+          workspaceId: wid,
+          recipientUserId: requester.rows[0].user_id,
+          channel: 'in_app',
+          subject: 'Trade Accepted ✅',
+          body: {
+            title: 'Trade Accepted ✅',
+            message: `${acceptorName} accepted your ${dateLabel} shift trade. Awaiting manager approval.`,
+            url: `/shift-marketplace`,
+            tradeId: rows[0].id,
+          },
+        });
+      } catch (ndsErr: any) {
+        console.warn('[ShiftTrade] NDS shift_trade_accepted failed (non-fatal):', ndsErr?.message);
+      }
     }
     res.json(rows[0]);
   } catch (err: any) { res.status(500).json({ error: sanitizeError(err) }); }
@@ -245,6 +322,36 @@ router.post("/trades/:id/reject", requireAuth, async (req: AuthenticatedRequest,
       [req.params.id, wid]
     );
     if (!rows[0]) return res.status(404).json({ error: "Trade request not found" });
+
+    // Notify the original requester that their trade was declined.
+    try {
+      const requester = await pool.query(
+        `SELECT user_id FROM employees WHERE id=$1 AND workspace_id=$2`,
+        [rows[0].requesting_officer_id, wid]
+      );
+      if (requester.rows[0]?.user_id) {
+        const shiftRow = (await pool.query(
+          `SELECT date, start_time FROM shifts WHERE id=$1 AND workspace_id=$2`,
+          [rows[0].requested_shift_id, wid]
+        )).rows[0];
+        const dateLabel = shiftRow?.date || (shiftRow?.start_time ? new Date(shiftRow.start_time).toLocaleDateString() : 'your');
+        await NotificationDeliveryService.send({
+          type: 'shift_trade_declined',
+          workspaceId: wid,
+          recipientUserId: requester.rows[0].user_id,
+          channel: 'in_app',
+          subject: 'Trade Declined',
+          body: {
+            title: 'Trade Declined',
+            message: `Your ${dateLabel} shift trade request was declined.`,
+            url: `/shift-marketplace`,
+            tradeId: rows[0].id,
+          },
+        });
+      }
+    } catch (ndsErr: any) {
+      console.warn('[ShiftTrade] NDS shift_trade_declined failed (non-fatal):', ndsErr?.message);
+    }
     res.json(rows[0]);
   } catch (err: any) { res.status(500).json({ error: sanitizeError(err) }); }
 });
@@ -276,7 +383,7 @@ router.post("/trades/:id/manager-approve", requireManager, async (req: Authentic
     // Check that swapping won't violate rest periods for either officer
     const shiftIds = [trade.requested_shift_id, trade.offered_shift_id].filter(Boolean);
     for (const shiftId of shiftIds) {
-      // Tenant isolation: scope by workspace_id (CLAUDE.md §1)
+      // Tenant isolation: scope by workspace_id (TRINITY.md §1)
       const shiftRes = await client.query(
         `SELECT start_time, end_time, employee_id FROM shifts WHERE id=$1 AND workspace_id=$2`, [shiftId, wid]
       );
@@ -358,11 +465,10 @@ router.post("/trades/:id/manager-approve", requireManager, async (req: Authentic
         });
       }
     } catch (webhookErr: any) {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
       log.warn('[ShiftTrading] Failed to log webhook error to audit log', { error: webhookErr.message });
     }
 
-    // Notify both parties (workspace_id enforced for tenant isolation per CLAUDE.md §1)
+    // Notify both parties (workspace_id enforced for tenant isolation per TRINITY.md §1)
     for (const empId of [trade.requesting_officer_id, trade.target_officer_id].filter(Boolean)) {
       const userRes = await client.query(`SELECT user_id FROM employees WHERE id=$1 AND workspace_id=$2`, [empId, wid]);
       if (userRes.rows[0]?.user_id) {
@@ -372,6 +478,20 @@ router.post("/trades/:id/manager-approve", requireManager, async (req: Authentic
           message: "Your shift trade has been approved. Check your updated schedule.",
           type: "shift_trade", actionUrl: `/schedule`,
         }).catch(() => null);
+
+        await NotificationDeliveryService.send({
+          type: 'shift_trade_approved',
+          workspaceId: wid,
+          recipientUserId: userRes.rows[0].user_id,
+          channel: 'push',
+          subject: 'Shift Trade Approved',
+          body: {
+            title: 'Shift Trade Approved',
+            body: 'Your shift trade has been approved. Check your updated schedule.',
+            url: `/schedule`,
+            tradeId: trade.id,
+          },
+        }).catch(err => log.warn('[ShiftTrading] NDS shift_trade_approved failed (non-blocking):', err?.message));
       }
     }
     res.json(rows[0]);

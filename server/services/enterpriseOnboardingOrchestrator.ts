@@ -80,7 +80,7 @@ export interface PhaseResult {
 }
 
 // ============================================================================
-// STRIPE INTEGRATION — Lazy proxy (CLAUDE.md §F)
+// STRIPE INTEGRATION — Lazy proxy (TRINITY.md §F)
 // ============================================================================
 
 const stripe = new Proxy({} as Stripe, {
@@ -198,15 +198,8 @@ export class EnterpriseOnboardingOrchestrator {
           
           ctx.workspaceId = newOrg.id;
           
-          // Initialize credits for the new workspace
-          try {
-            const { creditManager } = await import('./billing/creditManager');
-            await creditManager.initializeCredits(newOrg.id, signupData.selectedTier || 'free');
-            log.info(`[Enterprise Onboarding] Credits initialized for workspace ${newOrg.id}`);
-          } catch (creditError: any) {
-            log.error(`[Enterprise Onboarding] Credit init failed (non-blocking):`, creditError.message);
-          }
-          
+          // Token tracking is event-driven — no initialization needed.
+
           // Create org subscription
           await db.insert(orgSubscriptions).values({
             workspaceId: newOrg.id,
