@@ -93,3 +93,32 @@ export function isSubscriptionSuspended(status: string | null | undefined): bool
   if (!status) return false;
   return SUSPENDED_SUBSCRIPTION_STATUSES.has(status);
 }
+
+/**
+ * Async gate for any code path that performs Trinity work on behalf of a
+ * specific workspace: AI invocations, outbound SMS / voice, proactive
+ * automation. Returns true if the workspace should be served (protected /
+ * active / unknown-but-fail-open), false if it should be blocked.
+ *
+ * Protected workspaces (platform support org, grandfathered tenant,
+ * system) always return true — they are never blocked.
+ *
+ * Unknown workspaces (cache + DB lookup both return null) fail OPEN so a
+ * transient DB outage cannot lock legitimate tenants out of Trinity.
+ *
+ * This is the canonical gate helper — prefer calling it over re-implementing
+ * the tier-cache + protected-workspace logic in each caller.
+ */
+export async function isWorkspaceServiceable(
+  workspaceId: string | null | undefined,
+): Promise<boolean> {
+  if (!workspaceId) return false;
+  if (NON_BILLING_WORKSPACE_IDS.has(workspaceId)) return true;
+  if (GRANDFATHERED_TENANT_ID && workspaceId === GRANDFATHERED_TENANT_ID) return true;
+
+  // Lazy import to avoid a circular dependency (cacheManager → schema → …).
+  const { cacheManager } = await import('../platform/cacheManager');
+  const tierInfo = await cacheManager.getWorkspaceTierWithStatus(workspaceId);
+  if (!tierInfo) return true; // fail open on unknown / DB miss
+  return isSubscriptionActive(tierInfo.status);
+}
