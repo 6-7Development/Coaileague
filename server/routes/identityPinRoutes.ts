@@ -296,6 +296,110 @@ identityPinRouter.delete('/pin/client/self', requireAuth, async (req: Authentica
   }
 });
 
+// ─── EMPLOYEE PIN (self-service from worker dashboard / onboarding) ──────────
+// Phase 26C. Mirrors the client-self pattern above but resolves the
+// employee row from the authenticated user_id within their workspace. The
+// existing /api/employees/:employeeId/pin/* routes (clockinPinRoutes.ts)
+// remain manager-only; these self-service routes let the employee manage
+// their own clock-in PIN without requiring manager involvement.
+
+async function resolveSelfEmployee(
+  req: AuthenticatedRequest,
+): Promise<{ employeeId: string; employeeNumber: string | null; workspaceId: string } | null> {
+  const workspaceId = (req as any).workspaceId ?? (req as any).user?.workspaceId;
+  const userId = (req as any).user?.id as string | undefined;
+  if (!workspaceId || !userId) return null;
+
+  // Tenant-scoped (CLAUDE.md §G). Active-only — deactivated employees must
+  // not be able to mint PINs.
+  const { pool } = await import('../db');
+  const { rows } = await pool.query(
+    `SELECT id, employee_number FROM employees
+      WHERE workspace_id = $1
+        AND user_id = $2
+        AND is_active = true
+      LIMIT 1`,
+    [workspaceId, userId],
+  );
+  if (!rows.length) return null;
+  return {
+    employeeId: rows[0].id,
+    employeeNumber: rows[0].employee_number ?? null,
+    workspaceId,
+  };
+}
+
+identityPinRouter.get('/pin/employee/self/status', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const resolved = await resolveSelfEmployee(req);
+    if (!resolved) return res.status(404).json({ error: 'EMPLOYEE_NOT_FOUND' });
+    const status = await getEntityPinStatus({
+      entity: 'employee',
+      entityId: resolved.employeeId,
+      workspaceId: resolved.workspaceId,
+    });
+    return res.json({
+      ...status,
+      employeeId: resolved.employeeId,
+      employeeNumber: resolved.employeeNumber,
+    });
+  } catch (err: any) {
+    log.error('[EmployeePin] self status failed:', err?.message);
+    return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  }
+});
+
+identityPinRouter.post('/pin/employee/self/set', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const actorUserId = (req as any).user?.id;
+    if (!actorUserId) return res.status(401).json({ error: 'UNAUTHENTICATED' });
+    const resolved = await resolveSelfEmployee(req);
+    if (!resolved) return res.status(404).json({ error: 'EMPLOYEE_NOT_FOUND' });
+
+    const { pin } = req.body || {};
+    await setEntityPin({
+      entity: 'employee',
+      entityId: resolved.employeeId,
+      pin,
+      workspaceId: resolved.workspaceId,
+      actorUserId,
+      actorPlatformRole: (req as any).platformRole ?? null,
+    });
+    return res.json({
+      success: true,
+      message: 'Clock-in PIN saved',
+      employeeNumber: resolved.employeeNumber,
+    });
+  } catch (err: any) {
+    const msg = err?.message || 'Failed to set employee PIN';
+    if (msg.startsWith('INVALID_PIN')) return res.status(400).json({ error: 'INVALID_PIN', message: msg });
+    if (msg.startsWith('PIN_TARGET_NOT_FOUND')) return res.status(404).json({ error: 'NOT_FOUND', message: msg });
+    log.error('[EmployeePin] self set failed:', msg);
+    return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  }
+});
+
+identityPinRouter.delete('/pin/employee/self', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const actorUserId = (req as any).user?.id;
+    if (!actorUserId) return res.status(401).json({ error: 'UNAUTHENTICATED' });
+    const resolved = await resolveSelfEmployee(req);
+    if (!resolved) return res.status(404).json({ error: 'EMPLOYEE_NOT_FOUND' });
+
+    await clearEntityPin({
+      entity: 'employee',
+      entityId: resolved.employeeId,
+      workspaceId: resolved.workspaceId,
+      actorUserId,
+      actorPlatformRole: (req as any).platformRole ?? null,
+    });
+    return res.json({ success: true, message: 'Clock-in PIN cleared' });
+  } catch (err: any) {
+    log.error('[EmployeePin] self clear failed:', err?.message);
+    return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  }
+});
+
 // ─── COMBINED IDENTITY + PIN VERIFY (Trinity / HelpAI) ───────────────────────
 // No workspace auth required — this is the entry point for inbound channels
 // where the caller only has the universal code + PIN. Rate-limited to prevent

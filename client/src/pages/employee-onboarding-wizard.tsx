@@ -864,6 +864,24 @@ export default function EmployeeOnboardingWizard() {
                     </li>
                   </ul>
                 </div>
+                {/* Phase 26C — Prompt new hires to set their clock-in PIN. */}
+                <div
+                  className="p-4 rounded-md space-y-2 text-left border"
+                  style={{ borderColor: 'hsl(var(--primary))', background: 'hsl(var(--primary) / 0.05)' }}
+                  data-testid="onboarding-pin-reminder"
+                >
+                  <div className="flex items-center gap-2">
+                    <Shield className="h-4 w-4 text-primary" />
+                    <p className="text-sm font-medium">One more thing — set your Clock-In PIN</p>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    After your manager approves your application and you log in to your
+                    dashboard for the first time, you'll be prompted to set a 4–8 digit
+                    clock-in PIN. The PIN lets you clock in by voice and verifies your
+                    identity with Trinity when you call in. <strong>Keep it private —
+                    never share it with anyone, not even a supervisor.</strong>
+                  </p>
+                </div>
                 <p className="text-xs text-muted-foreground">
                   If you need to make changes, contact your HR representative directly.
                 </p>
