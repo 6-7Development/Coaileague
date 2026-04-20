@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { format } from 'date-fns';
 import { pool } from '../db';
 import { createLogger } from '../lib/logger';
+import { uploadFileToObjectStorage, downloadFileFromObjectStorage } from '../objectStorage';
 
 const log = createLogger('FormsPdfService');
 
@@ -271,8 +272,15 @@ export async function generateAndStorePdf(opts: GenerateOptions): Promise<string
     const pdfBuf = await generateFormSubmissionPdf({ ...opts, workspace });
 
     const fileName = `form-submission-${submission.id}.pdf`;
-    const filePath = `/generated/forms/${submission.workspace_id}/${fileName}`;
-    const fileSizeBytes = pdfBuf.length;
+    const gcsPath = `forms/${submission.workspace_id}/${submission.id}/submission.pdf`;
+
+    await uploadFileToObjectStorage({
+      objectPath: gcsPath,
+      buffer: pdfBuf,
+      workspaceId: submission.workspace_id,
+      storageCategory: 'documents',
+      metadata: { contentType: 'application/pdf', metadata: { submissionId: submission.id, formId: form.id } },
+    });
 
     const docResult = await pool.query(
       `INSERT INTO org_documents
@@ -283,8 +291,8 @@ export async function generateAndStorePdf(opts: GenerateOptions): Promise<string
       [
         submission.workspace_id,
         fileName,
-        filePath,
-        fileSizeBytes,
+        gcsPath,
+        pdfBuf.length,
         `Form submission: ${form.title} — ${submission.submitted_by_name || 'Anonymous'} — ${format(new Date(submission.submitted_at), 'MMM dd yyyy')}`,
         form.requires_signature || false,
       ]
@@ -292,39 +300,46 @@ export async function generateAndStorePdf(opts: GenerateOptions): Promise<string
 
     const docId = docResult.rows[0]?.id;
 
-    const documentUrl = `/api/forms/submissions/${submission.id}/pdf`;
-
     await pool.query(
       `UPDATE form_submissions SET generated_document_id = $1, generated_document_url = $2 WHERE id = $3 AND workspace_id = $4`,
-      [docId || null, documentUrl, submission.id, submission.workspace_id]
+      [docId || null, gcsPath, submission.id, submission.workspace_id]
     );
 
-    await pool.query(
-      `UPDATE org_documents SET description = description || $1 WHERE id = $2`,
-      [` [submission_id:${submission.id}]`, docId]
-    ).catch((err) => log.warn('[formsPdfService] Fire-and-forget failed:', err));
+    if (docId) {
+      await pool.query(
+        `UPDATE org_documents SET description = description || $1 WHERE id = $2`,
+        [` [submission_id:${submission.id}]`, docId]
+      ).catch((err: any) => log.warn('[formsPdfService] org_documents tag failed:', err));
+    }
 
-    (global as any).__formPdfCache = (global as any).__formPdfCache || {};
-    (global as any).__formPdfCache[submission.id] = pdfBuf;
-
-    log.info(`PDF generated for submission ${submission.id} → ${filePath} (${fileSizeBytes} bytes)`);
-    return documentUrl;
+    log.info(`PDF generated for submission ${submission.id} → ${gcsPath} (${pdfBuf.length} bytes)`);
+    return gcsPath;
   } catch (err: any) {
     log.error(`PDF generation failed for submission ${opts.submission.id}:`, err?.message);
     return null;
   }
 }
 
-export function getFormPdfFromCache(submissionId: string): Buffer | null {
-  const cache = (global as any).__formPdfCache || {};
-  return cache[submissionId] || null;
-}
-
 export async function generateAndGetPdf(opts: GenerateOptions): Promise<Buffer | null> {
-  const cached = getFormPdfFromCache(opts.submission.id);
-  if (cached) return cached;
-  await generateAndStorePdf(opts);
-  return getFormPdfFromCache(opts.submission.id);
+  try {
+    const row = await pool.query(
+      `SELECT generated_document_url FROM form_submissions WHERE id = $1`,
+      [opts.submission.id]
+    );
+    const storedPath: string | null = row.rows[0]?.generated_document_url ?? null;
+    if (storedPath?.startsWith('forms/')) {
+      return await downloadFileFromObjectStorage(storedPath);
+    }
+  } catch {
+    // fall through to generate
+  }
+  const gcsPath = await generateAndStorePdf(opts);
+  if (!gcsPath) return null;
+  try {
+    return await downloadFileFromObjectStorage(gcsPath);
+  } catch {
+    return null;
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

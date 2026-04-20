@@ -229,3 +229,249 @@ export function passwordResetSteps(): string {
     { title: 'Sign in with your new password', description: 'Return to the login page and use your email and new password.' },
   ]);
 }
+
+// ─── Shared template builders used by emailService + inline callers ───────────
+
+/**
+ * Document / contract signature request email.
+ * Replaces scattered inline HTML in contractPipelineService and documentSigningService.
+ */
+export function buildDocumentSignatureRequestEmail(params: {
+  recipientName: string;
+  documentTitle: string;
+  portalUrl: string;
+  expiryDays?: number;
+  workspaceName?: string;
+}): { subject: string; html: string } {
+  const { recipientName, documentTitle, portalUrl, expiryDays = 30, workspaceName } = params;
+  const expiryDate = new Date(Date.now() + expiryDays * 86_400_000)
+    .toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  return {
+    subject: `Action Required: Please Review and Sign — ${documentTitle}`,
+    html: emailLayout({
+      preheader: `${documentTitle} is ready for your review and electronic signature.`,
+      header: emailHeader({ title: 'Document Ready for Signature', subtitle: 'Secure electronic signing required', badge: 'E-Signature', theme: 'blue' }),
+      body:
+        greeting(recipientName || 'there') +
+        para(`A document has been prepared for your review and electronic signature:`) +
+        infoCard({ rows: [{ label: 'Document', value: documentTitle, highlight: true }, { label: 'Expires', value: expiryDate }] }) +
+        para('Click the button below to review and sign securely. This link is unique to you and should not be shared.') +
+        `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin:28px 0;"><tr><td align="center">` +
+        ctaButton({ text: 'Review & Sign Document', url: portalUrl }) +
+        `</td></tr></table>` +
+        alertBox({ type: 'info', title: `Link expires in ${expiryDays} days`, body: `For your security, this link expires on ${expiryDate}. After expiry, contact the sender for a new link.` }) +
+        para('If you did not expect this document, you can safely ignore this email.', { muted: true, small: true }),
+      footer: emailFooter({ workspaceName }),
+    }),
+  };
+}
+
+/**
+ * Executed contract / agreement delivery email.
+ * All parties receive this after every required signature is collected.
+ */
+export function buildContractExecutedEmail(params: {
+  recipientName: string;
+  contractTitle: string;
+  viewUrl: string;
+  executionDate?: string;
+  workspaceName?: string;
+}): { subject: string; html: string } {
+  const { recipientName, contractTitle, viewUrl, executionDate, workspaceName } = params;
+  const execDate = executionDate ?? new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  return {
+    subject: `Your Executed Agreement is Ready — ${contractTitle}`,
+    html: emailLayout({
+      preheader: `"${contractTitle}" has been fully signed and is now in effect.`,
+      header: emailHeader({ title: 'Agreement Fully Executed', subtitle: 'All signatures collected — agreement in effect', badge: 'Contract Complete', theme: 'green' }),
+      body:
+        greeting(recipientName || 'there') +
+        para('Great news — your agreement has been fully executed by all parties and is now in effect:') +
+        infoCard({
+          rows: [
+            { label: 'Agreement', value: contractTitle, highlight: true },
+            { label: 'Execution Date', value: execDate },
+            { label: 'Status', value: 'Fully Executed — All Signatures Collected' },
+          ],
+        }) +
+        para('You can view and download the executed copy from the document center:') +
+        `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin:28px 0;"><tr><td align="center">` +
+        ctaButton({ text: 'View Executed Agreement', url: viewUrl, style: 'success' }) +
+        `</td></tr></table>` +
+        alertBox({ type: 'info', title: 'Keep this for your records', body: 'This executed agreement is stored securely. You can download a copy at any time from the document center.' }) +
+        para('This agreement was executed via CoAIleague\'s secure e-signature platform.', { muted: true, small: true }),
+      footer: emailFooter({ workspaceName }),
+    }),
+  };
+}
+
+/**
+ * Payment reminder email (invoices overdue or approaching due date).
+ * Replaces inline HTML in autonomousScheduler and autonomousPaymentCollector.
+ */
+export function buildPaymentReminderEmail(params: {
+  clientName: string;
+  invoiceNumber: string;
+  amountDue: string;
+  dueDate: string;
+  daysOverdue?: number;
+  paymentUrl?: string;
+  workspaceName?: string;
+}): { subject: string; html: string } {
+  const { clientName, invoiceNumber, amountDue, dueDate, daysOverdue = 0, paymentUrl, workspaceName } = params;
+  const isOverdue = daysOverdue > 0;
+  const subject = isOverdue
+    ? `Overdue Invoice ${invoiceNumber} — ${daysOverdue} Days Past Due`
+    : `Payment Reminder — Invoice ${invoiceNumber} Due ${dueDate}`;
+  return {
+    subject,
+    html: emailLayout({
+      preheader: isOverdue ? `Invoice ${invoiceNumber} is ${daysOverdue} days overdue.` : `Invoice ${invoiceNumber} is due on ${dueDate}.`,
+      header: emailHeader({
+        title: isOverdue ? 'Overdue Invoice Notice' : 'Payment Reminder',
+        subtitle: isOverdue ? `${daysOverdue} days past due — immediate action required` : `Due on ${dueDate}`,
+        badge: isOverdue ? 'Overdue' : 'Reminder',
+        theme: isOverdue ? 'red' : 'orange',
+      }),
+      body:
+        greeting(clientName || 'there') +
+        para(isOverdue
+          ? `Invoice <strong>${invoiceNumber}</strong> for <strong>${amountDue}</strong> was due on ${dueDate} and is now <strong>${daysOverdue} days past due</strong>. Please arrange payment at your earliest convenience.`
+          : `Invoice <strong>${invoiceNumber}</strong> for <strong>${amountDue}</strong> is due on <strong>${dueDate}</strong>. Please ensure timely payment to avoid a late notice.`) +
+        infoCard({
+          rows: [
+            { label: 'Invoice Number', value: invoiceNumber, highlight: true },
+            { label: 'Amount Due', value: amountDue },
+            { label: 'Due Date', value: dueDate },
+            ...(isOverdue ? [{ label: 'Days Overdue', value: `${daysOverdue} days` }] : []),
+          ],
+        }) +
+        (paymentUrl
+          ? `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin:28px 0;"><tr><td align="center">` +
+            ctaButton({ text: 'Pay Now', url: paymentUrl, style: isOverdue ? 'danger' : 'primary' }) +
+            `</td></tr></table>`
+          : '') +
+        para('If you have already submitted payment, please disregard this notice. Contact us if you have any questions.', { muted: true }),
+      footer: emailFooter({ workspaceName }),
+    }),
+  };
+}
+
+/**
+ * Billing event emails for Stripe lifecycle.
+ * theme: 'welcome' | 'upgrade' | 'cancel' | 'payment_ok' | 'payment_fail' | 'trial' | 'suspended' | 'reactivated'
+ */
+export function buildBillingEventEmail(params: {
+  recipientName: string;
+  workspaceName: string;
+  planName?: string;
+  event: 'welcome' | 'upgrade' | 'downgrade' | 'cancel' | 'payment_ok' | 'payment_fail' | 'trial_ending' | 'suspended' | 'reactivated';
+  actionUrl?: string;
+  platformName?: string;
+}): { subject: string; html: string } {
+  const { recipientName, workspaceName, planName, event, actionUrl, platformName = 'CoAIleague' } = params;
+
+  const configs: Record<string, { subject: string; title: string; subtitle: string; badge: string; theme: string; body: string; cta?: { text: string } }> = {
+    welcome: {
+      subject: `Welcome to ${platformName}!`,
+      title: `Welcome to ${platformName}`,
+      subtitle: 'Your workforce intelligence platform is ready',
+      badge: 'Welcome',
+      theme: 'green',
+      body: para(`Hi ${recipientName}, your workspace <strong>${workspaceName}</strong> is now active${planName ? ` on the <strong>${planName}</strong> plan` : ''}. Trinity AI is ready to start managing your workforce operations.`),
+      cta: { text: 'Go to Dashboard' },
+    },
+    upgrade: {
+      subject: `${workspaceName} — Plan Upgraded`,
+      title: 'Plan Upgraded',
+      subtitle: `You now have access to all ${planName || 'premium'} features`,
+      badge: 'Upgrade Complete',
+      theme: 'green',
+      body: para(`Your workspace <strong>${workspaceName}</strong> has been upgraded${planName ? ` to the <strong>${planName}</strong> plan` : ''}. New capabilities are available immediately.`),
+      cta: { text: 'Explore New Features' },
+    },
+    downgrade: {
+      subject: `${workspaceName} — Plan Changed`,
+      title: 'Subscription Updated',
+      subtitle: 'Your plan has been adjusted',
+      badge: 'Plan Changed',
+      theme: 'orange',
+      body: para(`Your workspace <strong>${workspaceName}</strong> subscription has been updated${planName ? ` to the <strong>${planName}</strong> plan` : ''}. Some features may no longer be available.`),
+    },
+    cancel: {
+      subject: `${workspaceName} — Subscription Cancelled`,
+      title: 'Subscription Cancelled',
+      subtitle: 'Your account has been moved to the free tier',
+      badge: 'Cancelled',
+      theme: 'dark',
+      body: para(`Your subscription for <strong>${workspaceName}</strong> has been cancelled. Your workspace has been moved to the free tier. We hope to see you again.`),
+      cta: { text: 'Resubscribe' },
+    },
+    payment_ok: {
+      subject: `Payment Confirmed — ${workspaceName}`,
+      title: 'Payment Confirmed',
+      subtitle: 'Your subscription is active and in good standing',
+      badge: 'Payment Received',
+      theme: 'green',
+      body: para(`Payment for <strong>${workspaceName}</strong> has been successfully processed. Your subscription continues without interruption.`),
+    },
+    payment_fail: {
+      subject: `Payment Failed — Action Required`,
+      title: 'Payment Issue',
+      subtitle: 'Your payment could not be processed',
+      badge: 'Action Required',
+      theme: 'red',
+      body: para(`A payment for <strong>${workspaceName}</strong> has failed. Please update your payment method to avoid service interruption.`) +
+        alertBox({ type: 'danger', title: 'Update required within 3 days', body: 'If payment is not resolved your workspace may be suspended. Click below to update your billing information.' }),
+      cta: { text: 'Update Payment Method' },
+    },
+    trial_ending: {
+      subject: `Trial Ending Soon — ${workspaceName}`,
+      title: 'Your Trial is Ending Soon',
+      subtitle: 'Add a payment method to continue uninterrupted',
+      badge: 'Trial Ending',
+      theme: 'orange',
+      body: para(`Your trial for <strong>${workspaceName}</strong> is ending soon. Add a payment method to continue using all ${platformName} features without interruption.`) +
+        alertBox({ type: 'warning', title: 'No charge until trial ends', body: 'You will not be charged until your trial period ends. Cancel anytime before then.' }),
+      cta: { text: 'Add Payment Method' },
+    },
+    suspended: {
+      subject: `Account Suspended — ${workspaceName}`,
+      title: 'Account Suspended',
+      subtitle: 'Payment issue requires immediate attention',
+      badge: 'Suspended',
+      theme: 'red',
+      body: para(`<strong>${workspaceName}</strong> has been suspended due to a payment issue. Please resolve your billing to restore access.`) +
+        alertBox({ type: 'danger', title: 'Immediate action required', body: 'Your team cannot access the platform until billing is resolved. Contact support if you need assistance.' }),
+      cta: { text: 'Resolve Billing' },
+    },
+    reactivated: {
+      subject: `Account Reactivated — ${workspaceName}`,
+      title: 'Account Reactivated',
+      subtitle: 'Welcome back — your workspace is fully restored',
+      badge: 'Active',
+      theme: 'green',
+      body: para(`Great news! <strong>${workspaceName}</strong> has been reactivated. Your team has full access to all platform features.`),
+      cta: { text: 'Go to Dashboard' },
+    },
+  };
+
+  const cfg = configs[event] ?? configs.welcome;
+
+  return {
+    subject: cfg.subject,
+    html: emailLayout({
+      preheader: cfg.subject,
+      header: emailHeader({ title: cfg.title, subtitle: cfg.subtitle, badge: cfg.badge, theme: cfg.theme }),
+      body:
+        greeting(recipientName || 'there') +
+        cfg.body +
+        (cfg.cta && actionUrl
+          ? `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin:28px 0;"><tr><td align="center">` +
+            ctaButton({ text: cfg.cta.text, url: actionUrl }) +
+            `</td></tr></table>`
+          : ''),
+      footer: emailFooter({ workspaceName }),
+    }),
+  };
+}
