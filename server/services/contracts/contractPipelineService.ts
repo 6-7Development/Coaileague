@@ -650,7 +650,15 @@ class ContractPipelineService {
         const fullPortalUrl = `${baseUrl}${portalUrl}`;
         const expiryDays = 30;
 
-        await NotificationDeliveryService.send({ type: 'document_requires_signature', workspaceId: contract.workspaceId || 'system', recipientUserId: contract.clientEmail, channel: 'email', body: { to: contract.clientEmail, subject: `Action Required: Please Review and Sign — ${contract.title}`, html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;background:#ffffff;"><h2 style="color:#1a1a2e;margin-bottom:8px;">Document Ready for Your Signature</h2><p style="color:#374151;font-size:15px;">${contract.clientName ? `Hello ${contract.clientName},` : 'Hello,'}</p><p style="color:#374151;font-size:15px;">A document has been prepared for your review and signature:</p><div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:16px;margin:20px 0;"><strong style="color:#111827;font-size:16px;">${contract.title}</strong></div><p style="color:#374151;font-size:15px;">Please click the button below to review and sign the document. This link expires in ${expiryDays} days.</p><div style="text-align:center;margin:32px 0;"><a href="${fullPortalUrl}" style="background:#4f46e5;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:8px;font-size:16px;font-weight:600;display:inline-block;">Review &amp; Sign Document</a></div><p style="color:#6b7280;font-size:13px;">If you did not expect this document, you can safely ignore this email. This document was sent via CoAIleague's secure e-signature platform.</p><p style="color:#6b7280;font-size:12px;margin-top:24px;border-top:1px solid #e5e7eb;padding-top:16px;">This link is unique to you and should not be shared. It will expire on ${new Date(Date.now() + expiryDays * 86400000).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}.</p></div>` } });
+        const { buildDocumentSignatureRequestEmail } = await import('../emailTemplateBase');
+        const sigEmail = buildDocumentSignatureRequestEmail({
+          recipientName: contract.clientName || '',
+          documentTitle: contract.title,
+          portalUrl: fullPortalUrl,
+          expiryDays,
+          workspaceName: contract.companyName || undefined,
+        });
+        await NotificationDeliveryService.send({ type: 'document_requires_signature', workspaceId: contract.workspaceId || 'system', recipientUserId: contract.clientEmail, channel: 'email', body: { to: contract.clientEmail, subject: sigEmail.subject, html: sigEmail.html } });
       } catch (emailErr: any) {
         log.error('[ContractPipeline] Failed to send signature email:', emailErr?.message);
       }
@@ -1085,32 +1093,22 @@ class ContractPipelineService {
             reminderCount: 0,
           } as any);
         }
+        const { buildContractExecutedEmail } = await import('../emailTemplateBase');
+        const executionDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
         for (const signer of recipients) {
+          const execEmail = buildContractExecutedEmail({
+            recipientName: signer.signerName || 'there',
+            contractTitle: contract.title,
+            viewUrl: contractUrl,
+            executionDate,
+            workspaceName: contract.companyName || undefined,
+          });
           await NotificationDeliveryService.send({
             type: 'contract_executed',
             workspaceId: contract.workspaceId,
             recipientUserId: signer.signerEmail,
             channel: 'email',
-            body: {
-              to: signer.signerEmail,
-              subject: `Your executed agreement is ready — ${contract.title}`,
-              html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;background:#ffffff;">
-<h2 style="color:#1a1a2e;">Agreement Fully Executed</h2>
-<p style="color:#374151;">Hello ${signer.signerName || 'there'},</p>
-<p style="color:#374151;">Your agreement has been fully signed by all parties and is now in effect:</p>
-<div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:16px;margin:20px 0;">
-  <strong style="color:#111827;font-size:16px;">${contract.title}</strong>
-  <p style="color:#6b7280;margin:8px 0 0;">Execution Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
-</div>
-<p style="color:#374151;">You can view and download your executed agreement from the document center:</p>
-<div style="text-align:center;margin:32px 0;">
-  <a href="${contractUrl}" style="background:#4f46e5;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:8px;font-size:16px;font-weight:600;display:inline-block;">View Executed Agreement</a>
-</div>
-<p style="color:#6b7280;font-size:12px;margin-top:24px;border-top:1px solid #e5e7eb;padding-top:16px;">
-  This agreement was executed via CoAIleague's secure e-signature platform.
-</p>
-</div>`,
-            },
+            body: { to: signer.signerEmail, subject: execEmail.subject, html: execEmail.html },
           }).catch((emailErr: any) => log.warn(`[ContractPipeline] Executed copy email failed for ${signer.signerEmail}: ${emailErr?.message}`));
         }
       } catch (emailErr: any) {

@@ -1045,26 +1045,22 @@ router.get('/submissions/:id/pdf', requireAuth, async (req: Request, res: Respon
     if (!sub.rows[0]) return res.status(404).json({ error: 'Submission not found' });
     const row = sub.rows[0];
 
-    let pdfBuf = (global as any).__formPdfCache?.[req.params.id] || null;
-
-    if (!pdfBuf) {
-      const fields = Array.isArray(row.fields) ? row.fields :
-        (typeof row.fields === 'string' ? JSON.parse(row.fields) : []);
-      pdfBuf = await generateAndGetPdf({
-        submission: {
-          ...row,
-          data: typeof row.data === 'string' ? JSON.parse(row.data) : row.data,
-        },
-        form: {
-          id: row.form_id,
-          title: row.title,
-          form_type: row.form_type,
-          fields,
-          requires_signature: row.requires_signature,
-          signature_label: row.signature_label,
-        },
-      });
-    }
+    const fields = Array.isArray(row.fields) ? row.fields :
+      (typeof row.fields === 'string' ? JSON.parse(row.fields) : []);
+    const pdfBuf = await generateAndGetPdf({
+      submission: {
+        ...row,
+        data: typeof row.data === 'string' ? JSON.parse(row.data) : row.data,
+      },
+      form: {
+        id: row.form_id,
+        title: row.title,
+        form_type: row.form_type,
+        fields,
+        requires_signature: row.requires_signature,
+        signature_label: row.signature_label,
+      },
+    });
 
     if (!pdfBuf) return res.status(500).json({ error: 'Failed to generate PDF' });
 

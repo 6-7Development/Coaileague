@@ -1,13 +1,22 @@
+/**
+ * Contract PDF Generator
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Generates fully executed contract PDFs using the universal pdfTemplateBase.
+ * All styling comes from pdfTemplateBase — no local color overrides.
+ */
+
 import PDFDocument from 'pdfkit';
 import { db } from '../../db';
 import { clientContracts } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 import { format } from 'date-fns';
+import {
+  PDF, PAGE,
+  renderPdfHeader, renderPdfFooter,
+  hlinePdf, sectionBar, fieldPair,
+  loadTenantLogo,
+} from '../pdfTemplateBase';
 
-/**
- * Generates a fully executed contract PDF with all signature blocks.
- * Used after all parties have signed to produce the immutable executed copy.
- */
 export async function generateExecutedContractPdf(contractId: string): Promise<Buffer> {
   const [contract] = await db
     .select()
@@ -17,10 +26,16 @@ export async function generateExecutedContractPdf(contractId: string): Promise<B
 
   if (!contract) throw new Error(`Contract ${contractId} not found`);
 
+  const tenantLogo = await loadTenantLogo(contract.workspaceId).catch(() => null);
+  const executed = contract.executedAt
+    ? format(new Date(contract.executedAt), 'MMMM d, yyyy')
+    : format(new Date(), 'MMMM d, yyyy');
+
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({
       size: 'LETTER',
-      margins: { top: 50, bottom: 60, left: 55, right: 55 },
+      margins: { top: PAGE.MT, bottom: PAGE.MB, left: PAGE.ML, right: PAGE.MR },
+      bufferPages: true,
       info: {
         Title: contract.title || 'Executed Contract',
         Subject: 'Fully Executed Agreement',
@@ -29,116 +44,114 @@ export async function generateExecutedContractPdf(contractId: string): Promise<B
 
     const chunks: Buffer[] = [];
     doc.on('data', (chunk: Buffer) => chunks.push(chunk));
-    doc.on('end', () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);
+    doc.on('end', () => resolve(Buffer.concat(chunks)));
 
-    const navy = '#1e3a5f';
-    const gray = '#6b7280';
-    const light = '#f9fafb';
-    const executed = contract.executedAt ? format(new Date(contract.executedAt), 'MMMM d, yyyy') : format(new Date(), 'MMMM d, yyyy');
+    // ── Universal header ──────────────────────────────────────────────────────
+    renderPdfHeader(doc, {
+      title: contract.title || 'Service Agreement',
+      subtitle: 'Fully Executed Agreement',
+      workspaceName: contract.companyName || 'CoAIleague',
+      tenantLogoBuffer: tenantLogo,
+      refLabel: `ID: ${contractId.slice(0, 8).toUpperCase()}`,
+      generatedLabel: `Executed: ${executed}`,
+    });
 
-    // ── Header ────────────────────────────────────────────────────────────────
-    doc.fontSize(18).fillColor(navy).font('Helvetica-Bold')
-      .text('EXECUTED AGREEMENT', { align: 'center' });
-    doc.moveDown(0.3);
-    doc.fontSize(12).fillColor(navy).font('Helvetica-Bold')
-      .text(contract.title || 'Service Agreement', { align: 'center' });
-    doc.moveDown(0.2);
-    doc.fontSize(9).fillColor(gray).font('Helvetica')
-      .text(`Execution Date: ${executed}`, { align: 'center' });
-    doc.moveDown(0.5);
-    doc.moveTo(55, doc.y).lineTo(557, doc.y).strokeColor('#d1d5db').lineWidth(1).stroke();
-    doc.moveDown(0.8);
+    // ── Parties ───────────────────────────────────────────────────────────────
+    sectionBar(doc, 'Parties to this Agreement');
 
-    // ── Party Information ─────────────────────────────────────────────────────
-    doc.fontSize(10).fillColor(navy).font('Helvetica-Bold').text('PARTIES');
-    doc.moveDown(0.3);
-
-    const partyY = doc.y;
-    doc.fontSize(9).fillColor(gray).font('Helvetica').text('Service Provider:', 55, partyY);
-    doc.fontSize(10).fillColor('#111827').text(contract.companyName || 'Service Provider', 55, partyY + 12);
-
-    doc.fontSize(9).fillColor(gray).font('Helvetica').text('Client:', 310, partyY);
-    doc.fontSize(10).fillColor('#111827').text(contract.clientName || 'Client', 310, partyY + 12);
-    doc.y = partyY + 35;
+    const partyY = doc.y + 6;
+    fieldPair(doc, 'Service Provider', contract.companyName || 'Service Provider', PAGE.ML, partyY, 220);
+    fieldPair(doc, 'Client', contract.clientName || 'Client', PAGE.MID + 12, partyY, 220);
+    doc.y = partyY + 36;
 
     if (contract.clientEmail) {
-      doc.fontSize(9).fillColor(gray).font('Helvetica').text(`Client Email: ${contract.clientEmail}`, 55);
+      doc.fontSize(8).fillColor(PDF.gray).font('Helvetica')
+        .text(`Client Email: ${contract.clientEmail}`, PAGE.ML);
       doc.moveDown(0.3);
     }
     doc.moveDown(0.5);
-    doc.moveTo(55, doc.y).lineTo(557, doc.y).strokeColor('#e5e7eb').lineWidth(0.5).stroke();
-    doc.moveDown(0.8);
-
-    // ── Contract Content ──────────────────────────────────────────────────────
-    if (contract.content) {
-      doc.fontSize(10).fillColor(navy).font('Helvetica-Bold').text('AGREEMENT TERMS');
-      doc.moveDown(0.4);
-      doc.fontSize(9.5).fillColor('#374151').font('Helvetica')
-        .text(contract.content, { lineGap: 4, align: 'justify', width: 502 });
-      doc.moveDown(0.8);
-    }
-
-    // Special terms
-    if (contract.specialTerms) {
-      if (doc.y > 580) doc.addPage();
-      doc.fontSize(10).fillColor(navy).font('Helvetica-Bold').text('SPECIAL TERMS & CONDITIONS');
-      doc.moveDown(0.4);
-      doc.fontSize(9.5).fillColor('#374151').font('Helvetica')
-        .text(contract.specialTerms, { lineGap: 4, width: 502 });
-      doc.moveDown(0.8);
-    }
 
     // ── Value & Term ──────────────────────────────────────────────────────────
     if (contract.totalValue || contract.expiresAt) {
-      if (doc.y > 620) doc.addPage();
-      doc.moveTo(55, doc.y).lineTo(557, doc.y).strokeColor('#e5e7eb').lineWidth(0.5).stroke();
-      doc.moveDown(0.6);
-      const termY = doc.y;
+      hlinePdf(doc);
+      const termY = doc.y + 4;
       if (contract.totalValue) {
-        doc.fontSize(9).fillColor(gray).font('Helvetica').text('Contract Value:', 55, termY);
-        doc.fontSize(11).fillColor('#111827').font('Helvetica-Bold')
-          .text(`$${parseFloat(contract.totalValue).toLocaleString('en-US', { minimumFractionDigits: 2 })}`, 55, termY + 12);
+        fieldPair(doc, 'Contract Value',
+          `$${parseFloat(contract.totalValue).toLocaleString('en-US', { minimumFractionDigits: 2 })}`,
+          PAGE.ML, termY, 220);
       }
       if (contract.expiresAt) {
-        doc.fontSize(9).fillColor(gray).font('Helvetica').text('Expires:', 310, termY);
-        doc.fontSize(10).fillColor('#111827').font('Helvetica')
-          .text(format(new Date(contract.expiresAt), 'MMMM d, yyyy'), 310, termY + 12);
+        fieldPair(doc, 'Expiration Date',
+          format(new Date(contract.expiresAt), 'MMMM d, yyyy'),
+          PAGE.MID + 12, termY, 220);
       }
-      doc.y = termY + 40;
+      doc.y = termY + 36;
+      doc.moveDown(0.3);
+    }
+
+    // ── Contract Content ──────────────────────────────────────────────────────
+    if (contract.content) {
+      sectionBar(doc, 'Agreement Terms');
+      doc.fontSize(9.5).fillColor(PDF.grayDark).font('Helvetica')
+        .text(contract.content, { lineGap: 4, align: 'justify', width: PAGE.CW });
+      doc.moveDown(0.8);
+    }
+
+    if (contract.specialTerms) {
+      if (doc.y > 580) doc.addPage();
+      sectionBar(doc, 'Special Terms & Conditions');
+      doc.fontSize(9.5).fillColor(PDF.grayDark).font('Helvetica')
+        .text(contract.specialTerms, { lineGap: 4, width: PAGE.CW });
+      doc.moveDown(0.8);
     }
 
     // ── Signature Blocks ──────────────────────────────────────────────────────
-    if (doc.y > 580) doc.addPage();
+    if (doc.y > 560) doc.addPage();
     doc.moveDown(0.5);
-    doc.moveTo(55, doc.y).lineTo(557, doc.y).strokeColor('#d1d5db').lineWidth(1).stroke();
-    doc.moveDown(0.8);
-    doc.fontSize(10).fillColor(navy).font('Helvetica-Bold').text('SIGNATURES — FULLY EXECUTED');
-    doc.moveDown(0.6);
+    hlinePdf(doc, PDF.grayBorder);
+    sectionBar(doc, 'Signatures — Fully Executed');
 
-    // Company signature block
-    doc.fontSize(9).fillColor(gray).font('Helvetica').text('Service Provider Signature:', 55);
-    doc.moveDown(0.2);
-    doc.moveTo(55, doc.y + 8).lineTo(260, doc.y + 8).strokeColor('#9ca3af').lineWidth(0.75).stroke();
-    doc.moveDown(1.5);
-    doc.fontSize(8).fillColor(gray).text(contract.companyName || 'Service Provider', 55);
-    doc.fontSize(8).fillColor(gray).text(`Date: ${executed}`, 55);
+    const sigY = doc.y + 8;
 
-    // Client signature block
-    const clientSigY = doc.y - 50;
-    doc.fontSize(9).fillColor(gray).font('Helvetica').text('Client Signature:', 310, clientSigY);
-    doc.moveTo(310, clientSigY + 20).lineTo(557, clientSigY + 20).strokeColor('#9ca3af').lineWidth(0.75).stroke();
-    doc.fontSize(8).fillColor(gray).text(contract.clientName || 'Client', 310, clientSigY + 32);
-    doc.fontSize(8).fillColor(gray).text(`Date: ${executed}`, 310, clientSigY + 42);
+    // Provider sig
+    doc.fontSize(8).fillColor(PDF.gray).font('Helvetica')
+      .text('Service Provider Signature:', PAGE.ML, sigY);
+    doc.moveTo(PAGE.ML, sigY + 22)
+      .lineTo(PAGE.ML + 210, sigY + 22)
+      .strokeColor(PDF.grayBorder).lineWidth(0.75).stroke();
+    doc.fontSize(8).fillColor(PDF.gray)
+      .text(contract.companyName || 'Service Provider', PAGE.ML, sigY + 28);
+    doc.fontSize(8).fillColor(PDF.gray)
+      .text(`Date: ${executed}`, PAGE.ML, sigY + 38);
 
-    // ── Footer ────────────────────────────────────────────────────────────────
-    const pageCount = (doc as any)._pageBuffer?.length ?? 1;
-    doc.fontSize(7).fillColor('#9ca3af')
+    // Client sig
+    doc.fontSize(8).fillColor(PDF.gray).font('Helvetica')
+      .text('Client Signature:', PAGE.MID + 12, sigY);
+    doc.moveTo(PAGE.MID + 12, sigY + 22)
+      .lineTo(PAGE.MID + 222, sigY + 22)
+      .strokeColor(PDF.grayBorder).lineWidth(0.75).stroke();
+    doc.fontSize(8).fillColor(PDF.gray)
+      .text(contract.clientName || 'Client', PAGE.MID + 12, sigY + 28);
+    doc.fontSize(8).fillColor(PDF.gray)
+      .text(`Date: ${executed}`, PAGE.MID + 12, sigY + 38);
+
+    doc.y = sigY + 58;
+    doc.moveDown(1);
+
+    // E-SIGN compliance notice
+    doc.fontSize(7.5).fillColor(PDF.gray).font('Helvetica')
       .text(
-        `CoAIleague Platform | Contract ID: ${contractId.slice(0, 8).toUpperCase()} | Executed: ${executed} | Page 1 of ${pageCount}`,
-        55, 720,
-        { width: 502, align: 'center' },
+        'This document was executed electronically pursuant to the Electronic Signatures in Global and National Commerce Act (E-SIGN Act, 15 U.S.C. § 7001 et seq.) and applicable state law. The digital signature and execution timestamp constitute a legally binding agreement.',
+        PAGE.ML, doc.y, { width: PAGE.CW, align: 'justify', lineGap: 3 },
       );
+
+    // ── Universal footer on all pages ─────────────────────────────────────────
+    renderPdfFooter(doc, {
+      docId: contractId.slice(0, 8).toUpperCase(),
+      docType: 'Executed Contract',
+      workspaceName: contract.companyName || 'CoAIleague',
+    });
 
     doc.end();
   });

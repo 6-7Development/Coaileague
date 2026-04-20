@@ -1632,77 +1632,33 @@ export class StripeWebhookService {
       
       if (!owner?.email) return;
       
-      // @ts-expect-error — TS migration: fix in refactoring sprint
-      const { sendEmail } = await import('../emailAutomation'); // infra
-      
-      const templates: Record<string, { subject: string; html: string }> = {
-        subscription_created: {
-          subject: `Welcome to ${PLATFORM.name}! Your subscription is active`,
-          html: `<h1>Welcome to ${PLATFORM.name}!</h1>
-            <p>Your ${data.tier} subscription is now active.</p>
-            <p>Billing cycle: ${data.billingCycle}</p>
-            <p>Start exploring your AI-powered workforce management features today!</p>`,
-        },
-        subscription_upgraded: {
-          subject: 'Subscription upgraded successfully',
-          html: `<h1>Upgrade Complete!</h1>
-            <p>You've upgraded from ${data.previousTier} to ${data.newTier}.</p>
-            <p>Your new features are now available.</p>`,
-        },
-        subscription_downgraded: {
-          subject: 'Subscription plan changed',
-          html: `<h1>Plan Changed</h1>
-            <p>Your subscription has been changed from ${data.previousTier} to ${data.newTier}.</p>
-            <p>This change will take effect at the end of your billing period.</p>`,
-        },
-        subscription_cancelled: {
-          subject: 'We\'re sorry to see you go',
-          html: `<h1>Subscription Cancelled</h1>
-            <p>Your subscription has been cancelled.</p>
-            <p>You'll continue to have access to the free tier features.</p>
-            <p>We'd love to have you back - reach out if you have any questions!</p>`,
-        },
-        payment_succeeded: {
-          subject: 'Payment received - Thank you!',
-          html: `<h1>Payment Confirmed</h1>
-            <p>We've received your payment of $${data.amount}.</p>
-            <p>Invoice: ${data.invoiceNumber || 'N/A'}</p>
-            <p>Thank you for being a ${PLATFORM.name} customer!</p>`,
-        },
-        payment_failed: {
-          subject: 'Action required: Payment failed',
-          html: `<h1>Payment Issue</h1>
-            <p>We couldn't process your payment of $${data.amount}.</p>
-            <p>Next attempt: ${data.nextAttempt}</p>
-            <p>Please update your payment method to avoid service interruption.</p>
-            <p><a href="${process.env.BASE_URL || ''}/billing">Update Payment Method</a></p>`,
-        },
-        // Phase 41 — new lifecycle email templates
-        trial_ending: {
-          subject: `Your ${PLATFORM.name} trial ends in ${data.daysRemaining ?? 3} day${data.daysRemaining !== 1 ? 's' : ''}`,
-          html: `<h1>Trial Ending Soon</h1>
-            <p>Your free trial expires ${data.trialEnd ? `on <strong>${data.trialEnd}</strong>` : 'soon'}.</p>
-            <p>Add a payment method now to continue using ${PLATFORM.name} without interruption.</p>
-            <p><a href="${process.env.BASE_URL || ''}/settings?tab=billing">Add Payment Method</a></p>`,
-        },
-        subscription_suspended: {
-          subject: `Your ${PLATFORM.name} account has been suspended`,
-          html: `<h1>Account Suspended</h1>
-            <p>Your subscription has been paused due to a payment issue. Your account is now in read-only mode.</p>
-            <p>Update your payment method to restore full access.</p>
-            <p><a href="${process.env.BASE_URL || ''}/settings?tab=billing">Resolve Payment Issue</a></p>`,
-        },
-        subscription_reactivated: {
-          subject: `Your ${PLATFORM.name} account is back!`,
-          html: `<h1>Account Reactivated</h1>
-            <p>Your subscription has been resumed. Full access to ${PLATFORM.name} is restored.</p>
-            <p>Thank you for updating your payment method.</p>`,
-        },
+      const { buildBillingEventEmail } = await import('../emailTemplateBase');
+
+      const billingEventMap: Record<string, Parameters<typeof buildBillingEventEmail>[0]['event']> = {
+        subscription_created:  'welcome',
+        subscription_upgraded: 'upgrade',
+        subscription_downgraded: 'downgrade',
+        subscription_cancelled:  'cancel',
+        payment_succeeded: 'payment_ok',
+        payment_failed:    'payment_fail',
+        trial_ending:      'trial_ending',
+        subscription_suspended:   'suspended',
+        subscription_reactivated: 'reactivated',
       };
-      
-      const template = templates[emailType];
-      if (!template) return;
-      
+
+      const billingEvent = billingEventMap[emailType];
+      if (!billingEvent) return;
+
+      const billingUrl = `${process.env.BASE_URL || process.env.APP_BASE_URL || ''}/settings?tab=billing`;
+      const template = buildBillingEventEmail({
+        recipientName:  owner.firstName || owner.email.split('@')[0],
+        workspaceName:  (workspace as any).name || PLATFORM.name,
+        planName:       data.tier || data.newTier || undefined,
+        event:          billingEvent,
+        actionUrl:      billingUrl,
+        platformName:   PLATFORM.name,
+      });
+
       const { NotificationDeliveryService } = await import('../notificationDeliveryService');
       await NotificationDeliveryService.send({
         type: 'billing_notification',
