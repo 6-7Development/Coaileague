@@ -153,6 +153,16 @@ export class AITokenGateway {
                         (featureKey?.toLowerCase().includes('gemini') ? 'gemini' :
                          featureKey?.toLowerCase().includes('claude') ? 'claude' : 'openai');
 
+      // Billing-leak canary: a chargeable call landed with no token signal.
+      // Log loudly so we can find the caller and plug the hole before it
+      // becomes real revenue loss. Never blocks; the feature-key-priced
+      // billing path below still runs.
+      if (tokensInput === 0 && tokensOutput === 0 && !TOKEN_FREE_FEATURES.has(featureKey)) {
+        log.warn(
+          `[BILLING_LEAK_CANARY] finalizeBilling called with 0/0 tokens for chargeable feature="${featureKey}" workspace=${workspaceId} — caller is not passing tokenData.`,
+        );
+      }
+
       recordTokenUsageAsync({
         workspaceId,
         userId: userId ?? null,
@@ -162,6 +172,11 @@ export class AITokenGateway {
         actionType: 'ai_action',
         featureName: featureKey ?? null,
       });
+    } else if (featureKey && !TOKEN_FREE_FEATURES.has(featureKey)) {
+      // workspaceId is missing on a chargeable feature — tenant attribution lost.
+      log.warn(
+        `[BILLING_LEAK_CANARY] finalizeBilling called with NO workspaceId for chargeable feature="${featureKey}" — tenant attribution lost.`,
+      );
     }
 
     const tokenCost = ((TOKEN_COSTS as Record<string, number>)[featureKey] ?? 0) * quantity;

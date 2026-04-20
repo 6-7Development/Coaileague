@@ -2641,10 +2641,14 @@ export class UnifiedGeminiClient {
 
       try {
         const data = JSON.parse(text) as T;
-        await this.enforceCreditDeduction(request.workspaceId, request.userId, request.featureKey);
+        await this.enforceCreditDeduction(request.workspaceId, request.userId, request.featureKey, {
+          inputTokens, outputTokens, model: GEMINI_MODELS.SUPERVISOR,
+        });
         return { data, tokensUsed };
       } catch {
-        await this.enforceCreditDeduction(request.workspaceId, request.userId, request.featureKey);
+        await this.enforceCreditDeduction(request.workspaceId, request.userId, request.featureKey, {
+          inputTokens, outputTokens, model: GEMINI_MODELS.SUPERVISOR,
+        });
         return { data: null, tokensUsed, error: "Failed to parse JSON response" };
       }
     } catch (error: any) {
@@ -2930,7 +2934,11 @@ export class UnifiedGeminiClient {
             duration: Date.now() - requestContext.timestamp.getTime()
           });
 
-          await this.enforceCreditDeduction(request.workspaceId, request.userId, request.featureKey);
+          await this.enforceCreditDeduction(request.workspaceId, request.userId, request.featureKey, {
+            inputTokens: totalInputTokens,
+            outputTokens: totalOutputTokens,
+            model: activeModelName,
+          });
 
           if (request.workspaceId) {
             import('../../billing/aiMeteringService').then(({ aiMeteringService }) => {
@@ -3257,7 +3265,11 @@ Guidelines:
       const usage = response.usageMetadata;
       const tokensUsed = (usage?.promptTokenCount || 0) + (usage?.candidatesTokenCount || 0);
 
-      await this.enforceCreditDeduction(request.workspaceId, request.userId, request.featureKey);
+      await this.enforceCreditDeduction(request.workspaceId, request.userId, request.featureKey, {
+        inputTokens: usage?.promptTokenCount ?? 0,
+        outputTokens: usage?.candidatesTokenCount ?? 0,
+        model: GEMINI_MODELS.DIAGNOSTICS,
+      });
 
       if (request.workspaceId && tokensUsed > 0) {
         import('../../billing/aiMeteringService').then(({ aiMeteringService }) => {
@@ -3383,7 +3395,11 @@ Generate ONE thought for ${greeting}:`;
 
       log.info(`[Trinity AI] Generated thought (${tokensUsed} tokens): ${text.substring(0, 50)}...`);
 
-      await this.enforceCreditDeduction(request.workspaceId, undefined, 'trinity_thought');
+      await this.enforceCreditDeduction(request.workspaceId, undefined, 'trinity_thought', {
+        inputTokens: usage?.promptTokenCount ?? 0,
+        outputTokens: usage?.candidatesTokenCount ?? 0,
+        model: GEMINI_MODELS.CONVERSATIONAL,
+      });
 
       if (request.workspaceId && tokensUsed > 0) {
         import('../../billing/aiMeteringService').then(({ aiMeteringService }) => {
@@ -3434,7 +3450,11 @@ Generate ONE thought for ${greeting}:`;
       });
 
       const insightUsage = result.response.usageMetadata;
-      await this.enforceCreditDeduction(workspaceId, undefined, 'trinity_insight');
+      await this.enforceCreditDeduction(workspaceId, undefined, 'trinity_insight', {
+        inputTokens: insightUsage?.promptTokenCount ?? 0,
+        outputTokens: insightUsage?.candidatesTokenCount ?? 0,
+        model: GEMINI_MODELS.CONVERSATIONAL,
+      });
 
       if (workspaceId && ((insightUsage?.promptTokenCount ?? 0) + (insightUsage?.candidatesTokenCount ?? 0)) > 0) {
         import('../../billing/aiMeteringService').then(({ aiMeteringService }) => {
