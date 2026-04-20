@@ -420,7 +420,20 @@ export class NotificationDeliveryService {
       body: String(payload.body ?? payload.message ?? record.subject ?? ''),
       type: record.notificationType,
       url: String(payload.url ?? payload.actionUrl ?? '/'),
-      data: { workspaceId: record.workspaceId, type: record.notificationType, notificationId: record.id },
+      data: {
+        workspaceId: record.workspaceId,
+        type: record.notificationType,
+        notificationId: record.id,
+        // Entity refs so the client-side use-service-worker-messages hook can
+        // fire the right mutation when the user taps an action button. Only
+        // the fields present on the payload are forwarded.
+        ...(payload.offerId ? { offerId: payload.offerId } : {}),
+        ...(payload.shiftId ? { shiftId: payload.shiftId } : {}),
+        ...(payload.documentId ? { documentId: payload.documentId } : {}),
+        ...(payload.approvalId ? { approvalId: payload.approvalId } : {}),
+        ...(payload.entityId ? { entityId: payload.entityId } : {}),
+        ...(payload.entityType ? { entityType: payload.entityType } : {}),
+      },
       ...(actions && actions.length ? { actions } : {}),
     });
   }

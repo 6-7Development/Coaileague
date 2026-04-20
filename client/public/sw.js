@@ -618,16 +618,17 @@ self.addEventListener('notificationclick', (event) => {
       targetUrl = notificationData.url || '/worker';
       break;
     case 'accept':
-      notifyClientOfAction(notificationData.notificationId, 'accepted');
+      notifyClientOfAction(notificationData, 'accepted');
       targetUrl = notificationData.url || '/schedule';
       break;
     case 'decline':
-      notifyClientOfAction(notificationData.notificationId, 'declined');
+      notifyClientOfAction(notificationData, 'declined');
       return;
     case 'sign':
       targetUrl = notificationData.url || '/documents/signatures';
       break;
     case 'approve':
+      notifyClientOfAction(notificationData, 'approved');
       targetUrl = notificationData.url || '/workflow-approvals';
       break;
     case 'reply':
@@ -637,14 +638,14 @@ self.addEventListener('notificationclick', (event) => {
       targetUrl = notificationData.url || '/universal-inbox';
       break;
     case 'acknowledge':
-      notifyClientOfAction(notificationData.notificationId, 'acknowledged');
+      notifyClientOfAction(notificationData, 'acknowledged');
       targetUrl = notificationData.url || '/universal-inbox';
       break;
     case 'respond':
       targetUrl = notificationData.url || '/worker-incidents';
       break;
     case 'dismiss':
-      notifyClientOfAction(notificationData.notificationId, 'dismissed');
+      notifyClientOfAction(notificationData, 'dismissed');
       return;
   }
 
@@ -665,14 +666,23 @@ self.addEventListener('notificationclick', (event) => {
   );
 });
 
-function notifyClientOfAction(notificationId, action) {
-  if (!notificationId) return;
-  self.clients.matchAll({ type: 'window' }).then((clients) => {
+function notifyClientOfAction(notificationData, action) {
+  const data = notificationData || {};
+  if (!data.notificationId) return;
+  self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
     clients.forEach((client) => {
       client.postMessage({
         type: 'NOTIFICATION_ACTION',
-        notificationId,
-        action
+        notificationId: data.notificationId,
+        notificationType: data.type,
+        action,
+        url: data.url,
+        offerId: data.offerId,
+        shiftId: data.shiftId,
+        documentId: data.documentId,
+        approvalId: data.approvalId,
+        entityId: data.entityId,
+        entityType: data.entityType,
       });
     });
   });
