@@ -22,6 +22,7 @@ import { createLogger } from '../../lib/logger';
 import { isBillingExcluded } from './billingConstants';
 import { isBillingExemptByRecord, logExemptedAction } from './founderExemption';
 import { platformEventBus } from '../platformEventBus';
+import { universalAudit } from '../universalAuditService';
 
 const log = createLogger('WeeklyBillingRunService');
 
@@ -751,6 +752,31 @@ class WeeklyBillingRunServiceImpl {
 
       if (billingExceptions.length > 0) {
         log.error(`[WeeklyBilling] ${billingExceptions.length} billing exception(s) for workspace ${workspaceId}`, { exceptions: billingExceptions });
+      }
+
+      // Audit trail: the full overage cycle has closed for this workspace.
+      // Every overage layer (seat, credit, token, storage) has run and been
+      // persisted; AR ledger entries written via middlewareFeeService.
+      try {
+        await universalAudit.log({
+          workspaceId,
+          actorId: 'system',
+          actorType: 'system',
+          changeType: 'action',
+          action: 'billing.overage_cycle_complete',
+          entityType: 'workspace',
+          entityId: workspaceId,
+          metadata: {
+            runId,
+            weekKey,
+            invoiceId: invoice.id,
+            invoiceNumber: invoice.invoiceNumber,
+            totalAmount,
+            billingExceptions: billingExceptions.length,
+          },
+        });
+      } catch (auditErr: any) {
+        log.warn('[WeeklyBilling] overage_cycle_complete audit log failed (non-fatal):', auditErr?.message);
       }
 
       if (totalAmount > 0) {
