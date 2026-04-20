@@ -31,6 +31,8 @@ import { z } from "zod";
 import { cacheManager } from "../services/platform/cacheManager";
 import crypto from "crypto";
 import { emailService } from "../services/emailService";
+import { employeeOnboardingProgress } from '@shared/schema/domains/workforce/extended';
+import { getAppBaseUrl } from '../utils/getAppBaseUrl';
 import { getAllPtoBalances, calculatePtoAccrual, runWeeklyPtoAccrual } from "../services/ptoAccrual";
 import { getReviewReminderSummary, getOverdueReviews, getUpcomingReviews } from "../services/performanceReviewReminders";
 import { createLogger } from '../lib/logger';
@@ -966,6 +968,46 @@ router.post("/invites/accept", requireAuth, async (req: AuthenticatedRequest, re
       });
     });
 
+
+    // Seed onboarding progress + send welcome email with portal link (non-blocking)
+    ;(async () => {
+      try {
+        const [newEmployee] = await db.select({ id: employees.id })
+          .from(employees)
+          .where(and(eq(employees.userId, userId), eq(employees.workspaceId, invite.workspaceId)))
+          .limit(1);
+        if (!newEmployee) return;
+
+        // insert.*employeeOnboardingProgress
+        await db.insert(employeeOnboardingProgress).values({
+          workspaceId: invite.workspaceId,
+          employeeId: newEmployee.id,
+          status: 'invited',
+          overallProgressPct: 0,
+          invitationAcceptedAt: new Date(),
+          stepsRemaining: ['profile_photo', 'government_id', 'guard_card', 'ssn_card',
+            'employment_application', 'i9_verification', 'tax_withholding', 'direct_deposit',
+            'background_check', 'drug_free_policy', 'handbook_acknowledgment',
+            'sop_acknowledgment', 'emergency_contact', 'equipment_issuance', 'references'] as any,
+        }).onConflictDoNothing();
+
+        // Send welcome email with portal link — employee_onboarding_welcome
+        const portalUrl = `${getAppBaseUrl()}/employee-portal`;
+        await emailService.sendTemplatedEmail(
+          user.email,
+          'employee_onboarding_welcome',
+          {
+            subject: `Welcome to ${workspace.name} — Complete Your Onboarding`,
+            employeeName: `${user.firstName || 'New'} ${user.lastName || 'Employee'}`,
+            orgName: workspace.name,
+            portalUrl,
+          },
+          invite.workspaceId
+        );
+      } catch (err: any) {
+        log.warn('[InviteAccept] Post-accept onboarding setup failed (non-blocking):', err?.message);
+      }
+    })();
 
     res.json({
       success: true,

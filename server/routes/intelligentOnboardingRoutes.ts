@@ -568,6 +568,78 @@ intelligentOnboardingRouter.post('/documents', async (req: any, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// GUARD CARD PSB NUMBER VALIDATION (Texas)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function validateTxGuardCardNumber(cardNumber: string): {
+  valid: boolean; format: string; message: string
+} {
+  const pattern = /^[A-Z]-?\d{7,9}$/i;
+  const clean = cardNumber.replace(/[-\s]/g, '').toUpperCase();
+  const numericOnly = /^\d{7,9}$/.test(clean);
+  const valid = pattern.test(clean) || numericOnly;
+  return {
+    valid,
+    format: 'TX PSB: Letter + 7-9 digits (e.g., B12345678)',
+    message: valid
+      ? 'Format valid — pending expiry check'
+      : 'Invalid format — Texas PSB numbers are 7-9 digits',
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EMPLOYEE SELF-SERVICE: REQUIRED DOCUMENTS
+// GET /api/smart-onboarding/required-documents — employee portal checklist
+// (canonical URL: GET /api/employee-onboarding/required-documents in employeeOnboardingRoutes.ts)
+// ─────────────────────────────────────────────────────────────────────────────
+
+intelligentOnboardingRouter.get('/required-documents', async (req: any, res) => {
+  const workspaceId = getWorkspaceId(req);
+  if (!workspaceId) return res.status(403).json({ error: 'No workspace' });
+  const userId = req.user?.id;
+  if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+  try {
+    const empRows = await query(
+      `SELECT id, position, state, is_armed FROM employees WHERE user_id = $1 AND workspace_id = $2 LIMIT 1`,
+      [userId, workspaceId]
+    );
+    const emp = empRows[0];
+    if (!emp) return res.json([]);
+
+    const progRows = await query(
+      `SELECT steps_completed, steps_remaining FROM employee_onboarding_progress WHERE employee_id = $1 AND workspace_id = $2 LIMIT 1`,
+      [emp.id, workspaceId]
+    );
+    const prog = progRows[0];
+    if (!prog) return res.json([]);
+
+    const completed = new Set<string>(prog.steps_completed || []);
+    const required: string[] = prog.steps_remaining || [];
+
+    const stepRows = await query(
+      `SELECT step_key, title, document_type FROM employee_onboarding_steps ORDER BY step_number`
+    );
+
+    const result = stepRows
+      .filter((s: any) => required.includes(s.step_key) || completed.has(s.step_key))
+      .map((s: any) => ({
+        id: s.step_key,
+        displayName: s.title,
+        category: s.document_type || 'compliance',
+        required: true,
+        status: completed.has(s.step_key) ? 'approved' : 'pending',
+        uploadRoute: `/onboarding-forms?step=${s.step_key}`,
+      }));
+
+    res.json(result);
+  } catch (err: unknown) {
+    log.error('[SmartOnboarding] required-documents error:', err);
+    res.status(500).json({ error: sanitizeError(err) });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // GENERATE DOCUMENT CONTENT (fallback for new submissions)
 // ─────────────────────────────────────────────────────────────────────────────
 

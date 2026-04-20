@@ -24,6 +24,7 @@ import {
   billingAuditLog,
   payrollRunLocks,
 } from '@shared/schema';
+import { employeeOnboardingProgress } from '@shared/schema/domains/workforce/extended';
 import { encryptToken, decryptToken } from '../security/tokenEncryption';
 import * as taxCalculator from "../services/taxCalculator";
 import { calculateStateTax, calculateBonusTaxation } from "../services/taxCalculator";
@@ -3503,6 +3504,53 @@ router.post('/employees/:employeeId/bank-accounts', async (req: AuthenticatedReq
       changes: { routing_last4: routingLast4, account_last4: accountLast4, accountType },
       isSensitiveData: true, complianceTag: 'soc2',
     }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+
+    // Mark direct deposit step complete in onboarding progress (non-blocking)
+    ;(async () => {
+      try {
+        await db.execute(sql`
+          UPDATE employee_onboarding_progress
+          SET
+            direct_deposit_complete = true,
+            steps_completed = CASE
+              WHEN NOT (steps_completed @> '["direct_deposit"]'::jsonb)
+              THEN steps_completed || '["direct_deposit"]'::jsonb
+              ELSE steps_completed
+            END,
+            last_updated_at = now()
+          WHERE workspace_id = ${workspaceId} AND employee_id = ${employeeId}
+        `);
+
+        // Check if all steps are now complete → emit onboarding_completed event
+        const progResult = await db.execute(sql`
+          SELECT
+            jsonb_array_length(steps_completed) as done,
+            (SELECT COUNT(*) FROM employee_onboarding_steps WHERE required = true) as total,
+            e.first_name, e.last_name
+          FROM employee_onboarding_progress p
+          JOIN employees e ON e.id = p.employee_id
+          WHERE p.workspace_id = ${workspaceId} AND p.employee_id = ${employeeId}
+          LIMIT 1
+        `);
+
+        const prog = (progResult as any).rows?.[0];
+        if (prog) {
+          const done = parseInt(prog.done) || 0;
+          const total = parseInt(prog.total) || 1;
+          const pct = Math.round((done / total) * 100);
+          if (pct >= 100) {
+            platformEventBus.publish({
+              type: 'employee_onboarding_completed',
+              workspaceId,
+              title: `${prog.first_name} ${prog.last_name} completed onboarding`,
+              payload: { employeeId, completedAt: new Date().toISOString() },
+            });
+          }
+        }
+      } catch (err: any) {
+        log.warn('[BankAccounts] Onboarding progress update failed (non-blocking):', err?.message);
+      }
+    })();
 
     res.status(201).json({ success: true, bankAccount: maskBankAccount(created) });
   } catch (error: unknown) {
