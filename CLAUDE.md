@@ -839,6 +839,301 @@ if (!serviceable) {
 
 ---
 
+## Section R — FLSA Overtime Is Aggregator-Derived (Phase SYS-1)
+
+**The law:** `regularHours`, `overtimeHours`, and `holidayHours` on payroll
+entries MUST be derived from time-entry data via the canonical
+`bucketHours()` helper in `server/services/automation/rateResolver.ts:454`
+(invoked transitively by `aggregatePayrollHours` in
+`server/services/automation/payrollHoursAggregator.ts`). Direct assignment
+of these fields from external input is forbidden — they are calculated
+fields. Multi-rate weeks MUST pass through
+`PayrollAutomationEngine.calculateFLSAWeightedAverageOvertime` for the
+FLSA-compliant weighted-average premium.
+
+**The bug it prevents:** A payroll run that trusts user-entered "regular"
+and "overtime" columns lets a scheduler or data-entry error bypass FLSA —
+underpaying officers (violating 29 USC §207) or overpaying and creating a
+reversal headache. Workspaces with daily-OT policies (CA, AK, NV) would
+lose the threshold-switching logic.
+
+**The canonical path:**
+1. `payrollAutomation.ts#createAutomatedPayrollRun` calls
+   `aggregatePayrollHours({ workspaceId, startDate, endDate })`.
+2. The aggregator runs `bucketHours()` per time entry, resetting the
+   weekly counter on week boundaries.
+3. If an employee worked at multiple pay rates AND accrued OT,
+   `calculateFLSAWeightedAverageOvertime` recalculates the premium using
+   the FLSA weighted-average method.
+4. `createAutomatedPayrollRun` reads `employeeSummary.totalRegularHours` /
+   `totalOvertimeHours` / `totalHolidayHours` and stores them verbatim —
+   never overwrites or re-derives.
+
+**Forbidden patterns:**
+```ts
+// 🔴 forbidden — accepting external regular/overtime hours
+await db.insert(payrollEntries).values({
+  regularHours: req.body.regularHours,
+  overtimeHours: req.body.overtimeHours,
+  ...
+});
+
+// 🔴 forbidden — inline ad-hoc OT split
+const overtime = Math.max(0, totalHours - 40);
+const regular = totalHours - overtime;
+
+// ✅ required — canonical bucket
+const bucket = bucketHours({
+  totalHours, weeklyHoursSoFar,
+  enableDailyOvertime: workspace.enableDailyOT,
+  weeklyOvertimeThreshold: workspace.weeklyOTThreshold,
+  isHoliday: isHolidayDate(clockIn, holidayCalendar, workspaceTz),
+});
+```
+
+---
+
+## Section S — Shift Chatroom Lifecycle Starts At Creation (Phase SYS-1)
+
+**The law:** Every shift MUST have an associated chatroom from the moment
+it is created — not from the moment an officer clocks in. Managers and
+supervisors need a channel tied to the shift for coordination (post-order
+updates, shift briefings, coverage chatter) before anyone arrives on site.
+
+**The mechanism:**
+1. `POST /api/shifts` calls
+   `shiftChatroomWorkflowService.provisionChatroom()` as fire-and-forget
+   after `broadcastShiftUpdate(..., 'shift_created', ...)`. Creates a
+   `shift_chatrooms` row with `status='pending'`, no members, no shift
+   status change.
+2. When an officer clocks in via `startShift()`, a pending room is
+   **promoted** to `status='active'`, the officer is added as the first
+   member, and `shifts.status` transitions to `'in_progress'`. A new room
+   is only inserted when no pending room exists (legacy shifts / manual
+   flows that skipped creation-time provisioning).
+3. `endShift()` closes the room and generates the DAR as before.
+
+**Status transitions:** `pending` → `active` → `closed`. The `archived`
+state remains reserved for long-term cold storage.
+
+**Required patterns:**
+```ts
+// ✅ on shift creation (shiftRoutes.ts POST /)
+shiftChatroomWorkflowService.provisionChatroom({
+  shiftId: shift.id, workspaceId,
+  siteId: shift.siteId ?? undefined, createdBy: userId,
+}).catch(err => log.warn('[ShiftChatroom] provisionChatroom failed (non-blocking):', err?.message));
+
+// ✅ inside startShift — promote pending room instead of inserting fresh
+if (pendingChatroom) {
+  await tx.update(shiftChatrooms)
+    .set({ status: 'active', name: chatroomName, updatedAt: new Date() })
+    .where(eq(shiftChatrooms.id, pendingChatroom.id));
+} else {
+  await tx.insert(shiftChatrooms).values({ ..., status: 'active' });
+}
+```
+
+**Forbidden patterns:**
+```ts
+// 🔴 forbidden — creating a shift without provisioning its chatroom
+const shift = await storage.createShift({ ... });
+broadcastShiftUpdate(workspaceId, 'shift_created', shift);
+// (managers have no channel until clock-in)
+
+// 🔴 forbidden — status check that misses 'pending' → inserts a duplicate
+const existing = await db.select().from(shiftChatrooms)
+  .where(and(eq(shiftChatrooms.shiftId, shiftId),
+             eq(shiftChatrooms.status, 'active')));
+```
+
+**Files governed:**
+- `server/services/shiftChatroomWorkflowService.ts` — `provisionChatroom()`
+  and the pending-promotion branch in `startShift()`
+- `server/routes/shiftRoutes.ts` — POST `/` provisions; POST
+  `/:shiftId/proof-of-service` provisions on demand if neither creation
+  nor clock-in ran yet
+
+---
+
+## Section T — Client Portal Proof-of-Service Visibility (Phase SYS-1)
+
+**The law:** Clients have the right to verify the security service they
+are paying for. The `/api/client-reports` endpoint MUST surface every
+proof-of-service artifact tied to the client's account: approved field
+reports, guard tours with checkpoint scan counts, verified/sent DARs,
+and redacted incident summaries. Internal notes, disciplinary details,
+manager commentary, raw voice transcripts, and compensation data are
+NEVER included.
+
+**The response shape (canonical):**
+```ts
+{
+  reports:    ClientReport[],      // approved / delivered field reports
+  guardTours: GuardTourSummary[],  // patrol routes + scan counts
+  dars:       DARSummary[],        // verified / sent DARs + PDF links
+  incidents:  IncidentSummary[],   // redacted: title, type, severity, polished summary
+}
+```
+
+**What MAY be disclosed per artifact:**
+- Guard tours: tour name, officer name, status, intervalMinutes,
+  scannedCheckpoints count, lastScannedAt
+- DARs: title, AI summary, status, employee name, shift start/end,
+  PDF URL, photo count
+- Incidents: incidentNumber, title, incidentType, severity, occurredAt,
+  locationAddress, polishedSummary, status
+
+**What MUST NEVER appear:**
+- Officer discipline, performance reviews, manager coaching notes
+- Raw voice transcripts or raw descriptions (only `polishedSummary`)
+- Chain-of-custody access logs
+- Employee contact info (email, phone, home address)
+- Pay rate, shift pay, compensation data
+- Trinity legal flags or use-of-force details outside the polished summary
+
+**Required pattern:**
+```ts
+// ✅ always resolve the caller's client, filter by clientId AND workspaceId
+const matchingClient = clients.find(c => c.userId === userId);
+if (!matchingClient) {
+  return res.json({ reports: [], guardTours: [], dars: [], incidents: [] });
+}
+const clientId = matchingClient.id;
+// Every query: eq(workspaceId) AND eq(clientId) AND status-in-approved-set
+```
+
+**Forbidden patterns:**
+```ts
+// 🔴 forbidden — flat array response (drops future artifact types silently)
+res.json(enrichedReports);
+
+// 🔴 forbidden — including internal notes
+incidents: incidentsRaw.map(i => ({ ...i, reviewNotes: i.reviewNotes }))
+
+// 🔴 forbidden — cross-client leak (missing clientId filter)
+const tours = await db.select().from(guardTours)
+  .where(eq(guardTours.workspaceId, workspaceId));
+```
+
+**Files governed:**
+- `server/routes/contentInlineRoutes.ts → GET /client-reports` — single
+  source of truth for the client Reports tab response. Every new
+  proof-of-service artifact is added here; do not create parallel
+  client-only endpoints.
+- `client/src/pages/client-portal.tsx` — Reports tab
+  (`TabsContent value="reports"`) renders the four sections.
+  `totalProofOfService` drives the tab badge.
+
+---
+
+## Section U — Proof-of-Service Photos Flow Through Shift Chatroom (Phase SYS-1)
+
+**The law:** Officer proof-of-service photos MUST be persisted as
+audit-protected photo messages on the shift's chatroom. The chatroom photo
+path is the sole storage channel — it carries GPS metadata, flows into the
+DAR photo manifest automatically, and is covered by the 90-day retention +
+audit-integrity guardrails in `shiftChatroomWorkflowService.canDelete()`.
+
+**The canonical route:** `POST /api/shifts/:shiftId/proof-of-service`
+(server/routes/shiftRoutes.ts). Accepts `{ photoUrl, latitude, longitude,
+notes, capturedAt }`, resolves (or on-demand provisions) the shift
+chatroom, and delegates to `shiftChatroomWorkflowService.sendMessage()`
+with `messageType: 'photo'` and a `metadata.proofOfService: true` flag.
+
+**What the route does:**
+1. Verifies the caller's employee record exists.
+2. Runs `validateShiftAccess()` so cross-shift / cross-tenant writes are
+   rejected.
+3. Ensures a chatroom row exists (provisioned at creation; on-demand
+   provision as fallback).
+4. Inserts the photo message through the workflow service (audit-protected
+   by design).
+5. Broadcasts `proof_of_service_submitted` on the websocket + publishes a
+   `platformEventBus` event so Trinity and managers see it in real time.
+
+**Required pattern:**
+```ts
+// ✅ proof-of-service photo persisted via the chatroom path
+await shiftChatroomWorkflowService.sendMessage(chatroomId, userId, {
+  content: notes || 'Proof of service photo',
+  messageType: 'photo',
+  attachmentUrl: photoUrl,
+  metadata: {
+    proofOfService: true,
+    gps: { lat: latitude, lng: longitude },
+    capturedAt, officerEmployeeId: employee.id,
+  },
+});
+```
+
+**Forbidden patterns:**
+```ts
+// 🔴 forbidden — writing a POS photo to a side table that bypasses the
+// chatroom (breaks the DAR photo manifest + audit-integrity contract)
+await db.insert(proofOfServicePhotos).values({ ... });
+
+// 🔴 forbidden — accepting photoUrl with no shift-access check
+// (lets one officer attach photos to another tenant's shift)
+router.post('/:shiftId/proof-of-service', requireAuth, async (req, res) => {
+  await sendMessage(...); // no validateShiftAccess
+});
+
+// 🔴 forbidden — fire-and-forget without awaiting the write
+shiftChatroomWorkflowService.sendMessage(...).catch(() => null);
+res.json({ success: true });
+```
+
+---
+
+## Section V — Shift Trading Notifications Use NDS (Phase SYS-1)
+
+**The law:** Every shift-trading state transition (request / accept /
+reject / manager-approve) MUST fire a `NotificationDeliveryService.send()`
+push alongside the in-app `createNotification()` call. Officers on mobile
+spend long stretches offline; relying on in-app banners alone means they
+miss trade requests, acceptances, and approvals.
+
+**The NDS notification types (registered in `notificationDeliveryService.ts`):**
+- `shift_trade_request` — new trade targeting a specific officer
+- `shift_trade_accepted` — target accepted, awaiting manager approval
+- `shift_trade_rejected` — target declined
+- `shift_trade_approved` — manager approved; schedule is now swapped
+
+**Required pattern:**
+```ts
+// ✅ pair in-app + push for every trade transition
+await createNotification({ userId, workspaceId, type: 'shift_trade', ... }).catch(() => null);
+await NotificationDeliveryService.send({
+  type: 'shift_trade_request',     // or _accepted / _rejected / _approved
+  workspaceId,
+  recipientUserId: targetUserId,
+  channel: 'push',
+  subject: 'Shift Trade Request',
+  body: { title, body, url, tradeId, shiftId },
+}).catch(err => log.warn('[ShiftTrading] NDS failed (non-blocking):', err?.message));
+```
+
+**Forbidden patterns:**
+```ts
+// 🔴 forbidden — in-app only (offline officers miss the event)
+await createNotification({ ... });
+
+// 🔴 forbidden — reject path with no notification at all
+// (requester sits waiting indefinitely, assumes still pending)
+await pool.query(`UPDATE shift_trade_requests SET status='rejected' ...`);
+return res.json(rows[0]);
+```
+
+**Files governed:**
+- `server/services/notificationDeliveryService.ts` — registers the four
+  `shift_trade_*` NotificationDeliveryType values
+- `server/routes/shiftTradingRoutes.ts` — POST `/trades`, POST
+  `/trades/:id/accept`, POST `/trades/:id/reject`, POST
+  `/trades/:id/manager-approve` all pair in-app + push
+
+---
+
 ## Section J — Process for Adding New Verified Laws
 
 When Claude Code (or any future debug session) discovers a new architectural
@@ -915,3 +1210,8 @@ valid.
 | O | (this commit) | Panic button notification-only liability codification + canonical `PANIC_LIABILITY_NOTICE`, disclaimer UI components, CLAUDE.md Section O |
 | 27 / P | (this commit) | FCRA-bounded employment verification — voice → org-code resolver → email channel → manager approve/deny with `logActionAudit`; `verify@` auto-provisioned; CLAUDE.md Section P |
 | 26 / Q | (this commit) | Trinity subscription + identity gate — inbound voice/SMS, email AI, outbound voice/SMS, shift offers, cron workflows; `isWorkspaceServiceable` helper; Stripe + admin cache invalidation; `trinity.voice_ai_resolved` / `trinity.subscription_gate_blocked` audit taxonomy; owner-facing Gate Activity tab; CLAUDE.md Section Q |
+| SYS-1 R | (this commit) | FLSA overtime must be aggregator-derived — canonical path documented; CLAUDE.md Section R |
+| SYS-1 S | (this commit) | Shift chatroom provisioned at creation (`pending`), promoted at clock-in; CLAUDE.md Section S |
+| SYS-1 T | (this commit) | Client portal proof-of-service — `/api/client-reports` returns guardTours/DARs/incidents; Reports tab renders four sections; CLAUDE.md Section T |
+| SYS-1 U | (this commit) | Proof-of-service photos flow through shift chatroom (`POST /api/shifts/:shiftId/proof-of-service`); CLAUDE.md Section U |
+| SYS-1 V | (this commit) | Shift trading state transitions pair `createNotification` with `NotificationDeliveryService.send`; new `shift_trade_*` NDS types; CLAUDE.md Section V |

@@ -11,8 +11,14 @@ import {
   insertCustomRuleSchema,
   insertReportSubmissionSchema,
   documentSignatures,
+  sites,
+  guardTours,
+  guardTourScans,
+  darReports,
+  incidentReports,
+  employees,
 } from '@shared/schema';
-import { sql, eq, and, desc } from "drizzle-orm";
+import { sql, eq, and, desc, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { UPLOADS } from '../config/platformConfig';
 import { sendReportDeliveryEmail } from "../services/emailCore";
@@ -56,22 +62,22 @@ router.get("/client-reports", requireAuth, async (req: any, res) => {
     if (!workspaceId) {
       return res.status(403).json({ message: "No workspace selected" });
     }
-    
+
     const clients = await storage.getClientsByWorkspace(workspaceId);
     const matchingClient = clients.find(c => c.userId === userId);
-    
+
     if (!matchingClient) {
-      return res.json([]);
+      return res.json({ reports: [], guardTours: [], dars: [], incidents: [] });
     }
-    
+
     const clientId = matchingClient.id;
-    
+
+    // 1. Existing report submissions (approved / delivered only)
     const allReports = await storage.getReportSubmissions(workspaceId);
-    const clientReports = allReports.filter(r => 
-      r.clientId === clientId && 
+    const clientReports = allReports.filter(r =>
+      r.clientId === clientId &&
       (r.status === 'approved' || r.status === 'delivered')
     );
-    
     const enrichedReports = await Promise.all(clientReports.map(async (report) => {
       let employeeName = 'Employee';
       if (report.employeeId) {
@@ -81,13 +87,126 @@ router.get("/client-reports", requireAuth, async (req: any, res) => {
           employeeName = `${employee.firstName} ${employee.lastName}`.trim() || 'Employee';
         }
       }
-      return {
-        ...report,
-        employeeName,
-      };
+      return { ...report, employeeName };
     }));
-    
-    res.json(enrichedReports);
+
+    // Resolve site IDs for this client for guard-tour and incident lookups
+    const clientSites = await db
+      .select({ id: sites.id })
+      .from(sites)
+      .where(and(eq(sites.workspaceId, workspaceId), eq(sites.clientId, clientId)));
+    const siteIds = clientSites.map(s => s.id);
+
+    // 2. Guard tours assigned to this client — proof of patrol
+    const guardToursRaw = await db
+      .select({
+        id: guardTours.id,
+        tourName: guardTours.name,
+        status: guardTours.status,
+        intervalMinutes: guardTours.intervalMinutes,
+        assignedEmployeeId: guardTours.assignedEmployeeId,
+        createdAt: guardTours.createdAt,
+        officerFirstName: employees.firstName,
+        officerLastName: employees.lastName,
+      })
+      .from(guardTours)
+      .leftJoin(employees, eq(guardTours.assignedEmployeeId, employees.id))
+      .where(and(
+        eq(guardTours.workspaceId, workspaceId),
+        eq(guardTours.clientId, clientId)
+      ))
+      .orderBy(desc(guardTours.createdAt))
+      .limit(50);
+
+    // Count scanned checkpoints per tour (proof of completion)
+    const tourIds = guardToursRaw.map(t => t.id);
+    const scanCountsRaw = tourIds.length > 0
+      ? await db
+          .select({
+            tourId: guardTourScans.tourId,
+            scannedCount: sql<number>`count(*)::int`,
+            lastScannedAt: sql<Date>`max(${guardTourScans.scannedAt})`,
+          })
+          .from(guardTourScans)
+          .where(and(
+            eq(guardTourScans.workspaceId, workspaceId),
+            inArray(guardTourScans.tourId, tourIds),
+          ))
+          .groupBy(guardTourScans.tourId)
+      : [];
+    const scanMap = new Map(scanCountsRaw.map(s => [s.tourId, s]));
+
+    const enrichedTours = guardToursRaw.map(t => ({
+      id: t.id,
+      tourName: t.tourName,
+      status: t.status,
+      intervalMinutes: t.intervalMinutes,
+      officerName: `${t.officerFirstName ?? ''} ${t.officerLastName ?? ''}`.trim() || 'Unassigned',
+      scannedCheckpoints: scanMap.get(t.id)?.scannedCount ?? 0,
+      lastScannedAt: scanMap.get(t.id)?.lastScannedAt ?? null,
+      createdAt: t.createdAt,
+    }));
+
+    // 3. Approved / sent DARs for this client
+    const darsRaw = await db
+      .select({
+        id: darReports.id,
+        shiftId: darReports.shiftId,
+        title: darReports.title,
+        summary: darReports.summary,
+        status: darReports.status,
+        employeeName: darReports.employeeName,
+        shiftStartTime: darReports.shiftStartTime,
+        shiftEndTime: darReports.shiftEndTime,
+        sentAt: darReports.sentAt,
+        verifiedAt: darReports.verifiedAt,
+        pdfUrl: darReports.pdfUrl,
+        photoCount: darReports.photoCount,
+        clientAccessToken: darReports.clientAccessToken,
+      })
+      .from(darReports)
+      .where(and(
+        eq(darReports.workspaceId, workspaceId),
+        eq(darReports.clientId, clientId),
+        sql`${darReports.status} IN ('verified', 'sent', 'approved')`
+      ))
+      .orderBy(desc(darReports.shiftStartTime))
+      .limit(100);
+
+    // 4. Incidents at this client's sites (redacted — no internal notes)
+    // incidentReports.siteId is INTEGER; sites.id is VARCHAR → cast to text for the join
+    const incidentsRaw = siteIds.length > 0
+      ? await db
+          .select({
+            id: incidentReports.id,
+            incidentNumber: incidentReports.incidentNumber,
+            title: incidentReports.title,
+            incidentType: incidentReports.incidentType,
+            severity: incidentReports.severity,
+            status: incidentReports.status,
+            occurredAt: incidentReports.occurredAt,
+            locationAddress: incidentReports.locationAddress,
+            polishedSummary: incidentReports.polishedSummary,
+            sentToClientAt: incidentReports.sentToClientAt,
+            clientAcknowledgedAt: incidentReports.clientAcknowledgedAt,
+          })
+          .from(incidentReports)
+          .innerJoin(sites, eq(sql`${incidentReports.siteId}::text`, sites.id))
+          .where(and(
+            eq(incidentReports.workspaceId, workspaceId),
+            inArray(sites.id, siteIds),
+            sql`${incidentReports.status} IN ('submitted', 'under_review', 'approved', 'sent', 'closed', 'reviewed')`
+          ))
+          .orderBy(desc(incidentReports.occurredAt))
+          .limit(50)
+      : [];
+
+    res.json({
+      reports: enrichedReports,
+      guardTours: enrichedTours,
+      dars: darsRaw,
+      incidents: incidentsRaw,
+    });
   } catch (error) {
     log.error("Error fetching client reports:", error);
     res.status(500).json({ message: "Failed to fetch client reports" });

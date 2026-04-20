@@ -626,10 +626,60 @@ export default function ClientPortal() {
   const currentClient = clients.find(c => c.email === user?.email);
 
   interface ClientReport { id: number; title: string; reportType: string; status: string; employeeName?: string; createdAt: string; data: Record<string, any>; }
-  const { data: clientReports = [], isLoading: reportsLoading } = useQuery<ClientReport[]>({
+  interface GuardTourSummary {
+    id: string;
+    tourName: string;
+    status: string | null;
+    intervalMinutes: number | null;
+    officerName: string;
+    scannedCheckpoints: number;
+    lastScannedAt: string | null;
+    createdAt: string;
+  }
+  interface DARSummary {
+    id: string;
+    shiftId: string;
+    title: string;
+    summary: string | null;
+    status: string;
+    employeeName: string | null;
+    shiftStartTime: string;
+    shiftEndTime: string;
+    sentAt: string | null;
+    verifiedAt: string | null;
+    pdfUrl: string | null;
+    photoCount: number | null;
+    clientAccessToken: string | null;
+  }
+  interface IncidentSummary {
+    id: string;
+    incidentNumber: string | null;
+    title: string;
+    incidentType: string;
+    severity: string;
+    status: string;
+    occurredAt: string | null;
+    locationAddress: string | null;
+    polishedSummary: string | null;
+    sentToClientAt: string | null;
+    clientAcknowledgedAt: string | null;
+  }
+  interface ClientReportsResponse {
+    reports: ClientReport[];
+    guardTours: GuardTourSummary[];
+    dars: DARSummary[];
+    incidents: IncidentSummary[];
+  }
+  const { data: clientReportsData = { reports: [], guardTours: [], dars: [], incidents: [] }, isLoading: reportsLoading } = useQuery<ClientReportsResponse>({
     queryKey: ["/api/client-reports"],
     enabled: !!currentClient,
   });
+  const clientReports = clientReportsData.reports ?? [];
+  const clientGuardTours = clientReportsData.guardTours ?? [];
+  const clientDars = clientReportsData.dars ?? [];
+  const clientIncidents = clientReportsData.incidents ?? [];
+  const totalProofOfService =
+    clientReports.length + clientGuardTours.length + clientDars.length + clientIncidents.length;
 
   interface Contract { id: string; title: string; status: string; clientEmail: string; createdAt: string; expiresAt?: string; docType?: string; }
   const { data: contractsData } = useQuery<{ contracts: Contract[] }>({
@@ -877,7 +927,7 @@ export default function ClientPortal() {
               <TabsTrigger value="payments" data-testid="tab-payments">Payments</TabsTrigger>
               <TabsTrigger value="reports" data-testid="tab-reports">
                 Reports
-                {clientReports.length > 0 && <Badge variant="secondary" className="ml-1.5 h-5 px-1.5 text-xs">{clientReports.length}</Badge>}
+                {totalProofOfService > 0 && <Badge variant="secondary" className="ml-1.5 h-5 px-1.5 text-xs">{totalProofOfService}</Badge>}
               </TabsTrigger>
               <TabsTrigger value="contracts" data-testid="tab-contracts">
                 Contracts
@@ -1149,18 +1199,19 @@ export default function ClientPortal() {
             </Card>
           </TabsContent>
 
-          {/* ── FIELD REPORTS ────────────────────────────────────────────── */}
-          <TabsContent value="reports" className="mt-6">
+          {/* ── PROOF OF SERVICE (field reports + patrols + DARs + incidents) ── */}
+          <TabsContent value="reports" className="mt-6 space-y-6">
+            {/* Field Reports */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2"><ClipboardCheck className="h-5 w-5 text-indigo-500" /> Field Reports</CardTitle>
-                <CardDescription>View approved field reports from your service team</CardDescription>
+                <CardDescription>Approved field reports submitted by your service team</CardDescription>
               </CardHeader>
               <CardContent>
                 {reportsLoading ? (
                   <div className="flex justify-center py-8"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
                 ) : clientReports.length === 0 ? (
-                  <div className="text-center py-12"><ClipboardCheck className="h-12 w-12 text-muted-foreground mx-auto mb-3" /><p className="text-muted-foreground">No reports submitted yet</p></div>
+                  <div className="text-center py-8"><ClipboardCheck className="h-10 w-10 text-muted-foreground mx-auto mb-2" /><p className="text-muted-foreground text-sm">No reports submitted yet</p></div>
                 ) : clientReports.map(r => {
                   const cfg = reportTypeConfig[r.reportType] || reportTypeConfig.other;
                   const Icon = cfg.icon;
@@ -1179,6 +1230,103 @@ export default function ClientPortal() {
                     </div>
                   );
                 })}
+              </CardContent>
+            </Card>
+
+            {/* Guard Tours — proof of patrol */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><Shield className="h-5 w-5 text-emerald-600" /> Guard Tours</CardTitle>
+                <CardDescription>Patrol routes and checkpoint scans at your sites</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {clientGuardTours.length === 0 ? (
+                  <div className="text-center py-8"><Shield className="h-10 w-10 text-muted-foreground mx-auto mb-2" /><p className="text-muted-foreground text-sm">No guard tours logged yet</p></div>
+                ) : clientGuardTours.map(t => (
+                  <div key={t.id} className="flex items-start gap-4 p-4 rounded-md border mb-2" data-testid={`card-guardtour-${t.id}`}>
+                    <div className="h-9 w-9 rounded-md bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center shrink-0"><Shield className="h-4 w-4 text-emerald-600" /></div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <p className="font-semibold truncate">{t.tourName}</p>
+                        {t.status && <Badge variant="secondary">{t.status}</Badge>}
+                        <Badge variant="outline">{t.scannedCheckpoints} checkpoints scanned</Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Officer: {t.officerName}
+                        {t.intervalMinutes && ` • Every ${t.intervalMinutes} min`}
+                        {t.lastScannedAt && ` • Last scan ${formatDate(t.lastScannedAt)}`}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
+            {/* Daily Activity Reports */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5 text-indigo-600" /> Daily Activity Reports</CardTitle>
+                <CardDescription>Verified shift reports delivered from the field</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {clientDars.length === 0 ? (
+                  <div className="text-center py-8"><FileText className="h-10 w-10 text-muted-foreground mx-auto mb-2" /><p className="text-muted-foreground text-sm">No daily activity reports yet</p></div>
+                ) : clientDars.map(d => (
+                  <div key={d.id} className="flex items-start gap-4 p-4 rounded-md border mb-2" data-testid={`card-dar-${d.id}`}>
+                    <div className="h-9 w-9 rounded-md bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center shrink-0"><FileText className="h-4 w-4 text-indigo-600" /></div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <p className="font-semibold truncate">{d.title}</p>
+                        <Badge variant="secondary">{d.status}</Badge>
+                        {d.photoCount ? <Badge variant="outline">{d.photoCount} photos</Badge> : null}
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {d.employeeName && `By ${d.employeeName} • `}
+                        {formatDate(d.shiftStartTime)} {new Date(d.shiftStartTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} – {new Date(d.shiftEndTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                      </p>
+                      {d.summary && <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{d.summary}</p>}
+                    </div>
+                    {d.pdfUrl && (
+                      <Button size="sm" variant="outline" asChild data-testid={`button-view-dar-${d.id}`}>
+                        <a href={d.pdfUrl} target="_blank" rel="noopener noreferrer"><Download className="h-3.5 w-3.5 mr-1" />PDF</a>
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
+            {/* Incidents */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><AlertTriangle className="h-5 w-5 text-amber-600" /> Incidents at Your Sites</CardTitle>
+                <CardDescription>Redacted incident summaries — detailed notes available on request</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {clientIncidents.length === 0 ? (
+                  <div className="text-center py-8"><AlertTriangle className="h-10 w-10 text-muted-foreground mx-auto mb-2" /><p className="text-muted-foreground text-sm">No incidents to report</p></div>
+                ) : clientIncidents.map(i => (
+                  <div key={i.id} className="flex items-start gap-4 p-4 rounded-md border mb-2" data-testid={`card-incident-${i.id}`}>
+                    <div className="h-9 w-9 rounded-md bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center shrink-0"><AlertTriangle className="h-4 w-4 text-amber-600" /></div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <p className="font-semibold truncate">{i.title}</p>
+                        <Badge variant="outline" className={
+                          i.severity === "critical" ? "border-rose-400 text-rose-600" :
+                          i.severity === "high" ? "border-amber-400 text-amber-600" :
+                          ""
+                        }>{i.severity}</Badge>
+                        <Badge variant="secondary">{i.incidentType}</Badge>
+                        {i.incidentNumber && <span className="text-xs text-muted-foreground">#{i.incidentNumber}</span>}
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {i.occurredAt && formatDate(i.occurredAt)}
+                        {i.locationAddress && ` • ${i.locationAddress}`}
+                      </p>
+                      {i.polishedSummary && <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{i.polishedSummary}</p>}
+                    </div>
+                  </div>
+                ))}
               </CardContent>
             </Card>
           </TabsContent>

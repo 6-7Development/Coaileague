@@ -116,8 +116,73 @@ class ShiftChatroomWorkflowService {
   }
 
   /**
+   * Provision Chatroom (pre-shift, before clock-in)
+   *
+   * Creates a chatroom in 'pending' state so managers/supervisors have a
+   * channel tied to the shift from the moment it's scheduled. The room is
+   * promoted to 'active' when an officer clocks in via startShift().
+   */
+  async provisionChatroom(params: {
+    shiftId: string;
+    workspaceId: string;
+    siteId?: string;
+    createdBy: string;
+  }): Promise<{ chatroomId: string | null; alreadyExisted: boolean }> {
+    try {
+      const existing = await db.select()
+        .from(shiftChatrooms)
+        .where(and(
+          eq(shiftChatrooms.shiftId, params.shiftId),
+          eq(shiftChatrooms.workspaceId, params.workspaceId)
+        ))
+        .limit(1);
+
+      if (existing.length > 0) {
+        return { chatroomId: existing[0].id, alreadyExisted: true };
+      }
+
+      const [shift] = await db.select()
+        .from(shifts)
+        .where(and(
+          eq(shifts.id, params.shiftId),
+          eq(shifts.workspaceId, params.workspaceId)
+        ))
+        .limit(1);
+
+      if (!shift) {
+        return { chatroomId: null, alreadyExisted: false };
+      }
+
+      const chatroomId = crypto.randomUUID();
+      const chatroomName = this.generateChatroomName(shift);
+
+      await db.insert(shiftChatrooms).values({
+        id: chatroomId,
+        workspaceId: params.workspaceId,
+        shiftId: params.shiftId,
+        name: chatroomName,
+        description: `Shift chatroom for ${format(new Date(shift.startTime), 'MMM d, yyyy h:mm a')}`,
+        status: 'pending',
+        autoCloseTimeoutMinutes: 60,
+        isAuditProtected: true,
+        isMeetingRoom: false,
+        trinityRecordingEnabled: false,
+      });
+
+      log.info(`[ShiftChatroom] Provisioned pending chatroom ${chatroomId} for shift ${params.shiftId}`);
+      return { chatroomId, alreadyExisted: false };
+    } catch (err: any) {
+      log.warn('[ShiftChatroom] provisionChatroom failed (non-blocking):', err?.message);
+      return { chatroomId: null, alreadyExisted: false };
+    }
+  }
+
+  /**
    * Start Shift Workflow
    * TRIGGER → FETCH → VALIDATE → PROCESS → MUTATE → CONFIRM → NOTIFY
+   *
+   * If a pending chatroom exists (provisioned at shift creation), it is
+   * promoted to 'active' instead of creating a new one.
    */
   async startShift(context: ShiftChatroomContext): Promise<{
     success: boolean;
@@ -163,15 +228,21 @@ class ShiftChatroomWorkflowService {
         throw new Error('Cannot start a completed shift');
       }
 
+      // Look for any existing chatroom for this shift — active (already started)
+      // or pending (pre-provisioned on shift creation). Closed rooms are ignored.
       const existingChatroom = await db.select()
         .from(shiftChatrooms)
         .where(and(
           eq(shiftChatrooms.shiftId, context.shiftId),
-          eq(shiftChatrooms.status, 'active')
+          sql`${shiftChatrooms.status} IN ('active', 'pending')`
         ))
         .limit(1);
 
-      if (existingChatroom.length > 0) {
+      const pendingChatroom = existingChatroom.length > 0 && existingChatroom[0].status === 'pending'
+        ? existingChatroom[0]
+        : null;
+
+      if (existingChatroom.length > 0 && existingChatroom[0].status === 'active') {
         steps.push({ step: 'VALIDATE', status: 'completed', duration: Date.now() - validateStart });
         await this.logStep(orchContext, 'VALIDATE', 'completed', { shiftId: context.shiftId }, { existingChatroom: true, chatroomId: existingChatroom[0].id });
         await this.logStep(orchContext, 'PROCESS', 'skipped', { shiftId: context.shiftId }, { reason: 'existing_chatroom_found' });
@@ -187,33 +258,40 @@ class ShiftChatroomWorkflowService {
       }
 
       steps.push({ step: 'VALIDATE', status: 'completed', duration: Date.now() - validateStart });
-      await this.logStep(orchContext, 'VALIDATE', 'completed', { shiftId: context.shiftId }, { existingChatroom: false, shiftStatus: shift.status });
+      await this.logStep(orchContext, 'VALIDATE', 'completed', { shiftId: context.shiftId }, { existingChatroom: !!pendingChatroom, pendingPromotion: !!pendingChatroom, shiftStatus: shift.status });
 
       currentStep = 'PROCESS';
       const processStart = Date.now();
 
       const chatroomName = this.generateChatroomName(shift, employee);
-      const chatroomId = crypto.randomUUID();
+      const chatroomId = pendingChatroom?.id ?? crypto.randomUUID();
 
       steps.push({ step: 'PROCESS', status: 'completed', duration: Date.now() - processStart });
-      await this.logStep(orchContext, 'PROCESS', 'completed', { shiftId: context.shiftId }, { chatroomId, chatroomName });
+      await this.logStep(orchContext, 'PROCESS', 'completed', { shiftId: context.shiftId }, { chatroomId, chatroomName, promotedFromPending: !!pendingChatroom });
 
       currentStep = 'MUTATE';
       const mutateStart = Date.now();
 
       await db.transaction(async (tx) => {
-        await tx.insert(shiftChatrooms).values({
-          id: chatroomId,
-          workspaceId: context.workspaceId,
-          shiftId: context.shiftId,
-          name: chatroomName,
-          description: `Shift chatroom for ${format(new Date(shift.startTime), 'MMM d, yyyy h:mm a')}`,
-          status: 'active',
-          autoCloseTimeoutMinutes: 60,
-          isAuditProtected: true,
-          isMeetingRoom: false,
-          trinityRecordingEnabled: false,
-        });
+        if (pendingChatroom) {
+          // Promote pre-provisioned pending → active, refresh name with employee context
+          await tx.update(shiftChatrooms)
+            .set({ status: 'active', name: chatroomName, updatedAt: new Date() })
+            .where(eq(shiftChatrooms.id, pendingChatroom.id));
+        } else {
+          await tx.insert(shiftChatrooms).values({
+            id: chatroomId,
+            workspaceId: context.workspaceId,
+            shiftId: context.shiftId,
+            name: chatroomName,
+            description: `Shift chatroom for ${format(new Date(shift.startTime), 'MMM d, yyyy h:mm a')}`,
+            status: 'active',
+            autoCloseTimeoutMinutes: 60,
+            isAuditProtected: true,
+            isMeetingRoom: false,
+            trinityRecordingEnabled: false,
+          });
+        }
         await tx.insert(shiftChatroomMembers).values({
           id: crypto.randomUUID(),
           chatroomId,
