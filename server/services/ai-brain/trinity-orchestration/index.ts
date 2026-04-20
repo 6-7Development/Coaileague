@@ -12,7 +12,9 @@
  * - Specialist path     — writing, legal reasoning, compliance, contracts
  * - Support path        — customer support, knowledge synthesis, training
  *
- * The folder name `dualai/` is legacy and will be renamed in a later phase.
+ * Folder renamed from `dualai/` → `trinity-orchestration/` in Phase 4A
+ * (see CLAUDE.md Section S Trinity Unity Law). The legacy name mis-implied
+ * multiple agents; all callers now import from `trinity-orchestration`.
  */
 
 export { unifiedAIOrchestrator } from './unifiedAIOrchestrator';

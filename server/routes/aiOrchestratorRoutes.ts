@@ -3,7 +3,7 @@ import { Router, Request, Response } from "express";
 import { z } from "zod";
 import { randomUUID } from "crypto";
 import { requireAuth } from '../auth';
-import { unifiedAIOrchestrator, aiActionLogger, taskRouter, claudeVerificationService, trinityConfidenceScorer, claudeService } from "../services/ai-brain/dualai";
+import { unifiedAIOrchestrator, aiActionLogger, taskRouter, claudeVerificationService, trinityConfidenceScorer, claudeService } from "../services/ai-brain/trinity-orchestration";
 import { tokenManager, TOKEN_COSTS } from '../services/billing/tokenManager';
 import { createLogger } from '../lib/logger';
 const log = createLogger('AiOrchestratorRoutes');

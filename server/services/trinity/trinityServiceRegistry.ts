@@ -102,7 +102,7 @@ export const TRINITY_SERVICE_REGISTRY: TrinityServiceEntry[] = [
   {
     id: 'unifiedAIOrchestrator',
     name: 'Trinity Unified Orchestrator',
-    path: 'server/services/ai-brain/dualai/unifiedAIOrchestrator.ts',
+    path: 'server/services/ai-brain/trinity-orchestration/unifiedAIOrchestrator.ts',
     domain: 'core_orchestration',
     description: 'Dispatches Trinity reasoning across her internal compute paths (orchestration, specialist, support) — backend routing only, one agent identity.',
     authorityLevel: 'platform_admin',
@@ -113,7 +113,7 @@ export const TRINITY_SERVICE_REGISTRY: TrinityServiceEntry[] = [
   {
     id: 'taskRouter',
     name: 'Trinity Task Router',
-    path: 'server/services/ai-brain/dualai/taskRouter.ts',
+    path: 'server/services/ai-brain/trinity-orchestration/taskRouter.ts',
     domain: 'core_orchestration',
     description: 'Selects the internal reasoning path Trinity uses for each task based on task type and cost. Backend routing only — not a multi-agent system.',
     authorityLevel: 'write_auto',
