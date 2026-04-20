@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -87,6 +88,11 @@ export default function EmployeePortal() {
 
   const { data: onboardingStatus, isLoading: onboardingLoading } = useQuery<any>({
     queryKey: ["/api/employee-onboarding/me"],
+  });
+
+  const { data: requiredDocs = [] } = useQuery<any[]>({
+    queryKey: ['/api/employee-onboarding/required-documents'],
+    enabled: !!onboardingStatus && (onboardingStatus.completionPercentage ?? 100) < 100,
   });
 
   const isLoading = employeesLoading || shiftsLoading || entriesLoading;
@@ -203,6 +209,39 @@ export default function EmployeePortal() {
             </p>
           </div>
         </div>
+      )}
+
+      {onboardingStatus && (onboardingStatus.completionPercentage ?? 100) < 100 && (
+        <Card className="border-amber-500/40 bg-amber-950/20 mb-4">
+          <CardHeader>
+            <CardTitle className="text-amber-400 flex items-center gap-2">
+              <ClipboardList className="h-5 w-5" />
+              Complete Your Onboarding
+              <Badge variant="outline" className="ml-auto">
+                {onboardingStatus.totalDocumentsCompleted ?? 0}/{onboardingStatus.totalDocumentsRequired ?? 0} done
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Progress value={onboardingStatus.completionPercentage ?? 0} className="mb-3" />
+            {requiredDocs.map((doc: any) => (
+              <div key={doc.id} className="flex items-center gap-3 py-2 border-b border-border/40">
+                {doc.status === 'approved'
+                  ? <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  : <AlertCircle className="h-4 w-4 text-muted-foreground" />}
+                <span className={doc.status === 'approved' ? 'line-through text-muted-foreground' : ''}>
+                  {doc.displayName}
+                </span>
+                {doc.status !== 'approved' && (
+                  <Button size="sm" variant="outline" className="ml-auto"
+                    onClick={() => setLocation(doc.uploadRoute)}>
+                    Upload
+                  </Button>
+                )}
+              </div>
+            ))}
+          </CardContent>
+        </Card>
       )}
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">

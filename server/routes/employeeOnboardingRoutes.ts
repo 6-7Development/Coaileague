@@ -8,6 +8,7 @@
 import { Router, Response } from 'express';
 import { AuthenticatedRequest } from '../rbac';
 import { storage } from '../storage';
+import { db } from '../db';
 import { employeeDocumentOnboardingService, SecurityPosition } from '../services/employeeDocumentOnboardingService';
 import { createLogger } from '../lib/logger';
 const log = createLogger('EmployeeOnboardingRoutes');
@@ -36,6 +37,55 @@ employeeOnboardingRoutes.get('/me', async (req: AuthenticatedRequest, res: Respo
   } catch (error: unknown) {
     log.error("Error fetching employee onboarding status:", error);
     res.status(500).json({ message: "Failed to fetch onboarding status" });
+  }
+});
+
+// GET /api/employee-onboarding/required-documents — employee portal checklist
+// Returns all required documents with completion status for the authenticated employee
+employeeOnboardingRoutes.get('/required-documents', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    // @ts-expect-error — TS migration: fix in refactoring sprint
+    const userId = req.user?.id || (req.user)?.claims?.sub;
+    if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+    const workspaceId = (req as any).workspaceId || (req as any).session?.workspaceId;
+    if (!workspaceId) return res.json([]);
+
+    const progResult = await (db.$client as any).query(
+      `SELECT e.id as employee_id, e.position, p.steps_completed, p.steps_remaining
+       FROM employees e
+       LEFT JOIN employee_onboarding_progress p ON p.employee_id = e.id AND p.workspace_id = $2
+       WHERE e.user_id = $1 AND e.workspace_id = $2
+       LIMIT 1`,
+      [userId, workspaceId]
+    );
+
+    const row = progResult.rows?.[0];
+    if (!row) return res.json([]);
+
+    const completed = new Set<string>(row.steps_completed || []);
+    const remaining: string[] = row.steps_remaining || [];
+    const allKeys = [...new Set([...Array.from(completed), ...remaining])];
+
+    const stepResult = await (db.$client as any).query(
+      `SELECT step_key, title, document_type FROM employee_onboarding_steps ORDER BY step_number`
+    );
+
+    const result = (stepResult.rows || [])
+      .filter((s: any) => allKeys.includes(s.step_key))
+      .map((s: any) => ({
+        id: s.step_key,
+        displayName: s.title,
+        category: s.document_type || 'compliance',
+        required: true,
+        status: completed.has(s.step_key) ? 'approved' : 'pending',
+        uploadRoute: `/onboarding-forms?step=${s.step_key}`,
+      }));
+
+    res.json(result);
+  } catch (error: unknown) {
+    log.error('Error fetching required documents:', error);
+    res.status(500).json({ message: 'Failed to fetch required documents' });
   }
 });
 

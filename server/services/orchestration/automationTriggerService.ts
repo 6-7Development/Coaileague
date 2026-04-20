@@ -227,6 +227,52 @@ class AutomationTriggerService {
       log.info(`[AutomationTrigger] invoice_overdue — status updated + collections sweep triggered for ${workspaceId}`);
     }});
 
+    // employee_onboarding_completed → mark shift-eligible + notify managers
+    platformEventBus.subscribe('employee_onboarding_completed', {
+      name: 'AutomationTrigger-OnboardingComplete',
+      handler: async (event) => {
+        const { workspaceId, payload } = event;
+        if (!workspaceId || !payload?.employeeId) return;
+        const { employeeId } = payload;
+        log.info(`[AutomationTrigger] employee_onboarding_completed — employeeId=${employeeId}`);
+
+        try {
+          // Mark employee as onboarding complete
+          await db.update(employees)
+            .set({ onboardingStatus: 'completed', updatedAt: new Date() } as any)
+            .where(eq(employees.id, employeeId));
+
+          // Notify workspace managers
+          const managers = await db.select({ userId: employees.userId, firstName: employees.firstName, lastName: employees.lastName })
+            .from(employees)
+            .where(
+              and(
+                eq(employees.workspaceId, workspaceId),
+                sql`${employees.workspaceRole} IN ('org_owner', 'co_owner', 'org_admin', 'manager')`
+              )
+            );
+
+          const { createNotification } = await import('../notificationService');
+          for (const mgr of managers) {
+            if (!mgr.userId) continue;
+            await createNotification({
+              workspaceId,
+              userId: mgr.userId,
+              type: 'onboarding_complete',
+              title: `${event.title}`,
+              message: 'They are now eligible to be scheduled. Trinity will include them in auto-scheduling.',
+              priority: 'normal',
+              actionUrl: `/employees/${employeeId}`,
+            } as any).catch(() => null);
+          }
+
+          log.info(`[AutomationTrigger] employee_onboarding_completed — marked shift-eligible, notified ${managers.length} manager(s)`);
+        } catch (err: any) {
+          log.warn('[AutomationTrigger] employee_onboarding_completed handler error:', err?.message);
+        }
+      },
+    });
+
     // GAP-A FIX: When a manager approves a payroll gate, actually execute payroll generation
     // GAP-D FIX: Also route schedule gate approvals to daemon execution
     // SEMANTIC FIX: approvalGateEnforcement publishes 'approval_granted' (gate approvals),
