@@ -1516,7 +1516,6 @@ aiBrainRouter.post('/routing/execute', requireAuth, async (req: Request, res: Re
           escalated: result.escalated,
           escalationReason: result.escalationReason,
           tokensUsed: result.tokensUsed,
-          creditsCharged: result.creditsCharged,
           latencyMs: result.latencyMs,
         },
       });
@@ -1542,7 +1541,6 @@ aiBrainRouter.post('/routing/execute', requireAuth, async (req: Request, res: Re
         escalated: result.escalated,
         escalationReason: result.escalationReason,
         tokensUsed: result.tokensUsed,
-        creditsCharged: result.creditsCharged,
         latencyMs: result.latencyMs,
       },
     });

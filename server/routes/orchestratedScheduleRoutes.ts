@@ -4,7 +4,7 @@ import { db } from '../db';
 import { automationExecutions, shifts, employees, workspaces } from '@shared/schema';
 import { eq, and, desc, gte } from 'drizzle-orm';
 import { creditManager, CREDIT_COSTS } from '../services/billing/creditManager';
-import { aiCreditGateway } from '../services/billing/aiCreditGateway';
+import { aiCreditGateway } from '../services/billing/aiTokenGateway';
 import { automationOrchestration } from '../services/orchestration/automationOrchestration';
 import { platformEventBus } from '../services/platformEventBus';
 import { type AuthenticatedRequest } from '../rbac';

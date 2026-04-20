@@ -567,7 +567,7 @@ async function phase8_infrastructure_services() {
     'server/services/billing/creditManager.ts',
     'server/services/billing/creditPurchase.ts',
     'server/services/billing/stripeWebhooks.ts',
-    'server/services/billing/aiCreditGateway.ts',
+    'server/services/billing/aiTokenGateway.ts',
     'server/services/billing/meteredGeminiClient.ts',
     'server/services/billing/featureGateService.ts',
   ];

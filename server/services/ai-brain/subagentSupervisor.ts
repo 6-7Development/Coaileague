@@ -35,7 +35,7 @@ import { universalNotificationEngine } from '../universalNotificationEngine';
 import { aiBrainAuthorizationService, AI_BRAIN_AUTHORITY_ROLES } from './aiBrainAuthorizationService';
 import { aiBrainService } from './aiBrainService';
 import { CREDIT_COSTS } from '../billing/creditManager';
-import { aiCreditGateway } from '../billing/aiCreditGateway';
+import { aiCreditGateway } from '../billing/aiTokenGateway';
 import { subagentConfidenceMonitor } from './subagentConfidenceMonitor';
 import { modelRoutingEngine, getSubagentModelConfigs, recordModelResult, SubagentModelConfig } from './modelRoutingEngine';
 import { GeminiModelTier } from './providers/geminiClient';

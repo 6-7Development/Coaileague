@@ -407,7 +407,7 @@ router.post('/send', requireAuth, requireManager, async (req: any, res) => {
     res.json({
       success: true,
       results,
-      summary: { sent: successCount, failed: failCount, creditsCharged: totalCredits },
+      summary: { sent: successCount, failed: failCount, tokensUsed: totalCredits },
     });
   } catch (err: unknown) {
     log.error('[DocRequests] Send error:', err);

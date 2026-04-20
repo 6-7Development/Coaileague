@@ -8,7 +8,7 @@
  * - Strategic planning and recommendations
  */
 
-import { aiCreditGateway } from '../../billing/aiCreditGateway';
+import { aiCreditGateway } from '../../billing/aiTokenGateway';
 import { aiActionLogger, type AIActionContext } from './aiActionLogger';
 import { createLogger } from '../../../lib/logger';
 const log = createLogger('claudeService');

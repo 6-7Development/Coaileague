@@ -17,7 +17,7 @@
 import { db } from '../../../db';
 import { auditLogs } from '@shared/schema';
 import { CREDIT_COSTS, isUnlimitedCreditUser, creditManager } from '../../billing/creditManager';
-import { aiCreditGateway } from '../../billing/aiCreditGateway';
+import { aiCreditGateway } from '../../billing/aiTokenGateway';
 import { platformEventBus } from '../../platformEventBus';
 import { createLogger } from '../../../lib/logger';
 

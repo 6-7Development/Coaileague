@@ -7,7 +7,7 @@
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { usageMeteringService } from './billing/usageMetering';
-import { aiCreditGateway } from './billing/aiCreditGateway';
+import { aiCreditGateway } from './billing/aiTokenGateway';
 import { aiGuardRails, type AIRequestContext } from './aiGuardRails';
 import { z } from 'zod';
 import { createLogger } from '../lib/logger';

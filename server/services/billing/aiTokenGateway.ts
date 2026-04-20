@@ -1,8 +1,8 @@
 /**
- * AI CREDIT GATEWAY — TOKEN USAGE TRACKING + SOFT/HARD CAP ENFORCEMENT
+ * AI TOKEN GATEWAY — TOKEN USAGE TRACKING + SOFT/HARD CAP ENFORCEMENT
  * ======================================================================
- * Credits removed (CREDITS=0). All AI usage now metered via aiMeteringService
- * and tracked in workspace_ai_usage / ai_call_log / token_usage_log.
+ * Credits are retired. All AI usage is metered via aiMeteringService and
+ * tracked in workspace_ai_usage / ai_call_log / token_usage_log.
  *
  * ENFORCEMENT MODEL (every tenant, every AI call):
  * - Free/trial tiers:  hardCapK enforced — blocked when monthly limit exhausted.
@@ -17,11 +17,15 @@
  */
 
 import { createLogger } from '../../lib/logger';
-import { CREDIT_COSTS, CREDIT_EXEMPT_FEATURES, creditManager } from './creditManager';
+import {
+  TOKEN_COSTS,
+  TOKEN_FREE_FEATURES,
+  creditManager,
+} from './creditManager';
 import { recordTokenUsageAsync } from './tokenUsageService';
 import { aiMeteringService } from './aiMeteringService';
 
-const log = createLogger('aiCreditGateway');
+const log = createLogger('aiTokenGateway');
 
 // ============================================================================
 // EXPORTED TYPES (preserved for compatibility)
@@ -32,34 +36,37 @@ export type RequestTier = 'BUSINESS_LIGHT' | 'BUSINESS_STANDARD' | 'BUSINESS_HEA
 export interface RequestClassification {
   tier: RequestTier;
   featureKey: string;
+  tokenCost: number;
+  /** @deprecated Use tokenCost */
   creditCost: number;
   isFree: boolean;
   reason: string;
 }
 
 // ============================================================================
-// NO-OP GATEWAY CLASS
+// TOKEN GATEWAY CLASS
 // ============================================================================
 
-export class AICreditGateway {
-  private static instance: AICreditGateway;
+export class AITokenGateway {
+  private static instance: AITokenGateway;
 
   private constructor() {}
 
-  static getInstance(): AICreditGateway {
-    if (!AICreditGateway.instance) {
-      AICreditGateway.instance = new AICreditGateway();
+  static getInstance(): AITokenGateway {
+    if (!AITokenGateway.instance) {
+      AITokenGateway.instance = new AITokenGateway();
     }
-    return AICreditGateway.instance;
+    return AITokenGateway.instance;
   }
 
   classifyRequest(featureKey: string): RequestClassification {
     return {
       tier: 'BUSINESS_STANDARD',
       featureKey,
+      tokenCost: 0,
       creditCost: 0,
       isFree: true,
-      reason: 'CREDITS_ZERO_PASSTHROUGH',
+      reason: 'TOKEN_PASSTHROUGH',
     };
   }
 
@@ -71,25 +78,28 @@ export class AICreditGateway {
   ): Promise<{
     authorized: boolean;
     reason: string;
+    tokenCost: number;
+    /** @deprecated Use tokenCost */
     creditCost: number;
     isFree: boolean;
     featureKey: string;
     tier?: RequestTier;
-    classification: { tier: RequestTier; featureKey: string; creditCost: number; isFree: boolean; reason: string };
+    classification: RequestClassification;
   }> {
-    log.info(`[AICreditGateway] preAuthorize: ${featureKey} ws=${workspaceId}`);
-    const creditCost = (CREDIT_COSTS as Record<string, number>)[featureKey] ?? 0;
-    const isFree = CREDIT_EXEMPT_FEATURES.has(featureKey) || creditCost === 0;
+    log.info(`[AITokenGateway] preAuthorize: ${featureKey} ws=${workspaceId}`);
+    const tokenCost = (TOKEN_COSTS as Record<string, number>)[featureKey] ?? 0;
+    const isFree = TOKEN_FREE_FEATURES.has(featureKey) || tokenCost === 0;
 
     // TOKEN HARD CAP GATE — free/trial only (paid tiers return allowed:true always).
     // This is the universal enforcement point: all 5 AI providers call preAuthorize.
     if (workspaceId) {
       const tokenGuard = await aiMeteringService.checkUsageAllowedById(workspaceId);
       if (!tokenGuard.allowed) {
-        const classification: RequestClassification = { tier: 'BUSINESS_HEAVY', featureKey, creditCost, isFree: false, reason: 'TOKEN_HARD_CAP_REACHED' };
+        const classification: RequestClassification = { tier: 'BUSINESS_HEAVY', featureKey, tokenCost, creditCost: tokenCost, isFree: false, reason: 'TOKEN_HARD_CAP_REACHED' };
         return {
           authorized: false,
           reason: tokenGuard.warning ?? 'Monthly AI token limit reached. Upgrade to continue.',
+          tokenCost: 0,
           creditCost: 0,
           isFree: false,
           featureKey,
@@ -102,33 +112,35 @@ export class AICreditGateway {
     if (!isFree && workspaceId) {
       const check = await creditManager.checkCredits(workspaceId, featureKey, userId || undefined);
       if (!check.hasEnoughCredits) {
-        // OMEGA-L2: Degraded-mode split — Brain tasks (creditCost >= 15) are hard-blocked at 0 credits.
-        // Standard/lightweight tasks (creditCost < 15) are allowed in degraded mode so the org
+        // OMEGA-L2: Degraded-mode split — Brain tasks (tokenCost >= 15) are hard-blocked at 0 balance.
+        // Standard/lightweight tasks (tokenCost < 15) are allowed in degraded mode so the org
         // remains operational (basic scheduling, reads, exports) while AI-heavy features pause.
-        const isBrainTask = creditCost >= 15;
+        const isBrainTask = tokenCost >= 15;
         if (isBrainTask) {
-          log.warn(`[AICreditGateway] DEGRADED_MODE: Brain task '${featureKey}' blocked — workspace ${workspaceId} has exhausted AI credits. Standard actions remain available.`);
-          const classification: RequestClassification = { tier: 'BUSINESS_HEAVY', featureKey, creditCost, isFree: false, reason: 'DEGRADED_MODE_BRAIN_BLOCKED' };
-          return { authorized: false, reason: 'DEGRADED_MODE_BRAIN_BLOCKED', creditCost, isFree: false, featureKey, tier: 'BUSINESS_HEAVY', classification };
+          log.warn(`[AITokenGateway] DEGRADED_MODE: Brain task '${featureKey}' blocked — workspace ${workspaceId} has exhausted AI allowance. Standard actions remain available.`);
+          const classification: RequestClassification = { tier: 'BUSINESS_HEAVY', featureKey, tokenCost, creditCost: tokenCost, isFree: false, reason: 'DEGRADED_MODE_BRAIN_BLOCKED' };
+          return { authorized: false, reason: 'DEGRADED_MODE_BRAIN_BLOCKED', tokenCost, creditCost: tokenCost, isFree: false, featureKey, tier: 'BUSINESS_HEAVY', classification };
         }
         // Standard-tier feature: allow with degraded-mode marker (metering continues)
-        log.info(`[AICreditGateway] DEGRADED_MODE: Standard task '${featureKey}' allowed under degraded mode for workspace ${workspaceId}.`);
-        const classification: RequestClassification = { tier: 'BUSINESS_STANDARD', featureKey, creditCost, isFree: false, reason: 'DEGRADED_MODE_STANDARD_ALLOWED' };
-        return { authorized: true, reason: 'DEGRADED_MODE_STANDARD_ALLOWED', creditCost, isFree: false, featureKey, tier: 'BUSINESS_STANDARD', classification };
+        log.info(`[AITokenGateway] DEGRADED_MODE: Standard task '${featureKey}' allowed under degraded mode for workspace ${workspaceId}.`);
+        const classification: RequestClassification = { tier: 'BUSINESS_STANDARD', featureKey, tokenCost, creditCost: tokenCost, isFree: false, reason: 'DEGRADED_MODE_STANDARD_ALLOWED' };
+        return { authorized: true, reason: 'DEGRADED_MODE_STANDARD_ALLOWED', tokenCost, creditCost: tokenCost, isFree: false, featureKey, tier: 'BUSINESS_STANDARD', classification };
       }
     }
 
     const classification: RequestClassification = {
-      tier: creditCost >= 15 ? 'BUSINESS_HEAVY' : creditCost >= 5 ? 'BUSINESS_STANDARD' : 'BUSINESS_LIGHT',
+      tier: tokenCost >= 15 ? 'BUSINESS_HEAVY' : tokenCost >= 5 ? 'BUSINESS_STANDARD' : 'BUSINESS_LIGHT',
       featureKey,
-      creditCost,
+      tokenCost,
+      creditCost: tokenCost,
       isFree,
       reason: isFree ? 'EXEMPT' : 'SOFT_CAP_ALLOWED',
     };
     return {
       authorized: true,
       reason: classification.reason,
-      creditCost,
+      tokenCost,
+      creditCost: tokenCost,
       isFree,
       featureKey,
       tier: classification.tier,
@@ -143,7 +155,7 @@ export class AICreditGateway {
     tokensUsed?: number,
     metadata?: Record<string, unknown>,
     quantity: number = 1,
-  ): Promise<{ charged: boolean; creditsDeducted: number; newBalance: number }> {
+  ): Promise<{ charged: boolean; tokensUsed: number; creditsDeducted: number; newBalance: number }> {
     // OMEGA LAW 14 — TOKEN USAGE INTEGRITY (CLASS A BLOCKER #17)
     // Fire-and-forget: NEVER block or delay the AI execution path.
     if (workspaceId) {
@@ -166,20 +178,27 @@ export class AICreditGateway {
       });
     }
 
-    const creditCost = ((CREDIT_COSTS as Record<string, number>)[featureKey] ?? 0) * quantity;
-    if (creditCost <= 0 || CREDIT_EXEMPT_FEATURES.has(featureKey) || !workspaceId) {
-      return { charged: false, creditsDeducted: 0, newBalance: -1 };
+    const tokenCost = ((TOKEN_COSTS as Record<string, number>)[featureKey] ?? 0) * quantity;
+    if (tokenCost <= 0 || TOKEN_FREE_FEATURES.has(featureKey) || !workspaceId) {
+      return { charged: false, tokensUsed: 0, creditsDeducted: 0, newBalance: -1 };
     }
     const result = await creditManager.deductCredits({ workspaceId, featureKey, quantity, userId: userId || undefined });
-    return { charged: result.success, creditsDeducted: result.success ? creditCost : 0, newBalance: result.newBalance };
+    return {
+      charged: result.success,
+      tokensUsed: result.success ? tokenCost : 0,
+      creditsDeducted: result.success ? tokenCost : 0,
+      newBalance: result.newBalance,
+    };
   }
 
   getBillingSummary(_featureKey: string): {
     featureKey: string;
     totalCallsThisHour: number;
+    totalTokensThisHour: number;
+    /** @deprecated Use totalTokensThisHour */
     totalCreditsThisHour: number;
   } {
-    return { featureKey: _featureKey, totalCallsThisHour: 0, totalCreditsThisHour: 0 };
+    return { featureKey: _featureKey, totalCallsThisHour: 0, totalTokensThisHour: 0, totalCreditsThisHour: 0 };
   }
 
   async gate(
@@ -193,7 +212,17 @@ export class AICreditGateway {
   }
 }
 
-export const aiCreditGateway = AICreditGateway.getInstance();
+export const aiTokenGateway = AITokenGateway.getInstance();
+
+// ============================================================================
+// BACKWARD-COMPAT ALIASES (retained so callers compile during transition)
+// ============================================================================
+
+/** @deprecated Use AITokenGateway */
+export const AICreditGateway = AITokenGateway;
+
+/** @deprecated Use aiTokenGateway */
+export const aiCreditGateway = aiTokenGateway;
 
 // ============================================================================
 // UTILITY FUNCTIONS (preserved for compatibility)
@@ -203,16 +232,19 @@ export function isFeatureFree(_featureKey: string): boolean {
   return true;
 }
 
-export function getFeatureCreditCost(_featureKey: string): number {
+export function getFeatureTokenCost(_featureKey: string): number {
   return 0;
 }
 
+/** @deprecated Use getFeatureTokenCost */
+export const getFeatureCreditCost = getFeatureTokenCost;
+
 export function listFreeFeatures(): string[] {
-  return Array.from(CREDIT_EXEMPT_FEATURES);
+  return Array.from(TOKEN_FREE_FEATURES);
 }
 
 export function listPaidFeatures(): Array<{ feature: string; cost: number }> {
-  return Object.entries(CREDIT_COSTS)
-    .filter(([key, cost]) => cost > 0 && !CREDIT_EXEMPT_FEATURES.has(key))
+  return Object.entries(TOKEN_COSTS)
+    .filter(([key, cost]) => cost > 0 && !TOKEN_FREE_FEATURES.has(key))
     .map(([feature, cost]) => ({ feature, cost }));
 }

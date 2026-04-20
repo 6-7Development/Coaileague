@@ -667,7 +667,7 @@ const SCHEDULER_CONFIG = {
   creditReset: {
     enabled: true,
     schedule: '0 0 1 * *', // Midnight on 1st of every month
-    description: 'Monthly refill of automation credits based on subscription tier'
+    description: 'Monthly token allowance reset (no-op — token_usage_monthly auto-creates per month)'
   },
   visualQa: {
     enabled: true,
@@ -2360,7 +2360,7 @@ export function startAutonomousScheduler() {
     cleanup: { enabled: true, schedule: CRON.idempotencyCleanup, description: 'Idempotency key cleanup' },
     roomAutoClose: { enabled: true, schedule: CRON.chatAutoClose, description: 'Room auto-close' },
     wsConnectionCleanup: { enabled: true, schedule: CRON.wsCleanup, description: 'WebSocket cleanup' },
-    creditReset: { enabled: true, schedule: CRON.monthlyCreditReset, description: 'Monthly credit reset' },
+    creditReset: { enabled: true, schedule: CRON.monthlyCreditReset, description: 'Monthly token allowance reset' },
     visualQa: { enabled: true, schedule: CRON.visualQa, description: 'Daily visual QA scanning' },
     autoClockOut: { enabled: true, schedule: '*/30 * * * *', description: 'Auto clock-out officers whose shift ended >30 minutes ago with no clock-out' },
     shiftCompletionBridge: { enabled: true, schedule: '*/30 * * * *', description: 'Create pending time entries for assigned shifts with no clock-in/out recorded' },
@@ -2748,16 +2748,18 @@ export function startAutonomousScheduler() {
     log.info('WebSocket Connection Cleanup registered', { schedule: SCHEDULER_CONFIG.wsConnectionCleanup.schedule, description: SCHEDULER_CONFIG.wsConnectionCleanup.description });
   }
 
-  // 7. Monthly Credit Reset (1st of month at midnight)
-  registerJobInfo('Monthly Credit Reset', SCHEDULER_CONFIG.creditReset.schedule, SCHEDULER_CONFIG.creditReset.description, SCHEDULER_CONFIG.creditReset.enabled);
+  // 7. Monthly Token Allowance Reset (1st of month at midnight)
+  // Token allowances reset naturally via token_usage_monthly (new row per month).
+  // This cron is retained as a heartbeat/no-op — it does not touch any tables.
+  registerJobInfo('Monthly Token Allowance Reset', SCHEDULER_CONFIG.creditReset.schedule, SCHEDULER_CONFIG.creditReset.description, SCHEDULER_CONFIG.creditReset.enabled);
   if (SCHEDULER_CONFIG.creditReset.enabled) {
     cron.schedule(SCHEDULER_CONFIG.creditReset.schedule, () => {
-      trackJobExecution('Monthly Credit Reset', async () => {
-        log.debug('Credit reset triggered', { timestamp: new Date().toISOString() });
+      trackJobExecution('Monthly Token Allowance Reset', async () => {
+        log.debug('Monthly token allowance heartbeat', { timestamp: new Date().toISOString() });
         await resetMonthlyCredits();
       });
     });
-    log.info('Monthly Credit Reset registered', { schedule: SCHEDULER_CONFIG.creditReset.schedule, description: SCHEDULER_CONFIG.creditReset.description });
+    log.info('Monthly Token Allowance Reset registered', { schedule: SCHEDULER_CONFIG.creditReset.schedule, description: SCHEDULER_CONFIG.creditReset.description });
   }
 
   // 7b. Monthly Platform Infrastructure Billing (1st of month at 1 AM)
@@ -2767,13 +2769,13 @@ export function startAutonomousScheduler() {
       log.debug('Platform infrastructure billing triggered', { timestamp: new Date().toISOString() });
       try {
         const result = await platformServicesMeter.chargeMonthlyInfrastructure();
-        log.info('Platform billing complete', { workspacesProcessed: result.processed, creditsCharged: result.totalCredits });
+        log.info('Platform billing complete', { workspacesProcessed: result.processed, tokensUsed: result.totalCredits });
         emitAutomationEvent({
           jobName: 'Monthly Platform Infrastructure Billing',
           category: 'billing',
           success: true,
           recordsProcessed: result.processed,
-          details: { creditsCharged: result.totalCredits },
+          details: { tokensUsed: result.totalCredits },
         });
       } catch (error: any) {
         log.error('Platform billing error', { error: (error instanceof Error ? error.message : String(error)) });

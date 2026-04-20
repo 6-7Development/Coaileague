@@ -112,7 +112,10 @@ async function resolveBillingWorkspace(workspaceId: string): Promise<{ billingWo
   return { billingWorkspaceId: workspaceId, isSubOrg: false };
 }
 
-router.get('/balance', requireAuth, async (req: AuthenticatedRequest, res) => {
+// Canonical token-usage endpoint. /api/usage/tokens is mounted from the same
+// router via the new-canonical path, while /api/credits/balance remains for
+// legacy compat until all clients migrate.
+router.get(['/balance', '/tokens'], requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const { workspaceId, error } = await resolveActiveWorkspace(req);
     if (!workspaceId) {
@@ -201,7 +204,7 @@ router.get('/balance', requireAuth, async (req: AuthenticatedRequest, res) => {
   }
 });
 
-router.get('/usage-breakdown', requireAuth, async (req: AuthenticatedRequest, res) => {
+router.get(['/usage-breakdown', '/token-breakdown'], requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const { workspaceId, error } = await resolveActiveWorkspace(req);
     if (!workspaceId) {
@@ -237,7 +240,7 @@ router.get('/usage-breakdown', requireAuth, async (req: AuthenticatedRequest, re
   }
 });
 
-router.get('/transactions', requireAuth, async (req: AuthenticatedRequest, res) => {
+router.get(['/transactions', '/token-log'], requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.user?.id;
     if (!userId) return res.status(401).json({ message: 'Unauthorized' });
@@ -296,69 +299,22 @@ router.get('/transactions', requireAuth, async (req: AuthenticatedRequest, res) 
   }
 });
 
-router.get('/packs', requireAuth, async (req: AuthenticatedRequest, res) => {
-  try {
-    // creditPacks table dropped (Phase 16)
-    res.json([]);
-  } catch (error) {
-    log.error('[API] Error fetching credit packs:', error);
-    res.status(500).json({ message: 'Failed to fetch credit packs' });
-  }
+// /packs and /purchase removed — CoAIleague does not sell credits. Token
+// overages are billed automatically on the monthly invoice.
+// Legacy UI calls return 410 Gone with a clear deprecation message.
+router.get('/packs', requireAuth, async (_req: AuthenticatedRequest, res) => {
+  res.status(410).json({
+    error: 'Credit packs are no longer sold. AI usage is billed as token overage on the monthly invoice.',
+    migration: 'Use /api/usage/tokens for current monthly token usage.',
+    packs: [],
+  });
 });
 
-router.post('/purchase', requireAuth, async (req: AuthenticatedRequest, res) => {
-  try {
-    const userId = req.user?.id;
-    if (!userId) return res.status(401).json({ message: 'Unauthorized' });
-
-    const { workspaceId, error } = await resolveActiveWorkspace(req);
-    if (!workspaceId) {
-      return res.status(400).json({ error: error || 'No workspace found' });
-    }
-
-    // Only owner/co-owner of the billing workspace can purchase
-    const { billingWorkspaceId } = await resolveBillingWorkspace(workspaceId);
-    const { resolveWorkspaceForUser } = await import('../rbac');
-    const { role } = await resolveWorkspaceForUser(userId, billingWorkspaceId);
-    if (role !== 'org_owner' && role !== 'co_owner') {
-      return res.status(403).json({ error: 'Only the organization owner can purchase credits' });
-    }
-
-    const { creditPackId, successUrl, cancelUrl } = req.body;
-    if (!creditPackId || !successUrl || !cancelUrl) {
-      return res.status(400).json({ error: 'Missing required fields: creditPackId, successUrl, cancelUrl' });
-    }
-
-    const isValidRedirect = (url: string) => {
-      if (url.startsWith('/')) return true;
-      try {
-        const parsed = new URL(url);
-        if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return false;
-        const devDomain = process.env.APP_BASE_URL;
-        if (devDomain && (parsed.hostname === devDomain || parsed.hostname.endsWith(`.${devDomain}`))) return true;
-        if (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') return true;
-        if (parsed.hostname.endsWith('.replit.app')) return true;
-        return false;
-      } catch { return false; }
-    };
-    if (!isValidRedirect(successUrl) || !isValidRedirect(cancelUrl)) {
-      return res.status(400).json({ error: 'Invalid redirect URL' });
-    }
-
-    const { creditPurchaseService } = await import('../services/billing/creditPurchase');
-    const session = await creditPurchaseService.createCheckoutSession({
-      workspaceId: billingWorkspaceId,
-      userId,
-      creditPackId,
-      successUrl,
-      cancelUrl,
-    });
-
-    res.json(session);
-  } catch (error) {
-    log.error('[API] Error creating credit purchase session:', error);
-    res.status(500).json({ message: 'Failed to create checkout session' });
-  }
+router.post('/purchase', requireAuth, async (_req: AuthenticatedRequest, res) => {
+  res.status(410).json({
+    error: 'Credit purchase is retired. AI usage is billed as monthly token overage.',
+    migration: 'Use /api/usage/tokens for current monthly token usage.',
+  });
 });
 
 export default router;

@@ -11,7 +11,7 @@
  */
 
 import OpenAI from 'openai';
-import { aiCreditGateway } from '../../billing/aiCreditGateway';
+import { aiCreditGateway } from '../../billing/aiTokenGateway';
 import { aiMeteringService } from '../../billing/aiMeteringService';
 import { createLogger } from '../../../lib/logger';
 const log = createLogger('openaiClient');

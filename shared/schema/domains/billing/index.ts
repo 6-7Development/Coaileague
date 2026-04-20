@@ -719,16 +719,19 @@ export const billingAddons = pgTable("billing_addons", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// @deprecated — use token_usage_monthly and token_usage_log. Retained only
+// for legacy read paths (creditLedger.ts). Do not add new writers. Safe DB
+// drop happens in a dedicated migration phase.
 export const aiTokenWallets = pgTable("ai_token_wallets", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().unique(),
-  
-  // Balance tracking
-  currentBalance: decimal("current_balance", { precision: 15, scale: 4 }).notNull().default("0.0000"), // Current credit balance
-  totalPurchased: decimal("total_purchased", { precision: 15, scale: 4 }).notNull().default("0.0000"), // Lifetime purchases
-  totalUsed: decimal("total_used", { precision: 15, scale: 4 }).notNull().default("0.0000"), // Lifetime usage
-  
-  // Monthly included credits (from subscription tier)
+
+  // @legacy — Balance tracking (deprecated; tokens tracked in token_usage_monthly)
+  currentBalance: decimal("current_balance", { precision: 15, scale: 4 }).notNull().default("0.0000"),
+  totalPurchased: decimal("total_purchased", { precision: 15, scale: 4 }).notNull().default("0.0000"),
+  totalUsed: decimal("total_used", { precision: 15, scale: 4 }).notNull().default("0.0000"),
+
+  // @legacy — use allowanceTokens in token_usage_monthly
   monthlyIncludedCredits: decimal("monthly_included_credits", { precision: 10, scale: 2 }).default("0.00"),
   monthlyCreditsUsed: decimal("monthly_credits_used", { precision: 10, scale: 2 }).default("0.00"),
   monthlyCreditsResetAt: timestamp("monthly_credits_reset_at"), // When monthly credits reset
@@ -1150,6 +1153,9 @@ export const commitmentLedger = pgTable("commitment_ledger", {
   index("commitment_expires_idx").on(table.expiresAt),
 ]);
 
+// @deprecated — credit packs are retired. CoAIleague does not sell credits.
+// AI usage is metered as tokens; overage is billed on the monthly invoice.
+// Safe DB drop happens in a dedicated migration phase.
 export const trinityCreditPackages = pgTable("trinity_credit_packages", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   
@@ -1174,6 +1180,9 @@ export const trinityCreditPackages = pgTable("trinity_credit_packages", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// @deprecated — use token_usage_monthly and token_usage_log. Legacy table
+// retained only while creditsLedgerService callers are removed. Do not add
+// new writers. Safe DB drop happens in a dedicated migration phase.
 export const trinityCredits = pgTable("trinity_credits", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull().unique(),

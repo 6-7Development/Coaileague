@@ -23,7 +23,7 @@ import {
 } from '@shared/schema';
 import { usageMeteringService } from '../billing/usageMetering';
 import { meteredGemini } from '../billing/meteredGeminiClient';
-import { aiCreditGateway } from '../billing/aiCreditGateway';
+import { aiCreditGateway } from '../billing/aiTokenGateway';
 import { createLogger } from '../../lib/logger';
 const log = createLogger('aiExpenseCategorizationService');
 

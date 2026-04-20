@@ -532,111 +532,15 @@ billingRouter.get('/transactions', async (req: AuthenticatedRequest, res: Respon
 });
 
 /**
- * Purchase credits - Create Stripe Checkout session (SECURE: Validates credit pack)
- * ROLE GUARD: Only workspace owners, super_admins, and platform admins can initiate purchases.
+ * Purchase credits — RETIRED (410 Gone).
+ * CoAIleague does not sell credit packs. AI usage is metered as tokens and
+ * overage is billed automatically on the monthly invoice.
  */
-billingRouter.post('/credits/purchase', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-  try {
-    // @ts-expect-error — TS migration: fix in refactoring sprint
-    const workspaceId = req.workspaceId || (req.user)?.workspaceId || req.currentWorkspaceId;
-    const userId = req.user?.id;
-    if (!workspaceId || !userId) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    // SECURITY: Only workspace owners/co-owners and platform admins may buy credits.
-    const platformAdminRoles = ['root_admin', 'deputy_admin', 'sysop'];
-    // @ts-expect-error — TS migration: fix in refactoring sprint
-    const userPlatformRole = (req.user)?.platformRole || '';
-    const isPlatformAdmin = platformAdminRoles.includes(userPlatformRole);
-    if (!isPlatformAdmin) {
-      const { role: wsRole } = await resolveWorkspaceForUser(userId, workspaceId);
-      if (wsRole !== 'org_owner' && wsRole !== 'co_owner') {
-        return res.status(403).json({
-          error: 'Insufficient permissions',
-          message: 'Only workspace owners can purchase credits.',
-        });
-      }
-    }
-
-    // SECURITY: Require creditPackId - don't hardcode defaults
-    const input = z.object({
-      creditPackId: z.string(),
-      successUrl: z.string().optional(),
-      cancelUrl: z.string().optional(),
-    }).parse(req.body);
-
-    // SECURITY: Validate creditPackId is provided
-    if (!input.creditPackId) {
-      return res.status(400).json({ 
-        error: 'Credit pack ID required',
-        message: 'Please select a credit pack to purchase',
-      });
-    }
-
-    // Import creditPurchaseService and emailService
-    const { creditPurchaseService } = await import('../services/billing/creditPurchase');
-    const { emailService } = await import('../services/emailService');
-
-    let baseUrl = `${req.protocol}://${req.get('host')}`;
-    if (emailService && typeof (emailService as any).getAppBaseUrl === 'function') {
-      baseUrl = (emailService as any).getAppBaseUrl();
-    }
-
-    // Create Stripe Checkout session
-    log.info('[Stripe] Creating checkout session for credit purchase:', input.creditPackId);
-    
-    try {
-      const session = await creditPurchaseService.createCheckoutSession({
-        workspaceId,
-        userId,
-        creditPackId: input.creditPackId,
-        successUrl: input.successUrl || `${baseUrl}/billing?payment_success=true`,
-        cancelUrl: input.cancelUrl || `${baseUrl}/billing?payment_canceled=true`,
-      });
-
-      log.info('[Stripe] Checkout session created:', session.sessionId);
-
-      res.json({ 
-        success: true, 
-        sessionUrl: (session as any).sessionUrl,
-        checkoutUrl: (session as any).sessionUrl,
-        sessionId: session.sessionId,
-      });
-    } catch (packError: unknown) {
-      // SECURITY: Handle pack validation failures with clear error messages
-      log.error('[Stripe] Pack validation or checkout failed:', packError);
-      
-      // @ts-expect-error — TS migration: fix in refactoring sprint
-      if (packError.message?.includes('not found') || packError.message?.includes('does not exist')) {
-        return res.status(404).json({ 
-          error: 'Credit pack not found',
-          message: 'The selected credit pack does not exist or is inactive',
-        });
-      }
-      
-      return res.status(400).json({ 
-        error: 'Failed to create checkout session',
-        // @ts-expect-error — TS migration: fix in refactoring sprint
-        message: packError.message || 'Unable to process credit purchase',
-      });
-    }
-  } catch (error: unknown) {
-    log.error('[Stripe] Failed to create checkout session:', error);
-    
-    // Handle Zod validation errors
-    // @ts-expect-error — TS migration: fix in refactoring sprint
-    if (error.name === 'ZodError') {
-      return res.status(400).json({ 
-        error: 'Invalid request',
-        message: 'Missing required fields',
-        // @ts-expect-error — TS migration: fix in refactoring sprint
-        details: error.errors,
-      });
-    }
-    
-    res.status(400).json({ error: sanitizeError(error) || 'Failed to initiate credit purchase' });
-  }
+billingRouter.post('/credits/purchase', async (_req: AuthenticatedRequest, res: Response) => {
+  res.status(410).json({
+    error: 'Credit purchase is retired. AI usage is billed as monthly token overage.',
+    migration: 'Use GET /api/usage/tokens for current monthly token usage.',
+  });
 });
 
 /**

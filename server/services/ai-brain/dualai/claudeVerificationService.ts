@@ -5,7 +5,7 @@
  * Trinity's proposed actions before execution, providing a safety net.
  */
 
-import { aiCreditGateway } from '../../billing/aiCreditGateway';
+import { aiCreditGateway } from '../../billing/aiTokenGateway';
 import { aiActionLogger, type AIActionContext } from './aiActionLogger';
 import { type ConfidenceScore, type TrinityOperation } from './trinityConfidenceScorer';
 import { createLogger } from '../../../lib/logger';

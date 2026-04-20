@@ -2520,7 +2520,7 @@ export class UnifiedGeminiClient {
   ): Promise<{ allowed: boolean; errorMessage?: string }> {
     try {
       const safeFeatureKey = featureKey || 'ai_general';
-      const { aiCreditGateway } = await import('../../billing/aiCreditGateway');
+      const { aiCreditGateway } = await import('../../billing/aiTokenGateway');
       // @ts-expect-error — TS migration: fix in refactoring sprint
       const result = await aiCreditGateway.preAuthorize(workspaceId, userId, safeFeatureKey);
       if (!result.authorized) {
@@ -2545,7 +2545,7 @@ export class UnifiedGeminiClient {
     tokenData?: { inputTokens?: number; outputTokens?: number; model?: string }
   ): Promise<void> {
     try {
-      const { aiCreditGateway } = await import('../../billing/aiCreditGateway');
+      const { aiCreditGateway } = await import('../../billing/aiTokenGateway');
       const tokensTotal = (tokenData?.inputTokens || 0) + (tokenData?.outputTokens || 0);
       // @ts-expect-error — TS migration: fix in refactoring sprint
       await aiCreditGateway.finalizeBilling(workspaceId, userId, featureKey, tokensTotal, {

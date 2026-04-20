@@ -22,7 +22,7 @@
 
 import { createLogger } from '../../lib/logger';
 import { GoogleGenerativeAI, GenerativeModel, GenerationConfig } from '@google/generative-ai';
-import { aiCreditGateway } from './aiCreditGateway';
+import { aiCreditGateway } from './aiTokenGateway';
 import { usageMeteringService } from './usageMetering';
 
 const log = createLogger('meteredGeminiClient');

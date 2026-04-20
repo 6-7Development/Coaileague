@@ -572,10 +572,10 @@ export default function UniversalSchedule({ defaultViewMode }: { defaultViewMode
         setActiveOrchestrationId(data.orchestrationId);
         setTimeout(() => setActiveOrchestrationId(null), 30000);
       }
-      const creditsUsed = data?.creditsDeducted || 0;
+      const tokensUsed = data?.tokensUsed ?? data?.creditsDeducted ?? 0;
       toast({
         title: 'Schedule Generated',
-        description: `Trinity AI has optimized the schedule${creditsUsed > 0 ? ` (${creditsUsed} credits used)` : ''}`,
+        description: `Trinity AI has optimized the schedule${tokensUsed > 0 ? ` (${tokensUsed} tokens used)` : ''}`,
       });
     },
     onError: (error: any) => {
@@ -1084,19 +1084,19 @@ export default function UniversalSchedule({ defaultViewMode }: { defaultViewMode
         setActiveOrchestrationId(data.orchestrationId);
         setTimeout(() => setActiveOrchestrationId(null), 15000);
       }
-      const creditsUsed = data?.creditsDeducted || 0;
+      const tokensUsed = data?.tokensUsed ?? data?.creditsDeducted ?? 0;
       toast({
         title: 'AI auto-filled shift',
-        description: `Best available employee assigned${creditsUsed > 0 ? ` (${creditsUsed} credits used)` : ''}`,
+        description: `Best available employee assigned${tokensUsed > 0 ? ` (${tokensUsed} tokens used)` : ''}`,
       });
     },
     onError: (error: any) => {
       const isCredits = error?.status === 402 || error?.message?.includes('Insufficient credits');
       toast({
         variant: 'destructive',
-        title: isCredits ? 'Insufficient Credits' : 'AI fill failed',
+        title: isCredits ? 'Monthly Token Limit Reached' : 'AI fill failed',
         description: isCredits
-          ? 'You need more AI credits to run this operation.'
+          ? 'Your workspace has hit its monthly AI token allowance. Upgrade your plan or wait for the next billing period.'
           : error.message,
       });
     }
@@ -1155,12 +1155,12 @@ export default function UniversalSchedule({ defaultViewMode }: { defaultViewMode
       
       const filled = data?.shiftsUpdated || 0;
       const total = data?.totalOpen || 0;
-      const creditsUsed = data?.creditsDeducted || 0;
+      const tokensUsed = data?.tokensUsed ?? data?.creditsDeducted ?? 0;
       if (!data?.sessionId) {
         toast({
           title: 'Trinity AI Auto-Fill Complete',
-          description: filled > 0 
-            ? `Filled ${filled} of ${total} shifts${creditsUsed > 0 ? ` (${creditsUsed} credits used)` : ''}`
+          description: filled > 0
+            ? `Filled ${filled} of ${total} shifts${tokensUsed > 0 ? ` (${tokensUsed} tokens used)` : ''}`
             : 'No unassigned shifts to fill',
         });
       }
@@ -1169,9 +1169,9 @@ export default function UniversalSchedule({ defaultViewMode }: { defaultViewMode
       const isCredits = error?.status === 402 || error?.message?.includes('Insufficient credits');
       toast({
         variant: 'destructive',
-        title: isCredits ? 'Insufficient Credits' : 'AI auto-fill failed',
+        title: isCredits ? 'Monthly Token Limit Reached' : 'AI auto-fill failed',
         description: isCredits
-          ? 'You need more AI credits to fill shifts.'
+          ? 'Your workspace has hit its monthly AI token allowance. Upgrade your plan or wait for the next billing period.'
           : error.message,
       });
     }

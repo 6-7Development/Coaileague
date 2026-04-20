@@ -16,7 +16,7 @@ export * from './usageCapService';
 export * from './stripeWebhooks';
 export * from './orgBillingService';
 export * from './platformBillService';
-export * from './aiCreditGateway';
+export * from './aiTokenGateway';
 export * from './billingReconciliation';
 export * from './usageTracker';
 export * from './platformServicesMeter';

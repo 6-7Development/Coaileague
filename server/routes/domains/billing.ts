@@ -39,6 +39,7 @@ export function mountBillingRoutes(app: Express): void {
     "/api/finance",
     "/api/stripe",
     "/api/credits",
+    "/api/usage",
     "/api/invoices",
     "/api/trinity/revenue",
     "/api/timesheet-invoices",
@@ -154,6 +155,9 @@ export function mountBillingRoutes(app: Express): void {
   // before it ever reaches the router. Registering it first ensures the webhook
   // matches and responds before the generic /api auth guards run.
   app.use("/api/stripe", stripeInlineRouter);
+  // Canonical token-usage prefix (GET /api/usage/tokens, /token-breakdown, /token-log).
+  // /api/credits/* remains mounted for legacy clients; /purchase and /packs return 410 Gone.
+  app.use("/api/usage", creditRouter);
   app.use("/api/credits", creditRouter);
 
   app.use("/api", requireAuth, ensureWorkspaceAccess, financeInlineRouter);

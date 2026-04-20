@@ -15,7 +15,7 @@
 
 import { createLogger } from '../../lib/logger';
 import OpenAI from 'openai';
-import { aiCreditGateway } from './aiCreditGateway';
+import { aiCreditGateway } from './aiTokenGateway';
 
 const log = createLogger('universalAIBillingInterceptor');
 let _openaiClient: OpenAI | null = null;

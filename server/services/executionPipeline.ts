@@ -44,7 +44,7 @@ import { db } from '../db';
 import { executionPipelineLogs, systemAuditLogs, type InsertExecutionPipelineLog } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 import { creditManager, CREDIT_COSTS } from './billing/creditManager';
-import { aiCreditGateway } from './billing/aiCreditGateway';
+import { aiCreditGateway } from './billing/aiTokenGateway';
 import { platformEventBus } from './platformEventBus';
 // @ts-expect-error — TS migration: fix in refactoring sprint
 import { v4 as uuidv4 } from 'uuid';

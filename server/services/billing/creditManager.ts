@@ -535,6 +535,17 @@ export const CREDIT_COSTS = {
 
 // CREDIT_EXEMPT_FEATURES is defined once above (line ~113) — not re-exported here
 
+// ---------------------------------------------------------------------------
+// TOKEN ALIASES — canonical names after the credit → token rename
+// CREDIT_COSTS and CREDIT_EXEMPT_FEATURES above are retained as @deprecated
+// exports so legacy callers keep compiling during the transition.
+// ---------------------------------------------------------------------------
+/** Canonical per-feature token cost map (1 token-unit = 1 internal cost unit). */
+export const TOKEN_COSTS = CREDIT_COSTS;
+/** Features that bypass the token gate entirely (public demos, etc.). */
+export const TOKEN_FREE_FEATURES = CREDIT_EXEMPT_FEATURES;
+export const TIER_MONTHLY_TOKEN_ALLOCATIONS = TIER_CREDIT_ALLOCATIONS;
+
 // ============================================================================
 // PLATFORM SUPPORT POOL - Shared credit pool for helpdesk/support AI operations
 // ============================================================================

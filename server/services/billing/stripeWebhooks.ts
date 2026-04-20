@@ -1166,10 +1166,14 @@ export class StripeWebhookService {
     
     log.info('Checkout session completed', { sessionId: session.id });
     
+    // Credit packs are retired. If a legacy checkout.session includes creditPackId,
+    // acknowledge the webhook without side effects — purchase fulfillment is no-op.
     if (creditPackId && workspaceId && userId) {
-      const { creditPurchaseService } = await import('./creditPurchase');
-      await (creditPurchaseService as any).handlePaymentSuccess(session);
-      return { success: true, handled: true, message: 'Credit purchase fulfilled' };
+      log.warn('[stripeWebhooks] Ignoring legacy credit-pack checkout session — credit packs retired', {
+        sessionId: session.id,
+        workspaceId,
+      });
+      return { success: true, handled: true, message: 'Credit-pack checkout ignored — feature retired' };
     }
 
     // Subscription checkout completed — activate workspace

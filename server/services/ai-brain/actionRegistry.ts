@@ -14,7 +14,7 @@ import {
 } from '../helpai/platformActionHub';
 import { serviceController, featureToggleManager, consoleCommandExecutor, endUserBotSupport, supportStaffAssistant } from './orchestratorCapabilities';
 import { db } from '../../db';
-import { aiCreditGateway } from '../billing/aiCreditGateway';
+import { aiCreditGateway } from '../billing/aiTokenGateway';
 import { CREDIT_COSTS } from '../billing/creditManager';
 import { FAST_MODE_TIERS, type FastModeTier } from './fastModeService';
 import { eq, and, desc, gte, lte, sql, isNull } from 'drizzle-orm';
@@ -501,7 +501,7 @@ class AIBrainActionRegistry {
               message: 'I\'m analyzing available employees...',
               progress: 20,
               executionMode,
-              creditsCharged: totalCredits,
+              tokensUsed: totalCredits,
             }
           });
           
