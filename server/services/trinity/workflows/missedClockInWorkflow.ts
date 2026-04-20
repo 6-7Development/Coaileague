@@ -85,9 +85,15 @@ export async function runMissedClockInSweep(): Promise<MissedClockInSweepResult>
     return result;
   }
 
+  const { isWorkspaceServiceable } = await import('../../billing/billingConstants');
+
   for (const miss of missing) {
     result.scanned++;
     try {
+      // Phase 26: subscription gate — skip cancelled/suspended workspaces.
+      if (!(await isWorkspaceServiceable(miss.workspaceId))) {
+        continue;
+      }
       const existing = await findExistingWorkflow(miss.workspaceId, miss.shiftId);
       if (!existing) {
         const advanced = await startMissedClockInWorkflow(miss);
@@ -267,7 +273,7 @@ async function advanceToEscalation(
     const summary = `${officerName} has not clocked in and is unresponsive. Shift ${miss.shiftId} requires supervisor intervention.`;
 
     const supervisorIds = await fetchSupervisors(miss.workspaceId);
-    const supervisors = await fetchSupervisorPhones(miss.workspaceId);
+    const contacts = await fetchSupervisorContacts(miss.workspaceId);
 
     await Promise.allSettled([
       ...supervisorIds.map((recipientUserId) =>
@@ -281,9 +287,9 @@ async function advanceToEscalation(
           idempotencyKey: `missed-clockin-${miss.shiftId}-${recipientUserId}`,
         }),
       ),
-      ...supervisors.slice(0, 3).map((sup) =>
+      ...contacts.slice(0, 3).map((c) =>
         sendSMSToEmployee(
-          sup.id,
+          c.employeeId,
           `URGENT: ${summary}`,
           'missed_clockin_escalation',
           miss.workspaceId,
@@ -499,7 +505,7 @@ async function fetchSupervisors(workspaceId: string): Promise<string[]> {
   }
 }
 
-async function fetchSupervisorPhones(workspaceId: string): Promise<Array<{ id: string; phone: string }>> {
+async function fetchSupervisorContacts(workspaceId: string): Promise<Array<{ employeeId: string; phone: string }>> {
   try {
     const { pool } = await import('../../../db');
     const r = await pool.query(
@@ -513,8 +519,8 @@ async function fetchSupervisorPhones(workspaceId: string): Promise<Array<{ id: s
       [workspaceId],
     );
     return r.rows
-      .map((row: any) => ({ id: row.id as string, phone: row.phone as string }))
-      .filter((s: { id: string; phone: string }) => Boolean(s.id && s.phone));
+      .map((row: any) => ({ employeeId: row.id as string, phone: row.phone as string }))
+      .filter((row: any) => row.employeeId && row.phone);
   } catch {
     return [];
   }

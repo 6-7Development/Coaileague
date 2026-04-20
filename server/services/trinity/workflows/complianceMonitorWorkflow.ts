@@ -92,6 +92,11 @@ export async function runComplianceMonitorWorkflow(): Promise<ComplianceSweepRes
       for (const exp of expirations) {
         try {
           if (await alreadyNotified(exp.skillId, bucket.label)) continue;
+          // Phase 26: subscription gate — skip cancelled/suspended workspaces.
+          const { isWorkspaceServiceable } = await import('../../billing/billingConstants');
+          if (!(await isWorkspaceServiceable(exp.workspaceId))) {
+            continue;
+          }
           await notifyExpiration(exp, bucket);
 
           if (bucket.label === 'expired') {
@@ -289,11 +294,11 @@ async function notifyExpiration(
         ),
       );
       if (bucket.sms) {
-        const managers = await fetchManagerPhones(exp.workspaceId);
+        const contacts = await fetchManagerContacts(exp.workspaceId);
         await Promise.allSettled(
-          managers.slice(0, 3).map((mgr) =>
+          contacts.slice(0, 3).map((c) =>
             sendSMSToEmployee(
-              mgr.id,
+              c.employeeId,
               `Trinity compliance alert: ${name}'s ${skill} — ${label}.`,
               `compliance_mgr_${bucket.label}`,
               exp.workspaceId,
@@ -384,7 +389,7 @@ async function fetchManagers(workspaceId: string): Promise<string[]> {
   }
 }
 
-async function fetchManagerPhones(workspaceId: string): Promise<Array<{ id: string; phone: string }>> {
+async function fetchManagerContacts(workspaceId: string): Promise<Array<{ employeeId: string; phone: string }>> {
   try {
     const { pool } = await import('../../../db');
     const r = await pool.query(
@@ -398,8 +403,8 @@ async function fetchManagerPhones(workspaceId: string): Promise<Array<{ id: stri
       [workspaceId],
     );
     return r.rows
-      .map((row: any) => ({ id: row.id as string, phone: row.phone as string }))
-      .filter((m: { id: string; phone: string }) => Boolean(m.id && m.phone));
+      .map((row: any) => ({ employeeId: row.id as string, phone: row.phone as string }))
+      .filter((row: any) => row.employeeId && row.phone);
   } catch {
     return [];
   }

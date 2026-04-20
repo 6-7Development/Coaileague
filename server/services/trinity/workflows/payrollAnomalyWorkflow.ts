@@ -59,6 +59,19 @@ export interface PayrollAnomalyResult {
 export async function executePayrollAnomalyWorkflow(
   params: PayrollAnomalyParams,
 ): Promise<PayrollAnomalyResult> {
+  // Phase 26: subscription gate — skip cancelled/suspended workspaces.
+  const { isWorkspaceServiceable } = await import('../../billing/billingConstants');
+  if (!(await isWorkspaceServiceable(params.workspaceId))) {
+    return {
+      success: false,
+      workflowId: '',
+      anomalyCount: 0,
+      highestSeverity: 'none',
+      blocked: false,
+      summary: 'Workspace not serviceable (subscription inactive)',
+    };
+  }
+
   const record = await logWorkflowStart({
     workflowName: WORKFLOW_NAME,
     workspaceId: params.workspaceId,
@@ -338,11 +351,11 @@ async function notifyStakeholders(params: {
 
   if (params.highestSeverity === 'medium' || params.highestSeverity === 'high') {
     try {
-      const managers = await fetchManagerPhones(params.workspaceId);
+      const contacts = await fetchManagerContacts(params.workspaceId);
       await Promise.allSettled(
-        managers.slice(0, 3).map((mgr) =>
+        contacts.slice(0, 3).map((c) =>
           sendSMSToEmployee(
-            mgr.id,
+            c.employeeId,
             summary,
             params.blocked ? 'payroll_blocked' : 'payroll_anomaly_flag',
             params.workspaceId,
@@ -372,7 +385,7 @@ async function fetchWorkspaceManagers(workspaceId: string): Promise<string[]> {
   }
 }
 
-async function fetchManagerPhones(workspaceId: string): Promise<Array<{ id: string; phone: string }>> {
+async function fetchManagerContacts(workspaceId: string): Promise<Array<{ employeeId: string; phone: string }>> {
   try {
     const { pool } = await import('../../../db');
     const r = await pool.query(
@@ -386,8 +399,8 @@ async function fetchManagerPhones(workspaceId: string): Promise<Array<{ id: stri
       [workspaceId],
     );
     return r.rows
-      .map((row: any) => ({ id: row.id as string, phone: row.phone as string }))
-      .filter((m: { id: string; phone: string }) => Boolean(m.id && m.phone));
+      .map((row: any) => ({ employeeId: row.id as string, phone: row.phone as string }))
+      .filter((row: any) => row.employeeId && row.phone);
   } catch {
     return [];
   }

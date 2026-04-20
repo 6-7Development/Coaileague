@@ -93,9 +93,15 @@ export async function runPreShiftIntelligenceSweep(): Promise<PreShiftSweepResul
     return result;
   }
 
+  const { isWorkspaceServiceable } = await import('../../billing/billingConstants');
+
   for (const shift of upcoming) {
     result.scanned++;
     try {
+      // Phase 26: subscription gate — skip cancelled/suspended workspaces.
+      if (!(await isWorkspaceServiceable(shift.workspaceId))) {
+        continue;
+      }
       const flags = await evaluateShift(shift);
       if (!flags.length) continue;
 
@@ -239,13 +245,13 @@ async function notify(flag: PreShiftFlag, shift: UpcomingShift): Promise<boolean
     ),
   );
 
-  // Medium + high also go by SMS to the first 3 supervisors (consent-checked).
+  // Medium + high also go by SMS to the first 3 supervisor contacts.
   if (flag.severity !== 'low') {
-    const supervisors = await fetchSupervisorPhones(shift.workspaceId);
+    const contacts = await fetchSupervisorContacts(shift.workspaceId);
     await Promise.allSettled(
-      supervisors.slice(0, 3).map((sup) =>
+      contacts.slice(0, 3).map((c) =>
         sendSMSToEmployee(
-          sup.id,
+          c.employeeId,
           `Trinity heads-up: ${summary}`,
           `preshift_${flag.code}`,
           shift.workspaceId,
@@ -502,7 +508,7 @@ async function fetchManagers(workspaceId: string): Promise<string[]> {
   }
 }
 
-async function fetchSupervisorPhones(workspaceId: string): Promise<Array<{ id: string; phone: string }>> {
+async function fetchSupervisorContacts(workspaceId: string): Promise<Array<{ employeeId: string; phone: string }>> {
   try {
     const { pool } = await import('../../../db');
     const r = await pool.query(
@@ -516,8 +522,8 @@ async function fetchSupervisorPhones(workspaceId: string): Promise<Array<{ id: s
       [workspaceId],
     );
     return r.rows
-      .map((row: any) => ({ id: row.id as string, phone: row.phone as string }))
-      .filter((s: { id: string; phone: string }) => Boolean(s.id && s.phone));
+      .map((row: any) => ({ employeeId: row.id as string, phone: row.phone as string }))
+      .filter((row: any) => row.employeeId && row.phone);
   } catch {
     return [];
   }

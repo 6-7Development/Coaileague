@@ -68,9 +68,15 @@ export async function runRevenueAtRiskSweep(): Promise<RevenueAtRiskResult> {
     return result;
   }
 
+  const { isWorkspaceServiceable } = await import('../../billing/billingConstants');
+
   for (const workspaceId of workspaces) {
     result.workspacesScanned++;
     try {
+      // Phase 26: subscription gate — skip cancelled/suspended workspaces.
+      if (!(await isWorkspaceServiceable(workspaceId))) {
+        continue;
+      }
       const per = await runRevenueAtRiskForWorkspace(workspaceId);
       result.overdueInvoicesFlagged += per.overdueInvoicesFlagged;
       result.expiringContractsFlagged += per.expiringContractsFlagged;
@@ -111,7 +117,7 @@ export async function runRevenueAtRiskForWorkspace(workspaceId: string): Promise
 
   const ownerIds = await fetchOwners(workspaceId);
   const managerIds = await fetchManagers(workspaceId);
-  const ownerPhones = await fetchOwnerPhones(workspaceId);
+  const ownerContacts = await fetchOwnerContacts(workspaceId);
 
   // Overdue invoices — per-invoice SMS to owner + in-app to managers.
   for (const inv of overdue) {
@@ -134,9 +140,9 @@ export async function runRevenueAtRiskForWorkspace(workspaceId: string): Promise
     });
 
     await Promise.allSettled(
-      ownerPhones.slice(0, 2).map((owner) =>
+      ownerContacts.slice(0, 2).map((c) =>
         sendSMSToEmployee(
-          owner.id,
+          c.employeeId,
           `Trinity: ${summary} Reply if you want me to send a reminder.`,
           'revenue_overdue_invoice',
           workspaceId,
@@ -440,7 +446,7 @@ async function fetchManagers(workspaceId: string): Promise<string[]> {
   }
 }
 
-async function fetchOwnerPhones(workspaceId: string): Promise<Array<{ id: string; phone: string }>> {
+async function fetchOwnerContacts(workspaceId: string): Promise<Array<{ employeeId: string; phone: string }>> {
   try {
     const { pool } = await import('../../../db');
     const r = await pool.query(
@@ -454,8 +460,8 @@ async function fetchOwnerPhones(workspaceId: string): Promise<Array<{ id: string
       [workspaceId],
     );
     return r.rows
-      .map((row: any) => ({ id: row.id as string, phone: row.phone as string }))
-      .filter((o: { id: string; phone: string }) => Boolean(o.id && o.phone));
+      .map((row: any) => ({ employeeId: row.id as string, phone: row.phone as string }))
+      .filter((row: any) => row.employeeId && row.phone);
   } catch {
     return [];
   }

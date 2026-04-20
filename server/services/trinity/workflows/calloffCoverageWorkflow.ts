@@ -80,6 +80,20 @@ export interface CalloffWorkflowResult {
 export async function executeCalloffCoverageWorkflow(
   params: CalloffWorkflowParams,
 ): Promise<CalloffWorkflowResult> {
+  // Phase 26: subscription gate — skip cancelled/suspended workspaces.
+  const { isWorkspaceServiceable } = await import('../../billing/billingConstants');
+  if (!(await isWorkspaceServiceable(params.workspaceId))) {
+    return {
+      success: false,
+      workflowId: '',
+      shiftId: null,
+      offersSent: 0,
+      escalated: false,
+      summary: 'Workspace not serviceable (subscription inactive)',
+      errors: ['workspace_not_serviceable'],
+    };
+  }
+
   const record: WorkflowRecord = await logWorkflowStart({
     workflowName: WORKFLOW_NAME,
     workspaceId: params.workspaceId,
@@ -522,13 +536,13 @@ async function notifySupervisors(params: {
     ),
   );
 
-  // SMS the highest-priority supervisor phone numbers (best-effort, consent-checked).
+  // TCPA: route through sendSMSToEmployee for consent + subscription gating.
   try {
-    const supervisors = await fetchSupervisorPhones(params.workspaceId);
+    const contacts = await fetchSupervisorContacts(params.workspaceId);
     await Promise.allSettled(
-      supervisors.slice(0, 3).map((sup) =>
+      contacts.slice(0, 3).map((c) =>
         sendSMSToEmployee(
-          sup.id,
+          c.employeeId,
           `Trinity: ${summary}`,
           'calloff_coverage_alert',
           params.workspaceId,
@@ -569,7 +583,7 @@ async function escalateToSupervisor(params: {
   shiftId: string;
 }): Promise<void> {
   const supervisorIds = await fetchWorkspaceSupervisors(params.workspaceId);
-  const supervisors = await fetchSupervisorPhones(params.workspaceId);
+  const contacts = await fetchSupervisorContacts(params.workspaceId);
   const body = {
     severity: 'high',
     reason: 'calloff_unfilled',
@@ -589,9 +603,9 @@ async function escalateToSupervisor(params: {
         idempotencyKey: `calloff-escalation-${params.shiftId}-${recipientUserId}`,
       }),
     ),
-    ...supervisors.slice(0, 3).map((sup) =>
+    ...contacts.slice(0, 3).map((c) =>
       sendSMSToEmployee(
-        sup.id,
+        c.employeeId,
         `URGENT: Trinity was unable to fill shift ${params.shiftId} within ${SLA_MINUTES} minutes. Please assign coverage.`,
         'calloff_escalation',
         params.workspaceId,
@@ -630,7 +644,7 @@ async function fetchWorkspaceSupervisors(workspaceId: string): Promise<string[]>
   }
 }
 
-async function fetchSupervisorPhones(workspaceId: string): Promise<Array<{ id: string; phone: string }>> {
+async function fetchSupervisorContacts(workspaceId: string): Promise<Array<{ employeeId: string; phone: string }>> {
   try {
     const { pool } = await import('../../../db');
     const r = await pool.query(
@@ -644,8 +658,8 @@ async function fetchSupervisorPhones(workspaceId: string): Promise<Array<{ id: s
       [workspaceId],
     );
     return r.rows
-      .map((row: any) => ({ id: row.id as string, phone: row.phone as string }))
-      .filter((s: { id: string; phone: string }) => Boolean(s.id && s.phone));
+      .map((row: any) => ({ employeeId: row.id as string, phone: row.phone as string }))
+      .filter((row: any) => row.employeeId && row.phone);
   } catch (err: any) {
     // `role`/`is_supervisor` may not exist; fall back to any active phone for an owner/manager.
     try {
@@ -661,8 +675,8 @@ async function fetchSupervisorPhones(workspaceId: string): Promise<Array<{ id: s
         [workspaceId],
       );
       return r.rows
-        .map((row: any) => ({ id: row.id as string, phone: row.phone as string }))
-        .filter((s: { id: string; phone: string }) => Boolean(s.id && s.phone));
+        .map((row: any) => ({ employeeId: row.id as string, phone: row.phone as string }))
+        .filter((row: any) => row.employeeId && row.phone);
     } catch (fallbackErr: any) {
       log.info('[calloff] supervisor phone fallback skipped:', fallbackErr?.message);
       return [];
