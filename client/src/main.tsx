@@ -147,7 +147,7 @@ createRoot(document.getElementById("root")!).render(
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker
-      .register('/service-worker.js', { scope: '/' })
+      .register('/sw.js', { scope: '/' })
       .then((registration) => {
         if (import.meta.env.DEV) {
           console.log('[SW] Registered, scope:', registration.scope);

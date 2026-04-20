@@ -28,6 +28,32 @@ import * as taxCalculator from "../services/taxCalculator";
 import { calculateStateTax, calculateBonusTaxation } from "../services/taxCalculator";
 import { getWorkspaceTier, hasTierAccess, requirePlan } from "../tierGuards";
 import { payrollDeductions } from '@shared/schema';
+import { registerLegacyBootstrap } from '../services/legacyBootstrapRegistry';
+
+// Plaid compensating-transaction ledger: pending row is written BEFORE the
+// Plaid API call, flipped to initiated / failed after. See payrollAutomation.ts.
+registerLegacyBootstrap('plaid_transfer_attempts', async (p) => {
+  await p.query(`
+    CREATE TABLE IF NOT EXISTS plaid_transfer_attempts (
+      id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+      workspace_id VARCHAR NOT NULL,
+      employee_id VARCHAR NOT NULL,
+      payroll_run_id VARCHAR,
+      payroll_entry_id VARCHAR,
+      amount NUMERIC(10,2) NOT NULL,
+      transfer_id VARCHAR,
+      status VARCHAR NOT NULL DEFAULT 'pending',
+      error_message TEXT,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      initiated_at TIMESTAMPTZ,
+      completed_at TIMESTAMPTZ
+    );
+    CREATE INDEX IF NOT EXISTS plaid_transfer_attempts_workspace_idx ON plaid_transfer_attempts(workspace_id);
+    CREATE INDEX IF NOT EXISTS plaid_transfer_attempts_employee_idx ON plaid_transfer_attempts(employee_id);
+    CREATE INDEX IF NOT EXISTS plaid_transfer_attempts_run_idx ON plaid_transfer_attempts(payroll_run_id);
+    CREATE INDEX IF NOT EXISTS plaid_transfer_attempts_status_idx ON plaid_transfer_attempts(status);
+  `);
+});
 
 const payrollRunLocks = new Map<string, { userId: string; startedAt: number }>();
 const PAYROLL_RUN_LOCK_TTL_MS = 5 * 60 * 1000;
