@@ -80,6 +80,11 @@ interface TodayShift {
   startTime: string;
   endTime: string;
   status: "upcoming" | "active" | "completed";
+  // Phase 26E — accept/deny surface. Set when backend supplies them.
+  requiresAcknowledgment?: boolean;
+  acknowledgedAt?: string | null;
+  deniedAt?: string | null;
+  rawStatus?: string | null;
 }
 
 interface UpcomingShift {
@@ -88,6 +93,10 @@ interface UpcomingShift {
   siteName: string;
   startTime: string;
   endTime: string;
+  requiresAcknowledgment?: boolean;
+  acknowledgedAt?: string | null;
+  deniedAt?: string | null;
+  rawStatus?: string | null;
 }
 
 interface EarningsSummary {
@@ -804,6 +813,43 @@ export default function WorkerDashboard() {
     onSettled: () => setClockingIn(false),
   });
 
+  // Phase 26E — Shift accept/deny.
+  // The backend already exposes POST /api/shifts/:id/acknowledge and /deny;
+  // this is the employee-facing surface that was missing. Successful mutations
+  // invalidate the shift queries so the card either disappears or updates state.
+  const acceptShiftMutation = useMutation({
+    mutationFn: async (shiftId: string | number) =>
+      apiRequest("POST", `/api/shifts/${shiftId}/acknowledge`, {}),
+    onSuccess: () => {
+      toast({ title: "Shift confirmed", description: "You're booked for this shift." });
+      queryClient.invalidateQueries({ queryKey: ["/api/shifts/today"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/shifts/upcoming"] });
+    },
+    onError: (err: any) => {
+      toast({
+        title: "Could not confirm shift",
+        description: err?.message || "Please try again",
+        variant: "destructive",
+      });
+    },
+  });
+  const denyShiftMutation = useMutation({
+    mutationFn: async ({ shiftId, denialReason }: { shiftId: string | number; denialReason?: string }) =>
+      apiRequest("POST", `/api/shifts/${shiftId}/deny`, { denialReason }),
+    onSuccess: () => {
+      toast({ title: "Shift declined", description: "Your supervisor has been notified." });
+      queryClient.invalidateQueries({ queryKey: ["/api/shifts/today"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/shifts/upcoming"] });
+    },
+    onError: (err: any) => {
+      toast({
+        title: "Could not decline shift",
+        description: err?.message || "Please try again",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Wake lock
   const wakeLockCleanupRef = useRef<(() => void) | null>(null);
   useEffect(() => {
@@ -1119,28 +1165,82 @@ export default function WorkerDashboard() {
                 className="rounded-md overflow-hidden"
                 style={{ background: "var(--color-bg-secondary)", border: "1px solid var(--color-bg-tertiary)" }}
               >
-                {upcomingShifts.slice(0, 4).map((shift, idx) => (
-                  <div
-                    key={shift.id}
-                    className="flex items-center justify-between gap-2 px-4 py-3"
-                    data-testid={`upcoming-shift-${shift.id}`}
-                    style={{
-                      borderBottom: idx < Math.min(upcomingShifts.length, 4) - 1 ? "1px solid var(--color-bg-tertiary)" : "none",
-                    }}
-                  >
-                    <div className="min-w-0">
-                      <div className="text-sm font-medium truncate" style={{ color: "var(--color-text-primary)" }}>{shift.siteName}</div>
-                      <div className="text-xs mt-0.5" style={{ color: "var(--color-text-secondary)" }}>
-                        {isTomorrow(new Date(shift.startTime))
-                          ? "Tomorrow"
-                          : format(new Date(shift.startTime), "EEE, MMM d")}
-                        {" · "}
-                        {format(new Date(shift.startTime), "h:mm a")}
+                {upcomingShifts.slice(0, 4).map((shift, idx) => {
+                  const needsAck =
+                    !!shift.requiresAcknowledgment && !shift.acknowledgedAt && !shift.deniedAt;
+                  const isPending = acceptShiftMutation.isPending || denyShiftMutation.isPending;
+                  return (
+                    <div
+                      key={shift.id}
+                      className="px-4 py-3"
+                      data-testid={`upcoming-shift-${shift.id}`}
+                      style={{
+                        borderBottom: idx < Math.min(upcomingShifts.length, 4) - 1 ? "1px solid var(--color-bg-tertiary)" : "none",
+                      }}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <div className="text-sm font-medium truncate" style={{ color: "var(--color-text-primary)" }}>{shift.siteName}</div>
+                            {needsAck && (
+                              <Badge
+                                variant="secondary"
+                                className="text-[10px] shrink-0"
+                                style={{
+                                  background: "color-mix(in srgb, var(--color-warning) 15%, transparent)",
+                                  color: "var(--color-warning)",
+                                  border: "none",
+                                }}
+                                data-testid={`shift-needs-ack-${shift.id}`}
+                              >
+                                Needs confirmation
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="text-xs mt-0.5" style={{ color: "var(--color-text-secondary)" }}>
+                            {isTomorrow(new Date(shift.startTime))
+                              ? "Tomorrow"
+                              : format(new Date(shift.startTime), "EEE, MMM d")}
+                            {" · "}
+                            {format(new Date(shift.startTime), "h:mm a")}
+                          </div>
+                        </div>
+                        {!needsAck && (
+                          <ChevronRight className="w-4 h-4 flex-shrink-0" style={{ color: "var(--color-text-secondary)" }} />
+                        )}
                       </div>
+                      {needsAck && (
+                        <div className="flex items-center gap-2 mt-3">
+                          <Button
+                            size="sm"
+                            onClick={() => acceptShiftMutation.mutate(shift.id)}
+                            disabled={isPending}
+                            data-testid={`button-accept-shift-${shift.id}`}
+                            className="flex-1"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
+                            Accept
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              const reason = typeof window !== "undefined"
+                                ? window.prompt("Reason for declining (optional):") || ""
+                                : "";
+                              denyShiftMutation.mutate({ shiftId: shift.id, denialReason: reason || undefined });
+                            }}
+                            disabled={isPending}
+                            data-testid={`button-deny-shift-${shift.id}`}
+                            className="flex-1"
+                          >
+                            Decline
+                          </Button>
+                        </div>
+                      )}
                     </div>
-                    <ChevronRight className="w-4 h-4 flex-shrink-0" style={{ color: "var(--color-text-secondary)" }} />
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}

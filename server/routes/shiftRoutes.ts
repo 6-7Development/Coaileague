@@ -220,6 +220,12 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
         else if (now > end) status = 'completed';
         return {
           id: s.id,
+          // Phase 26E — Surface acknowledgment state so the worker dashboard
+          // can render accept/deny controls for shifts awaiting confirmation.
+          requiresAcknowledgment: !!s.requiresAcknowledgment,
+          acknowledgedAt: s.acknowledgedAt || null,
+          deniedAt: s.deniedAt || null,
+          rawStatus: s.status || null,
           siteName: s.title || 'Shift',
           siteAddress: '',
           startTime: s.startTime,
@@ -259,6 +265,11 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
         siteName: s.title || 'Shift',
         startTime: s.startTime,
         endTime: s.endTime,
+        // Phase 26E — acknowledgment state for worker-side accept/deny UI.
+        requiresAcknowledgment: !!s.requiresAcknowledgment,
+        acknowledgedAt: s.acknowledgedAt || null,
+        deniedAt: s.deniedAt || null,
+        rawStatus: s.status || null,
       }));
 
       res.json(mapped);
