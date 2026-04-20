@@ -86,6 +86,12 @@ const RECOMMENDED_CONFIGS: ConfigValidation[] = [
     errorMessage: 'STRIPE_SECRET_KEY should start with "sk_"',
   },
   {
+    name: 'DEFAULT_OBJECT_STORAGE_BUCKET_ID',
+    required: false,
+    value: process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID,
+    errorMessage: 'DEFAULT_OBJECT_STORAGE_BUCKET_ID not set — file uploads (photos, PDFs, documents) will be disabled',
+  },
+  {
     name: 'RESEND_WEBHOOK_SECRET',
     required: false,
     value: process.env.RESEND_WEBHOOK_SECRET,

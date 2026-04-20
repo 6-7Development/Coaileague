@@ -29,7 +29,9 @@
  */
 
 import type { Pool } from 'pg';
-import { pool, isDbCircuitOpen } from '../db';
+import { pool, db, isDbCircuitOpen } from '../db';
+import { regulatoryRules } from '@shared/schema';
+import { sql } from 'drizzle-orm';
 import { createLogger } from '../lib/logger';
 
 const log = createLogger('legacyBootstrap');
@@ -74,6 +76,18 @@ export async function runLegacyBootstraps(): Promise<void> {
 
   log.info(`[legacyBootstrap] Complete: ${results.ok} ok, ${results.failed} failed`);
 }
+
+/** Seed regulatory rules if the table is empty (idempotent). */
+async function ensureRegulatoryRules(): Promise<void> {
+  const [countRow] = await db.select({ n: sql<number>`COUNT(*)` }).from(regulatoryRules);
+  if (Number(countRow?.n ?? 0) > 0) return;
+  const { seedRegulatoryRules } = await import('../scripts/seedRegulatoryRules');
+  await seedRegulatoryRules().catch(e =>
+    log.warn('[Bootstrap] Regulatory rules seed failed (non-fatal):', e.message)
+  );
+}
+
+registerLegacyBootstrap('regulatory-rules', async (_pool) => ensureRegulatoryRules());
 
 /** Test-only: clear the registry. */
 export function _resetLegacyBootstrapsForTesting(): void {

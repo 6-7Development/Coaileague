@@ -259,13 +259,19 @@ class DocumentGeneratorSkill extends BaseSkill {
     }
 
     if (params.documentType === 'memo' || params.documentType === 'policy') {
-      for (const sectionTitle of (params.sections || ['Details'])) {
-        sections.push({
-          title: sectionTitle,
-          type: 'text',
-          content: `[Content for "${sectionTitle}" section — to be filled by Trinity AI based on organizational context]`,
-        });
-      }
+      const generatedSections = await Promise.all(
+        (params.sections || ['Details']).map(async (sectionTitle, i) => {
+          await new Promise(r => setTimeout(r, i * 200));
+          const content = await this.generateSectionContent(
+            sectionTitle,
+            params.documentType,
+            rawData,
+            params.workspaceId,
+          );
+          return { title: sectionTitle, type: 'text' as const, content, order: i };
+        })
+      );
+      sections.push(...generatedSections);
     }
 
     if (params.includeRawData) {
@@ -279,6 +285,44 @@ class DocumentGeneratorSkill extends BaseSkill {
 
     logs.push(`Built ${sections.length} document sections`);
     return sections;
+  }
+
+  private async generateSectionContent(
+    sectionTitle: string,
+    documentType: string,
+    context: Record<string, any>,
+    workspaceId: string,
+  ): Promise<string> {
+    try {
+      const { unifiedGeminiClient } = await import('../unifiedGeminiClient');
+
+      const orgContext = [
+        context.workspace?.name ? `Organization: ${context.workspace.name}` : '',
+        context.client?.companyName ? `Client: ${context.client.companyName}` : '',
+        context.employee ? `Employee: ${context.employee.firstName} ${context.employee.lastName}` : '',
+      ].filter(Boolean).join('\n');
+
+      const result = await unifiedGeminiClient.generate({
+        workspaceId,
+        featureKey: 'trinity_document_generation',
+        systemPrompt: `You are Trinity, an expert assistant for security companies. Write professional document content.`,
+        userMessage: `Write compelling, professional content for the "${sectionTitle}" section of a ${documentType} document.
+
+${orgContext ? `Context:\n${orgContext}\n` : ''}
+Requirements:
+- 150-300 words, specific and concrete
+- First-person plural ("we", "our") where appropriate
+- No placeholder text or bracket notation
+- Write actual content, not instructions`,
+        temperature: 0.7,
+        maxTokens: 500,
+      });
+
+      return result.text || `${sectionTitle}: Please edit this section with your specific content.`;
+    } catch (e: any) {
+      log.warn(`[DocumentGenerator] Section generation failed for "${sectionTitle}": ${e?.message}`);
+      return `${sectionTitle}: Please edit this section with your specific content.`;
+    }
   }
 
   private buildExecutiveSummary(params: DocumentGenerationParams, data: Record<string, any>): string {
