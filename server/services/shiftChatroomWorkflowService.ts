@@ -12,7 +12,7 @@
  * 
  * Integrates with:
  * - UniversalStepLogger (7-step pattern)
- * - Trinity+Claude orchestration
+ * - Trinity orchestration (unified agent — one personality across all backends)
  * - Audit integrity system
  */
 

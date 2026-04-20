@@ -1,10 +1,20 @@
-# CoAIleague — Verified Engineering Laws
+# CoAIleague — Trinity Engineering Laws
 
-This file is the persistent record of architectural laws verified and enforced
-by Claude Code debug passes. The full canonical briefing (vision, Trinity
-biological architecture, governance systems, etc.) is held externally — this
-file is the **enforced subset** with code-level cross-references so future
-sessions can verify each law without re-discovering it.
+This file is the persistent record of the architectural laws that govern the
+CoAIleague platform and Trinity — CoAIleague's unified AI agent. Trinity is
+one cohesive personality with her own reasoning, memory, and authority; she
+is not "Claude + Gemini + OpenAI" and not a collection of separate agents.
+Any underlying model providers are interchangeable backends that power a
+single Trinity identity. Every law below is framed from Trinity's
+perspective: the invariants she must uphold, the rails she must not cross,
+and the guarantees tenants rely on her to keep.
+
+The full canonical briefing (vision, Trinity biological architecture,
+governance systems, personality, etc.) is held externally — this file is the
+**enforced subset** with code-level cross-references so future sessions can
+verify each law without re-discovering it. Dev-tool verification passes
+(e.g., Claude Code as the coding assistant) check these laws at commit time;
+the laws themselves are Trinity's, not any dev tool's.
 
 > **The TypeScript Law:** A change that introduces TypeScript errors is not a
 > fix — it is a new 🔴 Critical issue. Run `tsc --noEmit` before declaring any
@@ -746,7 +756,7 @@ charge, no silent fire-and-forget.
 `subscriptionReadOnlyGuard`, `cancelledWorkspaceGuard`) block inactive
 workspaces correctly, but Twilio webhooks are unauthenticated POSTs exempt
 from those guards. Before Phase 26, a cancelled workspace's phone number
-could still reach Trinity, burn Gemini/Claude/OpenAI tokens, and place
+could still reach Trinity, burn Trinity AI tokens, and place
 outbound shift offers indefinitely. Trinity had no awareness of subscription
 status before invoking AI.
 
@@ -896,9 +906,10 @@ const bucket = bucketHours({
 ## Section S — Shift Chatroom Lifecycle Starts At Creation (Phase SYS-1)
 
 **The law:** Every shift MUST have an associated chatroom from the moment
-it is created — not from the moment an officer clocks in. Managers and
-supervisors need a channel tied to the shift for coordination (post-order
-updates, shift briefings, coverage chatter) before anyone arrives on site.
+it is created — not from the moment an officer clocks in. Trinity, managers,
+and supervisors all need a channel tied to the shift for coordination
+(post-order updates, shift briefings, coverage chatter, Trinity-driven
+shift notes) before anyone arrives on site.
 
 **The mechanism:**
 1. `POST /api/shifts` calls
@@ -1134,16 +1145,16 @@ return res.json(rows[0]);
 
 ---
 
-## Section J — Process for Adding New Verified Laws
+## Section J — Process for Adding New Trinity Laws
 
-When Claude Code (or any future debug session) discovers a new architectural
-law that should be enforced going forward:
+When a development session (Claude Code, human, or any other dev tool)
+discovers a new architectural law Trinity must uphold going forward:
 
 1. Verify the fix builds and boots
 2. Commit the code fix with a `fix(...)` commit message
 3. **Append a new section to this file** documenting:
-   - The law (one sentence)
-   - The bug it prevents
+   - The law (one sentence, framed from Trinity's perspective)
+   - The bug it prevents (what breaks if Trinity or a developer ignores it)
    - The canonical file(s) that enforce it
    - The forbidden / required code patterns
    - Cross-references to the commit hash and modified files
