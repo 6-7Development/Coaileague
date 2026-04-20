@@ -438,28 +438,26 @@ voiceRouter.post('/inbound', twilioSignatureMiddleware, async (req: Request, res
 
     log.info(`[VoiceRoutes] Inbound call: ${From} → ${To} (${CallSid})`);
 
-    // Phase 18D — fire-and-forget caller-ID risk lookup. Result is cached and
-    // available to downstream verifiers and the dashboard via session metadata.
-    void (async () => {
-      try {
-        const { lookupCallerId } = await import('../services/trinityVoice/callerIdLookup');
-        const r = await lookupCallerId(From || '');
-        if (r.risk === 'high') {
-          const { pool } = await import('../db');
-          await pool.query(
-            `UPDATE voice_call_sessions
-                SET metadata = COALESCE(metadata, '{}'::jsonb) ||
-                               jsonb_build_object('caller_id_risk', $1::text,
-                                                  'line_type', $2::text,
-                                                  'carrier', $3::text)
-              WHERE twilio_call_sid = $4`,
-            [r.risk, r.lineType || null, r.carrierName || null, CallSid]
-          );
-        }
-      } catch (e: any) {
-        log.warn('[VoiceRoutes] Caller-ID lookup background failed:', e?.message);
+    // Phase 18D — deferred caller-ID risk lookup. Result is cached and
+    // available to downstream verifiers and the dashboard via session
+    // metadata. Phase 26D — migrated from raw `void (async () => ...)()` to
+    // scheduleNonBlocking for consistent labelled error logging (§B).
+    scheduleNonBlocking('voice.caller-id-risk-lookup', async () => {
+      const { lookupCallerId } = await import('../services/trinityVoice/callerIdLookup');
+      const r = await lookupCallerId(From || '');
+      if (r.risk === 'high') {
+        const { pool } = await import('../db');
+        await pool.query(
+          `UPDATE voice_call_sessions
+              SET metadata = COALESCE(metadata, '{}'::jsonb) ||
+                             jsonb_build_object('caller_id_risk', $1::text,
+                                                'line_type', $2::text,
+                                                'carrier', $3::text)
+            WHERE twilio_call_sid = $4`,
+          [r.risk, r.lineType || null, r.carrierName || null, CallSid]
+        );
       }
-    })();
+    });
 
     const xml = await handleInbound({ to: To, from: From, callSid: CallSid, baseUrl });
     xmlResponse(res, xml);
@@ -863,13 +861,20 @@ voiceRouter.post('/client-identify', twilioSignatureMiddleware, async (req: Requ
       }
 
       if (session) {
-        await updateCallSession(CallSid, {
-          metadata: {
-            client_provider_name: resolvedProviderName || spoken,
-            client_provider_workspace_id: resolvedProviderWorkspaceId,
-            client_provider_resolved: !!resolvedProviderWorkspaceId,
-          },
-        }).catch(() => {});
+        // Phase 26D — downstream handleClientSupport pulls this metadata to
+        // enrich client context. Await the write so the next step sees it,
+        // but catch + log non-fatally rather than swallowing silently.
+        try {
+          await updateCallSession(CallSid, {
+            metadata: {
+              client_provider_name: resolvedProviderName || spoken,
+              client_provider_workspace_id: resolvedProviderWorkspaceId,
+              client_provider_resolved: !!resolvedProviderWorkspaceId,
+            },
+          });
+        } catch (metaErr: any) {
+          log.warn('[VoiceRoutes] client-identify session metadata write failed (non-fatal):', metaErr?.message);
+        }
       }
 
       logCallAction({
@@ -1557,10 +1562,13 @@ voiceRouter.post('/support-confirm', twilioSignatureMiddleware, async (req: Requ
     const sayL = (en: string, es: string) => lang === 'es' ? sayEs(es) : sayEn(en);
 
     if (Digits === '1') {
-      // Mark session as AI-resolved so the status callback can report the correct outcome
-      updateCallSession(CallSid, {
-        metadata: { ai_resolved: true, ai_attempted: true, ai_model: aiModel, extension: 'client_support' },
-      }).catch(() => {});
+      // Mark session as AI-resolved so the status callback can report the correct outcome.
+      // Phase 26D — non-blocking but logged on failure.
+      scheduleNonBlocking('voice.support-confirm-resolved-metadata', async () => {
+        await updateCallSession(CallSid, {
+          metadata: { ai_resolved: true, ai_attempted: true, ai_model: aiModel, extension: 'client_support' },
+        });
+      });
       logCallAction({
         callSessionId: sessionId,
         workspaceId,
@@ -1576,10 +1584,13 @@ voiceRouter.post('/support-confirm', twilioSignatureMiddleware, async (req: Requ
       ));
     }
 
-    // Caller wants human help — mark session as escalated
-    updateCallSession(CallSid, {
-      metadata: { ai_resolved: false, ai_attempted: true, escalated: true, ai_model: aiModel, extension: 'client_support' },
-    }).catch(() => {});
+    // Caller wants human help — mark session as escalated.
+    // Phase 26D — non-blocking but logged on failure.
+    scheduleNonBlocking('voice.support-confirm-escalated-metadata', async () => {
+      await updateCallSession(CallSid, {
+        metadata: { ai_resolved: false, ai_attempted: true, escalated: true, ai_model: aiModel, extension: 'client_support' },
+      });
+    });
     const escalationPhrase = lang === 'es' ? getEscalationPhraseEs() : getEscalationPhraseEn();
     const namePhrase = lang === 'es' ? getNameGatherPhraseEs() : getNameGatherPhraseEn();
     const issueEncoded = encodeURIComponent(issue.slice(0, 500));
@@ -2228,9 +2239,16 @@ voiceRouter.post('/verify-code', twilioSignatureMiddleware, async (req: Request,
     const ok = await verifyCode(employeeId, submitted);
 
     if (ok) {
-      await updateCallSession(CallSid, {
-        metadata: { verified_by: '2fa_email', employee_id: employeeId },
-      }).catch(() => {});
+      // Phase 26D — 2FA-verified is a security-relevant flag. Await it but
+      // catch non-fatally so a metadata write hiccup doesn't abort the TwiML
+      // response the caller is waiting on.
+      try {
+        await updateCallSession(CallSid, {
+          metadata: { verified_by: '2fa_email', employee_id: employeeId },
+        });
+      } catch (metaErr: any) {
+        log.warn('[VoiceRoutes] 2fa-verify session metadata write failed (non-fatal):', metaErr?.message);
+      }
       logCallAction({
         callSessionId: sessionId,
         workspaceId,
