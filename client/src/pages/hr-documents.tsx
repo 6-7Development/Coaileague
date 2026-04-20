@@ -12,8 +12,9 @@
  * - Client-Facing (3 docs)
  */
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useEmployee } from "@/hooks/useEmployee";
 import { CanvasHubPage, type CanvasPageConfig } from "@/components/canvas-hub";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -57,64 +58,63 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 
-// ─── ACME SIMULATION DATA ──────────────────────────────────────────────────────
+// ─── ORG DEFAULTS (overridden by live workspace data in the component) ─────────
 const ACME_ORG = {
-  name: "Acme Security Services, LLC",
-  licenseNumber: "B12345-TX",
-  address: "4200 Westheimer Rd, Suite 300, Houston, TX 77027",
-  phone: "(713) 555-0100",
-  email: "hr@acmesecuritytx.com",
+  name: "Your Security Company",
+  licenseNumber: "[License #]",
+  address: "[Company Address]",
+  phone: "[Phone]",
+  email: "[hr@yourcompany.com]",
   stateOfIncorporation: "Texas",
-  federalEIN: "75-1234567",
+  federalEIN: "[EIN]",
 };
 
-const MARCUS = {
-  firstName: "Marcus",
-  lastName: "Johnson",
-  fullName: "Marcus Darnell Johnson",
-  ssn: "***-**-6789",
-  address: "1847 Fondren Rd, Houston, TX 77096",
-  city: "Houston",
-  state: "TX",
-  zip: "77096",
-  phone: "(713) 555-0241",
-  email: "m.johnson@email.com",
-  position: "Security Officer II",
-  psbLicense: "B45678-TX",
-  licenseExpiry: "2026-03-31",
-  startDate: format(new Date(), "MMMM d, yyyy"),
-  payRate: "$18.50/hr",
-  payType: "Hourly",
-  manager: "Diana Rivera, Operations Manager",
-};
+// ─── DOCUMENT DATA TYPES ────────────────────────────────────────────────────────
+interface EmployeeData {
+  fullName: string;
+  firstName: string;
+  lastName: string;
+  address: string;
+  city: string;
+  state: string;
+  zip: string;
+  phone: string;
+  email: string;
+  position: string;
+  psbLicense: string;
+  licenseExpiry: string;
+  startDate: string;
+  payRate: string;
+  payType: string;
+  manager: string;
+}
 
-const ROSA = {
-  firstName: "Rosa",
-  lastName: "Delgado",
-  fullName: "Rosa Elena Delgado",
-  businessName: "RD Security Consulting",
-  ein: "82-9876543",
-  address: "3309 Cullen Blvd, Houston, TX 77004",
-  city: "Houston",
-  state: "TX",
-  zip: "77004",
-  phone: "(713) 555-0382",
-  email: "rosa@rdsecurityconsulting.com",
-  position: "Contract Security Supervisor",
-  psbLicense: "B67890-TX",
-  licenseExpiry: "2026-08-15",
-  startDate: format(new Date(), "MMMM d, yyyy"),
-  rate: "$32.00/hr",
-};
+interface ContractorData {
+  fullName: string;
+  firstName: string;
+  businessName: string;
+  ein: string;
+  address: string;
+  city: string;
+  state: string;
+  zip: string;
+  phone: string;
+  email: string;
+  position: string;
+  psbLicense: string;
+  licenseExpiry: string;
+  startDate: string;
+  rate: string;
+}
 
-const LONE_STAR = {
-  clientName: "Lone Star Industrial Park, Ltd.",
-  address: "6100 Ship Channel Dr, Houston, TX 77020",
-  contact: "James Thornton, Facilities Director",
-  phone: "(713) 555-0500",
-  email: "jthornton@lonestarsip.com",
-  siteId: "LSIP-H-01",
-};
+interface ClientData {
+  clientName: string;
+  address: string;
+  contact: string;
+  phone: string;
+  email: string;
+  siteId: string;
+}
 
 const TODAY = format(new Date(), "MMMM d, yyyy");
 const TODAY_ISO = new Date().toISOString();
@@ -134,7 +134,13 @@ interface DocumentTemplate {
   renderContent: () => React.ReactNode;
 }
 
-const TEMPLATES: DocumentTemplate[] = [
+function makeTemplates(
+  emp: EmployeeData,
+  contractor: ContractorData,
+  client: ClientData,
+  org: { name: string; licenseNumber: string; federalEIN: string },
+): DocumentTemplate[] {
+  return [
   // ── EMPLOYEE ONBOARDING ────────────────────────────────────────────────────
   {
     id: "employee-application",
@@ -150,26 +156,25 @@ const TEMPLATES: DocumentTemplate[] = [
       <div className="space-y-6">
         <DocumentSection title="Personal Information">
           <DocumentGrid cols={2}>
-            <DocumentField label="Full Legal Name" value={MARCUS.fullName} />
-            <DocumentField label="SSN (last 4 only)" value={MARCUS.ssn} />
-            <DocumentField label="Address" value={MARCUS.address} />
-            <DocumentField label="City / State / ZIP" value={`${MARCUS.city}, ${MARCUS.state} ${MARCUS.zip}`} />
-            <DocumentField label="Phone" value={MARCUS.phone} />
-            <DocumentField label="Email" value={MARCUS.email} />
+            <DocumentField label="Full Legal Name" value={emp.fullName} />
+            <DocumentField label="Address" value={emp.address} />
+            <DocumentField label="City / State / ZIP" value={`${emp.city}, ${emp.state} ${emp.zip}`} />
+            <DocumentField label="Phone" value={emp.phone} />
+            <DocumentField label="Email" value={emp.email} />
           </DocumentGrid>
         </DocumentSection>
         <DocumentSection title="Position Applied For">
           <DocumentGrid cols={2}>
-            <DocumentField label="Position" value={MARCUS.position} />
-            <DocumentField label="Available Start Date" value={MARCUS.startDate} />
-            <DocumentField label="Desired Pay" value={MARCUS.payRate} />
+            <DocumentField label="Position" value={emp.position} />
+            <DocumentField label="Available Start Date" value={emp.startDate} />
+            <DocumentField label="Desired Pay" value={emp.payRate} />
             <DocumentField label="Employment Type" value="Full-Time W-2 Employee" />
           </DocumentGrid>
         </DocumentSection>
         <DocumentSection title="Texas PSB Licensing">
           <DocumentGrid cols={2}>
-            <DocumentField label="PSB License Number" value={MARCUS.psbLicense} />
-            <DocumentField label="License Expiration" value={MARCUS.licenseExpiry} />
+            <DocumentField label="PSB License Number" value={emp.psbLicense} />
+            <DocumentField label="License Expiration" value={emp.licenseExpiry} />
             <DocumentField label="License Class" value="Class B — Unarmed Security Officer" />
             <DocumentField label="Armed Endorsement" value="No" />
           </DocumentGrid>
@@ -181,7 +186,7 @@ const TEMPLATES: DocumentTemplate[] = [
         </DocumentSection>
         <DocumentSection title="Acknowledgment">
           <DocumentLegalText>
-            False statements on this application are grounds for immediate termination. I authorize {ACME_ORG.name} to contact previous employers, references, and educational institutions. I understand that employment is at-will under Texas law and may be terminated by either party at any time with or without cause.
+            False statements on this application are grounds for immediate termination. I authorize {org.name} to contact previous employers, references, and educational institutions. I understand that employment is at-will under Texas law and may be terminated by either party at any time with or without cause.
           </DocumentLegalText>
         </DocumentSection>
       </div>
@@ -201,10 +206,10 @@ const TEMPLATES: DocumentTemplate[] = [
       <div className="space-y-6">
         <div className="text-right text-sm text-muted-foreground">{TODAY}</div>
         <div>
-          <DocumentText>Dear {MARCUS.firstName},</DocumentText>
+          <DocumentText>Dear {emp.firstName},</DocumentText>
           <div className="mt-3 space-y-3">
             <DocumentText>
-              On behalf of {ACME_ORG.name}, we are pleased to extend this conditional offer of employment for the position of <strong>{MARCUS.position}</strong> based in Houston, Texas.
+              On behalf of {org.name}, we are pleased to extend this conditional offer of employment for the position of <strong>{emp.position}</strong> based in Houston, Texas.
             </DocumentText>
             <DocumentText>
               Your employment is conditioned upon successful completion of a background check, drug screening, and verification of your Texas PSB security officer license.
@@ -213,19 +218,19 @@ const TEMPLATES: DocumentTemplate[] = [
         </div>
         <DocumentSection title="Offer Terms">
           <DocumentGrid cols={2}>
-            <DocumentField label="Position Title" value={MARCUS.position} />
+            <DocumentField label="Position Title" value={emp.position} />
             <DocumentField label="Department" value="Field Operations" />
             <DocumentField label="Employment Type" value="Full-Time, Non-Exempt" />
-            <DocumentField label="Start Date" value={MARCUS.startDate} />
-            <DocumentField label="Pay Rate" value={MARCUS.payRate} />
+            <DocumentField label="Start Date" value={emp.startDate} />
+            <DocumentField label="Pay Rate" value={emp.payRate} />
             <DocumentField label="Pay Frequency" value="Bi-Weekly" />
-            <DocumentField label="Reports To" value={MARCUS.manager} />
+            <DocumentField label="Reports To" value={emp.manager} />
             <DocumentField label="Work Location" value="Houston, TX (Various Sites)" />
           </DocumentGrid>
         </DocumentSection>
         <DocumentSection title="At-Will Employment">
           <DocumentText>
-            Your employment with {ACME_ORG.name} is at-will under Texas law. Either party may terminate the employment relationship at any time, with or without cause or notice.
+            Your employment with {org.name} is at-will under Texas law. Either party may terminate the employment relationship at any time, with or without cause or notice.
           </DocumentText>
         </DocumentSection>
         <DocumentSection title="Conditions of Employment">
@@ -242,7 +247,7 @@ const TEMPLATES: DocumentTemplate[] = [
         <div className="text-sm text-muted-foreground">
           Sincerely,<br />
           <strong>Diana Rivera</strong><br />
-          Operations Manager, {ACME_ORG.name}
+          Operations Manager, {org.name}
         </div>
       </div>
     ),
@@ -261,16 +266,15 @@ const TEMPLATES: DocumentTemplate[] = [
       <div className="space-y-6">
         <div className="p-3 rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
           <DocumentText>
-            <strong>IRS Form W-4</strong> — Employee's Withholding Certificate. Complete this form so {ACME_ORG.name} can withhold the correct federal income tax from your pay.
+            <strong>IRS Form W-4</strong> — Employee's Withholding Certificate. Complete this form so {org.name} can withhold the correct federal income tax from your pay.
           </DocumentText>
         </div>
         <DocumentSection title="Step 1 — Personal Information">
           <DocumentGrid cols={2}>
             <DocumentField label="First Name & Middle Initial" value="Marcus D." />
             <DocumentField label="Last Name" value="Johnson" />
-            <DocumentField label="Address" value={MARCUS.address} />
-            <DocumentField label="City / State / ZIP" value={`${MARCUS.city}, ${MARCUS.state} ${MARCUS.zip}`} />
-            <DocumentField label="SSN" value={MARCUS.ssn} />
+            <DocumentField label="Address" value={emp.address} />
+            <DocumentField label="City / State / ZIP" value={`${emp.city}, ${emp.state} ${emp.zip}`} />
             <DocumentField label="Filing Status" value="Single or Married filing separately" />
           </DocumentGrid>
         </DocumentSection>
@@ -323,12 +327,11 @@ const TEMPLATES: DocumentTemplate[] = [
             <DocumentField label="First Name" value="Marcus" />
             <DocumentField label="Middle Initial" value="D" />
             <DocumentField label="Other Last Names Used" value="None" />
-            <DocumentField label="Address" value={MARCUS.address} />
-            <DocumentField label="City / State / ZIP" value={`${MARCUS.city}, ${MARCUS.state} ${MARCUS.zip}`} />
+            <DocumentField label="Address" value={emp.address} />
+            <DocumentField label="City / State / ZIP" value={`${emp.city}, ${emp.state} ${emp.zip}`} />
             <DocumentField label="Date of Birth" value="**/**/1990" />
-            <DocumentField label="U.S. Social Security Number" value={MARCUS.ssn} />
-            <DocumentField label="Email" value={MARCUS.email} />
-            <DocumentField label="Phone" value={MARCUS.phone} />
+            <DocumentField label="Email" value={emp.email} />
+            <DocumentField label="Phone" value={emp.phone} />
           </DocumentGrid>
           <div className="mt-4">
             <DocumentText>
@@ -346,9 +349,9 @@ const TEMPLATES: DocumentTemplate[] = [
         </DocumentSection>
         <DocumentSection title="Section 2 — Employer Review (Completed by Employer)">
           <DocumentGrid cols={2}>
-            <DocumentField label="Employer/Organization Name" value={ACME_ORG.name} />
-            <DocumentField label="Employer EIN" value={ACME_ORG.federalEIN} />
-            <DocumentField label="First Day of Employment" value={MARCUS.startDate} />
+            <DocumentField label="Employer/Organization Name" value={org.name} />
+            <DocumentField label="Employer EIN" value={org.federalEIN} />
+            <DocumentField label="First Day of Employment" value={emp.startDate} />
             <DocumentField label="Document Title (List A)" value="U.S. Passport" />
             <DocumentField label="Issuing Authority" value="U.S. Department of State" />
             <DocumentField label="Document Number" value="***4521" />
@@ -374,7 +377,7 @@ const TEMPLATES: DocumentTemplate[] = [
     renderContent: () => (
       <div className="space-y-6">
         <DocumentText>
-          I, <strong>{MARCUS.fullName}</strong>, authorize {ACME_ORG.name} to initiate credit entries and, if necessary, debit entries and adjustments for any credit entries made in error to my account(s) indicated below.
+          I, <strong>{emp.fullName}</strong>, authorize {org.name} to initiate credit entries and, if necessary, debit entries and adjustments for any credit entries made in error to my account(s) indicated below.
         </DocumentText>
         <DocumentSection title="Account Information">
           <DocumentGrid cols={2}>
@@ -383,12 +386,12 @@ const TEMPLATES: DocumentTemplate[] = [
             <DocumentField label="Routing Number" value="021000021" />
             <DocumentField label="Account Number (masked)" value="****7842" />
             <DocumentField label="Percentage / Amount" value="100% of net pay" />
-            <DocumentField label="Effective Date" value={MARCUS.startDate} />
+            <DocumentField label="Effective Date" value={emp.startDate} />
           </DocumentGrid>
         </DocumentSection>
         <DocumentSection title="Authorization">
           <DocumentLegalText>
-            This authorization is to remain in full force and effect until {ACME_ORG.name} and the depository named above have received written notification from me of its termination in such time and manner as to afford {ACME_ORG.name} and the depository a reasonable opportunity to act on it. I understand that this authorization supersedes and cancels any prior direct deposit authorizations.
+            This authorization is to remain in full force and effect until {org.name} and the depository named above have received written notification from me of its termination in such time and manner as to afford {org.name} and the depository a reasonable opportunity to act on it. I understand that this authorization supersedes and cancels any prior direct deposit authorizations.
           </DocumentLegalText>
         </DocumentSection>
       </div>
@@ -416,7 +419,7 @@ const TEMPLATES: DocumentTemplate[] = [
                 Private Security Bureau — Officer License
               </p>
               <p className="text-2xl font-bold mt-2 font-mono" style={{ color: "#ffffff" }}>
-                {MARCUS.psbLicense}
+                {emp.psbLicense}
               </p>
             </div>
             <Shield className="w-10 h-10 flex-shrink-0" style={{ color: "#ffc83c" }} />
@@ -424,14 +427,14 @@ const TEMPLATES: DocumentTemplate[] = [
         </div>
         <DocumentSection title="License Details">
           <DocumentGrid cols={2}>
-            <DocumentField label="Officer Name" value={MARCUS.fullName} />
-            <DocumentField label="License Number" value={MARCUS.psbLicense} />
+            <DocumentField label="Officer Name" value={emp.fullName} />
+            <DocumentField label="License Number" value={emp.psbLicense} />
             <DocumentField label="License Class" value="Class B — Unarmed Security Officer" />
             <DocumentField label="Endorsements" value="None" />
             <DocumentField label="Issue Date" value="2024-03-31" />
-            <DocumentField label="Expiration Date" value={MARCUS.licenseExpiry} />
+            <DocumentField label="Expiration Date" value={emp.licenseExpiry} />
             <DocumentField label="Status" value="Active — Verified" />
-            <DocumentField label="Employer of Record" value={ACME_ORG.name} />
+            <DocumentField label="Employer of Record" value={org.name} />
           </DocumentGrid>
         </DocumentSection>
         <DocumentSection title="Verification">
@@ -458,7 +461,7 @@ const TEMPLATES: DocumentTemplate[] = [
     renderContent: () => (
       <div className="space-y-6">
         <DocumentText>
-          I, <strong>{MARCUS.fullName}</strong>, acknowledge that I have received, read, and understand the {ACME_ORG.name} Employee Handbook (Version 2.1, dated {TODAY}).
+          I, <strong>{emp.fullName}</strong>, acknowledge that I have received, read, and understand the {org.name} Employee Handbook (Version 2.1, dated {TODAY}).
         </DocumentText>
         <DocumentSection title="Acknowledgment Items">
           <DocumentBullets items={[
@@ -500,11 +503,11 @@ const TEMPLATES: DocumentTemplate[] = [
     renderContent: () => (
       <div className="space-y-6">
         <DocumentText>
-          This At-Will Employment Acknowledgment is entered into on {TODAY} between <strong>{ACME_ORG.name}</strong> ("Company") and <strong>{MARCUS.fullName}</strong> ("Employee").
+          This At-Will Employment Acknowledgment is entered into on {TODAY} between <strong>{org.name}</strong> ("Company") and <strong>{emp.fullName}</strong> ("Employee").
         </DocumentText>
         <DocumentSection title="At-Will Employment Statement">
           <DocumentText>
-            I understand and acknowledge that my employment with {ACME_ORG.name} is AT-WILL under the laws of the State of Texas. This means that either the Company or I may terminate the employment relationship at any time, for any reason or no reason, with or without cause or advance notice.
+            I understand and acknowledge that my employment with {org.name} is AT-WILL under the laws of the State of Texas. This means that either the Company or I may terminate the employment relationship at any time, for any reason or no reason, with or without cause or advance notice.
           </DocumentText>
         </DocumentSection>
         <DocumentSection title="No Contrary Representations">
@@ -536,7 +539,7 @@ const TEMPLATES: DocumentTemplate[] = [
     renderContent: () => (
       <div className="space-y-6">
         <DocumentText>
-          This Non-Disclosure and Confidentiality Agreement ("Agreement") is entered into as of {TODAY} between <strong>{ACME_ORG.name}</strong> ("Company") and <strong>{MARCUS.fullName}</strong> ("Employee").
+          This Non-Disclosure and Confidentiality Agreement ("Agreement") is entered into as of {TODAY} between <strong>{org.name}</strong> ("Company") and <strong>{emp.fullName}</strong> ("Employee").
         </DocumentText>
         <DocumentSection title="Definition of Confidential Information">
           <DocumentText>
@@ -586,7 +589,7 @@ const TEMPLATES: DocumentTemplate[] = [
           </DocumentText>
         </div>
         <DocumentText>
-          I, <strong>{MARCUS.fullName}</strong>, hereby authorize <strong>{ACME_ORG.name}</strong> and its designated consumer reporting agency to conduct a comprehensive background investigation.
+          I, <strong>{emp.fullName}</strong>, hereby authorize <strong>{org.name}</strong> and its designated consumer reporting agency to conduct a comprehensive background investigation.
         </DocumentText>
         <DocumentSection title="Background Check Scope">
           <DocumentBullets items={[
@@ -613,10 +616,9 @@ const TEMPLATES: DocumentTemplate[] = [
           ]} />
         </DocumentSection>
         <DocumentGrid cols={2}>
-          <DocumentField label="Applicant Name" value={MARCUS.fullName} />
-          <DocumentField label="Date of Birth" value="**/**/1990" />
-          <DocumentField label="SSN" value={MARCUS.ssn} />
-          <DocumentField label="Current Address" value={MARCUS.address} />
+          <DocumentField label="Applicant Name" value={emp.fullName} />
+          <DocumentField label="Date of Birth" value="[Date of Birth]" />
+          <DocumentField label="Current Address" value={emp.address} />
         </DocumentGrid>
       </div>
     ),
@@ -636,16 +638,16 @@ const TEMPLATES: DocumentTemplate[] = [
     renderContent: () => (
       <div className="space-y-6">
         <DocumentText>
-          This Independent Contractor Agreement ("Agreement") is entered into as of {TODAY} between <strong>{ACME_ORG.name}</strong> ("Company") and <strong>{ROSA.businessName}</strong>, represented by <strong>{ROSA.fullName}</strong> ("Contractor").
+          This Independent Contractor Agreement ("Agreement") is entered into as of {TODAY} between <strong>{org.name}</strong> ("Company") and <strong>{contractor.businessName}</strong>, represented by <strong>{contractor.fullName}</strong> ("Contractor").
         </DocumentText>
         <DocumentSection title="Contractor Information">
           <DocumentGrid cols={2}>
-            <DocumentField label="Contractor Name" value={ROSA.fullName} />
-            <DocumentField label="Business Name" value={ROSA.businessName} />
-            <DocumentField label="EIN" value={ROSA.ein} />
-            <DocumentField label="PSB License" value={ROSA.psbLicense} />
-            <DocumentField label="License Expiry" value={ROSA.licenseExpiry} />
-            <DocumentField label="Position" value={ROSA.position} />
+            <DocumentField label="Contractor Name" value={contractor.fullName} />
+            <DocumentField label="Business Name" value={contractor.businessName} />
+            <DocumentField label="EIN" value={contractor.ein} />
+            <DocumentField label="PSB License" value={contractor.psbLicense} />
+            <DocumentField label="License Expiry" value={contractor.licenseExpiry} />
+            <DocumentField label="Position" value={contractor.position} />
           </DocumentGrid>
         </DocumentSection>
         <DocumentSection title="Nature of Relationship">
@@ -655,10 +657,10 @@ const TEMPLATES: DocumentTemplate[] = [
         </DocumentSection>
         <DocumentSection title="Compensation">
           <DocumentGrid cols={2}>
-            <DocumentField label="Rate" value={ROSA.rate} />
+            <DocumentField label="Rate" value={contractor.rate} />
             <DocumentField label="Payment Type" value="1099-NEC" />
             <DocumentField label="Payment Schedule" value="Bi-Weekly via ACH" />
-            <DocumentField label="Effective Date" value={ROSA.startDate} />
+            <DocumentField label="Effective Date" value={contractor.startDate} />
           </DocumentGrid>
         </DocumentSection>
         <DocumentSection title="Independent Contractor Obligations">
@@ -694,14 +696,14 @@ const TEMPLATES: DocumentTemplate[] = [
         </div>
         <DocumentSection title="Payee Information">
           <DocumentGrid cols={2}>
-            <DocumentField label="Name (as shown on tax return)" value={ROSA.fullName} />
-            <DocumentField label="Business Name / DBA" value={ROSA.businessName} />
+            <DocumentField label="Name (as shown on tax return)" value={contractor.fullName} />
+            <DocumentField label="Business Name / DBA" value={contractor.businessName} />
             <DocumentField label="Federal Tax Classification" value="LLC — Taxed as S-Corp" />
             <DocumentField label="Exempt Payee Code" value="Not Applicable" />
             <DocumentField label="TIN Type" value="Employer Identification Number (EIN)" />
-            <DocumentField label="EIN" value={ROSA.ein} />
-            <DocumentField label="Address" value={ROSA.address} />
-            <DocumentField label="City / State / ZIP" value={`${ROSA.city}, ${ROSA.state} ${ROSA.zip}`} />
+            <DocumentField label="EIN" value={contractor.ein} />
+            <DocumentField label="Address" value={contractor.address} />
+            <DocumentField label="City / State / ZIP" value={`${contractor.city}, ${contractor.state} ${contractor.zip}`} />
           </DocumentGrid>
         </DocumentSection>
         <DocumentSection title="Certification">
@@ -731,7 +733,7 @@ const TEMPLATES: DocumentTemplate[] = [
     renderContent: () => (
       <div className="space-y-6">
         <DocumentText>
-          This Confidentiality Agreement is entered into as of {TODAY} between <strong>{ACME_ORG.name}</strong> ("Company") and <strong>{ROSA.fullName}</strong> operating as <strong>{ROSA.businessName}</strong> ("Contractor").
+          This Confidentiality Agreement is entered into as of {TODAY} between <strong>{org.name}</strong> ("Company") and <strong>{contractor.fullName}</strong> operating as <strong>{contractor.businessName}</strong> ("Contractor").
         </DocumentText>
         <DocumentSection title="Confidential Information">
           <DocumentBullets items={[
@@ -769,14 +771,14 @@ const TEMPLATES: DocumentTemplate[] = [
     renderContent: () => (
       <div className="space-y-6">
         <DocumentText>
-          I, <strong>{ROSA.fullName}</strong>, representing <strong>{ROSA.businessName}</strong>, acknowledge receipt and understanding of the Post Orders for <strong>{LONE_STAR.clientName}</strong> at <strong>{LONE_STAR.address}</strong>.
+          I, <strong>{contractor.fullName}</strong>, representing <strong>{contractor.businessName}</strong>, acknowledge receipt and understanding of the Post Orders for <strong>{client.clientName}</strong> at <strong>{client.address}</strong>.
         </DocumentText>
         <DocumentSection title="Site Information">
           <DocumentGrid cols={2}>
-            <DocumentField label="Client" value={LONE_STAR.clientName} />
-            <DocumentField label="Site ID" value={LONE_STAR.siteId} />
-            <DocumentField label="Address" value={LONE_STAR.address} />
-            <DocumentField label="Client Contact" value={LONE_STAR.contact} />
+            <DocumentField label="Client" value={client.clientName} />
+            <DocumentField label="Site ID" value={client.siteId} />
+            <DocumentField label="Address" value={client.address} />
+            <DocumentField label="Client Contact" value={client.contact} />
           </DocumentGrid>
         </DocumentSection>
         <DocumentSection title="Acknowledged Procedures">
@@ -791,7 +793,7 @@ const TEMPLATES: DocumentTemplate[] = [
           ]} />
         </DocumentSection>
         <DocumentLegalText>
-          Failure to follow post orders may result in immediate removal from the site assignment and termination of the contractor agreement without further obligation by {ACME_ORG.name}.
+          Failure to follow post orders may result in immediate removal from the site assignment and termination of the contractor agreement without further obligation by {org.name}.
         </DocumentLegalText>
       </div>
     ),
@@ -812,11 +814,11 @@ const TEMPLATES: DocumentTemplate[] = [
       <div className="space-y-6">
         <DocumentSection title="Site Assignment">
           <DocumentGrid cols={2}>
-            <DocumentField label="Client" value={LONE_STAR.clientName} />
-            <DocumentField label="Site ID" value={LONE_STAR.siteId} />
-            <DocumentField label="Address" value={LONE_STAR.address} />
+            <DocumentField label="Client" value={client.clientName} />
+            <DocumentField label="Site ID" value={client.siteId} />
+            <DocumentField label="Address" value={client.address} />
             <DocumentField label="Effective Date" value={TODAY} />
-            <DocumentField label="Post Commander" value={MARCUS.manager} />
+            <DocumentField label="Post Commander" value={emp.manager} />
             <DocumentField label="Version" value="1.0" />
           </DocumentGrid>
         </DocumentSection>
@@ -832,7 +834,7 @@ const TEMPLATES: DocumentTemplate[] = [
         </DocumentSection>
         <DocumentSection title="Emergency Contacts">
           <DocumentGrid cols={2}>
-            <DocumentField label="Primary — Site Manager" value={`${LONE_STAR.contact} — ${LONE_STAR.phone}`} />
+            <DocumentField label="Primary — Site Manager" value={`${client.contact} — ${client.phone}`} />
             <DocumentField label="After-Hours Emergency" value="(713) 555-0199" />
             <DocumentField label="Police (non-emergency)" value="(713) 884-3131" />
             <DocumentField label="Company Dispatch" value="(713) 555-0100" />
@@ -866,13 +868,13 @@ const TEMPLATES: DocumentTemplate[] = [
       <div className="space-y-6">
         <DocumentSection title="Shift Information">
           <DocumentGrid cols={2}>
-            <DocumentField label="Officer Name" value={MARCUS.fullName} />
-            <DocumentField label="PSB License" value={MARCUS.psbLicense} />
-            <DocumentField label="Site / Client" value={LONE_STAR.clientName} />
+            <DocumentField label="Officer Name" value={emp.fullName} />
+            <DocumentField label="PSB License" value={emp.psbLicense} />
+            <DocumentField label="Site / Client" value={client.clientName} />
             <DocumentField label="Date" value={TODAY} />
             <DocumentField label="Shift Start" value="18:00" />
             <DocumentField label="Shift End" value="06:00" />
-            <DocumentField label="Post Commander" value={MARCUS.manager} />
+            <DocumentField label="Post Commander" value={emp.manager} />
             <DocumentField label="Relief Officer" value="[Next Officer Name]" />
           </DocumentGrid>
         </DocumentSection>
@@ -975,13 +977,13 @@ const TEMPLATES: DocumentTemplate[] = [
       <div className="space-y-6">
         <div className="text-right text-sm text-muted-foreground">{TODAY}</div>
         <div>
-          <DocumentText><strong>{LONE_STAR.contact}</strong></DocumentText>
-          <DocumentText>{LONE_STAR.clientName}</DocumentText>
-          <DocumentText>{LONE_STAR.address}</DocumentText>
+          <DocumentText><strong>{client.contact}</strong></DocumentText>
+          <DocumentText>{client.clientName}</DocumentText>
+          <DocumentText>{client.address}</DocumentText>
         </div>
         <DocumentSection title="Executive Summary">
           <DocumentText>
-            {ACME_ORG.name} is pleased to present this Security Services Proposal to {LONE_STAR.clientName}. Our proposal addresses your facility security requirements at {LONE_STAR.address} with experienced, Texas-licensed security professionals, state-of-the-art reporting technology, and proven operational protocols.
+            {org.name} is pleased to present this Security Services Proposal to {client.clientName}. Our proposal addresses your facility security requirements at {client.address} with experienced, Texas-licensed security professionals, state-of-the-art reporting technology, and proven operational protocols.
           </DocumentText>
         </DocumentSection>
         <DocumentSection title="Proposed Services">
@@ -1043,19 +1045,19 @@ const TEMPLATES: DocumentTemplate[] = [
     renderContent: () => (
       <div className="space-y-6">
         <DocumentText>
-          This Security Services Agreement ("Agreement") is entered into as of {TODAY} between <strong>{ACME_ORG.name}</strong> ("Service Provider") and <strong>{LONE_STAR.clientName}</strong> ("Client").
+          This Security Services Agreement ("Agreement") is entered into as of {TODAY} between <strong>{org.name}</strong> ("Service Provider") and <strong>{client.clientName}</strong> ("Client").
         </DocumentText>
         <DocumentSection title="Parties">
           <DocumentGrid cols={2}>
-            <DocumentField label="Service Provider" value={ACME_ORG.name} />
-            <DocumentField label="TX PSB License" value={ACME_ORG.licenseNumber} />
-            <DocumentField label="Client" value={LONE_STAR.clientName} />
-            <DocumentField label="Client Contact" value={LONE_STAR.contact} />
+            <DocumentField label="Service Provider" value={org.name} />
+            <DocumentField label="TX PSB License" value={org.licenseNumber} />
+            <DocumentField label="Client" value={client.clientName} />
+            <DocumentField label="Client Contact" value={client.contact} />
           </DocumentGrid>
         </DocumentSection>
         <DocumentSection title="Services">
           <DocumentText>
-            Service Provider agrees to provide uniformed security officer services at the client's facility located at {LONE_STAR.address}, in accordance with the Post Orders attached as Exhibit A, which may be updated by mutual written agreement.
+            Service Provider agrees to provide uniformed security officer services at the client's facility located at {client.address}, in accordance with the Post Orders attached as Exhibit A, which may be updated by mutual written agreement.
           </DocumentText>
         </DocumentSection>
         <DocumentSection title="Term & Termination">
@@ -1087,7 +1089,8 @@ const TEMPLATES: DocumentTemplate[] = [
       </div>
     ),
   },
-];
+  ]; // end return
+} // end makeTemplates
 
 // ─── CATEGORY CONFIG ───────────────────────────────────────────────────────────
 
@@ -1097,28 +1100,28 @@ const CATEGORY_CONFIG = {
     icon: Users,
     description: "10-document packet for W-2 employees. All documents must be completed within 15 days of hire.",
     color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
-    count: TEMPLATES.filter(t => t.category === "employee").length,
+    count: 10,
   },
   contractor: {
     label: "Contractor Onboarding",
     icon: Briefcase,
     description: "4-document packet for 1099 independent contractors. Must be completed before first day on site.",
     color: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
-    count: TEMPLATES.filter(t => t.category === "contractor").length,
+    count: 4,
   },
   operational: {
     label: "Operational Docs",
     icon: ClipboardList,
     description: "Post orders, daily activity reports, and incident documentation for ongoing operations.",
     color: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200",
-    count: TEMPLATES.filter(t => t.category === "operational").length,
+    count: 3,
   },
   client: {
     label: "Client-Facing",
     icon: Building2,
     description: "Proposals and service agreements for prospective and active clients.",
     color: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-    count: TEMPLATES.filter(t => t.category === "client").length,
+    count: 2,
   },
 };
 
@@ -1141,7 +1144,72 @@ export default function HrDocuments() {
     queryKey: ["/api/workspace/current"],
   });
 
-  const filteredTemplates = TEMPLATES.filter(t => {
+  const { employee: employeeMe } = useEmployee();
+
+  const empData: EmployeeData = useMemo(() => ({
+    fullName: employeeMe ? `${employeeMe.firstName} ${employeeMe.lastName}` : '[Employee Name]',
+    firstName: employeeMe?.firstName ?? '[First Name]',
+    lastName: employeeMe?.lastName ?? '[Last Name]',
+    email: employeeMe?.email ?? '[email@company.com]',
+    position: employeeMe?.role ?? '[Position]',
+    phone: employeeMe?.phone ?? '[Phone]',
+    address: employeeMe?.address ?? '[Address]',
+    city: employeeMe?.city ?? '[City]',
+    state: employeeMe?.state ?? 'TX',
+    zip: employeeMe?.zipCode ?? '[ZIP]',
+    psbLicense: (employeeMe?.licenses?.[0]) ?? '[PSB License #]',
+    licenseExpiry: '[Expiry Date]',
+    startDate: employeeMe?.hireDate
+      ? format(new Date(employeeMe.hireDate), 'MMMM d, yyyy')
+      : format(new Date(), 'MMMM d, yyyy'),
+    payRate: employeeMe?.hourlyRate ? `$${employeeMe.hourlyRate}/hr` : '[Pay Rate]',
+    payType: 'Hourly',
+    manager: '[Manager Name]',
+  }), [employeeMe]);
+
+  // Contractor and client templates use generic placeholders — real data comes from
+  // the "Send for Signature" flow which queries live employees/clients.
+  const contractorData: ContractorData = {
+    fullName: '[Contractor Name]',
+    firstName: '[First Name]',
+    businessName: '[Business Name]',
+    ein: '[EIN]',
+    address: '[Address]',
+    city: '[City]',
+    state: 'TX',
+    zip: '[ZIP]',
+    phone: '[Phone]',
+    email: '[contractor@email.com]',
+    position: 'Contract Security Supervisor',
+    psbLicense: '[PSB License #]',
+    licenseExpiry: '[Expiry Date]',
+    startDate: format(new Date(), 'MMMM d, yyyy'),
+    rate: '[Rate]',
+  };
+
+  const clientData: ClientData = {
+    clientName: '[Client Name]',
+    address: '[Client Address]',
+    contact: '[Contact Name, Title]',
+    phone: '[Phone]',
+    email: '[contact@client.com]',
+    siteId: '[Site ID]',
+  };
+
+  const orgData = {
+    name: workspace?.name || workspace?.companyName || ACME_ORG.name,
+    licenseNumber: workspace?.stateLicenseNumber || ACME_ORG.licenseNumber,
+    federalEIN: ACME_ORG.federalEIN,
+  };
+
+  const templates = useMemo(
+    () => makeTemplates(empData, contractorData, clientData, orgData),
+    // contractorData and clientData are static placeholders
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [empData, workspace],
+  );
+
+  const filteredTemplates = templates.filter(t => {
     const matchesCategory = t.category === activeCategory;
     const matchesSearch = searchQuery === "" || (
       t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -1166,27 +1234,31 @@ export default function HrDocuments() {
           </p>
         </div>
 
-        {/* ── Simulation Banner ─────────────────────────────── */}
+        {/* ── Org Banner ────────────────────────────────────── */}
         <div
           className="rounded-md px-4 py-3 flex flex-wrap items-center gap-3"
           style={{ background: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)", border: "1px solid rgba(255,200,60,0.25)" }}
         >
           <Shield className="w-4 h-4 flex-shrink-0" style={{ color: "#ffc83c" }} />
           <span className="text-sm" style={{ color: "#94a3b8" }}>
-            Simulation active —
-            <span className="font-medium" style={{ color: "#ffffff" }}> {ACME_ORG.name}</span>
-            <span style={{ color: "#64748b" }}> · </span>
-            <span style={{ color: "#ffc83c" }}>{ACME_ORG.licenseNumber}</span>
+            Templates populated with —
+            <span className="font-medium" style={{ color: "#ffffff" }}> {workspace?.name || workspace?.companyName || ACME_ORG.name}</span>
+            {(workspace?.stateLicenseNumber) && (
+              <>
+                <span style={{ color: "#64748b" }}> · </span>
+                <span style={{ color: "#ffc83c" }}>{workspace.stateLicenseNumber}</span>
+              </>
+            )}
           </span>
           <div className="flex flex-wrap gap-2 ml-auto">
             <Badge variant="outline" className="text-xs border-blue-400/30 text-blue-300" data-testid="badge-sim-employee">
-              Marcus Johnson — Employee
+              {empData.fullName} — Employee
             </Badge>
             <Badge variant="outline" className="text-xs border-purple-400/30 text-purple-300" data-testid="badge-sim-contractor">
-              Rosa Delgado — Contractor
+              Contractor — Placeholder
             </Badge>
             <Badge variant="outline" className="text-xs border-green-400/30 text-green-300" data-testid="badge-sim-client">
-              Lone Star Industrial — Client
+              Client — Placeholder
             </Badge>
           </div>
         </div>
@@ -1260,6 +1332,9 @@ export default function HrDocuments() {
         <DocumentPreviewModal
           template={previewTemplate}
           workspace={workspace}
+          empData={empData}
+          contractorData={contractorData}
+          clientData={clientData}
           onClose={() => setPreviewTemplate(null)}
         />
       )}
@@ -1328,10 +1403,16 @@ function DocumentTemplateCard({
 function DocumentPreviewModal({
   template,
   workspace,
+  empData,
+  contractorData,
+  clientData,
   onClose,
 }: {
   template: DocumentTemplate;
   workspace?: { name: string; companyName: string | null; stateLicenseNumber: string | null } | null;
+  empData: EmployeeData;
+  contractorData: ContractorData;
+  clientData: ClientData;
   onClose: () => void;
 }) {
   const { toast } = useToast();
@@ -1357,23 +1438,23 @@ function DocumentPreviewModal({
   const getPreviewSigners = (): Array<{ id: string; name: string; title: string; email: string }> => {
     if (!template.requiresSignature) return [];
     if (template.category === "employee" || template.category === "operational") {
-      const signers: any[] = [{ id: "employee-sig", name: MARCUS.fullName, title: MARCUS.position, email: MARCUS.email }];
+      const signers: any[] = [{ id: "employee-sig", name: empData.fullName, title: empData.position, email: empData.email }];
       if (template.signatureCount >= 2) {
-        signers.push({ id: "company-sig", name: "Operations Manager", title: `Operations Manager, ${orgName}`, email: ACME_ORG.email });
+        signers.push({ id: "company-sig", name: "Operations Manager", title: `Operations Manager, ${orgName}`, email: "[hr@yourcompany.com]" });
       }
       return signers;
     }
     if (template.category === "contractor") {
-      const signers: any[] = [{ id: "contractor-sig", name: ROSA.fullName, title: `${ROSA.position}, ${ROSA.businessName}`, email: ROSA.email }];
+      const signers: any[] = [{ id: "contractor-sig", name: contractorData.fullName, title: `${contractorData.position}, ${contractorData.businessName}`, email: contractorData.email }];
       if (template.signatureCount >= 2) {
-        signers.push({ id: "company-sig", name: "Operations Manager", title: `Operations Manager, ${orgName}`, email: ACME_ORG.email });
+        signers.push({ id: "company-sig", name: "Operations Manager", title: `Operations Manager, ${orgName}`, email: "[hr@yourcompany.com]" });
       }
       return signers;
     }
     if (template.category === "client") {
-      const signers: any[] = [{ id: "client-sig", name: LONE_STAR.contact, title: `Facilities Director, ${LONE_STAR.clientName}`, email: LONE_STAR.email }];
+      const signers: any[] = [{ id: "client-sig", name: clientData.contact, title: `Facilities Director, ${clientData.clientName}`, email: clientData.email }];
       if (template.signatureCount >= 2) {
-        signers.push({ id: "provider-sig", name: "Account Manager", title: `Account Manager, ${orgName}`, email: ACME_ORG.email });
+        signers.push({ id: "provider-sig", name: "Account Manager", title: `Account Manager, ${orgName}`, email: "[hr@yourcompany.com]" });
       }
       return signers;
     }

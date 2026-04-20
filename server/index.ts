@@ -1,3 +1,20 @@
+// ── GCS credential bootstrap ──────────────────────────────────────────────────
+// If the service account JSON is stored as GCS_KEY_JSON env var (Railway secret),
+// write it to a temp file and set GOOGLE_APPLICATION_CREDENTIALS before any
+// GCS client initializes.
+if (process.env.GCS_KEY_JSON && !process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+  const _fs = require('fs');
+  const _path = require('path');
+  const _keyPath = _path.join('/tmp', 'gcs-service-account.json');
+  try {
+    _fs.writeFileSync(_keyPath, process.env.GCS_KEY_JSON, { mode: 0o600 });
+    process.env.GOOGLE_APPLICATION_CREDENTIALS = _keyPath;
+    console.log('[GCS] Credentials written from GCS_KEY_JSON env var');
+  } catch (e) {
+    console.error('[GCS] Failed to write credentials:', e);
+  }
+}
+
 import express, { type Request, Response, NextFunction } from "express";
 import helmet from "helmet";
 import cors from "cors";
