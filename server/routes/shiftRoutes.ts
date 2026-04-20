@@ -2286,6 +2286,78 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
     }
   });
 
+  // ── Phase 26H — one-click supervisor mark-calloff ─────────────────────────
+  // Wraps fireCallOffSequence so the supervisor deep-link from
+  // missedClockInWorkflow's escalation notification (Phase 26G) does not
+  // require the caller to assemble the full calloff payload. The shift +
+  // officer + supervisor context is resolved internally and tenant-scoped
+  // (§G). Manager role or higher.
+  router.post('/:id/mark-calloff', requireManagerOrPlatformStaff, async (req: AuthenticatedRequest, res) => {
+    try {
+      const workspaceId = req.workspaceId!;
+      const supervisorUserId = req.user?.id;
+      const { reason } = req.body || {};
+
+      const shift = await storage.getShift(req.params.id, workspaceId);
+      if (!shift) return res.status(404).json({ message: 'Shift not found' });
+      if (!shift.employeeId) {
+        return res.status(400).json({ message: 'Shift has no assigned officer to call off' });
+      }
+      if (shift.status === 'cancelled') {
+        return res.status(400).json({ message: 'Shift is already cancelled' });
+      }
+
+      // Resolve site name. storage may return the raw shift row; the title
+      // is the tenant's per-shift identifier, which is what fireCallOffSequence
+      // expects as siteName.
+      const siteName = shift.title || shift.description || 'Unknown Site';
+
+      // Workspace name for the broadcast signoff.
+      const ws = await db.select({ companyName: workspaces.companyName, name: workspaces.name })
+        .from(workspaces).where(eq(workspaces.id, workspaceId)).limit(1);
+      const orgName = ws[0]?.companyName || ws[0]?.name || 'Your Security Company';
+
+      const { fireCallOffSequence } = await import('../services/staffingBroadcastService');
+      const result = await fireCallOffSequence({
+        workspaceId,
+        shiftId: shift.id,
+        officerEmployeeId: shift.employeeId,
+        siteName,
+        shiftDate: new Date(shift.startTime).toISOString().split('T')[0],
+        shiftStart: new Date(shift.startTime).toISOString(),
+        shiftEnd: new Date(shift.endTime).toISOString(),
+        supervisorUserId: supervisorUserId || '',
+        orgName,
+        reason: reason || 'supervisor_marked_calloff',
+      });
+
+      platformEventBus.publish({
+        type: 'shift_cancelled',
+        category: 'workforce',
+        title: 'Shift Marked Calloff by Supervisor',
+        description: `Supervisor marked shift as calloff — replacement broadcast fired`,
+        workspaceId,
+        metadata: {
+          shiftId: shift.id,
+          officerEmployeeId: shift.employeeId,
+          reason: reason || 'supervisor_marked_calloff',
+        },
+        visibility: 'manager',
+      }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+
+      return res.json({
+        success: true,
+        broadcastId: result.broadcastId,
+        officerEmailSent: result.officerEmailSent,
+        managerEmailSent: result.managerEmailSent,
+        message: 'Shift marked as calloff — replacement broadcast fired',
+      });
+    } catch (error: unknown) {
+      log.error('[ShiftRoute] mark-calloff error:', error);
+      return res.status(500).json({ message: sanitizeError(error) || 'Failed to mark shift as calloff' });
+    }
+  });
+
   router.post('/bulk', requireManagerOrPlatformStaff, async (req: AuthenticatedRequest, res) => {
     try {
       const workspaceId = req.workspaceId!;

@@ -416,7 +416,11 @@ async function processIncident(
       uploadedBy: sender.id,
     } as any).then(() => {
       if (attBytes > 0) {
-        recordStorageUsage(workspaceId, 'email', attBytes).catch(() => null);
+        // Phase 26H — migrated from silent .catch(() => null) to labelled
+        // scheduleNonBlocking for traceability (§B).
+        scheduleNonBlocking('inbound-email.storage-usage-incident', async () => {
+          await recordStorageUsage(workspaceId, 'email', attBytes);
+        });
       }
     }).catch((err: unknown) => {
       log.warn('[TrinityInboundEmail] Vault insert for incident attachment failed (non-blocking):', err instanceof Error ? err.message : String(err));
@@ -523,7 +527,11 @@ async function processDocs(
     if (vaultEntry) {
       vaultIds.push(vaultEntry.id);
       if (attBytes > 0) {
-        recordDocStorage(workspaceId, 'email', attBytes).catch(() => null);
+        // Phase 26H — migrated from silent .catch(() => null) to labelled
+        // scheduleNonBlocking for traceability (§B).
+        scheduleNonBlocking('inbound-email.storage-usage-vault', async () => {
+          await recordDocStorage(workspaceId, 'email', attBytes);
+        });
       }
     }
   }

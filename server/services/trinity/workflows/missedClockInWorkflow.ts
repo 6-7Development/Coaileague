@@ -266,10 +266,12 @@ async function advanceToEscalation(
     const officerName = (await fetchFirstName(miss.workspaceId, miss.employeeId)) ?? 'Officer';
     const summary = `${officerName} has not clocked in and is unresponsive. Shift ${miss.shiftId} requires supervisor intervention.`;
 
-    // Phase 26F — deep link so the supervisor can one-click mark the shift as
+    // Phase 26G — deep link so the supervisor can one-click mark the shift as
     // a calloff and trigger the replacement flow. The calloff coverage
     // workflow is intentionally human-gated (officer might be running late,
     // not truly a no-show), so we surface the action rather than autofiring.
+    // The UI reads the shiftId + action query params and opens a confirmation
+    // dialog that POSTs to /api/shifts/:id/mark-calloff (Phase 26H).
     const actionUrl = `/schedule?shiftId=${encodeURIComponent(miss.shiftId)}&action=calloff`;
     const actionSms = `URGENT: ${summary} Tap to mark as calloff: ${actionUrl}`;
 

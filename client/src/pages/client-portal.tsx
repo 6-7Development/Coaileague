@@ -792,7 +792,9 @@ export default function ClientPortal() {
       variant: "destructive",
     }),
   });
-  const clientNumber = (currentClient as any)?.clientNumber || (currentClient as any)?.externalId || null;
+  // CLT-XXX-NNNNN — primary canonical identifier; clientCode is the optional
+  // external QuickBooks-style code if the tenant maintains one separately.
+  const clientNumber = (currentClient as any)?.clientNumber || (currentClient as any)?.clientCode || null;
   const copyClientNumber = () => {
     if (!clientNumber) return;
     navigator.clipboard.writeText(clientNumber);
