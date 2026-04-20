@@ -22,6 +22,7 @@ import {
   employeeBankAccounts,
   timeEntries,
   billingAuditLog,
+  payrollRunLocks,
 } from '@shared/schema';
 import { encryptToken, decryptToken } from '../security/tokenEncryption';
 import * as taxCalculator from "../services/taxCalculator";
@@ -55,20 +56,48 @@ registerLegacyBootstrap('plaid_transfer_attempts', async (p) => {
   `);
 });
 
-const payrollRunLocks = new Map<string, { userId: string; startedAt: number }>();
+// CLAUDE.md Section R / Law P2: payroll run lock is DB-backed so a Railway
+// redeploy mid-run cannot let a second request start a duplicate concurrent
+// payroll run for the same workspace + period.
 const PAYROLL_RUN_LOCK_TTL_MS = 5 * 60 * 1000;
 
-function acquirePayrollRunLock(workspaceId: string, userId: string): { acquired: boolean; holder?: string } {
-  const existing = payrollRunLocks.get(workspaceId);
-  if (existing && Date.now() - existing.startedAt < PAYROLL_RUN_LOCK_TTL_MS) {
-    return { acquired: false, holder: existing.userId };
+async function acquirePayrollRunLock(
+  workspaceId: string,
+  userId: string,
+): Promise<{ acquired: boolean; holder?: string }> {
+  const now = new Date();
+  const expiresAt = new Date(Date.now() + PAYROLL_RUN_LOCK_TTL_MS);
+
+  // Clear any stale lock first so a crashed prior run cannot wedge the workspace.
+  await db.delete(payrollRunLocks)
+    .where(and(
+      eq(payrollRunLocks.workspaceId, workspaceId),
+      lte(payrollRunLocks.expiresAt, now),
+    ));
+
+  try {
+    await db.insert(payrollRunLocks).values({
+      workspaceId,
+      lockedBy: userId,
+      lockedAt: now,
+      expiresAt,
+    });
+    return { acquired: true };
+  } catch {
+    const [existing] = await db.select()
+      .from(payrollRunLocks)
+      .where(eq(payrollRunLocks.workspaceId, workspaceId))
+      .limit(1);
+    return { acquired: false, holder: existing?.lockedBy };
   }
-  payrollRunLocks.set(workspaceId, { userId, startedAt: Date.now() });
-  return { acquired: true };
 }
 
-function releasePayrollRunLock(workspaceId: string) {
-  payrollRunLocks.delete(workspaceId);
+async function releasePayrollRunLock(workspaceId: string): Promise<void> {
+  try {
+    await db.delete(payrollRunLocks).where(eq(payrollRunLocks.workspaceId, workspaceId));
+  } catch (err: any) {
+    log.warn('[PayrollLock] Release failed (non-fatal):', err?.message);
+  }
 }
 import {
   addDeduction,
@@ -506,7 +535,7 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
         });
       }
 
-      const lockResult = acquirePayrollRunLock(workspaceId, userId);
+      const lockResult = await acquirePayrollRunLock(workspaceId, userId);
       if (!lockResult.acquired) {
         return res.status(409).json({ error: "A payroll run is already being created for this workspace", lockedBy: lockResult.holder });
       }
@@ -542,7 +571,7 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
 
       const periodViolation = validatePayrollPeriod(periodStart, periodEnd);
       if (periodViolation) {
-        releasePayrollRunLock(workspaceId);
+        await releasePayrollRunLock(workspaceId);
         if (businessRuleResponse(res, [periodViolation])) return;
       }
 
@@ -555,8 +584,8 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
         .limit(1);
 
       if (overlappingRun.length > 0) {
-        releasePayrollRunLock(workspaceId);
-        return res.status(409).json({ 
+        await releasePayrollRunLock(workspaceId);
+        return res.status(409).json({
           message: "Payroll period overlaps with an existing run",
           existingRunId: overlappingRun[0].id 
         });
@@ -623,7 +652,7 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
         ));
 
       if (!approvedHoursCheck || approvedHoursCheck.approvedCount === 0) {
-        releasePayrollRunLock(workspaceId);
+        await releasePayrollRunLock(workspaceId);
         return res.status(422).json({
           error: 'ZERO_APPROVED_HOURS',
           message: `No approved timesheets found for ${periodStart.toLocaleDateString()} – ${periodEnd.toLocaleDateString()}. Approve timesheets before running payroll.`,
@@ -740,7 +769,7 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
       res.status(500).json({ message: (error instanceof Error ? sanitizeError(error) : null) || "Failed to create payroll run" });
     } finally {
       const workspaceId = req.workspaceId;
-      if (workspaceId) releasePayrollRunLock(workspaceId);
+      if (workspaceId) await releasePayrollRunLock(workspaceId);
     }
   });
 

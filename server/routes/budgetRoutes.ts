@@ -10,6 +10,7 @@ import {
 } from "@shared/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { requireManager, requireOwner, type AuthenticatedRequest } from "../rbac";
+import { softDelete } from "../lib/softDelete";
 import { createLogger } from '../lib/logger';
 const log = createLogger('BudgetRoutes');
 
@@ -145,16 +146,25 @@ router.delete('/:id', requireOwner, async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId!;
     const { id } = req.params;
-    
-    const result = await db
-      .delete(budgets)
+
+    // CLAUDE.md Section R / Law P1 — soft delete (financial record retained)
+    const [existing] = await db.select({ id: budgets.id })
+      .from(budgets)
       .where(and(eq(budgets.id, id), eq(budgets.workspaceId, workspaceId)))
-      .returning();
-    
-    if (!result.length) {
+      .limit(1);
+    if (!existing) {
       return res.status(404).json({ message: "Budget not found" });
     }
-    
+
+    await softDelete({
+      table: budgets,
+      where: and(eq(budgets.id, id), eq(budgets.workspaceId, workspaceId))!,
+      userId: req.user?.id ?? 'unknown',
+      workspaceId,
+      entityType: 'budget',
+      entityId: id,
+    });
+
     res.json({ message: "Budget deleted successfully" });
   } catch (error: unknown) {
     log.error("Error deleting budget:", error);

@@ -14,6 +14,7 @@ import { runLegacyBootstraps } from "./services/legacyBootstrapRegistry";
 import { ensureCriticalConstraints } from "./services/criticalConstraintsBootstrap";
 import { ensureWorkspaceIndexes } from "./services/workspaceIndexBootstrap";
 import { ensureIdentityIntegrity } from "./services/identityIntegrityBootstrap";
+import { runStartupRecovery, checkObjectStorageConfig } from "./lib/startupRecovery";
 import { isProduction as isProductionEnv } from "./lib/isProduction";
 import { ensurePerformanceIndexes, registerNdsQueueMonitor } from "./services/performanceIndexService";
 import { validateAndLogConfiguration } from "./utils/configValidator";
@@ -765,6 +766,19 @@ async function initializeCriticalServices() {
   } catch (error) {
     log.error('Storage quota table init failed', { error: error instanceof Error ? error.message : String(error) });
   }
+
+  // CLAUDE.md Section R / Law P4 — startup recovery: clear stale payroll
+  // locks, mark interrupted goals & supervisor handoffs from the prior boot.
+  // Non-fatal — degraded recovery is preferable to a stalled boot.
+  try {
+    await runStartupRecovery();
+  } catch (error) {
+    log.error('Startup recovery failed (non-fatal)', { error: error instanceof Error ? error.message : String(error) });
+  }
+
+  // CLAUDE.md Section R / Law P3 — surface missing object-storage configuration
+  // at boot so file-upload failures do not appear as silent 500s later.
+  checkObjectStorageConfig();
 
   // FOUNDER EXEMPTION GUARANTEE: Ensure the grandfathered founding tenant always has
   // founder_exemption=true and billing_exempt=true. Safe to run in dev —

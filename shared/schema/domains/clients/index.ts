@@ -310,6 +310,9 @@ export const clients = pgTable("clients", {
   billingCity: varchar("billing_city"),
   billingState: varchar("billing_state"),
   billingZip: varchar("billing_zip"),
+  // CLAUDE.md Section R / Law P1 — soft delete (no hard delete on clients)
+  deletedAt: timestamp("deleted_at"),
+  deletedBy: varchar("deleted_by"),
 }, (table) => ({
   // Add index on userId for performance
   userIdIdx: index("clients_user_id_idx").on(table.userId),

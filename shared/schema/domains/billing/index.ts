@@ -528,6 +528,9 @@ export const budgets = pgTable("budgets", {
 
   lineItems: jsonb("line_items").default('[]'),
   variances: jsonb("variances").default('[]'),
+  // CLAUDE.md Section R / Law P1 — soft delete (financial record retained)
+  deletedAt: timestamp("deleted_at"),
+  deletedBy: varchar("deleted_by"),
 });
 
 export const budgetLineItems = pgTable("budget_line_items", {
@@ -2111,5 +2114,23 @@ export const tokenUsageMonthly = pgTable("token_usage_monthly", {
 export type TokenUsageMonthly = typeof tokenUsageMonthly.$inferSelect;
 export const insertTokenUsageMonthlySchema = createInsertSchema(tokenUsageMonthly).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertTokenUsageMonthly = z.infer<typeof insertTokenUsageMonthlySchema>;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// payroll_run_locks (Persistence Phase — CLAUDE.md Section R, Law P2)
+// Replaces in-memory `payrollRunLocks` Map. Survives server restart so a
+// Railway redeploy mid-run cannot allow a duplicate concurrent payroll run.
+// PRIMARY KEY on workspace_id gives us atomic INSERT-or-fail concurrency.
+// ─────────────────────────────────────────────────────────────────────────────
+export const payrollRunLocks = pgTable("payroll_run_locks", {
+  workspaceId: varchar("workspace_id").primaryKey(),
+  lockedBy: varchar("locked_by").notNull(),
+  lockedAt: timestamp("locked_at", { withTimezone: true }).notNull().defaultNow(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+}, (table) => [
+  index("payroll_run_locks_expires_idx").on(table.expiresAt),
+]);
+
+export type PayrollRunLock = typeof payrollRunLocks.$inferSelect;
+export type InsertPayrollRunLock = typeof payrollRunLocks.$inferInsert;
 
 export * from './extended';

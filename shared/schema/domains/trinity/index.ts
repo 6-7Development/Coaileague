@@ -2912,4 +2912,57 @@ export const trinityAuditLogs = pgTable("trinity_audit_logs", {
 export type TrinityAuditLog = typeof trinityAuditLogs.$inferSelect;
 export type InsertTrinityAuditLog = typeof trinityAuditLogs.$inferInsert;
 
+// ─────────────────────────────────────────────────────────────────────────────
+// trinity_goal_executions (Persistence Phase — CLAUDE.md Section R, Law P2)
+// Mirror of goalExecutionService.activeExecutions Map. Write-through on
+// start/complete so a Railway redeploy mid-run leaves a row that
+// runStartupRecovery() can mark `interrupted` and notify the workspace owner.
+// ─────────────────────────────────────────────────────────────────────────────
+export const trinityGoalExecutions = pgTable("trinity_goal_executions", {
+  id: varchar("id").primaryKey(),
+  workspaceId: varchar("workspace_id").notNull(),
+  userId: varchar("user_id"),
+  conversationId: varchar("conversation_id"),
+  goalDescription: text("goal_description").notNull(),
+  priority: varchar("priority").notNull().default("medium"),
+  status: varchar("status").notNull().default("running"),
+  startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+  errorMessage: text("error_message"),
+  attempts: integer("attempts").notNull().default(0),
+  metadata: jsonb("metadata").default('{}'),
+}, (table) => [
+  index("trinity_goal_executions_workspace_idx").on(table.workspaceId),
+  index("trinity_goal_executions_status_idx").on(table.status),
+  index("trinity_goal_executions_started_idx").on(table.startedAt),
+]);
+
+export type TrinityGoalExecution = typeof trinityGoalExecutions.$inferSelect;
+export type InsertTrinityGoalExecution = typeof trinityGoalExecutions.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// supervisor_handoffs (Persistence Phase — CLAUDE.md Section R, Law P2)
+// Mirror of adaptiveSupervisionRouter.activeHandoffs Map. An in-flight
+// handoff that vanishes on restart leaves both agents unaware of state.
+// ─────────────────────────────────────────────────────────────────────────────
+export const supervisorHandoffs = pgTable("supervisor_handoffs", {
+  id: varchar("id").primaryKey(),
+  workspaceId: varchar("workspace_id"),
+  fromAgent: varchar("from_agent").notNull(),
+  toAgent: varchar("to_agent").notNull(),
+  reason: text("reason"),
+  payload: jsonb("payload").default('{}'),
+  status: varchar("status").notNull().default("active"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+}, (table) => [
+  index("supervisor_handoffs_workspace_idx").on(table.workspaceId),
+  index("supervisor_handoffs_status_idx").on(table.status),
+  index("supervisor_handoffs_from_idx").on(table.fromAgent),
+  index("supervisor_handoffs_to_idx").on(table.toAgent),
+]);
+
+export type SupervisorHandoff = typeof supervisorHandoffs.$inferSelect;
+export type InsertSupervisorHandoff = typeof supervisorHandoffs.$inferInsert;
+
 export * from './extended';
