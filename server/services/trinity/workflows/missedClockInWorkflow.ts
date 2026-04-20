@@ -266,6 +266,13 @@ async function advanceToEscalation(
     const officerName = (await fetchFirstName(miss.workspaceId, miss.employeeId)) ?? 'Officer';
     const summary = `${officerName} has not clocked in and is unresponsive. Shift ${miss.shiftId} requires supervisor intervention.`;
 
+    // Phase 26F — deep link so the supervisor can one-click mark the shift as
+    // a calloff and trigger the replacement flow. The calloff coverage
+    // workflow is intentionally human-gated (officer might be running late,
+    // not truly a no-show), so we surface the action rather than autofiring.
+    const actionUrl = `/schedule?shiftId=${encodeURIComponent(miss.shiftId)}&action=calloff`;
+    const actionSms = `URGENT: ${summary} Tap to mark as calloff: ${actionUrl}`;
+
     const supervisorIds = await fetchSupervisors(miss.workspaceId);
     const phones = await fetchSupervisorPhones(miss.workspaceId);
 
@@ -277,14 +284,20 @@ async function advanceToEscalation(
           recipientUserId,
           channel: 'in_app' as any,
           subject: 'Missed clock-in — unresponsive',
-          body: { summary, shiftId: miss.shiftId, employeeId: miss.employeeId },
+          body: {
+            summary,
+            shiftId: miss.shiftId,
+            employeeId: miss.employeeId,
+            actionUrl,
+            actionLabel: 'Mark as calloff & find replacement',
+          },
           idempotencyKey: `missed-clockin-${miss.shiftId}-${recipientUserId}`,
         }),
       ),
       ...phones.slice(0, 3).map((phone) =>
         sendSMS({
           to: phone,
-          body: `URGENT: ${summary}`,
+          body: actionSms,
           workspaceId: miss.workspaceId,
           type: 'missed_clockin_escalation',
         }),
