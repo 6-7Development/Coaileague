@@ -22,6 +22,8 @@ import { goalMetricsService, RiskAnalysis, StakeholderImpact } from './goalMetri
 import { stateVerificationService, VerificationResult } from './stateVerificationService';
 import { alternativeStrategyService, AlternativeStrategy } from './alternativeStrategyService';
 import { db } from '../../../db';
+import { trinityGoalExecutions } from '@shared/schema';
+import { eq } from 'drizzle-orm';
 import { platformEventBus } from '../../platformEventBus';
 import crypto from 'crypto';
 import { createLogger } from '../../../lib/logger';
@@ -171,7 +173,27 @@ class GoalExecutionService {
     const learnings: string[] = [];
     
     this.activeExecutions.set(executionId, goal);
-    
+
+    // CLAUDE.md Section R / Law P2: write-through to trinity_goal_executions
+    // so a Railway redeploy mid-run leaves a row that runStartupRecovery()
+    // can mark `interrupted` and notify the workspace owner.
+    try {
+      await db.insert(trinityGoalExecutions).values({
+        id: executionId,
+        workspaceId: context.workspaceId,
+        userId: context.userId,
+        conversationId: context.conversationId,
+        goalDescription: goal.description,
+        priority: goal.priority,
+        status: 'running',
+        startedAt: new Date(),
+        attempts: 0,
+        metadata: { targetState: goal.targetState, constraints: goal.constraints ?? [] },
+      });
+    } catch (persistErr: any) {
+      log.warn('[GoalExecution] Persist start failed (non-fatal):', persistErr?.message);
+    }
+
     // START METRICS TRACKING
     goalMetricsService.startGoalTracking(executionId, goal.description);
     
@@ -574,6 +596,18 @@ class GoalExecutionService {
 
     } finally {
       this.activeExecutions.delete(executionId);
+      // CLAUDE.md Section R / Law P2: mark execution complete in DB
+      try {
+        await db.update(trinityGoalExecutions)
+          .set({
+            status: success ? 'completed' : 'failed',
+            completedAt: new Date(),
+            attempts,
+          })
+          .where(eq(trinityGoalExecutions.id, executionId));
+      } catch (persistErr: any) {
+        log.warn('[GoalExecution] Persist complete failed (non-fatal):', persistErr?.message);
+      }
     }
   }
 

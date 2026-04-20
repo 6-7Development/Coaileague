@@ -698,6 +698,21 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
         log.warn('[Shifts] Failed to log webhook error to audit log', { error: webhookErr.message });
       }
 
+      // Pre-provision a pending shift chatroom so manager↔officer messaging
+      // works the moment the shift hits the schedule — before clock-in.
+      // Awaited try/catch (non-fatal): per CLAUDE.md §B no fire-and-forget.
+      try {
+        const { shiftChatroomWorkflowService } = await import('../services/shiftChatroomWorkflowService');
+        await shiftChatroomWorkflowService.provisionChatroom({
+          shiftId: shift.id,
+          workspaceId,
+          siteId: shift.siteId ?? undefined,
+          assignedEmployeeId: shift.employeeId ?? undefined,
+        });
+      } catch (provisionErr: any) {
+        log.warn('[ShiftChatroom] provisionChatroom failed (non-blocking):', provisionErr?.message);
+      }
+
       // Notify assigned employees about new shift
       try {
         // @ts-expect-error — TS migration: fix in refactoring sprint
@@ -857,15 +872,8 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
       // 📡 REAL-TIME: Broadcast shift creation ONLY after successful DB operation
       broadcastShiftUpdate(workspaceId, 'shift_created', shift);
 
-      // 🪑 PROVISION: Create pending chatroom now so managers/supervisors have a
-      // channel tied to the shift before clock-in. Promoted to 'active' when the
-      // officer clocks in via shiftChatroomWorkflowService.startShift().
-      shiftChatroomWorkflowService.provisionChatroom({
-        shiftId: shift.id,
-        workspaceId,
-        siteId: shift.siteId ?? undefined,
-        createdBy: userId,
-      }).catch(err => log.warn('[ShiftChatroom] provisionChatroom failed (non-blocking):', err?.message));
+      // Note: chatroom is pre-provisioned at the top of this handler (see
+      // provisionChatroom call above) — no duplicate provision needed here.
 
       // 🧠 TRINITY: Publish to platformEventBus so Trinity and all service monitors see this shift
       platformEventBus.publish({
@@ -2858,7 +2866,7 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
           shiftId,
           workspaceId,
           siteId: accessCheck.shift?.siteId ?? undefined,
-          createdBy: userId,
+          assignedEmployeeId: employee.id,
         });
         chatroomId = provision.chatroomId;
       }

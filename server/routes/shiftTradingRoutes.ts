@@ -175,12 +175,12 @@ router.post("/trades", requireAuth, async (req: AuthenticatedRequest, res) => {
        reason || null, expiresAt || null]
     );
 
-    // Resolve shift details for notification payload
+    // Resolve shift date/site for richer notification text.
     const shiftRow = shiftCheck.rows[0];
-    const shiftDateStr = shiftRow?.start_time
-      ? new Date(shiftRow.start_time).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-      : 'a scheduled shift';
-    const requesterName = emp[0].first_name || 'A colleague';
+    const shiftDate = shiftRow?.date || (shiftRow?.start_time ? new Date(shiftRow.start_time).toLocaleDateString() : 'their');
+    const siteName = shiftRow?.site_name || 'their site';
+    const tradeId = rows[0].id;
+    const requesterName = emp[0]?.first_name || 'A colleague';
 
     // Notify target officer if specified, otherwise notify managers
     if (targetOfficerId) {
@@ -195,22 +195,29 @@ router.post("/trades", requireAuth, async (req: AuthenticatedRequest, res) => {
           type: "shift_trade",
           actionUrl: `/shift-trading?tab=received`,
         }).catch(() => null);
-
-        // Push to mobile/offline recipients via NDS
-        await NotificationDeliveryService.send({
-          type: 'shift_trade_request',
-          workspaceId: wid,
-          recipientUserId: targetUser.rows[0].user_id,
-          channel: 'push',
-          subject: 'Shift Trade Request',
-          body: {
-            title: 'Shift Trade Request',
-            body: `${requesterName} wants to trade their ${shiftDateStr} shift.`,
-            url: `/shift-trading?tab=received`,
-            tradeId: rows[0].id,
-            shiftId: requestedShiftId,
-          },
-        }).catch(err => log.warn('[ShiftTrading] NDS shift_trade_request failed (non-blocking):', err?.message));
+        // NDS: deliver through the canonical sender (CLAUDE.md §B) so
+        // delivery is logged and push/in-app channels are respected.
+        try {
+          await NotificationDeliveryService.send({
+            type: 'shift_trade_request',
+            workspaceId: wid,
+            recipientUserId: targetUser.rows[0].user_id,
+            channel: 'in_app',
+            subject: 'Shift Trade Request',
+            body: {
+              title: 'Shift Trade Request',
+              message: `${requesterName} wants to trade their ${shiftDate} shift at ${siteName}.`,
+              url: `/shift-marketplace`,
+              tradeId,
+              actionButtons: [
+                { label: 'Accept', action: 'accept_trade', data: { tradeId } },
+                { label: 'Decline', action: 'decline_trade', data: { tradeId } },
+              ],
+            },
+          });
+        } catch (ndsErr: any) {
+          console.warn('[ShiftTrade] NDS shift_trade_request failed (non-fatal):', ndsErr?.message);
+        }
       }
     } else {
       // Open marketplace — notify managers (in-app only; no push spam)
@@ -225,6 +232,23 @@ router.post("/trades", requireAuth, async (req: AuthenticatedRequest, res) => {
           message: `An officer posted a shift for trading on the marketplace.`,
           type: "shift_trade", actionUrl: `/shift-trading`,
         }).catch(() => null);
+        try {
+          await NotificationDeliveryService.send({
+            type: 'shift_trade_request',
+            workspaceId: wid,
+            recipientUserId: m.id,
+            channel: 'in_app',
+            subject: 'Open Shift Trade',
+            body: {
+              title: 'Open Shift Trade',
+              message: `${requesterName} posted their ${shiftDate} shift for trading.`,
+              url: `/shift-marketplace`,
+              tradeId,
+            },
+          });
+        } catch (ndsErr: any) {
+          console.warn('[ShiftTrade] NDS manager notify failed (non-fatal):', ndsErr?.message);
+        }
       }
     }
     res.status(201).json(rows[0]);
@@ -257,20 +281,32 @@ router.post("/trades/:id/accept", requireAuth, async (req: AuthenticatedRequest,
         message: "Your shift trade request has been accepted. Awaiting manager approval.",
         type: "shift_trade", actionUrl: `/shift-trading`,
       }).catch(() => null);
-
-      await NotificationDeliveryService.send({
-        type: 'shift_trade_accepted',
-        workspaceId: wid,
-        recipientUserId: requester.rows[0].user_id,
-        channel: 'push',
-        subject: 'Shift Trade Accepted',
-        body: {
-          title: 'Shift Trade Accepted',
-          body: 'Your shift trade request was accepted. Awaiting manager approval.',
-          url: `/shift-trading`,
-          tradeId: rows[0].id,
-        },
-      }).catch(err => log.warn('[ShiftTrading] NDS shift_trade_accepted failed (non-blocking):', err?.message));
+      try {
+        const acceptorName = (await pool.query(
+          `SELECT first_name FROM employees WHERE id=$1 AND workspace_id=$2`,
+          [emp[0].id, wid]
+        )).rows[0]?.first_name || 'Another officer';
+        const shiftDate = (await pool.query(
+          `SELECT date, start_time FROM shifts WHERE id=$1 AND workspace_id=$2`,
+          [rows[0].requested_shift_id, wid]
+        )).rows[0];
+        const dateLabel = shiftDate?.date || (shiftDate?.start_time ? new Date(shiftDate.start_time).toLocaleDateString() : 'your');
+        await NotificationDeliveryService.send({
+          type: 'shift_trade_accepted',
+          workspaceId: wid,
+          recipientUserId: requester.rows[0].user_id,
+          channel: 'in_app',
+          subject: 'Trade Accepted ✅',
+          body: {
+            title: 'Trade Accepted ✅',
+            message: `${acceptorName} accepted your ${dateLabel} shift trade. Awaiting manager approval.`,
+            url: `/shift-marketplace`,
+            tradeId: rows[0].id,
+          },
+        });
+      } catch (ndsErr: any) {
+        console.warn('[ShiftTrade] NDS shift_trade_accepted failed (non-fatal):', ndsErr?.message);
+      }
     }
     res.json(rows[0]);
   } catch (err: any) { res.status(500).json({ error: sanitizeError(err) }); }
@@ -287,36 +323,35 @@ router.post("/trades/:id/reject", requireAuth, async (req: AuthenticatedRequest,
     );
     if (!rows[0]) return res.status(404).json({ error: "Trade request not found" });
 
-    // Notify requester so they know their trade was declined
-    const requester = await pool.query(
-      `SELECT user_id FROM employees WHERE id=$1 AND workspace_id=$2`,
-      [rows[0].requesting_officer_id, wid]
-    );
-    if (requester.rows[0]?.user_id) {
-      await createNotification({
-        userId: requester.rows[0].user_id,
-        workspaceId: wid,
-        title: "Shift Trade Declined",
-        message: "Your shift trade request was declined.",
-        type: "shift_trade",
-        actionUrl: `/shift-trading`,
-      }).catch(() => null);
-
-      await NotificationDeliveryService.send({
-        type: 'shift_trade_rejected',
-        workspaceId: wid,
-        recipientUserId: requester.rows[0].user_id,
-        channel: 'push',
-        subject: 'Shift Trade Declined',
-        body: {
-          title: 'Shift Trade Declined',
-          body: 'Your shift trade request was declined.',
-          url: `/shift-trading`,
-          tradeId: rows[0].id,
-        },
-      }).catch(err => log.warn('[ShiftTrading] NDS shift_trade_rejected failed (non-blocking):', err?.message));
+    // Notify the original requester that their trade was declined.
+    try {
+      const requester = await pool.query(
+        `SELECT user_id FROM employees WHERE id=$1 AND workspace_id=$2`,
+        [rows[0].requesting_officer_id, wid]
+      );
+      if (requester.rows[0]?.user_id) {
+        const shiftRow = (await pool.query(
+          `SELECT date, start_time FROM shifts WHERE id=$1 AND workspace_id=$2`,
+          [rows[0].requested_shift_id, wid]
+        )).rows[0];
+        const dateLabel = shiftRow?.date || (shiftRow?.start_time ? new Date(shiftRow.start_time).toLocaleDateString() : 'your');
+        await NotificationDeliveryService.send({
+          type: 'shift_trade_declined',
+          workspaceId: wid,
+          recipientUserId: requester.rows[0].user_id,
+          channel: 'in_app',
+          subject: 'Trade Declined',
+          body: {
+            title: 'Trade Declined',
+            message: `Your ${dateLabel} shift trade request was declined.`,
+            url: `/shift-marketplace`,
+            tradeId: rows[0].id,
+          },
+        });
+      }
+    } catch (ndsErr: any) {
+      console.warn('[ShiftTrade] NDS shift_trade_declined failed (non-fatal):', ndsErr?.message);
     }
-
     res.json(rows[0]);
   } catch (err: any) { res.status(500).json({ error: sanitizeError(err) }); }
 });

@@ -304,6 +304,9 @@ export const employeeDocuments = pgTable("employee_documents", {
 
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+  // CLAUDE.md Section R / Law P1 — soft delete (HR records retained for compliance)
+  deletedAt: timestamp("deleted_at"),
+  deletedBy: varchar("deleted_by"),
 }, (table) => [
   index("idx_employee_documents_employee").on(table.employeeId),
   index("idx_employee_documents_type").on(table.documentType),
@@ -1124,6 +1127,9 @@ export const flexGigs = pgTable("flex_gigs", {
   
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow(),
+  // CLAUDE.md Section R / Law P1 — soft delete (gig history retained)
+  deletedAt: timestamp("deleted_at"),
+  deletedBy: varchar("deleted_by"),
 }, (table) => [
   index("flex_gigs_workspace_idx").on(table.workspaceId),
   index("flex_gigs_status_idx").on(table.status),

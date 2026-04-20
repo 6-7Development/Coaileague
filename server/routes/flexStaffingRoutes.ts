@@ -16,6 +16,7 @@ import {
   canViewPayRates,
 } from '../utils/sensitiveFieldFilter';
 import { platformEventBus } from '../services/platformEventBus';
+import { softDelete } from '../lib/softDelete';
 import { createLogger } from '../lib/logger';
 const log = createLogger('FlexStaffingRoutes');
 
@@ -318,8 +319,15 @@ export function registerFlexStaffingRoutes(app: Express, requireAuth: any, attac
           if (!workspaceId) return res.status(403).json({ error: 'Workspace context required' });
       const { id } = req.params;
       
-      await db.delete(flexGigs)
-        .where(and(eq(flexGigs.id, id), eq(flexGigs.workspaceId, workspaceId)));
+      // CLAUDE.md Section R / Law P1 — soft delete (gig history retained)
+      await softDelete({
+        table: flexGigs,
+        where: and(eq(flexGigs.id, id), eq(flexGigs.workspaceId, workspaceId))!,
+        userId: req.user?.id ?? 'unknown',
+        workspaceId,
+        entityType: 'flex_gig',
+        entityId: id,
+      });
 
       res.json({ success: true });
     } catch (error: unknown) {

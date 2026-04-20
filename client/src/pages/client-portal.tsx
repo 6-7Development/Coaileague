@@ -626,60 +626,26 @@ export default function ClientPortal() {
   const currentClient = clients.find(c => c.email === user?.email);
 
   interface ClientReport { id: number; title: string; reportType: string; status: string; employeeName?: string; createdAt: string; data: Record<string, any>; }
-  interface GuardTourSummary {
-    id: string;
-    tourName: string;
-    status: string | null;
-    intervalMinutes: number | null;
-    officerName: string;
-    scannedCheckpoints: number;
-    lastScannedAt: string | null;
-    createdAt: string;
-  }
-  interface DARSummary {
-    id: string;
-    shiftId: string;
-    title: string;
-    summary: string | null;
-    status: string;
-    employeeName: string | null;
-    shiftStartTime: string;
-    shiftEndTime: string;
-    sentAt: string | null;
-    verifiedAt: string | null;
-    pdfUrl: string | null;
-    photoCount: number | null;
-    clientAccessToken: string | null;
-  }
-  interface IncidentSummary {
-    id: string;
-    incidentNumber: string | null;
-    title: string;
-    incidentType: string;
-    severity: string;
-    status: string;
-    occurredAt: string | null;
-    locationAddress: string | null;
-    polishedSummary: string | null;
-    sentToClientAt: string | null;
-    clientAcknowledgedAt: string | null;
-  }
+  interface ClientGuardTour { id: string; tour_name?: string; status: string; completed_at?: string; completion_percentage?: string; officer_name?: string; }
+  interface ClientDar { id: string; report_number?: string; site_name?: string; shift_date?: string; employee_name?: string; status?: string; pdf_url?: string; photo_count?: number; }
+  interface ClientIncident { id: string; title: string; incident_type?: string; severity?: string; occurred_at?: string; location?: string; status?: string; site_id?: string; officer_name?: string; }
+  interface ClientTransparencyPdf { id: string; report_number?: string; site_name?: string; shift_date?: string; employee_name?: string; pdf_url?: string; photo_count?: number; status?: string; }
   interface ClientReportsResponse {
     reports: ClientReport[];
-    guardTours: GuardTourSummary[];
-    dars: DARSummary[];
-    incidents: IncidentSummary[];
+    guardTours: ClientGuardTour[];
+    dars: ClientDar[];
+    incidents: ClientIncident[];
+    transparencyPdfs: ClientTransparencyPdf[];
   }
-  const { data: clientReportsData = { reports: [], guardTours: [], dars: [], incidents: [] }, isLoading: reportsLoading } = useQuery<ClientReportsResponse>({
+  const { data: clientReportsData, isLoading: reportsLoading } = useQuery<ClientReportsResponse>({
     queryKey: ["/api/client-reports"],
     enabled: !!currentClient,
   });
-  const clientReports = clientReportsData.reports ?? [];
-  const clientGuardTours = clientReportsData.guardTours ?? [];
-  const clientDars = clientReportsData.dars ?? [];
-  const clientIncidents = clientReportsData.incidents ?? [];
-  const totalProofOfService =
-    clientReports.length + clientGuardTours.length + clientDars.length + clientIncidents.length;
+  const clientReports: ClientReport[] = clientReportsData?.reports ?? [];
+  const clientGuardTours: ClientGuardTour[] = clientReportsData?.guardTours ?? [];
+  const clientDars: ClientDar[] = clientReportsData?.dars ?? [];
+  const clientIncidents: ClientIncident[] = clientReportsData?.incidents ?? [];
+  const clientTransparencyPdfs: ClientTransparencyPdf[] = clientReportsData?.transparencyPdfs ?? [];
 
   interface Contract { id: string; title: string; status: string; clientEmail: string; createdAt: string; expiresAt?: string; docType?: string; }
   const { data: contractsData } = useQuery<{ contracts: Contract[] }>({
@@ -927,7 +893,11 @@ export default function ClientPortal() {
               <TabsTrigger value="payments" data-testid="tab-payments">Payments</TabsTrigger>
               <TabsTrigger value="reports" data-testid="tab-reports">
                 Reports
-                {totalProofOfService > 0 && <Badge variant="secondary" className="ml-1.5 h-5 px-1.5 text-xs">{totalProofOfService}</Badge>}
+                {(clientReports.length + clientTransparencyPdfs.length + clientDars.length) > 0 && (
+                  <Badge variant="secondary" className="ml-1.5 h-5 px-1.5 text-xs">
+                    {clientReports.length + clientTransparencyPdfs.length + clientDars.length}
+                  </Badge>
+                )}
               </TabsTrigger>
               <TabsTrigger value="contracts" data-testid="tab-contracts">
                 Contracts
@@ -1199,19 +1169,139 @@ export default function ClientPortal() {
             </Card>
           </TabsContent>
 
-          {/* ── PROOF OF SERVICE (field reports + patrols + DARs + incidents) ── */}
+          {/* ── FIELD REPORTS ────────────────────────────────────────────── */}
           <TabsContent value="reports" className="mt-6 space-y-6">
-            {/* Field Reports */}
+            {/* 1. Shift Transparency Reports — chronological proof-of-service PDFs */}
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2"><ClipboardCheck className="h-5 w-5 text-indigo-500" /> Field Reports</CardTitle>
-                <CardDescription>Approved field reports submitted by your service team</CardDescription>
+                <CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5 text-indigo-500" /> Shift Transparency Reports</CardTitle>
+                <CardDescription>Chronological proof-of-service with GPS-stamped photos for every hour of every shift at your sites.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {reportsLoading ? (
+                  <div className="flex justify-center py-8"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
+                ) : clientTransparencyPdfs.length === 0 ? (
+                  <div className="text-center py-8 text-sm text-muted-foreground">No shift reports yet — generated automatically at the end of each shift.</div>
+                ) : (
+                  <div className="space-y-2">
+                    {clientTransparencyPdfs.map(pdf => (
+                      <div key={pdf.id} className="flex items-center justify-between gap-3 p-3 rounded-md border" data-testid={`card-transparency-${pdf.id}`}>
+                        <div className="min-w-0">
+                          <p className="font-semibold truncate">{pdf.site_name || 'Site'} — {pdf.shift_date ? formatDate(pdf.shift_date) : ''}</p>
+                          <p className="text-sm text-muted-foreground">
+                            Officer: {pdf.employee_name || 'On-Duty Officer'} · {pdf.photo_count ?? 0} photos
+                          </p>
+                        </div>
+                        {pdf.pdf_url && (
+                          <Button asChild size="sm" variant="outline" data-testid={`button-transparency-pdf-${pdf.id}`}>
+                            <a href={pdf.pdf_url} target="_blank" rel="noreferrer"><Download className="h-3.5 w-3.5 mr-1" /> Download PDF</a>
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* 2. Guard Patrol Tours — completion rates */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><Shield className="h-5 w-5 text-indigo-500" /> Guard Patrol Tours</CardTitle>
+                <CardDescription>Patrol completion for your sites — missed checkpoints flagged.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {clientGuardTours.length === 0 ? (
+                  <div className="text-center py-8 text-sm text-muted-foreground">No completed patrol tours yet.</div>
+                ) : (
+                  <div className="space-y-2">
+                    {clientGuardTours.map(tour => {
+                      const pct = Number(tour.completion_percentage ?? 0);
+                      const complete = pct >= 100;
+                      return (
+                        <div key={tour.id} className="flex items-center justify-between gap-3 p-3 rounded-md border" data-testid={`card-tour-${tour.id}`}>
+                          <div className="min-w-0">
+                            <p className="font-medium truncate">{tour.tour_name || 'Patrol Tour'}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {tour.completed_at ? formatDate(tour.completed_at) : 'In progress'} · {tour.officer_name || 'Officer'}
+                            </p>
+                          </div>
+                          <Badge variant={complete ? 'secondary' : 'destructive'}>
+                            {Math.round(pct)}% complete
+                          </Badge>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* 3. Daily Activity Reports */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><ClipboardCheck className="h-5 w-5 text-indigo-500" /> Daily Activity Reports</CardTitle>
+                <CardDescription>Supervisor-reviewed DARs for every shift at your sites.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {clientDars.length === 0 ? (
+                  <div className="text-center py-8 text-sm text-muted-foreground">No DARs yet.</div>
+                ) : (
+                  <div className="space-y-2">
+                    {clientDars.map(dar => (
+                      <div key={dar.id} className="flex items-center justify-between gap-3 p-3 rounded-md border" data-testid={`card-dar-${dar.id}`}>
+                        <div className="min-w-0">
+                          <p className="font-medium truncate">{dar.site_name || 'Site'}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {dar.shift_date ? formatDate(dar.shift_date) : ''} · {dar.employee_name || 'Officer'}
+                          </p>
+                        </div>
+                        {dar.pdf_url && (
+                          <Button asChild size="sm" variant="ghost" data-testid={`button-dar-pdf-${dar.id}`}>
+                            <a href={dar.pdf_url} target="_blank" rel="noreferrer"><Eye className="h-3.5 w-3.5 mr-1" /> View PDF</a>
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* 4. Incident Reports (client-safe view) */}
+            {clientIncidents.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2"><AlertTriangle className="h-5 w-5 text-red-500" /> Incident Reports</CardTitle>
+                  <CardDescription>Incidents at your sites — client-safe view only (no internal investigation notes).</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {clientIncidents.map(inc => (
+                      <div key={inc.id} className="p-3 rounded-md border border-l-4 border-l-red-400" data-testid={`card-incident-${inc.id}`}>
+                        <p className="font-medium">{inc.title}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {inc.incident_type || 'incident'} · {inc.occurred_at ? formatDate(inc.occurred_at) : 'time unknown'}
+                          {inc.status ? <> · <Badge variant={inc.status === 'closed' ? 'outline' : 'secondary'} className="ml-1">{inc.status}</Badge></> : null}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* 5. Field Report Submissions — legacy reports view */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><ClipboardCheck className="h-5 w-5 text-indigo-500" /> Field Report Submissions</CardTitle>
+                <CardDescription>Approved field reports from your service team.</CardDescription>
               </CardHeader>
               <CardContent>
                 {reportsLoading ? (
                   <div className="flex justify-center py-8"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
                 ) : clientReports.length === 0 ? (
-                  <div className="text-center py-8"><ClipboardCheck className="h-10 w-10 text-muted-foreground mx-auto mb-2" /><p className="text-muted-foreground text-sm">No reports submitted yet</p></div>
+                  <div className="text-center py-8 text-sm text-muted-foreground">No field reports yet.</div>
                 ) : clientReports.map(r => {
                   const cfg = reportTypeConfig[r.reportType] || reportTypeConfig.other;
                   const Icon = cfg.icon;
@@ -1247,14 +1337,13 @@ export default function ClientPortal() {
                     <div className="h-9 w-9 rounded-md bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center shrink-0"><Shield className="h-4 w-4 text-emerald-600" /></div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <p className="font-semibold truncate">{t.tourName}</p>
+                        <p className="font-semibold truncate">{t.tour_name || 'Guard Tour'}</p>
                         {t.status && <Badge variant="secondary">{t.status}</Badge>}
-                        <Badge variant="outline">{t.scannedCheckpoints} checkpoints scanned</Badge>
+                        {t.completion_percentage && <Badge variant="outline">{t.completion_percentage}% complete</Badge>}
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        Officer: {t.officerName}
-                        {t.intervalMinutes && ` • Every ${t.intervalMinutes} min`}
-                        {t.lastScannedAt && ` • Last scan ${formatDate(t.lastScannedAt)}`}
+                        {t.officer_name && `Officer: ${t.officer_name}`}
+                        {t.completed_at && ` • Completed ${formatDate(t.completed_at)}`}
                       </p>
                     </div>
                   </div>
@@ -1276,19 +1365,19 @@ export default function ClientPortal() {
                     <div className="h-9 w-9 rounded-md bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center shrink-0"><FileText className="h-4 w-4 text-indigo-600" /></div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <p className="font-semibold truncate">{d.title}</p>
-                        <Badge variant="secondary">{d.status}</Badge>
-                        {d.photoCount ? <Badge variant="outline">{d.photoCount} photos</Badge> : null}
+                        <p className="font-semibold truncate">{d.report_number || `DAR — ${d.site_name || 'Site'}`}</p>
+                        {d.status && <Badge variant="secondary">{d.status}</Badge>}
+                        {d.photo_count ? <Badge variant="outline">{d.photo_count} photos</Badge> : null}
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        {d.employeeName && `By ${d.employeeName} • `}
-                        {formatDate(d.shiftStartTime)} {new Date(d.shiftStartTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} – {new Date(d.shiftEndTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                        {d.employee_name && `By ${d.employee_name} • `}
+                        {d.shift_date && formatDate(d.shift_date)}
+                        {d.site_name && ` • ${d.site_name}`}
                       </p>
-                      {d.summary && <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{d.summary}</p>}
                     </div>
-                    {d.pdfUrl && (
+                    {d.pdf_url && (
                       <Button size="sm" variant="outline" asChild data-testid={`button-view-dar-${d.id}`}>
-                        <a href={d.pdfUrl} target="_blank" rel="noopener noreferrer"><Download className="h-3.5 w-3.5 mr-1" />PDF</a>
+                        <a href={d.pdf_url} target="_blank" rel="noopener noreferrer"><Download className="h-3.5 w-3.5 mr-1" />PDF</a>
                       </Button>
                     )}
                   </div>
@@ -1311,19 +1400,20 @@ export default function ClientPortal() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <p className="font-semibold truncate">{i.title}</p>
-                        <Badge variant="outline" className={
-                          i.severity === "critical" ? "border-rose-400 text-rose-600" :
-                          i.severity === "high" ? "border-amber-400 text-amber-600" :
-                          ""
-                        }>{i.severity}</Badge>
-                        <Badge variant="secondary">{i.incidentType}</Badge>
-                        {i.incidentNumber && <span className="text-xs text-muted-foreground">#{i.incidentNumber}</span>}
+                        {i.severity && (
+                          <Badge variant="outline" className={
+                            i.severity === "critical" ? "border-rose-400 text-rose-600" :
+                            i.severity === "high" ? "border-amber-400 text-amber-600" :
+                            ""
+                          }>{i.severity}</Badge>
+                        )}
+                        {i.incident_type && <Badge variant="secondary">{i.incident_type}</Badge>}
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        {i.occurredAt && formatDate(i.occurredAt)}
-                        {i.locationAddress && ` • ${i.locationAddress}`}
+                        {i.occurred_at && formatDate(i.occurred_at)}
+                        {i.location && ` • ${i.location}`}
+                        {i.officer_name && ` • ${i.officer_name}`}
                       </p>
-                      {i.polishedSummary && <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{i.polishedSummary}</p>}
                     </div>
                   </div>
                 ))}

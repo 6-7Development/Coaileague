@@ -67,18 +67,24 @@ router.get("/client-reports", requireAuth, async (req: any, res) => {
     const matchingClient = clients.find(c => c.userId === userId);
 
     if (!matchingClient) {
-      return res.json({ reports: [], guardTours: [], dars: [], incidents: [] });
+      return res.json({
+        reports: [],
+        guardTours: [],
+        dars: [],
+        incidents: [],
+        transparencyPdfs: [],
+      });
     }
 
     const clientId = matchingClient.id;
 
-    // 1. Existing report submissions (approved / delivered only)
+    // 1. Existing report submissions (approved/delivered only)
     const allReports = await storage.getReportSubmissions(workspaceId);
-    const clientReports = allReports.filter(r =>
+    const reportsForClient = allReports.filter(r =>
       r.clientId === clientId &&
       (r.status === 'approved' || r.status === 'delivered')
     );
-    const enrichedReports = await Promise.all(clientReports.map(async (report) => {
+    const reports = await Promise.all(reportsForClient.map(async (report) => {
       let employeeName = 'Employee';
       if (report.employeeId) {
         // @ts-expect-error — TS migration: fix in refactoring sprint
@@ -90,123 +96,114 @@ router.get("/client-reports", requireAuth, async (req: any, res) => {
       return { ...report, employeeName };
     }));
 
-    // Resolve site IDs for this client for guard-tour and incident lookups
-    const clientSites = await db
-      .select({ id: sites.id })
-      .from(sites)
-      .where(and(eq(sites.workspaceId, workspaceId), eq(sites.clientId, clientId)));
-    const siteIds = clientSites.map(s => s.id);
+    // Resolve site IDs for this client — every downstream query is filtered
+    // by workspace_id + siteId set so other tenants' data is never surfaced.
+    const siteRows = await db.execute(sql`
+      SELECT id FROM sites
+       WHERE workspace_id = ${workspaceId}
+         AND client_id = ${clientId}
+    `);
+    const clientSiteIds: string[] = ((siteRows as any).rows || []).map((r: any) => r.id);
 
-    // 2. Guard tours assigned to this client — proof of patrol
-    const guardToursRaw = await db
-      .select({
-        id: guardTours.id,
-        tourName: guardTours.name,
-        status: guardTours.status,
-        intervalMinutes: guardTours.intervalMinutes,
-        assignedEmployeeId: guardTours.assignedEmployeeId,
-        createdAt: guardTours.createdAt,
-        officerFirstName: employees.firstName,
-        officerLastName: employees.lastName,
-      })
-      .from(guardTours)
-      .leftJoin(employees, eq(guardTours.assignedEmployeeId, employees.id))
-      .where(and(
-        eq(guardTours.workspaceId, workspaceId),
-        eq(guardTours.clientId, clientId)
-      ))
-      .orderBy(desc(guardTours.createdAt))
-      .limit(50);
+    // Helper: produce a SQL array literal for inArray-style filters without
+    // dropping down to the dynamic drizzle `inArray` builder.
+    const hasSites = clientSiteIds.length > 0;
+    const sitesLiteral = sql.raw(
+      `ARRAY[${clientSiteIds.map((id) => `'${String(id).replace(/'/g, "''")}'`).join(',') || "''"}]::text[]`
+    );
 
-    // Count scanned checkpoints per tour (proof of completion)
-    const tourIds = guardToursRaw.map(t => t.id);
-    const scanCountsRaw = tourIds.length > 0
-      ? await db
-          .select({
-            tourId: guardTourScans.tourId,
-            scannedCount: sql<number>`count(*)::int`,
-            lastScannedAt: sql<Date>`max(${guardTourScans.scannedAt})`,
-          })
-          .from(guardTourScans)
-          .where(and(
-            eq(guardTourScans.workspaceId, workspaceId),
-            inArray(guardTourScans.tourId, tourIds),
-          ))
-          .groupBy(guardTourScans.tourId)
-      : [];
-    const scanMap = new Map(scanCountsRaw.map(s => [s.tourId, s]));
-
-    const enrichedTours = guardToursRaw.map(t => ({
-      id: t.id,
-      tourName: t.tourName,
-      status: t.status,
-      intervalMinutes: t.intervalMinutes,
-      officerName: `${t.officerFirstName ?? ''} ${t.officerLastName ?? ''}`.trim() || 'Unassigned',
-      scannedCheckpoints: scanMap.get(t.id)?.scannedCount ?? 0,
-      lastScannedAt: scanMap.get(t.id)?.lastScannedAt ?? null,
-      createdAt: t.createdAt,
-    }));
-
-    // 3. Approved / sent DARs for this client
-    const darsRaw = await db
-      .select({
-        id: darReports.id,
-        shiftId: darReports.shiftId,
-        title: darReports.title,
-        summary: darReports.summary,
-        status: darReports.status,
-        employeeName: darReports.employeeName,
-        shiftStartTime: darReports.shiftStartTime,
-        shiftEndTime: darReports.shiftEndTime,
-        sentAt: darReports.sentAt,
-        verifiedAt: darReports.verifiedAt,
-        pdfUrl: darReports.pdfUrl,
-        photoCount: darReports.photoCount,
-        clientAccessToken: darReports.clientAccessToken,
-      })
-      .from(darReports)
-      .where(and(
-        eq(darReports.workspaceId, workspaceId),
-        eq(darReports.clientId, clientId),
-        sql`${darReports.status} IN ('verified', 'sent', 'approved')`
-      ))
-      .orderBy(desc(darReports.shiftStartTime))
-      .limit(100);
-
-    // 4. Incidents at this client's sites (redacted — no internal notes)
-    // incidentReports.siteId is INTEGER; sites.id is VARCHAR → cast to text for the join
-    const incidentsRaw = siteIds.length > 0
-      ? await db
-          .select({
-            id: incidentReports.id,
-            incidentNumber: incidentReports.incidentNumber,
-            title: incidentReports.title,
-            incidentType: incidentReports.incidentType,
-            severity: incidentReports.severity,
-            status: incidentReports.status,
-            occurredAt: incidentReports.occurredAt,
-            locationAddress: incidentReports.locationAddress,
-            polishedSummary: incidentReports.polishedSummary,
-            sentToClientAt: incidentReports.sentToClientAt,
-            clientAcknowledgedAt: incidentReports.clientAcknowledgedAt,
-          })
-          .from(incidentReports)
-          .innerJoin(sites, eq(sql`${incidentReports.siteId}::text`, sites.id))
-          .where(and(
-            eq(incidentReports.workspaceId, workspaceId),
-            inArray(sites.id, siteIds),
-            sql`${incidentReports.status} IN ('submitted', 'under_review', 'approved', 'sent', 'closed', 'reviewed')`
-          ))
-          .orderBy(desc(incidentReports.occurredAt))
-          .limit(50)
+    // 2. Completed guard tours for this client's sites (via shift→site linkage,
+    //    since guard_tours doesn't carry site_id directly in current schema).
+    const guardTours = hasSites
+      ? ((await db.execute(sql`
+          SELECT pt.id,
+                 gt.name AS tour_name,
+                 sh.site_id AS site_id,
+                 pt.status,
+                 pt.completed_at,
+                 pt.completion_percentage,
+                 emp.first_name || ' ' || COALESCE(emp.last_name, '') AS officer_name
+            FROM patrol_tours pt
+            LEFT JOIN guard_tours gt ON gt.id = pt.patrol_route_id
+            LEFT JOIN shifts sh ON sh.id = pt.shift_id
+            LEFT JOIN employees emp ON emp.id = pt.officer_id
+           WHERE pt.workspace_id = ${workspaceId}
+             AND pt.status = 'completed'
+             AND sh.site_id = ANY(${sitesLiteral})
+           ORDER BY pt.completed_at DESC NULLS LAST
+           LIMIT 50
+        `)) as any).rows
       : [];
 
-    res.json({
-      reports: enrichedReports,
-      guardTours: enrichedTours,
-      dars: darsRaw,
-      incidents: incidentsRaw,
-    });
+    // 3. Approved DARs for this client's sites — includes pdf_url.
+    const dars = hasSites
+      ? ((await db.execute(sql`
+          SELECT dar.id,
+                 dar.id AS report_number,
+                 s.name AS site_name,
+                 dar.shift_start_time AS shift_date,
+                 dar.employee_name,
+                 dar.status,
+                 dar.pdf_url,
+                 dar.verified_at AS approved_at,
+                 dar.photo_count,
+                 dar.created_at
+            FROM dar_reports dar
+            LEFT JOIN shifts sh ON sh.id = dar.shift_id
+            LEFT JOIN sites s ON s.id = sh.site_id
+           WHERE dar.workspace_id = ${workspaceId}
+             AND dar.status IN ('verified', 'sent')
+             AND sh.site_id = ANY(${sitesLiteral})
+           ORDER BY dar.created_at DESC
+           LIMIT 100
+        `)) as any).rows
+      : [];
+
+    // 4. Incidents — client-safe subset only (no internal investigation notes).
+    const incidents = hasSites
+      ? ((await db.execute(sql`
+          SELECT ir.id,
+                 ir.title,
+                 ir.incident_type,
+                 ir.severity,
+                 ir.occurred_at,
+                 ir.location_address AS location,
+                 ir.status,
+                 ir.site_id,
+                 emp.first_name || ' ' || COALESCE(emp.last_name, '') AS officer_name
+            FROM incident_reports ir
+            LEFT JOIN employees emp ON emp.id::text = ir.reported_by
+           WHERE ir.workspace_id = ${workspaceId}
+             AND ir.status IN ('submitted', 'under_review', 'closed')
+             AND ir.site_id::text = ANY(${sitesLiteral})
+           ORDER BY ir.occurred_at DESC NULLS LAST
+           LIMIT 50
+        `)) as any).rows
+      : [];
+
+    // 5. Shift transparency PDFs — the client's primary proof-of-service.
+    const transparencyPdfs = hasSites
+      ? ((await db.execute(sql`
+          SELECT dar.id,
+                 dar.id AS report_number,
+                 s.name AS site_name,
+                 dar.shift_start_time AS shift_date,
+                 dar.employee_name,
+                 dar.pdf_url,
+                 dar.photo_count,
+                 dar.status
+            FROM dar_reports dar
+            LEFT JOIN shifts sh ON sh.id = dar.shift_id
+            LEFT JOIN sites s ON s.id = sh.site_id
+           WHERE dar.workspace_id = ${workspaceId}
+             AND dar.pdf_url IS NOT NULL
+             AND sh.site_id = ANY(${sitesLiteral})
+           ORDER BY dar.created_at DESC
+           LIMIT 30
+        `)) as any).rows
+      : [];
+
+    res.json({ reports, guardTours, dars, incidents, transparencyPdfs });
   } catch (error) {
     log.error("Error fetching client reports:", error);
     res.status(500).json({ message: "Failed to fetch client reports" });
