@@ -605,6 +605,35 @@ router.patch('/:employeeId/access', async (req: AuthenticatedRequest, res) => {
     }
 
     if (!isActive && targetEmployee.isActive) {
+      // ── S1: SESSION INVALIDATION + GRACE WINDOW ─────────────────────────────
+      // A plain deactivation must revoke the user's live sessions and set
+      // documentAccessExpiresAt so terminatedEmployeeGuard enforces restricted
+      // access instead of falling into its legacy "no expiry → allow" branch.
+      // Mirrors terminationRoutes.ts but uses a shorter 7-day window since
+      // the employee has not been formally terminated.
+      try {
+        if (targetEmployee.userId) {
+          const { sessions } = await import('@shared/schema');
+          try {
+            // @ts-expect-error — TS migration: fix in refactoring sprint
+            await db.delete(sessions).where(eq(sessions.userId, targetEmployee.userId));
+            log.info(`[EmployeeRoutes] Sessions invalidated for user ${targetEmployee.userId} after deactivation of employee ${employeeId}`);
+          } catch (sessDelErr: unknown) {
+            log.warn('[EmployeeRoutes] Session delete failed (non-blocking):', (sessDelErr as any)?.message || String(sessDelErr));
+          }
+        }
+
+        const docAccessExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+        await db.execute(sql`
+          UPDATE employees
+          SET document_access_expires_at = ${docAccessExpiresAt}
+          WHERE id = ${employeeId} AND workspace_id = ${workspaceId}
+        `);
+        log.info(`[EmployeeRoutes] Document access window set until ${docAccessExpiresAt.toISOString()} for deactivated employee ${employeeId}`);
+      } catch (deactCleanupErr: unknown) {
+        log.error('[EmployeeRoutes] Deactivation cleanup (sessions/grace) failed (non-blocking):', (deactCleanupErr as any)?.message || String(deactCleanupErr));
+      }
+
       try {
         const { handleOfficerDeactivation } = await import('../services/scheduling/officerDeactivationHandler');
         handleOfficerDeactivation(employeeId, workspaceId, 'suspended').catch(err =>
@@ -612,6 +641,19 @@ router.patch('/:employeeId/access', async (req: AuthenticatedRequest, res) => {
         );
       } catch (e: unknown) {
         log.error('[EmployeeRoutes] Failed to import deactivation handler:', e);
+      }
+    }
+
+    if (isActive && !targetEmployee.isActive) {
+      // ── S1 COMPANION: clear the grace-window expiry on reactivation ────────
+      try {
+        await db.execute(sql`
+          UPDATE employees
+          SET document_access_expires_at = NULL
+          WHERE id = ${employeeId} AND workspace_id = ${workspaceId}
+        `);
+      } catch (reactivateErr: unknown) {
+        log.warn('[EmployeeRoutes] Failed to clear document_access_expires_at on reactivation (non-blocking):', (reactivateErr as any)?.message || String(reactivateErr));
       }
     }
 
@@ -879,6 +921,21 @@ router.post('/', async (req: AuthenticatedRequest, res) => {
         }
       } catch (rehireCheckErr: unknown) {
         log.warn('[EmployeeRoutes] Rehire detection check failed (non-blocking):', rehireCheckErr instanceof Error ? rehireCheckErr.message : String(rehireCheckErr));
+      }
+    }
+
+    // ── S2: EMPLOYEE NUMBER GENERATION ─────────────────────────────────────
+    // Direct POST /api/employees skipped employee_number generation — only
+    // the onboarding-invite-accept path called generateEmployeeNumber. That
+    // left manager-created records with NULL employee_number (orphan IDs
+    // unusable for clock-in, PIN verify, reports). Generate here so every
+    // create-path produces a canonical number.
+    if (!validatedData.employeeNumber) {
+      try {
+        const generatedNumber = await storage.generateEmployeeNumber(workspaceId);
+        validatedData.employeeNumber = generatedNumber;
+      } catch (numErr: unknown) {
+        log.warn('[EmployeeRoutes] generateEmployeeNumber failed (non-blocking):', (numErr as any)?.message || String(numErr));
       }
     }
 
@@ -1387,16 +1444,28 @@ router.get('/me', async (req: any, res) => {
 router.patch('/me/contact-info', async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.user?.id || req.user?.id;
-    
+
     // Scope to the authenticated workspace — prevents cross-tenant mutation
     // @ts-expect-error — TS migration: fix in refactoring sprint
     const employee = await storage.getEmployeeByUserId(userId, req.workspaceId);
-    
+
     if (!employee) {
       return res.status(404).json({ message: "Employee profile not found" });
     }
-    
-    const allowedFields = ['phone', 'email', 'address', 'addressLine2', 'city', 'state', 'zipCode', 'country', 
+
+    // ── S3: BLOCK UNVERIFIED EMAIL SELF-EDIT ───────────────────────────────
+    // Email is an identity field. Changing it without re-verification is an
+    // account-takeover vector. Route callers to the verified-change flow
+    // instead of silently persisting.
+    if (req.body.email !== undefined && req.body.email !== employee.email) {
+      return res.status(403).json({
+        error: 'EMAIL_CHANGE_REQUIRES_VERIFICATION',
+        message: 'Email changes require verification. Use POST /api/auth/request-email-change to start the flow.',
+      });
+    }
+
+    // ── S3: allowedFields no longer includes 'email' ───────────────────────
+    const allowedFields = ['phone', 'address', 'addressLine2', 'city', 'state', 'zipCode', 'country',
                            'emergencyContactName', 'emergencyContactPhone', 'emergencyContactRelation'];
     const filteredData: any = {};
     for (const key of allowedFields) {
@@ -1411,11 +1480,24 @@ router.patch('/me/contact-info', async (req: AuthenticatedRequest, res) => {
 
     const validated = insertEmployeeSchema.partial().parse(filteredData);
     const updated = await storage.updateEmployee(employee.id, employee.workspaceId, validated);
-    
+
     if (!updated) {
       return res.status(404).json({ message: "Failed to update employee" });
     }
-    
+
+    // ── S11: phone sync to users.phone when user is linked ─────────────────
+    // The parallel route PATCH /api/auth/profile already syncs phone both
+    // ways. This route didn't, leaving users.phone stale. Keep the two
+    // tables in step when the employee has a linked user account.
+    if (employee.userId && Object.prototype.hasOwnProperty.call(filteredData, 'phone')) {
+      try {
+        const trimmedPhone = typeof filteredData.phone === 'string' ? filteredData.phone.trim() : filteredData.phone;
+        await storage.updateUser(employee.userId, { phone: trimmedPhone ?? null });
+      } catch (userSyncErr: unknown) {
+        log.warn('[EmployeeRoutes] users.phone sync from /me/contact-info failed (non-blocking):', (userSyncErr as any)?.message || String(userSyncErr));
+      }
+    }
+
     res.json(updated);
   } catch (error: unknown) {
     log.error("Error updating contact info:", error);
