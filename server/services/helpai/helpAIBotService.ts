@@ -1,9 +1,9 @@
 import { HELPAI, PLATFORM } from '@shared/platformConfig';
 import { db, pool } from '../../db';
-import { 
-  supportTickets, 
-  helposFaqs, 
-  users, 
+import {
+  supportTickets,
+  helposFaqs,
+  users,
   auditLogs,
   helpaiSessions,
   helpaiActionLog,
@@ -12,6 +12,7 @@ import {
   workspaces,
   chatParticipants,
   platformRoles,
+  clients,
 } from '@shared/schema';
 import { eq, and, desc, sql, or, isNull, lte, gte, count, like, gt, inArray } from 'drizzle-orm';
 import { usageMeteringService } from '../billing/usageMetering';
@@ -852,6 +853,15 @@ ALWAYS: Make them feel heard. Make them feel helped. Make them feel valued.${fal
       }
     }
 
+    // Phase 25 — Client-portal staffing intent routing.
+    // When a verified client messages HelpAI with a request for officers /
+    // coverage, create a staffing-request support ticket instead of letting
+    // the generic AI response handler guess.
+    if (session.workspaceId && session.userId) {
+      const staffingReply = await this.tryStaffingIntake(sessionId, session.workspaceId, session.userId, message);
+      if (staffingReply) return staffingReply;
+    }
+
     // Standard message routing based on state
     switch (session.state) {
       case HelpAIState.QUEUED:
@@ -1016,77 +1026,90 @@ ALWAYS: Make them feel heard. Make them feel helped. Make them feel valued.${fal
   }
 
   /**
-   * Phase 25 — detect staffing requests from client-portal users and route them
-   * into the support-ticket intake pipeline. Returns the canned reply when a
-   * staffing request is detected; returns null otherwise so the caller falls
-   * through to the generic AI responder.
+   * Phase 25 — Detect staffing-request intent and open a ticket.
+   * Only fires when the HelpAI user is attached to a client record in the
+   * same workspace. Returns null for non-matches so the caller falls back to
+   * the generic AI flow.
    */
-  private async handleClientStaffingIntent(params: {
-    sessionId: string;
-    workspaceId: string;
-    userId: string;
-    message: string;
-  }): Promise<string | null> {
-    const { sessionId, workspaceId, userId, message } = params;
-
+  private async tryStaffingIntake(
+    sessionId: string,
+    workspaceId: string,
+    userId: string,
+    message: string,
+  ): Promise<HelpAIResponse | null> {
     const isStaffingRequest =
-      /\b(need|require|request|want|looking for|can you send|we need)\b.{0,30}\b(guard|officer|security|coverage|staff|personnel)\b/i.test(message) ||
+      /\b(need|require|request|want|looking for|can you send|we need)\b[\s\S]{0,30}\b(guard|guards|officer|officers|security|coverage|staff|staffing|personnel)\b/i.test(message) ||
       /\b(open shift|shift.*needed|coverage.*needed|understaffed)\b/i.test(message);
     if (!isStaffingRequest) return null;
 
-    // Confirm this is a client-portal user (users with a clients row point at them via clients.userId)
-    const clientRow = await pool.query(
-      `SELECT id, company_name FROM clients
-         WHERE user_id = $1 AND workspace_id = $2
-         LIMIT 1`,
-      [userId, workspaceId]
-    ).catch(() => ({ rows: [] as any[] }));
+    try {
+      // Tenant-scoped client lookup — only treat as a staffing request if the
+      // messaging user is an actual client of this workspace (CLAUDE.md §G).
+      const clientRow = await db
+        .select({ id: clients.id })
+        .from(clients)
+        .where(and(eq(clients.userId, userId), eq(clients.workspaceId, workspaceId)))
+        .limit(1);
 
-    if (!clientRow.rows.length) return null;
-    const clientId = clientRow.rows[0].id as string;
+      if (!clientRow.length) return null;
+      const clientId = clientRow[0].id;
 
-    // Resolve the provider org's slug for the mailto hint
-    const wsRow = await pool.query(
-      `SELECT company_name, name FROM workspaces WHERE id = $1 LIMIT 1`,
-      [workspaceId]
-    ).catch(() => ({ rows: [] as any[] }));
-    const rawName = (wsRow.rows[0]?.company_name || wsRow.rows[0]?.name || '') as string;
-    const orgSlug = rawName
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '') || 'your-provider';
+      const ticketNumber = `STAF-${Date.now().toString(36).toUpperCase()}-${Math.floor(Math.random() * 9999)
+        .toString()
+        .padStart(4, '0')}`;
 
-    // Create an open staffing_request ticket via raw SQL so we stay decoupled
-    // from schema churn and can always write a minimal row.
-    const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-    const rand = Math.floor(1000 + Math.random() * 9000);
-    const ticketNumber = `STAFF-${dateStr}-${rand}`;
-    await pool.query(
-      `INSERT INTO support_tickets
-         (workspace_id, client_id, type, subject, description,
-          status, priority, submission_method, ticket_number,
-          created_at, updated_at)
-       VALUES ($1, $2, 'staffing_request', 'Staffing Request via Portal',
-               $3, 'open', 'normal', 'client_portal', $4, NOW(), NOW())`,
-      [workspaceId, clientId, message.slice(0, 500), ticketNumber]
-    );
+      // Lookup the workspace slug so the suggested inbound-email address resolves.
+      let orgSlug = 'your-provider';
+      try {
+        const { rows } = await pool.query(
+          `SELECT lower(regexp_replace(coalesce(company_name, name, ''), '[^a-zA-Z0-9]', '', 'g')) AS slug
+             FROM workspaces WHERE id = $1 LIMIT 1`,
+          [workspaceId],
+        );
+        if (rows[0]?.slug) orgSlug = rows[0].slug;
+      } catch (slugErr: any) {
+        log.warn(`[HelpAI] Staffing slug lookup failed (non-fatal): ${slugErr?.message}`);
+      }
 
-    await this.logAction(sessionId, 'staffing_intake', 'Client portal staffing request intake', {
-      clientId,
-      excerpt: message.slice(0, 200),
-    });
+      await db.insert(supportTickets).values({
+        workspaceId,
+        ticketNumber,
+        type: 'staffing_request',
+        priority: 'normal',
+        clientId,
+        subject: 'Staffing Request via Portal',
+        description: message.slice(0, 2000),
+        status: 'open',
+        submissionMethod: 'portal',
+        ticketType: 'staffing_request',
+      });
 
-    return (
-      `I can help you submit a staffing request! To get started, please tell me:\n` +
-      `1. Date and time needed\n` +
-      `2. Location/address\n` +
-      `3. Number of officers needed\n` +
-      `4. Armed or unarmed?\n` +
-      `5. Any special requirements?\n\n` +
-      `You can also email your request directly to ` +
-      `staffing@${orgSlug}.coaileague.com ` +
-      `and Trinity will process it automatically.`
-    );
+      await this.logAction(sessionId, 'staffing_intake', 'Staffing request ticket created from client portal', {
+        ticketNumber,
+        clientId,
+      });
+
+      const intakeReply =
+        `I can help you submit a staffing request! I've opened ticket ${ticketNumber} for you. ` +
+        `To move it forward quickly, please tell me:\n` +
+        `1. Date and time needed\n` +
+        `2. Location / address\n` +
+        `3. Number of officers needed\n` +
+        `4. Armed or unarmed?\n` +
+        `5. Any special requirements?\n\n` +
+        `You can also email your request directly to ` +
+        `staffing@${orgSlug}.coaileague.com and Trinity will process it automatically.`;
+
+      return {
+        response: intakeReply,
+        shouldEscalate: false,
+        shouldClose: false,
+        state: HelpAIState.ASSISTING,
+      };
+    } catch (err: any) {
+      log.warn(`[HelpAI] Staffing intake creation failed (non-fatal): ${err?.message}`);
+      return null;
+    }
   }
 
   private async updateSessionState(sessionId: string, newState: HelpAIState): Promise<void> {

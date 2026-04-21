@@ -5,7 +5,7 @@
  */
 
 import { secureFetch } from "@/lib/csrf";
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
 import { startOfWeek, addDays, addWeeks, format, isToday } from 'date-fns';
@@ -178,6 +178,46 @@ export default function ScheduleMobileFirst({ defaultViewMode }: { defaultViewMo
   // GetSling-style feature panels for mobile
   const [showConflicts, setShowConflicts] = useState(true);
   const [showTrinityInsights, setShowTrinityInsights] = useState(false);
+
+  // ── Phase 26H — supervisor one-click "mark as calloff" deep-link handler ──
+  // missedClockInWorkflow supervisor escalation notifications (Phase 26G) link
+  // to /schedule?shiftId=X&action=calloff. We read the params, confirm with
+  // the supervisor, and POST /api/shifts/:id/mark-calloff which fires the
+  // full calloff coverage flow (Phase 26H mark-calloff endpoint).
+  const [calloffPromptShiftId, setCalloffPromptShiftId] = useState<string | null>(null);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const action = params.get('action');
+    const shiftId = params.get('shiftId');
+    if (action === 'calloff' && shiftId) {
+      setCalloffPromptShiftId(shiftId);
+      // Scrub the URL so a refresh doesn't re-open the prompt.
+      const cleanUrl = window.location.pathname;
+      window.history.replaceState({}, '', cleanUrl);
+    }
+  }, []);
+  const markCalloffMutation = useMutation({
+    mutationFn: async (shiftId: string) =>
+      apiRequest('POST', `/api/shifts/${shiftId}/mark-calloff`, {
+        reason: 'supervisor_confirmed_no_show',
+      }),
+    onSuccess: () => {
+      toast({
+        title: 'Shift marked as calloff',
+        description: 'Replacement broadcast has been sent to available officers.',
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/shifts'] });
+      setCalloffPromptShiftId(null);
+    },
+    onError: (err: any) => {
+      toast({
+        title: 'Could not mark shift as calloff',
+        description: err?.message || 'Please try again',
+        variant: 'destructive',
+      });
+    },
+  });
 
   // Fetch shifts for the week
   const weekEnd = addDays(weekStart, 7);
@@ -1293,7 +1333,44 @@ export default function ScheduleMobileFirst({ defaultViewMode }: { defaultViewMo
         onOpenChange={setShowCalendarSync}
         employeeId={currentEmployee?.id}
       />
-      
+
+      {/* Phase 26H — Supervisor calloff confirm (deep-link from Phase 26G) */}
+      <UniversalModal
+        open={!!calloffPromptShiftId}
+        onOpenChange={(open) => { if (!open) setCalloffPromptShiftId(null); }}
+      >
+        <UniversalModalHeader>
+          <UniversalModalTitle>Mark shift as calloff?</UniversalModalTitle>
+        </UniversalModalHeader>
+        <UniversalModalBody>
+          <p className="text-sm text-muted-foreground">
+            Trinity detected the assigned officer did not clock in and is
+            unresponsive. Confirming will cancel their assignment and
+            immediately broadcast the shift to available replacements.
+          </p>
+          <p className="text-xs text-muted-foreground mt-3">
+            Shift ID: <code className="font-mono">{calloffPromptShiftId}</code>
+          </p>
+          <div className="flex items-center gap-2 mt-5 justify-end">
+            <Button
+              variant="outline"
+              onClick={() => setCalloffPromptShiftId(null)}
+              disabled={markCalloffMutation.isPending}
+              data-testid="button-calloff-cancel"
+            >
+              Not yet
+            </Button>
+            <Button
+              onClick={() => calloffPromptShiftId && markCalloffMutation.mutate(calloffPromptShiftId)}
+              disabled={markCalloffMutation.isPending}
+              data-testid="button-calloff-confirm"
+            >
+              {markCalloffMutation.isPending ? 'Firing…' : 'Confirm & find replacement'}
+            </Button>
+          </div>
+        </UniversalModalBody>
+      </UniversalModal>
+
     </div>
     </CanvasHubPage>
   );

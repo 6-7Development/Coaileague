@@ -187,7 +187,7 @@ export const TRINITY_SERVICE_REGISTRY: TrinityServiceEntry[] = [
     description: 'Deliberation and reflection cycle for high-stakes decisions.',
     authorityLevel: 'write_monitored',
     platformPhases: ['phase_9_support'],
-    integrationStatus: 'partial',
+    integrationStatus: 'verified',
     exports: ['trinityDeliberationLoop'],
   },
   {
@@ -198,7 +198,7 @@ export const TRINITY_SERVICE_REGISTRY: TrinityServiceEntry[] = [
     description: 'Meta-cognitive reflection; evaluates past decisions for learning.',
     authorityLevel: 'read_only',
     platformPhases: ['phase_11_officer_dashboard'],
-    integrationStatus: 'partial',
+    integrationStatus: 'verified',
     exports: ['trinityReflectionEngine'],
   },
   {
@@ -231,7 +231,7 @@ export const TRINITY_SERVICE_REGISTRY: TrinityServiceEntry[] = [
     description: 'Content safety and filtering layer for all Trinity-generated text.',
     authorityLevel: 'write_auto',
     platformPhases: ['phase_9_support','phase_7_client_portal'],
-    integrationStatus: 'partial',
+    integrationStatus: 'verified',
     exports: ['trinityContentGuardrails'],
   },
 
@@ -267,7 +267,7 @@ export const TRINITY_SERVICE_REGISTRY: TrinityServiceEntry[] = [
     description: 'Manages memory efficiency: pruning, compression, priority ranking.',
     authorityLevel: 'write_auto',
     platformPhases: ['phase_14_performance'],
-    integrationStatus: 'partial',
+    integrationStatus: 'verified',
     exports: ['trinityMemoryOptimizer'],
   },
 
@@ -314,7 +314,7 @@ export const TRINITY_SERVICE_REGISTRY: TrinityServiceEntry[] = [
     description: 'Dynamic pricing engine using AI to optimize rates based on demand and history.',
     authorityLevel: 'write_monitored',
     platformPhases: ['phase_10_invoicing','phase_15_billing'],
-    integrationStatus: 'partial',
+    integrationStatus: 'verified',
     exports: ['aiDynamicPricingService'],
   },
 
@@ -491,8 +491,8 @@ export const TRINITY_SERVICE_REGISTRY: TrinityServiceEntry[] = [
     description: 'AI compliance: incident reporting, regulatory flag detection, evidence collection.',
     authorityLevel: 'write_monitored',
     platformPhases: ['phase_9_support'],
-    integrationStatus: 'partial',
-    exports: ['registerTrinityComplianceIncidentActions'],
+    integrationStatus: 'verified',
+    exports: ['registerComplianceIncidentActions'],
   },
   {
     id: 'trinityHiringPipelineActions',
@@ -502,8 +502,8 @@ export const TRINITY_SERVICE_REGISTRY: TrinityServiceEntry[] = [
     description: 'AI-driven recruitment: job posting, applicant scoring, interview scheduling.',
     authorityLevel: 'write_monitored',
     platformPhases: ['phase_3_employees'],
-    integrationStatus: 'partial',
-    exports: ['registerTrinityHiringPipelineActions'],
+    integrationStatus: 'verified',
+    exports: ['registerHiringPipelineActions'],
   },
   {
     id: 'trinityDrugTestingActions',
@@ -513,8 +513,8 @@ export const TRINITY_SERVICE_REGISTRY: TrinityServiceEntry[] = [
     description: 'Coordinates drug test scheduling, result tracking, and compliance reporting.',
     authorityLevel: 'write_monitored',
     platformPhases: ['phase_3_employees'],
-    integrationStatus: 'partial',
-    exports: ['registerTrinityDrugTestingActions'],
+    integrationStatus: 'verified',
+    exports: ['registerDrugTestingActions'],
   },
 
   // ── AUDIT / DECISION LOGGING ──────────────────────────────────────────────
@@ -704,8 +704,8 @@ export const TRINITY_SERVICE_REGISTRY: TrinityServiceEntry[] = [
     description: 'Skill: generates compliance reports, contracts, and work orders from templates.',
     authorityLevel: 'write_monitored',
     platformPhases: ['phase_7_client_portal','phase_9_support'],
-    integrationStatus: 'partial',
-    exports: ['DocumentGeneratorSkill'],
+    integrationStatus: 'verified',
+    exports: ['DocumentGeneratorSkill', 'documentGeneratorSkill'],
   },
 
   // ── ELITE FEATURES (April 2026 pricing matrix) ─────────────────────────────

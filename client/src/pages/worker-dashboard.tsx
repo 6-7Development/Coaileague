@@ -38,11 +38,14 @@ import {
   LogIn,
   LogOut,
   Shield,
+  ShieldCheck,
+  KeyRound,
   Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { CanvasHubPage, type CanvasPageConfig } from "@/components/canvas-hub/CanvasHubRegistry";
@@ -77,6 +80,11 @@ interface TodayShift {
   startTime: string;
   endTime: string;
   status: "upcoming" | "active" | "completed";
+  // Phase 26E — accept/deny surface. Set when backend supplies them.
+  requiresAcknowledgment?: boolean;
+  acknowledgedAt?: string | null;
+  deniedAt?: string | null;
+  rawStatus?: string | null;
 }
 
 interface UpcomingShift {
@@ -85,6 +93,10 @@ interface UpcomingShift {
   siteName: string;
   startTime: string;
   endTime: string;
+  requiresAcknowledgment?: boolean;
+  acknowledgedAt?: string | null;
+  deniedAt?: string | null;
+  rawStatus?: string | null;
 }
 
 interface EarningsSummary {
@@ -503,6 +515,217 @@ function ActivityFeedItem({ item }: { item: Notification }) {
   );
 }
 
+// ─── Phase 26C — Clock-in PIN self-service card ──────────────────────────────
+// Workers set/update/clear their own clock-in PIN here. The PIN is the
+// secondary factor for voice clock-in and Trinity identity verification
+// (§ Phase 23 PIN system). No manager involvement required for self-service.
+// Also shows a one-time modal nudge on first visit when no PIN is set,
+// mirroring the OrgOwnerDashboard pattern from Phase 25 Gap 4.
+function EmployeePinCard() {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const [pinInput, setPinInput] = useState("");
+  const [showEmpNum, setShowEmpNum] = useState(false);
+  const [showPinSetupModal, setShowPinSetupModal] = useState(false);
+  const [modalPinInput, setModalPinInput] = useState("");
+  const { data: pinStatus } = useQuery<{ hasPin: boolean; employeeNumber: string | null }>({
+    queryKey: ["/api/identity/pin/employee/self/status"],
+    staleTime: 60_000,
+  });
+
+  useEffect(() => {
+    if (!pinStatus) return;
+    const dismissed =
+      typeof window !== "undefined" &&
+      window.localStorage.getItem("employee-pin-setup-dismissed") === "1";
+    if (pinStatus.hasPin === false && !dismissed) {
+      setShowPinSetupModal(true);
+    }
+  }, [pinStatus?.hasPin]);
+
+  const setMutation = useMutation({
+    mutationFn: (pin: string) => apiRequest("POST", "/api/identity/pin/employee/self/set", { pin }),
+    onSuccess: () => {
+      toast({ title: "Clock-in PIN saved", description: "Use it at voice / kiosk clock-in." });
+      setPinInput("");
+      qc.invalidateQueries({ queryKey: ["/api/identity/pin/employee/self/status"] });
+    },
+    onError: (err: any) => toast({
+      title: "Could not save PIN",
+      description: err?.message || "Please try again",
+      variant: "destructive",
+    }),
+  });
+  const clearMutation = useMutation({
+    mutationFn: () => apiRequest("DELETE", "/api/identity/pin/employee/self"),
+    onSuccess: () => {
+      toast({ title: "Clock-in PIN cleared" });
+      qc.invalidateQueries({ queryKey: ["/api/identity/pin/employee/self/status"] });
+    },
+    onError: (err: any) => toast({
+      title: "Could not clear PIN",
+      description: err?.message || "Please try again",
+      variant: "destructive",
+    }),
+  });
+
+  const copyEmployeeNumber = () => {
+    if (!pinStatus?.employeeNumber) return;
+    navigator.clipboard.writeText(pinStatus.employeeNumber);
+    setShowEmpNum(true);
+    setTimeout(() => setShowEmpNum(false), 1500);
+  };
+
+  return (
+    <div data-testid="section-employee-pin">
+      <h3 className="text-sm font-semibold mb-2 flex items-center gap-2" style={{ color: "var(--color-text-secondary)" }}>
+        <ShieldCheck className="w-4 h-4" />
+        Clock-In PIN
+      </h3>
+      <Card className="border-0 overflow-hidden" style={{ background: "var(--color-bg-secondary)" }}>
+        <CardContent className="p-5 space-y-4">
+          <div>
+            <div className="text-xs uppercase tracking-wide mb-1" style={{ color: "var(--color-text-secondary)" }}>
+              Employee Number
+            </div>
+            <div className="flex items-center gap-2">
+              <code
+                className="px-3 py-2 rounded text-sm font-mono flex-1"
+                style={{ background: "var(--color-bg-tertiary)", color: "var(--color-text-primary)" }}
+                data-testid="employee-number"
+              >
+                {pinStatus?.employeeNumber || "Not assigned yet"}
+              </code>
+              {pinStatus?.employeeNumber && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={copyEmployeeNumber}
+                  data-testid="button-copy-employee-number"
+                >
+                  {showEmpNum ? <CheckCircle2 className="h-3.5 w-3.5" /> : "Copy"}
+                </Button>
+              )}
+            </div>
+            <p className="text-xs mt-2" style={{ color: "var(--color-text-secondary)" }}>
+              Share this with your supervisor when identifying yourself by phone.
+            </p>
+          </div>
+
+          <div>
+            <div className="text-xs uppercase tracking-wide mb-1 flex items-center justify-between" style={{ color: "var(--color-text-secondary)" }}>
+              <span>Your PIN</span>
+              <Badge
+                variant={pinStatus?.hasPin ? "default" : "secondary"}
+                className="text-xs"
+                data-testid="employee-pin-status"
+              >
+                {pinStatus?.hasPin ? "✓ PIN set" : "No PIN set"}
+              </Badge>
+            </div>
+            <p className="text-xs mb-2" style={{ color: "var(--color-text-secondary)" }}>
+              4–8 digits. Used at voice clock-in and when Trinity asks you to verify your identity.
+              Never share your PIN with anyone — not even your manager.
+            </p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Input
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={8}
+                placeholder="4–8 digits"
+                value={pinInput}
+                onChange={e => setPinInput(e.target.value.replace(/\D/g, ""))}
+                className="h-8 text-sm font-mono w-32"
+                data-testid="input-employee-pin"
+              />
+              <Button
+                size="sm"
+                onClick={() => setMutation.mutate(pinInput)}
+                disabled={pinInput.length < 4 || setMutation.isPending}
+                data-testid="button-set-employee-pin"
+              >
+                <KeyRound className="w-3.5 h-3.5 mr-1" />
+                {pinStatus?.hasPin ? "Update PIN" : "Set PIN"}
+              </Button>
+              {pinStatus?.hasPin && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="text-destructive"
+                  onClick={() => clearMutation.mutate()}
+                  disabled={clearMutation.isPending}
+                  data-testid="button-clear-employee-pin"
+                >
+                  Remove
+                </Button>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* One-time PIN setup modal on first visit with no PIN */}
+      <Dialog open={showPinSetupModal} onOpenChange={setShowPinSetupModal}>
+        <DialogContent data-testid="employee-pin-setup-modal">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <KeyRound className="w-4 h-4 text-emerald-600" />
+              Set Your Clock-In PIN
+            </DialogTitle>
+            <DialogDescription>
+              Your PIN lets you clock in by voice and verifies your identity
+              with Trinity when you call in. 30 seconds to set up.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <Input
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={8}
+              placeholder="4–8 digits"
+              value={modalPinInput}
+              onChange={e => setModalPinInput(e.target.value.replace(/\D/g, ""))}
+              className="font-mono"
+              data-testid="employee-pin-modal-input"
+            />
+            <p className="text-xs text-muted-foreground">
+              Keep your PIN private. Never share it with a coworker or supervisor.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setShowPinSetupModal(false);
+                if (typeof window !== "undefined") {
+                  window.localStorage.setItem("employee-pin-setup-dismissed", "1");
+                }
+              }}
+              data-testid="employee-pin-modal-dismiss"
+            >
+              Remind me later
+            </Button>
+            <Button
+              disabled={modalPinInput.length < 4 || setMutation.isPending}
+              onClick={() =>
+                setMutation.mutate(modalPinInput, {
+                  onSuccess: () => {
+                    setShowPinSetupModal(false);
+                    setModalPinInput("");
+                  },
+                })
+              }
+              data-testid="employee-pin-modal-save"
+            >
+              {setMutation.isPending ? "Saving…" : "Save PIN"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function WorkerDashboard() {
@@ -606,6 +829,43 @@ export default function WorkerDashboard() {
       toast({ title: "Error", description: error.message || "Failed to clock in/out", variant: "destructive" });
     },
     onSettled: () => setClockingIn(false),
+  });
+
+  // Phase 26E — Shift accept/deny.
+  // The backend already exposes POST /api/shifts/:id/acknowledge and /deny;
+  // this is the employee-facing surface that was missing. Successful mutations
+  // invalidate the shift queries so the card either disappears or updates state.
+  const acceptShiftMutation = useMutation({
+    mutationFn: async (shiftId: string | number) =>
+      apiRequest("POST", `/api/shifts/${shiftId}/acknowledge`, {}),
+    onSuccess: () => {
+      toast({ title: "Shift confirmed", description: "You're booked for this shift." });
+      queryClient.invalidateQueries({ queryKey: ["/api/shifts/today"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/shifts/upcoming"] });
+    },
+    onError: (err: any) => {
+      toast({
+        title: "Could not confirm shift",
+        description: err?.message || "Please try again",
+        variant: "destructive",
+      });
+    },
+  });
+  const denyShiftMutation = useMutation({
+    mutationFn: async ({ shiftId, denialReason }: { shiftId: string | number; denialReason?: string }) =>
+      apiRequest("POST", `/api/shifts/${shiftId}/deny`, { denialReason }),
+    onSuccess: () => {
+      toast({ title: "Shift declined", description: "Your supervisor has been notified." });
+      queryClient.invalidateQueries({ queryKey: ["/api/shifts/today"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/shifts/upcoming"] });
+    },
+    onError: (err: any) => {
+      toast({
+        title: "Could not decline shift",
+        description: err?.message || "Please try again",
+        variant: "destructive",
+      });
+    },
   });
 
   // Wake lock
@@ -1028,28 +1288,82 @@ export default function WorkerDashboard() {
                 className="rounded-md overflow-hidden"
                 style={{ background: "var(--color-bg-secondary)", border: "1px solid var(--color-bg-tertiary)" }}
               >
-                {upcomingShifts.slice(0, 4).map((shift, idx) => (
-                  <div
-                    key={shift.id}
-                    className="flex items-center justify-between gap-2 px-4 py-3"
-                    data-testid={`upcoming-shift-${shift.id}`}
-                    style={{
-                      borderBottom: idx < Math.min(upcomingShifts.length, 4) - 1 ? "1px solid var(--color-bg-tertiary)" : "none",
-                    }}
-                  >
-                    <div className="min-w-0">
-                      <div className="text-sm font-medium truncate" style={{ color: "var(--color-text-primary)" }}>{shift.siteName}</div>
-                      <div className="text-xs mt-0.5" style={{ color: "var(--color-text-secondary)" }}>
-                        {isTomorrow(new Date(shift.startTime))
-                          ? "Tomorrow"
-                          : format(new Date(shift.startTime), "EEE, MMM d")}
-                        {" · "}
-                        {format(new Date(shift.startTime), "h:mm a")}
+                {upcomingShifts.slice(0, 4).map((shift, idx) => {
+                  const needsAck =
+                    !!shift.requiresAcknowledgment && !shift.acknowledgedAt && !shift.deniedAt;
+                  const isPending = acceptShiftMutation.isPending || denyShiftMutation.isPending;
+                  return (
+                    <div
+                      key={shift.id}
+                      className="px-4 py-3"
+                      data-testid={`upcoming-shift-${shift.id}`}
+                      style={{
+                        borderBottom: idx < Math.min(upcomingShifts.length, 4) - 1 ? "1px solid var(--color-bg-tertiary)" : "none",
+                      }}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <div className="text-sm font-medium truncate" style={{ color: "var(--color-text-primary)" }}>{shift.siteName}</div>
+                            {needsAck && (
+                              <Badge
+                                variant="secondary"
+                                className="text-[10px] shrink-0"
+                                style={{
+                                  background: "color-mix(in srgb, var(--color-warning) 15%, transparent)",
+                                  color: "var(--color-warning)",
+                                  border: "none",
+                                }}
+                                data-testid={`shift-needs-ack-${shift.id}`}
+                              >
+                                Needs confirmation
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="text-xs mt-0.5" style={{ color: "var(--color-text-secondary)" }}>
+                            {isTomorrow(new Date(shift.startTime))
+                              ? "Tomorrow"
+                              : format(new Date(shift.startTime), "EEE, MMM d")}
+                            {" · "}
+                            {format(new Date(shift.startTime), "h:mm a")}
+                          </div>
+                        </div>
+                        {!needsAck && (
+                          <ChevronRight className="w-4 h-4 flex-shrink-0" style={{ color: "var(--color-text-secondary)" }} />
+                        )}
                       </div>
+                      {needsAck && (
+                        <div className="flex items-center gap-2 mt-3">
+                          <Button
+                            size="sm"
+                            onClick={() => acceptShiftMutation.mutate(shift.id)}
+                            disabled={isPending}
+                            data-testid={`button-accept-shift-${shift.id}`}
+                            className="flex-1"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
+                            Accept
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              const reason = typeof window !== "undefined"
+                                ? window.prompt("Reason for declining (optional):") || ""
+                                : "";
+                              denyShiftMutation.mutate({ shiftId: shift.id, denialReason: reason || undefined });
+                            }}
+                            disabled={isPending}
+                            data-testid={`button-deny-shift-${shift.id}`}
+                            className="flex-1"
+                          >
+                            Decline
+                          </Button>
+                        </div>
+                      )}
                     </div>
-                    <ChevronRight className="w-4 h-4 flex-shrink-0" style={{ color: "var(--color-text-secondary)" }} />
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -1078,6 +1392,9 @@ export default function WorkerDashboard() {
               </div>
             )}
           </div>
+
+          {/* ── Block 7: Clock-In PIN (Phase 26C) ────────── */}
+          <EmployeePinCard />
 
           {/* Bottom padding for nav bar */}
           <div className="h-[calc(5rem+env(safe-area-inset-bottom,0px))]" />

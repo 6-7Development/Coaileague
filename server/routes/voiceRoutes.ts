@@ -443,82 +443,26 @@ voiceRouter.post('/inbound', twilioSignatureMiddleware, async (req: Request, res
 
     log.info(`[VoiceRoutes] Inbound call: ${From} → ${To} (${CallSid})`);
 
-    // ── SUBSCRIPTION GATE ────────────────────────────────────────────────────
-    // Resolve workspace + subscription status before any Trinity service is
-    // invoked. Protected workspaces (platform + grandfathered) always pass
-    // through. For all others: only an active/trial subscription gets Trinity
-    // service. Suspended/cancelled get a graceful professional end.
-    const workspace = await resolveWorkspaceFromPhoneNumber(To);
-    if (!workspace) {
-      log.warn(`[VoiceRoutes] Unknown phone number: ${To}`);
-      return xmlResponse(res, twiml(
-        '<Say voice="Polly.Joanna-Neural" language="en-US">This number is not configured. Goodbye.</Say>'
-      ));
-    }
-
-    if (!workspace.isProtected && !isSubscriptionActive(workspace.subscriptionStatus)) {
-      const suspended = isSubscriptionSuspended(workspace.subscriptionStatus);
-      const message = suspended
-        ? 'Hello! Your organization\'s Co-League account is currently on hold due to a billing issue. ' +
-          'Please have your administrator log in to Co-League and update your payment information to restore service. ' +
-          'We apologize for any inconvenience. Goodbye.'
-        : 'Hello! Your organization\'s Co-League account is no longer active. ' +
-          'Please have your administrator contact us at support at co-league dot com to restore access. ' +
-          'Thank you for calling. Goodbye.';
-
-      log.warn(`[VoiceRoutes] Blocked call from inactive workspace ${workspace.workspaceId} (${workspace.subscriptionStatus})`);
-
-      // Record the block in the universal audit trail so it surfaces in the
-      // tenant-owner transparency dashboard alongside resolved calls.
-      try {
-        await universalAudit.log({
-          workspaceId: workspace.workspaceId,
-          actorType: 'system',
-          action: 'trinity.subscription_gate_blocked',
-          entityType: 'voice_call',
-          entityId: CallSid,
-          changeType: 'action',
-          metadata: {
-            channel: 'voice',
-            subscriptionStatus: workspace.subscriptionStatus,
-            subscriptionTier: workspace.subscriptionTier,
-            fromPhone: From,
-            toPhone: To,
-            recoverable: suspended,
-          },
-        });
-      } catch (auditErr: any) {
-        log.warn('[VoiceRoutes] Subscription-gate audit failed (non-fatal):', auditErr?.message);
+    // Phase 18D — deferred caller-ID risk lookup. Result is cached and
+    // available to downstream verifiers and the dashboard via session
+    // metadata. Phase 26D — migrated from raw `void (async () => ...)()` to
+    // scheduleNonBlocking for consistent labelled error logging (§B).
+    scheduleNonBlocking('voice.caller-id-risk-lookup', async () => {
+      const { lookupCallerId } = await import('../services/trinityVoice/callerIdLookup');
+      const r = await lookupCallerId(From || '');
+      if (r.risk === 'high') {
+        const { pool } = await import('../db');
+        await pool.query(
+          `UPDATE voice_call_sessions
+              SET metadata = COALESCE(metadata, '{}'::jsonb) ||
+                             jsonb_build_object('caller_id_risk', $1::text,
+                                                'line_type', $2::text,
+                                                'carrier', $3::text)
+            WHERE twilio_call_sid = $4`,
+          [r.risk, r.lineType || null, r.carrierName || null, CallSid]
+        );
       }
-
-      return xmlResponse(res, twiml(
-        `<Say voice="Polly.Joanna-Neural" language="en-US">${message}</Say>`
-      ));
-    }
-    // ── END SUBSCRIPTION GATE ────────────────────────────────────────────────
-
-    // Phase 18D — fire-and-forget caller-ID risk lookup. Result is cached and
-    // available to downstream verifiers and the dashboard via session metadata.
-    void (async () => {
-      try {
-        const { lookupCallerId } = await import('../services/trinityVoice/callerIdLookup');
-        const r = await lookupCallerId(From || '');
-        if (r.risk === 'high') {
-          const { pool } = await import('../db');
-          await pool.query(
-            `UPDATE voice_call_sessions
-                SET metadata = COALESCE(metadata, '{}'::jsonb) ||
-                               jsonb_build_object('caller_id_risk', $1::text,
-                                                  'line_type', $2::text,
-                                                  'carrier', $3::text)
-              WHERE twilio_call_sid = $4`,
-            [r.risk, r.lineType || null, r.carrierName || null, CallSid]
-          );
-        }
-      } catch (e: any) {
-        log.warn('[VoiceRoutes] Caller-ID lookup background failed:', e?.message);
-      }
-    })();
+    });
 
     const xml = await handleInbound({ to: To, from: From, callSid: CallSid, baseUrl });
     xmlResponse(res, xml);
@@ -922,13 +866,20 @@ voiceRouter.post('/client-identify', twilioSignatureMiddleware, async (req: Requ
       }
 
       if (session) {
-        await updateCallSession(CallSid, {
-          metadata: {
-            client_provider_name: resolvedProviderName || spoken,
-            client_provider_workspace_id: resolvedProviderWorkspaceId,
-            client_provider_resolved: !!resolvedProviderWorkspaceId,
-          },
-        }).catch(() => {});
+        // Phase 26D — downstream handleClientSupport pulls this metadata to
+        // enrich client context. Await the write so the next step sees it,
+        // but catch + log non-fatally rather than swallowing silently.
+        try {
+          await updateCallSession(CallSid, {
+            metadata: {
+              client_provider_name: resolvedProviderName || spoken,
+              client_provider_workspace_id: resolvedProviderWorkspaceId,
+              client_provider_resolved: !!resolvedProviderWorkspaceId,
+            },
+          });
+        } catch (metaErr: any) {
+          log.warn('[VoiceRoutes] client-identify session metadata write failed (non-fatal):', metaErr?.message);
+        }
       }
 
       logCallAction({
@@ -1058,8 +1009,21 @@ voiceRouter.post('/main-menu-route', twilioSignatureMiddleware, async (req: Requ
     switch (Digits) {
       case '1':
         return xmlResponse(res, handleSales(baseParams));
-      case '2':
-        return xmlResponse(res, await handleClientSupport(baseParams));
+      case '2': {
+        // Phase 25 — surface client context (provider workspace + caller phone +
+        // pre-resolved clientId) so clientExtension can enrich Trinity's prompt.
+        const meta = (session?.metadata as Record<string, any> | null) || {};
+        const providerWorkspaceId = meta.client_provider_workspace_id || undefined;
+        const clientId = meta.client_id || undefined;
+        const callerPhone = (req.body.From as string | undefined) || session?.callerNumber || undefined;
+        const xml = await handleClientSupport({
+          ...baseParams,
+          clientId,
+          callerPhone,
+          providerWorkspaceId,
+        });
+        return xmlResponse(res, xml);
+      }
       case '3':
         return xmlResponse(res, handleEmploymentVerification(baseParams));
       case '4':
@@ -1496,10 +1460,9 @@ voiceRouter.post('/support-resolve', twilioSignatureMiddleware, async (req: Requ
     const { sessionId, workspaceId } = extractQS(req);
     const lang = getLang(req);
     const baseUrl = getBaseUrl(req);
-    const clientContext = (req.query.clientContext as string) || '';
-    const clientContextParam = clientContext
-      ? `&clientContext=${encodeURIComponent(clientContext.slice(0, 300))}`
-      : '';
+    // Phase 25 — client account context passed from clientExtension. Forwarded
+    // across retries so the AI brain keeps it until a resolution is attempted.
+    const clientContext = decodeURIComponent((req.query.clientContext as string) || '').slice(0, 300);
 
     const issue = (SpeechResult || '').trim();
 
@@ -1508,7 +1471,8 @@ voiceRouter.post('/support-resolve', twilioSignatureMiddleware, async (req: Requ
     const sayL = (en: string, es: string) => lang === 'es' ? sayEs(es) : sayEn(en);
 
     if (!issue || issue.length < 5) {
-      const action = `${baseUrl}/api/voice/support-resolve?sessionId=${encodeURIComponent(sessionId)}&workspaceId=${encodeURIComponent(workspaceId)}&lang=${lang}${clientContextParam}`;
+      const ctxParam = clientContext ? `&clientContext=${encodeURIComponent(clientContext)}` : '';
+      const action = `${baseUrl}/api/voice/support-resolve?sessionId=${encodeURIComponent(sessionId)}&workspaceId=${encodeURIComponent(workspaceId)}&lang=${lang}${ctxParam}`;
       return xmlResponse(res, twiml(
         `<Gather input="speech dtmf" action="${action}" method="POST" timeout="8" speechTimeout="auto">` +
         sayL(
@@ -1524,14 +1488,11 @@ voiceRouter.post('/support-resolve', twilioSignatureMiddleware, async (req: Requ
       callSessionId: sessionId,
       workspaceId,
       action: 'support_issue_received',
-      payload: { issue: issue.slice(0, 300) },
+      payload: { issue: issue.slice(0, 300), hasClientContext: !!clientContext },
     }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
 
-    // Attempt AI resolution (max ~6s); inject account context if we have it.
-    const issueWithContext = clientContext
-      ? `${issue}\n\nACCOUNT CONTEXT (use to personalize — do not read verbatim): ${clientContext}`
-      : issue;
-    const aiResult = await resolveWithTrinityBrain({ issue: issueWithContext, workspaceId, language: lang });
+    // Attempt AI resolution (max ~6s) — pass client context into the brain.
+    const aiResult = await resolveWithTrinityBrain({ issue, workspaceId, language: lang, clientContext });
 
     if (aiResult.canResolve) {
       const answer = lang === 'es'
@@ -1628,10 +1589,13 @@ voiceRouter.post('/support-confirm', twilioSignatureMiddleware, async (req: Requ
     const sayL = (en: string, es: string) => lang === 'es' ? sayEs(es) : sayEn(en);
 
     if (Digits === '1') {
-      // Mark session as AI-resolved so the status callback can report the correct outcome
-      updateCallSession(CallSid, {
-        metadata: { ai_resolved: true, ai_attempted: true, ai_model: aiModel, extension: 'client_support' },
-      }).catch(() => {});
+      // Mark session as AI-resolved so the status callback can report the correct outcome.
+      // Phase 26D — non-blocking but logged on failure.
+      scheduleNonBlocking('voice.support-confirm-resolved-metadata', async () => {
+        await updateCallSession(CallSid, {
+          metadata: { ai_resolved: true, ai_attempted: true, ai_model: aiModel, extension: 'client_support' },
+        });
+      });
       logCallAction({
         callSessionId: sessionId,
         workspaceId,
@@ -1647,10 +1611,13 @@ voiceRouter.post('/support-confirm', twilioSignatureMiddleware, async (req: Requ
       ));
     }
 
-    // Caller wants human help — mark session as escalated
-    updateCallSession(CallSid, {
-      metadata: { ai_resolved: false, ai_attempted: true, escalated: true, ai_model: aiModel, extension: 'client_support' },
-    }).catch(() => {});
+    // Caller wants human help — mark session as escalated.
+    // Phase 26D — non-blocking but logged on failure.
+    scheduleNonBlocking('voice.support-confirm-escalated-metadata', async () => {
+      await updateCallSession(CallSid, {
+        metadata: { ai_resolved: false, ai_attempted: true, escalated: true, ai_model: aiModel, extension: 'client_support' },
+      });
+    });
     const escalationPhrase = lang === 'es' ? getEscalationPhraseEs() : getEscalationPhraseEn();
     const namePhrase = lang === 'es' ? getNameGatherPhraseEs() : getNameGatherPhraseEn();
     const issueEncoded = encodeURIComponent(issue.slice(0, 500));
@@ -2361,9 +2328,16 @@ voiceRouter.post('/verify-code', twilioSignatureMiddleware, async (req: Request,
     const ok = await verifyCode(employeeId, submitted);
 
     if (ok) {
-      await updateCallSession(CallSid, {
-        metadata: { verified_by: '2fa_email', employee_id: employeeId },
-      }).catch(() => {});
+      // Phase 26D — 2FA-verified is a security-relevant flag. Await it but
+      // catch non-fatally so a metadata write hiccup doesn't abort the TwiML
+      // response the caller is waiting on.
+      try {
+        await updateCallSession(CallSid, {
+          metadata: { verified_by: '2fa_email', employee_id: employeeId },
+        });
+      } catch (metaErr: any) {
+        log.warn('[VoiceRoutes] 2fa-verify session metadata write failed (non-fatal):', metaErr?.message);
+      }
       logCallAction({
         callSessionId: sessionId,
         workspaceId,

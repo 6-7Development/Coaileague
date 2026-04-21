@@ -37,10 +37,12 @@ function shimAction(oldId: string, newId: string, description: string): void {
 
 export function registerActionCompatibilityShims(): void {
   // =========================================================================
-  // STEP 2 — Orphaned domain duplicate
+  // STEP 2 — Orphaned domain duplicate (Phase 26A — shim removed)
   // =========================================================================
-  // platform_roles.assign → uacp.assign_platform_role (true duplicate, deleted)
-  shimAction('platform_roles.assign', 'uacp.assign_platform_role', 'Duplicate of uacp.assign_platform_role');
+  // Previously: platform_roles.assign → uacp.assign_platform_role. The target
+  // was disabled as non-MVP, leaving the shim redirecting to a non-existent
+  // action. platform_roles.assign is now registered directly in actionRegistry
+  // (registerOnboardingActions) with withAuditWrap — no shim needed.
 
   // =========================================================================
   // STEP 3 — Single-action orphan domain merges
@@ -189,6 +191,6 @@ export function registerActionCompatibilityShims(): void {
   // onboarding.diagnose replaces run_diagnostics
   shimAction('onboarding.run_diagnostics', 'onboarding.diagnose', 'Onboarding run_diagnostics renamed to diagnose');
 
-  const shimCount = 26 + 27 + 8 + 14; // Phase 1 + Billing + Notify + Onboarding
-  log.info(`[Action Compatibility Shims] Registered ${shimCount} backward-compatible action redirects (Phase 1: 26, Phase 2: 49)`);
+  const shimCount = 25 + 27 + 8 + 14; // Phase 1 + Billing + Notify + Onboarding (Phase 26A removed platform_roles.assign dangling shim)
+  log.info(`[Action Compatibility Shims] Registered ${shimCount} backward-compatible action redirects (Phase 1: 25, Phase 2: 49)`);
 }

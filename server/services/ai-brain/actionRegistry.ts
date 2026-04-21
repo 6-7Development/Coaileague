@@ -2878,6 +2878,13 @@ class AIBrainActionRegistry {
       },
     };
 
+    // platform_roles.assign — Phase 26A restored. Previously removed as a
+    // duplicate of uacp.assign_platform_role, but that target was disabled as
+    // non-MVP, leaving a dangling shim. Register directly with withAuditWrap
+    // so the security-critical role assignment has a real handler and an
+    // audit trail per CLAUDE.md §L.
+    helpaiOrchestrator.registerAction(withAuditWrap(assignPlatformRole, 'platform_role'));
+
     // onboarding.get_platform_status CONSOLIDATED into onboarding.track (view='status') in domainSupervisorActions.ts
     // Handler kept for reference only — not registered separately:
     const getPlatformOnboarding: ActionHandler = {
@@ -2980,8 +2987,9 @@ class AIBrainActionRegistry {
     // onboarding.send_client_welcome — CONSOLIDATED into onboarding.invite (action='client_welcome')
     // helpaiOrchestrator.registerAction(sendClientWelcome);
 
-    // platform_roles.assign REMOVED — duplicate of uacp.assign_platform_role
-    // Backward-compatible shim registered in actionCompatibilityShims.ts
+    // platform_roles.assign — Phase 26A: restored as canonical handler above.
+    // uacp.assign_platform_role target was disabled as non-MVP, leaving a
+    // dangling shim. Shim removed in actionCompatibilityShims.ts.
 
     // onboarding.get_platform_status — CONSOLIDATED into onboarding.track (view='status') in domainSupervisorActions.ts
     // helpaiOrchestrator.registerAction(getPlatformOnboarding);

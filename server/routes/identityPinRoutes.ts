@@ -202,53 +202,66 @@ identityPinRouter.get(
   },
 );
 
-// ─── CLIENT PIN (self-service from client portal) ────────────────────────────
-// A logged-in client portal user may manage the PIN on the clients row linked
-// to their own user account. We resolve the client by user_id and then carry
-// the client's own workspace_id through to setEntityPin/clearEntityPin, whose
-// UPDATE clauses enforce the tenant scope via WHERE workspace_id = $N.
+// ─── CLIENT PIN (self-service from client portal) — Phase 25 ──────────────────
+// The tenant-manager routes above require workspace roles that portal-only
+// client users do not hold. The self-service routes below let an authenticated
+// client user manage the PIN on their own client row. The caller is resolved
+// by matching the logged-in user's email to a clients row in their workspace —
+// never by accepting an arbitrary clientId path parameter.
 
 async function resolveSelfClient(
   req: AuthenticatedRequest,
 ): Promise<{ clientId: string; workspaceId: string } | null> {
-  const userId = (req as any).user?.id;
-  if (!userId) return null;
+  const workspaceId = (req as any).workspaceId ?? (req as any).user?.workspaceId;
+  const userId = (req as any).user?.id as string | undefined;
+  const email = (req as any).user?.email as string | undefined;
+  if (!workspaceId || (!userId && !email)) return null;
+
+  // Tenant-scoped — the WHERE clause always includes workspace_id per §G.
   const { pool } = await import('../db');
-  const r = await pool.query(
-    `SELECT id, workspace_id FROM clients WHERE user_id = $1 LIMIT 1`,
-    [userId],
+  const { rows } = await pool.query(
+    `SELECT id FROM clients
+      WHERE workspace_id = $1
+        AND (
+          ($2::text IS NOT NULL AND user_id = $2::text)
+          OR ($3::text IS NOT NULL AND lower(coalesce(email, '')) = lower($3::text))
+        )
+      LIMIT 1`,
+    [workspaceId, userId ?? null, email ?? null],
   );
-  if (!r.rows.length) return null;
-  return { clientId: r.rows[0].id, workspaceId: r.rows[0].workspace_id };
+  if (!rows.length) return null;
+  return { clientId: rows[0].id, workspaceId };
 }
 
 identityPinRouter.get('/pin/client/self/status', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const self = await resolveSelfClient(req);
-    if (!self) return res.status(404).json({ error: 'CLIENT_NOT_LINKED' });
+    const resolved = await resolveSelfClient(req);
+    if (!resolved) return res.status(404).json({ error: 'CLIENT_NOT_FOUND' });
     const status = await getEntityPinStatus({
       entity: 'client',
-      entityId: self.clientId,
-      workspaceId: self.workspaceId,
+      entityId: resolved.clientId,
+      workspaceId: resolved.workspaceId,
     });
-    return res.json({ ...status, clientId: self.clientId });
+    return res.json({ ...status, clientId: resolved.clientId });
   } catch (err: any) {
-    log.error('[ClientPin] self-status failed:', err?.message);
+    log.error('[ClientPin] self status failed:', err?.message);
     return res.status(500).json({ error: 'INTERNAL_ERROR' });
   }
 });
 
 identityPinRouter.post('/pin/client/self/set', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const self = await resolveSelfClient(req);
-    if (!self) return res.status(404).json({ error: 'CLIENT_NOT_LINKED' });
     const actorUserId = (req as any).user?.id;
+    if (!actorUserId) return res.status(401).json({ error: 'UNAUTHENTICATED' });
+    const resolved = await resolveSelfClient(req);
+    if (!resolved) return res.status(404).json({ error: 'CLIENT_NOT_FOUND' });
+
     const { pin } = req.body || {};
     await setEntityPin({
       entity: 'client',
-      entityId: self.clientId,
+      entityId: resolved.clientId,
       pin,
-      workspaceId: self.workspaceId,
+      workspaceId: resolved.workspaceId,
       actorUserId,
       actorPlatformRole: (req as any).platformRole ?? null,
     });
@@ -257,26 +270,132 @@ identityPinRouter.post('/pin/client/self/set', requireAuth, async (req: Authenti
     const msg = err?.message || 'Failed to set client PIN';
     if (msg.startsWith('INVALID_PIN')) return res.status(400).json({ error: 'INVALID_PIN', message: msg });
     if (msg.startsWith('PIN_TARGET_NOT_FOUND')) return res.status(404).json({ error: 'NOT_FOUND', message: msg });
-    log.error('[ClientPin] self-set failed:', msg);
+    log.error('[ClientPin] self set failed:', msg);
     return res.status(500).json({ error: 'INTERNAL_ERROR' });
   }
 });
 
 identityPinRouter.delete('/pin/client/self', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const self = await resolveSelfClient(req);
-    if (!self) return res.status(404).json({ error: 'CLIENT_NOT_LINKED' });
     const actorUserId = (req as any).user?.id;
+    if (!actorUserId) return res.status(401).json({ error: 'UNAUTHENTICATED' });
+    const resolved = await resolveSelfClient(req);
+    if (!resolved) return res.status(404).json({ error: 'CLIENT_NOT_FOUND' });
+
     await clearEntityPin({
       entity: 'client',
-      entityId: self.clientId,
-      workspaceId: self.workspaceId,
+      entityId: resolved.clientId,
+      workspaceId: resolved.workspaceId,
       actorUserId,
       actorPlatformRole: (req as any).platformRole ?? null,
     });
     return res.json({ success: true, message: 'Client PIN cleared' });
   } catch (err: any) {
-    log.error('[ClientPin] self-clear failed:', err?.message);
+    log.error('[ClientPin] self clear failed:', err?.message);
+    return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  }
+});
+
+// ─── EMPLOYEE PIN (self-service from worker dashboard / onboarding) ──────────
+// Phase 26C. Mirrors the client-self pattern above but resolves the
+// employee row from the authenticated user_id within their workspace. The
+// existing /api/employees/:employeeId/pin/* routes (clockinPinRoutes.ts)
+// remain manager-only; these self-service routes let the employee manage
+// their own clock-in PIN without requiring manager involvement.
+
+async function resolveSelfEmployee(
+  req: AuthenticatedRequest,
+): Promise<{ employeeId: string; employeeNumber: string | null; workspaceId: string } | null> {
+  const workspaceId = (req as any).workspaceId ?? (req as any).user?.workspaceId;
+  const userId = (req as any).user?.id as string | undefined;
+  if (!workspaceId || !userId) return null;
+
+  // Tenant-scoped (CLAUDE.md §G). Active-only — deactivated employees must
+  // not be able to mint PINs.
+  const { pool } = await import('../db');
+  const { rows } = await pool.query(
+    `SELECT id, employee_number FROM employees
+      WHERE workspace_id = $1
+        AND user_id = $2
+        AND is_active = true
+      LIMIT 1`,
+    [workspaceId, userId],
+  );
+  if (!rows.length) return null;
+  return {
+    employeeId: rows[0].id,
+    employeeNumber: rows[0].employee_number ?? null,
+    workspaceId,
+  };
+}
+
+identityPinRouter.get('/pin/employee/self/status', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const resolved = await resolveSelfEmployee(req);
+    if (!resolved) return res.status(404).json({ error: 'EMPLOYEE_NOT_FOUND' });
+    const status = await getEntityPinStatus({
+      entity: 'employee',
+      entityId: resolved.employeeId,
+      workspaceId: resolved.workspaceId,
+    });
+    return res.json({
+      ...status,
+      employeeId: resolved.employeeId,
+      employeeNumber: resolved.employeeNumber,
+    });
+  } catch (err: any) {
+    log.error('[EmployeePin] self status failed:', err?.message);
+    return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  }
+});
+
+identityPinRouter.post('/pin/employee/self/set', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const actorUserId = (req as any).user?.id;
+    if (!actorUserId) return res.status(401).json({ error: 'UNAUTHENTICATED' });
+    const resolved = await resolveSelfEmployee(req);
+    if (!resolved) return res.status(404).json({ error: 'EMPLOYEE_NOT_FOUND' });
+
+    const { pin } = req.body || {};
+    await setEntityPin({
+      entity: 'employee',
+      entityId: resolved.employeeId,
+      pin,
+      workspaceId: resolved.workspaceId,
+      actorUserId,
+      actorPlatformRole: (req as any).platformRole ?? null,
+    });
+    return res.json({
+      success: true,
+      message: 'Clock-in PIN saved',
+      employeeNumber: resolved.employeeNumber,
+    });
+  } catch (err: any) {
+    const msg = err?.message || 'Failed to set employee PIN';
+    if (msg.startsWith('INVALID_PIN')) return res.status(400).json({ error: 'INVALID_PIN', message: msg });
+    if (msg.startsWith('PIN_TARGET_NOT_FOUND')) return res.status(404).json({ error: 'NOT_FOUND', message: msg });
+    log.error('[EmployeePin] self set failed:', msg);
+    return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  }
+});
+
+identityPinRouter.delete('/pin/employee/self', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const actorUserId = (req as any).user?.id;
+    if (!actorUserId) return res.status(401).json({ error: 'UNAUTHENTICATED' });
+    const resolved = await resolveSelfEmployee(req);
+    if (!resolved) return res.status(404).json({ error: 'EMPLOYEE_NOT_FOUND' });
+
+    await clearEntityPin({
+      entity: 'employee',
+      entityId: resolved.employeeId,
+      workspaceId: resolved.workspaceId,
+      actorUserId,
+      actorPlatformRole: (req as any).platformRole ?? null,
+    });
+    return res.json({ success: true, message: 'Clock-in PIN cleared' });
+  } catch (err: any) {
+    log.error('[EmployeePin] self clear failed:', err?.message);
     return res.status(500).json({ error: 'INTERNAL_ERROR' });
   }
 });
