@@ -842,9 +842,16 @@ voiceRouter.post('/owner-pin-verify', twilioSignatureMiddleware, async (req: Req
           ? 'No pude verificar ese PIN. Continuaré sin autoridad elevada.'
           : 'I could not verify that PIN. Continuing without elevated authority.');
 
+    // Phase 29 — on successful owner PIN, route into the owner authority
+    // menu (payroll approvals, overrides, compliance alerts, KPIs). On
+    // failure, fall back to the normal staff identify flow.
+    const nextTarget = verified
+      ? `${baseUrl}/api/voice/owner-menu?sessionId=${encodeURIComponent(CallSid)}&workspaceId=${encodeURIComponent(workspaceId)}&lang=${lang}`
+      : staffIdentify;
+
     return xmlResponse(res, twiml(
       say(ack, voiceId, langCode) +
-      redirect(staffIdentify)
+      redirect(nextTarget)
     ));
   } catch (err: any) {
     log.error('[VoiceRoutes] owner-pin-verify error:', err.message);
@@ -2756,6 +2763,84 @@ voiceRouter.post('/trinity-talk', twilioSignatureMiddleware, async (req: Request
 
     const issue = (SpeechResult || '').trim();
 
+    // ── Phase 29 — PANIC KEYWORD DETECTION ───────────────────────────────────
+    // If a caller speaks a life-safety keyword, short-circuit the AI turn:
+    // (1) publish panic_alert.voice event so on-call dispatch is paged
+    // (2) create a high-priority support ticket capturing the spoken phrase
+    // (3) verbally confirm help is being alerted, then hand off to the
+    //     schedule-callback flow which connects to a human queue.
+    // We only detect panic in the FIRST turn to avoid false positives once
+    // the caller is already talking with Trinity about unrelated topics.
+    if (issue && turn === 1) {
+      const panicEn = /\b(help me|emergency|nine[- ]one[- ]one|9\s?1\s?1|call\s+police|danger|being attacked|shooting|shooter|gun|stabb|hurt|bleeding|dying|kidnap|suicide|overdose)\b/i;
+      const panicEs = /\b(ayuda|socorro|emergencia|peligro|disparo|arma|herido|sangrando|muriendo|secuestr|suicid)\b/i;
+      const isPanic = panicEn.test(issue) || panicEs.test(issue);
+      if (isPanic) {
+        log.warn(`[VoiceRoutes] PANIC keyword detected callSid=${req.body.CallSid} phrase="${issue.slice(0, 140)}"`);
+
+        // Fire the platform event — Trinity event subscribers notify the
+        // workspace on-call manager + write to thalamic_log as critical.
+        try {
+          const { platformEventBus } = await import('../services/platformEventBus');
+          await platformEventBus.publish({
+            type: 'panic_alert.voice',
+            category: 'safety',
+            title: '🚨 Voice-Caller Panic Keyword Detected',
+            description: `Caller spoke panic keyword on live call. Verbatim: "${issue.slice(0, 280)}"`,
+            workspaceId,
+            metadata: {
+              callSid: req.body.CallSid,
+              callerNumber: (req.body.From as string) || '',
+              transcriptSnippet: issue.slice(0, 500),
+              channel: 'voice',
+              detectedAt: new Date().toISOString(),
+            },
+          });
+        } catch (evErr: any) {
+          log.warn('[VoiceRoutes] panic_alert.voice publish failed:', evErr?.message);
+        }
+
+        // Create a HIGH-priority support ticket so the operations console
+        // sees the incident even if NDS/email fails.
+        try {
+          const { pool } = await import('../db');
+          const now = new Date();
+          const ymd = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+          const ticketNumber = `TKT-PANIC-${ymd}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+          await pool.query(
+            `INSERT INTO support_tickets
+              (workspace_id, ticket_number, type, priority, requested_by, subject, description,
+               status, is_escalated, created_at, updated_at)
+             VALUES ($1, $2, 'panic_voice', 'urgent', $3, $4, $5, 'open', TRUE, NOW(), NOW())`,
+            [
+              workspaceId,
+              ticketNumber,
+              (req.body.From as string) || 'voice-caller',
+              `🚨 Panic keyword on voice call (${req.body.CallSid})`.slice(0, 200),
+              [
+                `Voice-caller panic keyword detected.`,
+                `Caller: ${(req.body.From as string) || 'unknown'}`,
+                `CallSid: ${req.body.CallSid}`,
+                '',
+                '--- Caller verbatim ---',
+                issue,
+              ].join('\n'),
+            ],
+          );
+        } catch (tkErr: any) {
+          log.warn('[VoiceRoutes] panic ticket insert failed:', tkErr?.message);
+        }
+
+        const reassureMsg = lang === 'es'
+          ? 'Le escucho. Mantenga la calma. Estoy alertando al despacho de su proveedor y a su supervisor en este mismo momento. Si está en peligro inmediato, por favor llame al nueve uno uno. Quedo con usted.'
+          : "I hear you. Stay with me. I'm alerting your provider's dispatch and your supervisor right now. If you are in immediate danger, please call nine one one. I am staying with you.";
+        return xmlResponse(res, twiml(
+          say(reassureMsg, voiceId, langCode) +
+          redirect(`${baseUrl}/api/voice/schedule-callback?sessionId=${encodeURIComponent(sessionId)}&workspaceId=${encodeURIComponent(workspaceId)}&lang=${lang}&priority=urgent`)
+        ));
+      }
+    }
+
     if (!issue || issue.length < 3) {
       const reprompt = lang === 'es'
         ? 'No le escuché. Por favor dígame en qué puedo ayudarle.'
@@ -3095,21 +3180,40 @@ voiceRouter.post('/verify-employee-id', twilioSignatureMiddleware, async (req: R
     // Direct verifier to email channel — legal best practice. Trinity will not
     // disclose any details over the phone without a signed authorization on
     // file; the email pipeline handles authorization parsing and management
-    // approval.
+    // approval. Phase 29 polish: spell the email address letter-by-letter
+    // so the caller can copy it down on the first pass, and offer an SMS
+    // fallback that texts the caller a signed intake link.
     const referenceNumber = (sessionId || '').slice(-6) || Date.now().toString(36).slice(-6).toUpperCase();
-    const instructions = lang === 'es'
-      ? `Encontré al empleado en ${companyName}. ` +
-        `Por ley, las verificaciones de empleo deben realizarse por escrito con autorización del empleado. ` +
-        `Por favor envíe su solicitud de autorización firmada a: verificar arroba ${orgSlug} punto coaileague punto com. ` +
-        `Le responderemos dentro de dos días hábiles. Su número de referencia es ${referenceNumber}. ` +
-        `Gracias.`
-      : `I found the employee at ${companyName}. ` +
-        `By law, employment verifications require written authorization from the employee. ` +
-        `Please email your signed authorization form to: verify at ${orgSlug} dot coaileague dot com. ` +
-        `We will respond within two business days. Your reference number is ${referenceNumber}. ` +
-        `Thank you for calling.`;
+    const verifyEmail = `verify@${orgSlug}.coaileague.com`;
 
-    return xmlResponse(res, twiml(say(instructions, voiceId, langCode)));
+    // Spell the email so Polly doesn't read it as a word.
+    // "verify@sps.coaileague.com" → "V E R I F Y at S P S dot coaileague dot com"
+    const spelledEmail = spellEmailForTTS(verifyEmail, lang);
+
+    const instructions = lang === 'es'
+      ? `Encontré al empleado en ${companyName}. Por ley, las verificaciones de empleo requieren autorización escrita del empleado. ` +
+        `Su número de referencia es ${(referenceNumber || '').split('').join(' ')}. ` +
+        `Puedo enviarle un enlace por mensaje de texto para completar la solicitud, o puede enviar por correo electrónico. ` +
+        `Marque 1 para recibir el enlace por texto. Marque 2 para escuchar la dirección de correo electrónico deletreada.`
+      : `I found the employee at ${companyName}. By law, employment verifications require written authorization from the employee. ` +
+        `Your reference number is ${(referenceNumber || '').split('').join(' ')}. ` +
+        `I can text you a secure link to complete the request, or you can submit by email. ` +
+        `Press 1 to receive the link by text. Press 2 to hear the email address spelled out.`;
+
+    const action = `${baseUrl}/api/voice/verify-employee-id-channel?sessionId=${encodeURIComponent(sessionId)}&workspaceId=${encodeURIComponent(tenantWs.id)}&lang=${lang}&orgSlug=${encodeURIComponent(orgSlug)}&empId=${encodeURIComponent(empId)}&ref=${encodeURIComponent(referenceNumber)}`;
+
+    return xmlResponse(res, twiml(
+      `<Gather input="dtmf" action="${action}" method="POST" numDigits="1" timeout="12">` +
+      say(instructions, voiceId, langCode) +
+      `</Gather>` +
+      // No selection fallback — default to speaking the spelled email
+      say(
+        lang === 'es'
+          ? `Muy bien, la dirección de correo electrónico es: ${spelledEmail}. Repito: ${spelledEmail}. Le responderemos dentro de dos días hábiles. Gracias.`
+          : `Very well, the email address is: ${spelledEmail}. I'll repeat: ${spelledEmail}. We will respond within two business days. Thank you.`,
+        voiceId, langCode
+      )
+    ));
 
   } catch (err: any) {
     log.error('[VoiceRoutes] verify-employee-id error:', err?.message);
@@ -3124,6 +3228,84 @@ function extractQS(req: Request): { sessionId: string; workspaceId: string } {
   const workspaceId = (req.query.workspaceId as string) || (req.body.workspaceId as string) || '';
   return { sessionId, workspaceId };
 }
+
+// Phase 29 — spell an email address for TTS. Converts "verify@sps.coaileague.com"
+// to "V E R I F Y at S P S dot coaileague dot com". The domain portion is
+// only spelled if it's short; well-known brand strings ("coaileague") are
+// left intact because Polly pronounces them acceptably.
+function spellEmailForTTS(email: string, lang: 'en' | 'es' = 'en'): string {
+  const [local, domain] = (email || '').split('@');
+  if (!local || !domain) return email;
+  const atWord = lang === 'es' ? 'arroba' : 'at';
+  const dotWord = lang === 'es' ? 'punto' : 'dot';
+  const spell = (s: string) => s.toUpperCase().split('').join(' ');
+  const parts = domain.split('.');
+  const domSpoken = parts.map(p => p.length <= 4 ? spell(p) : p).join(` ${dotWord} `);
+  return `${spell(local)} ${atWord} ${domSpoken}`;
+}
+
+// ─── EMPLOYMENT-VERIFY CHANNEL CHOICE (Phase 29) ──────────────────────────────
+// After /verify-employee-id identifies the tenant, the caller picks how they
+// want to receive the verification intake link: SMS (digit 1) or email
+// (digit 2, also the silent-fallback default).
+voiceRouter.post('/verify-employee-id-channel', twilioSignatureMiddleware, async (req: Request, res: Response) => {
+  try {
+    const lang = getLang(req);
+    const baseUrl = getBaseUrl(req);
+    const { sessionId } = extractQS(req);
+    const workspaceId = (req.query.workspaceId as string) || '';
+    const orgSlug = (req.query.orgSlug as string) || '';
+    const empId = (req.query.empId as string) || '';
+    const ref = (req.query.ref as string) || '';
+    const Digits = (req.body.Digits as string) || '';
+    const callerPhone = (req.body.From as string) || '';
+    const voice = lang === 'es' ? VOICE_ES : VOICE;
+    const langCode = lang === 'es' ? 'es-US' : 'en-US';
+
+    const verifyEmail = `verify@${orgSlug}.coaileague.com`;
+    const spelled = spellEmailForTTS(verifyEmail, lang);
+
+    if (Digits === '1') {
+      // SMS the intake link
+      let sent = false;
+      if (callerPhone && callerPhone.length >= 10) {
+        try {
+          const { sendSMS } = await import('../services/smsService');
+          const url = `${baseUrl}/verify/employment?emp=${encodeURIComponent(empId)}&ref=${encodeURIComponent(ref)}`;
+          await sendSMS({
+            to: callerPhone,
+            body: (lang === 'es'
+              ? `CoAIleague — Verificación de empleo. Ref ${ref}. Complete la autorización: ${url}`
+              : `CoAIleague — Employment verification. Ref ${ref}. Complete authorization: ${url}`).slice(0, 280),
+            workspaceId,
+            type: 'verify_employment_link',
+          } as any);
+          sent = true;
+        } catch (err: any) {
+          log.warn('[VoiceRoutes] /verify-employee-id-channel SMS failed:', err?.message);
+        }
+      }
+
+      const msg = sent
+        ? (lang === 'es'
+            ? `Envié un enlace seguro al número que está llamando. Su número de referencia es ${(ref || '').split('').join(' ')}. Gracias.`
+            : `I sent a secure link to the number you're calling from. Your reference number is ${(ref || '').split('').join(' ')}. Thank you.`)
+        : (lang === 'es'
+            ? `No pude enviar el mensaje a este número. La dirección de correo electrónico es: ${spelled}. Repito: ${spelled}.`
+            : `I couldn't send a text to this number. The email address is: ${spelled}. I'll repeat: ${spelled}.`);
+      return xmlResponse(res, twiml(say(msg, voice, langCode)));
+    }
+
+    // Default / Digit 2 → speak the spelled email, twice, slowly
+    const msg = lang === 'es'
+      ? `La dirección de correo electrónico es: ${spelled}. Repito: ${spelled}. Le responderemos dentro de dos días hábiles. Su número de referencia es ${(ref || '').split('').join(' ')}. Gracias.`
+      : `The email address is: ${spelled}. I'll repeat: ${spelled}. We will respond within two business days. Your reference number is ${(ref || '').split('').join(' ')}. Thank you.`;
+    return xmlResponse(res, twiml(say(msg, voice, langCode)));
+  } catch (err: any) {
+    log.error('[VoiceRoutes] /verify-employee-id-channel error:', err?.message);
+    xmlResponse(res, twiml('<Say>An error occurred. Goodbye.</Say>'));
+  }
+});
 
 // ─── MANAGEMENT API ───────────────────────────────────────────────────────────
 // All management routes require authentication and a professional+ plan.
@@ -3964,29 +4146,24 @@ voiceRouter.post('/provider-menu-route', twilioSignatureMiddleware, async (req: 
             `playBeep="true"/>`
         ));
 
-      case '3': // Billing / invoice — route to existing AI support with billing context
+      case '3': { // Billing / invoice — PIN-gated (Phase 29)
+        const nextUrl = `${baseUrl}/api/voice/support-resolve?${qs}&topic=billing`;
         return xmlResponse(res, twiml(
-          redirect(`${baseUrl}/api/voice/support-resolve?${qs}&topic=billing`)
+          redirect(`${baseUrl}/api/voice/client-pin-gate?${qs}&next=${encodeURIComponent(nextUrl)}`)
         ));
+      }
 
       case '4': // Client complaint — PROVIDER-scoped (not the platform-level guest intake)
         return xmlResponse(res, twiml(
           redirect(`${baseUrl}/api/voice/client-complaint-intake?${qs}&step=officer`)
         ));
 
-      case '5': // Schedule update — take a message against the scheduling queue
+      case '5': { // Schedule update — PIN-gated (Phase 29) then record
+        const nextUrl = `${baseUrl}/api/voice/provider-schedule-record?${qs}`;
         return xmlResponse(res, twiml(
-          say(lang === 'es'
-            ? 'Describa los cambios de horario que necesita.'
-            : 'Please describe the schedule changes you need.',
-            lang === 'es' ? VOICE_ES : VOICE, lang === 'es' ? 'es-US' : 'en-US') +
-          `<Record ` +
-            `action="${baseUrl}/api/voice/recording-done?caseType=provider_schedule_update&${qs}" ` +
-            `method="POST" maxLength="120" timeout="3" finishOnKey="*#" ` +
-            `transcribe="true" ` +
-            `transcribeCallback="${baseUrl}/api/voice/transcription-done?caseType=provider_schedule_update&${qs}" ` +
-            `playBeep="true"/>`
+          redirect(`${baseUrl}/api/voice/client-pin-gate?${qs}&next=${encodeURIComponent(nextUrl)}`)
         ));
+      }
 
       case '6': // Supervisor on duty — human escalation via callback
       case '7':
@@ -4217,6 +4394,402 @@ voiceRouter.post('/sra-identify', twilioSignatureMiddleware, async (req: Request
     ));
   } catch (err: any) {
     log.error('[VoiceRoutes] /sra-identify error:', err?.message);
+    xmlResponse(res, twiml('<Say>An error occurred. Goodbye.</Say>'));
+  }
+});
+
+// ─── PROVIDER SCHEDULE RECORDING (Phase 29) ───────────────────────────────────
+// Reached after /client-pin-gate succeeds for option 5 (update services).
+// Records the caller's schedule-change request verbatim and routes to the
+// existing transcription-done → support_tickets pipeline as
+// provider_schedule_update.
+voiceRouter.post('/provider-schedule-record', twilioSignatureMiddleware, async (req: Request, res: Response) => {
+  try {
+    const lang = getLang(req);
+    const baseUrl = getBaseUrl(req);
+    const sessionId = (req.query.sessionId as string) || req.body.CallSid || '';
+    const workspaceId = (req.query.workspaceId as string) || '';
+    const voice = lang === 'es' ? VOICE_ES : VOICE;
+    const langCode = lang === 'es' ? 'es-US' : 'en-US';
+    const qs = `sessionId=${encodeURIComponent(sessionId)}&workspaceId=${encodeURIComponent(workspaceId)}&lang=${lang}`;
+    return xmlResponse(res, twiml(
+      say(lang === 'es'
+        ? 'Describa los cambios de horario que necesita.'
+        : 'Please describe the schedule changes you need.',
+        voice, langCode) +
+      `<Record ` +
+        `action="${baseUrl}/api/voice/recording-done?caseType=provider_schedule_update&${qs}" ` +
+        `method="POST" maxLength="120" timeout="3" finishOnKey="*#" ` +
+        `transcribe="true" ` +
+        `transcribeCallback="${baseUrl}/api/voice/transcription-done?caseType=provider_schedule_update&${qs}" ` +
+        `playBeep="true"/>`
+    ));
+  } catch (err: any) {
+    log.error('[VoiceRoutes] /provider-schedule-record error:', err?.message);
+    xmlResponse(res, twiml('<Say>An error occurred. Goodbye.</Say>'));
+  }
+});
+
+// ─── CLIENT PIN GATE (Phase 29) ───────────────────────────────────────────────
+// Gates sensitive tenant-scoped actions (billing payment, schedule updates,
+// account changes) behind a client PIN. Caller is resolved by CLI match
+// against clients.phone in the already-resolved provider workspace. PIN is
+// verified via verifyEntityPin('client', ...). On success the session is
+// stamped client_pin_verified=true and the caller is redirected to `next`.
+// On failure, up to 3 attempts; then 5-min lockout keyed per (workspace, phone).
+const _clientPinLockout = new Map<string, { attempts: number; lockedUntil: number }>();
+const CLIENT_PIN_MAX = 3;
+const CLIENT_PIN_LOCK_MS = 5 * 60 * 1000;
+function _clientPinKey(workspaceId: string, phone: string): string {
+  return `${workspaceId}:${(phone || '').replace(/\D/g, '')}`;
+}
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of _clientPinLockout.entries()) {
+    if (v.lockedUntil > 0 && v.lockedUntil <= now) _clientPinLockout.delete(k);
+  }
+}, 10 * 60 * 1000).unref();
+
+voiceRouter.post('/client-pin-gate', twilioSignatureMiddleware, async (req: Request, res: Response) => {
+  try {
+    const lang = getLang(req);
+    const baseUrl = getBaseUrl(req);
+    const sessionId = (req.query.sessionId as string) || req.body.CallSid || '';
+    const workspaceId = (req.query.workspaceId as string) || '';
+    const nextUrl = (req.query.next as string) || '';
+    const Digits = (req.body.Digits as string) || '';
+    const callerPhone = (req.body.From as string) || '';
+    const voice = lang === 'es' ? VOICE_ES : VOICE;
+    const langCode = lang === 'es' ? 'es-US' : 'en-US';
+
+    if (!workspaceId || !nextUrl) {
+      return xmlResponse(res, twiml(
+        say(lang === 'es' ? 'Configuración incompleta. Adiós.' : 'Configuration error. Goodbye.', voice, langCode)
+      ));
+    }
+
+    // Lockout check
+    const lockKey = _clientPinKey(workspaceId, callerPhone);
+    const lockState = _clientPinLockout.get(lockKey);
+    if (lockState && lockState.lockedUntil > Date.now()) {
+      const mins = Math.ceil((lockState.lockedUntil - Date.now()) / 60000);
+      return xmlResponse(res, twiml(
+        say(lang === 'es'
+          ? `Acceso bloqueado por seguridad. Intente de nuevo en ${mins} minuto${mins === 1 ? '' : 's'}. Adiós.`
+          : `Access locked for security. Try again in ${mins} minute${mins === 1 ? '' : 's'}. Goodbye.`,
+          voice, langCode)
+      ));
+    }
+
+    // Step 1: prompt for PIN
+    if (!Digits) {
+      const prompt = lang === 'es'
+        ? 'Por seguridad, por favor ingrese su PIN de cliente de 4 a 8 dígitos.'
+        : 'For security, please enter your 4 to 8 digit client PIN.';
+      return xmlResponse(res, twiml(
+        `<Gather input="dtmf" action="${baseUrl}/api/voice/client-pin-gate?sessionId=${encodeURIComponent(sessionId)}&workspaceId=${encodeURIComponent(workspaceId)}&lang=${lang}&next=${encodeURIComponent(nextUrl)}" method="POST" timeout="15" numDigits="8" finishOnKey="#">` +
+        say(prompt, voice, langCode) +
+        `</Gather>` +
+        say(lang === 'es' ? 'No recibí PIN. Adiós.' : 'No PIN received. Goodbye.', voice, langCode)
+      ));
+    }
+
+    // Step 2: resolve client by caller phone + verify PIN
+    let clientId: string | null = null;
+    try {
+      const { pool } = await import('../db');
+      const phoneClean = (callerPhone || '').replace(/\D/g, '').slice(-10);
+      if (phoneClean.length >= 7) {
+        const r = await pool.query(
+          `SELECT id FROM clients
+            WHERE workspace_id = $1
+              AND REGEXP_REPLACE(COALESCE(phone, ''), '[^0-9]', '', 'g') LIKE '%' || $2
+            LIMIT 1`,
+          [workspaceId, phoneClean],
+        );
+        if (r.rows.length) clientId = r.rows[0].id;
+      }
+    } catch (err: any) {
+      log.warn('[VoiceRoutes] /client-pin-gate client lookup failed:', err?.message);
+    }
+
+    if (!clientId) {
+      return xmlResponse(res, twiml(
+        say(lang === 'es'
+          ? 'No puedo identificar su cuenta por este número. Le conectaré con un humano.'
+          : 'I cannot identify your account from this number. Let me connect you with a human.',
+          voice, langCode) +
+        redirect(`${baseUrl}/api/voice/schedule-callback?sessionId=${encodeURIComponent(sessionId)}&workspaceId=${encodeURIComponent(workspaceId)}&lang=${lang}`)
+      ));
+    }
+
+    const { verifyEntityPin } = await import('../services/entityPinService');
+    const result = await verifyEntityPin({ entity: 'client', entityId: clientId, workspaceId, pin: Digits });
+
+    if (result.valid) {
+      _clientPinLockout.delete(lockKey);
+      // Stamp session
+      try {
+        const { pool } = await import('../db');
+        await pool.query(
+          `UPDATE voice_call_sessions
+              SET metadata = COALESCE(metadata, '{}'::jsonb) ||
+                             jsonb_build_object(
+                               'client_pin_verified', TRUE,
+                               'client_id', $1::text
+                             )
+            WHERE twilio_call_sid = $2`,
+          [clientId, req.body.CallSid || sessionId],
+        );
+      } catch { /* non-fatal */ }
+
+      return xmlResponse(res, twiml(
+        say(lang === 'es' ? 'Verificado. Un momento.' : 'Verified. One moment.', voice, langCode) +
+        redirect(nextUrl)
+      ));
+    }
+
+    // PIN invalid — record + decide
+    const cur = _clientPinLockout.get(lockKey) || { attempts: 0, lockedUntil: 0 };
+    cur.attempts += 1;
+    if (cur.attempts >= CLIENT_PIN_MAX) {
+      cur.lockedUntil = Date.now() + CLIENT_PIN_LOCK_MS;
+      _clientPinLockout.set(lockKey, cur);
+      const mins = Math.ceil(CLIENT_PIN_LOCK_MS / 60000);
+      return xmlResponse(res, twiml(
+        say(lang === 'es'
+          ? `Demasiados intentos. Acceso bloqueado por ${mins} minutos. Contacte a su proveedor. Adiós.`
+          : `Too many attempts. Access locked for ${mins} minutes. Contact your provider. Goodbye.`,
+          voice, langCode)
+      ));
+    }
+    _clientPinLockout.set(lockKey, cur);
+    const remaining = CLIENT_PIN_MAX - cur.attempts;
+    return xmlResponse(res, twiml(
+      say(lang === 'es'
+        ? `PIN incorrecto. Le quedan ${remaining} intento${remaining === 1 ? '' : 's'}.`
+        : `Incorrect PIN. You have ${remaining} attempt${remaining === 1 ? '' : 's'} remaining.`,
+        voice, langCode) +
+      redirect(`${baseUrl}/api/voice/client-pin-gate?sessionId=${encodeURIComponent(sessionId)}&workspaceId=${encodeURIComponent(workspaceId)}&lang=${lang}&next=${encodeURIComponent(nextUrl)}`)
+    ));
+  } catch (err: any) {
+    log.error('[VoiceRoutes] /client-pin-gate error:', err?.message);
+    xmlResponse(res, twiml('<Say>An error occurred. Goodbye.</Say>'));
+  }
+});
+
+// ─── OWNER AUTHORITY MENU (Phase 29) ──────────────────────────────────────────
+// Reached after /owner-pin-verify succeeds. Gives the owner voice-accessible
+// summaries of high-authority queues (pending payroll, shift overrides,
+// compliance alerts, KPIs). Actual mutations (approve payroll, approve an
+// override) require a signed SMS confirmation link — voice can only SUMMARISE
+// and TRIGGER that link. This prevents voice-only authorization of money
+// movements while still giving owners quick situational awareness.
+voiceRouter.post('/owner-menu', twilioSignatureMiddleware, async (req: Request, res: Response) => {
+  try {
+    const lang = getLang(req);
+    const baseUrl = getBaseUrl(req);
+    const sessionId = (req.query.sessionId as string) || req.body.CallSid || '';
+    const workspaceId = (req.query.workspaceId as string) || '';
+    const Digits = (req.body.Digits as string) || '';
+    const Speech = ((req.body.SpeechResult as string) || '').toLowerCase();
+    const callSid = (req.body.CallSid as string) || sessionId;
+    const voice = lang === 'es' ? VOICE_ES : VOICE;
+    const langCode = lang === 'es' ? 'es-US' : 'en-US';
+
+    // Verify owner_pin_verified is still set on this session
+    let ownerVerified = false;
+    let callerUserId = '';
+    let callerPhone = '';
+    try {
+      const { pool } = await import('../db');
+      const r = await pool.query(
+        `SELECT metadata, caller_number FROM voice_call_sessions WHERE twilio_call_sid = $1 LIMIT 1`,
+        [callSid],
+      );
+      const meta = (r.rows[0]?.metadata as Record<string, any> | null) || {};
+      ownerVerified = !!meta.owner_pin_verified;
+      callerUserId = meta.user_id || '';
+      callerPhone = r.rows[0]?.caller_number || (req.body.From as string) || '';
+    } catch { /* non-fatal */ }
+
+    if (!ownerVerified) {
+      return xmlResponse(res, twiml(
+        say(lang === 'es'
+          ? 'Esta función requiere verificación de propietario. Le llevaré al menú principal.'
+          : 'This feature requires owner verification. Taking you to the main menu.',
+          voice, langCode) +
+        redirect(`${baseUrl}/api/voice/main-menu-route?sessionId=${encodeURIComponent(sessionId)}&workspaceId=${encodeURIComponent(workspaceId)}&lang=${lang}`)
+      ));
+    }
+
+    // Map speech → digit
+    let digit = Digits;
+    if (!digit && Speech) {
+      if (/\b(payroll|paycheck)\b/.test(Speech) || /\b(nómina|pago)\b/.test(Speech)) digit = '1';
+      else if (/\b(override|shift.*approval)\b/.test(Speech) || /\b(anular|aprobar)\b/.test(Speech)) digit = '2';
+      else if (/\b(compliance|alert|expir)\b/.test(Speech) || /\b(cumplimiento|alerta|expir)\b/.test(Speech)) digit = '3';
+      else if (/\b(kpi|summary|today|numbers)\b/.test(Speech) || /\b(resumen|números|hoy)\b/.test(Speech)) digit = '4';
+      else if (/\b(back|normal|staff.*menu)\b/.test(Speech) || /\b(regresar|normal|personal)\b/.test(Speech)) digit = '0';
+    }
+
+    // Helper to send the owner an SMS action link (non-blocking)
+    const sendActionLink = async (subject: string, path: string): Promise<boolean> => {
+      if (!callerPhone) return false;
+      try {
+        const { sendSMS } = await import('../services/smsService');
+        const url = `${baseUrl}${path}`;
+        await sendSMS({
+          to: callerPhone,
+          body: `[${subject}] Secure action link: ${url}`.slice(0, 280),
+          workspaceId,
+          type: 'owner_action_link',
+        } as any);
+        return true;
+      } catch (err: any) {
+        log.warn('[VoiceRoutes] /owner-menu SMS failed:', err?.message);
+        return false;
+      }
+    };
+
+    if (digit === '1') {
+      // Pending payroll approvals — announce count + send SMS action link
+      let pending = 0; let totalCents = 0;
+      try {
+        const { pool } = await import('../db');
+        const r = await pool.query(
+          `SELECT COUNT(*)::int AS cnt, COALESCE(SUM(total_amount),0)::bigint AS sum
+             FROM payroll_runs
+            WHERE workspace_id = $1
+              AND status IN ('pending_approval','pending')`,
+          [workspaceId],
+        );
+        pending = r.rows[0]?.cnt || 0;
+        totalCents = Number(r.rows[0]?.sum || 0);
+      } catch { /* non-fatal — table name may differ */ }
+      const amount = (totalCents / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+      await sendActionLink('Payroll', `/payroll?action=approve&workspace=${encodeURIComponent(workspaceId)}`);
+      const msg = pending === 0
+        ? (lang === 'es' ? 'No tiene nóminas pendientes de aprobación.' : 'You have no payroll runs pending approval.')
+        : (lang === 'es'
+            ? `Tiene ${pending} nómina${pending === 1 ? '' : 's'} pendiente${pending === 1 ? '' : 's'} por un total de ${amount}. Le envié un enlace seguro por mensaje de texto para revisar y aprobar.`
+            : `You have ${pending} payroll run${pending === 1 ? '' : 's'} pending, totalling ${amount}. I sent a secure link to your phone to review and approve.`);
+      return xmlResponse(res, twiml(
+        say(msg, voice, langCode) +
+        redirect(`${baseUrl}/api/voice/owner-menu?sessionId=${encodeURIComponent(sessionId)}&workspaceId=${encodeURIComponent(workspaceId)}&lang=${lang}`)
+      ));
+    }
+
+    if (digit === '2') {
+      // Shift override approvals queue
+      let pending = 0;
+      try {
+        const { pool } = await import('../db');
+        const r = await pool.query(
+          `SELECT COUNT(*)::int AS cnt FROM shift_override_requests
+            WHERE workspace_id = $1 AND status = 'pending'`,
+          [workspaceId],
+        );
+        pending = r.rows[0]?.cnt || 0;
+      } catch { /* table may not exist on all envs — non-fatal */ }
+      await sendActionLink('Overrides', `/shifts?filter=pending-overrides&workspace=${encodeURIComponent(workspaceId)}`);
+      const msg = pending === 0
+        ? (lang === 'es' ? 'No hay solicitudes de anulación pendientes.' : 'You have no pending shift override requests.')
+        : (lang === 'es'
+            ? `Tiene ${pending} solicitud${pending === 1 ? '' : 'es'} de anulación. Revíselas con el enlace que envié por texto.`
+            : `You have ${pending} shift override request${pending === 1 ? '' : 's'}. Review them via the link I just texted you.`);
+      return xmlResponse(res, twiml(
+        say(msg, voice, langCode) +
+        redirect(`${baseUrl}/api/voice/owner-menu?sessionId=${encodeURIComponent(sessionId)}&workspaceId=${encodeURIComponent(workspaceId)}&lang=${lang}`)
+      ));
+    }
+
+    if (digit === '3') {
+      // Compliance alerts — count expiring certs + unverified guard cards
+      let alerts = 0;
+      try {
+        const { pool } = await import('../db');
+        const r = await pool.query(
+          `SELECT COUNT(*)::int AS cnt
+             FROM employee_certifications
+            WHERE workspace_id = $1
+              AND expiration_date IS NOT NULL
+              AND expiration_date <= NOW() + INTERVAL '30 days'
+              AND status = 'active'`,
+          [workspaceId],
+        );
+        alerts = r.rows[0]?.cnt || 0;
+      } catch { /* non-fatal */ }
+      const msg = alerts === 0
+        ? (lang === 'es' ? 'No tiene alertas de cumplimiento urgentes.' : 'You have no urgent compliance alerts.')
+        : (lang === 'es'
+            ? `Atención: ${alerts} certificación${alerts === 1 ? '' : 'es'} vencen en los próximos 30 días.`
+            : `Attention: ${alerts} certification${alerts === 1 ? '' : 's'} expire in the next 30 days.`);
+      return xmlResponse(res, twiml(
+        say(msg, voice, langCode) +
+        redirect(`${baseUrl}/api/voice/owner-menu?sessionId=${encodeURIComponent(sessionId)}&workspaceId=${encodeURIComponent(workspaceId)}&lang=${lang}`)
+      ));
+    }
+
+    if (digit === '4') {
+      // KPI summary — shifts today + employees on duty + invoices due this week
+      let shiftsToday = 0; let onDuty = 0; let invoicesDue = 0; let dueCents = 0;
+      try {
+        const { pool } = await import('../db');
+        const sh = await pool.query(
+          `SELECT COUNT(*)::int AS cnt FROM shifts
+            WHERE workspace_id = $1 AND DATE(start_time) = CURRENT_DATE`,
+          [workspaceId],
+        );
+        shiftsToday = sh.rows[0]?.cnt || 0;
+        const od = await pool.query(
+          `SELECT COUNT(DISTINCT employee_id)::int AS cnt FROM time_entries
+            WHERE workspace_id = $1 AND clock_out IS NULL AND clock_in >= NOW() - INTERVAL '24 hours'`,
+          [workspaceId],
+        );
+        onDuty = od.rows[0]?.cnt || 0;
+        const inv = await pool.query(
+          `SELECT COUNT(*)::int AS cnt, COALESCE(SUM(total),0)::numeric AS sum FROM invoices
+            WHERE workspace_id = $1
+              AND status IN ('sent','overdue')
+              AND due_date <= NOW() + INTERVAL '7 days'`,
+          [workspaceId],
+        );
+        invoicesDue = inv.rows[0]?.cnt || 0;
+        dueCents = Math.round(Number(inv.rows[0]?.sum || 0) * 100);
+      } catch { /* non-fatal */ }
+      const dueAmount = (dueCents / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+      const msg = lang === 'es'
+        ? `Hoy: ${shiftsToday} turno${shiftsToday === 1 ? '' : 's'}, ${onDuty} oficial${onDuty === 1 ? '' : 'es'} en servicio. Esta semana vencen ${invoicesDue} factura${invoicesDue === 1 ? '' : 's'} por ${dueAmount}.`
+        : `Today: ${shiftsToday} shift${shiftsToday === 1 ? '' : 's'}, ${onDuty} officer${onDuty === 1 ? '' : 's'} on duty. This week: ${invoicesDue} invoice${invoicesDue === 1 ? '' : 's'} due totalling ${dueAmount}.`;
+      return xmlResponse(res, twiml(
+        say(msg, voice, langCode) +
+        redirect(`${baseUrl}/api/voice/owner-menu?sessionId=${encodeURIComponent(sessionId)}&workspaceId=${encodeURIComponent(workspaceId)}&lang=${lang}`)
+      ));
+    }
+
+    if (digit === '0') {
+      return xmlResponse(res, twiml(
+        redirect(`${baseUrl}/api/voice/main-menu-route?sessionId=${encodeURIComponent(sessionId)}&workspaceId=${encodeURIComponent(workspaceId)}&lang=${lang}&_d=4`)
+      ));
+    }
+
+    // First call — announce the menu
+    const greeting = lang === 'es'
+      ? 'Bienvenido al menú de propietario. Tiene autoridad completa en esta llamada.'
+      : 'Welcome to the owner menu. You have full authority on this call.';
+    const menu = lang === 'es'
+      ? 'Marque 1 para ver nóminas pendientes de aprobación. Marque 2 para anulaciones de turnos pendientes. Marque 3 para alertas de cumplimiento. Marque 4 para el resumen del día. Marque 0 para el menú normal.'
+      : 'Press 1 for pending payroll approvals. Press 2 for shift override requests. Press 3 for compliance alerts. Press 4 for a daily KPI summary. Press 0 for the normal staff menu.';
+    return xmlResponse(res, twiml(
+      say(greeting, voice, langCode) +
+      `<Gather input="speech dtmf" action="${baseUrl}/api/voice/owner-menu?sessionId=${encodeURIComponent(sessionId)}&workspaceId=${encodeURIComponent(workspaceId)}&lang=${lang}" method="POST" numDigits="1" timeout="12" speechTimeout="auto" hints="payroll,override,compliance,summary,kpi,menu">` +
+      say(menu, voice, langCode) +
+      `</Gather>` +
+      redirect(`${baseUrl}/api/voice/main-menu-route?sessionId=${encodeURIComponent(sessionId)}&workspaceId=${encodeURIComponent(workspaceId)}&lang=${lang}&_d=4`)
+    ));
+  } catch (err: any) {
+    log.error('[VoiceRoutes] /owner-menu error:', err?.message);
     xmlResponse(res, twiml('<Say>An error occurred. Goodbye.</Say>'));
   }
 });
