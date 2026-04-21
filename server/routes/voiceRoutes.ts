@@ -981,6 +981,25 @@ voiceRouter.post('/main-menu-route', twilioSignatureMiddleware, async (req: Requ
     // the intent onto the equivalent menu option so the flow continues
     // naturally. Language-switch ("english" / "español") is handled here too.
     const spokenMenu = (SpeechResult || '').toLowerCase().trim();
+
+    // Phase 28 — global speech shortcuts reachable from any menu level:
+    //   "auditor" / "inspector" / "state inspector" → SRA identify flow
+    //   "operator" / "human" / "agent" / "representative" → human callback
+    if (!Digits && spokenMenu) {
+      if (/\b(auditor|inspector|regulatory|badge|state.*inspector|p\s?s\s?b)\b/.test(spokenMenu) ||
+          /\b(auditor|inspector|regulador|placa)\b/.test(spokenMenu)) {
+        return xmlResponse(res, twiml(
+          redirect(`${getBaseUrl(req)}/api/voice/sra-identify?sessionId=${encodeURIComponent(CallSid)}&lang=${lang}&step=prompt-badge`)
+        ));
+      }
+      if (/\b(operator|human|real.*person|representative|agent)\b/.test(spokenMenu) ||
+          /\b(operador|humano|persona real|representante|agente)\b/.test(spokenMenu)) {
+        return xmlResponse(res, twiml(
+          redirect(`${getBaseUrl(req)}/api/voice/schedule-callback?sessionId=${encodeURIComponent(CallSid)}&lang=${lang}`)
+        ));
+      }
+    }
+
     if (!Digits && spokenMenu) {
       if (/\b(english|ingl[eé]s)\b/.test(spokenMenu) || /\b(espa[nñ]ol|spanish)\b/.test(spokenMenu)) {
         Digits = '9';
@@ -1460,6 +1479,89 @@ voiceRouter.post('/transcription-done', twilioSignatureMiddleware, async (req: R
           } catch { /* non-fatal */ }
         } catch (gcErr: any) {
           log.error('[VoiceRoutes] Guest complaint persistence failed:', gcErr?.message);
+        }
+      }
+
+      // Phase 28 — PROVIDER-SCOPED intake case types (client complaint,
+      // incident, coverage request, schedule update). Support ticket is
+      // created INSIDE the tenant's workspace (not platform support) so
+      // the tenant's own team handles it. Priority and subject vary by type.
+      const providerScopedTypes: Record<string, { priority: string; labelEn: string; labelEs: string }> = {
+        client_complaint:         { priority: 'high',   labelEn: 'Client complaint',          labelEs: 'Queja de cliente' },
+        provider_incident:        { priority: 'urgent', labelEn: 'Site incident report',      labelEs: 'Reporte de incidente' },
+        provider_coverage_request:{ priority: 'normal', labelEn: 'Coverage request',          labelEs: 'Solicitud de cobertura' },
+        provider_schedule_update: { priority: 'normal', labelEn: 'Schedule update request',   labelEs: 'Actualización de horario' },
+      };
+      if (providerScopedTypes[caseType]) {
+        try {
+          const { pool } = await import('../db');
+          const qsWorkspaceId = (req.query.workspaceId as string) || '';
+          const sessRow = await pool.query(
+            `SELECT workspace_id, metadata, caller_number FROM voice_call_sessions WHERE twilio_call_sid = $1 LIMIT 1`,
+            [CallSid],
+          );
+          const meta = (sessRow.rows[0]?.metadata as Record<string, any> | null) || {};
+          const providerWorkspaceId: string = qsWorkspaceId
+            || meta.client_provider_workspace_id
+            || sessRow.rows[0]?.workspace_id
+            || '';
+
+          if (!providerWorkspaceId) {
+            log.warn(`[VoiceRoutes] ${caseType} skipped — no provider workspace in context for callSid=${CallSid}`);
+          } else {
+            const providerName: string = meta.provider_name || '';
+            const complaintOfficer: string = meta.complaint_officer || '';
+            const callerPhone: string = From || sessRow.rows[0]?.caller_number || '';
+
+            const now = new Date();
+            const ymd = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+            const suffix = caseType === 'client_complaint' ? 'CC'
+                          : caseType === 'provider_incident' ? 'INC'
+                          : caseType === 'provider_coverage_request' ? 'COV'
+                          : 'SCH';
+            const ticketNumber = `TKT-${suffix}-${ymd}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+            const cfg = providerScopedTypes[caseType];
+            const label = (req.query.lang as string) === 'es' ? cfg.labelEs : cfg.labelEn;
+
+            const subject = complaintOfficer && caseType === 'client_complaint'
+              ? `${label}: ${complaintOfficer}`.slice(0, 200)
+              : label;
+
+            const description = [
+              `Voice-intake ${caseType} captured via ${CallSid}.`,
+              `Provider workspace: ${providerName || providerWorkspaceId}`,
+              `Caller phone: ${callerPhone || 'unknown'}`,
+              complaintOfficer ? `Named officer: ${complaintOfficer}` : '',
+              `Recording: ${RecordingUrl || 'n/a'}`,
+              '',
+              '--- Caller transcript (verbatim) ---',
+              TranscriptionText,
+            ].filter(Boolean).join('\n');
+
+            await pool.query(
+              `INSERT INTO support_tickets
+                (workspace_id, ticket_number, type, priority, requested_by, subject, description,
+                 status, is_escalated, created_at, updated_at)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, 'open', FALSE, NOW(), NOW())`,
+              [providerWorkspaceId, ticketNumber, caseType, cfg.priority, callerPhone || 'voice-client', subject, description],
+            );
+            log.info(`[VoiceRoutes] ${caseType} ticket ${ticketNumber} created in tenant workspace ${providerWorkspaceId}`);
+
+            // Tenant-level event so the tenant's own NDS / support console picks it up
+            try {
+              const { platformEventBus } = await import('../services/platformEventBus');
+              await platformEventBus.publish({
+                type: 'support_ticket.created',
+                category: caseType === 'provider_incident' ? 'operations' : 'support',
+                title: `${label}${complaintOfficer ? ` — ${complaintOfficer}` : ''}`,
+                description: `Voice-intake ${caseType} from ${callerPhone}.`,
+                workspaceId: providerWorkspaceId,
+                metadata: { ticketNumber, callSid: CallSid, callerPhone, caseType, channel: 'voice' },
+              });
+            } catch { /* non-fatal */ }
+          }
+        } catch (psErr: any) {
+          log.error(`[VoiceRoutes] Provider-scoped ${caseType} persistence failed:`, psErr?.message);
         }
       }
     } else if (TranscriptionStatus === 'failed') {
@@ -3340,12 +3442,14 @@ voiceRouter.post('/client-or-guest', twilioSignatureMiddleware, async (req: Requ
   }
 });
 
-// ─── CLIENT PROVIDER LOOKUP (Phase 27) ────────────────────────────────────────
-// Asks for the provider's account/client code (CLT-XXX-NNNNN) or the company
-// name. Fuzzy-matches against `clients` by external_id / client_number / name
-// or workspaces by name. When a match is found AND the caller's phone is on
-// file, the client is considered verified and redirected into the full client
-// support flow with providerWorkspaceId/clientId populated.
+// ─── CLIENT PROVIDER LOOKUP (Phase 27 + Phase 28) ─────────────────────────────
+// Asks for the provider's client code (CLT-XXX-NNNNN), company name, OR state
+// license number (e.g. C11608501 for Texas PSB). Fuzzy-matches against
+// `clients` by external_id / client_number, then `workspaces` by license
+// number, then by name. Also plays a "Searching for provider, stand by..."
+// confirmation before the DB lookup so the caller knows Trinity is working.
+// When matched the flow redirects into the tenant-branded provider menu
+// at /provider-branded-menu — NOT the generic CoAIleague support flow.
 voiceRouter.post('/client-provider-lookup', twilioSignatureMiddleware, async (req: Request, res: Response) => {
   try {
     const lang = getLang(req);
@@ -3356,45 +3460,108 @@ voiceRouter.post('/client-provider-lookup', twilioSignatureMiddleware, async (re
     const Digits = (req.body.Digits as string) || '';
     const attempt = parseInt((req.query.attempt as string) || '1', 10);
 
-    // First call — prompt for code or company name
+    // First call — prompt for code, company name, or license number
     if (!Speech && !Digits) {
       const prompt = lang === 'es'
-        ? 'Por favor diga el código de cliente de su proveedor, que comienza con C L T, o el nombre de la empresa que le proporciona servicios de seguridad.'
-        : "Please say your provider's client code — it starts with C L T — or the name of the company providing your security services.";
+        ? 'Por favor diga el nombre de la empresa que le proporciona servicios, su número de licencia estatal, o su código de cliente que comienza con C L T.'
+        : "Please say the name of the company providing your services, the state license number, or your client code beginning with C L T.";
       return xmlResponse(res, twiml(
-        `<Gather input="speech dtmf" action="${baseUrl}/api/voice/client-provider-lookup?sessionId=${encodeURIComponent(sessionId)}&workspaceId=${encodeURIComponent(workspaceId)}&lang=${lang}&attempt=1" method="POST" timeout="10" speechTimeout="auto" hints="CLT,company,provider,security">` +
+        `<Gather input="speech dtmf" action="${baseUrl}/api/voice/client-provider-lookup?sessionId=${encodeURIComponent(sessionId)}&workspaceId=${encodeURIComponent(workspaceId)}&lang=${lang}&attempt=1" method="POST" timeout="12" speechTimeout="auto" hints="CLT,Statewide,Protective,Services,license,company,provider,security">` +
         say(prompt, lang === 'es' ? VOICE_ES : VOICE, lang === 'es' ? 'es-US' : 'en-US') +
         `</Gather>` +
         redirect(`${baseUrl}/api/voice/guest-intake?sessionId=${encodeURIComponent(sessionId)}&workspaceId=${encodeURIComponent(workspaceId)}&lang=${lang}`)
       ));
     }
 
-    // Try to resolve: CLT-XXX-NNNNN pattern, then fall back to workspace-name fuzzy match
+    // Acknowledge the caller so they know we're looking them up
+    const standByMsg = lang === 'es'
+      ? 'Un momento, estoy buscando el proveedor.'
+      : "One moment — I'm searching for your provider.";
+
+    // Try to resolve in this priority order:
+    //  1. CLT-XXX-NNNNN  → clients row
+    //  2. State license  → workspaces row (e.g. Texas PSB "C11608501")
+    //  3. Company name   → workspaces fuzzy
     const raw = (Speech || Digits).trim();
-    let matched: { workspaceId: string; clientId?: string; label: string } | null = null;
+    const rawUpper = raw.toUpperCase();
+    let matched: {
+      workspaceId: string;
+      clientId?: string;
+      label: string;
+      licenseNumber?: string | null;
+      licenseState?: string | null;
+    } | null = null;
+
     try {
       const { pool } = await import('../db');
-      const cltPattern = raw.toUpperCase().replace(/[^A-Z0-9\-]/g, '').match(/CLT-?[A-Z0-9]{2,8}-?\d{1,6}/);
+
+      // 1. CLT code pattern
+      const cltPattern = rawUpper.replace(/[^A-Z0-9\-]/g, '').match(/CLT-?[A-Z0-9]{2,8}-?\d{1,6}/);
       if (cltPattern) {
         const r = await pool.query(
-          `SELECT id, workspace_id FROM clients
-           WHERE UPPER(COALESCE(client_number, external_id, '')) = $1
-              OR UPPER(COALESCE(external_id, '')) = $1
-           LIMIT 1`,
+          `SELECT c.id AS client_id, c.workspace_id, w.name AS ws_name,
+                  w.state_license_number, w.state_license_state
+             FROM clients c
+             LEFT JOIN workspaces w ON w.id = c.workspace_id
+            WHERE UPPER(COALESCE(c.client_number, c.external_id, '')) = $1
+               OR UPPER(COALESCE(c.external_id, '')) = $1
+            LIMIT 1`,
           [cltPattern[0]],
         );
-        if (r.rows.length) matched = { workspaceId: r.rows[0].workspace_id, clientId: r.rows[0].id, label: cltPattern[0] };
+        if (r.rows.length) {
+          matched = {
+            workspaceId: r.rows[0].workspace_id,
+            clientId: r.rows[0].client_id,
+            label: r.rows[0].ws_name || cltPattern[0],
+            licenseNumber: r.rows[0].state_license_number,
+            licenseState: r.rows[0].state_license_state,
+          };
+        }
       }
+
+      // 2. State license number pattern — e.g. "C11608501" (letter + 7-9 digits)
+      if (!matched) {
+        const licensePattern = rawUpper.replace(/[^A-Z0-9]/g, '').match(/[A-Z]\d{7,9}/);
+        if (licensePattern) {
+          const r = await pool.query(
+            `SELECT id, name, state_license_number, state_license_state
+               FROM workspaces
+              WHERE UPPER(REGEXP_REPLACE(COALESCE(state_license_number, ''), '[^A-Z0-9]', '', 'g')) = $1
+                AND COALESCE(subscription_status, 'active') != 'cancelled'
+              LIMIT 1`,
+            [licensePattern[0]],
+          );
+          if (r.rows.length) {
+            matched = {
+              workspaceId: r.rows[0].id,
+              label: r.rows[0].name,
+              licenseNumber: r.rows[0].state_license_number,
+              licenseState: r.rows[0].state_license_state,
+            };
+          }
+        }
+      }
+
+      // 3. Company name fuzzy
       if (!matched) {
         const cleaned = raw.replace(/[^a-zA-Z0-9\s]/g, '').trim().slice(0, 80);
         if (cleaned.length >= 3) {
           const r = await pool.query(
-            `SELECT id, name FROM workspaces
-             WHERE LOWER(name) LIKE LOWER($1) AND subscription_status != 'cancelled'
-             LIMIT 1`,
+            `SELECT id, name, state_license_number, state_license_state
+               FROM workspaces
+              WHERE LOWER(name) LIKE LOWER($1)
+                AND COALESCE(subscription_status, 'active') != 'cancelled'
+              LIMIT 1`,
             [`%${cleaned}%`],
           );
-          if (r.rows.length) matched = { workspaceId: r.rows[0].id, label: r.rows[0].name };
+          if (r.rows.length) {
+            matched = {
+              workspaceId: r.rows[0].id,
+              label: r.rows[0].name,
+              licenseNumber: r.rows[0].state_license_number,
+              licenseState: r.rows[0].state_license_state,
+            };
+          }
         }
       }
     } catch (lookupErr: any) {
@@ -3402,36 +3569,49 @@ voiceRouter.post('/client-provider-lookup', twilioSignatureMiddleware, async (re
     }
 
     if (matched) {
-      // Persist to session metadata so the downstream /main-menu-route case '2'
-      // can enrich the AI context with providerWorkspaceId + clientId.
+      // Persist providerWorkspaceId + clientId + license on the call session
+      // so downstream prompts and the branded menu can enrich their context.
       try {
         const { pool } = await import('../db');
         await pool.query(
           `UPDATE voice_call_sessions
               SET metadata = COALESCE(metadata, '{}'::jsonb) ||
-                             jsonb_build_object('client_provider_workspace_id', $1::text,
-                                                'client_id', $2::text)
-            WHERE twilio_call_sid = $3`,
-          [matched.workspaceId, matched.clientId || null, req.body.CallSid || sessionId],
+                             jsonb_build_object(
+                               'client_provider_workspace_id', $1::text,
+                               'client_id', $2::text,
+                               'provider_name', $3::text,
+                               'provider_license', $4::text,
+                               'provider_license_state', $5::text
+                             )
+            WHERE twilio_call_sid = $6`,
+          [
+            matched.workspaceId,
+            matched.clientId || null,
+            matched.label,
+            matched.licenseNumber || null,
+            matched.licenseState || null,
+            req.body.CallSid || sessionId,
+          ],
         );
       } catch { /* non-fatal */ }
 
-      const foundMsg = lang === 'es'
-        ? `Encontré a ${matched.label}. Déjeme conectarle con el equipo de soporte.`
-        : `I found ${matched.label}. Let me connect you with the support team.`;
+      // Route into the tenant-branded menu, NOT the generic CoAIleague support.
+      const qs = `sessionId=${encodeURIComponent(sessionId)}` +
+                 `&workspaceId=${encodeURIComponent(matched.workspaceId)}` +
+                 `&lang=${lang}`;
       return xmlResponse(res, twiml(
-        say(foundMsg, lang === 'es' ? VOICE_ES : VOICE, lang === 'es' ? 'es-US' : 'en-US') +
-        redirect(`${baseUrl}/api/voice/main-menu-route?sessionId=${encodeURIComponent(sessionId)}&workspaceId=${encodeURIComponent(matched.workspaceId)}&lang=${lang}&_d=2`)
+        say(standByMsg, lang === 'es' ? VOICE_ES : VOICE, lang === 'es' ? 'es-US' : 'en-US') +
+        redirect(`${baseUrl}/api/voice/provider-branded-menu?${qs}`)
       ));
     }
 
     // No match — offer one retry, then fall through to guest intake
     if (attempt < 2) {
       const retryMsg = lang === 'es'
-        ? 'No encontré ese proveedor. Intente de nuevo, dígame el código C L T o el nombre de la empresa.'
-        : "I didn't find that provider. Please try again — say the C L T code or the company name.";
+        ? 'No encontré ese proveedor. Intentemos de nuevo: diga el nombre de la empresa, el número de licencia estatal, o el código de cliente.'
+        : "I didn't find that provider. Let's try once more — say the company name, the state license number, or the client code.";
       return xmlResponse(res, twiml(
-        `<Gather input="speech dtmf" action="${baseUrl}/api/voice/client-provider-lookup?sessionId=${encodeURIComponent(sessionId)}&workspaceId=${encodeURIComponent(workspaceId)}&lang=${lang}&attempt=${attempt + 1}" method="POST" timeout="10" speechTimeout="auto">` +
+        `<Gather input="speech dtmf" action="${baseUrl}/api/voice/client-provider-lookup?sessionId=${encodeURIComponent(sessionId)}&workspaceId=${encodeURIComponent(workspaceId)}&lang=${lang}&attempt=${attempt + 1}" method="POST" timeout="12" speechTimeout="auto">` +
         say(retryMsg, lang === 'es' ? VOICE_ES : VOICE, lang === 'es' ? 'es-US' : 'en-US') +
         `</Gather>` +
         redirect(`${baseUrl}/api/voice/guest-intake?sessionId=${encodeURIComponent(sessionId)}&workspaceId=${encodeURIComponent(workspaceId)}&lang=${lang}`)
@@ -3596,6 +3776,447 @@ voiceRouter.post('/guest-complaint-intake', twilioSignatureMiddleware, async (re
     ));
   } catch (err: any) {
     log.error('[VoiceRoutes] /guest-complaint-intake error:', err?.message);
+    xmlResponse(res, twiml('<Say>An error occurred. Goodbye.</Say>'));
+  }
+});
+
+// ─── PROVIDER-BRANDED MENU (Phase 28) ─────────────────────────────────────────
+// Once /client-provider-lookup resolves the caller to a specific tenant
+// workspace, Trinity switches into the provider's brand: greets with the
+// tenant's name + state license number and presents a tenant-scoped options
+// menu. Every downstream action runs against THAT workspace, not CoAIleague.
+voiceRouter.post('/provider-branded-menu', twilioSignatureMiddleware, async (req: Request, res: Response) => {
+  try {
+    const lang = getLang(req);
+    const baseUrl = getBaseUrl(req);
+    const sessionId = (req.query.sessionId as string) || req.body.CallSid || '';
+    const workspaceId = (req.query.workspaceId as string) || '';
+    const callSid = (req.body.CallSid as string) || sessionId;
+
+    // Hydrate provider name + license from session metadata (set by /client-provider-lookup),
+    // falling back to a live workspaces lookup if missing.
+    let providerName = '';
+    let licenseNumber = '';
+    let licenseState = '';
+    try {
+      const { pool } = await import('../db');
+      const r = await pool.query(
+        `SELECT metadata FROM voice_call_sessions WHERE twilio_call_sid = $1 LIMIT 1`,
+        [callSid],
+      );
+      const meta = (r.rows[0]?.metadata as Record<string, any> | null) || {};
+      providerName = meta.provider_name || '';
+      licenseNumber = meta.provider_license || '';
+      licenseState = meta.provider_license_state || '';
+      if (!providerName && workspaceId) {
+        const w = await pool.query(
+          `SELECT name, state_license_number, state_license_state FROM workspaces WHERE id = $1 LIMIT 1`,
+          [workspaceId],
+        );
+        if (w.rows.length) {
+          providerName = w.rows[0].name;
+          licenseNumber = w.rows[0].state_license_number || '';
+          licenseState = w.rows[0].state_license_state || '';
+        }
+      }
+    } catch { /* non-fatal */ }
+
+    const voice = lang === 'es' ? VOICE_ES : VOICE;
+    const langCode = lang === 'es' ? 'es-US' : 'en-US';
+    const displayName = providerName || (lang === 'es' ? 'su proveedor' : 'your provider');
+    const licenseLine = licenseNumber
+      ? (lang === 'es'
+          ? `, licencia número ${spellLicense(licenseNumber)}`
+          : `, license number ${spellLicense(licenseNumber)}`)
+      : '';
+    const stateSuffix = licenseNumber && licenseState
+      ? (lang === 'es' ? ` del estado de ${licenseState}` : ` in the state of ${licenseState}`)
+      : '';
+
+    const greeting = lang === 'es'
+      ? `¡Los encontré! Gracias por llamar a ${displayName}${licenseLine}${stateSuffix}. Por favor escuche las siguientes opciones.`
+      : `I found them! Thank you for calling ${displayName}${licenseLine}${stateSuffix}. Please listen to the following options.`;
+
+    const menuEn = [
+      'Press 1 to report an incident at your site or request immediate officer dispatch.',
+      'Press 2 to request additional coverage or add a shift.',
+      'Press 3 for billing, invoices, or payment questions.',
+      'Press 4 to file a complaint or report a concern about an officer or service.',
+      'Press 5 to update your scheduled services.',
+      'Press 6 to speak with the supervisor on duty.',
+      'Press 7 to leave a message for your account manager.',
+      'Press 0 to speak with me, Trinity, about anything else.',
+      'Press 9 to switch to Spanish.',
+    ].join(' ');
+    const menuEs = [
+      'Marque 1 para reportar un incidente en su sitio o solicitar despacho inmediato de un oficial.',
+      'Marque 2 para solicitar cobertura adicional o agregar un turno.',
+      'Marque 3 para facturación, facturas o preguntas de pago.',
+      'Marque 4 para presentar una queja sobre un oficial o el servicio.',
+      'Marque 5 para actualizar sus servicios programados.',
+      'Marque 6 para hablar con el supervisor de turno.',
+      'Marque 7 para dejar un mensaje a su gerente de cuenta.',
+      'Marque 0 para hablar conmigo, Trinity, sobre cualquier otra cosa.',
+      'Marque 8 para inglés.',
+    ].join(' ');
+
+    const hintsEn = 'incident,dispatch,coverage,shift,invoice,billing,complaint,officer,schedule,supervisor,account,manager,trinity,help';
+    const hintsEs = 'incidente,despacho,cobertura,turno,factura,facturación,queja,oficial,horario,supervisor,cuenta,gerente,trinity,ayuda';
+
+    const action = `${baseUrl}/api/voice/provider-menu-route?sessionId=${encodeURIComponent(sessionId)}&workspaceId=${encodeURIComponent(workspaceId)}&lang=${lang}`;
+
+    return xmlResponse(res, twiml(
+      say(greeting, voice, langCode) +
+      `<Gather input="speech dtmf" action="${action}" method="POST" numDigits="1" timeout="12" speechTimeout="auto" hints="${lang === 'es' ? hintsEs : hintsEn}">` +
+      say(lang === 'es' ? menuEs : menuEn, voice, langCode) +
+      `</Gather>` +
+      say(lang === 'es' ? 'No recibí ninguna selección. Un momento, le conecto con Trinity.' : "I didn't catch a selection. One moment, connecting you with Trinity.", voice, langCode) +
+      redirect(`${baseUrl}/api/voice/trinity-talk?sessionId=${encodeURIComponent(sessionId)}&workspaceId=${encodeURIComponent(workspaceId)}&lang=${lang}`)
+    ));
+  } catch (err: any) {
+    log.error('[VoiceRoutes] /provider-branded-menu error:', err?.message);
+    xmlResponse(res, twiml('<Say>An error occurred. Goodbye.</Say>'));
+  }
+});
+
+// Spell out a license number (e.g. "C11608501") so the TTS voice reads it
+// digit-by-digit instead of as "eleven million six hundred thousand...".
+function spellLicense(license: string): string {
+  return (license || '').split('').map(c => c).join(' ');
+}
+
+// ─── PROVIDER MENU ROUTER (Phase 28) ──────────────────────────────────────────
+// Routes the caller's choice from /provider-branded-menu to the correct
+// tenant-scoped handler. Every action stays inside the resolved provider
+// workspace — dispatch goes to that tenant's dispatch desk, complaints go
+// into that tenant's support_tickets (not CoAIleague platform support), etc.
+voiceRouter.post('/provider-menu-route', twilioSignatureMiddleware, async (req: Request, res: Response) => {
+  try {
+    const lang = getLang(req);
+    const baseUrl = getBaseUrl(req);
+    const sessionId = (req.query.sessionId as string) || req.body.CallSid || '';
+    const workspaceId = (req.query.workspaceId as string) || '';
+    const Digits = (req.body.Digits as string) || '';
+    const SpeechRaw = ((req.body.SpeechResult as string) || '').toLowerCase();
+
+    // Speech-to-digit intent mapping (scoped to provider menu, not generic IVR)
+    let digit = Digits;
+    if (!digit && SpeechRaw) {
+      if (/\b(incident|dispatch|emergency|help.*site|officer.*now)\b/.test(SpeechRaw) ||
+          /\b(incidente|despacho|emergencia|ayuda.*sitio)\b/.test(SpeechRaw)) digit = '1';
+      else if (/\b(coverage|add.*shift|extra.*officer|more.*staff)\b/.test(SpeechRaw) ||
+               /\b(cobertura|agregar.*turno|personal.*extra)\b/.test(SpeechRaw)) digit = '2';
+      else if (/\b(invoice|billing|bill|payment|charge)\b/.test(SpeechRaw) ||
+               /\b(factura|facturación|pago|cobro)\b/.test(SpeechRaw)) digit = '3';
+      else if (/\b(complaint|complain|report.*officer|bad.*officer|concern)\b/.test(SpeechRaw) ||
+               /\b(queja|reclamo|oficial.*malo|denuncia)\b/.test(SpeechRaw)) digit = '4';
+      else if (/\b(schedule|update.*service|change.*shift)\b/.test(SpeechRaw) ||
+               /\b(horario|actualizar|cambiar.*turno)\b/.test(SpeechRaw)) digit = '5';
+      else if (/\b(supervisor|on.*duty|manager.*duty)\b/.test(SpeechRaw) ||
+               /\b(supervisor|de turno)\b/.test(SpeechRaw)) digit = '6';
+      else if (/\b(account.*manager|message|leave.*note)\b/.test(SpeechRaw) ||
+               /\b(gerente|mensaje|dejar)\b/.test(SpeechRaw)) digit = '7';
+      else if (/\b(trinity|ai|talk.*to.*you|help)\b/.test(SpeechRaw) ||
+               /\b(trinity|hablar)\b/.test(SpeechRaw)) digit = '0';
+      else if (/\b(english|inglés|spanish|español)\b/.test(SpeechRaw)) digit = '9';
+    }
+
+    // Human-escalation keyword short-circuit — respected from ANY option
+    if (/\b(operator|human|real.*person|agent|representative)\b/.test(SpeechRaw) ||
+        /\b(operador|humano|persona|representante|agente)\b/.test(SpeechRaw)) {
+      return xmlResponse(res, twiml(
+        say(lang === 'es'
+          ? 'Entendido. Le conectaré con un humano lo antes posible.'
+          : 'Understood. I will connect you with a human as soon as possible.',
+          lang === 'es' ? VOICE_ES : VOICE, lang === 'es' ? 'es-US' : 'en-US') +
+        redirect(`${baseUrl}/api/voice/schedule-callback?sessionId=${encodeURIComponent(sessionId)}&workspaceId=${encodeURIComponent(workspaceId)}&lang=${lang}`)
+      ));
+    }
+
+    const qs = `sessionId=${encodeURIComponent(sessionId)}&workspaceId=${encodeURIComponent(workspaceId)}&lang=${lang}`;
+
+    switch (digit) {
+      case '1': // Incident / immediate dispatch — provider-scoped record + transcript
+        return xmlResponse(res, twiml(
+          say(lang === 'es'
+            ? 'Entendido. Voy a grabar el incidente y alertar al despacho del proveedor. Explique lo ocurrido y dónde está ahora.'
+            : "Understood. I'll record the incident and alert the provider's dispatch. Please explain what's happening and where you are right now.",
+            lang === 'es' ? VOICE_ES : VOICE, lang === 'es' ? 'es-US' : 'en-US') +
+          `<Record ` +
+            `action="${baseUrl}/api/voice/recording-done?caseType=provider_incident&${qs}" ` +
+            `method="POST" maxLength="180" timeout="3" finishOnKey="*#" ` +
+            `transcribe="true" ` +
+            `transcribeCallback="${baseUrl}/api/voice/transcription-done?caseType=provider_incident&${qs}" ` +
+            `playBeep="true"/>`
+        ));
+
+      case '2': // Add coverage / additional shift — take a short message
+        return xmlResponse(res, twiml(
+          say(lang === 'es'
+            ? 'Por favor describa la cobertura adicional que necesita, dónde y cuándo. Nuestro equipo de programación lo contactará.'
+            : 'Please describe the additional coverage you need, the location and time. Our scheduling team will follow up.',
+            lang === 'es' ? VOICE_ES : VOICE, lang === 'es' ? 'es-US' : 'en-US') +
+          `<Record ` +
+            `action="${baseUrl}/api/voice/recording-done?caseType=provider_coverage_request&${qs}" ` +
+            `method="POST" maxLength="120" timeout="3" finishOnKey="*#" ` +
+            `transcribe="true" ` +
+            `transcribeCallback="${baseUrl}/api/voice/transcription-done?caseType=provider_coverage_request&${qs}" ` +
+            `playBeep="true"/>`
+        ));
+
+      case '3': // Billing / invoice — route to existing AI support with billing context
+        return xmlResponse(res, twiml(
+          redirect(`${baseUrl}/api/voice/support-resolve?${qs}&topic=billing`)
+        ));
+
+      case '4': // Client complaint — PROVIDER-scoped (not the platform-level guest intake)
+        return xmlResponse(res, twiml(
+          redirect(`${baseUrl}/api/voice/client-complaint-intake?${qs}&step=officer`)
+        ));
+
+      case '5': // Schedule update — take a message against the scheduling queue
+        return xmlResponse(res, twiml(
+          say(lang === 'es'
+            ? 'Describa los cambios de horario que necesita.'
+            : 'Please describe the schedule changes you need.',
+            lang === 'es' ? VOICE_ES : VOICE, lang === 'es' ? 'es-US' : 'en-US') +
+          `<Record ` +
+            `action="${baseUrl}/api/voice/recording-done?caseType=provider_schedule_update&${qs}" ` +
+            `method="POST" maxLength="120" timeout="3" finishOnKey="*#" ` +
+            `transcribe="true" ` +
+            `transcribeCallback="${baseUrl}/api/voice/transcription-done?caseType=provider_schedule_update&${qs}" ` +
+            `playBeep="true"/>`
+        ));
+
+      case '6': // Supervisor on duty — human escalation via callback
+      case '7':
+        return xmlResponse(res, twiml(
+          redirect(`${baseUrl}/api/voice/schedule-callback?${qs}`)
+        ));
+
+      case '0': // Trinity free-talk — tenant-scoped context
+        return xmlResponse(res, twiml(
+          redirect(`${baseUrl}/api/voice/trinity-talk?${qs}`)
+        ));
+
+      case '9': {
+        // Toggle language and re-announce the provider menu
+        const newLang = lang === 'es' ? 'en' : 'es';
+        try { await updateCallSession(req.body.CallSid || sessionId, { language: newLang }); } catch { /* non-fatal */ }
+        return xmlResponse(res, twiml(
+          redirect(`${baseUrl}/api/voice/provider-branded-menu?sessionId=${encodeURIComponent(sessionId)}&workspaceId=${encodeURIComponent(workspaceId)}&lang=${newLang}`)
+        ));
+      }
+
+      default: {
+        const msg = lang === 'es'
+          ? 'No recibí una opción válida. Le repito el menú.'
+          : "I didn't catch a valid option. Let me replay the menu.";
+        return xmlResponse(res, twiml(
+          say(msg, lang === 'es' ? VOICE_ES : VOICE, lang === 'es' ? 'es-US' : 'en-US') +
+          redirect(`${baseUrl}/api/voice/provider-branded-menu?sessionId=${encodeURIComponent(sessionId)}&workspaceId=${encodeURIComponent(workspaceId)}&lang=${lang}`)
+        ));
+      }
+    }
+  } catch (err: any) {
+    log.error('[VoiceRoutes] /provider-menu-route error:', err?.message);
+    xmlResponse(res, twiml('<Say>An error occurred. Goodbye.</Say>'));
+  }
+});
+
+// ─── CLIENT COMPLAINT INTAKE (Phase 28 — tenant-scoped) ───────────────────────
+// Same shape as /guest-complaint-intake but scoped to the already-resolved
+// provider workspace. The resulting support_tickets row goes INTO the
+// provider tenant (with type='client_complaint', priority='high') so the
+// tenant's own support team handles it. If no provider context is present,
+// falls back to the platform-level guest intake.
+voiceRouter.post('/client-complaint-intake', twilioSignatureMiddleware, async (req: Request, res: Response) => {
+  try {
+    const lang = getLang(req);
+    const baseUrl = getBaseUrl(req);
+    const sessionId = (req.query.sessionId as string) || req.body.CallSid || '';
+    const workspaceId = (req.query.workspaceId as string) || '';
+    const step = (req.query.step as string) || 'officer';
+    const Speech = ((req.body.SpeechResult as string) || '').trim();
+
+    if (!workspaceId) {
+      return xmlResponse(res, twiml(
+        redirect(`${baseUrl}/api/voice/guest-complaint-intake?sessionId=${encodeURIComponent(sessionId)}&lang=${lang}&step=company`)
+      ));
+    }
+
+    const voice = lang === 'es' ? VOICE_ES : VOICE;
+    const langCode = lang === 'es' ? 'es-US' : 'en-US';
+
+    // Step 1 — ask officer name (optional). No need to ask company, we know it.
+    if (step === 'officer' && !Speech) {
+      const prompt = lang === 'es'
+        ? 'Lamento escuchar esto. Si conoce el nombre del oficial, dígalo ahora. De lo contrario, diga "no lo sé".'
+        : "I'm sorry to hear that. If you know the officer's name, say it now. Otherwise, say \"I don't know\".";
+      return xmlResponse(res, twiml(
+        `<Gather input="speech" action="${baseUrl}/api/voice/client-complaint-intake?sessionId=${encodeURIComponent(sessionId)}&workspaceId=${encodeURIComponent(workspaceId)}&lang=${lang}&step=record" method="POST" timeout="10" speechTimeout="auto">` +
+        say(prompt, voice, langCode) +
+        `</Gather>` +
+        redirect(`${baseUrl}/api/voice/client-complaint-intake?sessionId=${encodeURIComponent(sessionId)}&workspaceId=${encodeURIComponent(workspaceId)}&lang=${lang}&step=record`)
+      ));
+    }
+
+    // Step 2 — persist officer name (if any) and record the complaint verbatim
+    if (step === 'record') {
+      if (Speech) {
+        try {
+          const { pool } = await import('../db');
+          await pool.query(
+            `UPDATE voice_call_sessions
+                SET metadata = COALESCE(metadata, '{}'::jsonb) ||
+                               jsonb_build_object('complaint_officer', $1::text)
+              WHERE twilio_call_sid = $2`,
+            [Speech.slice(0, 200), req.body.CallSid || sessionId],
+          );
+        } catch { /* non-fatal */ }
+      }
+      const prompt = lang === 'es'
+        ? 'Gracias. Ahora por favor describa lo sucedido con sus propias palabras. Estamos escuchando.'
+        : 'Thank you. Now please describe what happened in your own words. We are listening.';
+      return xmlResponse(res, twiml(
+        say(prompt, voice, langCode) +
+        `<Record ` +
+          `action="${baseUrl}/api/voice/recording-done?caseType=client_complaint&sessionId=${encodeURIComponent(sessionId)}&workspaceId=${encodeURIComponent(workspaceId)}&lang=${lang}" ` +
+          `method="POST" maxLength="180" timeout="3" finishOnKey="*#0123456789" ` +
+          `transcribe="true" ` +
+          `transcribeCallback="${baseUrl}/api/voice/transcription-done?caseType=client_complaint&sessionId=${encodeURIComponent(sessionId)}&workspaceId=${encodeURIComponent(workspaceId)}&lang=${lang}" ` +
+          `playBeep="true"/>`
+      ));
+    }
+
+    // Unknown step — restart
+    return xmlResponse(res, twiml(
+      redirect(`${baseUrl}/api/voice/client-complaint-intake?sessionId=${encodeURIComponent(sessionId)}&workspaceId=${encodeURIComponent(workspaceId)}&lang=${lang}&step=officer`)
+    ));
+  } catch (err: any) {
+    log.error('[VoiceRoutes] /client-complaint-intake error:', err?.message);
+    xmlResponse(res, twiml('<Say>An error occurred. Goodbye.</Say>'));
+  }
+});
+
+// ─── SRA AUDITOR IDENTIFY (Phase 28) ──────────────────────────────────────────
+// Entry point for regulatory auditors (TX PSB, CA BSIS, etc). Reached via
+// speech keyword ("auditor", "inspector", "state", "regulatory") or from the
+// general menu. Gathers the badge number, verifies against sra_accounts,
+// sets auditor_verified on the session, and redirects to a read-only
+// compliance-disclosure menu that surfaces workspace compliance posture
+// without handing over mutable data.
+voiceRouter.post('/sra-identify', twilioSignatureMiddleware, async (req: Request, res: Response) => {
+  try {
+    const lang = getLang(req);
+    const baseUrl = getBaseUrl(req);
+    const sessionId = (req.query.sessionId as string) || req.body.CallSid || '';
+    const workspaceId = (req.query.workspaceId as string) || '';
+    const Speech = ((req.body.SpeechResult as string) || '').trim();
+    const Digits = (req.body.Digits as string) || '';
+    const step = (req.query.step as string) || 'prompt-badge';
+
+    const voice = lang === 'es' ? VOICE_ES : VOICE;
+    const langCode = lang === 'es' ? 'es-US' : 'en-US';
+
+    // Step 1 — prompt for badge number
+    if (step === 'prompt-badge' && !Speech && !Digits) {
+      const prompt = lang === 'es'
+        ? 'Bienvenido, auditor. Por favor diga o ingrese su número de placa para verificar su identidad.'
+        : 'Welcome, auditor. Please say or enter your badge number to verify your identity.';
+      return xmlResponse(res, twiml(
+        `<Gather input="speech dtmf" action="${baseUrl}/api/voice/sra-identify?sessionId=${encodeURIComponent(sessionId)}&workspaceId=${encodeURIComponent(workspaceId)}&lang=${lang}&step=verify-badge" method="POST" timeout="15" speechTimeout="auto" hints="badge,number,auditor,inspector">` +
+        say(prompt, voice, langCode) +
+        `</Gather>` +
+        say(lang === 'es' ? 'No recibí el número de placa. Adiós.' : "I did not receive a badge number. Goodbye.", voice, langCode)
+      ));
+    }
+
+    // Step 2 — verify badge against sra_accounts (read-only)
+    if (step === 'verify-badge') {
+      const badge = (Digits || Speech || '').toUpperCase().replace(/[^A-Z0-9\-]/g, '').slice(0, 40);
+      let account: { id: string; stateCode: string; status: string; fullLegalName: string } | null = null;
+      try {
+        const { pool } = await import('../db');
+        const r = await pool.query(
+          `SELECT id, state_code, status, full_legal_name FROM sra_accounts WHERE UPPER(badge_number) = $1 LIMIT 1`,
+          [badge],
+        );
+        if (r.rows.length) account = {
+          id: r.rows[0].id,
+          stateCode: r.rows[0].state_code,
+          status: r.rows[0].status,
+          fullLegalName: r.rows[0].full_legal_name,
+        };
+      } catch (lookupErr: any) {
+        log.warn('[VoiceRoutes] /sra-identify DB error:', lookupErr?.message);
+      }
+
+      if (!account) {
+        return xmlResponse(res, twiml(
+          say(lang === 'es'
+            ? 'No encontré esa placa. Nuestro sistema de auditor requiere registro previo. Por favor contacte a soporte@coaileague.com.'
+            : "I could not find that badge. Our auditor system requires prior enrollment. Please email support@coaileague.com.",
+            voice, langCode)
+        ));
+      }
+
+      if (account.status !== 'verified') {
+        return xmlResponse(res, twiml(
+          say(lang === 'es'
+            ? `Su cuenta tiene estado ${account.status} y requiere aprobación del administrador. Por favor contacte a soporte.`
+            : `Your account status is ${account.status} and requires administrator approval. Please contact support.`,
+            voice, langCode)
+        ));
+      }
+
+      // Mark session as auditor-verified (disclosure mode only — read-only)
+      try {
+        const { pool } = await import('../db');
+        await pool.query(
+          `UPDATE voice_call_sessions
+              SET metadata = COALESCE(metadata, '{}'::jsonb) ||
+                             jsonb_build_object('auditor_verified', TRUE,
+                                                'auditor_account_id', $1::text,
+                                                'auditor_state', $2::text)
+            WHERE twilio_call_sid = $3`,
+          [account.id, account.stateCode, req.body.CallSid || sessionId],
+        );
+      } catch { /* non-fatal */ }
+
+      // Log the auditor call entry
+      try {
+        const { pool } = await import('../db');
+        await pool.query(
+          `INSERT INTO sra_audit_log (sra_account_id, action, action_payload, ip_address, created_at)
+           VALUES ($1, 'voice_identify', $2::jsonb, 'twilio-voice', NOW())`,
+          [account.id, JSON.stringify({ callSid: req.body.CallSid, stateCode: account.stateCode })],
+        );
+      } catch { /* non-fatal if table name differs */ }
+
+      const greeting = lang === 'es'
+        ? `Verificado. Bienvenido, auditor ${account.fullLegalName} del estado ${account.stateCode}. Esta llamada se registra por cumplimiento. Escuche las opciones.`
+        : `Verified. Welcome, Auditor ${account.fullLegalName} from state ${account.stateCode}. This call is logged for compliance. Please listen to the options.`;
+
+      const menu = lang === 'es'
+        ? 'Marque 1 para revisar el cumplimiento de una empresa específica. Marque 2 para verificar el estado de licencia de un oficial. Marque 3 para dejar una nota formal en el expediente de una empresa. Marque 0 para hablar con Trinity.'
+        : 'Press 1 to review compliance posture for a specific company. Press 2 to verify an officer\'s license status. Press 3 to leave a formal note on a company\'s compliance record. Press 0 to speak with Trinity.';
+
+      return xmlResponse(res, twiml(
+        say(greeting, voice, langCode) +
+        `<Gather input="speech dtmf" action="${baseUrl}/api/voice/trinity-talk?sessionId=${encodeURIComponent(sessionId)}&workspaceId=${encodeURIComponent(workspaceId)}&lang=${lang}&auditorMode=1" method="POST" numDigits="1" timeout="12" speechTimeout="auto">` +
+        say(menu, voice, langCode) +
+        `</Gather>` +
+        // Fall-through — route to Trinity in auditor mode
+        redirect(`${baseUrl}/api/voice/trinity-talk?sessionId=${encodeURIComponent(sessionId)}&workspaceId=${encodeURIComponent(workspaceId)}&lang=${lang}&auditorMode=1`)
+      ));
+    }
+
+    return xmlResponse(res, twiml(
+      redirect(`${baseUrl}/api/voice/sra-identify?sessionId=${encodeURIComponent(sessionId)}&workspaceId=${encodeURIComponent(workspaceId)}&lang=${lang}&step=prompt-badge`)
+    ));
+  } catch (err: any) {
+    log.error('[VoiceRoutes] /sra-identify error:', err?.message);
     xmlResponse(res, twiml('<Say>An error occurred. Goodbye.</Say>'));
   }
 });
