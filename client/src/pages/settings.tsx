@@ -239,6 +239,29 @@ function ProfileTabContent() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [isDirty]);
 
+  const updatePersonalForwardMutation = useMutation({
+    mutationFn: async (email: string) => {
+      const res = await apiRequest('PATCH', '/api/auth/profile', {
+        personalForwardEmail: email || null,
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as any).message || 'Failed to update forwarding email');
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/me'] });
+      toast({
+        title: 'Personal Forward Email Saved',
+        description: 'A copy of emails sent to your platform address will be forwarded here.',
+      });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    },
+  });
+
   const updateProfileMutation = useMutation({
     mutationFn: async (data: ProfileFormValues) => {
       // Email is intentionally excluded — changes are handled via the verified email-change flow
@@ -610,6 +633,40 @@ function ProfileTabContent() {
               </div>
             </form>
           </Form>
+
+          {/* ── Personal Email Forwarding ──────────────────────────────────── */}
+          <div className="space-y-2 pt-2 border-t">
+            <Label className="text-xs sm:text-sm">Personal Forwarding Email</Label>
+            <p className="text-xs text-muted-foreground">
+              Copies of emails sent to your platform address (
+              {(currentUser as any)?.platformEmail || `${(currentUser?.firstName || 'u').toLowerCase().charAt(0)}.${(currentUser?.lastName || '').toLowerCase().replace(/[^a-z0-9]/g, '')}@sps.coaileague.com`}
+              ) will be forwarded here. Leave blank to disable.
+            </p>
+            <div className="flex gap-2">
+              <Input
+                type="email"
+                placeholder="your.personal@gmail.com"
+                defaultValue={(currentUser as any)?.personalForwardEmail || ''}
+                id="personal-forward-email"
+                data-testid="input-personal-forward-email"
+                className="max-w-sm"
+              />
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => {
+                  const val = (document.getElementById('personal-forward-email') as HTMLInputElement)?.value || '';
+                  updatePersonalForwardMutation.mutate(val);
+                }}
+                disabled={updatePersonalForwardMutation.isPending}
+                data-testid="button-save-personal-forward"
+              >
+                {updatePersonalForwardMutation.isPending
+                  ? <RefreshCw className="h-4 w-4 animate-spin" />
+                  : <Check className="h-4 w-4" />}
+              </Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
 

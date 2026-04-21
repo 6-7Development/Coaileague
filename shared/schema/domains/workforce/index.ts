@@ -1269,6 +1269,7 @@ export const employees = pgTable("employees", {
   lastName: varchar("last_name").notNull(),
   email: varchar("email"),
   phone: varchar("phone"),
+  personalForwardEmail: varchar("personal_forward_email"),
 
   // Contact information (editable by employee)
   address: text("address"),

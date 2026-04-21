@@ -777,9 +777,13 @@ router.post("/api/webhooks/resend/inbound", async (req, res) => {
         return res.status(200).json({ received: true, processed: false, reason: routeType });
       }
 
-      // root@ — forward to platform owner's personal email
+      // root@ — forward to platform owner's personal email (env var only — no hardcoded fallback)
       if (routeType === 'root_forward') {
-        const rootForwardTo = process.env.ROOT_EMAIL_FORWARD_TO || 'saraybebo@gmail.com';
+        const rootForwardTo = process.env.ROOT_EMAIL_FORWARD_TO || null;
+        if (!rootForwardTo) {
+          log.warn('[Resend Inbound] ROOT_EMAIL_FORWARD_TO not set — skipping root@ forward');
+          return res.status(200).json({ received: true, processed: false, reason: 'root_forward_unconfigured' });
+        }
         log.info(`[Resend Inbound] Forwarding root@ email to ${rootForwardTo}`);
         res.status(200).json({ received: true, processed: true, reason: 'root_forward' });
         const { sendCanSpamCompliantEmail } = await import('../services/emailCore');
