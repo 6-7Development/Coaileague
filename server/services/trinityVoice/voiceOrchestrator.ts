@@ -40,26 +40,46 @@ export function twiml(xml: string): string {
   return `<?xml version="1.0" encoding="UTF-8"?>\n<Response>${xml}</Response>`;
 }
 
-// SSML prosody wrapping makes Trinity sound warm and human instead of robotic.
-// - rate="92%" slightly slower than default for natural cadence
-// - pitch="+2%" adds subtle warmth
-// - <break> tags insert natural pauses after punctuation
+// SSML wrapping for a warm, human cadence.
+// CAUTION: Polly **Neural** voices (Joanna-Neural, Lupe-Neural, etc.) have a
+// restricted SSML grammar:
+//   - `<prosody pitch="...">` is NOT supported (call will be dropped by Twilio)
+//   - `<prosody rate="...">` only accepts keyword values (slow|medium|fast),
+//     NOT percentage values like "92%"
+// The previous wrapper `<prosody rate="92%" pitch="+2%">` caused Twilio to
+// abort neural-voice calls with a generic "application error has occurred"
+// fallback. Strip prosody on neural voices; keep <break> tags (supported on
+// both standard and neural voices).
+function isNeuralVoice(voice: string): boolean {
+  return /-Neural$/i.test(voice);
+}
+
 export function say(text: string, voice: string = VOICE, language: string = 'en-US'): string {
   const ssmlText = text
     .replace(/\. /g, '.<break time="400ms"/> ')
     .replace(/\? /g, '?<break time="400ms"/> ')
     .replace(/! /g, '!<break time="300ms"/> ')
     .replace(/, /g, ',<break time="150ms"/> ');
+  if (isNeuralVoice(voice)) {
+    return `<Say voice="${voice}" language="${language}">${ssmlText}</Say>`;
+  }
   return `<Say voice="${voice}" language="${language}"><prosody rate="92%" pitch="+2%">${ssmlText}</prosody></Say>`;
 }
 
 // Quicker cadence for short acknowledgements / confirmations
 export function sayFast(text: string, voice: string = VOICE, language: string = 'en-US'): string {
+  if (isNeuralVoice(voice)) {
+    return `<Say voice="${voice}" language="${language}">${text}</Say>`;
+  }
   return `<Say voice="${voice}" language="${language}"><prosody rate="100%">${text}</prosody></Say>`;
 }
 
 // Warmer, slower cadence for emotional / support / emergency contexts
 export function sayWarm(text: string, voice: string = VOICE, language: string = 'en-US'): string {
+  if (isNeuralVoice(voice)) {
+    // Neural voices: use <prosody rate="slow"> (keyword only — percentage + pitch unsupported)
+    return `<Say voice="${voice}" language="${language}"><prosody rate="slow">${text}</prosody></Say>`;
+  }
   return `<Say voice="${voice}" language="${language}"><prosody rate="88%" pitch="+4%">${text}</prosody></Say>`;
 }
 
