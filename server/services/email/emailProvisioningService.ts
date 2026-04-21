@@ -201,7 +201,9 @@ export class EmailProvisioningService {
     lastName: string,
     emailSlug: string
   ): Promise<string> {
-    const localPart = `${firstName.toLowerCase()}.${lastName.toLowerCase()}`
+    const firstInitial = (firstName.toLowerCase().charAt(0) || 'u')
+      .replace(/[^a-z0-9]/g, '');
+    const localPart = `${firstInitial}.${lastName.toLowerCase()}`
       .replace(/[^a-z0-9.]/g, '');
     const address = `${localPart}@${emailSlug}.coaileague.com`;
 
@@ -209,7 +211,7 @@ export class EmailProvisioningService {
       INSERT INTO platform_email_addresses (
         workspace_id, user_id, address, local_part, subdomain,
         display_name, address_type, is_active, is_protected
-      ) VALUES ($1, $2, $3, $4, $5, $6, 'user_personal', false, false)
+      ) VALUES ($1, $2, $3, $4, $5, $6, 'user_personal', false, true)
       ON CONFLICT (address) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         display_name = EXCLUDED.display_name

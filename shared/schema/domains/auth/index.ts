@@ -606,6 +606,7 @@ export const users = pgTable("users", {
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
   phone: varchar("phone"),
+  personalForwardEmail: varchar("personal_forward_email"),
 
   // ============================================================================
   // UNIVERSAL IDENTIFICATION SYSTEM — Phase 57

@@ -305,10 +305,16 @@ router.patch('/profile', mutationLimiter, async (req: any, res) => {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const { firstName, lastName, phone } = req.body;
+    const { firstName, lastName, phone, personalForwardEmail } = req.body;
 
     if (!firstName || !lastName) {
       return res.status(400).json({ message: "First name and last name are required" });
+    }
+
+    if (personalForwardEmail !== undefined && personalForwardEmail !== null && personalForwardEmail !== '') {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(personalForwardEmail))) {
+        return res.status(400).json({ message: 'Invalid forward email format' });
+      }
     }
 
     const updateData: any = {
@@ -321,6 +327,12 @@ router.patch('/profile', mutationLimiter, async (req: any, res) => {
       updateData.phone = phone ? phone.trim() : phone;
     }
 
+    if (personalForwardEmail !== undefined) {
+      updateData.personalForwardEmail = personalForwardEmail
+        ? String(personalForwardEmail).toLowerCase().trim()
+        : null;
+    }
+
     const updatedUser = await storage.updateUser(userId, updateData);
 
     if (updatedUser) {
@@ -330,6 +342,11 @@ router.patch('/profile', mutationLimiter, async (req: any, res) => {
           lastName: lastName.trim(),
           updatedAt: new Date(),
           ...(phone !== undefined && { phone: phone ? phone.trim() : null }),
+          ...(personalForwardEmail !== undefined && {
+            personalForwardEmail: personalForwardEmail
+              ? String(personalForwardEmail).toLowerCase().trim()
+              : null,
+          }),
         };
         await db.update(employees)
           .set(employeeSync)

@@ -156,8 +156,8 @@ registerLegacyBootstrap('email-tables', async (p) => {
 });
 
 // ─── Platform Root Address Forwarding ────────────────────────────────────────
-// root@coaileague.com forwards to the platform owner's personal email.
-const ROOT_EMAIL_FORWARD_TO = process.env.ROOT_EMAIL_FORWARD_TO || 'saraybebo@gmail.com';
+// root@coaileague.com forwards to ROOT_EMAIL_FORWARD_TO env var — no hardcoded fallback.
+const ROOT_EMAIL_FORWARD_TO = process.env.ROOT_EMAIL_FORWARD_TO || null;
 
 export const inboundEmailRouter = Router();
 
@@ -415,7 +415,12 @@ inboundEmailRouter.post('/', async (req: Request, res: Response) => {
         res.status(200).json({ received: true, routed: false, reason: 'noreply_discard' });
         return;
       }
-      // root@ — accept and forward
+      // root@ — forward only if ROOT_EMAIL_FORWARD_TO is configured
+      if (!ROOT_EMAIL_FORWARD_TO) {
+        log.warn('[InboundEmail/root] ROOT_EMAIL_FORWARD_TO not configured — discarding root@ email');
+        res.status(200).json({ received: true, routed: false, reason: 'root_forward_unconfigured' });
+        return;
+      }
       log.info(`[InboundEmail/root] root@ email from ${fromEmail} — forwarding to ${ROOT_EMAIL_FORWARD_TO}`);
       res.status(200).json({ received: true, routed: true, routeType: 'root_forward' });
 
@@ -575,7 +580,43 @@ inboundEmailRouter.post('/', async (req: Request, res: Response) => {
       });
     }
 
-    // Step 10: Inbound email forwarding.
+    // Step 10: Personal forward — if this email went to a user_personal address and
+    // the user has set a personal_forward_email, send a copy there (non-blocking).
+    if (targetUserId) {
+      scheduleNonBlocking('inbound-email.personal-forward', async () => {
+        try {
+          const fwdRes = await pool.query(
+            `SELECT personal_forward_email FROM users WHERE id = $1 LIMIT 1`,
+            [targetUserId]
+          );
+          const forwardTo: string | null = fwdRes.rows[0]?.personal_forward_email || null;
+          if (!forwardTo) return;
+
+          const fwdHtml = `
+<div style="font-family:Arial,sans-serif;max-width:700px;color:#222;">
+  <p style="color:#555;font-size:13px;border-bottom:1px solid #ddd;padding-bottom:8px;margin-bottom:16px;">
+    -------- Forwarded to your personal email --------<br>
+    <strong>From:</strong> ${fromName ? `${fromName} &lt;${fromEmail}&gt;` : fromEmail}<br>
+    <strong>To:</strong> ${toEmail}<br>
+    <strong>Subject:</strong> ${subject}
+  </p>
+  ${bodyHtml || `<pre style="white-space:pre-wrap;font-size:13px;">${(bodyText || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>`}
+</div>`;
+          await sendCanSpamCompliantEmail({
+            to: forwardTo,
+            subject: `Fwd: ${subject}`,
+            html: fwdHtml,
+            emailType: 'inbound_forward',
+            skipUnsubscribeCheck: true,
+          });
+          log.info(`[InboundEmail] Personal forward sent to ${forwardTo} for user ${targetUserId}`);
+        } catch (fwdErr: any) {
+          log.warn('[InboundEmail] Personal forward failed (non-blocking):', fwdErr?.message);
+        }
+      });
+    }
+
+    // Step 11: Inbound email forwarding.
     // Phase 6: Check per-address forwarding first; fall back to workspace-level forwarding.
     if (workspaceId) {
       scheduleNonBlocking('inbound-email.forward', async () => {

@@ -1196,6 +1196,17 @@ router.patch('/:id', async (req: AuthenticatedRequest, res) => {
     const userId = req.user?.id;
     const { workspaceId: _, expectedVersion, ...updateData } = req.body;
 
+    // Platform email is provisioned by the system and locked — only support roles can change it.
+    if (updateData.platformEmail !== undefined) {
+      const platRole = req.platformRole || await getUserPlatformRole(userId || '');
+      const isSupportRole = ['root_admin', 'sysop', 'support_manager'].includes(platRole || '');
+      if (!isSupportRole) {
+        return res.status(403).json({
+          message: 'Platform email addresses can only be changed by support. Contact support@coaileague.com.',
+        });
+      }
+    }
+
     // WORKER-TYPE DERIVATION (S1-GAP-FIX — PATCH path):
     // Mirror the same logic as POST so that editing payType in the UI
     // correctly updates workerType and 1099 eligibility in the same PATCH.

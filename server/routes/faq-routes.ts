@@ -814,21 +814,33 @@ Rank these FAQs by relevance to the user's query. Return only valid JSON.`;
       ? topResults.reduce((sum, r) => sum + r.confidenceScore, 0) / topResults.length
       : 0;
 
-    // Step 5: Store search history for analytics
-    const [historyRecord] = await db.insert(faqSearchHistory).values({
-      query: query.trim(),
-      workspaceId: wsId || null,
-      userId: req.user?.id || null,
-      conversationId: convId || null,
-      matchedFaqIds,
-      matchCount: topResults.length,
-      topConfidenceScore,
-      averageConfidenceScore: avgConfidenceScore,
-      searchMethod: rankings.length > 0 ? 'semantic' : 'keyword',
-      tokensUsed: tokensCost,
-      suggestionEmitted: !!convId,
-      suggestionEmittedAt: convId ? new Date() : null,
-    }).returning();
+    // Step 5: Store search history + update matched FAQ counters atomically.
+    // Both writes must succeed together so analytics stay consistent.
+    const [historyRecord] = await db.transaction(async (tx) => {
+      const [rec] = await tx.insert(faqSearchHistory).values({
+        query: query.trim(),
+        workspaceId: wsId || null,
+        userId: req.user?.id || null,
+        conversationId: convId || null,
+        matchedFaqIds,
+        matchCount: topResults.length,
+        topConfidenceScore,
+        averageConfidenceScore: avgConfidenceScore,
+        searchMethod: rankings.length > 0 ? 'semantic' : 'keyword',
+        tokensUsed: tokensCost,
+        suggestionEmitted: !!convId,
+        suggestionEmittedAt: convId ? new Date() : null,
+      }).returning();
+
+      if (topResults.length > 0) {
+        const topMatch = topResults[0];
+        await tx.update(helposFaqs)
+          .set({ matchCount: sql`${helposFaqs.matchCount} + 1` })
+          .where(eq(helposFaqs.id, topMatch.id));
+      }
+
+      return [rec];
+    });
 
     // Step 6: Emit ai_suggestion event if conversationId provided
     if (convId && topResults.length > 0) {
@@ -845,10 +857,10 @@ Rank these FAQs by relevance to the user's query. Return only valid JSON.`;
           title: 'FAQ Suggestions Found',
           description: resultSummary,
         });
-        
+
         // Update record to mark event as emitted
         await db.update(faqSearchHistory)
-          .set({ 
+          .set({
             suggestionEmitted: true,
             suggestionEmittedAt: new Date()
           })
@@ -859,16 +871,6 @@ Rank these FAQs by relevance to the user's query. Return only valid JSON.`;
         log.error('Failed to emit ai_suggestion event:', eventError);
         // Continue anyway - search was still successful
       }
-    }
-
-    // Update FAQ match and resolve metrics
-    if (topResults.length > 0) {
-      const topMatch = topResults[0];
-      await db.update(helposFaqs)
-        .set({ 
-          matchCount: sql`${helposFaqs.matchCount} + 1`,
-        })
-        .where(eq(helposFaqs.id, topMatch.id));
     }
 
     // Bill to shared platform support pool (not individual org)

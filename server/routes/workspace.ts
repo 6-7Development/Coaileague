@@ -156,18 +156,23 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =
       log.warn(`[Workspace Create] Email slug setup failed (non-blocking):`, (slugErr as any)?.message);
     }
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
-    const employee = await storage.createEmployee({
-      userId: userId,
-      workspaceId: workspace.id,
-      email: user.email,
-      firstName: user.firstName || 'Owner',
-      lastName: user.lastName || '',
-      workspaceRole: 'org_owner',
-      isActive: true,
+    // Atomically create owner employee record and link workspace to user.
+    // If either step fails the other is rolled back — prevents orphaned employees
+    // or users with a currentWorkspaceId pointing to a workspace they don't own.
+    const employee = await db.transaction(async (tx) => {
+      // @ts-expect-error — TS migration: fix in refactoring sprint
+      const [emp] = await tx.insert(employees).values({
+        userId: userId,
+        workspaceId: workspace.id,
+        email: user.email,
+        firstName: user.firstName || 'Owner',
+        lastName: user.lastName || '',
+        workspaceRole: 'org_owner',
+        isActive: true,
+      }).returning();
+      await tx.update(users).set({ currentWorkspaceId: workspace.id }).where(eq(users.id, userId));
+      return emp;
     });
-
-    await db.update(users).set({ currentWorkspaceId: workspace.id }).where(eq(users.id, userId));
 
     if (req.session) {
       (req as any).session.workspaceId = workspace.id;

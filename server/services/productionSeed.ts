@@ -34,14 +34,24 @@ export async function runDataCorrections(): Promise<void> {
     // CATEGORY C — Raw SQL retained: Production seed data correction | Tables: users | Verified: 2026-03-23
     await typedExec(sql`
       UPDATE users
-      SET email = 'admin@coaileague.com',
+      SET email = ${SENTINEL_EMAIL},
           login_attempts = 0,
+          locked_until = NULL,
           email_verified = TRUE
       WHERE id = 'root-user-00000000'
     `);
-    console.log('🔧 Data Correction: root admin email set to admin@coaileague.com');
+    console.log(`🔧 Data Correction: root admin email set to ${SENTINEL_EMAIL}`);
   } catch (err) {
     console.log('🔧 Data Correction: root admin email fix skipped:', (err as any)?.message);
+  }
+
+  // Add personal_forward_email columns (safe migration — idempotent)
+  try {
+    await typedExec(sql`ALTER TABLE employees ADD COLUMN IF NOT EXISTS personal_forward_email VARCHAR(255)`);
+    await typedExec(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS personal_forward_email VARCHAR(255)`);
+    console.log('🔧 Data Correction: personal_forward_email columns ensured');
+  } catch (err) {
+    console.log('🔧 Data Correction: personal_forward_email migration skipped:', (err as any)?.message);
   }
 
   // Ensure the Statewide Protective Services workspace and its owner exist
