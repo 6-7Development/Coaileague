@@ -118,7 +118,7 @@ export default function WorkerIncidents() {
         timestamp: new Date().toISOString(),
       };
       const { fetchWithOfflineFallback } = await import('@/lib/offlineQueue');
-      const result = await fetchWithOfflineFallback('/api/incidents', 'POST', payload, 'incident_report');
+      const result = await fetchWithOfflineFallback('/api/incidents', 'POST', payload, 'incident');
       if (result.queued) return { queued: true };
       if (result.response && !result.response.ok) {
         const text = await result.response.text();

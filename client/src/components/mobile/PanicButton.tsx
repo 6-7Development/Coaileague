@@ -79,7 +79,7 @@ export function PanicButton({
         latitude: coords?.latitude ?? null,
         longitude: coords?.longitude ?? null,
         locationAccuracy: coords?.accuracy ?? null,
-      }, "panic_alert");
+      }, "other");
 
       if (result.queued) {
         toast({
