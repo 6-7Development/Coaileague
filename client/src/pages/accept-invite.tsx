@@ -224,7 +224,7 @@ function AcceptInvitePage() {
               <ShieldCheck className="h-7 w-7 text-[#ffc83c]" />
             </div>
           </div>
-          <h1 className="text-2xl font-bold text-white">CoAIleague</h1>
+          <h1 className="text-2xl font-bold text-white font-display">CoAIleague</h1>
           <p className="text-white/50 text-sm">Workforce Intelligence Platform</p>
         </div>
 

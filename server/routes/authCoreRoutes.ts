@@ -407,6 +407,19 @@ router.post("/api/auth/login", async (req, res) => {
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
+    // Root admin / sysop accounts must have MFA enabled before session establishment.
+    const userPlatformRoles = await db.select().from(platformRoles).where(eq(platformRoles.userId, user.id));
+    const activePlatformRole = userPlatformRoles.find(pr => !pr.revokedAt);
+    if (activePlatformRole?.role && ['root_admin', 'sysop'].includes(activePlatformRole.role)) {
+      if (!user.mfaEnabled) {
+        return res.status(403).json({
+          error: 'MFA_REQUIRED',
+          message: 'Root admin accounts must have MFA enabled. Please set up MFA before continuing.',
+          setupUrl: '/settings?tab=security&action=mfa',
+        });
+      }
+    }
+
     // ── PHASE 53: MFA / Device Trust Gate ───────────────────────────────────
     const ipAddr = req.ip || req.socket?.remoteAddress || 'unknown';
     const ua = req.get('user-agent') || '';
@@ -485,8 +498,6 @@ router.post("/api/auth/login", async (req, res) => {
     }
 
     // Resolve platform role for response (needed for frontend routing)
-    const userPlatformRoles = await db.select().from(platformRoles).where(eq(platformRoles.userId, user.id));
-    const activePlatformRole = userPlatformRoles.find(pr => !pr.revokedAt);
 
     // Cache workspace/org context in session to avoid redundant DB lookups
     if (workspaceId) {

@@ -203,7 +203,7 @@ export default function TrinityTransparencyDashboard() {
           <div className="flex items-center gap-3">
             <TrinityArrowMark className="w-8 h-8 text-[#4FC3F7]" />
             <div>
-              <h1 className="text-xl font-bold tracking-tight">Trinity Transparency</h1>
+              <h1 className="text-xl font-bold tracking-tight font-display">Trinity Transparency</h1>
               <p className="text-xs text-white/50">All autonomous actions, decisions & costs</p>
             </div>
           </div>

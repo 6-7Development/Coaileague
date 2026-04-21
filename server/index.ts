@@ -264,7 +264,9 @@ app.get('/api/platform/readiness', rateLimitMiddleware(
   checks.encryptionKey = { status: /^[0-9a-f]{64}$/i.test(process.env.ENCRYPTION_KEY || '') ? 'configured' : 'MISSING' };
   checks.corsOrigins = {
     status: process.env.ALLOWED_ORIGINS ? 'locked' : 'open',
-    detail: process.env.ALLOWED_ORIGINS ? `${process.env.ALLOWED_ORIGINS.split(',').length} origin(s)` : 'Set ALLOWED_ORIGINS for production',
+    detail: process.env.ALLOWED_ORIGINS
+      ? `Locked to: ${process.env.ALLOWED_ORIGINS}`
+      : 'ALLOWED_ORIGINS not set — CORS using pattern fallback',
   };
   checks.stripe = {
     status: process.env.STRIPE_SECRET_KEY ? (process.env.STRIPE_SECRET_KEY.includes('_test_') ? 'test-mode' : 'live') : 'MISSING',

@@ -476,7 +476,7 @@ export default function TrinityAgentDashboard() {
           <div className="flex items-center gap-3">
             <Shield className="w-7 h-7 text-[#4FC3F7]" />
             <div>
-              <h1 className="text-xl font-bold tracking-tight">Trinity Agent Dashboard</h1>
+              <h1 className="text-xl font-bold tracking-tight font-display">Trinity Agent Dashboard</h1>
               <p className="text-xs text-white/50">
                 Approval queue · Override controls · Escalation triage
               </p>

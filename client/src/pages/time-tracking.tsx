@@ -978,7 +978,7 @@ export default function TimeTracking() {
       <>
         <div className="hidden lg:flex rounded-lg p-5 mb-6 items-center gap-3" style={{ background: 'var(--ds-navy-mid)', border: '1px solid var(--ds-border)' }}>
           <Clock className="w-6 h-6" style={{ color: 'var(--ds-gold)' }} />
-          <h1 className="text-xl font-bold" style={{ fontFamily: 'var(--ds-font-display)', color: 'var(--ds-text-primary)' }}>TimeTracker</h1>
+          <h1 className="text-xl font-bold font-display" style={{ color: 'var(--ds-text-primary)' }}>TimeTracker</h1>
         </div>
         <MetricsCardsSkeleton count={3} columns={3} />
         <div className="mt-6">
