@@ -14,6 +14,8 @@ jobs:
   typecheck:
     name: TypeScript
     runs-on: ubuntu-latest
+    env:
+      NODE_OPTIONS: --max-old-space-size=4096
     steps:
       - uses: actions/checkout@v4
 
@@ -35,6 +37,7 @@ jobs:
     env:
       DATABASE_URL: postgresql://unit-test-sentinel/noop
       NODE_ENV: test
+      NODE_OPTIONS: --max-old-space-size=4096
     steps:
       - uses: actions/checkout@v4
 
@@ -64,6 +67,7 @@ jobs:
     env:
       DATABASE_URL: postgresql://unit-test-sentinel/noop
       NODE_ENV: test
+      NODE_OPTIONS: --max-old-space-size=4096
     steps:
       - uses: actions/checkout@v4
 
