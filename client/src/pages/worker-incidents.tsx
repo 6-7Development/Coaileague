@@ -38,6 +38,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { CanvasHubPage, type CanvasPageConfig } from "@/components/canvas-hub";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { fetchWithOfflineFallback } from "@/lib/offlineQueue";
 
 interface IncidentType {
   id: string;
@@ -117,7 +118,6 @@ export default function WorkerIncidents() {
         location: location,
         timestamp: new Date().toISOString(),
       };
-      const { fetchWithOfflineFallback } = await import('@/lib/offlineQueue');
       const result = await fetchWithOfflineFallback('/api/incidents', 'POST', payload, 'incident');
       if (result.queued) return { queued: true };
       if (result.response && !result.response.ok) {

@@ -199,7 +199,9 @@ export function usePushNotifications(options: PushNotificationOptions = {}) {
     if (!isAuthenticated || !user?.id) return;
     if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) return;
 
-    const userId = String(user.id);
+    const idValue = user.id;
+    if (typeof idValue !== "string" && typeof idValue !== "number") return;
+    const userId = String(idValue);
     if (sessionStorage.getItem(PUSH_REG_KEY) === userId) return;
 
     (async () => {

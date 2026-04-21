@@ -10,7 +10,7 @@
  * - Desktop: 2-column command center layout
  */
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, type ChangeEvent } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { markCoreActionPerformed, markCoreActionAndAutoSubscribe } from "@/lib/pushNotifications";
@@ -712,10 +712,11 @@ export default function WorkerDashboard() {
         title: "Photo submitted",
         description: "Proof of service recorded.",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Could not submit proof photo.";
       toast({
         title: "Photo submission failed",
-        description: error?.message || "Could not submit proof photo.",
+        description: message,
         variant: "destructive",
       });
     }
@@ -725,13 +726,11 @@ export default function WorkerDashboard() {
     photoInputRef.current?.click();
   }, []);
 
-  const handleQuickPhotoFileSelect = useCallback((event: any) => {
-    const file = event?.target?.files?.[0];
+  const handleQuickPhotoFileSelect = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
     if (!file) return;
     handlePhotoCapture(file);
-    if (event?.target) {
-      event.target.value = "";
-    }
+    event.target.value = "";
   }, [handlePhotoCapture]);
 
   // Page config

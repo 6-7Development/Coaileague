@@ -21,6 +21,7 @@ import haptics from "@/lib/haptics";
 import { useAuth } from "@/hooks/useAuth";
 import { AlertTriangle, Loader2, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { fetchWithOfflineFallback } from "@/lib/offlineQueue";
 
 const ARM_DURATION_MS = 2000;
 
@@ -70,7 +71,6 @@ export function PanicButton({
         (user as any)?.fullName ||
         (user as any)?.email ||
         "Unknown Officer";
-      const { fetchWithOfflineFallback } = await import("@/lib/offlineQueue");
       const result = await fetchWithOfflineFallback("/api/safety/panic", "POST", {
         employeeName: nameForServer,
         employeeId: (user as any)?.employeeId || null,
