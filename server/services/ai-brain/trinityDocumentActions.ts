@@ -20,7 +20,6 @@ import { eq, and, lt, isNull, isNotNull, desc, inArray, sql } from 'drizzle-orm'
 import { randomUUID } from 'crypto';
 import { format } from 'date-fns';
 import { universalAudit } from '../universalAuditService';
-import { format } from 'date-fns';
 import { createLogger } from '../../lib/logger';
 const log = createLogger('trinityDocumentActions');
 const I9_COMPLIANCE_WINDOW_DAYS = 90;

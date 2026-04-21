@@ -47,20 +47,6 @@ async function query(sql: string, params?: any[]): Promise<any[]> {
   return result.rows || [];
 }
 
-function validateTxGuardCardNumber(cardNumber: string): {
-  valid: boolean; format: string; message: string
-} {
-  const pattern = /^[A-Z]-?\d{7,9}$/i;
-  const clean = (cardNumber || '').replace(/[-\s]/g, '').toUpperCase();
-  return {
-    valid: pattern.test(clean) || /^\d{7,9}$/.test(clean),
-    format: 'TX PSB: Letter + 7-9 digits (e.g., B12345678)',
-    message: pattern.test(clean) || /^\d{7,9}$/.test(clean)
-      ? 'Format valid — pending expiry check'
-      : 'Invalid format — Texas PSB numbers are 7-9 digits',
-  };
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // HELPER: recalculate + persist tenant progress
 // ─────────────────────────────────────────────────────────────────────────────

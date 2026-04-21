@@ -211,14 +211,14 @@ async function phase3_subscription_tiers() {
   for (const expected of expectedTiers) {
     const tier = (BILLING as any).tiers[expected.id];
     const priceMatch = tier?.monthlyPrice === expected.price;
-    const creditMatch = tier?.monthlyCredits === expected.credits;
+    const creditMatch = tier?.monthlyTokens === expected.credits;
     const empMatch = tier?.maxEmployees === expected.maxEmp;
 
     record({
       name: `${expected.id} Tier Config Correct`,
       phase: 'SUBSCRIPTION_TIERS',
       passed: priceMatch && creditMatch && empMatch,
-      details: `Price: $${(tier?.monthlyPrice || 0) / 100} (expect $${expected.price / 100}), Credits: ${tier?.monthlyCredits} (expect ${expected.credits}), MaxEmp: ${tier?.maxEmployees} (expect ${expected.maxEmp})`,
+      details: `Price: $${(tier?.monthlyPrice || 0) / 100} (expect $${expected.price / 100}), Credits: ${tier?.monthlyTokens} (expect ${expected.credits}), MaxEmp: ${tier?.maxEmployees} (expect ${expected.maxEmp})`,
       severity: 'critical'
     });
   }
@@ -245,13 +245,13 @@ async function phase3_subscription_tiers() {
   });
 
   // @ts-expect-error — TS migration: fix in refactoring sprint
-  const freeGetsCredits = BILLING.tiers.free.monthlyCredits === 250;
-  const freeNoOverage = BILLING.tiers.free.allowCreditOverage === false;
+  const freeGetsCredits = BILLING.tiers.free.monthlyTokens === 250;
+  const freeNoOverage = (BILLING.tiers.free as any).allowTokenOverage === false;
   record({
     name: 'Free Tier Initial Credits + No Overage',
     phase: 'SUBSCRIPTION_TIERS',
     passed: freeGetsCredits && freeNoOverage,
-    details: `Free gets ${BILLING.tiers.free.monthlyCredits} credits, overage=${BILLING.tiers.free.allowCreditOverage}`,
+    details: `Free gets ${BILLING.tiers.free.monthlyTokens} credits, overage=${(BILLING.tiers.free as any).allowTokenOverage}`,
     severity: 'high'
   });
 }
@@ -886,8 +886,8 @@ async function phase13_tier_escalation_paths() {
     record({
       name: `${tier} Credits Match Between Sources`,
       phase: 'TIER_ESCALATION',
-      passed: monthlyCredits === tierConfig.monthlyCredits,
-      details: `TIER_TOKEN_ALLOCATIONS=${monthlyCredits}, billingConfig=${tierConfig.monthlyCredits}`,
+      passed: monthlyCredits === tierConfig.monthlyTokens,
+      details: `TIER_TOKEN_ALLOCATIONS=${monthlyCredits}, billingConfig=${tierConfig.monthlyTokens}`,
       severity: 'critical'
     });
   }

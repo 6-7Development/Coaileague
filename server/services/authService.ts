@@ -434,7 +434,13 @@ export class AuthService {
       const normalizedEmail = email.toLowerCase().trim();
 
       const [user] = await db
-        .select({ id: users.id, email: users.email, firstName: users.firstName })
+        .select({
+          id: users.id,
+          email: users.email,
+          firstName: users.firstName,
+          emailVerified: users.emailVerified,
+          lockedUntil: users.lockedUntil,
+        })
         .from(users)
         .where(eq(users.email, normalizedEmail))
         .limit(1);

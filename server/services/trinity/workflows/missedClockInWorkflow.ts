@@ -27,7 +27,7 @@
 import { and, eq, lt, gt, isNull, sql as drizzleSql } from 'drizzle-orm';
 import { db } from '../../../db';
 import { shifts, employees, auditLogs } from '@shared/schema';
-import { sendSMSToEmployee } from '../../smsService';
+import { sendSMSToEmployee, sendSMS } from '../../smsService';
 import { callOfficerWelfareCheck } from '../../trinityVoice/trinityOutboundService';
 import { NotificationDeliveryService } from '../../notificationDeliveryService';
 import { platformEventBus } from '../../platformEventBus';
@@ -302,9 +302,9 @@ async function advanceToEscalation(
           idempotencyKey: `missed-clockin-${miss.shiftId}-${recipientUserId}`,
         }),
       ),
-      ...phones.slice(0, 3).map((phone) =>
+      ...contacts.slice(0, 3).map((c) =>
         sendSMS({
-          to: phone,
+          to: c.phone,
           body: actionSms,
           workspaceId: miss.workspaceId,
           type: 'missed_clockin_escalation',

@@ -204,11 +204,11 @@ async function phase4_subscription_tiers_pricing() {
   for (const exp of expectedTiers) {
     const tier = (BILLING as any).tiers[exp.id];
     record({ name: `${exp.id} Price = $${exp.price / 100}/mo`, phase: 'PRICING', passed: tier?.monthlyPrice === exp.price, details: `Configured: $${(tier?.monthlyPrice || 0) / 100}, expected: $${exp.price / 100}`, severity: 'critical' });
-    record({ name: `${exp.id} Credits = ${exp.credits}/mo`, phase: 'PRICING', passed: tier?.monthlyCredits === exp.credits, details: `Configured: ${tier?.monthlyCredits}, expected: ${exp.credits}`, severity: 'critical' });
+    record({ name: `${exp.id} Credits = ${exp.credits}/mo`, phase: 'PRICING', passed: tier?.monthlyTokens === exp.credits, details: `Configured: ${tier?.monthlyTokens}, expected: ${exp.credits}`, severity: 'critical' });
     record({ name: `${exp.id} MaxEmployees = ${exp.maxEmp}`, phase: 'PRICING', passed: tier?.maxEmployees === exp.maxEmp, details: `Configured: ${tier?.maxEmployees}, expected: ${exp.maxEmp}`, severity: 'critical' });
   }
 
-  record({ name: 'Free Tier Blocks Credit Overage', phase: 'PRICING', passed: BILLING.tiers.free.allowCreditOverage === false, details: `allowCreditOverage=${BILLING.tiers.free.allowCreditOverage}`, severity: 'critical' });
+  record({ name: 'Free Tier Blocks Credit Overage', phase: 'PRICING', passed: (BILLING.tiers.free as any).allowTokenOverage === false, details: `allowCreditOverage=${(BILLING.tiers.free as any).allowTokenOverage}`, severity: 'critical' });
 
   const tca = TIER_TOKEN_ALLOCATIONS;
   // @ts-expect-error — TS migration: fix in refactoring sprint
@@ -216,7 +216,7 @@ async function phase4_subscription_tiers_pricing() {
 
   record({ name: 'Prices Monotonically Increase by Tier', phase: 'PRICING', passed: BILLING.tiers.free.monthlyPrice < BILLING.tiers.starter.monthlyPrice && BILLING.tiers.starter.monthlyPrice < BILLING.tiers.professional.monthlyPrice && BILLING.tiers.professional.monthlyPrice < BILLING.tiers.enterprise.monthlyPrice, details: 'free < starter < professional < enterprise', severity: 'critical' });
 
-  record({ name: 'Credits Monotonically Increase by Tier', phase: 'PRICING', passed: BILLING.tiers.free.monthlyCredits < BILLING.tiers.starter.monthlyCredits && BILLING.tiers.starter.monthlyCredits < BILLING.tiers.professional.monthlyCredits && BILLING.tiers.professional.monthlyCredits < BILLING.tiers.enterprise.monthlyCredits, details: 'free < starter < professional < enterprise', severity: 'critical' });
+  record({ name: 'Credits Monotonically Increase by Tier', phase: 'PRICING', passed: BILLING.tiers.free.monthlyTokens < BILLING.tiers.starter.monthlyTokens && BILLING.tiers.starter.monthlyTokens < BILLING.tiers.professional.monthlyTokens && BILLING.tiers.professional.monthlyTokens < BILLING.tiers.enterprise.monthlyTokens, details: 'free < starter < professional < enterprise', severity: 'critical' });
 }
 
 async function phase5_stripe_alignment() {
@@ -498,7 +498,7 @@ async function phase11_cross_validation() {
   record({ name: 'Stripe ↔ billingConfig Price Parity (All 4 Tiers)', phase: 'CROSS', passed: stripeBillingMatch, details: stripeBillingMatch ? 'All 4 tier prices match exactly' : mismatchDetails.join('; '), severity: 'critical' });
 
   const showcaseCredits = { starter: 2500, professional: 10000, enterprise: 50000 };
-  const configCredits = { starter: BILLING.tiers.starter.monthlyCredits, professional: BILLING.tiers.professional.monthlyCredits, enterprise: BILLING.tiers.enterprise.monthlyCredits };
+  const configCredits = { starter: BILLING.tiers.starter.monthlyTokens, professional: BILLING.tiers.professional.monthlyTokens, enterprise: BILLING.tiers.enterprise.monthlyTokens };
   const creditsMatch = showcaseCredits.starter === configCredits.starter && showcaseCredits.professional === configCredits.professional && showcaseCredits.enterprise === configCredits.enterprise;
   record({ name: 'Showcase Credits Match billingConfig', phase: 'CROSS', passed: creditsMatch, details: `Showcase: ${JSON.stringify(showcaseCredits)}, Config: ${JSON.stringify(configCredits)}`, severity: 'critical' });
 }

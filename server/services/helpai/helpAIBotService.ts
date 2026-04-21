@@ -1659,6 +1659,25 @@ ALWAYS: Make them feel heard. Make them feel helped. Make them feel valued.${fal
     };
   }
 
+  /**
+   * Phase 25 — detect client-portal staffing requests and route them into the
+   * support-ticket intake pipeline. Returns a short string reply when the
+   * message looks like a staffing request, or null to let the generic AI
+   * responder handle it.
+   *
+   * TODO(Phase 25 follow-up): implement keyword + LLM-backed intent
+   * classification. For now we return null so every message continues to the
+   * generic AI path — the wiring is in place for the next iteration.
+   */
+  private async handleClientStaffingIntent(_params: {
+    sessionId: string;
+    workspaceId: string;
+    userId: string;
+    message: string;
+  }): Promise<string | null> {
+    return null;
+  }
+
   private async logBotAction(
     executorId: string,
     action: string,

@@ -60,11 +60,11 @@ async function phase1_single_source_of_truth() {
   record({
     name: 'tokenManager.ts Tier Allocations Match billingConfig',
     phase: 'SSOT',
-    passed: TIER_TOKEN_ALLOCATIONS.free === BILLING.tiers.free.monthlyCredits &&
-      TIER_TOKEN_ALLOCATIONS.starter === BILLING.tiers.starter.monthlyCredits &&
-      TIER_TOKEN_ALLOCATIONS.professional === BILLING.tiers.professional.monthlyCredits &&
-      TIER_TOKEN_ALLOCATIONS.enterprise === BILLING.tiers.enterprise.monthlyCredits,
-    details: `CM: free=${TIER_TOKEN_ALLOCATIONS.free}, starter=${TIER_TOKEN_ALLOCATIONS.starter}, pro=${TIER_TOKEN_ALLOCATIONS.professional}, ent=${TIER_TOKEN_ALLOCATIONS.enterprise} | BC: free=${BILLING.tiers.free.monthlyCredits}, starter=${BILLING.tiers.starter.monthlyCredits}, pro=${BILLING.tiers.professional.monthlyCredits}, ent=${BILLING.tiers.enterprise.monthlyCredits}`,
+    passed: TIER_TOKEN_ALLOCATIONS.free === BILLING.tiers.free.monthlyTokens &&
+      TIER_TOKEN_ALLOCATIONS.starter === BILLING.tiers.starter.monthlyTokens &&
+      TIER_TOKEN_ALLOCATIONS.professional === BILLING.tiers.professional.monthlyTokens &&
+      TIER_TOKEN_ALLOCATIONS.enterprise === BILLING.tiers.enterprise.monthlyTokens,
+    details: `CM: free=${TIER_TOKEN_ALLOCATIONS.free}, starter=${TIER_TOKEN_ALLOCATIONS.starter}, pro=${TIER_TOKEN_ALLOCATIONS.professional}, ent=${TIER_TOKEN_ALLOCATIONS.enterprise} | BC: free=${BILLING.tiers.free.monthlyTokens}, starter=${BILLING.tiers.starter.monthlyTokens}, pro=${BILLING.tiers.professional.monthlyTokens}, ent=${BILLING.tiers.enterprise.monthlyTokens}`,
     severity: 'critical'
   });
 
@@ -200,9 +200,9 @@ async function phase3_pricing_display_sync() {
   }
 
   const tierCredits = [
-    { tier: 'starter', display: '2,500', configCredits: BILLING.tiers.starter.monthlyCredits, cmCredits: TIER_TOKEN_ALLOCATIONS.starter },
-    { tier: 'professional', display: '10,000', configCredits: BILLING.tiers.professional.monthlyCredits, cmCredits: TIER_TOKEN_ALLOCATIONS.professional },
-    { tier: 'enterprise', display: '50,000', configCredits: BILLING.tiers.enterprise.monthlyCredits, cmCredits: TIER_TOKEN_ALLOCATIONS.enterprise },
+    { tier: 'starter', display: '2,500', configCredits: BILLING.tiers.starter.monthlyTokens, cmCredits: TIER_TOKEN_ALLOCATIONS.starter },
+    { tier: 'professional', display: '10,000', configCredits: BILLING.tiers.professional.monthlyTokens, cmCredits: TIER_TOKEN_ALLOCATIONS.professional },
+    { tier: 'enterprise', display: '50,000', configCredits: BILLING.tiers.enterprise.monthlyTokens, cmCredits: TIER_TOKEN_ALLOCATIONS.enterprise },
   ];
 
   for (const tc of tierCredits) {

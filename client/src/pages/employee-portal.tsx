@@ -10,7 +10,6 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { apiRequest } from "@/lib/queryClient";
@@ -97,11 +96,6 @@ export default function EmployeePortal() {
     queryKey: ["/api/employee-onboarding/required-documents"],
     queryFn: () => apiRequest("GET", "/api/employee-onboarding/required-documents").then(r => r.json()),
     enabled: isOnboardingIncomplete,
-  });
-
-  const { data: requiredDocs = [] } = useQuery<any[]>({
-    queryKey: ['/api/employee-onboarding/required-documents'],
-    enabled: !!onboardingStatus && (onboardingStatus.completionPercentage ?? 100) < 100,
   });
 
   const isLoading = employeesLoading || shiftsLoading || entriesLoading;

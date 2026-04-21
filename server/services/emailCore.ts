@@ -308,16 +308,6 @@ export interface CanSpamEmailOptions {
    * Max 10 tags; name/value each ≤ 256 chars.
    */
   tags?: Array<{ name: string; value: string }>;
-  /**
-   * BCC recipients for compliance copies (e.g. support@coaileague.com for audit trail).
-   * Accepts a single address or an array.
-   */
-  bcc?: string | string[];
-  /**
-   * Reply-To address. When set, replies from recipients go here instead of the
-   * sending noreply address. Typically set to "support@coaileague.com".
-   */
-  replyTo?: string;
 }
 
 /**
@@ -410,8 +400,6 @@ export async function sendCanSpamCompliantEmail(
       bcc: bcc ? (Array.isArray(bcc) ? bcc : [bcc]) : undefined,
       headers: Object.keys(headers).length > 0 ? headers : undefined,
       tags: tags && tags.length > 0 ? tags : undefined,
-      bcc: bcc ? (Array.isArray(bcc) ? bcc : [bcc]) : undefined,
-      reply_to: replyTo || undefined,
     });
     const timeoutPromise = new Promise<never>((_, reject) =>
       setTimeout(() => reject(new Error(`Resend API timeout after ${RESEND_TIMEOUT_MS}ms`)), RESEND_TIMEOUT_MS)

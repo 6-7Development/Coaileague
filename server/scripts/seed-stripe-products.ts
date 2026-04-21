@@ -369,21 +369,26 @@ async function seedProducts() {
   );
 
   for (const [key, pack] of Object.entries(BILLING.creditPacks)) {
+    const tokens = (pack as any).tokens ?? (pack as any).credits ?? 0;
     const priceId = await createOneTimePrice(
       creditProductId,
       pack.price,
-      `${pack.name} (${pack.credits.toLocaleString()} credits)`
+      `${pack.name} (${Number(tokens).toLocaleString()} tokens)`
     );
     envVars[`STRIPE_CREDITS_${key.toUpperCase()}_PRICE_ID`] = priceId;
   }
   envVars['STRIPE_ADDON_CREDITS_PRICE_ID'] = envVars['STRIPE_CREDITS_STANDARD_PRICE_ID'];
 
-  // One-time add-on credit packs
-  if (BILLING.addons.ai_credits) {
+  // Legacy ai_credits add-on was retired in the trinity-tokens refactor.
+  // Guard with a type cast so the build stays green on environments that
+  // still reference the old key; when the key is absent this block no-ops.
+  const legacyAiCredits = (BILLING.addons as any).ai_credits;
+  if (legacyAiCredits) {
+    const aiTokens = legacyAiCredits.tokens ?? legacyAiCredits.credits ?? 0;
     const aiCreditsPackPriceId = await createOneTimePrice(
       creditProductId,
-      BILLING.addons.ai_credits.price,
-      `AI Credits Pack (${BILLING.addons.ai_credits.credits.toLocaleString()} credits)`
+      legacyAiCredits.price,
+      `AI Tokens Pack (${Number(aiTokens).toLocaleString()} tokens)`
     );
     envVars['STRIPE_ADDON_AI_CREDITS_PRICE_ID'] = aiCreditsPackPriceId;
   }

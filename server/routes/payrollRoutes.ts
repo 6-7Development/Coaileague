@@ -20,7 +20,6 @@ import {
   stagedShifts,
   employeePayrollInfo,
   employeeBankAccounts,
-  employeeOnboardingProgress,
   timeEntries,
   billingAuditLog,
   payrollRunLocks,
