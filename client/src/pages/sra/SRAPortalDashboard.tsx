@@ -16,22 +16,23 @@ function sraFetch(path: string) {
 export default function SRAPortalDashboard() {
   const [, setLocation] = useLocation();
 
-  const { data: workspaceData, isLoading: isLoadingWorkspace } = useQuery({
+  const { data: workspaceData, isLoading: isLoadingWorkspace, isError: isErrorWorkspace } = useQuery({
     queryKey: ["/api/sra/data/workspace"],
     queryFn: () => sraFetch("/api/sra/data/workspace"),
   });
 
-  const { data: officersData, isLoading: isLoadingOfficers } = useQuery({
+  const { data: officersData, isLoading: isLoadingOfficers, isError: isErrorOfficers } = useQuery({
     queryKey: ["/api/sra/data/officers"],
     queryFn: () => sraFetch("/api/sra/data/officers"),
   });
 
-  const { data: findingsData, isLoading: isLoadingFindings } = useQuery({
+  const { data: findingsData, isLoading: isLoadingFindings, isError: isErrorFindings } = useQuery({
     queryKey: ["/api/sra/findings"],
     queryFn: () => sraFetch("/api/sra/findings"),
   });
 
   const isLoading = isLoadingWorkspace || isLoadingOfficers || isLoadingFindings;
+  const hasError = isErrorWorkspace || isErrorOfficers || isErrorFindings;
 
   const workspace = workspaceData?.data;
   const officers: any[] = officersData?.data || [];
@@ -93,6 +94,11 @@ export default function SRAPortalDashboard() {
   return (
     <SRAPortalLayout activeRoute="/regulatory-audit/portal">
       <div className="p-6 max-w-5xl mx-auto">
+        {hasError && (
+          <div className="mb-4 p-3 rounded-md bg-destructive/10 border border-destructive/20 text-destructive text-sm" data-testid="error-dashboard">
+            One or more data sources failed to load. Some information may be incomplete.
+          </div>
+        )}
         {/* Page header */}
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-foreground">Audit Dashboard</h1>
