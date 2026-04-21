@@ -632,8 +632,13 @@ router.put('/org-code', requireAuth, async (req: AuthenticatedRequest, res: Resp
     res.json({
       message: `Org code updated to: ${orgCodeNormalized}`,
       orgCode: orgCodeNormalized,
-      emailAddress: `staffing@${orgCodeNormalized}.coaileague.com`,
-      instructions: `Send work requests to: staffing@${orgCodeNormalized}.coaileague.com`,
+      emailAddresses: [
+        `calloffs@${orgCodeNormalized}.coaileague.com`,
+        `incidents@${orgCodeNormalized}.coaileague.com`,
+        `staffing@${orgCodeNormalized}.coaileague.com`,
+        `docs@${orgCodeNormalized}.coaileague.com`,
+        `support@${orgCodeNormalized}.coaileague.com`,
+      ],
       employeesMigrated: migrationResult.migratedCount,
     });
   } catch (error: unknown) {

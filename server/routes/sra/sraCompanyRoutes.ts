@@ -148,8 +148,7 @@ router.post('/findings/:id/acknowledge', async (req: any, res: Response) => {
     const { acknowledgementNote } = req.body;
     const message = `ACKNOWLEDGEMENT: This workspace acknowledges receipt of finding ID ${findingId}. ${acknowledgementNote ? `Note: ${acknowledgementNote}` : ''}`.trim();
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
-    await recordCompanyResponse(findingId, finding.sessionId, workspaceId, userId, message, [], 'company_acknowledged', req);
+        await recordCompanyResponse(findingId, finding.sessionId, workspaceId, userId, message, [], 'company_acknowledged', req);
     return res.json({ success: true, message: 'Finding acknowledged.' });
   } catch (err) {
     log.error('[SRA Company] Acknowledge error:', err);
@@ -176,8 +175,7 @@ router.post('/findings/:id/remediation-evidence', async (req: any, res: Response
     const urlList: string[] = Array.isArray(evidenceUrls) ? evidenceUrls : [];
     const message = `REMEDIATION EVIDENCE SUBMITTED: ${description}. Evidence files: ${urlList.length > 0 ? urlList.join(', ') : 'None attached'}.`;
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
-    await recordCompanyResponse(findingId, finding.sessionId, workspaceId, userId, message, urlList, 'company_remediation_submitted', req);
+        await recordCompanyResponse(findingId, finding.sessionId, workspaceId, userId, message, urlList, 'company_remediation_submitted', req);
     await db.update(sraFindings)
       .set({ status: 'remediated', updatedAt: new Date() })
       .where(eq(sraFindings.id, findingId));
@@ -206,8 +204,7 @@ router.post('/findings/:id/payment-confirmation', async (req: any, res: Response
 
     const message = `PAYMENT CONFIRMATION: Reference #${paymentReference}. Amount: ${amount ? `$${amount}` : 'Not specified'}. Payment Date: ${paymentDate || 'Not specified'}. Receipt: ${receiptUrl || 'Not attached'}.`;
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
-    await recordCompanyResponse(findingId, finding.sessionId, workspaceId, userId, message, receiptUrl ? [receiptUrl] : [], 'company_payment_confirmed', req);
+        await recordCompanyResponse(findingId, finding.sessionId, workspaceId, userId, message, receiptUrl ? [receiptUrl] : [], 'company_payment_confirmed', req);
     return res.json({ success: true, message: 'Payment confirmation submitted.' });
   } catch (err) {
     log.error('[SRA Company] Payment confirmation error:', err);
@@ -234,8 +231,7 @@ router.post('/findings/:id/appeal', async (req: any, res: Response) => {
     const docList: string[] = Array.isArray(supportingDocumentUrls) ? supportingDocumentUrls : [];
     const message = `FORMAL APPEAL SUBMITTED: Grounds: ${groundsForAppeal}. Supporting documents: ${docList.length > 0 ? docList.join(', ') : 'None attached'}. This appeal is formally submitted for regulatory review.`;
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
-    await recordCompanyResponse(findingId, finding.sessionId, workspaceId, userId, message, docList, 'company_appeal_submitted', req);
+        await recordCompanyResponse(findingId, finding.sessionId, workspaceId, userId, message, docList, 'company_appeal_submitted', req);
     await db.update(sraFindings)
       .set({ status: 'appealed', updatedAt: new Date() })
       .where(eq(sraFindings.id, findingId));
@@ -266,8 +262,7 @@ router.post('/findings/:id/extension', async (req: any, res: Response) => {
 
     const message = `EXTENSION REQUEST: Requesting extension of compliance deadline to ${new Date(requestedExtensionDate).toLocaleDateString()}. Justification: ${justification}.`;
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
-    await recordCompanyResponse(findingId, finding.sessionId, workspaceId, userId, message, [], 'company_extension_requested', req);
+        await recordCompanyResponse(findingId, finding.sessionId, workspaceId, userId, message, [], 'company_extension_requested', req);
     return res.json({ success: true, message: 'Extension request submitted to the auditor.' });
   } catch (err) {
     log.error('[SRA Company] Extension request error:', err);
