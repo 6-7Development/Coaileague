@@ -337,6 +337,18 @@ const defaultOrigins = [
   'https://www.coaileague.com',
   'https://coaileague.com',
 ];
+const defaultOriginPatterns = defaultOrigins.map(
+  (allowedOrigin) => new RegExp(`^${allowedOrigin.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`)
+);
+const fallbackOriginPatterns = [
+  ...defaultOriginPatterns,
+  /^https?:\/\/([a-zA-Z0-9-]+\.)*coaileague\.com$/,
+  ...(isProdDeployment ? [] : [
+    /^https?:\/\/localhost(?::\d+)?$/,
+    /^https?:\/\/127\.0\.0\.1(?::\d+)?$/,
+    /^https?:\/\/0\.0\.0\.0(?::\d+)?$/,
+  ]),
+];
 
 if (isProdDeployment && explicitAllowedOrigins.length === 0) {
   log.warn('[CORS] WARNING: No ALLOWED_ORIGINS set in production — falling back to coaileague.com patterns. Set ALLOWED_ORIGINS to your production domain(s) for proper lockdown.');
@@ -358,16 +370,7 @@ app.use(cors({
 
     // CORS allowlist (TRINITY.md §6 platform identity): only coaileague.com
     // and dev-host loopbacks. Replit domains removed.
-    const allowedPatterns = [
-      ...defaultOrigins.map((allowedOrigin) => new RegExp(`^${allowedOrigin.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`)),
-      /^https?:\/\/([a-zA-Z0-9-]+\.)*coaileague\.com$/,
-      ...(isProdDeployment ? [] : [
-        /^https?:\/\/localhost(?::\d+)?$/,
-        /^https?:\/\/127\.0\.0\.1(?::\d+)?$/,
-        /^https?:\/\/0\.0\.0\.0(?::\d+)?$/,
-      ]),
-    ];
-    const isAllowed = allowedPatterns.some((pattern) => pattern.test(origin));
+    const isAllowed = fallbackOriginPatterns.some((pattern) => pattern.test(origin));
     callback(null, isAllowed);
   },
   credentials: true,
