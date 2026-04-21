@@ -673,7 +673,7 @@ export default function WorkerDashboard() {
         navigator.geolocation.getCurrentPosition(
           (position) => resolve(position.coords),
           () => resolve(null),
-          { enableHighAccuracy: true, timeout: 4000, maximumAge: 30000 },
+          { enableHighAccuracy: true, timeout: 4000, maximumAge: 5000 },
         );
       });
 
