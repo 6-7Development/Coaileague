@@ -232,21 +232,25 @@ export function registerDocumentLibraryRoutes(app: Express, requireAuth: any, at
       if (!workspaceId) return res.status(400).json({ error: "Workspace required" });
       const { signatureData, signatureType, signerEmail, signerName } = req.body;
 
-      const [signature] = await db.insert(orgDocumentSignatures).values({
-        workspaceId: workspaceId,
-        documentId: id,
-        signerUserId: userId,
-        signerEmail,
-        signerName,
-        signatureData,
-        signatureType: signatureType || 'drawn',
-        ipAddress: req.ip || req.socket.remoteAddress,
-        userAgent: req.headers['user-agent']
-      }).returning();
+      const [signature] = await db.transaction(async (tx) => {
+        const [sig] = await tx.insert(orgDocumentSignatures).values({
+          workspaceId: workspaceId,
+          documentId: id,
+          signerUserId: userId,
+          signerEmail,
+          signerName,
+          signatureData,
+          signatureType: signatureType || 'drawn',
+          ipAddress: req.ip || req.socket.remoteAddress,
+          userAgent: req.headers['user-agent']
+        }).returning();
 
-      await db.update(orgDocuments)
-        .set({ signaturesCompleted: sql`${orgDocuments.signaturesCompleted} + 1`, updatedAt: new Date() })
-        .where(eq(orgDocuments.id, id));
+        await tx.update(orgDocuments)
+          .set({ signaturesCompleted: sql`${orgDocuments.signaturesCompleted} + 1`, updatedAt: new Date() })
+          .where(eq(orgDocuments.id, id));
+
+        return [sig];
+      });
 
       res.json({ success: true, data: signature });
     } catch (error: unknown) {

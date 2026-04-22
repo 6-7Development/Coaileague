@@ -179,7 +179,7 @@ export async function runStatewideWorkspaceBootstrap(): Promise<void> {
         ${WS_ID}, 'Statewide Protective Services', ${USER_ID},
         'enterprise', 'active',
         TRUE, TRUE,
-        'saraybebo@gmail.com',
+        ${process.env.ROOT_EMAIL_FORWARD_TO || 'txpsinvestigations@gmail.com'},
         NOW(), NOW()
       )
       ON CONFLICT (id) DO UPDATE
@@ -188,15 +188,15 @@ export async function runStatewideWorkspaceBootstrap(): Promise<void> {
             billing_exempt            = TRUE,
             founder_exemption         = TRUE,
             trial_ends_at             = NULL,
-            inbound_email_forward_to  = 'saraybebo@gmail.com',
+            inbound_email_forward_to  = ${process.env.ROOT_EMAIL_FORWARD_TO || 'txpsinvestigations@gmail.com'},
             updated_at                = NOW()
         WHERE workspaces.subscription_tier   != 'enterprise'
            OR workspaces.subscription_status != 'active'
            OR workspaces.billing_exempt       IS NOT TRUE
            OR workspaces.founder_exemption    IS NOT TRUE
-           OR workspaces.inbound_email_forward_to IS DISTINCT FROM 'saraybebo@gmail.com'
+           OR workspaces.inbound_email_forward_to IS DISTINCT FROM ${process.env.ROOT_EMAIL_FORWARD_TO || 'txpsinvestigations@gmail.com'}
     `);
-    console.log('🏢 [StatewideBootstrap] Workspace upserted (enterprise/active/billing_exempt, forward→saraybebo@gmail.com)');
+    console.log('🏢 [StatewideBootstrap] Workspace upserted (enterprise/active/billing_exempt, forward→env:ROOT_EMAIL_FORWARD_TO)');
   } catch (err) {
     console.error('🏢 [StatewideBootstrap] Workspace upsert failed:', (err as any)?.message);
   }

@@ -2894,6 +2894,19 @@ export function startAutonomousScheduler() {
   // created on the 1st of each month as soon as the first AI call of the
   // month runs) — no dedicated cron is required.
 
+  // FLSA Overtime Approaching Alert (weekdays at 7 AM)
+  cron.schedule('0 7 * * 1-5', async () => {
+    try {
+      const { runOvertimeApproachingAlert } = await import(
+        './trinity/workflows/overtimeAlertWorkflow'
+      );
+      await runOvertimeApproachingAlert();
+    } catch (err) {
+      log.warn('[Cron] Overtime alert sweep failed:', (err as any)?.message);
+    }
+  });
+  log.info('Overtime Approaching Alert registered', { schedule: '0 7 * * 1-5 (weekdays 7am)' });
+
   // 7b. Monthly Platform Infrastructure Billing (1st of month at 1 AM)
   registerJobInfo('Platform Infrastructure Billing', CRON.monthlyInfraBilling, 'Cost recovery for email, domain, and infrastructure', true);
   cron.schedule(CRON.monthlyInfraBilling, () => {

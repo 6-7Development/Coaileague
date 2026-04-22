@@ -716,31 +716,31 @@ router.patch('/users/:userId/role', requireAdminAccess, async (req, res) => {
 
     const previousRole = targetUser.role;
 
-    // Update role
-    await db.update(users)
-      .set({ role, updatedAt: new Date() })
-      .where(eq(users.id, userId));
+    await db.transaction(async (tx) => {
+      await tx.update(users)
+        .set({ role, updatedAt: new Date() })
+        .where(eq(users.id, userId));
 
-    // Log event
-    await db.insert(accessControlEvents).values({
-      eventType: 'role_changed',
-      priority: 'high',
-      actorType: 'human',
-      // @ts-expect-error — TS migration: fix in refactoring sprint
-      actorId: actor.id,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
-      actorRole: actor.role,
-      targetType: 'human',
-      targetId: userId,
-      // @ts-expect-error — TS migration: fix in refactoring sprint
-      workspaceId: actor.currentWorkspaceId,
-      changeDetails: {
-        action: 'change_role',
-        previousRole,
-        newRole: role,
-      },
-      previousState: { role: previousRole },
-      newState: { role },
+      await tx.insert(accessControlEvents).values({
+        eventType: 'role_changed',
+        priority: 'high',
+        actorType: 'human',
+        // @ts-expect-error — TS migration: fix in refactoring sprint
+        actorId: actor.id,
+        // @ts-expect-error — TS migration: fix in refactoring sprint
+        actorRole: actor.role,
+        targetType: 'human',
+        targetId: userId,
+        // @ts-expect-error — TS migration: fix in refactoring sprint
+        workspaceId: actor.currentWorkspaceId,
+        changeDetails: {
+          action: 'change_role',
+          previousRole,
+          newRole: role,
+        },
+        previousState: { role: previousRole },
+        newState: { role },
+      });
     });
 
     // @ts-expect-error — TS migration: fix in refactoring sprint

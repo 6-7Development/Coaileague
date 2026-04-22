@@ -579,6 +579,61 @@ export class QuickBooksIntegration {
       invoices: { synced: invoicesResult.synced, errors: invoicesResult.errors },
     };
   }
+
+  async syncContractToInvoice(workspaceId: string, contractId: string): Promise<void> {
+    const { partnerConnections, invoices: invoicesTable } = await import('@shared/schema');
+    const { and: andDrizzle, eq: eqDrizzle } = await import('drizzle-orm');
+    const { quickbooksOAuthService } = await import('../oauth/quickbooks');
+
+    const [conn] = await db.select()
+      .from(partnerConnections)
+      .where(andDrizzle(
+        eqDrizzle(partnerConnections.workspaceId, workspaceId),
+        eqDrizzle(partnerConnections.partnerType, 'quickbooks'),
+        eqDrizzle(partnerConnections.status, 'connected'),
+      ))
+      .limit(1);
+
+    if (!conn?.accessToken || !conn?.realmId) {
+      log.info(`[QuickBooks] No active QB connection for workspace ${workspaceId}; skipping contract invoice sync`);
+      return;
+    }
+
+    const accessToken = await quickbooksOAuthService.getValidAccessToken(conn.id);
+
+    const [invoice] = await db.select()
+      .from(invoicesTable)
+      .where(andDrizzle(
+        eqDrizzle(invoicesTable.workspaceId, workspaceId),
+        eqDrizzle(invoicesTable.notes, `Auto-generated from contract ${contractId}`),
+      ))
+      .limit(1);
+
+    if (!invoice) {
+      log.info(`[QuickBooks] No local invoice found for contract ${contractId}; skipping QB sync`);
+      return;
+    }
+
+    const credentials: QuickBooksCredentials = {
+      workspaceId,
+      accessToken,
+      refreshToken: (conn as any).refreshToken || '',
+      realmId: conn.realmId,
+      expiresAt: (conn as any).expiresAt || new Date(),
+    };
+
+    await this.syncInvoicesToQuickBooks(credentials, [{
+      id: invoice.id,
+      invoiceNumber: invoice.invoiceNumber,
+      clientId: invoice.clientId,
+      clientName: 'Client',
+      total: invoice.total,
+      issueDate: (invoice as any).issueDate,
+      dueDate: (invoice as any).dueDate,
+    }]);
+
+    log.info(`[QuickBooks] Contract invoice ${invoice.invoiceNumber} synced to QB for contract ${contractId}`);
+  }
 }
 
 export const quickbooksIntegration = new QuickBooksIntegration();
