@@ -1714,6 +1714,120 @@ process.on('unhandledRejection', (reason: any, promise) => {
       }
     });
 
+    // Trinity Phase 2 — idempotent approve endpoint.
+    // Atomic UPDATE with status + execution_locked + expiry gates so a
+    // second tap never causes a duplicate execution, re-open, or expired
+    // re-approval. Distinct 4xx per failure mode so the UI can message.
+    app.post('/api/trinity/pending-approvals/:id/approve', requireAuth, ensureWorkspaceAccess, async (req: any, res: any) => {
+      const wid = req.workspaceId || req.body?.workspaceId || req.query.workspaceId;
+      const { id } = req.params;
+      const userId = req.user?.id || req.user?.userId || 'unknown';
+      const userRole = req.user?.role || req.workspaceRole || 'manager';
+      if (!wid) return res.status(400).json({ error: 'workspaceId required' });
+      if (!id) return res.status(400).json({ error: 'approval id required' });
+
+      try {
+        const { rows } = await pool.query(
+          `UPDATE governance_approvals
+              SET status = 'approved',
+                  approvals = COALESCE(approvals, '[]'::jsonb) || $1::jsonb,
+                  executed_by = $2,
+                  executed_at = NOW(),
+                  execution_locked = TRUE,
+                  updated_at = NOW()
+            WHERE id = $3
+              AND workspace_id = $4
+              AND status = 'pending'
+              AND execution_locked = FALSE
+              AND (expires_at IS NULL OR expires_at > NOW())
+            RETURNING *`,
+          [
+            JSON.stringify([{ approvedBy: userId, role: userRole, at: new Date().toISOString() }]),
+            userId, id, wid,
+          ],
+        );
+
+        if (rows.length) {
+          return res.json({ success: true, approval: rows[0] });
+        }
+
+        // No rows → figure out why so the UI can show a precise message
+        const { rows: existing } = await pool.query(
+          `SELECT status, execution_locked, expires_at, executed_by
+             FROM governance_approvals WHERE id = $1 AND workspace_id = $2`,
+          [id, wid],
+        );
+
+        if (!existing.length) {
+          return res.status(404).json({ error: 'Approval not found' });
+        }
+        const record = existing[0];
+        if (['approved', 'completed', 'executing'].includes(record.status)) {
+          return res.status(409).json({
+            error: 'already_processed',
+            message: `This action was already approved by ${record.executed_by || 'another manager'} and ${record.status === 'completed' ? 'has already executed' : 'is currently executing'}. No duplicate action will be taken.`,
+            status: record.status,
+          });
+        }
+        if (record.status === 'rejected' || record.status === 'denied') {
+          return res.status(409).json({
+            error: 'already_rejected',
+            message: 'This action was already rejected. A new request must be submitted.',
+            status: record.status,
+          });
+        }
+        if (record.expires_at && new Date(record.expires_at) < new Date()) {
+          return res.status(410).json({
+            error: 'expired',
+            message: 'This approval request has expired. Trinity will need to re-submit it.',
+          });
+        }
+        if (record.execution_locked) {
+          return res.status(409).json({
+            error: 'execution_locked',
+            message: 'Another approval is in progress for this action. Please wait.',
+          });
+        }
+        return res.status(409).json({ error: 'cannot_approve', status: record.status });
+      } catch (err: any) {
+        log.error('[Route] pending-approvals/approve internal error:', err);
+        res.status(500).json({ error: 'Internal server error' });
+      }
+    });
+
+    // Trinity Phase 2 — reject endpoint, paired with approve.
+    app.post('/api/trinity/pending-approvals/:id/reject', requireAuth, ensureWorkspaceAccess, async (req: any, res: any) => {
+      const wid = req.workspaceId || req.body?.workspaceId || req.query.workspaceId;
+      const { id } = req.params;
+      const userId = req.user?.id || req.user?.userId || 'unknown';
+      const reason = (req.body?.reason || '').toString().slice(0, 500);
+      if (!wid) return res.status(400).json({ error: 'workspaceId required' });
+      if (!id) return res.status(400).json({ error: 'approval id required' });
+
+      try {
+        const { rows } = await pool.query(
+          `UPDATE governance_approvals
+              SET status = 'rejected',
+                  executed_by = $1,
+                  executed_at = NOW(),
+                  updated_at = NOW(),
+                  reason = COALESCE(reason, '') || $2
+            WHERE id = $3
+              AND workspace_id = $4
+              AND status = 'pending'
+            RETURNING id, status`,
+          [userId, reason ? ` | Rejected: ${reason}` : '', id, wid],
+        );
+        if (!rows.length) {
+          return res.status(409).json({ error: 'cannot_reject', message: 'Approval not pending or not found' });
+        }
+        res.json({ success: true, approval: rows[0] });
+      } catch (err: any) {
+        log.error('[Route] pending-approvals/reject internal error:', err);
+        res.status(500).json({ error: 'Internal server error' });
+      }
+    });
+
     // Trinity activity endpoint — recent Trinity actions for activity center
     app.get('/api/trinity/activity', requireAuth, ensureWorkspaceAccess, async (req: any, res: any) => {
       const wid = req.workspaceId || req.query.workspaceId;

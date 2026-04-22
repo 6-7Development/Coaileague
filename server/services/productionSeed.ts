@@ -200,6 +200,32 @@ export async function runDataCorrections(): Promise<void> {
     console.log('🔧 Data Correction: workspace_verification_settings skipped:', (err as any)?.message);
   }
 
+  // Trinity Phase 2 — governance_approvals idempotency + execution lock.
+  // Prevents duplicate pending actions, enforces one-approval-one-execution,
+  // and rejects re-approval of completed/rejected/expired requests.
+  try {
+    await typedExec(sql`
+      ALTER TABLE governance_approvals
+        ADD COLUMN IF NOT EXISTS idempotency_key VARCHAR(128),
+        ADD COLUMN IF NOT EXISTS executed_by VARCHAR,
+        ADD COLUMN IF NOT EXISTS executed_at TIMESTAMPTZ,
+        ADD COLUMN IF NOT EXISTS execution_locked BOOLEAN NOT NULL DEFAULT FALSE
+    `);
+    await typedExec(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_governance_approvals_dedup
+        ON governance_approvals (workspace_id, action_type, status)
+        WHERE status = 'pending'
+    `);
+    await typedExec(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_governance_approvals_idempotency
+        ON governance_approvals (idempotency_key)
+        WHERE idempotency_key IS NOT NULL
+    `);
+    console.log('🔧 Data Correction: governance_approvals idempotency columns ensured');
+  } catch (err) {
+    console.log('🔧 Data Correction: governance_approvals constraints skipped:', (err as any)?.message);
+  }
+
   console.log('🔧 Data Corrections Service: Complete');
 }
 

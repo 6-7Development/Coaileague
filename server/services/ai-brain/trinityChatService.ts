@@ -936,6 +936,101 @@ class TrinityChatService {
       systemPrompt = 'You are Trinity, an AI co-pilot for CoAIleague. Be helpful and concise.';
     }
 
+    // Phase 2 — LIVE OPERATIONS STATUS injected into every chat turn.
+    // Gives Trinity real-time awareness of incidents, lone workers, coverage
+    // gaps, her own pending approvals, and at-risk officers so responses can
+    // reference what's actually happening right now.
+    if (workspaceId) {
+      try {
+        const [
+          incidentSummary,
+          loneworkerStatus,
+          coverageGaps,
+          pendingApprovals,
+          reliabilityRisk,
+        ] = await Promise.allSettled([
+          pool.query(
+            `SELECT COUNT(*)::int AS count,
+                    COUNT(*) FILTER (WHERE severity IN ('high','critical'))::int AS high_severity
+               FROM incident_reports
+              WHERE workspace_id = $1
+                AND created_at > NOW() - INTERVAL '24 hours'`,
+            [workspaceId],
+          ),
+          pool.query(
+            `SELECT COUNT(*)::int AS active,
+                    COUNT(*) FILTER (WHERE next_checkin_due < NOW())::int AS overdue
+               FROM lone_worker_sessions
+              WHERE workspace_id = $1 AND ended_at IS NULL`,
+            [workspaceId],
+          ),
+          pool.query(
+            `SELECT COUNT(*)::int AS gap_count
+               FROM shifts
+              WHERE workspace_id = $1
+                AND employee_id IS NULL
+                AND status = 'open'
+                AND start_time BETWEEN NOW() AND NOW() + INTERVAL '24 hours'`,
+            [workspaceId],
+          ),
+          pool.query(
+            `SELECT COUNT(*)::int AS pending
+               FROM governance_approvals
+              WHERE workspace_id = $1
+                AND status = 'pending'
+                AND (expires_at IS NULL OR expires_at > NOW())`,
+            [workspaceId],
+          ),
+          pool.query(
+            `SELECT COUNT(*)::int AS at_risk_count
+               FROM coaileague_profiles
+              WHERE workspace_id = $1
+                AND reliability_score < 0.6
+                AND is_active = TRUE`,
+            [workspaceId],
+          ),
+        ]);
+
+        const liveStatus: string[] = [];
+        if (incidentSummary.status === 'fulfilled') {
+          const row = incidentSummary.value.rows[0];
+          if (row && Number(row.count) > 0) {
+            liveStatus.push(`INCIDENTS (LAST 24H): ${row.count} total, ${row.high_severity} high-severity`);
+          }
+        }
+        if (loneworkerStatus.status === 'fulfilled') {
+          const row = loneworkerStatus.value.rows[0];
+          if (row && Number(row.active) > 0) {
+            liveStatus.push(`LONE WORKERS: ${row.active} active, ${row.overdue} OVERDUE CHECK-IN`);
+          }
+        }
+        if (coverageGaps.status === 'fulfilled') {
+          const row = coverageGaps.value.rows[0];
+          if (row && Number(row.gap_count) > 0) {
+            liveStatus.push(`⚠️ COVERAGE GAPS: ${row.gap_count} uncovered shifts in next 24h`);
+          }
+        }
+        if (pendingApprovals.status === 'fulfilled') {
+          const row = pendingApprovals.value.rows[0];
+          if (row && Number(row.pending) > 0) {
+            liveStatus.push(`PENDING APPROVALS: ${row.pending} Trinity actions awaiting your review`);
+          }
+        }
+        if (reliabilityRisk.status === 'fulfilled') {
+          const row = reliabilityRisk.value.rows[0];
+          if (row && Number(row.at_risk_count) > 0) {
+            liveStatus.push(`AT-RISK OFFICERS: ${row.at_risk_count} officers with reliability below 60%`);
+          }
+        }
+
+        if (liveStatus.length > 0) {
+          systemPrompt += `\n\nLIVE OPERATIONS STATUS:\n${liveStatus.join('\n')}`;
+        }
+      } catch (err: any) {
+        log.warn('[TrinityChatService] Live ops status enrichment failed (non-fatal):', err?.message);
+      }
+    }
+
     // C1 FIX: Inject live personal context for officers/employees.
     // Without this block, Trinity tells officers it can show their schedule/pay but
     // has no actual data — leading to hallucinations or unhelpful refusals.

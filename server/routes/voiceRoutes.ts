@@ -2735,6 +2735,26 @@ async function runTrinityTalkTurn(params: {
     }
   }
 
+  // Phase 2 — dispatch any action intent detected in the caller's speech.
+  // Trinity now talks AND acts — low-risk actions execute immediately, higher
+  // risk actions are queued for manager approval via the action dispatcher.
+  if (issue && workspaceId) {
+    scheduleNonBlocking('voice.trinity-talk.dispatch', async () => {
+      try {
+        const { dispatchFromChat } = await import('../services/trinity/trinityActionDispatcher');
+        await dispatchFromChat(issue, aiResult.answer || '', {
+          workspaceId,
+          userId: 'voice-caller',
+          userRole: 'org_owner',
+          sessionId: sessionId || 'voice-session',
+          source: 'voice-trinity-talk',
+        });
+      } catch (err: any) {
+        log.warn('[VoiceRoutes] trinity-talk dispatch failed (non-fatal):', err?.message);
+      }
+    });
+  }
+
   const issueEncoded = encodeURIComponent(issue.slice(0, 500));
   const nameAction = `${baseUrl}/api/voice/support-gather-name?sessionId=${encodeURIComponent(sessionId)}&workspaceId=${encodeURIComponent(workspaceId)}&lang=${lang}&issue=${issueEncoded}&aiAttempted=true&aiModel=${aiResult.modelUsed || 'none'}`;
   const escalationPhrase = lang === 'es' ? getEscalationPhraseEs() : getEscalationPhraseEn();
@@ -4944,6 +4964,71 @@ voiceRouter.post('/owner-menu', twilioSignatureMiddleware, async (req: Request, 
     log.error('[VoiceRoutes] /owner-menu error:', err?.message);
     xmlResponse(res, twiml('<Say>An error occurred. Goodbye.</Say>'));
   }
+});
+
+// ─── PHASE 2 — OUTBOUND TWIML ROUTES ────────────────────────────────────────
+// GET /api/voice/outbound-twiml serves TwiML when Trinity initiates an
+// outbound call via voice.outbound_call. The caller-facing message arrives
+// via the ?msg= query param (URL-encoded). Twilio fetches this URL as the
+// call is answered, speaks the message, then gathers a response.
+//
+// POST /api/voice/outbound-response records whatever the recipient says
+// back into the call session metadata so the EventBrain / welfare checks
+// can see that the message was received and what was said.
+
+voiceRouter.get('/outbound-twiml', async (req: Request, res: Response) => {
+  const message = decodeURIComponent(
+    (req.query.msg as string) || 'Hello, this is Trinity from your security company.',
+  );
+  const lang = (req.query.lang as string) === 'es' ? 'es' : 'en';
+  const voiceId = lang === 'es' ? VOICE_ES : VOICE;
+  const langCode = lang === 'es' ? 'es-US' : 'en-US';
+
+  const baseUrl = (process.env.APP_BASE_URL || 'https://www.coaileague.com').replace(/\/$/, '');
+  const responseAction = `${baseUrl}/api/voice/outbound-response`;
+  const confirmPrompt = lang === 'es'
+    ? 'Presione uno para confirmar que recibió este mensaje, o hable su respuesta.'
+    : 'Press 1 to confirm you received this message, or speak your response.';
+  const noReply = lang === 'es' ? 'No se recibió respuesta. Adiós.' : 'No response received. Goodbye.';
+
+  xmlResponse(res, twiml(
+    say(message, voiceId, langCode) +
+    `<Gather input="speech dtmf" action="${responseAction}" method="POST" timeout="10" speechTimeout="auto">` +
+    say(confirmPrompt, voiceId, langCode) +
+    `</Gather>` +
+    say(noReply, voiceId, langCode)
+  ));
+});
+
+voiceRouter.post('/outbound-response', twilioSignatureMiddleware, async (req: Request, res: Response) => {
+  const { SpeechResult, Digits, CallSid } = req.body as {
+    SpeechResult?: string;
+    Digits?: string;
+    CallSid?: string;
+  };
+  const response = (SpeechResult || Digits || '').toString();
+
+  if (CallSid) {
+    try {
+      const { pool: dbPool } = await import('../db');
+      await dbPool.query(
+        `UPDATE voice_call_sessions
+            SET metadata = COALESCE(metadata, '{}'::jsonb) ||
+                           jsonb_build_object('outbound_response', $1::text,
+                                              'responded_at', NOW()::text),
+                updated_at = NOW()
+          WHERE twilio_call_sid = $2`,
+        [response.slice(0, 500), CallSid],
+      );
+    } catch (err: any) {
+      log.warn('[VoiceRoutes] outbound-response metadata write failed (non-fatal):', err?.message);
+    }
+  }
+
+  xmlResponse(res, twiml(
+    say('Thank you. Message received. Have a safe shift. Goodbye.', VOICE, 'en-US') +
+    `<Hangup />`
+  ));
 });
 
 // Mount the authenticated management sub-router onto the main voice router

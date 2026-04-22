@@ -43,6 +43,99 @@ async function getAIClient() {
   return new UnifiedGeminiClient();
 }
 
+// ─── Phase 2 — Manager/Owner Command Email Detection ─────────────────────────
+// Patterns that signal a workspace manager / owner is emailing Trinity a
+// command she should dispatch through the action pipeline. Only fires when
+// the sender resolves to an employee AND that employee holds a
+// manager+ workspace role.
+
+const COMMAND_PATTERNS: RegExp[] = [
+  /\b(schedule|create shift|add shift)\b/i,
+  /\b(send invoice|generate invoice|issue invoice)\b/i,
+  /\b(run payroll|process payroll|start payroll)\b/i,
+  /\b(notify|blast|text all|sms all)\b/i,
+  /\b(deactivate|suspend|terminate)\b.*\b(employee|officer|guard)\b/i,
+  /\b(fill|cover)\b.{0,30}\b(open|vacant|uncovered)\s+shift/i,
+];
+
+async function lookupEmployeeWorkspaceRole(employeeId: string): Promise<string | null> {
+  try {
+    const [row] = await db.select({ role: employees.workspaceRole })
+      .from(employees)
+      .where(eq(employees.id, employeeId))
+      .limit(1);
+    return (row?.role as string | null) || null;
+  } catch {
+    return null;
+  }
+}
+
+interface CommandDispatchSummary {
+  dispatched: boolean;
+  queued: boolean;
+  actionId?: string;
+  message?: string;
+}
+
+async function handleCommandEmail(
+  email: ParsedInboundEmail,
+  sender: ResolvedSender,
+  senderRole: string,
+  workspaceId: string,
+  logId: string,
+): Promise<CommandDispatchSummary> {
+  try {
+    const { dispatchFromChat } = await import('./trinityActionDispatcher');
+    const result = await dispatchFromChat(
+      (email.bodyText || '').slice(0, 1000),
+      '',
+      {
+        workspaceId,
+        userId: sender.userId || sender.id,
+        userRole: senderRole,
+        sessionId: `email-${logId}`,
+        source: 'inbound-email-command',
+      },
+    );
+
+    if (!result.executed && !result.queued) {
+      return { dispatched: false, queued: false };
+    }
+
+    // Reply to the sender so they see what Trinity did
+    scheduleNonBlocking('inbound-email.command-reply', async () => {
+      try {
+        const { sendCanSpamCompliantEmail } = await import('../emailCore');
+        const appendedText = result.appendToResponse || 'Trinity received your command.';
+        await sendCanSpamCompliantEmail({
+          to: email.fromEmail,
+          subject: `Re: ${email.subject || 'Your command'} — Trinity Response`,
+          html: `<p>Trinity received your command and responded:</p>
+                 <p>${appendedText.replace(/\n/g, '<br>')}</p>
+                 <p style="color:#666;font-size:12px;">
+                   Sent by Trinity AI — ${new Date().toLocaleString()}
+                 </p>`,
+          emailType: 'trinity_command_response',
+          workspaceId,
+          skipUnsubscribeCheck: true,
+        });
+      } catch (err: any) {
+        log.warn('[EmailProcessor] Command reply send failed (non-fatal):', err?.message);
+      }
+    });
+
+    return {
+      dispatched: true,
+      queued: !!result.queued,
+      actionId: result.actionId,
+      message: result.appendToResponse,
+    };
+  } catch (err: any) {
+    log.warn('[EmailProcessor] Command dispatch failed:', err?.message);
+    return { dispatched: false, queued: false };
+  }
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type EmailCategory = 'calloff' | 'incident' | 'docs' | 'support' | 'careers' | 'unknown';
@@ -1213,6 +1306,49 @@ export async function processInboundEmail(email: ParsedInboundEmail): Promise<Pr
       }
     } catch (tierErr) {
       // Non-blocking — proceed with processing on tier check failure
+    }
+  }
+
+  // ── Phase 2 — MANAGER/OWNER COMMAND EMAIL DETECTION ───────────────────────
+  // If an authenticated workspace manager or owner emails Trinity with a
+  // command phrase (e.g. "run payroll", "send invoice", "text all officers"),
+  // route the email through the Trinity action dispatcher. Low-risk actions
+  // execute immediately; medium/high-risk actions are queued for approval.
+  // Trinity replies to the sender with what she did or what needs approval.
+  if (sender && sender.type === 'employee' && workspaceId && email.bodyText) {
+    const emailBody = email.bodyText;
+    const isCommandEmail = COMMAND_PATTERNS.some(p => p.test(emailBody));
+    if (isCommandEmail) {
+      const senderRole = await lookupEmployeeWorkspaceRole(sender.id);
+      const senderIsManager = senderRole &&
+        ['org_owner', 'co_owner', 'org_admin', 'org_manager', 'manager'].includes(senderRole);
+
+      if (senderIsManager) {
+        const commandDispatchSummary = await handleCommandEmail(
+          email,
+          sender,
+          senderRole,
+          workspaceId,
+          logId,
+        );
+        if (commandDispatchSummary.dispatched) {
+          await db.update(inboundEmailLog)
+            .set({
+              processingStatus: 'processed',
+              trinityActionTaken: 'inbound.command.dispatch',
+              trinityConfidence: '1',
+              extractedFields: { commandActionId: commandDispatchSummary.actionId || null },
+              needsReview: false,
+              processedAt: new Date(),
+            })
+            .where(eq(inboundEmailLog.id, logId));
+          return {
+            logId,
+            status: 'processed',
+            message: `command dispatched: ${commandDispatchSummary.actionId || 'unknown'} (${commandDispatchSummary.queued ? 'queued for approval' : 'executed'})`,
+          };
+        }
+      }
     }
   }
 
