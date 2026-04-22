@@ -466,6 +466,7 @@ router.post('/dar/:darId/legal-hold', async (req: any, res) => {
             legalHoldReason: reason || 'Legal hold set',
             legalHoldSetBy: userId,
             legalHoldSetAt: new Date(),
+            isAuditProtected: true,
             updatedAt: new Date(),
           } as any
         : {
@@ -479,13 +480,6 @@ router.post('/dar/:darId/legal-hold', async (req: any, res) => {
       .where(eq(darReports.id, dar.id));
 
     await appendAccessLog(dar.id, userId, hold ? 'legal_hold_set' : 'legal_hold_released');
-
-    if (hold) {
-      // Also protect the DAR from deletion
-      await db.update(darReports)
-        .set({ isAuditProtected: true } as any)
-        .where(eq(darReports.id, dar.id));
-    }
 
     res.json({ success: true, darId: dar.id, legalHold: hold });
   } catch (err: unknown) {

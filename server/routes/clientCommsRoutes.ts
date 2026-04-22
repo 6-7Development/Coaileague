@@ -241,36 +241,42 @@ router.post('/threads', requireManagerOrPlatformStaff, async (req: Authenticated
 
     const slaDeadline = new Date(Date.now() + 48 * 3_600_000);
 
-    const [thread] = await db.insert(clientMessageThreads).values({
-      workspaceId,
-      clientId,
-      subject,
-      status: 'open',
-      channel,
-      assignedToUserId: assignedToUserId || null,
-      slaDeadline,
-      slaStatus: 'ok',
-      lastMessageAt: new Date(),
-      createdBy: userId || 'system',
-    }).returning();
+    const [thread] = await db.transaction(async (tx) => {
+      const [t] = await tx.insert(clientMessageThreads).values({
+        workspaceId,
+        clientId,
+        subject,
+        status: 'open',
+        channel,
+        assignedToUserId: assignedToUserId || null,
+        slaDeadline,
+        slaStatus: 'ok',
+        lastMessageAt: new Date(),
+        createdBy: userId || 'system',
+      }).returning();
+
+      if (initialMessage) {
+        const preview = initialMessage.slice(0, 120);
+        await tx.insert(clientMessages).values({
+          workspaceId,
+          threadId: t.id,
+          senderType: 'staff',
+          senderId: userId || null,
+          senderName: getSenderName(req.user, 'Staff'),
+          direction: 'outbound',
+          channel,
+          body: initialMessage,
+          attachments: [],
+        });
+        await tx.update(clientMessageThreads)
+          .set({ lastMessageAt: new Date(), lastMessagePreview: preview, lastStaffReplyAt: new Date() })
+          .where(eq(clientMessageThreads.id, t.id));
+      }
+
+      return [t];
+    });
 
     if (initialMessage) {
-      const preview = initialMessage.slice(0, 120);
-      await db.insert(clientMessages).values({
-        workspaceId,
-        threadId: thread.id,
-        senderType: 'staff',
-        senderId: userId || null,
-        senderName: getSenderName(req.user, 'Staff'),
-        direction: 'outbound',
-        channel,
-        body: initialMessage,
-        attachments: [],
-      });
-      await db.update(clientMessageThreads)
-        .set({ lastMessageAt: new Date(), lastMessagePreview: preview, lastStaffReplyAt: new Date() })
-        .where(eq(clientMessageThreads.id, thread.id));
-
       notifyClient(workspaceId, clientId, `New message: ${subject}`, initialMessage.slice(0, 300));
     }
 
@@ -389,19 +395,6 @@ router.post('/threads/:id/messages', requireAuth, async (req: AuthenticatedReque
 
     const direction = senderType === 'client' ? 'inbound' : 'outbound';
 
-    const [msg] = await db.insert(clientMessages).values({
-      workspaceId,
-      threadId: id,
-      senderType,
-      senderId: userId || null,
-      senderName: getSenderName(req.user, senderType),
-      direction,
-      channel: thread.channel,
-      body,
-      attachments: (attachments || []) as unknown[],
-      isTrinityDraft: false,
-    }).returning();
-
     const preview = body.slice(0, 120);
     const threadUpdate: {
       lastMessageAt: Date;
@@ -420,9 +413,26 @@ router.post('/threads/:id/messages', requireAuth, async (req: AuthenticatedReque
       threadUpdate.lastStaffReplyAt = new Date();
     }
 
-    await db.update(clientMessageThreads)
-      .set(threadUpdate)
-      .where(eq(clientMessageThreads.id, id));
+    const [msg] = await db.transaction(async (tx) => {
+      const [m] = await tx.insert(clientMessages).values({
+        workspaceId,
+        threadId: id,
+        senderType,
+        senderId: userId || null,
+        senderName: getSenderName(req.user, senderType),
+        direction,
+        channel: thread.channel,
+        body,
+        attachments: (attachments || []) as unknown[],
+        isTrinityDraft: false,
+      }).returning();
+
+      await tx.update(clientMessageThreads)
+        .set(threadUpdate)
+        .where(eq(clientMessageThreads.id, id));
+
+      return [m];
+    });
 
     await recomputeThreadSla(id);
 
