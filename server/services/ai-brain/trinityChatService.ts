@@ -948,6 +948,26 @@ class TrinityChatService {
       }
     }
 
+    // Phase 4 — SOP awareness. When a manager asks anything HR / policy /
+    // disciplinary related, inline the tenant's indexed SOPs so Trinity cites
+    // the exact policy section when advising on discipline.
+    if (isManagerLevel && workspaceId) {
+      try {
+        const isHRQuery = /\b(disciplin|write.?up|warning|sop|policy|violation|terminate|conduct|performance|handbook|pip|lod)\b/i.test(message || '');
+        if (isHRQuery) {
+          const { getSOPContextForTrinity } = await import(
+            '../../services/trinity/sopIndexingService'
+          );
+          const sopContext = await getSOPContextForTrinity(workspaceId, (message || '').slice(0, 200));
+          if (sopContext) {
+            systemPrompt += `\n\nCOMPANY SOP/POLICIES ON FILE:\n${sopContext.slice(0, 2000)}\nReference these when advising on policy violations or disciplinary matters.`;
+          }
+        }
+      } catch {
+        // non-fatal — SOP context is nice-to-have
+      }
+    }
+
     // === SELF-MODEL INJECTION (Cognitive Brain — Self-Awareness Layer) ===
     // Two complementary injections:
     // 1. buildSelfAwarePrompt() — general service-level awareness (identity, capabilities, platform)
