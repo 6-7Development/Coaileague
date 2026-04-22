@@ -20,7 +20,8 @@
  */
 
 import { db } from '../../db';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
+import { partnerConnections, invoices as invoicesSchema } from '@shared/schema';
 import { 
   QB_API_VERSION, 
   QB_EDITIONS, 
@@ -580,17 +581,15 @@ export class QuickBooksIntegration {
     };
   }
 
-  async syncContractToInvoice(workspaceId: string, contractId: string): Promise<void> {
-    const { partnerConnections, invoices: invoicesTable } = await import('@shared/schema');
-    const { and: andDrizzle, eq: eqDrizzle } = await import('drizzle-orm');
+  async syncContractToInvoice(workspaceId: string, contractId: string, invoiceId: string): Promise<void> {
     const { quickbooksOAuthService } = await import('../oauth/quickbooks');
 
     const [conn] = await db.select()
       .from(partnerConnections)
-      .where(andDrizzle(
-        eqDrizzle(partnerConnections.workspaceId, workspaceId),
-        eqDrizzle(partnerConnections.partnerType, 'quickbooks'),
-        eqDrizzle(partnerConnections.status, 'connected'),
+      .where(and(
+        eq(partnerConnections.workspaceId, workspaceId),
+        eq(partnerConnections.partnerType, 'quickbooks'),
+        eq(partnerConnections.status, 'connected'),
       ))
       .limit(1);
 
@@ -602,15 +601,15 @@ export class QuickBooksIntegration {
     const accessToken = await quickbooksOAuthService.getValidAccessToken(conn.id);
 
     const [invoice] = await db.select()
-      .from(invoicesTable)
-      .where(andDrizzle(
-        eqDrizzle(invoicesTable.workspaceId, workspaceId),
-        eqDrizzle(invoicesTable.notes, `Auto-generated from contract ${contractId}`),
+      .from(invoicesSchema)
+      .where(and(
+        eq(invoicesSchema.workspaceId, workspaceId),
+        eq(invoicesSchema.id, invoiceId),
       ))
       .limit(1);
 
     if (!invoice) {
-      log.info(`[QuickBooks] No local invoice found for contract ${contractId}; skipping QB sync`);
+      log.info(`[QuickBooks] Invoice ${invoiceId} not found for contract ${contractId}; skipping QB sync`);
       return;
     }
 
@@ -622,7 +621,7 @@ export class QuickBooksIntegration {
       expiresAt: (conn as any).expiresAt || new Date(),
     };
 
-    await this.syncInvoicesToQuickBooks(credentials, [{
+    const result = await this.syncInvoicesToQuickBooks(credentials, [{
       id: invoice.id,
       invoiceNumber: invoice.invoiceNumber,
       clientId: invoice.clientId,
@@ -631,6 +630,11 @@ export class QuickBooksIntegration {
       issueDate: (invoice as any).issueDate,
       dueDate: (invoice as any).dueDate,
     }]);
+
+    if (!result.success) {
+      log.warn(`[QuickBooks] Contract invoice sync failed for ${contractId}: ${result.errors.join('; ')}`);
+      return;
+    }
 
     log.info(`[QuickBooks] Contract invoice ${invoice.invoiceNumber} synced to QB for contract ${contractId}`);
   }

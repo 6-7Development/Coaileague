@@ -138,6 +138,16 @@ router.post('/api/offboarding/exit-interviews', requireAuth, async (req: any, re
     } = req.body;
 
     const [interview] = await db.transaction(async (tx) => {
+      // Update case first so we can verify it exists before inserting the interview.
+      const [updatedCase] = await tx.update(offboardingCases)
+        .set({ exitInterviewCompleted: true, updatedAt: new Date() })
+        .where(eq(offboardingCases.id, offboardingCaseId))
+        .returning({ id: offboardingCases.id });
+
+      if (!updatedCase) {
+        throw new Error('Offboarding case not found');
+      }
+
       const [newInterview] = await tx.insert(exitInterviews)
         .values({
           offboardingCaseId,
@@ -148,14 +158,6 @@ router.post('/api/offboarding/exit-interviews', requireAuth, async (req: any, re
           completedAt: new Date()
         })
         .returning();
-
-      // Update case
-      await tx.update(offboardingCases)
-        .set({
-          exitInterviewCompleted: true,
-          updatedAt: new Date()
-        })
-        .where(eq(offboardingCases.id, offboardingCaseId));
 
       return [newInterview];
     });

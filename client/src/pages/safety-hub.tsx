@@ -75,7 +75,7 @@ export default function SafetyHub() {
   const createGeofence = useMutation({
     mutationFn: (data: any) => apiRequest("POST", "/api/safety/geofences", { ...data, workspaceId }),
     onSuccess: () => { invalidate(); setShowNewZone(false); toast({ title: "Geofence zone created" }); },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e: any) => toast({ title: "Create Failed", description: e?.message || 'Something went wrong. Please try again.', variant: "destructive" }),
   });
 
   const deleteGeofence = useMutation({
@@ -109,7 +109,7 @@ export default function SafetyHub() {
   const createSLA = useMutation({
     mutationFn: (data: any) => apiRequest("POST", "/api/safety/sla", { ...data, workspaceId }),
     onSuccess: () => { invalidate(); setShowNewSLA(false); toast({ title: "SLA contract created" }); },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e: any) => toast({ title: "Create Failed", description: e?.message || 'Something went wrong. Please try again.', variant: "destructive" }),
   });
 
   const activePanics = panics.data?.alerts?.filter((a: any) => a.status === "active") || [];
@@ -336,7 +336,7 @@ export default function SafetyHub() {
           </DsSectionCard>
         )}
 
-        {activeTab === "sla" && ( activeTab === "sla" && (
+        {activeTab === "sla" && (
           <DsSectionCard 
             title="SLA Contracts" 
             actions={<DsButton size="sm" onClick={() => setShowNewSLA(true)}><Plus size={14} className="mr-1" />New SLA</DsButton>}
@@ -368,7 +368,7 @@ export default function SafetyHub() {
               </div>
             )}
           </DsSectionCard>
-        ))}
+        )}
 
         {activeTab === "breaches" && (
           <DsSectionCard title="SLA Breach Log">

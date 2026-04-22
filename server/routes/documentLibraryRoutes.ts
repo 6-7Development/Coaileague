@@ -233,6 +233,16 @@ export function registerDocumentLibraryRoutes(app: Express, requireAuth: any, at
       const { signatureData, signatureType, signerEmail, signerName } = req.body;
 
       const [signature] = await db.transaction(async (tx) => {
+        // Update first so we can verify the document belongs to this workspace.
+        const [doc] = await tx.update(orgDocuments)
+          .set({ signaturesCompleted: sql`${orgDocuments.signaturesCompleted} + 1`, updatedAt: new Date() })
+          .where(and(eq(orgDocuments.id, id), eq(orgDocuments.workspaceId, workspaceId)))
+          .returning({ id: orgDocuments.id });
+
+        if (!doc) {
+          throw new Error('Document not found in this workspace');
+        }
+
         const [sig] = await tx.insert(orgDocumentSignatures).values({
           workspaceId: workspaceId,
           documentId: id,
@@ -244,10 +254,6 @@ export function registerDocumentLibraryRoutes(app: Express, requireAuth: any, at
           ipAddress: req.ip || req.socket.remoteAddress,
           userAgent: req.headers['user-agent']
         }).returning();
-
-        await tx.update(orgDocuments)
-          .set({ signaturesCompleted: sql`${orgDocuments.signaturesCompleted} + 1`, updatedAt: new Date() })
-          .where(eq(orgDocuments.id, id));
 
         return [sig];
       });

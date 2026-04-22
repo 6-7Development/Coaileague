@@ -2895,15 +2895,15 @@ export function startAutonomousScheduler() {
   // month runs) — no dedicated cron is required.
 
   // FLSA Overtime Approaching Alert (weekdays at 7 AM)
-  cron.schedule('0 7 * * 1-5', async () => {
-    try {
+  registerJobInfo('FLSA Overtime Approaching Alert', '0 7 * * 1-5', 'Weekday 7 AM scan for officers approaching FLSA overtime thresholds', true);
+  cron.schedule('0 7 * * 1-5', () => {
+    trackJobExecution('FLSA Overtime Approaching Alert', async () => {
       const { runOvertimeApproachingAlert } = await import(
         './trinity/workflows/overtimeAlertWorkflow'
       );
       await runOvertimeApproachingAlert();
-    } catch (err) {
-      log.warn('[Cron] Overtime alert sweep failed:', (err as any)?.message);
-    }
+      return { success: true };
+    });
   });
   log.info('Overtime Approaching Alert registered', { schedule: '0 7 * * 1-5 (weekdays 7am)' });
 

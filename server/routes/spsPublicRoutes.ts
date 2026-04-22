@@ -350,11 +350,15 @@ spsPublicRouter.post('/proposal/:clientToken/reply', async (req, res) => {
         agreementSignalDetected: agreementDetected,
       }).returning();
 
+      // Always bump updatedAt so admin lists ordered by activity stay current.
+      const threadUpdates: Record<string, unknown> = { updatedAt: new Date() };
       if (agreementDetected && !thread.agreementDetected) {
-        await tx.update(spsNegotiationThreads)
-          .set({ agreementDetected: true, agreementDetectedAt: new Date(), updatedAt: new Date() })
-          .where(eq(spsNegotiationThreads.id, thread.id));
+        threadUpdates.agreementDetected = true;
+        threadUpdates.agreementDetectedAt = new Date();
       }
+      await tx.update(spsNegotiationThreads)
+        .set(threadUpdates as any)
+        .where(eq(spsNegotiationThreads.id, thread.id));
 
       return [newMsg];
     });

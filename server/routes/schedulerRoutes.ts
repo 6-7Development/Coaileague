@@ -838,7 +838,7 @@ router.post('/dev/simulate-clockins', async (req: any, res: Response) => {
           await tx.insert(timeEntries).values({
             workspaceId,
             shiftId: shift.id,
-            employeeId: shift.employeeId,
+            employeeId: shift.employeeId!,
             clientId: shift.clientId || null,
             clockIn,
             clockOut,

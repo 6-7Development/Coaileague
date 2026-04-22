@@ -1192,8 +1192,8 @@ class ContractPipelineService {
           setTimeout(async () => {
             try {
               const { quickbooksIntegration } = await import('../integrations/quickbooksIntegration');
-              await quickbooksIntegration.syncContractToInvoice(contract.workspaceId, contractId);
-              log.info(`[ContractPipeline] QB invoice sync triggered for executed contract ${contractId}`);
+              await quickbooksIntegration.syncContractToInvoice(contract.workspaceId, contractId, invoice.id);
+              log.info(`[ContractPipeline] QB invoice sync completed for executed contract ${contractId}`);
             } catch (err: any) {
               log.warn('[ContractPipeline] QB invoice sync failed (non-blocking):', err?.message);
             }

@@ -8,7 +8,7 @@ import { db } from '../db';
 import {
   spsNegotiationThreads, spsNegotiationMessages, spsDocuments, workspaces,
 } from '@shared/schema';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, ne } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { z } from 'zod';
 import { callSpsAI } from './spsAIHelper';
@@ -332,14 +332,24 @@ spsNegotiationRouter.post('/:id/convert-to-contract', async (req: any, res) => {
         auditLog: [{ action: 'created_from_negotiation', timestamp: new Date().toISOString(), negotiationId: thread.id }] as any,
       }).returning();
 
-      // Update thread to converted
-      await tx.update(spsNegotiationThreads)
+      // Conditional update prevents duplicate conversion on concurrent requests.
+      const [convertedThread] = await tx.update(spsNegotiationThreads)
         .set({
           status: 'converted_to_contract',
           contractDocumentId: newDoc.id,
           updatedAt: new Date(),
         })
-        .where(eq(spsNegotiationThreads.id, req.params.id));
+        .where(and(
+          eq(spsNegotiationThreads.id, req.params.id),
+          eq(spsNegotiationThreads.workspaceId, workspaceId),
+          // Only convert if not already converted (idempotency guard).
+          ne(spsNegotiationThreads.status, 'converted_to_contract'),
+        ))
+        .returning({ id: spsNegotiationThreads.id });
+
+      if (!convertedThread) {
+        throw new Error('Negotiation already converted to contract');
+      }
 
       return [newDoc];
     });

@@ -139,9 +139,9 @@ interface QuickAction {
   id: string;
   name: string;
   icon: string;
-  category: 'hotfix' | 'subagent' | 'report' | 'system' | 'meeting' | 'ticket';
+  category: 'hotfix' | 'subagent' | 'report' | 'system' | 'meeting' | 'ticket' | 'scheduling' | 'payroll' | 'compliance' | 'hr' | 'clients' | 'revenue';
   description: string;
-  requiredRole: 'employee' | 'manager' | 'admin' | 'super_admin' | 'root';
+  requiredRole: 'employee' | 'manager' | 'admin' | 'super_admin' | 'root' | 'org_owner';
   riskLevel: 'safe' | 'moderate' | 'elevated' | 'critical';
   actionId: string;
   enabled: boolean;
@@ -210,11 +210,18 @@ const ROLE_HIERARCHY: Record<string, RoleStatus> = {
     allowedCategories: ['report', 'ticket', 'meeting', 'subagent', 'system', 'hotfix'],
     restricted: true
   },
+  org_owner: {
+    role: 'org_owner',
+    displayName: 'Org Owner',
+    permissionLevel: 6,
+    allowedCategories: ['report', 'ticket', 'meeting', 'subagent', 'system', 'hotfix', 'scheduling', 'payroll', 'compliance', 'hr', 'clients', 'revenue'],
+    restricted: true
+  },
   root: {
     role: 'root',
     displayName: 'Root',
     permissionLevel: 9,
-    allowedCategories: ['report', 'ticket', 'meeting', 'subagent', 'system', 'hotfix'],
+    allowedCategories: ['report', 'ticket', 'meeting', 'subagent', 'system', 'hotfix', 'scheduling', 'payroll', 'compliance', 'hr', 'clients', 'revenue'],
     restricted: false
   }
 };

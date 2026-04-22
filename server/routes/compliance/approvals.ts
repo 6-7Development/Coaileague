@@ -252,9 +252,14 @@ router.post("/:approvalId/decide", requireAuth, async (req: Request, res: Respon
       return [upd];
     });
 
-    // Post-commit: recalculate derived compliance counts (reads committed checklist rows)
+    // Post-commit: recalculate derived compliance counts (reads committed checklist rows).
+    // Non-blocking — failure must not 500 an already-committed approval decision.
     if (decision === 'approved' && existing[0].complianceRecordId) {
-      await updateComplianceRecordCounts(existing[0].complianceRecordId);
+      try {
+        await updateComplianceRecordCounts(existing[0].complianceRecordId);
+      } catch (countErr: unknown) {
+        log.warn('[ComplianceApprovals] Compliance count refresh failed after approval commit:', countErr instanceof Error ? countErr.message : String(countErr));
+      }
     }
 
     // Post-commit: non-blocking event bus + employee notifications

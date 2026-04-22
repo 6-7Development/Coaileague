@@ -717,9 +717,16 @@ router.patch('/users/:userId/role', requireAdminAccess, async (req, res) => {
     const previousRole = targetUser.role;
 
     await db.transaction(async (tx) => {
-      await tx.update(users)
+      // Conditional update guards against TOCTOU: only commits if the user still
+      // holds the previousRole we read before the auth checks above.
+      const [updatedUser] = await tx.update(users)
         .set({ role, updatedAt: new Date() })
-        .where(eq(users.id, userId));
+        .where(and(eq(users.id, userId), eq(users.role, previousRole as any)))
+        .returning({ id: users.id });
+
+      if (!updatedUser) {
+        throw new Error('Role was changed concurrently — please retry');
+      }
 
       await tx.insert(accessControlEvents).values({
         eventType: 'role_changed',

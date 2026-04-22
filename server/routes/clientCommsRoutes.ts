@@ -268,9 +268,12 @@ router.post('/threads', requireManagerOrPlatformStaff, async (req: Authenticated
           body: initialMessage,
           attachments: [],
         });
-        await tx.update(clientMessageThreads)
+        const [updatedThread] = await tx.update(clientMessageThreads)
           .set({ lastMessageAt: new Date(), lastMessagePreview: preview, lastStaffReplyAt: new Date() })
-          .where(eq(clientMessageThreads.id, t.id));
+          .where(eq(clientMessageThreads.id, t.id))
+          .returning();
+
+        return [updatedThread];
       }
 
       return [t];
@@ -414,6 +417,20 @@ router.post('/threads/:id/messages', requireAuth, async (req: AuthenticatedReque
     }
 
     const [msg] = await db.transaction(async (tx) => {
+      // Update thread first (includes status guard) to prevent messages on resolved threads.
+      const [openThread] = await tx.update(clientMessageThreads)
+        .set(threadUpdate)
+        .where(and(
+          eq(clientMessageThreads.id, id),
+          eq(clientMessageThreads.workspaceId, workspaceId),
+          eq(clientMessageThreads.status, 'open'),
+        ))
+        .returning({ id: clientMessageThreads.id });
+
+      if (!openThread) {
+        throw new Error('Thread is resolved. Reopen before sending.');
+      }
+
       const [m] = await tx.insert(clientMessages).values({
         workspaceId,
         threadId: id,
@@ -426,10 +443,6 @@ router.post('/threads/:id/messages', requireAuth, async (req: AuthenticatedReque
         attachments: (attachments || []) as unknown[],
         isTrinityDraft: false,
       }).returning();
-
-      await tx.update(clientMessageThreads)
-        .set(threadUpdate)
-        .where(eq(clientMessageThreads.id, id));
 
       return [m];
     });
