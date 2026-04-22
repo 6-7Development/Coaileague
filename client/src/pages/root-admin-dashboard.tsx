@@ -336,6 +336,48 @@ export default function RootAdminDashboard() {
       {/* Control Tower - AI-Powered Business Intelligence */}
       <ControlTower />
 
+        <Card className="mb-3 sm:mb-4 border-primary/20 bg-gradient-to-br from-primary/10 via-background to-background">
+          <CardContent className="p-4 sm:p-5">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div className="max-w-3xl">
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="border-primary/30 bg-primary/5 text-primary">
+                    {(stats as any)?.recentActivity?.length ? "Platform active" : "Low-activity window"}
+                  </Badge>
+                </div>
+                <h2 className="mt-3 text-lg sm:text-xl font-semibold text-foreground">
+                  Platform control stays useful even when the queue is quiet
+                </h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  This dashboard should explain what needs attention right now: support pressure, account controls, and system posture. When activity is light, it should still guide the next real admin action instead of feeling empty.
+                </p>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-3 lg:w-[420px]">
+                <div className="rounded-lg border border-border/80 bg-background/80 p-4">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Support queue</p>
+                  <p className="mt-1 text-2xl font-semibold text-foreground">
+                    {(personalData?.assignedTickets ?? 0) + ((personalData as any)?.newSupportTickets ?? 0)}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">Assigned plus new tickets</p>
+                </div>
+                <div className="rounded-lg border border-border/80 bg-background/80 p-4">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Workspaces</p>
+                  <p className="mt-1 text-2xl font-semibold text-foreground">{stats?.totalWorkspaces ?? 0}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Tenant accounts under management</p>
+                </div>
+                <div className="rounded-lg border border-border/80 bg-background/80 p-4">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Next move</p>
+                  <p className="mt-1 text-sm font-medium text-foreground">
+                    {(personalData?.assignedTickets ?? 0) > 0 || ((personalData as any)?.newSupportTickets ?? 0) > 0
+                      ? "Work the support queue first"
+                      : "Review system health and recent changes"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Desktop: 2-Column Grid | Mobile: Stacked */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
           {/* Quick Access Menu - Organized by Categories (Registry-Based) */}
@@ -768,8 +810,7 @@ export default function RootAdminDashboard() {
           </CardHeader>
           <CardContent className="pb-3 pt-1 px-4">
             <div className="text-2xl font-bold" data-testid="text-invoice-revenue">
-              // @ts-ignore — TS migration: fix in refactoring sprint
-              ${parseFloat((stats as any)?.monthlyRevenue || "0").toLocaleString('en-US', { minimumFractionDigits: 2 })}
+              ${Number.parseFloat(String((stats as any)?.monthlyRevenue ?? "0")).toLocaleString('en-US', { minimumFractionDigits: 2 })}
             </div>
             <p className="text-[10px] text-muted-foreground mt-0.5">
               {(stats as any)?.invoiceCount || 0} invoices generated
@@ -786,8 +827,7 @@ export default function RootAdminDashboard() {
           </CardHeader>
           <CardContent className="pb-3 pt-1 px-4">
             <div className="text-2xl font-bold" data-testid="text-platform-fees">
-              // @ts-ignore — TS migration: fix in refactoring sprint
-              ${parseFloat((stats as any)?.platformFees || "0").toLocaleString('en-US', { minimumFractionDigits: 2 })}
+              ${Number.parseFloat(String((stats as any)?.platformFees ?? "0")).toLocaleString('en-US', { minimumFractionDigits: 2 })}
             </div>
             <p className="text-[10px] text-muted-foreground mt-0.5">
               Total earnings this month
@@ -983,9 +1023,12 @@ export default function RootAdminDashboard() {
                     </div>
                   ))}
                   {(!(stats as any)?.recentActivity || (stats as any).recentActivity.length === 0) && (
-                    <div className="text-center text-muted-foreground py-8">
+                    <div className="rounded-lg border border-dashed border-border p-5 text-center text-muted-foreground">
                       <Activity className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p>No recent activity</p>
+                      <p className="font-medium text-foreground">No recent activity</p>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        The platform is currently quiet. Use the quick-access panel to inspect support, audit system health, or verify account controls proactively.
+                      </p>
                     </div>
                   )}
                 </div>

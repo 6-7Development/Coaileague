@@ -4,6 +4,7 @@ import { MessageCircle, Activity, Bell, FileText, AlertCircle, Mail, Users, Cloc
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CanvasHubPage, type CanvasPageConfig } from "@/components/canvas-hub";
+import { DashboardLoadError } from "@/components/dashboard/DashboardLoadError";
 import { CONTACTS } from "@shared/platformConfig";
 import { TrinityBrainStatusPanel, AICreditBalancePanel } from "@/components/ai-brain";
 
@@ -27,31 +28,23 @@ export default function SupportManagerDashboard() {
     };
   }>({ queryKey: ["/api/analytics/stats"], staleTime: 60000 });
 
-  const { data: emailData, isError: emailIsError, error: emailError, refetch: refetchEmail } = useQuery<{ emails: any[]; total: number }>({
+  const { data: emailData, isError: emailIsError, error: emailError, refetch: refetchEmailData } = useQuery<{ emails: any[]; total: number }>({
     queryKey: ["/api/email/inbox", { folder: "inbox", limit: 5 }],
     staleTime: 60000,
   });
   const unreadCount = emailData?.emails?.filter((e: any) => !e.is_read).length ?? 0;
   const totalEmails = emailData?.total ?? 0;
 
-  const isError = statsIsError || emailIsError;
-  const error = statsError || emailError;
-
-  if (isError) {
+  if (statsIsError || emailIsError) {
+    const dashboardError = statsError || emailError;
     return (
       <CanvasHubPage config={pageConfig}>
-        <div className="flex flex-col items-center justify-center min-h-[300px] gap-4 text-center p-6">
-          <AlertTriangle className="h-10 w-10 text-destructive" />
-          <div>
-            <p className="font-semibold text-destructive">Failed to load dashboard data</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              {error instanceof Error ? error.message : 'An unexpected error occurred'}
-            </p>
-          </div>
-          <Button variant="outline" onClick={() => { refetchStats(); refetchEmail(); }}>
-            Try Again
-          </Button>
-        </div>
+        <DashboardLoadError
+          message={dashboardError instanceof Error ? dashboardError.message : "An unexpected error occurred"}
+          onRetry={() => {
+            void Promise.allSettled([refetchStats(), refetchEmailData()]);
+          }}
+        />
       </CanvasHubPage>
     );
   }

@@ -1,20 +1,20 @@
 /**
- * Accounting Integrations - Connect with popular accounting software
- * 
- * Features:
- * - QuickBooks integration placeholder
- * - Xero integration placeholder
- * - FreshBooks integration placeholder
- * - Wave Accounting integration placeholder
+ * Accounting Integrations - Connect with accounting software
+ *
+ * Current behavior:
+ * - QuickBooks routes into the direct setup flow
+ * - Xero submits a platform-reviewed connection request
+ * - Other providers can be requested from the page and tracked by the platform team
  */
 
-import { useState } from "react";
+import { useState, type ChangeEvent } from "react";
 import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { UniversalModal, UniversalModalHeader, UniversalModalTitle, UniversalModalDescription, UniversalModalContent } from '@/components/ui/universal-modal';
 import { useToast } from "@/hooks/use-toast";
@@ -110,6 +110,10 @@ export default function AccountingIntegrations() {
   const [selectedIntegration, setSelectedIntegration] = useState<AccountingIntegration | null>(null);
   const [apiKey, setApiKey] = useState('');
   const [isConnecting, setIsConnecting] = useState(false);
+  const [requestDialogOpen, setRequestDialogOpen] = useState(false);
+  const [requestedIntegrationName, setRequestedIntegrationName] = useState('');
+  const [requestNotes, setRequestNotes] = useState('');
+  const [isSubmittingRequest, setIsSubmittingRequest] = useState(false);
 
   const handleConnect = (integration: AccountingIntegration) => {
     if (integration.id === 'quickbooks') {
@@ -118,6 +122,12 @@ export default function AccountingIntegrations() {
     }
     setSelectedIntegration(integration);
     setConnectDialogOpen(true);
+  };
+
+  const openRequestDialog = (integrationName = '') => {
+    setRequestedIntegrationName(integrationName);
+    setRequestNotes('');
+    setRequestDialogOpen(true);
   };
 
   const handleSubmitConnection = async () => {
@@ -155,6 +165,43 @@ export default function AccountingIntegrations() {
     }
   };
 
+  const handleSubmitIntegrationRequest = async () => {
+    const integrationName = requestedIntegrationName.trim();
+    if (!integrationName) return;
+
+    setIsSubmittingRequest(true);
+    try {
+      const integrationId = `custom-request-${integrationName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`;
+      const res = await apiRequest('POST', '/api/integrations/connection-request', {
+        integrationId,
+        integrationName,
+        notes: requestNotes.trim() || undefined,
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body?.error || 'Failed to submit integration request');
+      }
+
+      toast({
+        title: 'Integration Request Submitted',
+        description: `${integrationName} has been requested for your workspace. The platform team will review and follow up within 24-48 business hours.`,
+      });
+
+      setRequestDialogOpen(false);
+      setRequestedIntegrationName('');
+      setRequestNotes('');
+    } catch (err: any) {
+      toast({
+        title: 'Request Failed',
+        description: err?.message || 'Could not submit your integration request. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmittingRequest(false);
+    }
+  };
+
   const getStatusBadge = (status: AccountingIntegration['status']) => {
     switch (status) {
       case 'connected':
@@ -162,7 +209,7 @@ export default function AccountingIntegrations() {
       case 'available':
         return <Badge variant="outline">Available</Badge>;
       case 'coming_soon':
-        return <Badge variant="outline" className="text-muted-foreground">Available in a future update</Badge>;
+        return null;
     }
   };
 
@@ -204,7 +251,9 @@ export default function AccountingIntegrations() {
                     </div>
                     <div className="min-w-0">
                       <CardTitle className="text-base sm:text-lg truncate">{integration.name}</CardTitle>
-                      <div className="mt-1">{getStatusBadge(integration.status)}</div>
+                      {getStatusBadge(integration.status) && (
+                        <div className="mt-1">{getStatusBadge(integration.status)}</div>
+                      )}
                     </div>
                   </div>
                   {integration.website && (
@@ -218,6 +267,11 @@ export default function AccountingIntegrations() {
               </CardHeader>
               <CardContent>
                 <CardDescription className="mb-4 text-xs sm:text-sm">{integration.description}</CardDescription>
+                {integration.status === 'coming_soon' && (
+                  <p className="mb-4 text-xs sm:text-sm text-muted-foreground">
+                    Available in a future update. Request access to help us prioritize this integration for your workspace.
+                  </p>
+                )}
                 <div className="space-y-2">
                   {integration.features.slice(0, 4).map((feature, idx) => (
                     <div key={idx} className="flex items-center gap-2 text-xs sm:text-sm">
@@ -243,8 +297,8 @@ export default function AccountingIntegrations() {
                     Manage Connection
                   </Button>
                 ) : (
-                  <Button variant="outline" className="w-full text-muted-foreground" disabled>
-                    Available in a future update
+                  <Button variant="secondary" className="w-full" onClick={() => openRequestDialog(integration.name)}>
+                    Request Early Access
                   </Button>
                 )}
               </CardFooter>
@@ -264,7 +318,7 @@ export default function AccountingIntegrations() {
           <p className="text-muted-foreground mb-4">
             We're continuously adding support for more accounting platforms. Let us know which integration would be most valuable for your business.
           </p>
-          <Button variant="outline" data-testid="button-request-integration">
+          <Button variant="outline" data-testid="button-request-integration" onClick={() => openRequestDialog()}>
             Request Integration
             <ArrowRight className="w-4 h-4 ml-2" />
           </Button>
@@ -318,6 +372,67 @@ export default function AccountingIntegrations() {
                   <>
                     <Link2 className="w-4 h-4 mr-2" />
                     Connect
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </UniversalModalContent>
+      </UniversalModal>
+
+      <UniversalModal open={requestDialogOpen} onOpenChange={setRequestDialogOpen}>
+        <UniversalModalContent>
+          <UniversalModalHeader>
+            <UniversalModalTitle>Request an Integration</UniversalModalTitle>
+            <UniversalModalDescription>
+              Tell us which accounting platform you need and any details that will help us prioritize or validate the request.
+            </UniversalModalDescription>
+          </UniversalModalHeader>
+          <div className="space-y-4 mt-4">
+            <div className="space-y-2">
+              <Label htmlFor="requestedIntegrationName">Integration Name</Label>
+              <Input
+                id="requestedIntegrationName"
+                value={requestedIntegrationName}
+                onChange={(e) => setRequestedIntegrationName(e.target.value)}
+                placeholder="e.g. Sage Intacct, NetSuite, Zoho Books"
+                data-testid="input-requested-integration-name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="requestNotes">Notes</Label>
+              <Textarea
+                id="requestNotes"
+                value={requestNotes}
+                onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setRequestNotes(e.target.value)}
+                placeholder="Share the workflow you need, timeline, or any accounting requirements."
+                data-testid="input-requested-integration-notes"
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setRequestDialogOpen(false)}
+                className="flex-1"
+                data-testid="button-cancel-integration-request"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSubmitIntegrationRequest}
+                disabled={isSubmittingRequest || !requestedIntegrationName.trim()}
+                className="flex-1"
+                data-testid="button-submit-integration-request"
+              >
+                {isSubmittingRequest ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                    Submitting...
+                  </>
+                ) : (
+                  <>
+                    <ArrowRight className="w-4 h-4 mr-2" />
+                    Submit Request
                   </>
                 )}
               </Button>

@@ -2924,6 +2924,45 @@ export default function Settings() {
       icon: Scale 
     },
   ];
+  const configuredStatusCount = statusItems.filter((item) => item.enabled).length;
+  const workspaceDisplayName = workspaceName || (workspace as any)?.name || 'your workspace';
+  const settingsReadinessItems = [
+    {
+      label: 'Workspace profile',
+      ready: Boolean(workspaceDisplayName && workspaceDisplayName !== 'your workspace'),
+      detail: workspaceDisplayName,
+    },
+    {
+      label: 'Staffing email',
+      ready: Boolean(staffingEmailConfig?.orgCode),
+      detail: staffingEmailConfig?.orgCode
+        ? `staffing@${staffingEmailConfig.orgCode}.${DOMAINS.root}`
+        : 'Add an org code to activate routing',
+    },
+    {
+      label: 'Alerts',
+      ready: enableEmail || enablePush || (enableSms && smsStatus?.configured),
+      detail: enableEmail || enablePush || (enableSms && smsStatus?.configured)
+        ? 'At least one delivery channel is active'
+        : 'Turn on email, push, or SMS alerts',
+    },
+    {
+      label: 'Automation',
+      ready: autoSchedulingEnabled || autoPayrollEnabled || autoInvoicingEnabled,
+      detail: autoSchedulingEnabled || autoPayrollEnabled || autoInvoicingEnabled
+        ? 'At least one recurring workflow is enabled'
+        : 'Enable scheduling, payroll, or invoicing automation',
+    },
+  ];
+  const readinessCompleteCount = settingsReadinessItems.filter((item) => item.ready).length;
+  const recommendedSection: SettingsSection =
+    !settingsReadinessItems[1].ready
+      ? 'organization'
+      : !settingsReadinessItems[2].ready
+        ? 'notifications'
+        : !settingsReadinessItems[3].ready
+          ? 'automation'
+          : 'quick';
 
   const headerAction = undefined;
 
@@ -2934,6 +2973,59 @@ export default function Settings() {
     </div>
   ) : (
     <div className="space-y-4 sm:space-y-6">
+        <Card className="border-primary/20 bg-gradient-to-br from-primary/10 via-background to-background">
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Settings2 className="h-5 w-5 text-primary" />
+                  <Badge variant="secondary" className="text-xs">
+                    {readinessCompleteCount === settingsReadinessItems.length ? 'Ready to run' : 'Setup in progress'}
+                  </Badge>
+                </div>
+                <div className="space-y-1">
+                  <h2 className="text-lg sm:text-xl font-semibold">Keep {workspaceDisplayName} aligned and responsive</h2>
+                  <p className="text-sm text-muted-foreground max-w-2xl">
+                    Settings are healthiest when routing, alerts, and automation are all configured. Right now {configuredStatusCount} of {statusItems.length} quick controls are active and {readinessCompleteCount} of {settingsReadinessItems.length} core setup checkpoints are complete.
+                  </p>
+                </div>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2 lg:w-[28rem]">
+                {settingsReadinessItems.map((item) => (
+                  <div
+                    key={item.label}
+                    className="rounded-lg border bg-background/80 p-3"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-medium">{item.label}</span>
+                      {item.ready ? (
+                        <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                      ) : (
+                        <AlertTriangle className="h-4 w-4 text-amber-500" />
+                      )}
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">{item.detail}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setActiveSection(recommendedSection)}
+                data-testid="button-settings-next-best-step"
+              >
+                Open {SETTINGS_SECTIONS.find((section) => section.id === recommendedSection)?.label || 'Quick Settings'}
+                <ChevronRight className="ml-1 h-4 w-4" />
+              </Button>
+              <p className="text-xs text-muted-foreground">
+                Quiet pages are normal for new tenants. The fastest path to a more alive workspace is to finish routing, alert delivery, and at least one automated workflow.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Quick Status Overview - Compact on mobile */}
         <Card className="bg-muted/30">
           <CardContent className="py-3 sm:py-4 px-3 sm:px-6">

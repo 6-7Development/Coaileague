@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { CanvasHubPage, type CanvasPageConfig } from "@/components/canvas-hub";
 import { PageSkeleton } from "@/components/ui/skeleton-loaders";
+import { DashboardLoadError } from "@/components/dashboard/DashboardLoadError";
 import { useAuth } from "@/hooks/useAuth";
 import { format } from "date-fns";
 
@@ -27,7 +28,7 @@ export default function SupervisorDashboard() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: clockStatus, isLoading: clockLoading } = useQuery<{ isClockedIn: boolean; activeTimeEntry?: any }>({
+  const { data: clockStatus, isLoading: clockLoading, isError: clockIsError, error: clockError, refetch: refetchClockStatus } = useQuery<{ isClockedIn: boolean; activeTimeEntry?: any }>({
     queryKey: ["/api/time-entries/status"],
     staleTime: 30000,
   });
@@ -37,14 +38,14 @@ export default function SupervisorDashboard() {
     staleTime: 30000,
   });
 
-  const { data: incidentsRes, isLoading: incidentsLoading } = useQuery<any[] | { data: any[] }>({
+  const { data: incidentsRes, isLoading: incidentsLoading, isError: incidentsIsError, error: incidentsError, refetch: refetchIncidents } = useQuery<any[] | { data: any[] }>({
     queryKey: ["/api/incidents"],
     staleTime: 60000,
   });
 
   const isLoading = workspaceLoading || clockLoading || shiftsLoading || incidentsLoading;
-  const isError = workspaceIsError || shiftsIsError;
-  const error = workspaceError || shiftsError;
+  const isDashboardError = workspaceIsError || clockIsError || shiftsIsError || incidentsIsError;
+  const dashboardError = workspaceError || clockError || shiftsError || incidentsError;
 
   const shifts: any[] = Array.isArray(shiftsRes)
     ? shiftsRes
@@ -65,29 +66,28 @@ export default function SupervisorDashboard() {
 
   const orgName = workspace?.name ?? "Your Organization";
 
-  if (isError) {
-    return (
-      <CanvasHubPage config={pageConfig}>
-        <div className="flex flex-col items-center justify-center min-h-[300px] gap-4 text-center p-6">
-          <AlertTriangle className="h-10 w-10 text-destructive" />
-          <div>
-            <p className="font-semibold text-destructive">Failed to load dashboard data</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              {error instanceof Error ? error.message : 'An unexpected error occurred'}
-            </p>
-          </div>
-          <Button variant="outline" onClick={() => { refetchWorkspace(); refetchShifts(); }}>
-            Try Again
-          </Button>
-        </div>
-      </CanvasHubPage>
-    );
-  }
-
   if (isLoading) {
     return (
       <CanvasHubPage config={pageConfig}>
         <PageSkeleton />
+      </CanvasHubPage>
+    );
+  }
+
+  if (isDashboardError) {
+    return (
+      <CanvasHubPage config={pageConfig}>
+        <DashboardLoadError
+          message={dashboardError instanceof Error ? dashboardError.message : "An unexpected error occurred"}
+          onRetry={() => {
+            void Promise.allSettled([
+              refetchWorkspace(),
+              refetchClockStatus(),
+              refetchShifts(),
+              refetchIncidents(),
+            ]);
+          }}
+        />
       </CanvasHubPage>
     );
   }

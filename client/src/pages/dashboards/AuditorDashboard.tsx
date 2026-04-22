@@ -4,6 +4,7 @@ import { FileText, CheckCircle, AlertCircle, Shield, AlertTriangle } from "lucid
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CanvasHubPage, type CanvasPageConfig } from "@/components/canvas-hub";
+import { DashboardLoadError } from "@/components/dashboard/DashboardLoadError";
 
 const pageConfig: CanvasPageConfig = {
   id: "auditor-dashboard",
@@ -29,24 +30,16 @@ export default function AuditorDashboard() {
   const docs: any[] = Array.isArray(docsRes) ? docsRes : (docsRes as any)?.data ?? [];
   const orgName = workspace?.name ?? "Your Organization";
 
-  const isError = workspaceIsError || docsIsError;
-  const error = workspaceError || docsError;
-
-  if (isError) {
+  if (workspaceIsError || docsIsError) {
+    const dashboardError = workspaceError || docsError;
     return (
       <CanvasHubPage config={pageConfig}>
-        <div className="flex flex-col items-center justify-center min-h-[300px] gap-4 text-center p-6">
-          <AlertTriangle className="h-10 w-10 text-destructive" />
-          <div>
-            <p className="font-semibold text-destructive">Failed to load dashboard data</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              {error instanceof Error ? error.message : 'An unexpected error occurred'}
-            </p>
-          </div>
-          <Button variant="outline" onClick={() => { refetchWorkspace(); refetchDocs(); }}>
-            Try Again
-          </Button>
-        </div>
+        <DashboardLoadError
+          message={dashboardError instanceof Error ? dashboardError.message : "An unexpected error occurred"}
+          onRetry={() => {
+            void Promise.allSettled([refetchWorkspace(), refetchDocs()]);
+          }}
+        />
       </CanvasHubPage>
     );
   }

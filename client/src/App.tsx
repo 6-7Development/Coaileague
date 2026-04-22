@@ -1840,8 +1840,7 @@ function AppContent() {
             
             {/* Mobile Bottom Navigation - Fixed at bottom (hidden during active individual chat) */}
             {!(currentPath.startsWith('/chatrooms/') || currentPath.startsWith('/chat/')) && <MobileBottomNav />}
-            {/* Universal FAB - Trinity + Messages + Quick Actions (hidden during active chat) */}
-            {/* This is the ONE FAB for mobile per SPEC */}
+            {/* Universal FAB - work actions only (hidden during active chat) */}
             {!isChatRoute && <UniversalFAB />}
             {/* PWA Install Prompt - Shows once for mobile users */}
             <PWAInstallPrompt />
@@ -2468,6 +2467,10 @@ export default function App() {
         localStorage.setItem('coaileague_pwa_splash_seen', 'true');
       }
     } catch { /* ignore storage errors */ }
+  }, []);
+
+  useEffect(() => {
+    window.dispatchEvent(new Event("coaileague:mounted"));
   }, []);
 
   return (

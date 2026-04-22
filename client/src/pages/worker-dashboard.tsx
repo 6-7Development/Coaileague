@@ -53,6 +53,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
 import { fetchWithOfflineFallback } from "@/lib/offlineQueue";
+import { DashboardLoadError } from "@/components/dashboard/DashboardLoadError";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -750,24 +751,24 @@ export default function WorkerDashboard() {
   }, []);
 
   // Queries
-  const { data: authUser } = useQuery<AuthUser>({ queryKey: ["/api/auth/me"] });
-  const { data: clockStatus, isLoading: clockLoading, isError: clockError, error: clockErrorObj, refetch: refetchClock } = useQuery<ClockStatus>({
+  const { data: authUser, isError: authUserIsError, error: authUserError, refetch: refetchAuthUser } = useQuery<AuthUser>({ queryKey: ["/api/auth/me"] });
+  const { data: clockStatus, isLoading: clockLoading, isError: clockIsError, error: clockError, refetch: refetchClockStatus } = useQuery<ClockStatus>({
     queryKey: ["/api/time-entries/status"],
     refetchInterval: 30000,
   });
-  const { data: todayShifts, isLoading: shiftsLoading, isError: shiftsError, error: shiftsErrorObj, refetch: refetchShifts } = useQuery<TodayShift[]>({
+  const { data: todayShifts, isLoading: shiftsLoading, isError: todayShiftsIsError, error: todayShiftsError, refetch: refetchTodayShifts } = useQuery<TodayShift[]>({
     queryKey: ["/api/shifts/today"],
   });
-  const { data: upcomingShifts } = useQuery<UpcomingShift[]>({
+  const { data: upcomingShifts, isError: upcomingShiftsIsError, error: upcomingShiftsError, refetch: refetchUpcomingShifts } = useQuery<UpcomingShift[]>({
     queryKey: ["/api/shifts/upcoming"],
   });
-  const { data: earnings, isLoading: earningsLoading } = useQuery<EarningsSummary>({
+  const { data: earnings, isLoading: earningsLoading, isError: earningsIsError, error: earningsError, refetch: refetchEarnings } = useQuery<EarningsSummary>({
     queryKey: ["/api/dashboard/worker-earnings"],
   });
-  const { data: notificationsData } = useQuery<{ notifications?: Notification[]; items?: Notification[] } | Notification[]>({
+  const { data: notificationsData, isError: notificationsIsError, error: notificationsError, refetch: refetchNotifications } = useQuery<{ notifications?: Notification[]; items?: Notification[] } | Notification[]>({
     queryKey: ["/api/notifications"],
   });
-  const { data: pendingHandoff } = useQuery<PendingHandoff | null>({
+  const { data: pendingHandoff, isError: pendingHandoffIsError, error: pendingHandoffError, refetch: refetchPendingHandoff } = useQuery<PendingHandoff | null>({
     queryKey: ["/api/shift-handoff/pending"],
     queryFn: () => apiRequest("GET", "/api/shift-handoff/pending").then((r) => r.json()),
     refetchInterval: 60_000,
@@ -776,6 +777,22 @@ export default function WorkerDashboard() {
   const notifications: Notification[] = Array.isArray(notificationsData)
     ? notificationsData
     : (notificationsData as any)?.notifications || (notificationsData as any)?.items || [];
+  const isDashboardError =
+    authUserIsError ||
+    clockIsError ||
+    todayShiftsIsError ||
+    upcomingShiftsIsError ||
+    earningsIsError ||
+    notificationsIsError ||
+    pendingHandoffIsError;
+  const dashboardError =
+    authUserError ||
+    clockError ||
+    todayShiftsError ||
+    upcomingShiftsError ||
+    earningsError ||
+    notificationsError ||
+    pendingHandoffError;
 
   // Clock mutation
   const clockMutation = useMutation({
@@ -1014,25 +1031,23 @@ export default function WorkerDashboard() {
     withBottomNav: true,
   };
 
-  const isError = clockError || shiftsError;
-  const error = clockErrorObj || shiftsErrorObj;
-  const refetch = () => { refetchClock(); refetchShifts(); };
-
-  if (isError) {
+  if (isDashboardError) {
     return (
       <CanvasHubPage config={pageConfig}>
-        <div className="flex flex-col items-center justify-center min-h-[300px] gap-4 text-center p-6">
-          <AlertTriangle className="h-10 w-10 text-destructive" />
-          <div>
-            <p className="font-semibold text-destructive">Failed to load dashboard data</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              {error instanceof Error ? error.message : 'An unexpected error occurred'}
-            </p>
-          </div>
-          <Button variant="outline" onClick={() => refetch()}>
-            Try Again
-          </Button>
-        </div>
+        <DashboardLoadError
+          message={dashboardError instanceof Error ? dashboardError.message : "An unexpected error occurred"}
+          onRetry={() => {
+            void Promise.allSettled([
+              refetchAuthUser(),
+              refetchClockStatus(),
+              refetchTodayShifts(),
+              refetchUpcomingShifts(),
+              refetchEarnings(),
+              refetchNotifications(),
+              refetchPendingHandoff(),
+            ]);
+          }}
+        />
       </CanvasHubPage>
     );
   }

@@ -8,8 +8,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { DashboardLoadError } from "@/components/dashboard/DashboardLoadError";
 import {
-  UserCheck, Mail, Calendar, Clock, Phone, Headphones, ArrowRight,
+  UserCheck, Mail, Calendar, Clock, Headphones, Phone,
 } from "lucide-react";
 
 interface AccountManager {
@@ -30,7 +31,7 @@ export default function AccountManagerPage() {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  const { data: managers, isLoading } = useQuery<AccountManager[]>({
+  const { data: managers, isLoading, isError, error, refetch } = useQuery<AccountManager[]>({
     queryKey: ['/api/enterprise-features/account-manager'],
   });
 
@@ -76,12 +77,25 @@ export default function AccountManagerPage() {
     showHeader: true,
   };
 
+  if (isError) {
+    return (
+      <CanvasHubPage config={pageConfig}>
+        <DashboardLoadError
+          message={error instanceof Error ? error.message : "We couldn't load your enterprise support contact right now."}
+          onRetry={() => void refetch()}
+        />
+      </CanvasHubPage>
+    );
+  }
+
   if (isLoading) {
     return (
       <CanvasHubPage config={pageConfig}>
-        <div className="flex items-center justify-center py-12 text-muted-foreground">
-          Loading account manager information...
-        </div>
+        <Card>
+          <CardContent className="py-12 text-center text-muted-foreground">
+            We’re checking whether your workspace already has a dedicated support owner and recent contact history.
+          </CardContent>
+        </Card>
       </CanvasHubPage>
     );
   }
@@ -93,6 +107,38 @@ export default function AccountManagerPage() {
   return (
     <CanvasHubPage config={pageConfig}>
       <div className="space-y-6">
+        <Card className="border-primary/20 bg-gradient-to-br from-primary/10 via-background to-background">
+          <CardContent className="p-6">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Headphones className="h-5 w-5 text-primary" />
+                  <p className="font-semibold">Enterprise support coverage</p>
+                </div>
+                <p className="text-sm text-muted-foreground max-w-2xl">
+                  {hasManagers
+                    ? "Your enterprise support lane is active. Use this page to confirm who owns strategic follow-up, when you last heard from them, and how to escalate without leaving the platform."
+                    : "No dedicated account manager is linked yet. That usually means enterprise onboarding is still being assigned, not that support is unavailable."}
+                </p>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-3 lg:w-[30rem]">
+                <div className="rounded-lg border bg-background/80 p-3">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Coverage</p>
+                  <p className="mt-1 text-sm font-medium">{hasManagers ? 'Assigned' : 'Pending assignment'}</p>
+                </div>
+                <div className="rounded-lg border bg-background/80 p-3">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Primary contact</p>
+                  <p className="mt-1 text-sm font-medium">{primaryManager ? `${primaryManager.managerFirstName ?? ''} ${primaryManager.managerLastName ?? ''}`.trim() || 'Assigned' : 'Not linked yet'}</p>
+                </div>
+                <div className="rounded-lg border bg-background/80 p-3">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Fallback path</p>
+                  <p className="mt-1 text-sm font-medium">{CONTACTS.enterprise}</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {!hasManagers ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-16">
@@ -102,6 +148,12 @@ export default function AccountManagerPage() {
                 Enterprise accounts receive a dedicated account manager for priority support,
                 strategic guidance, and escalation handling. Request one for your organization.
               </p>
+              <div className="grid gap-2 text-left text-xs text-muted-foreground max-w-md w-full rounded-lg border bg-muted/30 p-4 mb-6">
+                <p className="font-medium text-foreground">What happens next</p>
+                <p>1. We log the request against your workspace.</p>
+                <p>2. The support team assigns the best contact for billing, rollout, and escalations.</p>
+                <p>3. This page updates with direct contact details once the assignment is complete.</p>
+              </div>
               <Button onClick={handleRequestManager} data-testid="button-request-manager">
                 <UserCheck className="h-4 w-4 mr-2" />
                 Request Account Manager

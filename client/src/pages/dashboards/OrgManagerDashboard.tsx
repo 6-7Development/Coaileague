@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { CanvasHubPage, type CanvasPageConfig } from "@/components/canvas-hub";
+import { DashboardLoadError } from "@/components/dashboard/DashboardLoadError";
 import { TrinityApprovalQueue } from "@/components/trinity/TrinityApprovalQueue";
 
 const pageConfig: CanvasPageConfig = {
@@ -24,30 +25,44 @@ export default function OrgManagerDashboard() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: pendingTimeOff = [], isError: timeOffIsError, error: timeOffError, refetch: refetchTimeOff } = useQuery<any[]>({
+  const { data: pendingTimeOff = [], isError: pendingTimeOffIsError, error: pendingTimeOffError, refetch: refetchPendingTimeOff } = useQuery<any[]>({
     queryKey: ["/api/time-off-requests/pending"],
     staleTime: 30000,
   });
 
-  const { data: pendingTimesheetEdits = [] } = useQuery<any[]>({
+  const { data: pendingTimesheetEdits = [], isError: pendingTimesheetEditsIsError, error: pendingTimesheetEditsError, refetch: refetchPendingTimesheetEdits } = useQuery<any[]>({
     queryKey: ["/api/timesheet-edit-requests/pending"],
     staleTime: 30000,
   });
 
-  const { data: pendingShifts = [] } = useQuery<any[]>({
+  const { data: pendingShifts = [], isError: pendingShiftsIsError, error: pendingShiftsError, refetch: refetchPendingShifts } = useQuery<any[]>({
     queryKey: ["/api/shift-actions/pending"],
     staleTime: 30000,
   });
 
-  const { data: pendingExpenses = [] } = useQuery<any[]>({
+  const { data: pendingExpenses = [], isError: pendingExpensesIsError, error: pendingExpensesError, refetch: refetchPendingExpenses } = useQuery<any[]>({
     queryKey: ["/api/expenses/pending-approval"],
     staleTime: 30000,
   });
 
-  const { data: employeesRes } = useQuery<{ data: any[] }>({
+  const { data: employeesRes, isError: employeesIsError, error: employeesError, refetch: refetchEmployees } = useQuery<{ data: any[] }>({
     queryKey: ["/api/employees"],
     staleTime: 60000,
   });
+  const isDashboardError =
+    workspaceIsError ||
+    pendingTimeOffIsError ||
+    pendingTimesheetEditsIsError ||
+    pendingShiftsIsError ||
+    pendingExpensesIsError ||
+    employeesIsError;
+  const dashboardError =
+    workspaceError ||
+    pendingTimeOffError ||
+    pendingTimesheetEditsError ||
+    pendingShiftsError ||
+    pendingExpensesError ||
+    employeesError;
 
   const totalPending =
     pendingTimeOff.length +
@@ -58,24 +73,22 @@ export default function OrgManagerDashboard() {
   const totalEmployees = employeesRes?.data?.length ?? 0;
   const orgName = workspace?.name ?? "Your Organization";
 
-  const isError = workspaceIsError || timeOffIsError;
-  const error = workspaceError || timeOffError;
-
-  if (isError) {
+  if (isDashboardError) {
     return (
       <CanvasHubPage config={pageConfig}>
-        <div className="flex flex-col items-center justify-center min-h-[300px] gap-4 text-center p-6">
-          <AlertTriangle className="h-10 w-10 text-destructive" />
-          <div>
-            <p className="font-semibold text-destructive">Failed to load dashboard data</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              {error instanceof Error ? error.message : 'An unexpected error occurred'}
-            </p>
-          </div>
-          <Button variant="outline" onClick={() => { refetchWorkspace(); refetchTimeOff(); }}>
-            Try Again
-          </Button>
-        </div>
+        <DashboardLoadError
+          message={dashboardError instanceof Error ? dashboardError.message : "An unexpected error occurred"}
+          onRetry={() => {
+            void Promise.allSettled([
+              refetchWorkspace(),
+              refetchPendingTimeOff(),
+              refetchPendingTimesheetEdits(),
+              refetchPendingShifts(),
+              refetchPendingExpenses(),
+              refetchEmployees(),
+            ]);
+          }}
+        />
       </CanvasHubPage>
     );
   }

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CanvasHubPage, type CanvasPageConfig } from "@/components/canvas-hub";
 import { PageSkeleton } from "@/components/ui/skeleton-loaders";
+import { DashboardLoadError } from "@/components/dashboard/DashboardLoadError";
 import { useAuth } from "@/hooks/useAuth";
 
 const pageConfig: CanvasPageConfig = {
@@ -28,7 +29,7 @@ export default function ContractorDashboard() {
     staleTime: 60000,
   });
 
-  const { data: docsRes, isLoading: docsLoading } = useQuery<any[] | { data: any[] }>({
+  const { data: docsRes, isLoading: docsLoading, isError: docsIsError, error: docsError, refetch: refetchDocs } = useQuery<any[] | { data: any[] }>({
     queryKey: ["/api/sps/documents"],
     staleTime: 60000,
   });
@@ -39,8 +40,8 @@ export default function ContractorDashboard() {
   });
 
   const isLoading = earningsLoading || docsLoading || shiftsLoading;
-  const isError = earningsIsError || shiftsIsError;
-  const error = earningsError || shiftsError;
+  const isDashboardError = earningsIsError || docsIsError || shiftsIsError;
+  const dashboardError = earningsError || docsError || shiftsError;
 
   const docs: any[] = Array.isArray(docsRes) ? docsRes : (docsRes as any)?.data ?? [];
   const pendingDocs = docs.filter((d: any) => d.status === "pending" || d.status === "requires_signature");
@@ -53,29 +54,23 @@ export default function ContractorDashboard() {
 
   const firstName = user?.firstName || user?.email?.split("@")[0] || "Contractor";
 
-  if (isError) {
-    return (
-      <CanvasHubPage config={pageConfig}>
-        <div className="flex flex-col items-center justify-center min-h-[300px] gap-4 text-center p-6">
-          <AlertTriangle className="h-10 w-10 text-destructive" />
-          <div>
-            <p className="font-semibold text-destructive">Failed to load dashboard data</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              {error instanceof Error ? error.message : 'An unexpected error occurred'}
-            </p>
-          </div>
-          <Button variant="outline" onClick={() => { refetchEarnings(); refetchShifts(); }}>
-            Try Again
-          </Button>
-        </div>
-      </CanvasHubPage>
-    );
-  }
-
   if (isLoading) {
     return (
       <CanvasHubPage config={pageConfig}>
         <PageSkeleton />
+      </CanvasHubPage>
+    );
+  }
+
+  if (isDashboardError) {
+    return (
+      <CanvasHubPage config={pageConfig}>
+        <DashboardLoadError
+          message={dashboardError instanceof Error ? dashboardError.message : "An unexpected error occurred"}
+          onRetry={() => {
+            void Promise.allSettled([refetchEarnings(), refetchDocs(), refetchShifts()]);
+          }}
+        />
       </CanvasHubPage>
     );
   }

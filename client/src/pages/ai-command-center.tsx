@@ -169,9 +169,46 @@ export default function AICommandCenter() {
     queryKey: ['/api/agent-activity/escalations/count'],
     enabled: isManagement,
   });
+  const approvalCount = approvals?.length ?? 0;
+  const patternCount = patterns?.length ?? 0;
+  const recentJobCount = recentJobs?.length ?? 0;
 
   return (
     <CanvasHubPage config={pageConfig}>
+      <Card className="mb-6 border-primary/20 bg-gradient-to-br from-primary/10 via-background to-background">
+        <CardContent className="p-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Shield className="w-5 h-5 text-primary" />
+                <p className="font-semibold">Command center context</p>
+              </div>
+              <p className="text-sm text-muted-foreground max-w-2xl">
+                This page is your top-level view into Trinity health, approvals, learned patterns, and agent activity. Low counts here can mean the platform is stable or still early in adoption, not that automation is disconnected.
+              </p>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-4 lg:w-[34rem]">
+              <div className="rounded-lg border bg-background/80 p-3">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Approvals</p>
+                <p className="mt-1 text-sm font-medium">{approvalCount}</p>
+              </div>
+              <div className="rounded-lg border bg-background/80 p-3">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Patterns</p>
+                <p className="mt-1 text-sm font-medium">{patternCount}</p>
+              </div>
+              <div className="rounded-lg border bg-background/80 p-3">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Recent jobs</p>
+                <p className="mt-1 text-sm font-medium">{recentJobCount}</p>
+              </div>
+              <div className="rounded-lg border bg-background/80 p-3">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Escalations</p>
+                <p className="mt-1 text-sm font-medium">{escalationCount?.count ?? 0}</p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Quick Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 lg:gap-4 mb-6">
         <StatCard
@@ -297,7 +334,7 @@ export default function AICommandCenter() {
                 <CardContent>
                   {healthLoading ? (
                     <div className="h-20 flex items-center justify-center">
-                      <div className="text-sm text-muted-foreground">Loading...</div>
+                      <div className="text-sm text-muted-foreground">Checking current token processing totals...</div>
                     </div>
                   ) : (
                     <div className="flex items-center justify-between gap-2">
@@ -407,7 +444,8 @@ export default function AICommandCenter() {
                   ) : (
                     <div className="text-center py-12">
                       <Activity className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                      <p className="text-muted-foreground">No recent jobs</p>
+                      <p className="text-muted-foreground font-medium">No recent jobs</p>
+                      <p className="text-sm text-muted-foreground">Recent orchestration work will appear here after new AI jobs, approvals, or automations run.</p>
                     </div>
                   )}
                 </CardContent>
@@ -533,7 +571,8 @@ function AgentActivityTab({
             ) : (
               <div className="text-center py-8">
                 <ListChecks className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">No active tasks right now</p>
+                <p className="text-sm text-muted-foreground font-medium">No active tasks right now</p>
+                <p className="text-xs text-muted-foreground">That usually means the current queue is healthy and agents are not waiting on action.</p>
               </div>
             )}
           </CardContent>
@@ -563,7 +602,8 @@ function AgentActivityTab({
           ) : (
             <div className="text-center py-8">
               <Bot className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground">No completed tasks yet</p>
+              <p className="text-sm text-muted-foreground font-medium">No completed tasks yet</p>
+              <p className="text-xs text-muted-foreground">Completed agent work will show up here after the first routed tasks finish or are escalated.</p>
             </div>
           )}
         </CardContent>
@@ -645,7 +685,8 @@ function AgentActivityTab({
             ) : (
               <div className="text-center py-8">
                 <CheckCircle className="w-10 h-10 text-green-500 mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">No escalations pending</p>
+                <p className="text-sm text-muted-foreground font-medium">No escalations pending</p>
+                <p className="text-xs text-muted-foreground">Management intervention is not currently required.</p>
               </div>
             )}
           </CardContent>
@@ -703,7 +744,8 @@ function AgentActivityTab({
             ) : (
               <div className="text-center py-8">
                 <Bot className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">No agents registered</p>
+                <p className="text-sm text-muted-foreground font-medium">No agents registered</p>
+                <p className="text-xs text-muted-foreground">Agent registry entries will appear here after organization-level agent configuration is enabled.</p>
               </div>
             )}
           </CardContent>

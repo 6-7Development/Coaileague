@@ -1,8 +1,7 @@
 /**
  * UniversalFAB
  * ============
- * Single unified floating action button that replaces both TrinityAmbientFAB
- * and the separate ChatDock bubble button — on ALL screen sizes.
+ * Single unified floating action button for work actions on all screen sizes.
  *
  * One teal Trinity button, bottom-right. Tap to expand speed-dial:
  *   • Clock In/Out  — shift-aware clock action
@@ -416,17 +415,17 @@ export function UniversalFAB() {
               height: "var(--fab-size, 56px)",
               background: isExpanded
                 ? "hsl(var(--muted))"
-                : "linear-gradient(135deg, #0D9488 0%, #0891B2 100%)",
+                : "linear-gradient(135deg, #059669 0%, #2563EB 100%)",
               boxShadow: isExpanded ? undefined : "0 4px 20px rgba(13,148,136,0.35)",
             }}
             data-testid="fab-toggle"
-            aria-label={isExpanded ? "Close" : "Open Trinity and quick actions"}
+            aria-label={isExpanded ? "Close quick actions" : "Open quick actions"}
             aria-expanded={isExpanded}
           >
             {isExpanded ? (
               <X style={{ width: "var(--fab-icon, 22px)", height: "var(--fab-icon, 22px)" }} className="text-foreground" strokeWidth={2.5} />
             ) : (
-              <TrinityLogo size={isMobile ? 28 : 26} />
+              <Clock style={{ width: isMobile ? 28 : 26, height: isMobile ? 28 : 26 }} className="text-white" strokeWidth={2.2} />
             )}
           </button>
 

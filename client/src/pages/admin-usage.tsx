@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { CanvasHubPage, type CanvasPageConfig } from "@/components/canvas-hub";
 import { useTokenMonitor } from "@/hooks/use-token-monitor";
+import { DashboardLoadError } from "@/components/dashboard/DashboardLoadError";
 
 interface CreditBalance {
   currentBalance: number;
@@ -99,17 +100,17 @@ export default function AdminUsage() {
   const [txPage, setTxPage] = useState(0);
   const txLimit = 20;
 
-  const { data: balance, isLoading: balanceLoading } = useQuery<CreditBalance>({
+  const { data: balance, isLoading: balanceLoading, isError: balanceError, error: balanceQueryError, refetch: refetchBalance } = useQuery<CreditBalance>({
     queryKey: ['/api/usage/tokens'],
     enabled: isAuthenticated,
   });
 
-  const { data: usage } = useQuery<CreditUsageBreakdown[]>({
+  const { data: usage, isError: usageError, error: usageQueryError, refetch: refetchUsage } = useQuery<CreditUsageBreakdown[]>({
     queryKey: ['/api/usage/token-breakdown'],
     enabled: isAuthenticated,
   });
 
-  const { data: transactions, isLoading: txLoading } = useQuery<CreditTransaction[]>({
+  const { data: transactions, isLoading: txLoading, isError: txError, error: txQueryError, refetch: refetchTransactions } = useQuery<CreditTransaction[]>({
     queryKey: ['/api/usage/token-log', { limit: txLimit, offset: txPage * txLimit }],
     enabled: isAuthenticated,
   });
@@ -132,6 +133,10 @@ export default function AdminUsage() {
 
   const usagePercent = !isUnlimitedUser && tokensAllowance
     ? Math.min(100, (tokensUsed / tokensAllowance) * 100) : 0;
+  const usageQueryFailed = balanceError || usageError || txError;
+  const currentQueryError = balanceQueryError ?? usageQueryError ?? txQueryError;
+  const usageEventsCount = transactions?.length ?? 0;
+  const usageBreakdownCount = usage?.length ?? 0;
 
   function formatTokens(n: number): string {
     if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -146,9 +151,58 @@ export default function AdminUsage() {
     category: 'admin',
   };
 
+  if (usageQueryFailed) {
+    return (
+      <CanvasHubPage config={pageConfig}>
+        <DashboardLoadError
+          message={currentQueryError instanceof Error ? currentQueryError.message : "We couldn't load this workspace's token usage right now."}
+          onRetry={() => {
+            void refetchBalance();
+            void refetchUsage();
+            void refetchTransactions();
+          }}
+        />
+      </CanvasHubPage>
+    );
+  }
+
   return (
     <CanvasHubPage config={pageConfig}>
       <div className="space-y-6" data-testid="page-credit-usage">
+        <Card className="border-primary/20 bg-gradient-to-br from-primary/10 via-background to-background">
+          <CardContent className="p-6">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Cpu className="h-5 w-5 text-primary" />
+                  <p className="font-semibold">Usage context</p>
+                </div>
+                <p className="text-sm text-muted-foreground max-w-2xl">
+                  {isUnlimitedUser
+                    ? "This workspace is on an unlimited allowance, so the main signal here is what Trinity is being used for and where overage would start if plan rules change."
+                    : tokensUsed > 0
+                      ? `This workspace has used ${formatTokens(tokensUsed)} tokens this period. Track the breakdown below to see which workflows are actually driving cost.`
+                      : "No AI usage has posted for this period yet. That can be normal for a new or quiet workspace and does not mean the billing pipeline is broken."}
+                </p>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-3 lg:w-[30rem]">
+                <div className="rounded-lg border bg-background/80 p-3">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Plan mode</p>
+                  <p className="mt-1 text-sm font-medium">{isUnlimitedUser ? 'Unlimited allowance' : 'Metered monthly allowance'}</p>
+                </div>
+                <div className="rounded-lg border bg-background/80 p-3">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Tracked actions</p>
+                  <p className="mt-1 text-sm font-medium">{usageBreakdownCount} action type{usageBreakdownCount === 1 ? '' : 's'}</p>
+                </div>
+                <div className="rounded-lg border bg-background/80 p-3">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Recent events</p>
+                  <p className="mt-1 text-sm font-medium">{usageEventsCount} log entr{usageEventsCount === 1 ? 'y' : 'ies'}</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Token Overview */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4">
           <Card data-testid="card-current-balance">
@@ -240,16 +294,16 @@ export default function AdminUsage() {
 
 
         {/* Usage Breakdown by Action Type */}
-        {usage && usage.length > 0 && (
-          <Card data-testid="card-usage-breakdown">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Zap className="h-5 w-5 text-primary" />
-                Token Usage Breakdown
-              </CardTitle>
-              <CardDescription>Tokens consumed per action type this month</CardDescription>
-            </CardHeader>
-            <CardContent>
+        <Card data-testid="card-usage-breakdown">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Zap className="h-5 w-5 text-primary" />
+              Token Usage Breakdown
+            </CardTitle>
+            <CardDescription>Tokens consumed per action type this month</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {usage && usage.length > 0 ? (
               <div className="space-y-3">
                 {usage.map((item) => {
                   const totalUsed = usage.reduce((sum, u) => sum + u.totalCredits, 0);
@@ -271,9 +325,17 @@ export default function AdminUsage() {
                   );
                 })}
               </div>
-            </CardContent>
-          </Card>
-        )}
+            ) : (
+              <div className="rounded-lg border border-dashed p-6 text-center">
+                <Zap className="mx-auto h-8 w-8 text-muted-foreground mb-3" />
+                <p className="font-medium">No action breakdown yet</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Once Trinity or other AI workflows run in this workspace, the biggest token drivers will be listed here.
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Token Usage Log */}
         <Card data-testid="card-transaction-ledger">
