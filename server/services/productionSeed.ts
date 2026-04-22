@@ -200,10 +200,14 @@ export async function runDataCorrections(): Promise<void> {
     console.log('🔧 Data Correction: workspace_verification_settings skipped:', (err as any)?.message);
   }
 
-  // governance_approvals — idempotency + execution lock columns.
-  // Prevents duplicate pending actions and double-execution of the same
-  // approval. Columns ADD IF NOT EXISTS so this is safe on every startup
-  // regardless of whether a parallel migration has already applied it.
+  // governance_approvals — Trinity Phase 2 idempotency + execution lock columns.
+  // Prevents duplicate pending actions (via payload-hashed idempotency_key),
+  // enforces one-approval-one-execution, and rejects re-approval of
+  // completed/rejected/expired requests. Columns ADD IF NOT EXISTS so this is
+  // safe on every startup regardless of whether a parallel migration has
+  // already applied it. The dedup semantics intentionally key on
+  // idempotency_key (payload hash) rather than (workspace+action+status) so
+  // different payloads of the same action_type can coexist as pending.
   try {
     await typedExec(sql`
       ALTER TABLE governance_approvals
@@ -216,6 +220,13 @@ export async function runDataCorrections(): Promise<void> {
       CREATE UNIQUE INDEX IF NOT EXISTS idx_governance_approvals_idempotency
         ON governance_approvals (idempotency_key)
         WHERE idempotency_key IS NOT NULL
+    `);
+    // Non-unique lookup index for status + workspace so the pending-approvals
+    // dashboard query stays fast as the table grows.
+    await typedExec(sql`
+      CREATE INDEX IF NOT EXISTS idx_governance_approvals_workspace_pending
+        ON governance_approvals (workspace_id, status, created_at DESC)
+        WHERE status = 'pending'
     `);
     console.log('🔧 Data Correction: governance_approvals idempotency columns ensured');
   } catch (err) {

@@ -38,6 +38,7 @@ import { registerTrinityWorkOrderActions } from "./trinityWorkOrderActions";
 import { registerTrinityFrontierActions } from "./trinityFrontierActions";
 import { registerTrinityEnhancedModeActions } from "./trinityEnhancedModeActions";
 import { registerCognitiveBrainActions } from "./cognitiveBrainActions";
+import { trinityEventBrain } from "../trinity/trinityEventBrain";
 import { registerIntegrationBrainActions } from "./integrationBrainActions";
 import { registerDomainSupervisorActions } from "./domainSupervisorActions";
 import { registerUIShellBrainActions } from "./uiShellBrainActions";
@@ -3828,6 +3829,13 @@ class AIBrainMasterOrchestrator {
           const eventLabel = parts.slice(2).join('.');
           log.info(`[Global Workspace] ${regionName} → ${eventLabel} (confidence: ${(event as any).metadata?.confidence ?? '?'})`);
         }
+
+        // Phase 2 — Trinity Event Brain. Trinity explicitly reacts to the
+        // 60 high-priority business events flagged by the crawler audit
+        // (panic, coverage gaps, lone worker, payroll failures, invoices,
+        // incidents, compliance, contracts, employee lifecycle). Fire-and-
+        // forget inside the brain so publish() never waits on the handler.
+        await trinityEventBrain.process(event);
       }
     });
 
