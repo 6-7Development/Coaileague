@@ -1,22 +1,16 @@
 /**
  * UniversalFAB
  * ============
- * Single unified floating action button that replaces both TrinityAmbientFAB
- * and the separate ChatDock bubble button — on ALL screen sizes.
+ * Single unified floating action button for work actions on all screen sizes.
  *
- * One teal Trinity button, bottom-right. Tap to expand speed-dial:
- *   • Ask Trinity   — opens Trinity modal
- *   • Messages      — opens ChatDock bubble popup (shows unread badge)
+ * One floating button, bottom-right. Tap to expand speed-dial:
  *   • Clock In/Out  — shift-aware clock action
  *   • View Schedule — navigates to /schedule
  *   • Request Time Off — navigates to /hr/pto
- *
- * The ChatDock BubblePopup is rendered separately by UnifiedChatBubble.
- * This component only controls the FAB trigger and action menu.
  */
 
 import { secureFetch } from "@/lib/csrf";
-import { X, Clock, CalendarDays, CalendarPlus, MessageCircle, AlertTriangle, ShieldAlert, type LucideIcon } from "lucide-react";
+import { X, Clock, CalendarDays, CalendarPlus, AlertTriangle, ShieldAlert, type LucideIcon } from "lucide-react";
 import { useLocation } from "wouter";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
@@ -24,14 +18,8 @@ import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { useChatDock } from "@/contexts/ChatDockContext";
-import { useChatUnreadTotal } from "@/hooks/useChatManager";
 import { markCoreActionPerformed } from "@/lib/pushNotifications";
 import { useFABPosition } from "@/hooks/useFABPosition";
-import { useTrinityModal } from "@/components/trinity-chat-modal";
-import { TrinityLogo } from "@/components/ui/coaileague-logo-mark";
-import { useWorkspaceAccess } from "@/hooks/useWorkspaceAccess";
-import { isTrinityAccessAllowed } from "@/config/trinity";
 import { useAuth } from "@/hooks/useAuth";
 import {
   Dialog,
@@ -87,10 +75,6 @@ export function UniversalFAB() {
   const [isExpanded, setIsExpanded] = useState(false);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const { toast } = useToast();
-  const { toggleBubble } = useChatDock();
-  const totalUnread = useChatUnreadTotal();
-  const { openModal: openTrinityModal } = useTrinityModal();
-  const { workspaceRole, platformRole, isLoading: accessLoading } = useWorkspaceAccess();
   const { user } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -182,17 +166,8 @@ export function UniversalFAB() {
       if (code === "NO_SHIFT_TODAY") {
         toast({
           title: "Not Scheduled Today",
-          description: "You're not scheduled to work today. Ask Trinity for help.",
+          description: "You're not scheduled to work today. Contact your manager if you believe this is incorrect.",
           variant: "destructive",
-          action: (
-            <button
-              className="text-xs font-semibold underline"
-              onClick={() => { setIsExpanded(false); openTrinityModal(); }}
-              data-testid="toast-ask-trinity"
-            >
-              Ask Trinity
-            </button>
-          ),
         } as any);
         return;
       }
@@ -238,7 +213,6 @@ export function UniversalFAB() {
   if (!user) return null;
   if (isModalOpen) return null;
   if (keyboardVisible && !isExpanded) return null;
-  if (accessLoading) return null;
 
   const isChatRoute =
     location === "/chatrooms" ||
@@ -249,7 +223,6 @@ export function UniversalFAB() {
 
   const isClockedIn = clockStatus?.isClockedIn ?? false;
   const eligibility = clockStatus?.shiftEligibility;
-  const trinityAllowed = isTrinityAccessAllowed(workspaceRole, platformRole);
 
   const handleClockToggle = () => {
     markCoreActionPerformed();
@@ -381,46 +354,6 @@ export function UniversalFAB() {
               data-testid="fab-backdrop"
             />
             <div className="absolute bottom-[64px] right-0 flex flex-col items-end gap-2 z-40 fab-menu-enter">
-
-              {/* Ask Trinity — featured */}
-              {trinityAllowed && (
-                <button
-                  onClick={() => { setIsExpanded(false); openTrinityModal(); }}
-                  className="flex items-center gap-3 rounded-md text-white shadow-sm"
-                  style={{
-                    background: "linear-gradient(135deg, #0D9488 0%, #0891B2 100%)",
-                    padding: "10px 16px 10px 12px",
-                    boxShadow: "0 4px 20px rgba(13,148,136,0.3)",
-                  }}
-                  data-testid="fab-action-trinity"
-                >
-                  <div
-                    className="w-8 h-8 rounded-md flex items-center justify-center flex-shrink-0"
-                    style={{ background: "rgba(255,255,255,0.15)" }}
-                  >
-                    <TrinityLogo size={22} />
-                  </div>
-                  <div className="text-left">
-                    <div className="text-[12px] font-bold leading-none">Ask Trinity</div>
-                    <div className="text-[10px] opacity-80 leading-none mt-0.5">AI Copilot · Online</div>
-                  </div>
-                </button>
-              )}
-
-              {/* Messages */}
-              <QuickActionItem
-                icon={MessageCircle}
-                label={totalUnread > 0 ? `Messages (${totalUnread})` : "Messages"}
-                sublabel={totalUnread > 0 ? `${totalUnread} unread` : "Open messenger"}
-                onClick={() => {
-                  setIsExpanded(false);
-                  window.dispatchEvent(new CustomEvent("chatdock-opened"));
-                  toggleBubble();
-                }}
-                color="bg-gradient-to-r from-cyan-500 to-blue-600"
-                testId="fab-action-messages"
-              />
-
               {/* Clock In/Out */}
               <QuickActionItem
                 icon={Clock}
@@ -479,33 +412,19 @@ export function UniversalFAB() {
               height: "var(--fab-size, 56px)",
               background: isExpanded
                 ? "hsl(var(--muted))"
-                : "linear-gradient(135deg, #0D9488 0%, #0891B2 100%)",
+                : "linear-gradient(135deg, #059669 0%, #2563EB 100%)",
               boxShadow: isExpanded ? undefined : "0 4px 20px rgba(13,148,136,0.35)",
             }}
             data-testid="fab-toggle"
-            aria-label={isExpanded ? "Close" : "Open Trinity and quick actions"}
+            aria-label={isExpanded ? "Close quick actions" : "Open quick actions"}
             aria-expanded={isExpanded}
           >
             {isExpanded ? (
               <X style={{ width: "var(--fab-icon, 22px)", height: "var(--fab-icon, 22px)" }} className="text-foreground" strokeWidth={2.5} />
             ) : (
-              <TrinityLogo size={isMobile ? 28 : 26} />
+              <Clock style={{ width: isMobile ? 28 : 26, height: isMobile ? 28 : 26 }} className="text-white" strokeWidth={2.2} />
             )}
           </button>
-
-          {/* Unread badge */}
-          {totalUnread > 0 && !isExpanded && (
-            <span
-              className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full text-white flex items-center justify-center text-[10px] font-bold px-1 pointer-events-none"
-              style={{
-                background: "linear-gradient(135deg, #ef4444, #dc2626)",
-                boxShadow: "0 0 6px rgba(239,68,68,0.4)",
-              }}
-              data-testid="fab-unread-badge"
-            >
-              {totalUnread > 99 ? "99+" : totalUnread}
-            </span>
-          )}
         </div>
       </div>
     </>

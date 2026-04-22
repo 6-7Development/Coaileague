@@ -973,9 +973,17 @@ export default function Invoices() {
   if (isError) {
     return (
       <CanvasHubPage config={invoicesPageConfig}>
-        <div className="flex flex-col items-center justify-center h-64 gap-3">
-          <AlertCircle className="h-8 w-8 text-destructive" />
-          <p className="text-sm text-muted-foreground">Failed to load invoices. Please refresh.</p>
+        <div className="flex min-h-[320px] flex-col items-center justify-center gap-4 rounded-xl border border-destructive/20 bg-destructive/5 p-6 text-center">
+          <AlertCircle className="h-10 w-10 text-destructive" />
+          <div>
+            <p className="font-semibold text-foreground">Invoice data could not be loaded</p>
+            <p className="mt-1 max-w-md text-sm text-muted-foreground">
+              Billing is available, but this screen could not hydrate from the live API. Refresh and retry before making invoice decisions.
+            </p>
+          </div>
+          <Button variant="outline" onClick={() => window.location.reload()}>
+            Reload Billing
+          </Button>
         </div>
       </CanvasHubPage>
     );
@@ -1728,12 +1736,50 @@ export default function Invoices() {
                   </Table>
                 </div>
               </Card>
-            ) : (invoices ?? []).length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 text-center border-2 border-dashed rounded-lg">
-                <FileText className="h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No invoices yet</h3>
-                <p className="text-muted-foreground mb-4">Create your first invoice to get started</p>
-                <Button onClick={() => setIsCreateDialogOpen(true)} data-testid="button-create-first-invoice">Create Invoice</Button>
+            ) : isInvoicesEmpty ? (
+              <div className="rounded-xl border border-dashed border-primary/30 bg-primary/5 p-6 sm:p-8">
+                <div className="mx-auto flex max-w-4xl flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="max-w-xl text-center lg:text-left">
+                    <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 lg:mx-0">
+                      <FileText className="h-7 w-7 text-primary" />
+                    </div>
+                    <h3 className="text-xl font-semibold text-foreground">No invoices yet</h3>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      Billing is wired and ready. Seed your first invoice manually, generate one from approved time, or add a client first if the account is still empty.
+                    </p>
+                    <div className="mt-4 flex flex-wrap justify-center gap-3 lg:justify-start">
+                      <Button onClick={() => setIsCreateDialogOpen(true)} data-testid="button-create-first-invoice">
+                        Create Invoice
+                      </Button>
+                      <Button variant="outline" onClick={() => setIsGenerateDialogOpen(true)}>
+                        Generate from Time
+                      </Button>
+                      {clients.length === 0 && (
+                        <Button variant="ghost" onClick={() => setLocation("/clients")}>
+                          Add Client First
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-3 lg:w-[360px] lg:grid-cols-1">
+                    <div className="rounded-lg border border-border bg-background/80 p-4">
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground">Clients</p>
+                      <p className="mt-1 text-2xl font-semibold text-foreground">{clients.length}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">Available to bill</p>
+                    </div>
+                    <div className="rounded-lg border border-border bg-background/80 p-4">
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground">Approved hours</p>
+                      <p className="mt-1 text-2xl font-semibold text-foreground">{unbilledTimeEntries.length}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">Eligible for generation</p>
+                    </div>
+                    <div className="rounded-lg border border-border bg-background/80 p-4">
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground">Next move</p>
+                      <p className="mt-1 text-sm font-medium text-foreground">
+                        {clients.length === 0 ? "Create a client record" : unbilledTimeEntries.length > 0 ? "Generate from approved time" : "Create a manual invoice"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
             ) : filteredInvoices.length === 0 && searchQuery ? (
               <Card data-testid="card-no-results">

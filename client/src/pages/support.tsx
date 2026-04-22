@@ -285,6 +285,36 @@ export default function Support() {
           </div>
 
       <section className="space-y-6">
+        <Card className="max-w-4xl mx-auto border-primary/20 bg-gradient-to-br from-primary/10 via-background to-background">
+          <div className="p-5 sm:p-6">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <LifeBuoy className="h-5 w-5 text-primary" />
+                  <Badge variant="secondary" className="text-xs">Self-service + live support</Badge>
+                </div>
+                <h2 className="text-lg sm:text-xl font-semibold">Find answers fast, then escalate with context if you need a human</h2>
+                <p className="text-sm text-muted-foreground max-w-2xl">
+                  This help center is wired to live platform health, support intake, and the same Trinity-guided workflows your team sees in-product. If the platform is quiet or newly configured, that is expected and not a sign the support pipeline is down.
+                </p>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-3 lg:w-[28rem]">
+                <div className="rounded-lg border bg-background/80 p-3">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Best first step</p>
+                  <p className="mt-1 text-sm font-medium">Search or submit a ticket</p>
+                </div>
+                <div className="rounded-lg border bg-background/80 p-3">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Status source</p>
+                  <p className="mt-1 text-sm font-medium">{healthError ? 'Last check failed' : 'Live health summary'}</p>
+                </div>
+                <div className="rounded-lg border bg-background/80 p-3">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Escalation path</p>
+                  <p className="mt-1 text-sm font-medium">Ticket, chat, or enterprise support</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Card>
 
         {/* Search Bar */}
         <div className="max-w-xl mx-auto mb-6">
@@ -394,6 +424,13 @@ export default function Support() {
                 </div>
               ))}
             </div>
+            <p className="text-[10px] text-muted-foreground mt-3">
+              {healthError
+                ? "We couldn't confirm live service health on the last check. You can still browse help resources and submit a ticket while the next status refresh runs."
+                : overallStatus === 'loading'
+                  ? "We're checking live platform status now."
+                  : "These indicators come from the live health summary API and refresh automatically."}
+            </p>
             {healthData?.timestamp && (
               <p className="text-[10px] text-muted-foreground mt-2 text-right">
                 Last updated: {new Date(healthData.timestamp).toLocaleTimeString()}

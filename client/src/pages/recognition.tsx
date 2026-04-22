@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Trophy, Award, Users, Star, Calendar, Check, X, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiFetch, AnyResponse } from "@/lib/apiError";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
@@ -17,6 +18,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
+import { useAuth } from "@/hooks/useAuth";
 
 const nominationSchema = z.object({
   nomineeId: z.string().min(1, "Please select an officer"),
@@ -28,7 +30,9 @@ type NominationFormValues = z.infer<typeof nominationSchema>;
 
 export default function RecognitionPage() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [isNominateModalOpen, setIsNominateModalOpen] = useState(false);
+  const employeeId = (user as any)?.employeeId as string | undefined;
 
   const { data: awards, isLoading: isLoadingAwards } = useQuery<any[]>({
     queryKey: ["/api/recognition/wall"],
@@ -44,6 +48,15 @@ export default function RecognitionPage() {
 
   const { data: employees } = useQuery<any[]>({
     queryKey: ["/api/employees"],
+  });
+
+  const { data: myAwards, isLoading: isLoadingMyAwards } = useQuery<any[]>({
+    queryKey: ["/api/recognition/officer", employeeId],
+    enabled: !!employeeId,
+    queryFn: async () => {
+      const response = await apiFetch(`/api/recognition/officer/${employeeId}`, AnyResponse);
+      return Array.isArray(response) ? response : [];
+    },
   });
 
   const nominateMutation = useMutation({
@@ -103,6 +116,12 @@ export default function RecognitionPage() {
     nominateMutation.mutate(values);
   };
 
+  const getEmployeeDisplayName = (employee: any) => {
+    if (!employee) return "Unknown Officer";
+    const fullName = [employee.firstName, employee.lastName].filter(Boolean).join(" ").trim();
+    return fullName || employee.fullName || employee.fullLegalName || employee.name || employee.email || employee.id || "Unknown Officer";
+  };
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
@@ -137,7 +156,7 @@ export default function RecognitionPage() {
                         <SelectContent>
                           {employees?.map((emp) => (
                             <SelectItem key={emp.id} value={emp.id}>
-                              {emp.name}
+                              {getEmployeeDisplayName(emp)}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -288,10 +307,46 @@ export default function RecognitionPage() {
         </TabsContent>
 
         <TabsContent value="my" className="mt-6">
-          {/* My Recognition is handled by filtering in common Wall or could be a separate request */}
-          <div className="py-12 text-center text-muted-foreground">
-            Feature coming soon. View your awards on the public wall for now.
-          </div>
+          {!employeeId ? (
+            <div className="py-12 text-center text-muted-foreground">
+              This account does not have an employee profile linked yet, so personal awards cannot be shown here.
+            </div>
+          ) : isLoadingMyAwards ? (
+            <div className="py-12 text-center text-muted-foreground">
+              Loading your awards...
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {myAwards?.map((award: any) => (
+                <Card key={award.id} className="hover-elevate">
+                  <CardHeader className="flex flex-row items-center gap-4 space-y-0">
+                    <Avatar>
+                      <AvatarImage src={award.avatar_url} />
+                      <AvatarFallback>{award.officer_name?.substring(0, 2).toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex flex-col">
+                      <CardTitle className="text-lg">{award.officer_name}</CardTitle>
+                      <Badge variant="secondary" className="w-fit mt-1">
+                        {award.award_type.replace(/_/g, " ").toUpperCase()}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground italic">"{award.reason}"</p>
+                    <div className="mt-4 flex items-center text-xs text-muted-foreground">
+                      <Calendar className="mr-1 h-3 w-3" />
+                      {format(new Date(award.created_at), "MMM d, yyyy")}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+              {myAwards?.length === 0 && (
+                <div className="col-span-full py-12 text-center text-muted-foreground">
+                  No awards have been assigned to your employee profile yet.
+                </div>
+              )}
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="milestones" className="mt-6">

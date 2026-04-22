@@ -4,6 +4,7 @@ import { FileText, CheckCircle, AlertCircle, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CanvasHubPage, type CanvasPageConfig } from "@/components/canvas-hub";
+import { DashboardLoadError } from "@/components/dashboard/DashboardLoadError";
 
 const pageConfig: CanvasPageConfig = {
   id: "auditor-dashboard",
@@ -16,18 +17,32 @@ const pageConfig: CanvasPageConfig = {
 export default function AuditorDashboard() {
   const [, setLocation] = useLocation();
 
-  const { data: workspace } = useQuery<{ id: string; name?: string }>({
+  const { data: workspace, isError: workspaceIsError, error: workspaceError, refetch: refetchWorkspace } = useQuery<{ id: string; name?: string }>({
     queryKey: ["/api/workspace/current"],
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: docsRes } = useQuery<any[] | { data: any[] }>({
+  const { data: docsRes, isError: docsIsError, error: docsError, refetch: refetchDocs } = useQuery<any[] | { data: any[] }>({
     queryKey: ["/api/sps/documents"],
     staleTime: 60000,
   });
 
   const docs: any[] = Array.isArray(docsRes) ? docsRes : (docsRes as any)?.data ?? [];
   const orgName = workspace?.name ?? "Your Organization";
+
+  if (workspaceIsError || docsIsError) {
+    const dashboardError = workspaceError || docsError;
+    return (
+      <CanvasHubPage config={pageConfig}>
+        <DashboardLoadError
+          message={dashboardError instanceof Error ? dashboardError.message : "An unexpected error occurred"}
+          onRetry={() => {
+            void Promise.allSettled([refetchWorkspace(), refetchDocs()]);
+          }}
+        />
+      </CanvasHubPage>
+    );
+  }
 
   return (
     <CanvasHubPage config={pageConfig}>

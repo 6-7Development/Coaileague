@@ -4,6 +4,7 @@ import { MessageCircle, Activity, Bell, FileText, AlertCircle, Mail, Users, Cloc
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CanvasHubPage, type CanvasPageConfig } from "@/components/canvas-hub";
+import { DashboardLoadError } from "@/components/dashboard/DashboardLoadError";
 import { CONTACTS } from "@shared/platformConfig";
 import { TrinityBrainStatusPanel, AICreditBalancePanel } from "@/components/ai-brain";
 
@@ -18,7 +19,7 @@ const pageConfig: CanvasPageConfig = {
 export default function SupportManagerDashboard() {
   const [, setLocation] = useLocation();
 
-  const { data: stats } = useQuery<{
+  const { data: stats, isError: statsIsError, error: statsError, refetch: refetchStats } = useQuery<{
     support: {
       openTickets: number;
       unresolvedEscalations: number;
@@ -27,12 +28,26 @@ export default function SupportManagerDashboard() {
     };
   }>({ queryKey: ["/api/analytics/stats"], staleTime: 60000 });
 
-  const { data: emailData } = useQuery<{ emails: any[]; total: number }>({
+  const { data: emailData, isError: emailIsError, error: emailError, refetch: refetchEmailData } = useQuery<{ emails: any[]; total: number }>({
     queryKey: ["/api/email/inbox", { folder: "inbox", limit: 5 }],
     staleTime: 60000,
   });
   const unreadCount = emailData?.emails?.filter((e: any) => !e.is_read).length ?? 0;
   const totalEmails = emailData?.total ?? 0;
+
+  if (statsIsError || emailIsError) {
+    const dashboardError = statsError || emailError;
+    return (
+      <CanvasHubPage config={pageConfig}>
+        <DashboardLoadError
+          message={dashboardError instanceof Error ? dashboardError.message : "An unexpected error occurred"}
+          onRetry={() => {
+            void Promise.allSettled([refetchStats(), refetchEmailData()]);
+          }}
+        />
+      </CanvasHubPage>
+    );
+  }
 
   return (
     <CanvasHubPage config={pageConfig}>

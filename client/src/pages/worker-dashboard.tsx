@@ -53,6 +53,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
 import { fetchWithOfflineFallback } from "@/lib/offlineQueue";
+import { DashboardLoadError } from "@/components/dashboard/DashboardLoadError";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -750,24 +751,24 @@ export default function WorkerDashboard() {
   }, []);
 
   // Queries
-  const { data: authUser } = useQuery<AuthUser>({ queryKey: ["/api/auth/me"] });
-  const { data: clockStatus, isLoading: clockLoading } = useQuery<ClockStatus>({
+  const { data: authUser, isError: authUserIsError, error: authUserError, refetch: refetchAuthUser } = useQuery<AuthUser>({ queryKey: ["/api/auth/me"] });
+  const { data: clockStatus, isLoading: clockLoading, isError: clockIsError, error: clockError, refetch: refetchClockStatus } = useQuery<ClockStatus>({
     queryKey: ["/api/time-entries/status"],
     refetchInterval: 30000,
   });
-  const { data: todayShifts, isLoading: shiftsLoading } = useQuery<TodayShift[]>({
+  const { data: todayShifts, isLoading: shiftsLoading, isError: todayShiftsIsError, error: todayShiftsError, refetch: refetchTodayShifts } = useQuery<TodayShift[]>({
     queryKey: ["/api/shifts/today"],
   });
-  const { data: upcomingShifts } = useQuery<UpcomingShift[]>({
+  const { data: upcomingShifts, isError: upcomingShiftsIsError, error: upcomingShiftsError, refetch: refetchUpcomingShifts } = useQuery<UpcomingShift[]>({
     queryKey: ["/api/shifts/upcoming"],
   });
-  const { data: earnings, isLoading: earningsLoading } = useQuery<EarningsSummary>({
+  const { data: earnings, isLoading: earningsLoading, isError: earningsIsError, error: earningsError, refetch: refetchEarnings } = useQuery<EarningsSummary>({
     queryKey: ["/api/dashboard/worker-earnings"],
   });
-  const { data: notificationsData } = useQuery<{ notifications?: Notification[]; items?: Notification[] } | Notification[]>({
+  const { data: notificationsData, isError: notificationsIsError, error: notificationsError, refetch: refetchNotifications } = useQuery<{ notifications?: Notification[]; items?: Notification[] } | Notification[]>({
     queryKey: ["/api/notifications"],
   });
-  const { data: pendingHandoff } = useQuery<PendingHandoff | null>({
+  const { data: pendingHandoff, isError: pendingHandoffIsError, error: pendingHandoffError, refetch: refetchPendingHandoff } = useQuery<PendingHandoff | null>({
     queryKey: ["/api/shift-handoff/pending"],
     queryFn: () => apiRequest("GET", "/api/shift-handoff/pending").then((r) => r.json()),
     refetchInterval: 60_000,
@@ -776,6 +777,22 @@ export default function WorkerDashboard() {
   const notifications: Notification[] = Array.isArray(notificationsData)
     ? notificationsData
     : (notificationsData as any)?.notifications || (notificationsData as any)?.items || [];
+  const isDashboardError =
+    authUserIsError ||
+    clockIsError ||
+    todayShiftsIsError ||
+    upcomingShiftsIsError ||
+    earningsIsError ||
+    notificationsIsError ||
+    pendingHandoffIsError;
+  const dashboardError =
+    authUserError ||
+    clockError ||
+    todayShiftsError ||
+    upcomingShiftsError ||
+    earningsError ||
+    notificationsError ||
+    pendingHandoffError;
 
   // Clock mutation
   const clockMutation = useMutation({
@@ -1013,6 +1030,27 @@ export default function WorkerDashboard() {
     onRefresh: () => queryClient.invalidateQueries(),
     withBottomNav: true,
   };
+
+  if (isDashboardError) {
+    return (
+      <CanvasHubPage config={pageConfig}>
+        <DashboardLoadError
+          message={dashboardError instanceof Error ? dashboardError.message : "An unexpected error occurred"}
+          onRetry={() => {
+            void Promise.allSettled([
+              refetchAuthUser(),
+              refetchClockStatus(),
+              refetchTodayShifts(),
+              refetchUpcomingShifts(),
+              refetchEarnings(),
+              refetchNotifications(),
+              refetchPendingHandoff(),
+            ]);
+          }}
+        />
+      </CanvasHubPage>
+    );
+  }
 
   return (
     <CanvasHubPage config={pageConfig}>

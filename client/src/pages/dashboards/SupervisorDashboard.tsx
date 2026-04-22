@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CanvasHubPage, type CanvasPageConfig } from "@/components/canvas-hub";
 import { PageSkeleton } from "@/components/ui/skeleton-loaders";
+import { DashboardLoadError } from "@/components/dashboard/DashboardLoadError";
 import { useAuth } from "@/hooks/useAuth";
 import { format } from "date-fns";
 
@@ -20,27 +21,29 @@ export default function SupervisorDashboard() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
 
-  const { data: workspace, isLoading: workspaceLoading } = useQuery<{ id: string; name?: string }>({
+  const { data: workspace, isLoading: workspaceLoading, isError: workspaceIsError, error: workspaceError, refetch: refetchWorkspace } = useQuery<{ id: string; name?: string }>({
     queryKey: ["/api/workspace/current"],
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: clockStatus, isLoading: clockLoading } = useQuery<{ isClockedIn: boolean; activeTimeEntry?: any }>({
+  const { data: clockStatus, isLoading: clockLoading, isError: clockIsError, error: clockError, refetch: refetchClockStatus } = useQuery<{ isClockedIn: boolean; activeTimeEntry?: any }>({
     queryKey: ["/api/time-entries/status"],
     staleTime: 30000,
   });
 
-  const { data: shiftsRes, isLoading: shiftsLoading } = useQuery<any[] | { data: any[] }>({
+  const { data: shiftsRes, isLoading: shiftsLoading, isError: shiftsIsError, error: shiftsError, refetch: refetchShifts } = useQuery<any[] | { data: any[] }>({
     queryKey: ["/api/shifts"],
     staleTime: 30000,
   });
 
-  const { data: incidentsRes, isLoading: incidentsLoading } = useQuery<any[] | { data: any[] }>({
+  const { data: incidentsRes, isLoading: incidentsLoading, isError: incidentsIsError, error: incidentsError, refetch: refetchIncidents } = useQuery<any[] | { data: any[] }>({
     queryKey: ["/api/incidents"],
     staleTime: 60000,
   });
 
   const isLoading = workspaceLoading || clockLoading || shiftsLoading || incidentsLoading;
+  const isDashboardError = workspaceIsError || clockIsError || shiftsIsError || incidentsIsError;
+  const dashboardError = workspaceError || clockError || shiftsError || incidentsError;
 
   const shifts: any[] = Array.isArray(shiftsRes)
     ? shiftsRes
@@ -65,6 +68,24 @@ export default function SupervisorDashboard() {
     return (
       <CanvasHubPage config={pageConfig}>
         <PageSkeleton />
+      </CanvasHubPage>
+    );
+  }
+
+  if (isDashboardError) {
+    return (
+      <CanvasHubPage config={pageConfig}>
+        <DashboardLoadError
+          message={dashboardError instanceof Error ? dashboardError.message : "An unexpected error occurred"}
+          onRetry={() => {
+            void Promise.allSettled([
+              refetchWorkspace(),
+              refetchClockStatus(),
+              refetchShifts(),
+              refetchIncidents(),
+            ]);
+          }}
+        />
       </CanvasHubPage>
     );
   }

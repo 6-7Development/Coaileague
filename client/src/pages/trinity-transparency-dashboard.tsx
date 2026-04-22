@@ -11,13 +11,19 @@
  * Role gate: org_owner / co_owner / manager or higher.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useToast } from '@/hooks/use-toast';
+import { DashboardLoadError } from '@/components/dashboard/DashboardLoadError';
 
 async function fetchJson<T>(url: string): Promise<T> {
-  const res = await fetch(url, { credentials: 'include' });
-  if (!res.ok) throw new Error(`${res.status}: ${(await res.text()) || res.statusText}`);
-  return (await res.json()) as T;
+  try {
+    const res = await fetch(url, { credentials: 'include' });
+    if (!res.ok) throw new Error(`${res.status}: ${(await res.text()) || res.statusText}`);
+    return (await res.json()) as T;
+  } catch (error) {
+    throw error instanceof Error ? error : new Error('Request failed');
+  }
 }
 import {
   Card,
@@ -135,26 +141,45 @@ function statusBadge(status: string) {
 // ── Component ──────────────────────────────────────────────────────────────
 
 export default function TrinityTransparencyDashboard() {
+  const { toast } = useToast();
   const [selectedMonth, setSelectedMonth] = useState<string>(
     new Date().toISOString().slice(0, 7),
   );
   const [actionsPage, setActionsPage] = useState(0);
 
-  const { data: overviewData, isLoading: overviewLoading, refetch: refetchOverview } =
+  const {
+    data: overviewData,
+    isLoading: overviewLoading,
+    isError: overviewIsError,
+    error: overviewError,
+    refetch: refetchOverview,
+  } =
     useQuery<{ success: boolean; overview: OverviewData }>({
       queryKey: ['/api/trinity/transparency/overview'],
       queryFn: () => fetchJson('/api/trinity/transparency/overview'),
       refetchInterval: 60_000,
     });
 
-  const { data: costsData, isLoading: costsLoading } =
+  const {
+    data: costsData,
+    isLoading: costsLoading,
+    isError: costsIsError,
+    error: costsError,
+    refetch: refetchCosts,
+  } =
     useQuery<CostBreakdown>({
       queryKey: ['/api/trinity/transparency/cost-breakdown', selectedMonth],
       queryFn: () =>
         fetchJson(`/api/trinity/transparency/cost-breakdown?month=${selectedMonth}`),
     });
 
-  const { data: actionsData, isLoading: actionsLoading } =
+  const {
+    data: actionsData,
+    isLoading: actionsLoading,
+    isError: actionsIsError,
+    error: actionsError,
+    refetch: refetchActions,
+  } =
     useQuery<{ success: boolean; actions: ActionLog[]; total: number }>({
       queryKey: ['/api/trinity/transparency/actions', actionsPage],
       queryFn: () =>
@@ -163,14 +188,26 @@ export default function TrinityTransparencyDashboard() {
         ),
     });
 
-  const { data: decisionsData, isLoading: decisionsLoading } =
+  const {
+    data: decisionsData,
+    isLoading: decisionsLoading,
+    isError: decisionsIsError,
+    error: decisionsError,
+    refetch: refetchDecisions,
+  } =
     useQuery<{ success: boolean; decisions: Decision[]; total: number }>({
       queryKey: ['/api/trinity/transparency/decisions'],
       queryFn: () => fetchJson('/api/trinity/transparency/decisions?limit=20'),
     });
 
   // Phase 26 — Trinity voice/SMS/AI + subscription-gate activity
-  const { data: trinityActivityData, isLoading: trinityActivityLoading } =
+  const {
+    data: trinityActivityData,
+    isLoading: trinityActivityLoading,
+    isError: trinityActivityIsError,
+    error: trinityActivityError,
+    refetch: refetchTrinityActivity,
+  } =
     useQuery<{
       success: boolean;
       days: number;
@@ -193,7 +230,48 @@ export default function TrinityTransparencyDashboard() {
       queryFn: () => fetchJson('/api/trinity/transparency/trinity-activity?days=7&limit=100'),
     });
 
+  const isDashboardError =
+    overviewIsError ||
+    costsIsError ||
+    actionsIsError ||
+    decisionsIsError ||
+    trinityActivityIsError;
+  const dashboardError =
+    overviewError ||
+    costsError ||
+    actionsError ||
+    decisionsError ||
+    trinityActivityError;
+
+  useEffect(() => {
+    if (!dashboardError) return;
+    toast({
+      title: 'Failed to load transparency data',
+      description: dashboardError instanceof Error ? dashboardError.message : 'Unknown error',
+      variant: 'destructive',
+    });
+  }, [dashboardError, toast]);
+
   const overview = overviewData?.overview;
+
+  if (isDashboardError) {
+    return (
+      <div className="min-h-screen bg-[#0a0f1e] text-white flex items-center justify-center px-4">
+        <DashboardLoadError
+          message={dashboardError instanceof Error ? dashboardError.message : 'An unexpected error occurred'}
+          onRetry={() => {
+            void Promise.allSettled([
+              refetchOverview(),
+              refetchCosts(),
+              refetchActions(),
+              refetchDecisions(),
+              refetchTrinityActivity(),
+            ]);
+          }}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#0a0f1e] text-white">
@@ -210,7 +288,15 @@ export default function TrinityTransparencyDashboard() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => refetchOverview()}
+            onClick={() => {
+              void Promise.allSettled([
+                refetchOverview(),
+                refetchCosts(),
+                refetchActions(),
+                refetchDecisions(),
+                refetchTrinityActivity(),
+              ]);
+            }}
             className="text-white/60 hover:text-white"
           >
             <RefreshCw className="w-4 h-4 mr-2" />

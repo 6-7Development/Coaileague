@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -98,7 +98,7 @@ interface HelpAIStats {
 // ============================================================================
 
 function formatDuration(ms?: number | null): string {
-  if (!ms) return "—";
+  if (!ms) return "â€”";
   const s = Math.floor(ms / 1000);
   if (s < 60) return `${s}s`;
   const m = Math.floor(s / 60);
@@ -107,7 +107,7 @@ function formatDuration(ms?: number | null): string {
 }
 
 function formatTime(iso?: string): string {
-  if (!iso) return "—";
+  if (!iso) return "â€”";
   return new Date(iso).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
@@ -136,7 +136,7 @@ function ActionTypeBadge({ type }: { type: string }) {
   );
 }
 
-// ─── HelpAI v2 Activity Types ──────────────────────────────────────────────
+// â”€â”€â”€ HelpAI v2 Activity Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 interface HelpAIConversationV2 {
   id: string;
   layer: string;
@@ -290,35 +290,35 @@ export default function AdminHelpAI() {
   const statsCards = [
     {
       label: "Total Sessions",
-      value: statsLoading ? "…" : String(stats?.total ?? 0),
+      value: statsLoading ? "â€¦" : String(stats?.total ?? 0),
       icon: MessageSquare,
       color: "text-indigo-600",
       bg: "bg-indigo-50 dark:bg-indigo-950/30",
     },
     {
       label: "Resolved",
-      value: statsLoading ? "…" : `${stats?.resolved ?? 0}`,
+      value: statsLoading ? "â€¦" : `${stats?.resolved ?? 0}`,
       icon: CheckCircle,
       color: "text-green-600",
       bg: "bg-green-50 dark:bg-green-950/30",
     },
     {
       label: "Escalated to Human",
-      value: statsLoading ? "…" : `${stats?.escalated ?? 0}`,
+      value: statsLoading ? "â€¦" : `${stats?.escalated ?? 0}`,
       icon: AlertCircle,
       color: "text-red-600",
       bg: "bg-red-50 dark:bg-red-950/30",
     },
     {
       label: "Avg. Rating",
-      value: statsLoading ? "…" : stats?.avgRating ? `${Number(stats.avgRating).toFixed(1)} / 5` : "—",
+      value: statsLoading ? "â€¦" : stats?.avgRating ? `${Number(stats.avgRating).toFixed(1)} / 5` : "â€”",
       icon: Star,
       color: "text-yellow-600",
       bg: "bg-yellow-50 dark:bg-yellow-950/30",
     },
     {
       label: "Avg. Session Time",
-      value: statsLoading ? "…" : formatDuration(stats?.avgDurationMs),
+      value: statsLoading ? "â€¦" : formatDuration(stats?.avgDurationMs),
       icon: Clock,
       color: "text-violet-600",
       bg: "bg-violet-50 dark:bg-violet-950/30",
@@ -356,10 +356,8 @@ export default function AdminHelpAI() {
             <TabsTrigger value="activity" data-testid="tab-activity">
               <Activity className="h-4 w-4 mr-1" />
               HelpAI Activity
-              // @ts-ignore — TS migration: fix in refactoring sprint
               {(activityData?.summary?.pendingAlerts ?? 0) > 0 && (
                 <Badge variant="destructive" className="ml-2 text-xs">
-                  // @ts-ignore — TS migration: fix in refactoring sprint
                   {activityData?.summary?.pendingAlerts}
                 </Badge>
               )}
@@ -405,7 +403,10 @@ export default function AdminHelpAI() {
                 ) : filteredSessions.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-40 gap-2 text-muted-foreground">
                     <Bot className="h-8 w-8 opacity-30" />
-                    <p className="text-sm">No sessions found</p>
+                    <p className="text-sm font-medium">No sessions found</p>
+                    <p className="text-xs text-center max-w-xs">
+                      HelpAI sessions will appear here once users open support conversations, guest tickets are submitted, or Trinity escalates an issue into the desk.
+                    </p>
                   </div>
                 ) : (
                   <div className="divide-y">
@@ -439,7 +440,7 @@ export default function AdminHelpAI() {
                               }
                             </p>
                             <p className="text-xs text-muted-foreground mt-0.5">
-                              {formatTime(session.createdAt)} · {session.conversationMessageCount ?? 0} messages · {formatDuration(session.totalDurationMs)}
+                              {formatTime(session.createdAt)} Â· {session.conversationMessageCount ?? 0} messages Â· {formatDuration(session.totalDurationMs)}
                             </p>
                           </div>
                           <div className="flex items-center gap-1 flex-shrink-0">
@@ -522,7 +523,7 @@ export default function AdminHelpAI() {
                         { label: "Auth", value: selectedSession.authVerified ? "Verified" : "Guest" },
                         { label: "Messages", value: String(selectedSession.conversationMessageCount ?? 0) },
                         { label: "Duration", value: formatDuration(selectedSession.totalDurationMs) },
-                        { label: "Rating", value: selectedSession.satisfactionScore ? `${selectedSession.satisfactionScore}/5` : "—" },
+                        { label: "Rating", value: selectedSession.satisfactionScore ? `${selectedSession.satisfactionScore}/5` : "â€”" },
                         { label: "Escalated", value: selectedSession.wasEscalated ? "Yes" : "No" },
                         { label: "Resolved", value: selectedSession.wasResolved ? "Yes" : "No" },
                       ].map(({ label, value }) => (
@@ -723,7 +724,7 @@ export default function AdminHelpAI() {
                         </Badge>
                       </CardTitle>
                       <CardDescription className="text-xs">
-                        Questions HelpAI couldn't answer — need new FAQ entries
+                        Questions HelpAI couldn't answer â€” need new FAQ entries
                       </CardDescription>
                     </CardHeader>
                     <ScrollArea style={{ height: "280px" }}>
@@ -770,7 +771,10 @@ export default function AdminHelpAI() {
                       {(activityData?.conversations?.length ?? 0) === 0 ? (
                         <div className="flex flex-col items-center justify-center h-32 text-muted-foreground gap-2">
                           <Bot className="h-7 w-7 opacity-30" />
-                          <p className="text-sm">No conversations yet</p>
+                          <p className="text-sm font-medium">No conversations yet</p>
+                          <p className="text-xs text-center max-w-xs">
+                            Once HelpAI starts handling real user conversations, recent threads and handoff context will surface here.
+                          </p>
                         </div>
                       ) : (
                         <div className="divide-y px-4">
@@ -793,7 +797,7 @@ export default function AdminHelpAI() {
                                   )}
                                 </div>
                                 <p className="text-xs text-muted-foreground">
-                                  {conv.channelType} · Faith: {conv.faithSensitivityState}
+                                  {conv.channelType} Â· Faith: {conv.faithSensitivityState}
                                 </p>
                                 <p className="text-xs text-muted-foreground">
                                   {new Date(conv.createdAt).toLocaleString()}
@@ -812,10 +816,8 @@ export default function AdminHelpAI() {
                       <CardTitle className="text-sm flex items-center gap-2">
                         <ArrowRight className="h-4 w-4 text-muted-foreground" />
                         Command Bus
-                        // @ts-ignore — TS migration: fix in refactoring sprint
                         {(activityData?.summary?.commandBusPending ?? 0) > 0 && (
                           <Badge variant="destructive" className="ml-auto text-xs">
-                            // @ts-ignore — TS migration: fix in refactoring sprint
                             {activityData?.summary?.commandBusPending} pending
                           </Badge>
                         )}
@@ -847,7 +849,7 @@ export default function AdminHelpAI() {
                                 </Badge>
                               </div>
                               <p className="text-xs font-medium">
-                                {entry.direction === 'helpai_to_trinity' ? 'HelpAI → Trinity' : 'Trinity → HelpAI'}: {entry.messageType}
+                                {entry.direction === 'helpai_to_trinity' ? 'HelpAI â†’ Trinity' : 'Trinity â†’ HelpAI'}: {entry.messageType}
                               </p>
                               <p className="text-xs text-muted-foreground">
                                 {new Date(entry.createdAt).toLocaleString()}
@@ -882,7 +884,10 @@ export default function AdminHelpAI() {
                   ) : dockChatReports.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-48 text-muted-foreground gap-2">
                       <Inbox className="h-8 w-8" />
-                      <p className="text-sm">No client reports yet</p>
+                      <p className="text-sm font-medium">No client reports yet</p>
+                      <p className="text-xs text-center max-w-xs">
+                        DockChat reports will show up here after clients submit concerns, upload reportable issues, or Trinity summarizes escalations into shareable updates.
+                      </p>
                     </div>
                   ) : (
                     <div className="space-y-2 pr-2">
@@ -920,8 +925,8 @@ export default function AdminHelpAI() {
                                 </p>
                                 <p className="text-xs text-muted-foreground">
                                   {report.reportType.replace(/_/g, ' ')}
-                                  {report.submittedByName ? ` · ${report.submittedByName}` : ''}
-                                  {' · '}{new Date(report.createdAt).toLocaleDateString()}
+                                  {report.submittedByName ? ` Â· ${report.submittedByName}` : ''}
+                                  {' Â· '}{new Date(report.createdAt).toLocaleDateString()}
                                 </p>
                               </div>
                               <div className="flex items-center gap-1 shrink-0">
@@ -991,7 +996,7 @@ export default function AdminHelpAI() {
                         <div>
                           <CardTitle className="text-sm font-semibold">{selectedReport.title}</CardTitle>
                           <CardDescription className="text-xs mt-1">
-                            {selectedReport.reportType.replace(/_/g, ' ')} ·{' '}
+                            {selectedReport.reportType.replace(/_/g, ' ')} Â·{' '}
                             {selectedReport.submittedByName || 'Anonymous'}
                             {selectedReport.submittedByEmail ? ` (${selectedReport.submittedByEmail})` : ''}
                           </CardDescription>
@@ -1033,7 +1038,7 @@ export default function AdminHelpAI() {
                         <p className="text-xs font-medium text-muted-foreground mb-1">Client Stated</p>
                         <p className="text-sm text-foreground leading-relaxed bg-muted/50 rounded-md p-3">
                           {selectedReport.description.substring(0, 400)}
-                          {selectedReport.description.length > 400 ? '…' : ''}
+                          {selectedReport.description.length > 400 ? 'â€¦' : ''}
                         </p>
                       </div>
 

@@ -77,7 +77,6 @@ import { UniversalFAB } from "@/components/UniversalFAB";
 import { PWAInstallPrompt } from "@/components/mobile/PWAInstallPrompt";
 import { ChatDockProvider } from "@/contexts/ChatDockContext";
 import { UnifiedChatBubble } from "@/components/chatdock/ChatDock";
-import { TrinityAmbientFAB } from "@/components/trinity/TrinityAmbientFAB";
 import { TrinityActivityBar } from "@/components/trinity/TrinityActivityBar";
 import { TrinityTaskWidget } from "@/components/trinity/TrinityTaskWidget";
 // FloatingTrinityButton removed - redundant with header Trinity access
@@ -1841,8 +1840,7 @@ function AppContent() {
             
             {/* Mobile Bottom Navigation - Fixed at bottom (hidden during active individual chat) */}
             {!(currentPath.startsWith('/chatrooms/') || currentPath.startsWith('/chat/')) && <MobileBottomNav />}
-            {/* Universal FAB - Trinity + Messages + Quick Actions (hidden during active chat) */}
-            {/* This is the ONE FAB for mobile per SPEC */}
+            {/* Universal FAB - work actions only (hidden during active chat) */}
             {!isChatRoute && <UniversalFAB />}
             {/* PWA Install Prompt - Shows once for mobile users */}
             <PWAInstallPrompt />
@@ -2428,8 +2426,6 @@ function AppContent() {
         open={isAuthenticated && !consentAcknowledged && !isPublicRoute}
         onAccepted={() => setConsentAcknowledged(true)}
       />
-      {/* TrinityAmbientFAB — desktop only (returns null on mobile internally) */}
-      <TrinityAmbientFAB />
     </ProtectedRoute>
     </>
   );
@@ -2471,6 +2467,10 @@ export default function App() {
         localStorage.setItem('coaileague_pwa_splash_seen', 'true');
       }
     } catch { /* ignore storage errors */ }
+  }, []);
+
+  useEffect(() => {
+    window.dispatchEvent(new Event("coaileague:mounted"));
   }, []);
 
   return (

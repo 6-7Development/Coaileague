@@ -66,9 +66,19 @@ platformActionHub.registerAction({
 router.get("/awards", requireAuth, async (req: any, res) => {
   try {
     const { rows } = await pool.query(`
-      SELECT ra.*, e.name as officer_name, e.avatar_url
+      SELECT
+        ra.*,
+        COALESCE(
+          NULLIF(TRIM(CONCAT_WS(' ', e.first_name, e.last_name)), ''),
+          NULLIF(e.full_legal_name, ''),
+          NULLIF(e.email, ''),
+          NULLIF(u.email, ''),
+          'Unknown Officer'
+        ) AS officer_name,
+        COALESCE(NULLIF(e.avatar_url, ''), u.profile_image_url) AS avatar_url
       FROM recognition_awards ra
       LEFT JOIN employees e ON e.id = ra.officer_id
+      LEFT JOIN users u ON u.id = e.user_id
       WHERE ra.workspace_id = $1
       ORDER BY ra.created_at DESC
     `, [req.workspaceId]);
@@ -150,9 +160,19 @@ router.patch("/nominations/:id/reject", requireAuth, async (req: any, res) => {
 router.get("/wall", requireAuth, async (req: any, res) => {
   try {
     const { rows } = await pool.query(`
-      SELECT ra.*, e.name as officer_name, e.avatar_url
+      SELECT
+        ra.*,
+        COALESCE(
+          NULLIF(TRIM(CONCAT_WS(' ', e.first_name, e.last_name)), ''),
+          NULLIF(e.full_legal_name, ''),
+          NULLIF(e.email, ''),
+          NULLIF(u.email, ''),
+          'Unknown Officer'
+        ) AS officer_name,
+        COALESCE(NULLIF(e.avatar_url, ''), u.profile_image_url) AS avatar_url
       FROM recognition_awards ra
       LEFT JOIN employees e ON e.id = ra.officer_id
+      LEFT JOIN users u ON u.id = e.user_id
       WHERE ra.workspace_id = $1 AND ra.is_public = true
       ORDER BY ra.created_at DESC
       LIMIT 50
@@ -167,9 +187,19 @@ router.get("/wall", requireAuth, async (req: any, res) => {
 router.get("/officer/:officerId", requireAuth, async (req: any, res) => {
   try {
     const { rows } = await pool.query(`
-      SELECT ra.*, e.name as officer_name
+      SELECT
+        ra.*,
+        COALESCE(
+          NULLIF(TRIM(CONCAT_WS(' ', e.first_name, e.last_name)), ''),
+          NULLIF(e.full_legal_name, ''),
+          NULLIF(e.email, ''),
+          NULLIF(u.email, ''),
+          'Unknown Officer'
+        ) AS officer_name,
+        COALESCE(NULLIF(e.avatar_url, ''), u.profile_image_url) AS avatar_url
       FROM recognition_awards ra
       LEFT JOIN employees e ON e.id = ra.officer_id
+      LEFT JOIN users u ON u.id = e.user_id
       WHERE ra.officer_id = $1 AND ra.workspace_id = $2
       ORDER BY ra.created_at DESC
     `, [req.params.officerId, req.workspaceId]);
@@ -183,10 +213,22 @@ router.get("/officer/:officerId", requireAuth, async (req: any, res) => {
 router.get("/pending", requireAuth, async (req: any, res) => {
   try {
     const { rows } = await pool.query(`
-      SELECT rn.*, e.name as nominee_name, n.name as nominator_name
+      SELECT
+        rn.*,
+        COALESCE(
+          NULLIF(TRIM(CONCAT_WS(' ', e.first_name, e.last_name)), ''),
+          NULLIF(e.full_legal_name, ''),
+          NULLIF(e.email, ''),
+          'Unknown Officer'
+        ) AS nominee_name,
+        COALESCE(
+          NULLIF(TRIM(CONCAT_WS(' ', u.first_name, u.last_name)), ''),
+          NULLIF(u.email, ''),
+          'Unknown Nominator'
+        ) AS nominator_name
       FROM recognition_nominations rn
       LEFT JOIN employees e ON e.id = rn.nominee_id
-      LEFT JOIN employees n ON n.id = rn.nominator_id
+      LEFT JOIN users u ON u.id = rn.nominator_id
       WHERE rn.workspace_id = $1 AND rn.status = 'pending'
       ORDER BY rn.created_at DESC
     `, [req.workspaceId]);
@@ -200,7 +242,15 @@ router.get("/pending", requireAuth, async (req: any, res) => {
 router.get("/milestones", requireAuth, async (req: any, res) => {
   try {
     const { rows } = await pool.query(`
-      SELECT id, name, hire_date, 
+      SELECT
+             id,
+             COALESCE(
+               NULLIF(TRIM(CONCAT_WS(' ', first_name, last_name)), ''),
+               NULLIF(full_legal_name, ''),
+               NULLIF(email, ''),
+               'Unknown Officer'
+             ) AS name,
+             hire_date,
              EXTRACT(YEAR FROM age(NOW(), hire_date)) as years_at_company
       FROM employees
       WHERE workspace_id = $1 AND status = 'active'

@@ -4,6 +4,7 @@ import { Clock, Calendar, Users, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CanvasHubPage, type CanvasPageConfig } from "@/components/canvas-hub";
+import { DashboardLoadError } from "@/components/dashboard/DashboardLoadError";
 import { TrinityApprovalQueue } from "@/components/trinity/TrinityApprovalQueue";
 
 const pageConfig: CanvasPageConfig = {
@@ -17,35 +18,49 @@ const pageConfig: CanvasPageConfig = {
 export default function OrgManagerDashboard() {
   const [, setLocation] = useLocation();
 
-  const { data: workspace } = useQuery<{ id: string; name?: string }>({
+  const { data: workspace, isError: workspaceIsError, error: workspaceError, refetch: refetchWorkspace } = useQuery<{ id: string; name?: string }>({
     queryKey: ["/api/workspace/current"],
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: pendingTimeOff = [] } = useQuery<any[]>({
+  const { data: pendingTimeOff = [], isError: pendingTimeOffIsError, error: pendingTimeOffError, refetch: refetchPendingTimeOff } = useQuery<any[]>({
     queryKey: ["/api/time-off-requests/pending"],
     staleTime: 30000,
   });
 
-  const { data: pendingTimesheetEdits = [] } = useQuery<any[]>({
+  const { data: pendingTimesheetEdits = [], isError: pendingTimesheetEditsIsError, error: pendingTimesheetEditsError, refetch: refetchPendingTimesheetEdits } = useQuery<any[]>({
     queryKey: ["/api/timesheet-edit-requests/pending"],
     staleTime: 30000,
   });
 
-  const { data: pendingShifts = [] } = useQuery<any[]>({
+  const { data: pendingShifts = [], isError: pendingShiftsIsError, error: pendingShiftsError, refetch: refetchPendingShifts } = useQuery<any[]>({
     queryKey: ["/api/shift-actions/pending"],
     staleTime: 30000,
   });
 
-  const { data: pendingExpenses = [] } = useQuery<any[]>({
+  const { data: pendingExpenses = [], isError: pendingExpensesIsError, error: pendingExpensesError, refetch: refetchPendingExpenses } = useQuery<any[]>({
     queryKey: ["/api/expenses/pending-approval"],
     staleTime: 30000,
   });
 
-  const { data: employeesRes } = useQuery<{ data: any[] }>({
+  const { data: employeesRes, isError: employeesIsError, error: employeesError, refetch: refetchEmployees } = useQuery<{ data: any[] }>({
     queryKey: ["/api/employees"],
     staleTime: 60000,
   });
+  const isDashboardError =
+    workspaceIsError ||
+    pendingTimeOffIsError ||
+    pendingTimesheetEditsIsError ||
+    pendingShiftsIsError ||
+    pendingExpensesIsError ||
+    employeesIsError;
+  const dashboardError =
+    workspaceError ||
+    pendingTimeOffError ||
+    pendingTimesheetEditsError ||
+    pendingShiftsError ||
+    pendingExpensesError ||
+    employeesError;
 
   const totalPending =
     pendingTimeOff.length +
@@ -55,6 +70,26 @@ export default function OrgManagerDashboard() {
 
   const totalEmployees = employeesRes?.data?.length ?? 0;
   const orgName = workspace?.name ?? "Your Organization";
+
+  if (isDashboardError) {
+    return (
+      <CanvasHubPage config={pageConfig}>
+        <DashboardLoadError
+          message={dashboardError instanceof Error ? dashboardError.message : "An unexpected error occurred"}
+          onRetry={() => {
+            void Promise.allSettled([
+              refetchWorkspace(),
+              refetchPendingTimeOff(),
+              refetchPendingTimesheetEdits(),
+              refetchPendingShifts(),
+              refetchPendingExpenses(),
+              refetchEmployees(),
+            ]);
+          }}
+        />
+      </CanvasHubPage>
+    );
+  }
 
   return (
     <CanvasHubPage config={pageConfig}>

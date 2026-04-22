@@ -223,6 +223,42 @@ export default function MultiCompanyPage() {
         </Dialog>
       </div>
 
+      <Card className="border-primary/20 bg-gradient-to-br from-primary/10 via-background to-background">
+        <CardContent className="pt-6">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+            <div className="max-w-2xl">
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="border-primary/30 bg-primary/5 text-primary">
+                  {(subsidiaries?.length || 0) > 0 ? "Network linked" : "Network setup in progress"}
+                </Badge>
+              </div>
+              <h2 className="mt-3 text-xl font-semibold text-foreground">Build a real operating network</h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                This page becomes most useful after subsidiaries are linked and officer data starts flowing. Until then, we show honest readiness signals and the next real action instead of filler data.
+              </p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3 lg:w-[420px]">
+              <div className="rounded-lg border border-border/80 bg-background/80 p-4">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Linked workspaces</p>
+                <p className="mt-1 text-2xl font-semibold text-foreground">{subsidiaries?.length || 0}</p>
+                <p className="mt-1 text-xs text-muted-foreground">Subsidiaries, franchises, or partners</p>
+              </div>
+              <div className="rounded-lg border border-border/80 bg-background/80 p-4">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Shared officers</p>
+                <p className="mt-1 text-2xl font-semibold text-foreground">{officerPool?.length || 0}</p>
+                <p className="mt-1 text-xs text-muted-foreground">Visible in the network pool</p>
+              </div>
+              <div className="rounded-lg border border-border/80 bg-background/80 p-4">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Next move</p>
+                <p className="mt-1 text-sm font-medium text-foreground">
+                  {(subsidiaries?.length || 0) === 0 ? "Link a subsidiary workspace" : "Publish shared policy guidance"}
+                </p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Stats Bar */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="bg-primary/5 border-primary/20">
@@ -291,7 +327,7 @@ export default function MultiCompanyPage() {
               Array(4).fill(0).map((_, i) => (
                 <Card key={i} className="animate-pulse bg-slate-100 h-48" />
               ))
-            ) : (
+            ) : dashboardMetrics && dashboardMetrics.length > 0 ? (
               dashboardMetrics?.map((metric) => (
                 <Card key={metric.workspaceId} className="hover-elevate transition-all border-l-4 border-l-primary" data-testid={`card-subsidiary-${metric.workspaceId}`}>
                   <CardHeader className="flex flex-row items-center justify-between pb-2 gap-2">
@@ -335,6 +371,20 @@ export default function MultiCompanyPage() {
                   </CardFooter>
                 </Card>
               ))
+            ) : (
+              <Card className="md:col-span-2 border-dashed border-primary/30 bg-primary/5">
+                <CardContent className="py-10 text-center">
+                  <TrendingUp className="h-10 w-10 text-primary mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold">No subsidiaries linked yet</h3>
+                  <p className="text-sm text-muted-foreground max-w-xl mx-auto mt-2">
+                    Link a subsidiary, franchise, or partner workspace to see network staffing, client counts, and open shift exposure here.
+                  </p>
+                  <Button className="mt-4" onClick={() => setIsAddModalOpen(true)} data-testid="button-add-first-subsidiary">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add First Subsidiary
+                  </Button>
+                </CardContent>
+              </Card>
             )}
           </div>
 
@@ -356,9 +406,28 @@ export default function MultiCompanyPage() {
                 </TableHeader>
                 <TableBody>
                   {loadingPool ? (
-                    <TableRow><TableCell colSpan={4} className="text-center py-8">Loading officer pool...</TableCell></TableRow>
+                    <TableRow>
+                      <TableCell colSpan={4} className="py-10 text-center">
+                        <div className="space-y-2">
+                          <p className="font-medium text-foreground">Loading shared officer pool</p>
+                          <p className="text-sm text-muted-foreground">
+                            Pulling officers from linked workspaces and cross-company access rules.
+                          </p>
+                        </div>
+                      </TableCell>
+                    </TableRow>
                   ) : officerPool?.length === 0 ? (
-                    <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">No shared officers available</TableCell></TableRow>
+                    <TableRow>
+                      <TableCell colSpan={4} className="py-10">
+                        <div className="text-center">
+                          <UsersRound className="h-8 w-8 text-primary/70 mx-auto mb-3" />
+                          <p className="font-medium">No shared officers available yet</p>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Shared coverage appears here after linked subsidiaries have active officers and workspace relationships in place.
+                          </p>
+                        </div>
+                      </TableCell>
+                    </TableRow>
                   ) : (
                     officerPool?.map((officer) => (
                       <TableRow key={officer.id} data-testid={`row-officer-${officer.id}`}>
@@ -368,8 +437,8 @@ export default function MultiCompanyPage() {
                           {officer.email}<br/>{officer.phone}
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button size="sm" variant="outline" className="h-8 hover-elevate">
-                            Request Coverage
+                          <Button size="sm" variant="outline" className="h-8 hover-elevate" asChild>
+                            <Link href="/schedule">Open Schedule</Link>
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -443,6 +512,11 @@ export default function MultiCompanyPage() {
                   >
                     {broadcastMutation.isPending ? "Sending..." : "Broadcast to Network"}
                   </Button>
+                  {!(subsidiaries?.length) && (
+                    <div className="rounded-md border border-dashed border-border p-3 text-sm text-muted-foreground">
+                      Link at least one subsidiary before broadcasting shared policies. This keeps the action honest and prevents a dead send button.
+                    </div>
+                  )}
                 </form>
               </Form>
             </CardContent>
@@ -458,18 +532,18 @@ export default function MultiCompanyPage() {
                 Recent Network Reports
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2">
-              <div className="flex items-center justify-between p-2 hover:bg-slate-50 dark:hover:bg-slate-900 rounded cursor-pointer group">
-                <span className="text-sm font-medium">Q1 Consolidated P&L</span>
-                <ChevronRight className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
-              </div>
-              <div className="flex items-center justify-between p-2 hover:bg-slate-50 dark:hover:bg-slate-900 rounded cursor-pointer group">
-                <span className="text-sm font-medium">Network Compliance Audit</span>
-                <ChevronRight className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
-              </div>
-              <div className="flex items-center justify-between p-2 hover:bg-slate-50 dark:hover:bg-slate-900 rounded cursor-pointer group">
-                <span className="text-sm font-medium">Monthly Staffing Summary</span>
-                <ChevronRight className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+            <CardContent>
+              <div className="rounded-lg border border-dashed border-border/80 bg-muted/20 p-4">
+                <p className="text-sm font-medium">No network reports generated yet</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  This panel will show real consolidated reports once report generation is wired for multi-company networks. No sample or placeholder reports are being shown here.
+                </p>
+                <Button variant="outline" size="sm" className="mt-3" asChild>
+                  <Link href="/analytics">
+                    Open Analytics
+                    <ChevronRight className="h-4 w-4 ml-1" />
+                  </Link>
+                </Button>
               </div>
             </CardContent>
           </Card>

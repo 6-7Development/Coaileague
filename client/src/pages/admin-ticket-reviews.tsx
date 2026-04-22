@@ -9,25 +9,13 @@ import { Badge } from "@/components/ui/badge";
 import { Star, MessageSquare, Calendar, User } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CanvasHubPage, type CanvasPageConfig } from "@/components/canvas-hub";
+import { DashboardLoadError } from "@/components/dashboard/DashboardLoadError";
 import type { ChatConversation } from "@shared/schema";
 
 export default function AdminTicketReviews() {
-  const { data: reviews, isLoading } = useQuery<ChatConversation[]>({
+  const { data: reviews, isLoading, isError, error, refetch } = useQuery<ChatConversation[]>({
     queryKey: ['/api/helpdesk/reviews'],
   });
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <p className="text-muted-foreground">Loading reviews...</p>
-      </div>
-    );
-  }
-
-  const reviewsWithRating = reviews?.filter(r => r.rating !== null) || [];
-  const avgRating = reviewsWithRating.length > 0
-    ? (reviewsWithRating.reduce((sum, r) => sum + (r.rating || 0), 0) / reviewsWithRating.length).toFixed(1)
-    : "N/A";
 
   const pageConfig: CanvasPageConfig = {
     id: 'admin-ticket-reviews',
@@ -36,8 +24,63 @@ export default function AdminTicketReviews() {
     category: 'admin',
   };
 
+  if (isError) {
+    return (
+      <CanvasHubPage config={pageConfig}>
+        <DashboardLoadError
+          message={error instanceof Error ? error.message : "We couldn't load closed ticket feedback right now."}
+          onRetry={() => void refetch()}
+        />
+      </CanvasHubPage>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <CanvasHubPage config={pageConfig}>
+        <Card>
+          <CardContent className="py-12 text-center text-muted-foreground">
+            We're gathering closed ticket feedback and QA signals for the support team.
+          </CardContent>
+        </Card>
+      </CanvasHubPage>
+    );
+  }
+
+  const reviewsWithRating = reviews?.filter(r => r.rating !== null) || [];
+  const avgRating = reviewsWithRating.length > 0
+    ? (reviewsWithRating.reduce((sum, r) => sum + (r.rating || 0), 0) / reviewsWithRating.length).toFixed(1)
+    : "N/A";
+
   return (
     <CanvasHubPage config={pageConfig}>
+      <Card className="mb-6 border-primary/20 bg-gradient-to-br from-primary/10 via-background to-background">
+        <CardContent className="p-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="space-y-2">
+              <p className="font-semibold">Review queue health</p>
+              <p className="text-sm text-muted-foreground max-w-2xl">
+                Closed ticket reviews help support leads coach quality, confirm resolution tone, and catch recurring service gaps. A quiet queue can be normal if few tickets have been rated yet.
+              </p>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-3 lg:w-[28rem]">
+              <div className="rounded-lg border bg-background/80 p-3">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Rated tickets</p>
+                <p className="mt-1 text-sm font-medium">{reviewsWithRating.length}</p>
+              </div>
+              <div className="rounded-lg border bg-background/80 p-3">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Average rating</p>
+                <p className="mt-1 text-sm font-medium">{avgRating}</p>
+              </div>
+              <div className="rounded-lg border bg-background/80 p-3">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Unrated tickets</p>
+                <p className="mt-1 text-sm font-medium">{Math.max((reviews?.length ?? 0) - reviewsWithRating.length, 0)}</p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Stats */}
       <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-6">
         <Card>
@@ -126,9 +169,13 @@ export default function AdminTicketReviews() {
                   </Card>
                 ))
               ) : (
-                <p className="text-center text-muted-foreground py-8">
-                  No closed tickets found
-                </p>
+                <div className="rounded-lg border border-dashed p-8 text-center">
+                  <MessageSquare className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
+                  <p className="font-medium">No reviewed tickets yet</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Once support conversations are closed and rated, they'll appear here for coaching and QA review.
+                  </p>
+                </div>
               )}
             </div>
           </ScrollArea>
