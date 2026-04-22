@@ -326,12 +326,14 @@ export default function CADConsole() {
   const onScene = useMutation({
     mutationFn: (callId: string) => apiRequest("POST", `/api/cad/calls/${callId}/on-scene`, { workspaceId }),
     onSuccess: () => { invalidate(); toast({ title: "Unit on scene" }); },
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   const resolveCall = useMutation({
     mutationFn: ({ callId, notes }: { callId: string; notes: string }) =>
       apiRequest("POST", `/api/cad/calls/${callId}/resolve`, { workspaceId, resolutionNotes: notes, closedBy: user?.firstName }),
     onSuccess: () => { invalidate(); setSelectedCallId(null); toast({ title: "Call resolved" }); },
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   const changeUnitStatus = useMutation({
@@ -345,6 +347,7 @@ export default function CADConsole() {
     mutationFn: ({ id, note }: { id: string; note: string }) =>
       apiRequest("POST", `/api/cad/geofence-departures/${id}/acknowledge`, { acknowledgedBy: user?.firstName, note, workspaceId }),
     onSuccess: () => { invalidate(); toast({ title: "Departure acknowledged" }); },
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   function NewCallForm() {

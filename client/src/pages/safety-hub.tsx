@@ -51,11 +51,25 @@ export default function SafetyHub() {
   const acknowledgePanic = useMutation({
     mutationFn: (id: string) => apiRequest("POST", `/api/safety/panic/${id}/acknowledge`, { acknowledgedBy: user?.firstName, workspaceId }),
     onSuccess: () => { invalidate(); toast({ title: "Alert acknowledged" }); },
+    onError: (error: Error) => {
+      toast({
+        title: 'Acknowledge Failed',
+        description: error.message || 'Something went wrong. Please try again.',
+        variant: 'destructive',
+      });
+    },
   });
 
   const resolvePanic = useMutation({
     mutationFn: (id: string) => apiRequest("POST", `/api/safety/panic/${id}/resolve`, { resolvedBy: user?.firstName, workspaceId }),
     onSuccess: () => { invalidate(); toast({ title: "Alert resolved" }); },
+    onError: (error: Error) => {
+      toast({
+        title: 'Resolve Failed',
+        description: error.message || 'Something went wrong. Please try again.',
+        variant: 'destructive',
+      });
+    },
   });
 
   const createGeofence = useMutation({
@@ -67,12 +81,29 @@ export default function SafetyHub() {
   const deleteGeofence = useMutation({
     mutationFn: (id: string) => apiRequest("DELETE", `/api/safety/geofences/${id}`, { workspaceId }),
     onSuccess: () => { invalidate(); toast({ title: "Zone deleted" }); },
+    onError: (error: Error) => {
+      toast({
+        title: 'Delete Failed',
+        description: error.message || 'Something went wrong. Please try again.',
+        variant: 'destructive',
+      });
+    },
   });
 
   const toggleGeofence = useMutation({
     mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
       apiRequest("PATCH", `/api/safety/geofences/${id}`, { isActive, workspaceId }),
-    onSuccess: () => invalidate(),
+    onSuccess: () => {
+      invalidate();
+      toast({ title: 'Zone Updated', description: 'Geofence status changed.' });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Update Failed',
+        description: error.message || 'Something went wrong. Please try again.',
+        variant: 'destructive',
+      });
+    },
   });
 
   const createSLA = useMutation({

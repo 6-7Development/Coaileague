@@ -226,6 +226,13 @@ export default function ShiftTradingPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/shift-trading/trades"] });
       toast({ title: "Trade denied" });
     },
+    onError: (error: Error) => {
+      toast({
+        title: 'Deny Failed',
+        description: error.message || 'Something went wrong. Please try again.',
+        variant: 'destructive',
+      });
+    },
   });
 
   const acceptTradeMutation = useMutation({
@@ -240,6 +247,13 @@ export default function ShiftTradingPage() {
   const deleteAvailMutation = useMutation({
     mutationFn: (id: string) => apiRequest("DELETE", `/api/shift-trading/availability/${id}`, {}),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/shift-trading/availability"] }); toast({ title: "Availability removed" }); },
+    onError: (error: Error) => {
+      toast({
+        title: 'Delete Failed',
+        description: error.message || 'Something went wrong. Please try again.',
+        variant: 'destructive',
+      });
+    },
   });
 
   const pendingApprovals = (trades || []).filter(t => t.status === "accepted");

@@ -208,6 +208,13 @@ function NewProposalSheet({ onClose }: { onClose: () => void }) {
       toast({ title: "Proposal sent successfully" });
       onClose();
     },
+    onError: (error: Error) => {
+      toast({
+        title: 'Proposal Failed',
+        description: error.message || 'Something went wrong. Please try again.',
+        variant: 'destructive',
+      });
+    },
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -644,6 +651,14 @@ function NegotiationComposer({ threadId }: { threadId: string }) {
       queryClient.invalidateQueries({ queryKey: ["/api/sps/negotiations", threadId] });
       setMessage("");
       setPolishResult(null);
+      toast({ title: 'Message Sent', description: 'Your message has been sent.' });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Message Failed',
+        description: error.message || 'Something went wrong. Please try again.',
+        variant: 'destructive',
+      });
     },
   });
 
@@ -754,6 +769,13 @@ function ConvertContractButton({ threadId, onContractCreated }: { threadId: stri
       queryClient.invalidateQueries({ queryKey: ["/api/sps/documents"] });
       toast({ title: "Contract generated successfully" });
       onContractCreated();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Contract Generation Failed',
+        description: error.message || 'Something went wrong. Please try again.',
+        variant: 'destructive',
+      });
     },
   });
 

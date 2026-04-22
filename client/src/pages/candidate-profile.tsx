@@ -271,6 +271,13 @@ export default function CandidateProfilePage() {
       toast({ title: "Screening complete", description: "Trinity scored this candidate." });
       refetch();
     },
+    onError: (error: Error) => {
+      toast({
+        title: 'Screening Failed',
+        description: error.message || 'Something went wrong. Please try again.',
+        variant: 'destructive',
+      });
+    },
   });
 
   const sendRound1Mutation = useMutation({
@@ -278,6 +285,13 @@ export default function CandidateProfilePage() {
     onSuccess: () => {
       toast({ title: "Round 1 sent" });
       refetch();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Send Failed',
+        description: error.message || 'Something went wrong. Please try again.',
+        variant: 'destructive',
+      });
     },
   });
 
@@ -287,6 +301,13 @@ export default function CandidateProfilePage() {
       toast({ title: "Round 2 sent" });
       refetch();
     },
+    onError: (error: Error) => {
+      toast({
+        title: 'Send Failed',
+        description: error.message || 'Something went wrong. Please try again.',
+        variant: 'destructive',
+      });
+    },
   });
 
   const generateScorecardMutation = useMutation({
@@ -294,6 +315,13 @@ export default function CandidateProfilePage() {
     onSuccess: () => {
       toast({ title: "Scorecard generated" });
       refetch();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Scorecard Failed',
+        description: error.message || 'Something went wrong. Please try again.',
+        variant: 'destructive',
+      });
     },
   });
 
@@ -305,6 +333,13 @@ export default function CandidateProfilePage() {
       refetch();
       queryClient.invalidateQueries({ queryKey: ["/api/recruitment/pipeline"] });
     },
+    onError: (error: Error) => {
+      toast({
+        title: 'Stage Update Failed',
+        description: error.message || 'Something went wrong. Please try again.',
+        variant: 'destructive',
+      });
+    },
   });
 
   const decisionMutation = useMutation({
@@ -315,6 +350,13 @@ export default function CandidateProfilePage() {
       refetch();
       queryClient.invalidateQueries({ queryKey: ["/api/recruitment/candidates"] });
       queryClient.invalidateQueries({ queryKey: ["/api/recruitment/pipeline"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Decision Failed',
+        description: error.message || 'Something went wrong. Please try again.',
+        variant: 'destructive',
+      });
     },
   });
 
