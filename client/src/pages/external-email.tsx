@@ -251,8 +251,7 @@ export default function ExternalEmail() {
             <div className="flex items-center gap-2">
               <Eye className="w-5 h-5 text-purple-500" />
               <div>
-                {/* @ts-ignore */}
-                <p className="text-2xl font-bold">{emails.filter(e => e.toEmail.status === "opened").length}</p>
+                <p className="text-2xl font-bold">{emails.filter(e => e.status === "opened").length}</p>
                 <p className="text-sm text-muted-foreground">Opened</p>
               </div>
             </div>
@@ -263,8 +262,7 @@ export default function ExternalEmail() {
             <div className="flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-amber-500" />
               <div>
-                {/* @ts-ignore */}
-                <p className="text-2xl font-bold">{emails.filter(e => e.toEmail.enhancedByTrinity).length}</p>
+                <p className="text-2xl font-bold">{emails.filter(e => e.enhancedByTrinity).length}</p>
                 <p className="text-sm text-muted-foreground">Trinity Enhanced</p>
               </div>
             </div>

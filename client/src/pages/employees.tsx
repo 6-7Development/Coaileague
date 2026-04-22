@@ -43,6 +43,8 @@ import {
   ArrowUpDown,
   Calendar,
   Loader2,
+  Download,
+  X,
 } from "lucide-react";
 import { SortableHeader } from "@/components/ui/sortable-header";
 import { useTableSort } from "@/hooks/use-table-sort";
@@ -1231,8 +1233,7 @@ export default function Employees() {
   const totalPages = pagination.totalPages;
 
   return (
-    // @ts-expect-error — TS migration: fix in refactoring sprint
-    <CanvasHubPage config={employeesPageConfig} headerActions={headerActions}>
+    <CanvasHubPage config={{ ...employeesPageConfig, headerActions }}>
       <div className="space-y-6">
         <ListFilterBar
           filters={employeeFilterConfigs}
@@ -1293,8 +1294,7 @@ export default function Employees() {
                   </SortableHeader>
                 </div>
                 <div className="flex items-center">
-                  {/* @ts-ignore */}
-                  <SortableHeader column="startDate" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort}>
+                  <SortableHeader column="hireDate" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort}>
                     Hire Date
                   </SortableHeader>
                 </div>
@@ -1310,7 +1310,6 @@ export default function Employees() {
             <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mobile-cols-1 overflow-x-auto">
               {employeesToDisplay.map((employee: Employee) => {
                 const employeeCard = (
-                  // @ts-expect-error — TS migration: fix in refactoring sprint
                   <EmployeeCard
                     key={employee.id}
                     employee={employee}
@@ -1329,6 +1328,8 @@ export default function Employees() {
                     inviteMutation={inviteMutation}
                     approveMutation={approveMutation}
                     deleteMutation={deleteMutation}
+                    isSelected={selectedIds.has(employee.id)}
+                    onToggleSelect={toggleSelect}
                   />
                 );
 
@@ -1417,7 +1418,6 @@ export default function Employees() {
                         data-testid="button-bulk-export"
                         className="h-8"
                       >
-                        {/* @ts-ignore */}
                         <Download className="mr-2 h-3.5 w-3.5" />
                         Export
                       </Button>
@@ -1428,7 +1428,6 @@ export default function Employees() {
                         data-testid="button-bulk-deselect"
                         className="h-8"
                       >
-                        {/* @ts-ignore */}
                         <X className="mr-2 h-3.5 w-3.5" />
                         Deselect
                       </Button>
@@ -1596,11 +1595,11 @@ export default function Employees() {
         </UniversalModal>
 
         {selectedEmployee && (
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           <EmployeeEditDialog
             open={isEditDialogOpen}
             onOpenChange={setIsEditDialogOpen}
             employee={selectedEmployee}
+            currentUserRole={workspaceRole}
           />
         )}
       </div>

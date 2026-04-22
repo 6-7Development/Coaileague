@@ -15,6 +15,7 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { secureFetch } from "@/lib/csrf";
 import { useAuth } from "@/hooks/useAuth";
+import { isSupportTeamRole } from "@shared/config/rbac";
 import type { ApprovalRequest } from "@/hooks/useApprovals";
 
 export type TaskKind = "approval" | "onboarding" | "compliance";
@@ -94,7 +95,9 @@ const KIND_WEIGHT: Record<TaskKind, number> = {
 };
 
 export function useTrinityTasks() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
+  // Platform support staff don't have workspace onboarding; skip that fetch.
+  const isPlatformStaff = isSupportTeamRole(String((user as any)?.platformRole || ''));
 
   const approvalsQuery = useQuery<ApprovalRequest[]>({
     queryKey: ["/api/approvals", { decision: ["pending"], scope: "employee", limit: 25 }],
@@ -121,7 +124,7 @@ export function useTrinityTasks() {
       if (!res.ok) throw new Error("onboarding fetch failed");
       return res.json();
     },
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && !isPlatformStaff,
     refetchInterval: 60_000,
     retry: false,
   });

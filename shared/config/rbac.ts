@@ -476,8 +476,28 @@ export const ROLE_GROUPS = {
   PLATFORM_ADMINS: ['root_admin', 'deputy_admin'] as PlatformRole[],
   PLATFORM_OPS: ['root_admin', 'deputy_admin', 'sysop'] as PlatformRole[],
   SUPPORT_TEAM: ['root_admin', 'deputy_admin', 'sysop', 'support_manager', 'support_agent'] as PlatformRole[],
+  // Support team plus compliance — used for UI gating (Trinity Guru mode, health dashboards)
+  PLATFORM_STAFF: ['root_admin', 'deputy_admin', 'sysop', 'support_manager', 'support_agent', 'compliance_officer'] as PlatformRole[],
   AI_SERVICES: ['root_admin', 'deputy_admin', 'Bot'] as PlatformRole[],
   WORKSPACE_ADMINS: ['org_owner', 'co_owner'] as WorkspaceRole[],
   WORKSPACE_MANAGERS: ['org_owner', 'co_owner', 'department_manager'] as WorkspaceRole[],
+  // Workspace roles that receive Trinity COO mode (leadership + management tier)
+  WORKSPACE_LEADERSHIP: ['org_owner', 'co_owner', 'department_manager', 'supervisor'] as WorkspaceRole[],
   ALL_WORKSPACE: ['org_owner', 'co_owner', 'department_manager', 'supervisor', 'staff', 'limited', 'contractor'] as WorkspaceRole[],
 } as const;
+
+/**
+ * Role group membership helpers (accept any string, return boolean).
+ * These are exported so client code can gate behavior without importing types.
+ */
+export function isPlatformStaffRole(role: string | null | undefined): boolean {
+  return !!role && (ROLE_GROUPS.PLATFORM_STAFF as readonly string[]).includes(role);
+}
+
+export function isSupportTeamRole(role: string | null | undefined): boolean {
+  return !!role && (ROLE_GROUPS.SUPPORT_TEAM as readonly string[]).includes(role);
+}
+
+export function isWorkspaceLeadershipRole(role: string | null | undefined): boolean {
+  return !!role && (ROLE_GROUPS.WORKSPACE_LEADERSHIP as readonly string[]).includes(role);
+}

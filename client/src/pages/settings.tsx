@@ -90,6 +90,7 @@ import {
   Lock,
   Eye,
   EyeOff,
+  Save,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -1256,7 +1257,6 @@ function WorkspaceSettingsForm({ workspace }: { workspace: Workspace }) {
                   </>
                 ) : (
                   <>
-                    {/* @ts-ignore */}
                     <Save className="h-4 w-4 mr-2" />
                     Save Workspace Changes
                   </>
