@@ -71,9 +71,9 @@ router.post("/terminations", requireAuth, async (req: any, res) => {
           requestedBy: req.user?.id || 'unknown',
           requestedByRole: (result as any)?.workspace?.role || '',
           workspaceId: workspace.id,
-          targetId: validated.employeeId,
+          targetId: validated.employeeId || undefined,
           targetType: 'employee' as const,
-          rawCommand: validated.terminationReason || 'Employee termination',
+          rawCommand: validated.reason || 'Employee termination',
         };
         const deliberationResult = await deliberate(delibCtx);
         scheduleNonBlocking('termination.deliberation-docs', () =>
@@ -116,14 +116,18 @@ router.post("/terminations", requireAuth, async (req: any, res) => {
     // into any next employer. Non-blocking: score writes should never
     // fail a termination.
     scheduleNonBlocking('termination.cross-tenant-score', async () => {
+      if (!validated.employeeId) return;
       try {
         await pool.query(`
           UPDATE coaileague_profiles
              SET is_in_global_pool = TRUE,
-                 is_in_org_pool = FALSE,
+                 is_active_in_current_org = FALSE,
+                 departed_at = NOW(),
+                 departure_reason = $1,
                  updated_at = NOW()
-           WHERE employee_id = $1 AND workspace_id = $2
-        `, [validated.employeeId, workspace.id]);
+           WHERE employee_id = $2 AND workspace_id = $3
+        `, [validated.reason || 'terminated', validated.employeeId, workspace.id]);
+        log.info(`[CrossTenantScore] Score persisted to global pool for ${validated.employeeId}`);
       } catch (err: any) {
         log.warn('[CrossTenantScore] Persist failed (non-fatal):', err?.message);
       }

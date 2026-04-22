@@ -754,6 +754,9 @@ router.post("/invites/create", requireAuth, async (req: AuthenticatedRequest, re
     if (!user?.currentWorkspaceId) {
       return res.status(400).json({ message: "No workspace selected" });
     }
+    // Narrow for use in closures later (fire-and-forget events) where TS
+    // loses the null-refinement across await boundaries.
+    const activeWorkspaceId: string = user.currentWorkspaceId;
 
     const workspace = await storage.getWorkspace(user.currentWorkspaceId);
     let inviterRole = 'org_owner'; // default for workspace primary owner
@@ -962,7 +965,7 @@ router.post("/invites/create", requireAuth, async (req: AuthenticatedRequest, re
         const { platformEventBus } = await import('../services/platformEventBus');
         platformEventBus.publish({
           type: 'invite_created',
-          workspaceId: user.currentWorkspaceId,
+          workspaceId: activeWorkspaceId,
           metadata: {
             inviteId: invite.id,
             inviteeEmail,
@@ -981,7 +984,7 @@ router.post("/invites/create", requireAuth, async (req: AuthenticatedRequest, re
         const inviteeLabel = [inviteeFirstName, inviteeLastName].filter(Boolean).join(' ') || inviteeEmail || 'recipient';
         // @ts-expect-error — TS migration: fix in refactoring sprint
         await db.insert(auditLogs).values({
-          workspaceId: user.currentWorkspaceId,
+          workspaceId: activeWorkspaceId,
           entityType: 'invite',
           entityId: invite.id,
           action: 'invite_created',

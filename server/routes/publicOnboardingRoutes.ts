@@ -783,7 +783,6 @@ router.post('/workspace-invite/register', async (req, res) => {
           isCompleted: false,
         }));
         if (items.length > 0) {
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           await tx.insert(onboardingChecklists).values({
             workspaceId: invite.workspaceId,
             applicationId: invite.id, // use invite.id as correlation key until app row is created
