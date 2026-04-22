@@ -1187,6 +1187,17 @@ class ContractPipelineService {
               await ensureQuickBooksRecord('customer', contract.clientId, contract.workspaceId);
             }
           }
+
+          // Sync the newly created local invoice to QuickBooks (non-blocking)
+          setTimeout(async () => {
+            try {
+              const { quickbooksIntegration } = await import('../integrations/quickbooksIntegration');
+              await quickbooksIntegration.syncContractToInvoice(contract.workspaceId, contractId, invoice.id);
+              log.info(`[ContractPipeline] QB invoice sync completed for executed contract ${contractId}`);
+            } catch (err: any) {
+              log.warn('[ContractPipeline] QB invoice sync failed (non-blocking):', err?.message);
+            }
+          }, 0);
         } catch (invErr: any) {
           log.warn(`[ContractPipeline] Auto-invoice creation failed (non-fatal): ${invErr.message}`);
         }

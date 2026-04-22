@@ -188,11 +188,19 @@ function HDQuickReactionHoverBar({
  onReply: () =>void;
  onMoreActions: () =>void;
 }) {
+ const { toast } = useToast();
  const HD_QUICK_REACTIONS = ["thumbsup", "heart", "laugh", "surprise"];
  const toggleReaction = useMutation({
  mutationFn: (reactionKey: string) =>apiRequest("POST", `/api/chat/manage/messages/${messageId}/reactions`, { emoji: reactionKey }),
  onSuccess: () =>{
  queryClient.invalidateQueries({ queryKey: ['/api/chat/manage/conversations', conversationId, 'reactions'] });
+ },
+ onError: (error: Error) =>{
+ toast({
+ title: 'Reaction Failed',
+ description: error.message || 'Something went wrong. Please try again.',
+ variant: 'destructive',
+ });
  },
  });
 
@@ -822,6 +830,13 @@ export function HelpDesk(props?: HelpDeskProps & any) {
  toast({ title: "Message edited" });
  setEditingMessage(null);
  },
+ onError: (error: Error) =>{
+ toast({
+ title: 'Edit Failed',
+ description: error.message || 'Something went wrong. Please try again.',
+ variant: 'destructive',
+ });
+ },
  });
 
  const toggleReactionMutation = useMutation({
@@ -829,6 +844,13 @@ export function HelpDesk(props?: HelpDeskProps & any) {
  apiRequest("POST", `/api/chat/manage/messages/${messageId}/reactions`, { emoji }),
  onSuccess: () =>{
  queryClient.invalidateQueries({ queryKey: ['/api/chat/manage/conversations', sessionId, 'reactions'] });
+ },
+ onError: (error: Error) =>{
+ toast({
+ title: 'Reaction Failed',
+ description: error.message || 'Something went wrong. Please try again.',
+ variant: 'destructive',
+ });
  },
  });
 
@@ -838,6 +860,13 @@ export function HelpDesk(props?: HelpDeskProps & any) {
  onSuccess: () =>{
  queryClient.invalidateQueries({ queryKey: ['/api/chat/manage/conversations', sessionId, 'pinned'] });
  },
+ onError: (error: Error) =>{
+ toast({
+ title: 'Pin Failed',
+ description: error.message || 'Something went wrong. Please try again.',
+ variant: 'destructive',
+ });
+ },
  });
 
  const forwardMessageMutation = useMutation({
@@ -845,6 +874,13 @@ export function HelpDesk(props?: HelpDeskProps & any) {
  apiRequest("POST", `/api/chat/manage/messages/${messageId}/forward`, { targetConversationId }),
  onSuccess: () =>{
  toast({ title: "Message forwarded" });
+ },
+ onError: (error: Error) =>{
+ toast({
+ title: 'Forward Failed',
+ description: error.message || 'Something went wrong. Please try again.',
+ variant: 'destructive',
+ });
  },
  });
 

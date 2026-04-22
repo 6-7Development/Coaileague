@@ -307,44 +307,47 @@ export default function CADConsole() {
   const createCall = useMutation({
     mutationFn: (data: any) => apiRequest("POST", "/api/cad/calls", { ...data, workspaceId, createdBy: user?.id }),
     onSuccess: () => { invalidate(); setShowNewCall(false); toast({ title: "Call for service created" }); },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e: any) => toast({ title: "Error", description: e?.message || 'Something went wrong. Please try again.', variant: "destructive" }),
   });
 
   const createUnit = useMutation({
     mutationFn: (data: any) => apiRequest("POST", "/api/cad/units", { ...data, workspaceId }),
     onSuccess: () => { invalidate(); setShowNewUnit(false); toast({ title: "Unit registered" }); },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e: any) => toast({ title: "Error", description: e?.message || 'Something went wrong. Please try again.', variant: "destructive" }),
   });
 
   const dispatchUnit = useMutation({
     mutationFn: ({ callId, unitId }: { callId: string; unitId: string }) =>
       apiRequest("POST", `/api/cad/calls/${callId}/dispatch`, { unitId, workspaceId, dispatchedBy: user?.id, dispatchedByName: user?.firstName }),
     onSuccess: () => { invalidate(); setDispatchCallId(null); toast({ title: "Unit dispatched" }); },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e: any) => toast({ title: "Error", description: e?.message || 'Something went wrong. Please try again.', variant: "destructive" }),
   });
 
   const onScene = useMutation({
     mutationFn: (callId: string) => apiRequest("POST", `/api/cad/calls/${callId}/on-scene`, { workspaceId }),
     onSuccess: () => { invalidate(); toast({ title: "Unit on scene" }); },
+    onError: (e: any) => toast({ title: "Error", description: e?.message || 'Something went wrong. Please try again.', variant: "destructive" }),
   });
 
   const resolveCall = useMutation({
     mutationFn: ({ callId, notes }: { callId: string; notes: string }) =>
       apiRequest("POST", `/api/cad/calls/${callId}/resolve`, { workspaceId, resolutionNotes: notes, closedBy: user?.firstName }),
     onSuccess: () => { invalidate(); setSelectedCallId(null); toast({ title: "Call resolved" }); },
+    onError: (e: any) => toast({ title: "Error", description: e?.message || 'Something went wrong. Please try again.', variant: "destructive" }),
   });
 
   const changeUnitStatus = useMutation({
     mutationFn: ({ unitId, status }: { unitId: string; status: string }) =>
       apiRequest("PATCH", `/api/cad/units/${unitId}/status`, { status, workspaceId }),
     onSuccess: () => invalidate(),
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e: any) => toast({ title: "Error", description: e?.message || 'Something went wrong. Please try again.', variant: "destructive" }),
   });
 
   const acknowledgeDeparture = useMutation({
     mutationFn: ({ id, note }: { id: string; note: string }) =>
       apiRequest("POST", `/api/cad/geofence-departures/${id}/acknowledge`, { acknowledgedBy: user?.firstName, note, workspaceId }),
     onSuccess: () => { invalidate(); toast({ title: "Departure acknowledged" }); },
+    onError: (e: any) => toast({ title: "Error", description: e?.message || 'Something went wrong. Please try again.', variant: "destructive" }),
   });
 
   function NewCallForm() {
