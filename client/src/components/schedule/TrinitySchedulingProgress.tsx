@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Bot, CheckCircle2, Loader2, UserCheck, AlertCircle, Sparkles, 
-  ChevronDown, ChevronUp, Brain, FileCode, Lightbulb, ClipboardCheck,
-  Zap, Timer
+  MessageCircle, CheckCircle2, Loader2, UserCheck, AlertCircle, MessageSquare, 
+  ChevronDown, ChevronUp, Activity, FileCode, Lightbulb, ClipboardCheck,
+  Timer
 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Card } from '@/components/ui/card';
@@ -23,7 +23,7 @@ function ThinkingStepItem({ step }: { step: ThinkingStep }) {
   const getTypeIcon = (type: ThinkingStep['type']) => {
     switch (type) {
       case 'analysis':
-        return <Brain className="h-3 w-3 text-purple-500" />;
+        return <Activity className="h-3 w-3 text-purple-500" />;
       case 'decision':
         return <Lightbulb className="h-3 w-3 text-yellow-500" />;
       case 'action':
@@ -31,7 +31,7 @@ function ThinkingStepItem({ step }: { step: ThinkingStep }) {
       case 'review':
         return <ClipboardCheck className="h-3 w-3 text-green-500" />;
       default:
-        return <Brain className="h-3 w-3 text-muted-foreground" />;
+        return <Activity className="h-3 w-3 text-muted-foreground" />;
     }
   };
 
@@ -139,7 +139,7 @@ function ThoughtBox({ progress }: { progress: SchedulingProgressStep }) {
           data-testid="button-thought-box-toggle"
         >
           <div className="flex items-center gap-1.5">
-            <Brain className="h-3 w-3 text-purple-500" />
+            <Activity className="h-3 w-3 text-purple-500" />
             <span>Trinity Thinking</span>
             <Badge variant="outline" className="text-[10px] h-4 px-1">
               {completedSteps}/{thinkingSteps.length}
@@ -164,7 +164,7 @@ function ThoughtBox({ progress }: { progress: SchedulingProgressStep }) {
 function ProgressItem({ progress }: { progress: SchedulingProgressStep }) {
   const stepIcons = {
     analyzing: <Loader2 className="h-4 w-4 animate-spin text-purple-500" />,
-    matching: <Bot className="h-4 w-4 animate-pulse text-blue-500" />,
+    matching: <MessageCircle className="h-4 w-4 animate-pulse text-blue-500" />,
     assigning: <UserCheck className="h-4 w-4 text-teal-500" />,
     complete: <CheckCircle2 className="h-4 w-4 text-green-500" />,
     no_match: <AlertCircle className="h-4 w-4 text-orange-500" />,
@@ -175,7 +175,7 @@ function ProgressItem({ progress }: { progress: SchedulingProgressStep }) {
     switch (mode) {
       case 'turbo':
       case 'instant':
-        return <Zap className="h-3 w-3 text-yellow-500" />;
+        return <Activity className="h-3 w-3 text-yellow-500" />;
       case 'fast':
         return <Timer className="h-3 w-3 text-blue-500" />;
       default:
@@ -194,7 +194,7 @@ function ProgressItem({ progress }: { progress: SchedulingProgressStep }) {
         <div className="flex items-center gap-3">
           <div className="relative">
             <div className="h-8 w-8 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center">
-              <Sparkles className="h-4 w-4 text-white" />
+              <MessageSquare className="h-4 w-4 text-white" />
             </div>
             {progress.step !== 'complete' && progress.step !== 'no_match' && (
               <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 bg-green-500 rounded-full border border-white dark:border-gray-800 animate-pulse" />
@@ -225,7 +225,7 @@ function ProgressItem({ progress }: { progress: SchedulingProgressStep }) {
 
             {progress.creditsCharged && (
               <div className="mt-1 text-xs text-muted-foreground flex items-center gap-1">
-                <Sparkles className="h-3 w-3 text-purple-400" />
+                <MessageSquare className="h-3 w-3 text-purple-400" />
                 <span>{progress.creditsCharged} credits</span>
               </div>
             )}

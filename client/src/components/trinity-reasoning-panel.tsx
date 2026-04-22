@@ -14,9 +14,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { 
-  Brain, 
-  Sparkles, 
-  Zap, 
+  Activity,
   CheckCircle, 
   Clock, 
   ChevronRight,
@@ -130,7 +128,7 @@ export function TrinityReasoningPanel({
         <div className="flex items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-violet-500/20">
-              <Brain className="w-4 h-4 text-white" />
+              <Activity className="w-4 h-4 text-white" />
             </div>
             <div>
               <span className="font-semibold">Trinity</span>
@@ -139,7 +137,7 @@ export function TrinityReasoningPanel({
           </CardTitle>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
-              <Zap className={`w-4 h-4 ${fastMode ? 'text-amber-500' : 'text-muted-foreground'}`} />
+              <Activity className={`w-4 h-4 ${fastMode ? 'text-amber-500' : 'text-muted-foreground'}`} />
               <span className="text-xs font-medium">Fast Mode</span>
               <Switch
                 checked={fastMode}
@@ -246,7 +244,7 @@ export function TrinityReasoningPanel({
               {session.status === 'complete' && session.summary && (
                 <div className="mt-4 p-4 rounded-lg bg-green-500/10 border border-green-500/20">
                   <div className="flex items-start gap-3">
-                    <Sparkles className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+                    <MessageSquare className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
                     <div>
                       <h4 className="font-semibold text-sm text-green-600 dark:text-green-400 mb-1">
                         Task Complete

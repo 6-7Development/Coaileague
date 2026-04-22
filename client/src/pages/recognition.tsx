@@ -288,9 +288,10 @@ export default function RecognitionPage() {
         </TabsContent>
 
         <TabsContent value="my" className="mt-6">
-          {/* My Recognition is handled by filtering in common Wall or could be a separate request */}
-          <div className="py-12 text-center text-muted-foreground">
-            Feature coming soon. View your awards on the public wall for now.
+          <div className="flex flex-col items-center justify-center py-12 text-center gap-3">
+            <Award className="h-10 w-10 text-muted-foreground" />
+            <p className="text-muted-foreground font-medium">No awards yet</p>
+            <p className="text-sm text-muted-foreground">Awards earned will appear here</p>
           </div>
         </TabsContent>
 

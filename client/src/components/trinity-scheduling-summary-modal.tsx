@@ -21,7 +21,7 @@ import {
   Check,
   X,
   AlertTriangle,
-  Sparkles,
+  MessageSquare,
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -170,7 +170,7 @@ export function TrinitySchedulingSummaryModal({
     <UniversalModal open={open} onOpenChange={onOpenChange} size="lg" className="flex flex-col" showHomeButton={false} data-testid="modal-trinity-scheduling-summary">
         <UniversalModalHeader>
           <UniversalModalTitle className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-primary" />
+            <MessageSquare className="h-5 w-5 text-primary" />
             Trinity Scheduling Complete
           </UniversalModalTitle>
           <UniversalModalDescription>
@@ -183,7 +183,7 @@ export function TrinitySchedulingSummaryModal({
             <Card data-testid="card-ai-summary">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <Sparkles className="h-4 w-4" />
+                  <MessageSquare className="h-4 w-4" />
                   AI Summary
                 </CardTitle>
               </CardHeader>

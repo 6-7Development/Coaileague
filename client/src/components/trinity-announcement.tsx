@@ -7,7 +7,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, CheckCircle2, AlertCircle, Info, AlertTriangle, Sparkles } from 'lucide-react';
+import { X, CheckCircle2, AlertCircle, Info, AlertTriangle, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { 
   useTrinityAnnouncement, 
@@ -54,7 +54,7 @@ const typeStyles: Record<MessageType, {
   celebration: {
     bg: 'bg-gradient-to-r from-violet-50 to-fuchsia-50 dark:from-violet-950/50 dark:to-fuchsia-950/50',
     border: 'border-violet-200 dark:border-violet-800',
-    icon: Sparkles,
+    icon: MessageSquare,
     iconColor: 'text-violet-600 dark:text-violet-400',
   },
 };
