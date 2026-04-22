@@ -77,7 +77,6 @@ import { UniversalFAB } from "@/components/UniversalFAB";
 import { PWAInstallPrompt } from "@/components/mobile/PWAInstallPrompt";
 import { ChatDockProvider } from "@/contexts/ChatDockContext";
 import { UnifiedChatBubble } from "@/components/chatdock/ChatDock";
-import { TrinityAmbientFAB } from "@/components/trinity/TrinityAmbientFAB";
 import { TrinityActivityBar } from "@/components/trinity/TrinityActivityBar";
 import { TrinityTaskWidget } from "@/components/trinity/TrinityTaskWidget";
 // FloatingTrinityButton removed - redundant with header Trinity access
@@ -2428,8 +2427,6 @@ function AppContent() {
         open={isAuthenticated && !consentAcknowledged && !isPublicRoute}
         onAccepted={() => setConsentAcknowledged(true)}
       />
-      {/* TrinityAmbientFAB — desktop only (returns null on mobile internally) */}
-      <TrinityAmbientFAB />
     </ProtectedRoute>
     </>
   );

@@ -162,7 +162,7 @@ export default function AccountingIntegrations() {
       case 'available':
         return <Badge variant="outline">Available</Badge>;
       case 'coming_soon':
-        return <Badge variant="secondary">Coming Soon</Badge>;
+        return <Badge variant="outline" className="text-muted-foreground">Available in a future update</Badge>;
     }
   };
 
@@ -243,8 +243,8 @@ export default function AccountingIntegrations() {
                     Manage Connection
                   </Button>
                 ) : (
-                  <Button variant="secondary" className="w-full" disabled>
-                    Coming Soon
+                  <Button variant="outline" className="w-full text-muted-foreground" disabled>
+                    Available in a future update
                   </Button>
                 )}
               </CardFooter>
