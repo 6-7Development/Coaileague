@@ -731,8 +731,15 @@ router.get("/employee-reputation/:employeeId", requireAuth, async (req: any, res
   }
 });
 
+// Short, human-friendly code (12 chars) so accept-invite.tsx can distinguish
+// workspace invites (len < 20) from long employee-onboarding tokens.
+// Crockford-style alphabet: no 0/O/1/I to prevent transcription errors.
 function generateInviteCode(): string {
-  return crypto.randomBytes(32).toString('hex');
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const bytes = crypto.randomBytes(12);
+  let code = '';
+  for (let i = 0; i < 12; i++) code += chars[bytes[i] % chars.length];
+  return code;
 }
 
 router.post("/invites/create", requireAuth, async (req: AuthenticatedRequest, res) => {
