@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { Clock, Calendar, Users, AlertCircle } from "lucide-react";
+import { Clock, Calendar, Users, AlertCircle, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { CanvasHubPage, type CanvasPageConfig } from "@/components/canvas-hub";
 import { TrinityApprovalQueue } from "@/components/trinity/TrinityApprovalQueue";
@@ -16,13 +17,14 @@ const pageConfig: CanvasPageConfig = {
 
 export default function OrgManagerDashboard() {
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
 
-  const { data: workspace } = useQuery<{ id: string; name?: string }>({
+  const { data: workspace, isError: workspaceIsError, error: workspaceError, refetch: refetchWorkspace } = useQuery<{ id: string; name?: string }>({
     queryKey: ["/api/workspace/current"],
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: pendingTimeOff = [] } = useQuery<any[]>({
+  const { data: pendingTimeOff = [], isError: timeOffIsError, error: timeOffError, refetch: refetchTimeOff } = useQuery<any[]>({
     queryKey: ["/api/time-off-requests/pending"],
     staleTime: 30000,
   });
@@ -55,6 +57,28 @@ export default function OrgManagerDashboard() {
 
   const totalEmployees = employeesRes?.data?.length ?? 0;
   const orgName = workspace?.name ?? "Your Organization";
+
+  const isError = workspaceIsError || timeOffIsError;
+  const error = workspaceError || timeOffError;
+
+  if (isError) {
+    return (
+      <CanvasHubPage config={pageConfig}>
+        <div className="flex flex-col items-center justify-center min-h-[300px] gap-4 text-center p-6">
+          <AlertTriangle className="h-10 w-10 text-destructive" />
+          <div>
+            <p className="font-semibold text-destructive">Failed to load dashboard data</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              {error instanceof Error ? error.message : 'An unexpected error occurred'}
+            </p>
+          </div>
+          <Button variant="outline" onClick={() => { refetchWorkspace(); refetchTimeOff(); }}>
+            Try Again
+          </Button>
+        </div>
+      </CanvasHubPage>
+    );
+  }
 
   return (
     <CanvasHubPage config={pageConfig}>

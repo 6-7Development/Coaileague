@@ -751,11 +751,11 @@ export default function WorkerDashboard() {
 
   // Queries
   const { data: authUser } = useQuery<AuthUser>({ queryKey: ["/api/auth/me"] });
-  const { data: clockStatus, isLoading: clockLoading } = useQuery<ClockStatus>({
+  const { data: clockStatus, isLoading: clockLoading, isError: clockError, error: clockErrorObj, refetch: refetchClock } = useQuery<ClockStatus>({
     queryKey: ["/api/time-entries/status"],
     refetchInterval: 30000,
   });
-  const { data: todayShifts, isLoading: shiftsLoading } = useQuery<TodayShift[]>({
+  const { data: todayShifts, isLoading: shiftsLoading, isError: shiftsError, error: shiftsErrorObj, refetch: refetchShifts } = useQuery<TodayShift[]>({
     queryKey: ["/api/shifts/today"],
   });
   const { data: upcomingShifts } = useQuery<UpcomingShift[]>({
@@ -1013,6 +1013,29 @@ export default function WorkerDashboard() {
     onRefresh: () => queryClient.invalidateQueries(),
     withBottomNav: true,
   };
+
+  const isError = clockError || shiftsError;
+  const error = clockErrorObj || shiftsErrorObj;
+  const refetch = () => { refetchClock(); refetchShifts(); };
+
+  if (isError) {
+    return (
+      <CanvasHubPage config={pageConfig}>
+        <div className="flex flex-col items-center justify-center min-h-[300px] gap-4 text-center p-6">
+          <AlertTriangle className="h-10 w-10 text-destructive" />
+          <div>
+            <p className="font-semibold text-destructive">Failed to load dashboard data</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              {error instanceof Error ? error.message : 'An unexpected error occurred'}
+            </p>
+          </div>
+          <Button variant="outline" onClick={() => refetch()}>
+            Try Again
+          </Button>
+        </div>
+      </CanvasHubPage>
+    );
+  }
 
   return (
     <CanvasHubPage config={pageConfig}>

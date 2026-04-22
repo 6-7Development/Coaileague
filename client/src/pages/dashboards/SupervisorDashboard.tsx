@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Users, AlertTriangle, FileText, Clock, MapPin, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { CanvasHubPage, type CanvasPageConfig } from "@/components/canvas-hub";
 import { PageSkeleton } from "@/components/ui/skeleton-loaders";
@@ -19,8 +20,9 @@ const pageConfig: CanvasPageConfig = {
 export default function SupervisorDashboard() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
+  const { toast } = useToast();
 
-  const { data: workspace, isLoading: workspaceLoading } = useQuery<{ id: string; name?: string }>({
+  const { data: workspace, isLoading: workspaceLoading, isError: workspaceIsError, error: workspaceError, refetch: refetchWorkspace } = useQuery<{ id: string; name?: string }>({
     queryKey: ["/api/workspace/current"],
     staleTime: 5 * 60 * 1000,
   });
@@ -30,7 +32,7 @@ export default function SupervisorDashboard() {
     staleTime: 30000,
   });
 
-  const { data: shiftsRes, isLoading: shiftsLoading } = useQuery<any[] | { data: any[] }>({
+  const { data: shiftsRes, isLoading: shiftsLoading, isError: shiftsIsError, error: shiftsError, refetch: refetchShifts } = useQuery<any[] | { data: any[] }>({
     queryKey: ["/api/shifts"],
     staleTime: 30000,
   });
@@ -41,6 +43,8 @@ export default function SupervisorDashboard() {
   });
 
   const isLoading = workspaceLoading || clockLoading || shiftsLoading || incidentsLoading;
+  const isError = workspaceIsError || shiftsIsError;
+  const error = workspaceError || shiftsError;
 
   const shifts: any[] = Array.isArray(shiftsRes)
     ? shiftsRes
@@ -60,6 +64,25 @@ export default function SupervisorDashboard() {
   const openIncidents = incidents.filter((i: any) => i.status !== "closed" && i.status !== "resolved");
 
   const orgName = workspace?.name ?? "Your Organization";
+
+  if (isError) {
+    return (
+      <CanvasHubPage config={pageConfig}>
+        <div className="flex flex-col items-center justify-center min-h-[300px] gap-4 text-center p-6">
+          <AlertTriangle className="h-10 w-10 text-destructive" />
+          <div>
+            <p className="font-semibold text-destructive">Failed to load dashboard data</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              {error instanceof Error ? error.message : 'An unexpected error occurred'}
+            </p>
+          </div>
+          <Button variant="outline" onClick={() => { refetchWorkspace(); refetchShifts(); }}>
+            Try Again
+          </Button>
+        </div>
+      </CanvasHubPage>
+    );
+  }
 
   if (isLoading) {
     return (
