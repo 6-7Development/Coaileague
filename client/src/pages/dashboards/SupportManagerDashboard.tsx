@@ -4,6 +4,7 @@ import { MessageCircle, Activity, Bell, FileText, AlertCircle, Mail, Users, Cloc
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CanvasHubPage, type CanvasPageConfig } from "@/components/canvas-hub";
+import { CONTACTS } from "@shared/platformConfig";
 
 const pageConfig: CanvasPageConfig = {
   id: "support-manager-dashboard",
@@ -89,7 +90,7 @@ export default function SupportManagerDashboard() {
                   <Mail className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <p className="font-semibold text-foreground">support@coaileague.com</p>
+                  <p className="font-semibold text-foreground">{CONTACTS.support}</p>
                   <p className="text-xs text-muted-foreground">
                     {unreadCount > 0 ? `${unreadCount} unread · ${totalEmails} total` : `${totalEmails} total emails`}
                   </p>
