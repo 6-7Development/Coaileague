@@ -4,6 +4,7 @@ import { MessageCircle, Activity, Bell, FileText, AlertCircle, Mail, Users, Cloc
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CanvasHubPage, type CanvasPageConfig } from "@/components/canvas-hub";
+import { TrinityBrainStatusPanel, AICreditBalancePanel } from "@/components/ai-brain";
 
 const pageConfig: CanvasPageConfig = {
   id: "support-manager-dashboard",
@@ -125,6 +126,12 @@ export default function SupportManagerDashboard() {
               </Button>
             </div>
           </div>
+        </div>
+
+        {/* Trinity Brain + AI Credits */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <TrinityBrainStatusPanel />
+          <AICreditBalancePanel />
         </div>
 
         {/* Access notice */}
