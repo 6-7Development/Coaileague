@@ -612,8 +612,7 @@ function SessionCalendarTab({
       )}
 
       {!selectedDay && sessions.length === 0 && (
-        // @ts-expect-error — TS migration: fix in refactoring sprint
-        <DsEmptyState icon={CalendarIcon} title="No sessions scheduled" description="Check back later for new training opportunities." />
+        <DsEmptyState icon={CalendarIcon} title="No sessions scheduled" subtitle="Check back later for new training opportunities." />
       )}
     </div>
   );
@@ -795,8 +794,7 @@ function ProviderDirectoryTab() {
       ))}
       {providers.length === 0 && (
         <div className="col-span-full">
-          {/* @ts-ignore */}
-          <DsEmptyState icon={Users} title="No providers registered" description="Approved training providers will appear here." />
+          <DsEmptyState icon={Users} title="No providers registered" subtitle="Approved training providers will appear here." />
         </div>
       )}
     </div>
@@ -1040,8 +1038,7 @@ export default function TrainingPage() {
   if (!module?.enabled) {
     return (
       <DsPageWrapper>
-        {/* @ts-ignore */}
-        <DsEmptyState icon={Lock} title="Module Disabled" description="The training management module is not enabled for your organization." />
+        <DsEmptyState icon={Lock} title="Module Disabled" subtitle="The training management module is not enabled for your organization." />
       </DsPageWrapper>
     );
   }
@@ -1128,8 +1125,7 @@ export default function TrainingPage() {
                   </div>
                   <div className="flex gap-2">
                      <Input placeholder="Search..." className="w-64" data-testid="input-search-sessions" />
-                     {/* @ts-ignore */}
-                     <DsButton variant="outline" size="icon">
+                     <DsButton variant="outline" size="sm">
                        <Filter className="h-4 w-4" />
                      </DsButton>
                   </div>

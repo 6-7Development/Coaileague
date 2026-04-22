@@ -21,6 +21,7 @@ import {
   Image,
   MapPin,
   AlertCircle,
+  ArrowLeft,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -162,7 +163,6 @@ export default function IncidentPipeline() {
   if (selectedId && detailLoading) {
     return (
       <div className="p-6 space-y-4">
-        {/* @ts-ignore */}
         <Button variant="ghost" onClick={() => setSelectedId(null)} data-testid="button-back-loading"><ArrowLeft className="w-4 h-4 mr-2" /> Back</Button>
         <div className="space-y-3">
           <div className="h-8 w-64 bg-muted animate-pulse rounded-md" />

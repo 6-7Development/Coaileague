@@ -4,6 +4,7 @@ import { Briefcase, Clock, FileText, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CanvasHubPage, type CanvasPageConfig } from "@/components/canvas-hub";
+import { PageSkeleton } from "@/components/ui/skeleton-loaders";
 import { useAuth } from "@/hooks/useAuth";
 
 const pageConfig: CanvasPageConfig = {
@@ -18,7 +19,7 @@ export default function ContractorDashboard() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
 
-  const { data: earningsData } = useQuery<{
+  const { data: earningsData, isLoading: earningsLoading } = useQuery<{
     hoursWorked: number;
     payPeriodStart: string | null;
     payPeriodEnd: string | null;
@@ -27,15 +28,17 @@ export default function ContractorDashboard() {
     staleTime: 60000,
   });
 
-  const { data: docsRes } = useQuery<any[] | { data: any[] }>({
+  const { data: docsRes, isLoading: docsLoading } = useQuery<any[] | { data: any[] }>({
     queryKey: ["/api/sps/documents"],
     staleTime: 60000,
   });
 
-  const { data: shiftsRes } = useQuery<any[] | { data: any[] }>({
+  const { data: shiftsRes, isLoading: shiftsLoading } = useQuery<any[] | { data: any[] }>({
     queryKey: ["/api/shifts"],
     staleTime: 30000,
   });
+
+  const isLoading = earningsLoading || docsLoading || shiftsLoading;
 
   const docs: any[] = Array.isArray(docsRes) ? docsRes : (docsRes as any)?.data ?? [];
   const pendingDocs = docs.filter((d: any) => d.status === "pending" || d.status === "requires_signature");
@@ -47,6 +50,14 @@ export default function ContractorDashboard() {
   });
 
   const firstName = user?.firstName || user?.email?.split("@")[0] || "Contractor";
+
+  if (isLoading) {
+    return (
+      <CanvasHubPage config={pageConfig}>
+        <PageSkeleton />
+      </CanvasHubPage>
+    );
+  }
 
   return (
     <CanvasHubPage config={pageConfig}>

@@ -1,4 +1,5 @@
 import { DsPageWrapper, DsPageHeader, DsStatCard, DsSectionCard, DsButton, DsBadge, DsTabBar, DsEmptyState } from "@/components/ui/ds-components";
+import { PageSkeleton } from "@/components/ui/skeleton-loaders";
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -424,6 +425,21 @@ export default function CADConsole() {
     dispatchedUnits: dispatchedUnits.length,
     onSceneUnits: onSceneUnits.length,
   };
+
+  // Show a skeleton on first load so the panel never flashes empty state
+  // on workspaces that do have CAD data.
+  const isInitialLoading =
+    !!workspaceId &&
+    (stats.isLoading || calls.isLoading || units.isLoading || scheduleView.isLoading) &&
+    !stats.data && !calls.data && !units.data && !scheduleView.data;
+
+  if (isInitialLoading) {
+    return (
+      <DsPageWrapper>
+        <PageSkeleton />
+      </DsPageWrapper>
+    );
+  }
 
   return (
     <DsPageWrapper>

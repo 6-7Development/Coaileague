@@ -1350,8 +1350,7 @@ export default function Invoices() {
                         <FormItem>
                           <FormLabel>Due Date *</FormLabel>
                           <FormControl>
-                            {/* @ts-ignore */}
-                            <Input type="date" {...field} aria-required="true" />
+                            <Input type="date" {...field} value={(field.value as any) ?? ''} aria-required="true" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -1378,8 +1377,7 @@ export default function Invoices() {
                       <FormItem>
                         <FormLabel>Tax Rate (%)</FormLabel>
                         <FormControl>
-                          {/* @ts-ignore */}
-                          <Input type="number" step="0.1" {...field} />
+                          <Input type="number" step="0.1" {...field} value={(field.value as any) ?? ''} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -1461,8 +1459,7 @@ export default function Invoices() {
                         <FormItem>
                           <FormLabel>Due Date *</FormLabel>
                           <FormControl>
-                            {/* @ts-ignore */}
-                            <Input type="date" {...field} data-testid="input-create-duedate" />
+                            <Input type="date" {...field} value={(field.value as any) ?? ''} data-testid="input-create-duedate" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -1489,8 +1486,7 @@ export default function Invoices() {
                       <FormItem>
                         <FormLabel>Tax Rate (%)</FormLabel>
                         <FormControl>
-                          {/* @ts-ignore */}
-                          <Input type="number" step="0.1" {...field} data-testid="input-create-tax" />
+                          <Input type="number" step="0.1" {...field} value={(field.value as any) ?? ''} data-testid="input-create-tax" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -1839,7 +1835,6 @@ export default function Invoices() {
         </Tabs>
 
         {/* Invoice Detail Dialog */}
-        {/* @ts-ignore */}
         <ResponsiveDialog 
           open={isDetailDialogOpen} 
           onOpenChange={setIsDetailDialogOpen}
@@ -1855,7 +1850,7 @@ export default function Invoices() {
             </div>
           }
         >
-          {/* Detail content would go here */}
+          <div />
         </ResponsiveDialog>
       </div>
     </CanvasHubPage>

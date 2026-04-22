@@ -74,8 +74,8 @@ class WebSocketBusImpl implements WebSocketBus {
         // lookup failed at upgrade time (DB hiccup, cookie edge cases in Replit env).
         // We wait for the server to confirm auth before dispatching __ws_connected so
         // that join_notifications / join_conversation arrive with ws.serverAuth already set.
-        // Content-Type header is required to pass the global 415 middleware guard.
-        fetch('/api/auth/ws-token', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' } })
+        // GET is used: token issuance has no side effects and avoids 415 content-type checks.
+        fetch('/api/auth/ws-token', { method: 'GET', credentials: 'include' })
           .then(r => (r.ok ? r.json() : null))
           .then((data: any) => {
             if (!data?.token || ws.readyState !== WebSocket.OPEN) {
@@ -121,7 +121,7 @@ class WebSocketBusImpl implements WebSocketBus {
           // Server requested re-authentication (join arrived before serverAuth was set).
           // Silently re-fetch the ws-token and re-authenticate without user-visible error.
           if (data.type === 'ws_auth_required') {
-            fetch('/api/auth/ws-token', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' } })
+            fetch('/api/auth/ws-token', { method: 'GET', credentials: 'include' })
               .then(r => (r.ok ? r.json() : null))
               .then((tokenData: any) => {
                 if (tokenData?.token && ws.readyState === WebSocket.OPEN) {

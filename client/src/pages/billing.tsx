@@ -51,6 +51,7 @@ import {
   CalendarDays,
   CalendarRange,
   AlertCircle,
+  Shield,
 } from "lucide-react";
 import { format } from "date-fns";
 import { formatCurrency, formatNumber } from "@/lib/formatters";
@@ -158,7 +159,6 @@ function HardCapToggleCard({ workspaceId }: { workspaceId?: string }) {
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="text-sm flex items-center gap-2">
-          {/* @ts-ignore */}
           <Shield className="h-4 w-4" />
           Seat Cap Enforcement
         </CardTitle>

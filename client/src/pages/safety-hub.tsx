@@ -323,8 +323,7 @@ export default function SafetyHub() {
                       </div>
                     </div>
                     <div className="mt-4 flex gap-2 justify-end pt-3 border-t border-[var(--ds-border)]">
-                      {/* @ts-ignore */}
-                      <DsButton size="sm" variant="destructive" onClick={() => deleteGeofence.mutate((z as any).id)}>Delete</DsButton>
+                      <DsButton size="sm" variant="danger" onClick={() => deleteGeofence.mutate((z as any).id)}>Delete</DsButton>
                       <DsButton size="sm" variant="outline" onClick={() => toggleGeofence.mutate({ id: z.id, isActive: !z.is_active })}>
                         {z.is_active ? "Disable" : "Enable"}
                       </DsButton>
