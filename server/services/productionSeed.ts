@@ -252,6 +252,58 @@ export async function runDataCorrections(): Promise<void> {
     console.log('🔧 Data Correction: workspace_hiring_settings skipped:', (err as any)?.message);
   }
 
+  // Phase 4 — SOP index + employee acknowledgment tracking
+  try {
+    await typedExec(sql`
+      CREATE TABLE IF NOT EXISTS workspace_sop_index (
+        id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        workspace_id    VARCHAR NOT NULL,
+        document_id     VARCHAR NOT NULL,
+        category        VARCHAR NOT NULL,
+        version         INTEGER NOT NULL DEFAULT 1,
+        extracted_text  TEXT,
+        indexed_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        is_current      BOOLEAN NOT NULL DEFAULT TRUE,
+        UNIQUE (workspace_id, document_id)
+      )
+    `);
+    await typedExec(sql`
+      CREATE INDEX IF NOT EXISTS idx_sop_index_workspace
+        ON workspace_sop_index (workspace_id, is_current)
+    `);
+    console.log('🔧 Data Correction: workspace_sop_index ensured');
+  } catch (err) {
+    console.log('🔧 Data Correction: workspace_sop_index skipped:', (err as any)?.message);
+  }
+
+  try {
+    await typedExec(sql`
+      CREATE TABLE IF NOT EXISTS sop_acknowledgments (
+        id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        workspace_id    VARCHAR NOT NULL,
+        document_id     VARCHAR NOT NULL,
+        employee_id     VARCHAR NOT NULL,
+        acknowledged_at TIMESTAMPTZ,
+        signature_token VARCHAR,
+        signed_at       TIMESTAMPTZ,
+        is_required     BOOLEAN NOT NULL DEFAULT TRUE,
+        created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await typedExec(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_sop_ack_unique
+        ON sop_acknowledgments (workspace_id, document_id, employee_id)
+    `);
+    await typedExec(sql`
+      CREATE INDEX IF NOT EXISTS idx_sop_ack_pending
+        ON sop_acknowledgments (workspace_id, employee_id)
+        WHERE signed_at IS NULL
+    `);
+    console.log('🔧 Data Correction: sop_acknowledgments ensured');
+  } catch (err) {
+    console.log('🔧 Data Correction: sop_acknowledgments skipped:', (err as any)?.message);
+  }
+
   console.log('🔧 Data Corrections Service: Complete');
 }
 
