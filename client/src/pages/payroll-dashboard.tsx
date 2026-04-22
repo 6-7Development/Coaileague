@@ -36,6 +36,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { 
   Loader2, DollarSign, CheckCircle, Clock, Play, Users, 
@@ -523,7 +524,6 @@ export default function PayrollDashboard() {
                             <div className="flex items-center justify-end gap-2">
                               {run.status === 'draft' && (
                                 <AlertDialog>
-                                  {/* @ts-ignore */}
                                   <AlertDialogTrigger asChild>
                                     <Button
                                       variant="ghost"
@@ -533,7 +533,6 @@ export default function PayrollDashboard() {
                                     >
                                       <Trash2 className="h-4 w-4" />
                                     </Button>
-                                  {/* @ts-ignore */}
                                   </AlertDialogTrigger>
                                   <AlertDialogContent>
                                     <AlertDialogHeader>

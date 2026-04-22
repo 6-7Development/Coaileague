@@ -8,7 +8,7 @@ import { db } from '../db';
 import {
   spsNegotiationThreads, spsNegotiationMessages, spsDocuments, workspaces,
 } from '@shared/schema';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, ne } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { z } from 'zod';
 import { callSpsAI } from './spsAIHelper';
@@ -198,34 +198,38 @@ Original message: "${input.messageRaw.replace(/"/g, "'")}"`;
       ? detectAgreementSignal(input.messageRaw)
       : false;
 
-    const [message] = await db.insert(spsNegotiationMessages).values({
-      id: randomUUID(),
-      threadId: req.params.id,
-      senderType: input.senderType,
-      senderName: input.senderName,
-      senderEmail: input.senderEmail,
-      messageRaw: input.messageRaw,
-      messageAiEnhanced,
-      aiSuggestionUsed: input.aiSuggestionUsed,
-      proposedTerms: proposedTerms as any,
-      agreementSignalDetected: agreementDetected,
-    }).returning();
+    const [message] = await db.transaction(async (tx) => {
+      const [msg] = await tx.insert(spsNegotiationMessages).values({
+        id: randomUUID(),
+        threadId: req.params.id,
+        senderType: input.senderType,
+        senderName: input.senderName,
+        senderEmail: input.senderEmail,
+        messageRaw: input.messageRaw,
+        messageAiEnhanced,
+        aiSuggestionUsed: input.aiSuggestionUsed,
+        proposedTerms: proposedTerms as any,
+        agreementSignalDetected: agreementDetected,
+      }).returning();
 
-    // Update thread if agreement detected
-    if (agreementDetected && !thread.agreementDetected) {
-      await db.update(spsNegotiationThreads)
-        .set({
-          agreementDetected: true,
-          agreementDetectedAt: new Date(),
-          agreedTerms: proposedTerms as any,
-          updatedAt: new Date(),
-        })
-        .where(eq(spsNegotiationThreads.id, req.params.id));
-    } else {
-      await db.update(spsNegotiationThreads)
-        .set({ updatedAt: new Date() })
-        .where(eq(spsNegotiationThreads.id, req.params.id));
-    }
+      // Update thread if agreement detected
+      if (agreementDetected && !thread.agreementDetected) {
+        await tx.update(spsNegotiationThreads)
+          .set({
+            agreementDetected: true,
+            agreementDetectedAt: new Date(),
+            agreedTerms: proposedTerms as any,
+            updatedAt: new Date(),
+          })
+          .where(eq(spsNegotiationThreads.id, req.params.id));
+      } else {
+        await tx.update(spsNegotiationThreads)
+          .set({ updatedAt: new Date() })
+          .where(eq(spsNegotiationThreads.id, req.params.id));
+      }
+
+      return [msg];
+    });
 
     res.status(201).json({
       message,
@@ -292,49 +296,63 @@ spsNegotiationRouter.post('/:id/convert-to-contract', async (req: any, res) => {
     const agreedTerms = (thread as any).agreedTerms || {};
     const proposalData = (thread as any).proposalData || {};
 
-    const [doc] = await db.insert(spsDocuments).values({
-      id: randomUUID(),
-      workspaceId,
-      documentType: 'client_contract',
-      documentNumber: contractNumber,
-      status: 'draft',
-      accessToken,
-      expiresAt,
-      recipientName: thread.clientName,
-      recipientEmail: thread.clientEmail,
-      // White-label (TRINITY.md §6): signer comes from the authenticated
-      // user. Hardcoded tenant identity removed.
-      orgSignerName: (req.user)?.firstName
-        ? `${(req.user).firstName} ${(req.user).lastName || ''}`.trim()
-        : 'Authorized Signer',
-      orgSignerEmail: (req.user)?.email || 'noreply@coaileague.com',
-      clientCompanyName: thread.clientCompanyName || null,
-      clientContactName: thread.clientName,
-      serviceLocation: thread.serviceLocation || null,
-      ratePrimary: (agreedTerms.proposedRatePrimary || proposalData.ratePrimary || null) as any,
-      rateAdditional: (agreedTerms.proposedRateAdditional || proposalData.rateAdditional || null) as any,
-      serviceType: (proposalData.serviceType || null) as any,
-      contractTerm: (agreedTerms.contractTerm || proposalData.contractTerm || '90 Days Trial') as any,
-      officersRequired: (proposalData.officersRequired || 1) as any,
-      negotiationThreadId: thread.id,
-      stateCode: 'TX',
-      formData: {
-        proposalNumber: thread.proposalNumber,
-        agreedTerms,
-        proposalData,
-        sourceNegotiationId: thread.id,
-      } as any,
-      auditLog: [{ action: 'created_from_negotiation', timestamp: new Date().toISOString(), negotiationId: thread.id }] as any,
-    }).returning();
+    const [doc] = await db.transaction(async (tx) => {
+      const [newDoc] = await tx.insert(spsDocuments).values({
+        id: randomUUID(),
+        workspaceId,
+        documentType: 'client_contract',
+        documentNumber: contractNumber,
+        status: 'draft',
+        accessToken,
+        expiresAt,
+        recipientName: thread.clientName,
+        recipientEmail: thread.clientEmail,
+        // White-label (TRINITY.md §6): signer comes from the authenticated
+        // user. Hardcoded tenant identity removed.
+        orgSignerName: (req.user)?.firstName
+          ? `${(req.user).firstName} ${(req.user).lastName || ''}`.trim()
+          : 'Authorized Signer',
+        orgSignerEmail: (req.user)?.email || 'noreply@coaileague.com',
+        clientCompanyName: thread.clientCompanyName || null,
+        clientContactName: thread.clientName,
+        serviceLocation: thread.serviceLocation || null,
+        ratePrimary: (agreedTerms.proposedRatePrimary || proposalData.ratePrimary || null) as any,
+        rateAdditional: (agreedTerms.proposedRateAdditional || proposalData.rateAdditional || null) as any,
+        serviceType: (proposalData.serviceType || null) as any,
+        contractTerm: (agreedTerms.contractTerm || proposalData.contractTerm || '90 Days Trial') as any,
+        officersRequired: (proposalData.officersRequired || 1) as any,
+        negotiationThreadId: thread.id,
+        stateCode: 'TX',
+        formData: {
+          proposalNumber: thread.proposalNumber,
+          agreedTerms,
+          proposalData,
+          sourceNegotiationId: thread.id,
+        } as any,
+        auditLog: [{ action: 'created_from_negotiation', timestamp: new Date().toISOString(), negotiationId: thread.id }] as any,
+      }).returning();
 
-    // Update thread to converted
-    await db.update(spsNegotiationThreads)
-      .set({
-        status: 'converted_to_contract',
-        contractDocumentId: doc.id,
-        updatedAt: new Date(),
-      })
-      .where(eq(spsNegotiationThreads.id, req.params.id));
+      // Conditional update prevents duplicate conversion on concurrent requests.
+      const [convertedThread] = await tx.update(spsNegotiationThreads)
+        .set({
+          status: 'converted_to_contract',
+          contractDocumentId: newDoc.id,
+          updatedAt: new Date(),
+        })
+        .where(and(
+          eq(spsNegotiationThreads.id, req.params.id),
+          eq(spsNegotiationThreads.workspaceId, workspaceId),
+          // Only convert if not already converted (idempotency guard).
+          ne(spsNegotiationThreads.status, 'converted_to_contract'),
+        ))
+        .returning({ id: spsNegotiationThreads.id });
+
+      if (!convertedThread) {
+        throw new Error('Negotiation already converted to contract');
+      }
+
+      return [newDoc];
+    });
 
     res.status(201).json({
       contract: doc,

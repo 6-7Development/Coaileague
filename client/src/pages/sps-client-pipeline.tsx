@@ -208,6 +208,13 @@ function NewProposalSheet({ onClose }: { onClose: () => void }) {
       toast({ title: "Proposal sent successfully" });
       onClose();
     },
+    onError: (error: Error) => {
+      toast({
+        title: 'Proposal Failed',
+        description: error.message || 'Something went wrong. Please try again.',
+        variant: 'destructive',
+      });
+    },
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -405,8 +412,7 @@ function NewProposalSheet({ onClose }: { onClose: () => void }) {
             <div className="space-y-2">
               <Label>Legal Disclosures</Label>
               <div className="p-3 bg-muted rounded-md text-[10px] leading-relaxed text-muted-foreground border">
-                {/* @ts-ignore */}
-                {LEGAL_BLOCK}
+                {legalBlock}
               </div>
             </div>
           </div>
@@ -565,7 +571,6 @@ function NegotiationsTab({ negotiations, isLoading, onContractCreated }: { negot
                     >
                       {msg.messageRaw}
                     </div>
-                    // @ts-ignore — TS migration: fix in refactoring sprint
                     {(msg as any).proposedTerms && Object.keys(msg.proposedTerms as any).length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-2">
                         {Object.entries(msg.proposedTerms as any).map(([key, val]) => {
@@ -644,6 +649,14 @@ function NegotiationComposer({ threadId }: { threadId: string }) {
       queryClient.invalidateQueries({ queryKey: ["/api/sps/negotiations", threadId] });
       setMessage("");
       setPolishResult(null);
+      toast({ title: 'Message Sent', description: 'Your message has been sent.' });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Message Failed',
+        description: error.message || 'Something went wrong. Please try again.',
+        variant: 'destructive',
+      });
     },
   });
 
@@ -754,6 +767,13 @@ function ConvertContractButton({ threadId, onContractCreated }: { threadId: stri
       queryClient.invalidateQueries({ queryKey: ["/api/sps/documents"] });
       toast({ title: "Contract generated successfully" });
       onContractCreated();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Contract Generation Failed',
+        description: error.message || 'Something went wrong. Please try again.',
+        variant: 'destructive',
+      });
     },
   });
 

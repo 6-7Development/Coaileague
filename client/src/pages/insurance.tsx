@@ -70,11 +70,11 @@ export default function InsurancePage() {
   const [isCertModalOpen, setIsCertModalOpen] = useState(false);
   const [certRequestText, setCertRequestText] = useState("");
 
-  const { data: policies, isLoading: policiesLoading } = useQuery({
+  const { data: policies, isLoading: policiesLoading } = useQuery<any[]>({
     queryKey: ["/api/insurance/policies"],
   });
 
-  const { data: compliance, isLoading: complianceLoading } = useQuery({
+  const { data: compliance, isLoading: complianceLoading } = useQuery<any>({
     queryKey: ["/api/insurance/compliance"],
   });
 
@@ -133,13 +133,9 @@ export default function InsurancePage() {
   };
 
   const stats = {
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     total: policies?.length || 0,
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     active: policies?.filter((p: any) => p.status === "active").length || 0,
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     expiring: policies?.filter((p: any) => p.status === "expiring").length || 0,
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     expired: policies?.filter((p: any) => p.status === "expired").length || 0,
   };
 
@@ -340,7 +336,6 @@ export default function InsurancePage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* @ts-ignore */}
               {policies?.map((policy: any) => (
                 <Card key={policy.id} className="relative">
                   <CardHeader className="pb-2">
@@ -384,7 +379,6 @@ export default function InsurancePage() {
                   </CardContent>
                 </Card>
               ))}
-              {/* @ts-ignore */}
               {policies?.length === 0 && (
                 <div className="col-span-2 text-center py-12 text-muted-foreground border-2 border-dashed rounded-lg">
                   No insurance policies found. Add your first policy to track coverage.
@@ -411,16 +405,12 @@ export default function InsurancePage() {
               ) : (
                 <div className="space-y-6">
                   <div className="text-center">
-                    // @ts-ignore — TS migration: fix in refactoring sprint
                     <div className="text-4xl font-bold text-primary mb-1">{(compliance as any)?.complianceScore}%</div>
                     <div className="text-sm text-muted-foreground">Compliance Score</div>
                   </div>
                   <div className="space-y-3">
-                    {/* @ts-ignore */}
                     {compliance?.requiredTypes.map((type: string) => {
-                      // @ts-expect-error — TS migration: fix in refactoring sprint
                       const isCovered = compliance.coveredTypes.includes(type);
-                      // @ts-expect-error — TS migration: fix in refactoring sprint
                       const isExpired = compliance.expiredTypes.includes(type);
                       return (
                         <div key={type} className="flex items-center justify-between p-2 rounded-md bg-muted/50">

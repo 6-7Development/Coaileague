@@ -98,7 +98,11 @@ import {
   Target,
   DollarSign,
   CreditCard,
-  BellRing
+  BellRing,
+  ShieldCheck,
+  UserX,
+  BarChart2,
+  Building2
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -135,9 +139,9 @@ interface QuickAction {
   id: string;
   name: string;
   icon: string;
-  category: 'hotfix' | 'subagent' | 'report' | 'system' | 'meeting' | 'ticket';
+  category: 'hotfix' | 'subagent' | 'report' | 'system' | 'meeting' | 'ticket' | 'scheduling' | 'payroll' | 'compliance' | 'hr' | 'clients' | 'revenue';
   description: string;
-  requiredRole: 'employee' | 'manager' | 'admin' | 'super_admin' | 'root';
+  requiredRole: 'employee' | 'manager' | 'admin' | 'super_admin' | 'root' | 'org_owner';
   riskLevel: 'safe' | 'moderate' | 'elevated' | 'critical';
   actionId: string;
   enabled: boolean;
@@ -206,11 +210,18 @@ const ROLE_HIERARCHY: Record<string, RoleStatus> = {
     allowedCategories: ['report', 'ticket', 'meeting', 'subagent', 'system', 'hotfix'],
     restricted: true
   },
+  org_owner: {
+    role: 'org_owner',
+    displayName: 'Org Owner',
+    permissionLevel: 6,
+    allowedCategories: ['report', 'ticket', 'meeting', 'subagent', 'system', 'hotfix', 'scheduling', 'payroll', 'compliance', 'hr', 'clients', 'revenue'],
+    restricted: true
+  },
   root: {
     role: 'root',
     displayName: 'Root',
     permissionLevel: 9,
-    allowedCategories: ['report', 'ticket', 'meeting', 'subagent', 'system', 'hotfix'],
+    allowedCategories: ['report', 'ticket', 'meeting', 'subagent', 'system', 'hotfix', 'scheduling', 'payroll', 'compliance', 'hr', 'clients', 'revenue'],
     restricted: false
   }
 };
@@ -234,15 +245,37 @@ const QUICK_ACTIONS: QuickAction[] = [
   { id: 'restart-service', name: 'Restart Service', icon: 'RefreshCw', category: 'system', description: 'Restart a platform service', requiredRole: 'super_admin', riskLevel: 'elevated', actionId: 'system.restart_service', enabled: true },
   { id: 'run-diagnostics', name: 'Full Diagnostics', icon: 'Bug', category: 'subagent', description: 'Run full platform diagnostics', requiredRole: 'super_admin', riskLevel: 'moderate', actionId: 'diagnostics.full_scan', enabled: true },
   
+  // Manager — Scheduling
+  { id: 'fill-open-shifts', name: 'Fill Open Shifts', icon: 'Calendar', category: 'scheduling', description: 'Auto-fill uncovered shifts from eligible pool', requiredRole: 'manager', riskLevel: 'moderate', actionId: 'scheduling.fill_open_shifts', enabled: true },
+  { id: 'schedule-anomaly', name: 'Anomaly Scan', icon: 'AlertTriangle', category: 'scheduling', description: 'Detect conflicts, gaps, FLSA risks this week', requiredRole: 'manager', riskLevel: 'safe', actionId: 'scheduling.anomaly_scan', enabled: true },
+
+  // Manager — Payroll
+  { id: 'payroll-anomaly', name: 'Payroll Anomaly Check', icon: 'DollarSign', category: 'payroll', description: 'Scan for unusual hours, rates, missing entries', requiredRole: 'manager', riskLevel: 'safe', actionId: 'payroll.anomaly_scan', enabled: true },
+  { id: 'overtime-risk', name: 'Overtime Risk Report', icon: 'Clock', category: 'payroll', description: 'Officers approaching 40h this week', requiredRole: 'manager', riskLevel: 'safe', actionId: 'payroll.overtime_risk', enabled: true },
+
+  // Manager — Compliance
+  { id: 'compliance-sweep', name: 'Compliance Sweep', icon: 'ShieldCheck', category: 'compliance', description: 'Scan expiring certs, I-9 deadlines, guard cards', requiredRole: 'manager', riskLevel: 'safe', actionId: 'compliance.sweep', enabled: true },
+
+  // Manager — HR
+  { id: 'ncns-report', name: 'NCNS Report', icon: 'UserX', category: 'hr', description: 'No-call-no-show incidents this period', requiredRole: 'manager', riskLevel: 'safe', actionId: 'hr.ncns_report', enabled: true },
+  { id: 'performance-brief', name: 'Performance Brief', icon: 'BarChart2', category: 'hr', description: 'AI summary of officer performance trends', requiredRole: 'manager', riskLevel: 'safe', actionId: 'hr.performance_brief', enabled: true },
+
+  // Manager — Clients
+  { id: 'client-health', name: 'Client Health Check', icon: 'Building2', category: 'clients', description: 'Satisfaction scores and incident trends per site', requiredRole: 'manager', riskLevel: 'safe', actionId: 'clients.health_check', enabled: true },
+
+  // Owner — Revenue
+  { id: 'revenue-summary', name: 'Revenue Summary', icon: 'TrendingUp', category: 'revenue', description: 'MTD revenue, outstanding invoices, projections', requiredRole: 'org_owner', riskLevel: 'safe', actionId: 'analytics.revenue_summary', enabled: true },
+
   // Root-only actions
   { id: 'db-maintenance', name: 'DB Maintenance', icon: 'Database', category: 'system', description: 'Run database maintenance', requiredRole: 'root', riskLevel: 'critical', actionId: 'system.db_maintenance', enabled: true },
   { id: 'force-sync', name: 'Force Sync', icon: 'RotateCcw', category: 'system', description: 'Force sync all services', requiredRole: 'root', riskLevel: 'critical', actionId: 'system.force_sync', enabled: true },
 ];
 
 const ICON_MAP: Record<string, any> = {
-  FileSearch, Calendar, Users, Clock, TestTube, Activity, Ticket, Wrench, 
+  FileSearch, Calendar, Users, Clock, TestTube, Activity, Ticket, Wrench,
   RefreshCw, Bug, Database, RotateCcw, Brain, Zap, Shield, Settings,
-  BarChart3, TrendingUp, Gauge, Target, DollarSign, CreditCard, BellRing
+  BarChart3, TrendingUp, Gauge, Target, DollarSign, CreditCard, BellRing,
+  AlertTriangle, ShieldCheck, UserX, BarChart2, Building2,
 };
 
 // ============================================================================

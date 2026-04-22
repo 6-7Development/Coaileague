@@ -15,8 +15,36 @@
 import { useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useTrinityContext } from './use-trinity-context';
+import { ROLE_GROUPS } from '@shared/config/rbac';
 
 export type TrinityMode = 'coo' | 'guru' | 'standard';
+
+// Platform staff receive Guru mode regardless of workspace role.
+const GURU_PLATFORM_ROLES: ReadonlySet<string> = new Set(ROLE_GROUPS.PLATFORM_STAFF);
+// Leadership workspace roles receive COO mode.
+// Includes a few legacy/alias names ('org_admin', 'manager') for safe matching
+// on older user payloads that may still carry these strings.
+const COO_WORKSPACE_ROLES: ReadonlySet<string> = new Set<string>([
+  ...ROLE_GROUPS.WORKSPACE_LEADERSHIP,
+  'org_admin',
+  'manager',
+]);
+
+/**
+ * Derives the active Trinity mode directly from the authenticated user object.
+ *
+ * Prefer this over `useTrinityContext` when you only need `trinityMode`: it
+ * avoids the `/api/trinity/context` fetch and is safe to call from any
+ * component that already has the user in scope.
+ */
+export function deriveTrinityModeFromUser(user: any): TrinityMode {
+  if (!user) return 'standard';
+  const platformRole = String(user.platformRole || '');
+  if (GURU_PLATFORM_ROLES.has(platformRole)) return 'guru';
+  const workspaceRole = String(user.workspaceRole || '');
+  if (COO_WORKSPACE_ROLES.has(workspaceRole)) return 'coo';
+  return 'standard';
+}
 
 export interface TrinityModeResult {
   mode: TrinityMode;

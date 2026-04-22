@@ -1,9 +1,22 @@
 import { secureFetch } from "@/lib/csrf";
 import { createContext, useContext, type ReactNode } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
+import { useLocation } from 'wouter';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import type { HealthSummary, ServiceHealth, ServiceIncidentReportPayload } from '@shared/healthTypes';
+import { isPlatformStaffRole } from '@shared/config/rbac';
 import { useAuth } from '@/hooks/useAuth';
+
+// Routes where the health summary is actively consumed by UI (status badges,
+// service health cards). Outside these routes, non-platform staff do not need
+// the data and should not pay the polling cost.
+const HEALTH_SUMMARY_ROUTES: readonly string[] = [
+  '/support',
+  '/status',
+  '/diagnostics',
+  '/system-health',
+  '/infrastructure',
+];
 
 // ============================================================================
 // SERVICE HEALTH CONTEXT
@@ -42,7 +55,15 @@ interface ServiceHealthProviderProps {
 }
 
 export function ServiceHealthProvider({ children, enablePolling = true }: ServiceHealthProviderProps) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
+  const [location] = useLocation();
+
+  // Only platform staff and users viewing a health-aware route need this data.
+  // Gating avoids /api/health/summary polling on every authenticated page load.
+  const platformRole = String((user as any)?.platformRole || '');
+  const isPlatformStaff = isPlatformStaffRole(platformRole);
+  const routeNeedsHealthSummary = HEALTH_SUMMARY_ROUTES.includes(location);
+  const shouldFetchHealthSummary = isAuthenticated && (isPlatformStaff || routeNeedsHealthSummary);
 
   // Query health summary with smart polling
   const {
@@ -81,10 +102,10 @@ export function ServiceHealthProvider({ children, enablePolling = true }: Servic
         throw err;
       }
     },
-    enabled: isAuthenticated,
+    enabled: shouldFetchHealthSummary,
     // Smart refetch interval based on health status
     refetchInterval: (query) => {
-      if (!enablePolling || !isAuthenticated) {
+      if (!enablePolling || !shouldFetchHealthSummary) {
         return false;
       }
       
@@ -104,7 +125,7 @@ export function ServiceHealthProvider({ children, enablePolling = true }: Servic
     // TanStack Query v5 requires staleTime to be a number, not a callback
     // Using conservative 5s to ensure fresh data for critical services
     staleTime: 5000,
-    refetchOnWindowFocus: isAuthenticated,
+    refetchOnWindowFocus: shouldFetchHealthSummary,
     retry: false,
   });
 

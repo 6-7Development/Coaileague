@@ -137,24 +137,30 @@ router.post('/api/offboarding/exit-interviews', requireAuth, async (req: any, re
       comments
     } = req.body;
 
-    const [interview] = await db.insert(exitInterviews)
-      .values({
-        offboardingCaseId,
-        responses: responses || {},
-        overallSatisfaction,
-        wouldRecommend,
-        comments,
-        completedAt: new Date()
-      })
-      .returning();
+    const [interview] = await db.transaction(async (tx) => {
+      // Update case first so we can verify it exists before inserting the interview.
+      const [updatedCase] = await tx.update(offboardingCases)
+        .set({ exitInterviewCompleted: true, updatedAt: new Date() })
+        .where(eq(offboardingCases.id, offboardingCaseId))
+        .returning({ id: offboardingCases.id });
 
-    // Update case
-    await db.update(offboardingCases)
-      .set({
-        exitInterviewCompleted: true,
-        updatedAt: new Date()
-      })
-      .where(eq(offboardingCases.id, offboardingCaseId));
+      if (!updatedCase) {
+        throw new Error('Offboarding case not found');
+      }
+
+      const [newInterview] = await tx.insert(exitInterviews)
+        .values({
+          offboardingCaseId,
+          responses: responses || {},
+          overallSatisfaction,
+          wouldRecommend,
+          comments,
+          completedAt: new Date()
+        })
+        .returning();
+
+      return [newInterview];
+    });
 
     res.json(interview);
   } catch (error) {

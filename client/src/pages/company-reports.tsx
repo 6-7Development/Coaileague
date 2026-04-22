@@ -43,7 +43,7 @@ export default function CompanyReports() {
   const [shareNotes, setShareNotes] = useState("");
 
   // Fetch aggregated data
-  const { data: reportData, isLoading } = useQuery<{
+  type ReportData = {
     totalPayroll?: number;
     payrollCount?: number;
     totalRevenue?: number;
@@ -52,15 +52,16 @@ export default function CompanyReports() {
     activeEmployees?: number;
     profitMargin?: number;
     details?: any[];
-  }>({
+  };
+  const { data: reportData, isLoading } = useQuery<ReportData>({
     queryKey: ['/api/reports/company-data', selectedReport, dateRange],
-    // @ts-expect-error — TS migration: fix in refactoring sprint
     queryFn: async () => {
-      return await apiRequest('POST', '/api/reports/generate', {
+      const res = await apiRequest('POST', '/api/reports/generate', {
         reportType: selectedReport,
         startDate: dateRange.from,
         endDate: dateRange.to,
       });
+      return (res as unknown) as ReportData;
     },
   });
 
@@ -239,10 +240,8 @@ export default function CompanyReports() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            // @ts-ignore — TS migration: fix in refactoring sprint
             <div className="text-2xl font-bold">${(reportData as any)?.totalPayroll?.toFixed(2) || '0.00'}</div>
             <p className="text-xs text-muted-foreground">
-              // @ts-ignore — TS migration: fix in refactoring sprint
               {(reportData as any)?.payrollCount || 0} employees paid
             </p>
           </CardContent>
@@ -254,10 +253,8 @@ export default function CompanyReports() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            // @ts-ignore — TS migration: fix in refactoring sprint
             <div className="text-2xl font-bold">${(reportData as any)?.totalRevenue?.toFixed(2) || '0.00'}</div>
             <p className="text-xs text-muted-foreground">
-              // @ts-ignore — TS migration: fix in refactoring sprint
               {(reportData as any)?.invoiceCount || 0} invoices
             </p>
           </CardContent>
@@ -269,7 +266,6 @@ export default function CompanyReports() {
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            // @ts-ignore — TS migration: fix in refactoring sprint
             <div className="text-2xl font-bold">{(reportData as any)?.totalHours?.toFixed(1) || '0.0'}</div>
             <p className="text-xs text-muted-foreground">
               // @ts-ignore — TS migration: fix in refactoring sprint
@@ -284,7 +280,6 @@ export default function CompanyReports() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            // @ts-ignore — TS migration: fix in refactoring sprint
             <div className="text-2xl font-bold">{(reportData as any)?.profitMargin?.toFixed(1) || '0.0'}%</div>
             <p className="text-xs text-muted-foreground">
               Revenue minus labor costs
@@ -304,10 +299,8 @@ export default function CompanyReports() {
         <CardContent>
           {isLoading ? (
             <div className="text-center py-8 text-muted-foreground">Loading report data...</div>
-          // @ts-expect-error — TS migration: fix in refactoring sprint
           ) : reportData?.details ? (
             <div className="space-y-4">
-              {/* @ts-ignore */}
               {reportData.details.map((item: any, index: number) => (
                 <div key={index} className="flex items-center justify-between gap-2 p-4 border rounded-lg">
                   <div>

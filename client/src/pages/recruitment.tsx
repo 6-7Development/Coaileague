@@ -375,6 +375,13 @@ function CandidateDetailSheet({
       refetch();
       queryClient.invalidateQueries({ queryKey: ["/api/recruitment/candidates"] });
     },
+    onError: (error: Error) => {
+      toast({
+        title: 'Screening Failed',
+        description: error.message || 'Something went wrong. Please try again.',
+        variant: 'destructive',
+      });
+    },
   });
 
   const sendRound1Mutation = useMutation({
@@ -384,6 +391,13 @@ function CandidateDetailSheet({
       refetch();
       queryClient.invalidateQueries({ queryKey: ["/api/recruitment/candidates"] });
     },
+    onError: (error: Error) => {
+      toast({
+        title: 'Send Failed',
+        description: error.message || 'Something went wrong. Please try again.',
+        variant: 'destructive',
+      });
+    },
   });
 
   const generateScorecardMutation = useMutation({
@@ -391,6 +405,13 @@ function CandidateDetailSheet({
     onSuccess: () => {
       toast({ title: "Scorecard generated", description: "Trinity scorecard is ready." });
       refetch();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Scorecard Failed',
+        description: error.message || 'Something went wrong. Please try again.',
+        variant: 'destructive',
+      });
     },
   });
 
@@ -403,6 +424,13 @@ function CandidateDetailSheet({
       queryClient.invalidateQueries({ queryKey: ["/api/recruitment/candidates"] });
       queryClient.invalidateQueries({ queryKey: ["/api/recruitment/pipeline"] });
     },
+    onError: (error: Error) => {
+      toast({
+        title: 'Decision Failed',
+        description: error.message || 'Something went wrong. Please try again.',
+        variant: 'destructive',
+      });
+    },
   });
 
   const advanceStageMutation = useMutation({
@@ -413,6 +441,13 @@ function CandidateDetailSheet({
       refetch();
       queryClient.invalidateQueries({ queryKey: ["/api/recruitment/candidates"] });
       queryClient.invalidateQueries({ queryKey: ["/api/recruitment/pipeline"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Stage Update Failed',
+        description: error.message || 'Something went wrong. Please try again.',
+        variant: 'destructive',
+      });
     },
   });
 
@@ -1202,6 +1237,13 @@ function QuestionBankTab() {
     onSuccess: () => {
       toast({ title: "Question deactivated" });
       refetch();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Delete Failed',
+        description: error.message || 'Something went wrong. Please try again.',
+        variant: 'destructive',
+      });
     },
   });
 

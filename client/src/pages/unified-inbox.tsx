@@ -439,6 +439,13 @@ export default function UnifiedInbox() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/internal-email/inbox'] });
     },
+    onError: (error: Error) => {
+      toast({
+        title: 'Update Failed',
+        description: error.message || 'Something went wrong. Please try again.',
+        variant: 'destructive',
+      });
+    },
   });
 
   const toggleStarMutation = useMutation({
@@ -453,6 +460,13 @@ export default function UnifiedInbox() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/internal-email/inbox'] });
     },
+    onError: (error: Error) => {
+      toast({
+        title: 'Star Failed',
+        description: error.message || 'Something went wrong. Please try again.',
+        variant: 'destructive',
+      });
+    },
   });
 
   const deleteEmailMutation = useMutation({
@@ -464,6 +478,13 @@ export default function UnifiedInbox() {
       toast({ title: 'Email moved to trash' });
       setSelectedEmail(null);
       queryClient.invalidateQueries({ queryKey: ['/api/internal-email/inbox'] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Delete Failed',
+        description: error.message || 'Something went wrong. Please try again.',
+        variant: 'destructive',
+      });
     },
   });
 

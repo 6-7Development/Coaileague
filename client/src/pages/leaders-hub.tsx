@@ -742,8 +742,7 @@ export default function LeadersHub() {
                                   <div className="flex items-center gap-4 text-xs text-muted-foreground">
                                     <div className="flex items-center gap-1">
                                       <UserX className="h-3 w-3" />
-                                      {/* @ts-ignore */}
-                                      {task.employee.firstName ? `${task.employee.firstName} ${task.employee.lastName || ''}`.trim() : task.employee.email}
+                                      {(task.employee as any).firstName ? `${(task.employee as any).firstName} ${(task.employee as any).lastName || ''}`.trim() : (task.employee as any).email}
                                     </div>
                                     <div className="flex items-center gap-1">
                                       <Clock className="h-3 w-3" />

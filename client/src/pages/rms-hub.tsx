@@ -21,8 +21,9 @@ import {
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { UniversalModal, UniversalModalContent, UniversalModalHeader, UniversalModalTitle, UniversalModalFooter, UniversalModalBody, UniversalModalDescription } from "@/components/ui/universal-modal";
-import { DsPageWrapper, DsPageHeader, DsStatCard, DsTabBar, DsDataRow, DsSectionCard, DsBadge, DsButton, DsInput } from "@/components/ui/ds-components";
+import { DsPageWrapper, DsPageHeader, DsStatCard, DsTabBar, DsDataRow, DsSectionCard, DsBadge, DsButton, DsInput, DsEmptyState } from "@/components/ui/ds-components";
 import { ReportDisclaimer, TranslationDisclaimer } from "@/components/liability-disclaimers";
+import { QuickIncidentReportFAB } from "@/components/quick-incident-report";
 
 const PRIORITY_COLORS: Record<string, "gold" | "success" | "danger" | "warning" | "info" | "muted"> = {
   low: "muted", medium: "warning", high: "gold", critical: "danger",
@@ -1220,7 +1221,6 @@ export default function RMSHub() {
                       })}
                       
                       {(!visitors.data?.visitors || visitors.data.visitors.length === 0) && (
-                        // @ts-expect-error — TS migration: fix in refactoring sprint
                         <DsEmptyState 
                           icon={Users} 
                           title="No Visitors Found" 
@@ -1350,7 +1350,6 @@ export default function RMSHub() {
                       })}
                       
                       {(!visitors.data?.visitors || visitors.data.visitors.length === 0) && (
-                        // @ts-expect-error — TS migration: fix in refactoring sprint
                         <DsEmptyState 
                           icon={Users} 
                           title="No Visitors Found" 
@@ -1416,7 +1415,6 @@ export default function RMSHub() {
                             </DsDataRow>
                           ))}
                           {(!incidents.data?.incidents || incidents.data.incidents.length === 0) && (
-                            // @ts-expect-error — TS migration: fix in refactoring sprint
                             <DsEmptyState 
                               icon={AlertTriangle} 
                               title="No Active Incidents" 
@@ -1437,7 +1435,6 @@ export default function RMSHub() {
       {activeTab !== "incidents" && activeTab !== "visitors" && (
                 <TabsContent value={activeTab} className="m-0">
                   <DsSectionCard title={tabs.find(t => t.id === activeTab)?.label}>
-                    {/* @ts-ignore */}
                     <DsEmptyState 
                       icon={FileText} 
                       title={`${tabs.find(t => t.id === activeTab)?.label} Module`}
@@ -1634,7 +1631,6 @@ export default function RMSHub() {
         </UniversalModalContent>
       </UniversalModal>
 
-      {/* @ts-ignore */}
       <QuickIncidentReportFAB workspaceId={workspaceId} />
     </DsPageWrapper>
   );

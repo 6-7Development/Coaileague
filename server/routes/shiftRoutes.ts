@@ -2795,7 +2795,7 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
                   storage.createAuditLog({
                     workspaceId: employee.workspaceId,
                     userId: userId!,
-                    action: 'scheduling_gps_out_of_bounds',
+                    action: 'scheduling_clock_in_out_of_bounds',
                     actionDescription: `Shift START GPS ${distanceM.toFixed(0)}m from site geofence (threshold: ${geofenceRadius}m) at ${site?.name || shiftRow.siteId}`,
                     entityType: 'shift',
                     entityId: req.params.shiftId,
@@ -2808,7 +2808,7 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
                       thresholdMeters: geofenceRadius,
                       siteName: site?.name,
                       complianceTag: 'scheduling_gps_audit',
-                      event: 'shift_start',
+                      event: 'clock_in',
                     },
                   }).catch(err => log.warn('[ShiftGPS] Failed to write out-of-bounds audit log:', err));
 

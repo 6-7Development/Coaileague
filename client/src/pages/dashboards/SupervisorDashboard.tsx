@@ -4,6 +4,7 @@ import { Users, AlertTriangle, FileText, Clock, MapPin, Calendar } from "lucide-
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CanvasHubPage, type CanvasPageConfig } from "@/components/canvas-hub";
+import { PageSkeleton } from "@/components/ui/skeleton-loaders";
 import { useAuth } from "@/hooks/useAuth";
 import { format } from "date-fns";
 
@@ -19,25 +20,27 @@ export default function SupervisorDashboard() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
 
-  const { data: workspace } = useQuery<{ id: string; name?: string }>({
+  const { data: workspace, isLoading: workspaceLoading } = useQuery<{ id: string; name?: string }>({
     queryKey: ["/api/workspace/current"],
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: clockStatus } = useQuery<{ isClockedIn: boolean; activeTimeEntry?: any }>({
+  const { data: clockStatus, isLoading: clockLoading } = useQuery<{ isClockedIn: boolean; activeTimeEntry?: any }>({
     queryKey: ["/api/time-entries/status"],
     staleTime: 30000,
   });
 
-  const { data: shiftsRes } = useQuery<any[] | { data: any[] }>({
+  const { data: shiftsRes, isLoading: shiftsLoading } = useQuery<any[] | { data: any[] }>({
     queryKey: ["/api/shifts"],
     staleTime: 30000,
   });
 
-  const { data: incidentsRes } = useQuery<any[] | { data: any[] }>({
+  const { data: incidentsRes, isLoading: incidentsLoading } = useQuery<any[] | { data: any[] }>({
     queryKey: ["/api/incidents"],
     staleTime: 60000,
   });
+
+  const isLoading = workspaceLoading || clockLoading || shiftsLoading || incidentsLoading;
 
   const shifts: any[] = Array.isArray(shiftsRes)
     ? shiftsRes
@@ -57,6 +60,14 @@ export default function SupervisorDashboard() {
   const openIncidents = incidents.filter((i: any) => i.status !== "closed" && i.status !== "resolved");
 
   const orgName = workspace?.name ?? "Your Organization";
+
+  if (isLoading) {
+    return (
+      <CanvasHubPage config={pageConfig}>
+        <PageSkeleton />
+      </CanvasHubPage>
+    );
+  }
 
   return (
     <CanvasHubPage config={pageConfig}>

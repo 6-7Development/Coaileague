@@ -609,7 +609,7 @@ router.post('/mfa/regenerate-backup-codes', async (req: AuthenticatedRequest, re
 
 // WS Auth Token — issues a 60-second one-time token for WebSocket authentication
 // Needed when session cookie lookup fails at WS connection time (DB hiccup, Replit env edge cases)
-router.post('/ws-token', async (req: any, res) => {
+async function issueWsToken(req: any, res: any) {
   const userId = req.user?.id || (req as any).session?.userId;
   const workspaceId = req.user?.workspaceId || (req as any).session?.workspaceId || (req as any).session?.currentWorkspaceId;
   const role = req.user?.role || (req as any).session?.workspaceRole;
@@ -623,6 +623,9 @@ router.post('/ws-token', async (req: any, res) => {
   } catch (err) {
     res.status(500).json({ error: 'Failed to create WS auth token' });
   }
-});
+}
+
+router.get('/ws-token', issueWsToken);
+router.post('/ws-token', issueWsToken);
 
 export default router;

@@ -37,7 +37,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspaceAccess } from "@/hooks/useWorkspaceAccess";
 import { useNotificationWebSocket } from "@/hooks/use-notification-websocket";
-import { useTrinityContext } from "@/hooks/use-trinity-context";
+import { deriveTrinityModeFromUser } from "@/hooks/use-business-buddy-tier";
 import { useNotificationSync } from "@/hooks/use-notification-sync";
 import { useChatDock } from "@/contexts/ChatDockContext";
 import { useTrinityModal } from "@/components/trinity-chat-modal";
@@ -1667,9 +1667,8 @@ function NotificationsPopoverInner({ user }: { user: any }) {
   // Get workspace role for proper notification filtering in UNS Command Center
   const { workspaceRole, platformRole: accessPlatformRole } = useWorkspaceAccess();
   
-  // Trinity context for mode detection
-  const { context: trinityContext } = useTrinityContext(workspaceId);
-  const isGuruMode = trinityContext?.trinityMode === 'guru';
+  // Derive Trinity mode locally from user — avoids /api/trinity/context fetch on every nav.
+  const isGuruMode = deriveTrinityModeFromUser(user) === 'guru';
   
   // WebSocket for real-time updates
   const { isConnected } = useNotificationWebSocket(userId, workspaceId);

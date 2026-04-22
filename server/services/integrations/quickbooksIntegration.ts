@@ -20,7 +20,8 @@
  */
 
 import { db } from '../../db';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
+import { partnerConnections, invoices as invoicesSchema } from '@shared/schema';
 import { 
   QB_API_VERSION, 
   QB_EDITIONS, 
@@ -578,6 +579,64 @@ export class QuickBooksIntegration {
       employees: { synced: employeesResult.synced, errors: employeesResult.errors },
       invoices: { synced: invoicesResult.synced, errors: invoicesResult.errors },
     };
+  }
+
+  async syncContractToInvoice(workspaceId: string, contractId: string, invoiceId: string): Promise<void> {
+    const { quickbooksOAuthService } = await import('../oauth/quickbooks');
+
+    const [conn] = await db.select()
+      .from(partnerConnections)
+      .where(and(
+        eq(partnerConnections.workspaceId, workspaceId),
+        eq(partnerConnections.partnerType, 'quickbooks'),
+        eq(partnerConnections.status, 'connected'),
+      ))
+      .limit(1);
+
+    if (!conn?.accessToken || !conn?.realmId) {
+      log.info(`[QuickBooks] No active QB connection for workspace ${workspaceId}; skipping contract invoice sync`);
+      return;
+    }
+
+    const accessToken = await quickbooksOAuthService.getValidAccessToken(conn.id);
+
+    const [invoice] = await db.select()
+      .from(invoicesSchema)
+      .where(and(
+        eq(invoicesSchema.workspaceId, workspaceId),
+        eq(invoicesSchema.id, invoiceId),
+      ))
+      .limit(1);
+
+    if (!invoice) {
+      log.info(`[QuickBooks] Invoice ${invoiceId} not found for contract ${contractId}; skipping QB sync`);
+      return;
+    }
+
+    const credentials: QuickBooksCredentials = {
+      workspaceId,
+      accessToken,
+      refreshToken: (conn as any).refreshToken || '',
+      realmId: conn.realmId,
+      expiresAt: (conn as any).expiresAt || new Date(),
+    };
+
+    const result = await this.syncInvoicesToQuickBooks(credentials, [{
+      id: invoice.id,
+      invoiceNumber: invoice.invoiceNumber,
+      clientId: invoice.clientId,
+      clientName: 'Client',
+      total: invoice.total,
+      issueDate: (invoice as any).issueDate,
+      dueDate: (invoice as any).dueDate,
+    }]);
+
+    if (!result.success) {
+      log.warn(`[QuickBooks] Contract invoice sync failed for ${contractId}: ${result.errors.join('; ')}`);
+      return;
+    }
+
+    log.info(`[QuickBooks] Contract invoice ${invoice.invoiceNumber} synced to QB for contract ${contractId}`);
   }
 }
 

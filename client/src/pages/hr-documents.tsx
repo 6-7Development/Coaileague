@@ -16,6 +16,7 @@ import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useEmployee } from "@/hooks/useEmployee";
 import { CanvasHubPage, type CanvasPageConfig } from "@/components/canvas-hub";
+import { PageSkeleton } from "@/components/ui/skeleton-loaders";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -55,6 +56,7 @@ import {
   CheckCircle2,
   Clock,
   FileSignature,
+  AlertTriangle,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -1140,11 +1142,11 @@ export default function HrDocuments() {
   const [searchQuery, setSearchQuery] = useState("");
   const [previewTemplate, setPreviewTemplate] = useState<DocumentTemplate | null>(null);
 
-  const { data: workspace } = useQuery<{ name: string; companyName: string | null; stateLicenseNumber: string | null }>({
+  const { data: workspace, isLoading: workspaceLoading } = useQuery<{ name: string; companyName: string | null; stateLicenseNumber: string | null }>({
     queryKey: ["/api/workspace/current"],
   });
 
-  const { employee: employeeMe } = useEmployee();
+  const { employee: employeeMe, isLoading: employeeLoading } = useEmployee();
 
   const empData: EmployeeData = useMemo(() => ({
     fullName: employeeMe ? `${employeeMe.firstName} ${employeeMe.lastName}` : '[Employee Name]',
@@ -1222,12 +1224,19 @@ export default function HrDocuments() {
   const catConfig = CATEGORY_CONFIG[activeCategory];
   const CatIcon = catConfig.icon;
 
+  if (workspaceLoading || employeeLoading) {
+    return (
+      <CanvasHubPage config={pageConfig}>
+        <PageSkeleton />
+      </CanvasHubPage>
+    );
+  }
+
   return (
     <CanvasHubPage config={pageConfig}>
       <div className="space-y-5">
         {/* ── Legal Disclaimer Banner ────────────────────────── */}
         <div className="rounded-md px-4 py-3 flex items-start gap-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40">
-          {/* @ts-ignore */}
           <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
           <p className="text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
             <strong>For Reference Only — Not Legal Advice.</strong> These document templates are provided as starting points only. CoAIleague is not a law firm and does not practice law. Templates may not reflect current law in your state or jurisdiction, may require modification for your specific situation, and do not constitute legal, HR, tax, or compliance advice. Always have a licensed attorney in your jurisdiction review any document before use or execution.

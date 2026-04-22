@@ -339,21 +339,29 @@ spsPublicRouter.post('/proposal/:clientToken/reply', async (req, res) => {
     const AGREEMENT_SIGNALS = ['that works', 'we accept', 'agreed', "let's move forward", 'sounds good', 'deal', 'approved', 'confirmed', 'good to go'];
     const agreementDetected = AGREEMENT_SIGNALS.some(s => message.toLowerCase().includes(s));
 
-    const [msg] = await db.insert(spsNegotiationMessages).values({
-      id: randomUUID(),
-      threadId: thread.id,
-      senderType: 'client',
-      senderName: thread.clientName,
-      senderEmail: thread.clientEmail,
-      messageRaw: message,
-      agreementSignalDetected: agreementDetected,
-    }).returning();
+    const [msg] = await db.transaction(async (tx) => {
+      const [newMsg] = await tx.insert(spsNegotiationMessages).values({
+        id: randomUUID(),
+        threadId: thread.id,
+        senderType: 'client',
+        senderName: thread.clientName,
+        senderEmail: thread.clientEmail,
+        messageRaw: message,
+        agreementSignalDetected: agreementDetected,
+      }).returning();
 
-    if (agreementDetected && !thread.agreementDetected) {
-      await db.update(spsNegotiationThreads)
-        .set({ agreementDetected: true, agreementDetectedAt: new Date(), updatedAt: new Date() })
+      // Always bump updatedAt so admin lists ordered by activity stay current.
+      const threadUpdates: Record<string, unknown> = { updatedAt: new Date() };
+      if (agreementDetected && !thread.agreementDetected) {
+        threadUpdates.agreementDetected = true;
+        threadUpdates.agreementDetectedAt = new Date();
+      }
+      await tx.update(spsNegotiationThreads)
+        .set(threadUpdates as any)
         .where(eq(spsNegotiationThreads.id, thread.id));
-    }
+
+      return [newMsg];
+    });
 
     res.status(201).json({ message: msg, agreementDetected });
   } catch (err) {

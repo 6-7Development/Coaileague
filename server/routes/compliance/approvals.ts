@@ -114,34 +114,38 @@ router.post("/", requireAuth, async (req: Request, res: Response) => {
       dueDate
     } = apParsed.data;
     
-    const [approval] = await db.insert(complianceApprovals).values({
-      workspaceId,
-      employeeId,
-      complianceRecordId,
-      approvalType,
-      documentId,
-      status: 'pending',
-      priority: priority || 'normal',
-      requestedBy: req.user?.id,
-      requestNotes,
-      dueDate: dueDate ? new Date(dueDate) : undefined
-    }).returning();
-    
-    // @ts-expect-error — TS migration: fix in refactoring sprint
-    await db.insert(complianceAuditTrail).values({
-      workspaceId,
-      entityType: 'approval',
-      entityId: approval.id,
-      employeeId,
-      documentId,
-      action: 'request',
-      actionCategory: 'create',
-      performedBy: req.user?.id,
-      ipAddress: req.ip,
-      newValue: { approvalType, priority },
-      severity: 'info'
+    const [approval] = await db.transaction(async (tx) => {
+      const [a] = await tx.insert(complianceApprovals).values({
+        workspaceId,
+        employeeId,
+        complianceRecordId,
+        approvalType,
+        documentId,
+        status: 'pending',
+        priority: priority || 'normal',
+        requestedBy: req.user?.id,
+        requestNotes,
+        dueDate: dueDate ? new Date(dueDate) : undefined
+      }).returning();
+
+      // @ts-expect-error — TS migration: fix in refactoring sprint
+      await tx.insert(complianceAuditTrail).values({
+        workspaceId,
+        entityType: 'approval',
+        entityId: a.id,
+        employeeId,
+        documentId,
+        action: 'request',
+        actionCategory: 'create',
+        performedBy: req.user?.id,
+        ipAddress: req.ip,
+        newValue: { approvalType, priority },
+        severity: 'info'
+      });
+
+      return [a];
     });
-    
+
     res.json({ success: true, approval });
   } catch (error) {
     log.error("[Compliance Approvals] Error creating approval:", error);
@@ -176,142 +180,152 @@ router.post("/:approvalId/decide", requireAuth, async (req: Request, res: Respon
     }
     
     const previousStatus = existing[0].status;
-    
-    const [updated] = await db.update(complianceApprovals)
-      .set({
-        status: decision === 'approved' ? 'approved' : decision === 'rejected' ? 'rejected' : 'pending',
-        decidedBy: req.user?.id,
-        decidedAt: new Date(),
-        decision,
-        decisionNotes,
-        updatedAt: new Date()
-      })
-      .where(eq(complianceApprovals.id, approvalId))
-      .returning();
-    
-    if (decision === 'approved' && updated.documentId) {
-      await db.update(complianceDocuments)
+
+    // Wrap all core DB state changes atomically; fire events and notifications after commit.
+    const [updated] = await db.transaction(async (tx) => {
+      const [upd] = await tx.update(complianceApprovals)
         .set({
-          status: 'approved',
-          verifiedBy: req.user?.id,
-          verifiedAt: new Date(),
-          verificationNotes: decisionNotes,
+          status: decision === 'approved' ? 'approved' : decision === 'rejected' ? 'rejected' : 'pending',
+          decidedBy: req.user?.id,
+          decidedAt: new Date(),
+          decision,
+          decisionNotes,
           updatedAt: new Date()
         })
-        .where(eq(complianceDocuments.id, updated.documentId));
-      
-      if (existing[0].complianceRecordId) {
-        await db.update(complianceChecklists)
+        .where(eq(complianceApprovals.id, approvalId))
+        .returning();
+
+      if (decision === 'approved' && upd.documentId) {
+        await tx.update(complianceDocuments)
           .set({
-            isCompleted: true,
-            completedAt: new Date(),
-            completedBy: req.user?.id,
+            status: 'approved',
             verifiedBy: req.user?.id,
             verifiedAt: new Date(),
+            verificationNotes: decisionNotes,
             updatedAt: new Date()
           })
-          .where(and(
-            eq(complianceChecklists.complianceRecordId, existing[0].complianceRecordId),
-            eq(complianceChecklists.documentId, updated.documentId)
-          ));
-        
+          .where(eq(complianceDocuments.id, upd.documentId));
+
+        if (existing[0].complianceRecordId) {
+          await tx.update(complianceChecklists)
+            .set({
+              isCompleted: true,
+              completedAt: new Date(),
+              completedBy: req.user?.id,
+              verifiedBy: req.user?.id,
+              verifiedAt: new Date(),
+              updatedAt: new Date()
+            })
+            .where(and(
+              eq(complianceChecklists.complianceRecordId, existing[0].complianceRecordId),
+              eq(complianceChecklists.documentId, upd.documentId)
+            ));
+        }
+      } else if (decision === 'rejected' && upd.documentId) {
+        await tx.update(complianceDocuments)
+          .set({
+            status: 'rejected',
+            rejectedBy: req.user?.id,
+            rejectedAt: new Date(),
+            rejectionReason: decisionNotes,
+            updatedAt: new Date()
+          })
+          .where(eq(complianceDocuments.id, upd.documentId));
+      }
+
+      // @ts-expect-error — TS migration: fix in refactoring sprint
+      await tx.insert(complianceAuditTrail).values({
+        workspaceId,
+        entityType: 'approval',
+        entityId: approvalId,
+        employeeId: upd.employeeId,
+        documentId: upd.documentId,
+        action: 'decide',
+        actionCategory: 'update',
+        performedBy: req.user?.id,
+        ipAddress: req.ip,
+        previousValue: { status: previousStatus },
+        newValue: { status: upd.status, decision },
+        severity: decision === 'rejected' ? 'warning' : 'info'
+      });
+
+      return [upd];
+    });
+
+    // Post-commit: recalculate derived compliance counts (reads committed checklist rows).
+    // Non-blocking — failure must not 500 an already-committed approval decision.
+    if (decision === 'approved' && existing[0].complianceRecordId) {
+      try {
         await updateComplianceRecordCounts(existing[0].complianceRecordId);
-      }
-
-      if (updated.employeeId) {
-        const approvedPayload = {
-          employeeId: updated.employeeId,
-          workspaceId,
-          documentType: updated.approvalType || 'compliance_document',
-          documentName: decisionNotes || 'Compliance Document',
-        };
-        platformEventBus.emit('compliance_document_approved', approvedPayload); // keeps complianceScoringBridge listener
-        platformEventBus.publish({ type: 'compliance_document_approved', category: 'automation', title: 'Compliance Document Approved', description: `Document '${decisionNotes || 'Compliance Document'}' approved for employee ${updated.employeeId}`, workspaceId, metadata: approvedPayload }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
-
-        // Non-blocking: notify the employee directly via in-app + email (if they have a user account)
-        (async () => {
-          try {
-            const [emp] = await db.select({ userId: employees.userId, firstName: employees.firstName, lastName: employees.lastName })
-              .from(employees).where(eq(employees.id, updated.employeeId!)).limit(1);
-            if (!emp?.userId) return; // no user account yet — skip
-            const { universalNotificationEngine } = await import('../../services/universalNotificationEngine');
-            await universalNotificationEngine.sendNotification({
-              workspaceId,
-              userId: emp.userId,
-              type: 'compliance_approved',
-              title: 'Compliance Document Approved',
-              message: `Your ${updated.approvalType || 'compliance document'} has been reviewed and approved. No further action is required.`,
-              priority: 'medium',
-              severity: 'info',
-            });
-          } catch (emailErr: unknown) {
-            log.warn('[ComplianceApprovals] Employee approval notification failed (non-blocking):', (emailErr instanceof Error ? emailErr.message : String(emailErr)));
-          }
-        })();
-      }
-    } else if (decision === 'rejected' && updated.documentId) {
-      await db.update(complianceDocuments)
-        .set({
-          status: 'rejected',
-          rejectedBy: req.user?.id,
-          rejectedAt: new Date(),
-          rejectionReason: decisionNotes,
-          updatedAt: new Date()
-        })
-        .where(eq(complianceDocuments.id, updated.documentId));
-
-      if (updated.employeeId) {
-        const rejectedPayload = {
-          employeeId: updated.employeeId,
-          workspaceId,
-          documentType: updated.approvalType || 'compliance_document',
-          documentName: decisionNotes || 'Compliance Document',
-          reason: decisionNotes,
-        };
-        platformEventBus.emit('compliance_document_rejected', rejectedPayload); // keeps complianceScoringBridge listener
-        platformEventBus.publish({ type: 'compliance_document_rejected', category: 'automation', title: 'Compliance Document Rejected', description: `Document '${decisionNotes || 'Compliance Document'}' rejected for employee ${updated.employeeId}. Reason: ${decisionNotes || 'N/A'}`, workspaceId, metadata: rejectedPayload }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
-
-        // Non-blocking: notify the employee directly via email + in-app
-        (async () => {
-          try {
-            const [emp] = await db.select({ userId: employees.userId })
-              .from(employees).where(eq(employees.id, updated.employeeId!)).limit(1);
-            if (!emp?.userId) return; // no user account yet — skip
-            const { universalNotificationEngine } = await import('../../services/universalNotificationEngine');
-            await universalNotificationEngine.sendNotification({
-              workspaceId,
-              userId: emp.userId,
-              type: 'compliance_rejected',
-              title: 'Compliance Document Requires Attention',
-              message: decisionNotes
-                ? `Your ${updated.approvalType || 'compliance document'} was not approved. Reason: ${decisionNotes}. Please resubmit the correct documentation.`
-                : `Your ${updated.approvalType || 'compliance document'} was not approved. Please resubmit the correct documentation.`,
-              priority: 'high',
-              severity: 'warning',
-            });
-          } catch (emailErr: unknown) {
-            log.warn('[ComplianceApprovals] Employee rejection notification failed (non-blocking):', (emailErr instanceof Error ? emailErr.message : String(emailErr)));
-          }
-        })();
+      } catch (countErr: unknown) {
+        log.warn('[ComplianceApprovals] Compliance count refresh failed after approval commit:', countErr instanceof Error ? countErr.message : String(countErr));
       }
     }
-    
-    // @ts-expect-error — TS migration: fix in refactoring sprint
-    await db.insert(complianceAuditTrail).values({
-      workspaceId,
-      entityType: 'approval',
-      entityId: approvalId,
-      employeeId: updated.employeeId,
-      documentId: updated.documentId,
-      action: 'decide',
-      actionCategory: 'update',
-      performedBy: req.user?.id,
-      ipAddress: req.ip,
-      previousValue: { status: previousStatus },
-      newValue: { status: updated.status, decision },
-      severity: decision === 'rejected' ? 'warning' : 'info'
-    });
-    
+
+    // Post-commit: non-blocking event bus + employee notifications
+    if (decision === 'approved' && updated.employeeId) {
+      const approvedPayload = {
+        employeeId: updated.employeeId,
+        workspaceId,
+        documentType: updated.approvalType || 'compliance_document',
+        documentName: decisionNotes || 'Compliance Document',
+      };
+      platformEventBus.emit('compliance_document_approved', approvedPayload);
+      platformEventBus.publish({ type: 'compliance_document_approved', category: 'automation', title: 'Compliance Document Approved', description: `Document '${decisionNotes || 'Compliance Document'}' approved for employee ${updated.employeeId}`, workspaceId, metadata: approvedPayload }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+
+      (async () => {
+        try {
+          const [emp] = await db.select({ userId: employees.userId, firstName: employees.firstName, lastName: employees.lastName })
+            .from(employees).where(eq(employees.id, updated.employeeId!)).limit(1);
+          if (!emp?.userId) return;
+          const { universalNotificationEngine } = await import('../../services/universalNotificationEngine');
+          await universalNotificationEngine.sendNotification({
+            workspaceId,
+            userId: emp.userId,
+            type: 'compliance_approved',
+            title: 'Compliance Document Approved',
+            message: `Your ${updated.approvalType || 'compliance document'} has been reviewed and approved. No further action is required.`,
+            priority: 'medium',
+            severity: 'info',
+          });
+        } catch (emailErr: unknown) {
+          log.warn('[ComplianceApprovals] Employee approval notification failed (non-blocking):', (emailErr instanceof Error ? emailErr.message : String(emailErr)));
+        }
+      })();
+    } else if (decision === 'rejected' && updated.employeeId) {
+      const rejectedPayload = {
+        employeeId: updated.employeeId,
+        workspaceId,
+        documentType: updated.approvalType || 'compliance_document',
+        documentName: decisionNotes || 'Compliance Document',
+        reason: decisionNotes,
+      };
+      platformEventBus.emit('compliance_document_rejected', rejectedPayload);
+      platformEventBus.publish({ type: 'compliance_document_rejected', category: 'automation', title: 'Compliance Document Rejected', description: `Document '${decisionNotes || 'Compliance Document'}' rejected for employee ${updated.employeeId}. Reason: ${decisionNotes || 'N/A'}`, workspaceId, metadata: rejectedPayload }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
+
+      (async () => {
+        try {
+          const [emp] = await db.select({ userId: employees.userId })
+            .from(employees).where(eq(employees.id, updated.employeeId!)).limit(1);
+          if (!emp?.userId) return;
+          const { universalNotificationEngine } = await import('../../services/universalNotificationEngine');
+          await universalNotificationEngine.sendNotification({
+            workspaceId,
+            userId: emp.userId,
+            type: 'compliance_rejected',
+            title: 'Compliance Document Requires Attention',
+            message: decisionNotes
+              ? `Your ${updated.approvalType || 'compliance document'} was not approved. Reason: ${decisionNotes}. Please resubmit the correct documentation.`
+              : `Your ${updated.approvalType || 'compliance document'} was not approved. Please resubmit the correct documentation.`,
+            priority: 'high',
+            severity: 'warning',
+          });
+        } catch (emailErr: unknown) {
+          log.warn('[ComplianceApprovals] Employee rejection notification failed (non-blocking):', (emailErr instanceof Error ? emailErr.message : String(emailErr)));
+        }
+      })();
+    }
+
     res.json({ success: true, approval: updated });
   } catch (error) {
     log.error("[Compliance Approvals] Error deciding approval:", error);

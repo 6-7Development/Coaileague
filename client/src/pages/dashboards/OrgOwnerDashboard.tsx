@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { CanvasHubPage, type CanvasPageConfig } from "@/components/canvas-hub";
+import { PageSkeleton } from "@/components/ui/skeleton-loaders";
 import { useAuth } from "@/hooks/useAuth";
 import { formatCurrency } from "@/lib/formatters";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -34,7 +35,7 @@ export default function OrgOwnerDashboard() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
 
-  const { data: workspace } = useQuery<{ id: string; name?: string; orgId?: string; organizationId?: string }>({
+  const { data: workspace, isLoading: workspaceLoading } = useQuery<{ id: string; name?: string; orgId?: string; organizationId?: string }>({
     queryKey: ["/api/workspace/current"],
     staleTime: 5 * 60 * 1000,
   });
@@ -105,20 +106,22 @@ export default function OrgOwnerDashboard() {
     setTimeout(() => setPinCopied(false), 1500);
   };
 
-  const { data: clients } = useQuery<{ data: any[] } | any[]>({
+  const { data: clients, isLoading: clientsLoading } = useQuery<{ data: any[] } | any[]>({
     queryKey: ["/api/clients"],
     staleTime: 60000,
   });
 
-  const { data: employeesRes } = useQuery<{ data: any[] }>({
+  const { data: employeesRes, isLoading: employeesLoading } = useQuery<{ data: any[] }>({
     queryKey: ["/api/employees"],
     staleTime: 60000,
   });
 
-  const { data: invoices } = useQuery<any[]>({
+  const { data: invoices, isLoading: invoicesLoading } = useQuery<any[]>({
     queryKey: ["/api/invoices"],
     staleTime: 60000,
   });
+
+  const isDashboardLoading = workspaceLoading || clientsLoading || employeesLoading || invoicesLoading;
 
   const clientList = Array.isArray(clients) ? clients : (clients as any)?.data ?? [];
   const activeClients = clientList.filter((c: any) => c.status === "active" || !c.status).length;
@@ -129,6 +132,14 @@ export default function OrgOwnerDashboard() {
   const outstandingTotal = outstandingInvoices.reduce((sum: number, inv: any) => sum + (Number(inv.totalAmount) || 0), 0);
 
   const orgName = workspace?.name ?? "Your Organization";
+
+  if (isDashboardLoading) {
+    return (
+      <CanvasHubPage config={pageConfig}>
+        <PageSkeleton />
+      </CanvasHubPage>
+    );
+  }
 
   return (
     <CanvasHubPage config={pageConfig}>
