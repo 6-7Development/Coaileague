@@ -6,6 +6,7 @@ import { storage } from "../storage";
 import { eq, and, gte, lte, isNull, sql, inArray } from "drizzle-orm";
 import { aiTokenGateway } from "../services/billing/aiTokenGateway";
 import { trinitySchedulerWithSLA } from "../services/trinity/trinitySchedulerWithSLA";
+import { getClientConstraints } from '../services/scheduling/clientConstraintsService';
 import { createLogger } from '../lib/logger';
 const log = createLogger('TrinitySchedulingRoutes');
 
@@ -300,28 +301,18 @@ router.post('/schedule-shift', async (req: any, res) => {
 
     let clientConstraints: { numberOfGuards?: number | null; daysOfService?: string[] | null; currentlyScheduledGuards?: number } | undefined;
     if (clientId) {
-      const [client] = await db
-        .select()
-        .from(clients)
-        .where(and(eq(clients.workspaceId, workspaceId), eq(clients.id, clientId), isNull(clients.deletedAt)))
-        .limit(1);
-      if (!client) return res.status(404).json({ message: 'Client not found' });
-
-      const overlappingShifts = await db
-        .select({ id: shifts.id })
-        .from(shifts)
-        .where(and(
-          eq(shifts.workspaceId, workspaceId),
-          eq(shifts.clientId, clientId),
-          lte(shifts.startTime, new Date(endTime)),
-          gte(shifts.endTime, new Date(startTime)),
-          sql`${shifts.status} NOT IN ('cancelled')`
-        ));
+      const constraints = await getClientConstraints({
+        workspaceId,
+        clientId,
+        shiftStart: new Date(startTime),
+        shiftEnd: new Date(endTime),
+      });
+      if (!constraints) return res.status(404).json({ message: 'Client not found' });
 
       clientConstraints = {
-        numberOfGuards: (client as any).numberOfGuards ?? null,
-        daysOfService: (client as any).daysOfService ?? null,
-        currentlyScheduledGuards: overlappingShifts.length,
+        numberOfGuards: constraints.numberOfGuards,
+        daysOfService: constraints.daysOfService,
+        currentlyScheduledGuards: constraints.currentlyScheduledGuards,
       };
     }
 
