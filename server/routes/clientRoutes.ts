@@ -29,6 +29,7 @@ import { clientsQuerySchema } from "../../shared/validation/pagination";
 import { deletionProtection } from "../services/deletionProtectionService";
 import { clientPortalHelpAIService } from "../services/helpai/clientPortalHelpAIService";
 import { createLogger } from '../lib/logger';
+import { setInvoiceSettings } from '../services/billing/invoiceSettingsService';
 const log = createLogger('ClientRoutes');
 
 import {
@@ -214,6 +215,18 @@ router.post('/', requireManagerOrPlatformStaff, async (req: AuthenticatedRequest
       ...validated,
       userId: userId || validated.userId || null,
     });
+
+    // Keep client billing inputs and invoice settings in sync from day 1.
+    await setInvoiceSettings({
+      workspaceId,
+      clientId: client.id,
+      billingCycle: (validated.billingFrequency || validated.billingCycle || 'monthly') as string,
+      taxRate: workspace.defaultTaxRate ? String(workspace.defaultTaxRate) : '0.0000',
+      roundHoursTo: '0.25',
+      defaultBillRate: validated.billableHourlyRate ? String(validated.billableHourlyRate) : undefined,
+      autoSendInvoice: validated.autoSendInvoice ?? true,
+      invoiceRecipientEmails: validated.billingEmail ? [validated.billingEmail] : undefined,
+    }, req.user?.id || null);
 
     // GAP-L3-CRM: Initialize CRM pipeline record on client creation.
     // This ensures every new client is immediately visible in the sales/retention pipeline.
@@ -442,6 +455,25 @@ router.patch('/:id', requireManagerOrPlatformStaff, async (req: AuthenticatedReq
           log.warn('[BillRatePropagation] Trinity propagation non-blocking failure:', propagateErr);
         }
       })();
+    }
+
+    const invoiceSyncFields = [
+      validated.billingFrequency,
+      validated.billingCycle,
+      validated.billableHourlyRate,
+      validated.autoSendInvoice,
+      validated.billingEmail,
+    ];
+    const shouldSyncInvoiceSettings = invoiceSyncFields.some((value) => value !== undefined);
+    if (shouldSyncInvoiceSettings) {
+      await setInvoiceSettings({
+        workspaceId,
+        clientId: req.params.id,
+        billingCycle: validated.billingFrequency || validated.billingCycle,
+        defaultBillRate: validated.billableHourlyRate ? String(validated.billableHourlyRate) : undefined,
+        autoSendInvoice: validated.autoSendInvoice,
+        invoiceRecipientEmails: validated.billingEmail ? [validated.billingEmail] : undefined,
+      }, req.user?.id || null);
     }
 
     await db.insert(auditLogs).values({
