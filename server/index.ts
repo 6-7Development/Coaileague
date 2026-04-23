@@ -1659,7 +1659,9 @@ process.on('SIGHUP', () => gracefulShutdown('SIGHUP'));
 
 // Handle uncaught exceptions - be resilient to Neon serverless errors
 process.on('uncaughtException', (err: any) => {
-  log.error('Uncaught exception', { error: err instanceof Error ? { message: err.message, stack: err.stack } : String(err) });
+  const errMsg = err instanceof Error ? err.message : String(err);
+  const errStack = err instanceof Error ? (err.stack || '').split('\n').slice(0,5).join(' | ') : '';
+  log.error(`Uncaught exception: ${errMsg} | code=${err?.code || 'none'} | ${errStack.slice(0,200)}`);
   
   if (err.message?.includes('Cannot set property message') && 
       err.message?.includes('ErrorEvent')) {
@@ -1669,6 +1671,11 @@ process.on('uncaughtException', (err: any) => {
   
   if (err.code === '57P01' || err.message?.includes('terminating connection due to administrator command')) {
     log.warn('Database connection terminated by administrator (non-fatal), continuing');
+    return;
+  }
+  
+  if (errMsg?.includes('column "date" does not exist') || errMsg?.includes("column 'date' does not exist")) {
+    log.warn('platform_updates.date column missing (non-fatal) — migration will add it');
     return;
   }
   
