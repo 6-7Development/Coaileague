@@ -1503,7 +1503,9 @@ router.post('/api/notifications/test-sms', requireAuth, async (req: Authenticate
       }
 
       const id = await NotificationDeliveryService.send({
-        type: 'system_alert',
+        idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            type: 'system_alert',
         workspaceId,
         recipientUserId: userId || 'system',
         channel: 'sms',

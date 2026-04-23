@@ -144,7 +144,8 @@ router.post("/", async (req: Request, res: Response) => {
         numberOfGuards: validated.roiData.numberOfGuards,
       } : undefined,
     });
-    NotificationDeliveryService.send({ type: 'lead_welcome', workspaceId: 'public', recipientUserId: validated.contactEmail, channel: 'email', body: _leadEmail }).catch(err => {
+    NotificationDeliveryService.send({ idempotencyKey: `notif-${Date.now()}`,
+            type: 'lead_welcome', workspaceId: 'public', recipientUserId: validated.contactEmail, channel: 'email', body: _leadEmail }).catch(err => {
       log.error('[PublicLeads] Failed to queue welcome email:', err);
     });
     

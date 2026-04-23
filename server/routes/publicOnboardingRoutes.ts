@@ -836,7 +836,10 @@ router.post('/workspace-invite/register', async (req, res) => {
           const { NotificationDeliveryService } = await import('../services/notificationDeliveryService');
           for (const owner of owners) {
             await NotificationDeliveryService.send({
-              type: 'staffing_status_update',
+              idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            type: 'staffing_status_update',
               workspaceId: invite.workspaceId,
               recipientUserId: owner.user_id,
               channel: 'in_app',
@@ -900,6 +903,9 @@ router.post('/workspace-invite/register', async (req, res) => {
         if (ws?.ownerId) {
           const { NotificationDeliveryService } = await import('../services/notificationDeliveryService');
           await NotificationDeliveryService.send({
+            idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
             type: 'staffing_status_update',
             workspaceId: invite.workspaceId,
             recipientUserId: ws.ownerId,
@@ -1037,6 +1043,9 @@ router.post('/workspace-invite/accept-existing', async (req, res) => {
         if (ws?.ownerId && ws.ownerId !== userId) {
           const { NotificationDeliveryService } = await import('../services/notificationDeliveryService');
           await NotificationDeliveryService.send({
+            idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
             type: 'staffing_status_update',
             workspaceId: invite.workspaceId,
             recipientUserId: ws.ownerId,

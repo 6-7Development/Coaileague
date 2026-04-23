@@ -210,7 +210,10 @@ visitorManagementRouter.post('/checkin', requireAuth, async (req: AuthenticatedR
     if (isBanned) {
       NotificationDeliveryService.send({
         // @ts-expect-error — TS migration: fix in refactoring sprint
-        type: 'security_alert',
+        idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            type: 'security_alert',
         workspaceId,
         recipientUserId: workspaceId,
         channel: 'in_app',
@@ -223,7 +226,10 @@ visitorManagementRouter.post('/checkin', requireAuth, async (req: AuthenticatedR
     }
 
     platformEventBus.publish({
-      type: 'visitor_checked_in',
+      idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            type: 'visitor_checked_in',
       workspaceId,
       title: `Visitor Checked In — ${visitorName}`,
       description: `${visitorName}${visitorCompany ? ` (${visitorCompany})` : ''} checked in at ${siteName}`,
@@ -309,7 +315,10 @@ visitorManagementRouter.get('/overstay', requireAuth, async (req: AuthenticatedR
       if (!o.alert_sent) {
         NotificationDeliveryService.send({
           // @ts-expect-error — TS migration: fix in refactoring sprint
-          type: 'security_alert',
+          idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            type: 'security_alert',
           workspaceId,
           recipientUserId: workspaceId,
           channel: 'in_app',
@@ -321,7 +330,10 @@ visitorManagementRouter.get('/overstay', requireAuth, async (req: AuthenticatedR
         }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
 
         platformEventBus.publish({
-          type: 'visitor_overstay',
+          idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            type: 'visitor_overstay',
           workspaceId,
           title: `Visitor Overstay — ${o.visitor_name}`,
           description: `${o.visitor_name} is still on-site at ${o.site_name} after ${Math.floor(o.elapsedMinutes / 60)}h`,
@@ -568,7 +580,10 @@ async function runOverstayScanner(workspaceIds?: string[]): Promise<void> {
 
         NotificationDeliveryService.send({
           // @ts-expect-error — TS migration: fix in refactoring sprint
-          type: 'security_alert',
+          idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            type: 'security_alert',
           workspaceId,
           recipientUserId: workspaceId,
           channel: 'in_app',
@@ -580,7 +595,10 @@ async function runOverstayScanner(workspaceIds?: string[]): Promise<void> {
         }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
 
         platformEventBus.publish({
-          type: 'visitor_overstay',
+          idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            type: 'visitor_overstay',
           workspaceId,
           title: `Visitor Overstay — ${o.visitor_name}`,
           description: `${o.visitor_name} is still on-site at ${o.site_name} after ${hours}h ${mins}m`,

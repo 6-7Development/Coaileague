@@ -219,9 +219,13 @@ spsPublicRouter.post('/:token/submit', async (req, res) => {
         </div>
       `;
 
-      await NotificationDeliveryService.send({ type: 'sps_document', workspaceId: completed.workspaceId || 'system', recipientUserId: completed.recipientEmail, channel: 'email', body: { to: completed.recipientEmail, subject, html } });
+      await NotificationDeliveryService.send({ idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            type: 'sps_document', workspaceId: completed.workspaceId || 'system', recipientUserId: completed.recipientEmail, channel: 'email', body: { to: completed.recipientEmail, subject, html } });
       if (completed.orgSignerEmail) {
-        await NotificationDeliveryService.send({ type: 'sps_document', workspaceId: completed.workspaceId || 'system', recipientUserId: completed.orgSignerEmail, channel: 'email', body: { to: completed.orgSignerEmail, subject, html } });
+        await NotificationDeliveryService.send({ idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            type: 'sps_document', workspaceId: completed.workspaceId || 'system', recipientUserId: completed.orgSignerEmail, channel: 'email', body: { to: completed.orgSignerEmail, subject, html } });
       }
     } catch (emailErr) {
       log.error('[spsPublicRoutes] Completion email failed:', emailErr);

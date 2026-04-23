@@ -762,7 +762,10 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
               try {
                 const { NotificationDeliveryService } = await import("../services/notificationDeliveryService");
                 await NotificationDeliveryService.send({
-                  type: "shift_assignment",
+                  idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            type: "shift_assignment",
                   workspaceId,
                   recipientUserId: empId,
                   channel: "push",
@@ -770,7 +773,10 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
                   body: {
                     title: "New Shift Assigned",
                     body: `You've been assigned to ${shift.title || 'a shift'} on ${new Date(shift.startTime).toLocaleDateString()}`,
-                    type: "shift_reminder",
+                    idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            type: "shift_reminder",
                     url: "/schedule",
                     shiftId: shift.id,
                   }
@@ -974,6 +980,9 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
         try {
           const { NotificationDeliveryService } = await import("../services/notificationDeliveryService");
           await NotificationDeliveryService.send({
+            idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
             type: "shift_assignment",
             workspaceId,
             recipientUserId: shift.employeeId,
@@ -982,7 +991,10 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
             body: {
               title: "New Shift Assigned",
               body: `You've been assigned to ${shift.title || 'a shift'} on ${shiftDate}`,
-              type: "shift_reminder",
+              idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            type: "shift_reminder",
               url: "/schedule",
               shiftId: shift.id,
             }
@@ -2898,7 +2910,10 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
                         if (!mgr.userId) continue;
                         await NotificationDeliveryService.send({
                           // @ts-expect-error — TS migration: fix in refactoring sprint
-                          type: 'geo_fence_violation',
+                          idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            type: 'geo_fence_violation',
                           workspaceId: employee.workspaceId,
                           recipientUserId: mgr.userId,
                           channel: 'push',
@@ -2906,7 +2921,10 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
                           body: {
                             title: 'GPS Out-of-Bounds Alert',
                             body: `Officer clocked in ${distanceM.toFixed(0)}m outside site geofence for shift at ${site?.name || 'assigned site'}`,
-                            type: 'geo_alert',
+                            idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            type: 'geo_alert',
                             url: '/schedule',
                             shiftId: req.params.shiftId,
                             employeeId: employee.id,

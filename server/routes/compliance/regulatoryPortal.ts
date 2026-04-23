@@ -451,7 +451,9 @@ router.post('/request/:id/grant', requireAuth, async (req: Request, res: Respons
             <p style="font-size:12px;color:#64748b">Navigate to your platform's regulatory portal to begin your audit review.</p>
           </div>
         </div>`;
-    await NotificationDeliveryService.send({ type: 'regulatory_notification', workspaceId: request.workspaceId, recipientUserId: request.auditorEmail!, channel: 'email', body: { to: request.auditorEmail!, subject: `${PLATFORM.name} Regulatory Portal — Audit Access Granted`, html: _auditGrantHtml } })
+    await NotificationDeliveryService.send({ idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            type: 'regulatory_notification', workspaceId: request.workspaceId, recipientUserId: request.auditorEmail!, channel: 'email', body: { to: request.auditorEmail!, subject: `${PLATFORM.name} Regulatory Portal — Audit Access Granted`, html: _auditGrantHtml } })
       .catch((err: unknown) => {
         log.warn('[RegulatoryPortal] Credentials email to auditor failed:', (err as any)?.message);
       });
@@ -1135,7 +1137,9 @@ async function notifyOrgOwnerOfAuditRequest(
           <p style="font-size:12px;color:#64748b;margin-top:16px">Request ID: ${info.requestId}</p>
         </div>
       </div>`;
-  await NotificationDeliveryService.send({ type: 'regulatory_notification', workspaceId: (info as any).workspaceId, recipientUserId: owner.id, channel: 'email', body: { to: owner.email, subject: `[ACTION REQUIRED] State Regulatory Audit Access Requested for ${orgName}`, html: _auditRequestHtml } })
+  await NotificationDeliveryService.send({ idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            type: 'regulatory_notification', workspaceId: (info as any).workspaceId, recipientUserId: owner.id, channel: 'email', body: { to: owner.email, subject: `[ACTION REQUIRED] State Regulatory Audit Access Requested for ${orgName}`, html: _auditRequestHtml } })
     .catch((err: unknown) => {
       log.warn('[RegulatoryPortal] Org owner audit notification email failed (non-fatal):', (err as any)?.message);
     });

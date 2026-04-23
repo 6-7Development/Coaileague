@@ -727,7 +727,8 @@ router.get("/guardrails/config", requireManager, readLimiter, async (req: Authen
       // Send via NDS — tracked delivery with automatic retry on failure
       const notifId = await NotificationDeliveryService.send({
         // @ts-expect-error — TS migration: fix in refactoring sprint
-        type: 'ai_brain_email',
+        idempotencyKey: `notif-${Date.now()}`,
+            type: 'ai_brain_email',
         workspaceId: workspaceId || 'system',
         // @ts-expect-error — TS migration: fix in refactoring sprint
         recipientUserId: userId || recipient,

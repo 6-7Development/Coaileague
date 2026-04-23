@@ -62,7 +62,13 @@ smsRouter.post('/send', requireWorkspaceRole(['org_owner', 'co_owner']), async (
     if (employeeId && !to) {
       const { NotificationDeliveryService } = await import('../services/notificationDeliveryService');
       const id = await NotificationDeliveryService.send({
-        type: (type as any) || 'system_alert',
+        idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            type: (type as any) || 'system_alert',
         workspaceId,
         recipientUserId: employeeId,
         channel: 'sms',
@@ -84,7 +90,13 @@ smsRouter.post('/send', requireWorkspaceRole(['org_owner', 'co_owner']), async (
 
     const { NotificationDeliveryService } = await import('../services/notificationDeliveryService');
     const id = await NotificationDeliveryService.send({
-      type: (type as any) || 'system_alert',
+      idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            type: (type as any) || 'system_alert',
       workspaceId,
       recipientUserId: user?.id || 'system',
       channel: 'sms',
@@ -127,7 +139,13 @@ smsRouter.post('/send-to-employee', requireManager, async (req: Request, res: Re
 
     const { NotificationDeliveryService } = await import('../services/notificationDeliveryService');
     const id = await NotificationDeliveryService.send({
-      type: (type as any) || 'system_alert',
+      idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            type: (type as any) || 'system_alert',
       workspaceId,
       recipientUserId: employeeId,
       channel: 'sms',
@@ -165,7 +183,13 @@ smsRouter.post('/shift-reminder', requireManager, async (req: Request, res: Resp
 
     const { NotificationDeliveryService } = await import('../services/notificationDeliveryService');
     const id = await NotificationDeliveryService.send({
-      type: 'shift_reminder',
+      idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            type: 'shift_reminder',
       workspaceId,
       recipientUserId: employeeId,
       channel: 'sms',
@@ -209,7 +233,13 @@ smsRouter.post('/schedule-change', requireManager, async (req: Request, res: Res
 
     const { NotificationDeliveryService } = await import('../services/notificationDeliveryService');
     const id = await NotificationDeliveryService.send({
-      type: 'schedule_notification',
+      idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            type: 'schedule_notification',
       workspaceId,
       recipientUserId: employeeId,
       channel: 'sms',
@@ -242,7 +272,13 @@ smsRouter.post('/invoice-reminder', requireWorkspaceRole(['org_owner', 'co_owner
 
     const { NotificationDeliveryService } = await import('../services/notificationDeliveryService');
     const id = await NotificationDeliveryService.send({
-      type: 'invoice_notification',
+      idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            type: 'invoice_notification',
       workspaceId: workspaceId || 'system',
       recipientUserId: clientPhone, // We don't have a userId here, using phone as identifier
       channel: 'sms',

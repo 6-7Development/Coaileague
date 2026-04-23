@@ -784,6 +784,8 @@ inboundEmailRouter.post('/', async (req: Request, res: Response) => {
         // NDS: trinity processed
         if (workspaceId && targetUserId) {
           await NotificationDeliveryService.send({
+            idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
             type: 'trinity_email_processed',
             workspaceId,
             recipientUserId: targetUserId,
@@ -798,7 +800,9 @@ inboundEmailRouter.post('/', async (req: Request, res: Response) => {
     if (route.route_type === 'user_inbox' && targetUserId && workspaceId) {
       scheduleNonBlocking('inbound-email.user-inbox-nds', async () => {
         await NotificationDeliveryService.send({
-          type: 'new_email_received',
+          idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            type: 'new_email_received',
           workspaceId,
           recipientUserId: targetUserId,
           channel: 'in_app',

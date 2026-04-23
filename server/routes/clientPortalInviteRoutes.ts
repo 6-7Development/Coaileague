@@ -187,7 +187,8 @@ router.post('/:id/invite', requireManagerOrPlatformStaff, async (req: Authentica
     const inviteUrl = `${req.protocol}://${req.get('host')}/client-portal/setup?token=${token}&workspace=${workspaceId}`;
 
     await NotificationDeliveryService.send({
-      type: 'client_portal_invite',
+      idempotencyKey: `notif-${Date.now()}`,
+            type: 'client_portal_invite',
       workspaceId,
       recipientUserId: email, // NDS handles email delivery if userId is not found
       channel: 'email',

@@ -160,7 +160,8 @@ function notifyClient(workspaceId: string, clientRecordId: string, subject: stri
       const { email, userId } = await resolveClientContactInfo(clientRecordId, workspaceId);
       if (!email) return;
       await NotificationDeliveryService.send({
-        type: 'client_portal_invite',
+        idempotencyKey: `notif-${Date.now()}`,
+            type: 'client_portal_invite',
         workspaceId,
         recipientUserId: userId || email,
         channel: 'email',

@@ -381,7 +381,8 @@ router.post('/send', requireAuth, requireManager, async (req: any, res) => {
             expiresAt,
           });
 
-          await NotificationDeliveryService.send({ type: 'document_notification', workspaceId: workspaceId || 'system', recipientUserId: emp.id || emp.email, channel: 'email', body: { to: emp.email, subject: doc.emailSubject, html } });
+          await NotificationDeliveryService.send({ idempotencyKey: `notif-${Date.now()}`,
+            type: 'document_notification', workspaceId: workspaceId || 'system', recipientUserId: emp.id || emp.email, channel: 'email', body: { to: emp.email, subject: doc.emailSubject, html } });
 
           results.push({ employeeId: emp.id, employeeName: `${emp.firstName} ${emp.lastName}`, docType, success: true });
         } catch (innerErr: unknown) {

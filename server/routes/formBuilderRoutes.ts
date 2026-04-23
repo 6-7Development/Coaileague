@@ -586,7 +586,9 @@ router.post("/forms/:formId/submissions/:submissionId/submit", async (req: Authe
     if (routingRules?.approverUserId) {
       try {
         await NotificationDeliveryService.send({
-          type: 'document_requires_signature',
+          idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            type: 'document_requires_signature',
           workspaceId,
           recipientUserId: routingRules.approverUserId,
           channel: 'in_app',
@@ -715,7 +717,9 @@ router.post("/forms/:formId/submissions/:submissionId/approve", async (req: Auth
     if (submission.submittedBy) {
       try {
         await NotificationDeliveryService.send({
-          type: 'document_requires_signature',
+          idempotencyKey: `notif-${Date.now()}`,
+            idempotencyKey: `notif-${Date.now()}`,
+            type: 'document_requires_signature',
           workspaceId,
           recipientUserId: submission.submittedBy,
           channel: 'in_app',
