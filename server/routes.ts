@@ -51,6 +51,7 @@ export const stripe = new Proxy({} as Stripe, {
 // DOMAIN ROUTE MOUNTS — 15 canonical domains + audit
 // ============================================================================
 import { mountAuthRoutes } from "./routes/domains/auth";
+import { isPublicPath } from "./lib/publicPaths";
 import { mountBillingRoutes } from "./routes/domains/billing";
 import { mountClientRoutes } from "./routes/domains/clients";
 import { mountCommsRoutes } from "./routes/domains/comms";
@@ -95,6 +96,7 @@ import resendWebhooksRouter from "./routes/resendWebhooks";
 import twilioWebhooksRouter from "./routes/twilioWebhooks";
 import { messageBridgeWebhookRouter } from "./routes/messageBridgeRoutes";
 import { inboundEmailRouter } from "./routes/inboundEmailRoutes";
+import bootstrapRouter from "./routes/bootstrapRoutes";
 import { emailRouter } from "./routes/email/emailRoutes";
 import { voiceRouter, initializeVoiceTables } from "./routes/voiceRoutes";
 import platformFeedbackRouter from "./routes/platformFeedbackRoutes";
@@ -225,6 +227,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
     };
     await seedWithRetry(runEnumMigration, 'enumMigration');
 
+    // ── platform_updates schema parity migration ──────────────────────────────
+    // The 'date' column is in Drizzle schema but may not be in the actual DB
+    // Add it idempotently to prevent column-not-found crashes
+    const runPlatformUpdatesMigration = async () => {
+      const { pool } = await import('./db');
+      const cols: Array<[string, string]> = [
+        ['date', 'TIMESTAMP WITH TIME ZONE DEFAULT NOW()'],
+        ['version', 'VARCHAR(50)'],
+        ['badge', 'VARCHAR(50)'],
+        ['priority', 'INTEGER'],
+        ['is_new', 'BOOLEAN DEFAULT true'],
+        ['learn_more_url', 'VARCHAR(500)'],
+        ['visibility', "VARCHAR(20) DEFAULT 'all'"],
+        ['workspace_id', 'VARCHAR(255)'],
+        ['created_by', 'VARCHAR(255)'],
+        ['metadata', 'JSONB'],
+        ['updated_at', 'TIMESTAMP WITH TIME ZONE DEFAULT NOW()'],
+      ];
+      for (const [col, type] of cols) {
+        try {
+          await pool.query(`ALTER TABLE platform_updates ADD COLUMN IF NOT EXISTS ${col} ${type}`);
+        } catch { /* already exists */ }
+      }
+      log.info('[Startup] platform_updates schema parity: ensured all columns');
+    };
+    await seedWithRetry(runPlatformUpdatesMigration, 'platformUpdatesMigration');
+
+
+    // ── Cookie consent + missing tables migration ────────────────────────────
+    const runMissingTablesMigration = async () => {
+      const { pool } = await import('./db');
+      // cookie_consent — created by productionSeed but may not exist yet
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS cookie_consent (
+          id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          user_id      TEXT NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+          workspace_id TEXT,
+          essential    BOOLEAN NOT NULL DEFAULT TRUE,
+          functional   BOOLEAN NOT NULL DEFAULT FALSE,
+          analytics    BOOLEAN NOT NULL DEFAULT FALSE,
+          ip_address   TEXT,
+          user_agent   TEXT,
+          consented_at TIMESTAMPTZ DEFAULT NOW(),
+          updated_at   TIMESTAMPTZ DEFAULT NOW()
+        )
+      `).catch(() => null);
+      // universal_id_sequences — referenced by AcmeCandidateSeed
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS universal_id_sequences (
+          id           SERIAL PRIMARY KEY,
+          scope        TEXT NOT NULL UNIQUE,
+          prefix       TEXT NOT NULL,
+          last_value   INTEGER NOT NULL DEFAULT 0,
+          created_at   TIMESTAMPTZ DEFAULT NOW(),
+          updated_at   TIMESTAMPTZ DEFAULT NOW()
+        )
+      `).catch(() => null);
+      log.info('[Startup] Missing tables ensured: cookie_consent, universal_id_sequences');
+    };
+    await seedWithRetry(runMissingTablesMigration, 'missingTablesMigration');
+
+
     // ── DAR chain-of-custody column migration (idempotent ADD COLUMN IF NOT EXISTS) ──
     const runDarChainMigration = async () => {
       const { pool } = await import('./db');
@@ -343,6 +407,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   setupAuth(app);
 
+  // Bootstrap — MUST be before CSRF (uses key-based auth not CSRF tokens)
+  app.use('/api/bootstrap', bootstrapRouter);
+
   // CSRF protection
   app.use(ensureCsrfToken);
   app.get("/api/csrf-token", csrfTokenHandler);
@@ -372,21 +439,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Trinity Intrusion Detection Guard — scans every /api request for attacks before routing.
   // Checks blocked IPs, SQL injection, XSS, path traversal, command injection, attacker UAs.
   // Critical threats are auto-blocked and published to Trinity's event system.
-  app.use("/api", trinityGuardMiddleware);
+  app.use("/api", (req: Request, res: Response, next: NextFunction) => {
+    if (isPublicPath(req.path)) return next();
+    return trinityGuardMiddleware(req, res, next);
+  });
 
   // Phase 41 — Subscription read-only guard: blocks mutating API calls for suspended workspaces.
   // Billing/webhook routes are exempt so operators can recover payment.
   // @ts-expect-error — TS migration: fix in refactoring sprint
-  app.use("/api", subscriptionReadOnlyGuard);
+  app.use("/api", (req: Request, res: Response, next: NextFunction) => {
+    if (isPublicPath(req.path)) return next();
+    return subscriptionReadOnlyGuard(req, res, next);
+  });
 
   // Cancelled workspace guard: full block (403) for all /api routes when workspace is cancelled.
   // Auth/health/billing are always exempt so operators can sign in and re-activate.
   // @ts-expect-error — TS migration: fix in refactoring sprint
-  app.use("/api", cancelledWorkspaceGuard);
+  app.use("/api", (req: Request, res: Response, next: NextFunction) => {
+    if (isPublicPath(req.path)) return next();
+    return cancelledWorkspaceGuard(req, res, next);
+  });
 
   // Terminated employee guard: enforce 14-day read-only grace period after termination.
   // Past grace period → 403. Within grace period → restricted path access only.
-  app.use("/api", terminatedEmployeeGuard);
+  app.use("/api", (req: Request, res: Response, next: NextFunction) => {
+    if (isPublicPath(req.path)) return next();
+    return terminatedEmployeeGuard(req, res, next);
+  });
 
   // Global rate limiting
   // Check req.user (passport) AND req.session?.userId (direct session) so that
@@ -714,6 +793,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Phase 13: Inbound email webhook receivers (calloffs@, incidents@, docs@, support@)
   // No auth required — Resend POSTs here; signature verification is internal.
   app.use('/api/inbound/email', inboundEmailRouter);
+
 
   // Email API: inbox, send, thread, management (requires auth)
   app.use('/api/email', emailRouter);

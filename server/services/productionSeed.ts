@@ -688,7 +688,7 @@ export async function runProductionDataCleanup(): Promise<void> {
     const testEmailRows = await typedQuery<{ cnt: string }>(sql`
       SELECT COUNT(*) AS cnt FROM users
       WHERE email LIKE '%.test' OR email LIKE '%@acme%' OR email LIKE '%@frostbank%'
-         OR email LIKE '%@anvilsecurity%' OR email LIKE '%@metroplex%'
+         OR email LIKE '%@anvilsecurity%' OR email LIKE '%@lonestar-security%'
     `);
     const testEmailCount = parseInt(testEmailRows[0]?.cnt || '0');
 
@@ -838,7 +838,7 @@ export async function runProductionDataCleanup(): Promise<void> {
           SELECT id FROM users
           WHERE email LIKE '%.test' OR email LIKE '%@acme%'
              OR email LIKE '%@frostbank%' OR email LIKE '%@anvilsecurity%'
-             OR email LIKE '%@metroplex%'
+             OR email LIKE '%@lonestar-security%'
         )
       `);
     });
@@ -847,7 +847,7 @@ export async function runProductionDataCleanup(): Promise<void> {
         DELETE FROM users
         WHERE email LIKE '%.test' OR email LIKE '%@acme%'
            OR email LIKE '%@frostbank%' OR email LIKE '%@anvilsecurity%'
-           OR email LIKE '%@metroplex%'
+           OR email LIKE '%@lonestar-security%'
       `);
       console.log(`🧹   Removed ${deleted.rowCount || 0} users with test email domains`);
     });
@@ -908,7 +908,7 @@ export async function runProductionDataCleanup(): Promise<void> {
     const remainingTestEmails = await typedQuery<{ cnt: string }>(sql`
       SELECT COUNT(*) AS cnt FROM users
       WHERE email LIKE '%.test' OR email LIKE '%@acme%' OR email LIKE '%@frostbank%'
-         OR email LIKE '%@anvilsecurity%' OR email LIKE '%@metroplex%'
+         OR email LIKE '%@anvilsecurity%' OR email LIKE '%@lonestar-security%'
     `);
 
     console.log('🧹 ═══════════════════════════════════════════');

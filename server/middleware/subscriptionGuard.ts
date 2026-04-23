@@ -12,6 +12,7 @@
  */
 
 import type { Request, Response, NextFunction } from 'express';
+import { isPublicPath, isBillingGuardExempt } from '../lib/publicPaths';
 import { db } from '../db';
 import { workspaces } from '@shared/schema';
 import { eq } from 'drizzle-orm';
@@ -54,9 +55,8 @@ const CANCELLED_EXEMPT_PREFIXES = [
 // HTTP methods that mutate state
 const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
-function isBillingExempt(path: string): boolean {
-  return BILLING_EXEMPT_PREFIXES.some((prefix) => path.startsWith(prefix));
-}
+// Delegated to canonical registry — see server/lib/publicPaths.ts
+const isBillingExempt = isBillingGuardExempt;
 
 // @ts-expect-error — TS migration: fix in refactoring sprint
 interface AuthenticatedRequest extends Request {
@@ -135,7 +135,7 @@ export function cancelledWorkspaceGuard(
   next: NextFunction,
 ): void {
   // Exempt auth/health/billing — always pass through
-  if (CANCELLED_EXEMPT_PREFIXES.some(p => req.path.startsWith(p))) return next();
+  if (isPublicPath(req.path)) return next(); // canonical public path registry
 
   // System bots (Trinity, HelpAI) operate with platform authority — never blocked
   if (req.isTrinityBot) return next();

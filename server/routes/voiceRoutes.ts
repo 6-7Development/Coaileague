@@ -283,8 +283,8 @@ export async function initializeVoiceTables(): Promise<void> {
 
           if (colNames.includes('id') && colNames.includes('name')) {
             await client.query(`
-              INSERT INTO workspaces (id, name, created_at, updated_at)
-              VALUES ($1, 'CoAIleague', NOW(), NOW())
+              INSERT INTO workspaces (id, name, owner_id, subscription_tier, subscription_status, created_at, updated_at)
+              VALUES ($1, 'CoAIleague Platform', $1, 'enterprise', 'active', NOW(), NOW())
               ON CONFLICT (id) DO NOTHING
             `, [platformWorkspaceId]);
             log.info(`[VoiceRoutes] Platform workspace ${platformWorkspaceId} ensured`);

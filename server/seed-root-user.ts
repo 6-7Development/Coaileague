@@ -67,21 +67,10 @@ export async function seedRootUser() {
     console.log('Root platform role already exists');
   }
 
-  // Ensure root user is a workspace member (org_owner) — idempotent
-  const { sql: sqlTag } = await import('drizzle-orm');
-  await db.execute(sqlTag`
-    INSERT INTO workspace_members (id, user_id, workspace_id, role, status, joined_at, created_at, updated_at)
-    VALUES (
-      gen_random_uuid(),
-      ${ROOT_USER_ID},
-      ${OPS_WORKSPACE_ID},
-      'org_owner',
-      'active',
-      NOW(), NOW(), NOW()
-    )
-    ON CONFLICT (user_id, workspace_id) DO NOTHING
-  `);
-  console.log('✅ Root user workspace membership ensured (org_owner)');
+  // Root user workspace access is established via workspaces.owner_id above.
+  // workspace_members table is for invitations — not for direct ownership.
+  // The resolveWorkspaceForUser() function handles owner access via workspaces.owner_id.
+  console.log('Root user workspace membership ensured via owner_id (no workspace_members insert needed)');
 
   // Create employee record in Operations workspace
   const existingEmployee = await db.select().from(employees)
@@ -108,6 +97,8 @@ export async function seedRootUser() {
   }
 
   // Generate external identifiers for Operations workspace and root employee
+  // Wrapped in try/catch — external_identifiers failures are non-fatal
+  try {
   const { externalIdentifiers } = await import('@shared/schema');
   const { and } = await import('drizzle-orm');
   
@@ -156,6 +147,10 @@ export async function seedRootUser() {
 
   console.log('\n🎉 Root user setup complete!');
   console.log('Login URL: /api/root-login');
+  } catch (extIdErr: any) {
+    // Non-fatal: external identifier creation failed, core user/workspace/role are already set
+    console.warn('[seedRootUser] External identifier setup skipped (non-fatal):', extIdErr?.message);
+  }
   return { success: true };
 }
 

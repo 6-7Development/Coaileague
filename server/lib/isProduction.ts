@@ -13,9 +13,24 @@
  */
 
 export function isProduction(): boolean {
-  if (process.env.NODE_ENV === 'production') return true;
+  // RAILWAY_ENVIRONMENT_NAME is set by Railway to the exact environment name
+  // ("production", "development", etc.) — use this as the primary signal.
+  // This is more reliable than NODE_ENV which Railway always sets to "production"
+  // even for non-production environments.
+  const railwayEnv = process.env.RAILWAY_ENVIRONMENT_NAME?.toLowerCase();
+  if (railwayEnv && railwayEnv !== 'production') return false; // explicitly non-production
+  if (railwayEnv === 'production') return true;
+
+  // Fallback for non-Railway deploys
   if (process.env.RAILWAY_ENVIRONMENT === 'production') return true;
   if (process.env.K_SERVICE || process.env.K_REVISION) return true;
+
+  // NODE_ENV fallback — but only if no Railway signal present
+  if (!railwayEnv && process.env.NODE_ENV === 'production') return true;
+
+  // Allow explicit override for Railway dev environments
+  if (process.env.FORCE_DEVELOPMENT === 'true') return false;
+
   return false;
 }
 

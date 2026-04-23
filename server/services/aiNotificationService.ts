@@ -238,7 +238,7 @@ export async function generatePlatformUpdate(data: AIInsightData): Promise<Platf
         data.workspaceId 
           ? eq(platformUpdates.workspaceId, data.workspaceId)
           : isNull(platformUpdates.workspaceId),
-        gte(platformUpdates.date, oneDayAgo)
+        gte(platformUpdates.createdAt, oneDayAgo)
       )
     )
     .limit(1);
@@ -810,7 +810,7 @@ export async function getNewUserWelcomeSummary(
         workspaceId ? eq(platformUpdates.workspaceId, workspaceId) : sql`false`
       )
     )
-    .orderBy(desc(platformUpdates.priority), desc(platformUpdates.date))
+    .orderBy(desc(platformUpdates.priority), desc(platformUpdates.createdAt))
     .limit(3);
 
     // Format updates for return

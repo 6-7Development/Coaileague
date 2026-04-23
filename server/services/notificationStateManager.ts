@@ -178,7 +178,7 @@ class NotificationStateManager {
       const viewedIds = viewedUpdateIds.map(v => v.updateId);
       
       const conditions = [
-        gte(platformUpdates.date, countFrom),
+        gte(platformUpdates.createdAt, countFrom),
       ];
       
       if (viewedIds.length > 0) {
@@ -326,7 +326,7 @@ class NotificationStateManager {
       const allUpdates = await db
         .select({ id: platformUpdates.id })
         .from(platformUpdates)
-        .where(gte(platformUpdates.date, thirtyDaysAgo));
+        .where(gte(platformUpdates.createdAt, thirtyDaysAgo));
       
       const unviewedUpdates = allUpdates.filter(u => !viewedIds.has(u.id));
       
