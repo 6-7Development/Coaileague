@@ -115,12 +115,16 @@ export async function runAnvilOperationalSeed(): Promise<{ success: boolean; mes
       const start = daysAgo(s.daysAgo, -(s.startH));
       const end   = daysAgo(s.daysAgo, -(s.endH));
       // Converted to Drizzle ORM: ON CONFLICT
+      // Compute YYYY-MM-DD date for past shift
+      const pastD = new Date(); pastD.setDate(pastD.getDate() - s.daysAgo);
+      const pastDateStr = pastD.toISOString().split('T')[0];
       await db.insert(shifts).values({
         id: s.id,
         workspaceId: WS,
         employeeId: s.emp,
         clientId: s.client,
         title: s.title,
+        date: pastDateStr,
         startTime: sql`${start}::timestamptz`,
         endTime: sql`${end}::timestamptz`,
         status: 'completed',
@@ -155,12 +159,17 @@ export async function runAnvilOperationalSeed(): Promise<{ success: boolean; mes
         const end   = daysFromNow(day, s.endH);
         const status = s.emp ? "assigned" : "open";
         // Converted to Drizzle ORM: ON CONFLICT
+        // Build YYYY-MM-DD date string for the shift
+        const shiftDate = new Date();
+        shiftDate.setDate(shiftDate.getDate() + day);
+        const shiftDateStr = shiftDate.toISOString().split('T')[0];
         await db.insert(shifts).values({
           id,
           workspaceId: WS,
           employeeId: s.emp,
           clientId: s.client,
           title: s.title,
+          date: shiftDateStr,
           startTime: sql`${start}::timestamptz`,
           endTime: sql`${end}::timestamptz`,
           status: status as any,

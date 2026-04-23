@@ -273,6 +273,8 @@ export class UniversalNotificationEngine {
           'contract_executed','regulatory_violation',
           // HelpAI proactive operational monitoring
           'helpai_proactive',
+          'trinity_compliance',
+          'trinity_autonomous_action',
         ]);
         if (!KNOWN_NOTIFICATION_TYPES.has(payload.type)) {
           log.warn(`[UNE] Unknown notification type '${payload.type}' → normalizing to 'system'`);
@@ -333,6 +335,8 @@ export class UniversalNotificationEngine {
         'training_alert', 'shift_alert', 'watchdog_alert', 'platform_pool_alert',
         // HelpAI proactive monitor — deterministic operational alerts, not AI-drafted content
         'helpai_proactive',
+          'trinity_compliance',
+          'trinity_autonomous_action',
       ]);
       const isOperationalType = OPERATIONAL_TYPES.has(payload.type);
       const skipFeatureCheck = payload.metadata?.skipFeatureCheck === true || isOperationalType;
@@ -959,7 +963,7 @@ export class UniversalNotificationEngine {
               safeWorkspaceId
                 ? eq(platformUpdates.workspaceId, safeWorkspaceId)
                 : isNull(platformUpdates.workspaceId),
-              gte(platformUpdates.date, twoHoursAgo)
+              gte(platformUpdates.createdAt, twoHoursAgo)
             )
           )
           .limit(1);
@@ -982,7 +986,7 @@ export class UniversalNotificationEngine {
             safeWorkspaceId
               ? eq(platformUpdates.workspaceId, safeWorkspaceId)
               : isNull(platformUpdates.workspaceId),
-            gte(platformUpdates.date, oneDayAgo)
+            gte(platformUpdates.createdAt, oneDayAgo)
           )
         )
         .limit(1);

@@ -58,10 +58,10 @@ class PlatformChangeMonitorService {
   private async restoreGlobalCooldownFromDB(): Promise<void> {
     try {
       const [lastNotified] = await db
-        .select({ date: platformUpdates.date })
+        .select({ date: platformUpdates.createdAt })
         .from(platformUpdates)
         .where(sql`${platformUpdates.category} IN ('announcement', 'improvement')`)
-        .orderBy(desc(platformUpdates.date))
+        .orderBy(desc(platformUpdates.createdAt))
         .limit(1);
       if (lastNotified?.date) {
         this.lastGlobalNotificationTime = new Date(lastNotified.date).getTime();

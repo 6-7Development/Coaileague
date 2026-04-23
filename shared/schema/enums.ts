@@ -591,6 +591,8 @@ export const notificationTypeEnum = pgEnum('notification_type', [
   'ai_approval_needed',          // AI Brain needs approval for workflow
   'ai_action_completed',         // AI Brain completed automated action
   'trinity_autonomous_alert',    // Trinity AI autonomous action notification
+  'trinity_compliance',           // Trinity compliance monitoring alert
+  'trinity_autonomous_action',    // Trinity autonomous action taken
   'trinity_welcome',             // Trinity onboarding welcome message
   'scheduler_job_failed',        // Automated scheduler job failed
 

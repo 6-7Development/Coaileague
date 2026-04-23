@@ -81,7 +81,7 @@ async function cleanupPlatformUpdates(): Promise<number> {
   
   // Delete old platform updates
   const result = await db.delete(platformUpdates)
-    .where(lt(platformUpdates.date, threshold))
+    .where(lt(platformUpdates.createdAt, threshold))
     .returning({ id: platformUpdates.id });
   
   return result.length;
