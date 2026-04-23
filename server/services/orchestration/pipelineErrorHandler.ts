@@ -298,7 +298,8 @@ export async function notifyWorkspaceFailure(
           remediationHints: opts.remediationHints,
           source: 'pipelineErrorHandler',
         },
-        createdBy: 'system',
+        createdBy: 'system',,
+        idempotencyKey: `action_required-${opts.executionId}-${owner.id}`
       });
     } catch (notifErr) {
       log.warn('notifyWorkspaceFailure: in-app notification failed', { notifErr });

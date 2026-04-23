@@ -92,7 +92,7 @@ import {
   resetPassword,
   verifyEmailToken,
 } from "../auth";
-import { checkWorkspacePaymentStatus, hasPlatformWideAccess, getUserPlatformRole } from "../rbac";
+import { checkWorkspacePaymentStatus, hasPlatformWideAccess, getUserPlatformRole , type AuthenticatedRequest} from "../rbac";
 import { emailService } from "../services/emailService";
 import { platformEventBus } from "../services/platformEventBus";
 // Rate limiters applied globally in server/routes.ts — no inline imports needed
@@ -190,7 +190,7 @@ router.post("/api/auth/register", async (req, res) => {
     }
 
     // Auto-login after registration - CRITICAL: Rotate session ID and explicitly save to database
-    const priorHrisState = (req as any).session.hrisOAuthState;
+    const priorHrisState = req.session.hrisOAuthState;
     await new Promise<void>((resolve, reject) => {
       req.session.regenerate((err) => {
         if (err) {
@@ -201,7 +201,7 @@ router.post("/api/auth/register", async (req, res) => {
         }
       });
     });
-    if (priorHrisState) (req as any).session.hrisOAuthState = priorHrisState;
+    if (priorHrisState) req.session.hrisOAuthState = priorHrisState;
 
     req.session.userId = newUser.id;
     const { saveSessionAsync } = await import('../services/session/sessionWorkspaceService');
@@ -425,7 +425,7 @@ router.post("/api/auth/login", async (req, res) => {
     const ipAddr = req.ip || req.socket?.remoteAddress || 'unknown';
     const ua = req.get('user-agent') || '';
     if (user.mfaEnabled) {
-      const dtCookie = (req as any).cookies?.['dt_token'];
+      const dtCookie = req.cookies?.['dt_token'];
       const deviceTrusted = await isDeviceTrusted(user.id, dtCookie, ipAddr, ua);
       if (!deviceTrusted) {
         // Pause login — client must complete 2FA via /api/auth/mfa/verify
@@ -470,7 +470,7 @@ router.post("/api/auth/login", async (req, res) => {
     // userId. Without regenerate(), an attacker who planted a pre-login session cookie
     // (via XSS or physical access) can keep the same session ID and hijack the session
     // after the victim logs in. Capture pre-auth session values so they survive rotation.
-    const priorHrisState = (req as any).session.hrisOAuthState;
+    const priorHrisState = req.session.hrisOAuthState;
     const priorSessionData = { ...req.session };
     delete (priorSessionData as any).cookie; // Don't copy cookie config
 
@@ -487,7 +487,7 @@ router.post("/api/auth/login", async (req, res) => {
 
     // Restore prior session data and set userId
     Object.assign(req.session, priorSessionData);
-    if (priorHrisState) (req as any).session.hrisOAuthState = priorHrisState;
+    if (priorHrisState) req.session.hrisOAuthState = priorHrisState;
     req.session.userId = user.id;
 
     // SECURITY: Ensure session is regenerated on every login
@@ -683,7 +683,7 @@ router.post("/api/auth/mfa/verify", async (req, res) => {
     const activePlatformRole = userPlatformRoles.find(pr => !pr.revokedAt);
 
     // Create session
-    const priorHrisState = (req as any).session.hrisOAuthState;
+    const priorHrisState = req.session.hrisOAuthState;
     const priorSessionData = { ...req.session };
     delete (priorSessionData as any).cookie;
 
@@ -692,7 +692,7 @@ router.post("/api/auth/mfa/verify", async (req, res) => {
     });
     
     Object.assign(req.session, priorSessionData);
-    if (priorHrisState) (req as any).session.hrisOAuthState = priorHrisState;
+    if (priorHrisState) req.session.hrisOAuthState = priorHrisState;
     req.session.userId = user.id;
 
     log.info(`[MFA Verify] Session regenerated for user ${user.id}`);
@@ -995,7 +995,7 @@ router.get("/api/auth/me", requireAuth, async (req, res) => {
   // frontend stays logged-in instead of getting a 500 and being force-signed-out.
   // The _dbDegraded flag triggers an amber degraded-mode banner in the UI.
   if (isDbCircuitOpen() || (sessionUser as any)._dbDegraded) {
-    const wsId = sessionUser.currentWorkspaceId || (req as any).workspaceId || null;
+    const wsId = sessionUser.currentWorkspaceId || req.workspaceId || null;
     log.warn(`[Auth /me] DB circuit open — returning session-based fallback for user ${sessionUser.id}`);
     return res.json({
       user: {
@@ -1661,7 +1661,7 @@ router.patch("/api/auth/language-preference", async (req, res) => {
     }
     await db.update(users).set({ preferredLanguage, updatedAt: new Date() }).where(eq(users.id, userId));
     // Update session so downstream reads work immediately
-    (req as any).session.preferredLanguage = preferredLanguage;
+    req.session.preferredLanguage = preferredLanguage;
     res.json({ preferredLanguage, message: "Language preference updated" });
   } catch (err) {
     log.error("[LanguagePref] PATCH error:", err);

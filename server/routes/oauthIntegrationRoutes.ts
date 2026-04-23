@@ -5,7 +5,7 @@ import { gustoOAuthService } from '../services/oauth/gusto';
 import { quickbooksService } from '../services/partners/quickbooks';
 import { gustoService } from '../services/partners/gusto';
 import { requireAuth } from '../auth';
-import { requirePlatformStaff } from '../rbac';
+import { requirePlatformStaff , type AuthenticatedRequest} from '../rbac';
 import { db } from '../db';
 import { partnerConnections, users, workspaces, quickbooksMigrationRuns, systemAuditLogs, payrollRuns } from '@shared/schema';
 import { storage } from '../storage';
@@ -889,7 +889,7 @@ router.post('/quickbooks/push/unlock', requireAuth, requireWorkspaceMembership()
   try {
     const { workspaceId, forceReset = false } = req.body;
     const userId = req.user?.id || req.session?.userId;
-    const userRole = (req as any).session?.platformRole;
+    const userRole = req.session?.platformRole;
     
     // Check if user is support staff (can force reset any workspace)
     const isSupportStaff = ['root_admin', 'co_admin', 'sysops'].includes(userRole);
@@ -966,7 +966,7 @@ router.post('/quickbooks/push/factory-reset', requireAuth, requireWorkspaceMembe
   try {
     const { workspaceId, reason } = req.body;
     const userId = req.user?.id || req.session?.userId;
-    const userRole = (req as any).session?.platformRole;
+    const userRole = req.session?.platformRole;
     
     // Only support staff can factory reset
     const isSupportStaff = ['root_admin', 'co_admin', 'sysops'].includes(userRole);
@@ -1997,7 +1997,7 @@ router.post('/gusto/refresh', requireAuth, requireWorkspaceMembership(), async (
 router.get('/quickbooks/status', requireAuth, requireWorkspaceMembership('query'), async (req: Request, res: Response) => {
   try {
     const userId = req.user?.id || req.session?.userId;
-    const workspaceId = req.workspaceId || (req as any).user?.workspaceId || ((req as any).query.workspaceId as string);
+    const workspaceId = req.workspaceId || req.user?.workspaceId || (req.query.workspaceId as string);
 
     if (!workspaceId) {
       return res.status(400).json({ 

@@ -97,8 +97,10 @@ export function registerComplianceIncidentActions() {
       title: `Action Required: Upload ${docType}`,
       message: message || `Please upload your ${docType} to maintain compliance. This is required to continue working scheduled shifts.`,
       priority: 'high',
-    } as any).catch(() => null);
-    return { requested: true, officerId, docType, notificationSent: true };
+      idempotencyKey: `compliance-${String(Date.now())}-${memberId}`,
+}) as any).catch(() => null);
+    return { requested: true, officerId, docType, notificationSent: true };,
+      idempotencyKey: `compliance-${Date.now()}-${memberId}`
   }));
 
   helpaiOrchestrator.registerAction(mkAction('compliance.auto_remove_noncompliant', async (params) => {
@@ -169,11 +171,13 @@ export function registerComplianceIncidentActions() {
           title: 'Incident Report Filed at Your Site',
           message: message || `An incident has been filed and routed to your assigned supervisor. Incident ID: ${incidentId}`,
           priority: 'high',
-          metadata: { incidentId, clientId, clientEmail: (client as any).email }
-        } as any).catch(() => null);
+          metadata: { incidentId, clientId, clientEmail: (client as any).email },
+          idempotencyKey: `incident-${String(Date.now())}-${null}`,
+}) as any).catch(() => null);
       }
     }
-    return { notified: true, incidentId, clientId };
+    return { notified: true, incidentId, clientId };,
+          idempotencyKey: `incident-${Date.now()}-${null}`
   }));
 
   helpaiOrchestrator.registerAction(mkAction('incident.flag_compliance', async (params) => {
@@ -362,8 +366,10 @@ export function registerComplianceIncidentActions() {
       title: 'Welcome! Your onboarding checklist is ready',
       message: 'Please complete your onboarding checklist: upload I-9, W-4, guard card, and complete your profile. Your start date is ' + (startDate || 'TBD'),
       priority: 'high',
-    } as any).catch(() => null);
-    return { initiated: true, employeeId, checklistItems: ['i9', 'w4', 'guard_card', 'profile_photo', 'emergency_contact', 'direct_deposit'] };
+      idempotencyKey: `onboarding-${String(Date.now())}-${memberId}`,
+}) as any).catch(() => null);
+    return { initiated: true, employeeId, checklistItems: ['i9', 'w4', 'guard_card', 'profile_photo', 'emergency_contact', 'direct_deposit'] };,
+      idempotencyKey: `onboarding-${Date.now()}-${memberId}`
   }));
 
   helpaiOrchestrator.registerAction(mkAction('employee.initiate_offboarding', async (params) => {
@@ -469,7 +475,8 @@ export function registerComplianceIncidentActions() {
       workspaceId,
       userId: null,
       type: 'compliance_violation',
-      title: `Compliance Alert: ${violationType}`,
+      title: `Compliance Alert: ${violationType}`,,
+      idempotencyKey: `compliance_violation-${Date.now()}-${null}`
       message: description || `A ${severity} compliance violation (${violationType}) was detected for ${officerLabel}. Immediate review required.`,
       priority: severity === 'critical' ? 'urgent' : 'high',
       targetRole: 'compliance_officer',
@@ -507,8 +514,10 @@ export function registerComplianceIncidentActions() {
       priority: 'normal',
       targetRole: 'compliance_officer',
       metadata: { violationType, officerId, resolvedBy, resolvedAt: new Date().toISOString() },
-    } as any).catch(() => null);
-    return { resolved: true, workspaceId, officerId, violationType, resolvedBy, resolutionNotes, resolvedAt: new Date().toISOString() };
+      idempotencyKey: `compliance_resolved-${String(Date.now())}-${resolvedBy}`,
+}) as any).catch(() => null);
+    return { resolved: true, workspaceId, officerId, violationType, resolvedBy, resolutionNotes, resolvedAt: new Date().toISOString() };,
+      idempotencyKey: `compliance_resolved-${Date.now()}-${resolvedBy}`
   }));
 
   // ── Phase 21B: Multi-state compliance summary action ──────────────────────

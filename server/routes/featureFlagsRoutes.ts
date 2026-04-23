@@ -31,12 +31,12 @@ const toggleFlagSchema = z.object({
 router.get('/api/runtime-flags', requireAuth, requireSysop, async (req, res) => {
   try {
     const { category, safetyLevel, workspaceId: queryWorkspaceId } = req.query;
-    const workspaceId = (queryWorkspaceId as string) || (req as any).workspaceId;
+    const workspaceId = (queryWorkspaceId as string) || req.workspaceId;
     
     // Safety check for non-root admins
-    const user = (req as any).user;
-    const platformRole = (req as any).platformRole;
-    if (workspaceId && workspaceId !== (req as any).workspaceId && platformRole !== 'root_admin') {
+    const user = req.user;
+    const platformRole = req.platformRole;
+    if (workspaceId && workspaceId !== req.workspaceId && platformRole !== 'root_admin') {
       return res.status(403).json({ success: false, error: 'Unauthorized workspace access' });
     }
 
@@ -58,11 +58,11 @@ router.get('/api/runtime-flags/bulk', requireAuth, requireSysop, async (req, res
   try {
     const keys = (req.query.keys as string)?.split(',') || [];
     const queryWorkspaceId = req.query.workspaceId as string;
-    const workspaceId = queryWorkspaceId || (req as any).workspaceId;
+    const workspaceId = queryWorkspaceId || req.workspaceId;
 
     // Safety check for non-root admins
-    const platformRole = (req as any).platformRole;
-    if (workspaceId && workspaceId !== (req as any).workspaceId && platformRole !== 'root_admin') {
+    const platformRole = req.platformRole;
+    if (workspaceId && workspaceId !== req.workspaceId && platformRole !== 'root_admin') {
       return res.status(403).json({ success: false, error: 'Unauthorized workspace access' });
     }
     

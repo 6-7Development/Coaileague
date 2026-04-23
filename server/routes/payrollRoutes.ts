@@ -70,19 +70,23 @@ async function acquirePayrollRunLock(
   const now = new Date();
   const expiresAt = new Date(Date.now() + PAYROLL_RUN_LOCK_TTL_MS);
 
-  // Clear any stale lock first so a crashed prior run cannot wedge the workspace.
-  await db.delete(payrollRunLocks)
-    .where(and(
-      eq(payrollRunLocks.workspaceId, workspaceId),
-      lte(payrollRunLocks.expiresAt, now),
-    ));
-
+  // Wrap in transaction: delete stale + insert new lock is one atomic operation.
+  // Without the transaction, a crash between delete and insert leaves no lock,
+  // allowing concurrent payroll runs on the same workspace.
   try {
-    await db.insert(payrollRunLocks).values({
-      workspaceId,
-      lockedBy: userId,
-      lockedAt: now,
-      expiresAt,
+    await db.transaction(async (tx) => {
+      // Clear any stale lock first so a crashed prior run cannot wedge the workspace.
+      await tx.delete(payrollRunLocks)
+        .where(and(
+          eq(payrollRunLocks.workspaceId, workspaceId),
+          lte(payrollRunLocks.expiresAt, now),
+        ));
+      await tx.insert(payrollRunLocks).values({
+        workspaceId,
+        lockedBy: userId,
+        lockedAt: now,
+        expiresAt,
+      });
     });
     return { acquired: true };
   } catch {
@@ -1816,7 +1820,7 @@ router.post("/calculate-taxes", async (req, res) => {
 
 router.get("/entries", async (req: AuthenticatedRequest, res) => {
   try {
-    const workspaceId = (req as any).workspaceId?.id || req.workspaceId || req.user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId?.id || req.workspaceId || req.user?.currentWorkspaceId;
     if (!workspaceId) return res.status(400).json({ error: 'Workspace required' });
 
     const entries = await db.select().from(payrollEntries).where(eq(payrollEntries.workspaceId, workspaceId));
@@ -1829,7 +1833,7 @@ router.get("/entries", async (req: AuthenticatedRequest, res) => {
 
 router.get("/deductions", async (req: AuthenticatedRequest, res) => {
   try {
-    const workspaceId = (req as any).workspaceId?.id || req.workspaceId || req.user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId?.id || req.workspaceId || req.user?.currentWorkspaceId;
     if (!workspaceId) return res.status(400).json({ error: 'Workspace required' });
 
     const payrollEntryId = req.query.payrollEntryId as string | undefined;
@@ -1847,7 +1851,7 @@ router.get("/deductions", async (req: AuthenticatedRequest, res) => {
 
 router.get("/garnishments", async (req: AuthenticatedRequest, res) => {
   try {
-    const workspaceId = (req as any).workspaceId?.id || req.workspaceId || req.user?.currentWorkspaceId;
+    const workspaceId = req.workspaceId?.id || req.workspaceId || req.user?.currentWorkspaceId;
     if (!workspaceId) return res.status(400).json({ error: 'Workspace required' });
 
     const payrollEntryId = req.query.payrollEntryId as string | undefined;
@@ -1942,7 +1946,7 @@ router.post("/deductions/:payrollEntryId", async (req: AuthenticatedRequest, res
     if (!parsed.success) return res.status(400).json({ error: 'Invalid deduction data', details: parsed.error.flatten() });
     const { employeeId, deductionType, amount, isPreTax, description } = parsed.data;
     if (businessRuleResponse(res, [validateDeductionAmount(amount, undefined, 'amount')])) return;
-    const workspaceId = (req as any).workspaceId?.id;
+    const workspaceId = req.workspaceId?.id;
     if (!workspaceId) return res.status(400).json({ error: 'Workspace required' });
 
     const deduction = await addDeduction(
@@ -1967,7 +1971,7 @@ router.post("/garnishments/:payrollEntryId", async (req: AuthenticatedRequest, r
     const parsed = payrollGarnishmentSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: 'Invalid garnishment data', details: parsed.error.flatten() });
     const { employeeId, garnishmentType, amount, priority, caseNumber, description } = parsed.data;
-    const workspaceId = (req as any).workspaceId?.id;
+    const workspaceId = req.workspaceId?.id;
     if (!workspaceId) return res.status(400).json({ error: 'Workspace required' });
 
     const garnishment = await addGarnishment(
@@ -3660,17 +3664,20 @@ router.patch('/employees/:employeeId/bank-accounts/:accountId', async (req: Auth
       updateFields.accountNumberLast4 = String(accountNumber).trim().slice(-4);
     }
 
-    if (isPrimary) {
-      await db.update(employeeBankAccounts).set({ isPrimary: false })
-        .where(and(eq(employeeBankAccounts.workspaceId, workspaceId), eq(employeeBankAccounts.employeeId, employeeId)));
-    }
-
-    const [updated] = await db.update(employeeBankAccounts).set(updateFields)
-      .where(and(
-        eq(employeeBankAccounts.id, accountId),
-        eq(employeeBankAccounts.workspaceId, workspaceId),
-        eq(employeeBankAccounts.employeeId, employeeId)
-      )).returning();
+    let updated: typeof employeeBankAccounts.$inferSelect;
+    await db.transaction(async (tx) => {
+      if (isPrimary) {
+        // Atomically clear existing primary before setting new
+        await tx.update(employeeBankAccounts).set({ isPrimary: false })
+          .where(and(eq(employeeBankAccounts.workspaceId, workspaceId), eq(employeeBankAccounts.employeeId, employeeId)));
+      }
+      [updated] = await tx.update(employeeBankAccounts).set(updateFields)
+        .where(and(
+          eq(employeeBankAccounts.id, accountId),
+          eq(employeeBankAccounts.workspaceId, workspaceId),
+          eq(employeeBankAccounts.employeeId, employeeId)
+        )).returning();
+    });
 
     storage.createAuditLog({
       workspaceId, userId, userEmail: req.user?.email || 'unknown', userRole: req.user?.role || 'user',

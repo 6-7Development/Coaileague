@@ -149,7 +149,8 @@ class GPSInactivityMonitorService {
               notificationType: 'gps_inactivity_guard',
               minutesSinceLastPing: Math.round(minutesSinceLastPing),
               siteName,
-            },
+            },,
+            idempotencyKey: `issue_detected-${timeEntry.id}-${employee.userId}`
           });
           alertsSent++;
         }
@@ -174,7 +175,8 @@ class GPSInactivityMonitorService {
               workspaceId: timeEntry.workspaceId,
               userId: mgr.userId,
               type: 'issue_detected',
-              title: 'Guard GPS Inactivity Alert',
+              title: 'Guard GPS Inactivity Alert',,
+              idempotencyKey: `issue_detected-${Date.now()}-${mgr.userId}`
               message: `${employeeName} has had no GPS activity for ${Math.round(minutesSinceLastPing)} minutes${siteName ? ` at ${siteName}` : ''}${clientName ? ` (${clientName})` : ''}. Immediate attention may be required.`,
               actionUrl: '/time-tracking',
               relatedEntityType: 'time_entry',

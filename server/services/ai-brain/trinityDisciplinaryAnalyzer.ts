@@ -355,8 +355,9 @@ class TrinityDisciplinaryAnalyzer {
         type: 'disciplinary_pattern',
         title: `Pattern Flagged: ${pattern.employeeName}`,
         message: pattern.suggestion.slice(0, 500),
-        priority: pattern.severity === 'critical' ? 'urgent' : pattern.severity === 'high' ? 'high' : 'normal'
-      } as any).catch(() => null);
+        priority: pattern.severity === 'critical' ? 'urgent' : pattern.severity === 'high' ? 'high' : 'normal',
+        idempotencyKey: `disciplinary_pattern-${String(Date.now())}-${targetUserId}`,
+}) as any).catch(() => null);
     }
   }
 }

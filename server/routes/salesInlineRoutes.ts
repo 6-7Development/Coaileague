@@ -489,7 +489,7 @@ Return ONLY valid JSON array with this exact structure:
         (async () => {
           try {
             const { documentGeneratorSkill } = await import('../services/ai-brain/skills/documentGeneratorSkill');
-            const userId = (req as any).user?.id ?? 'system';
+            const userId = req.user?.id ?? 'system';
 
             const result = await documentGeneratorSkill.execute(
               { userId, workspaceId },
@@ -556,7 +556,7 @@ Return ONLY valid JSON array with this exact structure:
       }).where(and(eq(rfps.id, id), eq(rfps.workspaceId, workspaceId)));
 
       const rfpRecord = existing[0];
-      const userId = (req as any).user?.id ?? 'system';
+      const userId = req.user?.id ?? 'system';
 
       // Non-blocking AI generation — same pattern as creation
       (async () => {

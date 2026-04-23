@@ -54,7 +54,7 @@ declare global {
  * Extract user info from request for logging
  */
 function extractUserInfo(req: Request): { userId: string; workspaceId: string; ipAddress: string; userAgent: string } {
-  const authReq = req as any;
+  const authReq = req as AuthenticatedRequest;
   return {
     userId: authReq.user?.id || authReq.user?.claims?.sub || 'anonymous',
     workspaceId: authReq.workspaceId || authReq.user?.currentWorkspaceId || 'unknown',

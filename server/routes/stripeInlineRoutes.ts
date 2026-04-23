@@ -860,7 +860,7 @@ router.post('/connect-dashboard', flexAuth, async (req: any, res) => {
 // and that our webhook endpoint is registered with Stripe.
 // ══════════════════════════════════════════════════════════════════════════
 router.get('/stripe-health', requireAuth, async (req, res) => {
-  const platformRole = (req as any).platformRole || '';
+  const platformRole = req.platformRole || '';
   const isPlatformStaff = ['root_admin', 'deputy_admin', 'sysop', 'support_manager', 'support_agent']
     .includes(platformRole);
   if (!isPlatformStaff) {

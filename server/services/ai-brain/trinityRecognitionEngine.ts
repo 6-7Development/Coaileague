@@ -111,8 +111,9 @@ class TrinityRecognitionEngine {
           type: 'trinity_recognition',
           title: this.getTitleForMilestone(m.milestoneType, m.employeeName),
           message,
-          priority: 'normal'
-        } as any).catch(() => null);
+          priority: 'normal',
+          idempotencyKey: `trinity_recognition-${String(Date.now())}-${emp[0].user_id}`,
+}) as any).catch(() => null);
       }
     }
 
@@ -144,8 +145,9 @@ class TrinityRecognitionEngine {
         type: 'trinity_recognition_pending',
         title: `Recognition Pending Approval: ${m.employeeName}`,
         message: approvalNote,
-        priority: 'normal'
-      } as any).catch(() => null);
+        priority: 'normal',
+        idempotencyKey: `trinity_recognition_pending-${String(Date.now())}-${target[0].user_id}`,
+}) as any).catch(() => null);
     }
   }
 
@@ -168,7 +170,8 @@ class TrinityRecognitionEngine {
       // @ts-expect-error — TS migration: fix in refactoring sprint
       firstName: e.first_name, lastName: e.last_name,
       compositeScore: String(avgScore), days: String(daysAboveThreshold),
-      currentRate: String(currentRate), lowRange: suggestedLow, highRange: suggestedHigh
+      currentRate: String(currentRate), lowRange: suggestedLow, highRange: suggestedHigh,
+          idempotencyKey: `trinity_recognition-${Date.now()}-${emp[0].user_id}`
     }) : `${e.first_name} ${e.last_name} has maintained a ${avgScore} composite score for ${daysAboveThreshold} days. Consider merit review. Current rate: $${currentRate}/hr. Suggested range: $${suggestedLow}-$${suggestedHigh}/hr.`;
 
     // Converted to Drizzle ORM: IN subquery → inArray
@@ -189,8 +192,9 @@ class TrinityRecognitionEngine {
         type: 'trinity_raise_suggestion',
         title: `Performance Review Suggestion: ${e.first_name} ${e.last_name}`,
         message,
-        priority: 'normal'
-      } as any).catch(() => null);
+        priority: 'normal',
+        idempotencyKey: `trinity_raise_suggestion-${String(Date.now())}-${mgr[0].userId}`,
+}) as any).catch(() => null);
     }
   }
 
@@ -219,7 +223,8 @@ class TrinityRecognitionEngine {
     const message = template ? this.renderTemplate(template.template_text, {
       // @ts-expect-error — TS migration: fix in refactoring sprint
       firstName: best.first_name, lastName: best.last_name, companyName,
-      compositeScore: String(Math.round(Number(best.composite_score)))
+      compositeScore: String(Math.round(Number(best.composite_score))),
+        idempotencyKey: `trinity_raise_suggestion-${Date.now()}-${mgr[0].userId}`
     }) : `Officer of the Month: ${best.first_name} ${best.last_name}! Exceptional performance this month. — Trinity`;
 
     // CATEGORY C — Raw SQL retained: LIMIT | Tables: workspace_members | Verified: 2026-03-23
@@ -234,7 +239,8 @@ class TrinityRecognitionEngine {
         workspaceId,
         userId: owner[0].user_id,
         type: 'trinity_ootm_nomination',
-        title: `Officer of the Month Nomination: ${best.first_name} ${best.last_name}`,
+        title: `Officer of the Month Nomination: ${best.first_name} ${best.last_name}`,,
+        idempotencyKey: `trinity_ootm_nomination-${Date.now()}-${owner[0].user_id}`
         message: `Trinity nominates ${best.first_name} ${best.last_name} for Officer of the Month (score: ${Math.round(Number(best.composite_score))}). Approve to send the announcement to the team.\n\nMessage:\n"${message}"`,
         priority: 'normal'
       } as any).catch(() => null);
@@ -289,8 +295,9 @@ class TrinityRecognitionEngine {
           type: 'trinity_fto_suggestion',
           title: `FTO Eligibility: ${r.first_name} ${r.last_name}`,
           message,
-          priority: 'normal'
-        } as any).catch(() => null);
+          priority: 'normal',
+          idempotencyKey: `trinity_fto_suggestion-${String(Date.now())}-${mgr[0].user_id}`,
+}) as any).catch(() => null);
       }
     }
   }
@@ -329,7 +336,8 @@ class TrinityRecognitionEngine {
       // @ts-expect-error — TS migration: fix in refactoring sprint
       position: e.position || 'Security Officer',
       streakDays: String(m.context?.streakDays || 14),
-      currentRate: String(Number(e.hourly_rate) || 18),
+      currentRate: String(Number(e.hourly_rate) || 18),,
+          idempotencyKey: `trinity_fto_suggestion-${Date.now()}-${mgr[0].user_id}`
       ...Object.fromEntries(Object.entries(m.context || {}).map(([k, v]) => [k, String(v)]))
     };
   }
@@ -359,15 +367,17 @@ class TrinityRecognitionEngine {
         type: 'milestone_alert',
         title: `Milestone Alert: ${employeeName}`,
         message: `${employeeName} has reached a ${milestoneType.replace(/_/g, ' ')} milestone. Trinity has sent them a recognition message. Context: ${context.slice(0, 200)}`,
-        priority: 'normal'
-      } as any).catch(() => null);
+        priority: 'normal',
+        idempotencyKey: `milestone_alert-${String(Date.now())}-${rows[0].user_id}`,
+}) as any).catch(() => null);
     }
   }
 
   private async getCompanyName(workspaceId: string): Promise<string> {
     // CATEGORY C — Raw SQL retained: LIMIT | Tables: workspaces | Verified: 2026-03-23
     const { rows } = await typedPool(`
-      SELECT name FROM workspaces WHERE id = $1 LIMIT 1
+      SELECT name FROM workspaces WHERE id = $1 LIMIT 1,
+        idempotencyKey: `milestone_alert-${Date.now()}-${rows[0].user_id}`
     `, [workspaceId]).catch(() => ({ rows: [] }));
     // @ts-expect-error — TS migration: fix in refactoring sprint
     return rows[0]?.name || 'the company';

@@ -241,7 +241,7 @@ router.get('/identity/resolve', async (req: AuthenticatedRequest, res) => {
     }
 
     log.info(
-      `[AUDIT] Platform staff ${(req as any).user?.id} (${(req as any).platformRole}) resolved identity ${code} (${enriched.length} matches)`,
+      `[AUDIT] Platform staff ${req.user?.id} (${req.platformRole}) resolved identity ${code} (${enriched.length} matches)`,
     );
 
     res.json({ query: code, matches: enriched });
@@ -274,8 +274,8 @@ router.post('/identity/rewrite', async (req: AuthenticatedRequest, res) => {
       });
     }
 
-    const actorUserId = (req as any).user?.id;
-    const actorPlatformRole = (req as any).platformRole;
+    const actorUserId = req.user?.id;
+    const actorPlatformRole = req.platformRole;
 
     if (!actorUserId) {
       return res.status(401).json({ error: 'UNAUTHENTICATED' });
@@ -2202,7 +2202,8 @@ router.post('/compliance/notify-pending', async (req: AuthenticatedRequest, res)
         relatedEntityType: 'compliance',
         metadata: { pendingCount: count, reason: 'post_email_fix_notification', notifiedAt: new Date().toISOString() },
         // @ts-expect-error — TS migration: fix in refactoring sprint
-        createdBy: req.user.id,
+        createdBy: req.user.id,,
+        idempotencyKey: `system-${Date.now()}-${owner.userId}`
       });
       notified++;
     }

@@ -44,7 +44,7 @@ export async function requireLegalAcceptance(
   res: Response,
   next: NextFunction
 ): Promise<void> {
-  const user = (req as any).user;
+  const user = req.user;
   if (!user?.id) return next();
 
   if (EXEMPT_PREFIXES.some((p) => req.path.startsWith(p))) return next();

@@ -174,8 +174,8 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =
     });
 
     if (req.session) {
-      (req as any).session.workspaceId = workspace.id;
-      (req as any).session.activeWorkspaceId = workspace.id;
+      req.session.workspaceId = workspace.id;
+      req.session.activeWorkspaceId = workspace.id;
     }
 
     try {

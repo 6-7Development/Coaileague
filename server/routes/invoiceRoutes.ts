@@ -2202,7 +2202,7 @@ import { createHash } from "crypto";
       // ISSUE-5 FIX: Resolve authenticated user's workspace and enforce tenant isolation.
       // Without this check, any authenticated user could create a PaymentIntent for an
       // invoice belonging to a different workspace by guessing its UUID.
-      const userId = (req as any).user?.id || (req as any).user?.claims?.sub;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const userWorkspace = await storage.getWorkspaceByOwnerId(userId) || await storage.getWorkspaceByMembership(userId);
       if (!userWorkspace) {
         return res.status(403).json({ message: 'Workspace not found' });
@@ -2420,7 +2420,7 @@ router.post("/adjustments", async (req: AuthenticatedRequest, res) => {
     const { invoiceId, adjustmentType, description, amount, reason } = adjustmentParsed.data;
 
     const workspaceId = req.workspaceId;
-    const userId = req.user?.id || (req as any).userId;
+    const userId = req.user?.id || req.user?.id;
     if (!workspaceId || !userId) return res.status(400).json({ error: 'Workspace and user required' });
 
     const parsedAmount = amount;
@@ -2449,7 +2449,7 @@ router.patch("/adjustments/:adjustmentId/approve", async (req: AuthenticatedRequ
     if (!roleCheck.allowed) return res.status(roleCheck.status || 403).json({ error: roleCheck.error });
     const { adjustmentId } = req.params;
     const workspaceId = req.workspaceId;
-    const userId = req.user?.id || (req as any).userId;
+    const userId = req.user?.id || req.user?.id;
     if (!workspaceId || !userId) return res.status(400).json({ error: 'Workspace and user required' });
 
     // Write-protection: fetch current state before mutating
@@ -2499,7 +2499,7 @@ router.patch("/adjustments/:adjustmentId/reject", async (req: AuthenticatedReque
     if (!roleCheck.allowed) return res.status(roleCheck.status || 403).json({ error: roleCheck.error });
     const { adjustmentId } = req.params;
     const workspaceId = req.workspaceId;
-    const userId = req.user?.id || (req as any).userId;
+    const userId = req.user?.id || req.user?.id;
     if (!workspaceId) return res.status(400).json({ error: 'Workspace required' });
 
     // Write-protection: fetch current state before mutating

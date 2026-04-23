@@ -293,8 +293,8 @@ router.get('/score', async (req: AuthenticatedRequest, res: Response) => {
     const workspaceId = req.workspaceId || req.user?.workspaceId;
     if (!workspaceId) return res.status(400).json({ error: 'Workspace required' });
 
-    const callerRole = (req as any).workspaceRole || '';
-    const callerPlatformRole = (req as any).platformRole || '';
+    const callerRole = req.workspaceRole || '';
+    const callerPlatformRole = req.platformRole || '';
     const isOwner = ['org_owner', 'co_owner'].includes(callerRole);
     const isPlatform = ['root_admin', 'deputy_admin', 'sysop',
       'support_manager', 'support_agent'].includes(callerPlatformRole);

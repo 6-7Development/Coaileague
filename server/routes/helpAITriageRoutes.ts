@@ -533,7 +533,7 @@ router.post('/triage', requireAuth, async (req: AuthenticatedRequest, res: Respo
     // scoped handler that only exposes licensing / certification / incident
     // records. Financial and payroll data are always blocked here — even
     // before it reaches platformActionHub's auditor guard.
-    const isAuditorSession = (req as any).workspaceRole === 'auditor';
+    const isAuditorSession = req.workspaceRole === 'auditor';
     if (isAuditorSession) {
       const auditResponse = await handleAuditorHelpAI(message, workspaceId || '', userId || '');
       return res.json({

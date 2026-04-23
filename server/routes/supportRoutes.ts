@@ -1485,7 +1485,7 @@ router.get('/session/admin/active', async (req: AuthenticatedRequest, res) => {
 // ============================================================================
 router.get('/my-workspace-history', async (req: AuthenticatedRequest, res) => {
   try {
-    const workspaceId = (req as any).user?.workspaceId || (req as any).workspaceId;
+    const workspaceId = req.user?.workspaceId || req.workspaceId;
     if (!workspaceId) return res.status(400).json({ error: 'Workspace required' });
 
     const { pool } = await import('../db');

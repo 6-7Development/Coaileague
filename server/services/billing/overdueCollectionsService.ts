@@ -164,7 +164,8 @@ async function runTier2(inv: OverdueInvoice, clientEmail: string, clientName: st
       workspaceId: inv.workspaceId,
       userId: owner.userId,
       type: 'system' as any,
-      title: `Invoice ${inv.invoiceNumber} — 7-Day Overdue Alert`,
+      title: `Invoice ${inv.invoiceNumber} — 7-Day Overdue Alert`,,
+      idempotencyKey: `system-${Date.now()}-${owner.userId}`
       message: `${clientName} has not paid invoice ${inv.invoiceNumber} ($${Number(inv.total).toFixed(2)}). Now ${inv.daysOverdue} days overdue. Escalation email sent to client.`,
       actionUrl: `/invoices/${inv.id}`,
       relatedEntityType: 'invoice',
@@ -215,7 +216,8 @@ ${workspaceName}`;
       workspaceId: inv.workspaceId,
       userId: owner.userId,
       type: 'system' as any,
-      title: `URGENT: Invoice ${inv.invoiceNumber} — 30-Day Collections Flag`,
+      title: `URGENT: Invoice ${inv.invoiceNumber} — 30-Day Collections Flag`,,
+      idempotencyKey: `system-${Date.now()}-${owner.userId}`
       message: `${clientName} is ${inv.daysOverdue} days overdue on invoice ${inv.invoiceNumber} ($${Number(inv.total).toFixed(2)}). Trinity recommends: (1) Call the AP contact today, (2) Review draft demand letter, (3) Consider collections agency referral if unpaid within 10 days.`,
       actionUrl: `/invoices/${inv.id}`,
       relatedEntityType: 'invoice',

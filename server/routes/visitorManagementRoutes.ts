@@ -26,7 +26,7 @@ const VISITOR_TYPES = ['guest', 'vendor', 'contractor', 'employee', 'delivery', 
 const PRE_REG_STATUSES = ['pending', 'checked_in', 'completed', 'cancelled'] as const;
 
 function wid(req: AuthenticatedRequest) {
-  return req.workspaceId || (req as any).session?.workspaceId;
+  return req.workspaceId || req.session?.workspaceId;
 }
 
 // ── Banned check — queries trespass_notices (active trespass records for workspace) ──
@@ -71,7 +71,7 @@ visitorManagementRouter.get('/logs', requireAuth, async (req: AuthenticatedReque
     const workspaceId = wid(req);
     if (!workspaceId) return res.status(400).json({ error: 'Workspace required' });
 
-    const { siteId, visitorType, date, search, limit = 50, offset = 0 } = (req as any).query;
+    const { siteId, visitorType, date, search, limit = 50, offset = 0 } = req.query;
 
     const conditions = ['workspace_id = $1'];
     const params: any[] = [workspaceId];
@@ -108,7 +108,7 @@ visitorManagementRouter.get('/active', requireAuth, async (req: AuthenticatedReq
     const workspaceId = wid(req);
     if (!workspaceId) return res.status(400).json({ error: 'Workspace required' });
 
-    const { siteId } = (req as any).query;
+    const { siteId } = req.query;
     const conditions = ['workspace_id = $1', 'checked_out_at IS NULL'];
     const params: any[] = [workspaceId];
     if (siteId) { conditions.push(`site_id = $2`); params.push(siteId); }
@@ -172,7 +172,7 @@ visitorManagementRouter.post('/checkin', requireAuth, async (req: AuthenticatedR
       isFastTrack = preRows.length > 0;
     }
 
-    const checkedInBy = (req as any).user?.id || 'unknown';
+    const checkedInBy = req.user?.id || 'unknown';
 
     const { rows } = await pool.query(
       `INSERT INTO visitor_logs
@@ -249,7 +249,7 @@ visitorManagementRouter.post('/checkout/:id', requireAuth, async (req: Authentic
     if (!workspaceId) return res.status(400).json({ error: 'Workspace required' });
 
     const { notes } = req.body;
-    const checkedOutBy = (req as any).user?.id || 'unknown';
+    const checkedOutBy = req.user?.id || 'unknown';
 
     const { rows } = await pool.query(
       `UPDATE visitor_logs
@@ -360,7 +360,7 @@ visitorManagementRouter.get('/pre-registrations', requireAuth, async (req: Authe
     const workspaceId = wid(req);
     if (!workspaceId) return res.status(400).json({ error: 'Workspace required' });
 
-    const { status, clientId, siteId, limit = 50, offset = 0 } = (req as any).query;
+    const { status, clientId, siteId, limit = 50, offset = 0 } = req.query;
 
     const conditions = ['workspace_id = $1'];
     const params: any[] = [workspaceId];
@@ -405,8 +405,8 @@ visitorManagementRouter.post('/pre-registrations', requireAuth, async (req: Auth
       return res.status(400).json({ error: `Invalid visitorType. Valid: ${VISITOR_TYPES.join(', ')}` });
     }
 
-    const submittedBy = (req as any).user?.id || 'unknown';
-    const submittedByName = (req as any).user?.name || null;
+    const submittedBy = req.user?.id || 'unknown';
+    const submittedByName = req.user?.name || null;
 
     const { rows } = await pool.query(
       `INSERT INTO visitor_pre_registrations

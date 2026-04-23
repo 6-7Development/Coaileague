@@ -12,7 +12,7 @@ const router = Router();
 // POST /api/interview/chatrooms — create a new chatroom for a candidate
 router.post('/chatrooms', requireAuth, async (req: Request, res: Response) => {
   try {
-    const user = (req as any).user;
+    const user = req.user;
     const { candidateId, sessionId, humanCopilotUserId, roomType } = req.body;
 
     if (!candidateId) return res.status(400).json({ error: 'candidateId required' });
@@ -46,7 +46,7 @@ router.post('/chatrooms', requireAuth, async (req: Request, res: Response) => {
 // POST /api/interview/chatrooms/:id/start — Trinity sends first message
 router.post('/chatrooms/:id/start', requireAuth, async (req: Request, res: Response) => {
   try {
-    const user = (req as any).user;
+    const user = req.user;
     const room = await interviewChatOrchestrator.getChatroom(req.params.id);
     if (!room || room.workspace_id !== user.workspaceId) {
       return res.status(404).json({ error: 'Chatroom not found' });
@@ -66,7 +66,7 @@ router.post('/chatrooms/:id/start', requireAuth, async (req: Request, res: Respo
 // GET /api/interview/chatrooms — list chatrooms for workspace
 router.get('/chatrooms', requireAuth, async (req: Request, res: Response) => {
   try {
-    const user = (req as any).user;
+    const user = req.user;
     const result = await pool.query(
       `SELECT ic.id, ic.status, ic.room_type, ic.overall_score,
               ic.trinity_recommendation, ic.human_decision,
@@ -91,7 +91,7 @@ router.get('/chatrooms', requireAuth, async (req: Request, res: Response) => {
 // GET /api/interview/chatrooms/:id — get chatroom with messages (manager view)
 router.get('/chatrooms/:id', requireAuth, async (req: Request, res: Response) => {
   try {
-    const user = (req as any).user;
+    const user = req.user;
     const room = await interviewChatOrchestrator.getChatroom(req.params.id);
     if (!room || room.workspace_id !== user.workspaceId) {
       return res.status(404).json({ error: 'Chatroom not found' });
@@ -108,7 +108,7 @@ router.get('/chatrooms/:id', requireAuth, async (req: Request, res: Response) =>
 // PATCH /api/interview/chatrooms/:id/decision — manager records hire decision
 router.patch('/chatrooms/:id/decision', requireAuth, async (req: Request, res: Response) => {
   try {
-    const user = (req as any).user;
+    const user = req.user;
     const { decision, notes } = req.body;
     if (!decision) return res.status(400).json({ error: 'decision required' });
 

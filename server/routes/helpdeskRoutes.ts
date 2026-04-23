@@ -534,7 +534,7 @@ router.post('/authenticate-ticket', async (req, res) => {
       }).returning();
     }
 
-    (req as any).session.userId = guestUser.id;
+    req.session.userId = guestUser.id;
     await new Promise((resolve, reject) => {
       req.session.save((err: any) => {
         if (err) reject(err);
@@ -599,7 +599,7 @@ router.post('/authenticate-workid', async (req, res) => {
       return res.status(403).json({ message: "Unauthorized - Staff access required" });
     }
 
-    (req as any).session.userId = staffUser.id;
+    req.session.userId = staffUser.id;
     await new Promise((resolve, reject) => {
       req.session.save((err: any) => {
         if (err) reject(err);

@@ -65,8 +65,9 @@ async function notifyManagers(workspaceId: string, title: string, message: strin
       type: 'external_risk', 
       title, 
       message, 
-      priority 
-    } as any).catch(() => null);
+      priority,
+      idempotencyKey: `external_risk-${String(Date.now())}-${mgr.userId}`,
+}) as any).catch(() => null);
   }
   return managers.length;
 }
@@ -103,7 +104,8 @@ export function registerExternalIntelligenceActions() {
 
     // Try to pull coordinates from site or client record
     if (!lat || !lon) {
-      if (siteId) {
+      if (siteId) {,
+      idempotencyKey: `external_risk-${Date.now()}-${mgr.userId}`
         const [site] = await db.select({ name: sites.name, latitude: sites.latitude, longitude: sites.longitude })
           .from(sites).where(and(eq(sites.workspaceId, workspaceId), eq(sites.id, siteId))).limit(1);
         if (site) { lat = site.latitude as any; lon = site.longitude as any; locationName = site.name || locationName; }

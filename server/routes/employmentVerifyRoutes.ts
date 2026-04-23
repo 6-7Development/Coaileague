@@ -207,9 +207,9 @@ employmentVerifyRouter.get(
         skipUnsubscribeCheck: true,
       });
 
-      const actorUserId = (req as any).user?.id ?? null;
-      const actorRole = (req as any).workspaceRole ?? null;
-      const actorPlatformRole = (req as any).platformRole ?? null;
+      const actorUserId = req.user?.id ?? null;
+      const actorRole = req.workspaceRole ?? null;
+      const actorPlatformRole = req.platformRole ?? null;
       await pool.query(
         `UPDATE support_tickets
             SET status = 'resolved',
@@ -336,7 +336,7 @@ employmentVerifyRouter.get(
       await logActionAudit({
         actionId: 'employment_verification.approve',
         workspaceId,
-        userId: (req as any).user?.id ?? null,
+        userId: req.user?.id ?? null,
         entityType: 'employment_verification',
         entityId: refNum,
         success: false,
@@ -388,9 +388,9 @@ employmentVerifyRouter.get(
         });
       }
 
-      const actorUserId = (req as any).user?.id ?? null;
-      const actorRole = (req as any).workspaceRole ?? null;
-      const actorPlatformRole = (req as any).platformRole ?? null;
+      const actorUserId = req.user?.id ?? null;
+      const actorRole = req.workspaceRole ?? null;
+      const actorPlatformRole = req.platformRole ?? null;
       await pool.query(
         `UPDATE support_tickets
             SET status = 'closed',
@@ -433,7 +433,7 @@ employmentVerifyRouter.get(
       await logActionAudit({
         actionId: 'employment_verification.deny',
         workspaceId,
-        userId: (req as any).user?.id ?? null,
+        userId: req.user?.id ?? null,
         entityType: 'employment_verification',
         entityId: refNum,
         success: false,
@@ -450,8 +450,8 @@ employmentVerifyRouter.get(
   '/stats',
   requireAuth,
   async (req: AuthenticatedRequest, res: Response) => {
-    const callerRole = (req as any).workspaceRole || '';
-    const callerPlatformRole = (req as any).platformRole || '';
+    const callerRole = req.workspaceRole || '';
+    const callerPlatformRole = req.platformRole || '';
     const isOwner = ['org_owner', 'co_owner'].includes(callerRole);
     const isPlatform = ['root_admin', 'deputy_admin', 'sysop', 'support_manager'].includes(callerPlatformRole);
     if (!isOwner && !isPlatform) {

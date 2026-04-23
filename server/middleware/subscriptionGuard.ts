@@ -78,7 +78,7 @@ export function subscriptionReadOnlyGuard(
   if (isBillingExempt(req.path)) return next();
 
   // System bots (Trinity, HelpAI) operate with platform authority — never blocked
-  if ((req as any).isTrinityBot) return next();
+  if (req.isTrinityBot) return next();
 
   const workspaceId =
     req.workspaceId || req.currentWorkspaceId || req.user?.workspaceId;
@@ -138,7 +138,7 @@ export function cancelledWorkspaceGuard(
   if (CANCELLED_EXEMPT_PREFIXES.some(p => req.path.startsWith(p))) return next();
 
   // System bots (Trinity, HelpAI) operate with platform authority — never blocked
-  if ((req as any).isTrinityBot) return next();
+  if (req.isTrinityBot) return next();
 
   const workspaceId =
     req.workspaceId || req.currentWorkspaceId || req.user?.workspaceId;

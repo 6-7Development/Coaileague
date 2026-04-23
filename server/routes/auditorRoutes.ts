@@ -128,7 +128,7 @@ auditorRouter.post('/claim', async (req: Request, res: Response) => {
     const passwordHash = await bcrypt.hash(password, 12);
     const result = await claimInvite({ token, passwordHash, phone, fullName });
     if (!result.success) return res.status(400).json({ ok: false, error: result.reason });
-    (req as any).session.auditorId = result.auditorId;
+    req.session.auditorId = result.auditorId;
     return res.json({ ok: true, auditorId: result.auditorId });
   } catch (err: any) {
     log.error('[AuditorRoutes] claim error:', err.message);
@@ -162,7 +162,7 @@ auditorRouter.post('/login', async (req: Request, res: Response) => {
     if (!ok) return res.status(401).json({ ok: false, error: 'Invalid credentials' });
 
     await recordSuccessfulAuth(auth.auditorId!, req.ip, req.headers['user-agent'] as string);
-    (req as any).session.auditorId = auth.auditorId;
+    req.session.auditorId = auth.auditorId;
     return res.json({ ok: true });
   } catch (err: any) {
     log.error('[AuditorRoutes] login error:', err.message);

@@ -478,7 +478,7 @@ async function handleInboundWebhook(
   res: Response,
   targetAddress: string,
 ): Promise<void> {
-  const rawBody: Buffer = (req as any).rawBody || Buffer.from(JSON.stringify(req.body));
+  const rawBody: Buffer = req.rawBody || Buffer.from(JSON.stringify(req.body));
 
   // Check 1: Signature verification
   const signatureValid = verifyResendSignature(rawBody, req.headers as any);
@@ -531,7 +531,7 @@ async function handleInboundWebhook(
 // Returns 200 to Resend regardless — never 4xx/5xx after signature check.
 
 inboundEmailRouter.post('/', async (req: Request, res: Response) => {
-  const rawBody: Buffer = (req as any).rawBody || Buffer.from(JSON.stringify(req.body));
+  const rawBody: Buffer = req.rawBody || Buffer.from(JSON.stringify(req.body));
 
   // Step 1: Signature verification
   if (!verifyResendSignature(rawBody, req.headers as any)) {
@@ -945,7 +945,7 @@ inboundEmailRouter.post('/support', async (req: Request, res: Response) => {
 // We resolve the workspace from the `to` address and let TrinityEmailProcessor
 // handle type-specific routing (careers, calloffs, verify, support, trinity).
 inboundEmailRouter.post('/per-org', async (req: Request, res: Response) => {
-  const rawBody: Buffer = (req as any).rawBody || Buffer.from(JSON.stringify(req.body));
+  const rawBody: Buffer = req.rawBody || Buffer.from(JSON.stringify(req.body));
 
   const signatureValid = verifyResendSignature(rawBody, req.headers as any);
   if (!signatureValid) {

@@ -434,7 +434,7 @@ function getLang(req: Request): 'en' | 'es' {
   const explicit = req.query.lang || req.body.lang;
   if (explicit === 'es') return 'es';
   if (explicit === 'en') return 'en';
-  const sessionLang = (req as any)._voiceSessionLang as string | undefined;
+  const sessionLang = req._voiceSessionLang as string | undefined;
   if (sessionLang === 'es') return 'es';
   return 'en';
 }
@@ -448,7 +448,7 @@ async function voiceSessionLangMiddleware(req: Request, _res: Response, next: Ne
     if (!sid) return next();
     const session = await getSession(sid);
     if (session?.language === 'es' || session?.language === 'en') {
-      (req as any)._voiceSessionLang = session.language;
+      req._voiceSessionLang = session.language;
     }
   } catch { /* fail-open */ }
   next();
@@ -3553,7 +3553,7 @@ mgmtRouter.post('/support/cases/:caseNumber/resolve', async (req: AuthenticatedR
     const workspaceId = req.workspaceId!;
     const { caseNumber } = req.params;
     const { resolutionNotes } = req.body;
-    const resolvedBy = (req as any).user?.email || (req as any).user?.id || 'manager';
+    const resolvedBy = req.user?.email || req.user?.id || 'manager';
 
     const resolved = await resolveSupportCase({
       caseNumber,

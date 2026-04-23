@@ -610,10 +610,10 @@ export const requireAuth: RequestHandler = async (req, res, next) => {
       // @ts-expect-error — TS migration: fix in refactoring sprint
       req.session = {};
     }
-    (req as any).session.userId = testUser.id;
-    (req as any).session.workspaceId = TEST_MODE_WORKSPACE_ID;
-    (req as any).session.workspaceRole = 'org_owner';
-    (req as any).session.employeeId = TEST_MODE_EMPLOYEE_ID;
+    req.session.userId = testUser.id;
+    req.session.workspaceId = TEST_MODE_WORKSPACE_ID;
+    req.session.workspaceRole = 'org_owner';
+    req.session.employeeId = TEST_MODE_EMPLOYEE_ID;
 
     return next();
   }
@@ -629,7 +629,7 @@ export const requireAuth: RequestHandler = async (req, res, next) => {
     req.user = TRINITY_BOT_USER;
     req.platformRole = 'Bot';
     req.workspaceRole = undefined;
-    (req as any).isTrinityBot = true;
+    req.isTrinityBot = true;
     return next();
   }
 
@@ -662,7 +662,7 @@ export const requireAuth: RequestHandler = async (req, res, next) => {
   // a white screen.  The /api/auth/me handler has a matching fast-path that
   // returns _dbDegraded:true so the frontend knows to show the amber banner.
   if (isDbCircuitOpen()) {
-    const wsId = (req as any).session?.workspaceId || (req as any).session?.currentWorkspaceId || null;
+    const wsId = req.session?.workspaceId || req.session?.currentWorkspaceId || null;
     const degradedUser: any = {
       id: authenticatedUserId,
       email: '',
@@ -704,10 +704,10 @@ export const requireAuth: RequestHandler = async (req, res, next) => {
   // Attach user to request
   req.user = user;
 
-  if (req.session && !(req as any).session.activeWorkspaceId) {
+  if (req.session && !req.session.activeWorkspaceId) {
     const wsId = req.session.workspaceId || user.currentWorkspaceId;
     if (wsId) {
-      (req as any).session.activeWorkspaceId = wsId;
+      req.session.activeWorkspaceId = wsId;
       if (!req.session.workspaceId) {
         req.session.workspaceId = wsId;
       }
@@ -716,12 +716,12 @@ export const requireAuth: RequestHandler = async (req, res, next) => {
 
   // Ensure req.workspaceId is set even for routes that don't use RBAC middleware
   if (!req.workspaceId) {
-    const wsId = (req as any).session?.workspaceId || user.currentWorkspaceId;
+    const wsId = req.session?.workspaceId || user.currentWorkspaceId;
     if (wsId) req.workspaceId = wsId;
   }
 
-  // Propagate workspaceId onto req.user so routes reading (req as any).user?.workspaceId work correctly.
-  // The user DB model has 'currentWorkspaceId' but many routes expect '(req as any).user?.workspaceId'.
+  // Propagate workspaceId onto req.user so routes reading req.user?.workspaceId work correctly.
+  // The user DB model has 'currentWorkspaceId' but many routes expect 'req.user?.workspaceId'.
   // @ts-expect-error — TS migration: fix in refactoring sprint
   if (req.workspaceId && !(req.user).workspaceId) {
     // @ts-expect-error — TS migration: fix in refactoring sprint

@@ -130,7 +130,7 @@ export function globalErrorHandler(
   if (!isProd) logCtx.stack = err.stack;
 
   monitoringService.logError(err, {
-    userId: (req as any).user?.id || (req as any).user?.userId,
+    userId: req.user?.id || req.user?.userId,
     workspaceId: req.workspaceId,
     requestId: req.requestId,
     severity: logCtx.severity as any,

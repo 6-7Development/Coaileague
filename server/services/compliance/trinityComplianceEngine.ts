@@ -444,7 +444,8 @@ export async function deliverComplianceAlerts(workspaceId: string): Promise<Comp
           actionUrl: '/compliance-scenarios',
           relatedEntityType: 'employee',
           relatedEntityId: officer.employeeId,
-          createdBy: 'trinity-compliance-engine',
+          createdBy: 'trinity-compliance-engine',,
+          idempotencyKey: `compliance_alert-${officer.employeeId}-`
         }).then(() => {}).catch((e: Error) => errors.push(`notif:${userId}: ${e.message}`))
       );
     }
@@ -530,7 +531,8 @@ export async function deliverComplianceAlerts(workspaceId: string): Promise<Comp
           actionUrl: '/compliance-scenarios',
           relatedEntityType: 'workspace',
           relatedEntityId: workspaceId,
-          createdBy: 'trinity-compliance-engine',
+          createdBy: 'trinity-compliance-engine',,
+          idempotencyKey: `compliance_alert-${workspaceId}-`
         }).then(() => {}).catch((e: Error) => errors.push(`oos-notif:${userId}: ${e.message}`))
       );
     }

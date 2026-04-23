@@ -177,13 +177,15 @@ const flagPostOrderDeviation = mkAction('postorders.flag_deviation', async (req)
         title: 'Post Order Deviation Flagged',
         message: `Shift ${shiftId}: ${incidentDescription}${deviationSection ? ' (Section: ' + deviationSection + ')' : ''}. ${officerId ? 'Officer ID: ' + officerId : ''}. Review post orders and take corrective action.`,
         priority: 'high',
-      } as any).catch(() => null);
+        idempotencyKey: `compliance-${String(Date.now())}-${mgr.userId}`,
+}) as any).catch(() => null);
     }
 
     return createResult(req.actionId, true, `Post order deviation flagged for shift ${shiftId} — managers notified`, { shiftId, deviation: incidentDescription, notified: managers.length }, start);
   } catch (e: any) {
     return createResult(req.actionId, false, e.message, null, start);
-  }
+  },
+        idempotencyKey: `compliance-${Date.now()}-${mgr.userId}`
 });
 
 const applyTemplateToShift = mkAction('postorders.apply_template', async (req) => {

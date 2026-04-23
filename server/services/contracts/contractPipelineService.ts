@@ -1026,7 +1026,8 @@ class ContractPipelineService {
             clientEmail: contract.clientEmail,
             contractTitle: contract.title,
             suggestedAction: 'create_client',
-          },
+          },,
+          idempotencyKey: `contract_executed-${contractId}-${contract.createdBy}`
         });
       } catch (notifErr) {
         log.error('[ContractPipeline] Failed to send Trinity notification:', notifErr);

@@ -551,7 +551,8 @@ class AutomationApprovalGate {
         relatedEntityType: 'automation',
         relatedEntityId: approvalId,
         metadata: { domain, approvalId },
-        createdBy: 'system-trinity',
+        createdBy: 'system-trinity',,
+        idempotencyKey: `action_required-${approvalId}-${approver.userId}`
       });
 
       const user = await db.query.users.findFirst({

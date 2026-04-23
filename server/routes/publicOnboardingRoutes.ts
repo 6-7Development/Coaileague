@@ -595,7 +595,8 @@ router.post('/submit/:applicationId', publicFormLimiter, async (req, res) => {
         message: `${application.firstName} ${application.lastName} has completed onboarding and is awaiting your approval.`,
         actionUrl: '/employees',
         // @ts-expect-error — TS migration: fix in refactoring sprint
-        priority: 'high',
+        priority: 'high',,
+        idempotencyKey: `approval_required-${Date.now()}-${managerId}`
       }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
     }
 
@@ -856,9 +857,9 @@ router.post('/workspace-invite/register', async (req, res) => {
     });
 
     if (req.session) {
-      (req as any).session.userId = userId;
-      (req as any).session.workspaceId = invite.workspaceId;
-      (req as any).session.workspaceRole = role;
+      req.session.userId = userId;
+      req.session.workspaceId = invite.workspaceId;
+      req.session.workspaceRole = role;
     }
 
     const landingPage = ROLE_LANDING_PAGES[role] || '/dashboard';
@@ -939,7 +940,7 @@ router.post('/workspace-invite/register', async (req, res) => {
 
 router.post('/workspace-invite/accept-existing', async (req, res) => {
   try {
-    const userId = req.user?.id || (req as any).session?.userId;
+    const userId = req.user?.id || req.session?.userId;
     if (!userId) return res.status(401).json({ message: 'Not logged in.' });
 
     const { code } = req.body;
@@ -991,8 +992,8 @@ router.post('/workspace-invite/accept-existing', async (req, res) => {
 
     // SECURITY: Regenerate the session on workspace join to prevent session fixation.
     // Preserve the authenticated identity before regeneration.
-    const preservedUserId = (req as any).session.userId || req.user?.id;
-    const preservedPassport = (req as any).session.passport;
+    const preservedUserId = req.session.userId || req.user?.id;
+    const preservedPassport = req.session.passport;
     await new Promise<void>((resolve) => {
       req.session.regenerate((err) => {
         if (err) {
@@ -1002,13 +1003,13 @@ router.post('/workspace-invite/accept-existing', async (req, res) => {
       });
     });
     if (preservedUserId) {
-      (req as any).session.userId = preservedUserId;
+      req.session.userId = preservedUserId;
     }
     if (preservedPassport) {
-      (req as any).session.passport = preservedPassport;
+      req.session.passport = preservedPassport;
     }
-    (req as any).session.workspaceId = invite.workspaceId;
-    (req as any).session.workspaceRole = role;
+    req.session.workspaceId = invite.workspaceId;
+    req.session.workspaceRole = role;
 
     // Fire-and-forget: event + audit trail + owner notification (non-blocking — must not affect response)
     const joinedFirst = user.firstName || 'New';

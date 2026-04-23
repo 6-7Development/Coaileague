@@ -54,11 +54,11 @@ export const terminatedEmployeeGuard = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    const userId = (req as any).user?.id;
-    const workspaceId = (req as any).workspaceId || (req as any).user?.currentWorkspaceId;
+    const userId = req.user?.id;
+    const workspaceId = req.workspaceId || req.user?.currentWorkspaceId;
 
     // Not authenticated or test mode: skip
-    if (!userId || (req as any).isTestMode || (req as any).isTrinityBot) {
+    if (!userId || req.isTestMode || req.isTrinityBot) {
       return next();
     }
 
@@ -142,9 +142,9 @@ export const terminatedEmployeeGuard = async (
     }
 
     // Flag for downstream use (e.g. to filter to own records only)
-    (req as any).terminatedGracePeriod = true;
-    (req as any).terminatedEmployeeId = emp.id;
-    (req as any).documentAccessExpiresAt = expiresAt.toISOString();
+    req.terminatedGracePeriod = true;
+    req.terminatedEmployeeId = emp.id;
+    req.documentAccessExpiresAt = expiresAt.toISOString();
     return next();
   } catch (err: unknown) {
     // Fail open: do not block access if the DB check itself errors

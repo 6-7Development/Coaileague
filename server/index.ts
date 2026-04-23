@@ -311,8 +311,8 @@ app.get('/api/platform/readiness', rateLimitMiddleware(
     { item: 'Performance baseline (<3s critical pages)', status: 'test-manually' },
   ];
 
-  const isPlatformStaff = (req as any).session?.role &&
-    ['root_admin', 'sysop', 'platform_staff', 'platform_support'].includes((req as any).session.role);
+  const isPlatformStaff = req.session?.role &&
+    ['root_admin', 'sysop', 'platform_staff', 'platform_support'].includes(req.session.role);
 
   if (!isPlatformStaff) {
     return res.json({ readiness: failures.length === 0 ? 'READY' : 'NOT_READY' });
@@ -689,7 +689,7 @@ app.use((req, res, next) => {
     // Track metrics in monitoring service
     const userId = req.session?.userId;
     // @ts-expect-error — TS migration: fix in refactoring sprint
-    const workspaceId = req.workspaceId || (req.user)?.workspaceId || (req as any).session?.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (req.user)?.workspaceId || req.session?.currentWorkspaceId;
     
     monitoringService.trackRequest(
       path,

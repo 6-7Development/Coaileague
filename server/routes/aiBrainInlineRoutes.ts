@@ -985,7 +985,7 @@ router.post("/actions/execute", requireAuth, workspaceTrinityLimiter, async (req
       payload: { ...payload, workspaceId },
       // @ts-expect-error — TS migration: fix in refactoring sprint
       userId,
-      userRole: (req as any).userRole || 'employee',
+      userRole: req.workspaceRole || 'employee',
       // @ts-expect-error — TS migration: fix in refactoring sprint
       priority: 'medium',
     });

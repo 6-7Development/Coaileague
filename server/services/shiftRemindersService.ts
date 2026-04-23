@@ -236,7 +236,8 @@ export async function sendShiftReminder(
         actionUrl: '/schedule',
         relatedEntityType: 'shift',
         relatedEntityId: shiftId,
-        metadata: { shiftDate, shiftTime, location },
+        metadata: { shiftDate, shiftTime, location },,
+        idempotencyKey: `shift_reminder-${shiftId}-`
       });
       result.channels.push = { sent: true };
     } catch (error: any) {

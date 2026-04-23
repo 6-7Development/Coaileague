@@ -40,8 +40,8 @@ export const identityPinRouter = Router();
 identityPinRouter.post('/pin/owner/set', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const workspaceId = req.workspaceId;
-    const actorUserId = (req as any).user?.id;
-    const role = (req as any).workspaceRole;
+    const actorUserId = req.user?.id;
+    const role = req.workspaceRole;
     if (!workspaceId || !actorUserId) {
       return res.status(401).json({ error: 'UNAUTHENTICATED' });
     }
@@ -59,7 +59,7 @@ identityPinRouter.post('/pin/owner/set', requireAuth, async (req: AuthenticatedR
       pin,
       workspaceId,
       actorUserId,
-      actorPlatformRole: (req as any).platformRole ?? null,
+      actorPlatformRole: req.platformRole ?? null,
     });
 
     return res.json({ success: true, message: 'Owner identification PIN saved' });
@@ -75,8 +75,8 @@ identityPinRouter.post('/pin/owner/set', requireAuth, async (req: AuthenticatedR
 identityPinRouter.delete('/pin/owner', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const workspaceId = req.workspaceId;
-    const actorUserId = (req as any).user?.id;
-    const role = (req as any).workspaceRole;
+    const actorUserId = req.user?.id;
+    const role = req.workspaceRole;
     if (!workspaceId || !actorUserId) return res.status(401).json({ error: 'UNAUTHENTICATED' });
     if (role !== 'org_owner' && role !== 'co_owner') {
       return res.status(403).json({ error: 'FORBIDDEN' });
@@ -87,7 +87,7 @@ identityPinRouter.delete('/pin/owner', requireAuth, async (req: AuthenticatedReq
       entityId: workspaceId,
       workspaceId,
       actorUserId,
-      actorPlatformRole: (req as any).platformRole ?? null,
+      actorPlatformRole: req.platformRole ?? null,
     });
 
     return res.json({ success: true, message: 'Owner PIN cleared' });
@@ -126,7 +126,7 @@ identityPinRouter.post(
     try {
       const { clientId } = req.params;
       const workspaceId = req.workspaceId;
-      const actorUserId = (req as any).user?.id;
+      const actorUserId = req.user?.id;
       if (!workspaceId || !actorUserId) return res.status(401).json({ error: 'UNAUTHENTICATED' });
 
       const { pin } = req.body || {};
@@ -136,7 +136,7 @@ identityPinRouter.post(
         pin,
         workspaceId,
         actorUserId,
-        actorPlatformRole: (req as any).platformRole ?? null,
+        actorPlatformRole: req.platformRole ?? null,
       });
 
       return res.json({ success: true, message: 'Client PIN saved' });
@@ -159,7 +159,7 @@ identityPinRouter.delete(
     try {
       const { clientId } = req.params;
       const workspaceId = req.workspaceId;
-      const actorUserId = (req as any).user?.id;
+      const actorUserId = req.user?.id;
       if (!workspaceId || !actorUserId) return res.status(401).json({ error: 'UNAUTHENTICATED' });
 
       await clearEntityPin({
@@ -167,7 +167,7 @@ identityPinRouter.delete(
         entityId: clientId,
         workspaceId,
         actorUserId,
-        actorPlatformRole: (req as any).platformRole ?? null,
+        actorPlatformRole: req.platformRole ?? null,
       });
 
       return res.json({ success: true, message: 'Client PIN cleared' });
@@ -212,9 +212,9 @@ identityPinRouter.get(
 async function resolveSelfClient(
   req: AuthenticatedRequest,
 ): Promise<{ clientId: string; workspaceId: string } | null> {
-  const workspaceId = (req as any).workspaceId ?? (req as any).user?.workspaceId;
-  const userId = (req as any).user?.id as string | undefined;
-  const email = (req as any).user?.email as string | undefined;
+  const workspaceId = req.workspaceId ?? req.user?.workspaceId;
+  const userId = req.user?.id as string | undefined;
+  const email = req.user?.email as string | undefined;
   if (!workspaceId || (!userId && !email)) return null;
 
   // Tenant-scoped — the WHERE clause always includes workspace_id per §G.
@@ -251,7 +251,7 @@ identityPinRouter.get('/pin/client/self/status', requireAuth, async (req: Authen
 
 identityPinRouter.post('/pin/client/self/set', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const actorUserId = (req as any).user?.id;
+    const actorUserId = req.user?.id;
     if (!actorUserId) return res.status(401).json({ error: 'UNAUTHENTICATED' });
     const resolved = await resolveSelfClient(req);
     if (!resolved) return res.status(404).json({ error: 'CLIENT_NOT_FOUND' });
@@ -263,7 +263,7 @@ identityPinRouter.post('/pin/client/self/set', requireAuth, async (req: Authenti
       pin,
       workspaceId: resolved.workspaceId,
       actorUserId,
-      actorPlatformRole: (req as any).platformRole ?? null,
+      actorPlatformRole: req.platformRole ?? null,
     });
     return res.json({ success: true, message: 'Client PIN saved' });
   } catch (err: any) {
@@ -277,7 +277,7 @@ identityPinRouter.post('/pin/client/self/set', requireAuth, async (req: Authenti
 
 identityPinRouter.delete('/pin/client/self', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const actorUserId = (req as any).user?.id;
+    const actorUserId = req.user?.id;
     if (!actorUserId) return res.status(401).json({ error: 'UNAUTHENTICATED' });
     const resolved = await resolveSelfClient(req);
     if (!resolved) return res.status(404).json({ error: 'CLIENT_NOT_FOUND' });
@@ -287,7 +287,7 @@ identityPinRouter.delete('/pin/client/self', requireAuth, async (req: Authentica
       entityId: resolved.clientId,
       workspaceId: resolved.workspaceId,
       actorUserId,
-      actorPlatformRole: (req as any).platformRole ?? null,
+      actorPlatformRole: req.platformRole ?? null,
     });
     return res.json({ success: true, message: 'Client PIN cleared' });
   } catch (err: any) {
@@ -306,8 +306,8 @@ identityPinRouter.delete('/pin/client/self', requireAuth, async (req: Authentica
 async function resolveSelfEmployee(
   req: AuthenticatedRequest,
 ): Promise<{ employeeId: string; employeeNumber: string | null; workspaceId: string } | null> {
-  const workspaceId = (req as any).workspaceId ?? (req as any).user?.workspaceId;
-  const userId = (req as any).user?.id as string | undefined;
+  const workspaceId = req.workspaceId ?? req.user?.workspaceId;
+  const userId = req.user?.id as string | undefined;
   if (!workspaceId || !userId) return null;
 
   // Tenant-scoped (CLAUDE.md §G). Active-only — deactivated employees must
@@ -351,7 +351,7 @@ identityPinRouter.get('/pin/employee/self/status', requireAuth, async (req: Auth
 
 identityPinRouter.post('/pin/employee/self/set', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const actorUserId = (req as any).user?.id;
+    const actorUserId = req.user?.id;
     if (!actorUserId) return res.status(401).json({ error: 'UNAUTHENTICATED' });
     const resolved = await resolveSelfEmployee(req);
     if (!resolved) return res.status(404).json({ error: 'EMPLOYEE_NOT_FOUND' });
@@ -363,7 +363,7 @@ identityPinRouter.post('/pin/employee/self/set', requireAuth, async (req: Authen
       pin,
       workspaceId: resolved.workspaceId,
       actorUserId,
-      actorPlatformRole: (req as any).platformRole ?? null,
+      actorPlatformRole: req.platformRole ?? null,
     });
     return res.json({
       success: true,
@@ -381,7 +381,7 @@ identityPinRouter.post('/pin/employee/self/set', requireAuth, async (req: Authen
 
 identityPinRouter.delete('/pin/employee/self', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const actorUserId = (req as any).user?.id;
+    const actorUserId = req.user?.id;
     if (!actorUserId) return res.status(401).json({ error: 'UNAUTHENTICATED' });
     const resolved = await resolveSelfEmployee(req);
     if (!resolved) return res.status(404).json({ error: 'EMPLOYEE_NOT_FOUND' });
@@ -391,7 +391,7 @@ identityPinRouter.delete('/pin/employee/self', requireAuth, async (req: Authenti
       entityId: resolved.employeeId,
       workspaceId: resolved.workspaceId,
       actorUserId,
-      actorPlatformRole: (req as any).platformRole ?? null,
+      actorPlatformRole: req.platformRole ?? null,
     });
     return res.json({ success: true, message: 'Clock-in PIN cleared' });
   } catch (err: any) {

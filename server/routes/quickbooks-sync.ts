@@ -273,7 +273,7 @@ router.post("/api/webhooks/quickbooks", async (req: Request, res: Response) => {
     }
 
     // Use raw body captured by middleware for proper HMAC verification
-    const rawPayload = (req as any).rawBody;
+    const rawPayload = req.rawBody;
     if (!rawPayload) {
       log.info("[QBO Webhook] No raw body available for verification");
       return res.status(400).json({ error: "Missing request body" });

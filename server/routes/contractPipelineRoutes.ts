@@ -329,7 +329,7 @@ router.post('/:id/send', async (req: AuthenticatedRequest, res: Response) => {
     // Mount-level gates only require auth + workspace access; sending a
     // contract that gates invoicing and signer liability should be a
     // manager-or-above action.
-    const role = (req.user as any)?.workspaceRole || (req as any).workspaceRole;
+    const role = (req.user as any)?.workspaceRole || req.workspaceRole;
     if (!hasManagerAccess(role)) {
       return res.status(403).json({ error: 'Only managers and owners can send contracts for signature' });
     }

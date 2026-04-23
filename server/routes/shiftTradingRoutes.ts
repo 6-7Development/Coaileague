@@ -23,7 +23,7 @@ router.get("/availability", requireAuth, async (req: AuthenticatedRequest, res) 
   try {
     const wid = req.workspaceId;
     if (!wid) return res.status(400).json({ error: "Workspace required" });
-    const { officerId } = (req as any).query;
+    const { officerId } = req.query;
     const uid = req.user?.id;
 
     // Officers can see own availability; managers see all
@@ -127,7 +127,7 @@ router.get("/trades", requireAuth, async (req: AuthenticatedRequest, res) => {
     const wid = req.workspaceId;
     const uid = req.user?.id;
     if (!wid || !uid) return res.status(400).json({ error: "Auth required" });
-    const { status, mine } = (req as any).query;
+    const { status, mine } = req.query;
     const isManagerOrAbove = req.user?.role && ["owner","co_owner","org_admin","manager"].includes(req.user.role);
 
     let q = `SELECT t.*,
@@ -193,7 +193,8 @@ router.post("/trades", requireAuth, async (req: AuthenticatedRequest, res) => {
           title: "Shift Trade Request",
           message: `${requesterName} wants to trade a shift with you.`,
           type: "shift_trade",
-          actionUrl: `/shift-trading?tab=received`,
+          actionUrl: `/shift-trading?tab=received`,,
+          idempotencyKey: `shift_trade-${Date.now()}-${targetUser.rows[0].user_id}`
         }).catch(() => null);
         // NDS: deliver through the canonical sender (TRINITY.md §B) so
         // delivery is logged and push/in-app channels are respected.
@@ -235,7 +236,8 @@ router.post("/trades", requireAuth, async (req: AuthenticatedRequest, res) => {
           userId: m.id, workspaceId: wid,
           title: "Open Shift Trade",
           message: `An officer posted a shift for trading on the marketplace.`,
-          type: "shift_trade", actionUrl: `/shift-trading`,
+          type: "shift_trade", actionUrl: `/shift-trading`,,
+          idempotencyKey: `shift_trade-${Date.now()}-${m.id}`
         }).catch(() => null);
         try {
           await NotificationDeliveryService.send({
@@ -289,7 +291,8 @@ router.post("/trades/:id/accept", requireAuth, async (req: AuthenticatedRequest,
         userId: requester.rows[0].user_id, workspaceId: wid,
         title: "Shift Trade Accepted",
         message: "Your shift trade request has been accepted. Awaiting manager approval.",
-        type: "shift_trade", actionUrl: `/shift-trading`,
+        type: "shift_trade", actionUrl: `/shift-trading`,,
+        idempotencyKey: `shift_trade-${Date.now()}-${requester.rows[0].user_id}`
       }).catch(() => null);
       try {
         const acceptorName = (await pool.query(
@@ -496,7 +499,8 @@ router.post("/trades/:id/manager-approve", requireManager, async (req: Authentic
           userId: userRes.rows[0].user_id, workspaceId: wid,
           title: "Shift Trade Approved",
           message: "Your shift trade has been approved. Check your updated schedule.",
-          type: "shift_trade", actionUrl: `/schedule`,
+          type: "shift_trade", actionUrl: `/schedule`,,
+          idempotencyKey: `shift_trade-${Date.now()}-${userRes.rows[0].user_id}`
         }).catch(() => null);
 
         await NotificationDeliveryService.send({

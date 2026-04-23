@@ -76,7 +76,7 @@ router.patch('/:employeeId/role', async (req: AuthenticatedRequest, res) => {
       return res.status(400).json({ error: "Validation failed", details: validation.error.issues });
     }
     const { workspaceRole: newRole, expectedVersion } = validation.data;
-    const userId = req.user || (req as any).user?.id;
+    const userId = req.user || req.user?.id;
     const workspaceId = req.workspaceId || req.user?.currentWorkspaceId;
     
     if (!userId || !workspaceId) {
@@ -262,7 +262,7 @@ router.patch('/:employeeId/position', async (req: AuthenticatedRequest, res) => 
       return res.status(400).json({ error: "Validation failed", details: validation.error.issues });
     }
     const { position: newPosition, expectedVersion } = validation.data;
-    const userId = req.user || (req as any).user?.id;
+    const userId = req.user || req.user?.id;
     const workspaceId = req.workspaceId || req.user?.currentWorkspaceId;
 
     if (!userId || !workspaceId) {
@@ -466,7 +466,7 @@ router.patch('/:employeeId/access', async (req: AuthenticatedRequest, res) => {
       return res.status(400).json({ error: "Validation failed", details: validation.error.issues });
     }
     const { isActive, workspaceId: bodyWorkspaceId, guardCardNumber, guardCardExpiryDate } = validation.data;
-    const userId = req.user || (req as any).user?.id;
+    const userId = req.user || req.user?.id;
     const resolvedPlatRole2 = req.platformRole || await getUserPlatformRole(userId);
     const isPlatformStaff = resolvedPlatRole2 && ['root_admin', 'sysop', 'support_manager'].includes(resolvedPlatRole2);
     const workspaceId = (isPlatformStaff && bodyWorkspaceId) ? bodyWorkspaceId : (req.workspaceId || req.user?.currentWorkspaceId);
@@ -832,7 +832,7 @@ router.post(
     try {
       const { employeeId } = req.params;
       const workspaceId = req.workspaceId!;
-      const file = (req as any).file;
+      const file = req.file;
       if (!file) return res.status(400).json({ error: 'Screenshot file required' });
 
       const employee = await storage.getEmployee(employeeId, workspaceId);
@@ -1099,7 +1099,7 @@ router.post('/bulk-notify', async (req: AuthenticatedRequest, res) => {
     }
 
     const { employeeIds, title, message } = validation.data;
-    const userId = req.user || (req as any).user?.id;
+    const userId = req.user || req.user?.id;
     // Always use the session workspaceId — never trust workspaceId from the request body
     const workspaceId = req.workspaceId!;
 
@@ -2172,8 +2172,8 @@ router.get('/:employeeId/contracts', async (req: AuthenticatedRequest, res) => {
   try {
     const workspaceId = req.workspaceId!;
     const { employeeId } = req.params;
-    const callerRole = (req as any).workspaceRole || req.user?.role || '';
-    const callerPlatformRole = (req as any).platformRole || (req.user as any)?.platformRole || '';
+    const callerRole = req.workspaceRole || req.user?.role || '';
+    const callerPlatformRole = req.platformRole || (req.user as any)?.platformRole || '';
     const isOwnerLevel = ['org_owner', 'co_owner'].includes(callerRole);
     const isPlatformStaff = ['root_admin','deputy_admin','sysop',
       'support_manager','support_agent','compliance_officer'].includes(callerPlatformRole);

@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
 import { z } from "zod";
 import { requireAuth } from "../../auth";
-import { hasManagerAccess, hasPlatformWideAccess, requireManager, requireAdmin } from "../../rbac";
+import { hasManagerAccess, hasPlatformWideAccess, requireManager, requireAdmin , type AuthenticatedRequest} from "../../rbac";
 import { enforceAuditorSession } from "../../middleware/auditorGuard";
 import { complianceScoringBridge, COMPLIANCE_POINT_RULES } from "../../services/compliance/complianceScoringBridge";
 import { employeeDocumentOnboardingService } from "../../services/employeeDocumentOnboardingService";
@@ -125,7 +125,7 @@ function resolveAuditorId(req: Request): string | null {
 async function requireAuditorOrStandardAuth(req: Request, res: Response, next: Function) {
   const auditorId = resolveAuditorId(req);
   if (auditorId) {
-    (req as any).auditorId = auditorId;
+    req.auditorId = auditorId;
     // Property 1 + 2: enforce DB-level isActive and expiresAt
     // @ts-expect-error — TS migration: fix in refactoring sprint
     return enforceAuditorSession(req, res, next);
@@ -137,7 +137,7 @@ async function requireAuditorOrStandardAuth(req: Request, res: Response, next: F
 async function requireAuditorOrManagerAuth(req: Request, res: Response, next: Function) {
   const auditorId = resolveAuditorId(req);
   if (auditorId) {
-    (req as any).auditorId = auditorId;
+    req.auditorId = auditorId;
     // Property 1 + 2: enforce DB-level isActive and expiresAt
     // @ts-expect-error — TS migration: fix in refactoring sprint
     return enforceAuditorSession(req, res, next);
@@ -469,7 +469,7 @@ router.get("/onboarding-status", requireAuth, async (req: Request, res: Response
       return res.status(401).json({ success: false, error: "Not authenticated" });
     }
 
-    const workspaceId = (req as any).workspaceId || (req.user)?.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (req.user)?.currentWorkspaceId;
 
     const employee = await db.query.employees.findFirst({
       where: workspaceId

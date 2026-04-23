@@ -1,7 +1,7 @@
 import { sanitizeError } from '../middleware/errorHandler';
 import { Router } from 'express';
 import { requireAuth } from '../auth';
-import { requireOwner } from '../rbac';
+import { requireOwner , type AuthenticatedRequest} from '../rbac';
 import { db } from '../db';
 import { eq, and } from 'drizzle-orm';
 import { orgFinanceSettings, payStubs, employeeBankAccounts, employees } from '@shared/schema';
@@ -391,7 +391,7 @@ router.get('/transfers/:payStubId', requireAuth, async (req, res) => {
 // Used to diagnose payroll ACH failures and onboarding issues in production.
 // ══════════════════════════════════════════════════════════════════════════
 router.get('/health', requireAuth, async (req, res) => {
-  const platformRole = (req as any).platformRole || '';
+  const platformRole = req.platformRole || '';
   const isPlatformStaff = ['root_admin', 'deputy_admin', 'sysop', 'support_manager', 'support_agent']
     .includes(platformRole);
   if (!isPlatformStaff) {

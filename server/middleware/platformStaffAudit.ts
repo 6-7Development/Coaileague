@@ -60,9 +60,9 @@ export function platformStaffAuditMiddleware(req: Request, res: Response, next: 
 
     const targetWorkspace =
       authReq.workspaceId ||
-      (req as any).params?.workspaceId ||
-      (req as any).body?.workspaceId ||
-      ((req as any).query)?.workspaceId ||
+      req.params?.workspaceId ||
+      req.body?.workspaceId ||
+      (req.query)?.workspaceId ||
       null;
 
     const metadata = {

@@ -723,7 +723,8 @@ export async function notifySupportStaffOfEscalation(
           ticketId,
           escalationReason: 'Bot unable to resolve',
           botAttempted: true,
-        },
+        },,
+        idempotencyKey: `support_escalation-${ticketId}-${staff.id}`
       });
     }
     

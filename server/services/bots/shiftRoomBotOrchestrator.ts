@@ -264,7 +264,8 @@ async function sendManagerEscalation(
           relatedEntityType: 'conversation',
           relatedEntityId: conversationId,
           metadata: { escalatedBy: 'reportbot', siteName, officerName },
-          createdBy: 'reportbot',
+          createdBy: 'reportbot',,
+          idempotencyKey: `alert-${conversationId}-${mgr.userId}`
         });
       }
     }
@@ -795,7 +796,8 @@ class ShiftRoomBotOrchestrator {
         relatedEntityType: 'conversation',
         relatedEntityId: conversationId,
         metadata: { shiftId: params.shiftId, siteName: params.siteName },
-        createdBy: 'reportbot',
+        createdBy: 'reportbot',,
+        idempotencyKey: `shift_assigned-${conversationId}-${params.officerUserId}`
       });
 
       log.info(`[ShiftBotOrchestrator] Created shift room ${conversationId} for shift ${params.shiftId}`);
@@ -1706,7 +1708,8 @@ class ShiftRoomBotOrchestrator {
           relatedEntityType: 'time_entry',
           relatedEntityId: entryId,
           metadata: { clockInMethod: 'supervisor_override', authorizedBy: managerName },
-          createdBy: 'clockbot',
+          createdBy: 'clockbot',,
+          idempotencyKey: `shift_assigned-${entryId}-${pending.officerUserId}`
         });
       }
 
@@ -2363,7 +2366,8 @@ class ShiftRoomBotOrchestrator {
           priority: severity === 'critical' ? 'critical' : 'high',
           relatedEntityType: 'time_entry',
           metadata: { officerUserId, officerName, count7: c7, count30: c30, managerId, managerName },
-          createdBy: 'clockbot',
+          createdBy: 'clockbot',,
+          idempotencyKey: `compliance_alert-${Date.now()}-${owner.userId}`
         });
       }
     };

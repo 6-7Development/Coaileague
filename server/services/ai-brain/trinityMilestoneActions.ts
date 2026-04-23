@@ -44,8 +44,9 @@ async function notifyOwner(workspaceId: string, title: string, message: string) 
       type: 'milestone_alert',
       title,
       message,
-      priority: 'normal'
-    } as any).catch(() => null);
+      priority: 'normal',
+      idempotencyKey: `milestone_alert-${String(Date.now())}-${owner.userId}`,
+}) as any).catch(() => null);
   }
 }
 
@@ -84,7 +85,8 @@ export function registerMilestoneActions() {
             milestoneType: m >= 365 ? `${m/365} Year Anniversary` : `${m} Day Milestone`,
             milestoneDate: milestoneDate.toISOString(),
             daysUntil,
-            isOverdue: daysUntil < 0
+            isOverdue: daysUntil < 0,
+      idempotencyKey: `milestone_alert-${Date.now()}-${owner.userId}`
           });
         }
       }

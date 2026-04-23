@@ -154,7 +154,7 @@ function verifyAuditorPortalToken(token: string): { accountId: string; workspace
  */
 async function logAuditorSectionAccess(req: Request, workspaceId: string, section: string): Promise<void> {
   try {
-    const auditorId = (req as any).auditorAccountId || 'unknown';
+    const auditorId = req.auditorAccountId || 'unknown';
     const ip = (req.ip || req.socket?.remoteAddress || 'unknown').substring(0, 45);
     const ua = (req.headers['user-agent'] || '').substring(0, 255);
     await universalAudit.log({
@@ -179,8 +179,8 @@ async function requireAuditorPortalAuth(req: Request, res: Response, next: Funct
   if (!raw) return res.status(401).json({ success: false, error: 'Auditor portal token required' });
   const parsed = verifyAuditorPortalToken(raw);
   if (!parsed) return res.status(401).json({ success: false, error: 'Invalid or expired auditor token' });
-  (req as any).auditorAccountId = parsed.accountId;
-  (req as any).auditorWorkspaceId = parsed.workspaceId;
+  req.auditorAccountId = parsed.accountId;
+  req.auditorWorkspaceId = parsed.workspaceId;
   // Wrap next() to log access after successful auth
   const loggingNext = async () => {
     const workspaceId = parsed.workspaceId;
@@ -473,7 +473,7 @@ router.post('/request/:id/grant', requireAuth, async (req: Request, res: Respons
 router.get('/dashboard/:workspaceId/overview', requireAuditorPortalAuth, async (req: Request, res: Response) => {
   try {
     const { workspaceId } = req.params;
-    const auditorWorkspaceId = (req as any).auditorWorkspaceId;
+    const auditorWorkspaceId = req.auditorWorkspaceId;
     if (auditorWorkspaceId !== workspaceId) {
       return res.status(403).json({ success: false, error: 'Access denied — not scoped to this organization' });
     }
@@ -869,7 +869,7 @@ router.post('/dashboard/:workspaceId/report', requireAuditorPortalAuth, async (r
 
     const { reportUrl, auditOutcome, findings, correctiveActions } = req.body;
 
-    const requestId = (req as any).auditorAccountId;
+    const requestId = req.auditorAccountId;
     await db.update(auditorVerificationRequests).set({
       auditReportUrl: reportUrl,
       auditReportUploadedAt: new Date(),
@@ -894,7 +894,8 @@ router.post('/dashboard/:workspaceId/report', requireAuditorPortalAuth, async (r
         type: 'audit_report_uploaded',
         title: 'Regulatory Audit Report Uploaded',
         message: `Your regulatory audit has been completed. Outcome: ${auditOutcome ?? 'See report'}. Trinity has generated a corrective action plan for you.`,
-        metadata: { reportUrl, auditOutcome, requestId },
+        metadata: { reportUrl, auditOutcome, requestId },,
+        idempotencyKey: `audit_report_uploaded-${Date.now()}-${owner.id}`
       }).catch ((err: unknown) => {
         log.warn('[RegulatoryPortal] In-app audit report notification failed (non-fatal):', (err as any)?.message);
       });
@@ -1116,7 +1117,8 @@ async function notifyOrgOwnerOfAuditRequest(
     type: 'audit_access_request',
     title: 'State Regulatory Audit Access Requested',
     message: `${info.auditorFullName} from ${info.auditorAgencyName} has requested audit access to ${orgName}. Audit type: ${info.auditPurpose}. You have 24 hours to dispute this access. If no dispute is received, access will be granted automatically.`,
-    metadata: { requestId: info.requestId, auditorEmail: info.auditorEmail },
+    metadata: { requestId: info.requestId, auditorEmail: info.auditorEmail },,
+    idempotencyKey: `audit_access_request-${Date.now()}-${owner.id}`
   });
 
   const _auditRequestHtml = `
@@ -1202,7 +1204,8 @@ router.post('/complete-report', async (req: Request, res: Response) => {
         type: 'audit_report_uploaded',
         title: 'Regulatory Audit Report Submitted',
         message: `A regulatory audit has been completed. Outcome: ${auditOutcome}. ${correctiveActions ? 'Corrective actions have been noted.' : ''} Review the report in your Audit Readiness dashboard.`,
-        metadata: { requestId, reportUrl, auditOutcome },
+        metadata: { requestId, reportUrl, auditOutcome },,
+        idempotencyKey: `audit_report_uploaded-${Date.now()}-${owner.id}`
       }).catch ((err: unknown) => {
         log.warn('[RegulatoryPortal] In-app audit submitted notification failed (non-fatal):', (err as any)?.message);
       });

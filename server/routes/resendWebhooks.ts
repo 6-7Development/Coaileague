@@ -498,7 +498,7 @@ router.post("/api/webhooks/resend", async (req, res) => {
     const outboundSignature = req.headers["svix-signature"] as string | undefined;
     const outboundTimestamp = req.headers["svix-timestamp"] as string | undefined;
     const outboundMsgId = req.headers["svix-id"] as string | undefined;
-    const outboundRawBody = (req as any).rawBody;
+    const outboundRawBody = req.rawBody;
     if (typeof outboundRawBody !== 'string') {
       // Raw-body capture failed — the express.json verify callback in
       // server/index.ts did not run for this path. Reconstructing via
@@ -770,7 +770,7 @@ router.post("/api/webhooks/resend/inbound", async (req, res) => {
     // JSON.stringify(req.body) reorders keys and normalizes whitespace, which
     // always produces a byte sequence different from what Resend signed — any
     // fallback would silently guarantee a 401.
-    const rawBody = (req as any).rawBody;
+    const rawBody = req.rawBody;
     if (typeof rawBody !== 'string') {
       log.error(`[Resend Inbound] req.rawBody missing — check webhookPathsNeedingRawBody in server/index.ts (got ${typeof rawBody}, content-type=${req.headers['content-type'] || 'none'}, content-length=${req.headers['content-length'] || 'none'})`);
       return res.status(401).json({ error: "Raw body capture failed — signature cannot be verified" });
@@ -1757,7 +1757,7 @@ router.post("/api/webhooks/resend/diagnostic", (req, res) => {
     return res.status(403).json({ error: "Diagnostic endpoint disabled in production" });
   }
 
-  const rawBody = (req as any).rawBody;
+  const rawBody = req.rawBody;
   const rawBodyCaptured = typeof rawBody === 'string';
   const signature = req.headers['svix-signature'] as string | undefined;
   const timestamp = req.headers['svix-timestamp'] as string | undefined;

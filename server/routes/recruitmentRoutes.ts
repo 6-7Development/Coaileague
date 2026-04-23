@@ -55,7 +55,7 @@ const router = Router();
 // ─── Pipeline Summary ─────────────────────────────────────────────────────────
 
 router.get('/pipeline', async (req: Request, res: Response) => {
-  const workspaceId = (req as any).workspaceId;
+  const workspaceId = req.workspaceId;
   if (!workspaceId) return res.status(400).json({ error: 'No workspace context' });
   try {
     const [summary, analytics] = await Promise.all([
@@ -89,7 +89,7 @@ router.get('/pipeline', async (req: Request, res: Response) => {
 // ─── Candidate List ────────────────────────────────────────────────────────────
 
 router.get('/candidates', async (req: Request, res: Response) => {
-  const workspaceId = (req as any).workspaceId;
+  const workspaceId = req.workspaceId;
   if (!workspaceId) return res.status(400).json({ error: 'No workspace context' });
   try {
     const {
@@ -115,7 +115,7 @@ router.get('/candidates', async (req: Request, res: Response) => {
 // ─── Ranked Summary ────────────────────────────────────────────────────────────
 
 router.get('/candidates/ranked', async (req: Request, res: Response) => {
-  const workspaceId = (req as any).workspaceId;
+  const workspaceId = req.workspaceId;
   if (!workspaceId) return res.status(400).json({ error: 'No workspace context' });
   try {
     const { positionType } = req.query as { positionType?: string };
@@ -130,7 +130,7 @@ router.get('/candidates/ranked', async (req: Request, res: Response) => {
 // ─── Create Candidate ──────────────────────────────────────────────────────────
 
 router.post('/candidates', async (req: Request, res: Response) => {
-  const workspaceId = (req as any).workspaceId;
+  const workspaceId = req.workspaceId;
   if (!workspaceId) return res.status(400).json({ error: 'No workspace context' });
   try {
     const parsed = insertInterviewCandidateSchema.safeParse({ ...req.body, workspaceId });
@@ -148,7 +148,7 @@ router.post('/candidates', async (req: Request, res: Response) => {
 // ─── Get Candidate Detail ─────────────────────────────────────────────────────
 
 router.get('/candidates/:id', async (req: Request, res: Response) => {
-  const workspaceId = (req as any).workspaceId;
+  const workspaceId = req.workspaceId;
   if (!workspaceId) return res.status(400).json({ error: 'No workspace context' });
   try {
     const result = await getCandidateById(req.params.id, workspaceId);
@@ -163,7 +163,7 @@ router.get('/candidates/:id', async (req: Request, res: Response) => {
 // ─── Screen Candidate (Trinity AI) ───────────────────────────────────────────
 
 router.post('/candidates/:id/screen', async (req: Request, res: Response) => {
-  const workspaceId = (req as any).workspaceId;
+  const workspaceId = req.workspaceId;
   if (!workspaceId) return res.status(400).json({ error: 'No workspace context' });
   try {
     const [candidate] = await db.select()
@@ -208,7 +208,7 @@ router.post('/candidates/:id/screen', async (req: Request, res: Response) => {
 // ─── Send Email Questions ─────────────────────────────────────────────────────
 
 router.post('/candidates/:id/send-questions', async (req: Request, res: Response) => {
-  const workspaceId = (req as any).workspaceId;
+  const workspaceId = req.workspaceId;
   if (!workspaceId) return res.status(400).json({ error: 'No workspace context' });
   try {
     const [candidate] = await db.select()
@@ -241,7 +241,7 @@ router.post('/candidates/:id/send-questions', async (req: Request, res: Response
 // ─── Process Email Reply ──────────────────────────────────────────────────────
 
 router.post('/sessions/:sessionId/reply', async (req: Request, res: Response) => {
-  const workspaceId = (req as any).workspaceId;
+  const workspaceId = req.workspaceId;
   if (!workspaceId) return res.status(400).json({ error: 'No workspace context' });
   try {
     const { replyText } = req.body;
@@ -265,7 +265,7 @@ router.post('/sessions/:sessionId/reply', async (req: Request, res: Response) =>
 // ─── Advance Stage ─────────────────────────────────────────────────────────────
 
 router.patch('/candidates/:id/stage', async (req: Request, res: Response) => {
-  const workspaceId = (req as any).workspaceId;
+  const workspaceId = req.workspaceId;
   if (!workspaceId) return res.status(400).json({ error: 'No workspace context' });
   try {
     const { stage } = req.body;
@@ -286,7 +286,7 @@ router.patch('/candidates/:id/stage', async (req: Request, res: Response) => {
 // ─── Record Decision ──────────────────────────────────────────────────────────
 
 router.patch('/candidates/:id/decision', async (req: Request, res: Response) => {
-  const workspaceId = (req as any).workspaceId;
+  const workspaceId = req.workspaceId;
   if (!workspaceId) return res.status(400).json({ error: 'No workspace context' });
   try {
     const decisionSchema = z.object({
@@ -304,7 +304,7 @@ router.patch('/candidates/:id/decision', async (req: Request, res: Response) => 
       req.params.id,
       parsed.data.decision,
       parsed.data.notes,
-      (req as any).userId,
+      req.user?.id,
     );
 
     await generateComprehensiveScorecard(req.params.id, workspaceId).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
@@ -318,7 +318,7 @@ router.patch('/candidates/:id/decision', async (req: Request, res: Response) => 
 // ─── Generate Scorecard ────────────────────────────────────────────────────────
 
 router.post('/candidates/:id/scorecard', async (req: Request, res: Response) => {
-  const workspaceId = (req as any).workspaceId as string;
+  const workspaceId = req.workspaceId as string;
   if (!workspaceId) return res.status(400).json({ error: 'No workspace context' });
   try {
     await generateComprehensiveScorecard(req.params.id, workspaceId);
@@ -342,7 +342,7 @@ router.post('/candidates/:id/scorecard', async (req: Request, res: Response) => 
 // ─── Question Bank CRUD ───────────────────────────────────────────────────────
 
 router.get('/questions', async (req: Request, res: Response) => {
-  const workspaceId = (req as any).workspaceId;
+  const workspaceId = req.workspaceId;
   if (!workspaceId) return res.status(400).json({ error: 'No workspace context' });
   try {
     const { positionType, round } = req.query as { positionType?: string; round?: string };
@@ -368,7 +368,7 @@ router.get('/questions', async (req: Request, res: Response) => {
 });
 
 router.post('/questions', async (req: Request, res: Response) => {
-  const workspaceId = (req as any).workspaceId;
+  const workspaceId = req.workspaceId;
   if (!workspaceId) return res.status(400).json({ error: 'No workspace context' });
   try {
     const parsed = insertInterviewQuestionBankSchema.safeParse({ ...req.body, workspaceId });
@@ -384,7 +384,7 @@ router.post('/questions', async (req: Request, res: Response) => {
 });
 
 router.patch('/questions/:id', async (req: Request, res: Response) => {
-  const workspaceId = (req as any).workspaceId;
+  const workspaceId = req.workspaceId;
   if (!workspaceId) return res.status(400).json({ error: 'No workspace context' });
   try {
     const [updated] = await db.update(interviewQuestionsBank)
@@ -404,7 +404,7 @@ router.patch('/questions/:id', async (req: Request, res: Response) => {
 });
 
 router.delete('/questions/:id', async (req: Request, res: Response) => {
-  const workspaceId = (req as any).workspaceId;
+  const workspaceId = req.workspaceId;
   if (!workspaceId) return res.status(400).json({ error: 'No workspace context' });
   try {
     const [updated] = await db.update(interviewQuestionsBank)
@@ -426,7 +426,7 @@ router.delete('/questions/:id', async (req: Request, res: Response) => {
 // ─── Chat Interview Room (DockChat Co-Pilot) ──────────────────────────────────
 
 router.post('/candidates/:id/chat-room', async (req: Request, res: Response) => {
-  const workspaceId = (req as any).workspaceId as string;
+  const workspaceId = req.workspaceId as string;
   if (!workspaceId) return res.status(400).json({ error: 'No workspace context' });
   try {
     const { candidate } = await getCandidateById(req.params.id, workspaceId);
@@ -442,7 +442,7 @@ router.post('/candidates/:id/chat-room', async (req: Request, res: Response) => 
 });
 
 router.get('/candidates/:id/chat-copilot', async (req: Request, res: Response) => {
-  const workspaceId = (req as any).workspaceId as string;
+  const workspaceId = req.workspaceId as string;
   if (!workspaceId) return res.status(400).json({ error: 'No workspace context' });
   try {
     const { candidate } = await getCandidateById(req.params.id, workspaceId);
@@ -459,7 +459,7 @@ router.get('/candidates/:id/chat-copilot', async (req: Request, res: Response) =
 });
 
 router.post('/candidates/:id/chat-analyze', async (req: Request, res: Response) => {
-  const workspaceId = (req as any).workspaceId as string;
+  const workspaceId = req.workspaceId as string;
   if (!workspaceId) return res.status(400).json({ error: 'No workspace context' });
   try {
     const { sessionId, messageContent } = req.body as { sessionId?: string; messageContent?: string };
@@ -493,7 +493,7 @@ router.post('/candidates/:id/chat-analyze', async (req: Request, res: Response) 
 });
 
 router.post('/sessions/:sessionId/chat-close', async (req: Request, res: Response) => {
-  const workspaceId = (req as any).workspaceId;
+  const workspaceId = req.workspaceId;
   if (!workspaceId) return res.status(400).json({ error: 'No workspace context' });
   try {
     const [session] = await db.select({ id: candidateInterviewSessions.id, workspaceId: candidateInterviewSessions.workspaceId })
@@ -514,7 +514,7 @@ router.post('/sessions/:sessionId/chat-close', async (req: Request, res: Respons
 // ─── Voice Interview Session Init ─────────────────────────────────────────────
 
 router.post('/candidates/:id/voice-session', async (req: Request, res: Response) => {
-  const workspaceId = (req as any).workspaceId as string;
+  const workspaceId = req.workspaceId as string;
   if (!workspaceId) return res.status(400).json({ error: 'No workspace context' });
   try {
     const { candidate } = await getCandidateById(req.params.id, workspaceId);

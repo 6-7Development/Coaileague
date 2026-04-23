@@ -364,7 +364,7 @@ export const financialLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req: Request) => {
-    const workspaceId = (req as any).workspaceId || (req as any).user?.workspaceId || 'unknown';
+    const workspaceId = req.workspaceId || req.user?.workspaceId || 'unknown';
     return `${workspaceId}:${getClientIp(req)}`;
   },
   handler: (req: Request, res: Response) => {
@@ -392,7 +392,7 @@ export const exportLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req: Request) => {
-    const workspaceId = (req as any).workspaceId || (req as any).user?.workspaceId || 'unknown';
+    const workspaceId = req.workspaceId || req.user?.workspaceId || 'unknown';
     return `${workspaceId}:${getClientIp(req)}`;
   },
   handler: (req: Request, res: Response) => {
@@ -458,7 +458,7 @@ export const authenticatedLimiter = rateLimit({
   max: 200,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req: Request) => (req as any).user?.id || getClientIp(req),
+  keyGenerator: (req: Request) => req.user?.id || getClientIp(req),
   handler: (req: Request, res: Response) => {
     setRetryAfterHeader(res, 60);
     logRateLimitViolation(req, 'authenticated');
@@ -510,9 +510,9 @@ setInterval(() => {
  */
 export function workspaceTrinityLimiter(req: Request, res: Response, next: Function): void {
   const workspaceId =
-    (req as any).workspaceId ||
-    (req as any).user?.workspaceId ||
-    (req as any).user?.currentWorkspaceId ||
+    req.workspaceId ||
+    req.user?.workspaceId ||
+    req.user?.currentWorkspaceId ||
     req.headers['x-workspace-id'] as string;
 
   if (!workspaceId) {

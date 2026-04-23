@@ -196,6 +196,39 @@ export interface AuthenticatedRequest extends Request {
   isTestMode?: boolean;
   assertOwnsResource?: (resourceWorkspaceId: string | null | undefined, resourceType?: string) => void;
   getWorkspaceId?: () => string;
+
+  // Support session middleware fields
+  supportExecutorId?: string;
+  executorPlatformRole?: string;
+  executorLevel?: string;
+
+  // Auditor session middleware fields
+  auditorId?: string;
+  auditorAccountId?: string;
+  auditorWorkspaceId?: string;
+  auditorAccountVerified?: boolean;
+
+  // Trinity bot middleware
+  isTrinityBot?: boolean;
+
+  // Subscription middleware
+  subscriptionTier?: string;
+
+  // Terminated employee guard
+  terminatedEmployeeId?: string;
+  terminatedGracePeriod?: boolean;
+
+  // Document access
+  documentAccessExpiresAt?: Date | string;
+
+  // Voice session
+  _voiceSessionLang?: string;
+
+  // Raw body for webhook signature verification
+  rawBody?: Buffer | string;
+
+  // Request correlation ID
+  requestId?: string;
 }
 
 // NOTE: A narrowed AuthedRequest type was attempted but broke Express
@@ -284,7 +317,7 @@ export function requireWorkspaceRole(allowedRoles: WorkspaceRole[]) {
     // MANDATORY SECURITY: For non-platform staff, workspace context MUST come from req.user
     // or req.session. We ignore req.body/query/params to prevent parameter pollution
     // and cross-tenant ID injection attacks.
-    const requestedWorkspaceId = (req as any).user?.currentWorkspaceId || (req as any).session?.workspaceId;
+    const requestedWorkspaceId = req.user?.currentWorkspaceId || req.session?.workspaceId;
     
     const { workspaceId, role, employeeId, error } = await resolveWorkspaceForUser(
       userId,

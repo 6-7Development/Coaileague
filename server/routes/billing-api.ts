@@ -105,7 +105,7 @@ billingRouter.use(async (req, res, next) => {
 
   try {
     // @ts-expect-error — TS migration: fix in refactoring sprint
-    if (req.requireAuth && (req as any).requireAuth()) {
+    if (req.requireAuth && req.requireAuth()) {
       if (authReq.user?.currentWorkspaceId) {
         authReq.currentWorkspaceId = authReq.user.currentWorkspaceId;
       }
@@ -1787,14 +1787,14 @@ billingRouter.post('/trinity-credits/generate-code', async (req: AuthenticatedRe
 // before the invoice closes, so tenants can reconcile usage before it bills.
 // ══════════════════════════════════════════════════════════════════════════
 billingRouter.get('/invoice-preview', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
-  const callerRole = (req as any).workspaceRole || '';
-  const platformRole = (req as any).platformRole || '';
+  const callerRole = req.workspaceRole || '';
+  const platformRole = req.platformRole || '';
   const isPlatformStaff = ['root_admin', 'deputy_admin', 'sysop', 'support_manager'].includes(platformRole);
   if (!['org_owner', 'co_owner'].includes(callerRole) && !isPlatformStaff) {
     return res.status(403).json({ error: 'Owner access required' });
   }
 
-  const workspaceId = req.workspaceId || (req as any).currentWorkspaceId;
+  const workspaceId = req.workspaceId || req.currentWorkspaceId;
   if (!workspaceId) {
     return res.status(400).json({ error: 'Workspace context required' });
   }

@@ -43,7 +43,10 @@ export function registerCommsProactiveActions() {
       const result = await sendPushToUser(userId, title, message, { workspaceId, urgent: true } as any);
       return { sent: true, userId, result };
     }
-    const result = await createNotification({ workspaceId, userId, type: 'alert', title, message, priority: 'normal' } as any)
+    const result = await createNotification({ workspaceId, userId, type: 'alert', title, message, priority: 'normal',
+ idempotencyKey: `alert-${String(Date.now())}-${'system'}`,
+}) as any),
+    idempotencyKey: `alert-${Date.now()}-`
       .catch((err: Error) => { log.warn(`[TrinityComms] Push notification persist failed for user ${userId}:`, err.message); return null; });
     return { sent: true, userId };
   }));
@@ -61,11 +64,14 @@ export function registerCommsProactiveActions() {
     if (!workspaceId || !officerId || !message) return { error: 'workspaceId, officerId, message required' };
     const emp = await db.query.employees?.findFirst({ where: eq(employees.id, officerId) } as any).catch(() => null);
     const userId = (emp as any)?.userId || officerId;
-    await createNotification({ workspaceId, userId, type: 'scheduled_email', title: subject || 'Message from CoAIleague', message, priority: priority || 'normal' } as any)
+    await createNotification({ workspaceId, userId, type: 'scheduled_email', title: subject || 'Message from CoAIleague', message, priority: priority || 'normal',
+ idempotencyKey: `scheduled_email-${String(Date.now())}-${'system'}`,
+}) as any)
       .catch((err: Error) => log.warn(`[TrinityComms] Officer email notification persist failed for user ${userId}:`, err.message));
     const emailAddr = (emp as any)?.email;
     if (emailAddr) {
-      // @ts-expect-error — TS migration: fix in refactoring sprint
+      // @ts-expect-error — TS migration: fix in refactoring sprint,
+    idempotencyKey: `scheduled_email-${Date.now()}-`
       await NotificationDeliveryService.send({ type: 'ai_brain_email', workspaceId: workspaceId || 'system', recipientUserId: userId, channel: 'email', body: { to: emailAddr, subject: subject || 'Message from CoAIleague', html: `<p>${message}</p>` } }).catch(() => null);
     }
     return { sent: true, officerId, subject, emailSent: !!emailAddr };
@@ -84,11 +90,14 @@ export function registerCommsProactiveActions() {
     let sent = 0;
     let emailsSent = 0;
     for (const mgr of managers) {
-      await createNotification({ workspaceId, userId: mgr.userId, type: 'scheduled_email', title: subject || 'Manager Alert from Trinity', message, priority: priority || 'normal' } as any)
+      await createNotification({ workspaceId, userId: mgr.userId, type: 'scheduled_email', title: subject || 'Manager Alert from Trinity', message, priority: priority || 'normal',
+ idempotencyKey: `scheduled_email-${String(Date.now())}-${mgr.userId}`,
+}) as any)
         .catch((err: Error) => log.warn(`[TrinityComms] Manager email notification persist failed for user ${mgr.userId}:`, err.message));
       const mgrUser = await db.query.users?.findFirst({ where: eq(users.id, mgr.userId) } as any).catch(() => null);
       if ((mgrUser as any)?.email) {
-        // @ts-expect-error — TS migration: fix in refactoring sprint
+        // @ts-expect-error — TS migration: fix in refactoring sprint,
+      idempotencyKey: `scheduled_email-${Date.now()}-${mgr.userId}`
         await NotificationDeliveryService.send({ type: 'ai_brain_email', workspaceId: workspaceId || 'system', recipientUserId: mgr.userId, channel: 'email', body: { to: (mgrUser as any).email, subject: subject || 'Manager Alert from Trinity', html: `<p>${message}</p>` } }).catch(() => null);
         emailsSent++;
       }
@@ -207,8 +216,10 @@ export function registerCommsProactiveActions() {
       message,
       priority: 'normal',
       metadata: { scheduledFor: sendDate.toISOString() },
-    } as any).catch(() => null);
-    return { scheduled: true, sendAt: sendDate.toISOString(), subject };
+      idempotencyKey: `scheduled_email-${String(Date.now())}-${recipientId || null}`,
+}) as any).catch(() => null);
+    return { scheduled: true, sendAt: sendDate.toISOString(), subject };,
+      idempotencyKey: `scheduled_email-${Date.now()}-${recipientId || null}`
   }));
 
   // H2 FIX: email.get_status previously returned invoice billing status ('sent'/'paid'/'draft')

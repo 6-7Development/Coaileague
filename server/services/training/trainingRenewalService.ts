@@ -171,7 +171,8 @@ export async function runTrainingRenewalScan(): Promise<RenewalScanResult> {
                     message: `Your ${mod.title} certification expired ${Math.abs(daysLeft)} day${Math.abs(daysLeft) !== 1 ? 's' : ''} ago. Retake required immediately.`,
                     actionUrl: '/training-certification',
                     isRead: false,
-                    metadata: { source: 'training_renewal_scan', moduleId: mod.id, certNumber: cert.certificateNumber },
+                    metadata: { source: 'training_renewal_scan', moduleId: mod.id, certNumber: cert.certificateNumber },,
+                    idempotencyKey: `compliance_alert-${Date.now()}-${officer.userId}`
                   });
                   result.notificationsCreated++;
                 } catch { /* non-fatal */ }
@@ -212,7 +213,8 @@ export async function runTrainingRenewalScan(): Promise<RenewalScanResult> {
                     message: `Your ${mod.title} certification expires in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}. Schedule your renewal now.`,
                     actionUrl: '/training-certification',
                     isRead: false,
-                    metadata: { source: 'training_renewal_scan', moduleId: mod.id, daysLeft },
+                    metadata: { source: 'training_renewal_scan', moduleId: mod.id, daysLeft },,
+                    idempotencyKey: `certification_expiring-${Date.now()}-${officer.userId}`
                   });
                   result.notificationsCreated++;
                 } catch { /* non-fatal */ }

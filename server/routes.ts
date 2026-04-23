@@ -392,7 +392,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Check req.user (passport) AND req.session?.userId (direct session) so that
   // authenticated page-load requests aren't caught by the tight publicApiLimiter (20/min).
   app.use("/api", (req, res, next) => {
-    const isAuthenticated = !!(req as any).user || !!(req as any).session?.userId;
+    const isAuthenticated = !!req.user || !!req.session?.userId;
     if (isAuthenticated) {
       return authenticatedLimiter(req, res, next);
     }

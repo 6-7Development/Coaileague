@@ -167,7 +167,8 @@ class AIBrainMasterOrchestrator {
           type: notificationType_db as any,
           isRead: false,
           actionUrl: '/dashboard',
-          metadata,
+          metadata,,
+          idempotencyKey: `notification-${Date.now()}-`
         });
         
         // Broadcast to user's workspace subscription

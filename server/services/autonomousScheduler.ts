@@ -256,7 +256,8 @@ async function handleJobFailure(entry: JobExecutionEntry): Promise<void> {
             jobName: entry.jobName,
             durationMs: entry.durationMs,
             error: entry.error,
-          },
+          },,
+          idempotencyKey: `scheduler_job_failed-${Date.now()}-${admin.id}`
         });
       } catch (notifErr) {
         log.error('Failed to notify admin about job failure', { adminId: admin.id, error: notifErr instanceof Error ? notifErr.message : String(notifErr) });
@@ -968,7 +969,8 @@ async function runNightlyInvoiceGeneration() {
                             invoicesQBSynced,
                             automationRun: runId,
                           },
-                          createdBy: 'system-coaileague',
+                          createdBy: 'system-coaileague',,
+                          idempotencyKey: `system-${workspace.id}-${leader.userId}`
                         });
                       }
                     }
@@ -1496,7 +1498,8 @@ async function runWeeklyScheduleGeneration() {
                             weekEnd: nextWeekEnd.toISOString(),
                             automationRun: runId,
                           },
-                          createdBy: 'system-coaileague',
+                          createdBy: 'system-coaileague',,
+                          idempotencyKey: `system-${workspace.id}-${leader.userId}`
                         });
                       }
                     }
@@ -1755,7 +1758,8 @@ async function runAutomaticPayrollProcessing() {
                         actionUrl: `/my-paychecks`,
                         relatedEntityType: 'payroll_run',
                         relatedEntityId: result.payrollRunId,
-                        createdBy: owner.userId,
+                        createdBy: owner.userId,,
+                        idempotencyKey: `payroll_processed-${result.payrollRunId}-${emp.id}`
                       });
                     }
                   } catch (notifyError) {
@@ -2331,7 +2335,8 @@ async function runPaymentReminderCheck() {
                     clientId: invoice.clientId,
                     daysOverdue,
                     reminderType: applicableTier.type,
-                  },
+                  },,
+                  idempotencyKey: `payment_overdue-${Date.now()}-${workspaceOwner[0].id}`
                 });
                 totalNotifications++;
               }
@@ -3811,7 +3816,8 @@ export function startAutonomousScheduler() {
                     pagesScanned: pagesToScan.length,
                     scanResults,
                   },
-                  createdBy: 'system-coaileague',
+                  createdBy: 'system-coaileague',,
+                  idempotencyKey: `system-${Date.now()}-${admin.userId}`
                 });
               } catch (notifError) {
                 log.warn('Failed to notify admin about VQA findings', { adminId: admin.userId, error: notifError instanceof Error ? notifError.message : String(notifError) });
@@ -4031,7 +4037,8 @@ export function startAutonomousScheduler() {
                   totalFindings: report.summary.totalFindings,
                   criticalCount: report.summary.criticalCount,
                 },
-                createdBy: 'system-coaileague',
+                createdBy: 'system-coaileague',,
+                idempotencyKey: `system-${Date.now()}-${admin.userId}`
               });
             } catch (notifError) {
               log.warn('Failed to notify admin about weekly audit', { adminId: admin.userId, error: notifError instanceof Error ? notifError.message : String(notifError) });

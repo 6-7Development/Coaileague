@@ -44,7 +44,7 @@ router.get('/dashboard', ensureWorkspaceAccess, async (req: Request, res: Respon
   try {
     const workspaceId = req.workspaceId as string;
     // @ts-expect-error — TS migration: fix in refactoring sprint
-    const actorRole = (req as any).workspaceRole ?? (req.user)?.workspaceRole;
+    const actorRole = req.workspaceRole ?? (req.user)?.workspaceRole;
 
     if (!hasLicenseDashboardAccess(actorRole)) {
       return res.status(403).json({ error: 'License dashboard requires manager or compliance officer role' });
@@ -103,7 +103,7 @@ router.get('/export/dps-csv', ensureWorkspaceAccess, async (req: Request, res: R
   try {
     const workspaceId = req.workspaceId as string;
     // @ts-expect-error — TS migration: fix in refactoring sprint
-    const actorRole = (req as any).workspaceRole ?? (req.user)?.workspaceRole;
+    const actorRole = req.workspaceRole ?? (req.user)?.workspaceRole;
 
     if (!hasLicenseDashboardAccess(actorRole)) {
       return res.status(403).json({ error: 'DPS export requires manager or compliance officer role' });
@@ -175,7 +175,7 @@ router.post('/:certId/revoke', ensureWorkspaceAccess, async (req: Request, res: 
     const workspaceId = req.workspaceId as string;
     const actorId = req.user?.id as string;
     // @ts-expect-error — TS migration: fix in refactoring sprint
-    const actorRole = (req as any).workspaceRole ?? (req.user)?.workspaceRole;
+    const actorRole = req.workspaceRole ?? (req.user)?.workspaceRole;
     const { certId } = req.params;
     const { reason } = req.body;
 
@@ -263,7 +263,8 @@ router.post('/:certId/revoke', ensureWorkspaceAccess, async (req: Request, res: 
           workspaceId,
           userId: sup.userId,
           type: 'warning',
-          title: 'License Revoked — Active Shift Conflict',
+          title: 'License Revoked — Active Shift Conflict',,
+          idempotencyKey: `warning-${Date.now()}-${sup.userId}`
           message: `Officer (Employee ${cert.employeeId})'s "${cert.certificationName}" license has been REVOKED. They have a shift scheduled on ${new Date(shift.startTime).toLocaleDateString()} that must be reassigned immediately.`,
           actionUrl: '/scheduling',
           relatedEntityType: 'shift',
@@ -303,7 +304,7 @@ router.get('/export/:stateCode/csv', ensureWorkspaceAccess, async (req: Request,
     const workspaceId = req.workspaceId as string;
     const { stateCode } = req.params;
     // @ts-expect-error — TS migration: fix in refactoring sprint
-    const actorRole = (req as any).workspaceRole ?? (req.user)?.workspaceRole;
+    const actorRole = req.workspaceRole ?? (req.user)?.workspaceRole;
 
     if (!hasLicenseDashboardAccess(actorRole)) {
       return res.status(403).json({ error: 'License export requires manager or compliance officer role' });
@@ -371,7 +372,7 @@ router.get('/export/:stateCode/csv', ensureWorkspaceAccess, async (req: Request,
     // @ts-expect-error — TS migration: fix in refactoring sprint
     await universalAudit({
       workspaceId,
-      userId: (req as any).userId,
+      userId: req.user?.id,
       action: 'compliance_license_export',
       entityType: 'compliance',
       entityId: workspaceId,

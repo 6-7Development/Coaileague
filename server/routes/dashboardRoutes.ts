@@ -21,7 +21,7 @@ router.get("/", requireAuth, async (req: Request, res: Response) => {
     const user = req.user;
     // @ts-expect-error — TS migration: fix in refactoring sprint
     const isPlatformAdmin = hasPlatformWideAccess(user?.platformRole);
-    const workspaceId = (isPlatformAdmin && (req as any).query.workspaceId as string) || user?.currentWorkspaceId || (user as any)?.workspaceId || req.workspaceId;
+    const workspaceId = (isPlatformAdmin && req.query.workspaceId as string) || user?.currentWorkspaceId || (user as any)?.workspaceId || req.workspaceId;
     
     if (!workspaceId) {
       if (isPlatformAdmin) {
@@ -62,7 +62,7 @@ router.get("/summary", requireAuth, async (req: Request, res: Response) => {
     // SECURITY: query param workspaceId is only honoured for platform admins.
     // Non-admin users are always scoped to their session workspace to prevent
     // cross-tenant data leakage via query param injection.
-    const workspaceId = (isPlatformAdmin && (req as any).query.workspaceId as string) || user?.currentWorkspaceId || (user as any)?.workspaceId || req.workspaceId;
+    const workspaceId = (isPlatformAdmin && req.query.workspaceId as string) || user?.currentWorkspaceId || (user as any)?.workspaceId || req.workspaceId;
 
     if (!workspaceId) return res.status(400).json({ error: "workspaceId required" });
 
@@ -120,7 +120,7 @@ router.get("/metrics", requireAuth, async (req: Request, res: Response) => {
     // Platform admins can view any workspace via query param, or their own if set
     // @ts-expect-error — TS migration: fix in refactoring sprint
     const isPlatformAdmin = hasPlatformWideAccess(user?.platformRole);
-    const workspaceId = (isPlatformAdmin && (req as any).query.workspaceId as string) || user?.currentWorkspaceId || (user as any)?.workspaceId || req.workspaceId;
+    const workspaceId = (isPlatformAdmin && req.query.workspaceId as string) || user?.currentWorkspaceId || (user as any)?.workspaceId || req.workspaceId;
     
     if (!workspaceId) {
       // For platform admins without a workspace context, return aggregate or empty data

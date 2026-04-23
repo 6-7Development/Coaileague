@@ -392,7 +392,8 @@ class TrinityProactiveScannerService {
             title: ownerTitle,
             message: ownerMessage,
             priority: criticalCount > 0 ? 'urgent' : 'normal',
-          } as any).catch(() => null);
+            idempotencyKey: `trinity_autonomous_alert-${String(Date.now())}-${owner.userId}`,
+}) as any).catch(() => null);
         }
       }
 
@@ -418,7 +419,8 @@ class TrinityProactiveScannerService {
             title: mgmtTitle,
             message: mgmtMessage,
             priority: escalations.length > 0 ? 'urgent' : 'normal',
-          } as any).catch(() => null);
+            idempotencyKey: `trinity_autonomous_alert-${String(Date.now())}-${mgr.userId}`,
+}) as any).catch(() => null);
         }
       }
 
@@ -437,7 +439,8 @@ class TrinityProactiveScannerService {
 
           if (missedPunches > 0) {
             // Check missed punches specifically for this supervisor's team
-            const threshold15 = new Date(now.getTime() - 15 * 60000);
+            const threshold15 = new Date(now.getTime() - 15 * 60000);,
+            idempotencyKey: `trinity_autonomous_alert-${Date.now()}-${owner.userId}`
             const teamShifts = await db.select({ id: shifts.id, employeeId: shifts.employeeId, startTime: shifts.startTime })
               .from(shifts)
               .where(and(
@@ -510,7 +513,8 @@ class TrinityProactiveScannerService {
             title: `Team Alert: ${teamIssues.length} ${issueWord} flagged for your team`,
             message: structuredMessage,
             priority: teamIssues.length >= 2 ? 'high' : 'normal',
-          } as any).catch(() => null);
+            idempotencyKey: `trinity_autonomous_alert-${String(Date.now())}-${sup.userId}`,
+}) as any).catch(() => null);
         } catch (scanErr) { log.warn("[TrinityProactiveScanner] Non-fatal scan section error:", scanErr instanceof Error ? scanErr.message : String(scanErr)); }
       }
     }
@@ -519,7 +523,8 @@ class TrinityProactiveScannerService {
     // Compare the most recent payroll run's gross pay against a 3-run rolling average.
     // If the current run is >30% higher, flag as a potential anomaly.
     try {
-      const recentRuns = await db
+      const recentRuns = await db,
+            idempotencyKey: `trinity_autonomous_alert-${Date.now()}-${sup.userId}`
         .select({ id: payrollRuns.id, totalGrossPay: payrollRuns.totalGrossPay, status: payrollRuns.status, periodStart: payrollRuns.periodStart })
         .from(payrollRuns)
         .where(and(
@@ -677,7 +682,8 @@ class TrinityProactiveScannerService {
           title: 'Trinity Weekly Intelligence Briefing',
           message: alerts.join(' | '),
           priority: 'normal',
-        } as any).catch(() => null);
+          idempotencyKey: `alert-${String(Date.now())}-${mgr.userId}`,
+}) as any).catch(() => null);
       }
     }
 
@@ -686,7 +692,8 @@ class TrinityProactiveScannerService {
     return { workspaceId, scannedAt: now.toISOString(), otRiskOfficers, openShiftsNextWeek, expiringCertsNext30Days, staleMarketplaceOffers, alerts };
   }
 
-  async runMonthlyCycle(workspaceId: string): Promise<MonthlyCycleResult> {
+  async runMonthlyCycle(workspaceId: string): Promise<MonthlyCycleResult> {,
+          idempotencyKey: `alert-${Date.now()}-${mgr.userId}`
     await assertWorkspaceActive(workspaceId, { bypassForSystemActor: true });
     const now = new Date();
     const alerts: string[] = [];
@@ -808,7 +815,8 @@ class TrinityProactiveScannerService {
         await createNotification({
           workspaceId,
           userId: owner.userId,
-          type: 'monthly_summary',
+          type: 'monthly_summary',,
+          idempotencyKey: `monthly_summary-${Date.now()}-${owner.userId}`
           title: `Trinity Monthly Cycle — ${now.toLocaleString('default', { month: 'long' })} ${now.getFullYear()}`,
           message: summaryLines,
           priority: 'high',
@@ -855,7 +863,8 @@ class TrinityProactiveScannerService {
                 title: 'Officer Call-Off — Replacement Needed',
                 message: `An officer called off for shift ${shiftId}. Trinity is attempting to find a replacement. You'll be notified if escalation is needed.`,
                 priority: 'urgent',
-              } as any).catch(() => null);
+                idempotencyKey: `calloff_alert-${String(Date.now())}-${mgr.userId}`,
+}) as any).catch(() => null);
             }
           }
           return { handled: true, event: 'officer_calloff', fillAttempted: true };
@@ -885,7 +894,8 @@ class TrinityProactiveScannerService {
               eq(invoices.workspaceId, workspaceId),
               sql`${invoices.status} NOT IN ('void', 'cancelled', 'refunded')`,
             ))
-            .catch(() => null);
+            .catch(() => null);,
+                idempotencyKey: `calloff_alert-${Date.now()}-${mgr.userId}`
           const managers = await db.select({ userId: workspaceMembers.userId })
             .from(workspaceMembers)
             .where(and(eq(workspaceMembers.workspaceId, workspaceId || ''), sql`${workspaceMembers.role} IN ('org_owner', 'co_owner', 'manager', 'supervisor')`))
@@ -896,7 +906,8 @@ class TrinityProactiveScannerService {
               title: 'Invoice Payment Received',
               message: `Invoice ${invoiceId} has been marked as paid. QuickBooks sync will update automatically.`,
               priority: 'normal',
-            } as any).catch(() => null);
+              idempotencyKey: `payment_received-${String(Date.now())}-${mgr.userId}`,
+}) as any).catch(() => null);
           }
           return { handled: true, event: 'invoice_payment_received', invoiceId, markedPaid: true };
         }
@@ -911,7 +922,9 @@ class TrinityProactiveScannerService {
             title: 'Missed Clock-In',
             message: `You have a shift that started 15+ minutes ago and no clock-in has been recorded. Please clock in immediately or contact your supervisor.`,
             priority: 'urgent',
-          } as any).catch(() => null);
+            idempotencyKey: `missed_clock_in-${String(Date.now())}-${'system'}`,
+}) as any).catch(() => null);,
+              idempotencyKey: `payment_received-${Date.now()}-${mgr.userId}`
           const managers = await db.select({ userId: workspaceMembers.userId })
             .from(workspaceMembers)
             .where(and(eq(workspaceMembers.workspaceId, workspaceId || ''), sql`${workspaceMembers.role} IN ('org_owner', 'co_owner', 'manager', 'supervisor')`))
@@ -922,7 +935,8 @@ class TrinityProactiveScannerService {
               title: 'Officer Did Not Clock In',
               message: `Officer ID ${officerId} did not clock in for shift ${shiftId}. The officer has been notified. Please verify coverage.`,
               priority: 'high',
-            } as any).catch(() => null);
+              idempotencyKey: `missed_clock_in_alert-${String(Date.now())}-${mgr.userId}`,
+}) as any).catch(() => null);
           }
           return { handled: true, event: 'missed_clock_in', officerNotified: true, supervisorNotified: true };
         }
@@ -937,7 +951,8 @@ class TrinityProactiveScannerService {
             title: 'License/Certification Expired',
             message: 'Your license or certification has expired. You have been removed from upcoming shifts at posts requiring this certification. Please renew immediately.',
             priority: 'urgent',
-          } as any).catch(() => null);
+            idempotencyKey: `compliance-${String(Date.now())}-${'system'}`,
+}) as any).catch(() => null);
           const tomorrow = new Date();
           tomorrow.setDate(tomorrow.getDate() + 1);
           const removed = await db.update(shifts)
@@ -980,7 +995,8 @@ class TrinityProactiveScannerService {
         return { handled: false, reason: 'workspaceId and timeEntryId required' };
 
       case 'incident_filed':
-        if (payload.incidentId && workspaceId) {
+        if (payload.incidentId && workspaceId) {,
+              idempotencyKey: `missed_clock_in_alert-${Date.now()}-${mgr.userId}`
           const managers = await db.select({ userId: workspaceMembers.userId })
             .from(workspaceMembers)
             .where(and(eq(workspaceMembers.workspaceId, workspaceId), sql`${workspaceMembers.role} IN ('org_owner', 'co_owner', 'manager', 'supervisor')`))
@@ -988,7 +1004,8 @@ class TrinityProactiveScannerService {
           for (const mgr of managers) {
             await createNotification({
               workspaceId, userId: mgr.userId, type: 'incident',
-              title: 'Incident Report Filed',
+              title: 'Incident Report Filed',,
+              idempotencyKey: `incident-${Date.now()}-${mgr.userId}`
               message: `An incident report has been filed (ID: ${payload.incidentId}). Please review and take appropriate action.`,
               priority: 'high',
             } as any).catch(() => null);
@@ -1011,43 +1028,54 @@ class TrinityProactiveScannerService {
             .where(and(eq(workspaceMembers.workspaceId, workspaceId), sql`${workspaceMembers.role} IN ('org_owner', 'co_owner', 'manager', 'supervisor')`)).catch(() => []);
           for (const mgr of managers) {
             await createNotification({ workspaceId, userId: mgr.userId, type: 'shift_cancelled', title: 'Shift Cancelled — Coverage Needed',
-              message: `Shift ${payload.shiftId} was cancelled. Trinity is seeking a replacement. You'll be notified if escalation is needed.`, priority: 'high' } as any).catch(() => null);
+              message: `Shift ${payload.shiftId} was cancelled. Trinity is seeking a replacement. You'll be notified if escalation is needed.`, priority: 'high',
+ idempotencyKey: `shift_cancelled-${String(Date.now())}-${mgr.userId}`,
+}) as any).catch(() => null);
           }
           return { handled: true, event: 'shift_cancelled', fillAttempted: true };
         }
         return { handled: false, reason: 'shiftId and workspaceId required' };
 
       case 'payroll_run_approved':
-        if (workspaceId && payload.payrollRunId) {
+        if (workspaceId && payload.payrollRunId) {,
+              idempotencyKey: `shift_cancelled-${Date.now()}-${mgr.userId}`
           const managers = await db.select({ userId: workspaceMembers.userId }).from(workspaceMembers)
             .where(and(eq(workspaceMembers.workspaceId, workspaceId), sql`${workspaceMembers.role} IN ('org_owner', 'co_owner')`)).catch(() => []);
           for (const mgr of managers) {
             await createNotification({ workspaceId, userId: mgr.userId, type: 'payroll_approved', title: 'Payroll Run Approved',
-              message: `Payroll run ${payload.payrollRunId} has been approved. Disbursement will proceed. QuickBooks sync will trigger automatically if enabled.`, priority: 'normal' } as any).catch(() => null);
+              message: `Payroll run ${payload.payrollRunId} has been approved. Disbursement will proceed. QuickBooks sync will trigger automatically if enabled.`, priority: 'normal',
+ idempotencyKey: `payroll_approved-${String(Date.now())}-${mgr.userId}`,
+}) as any).catch(() => null);
           }
           return { handled: true, event: 'payroll_run_approved', payrollRunId: payload.payrollRunId };
         }
         return { handled: false, reason: 'payrollRunId and workspaceId required' };
 
       case 'invoice_overdue':
-        if (workspaceId && payload.invoiceId) {
+        if (workspaceId && payload.invoiceId) {,
+              idempotencyKey: `payroll_approved-${Date.now()}-${mgr.userId}`
           const managers = await db.select({ userId: workspaceMembers.userId }).from(workspaceMembers)
             .where(and(eq(workspaceMembers.workspaceId, workspaceId), sql`${workspaceMembers.role} IN ('org_owner', 'co_owner', 'manager')`)).catch(() => []);
           for (const mgr of managers) {
             await createNotification({ workspaceId, userId: mgr.userId, type: 'invoice_overdue', title: 'Invoice Overdue — Collection Action Needed',
-              message: `Invoice ${payload.invoiceId} is overdue. Trinity recommends initiating the collections workflow. A follow-up email has been queued.`, priority: 'urgent' } as any).catch(() => null);
+              message: `Invoice ${payload.invoiceId} is overdue. Trinity recommends initiating the collections workflow. A follow-up email has been queued.`, priority: 'urgent',
+ idempotencyKey: `invoice_overdue-${String(Date.now())}-${mgr.userId}`,
+}) as any).catch(() => null);
           }
           return { handled: true, event: 'invoice_overdue', invoiceId: payload.invoiceId, collectionInitiated: true };
         }
         return { handled: false, reason: 'invoiceId and workspaceId required' };
 
       case 'time_entries_approved':
-        if (workspaceId) {
+        if (workspaceId) {,
+              idempotencyKey: `invoice_overdue-${Date.now()}-${mgr.userId}`
           const managers = await db.select({ userId: workspaceMembers.userId }).from(workspaceMembers)
             .where(and(eq(workspaceMembers.workspaceId, workspaceId), sql`${workspaceMembers.role} IN ('org_owner', 'co_owner', 'manager')`)).catch(() => []);
           for (const mgr of managers) {
             await createNotification({ workspaceId, userId: mgr.userId, type: 'timesheets_approved', title: 'Timesheets Approved — Ready for Payroll',
-              message: `Time entries have been approved${payload.periodEnd ? ` for period ending ${payload.periodEnd}` : ''}. Payroll run may now proceed.`, priority: 'normal' } as any).catch(() => null);
+              message: `Time entries have been approved${payload.periodEnd ? ` for period ending ${payload.periodEnd}` : ''}. Payroll run may now proceed.`, priority: 'normal',
+ idempotencyKey: `timesheets_approved-${String(Date.now())}-${mgr.userId}`,
+}) as any).catch(() => null);
           }
           return { handled: true, event: 'time_entries_approved', managerNotified: true };
         }
@@ -1055,23 +1083,28 @@ class TrinityProactiveScannerService {
 
       case 'employee_terminated':
         if (workspaceId && (payload.employeeId || employeeId)) {
-          const empId = payload.employeeId || employeeId;
+          const empId = payload.employeeId || employeeId;,
+              idempotencyKey: `timesheets_approved-${Date.now()}-${mgr.userId}`
           const managers = await db.select({ userId: workspaceMembers.userId }).from(workspaceMembers)
             .where(and(eq(workspaceMembers.workspaceId, workspaceId), sql`${workspaceMembers.role} IN ('org_owner', 'co_owner', 'manager')`)).catch(() => []);
           for (const mgr of managers) {
             await createNotification({ workspaceId, userId: mgr.userId, type: 'employee_terminated', title: 'Employee Offboarding — Action Required',
-              message: `Employee ${empId} has been marked as terminated. Please ensure: (1) access credentials revoked, (2) final paycheck processed, (3) equipment returned, (4) compliance records archived.`, priority: 'high' } as any).catch(() => null);
+              message: `Employee ${empId} has been marked as terminated. Please ensure: (1) access credentials revoked, (2) final paycheck processed, (3) equipment returned, (4) compliance records archived.`, priority: 'high',
+ idempotencyKey: `employee_terminated-${String(Date.now())}-${mgr.userId}`,
+}) as any).catch(() => null);
           }
           return { handled: true, event: 'employee_terminated', offboardingTriggered: true };
         }
         return { handled: false, reason: 'employeeId and workspaceId required' };
 
       case 'sla_breach':
-        if (workspaceId && payload.serviceName) {
+        if (workspaceId && payload.serviceName) {,
+              idempotencyKey: `employee_terminated-${Date.now()}-${mgr.userId}`
           const managers = await db.select({ userId: workspaceMembers.userId }).from(workspaceMembers)
             .where(and(eq(workspaceMembers.workspaceId, workspaceId), sql`${workspaceMembers.role} IN ('org_owner', 'co_owner', 'manager')`)).catch(() => []);
           for (const mgr of managers) {
-            await createNotification({ workspaceId, userId: mgr.userId, type: 'sla_breach', title: `SLA Breach — ${payload.serviceName}`,
+            await createNotification({ workspaceId, userId: mgr.userId, type: 'sla_breach', title: `SLA Breach — ${payload.serviceName}`,,
+              idempotencyKey: `sla_breach-${Date.now()}-${mgr.userId}`
               message: `${payload.serviceName} missed its SLA target: ${payload.breachType || 'performance threshold exceeded'} (target: ${payload.targetValue}, actual: ${payload.actualValue}).`, priority: 'high' } as any).catch(() => null);
           }
           return { handled: true, event: 'sla_breach', supervisorNotified: true };
@@ -1084,19 +1117,24 @@ class TrinityProactiveScannerService {
             .where(and(eq(workspaceMembers.workspaceId, workspaceId), sql`${workspaceMembers.role} IN ('staff', 'officer')`)).catch(() => []);
           for (const member of allMembers) {
             await createNotification({ workspaceId, userId: member.userId, type: 'schedule_published', title: 'New Schedule Published',
-              message: `Your schedule has been published${payload.weekLabel ? ` for ${payload.weekLabel}` : ''}. Review your upcoming shifts in the Schedule tab.`, priority: 'normal' } as any).catch(() => null);
+              message: `Your schedule has been published${payload.weekLabel ? ` for ${payload.weekLabel}` : ''}. Review your upcoming shifts in the Schedule tab.`, priority: 'normal',
+ idempotencyKey: `schedule_published-${String(Date.now())}-${member.userId}`,
+}) as any).catch(() => null);
           }
           return { handled: true, event: 'schedule_published', staffNotified: allMembers.length };
         }
         return { handled: false, reason: 'workspaceId required' };
 
       case 'panic_alert_triggered':
-        if (workspaceId && (payload.officerId || officerId)) {
+        if (workspaceId && (payload.officerId || officerId)) {,
+              idempotencyKey: `schedule_published-${Date.now()}-${member.userId}`
           const managers = await db.select({ userId: workspaceMembers.userId }).from(workspaceMembers)
             .where(and(eq(workspaceMembers.workspaceId, workspaceId), sql`${workspaceMembers.role} IN ('org_owner', 'co_owner', 'manager', 'supervisor', 'dispatcher')`)).catch(() => []);
           for (const mgr of managers) {
             await createNotification({ workspaceId, userId: mgr.userId, type: 'panic_alert', title: 'PANIC ALERT — Officer Needs Immediate Assistance',
-              message: `Officer ${payload.officerId || officerId} has triggered a panic alert${payload.location ? ` at ${payload.location}` : ''}. Dispatch assistance IMMEDIATELY.`, priority: 'urgent' } as any).catch(() => null);
+              message: `Officer ${payload.officerId || officerId} has triggered a panic alert${payload.location ? ` at ${payload.location}` : ''}. Dispatch assistance IMMEDIATELY.`, priority: 'urgent',
+ idempotencyKey: `panic_alert-${String(Date.now())}-${mgr.userId}`,
+}) as any).catch(() => null);
           }
           return { handled: true, event: 'panic_alert_triggered', dispatchNotified: managers.length };
         }
@@ -1116,7 +1154,8 @@ class TrinityProactiveScannerService {
     const yesterday = new Date(now.getTime() - 24 * 3600000);
 
     // 1. Uncovered shifts today + next 7 days
-    try {
+    try {,
+              idempotencyKey: `panic_alert-${Date.now()}-${mgr.userId}`
       const openRows = await db.select({ id: shifts.id, startTime: shifts.startTime, title: shifts.title })
         .from(shifts)
         .where(and(eq(shifts.workspaceId, workspaceId), isNull(shifts.employeeId), gte(shifts.startTime, now), lte(shifts.startTime, next7), ne(shifts.status, 'cancelled')))
@@ -1648,7 +1687,8 @@ class TrinityProactiveScannerService {
             errorMessage,
             source: 'TrinityProactiveScanner',
             notificationType: `trinity_scan_failure_${scanType}`,
-          },
+          },,
+          idempotencyKey: `scheduler_job_failed-${Date.now()}-${owner.userId}`
         }).catch((err) => log.warn('[trinityProactiveScanner] Notification failed (non-fatal):', err));
       }
     } catch {

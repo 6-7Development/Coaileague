@@ -35,7 +35,7 @@ async function getAuthenticatedUser(req: AuthenticatedRequest): Promise<any> {
 
 async function resolveSecureWorkspaceId(user: any, _requestedId?: string): Promise<string> {
   // requireManager already resolved the workspace securely and stamped it onto
-  // (req as any).user?.workspaceId (see auth.ts). For platform staff it has already been
+  // req.user?.workspaceId (see auth.ts). For platform staff it has already been
   // overridden with the admin-specified workspace. We simply reflect that value.
   return user?.workspaceId || '';
 }
@@ -50,7 +50,7 @@ router.use(requireManager);
  */
 router.get('/insights', async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const userId = req.user || (req as any).user?.id;
+    const userId = req.user || req.user?.id;
     if (!userId) {
       return res.status(401).json({ success: false, error: 'Authentication required' });
     }

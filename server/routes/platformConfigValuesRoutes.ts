@@ -50,7 +50,7 @@ platformConfigValuesRouter.get('/groups', requireAuth, async (req: Request, res:
       GROUP BY g.id
       ORDER BY g.sort_order ASC, g.label ASC
     `;
-    const params: any[] = [((req as any).workspaceId) || null];
+    const params: any[] = [(req.workspaceId) || null];
     if (domain) params.push(domain as string);
 
     const result = await pool.query(query, params);
@@ -65,7 +65,7 @@ platformConfigValuesRouter.get('/groups', requireAuth, async (req: Request, res:
 platformConfigValuesRouter.get('/groups/:groupKey', requireAuth, async (req: Request, res: Response) => {
   try {
     const { groupKey } = req.params;
-    const workspaceId = (req as any).workspaceId || null;
+    const workspaceId = req.workspaceId || null;
 
     const [groupResult, valuesResult] = await Promise.all([
       pool.query(`SELECT * FROM platform_config_groups WHERE group_key = $1 LIMIT 1`, [groupKey]),
@@ -92,7 +92,7 @@ platformConfigValuesRouter.get('/groups/:groupKey', requireAuth, async (req: Req
 platformConfigValuesRouter.get('/values', requireAuth, async (req: Request, res: Response) => {
   try {
     const { group, includeInactive } = req.query;
-    const workspaceId = (req as any).workspaceId || null;
+    const workspaceId = req.workspaceId || null;
     const showInactive = includeInactive === 'true';
 
     const conditions: string[] = ['(v.workspace_id IS NULL OR v.workspace_id = $1)'];
@@ -178,7 +178,7 @@ platformConfigValuesRouter.post('/values', requireAuth, async (req: Request, res
     }
 
     if (!isSystemValue) {
-      const reqWsId = (req as any).workspaceId;
+      const reqWsId = req.workspaceId;
       if (reqWsId !== targetWorkspaceId) {
         return res.status(403).json({ error: 'Can only create values for your own workspace' });
       }
@@ -230,7 +230,7 @@ platformConfigValuesRouter.patch('/values/:id', requireAuth, async (req: Request
       return res.status(403).json({ error: 'Platform admin role required to edit system config values' });
     }
     if (!isSystemValue) {
-      const reqWsId = (req as any).workspaceId;
+      const reqWsId = req.workspaceId;
       if (reqWsId !== row.workspace_id) {
         return res.status(403).json({ error: 'Can only edit values for your own workspace' });
       }
@@ -281,7 +281,7 @@ platformConfigValuesRouter.delete('/values/:id', requireAuth, async (req: Reques
 
     if (isSystemValue) {
       // System values: only root_admin can hard-delete; others can only deactivate
-      const platformRole = (req as any).platformRole || '';
+      const platformRole = req.platformRole || '';
       if (platformRole !== 'root_admin') {
         // Soft-deactivate instead
         await pool.query(`UPDATE platform_config_values SET is_active = false, updated_at = NOW() WHERE id = $1`, [id]);
@@ -289,7 +289,7 @@ platformConfigValuesRouter.delete('/values/:id', requireAuth, async (req: Reques
       }
       await pool.query(`DELETE FROM platform_config_values WHERE id = $1`, [id]);
     } else {
-      const reqWsId = (req as any).workspaceId;
+      const reqWsId = req.workspaceId;
       if (reqWsId !== row.workspace_id) {
         return res.status(403).json({ error: 'Can only delete values for your own workspace' });
       }

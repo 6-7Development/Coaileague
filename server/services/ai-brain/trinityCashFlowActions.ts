@@ -247,10 +247,12 @@ const payrollCashReadiness = mkAction('billing.payroll_cash_readiness', async (r
           title: '⚠️ PAYROLL CASH ALERT — Action Required',
           message: `Trinity detected a payroll cash shortfall of $${Math.abs(gap.cashGap).toLocaleString()}. Receivables due before payroll: $${gap.receivablesDueBeforePayroll.toLocaleString()}. Payroll due: $${gap.upcomingPayroll.toLocaleString()}${gap.nextPayrollDate ? ' on ' + gap.nextPayrollDate : ''}. Immediate collections follow-up required.`,
           priority: 'urgent',
-        } as any).catch(() => null);
+          idempotencyKey: `alert-${String(Date.now())}-${owner.userId}`,
+}) as any).catch(() => null);
       }
     } else if (gap.riskLevel === 'warning') {
-      readinessLevel = 'AT RISK — MONITOR CLOSELY';
+      readinessLevel = 'AT RISK — MONITOR CLOSELY';,
+          idempotencyKey: `alert-${Date.now()}-${owner.userId}`
       recommendation = `Follow up on outstanding invoices. Buffer is thin ($${gap.cashGap.toLocaleString()}). Send payment reminders today.`;
     } else {
       recommendation = `Payroll funded. Maintain collection cadence on outstanding receivables.`;

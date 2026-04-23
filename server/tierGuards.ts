@@ -45,14 +45,14 @@ export function requirePlan(minimumTier: SubscriptionTier): RequestHandler {
     // Permanently exempt from all tier checks — passes every gate unconditionally.
     // This override cannot be removed by any subscription change, cron, or downgrade.
     if (GRANDFATHERED_TENANT_ID && req.workspaceId === GRANDFATHERED_TENANT_ID) {
-      (req as any).subscriptionTier = 'enterprise';
+      req.subscriptionTier = 'enterprise';
       return next();
     }
 
     // ── PLATFORM WORKSPACE EXEMPTION — CoAIleague internal support org ────────
     // The platform's own support/ops workspace is always treated as enterprise.
     if (PLATFORM_WORKSPACE_ID && req.workspaceId === PLATFORM_WORKSPACE_ID) {
-      (req as any).subscriptionTier = 'enterprise';
+      req.subscriptionTier = 'enterprise';
       return next();
     }
 
@@ -117,7 +117,7 @@ export function requirePlan(minimumTier: SubscriptionTier): RequestHandler {
     }
 
     // Attach tier to request for downstream use
-    (req as any).subscriptionTier = currentTier;
+    req.subscriptionTier = currentTier;
     next();
   };
   

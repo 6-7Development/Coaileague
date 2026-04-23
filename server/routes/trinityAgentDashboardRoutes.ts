@@ -43,7 +43,7 @@ function getActorRole(req: AuthenticatedRequest): string {
   // access. Falling back to workspaceRole would let a tenant user whose
   // role string coincidentally matched 'support_agent' read any
   // workspace's reasoning data.
-  return (req as any).platformRole || 'none';
+  return req.platformRole || 'none';
 }
 
 function requireSupportAccess(req: AuthenticatedRequest, res: Response): boolean {
@@ -239,7 +239,7 @@ router.post('/approve', requireAuth, async (req: AuthenticatedRequest, res: Resp
   }
 
   try {
-    const actorId = (req as any).user?.id || 'unknown';
+    const actorId = req.user?.id || 'unknown';
     const actorRole = getActorRole(req);
 
     // Update governance_approvals
@@ -343,7 +343,7 @@ router.post('/override', requireAuth, async (req: AuthenticatedRequest, res: Res
       });
     }
 
-    const actorId = (req as any).user?.id || 'unknown';
+    const actorId = req.user?.id || 'unknown';
 
     // Mark as denied
     await pool.query(

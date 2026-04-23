@@ -30,8 +30,8 @@ export function requestIdMiddleware(req: Request, res: Response, next: NextFunct
       method: req.method,
       duration,
       statusCode: res.statusCode,
-      actorId: (req as any).user?.id || (req as any).session?.userId,
-      workspaceId: (req as any).workspaceId || (req as any).session?.workspaceId,
+      actorId: req.user?.id || req.session?.userId,
+      workspaceId: req.workspaceId || req.session?.workspaceId,
     });
   });
 

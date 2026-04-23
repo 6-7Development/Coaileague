@@ -359,7 +359,7 @@ const router = Router();
       // @ts-expect-error — TS migration: fix in refactoring sprint
       broadcastToWorkspace(workspaceId, { type: 'time_entries_updated', data: { action: 'updated' } });
 
-      const rejectorName = (req as any).user?.fullName || 'a manager';
+      const rejectorName = req.user?.fullName || 'a manager';
       notifyTimesheetRejected({
         workspaceId,
         timeEntryId: req.params.id,

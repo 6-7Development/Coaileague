@@ -34,9 +34,9 @@ router.get("/suggestions", async (req: Request, res: Response) => {
     // @ts-expect-error — TS migration: fix in refactoring sprint
     const isPlatformAdmin = ['root_admin', 'deputy_admin', 'sysop'].includes(user?.platformRole);
     const queryWorkspaceId = req.query.workspaceId as string;
-    const workspaceId = (isPlatformAdmin && queryWorkspaceId) || (req as any).workspaceId || (user as any)?.workspaceId;
+    const workspaceId = (isPlatformAdmin && queryWorkspaceId) || req.workspaceId || (user as any)?.workspaceId;
     
-    if (workspaceId && workspaceId !== (req as any).workspaceId && !isPlatformAdmin) {
+    if (workspaceId && workspaceId !== req.workspaceId && !isPlatformAdmin) {
       return res.status(403).json({ error: "Unauthorized workspace access" });
     }
     

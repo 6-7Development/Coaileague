@@ -66,7 +66,7 @@ function generateAuditId(): string {
  */
 export function requireBreakGlass(action: string) {
   return async function breakGlassMiddleware(req: Request, res: Response, next: NextFunction): Promise<void> {
-    const authReq = req as any;
+    const authReq = req as AuthenticatedRequest;
     const user = authReq.user;
 
     if (!user) {
@@ -96,7 +96,7 @@ export function requireBreakGlass(action: string) {
       return;
     }
 
-    const requestId = (req as any).requestId || req.headers['x-request-id'] as string || 'unknown';
+    const requestId = req.requestId || req.headers['x-request-id'] as string || 'unknown';
     const workspaceId = authReq.workspaceId || user.workspaceId || user.currentWorkspaceId || 'platform';
     const auditId = generateAuditId();
     const timestamp = new Date().toISOString();

@@ -947,8 +947,10 @@ async function notifyAdmins(
         actionUrl: extra?.actionUrl || `/audit?ref=email-${logId}`,
         relatedEntityType: extra?.relatedEntityType || 'inbound_email_log',
         relatedEntityId: extra?.relatedEntityId || logId,
-      } as any).catch((err: unknown) => {
-        log.warn('[TrinityInboundEmail] notifyAdmins createNotification failed:', err instanceof Error ? err.message : String(err));
+        idempotencyKey: `notification-${extra?.relatedEntityId || logId}-${'system'}`,
+}) as any).catch((err: unknown) => {
+        log.warn('[TrinityInboundEmail] notifyAdmins createNotification failed:', err instanceof Error ? err.message : String(err));,
+        idempotencyKey: `notification-${extra?.relatedEntityId || logId}-`
       });
     }
   } catch (err: unknown) {
@@ -1277,7 +1279,8 @@ export async function processInboundEmail(email: ParsedInboundEmail): Promise<Pr
         actionUrl: `/audit?ref=email-${logId}`,
         relatedEntityType: 'inbound_email_log',
         relatedEntityId: logId,
-      } as any));
+        idempotencyKey: `inbound_email_unmatched-${logId}-${'root'}`,
+}) as any));
     } catch (err: unknown) {
       log.warn('[TrinityInboundEmail] Admin notification for unmatched sender failed (non-blocking):', err instanceof Error ? err.message : String(err));
     }
@@ -1298,7 +1301,8 @@ export async function processInboundEmail(email: ParsedInboundEmail): Promise<Pr
             processingStatus: 'tier_not_met',
             needsReview: true,
             reviewReason: `Document routing requires Professional plan. Workspace is on ${workspaceTier} plan.`,
-            processedAt: new Date(),
+            processedAt: new Date(),,
+        idempotencyKey: `inbound_email_unmatched-${logId}-${'root'}`
           })
           .where(eq(inboundEmailLog.id, logId));
         // @ts-expect-error — TS migration: fix in refactoring sprint

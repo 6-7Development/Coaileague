@@ -282,7 +282,7 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
 
   router.get('/pending', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = (req as any).workspaceId?.id || req.workspaceId;
+      const workspaceId = req.workspaceId?.id || req.workspaceId;
       if (!workspaceId) return res.status(400).json({ error: 'Workspace required' });
 
       const shifts = await getPendingShifts(workspaceId);
@@ -295,7 +295,7 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
 
   router.get('/stats', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      const workspaceId = (req as any).workspaceId?.id || req.workspaceId;
+      const workspaceId = req.workspaceId?.id || req.workspaceId;
       if (!workspaceId) return res.status(400).json({ error: 'Workspace required' });
 
       const stats = await getApprovalStats(workspaceId);
@@ -757,7 +757,8 @@ async function validateShiftAccess(shiftId: string, employeeId: string, workspac
                 actionUrl: `/schedule`,
                 relatedEntityType: 'shift',
                 relatedEntityId: shift.id,
-                createdBy: userId,
+                createdBy: userId,,
+                idempotencyKey: `shift_assigned-${shift.id}-${empId}`
               });
               try {
                 const { NotificationDeliveryService } = await import("../services/notificationDeliveryService");

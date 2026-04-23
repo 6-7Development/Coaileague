@@ -19,7 +19,7 @@ import {
   deactivateEmployee, reactivateEmployee,
   deactivateWorkspace, reactivateWorkspace,
 } from '../services/deactivateService';
-import { hasManagerAccess } from '../rbac';
+import { hasManagerAccess , type AuthenticatedRequest} from '../rbac';
 import { usageTracker } from '../services/billing/usageTracker';
 import { platformEventBus } from '../services/platformEventBus';
 import { SEAT_WARNING_THRESHOLD_PERCENT } from '../lib/tiers/tierDefinitions';
@@ -77,7 +77,7 @@ router.post('/employees/:id/reactivate', async (req, res) => {
       return res.status(403).json({ message: 'Manager access required' });
     }
 
-    const workspaceId = (req as any).workspaceId || (user as any).workspaceId || user.currentWorkspaceId;
+    const workspaceId = req.workspaceId || (user as any).workspaceId || user.currentWorkspaceId;
     if (!workspaceId) return res.status(400).json({ message: 'No workspace context' });
 
     // ── Phase 30: Seat limit enforcement ──────────────────────────────────────

@@ -49,7 +49,7 @@ function parseCSV(csvData: string): Array<Record<string, string>> {
  */
 bulkOperationsRouter.post('/import/employees', requireAuth, upload.single('file'), async (req: Request, res: Response) => {
   try {
-    const user = (req as any).user;
+    const user = req.user;
     const workspaceId = user?.currentWorkspaceId;
 
     if (!workspaceId) {
@@ -109,7 +109,7 @@ bulkOperationsRouter.post('/import/employees', requireAuth, upload.single('file'
  */
 bulkOperationsRouter.post('/import/clients', requireAuth, upload.single('file'), async (req: Request, res: Response) => {
   try {
-    const user = (req as any).user;
+    const user = req.user;
     const workspaceId = user?.currentWorkspaceId;
 
     if (!workspaceId) {
@@ -170,7 +170,7 @@ bulkOperationsRouter.post('/import/clients', requireAuth, upload.single('file'),
  */
 bulkOperationsRouter.post('/import/shifts', requireAuth, upload.single('file'), async (req: Request, res: Response) => {
   try {
-    const user = (req as any).user;
+    const user = req.user;
     const workspaceId = user?.currentWorkspaceId;
 
     if (!workspaceId) {
@@ -234,7 +234,7 @@ bulkOperationsRouter.post('/import/shifts', requireAuth, upload.single('file'), 
  */
 bulkOperationsRouter.get('/export/employees', requireAuth, async (req: Request, res: Response) => {
   try {
-    const user = (req as any).user;
+    const user = req.user;
     const workspaceId = user?.currentWorkspaceId;
     const format = (req.query.format as 'csv' | 'json') || 'csv';
 
@@ -258,7 +258,7 @@ bulkOperationsRouter.get('/export/employees', requireAuth, async (req: Request, 
  */
 bulkOperationsRouter.get('/export/clients', requireAuth, async (req: Request, res: Response) => {
   try {
-    const user = (req as any).user;
+    const user = req.user;
     const workspaceId = user?.currentWorkspaceId;
     const format = (req.query.format as 'csv' | 'json') || 'csv';
 
@@ -309,7 +309,7 @@ bulkOperationsRouter.get('/export/clients', requireAuth, async (req: Request, re
  */
 bulkOperationsRouter.get('/export/shifts', requireAuth, async (req: Request, res: Response) => {
   try {
-    const user = (req as any).user;
+    const user = req.user;
     const workspaceId = user?.currentWorkspaceId;
     const format = (req.query.format as 'csv' | 'json') || 'csv';
 
@@ -359,7 +359,7 @@ bulkOperationsRouter.get('/export/shifts', requireAuth, async (req: Request, res
  */
 bulkOperationsRouter.get('/export/time-entries', requireAuth, async (req: Request, res: Response) => {
   try {
-    const user = (req as any).user;
+    const user = req.user;
     const workspaceId = user?.currentWorkspaceId;
     const format = (req.query.format as 'csv' | 'json') || 'csv';
 

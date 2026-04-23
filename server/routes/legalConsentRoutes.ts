@@ -31,7 +31,7 @@ router.get('/agreements', async (req: Request, res: Response) => {
 // GET /api/legal/pending-agreements — agreements this user still needs to accept
 router.get('/pending-agreements', requireAuth, async (req: Request, res: Response) => {
   try {
-    const user = (req as any).user;
+    const user = req.user;
     const required = getRequiredAgreementsForRole(user.role || user.platformRole || '');
     if (required.length === 0) return res.json([]);
 
@@ -65,7 +65,7 @@ router.get('/pending-agreements', requireAuth, async (req: Request, res: Respons
 // POST /api/legal/accept-agreements — accept one or more agreements
 router.post('/accept-agreements', requireAuth, async (req: Request, res: Response) => {
   try {
-    const user = (req as any).user;
+    const user = req.user;
     const { agreements, typedName, consentPreferences } = req.body;
     const ip = req.ip || req.socket?.remoteAddress || null;
     const userAgent = req.headers['user-agent'] || null;
@@ -222,7 +222,7 @@ router.post('/opt-out', async (req: Request, res: Response) => {
 // GET /api/legal/my-acceptances — what agreements current user has accepted
 router.get('/my-acceptances', requireAuth, async (req: Request, res: Response) => {
   try {
-    const user = (req as any).user;
+    const user = req.user;
     const result = await pool.query(
       `SELECT ula.agreement_type, ula.version_accepted, ula.accepted_at,
               ula.acceptance_method, ula.typed_name, la.title
@@ -242,7 +242,7 @@ router.get('/my-acceptances', requireAuth, async (req: Request, res: Response) =
 // GET /api/legal/consent-preferences — get current user's consent preferences
 router.get('/consent-preferences', requireAuth, async (req: Request, res: Response) => {
   try {
-    const user = (req as any).user;
+    const user = req.user;
     const result = await pool.query(
       `SELECT * FROM consent_preferences WHERE user_id = $1`,
       [user.id]
@@ -257,7 +257,7 @@ router.get('/consent-preferences', requireAuth, async (req: Request, res: Respon
 // PATCH /api/legal/consent-preferences — update consent preferences
 router.patch('/consent-preferences', requireAuth, async (req: Request, res: Response) => {
   try {
-    const user = (req as any).user;
+    const user = req.user;
     const cp = req.body;
     await pool.query(
       `INSERT INTO consent_preferences
