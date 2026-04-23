@@ -95,6 +95,7 @@ import resendWebhooksRouter from "./routes/resendWebhooks";
 import twilioWebhooksRouter from "./routes/twilioWebhooks";
 import { messageBridgeWebhookRouter } from "./routes/messageBridgeRoutes";
 import { inboundEmailRouter } from "./routes/inboundEmailRoutes";
+import bootstrapRouter from "./routes/bootstrapRoutes";
 import { emailRouter } from "./routes/email/emailRoutes";
 import { voiceRouter, initializeVoiceTables } from "./routes/voiceRoutes";
 import platformFeedbackRouter from "./routes/platformFeedbackRoutes";
@@ -714,6 +715,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Phase 13: Inbound email webhook receivers (calloffs@, incidents@, docs@, support@)
   // No auth required — Resend POSTs here; signature verification is internal.
   app.use('/api/inbound/email', inboundEmailRouter);
+
+  // Bootstrap — no auth, secret-key protected, dev only
+  app.use('/api/bootstrap', bootstrapRouter);
 
   // Email API: inbox, send, thread, management (requires auth)
   app.use('/api/email', emailRouter);
