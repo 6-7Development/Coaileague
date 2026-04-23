@@ -174,6 +174,16 @@ export interface SendNotificationPayload {
 export class NotificationDeliveryService {
   private static readonly DEFAULT_DEDUP_WINDOW_MS = 5 * 60 * 1000;
   private static readonly EMPTY_BODY_FALLBACK = 'Notification received. Please log in for details.';
+  private static readonly SIMPLE_EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  private static hasMeaningfulContent(value: unknown): boolean {
+    if (value == null) return false;
+    if (typeof value === 'string') return value.trim().length > 0;
+    if (typeof value === 'number' || typeof value === 'boolean') return true;
+    if (Array.isArray(value)) return value.length > 0;
+    if (typeof value === 'object') return Object.keys(value as Record<string, unknown>).length > 0;
+    return false;
+  }
 
   private static computePayloadDigest(payload: SendNotificationPayload): string {
     const stableBody = JSON.stringify(payload.body ?? {});
@@ -199,11 +209,11 @@ export class NotificationDeliveryService {
     if (payload.channel === 'email') {
       const body = (payload.body || {}) as Record<string, unknown>;
       const hasRenderableContent =
-        body.html != null ||
-        body.body != null ||
-        body.message != null ||
-        body.text != null ||
-        body.title != null;
+        this.hasMeaningfulContent(body.html) ||
+        this.hasMeaningfulContent(body.body) ||
+        this.hasMeaningfulContent(body.message) ||
+        this.hasMeaningfulContent(body.text) ||
+        this.hasMeaningfulContent(body.title);
 
       if (!hasRenderableContent) {
         log.warn(
@@ -431,10 +441,14 @@ export class NotificationDeliveryService {
     const { emailService } = await import('./emailService');
     const payload = record.payload as Record<string, unknown>;
     const toRaw = payload.to ?? payload.recipientEmail ?? '';
-    const to = Array.isArray(toRaw)
+    const firstRaw = Array.isArray(toRaw)
       ? String(toRaw.find((v) => typeof v === 'string' && v.trim().length > 0) ?? '')
       : String(toRaw ?? '');
+    const to = firstRaw.split(',').map(part => part.trim()).find(Boolean) || '';
     if (!to) throw new Error('No recipient email in notification payload');
+    if (!this.SIMPLE_EMAIL_REGEX.test(to)) {
+      throw new Error(`Invalid recipient email in notification payload: ${to}`);
+    }
     if (Array.isArray(toRaw) && toRaw.length > 1) {
       log.warn(`[NDS] Email payload.to had ${toRaw.length} recipients; sendCustomEmail supports one recipient. Using first address for notification ${record.id}.`);
     }
@@ -447,7 +461,7 @@ export class NotificationDeliveryService {
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;');
 
-    const templateHtml = payload.html != null ? String(payload.html) : null;
+    const templateHtml = this.hasMeaningfulContent(payload.html) ? String(payload.html).trim() : null;
     const textSource = payload.body ?? payload.message ?? payload.text ?? payload.title;
     const normalizedText = typeof textSource === 'object'
       ? JSON.stringify(textSource, null, 2)
