@@ -63,11 +63,11 @@ export async function runDevelopmentSeed(): Promise<{ success: boolean; message:
         { id: 'dev-emp-008', email: 'lee@acme-security.test', firstName: 'Jennifer', lastName: 'Lee', passwordHash: '$2b$10$XEUX3wL9wI2VEjEoUdCSw.O8xFVIfhUJAGahknql8PdWYj0DITrSe', role: 'user' },
         { id: 'dev-emp-009', email: 'wilson@acme-security.test', firstName: 'David', lastName: 'Wilson', passwordHash: '$2b$10$XEUX3wL9wI2VEjEoUdCSw.O8xFVIfhUJAGahknql8PdWYj0DITrSe', role: 'user' },
         { id: 'dev-emp-010', email: 'anderson@acme-security.test', firstName: 'Lisa', lastName: 'Anderson', passwordHash: '$2b$10$XEUX3wL9wI2VEjEoUdCSw.O8xFVIfhUJAGahknql8PdWYj0DITrSe', role: 'user' },
-        { id: 'dev-owner-002', email: 'owner@metroplex-cleaning.test', firstName: 'Patricia', lastName: 'Owens', passwordHash: '$2b$10$XEUX3wL9wI2VEjEoUdCSw.O8xFVIfhUJAGahknql8PdWYj0DITrSe', role: 'user' },
-        { id: 'dev-emp-011', email: 'clark@metroplex.test', firstName: 'Steven', lastName: 'Clark', passwordHash: '$2b$10$XEUX3wL9wI2VEjEoUdCSw.O8xFVIfhUJAGahknql8PdWYj0DITrSe', role: 'user' },
-        { id: 'dev-emp-012', email: 'hall@metroplex.test', firstName: 'Maria', lastName: 'Hall', passwordHash: '$2b$10$XEUX3wL9wI2VEjEoUdCSw.O8xFVIfhUJAGahknql8PdWYj0DITrSe', role: 'user' },
-        { id: 'dev-emp-013', email: 'young@metroplex.test', firstName: 'Anthony', lastName: 'Young', passwordHash: '$2b$10$XEUX3wL9wI2VEjEoUdCSw.O8xFVIfhUJAGahknql8PdWYj0DITrSe', role: 'user' },
-        { id: 'dev-emp-014', email: 'wright@metroplex.test', firstName: 'Sandra', lastName: 'Wright', passwordHash: '$2b$10$XEUX3wL9wI2VEjEoUdCSw.O8xFVIfhUJAGahknql8PdWYj0DITrSe', role: 'user' },
+        { id: 'dev-owner-002', email: 'owner@lonestar-security.test', firstName: 'Raymond', lastName: 'Castillo', passwordHash: '$2b$10$XEUX3wL9wI2VEjEoUdCSw.O8xFVIfhUJAGahknql8PdWYj0DITrSe', role: 'user' },
+        { id: 'dev-emp-011', email: 'rodriguez@lonestar-security.test', firstName: 'Diego', lastName: 'Rodriguez', passwordHash: '$2b$10$XEUX3wL9wI2VEjEoUdCSw.O8xFVIfhUJAGahknql8PdWYj0DITrSe', role: 'user' },
+        { id: 'dev-emp-012', email: 'nguyen@lonestar-security.test', firstName: 'Linh', lastName: 'Nguyen', passwordHash: '$2b$10$XEUX3wL9wI2VEjEoUdCSw.O8xFVIfhUJAGahknql8PdWYj0DITrSe', role: 'user' },
+        { id: 'dev-emp-013', email: 'foster@lonestar-security.test', firstName: 'Marcus', lastName: 'Foster', passwordHash: '$2b$10$XEUX3wL9wI2VEjEoUdCSw.O8xFVIfhUJAGahknql8PdWYj0DITrSe', role: 'user' },
+        { id: 'dev-emp-014', email: 'reyes@lonestar-security.test', firstName: 'Ana', lastName: 'Reyes', passwordHash: '$2b$10$XEUX3wL9wI2VEjEoUdCSw.O8xFVIfhUJAGahknql8PdWYj0DITrSe', role: 'user' },
         { id: 'dev-demo-user', email: 'demo@coaileague.test', firstName: 'Demo', lastName: 'User', passwordHash: '$2b$10$XEUX3wL9wI2VEjEoUdCSw.O8xFVIfhUJAGahknql8PdWYj0DITrSe', role: 'user' },
       ];
 
@@ -86,7 +86,7 @@ export async function runDevelopmentSeed(): Promise<{ success: boolean; message:
 
       const devWorkspaces = [
         { id: DEV_SENTINEL_WORKSPACE, name: 'Acme Security Services', ownerId: 'dev-owner-001', tier: 'enterprise', status: 'active', category: 'security', maxEmp: 50, maxClients: 25 },
-        { id: 'dev-metroplex-cleaning-ws', name: 'Metroplex Cleaning Co.', ownerId: 'dev-owner-002', tier: 'professional', status: 'active', category: 'cleaning', maxEmp: 20, maxClients: 15 },
+        { id: 'dev-lonestar-security-ws', name: 'Lone Star Security Group', ownerId: 'dev-owner-002', tier: 'professional', status: 'active', category: 'security', maxEmp: 20, maxClients: 15 },
         { id: 'dev-demo-workspace', name: 'Demo Workspace', ownerId: 'dev-demo-user', tier: 'enterprise', status: 'active', category: 'general', maxEmp: 100, maxClients: 50 },
       ];
 
@@ -100,7 +100,7 @@ export async function runDevelopmentSeed(): Promise<{ success: boolean; message:
 
       // Update users with their workspace assignments
       await tx.execute(sql`UPDATE users SET current_workspace_id = ${DEV_SENTINEL_WORKSPACE} WHERE id IN ('dev-owner-001', 'dev-manager-001', 'dev-manager-002', 'dev-emp-001', 'dev-emp-002', 'dev-emp-003', 'dev-emp-004', 'dev-emp-005', 'dev-emp-006', 'dev-emp-007', 'dev-emp-008', 'dev-emp-009', 'dev-emp-010') AND current_workspace_id IS NULL`);
-      await tx.execute(sql`UPDATE users SET current_workspace_id = 'dev-metroplex-cleaning-ws' WHERE id IN ('dev-owner-002', 'dev-emp-011', 'dev-emp-012', 'dev-emp-013', 'dev-emp-014') AND current_workspace_id IS NULL`);
+      await tx.execute(sql`UPDATE users SET current_workspace_id = 'dev-lonestar-security-ws' WHERE id IN ('dev-owner-002', 'dev-emp-011', 'dev-emp-012', 'dev-emp-013', 'dev-emp-014') AND current_workspace_id IS NULL`);
       await tx.execute(sql`UPDATE users SET current_workspace_id = 'dev-demo-workspace' WHERE id = 'dev-demo-user' AND current_workspace_id IS NULL`);
 
       // =====================================================================
@@ -141,19 +141,19 @@ export async function runDevelopmentSeed(): Promise<{ success: boolean; message:
         `);
       }
 
-      // Metroplex Cleaning employees (5 employees)
-      const metroplexEmployees = [
-        { id: 'dev-metro-emp-001', userId: 'dev-owner-002', firstName: 'Patricia', lastName: 'Owens', email: 'owner@metroplex-cleaning.test', hourlyRate: '40.00', role: 'Owner / GM', workspaceRole: 'org_owner', empNum: 'EMP-MTX-00001' },
-        { id: 'dev-metro-emp-002', userId: 'dev-emp-011', firstName: 'Steven', lastName: 'Clark', email: 'clark@metroplex.test', hourlyRate: '18.00', role: 'Lead Janitor', workspaceRole: 'employee', empNum: 'EMP-MTX-00002' },
-        { id: 'dev-metro-emp-003', userId: 'dev-emp-012', firstName: 'Maria', lastName: 'Hall', email: 'hall@metroplex.test', hourlyRate: '16.50', role: 'Cleaning Specialist', workspaceRole: 'employee', empNum: 'EMP-MTX-00003' },
-        { id: 'dev-metro-emp-004', userId: 'dev-emp-013', firstName: 'Anthony', lastName: 'Young', email: 'young@metroplex.test', hourlyRate: '16.00', role: 'Cleaning Staff', workspaceRole: 'employee', empNum: 'EMP-MTX-00004' },
-        { id: 'dev-metro-emp-005', userId: 'dev-emp-014', firstName: 'Sandra', lastName: 'Wright', email: 'wright@metroplex.test', hourlyRate: '17.00', role: 'Floor Technician', workspaceRole: 'employee', empNum: 'EMP-MTX-00005' },
+      // Lone Star Security Group employees (5 employees)
+      const lonestarEmployees = [
+        { id: 'dev-lstar-emp-001', userId: 'dev-owner-002', firstName: 'Raymond', lastName: 'Castillo', email: 'owner@lonestar-security.test', hourlyRate: '40.00', role: 'President / CEO', workspaceRole: 'org_owner', empNum: 'EMP-LSG-00001' },
+        { id: 'dev-lstar-emp-002', userId: 'dev-emp-011', firstName: 'Diego', lastName: 'Rodriguez', email: 'rodriguez@lonestar-security.test', hourlyRate: '28.00', role: 'Field Supervisor', workspaceRole: 'employee', empNum: 'EMP-LSG-00002' },
+        { id: 'dev-lstar-emp-003', userId: 'dev-emp-012', firstName: 'Linh', lastName: 'Nguyen', email: 'nguyen@lonestar-security.test', hourlyRate: '22.00', role: 'Security Officer', workspaceRole: 'employee', empNum: 'EMP-LSG-00003' },
+        { id: 'dev-lstar-emp-004', userId: 'dev-emp-013', firstName: 'Marcus', lastName: 'Foster', email: 'foster@lonestar-security.test', hourlyRate: '21.50', role: 'Security Officer', workspaceRole: 'employee', empNum: 'EMP-LSG-00004' },
+        { id: 'dev-lstar-emp-005', userId: 'dev-emp-014', firstName: 'Ana', lastName: 'Reyes', email: 'reyes@lonestar-security.test', hourlyRate: '22.50', role: 'Security Officer', workspaceRole: 'employee', empNum: 'EMP-LSG-00005' },
       ];
 
-      for (const emp of metroplexEmployees) {
+      for (const emp of lonestarEmployees) {
         await tx.execute(sql`
           INSERT INTO employees (id, user_id, workspace_id, first_name, last_name, email, hourly_rate, role, workspace_role, employee_number, created_at, updated_at)
-          VALUES (${emp.id}, ${emp.userId}, 'dev-metroplex-cleaning-ws', ${emp.firstName}, ${emp.lastName}, ${emp.email}, ${emp.hourlyRate}, ${emp.role}, ${emp.workspaceRole}, ${emp.empNum}, NOW(), NOW())
+          VALUES (${emp.id}, ${emp.userId}, 'dev-lonestar-security-ws', ${emp.firstName}, ${emp.lastName}, ${emp.email}, ${emp.hourlyRate}, ${emp.role}, ${emp.workspaceRole}, ${emp.empNum}, NOW(), NOW())
           ON CONFLICT (id) DO NOTHING
         `);
       }
@@ -182,16 +182,16 @@ export async function runDevelopmentSeed(): Promise<{ success: boolean; message:
         `);
       }
 
-      const metroplexClients = [
-        { id: 'dev-client-101', firstName: 'Corporate', lastName: 'Plaza', companyName: 'Corporate Plaza Office Park', email: 'facilities@corp-plaza.test', phone: '555-110-2001', address: '2500 Corporate Blvd', city: 'Plano', state: 'TX', postalCode: '75024', contractRate: '22.00', pocName: 'Amy Foster', pocPhone: '555-110-2002', pocEmail: 'afoster@corp-plaza.test', pocTitle: 'Building Manager' },
-        { id: 'dev-client-102', firstName: 'Sunset', lastName: 'Medical Office', companyName: 'Sunset Medical Associates', email: 'admin@sunset-medical.test', phone: '555-120-3001', address: '1800 Sunset Dr', city: 'Richardson', state: 'TX', postalCode: '75080', contractRate: '25.00', pocName: 'Nancy Kim', pocPhone: '555-120-3002', pocEmail: 'nkim@sunset-medical.test', pocTitle: 'Office Administrator' },
-        { id: 'dev-client-103', firstName: 'Lakeside', lastName: 'Church', companyName: 'Lakeside Community Church', email: 'office@lakeside-church.test', phone: '555-130-4001', address: '600 Lake Shore Dr', city: 'Garland', state: 'TX', postalCode: '75040', contractRate: '18.00', pocName: 'Pastor John Reed', pocPhone: '555-130-4002', pocEmail: 'jreed@lakeside-church.test', pocTitle: 'Senior Pastor' },
+      const lonestarClients = [
+        { id: 'dev-client-101', firstName: 'Corporate', lastName: 'Plaza', companyName: 'Corporate Plaza Office Park', email: 'facilities@corp-plaza.test', phone: '5551102001', address: '2500 Corporate Blvd', city: 'Plano', state: 'TX', postalCode: '75024', contractRate: '29.50', pocName: 'Amy Foster', pocPhone: '5551102002', pocEmail: 'afoster@corp-plaza.test', pocTitle: 'Facilities Manager' },
+        { id: 'dev-client-102', firstName: 'Sunridge', lastName: 'Medical', companyName: 'Sunridge Medical Center', email: 'security@sunridge-medical.test', phone: '5551203001', address: '1800 Sunridge Dr', city: 'Richardson', state: 'TX', postalCode: '75080', contractRate: '34.00', pocName: 'Nancy Kim', pocPhone: '5551203002', pocEmail: 'nkim@sunridge-medical.test', pocTitle: 'Security Director' },
+        { id: 'dev-client-103', firstName: 'Garland', lastName: 'Logistics', companyName: 'Garland Distribution Center', email: 'ops@garland-dist.test', phone: '5551304001', address: '600 Industrial Pkwy', city: 'Garland', state: 'TX', postalCode: '75040', contractRate: '27.00', pocName: 'John Reed', pocPhone: '5551304002', pocEmail: 'jreed@garland-dist.test', pocTitle: 'Operations Manager' },
       ];
 
-      for (const client of metroplexClients) {
+      for (const client of lonestarClients) {
         await tx.execute(sql`
           INSERT INTO clients (id, workspace_id, first_name, last_name, company_name, email, phone, address, city, state, postal_code, country, contract_rate, contract_rate_type, poc_name, poc_phone, poc_email, poc_title, created_at, updated_at)
-          VALUES (${client.id}, 'dev-metroplex-cleaning-ws', ${client.firstName}, ${client.lastName}, ${client.companyName}, ${client.email}, ${client.phone}, ${client.address}, ${client.city}, ${client.state}, ${client.postalCode}, 'US', ${client.contractRate}, 'hourly', ${client.pocName}, ${client.pocPhone}, ${client.pocEmail}, ${client.pocTitle}, NOW(), NOW())
+          VALUES (${client.id}, 'dev-lonestar-security-ws', ${client.firstName}, ${client.lastName}, ${client.companyName}, ${client.email}, ${client.phone}, ${client.address}, ${client.city}, ${client.state}, ${client.postalCode}, 'US', ${client.contractRate}, 'hourly', ${client.pocName}, ${client.pocPhone}, ${client.pocEmail}, ${client.pocTitle}, NOW(), NOW())
           ON CONFLICT (id) DO NOTHING
         `);
       }
@@ -254,7 +254,7 @@ export async function runDevelopmentSeed(): Promise<{ success: boolean; message:
       try {
         const creditWorkspaces = [
           { id: 'dev-credits-acme', wsId: DEV_SENTINEL_WORKSPACE, balance: 25000, monthly: 25000 },
-          { id: 'dev-credits-metro', wsId: 'dev-metroplex-cleaning-ws', balance: 8000, monthly: 8000 },
+          { id: 'dev-credits-lstar', wsId: 'dev-lonestar-security-ws', balance: 8000, monthly: 8000 },
           { id: 'dev-credits-demo', wsId: 'dev-demo-workspace', balance: 25000, monthly: 25000 },
         ];
 
@@ -493,7 +493,7 @@ export async function runDevelopmentSeed(): Promise<{ success: boolean; message:
         country: 'US',
         contractRate: '27.00',
         contractRateType: 'hourly',
-        pocName: 'Patricia Okonkwo',
+        pocName: 'Raymond Okonkwo',
         pocPhone: '555-900-1002',
         pocEmail: 'pokonkwo@downtown-mall.test',
         pocTitle: 'Director of Security',
@@ -617,7 +617,7 @@ export async function runDevelopmentSeed(): Promise<{ success: boolean; message:
 
     console.log('[DevSeed] Development data seeded successfully!');
     console.log('   - Users: 20 test accounts (inc. Marcus Rodriguez)');
-    console.log('   - Workspaces: 3 organizations (Acme Security, Metroplex Cleaning, Demo)');
+    console.log('   - Workspaces: 3 organizations (Acme Security, Lone Star Security Cleaning, Demo)');
     console.log('   - Employees: 19 across workspaces (inc. GC-2024-001)');
     console.log('   - Clients: 12 client accounts (inc. Downtown Mall Security)');
     console.log('   - Shifts: 18 + Phase 0 today shift');
@@ -720,7 +720,7 @@ export async function ensurePhase0Seed(): Promise<void> {
       country: 'US',
       contractRate: '27.00',
       contractRateType: 'hourly',
-      pocName: 'Patricia Okonkwo',
+      pocName: 'Raymond Okonkwo',
       pocPhone: '555-900-1002',
       pocEmail: 'pokonkwo@downtown-mall.test',
       pocTitle: 'Director of Security',
