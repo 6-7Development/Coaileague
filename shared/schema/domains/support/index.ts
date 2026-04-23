@@ -598,7 +598,7 @@ export const platformUpdates = pgTable("platform_updates", {
   categoryIdx: index("platform_updates_category_idx").on(table.category),
   priorityIdx: index("platform_updates_priority_idx").on(table.isNew, table.priority, table.createdAt),
   workspaceIdx: index("platform_updates_workspace_idx").on(table.workspaceId),
-  dateIdx: index("platform_updates_date_idx").on(table.date),
+  // dateIdx removed: date column commented out to fix Drizzle startup crash
   visibilityIdx: index("platform_updates_visibility_idx").on(table.visibility),
 }));
 
