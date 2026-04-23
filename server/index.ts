@@ -2150,6 +2150,18 @@ process.on('unhandledRejection', (reason: any, promise) => {
     
     viteLog(`serving on port ${port}`);
 
+    // ── PRE-GRACE CRITICAL MIGRATION ─────────────────────────────────────────
+    // Run before the grace period so HTTP requests during those 3s don't hit
+    // missing columns. platform_updates.date must exist before any SELECT/INSERT.
+    try {
+      const { pool } = await import('./db');
+      await pool.query(`ALTER TABLE platform_updates ADD COLUMN IF NOT EXISTS date TIMESTAMP WITH TIME ZONE DEFAULT NOW()`);
+      log.info('[PreGrace] platform_updates.date column ensured');
+    } catch (e: any) {
+      log.warn('[PreGrace] platform_updates migration failed (non-fatal):', e.message);
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
     // STARTUP GRACE: Brief pause for old TCP connections to drain before DB access
     await new Promise(resolve => setTimeout(resolve, 3000));
     log.info('Grace period complete — beginning Phase 1');

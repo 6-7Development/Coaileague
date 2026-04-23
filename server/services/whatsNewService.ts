@@ -411,6 +411,7 @@ export async function addUpdate(update: Omit<PlatformUpdate, 'id'> & { visibilit
       learnMoreUrl: update.learnMoreUrl,
       visibility: (update as any).visibility || 'all',
       workspaceId: update.workspaceId || null, // null = global, set = workspace-specific
+      date: new Date(update.date),
     });
     
     log.info(`[WhatsNew] Added humanized update: "${humanizedTitle}"`);
