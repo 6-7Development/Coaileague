@@ -39,4 +39,3 @@ export function isValidPayrollTransition(currentDbStatus: string, nextLifecycle:
   const nextIdx = FLOW_ORDER.indexOf(nextLifecycle);
   return nextIdx === currentIdx + 1;
 }
-
