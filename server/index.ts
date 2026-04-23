@@ -688,8 +688,7 @@ app.use((req, res, next) => {
     
     // Track metrics in monitoring service
     const userId = req.session?.userId;
-    // @ts-expect-error — TS migration: fix in refactoring sprint
-    const workspaceId = req.workspaceId || (req.user)?.workspaceId || req.session?.currentWorkspaceId;
+    const workspaceId = (req as any).workspaceId || req.user?.workspaceId || req.session?.currentWorkspaceId;
     
     monitoringService.trackRequest(
       path,
@@ -1608,9 +1607,10 @@ async function gracefulShutdown(signal: string): Promise<void> {
         resolve();
       }, 5000);
   // Close WebSocket connections
-  if (global.wss && typeof global.wss.close === 'function') {
+  const globalWithWss = globalThis as typeof globalThis & { wss?: { close?: (cb?: () => void) => void } };
+  if (globalWithWss.wss && typeof globalWithWss.wss.close === 'function') {
     try {
-      global.wss.close(() => {
+      globalWithWss.wss.close(() => {
         log.info('WebSocket server closed');
       });
     } catch (e) {

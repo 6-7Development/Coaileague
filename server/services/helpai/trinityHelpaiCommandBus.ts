@@ -93,6 +93,7 @@ export interface AlertPayload {
   workspace_id: string | null;
   conversation_id?: string;
   language?: 'en' | 'es';
+  alert_idempotencyKey?: string;
 }
 
 type CommandPayload = EscalationPayload | ReportPayload | RequestPayload | AlertPayload | Record<string, unknown>;

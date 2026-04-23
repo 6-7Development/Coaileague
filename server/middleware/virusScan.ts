@@ -56,7 +56,7 @@ declare global {
 function extractUserInfo(req: Request): { userId: string; workspaceId: string; ipAddress: string; userAgent: string } {
   const authReq = req as AuthenticatedRequest;
   return {
-    userId: authReq.user?.id || authReq.user?.claims?.sub || 'anonymous',
+    userId: authReq.user?.id || authReq.user?.(typeof claims?.sub === "string" ? claims.sub : undefined) || 'anonymous',
     workspaceId: authReq.workspaceId || authReq.user?.currentWorkspaceId || 'unknown',
     ipAddress: req.ip || req.socket?.remoteAddress || 'unknown',
     userAgent: req.get('user-agent') || 'unknown',
