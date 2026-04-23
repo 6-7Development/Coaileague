@@ -302,6 +302,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         END $$;
       `).catch(() => null);
       log.info('[Startup] Missing tables ensured: cookie_consent, universal_id_sequences');
+      // Ensure workspace_members unique constraint (needed for ON CONFLICT in seedPlatformWorkspace)
+      await pool.query(`
+        CREATE UNIQUE INDEX IF NOT EXISTS workspace_members_user_workspace_idx
+        ON workspace_members (user_id, workspace_id)
+      `).catch(() => null);
     };
     await seedWithRetry(runMissingTablesMigration, 'missingTablesMigration');
 
