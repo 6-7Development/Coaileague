@@ -312,7 +312,7 @@ export async function aggregatePayrollHours(params: {
       } else {
         // Timezone-aware holiday detection using workspace holiday calendar
         const holidayEntry = getHolidayEntry(timeEntry.clockIn, holidayCalendar, workspaceTimezone);
-        const isHoliday = !!holidayEntry || isHolidayDate(timeEntry.clockIn, holidayCalendar, workspaceTimezone);
+        const isHoliday = !!holidayEntry;
         if (holidayEntry?.payMultiplier) {
           holidayMultiplier = holidayEntry.payMultiplier;
         }
