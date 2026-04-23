@@ -62,7 +62,7 @@ export const terminatedEmployeeGuard = async (
       return next();
     }
 
-    // Public paths: skip
+    // Public paths: skip (canonical registry)
     const path = req.path;
     if (!path.startsWith('/api/')) {
       return next();

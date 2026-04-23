@@ -51,6 +51,7 @@ export const stripe = new Proxy({} as Stripe, {
 // DOMAIN ROUTE MOUNTS — 15 canonical domains + audit
 // ============================================================================
 import { mountAuthRoutes } from "./routes/domains/auth";
+import { isPublicPath } from "./lib/publicPaths";
 import { mountBillingRoutes } from "./routes/domains/billing";
 import { mountClientRoutes } from "./routes/domains/clients";
 import { mountCommsRoutes } from "./routes/domains/comms";
@@ -376,21 +377,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Trinity Intrusion Detection Guard — scans every /api request for attacks before routing.
   // Checks blocked IPs, SQL injection, XSS, path traversal, command injection, attacker UAs.
   // Critical threats are auto-blocked and published to Trinity's event system.
-  app.use("/api", trinityGuardMiddleware);
+  app.use("/api", (req: Request, res: Response, next: NextFunction) => {
+    if (isPublicPath(req.path)) return next();
+    return trinityGuardMiddleware(req, res, next);
+  });
 
   // Phase 41 — Subscription read-only guard: blocks mutating API calls for suspended workspaces.
   // Billing/webhook routes are exempt so operators can recover payment.
   // @ts-expect-error — TS migration: fix in refactoring sprint
-  app.use("/api", subscriptionReadOnlyGuard);
+  app.use("/api", (req: Request, res: Response, next: NextFunction) => {
+    if (isPublicPath(req.path)) return next();
+    return subscriptionReadOnlyGuard(req, res, next);
+  });
 
   // Cancelled workspace guard: full block (403) for all /api routes when workspace is cancelled.
   // Auth/health/billing are always exempt so operators can sign in and re-activate.
   // @ts-expect-error — TS migration: fix in refactoring sprint
-  app.use("/api", cancelledWorkspaceGuard);
+  app.use("/api", (req: Request, res: Response, next: NextFunction) => {
+    if (isPublicPath(req.path)) return next();
+    return cancelledWorkspaceGuard(req, res, next);
+  });
 
   // Terminated employee guard: enforce 14-day read-only grace period after termination.
   // Past grace period → 403. Within grace period → restricted path access only.
-  app.use("/api", terminatedEmployeeGuard);
+  app.use("/api", (req: Request, res: Response, next: NextFunction) => {
+    if (isPublicPath(req.path)) return next();
+    return terminatedEmployeeGuard(req, res, next);
+  });
 
   // Global rate limiting
   // Check req.user (passport) AND req.session?.userId (direct session) so that
