@@ -173,6 +173,17 @@ export interface SendNotificationPayload {
 
 export class NotificationDeliveryService {
   private static readonly DEFAULT_DEDUP_WINDOW_MS = 5 * 60 * 1000;
+  private static readonly EMPTY_BODY_FALLBACK = 'Notification received. Please log in for details.';
+  private static readonly SIMPLE_EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  private static hasMeaningfulContent(value: unknown): boolean {
+    if (value == null) return false;
+    if (typeof value === 'string') return value.trim().length > 0;
+    if (typeof value === 'number' || typeof value === 'boolean') return true;
+    if (Array.isArray(value)) return value.length > 0;
+    if (typeof value === 'object') return Object.keys(value as Record<string, unknown>).length > 0;
+    return false;
+  }
 
   private static computePayloadDigest(payload: SendNotificationPayload): string {
     const stableBody = JSON.stringify(payload.body ?? {});
@@ -192,6 +203,32 @@ export class NotificationDeliveryService {
   // ============================================================================
 
   static async send(payload: SendNotificationPayload): Promise<string> {
+    // Email payload sanity guard: ensure we always persist at least one
+    // renderable content field so downstream delivery never emits an empty-
+    // looking message body.
+    if (payload.channel === 'email') {
+      const body = (payload.body || {}) as Record<string, unknown>;
+      const hasRenderableContent =
+        this.hasMeaningfulContent(body.html) ||
+        this.hasMeaningfulContent(body.body) ||
+        this.hasMeaningfulContent(body.message) ||
+        this.hasMeaningfulContent(body.text) ||
+        this.hasMeaningfulContent(body.title);
+
+      if (!hasRenderableContent) {
+        log.warn(
+          `[NDS] EMPTY_BODY_FALLBACK: synthesized body at send() for type=${payload.type} recipient=${payload.recipientUserId}`
+        );
+        payload = {
+          ...payload,
+          body: {
+            ...body,
+            body: this.EMPTY_BODY_FALLBACK,
+          },
+        };
+      }
+    }
+
     // Phase 49: Enforce user notification preferences (channel + quiet hours)
     try {
       const { allow, reason } = await shouldDeliver({
@@ -403,8 +440,18 @@ export class NotificationDeliveryService {
   ): Promise<void> {
     const { emailService } = await import('./emailService');
     const payload = record.payload as Record<string, unknown>;
-    const to = String(payload.to ?? payload.recipientEmail ?? '');
+    const toRaw = payload.to ?? payload.recipientEmail ?? '';
+    const firstRaw = Array.isArray(toRaw)
+      ? String(toRaw.find((v) => typeof v === 'string' && v.trim().length > 0) ?? '')
+      : String(toRaw ?? '');
+    const to = firstRaw.split(',').map(part => part.trim()).find(Boolean) || '';
     if (!to) throw new Error('No recipient email in notification payload');
+    if (!this.SIMPLE_EMAIL_REGEX.test(to)) {
+      throw new Error(`Invalid recipient email in notification payload: ${to}`);
+    }
+    if (Array.isArray(toRaw) && toRaw.length > 1) {
+      log.warn(`[NDS] Email payload.to had ${toRaw.length} recipients; sendCustomEmail supports one recipient. Using first address for notification ${record.id}.`);
+    }
 
     const { PLATFORM } = await import('../config/platformConfig');
     const subject = record.subject ?? String(payload.subject ?? `${PLATFORM.name} Notification`);
@@ -414,17 +461,20 @@ export class NotificationDeliveryService {
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;');
 
-    const templateHtml = payload.html != null ? String(payload.html) : null;
+    const templateHtml = this.hasMeaningfulContent(payload.html) ? String(payload.html).trim() : null;
     const textSource = payload.body ?? payload.message ?? payload.text ?? payload.title;
+    const normalizedText = typeof textSource === 'object'
+      ? JSON.stringify(textSource, null, 2)
+      : (textSource != null ? String(textSource) : '');
     const html = templateHtml ?? (
-      textSource
-        ? `<div style="font-family:Arial,sans-serif;line-height:1.5;"><h3 style="margin:0 0 8px 0;">${escapeHtml(subject)}</h3><p style="margin:0;">${escapeHtml(String(textSource))}</p></div>`
+      normalizedText
+        ? `<div style="font-family:Arial,sans-serif;line-height:1.5;"><h3 style="margin:0 0 8px 0;">${escapeHtml(subject)}</h3><p style="margin:0;white-space:pre-wrap;">${escapeHtml(normalizedText)}</p></div>`
         : `<div style="font-family:Arial,sans-serif;line-height:1.5;"><h3 style="margin:0 0 8px 0;">${escapeHtml(subject)}</h3><p style="margin:0;">Notification received. Please log in to ${escapeHtml(PLATFORM.name)} for details.</p></div>`
     );
 
     if (payload.html == null && payload.body == null) {
       log.warn(
-        `[NDS] Missing payload html/body for email notification ${record.id}; synthesized fallback body (type=${record.notificationType}, channel=${record.channel})`
+        `[NDS] EMPTY_BODY_FALLBACK: synthesized body at deliverEmail() for notification=${record.id} type=${record.notificationType} recipient=${record.recipientUserId}`
       );
     }
 

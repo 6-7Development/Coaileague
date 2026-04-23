@@ -1,7 +1,7 @@
 import { sanitizeError } from '../middleware/errorHandler';
 import { Router } from "express";
 import { db } from "../db";
-import { sql, eq, and, desc, gte, inArray } from "drizzle-orm";
+import { sql, eq, and, or, desc, gte, inArray } from "drizzle-orm";
 import { workspaces, employees, shifts, trinityEmailConversations, staffingClaimTokens, clients, invoices, emailUnsubscribes, emailEvents, resendWebhookEvents, notificationDeliveries, supportTickets } from "@shared/schema";
 import { universalAudit } from "../services/universalAuditService";
 import { trinityStaffingOrchestrator } from "../services/trinityStaffing/orchestrator";
@@ -628,6 +628,7 @@ router.post("/api/webhooks/resend", async (req, res) => {
                   .where(eq(emailEvents.resendId, bounceResendId));
               }
               if (bouncedAddresses.length > 0) {
+                const normalizedBounced = bouncedAddresses.map((e) => e.toLowerCase().trim()).filter(Boolean);
                 await tx.update(notificationDeliveries)
                   .set({
                     status: 'failed',
@@ -636,7 +637,22 @@ router.post("/api/webhooks/resend", async (req, res) => {
                   })
                   .where(
                     and(
-                      inArray(notificationDeliveries.recipientUserId, bouncedAddresses),
+                      or(
+                        inArray(notificationDeliveries.recipientUserId, normalizedBounced),
+                        sql`LOWER(COALESCE(${notificationDeliveries.payload}->>'to', '')) = ANY(${normalizedBounced}::text[])`,
+                        sql`LOWER(COALESCE(${notificationDeliveries.payload}->>'recipientEmail', '')) = ANY(${normalizedBounced}::text[])`,
+                        sql`EXISTS (
+                          SELECT 1
+                          FROM jsonb_array_elements_text(
+                            CASE
+                              WHEN jsonb_typeof(${notificationDeliveries.payload}->'to') = 'array'
+                                THEN ${notificationDeliveries.payload}->'to'
+                              ELSE '[]'::jsonb
+                            END
+                          ) AS addr(value)
+                          WHERE LOWER(addr.value) = ANY(${normalizedBounced}::text[])
+                        )`
+                      ),
                       eq(notificationDeliveries.channel, 'email'),
                       inArray(notificationDeliveries.status, ['sent', 'pending'])
                     )
@@ -684,6 +700,7 @@ router.post("/api/webhooks/resend", async (req, res) => {
                   .where(eq(emailEvents.resendId, complaintResendId));
               }
               if (complainedAddresses.length > 0) {
+                const normalizedComplained = complainedAddresses.map((e) => e.toLowerCase().trim()).filter(Boolean);
                 await tx.update(notificationDeliveries)
                   .set({
                     status: 'failed',
@@ -692,7 +709,22 @@ router.post("/api/webhooks/resend", async (req, res) => {
                   })
                   .where(
                     and(
-                      inArray(notificationDeliveries.recipientUserId, complainedAddresses),
+                      or(
+                        inArray(notificationDeliveries.recipientUserId, normalizedComplained),
+                        sql`LOWER(COALESCE(${notificationDeliveries.payload}->>'to', '')) = ANY(${normalizedComplained}::text[])`,
+                        sql`LOWER(COALESCE(${notificationDeliveries.payload}->>'recipientEmail', '')) = ANY(${normalizedComplained}::text[])`,
+                        sql`EXISTS (
+                          SELECT 1
+                          FROM jsonb_array_elements_text(
+                            CASE
+                              WHEN jsonb_typeof(${notificationDeliveries.payload}->'to') = 'array'
+                                THEN ${notificationDeliveries.payload}->'to'
+                              ELSE '[]'::jsonb
+                            END
+                          ) AS addr(value)
+                          WHERE LOWER(addr.value) = ANY(${normalizedComplained}::text[])
+                        )`
+                      ),
                       eq(notificationDeliveries.channel, 'email'),
                       inArray(notificationDeliveries.status, ['sent', 'pending'])
                     )
