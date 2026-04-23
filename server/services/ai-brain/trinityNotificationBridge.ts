@@ -258,7 +258,6 @@ class TrinityNotificationBridge {
       workspaceId: options.workspaceId || PLATFORM_WORKSPACE_ID,
       createdBy: options.pushedBy,
       isNew: true,
-      date: new Date(),
     }).returning();
 
     // NOTE: Do NOT call publishPlatformUpdate here - it would cause double posting
