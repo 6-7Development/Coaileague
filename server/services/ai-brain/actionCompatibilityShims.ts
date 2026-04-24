@@ -1,24 +1,134 @@
 /**
- * ACTION COMPATIBILITY SHIMS — Phase 1 Consolidation
- * ====================================================
+ * ACTION COMPATIBILITY SHIMS — Trinity Action Consolidation
+ * ==========================================================
  * Backward-compatible action ID redirects for renamed/merged/deleted actions.
  * Every shim forwards the old action ID to the new canonical action via executeAction.
  *
- * Callers using old IDs continue to work transparently.
- * Shims should be removed once all callers have been updated.
+ * This file is intentionally data-driven so legacy action debt is visible,
+ * countable, and removable without editing dozens of ad-hoc registrations.
+ * Shims should be removed once all callers have been updated to canonical IDs.
  *
  * Registered AFTER all canonical actions so the new IDs exist first.
  */
 
-import { helpaiOrchestrator, type ActionHandler, type ActionRequest, type ActionResult } from '../helpai/platformActionHub';
+import { helpaiOrchestrator, type ActionRequest, type ActionResult } from '../helpai/platformActionHub';
 import { createLogger } from '../../lib/logger';
 const log = createLogger('actionCompatibilityShims');
 
-function shimAction(oldId: string, newId: string, description: string): void {
+type ShimPhase =
+  | 'phase_1_domain_merge'
+  | 'phase_1_split_domain_merge'
+  | 'phase_1_notify_merge'
+  | 'phase_2_billing_merge'
+  | 'phase_2_notify_merge'
+  | 'phase_2_onboarding_merge';
+
+interface ShimDefinition {
+  oldId: string;
+  newId: string;
+  description: string;
+  phase: ShimPhase;
+}
+
+const LEGACY_ACTION_SHIMS: readonly ShimDefinition[] = [
+  // STEP 2 — Orphaned domain duplicate (Phase 26A — shim removed)
+  // Previously: platform_roles.assign -> uacp.assign_platform_role. The target
+  // was disabled as non-MVP, leaving the shim redirecting to a non-existent
+  // action. platform_roles.assign is now registered directly in actionRegistry
+  // (registerOnboardingActions) with withAuditWrap — no shim needed.
+
+  // STEP 3 — Single-action orphan domain merges
+  { oldId: 'employee.track_milestones', newId: 'employees.track_milestones', description: 'employee domain merged into employees', phase: 'phase_1_domain_merge' },
+  { oldId: 'employee.flag_anniversary', newId: 'employees.flag_anniversary', description: 'employee domain merged into employees', phase: 'phase_1_domain_merge' },
+  { oldId: 'employee.flag_promotion_eligibility', newId: 'employees.flag_promotion_eligibility', description: 'employee domain merged into employees', phase: 'phase_1_domain_merge' },
+  { oldId: 'shift.execute_swap', newId: 'scheduling.execute_swap', description: 'shift domain merged into scheduling', phase: 'phase_1_domain_merge' },
+  { oldId: 'external.flag_external_risk', newId: 'security.flag_external_risk', description: 'external risk flagging merged into security', phase: 'phase_1_domain_merge' },
+  { oldId: 'system.monitoring_dashboard', newId: 'diagnostics.monitoring_dashboard', description: 'system monitoring merged into diagnostics', phase: 'phase_1_domain_merge' },
+
+  // STEP 4 — Split domain merges
+  { oldId: 'testing.schedule_drug_test', newId: 'test.schedule_drug_test', description: 'testing domain merged into test', phase: 'phase_1_split_domain_merge' },
+  { oldId: 'testing.record_result', newId: 'test.record_result', description: 'testing domain merged into test', phase: 'phase_1_split_domain_merge' },
+  { oldId: 'testing.flag_failed_test', newId: 'test.flag_failed_test', description: 'testing domain merged into test', phase: 'phase_1_split_domain_merge' },
+  { oldId: 'testing.generate_random_selection', newId: 'test.generate_random_selection', description: 'testing domain merged into test', phase: 'phase_1_split_domain_merge' },
+  { oldId: 'testing.check_client_requirements', newId: 'test.check_client_requirements', description: 'testing domain merged into test', phase: 'phase_1_split_domain_merge' },
+  { oldId: 'time.watch_clock_ins', newId: 'time_tracking.watch_clock_ins', description: 'time domain merged into time_tracking', phase: 'phase_1_split_domain_merge' },
+  { oldId: 'time.monitor_coverage', newId: 'time_tracking.monitor_coverage', description: 'time domain merged into time_tracking', phase: 'phase_1_split_domain_merge' },
+  { oldId: 'time.alert_on_absence', newId: 'time_tracking.alert_on_absence', description: 'time domain merged into time_tracking', phase: 'phase_1_split_domain_merge' },
+  { oldId: 'time.clock_out_officer', newId: 'time_tracking.clock_out_officer', description: 'time domain merged into time_tracking', phase: 'phase_1_split_domain_merge' },
+  { oldId: 'bulk.import_employees', newId: 'employees.import', description: 'bulk domain merged into employees', phase: 'phase_1_split_domain_merge' },
+  { oldId: 'bulk.export_employees', newId: 'employees.export', description: 'bulk domain merged into employees', phase: 'phase_1_split_domain_merge' },
+
+  // STEP 5 — Scheduling notify actions (now -> notify.send after Phase 2)
+  { oldId: 'scheduling.notify_shift_created', newId: 'notify.send', description: 'Scheduling notify consolidated into notify.send', phase: 'phase_1_notify_merge' },
+  { oldId: 'scheduling.notify_shift_updated', newId: 'notify.send', description: 'Scheduling notify consolidated into notify.send', phase: 'phase_1_notify_merge' },
+  { oldId: 'scheduling.notify_shift_deleted', newId: 'notify.send', description: 'Scheduling notify consolidated into notify.send', phase: 'phase_1_notify_merge' },
+  { oldId: 'scheduling.notify_schedule_published', newId: 'notify.send', description: 'Scheduling notify consolidated into notify.send', phase: 'phase_1_notify_merge' },
+  { oldId: 'scheduling.notify_shift_swap', newId: 'notify.send', description: 'Scheduling notify consolidated into notify.send', phase: 'phase_1_notify_merge' },
+  { oldId: 'scheduling.notify_automation_change', newId: 'notify.send', description: 'Scheduling notify consolidated into notify.send', phase: 'phase_1_notify_merge' },
+
+  // PHASE 2 — Billing domain consolidation (32 -> ~13)
+  { oldId: 'billing.invoices_get', newId: 'billing.invoice', description: 'Billing invoices_get consolidated into billing.invoice', phase: 'phase_2_billing_merge' },
+  { oldId: 'billing.invoices_list', newId: 'billing.invoice', description: 'Billing invoices_list consolidated into billing.invoice', phase: 'phase_2_billing_merge' },
+  { oldId: 'billing.draft_invoices', newId: 'billing.invoice_generate', description: 'Billing draft_invoices renamed to invoice_generate', phase: 'phase_2_billing_merge' },
+  { oldId: 'billing.generate_invoice_pdf', newId: 'billing.invoice_pdf', description: 'Billing generate_invoice_pdf renamed to invoice_pdf', phase: 'phase_2_billing_merge' },
+  { oldId: 'billing.send_invoice', newId: 'billing.invoice_send', description: 'Billing send_invoice consolidated into invoice_send', phase: 'phase_2_billing_merge' },
+  { oldId: 'billing.send_invoice_email', newId: 'billing.invoice_send', description: 'Billing send_invoice_email consolidated into invoice_send', phase: 'phase_2_billing_merge' },
+  { oldId: 'billing.send_invoice_bulk', newId: 'billing.invoice_send', description: 'Billing send_invoice_bulk consolidated into invoice_send', phase: 'phase_2_billing_merge' },
+  { oldId: 'billing.mark_invoice_sent', newId: 'billing.invoice_send', description: 'Billing mark_invoice_sent consolidated into invoice_send', phase: 'phase_2_billing_merge' },
+  { oldId: 'billing.mark_invoice_paid', newId: 'billing.invoice_status', description: 'Billing mark_invoice_paid consolidated into invoice_status', phase: 'phase_2_billing_merge' },
+  { oldId: 'billing.check_invoices_overdue', newId: 'billing.invoice_status', description: 'Billing check_invoices_overdue consolidated into invoice_status', phase: 'phase_2_billing_merge' },
+  { oldId: 'billing.invoices_summary', newId: 'billing.invoice_summary', description: 'Billing invoices_summary renamed to invoice_summary', phase: 'phase_2_billing_merge' },
+  { oldId: 'billing.bi_deep_analysis', newId: 'billing.analyze', description: 'Billing BI deep_analysis consolidated into analyze', phase: 'phase_2_billing_merge' },
+  { oldId: 'billing.bi_learn_invoice_patterns', newId: 'billing.analyze', description: 'Billing BI consolidated into analyze', phase: 'phase_2_billing_merge' },
+  { oldId: 'billing.bi_scan_payroll_patterns', newId: 'billing.analyze', description: 'Billing BI consolidated into analyze', phase: 'phase_2_billing_merge' },
+  { oldId: 'billing.bi_scan_schedule_patterns', newId: 'billing.analyze', description: 'Billing BI consolidated into analyze', phase: 'phase_2_billing_merge' },
+  { oldId: 'billing.bi_search_invoices', newId: 'billing.analyze', description: 'Billing BI consolidated into analyze', phase: 'phase_2_billing_merge' },
+  { oldId: 'billing.learn_preference', newId: 'billing.settings', description: 'Billing learn_preference consolidated into settings', phase: 'phase_2_billing_merge' },
+  { oldId: 'billing.push_to_qb', newId: 'billing.sync_qb', description: 'Billing push_to_qb consolidated into sync_qb', phase: 'phase_2_billing_merge' },
+  { oldId: 'billing.bi_prepare_for_qb', newId: 'billing.sync_qb', description: 'Billing bi_prepare_for_qb consolidated into sync_qb', phase: 'phase_2_billing_merge' },
+  { oldId: 'billing.qb_connection_status', newId: 'billing.sync_qb', description: 'Billing qb_connection_status consolidated into sync_qb', phase: 'phase_2_billing_merge' },
+  { oldId: 'billing.get_workspace_settings', newId: 'billing.settings', description: 'Billing settings consolidated', phase: 'phase_2_billing_merge' },
+  { oldId: 'billing.set_workspace_settings', newId: 'billing.settings', description: 'Billing settings consolidated', phase: 'phase_2_billing_merge' },
+  { oldId: 'billing.get_client_settings', newId: 'billing.settings', description: 'Billing settings consolidated', phase: 'phase_2_billing_merge' },
+  { oldId: 'billing.set_client_settings', newId: 'billing.settings', description: 'Billing settings consolidated', phase: 'phase_2_billing_merge' },
+  { oldId: 'billing.list_client_settings', newId: 'billing.settings', description: 'Billing settings consolidated', phase: 'phase_2_billing_merge' },
+  { oldId: 'billing.draft_payroll', newId: 'payroll.draft', description: 'Billing draft_payroll moved to payroll.draft', phase: 'phase_2_billing_merge' },
+
+  // PHASE 2 — Notify domain consolidation (9 -> 3)
+  { oldId: 'notify.send_priority', newId: 'notify.send', description: 'Notify send_priority consolidated into notify.send', phase: 'phase_2_notify_merge' },
+  { oldId: 'notify.send_critical', newId: 'notify.send', description: 'Notify send_critical consolidated into notify.send', phase: 'phase_2_notify_merge' },
+  { oldId: 'notify.send_platform_update', newId: 'notify.send', description: 'Notify send_platform_update consolidated into notify.send', phase: 'phase_2_notify_merge' },
+  { oldId: 'notify.broadcast_message', newId: 'notify.broadcast', description: 'Notify broadcast_message renamed to notify.broadcast', phase: 'phase_2_notify_merge' },
+  { oldId: 'notify.bulk_by_role', newId: 'notify.broadcast', description: 'Notify bulk_by_role consolidated into notify.broadcast', phase: 'phase_2_notify_merge' },
+  { oldId: 'notify.clear_all', newId: 'notify.manage', description: 'Notify clear_all consolidated into notify.manage', phase: 'phase_2_notify_merge' },
+  { oldId: 'notify.mark_all_read', newId: 'notify.manage', description: 'Notify mark_all_read consolidated into notify.manage', phase: 'phase_2_notify_merge' },
+  { oldId: 'notify.get_stats', newId: 'notify.manage', description: 'Notify get_stats consolidated into notify.manage', phase: 'phase_2_notify_merge' },
+
+  // PHASE 2 — Onboarding domain consolidation (17 -> 7)
+  { oldId: 'onboarding.send_invitation', newId: 'onboarding.invite', description: 'Onboarding send_invitation consolidated into invite', phase: 'phase_2_onboarding_merge' },
+  { oldId: 'onboarding.resend_invitation', newId: 'onboarding.invite', description: 'Onboarding resend consolidated into invite', phase: 'phase_2_onboarding_merge' },
+  { oldId: 'onboarding.revoke_invitation', newId: 'onboarding.invite', description: 'Onboarding revoke consolidated into invite', phase: 'phase_2_onboarding_merge' },
+  { oldId: 'onboarding.send_client_welcome', newId: 'onboarding.invite', description: 'Onboarding client_welcome consolidated into invite', phase: 'phase_2_onboarding_merge' },
+  { oldId: 'onboarding.provision_workspace', newId: 'onboarding.provision', description: 'Onboarding provision_workspace renamed', phase: 'phase_2_onboarding_merge' },
+  { oldId: 'onboarding.setup_defaults', newId: 'onboarding.provision', description: 'Onboarding setup_defaults consolidated into provision', phase: 'phase_2_onboarding_merge' },
+  { oldId: 'onboarding.get_routing_config', newId: 'onboarding.configure', description: 'Onboarding get_routing consolidated into configure', phase: 'phase_2_onboarding_merge' },
+  { oldId: 'onboarding.validate_routing', newId: 'onboarding.configure', description: 'Onboarding validate_routing consolidated into configure', phase: 'phase_2_onboarding_merge' },
+  { oldId: 'onboarding.connect_integration', newId: 'onboarding.configure', description: 'Onboarding connect_integration consolidated into configure', phase: 'phase_2_onboarding_merge' },
+  { oldId: 'onboarding.migrate_data', newId: 'onboarding.migrate', description: 'Onboarding migrate_data renamed', phase: 'phase_2_onboarding_merge' },
+  { oldId: 'onboarding.apply_auto_fixes', newId: 'onboarding.migrate', description: 'Onboarding apply_auto_fixes consolidated into migrate', phase: 'phase_2_onboarding_merge' },
+  { oldId: 'onboarding.track_progress', newId: 'onboarding.track', description: 'Onboarding track_progress renamed', phase: 'phase_2_onboarding_merge' },
+  { oldId: 'onboarding.get_checklist', newId: 'onboarding.track', description: 'Onboarding get_checklist consolidated into track', phase: 'phase_2_onboarding_merge' },
+  { oldId: 'onboarding.get_platform_status', newId: 'onboarding.track', description: 'Onboarding get_platform_status consolidated into track', phase: 'phase_2_onboarding_merge' },
+  { oldId: 'onboarding.recommend_features', newId: 'onboarding.recommend', description: 'Onboarding recommend_features renamed', phase: 'phase_2_onboarding_merge' },
+  { oldId: 'onboarding.gather_billing_preferences', newId: 'onboarding.recommend', description: 'Onboarding gather_billing_preferences consolidated into recommend', phase: 'phase_2_onboarding_merge' },
+  { oldId: 'onboarding.run_diagnostics', newId: 'onboarding.diagnose', description: 'Onboarding run_diagnostics renamed to diagnose', phase: 'phase_2_onboarding_merge' },
+];
+
+function shimAction({ oldId, newId, description }: ShimDefinition): void {
   helpaiOrchestrator.registerAction({
     actionId: oldId,
-    name: `[SHIM] ${oldId} → ${newId}`,
-    category: 'automation' as any,
+    name: `[SHIM] ${oldId} -> ${newId}`,
+    category: 'automation',
     description: `Compatibility shim: ${description}. Forwards to ${newId}.`,
     requiredRoles: [],
     handler: async (request: ActionRequest): Promise<ActionResult> => {
@@ -36,161 +146,24 @@ function shimAction(oldId: string, newId: string, description: string): void {
 }
 
 export function registerActionCompatibilityShims(): void {
-  // =========================================================================
-  // STEP 2 — Orphaned domain duplicate (Phase 26A — shim removed)
-  // =========================================================================
-  // Previously: platform_roles.assign → uacp.assign_platform_role. The target
-  // was disabled as non-MVP, leaving the shim redirecting to a non-existent
-  // action. platform_roles.assign is now registered directly in actionRegistry
-  // (registerOnboardingActions) with withAuditWrap — no shim needed.
+  for (const shim of LEGACY_ACTION_SHIMS) {
+    shimAction(shim);
+  }
 
-  // =========================================================================
-  // STEP 3 — Single-action orphan domain merges
-  // =========================================================================
-  // employee.* → employees.* (singular → plural domain merge)
-  shimAction('employee.track_milestones', 'employees.track_milestones', 'employee domain merged into employees');
-  shimAction('employee.flag_anniversary', 'employees.flag_anniversary', 'employee domain merged into employees');
-  shimAction('employee.flag_promotion_eligibility', 'employees.flag_promotion_eligibility', 'employee domain merged into employees');
+  const countByPhase = LEGACY_ACTION_SHIMS.reduce<Record<ShimPhase, number>>((acc, shim) => {
+    acc[shim.phase] = (acc[shim.phase] || 0) + 1;
+    return acc;
+  }, {
+    phase_1_domain_merge: 0,
+    phase_1_split_domain_merge: 0,
+    phase_1_notify_merge: 0,
+    phase_2_billing_merge: 0,
+    phase_2_notify_merge: 0,
+    phase_2_onboarding_merge: 0,
+  });
 
-  // shift.execute_swap → scheduling.execute_swap
-  shimAction('shift.execute_swap', 'scheduling.execute_swap', 'shift domain merged into scheduling');
-
-  // external.flag_external_risk → security.flag_external_risk
-  shimAction('external.flag_external_risk', 'security.flag_external_risk', 'external risk flagging merged into security');
-
-  // system.monitoring_dashboard → diagnostics.monitoring_dashboard
-  shimAction('system.monitoring_dashboard', 'diagnostics.monitoring_dashboard', 'system monitoring merged into diagnostics');
-
-  // =========================================================================
-  // STEP 4 — Split domain merges
-  // =========================================================================
-  // testing.* → test.* (unified test domain)
-  shimAction('testing.schedule_drug_test', 'test.schedule_drug_test', 'testing domain merged into test');
-  shimAction('testing.record_result', 'test.record_result', 'testing domain merged into test');
-  shimAction('testing.flag_failed_test', 'test.flag_failed_test', 'testing domain merged into test');
-  shimAction('testing.generate_random_selection', 'test.generate_random_selection', 'testing domain merged into test');
-  shimAction('testing.check_client_requirements', 'test.check_client_requirements', 'testing domain merged into test');
-
-  // time.* → time_tracking.* (unified time_tracking domain)
-  shimAction('time.watch_clock_ins', 'time_tracking.watch_clock_ins', 'time domain merged into time_tracking');
-  shimAction('time.monitor_coverage', 'time_tracking.monitor_coverage', 'time domain merged into time_tracking');
-  shimAction('time.alert_on_absence', 'time_tracking.alert_on_absence', 'time domain merged into time_tracking');
-  shimAction('time.clock_out_officer', 'time_tracking.clock_out_officer', 'time domain merged into time_tracking');
-
-  // bulk.* → employees.* (bulk domain merged into employees)
-  shimAction('bulk.import_employees', 'employees.import', 'bulk domain merged into employees');
-  shimAction('bulk.export_employees', 'employees.export', 'bulk domain merged into employees');
-
-  // =========================================================================
-  // STEP 5 — Scheduling notify actions (now → notify.send after Phase 2)
-  // =========================================================================
-  shimAction('scheduling.notify_shift_created', 'notify.send', 'Scheduling notify consolidated into notify.send');
-  shimAction('scheduling.notify_shift_updated', 'notify.send', 'Scheduling notify consolidated into notify.send');
-  shimAction('scheduling.notify_shift_deleted', 'notify.send', 'Scheduling notify consolidated into notify.send');
-  shimAction('scheduling.notify_schedule_published', 'notify.send', 'Scheduling notify consolidated into notify.send');
-  shimAction('scheduling.notify_shift_swap', 'notify.send', 'Scheduling notify consolidated into notify.send');
-  shimAction('scheduling.notify_automation_change', 'notify.send', 'Scheduling notify consolidated into notify.send');
-
-  // =========================================================================
-  // PHASE 2 — Billing domain consolidation (32 → ~13)
-  // =========================================================================
-  // billing.invoice replaces invoices_get + invoices_list
-  shimAction('billing.invoices_get', 'billing.invoice', 'Billing invoices_get consolidated into billing.invoice');
-  shimAction('billing.invoices_list', 'billing.invoice', 'Billing invoices_list consolidated into billing.invoice');
-
-  // billing.invoice_generate replaces draft_invoices
-  shimAction('billing.draft_invoices', 'billing.invoice_generate', 'Billing draft_invoices renamed to invoice_generate');
-
-  // billing.invoice_pdf replaces generate_invoice_pdf
-  shimAction('billing.generate_invoice_pdf', 'billing.invoice_pdf', 'Billing generate_invoice_pdf renamed to invoice_pdf');
-
-  // billing.invoice_send replaces send_invoice + send_invoice_email + send_invoice_bulk + mark_invoice_sent
-  shimAction('billing.send_invoice', 'billing.invoice_send', 'Billing send_invoice consolidated into invoice_send');
-  shimAction('billing.send_invoice_email', 'billing.invoice_send', 'Billing send_invoice_email consolidated into invoice_send');
-  shimAction('billing.send_invoice_bulk', 'billing.invoice_send', 'Billing send_invoice_bulk consolidated into invoice_send');
-  shimAction('billing.mark_invoice_sent', 'billing.invoice_send', 'Billing mark_invoice_sent consolidated into invoice_send');
-
-  // billing.invoice_status replaces mark_invoice_paid + check_invoices_overdue
-  shimAction('billing.mark_invoice_paid', 'billing.invoice_status', 'Billing mark_invoice_paid consolidated into invoice_status');
-  shimAction('billing.check_invoices_overdue', 'billing.invoice_status', 'Billing check_invoices_overdue consolidated into invoice_status');
-
-  // billing.invoice_summary replaces invoices_summary
-  shimAction('billing.invoices_summary', 'billing.invoice_summary', 'Billing invoices_summary renamed to invoice_summary');
-
-  // billing.analyze replaces all bi_* actions + learn_preference
-  shimAction('billing.bi_deep_analysis', 'billing.analyze', 'Billing BI deep_analysis consolidated into analyze');
-  shimAction('billing.bi_learn_invoice_patterns', 'billing.analyze', 'Billing BI consolidated into analyze');
-  shimAction('billing.bi_scan_payroll_patterns', 'billing.analyze', 'Billing BI consolidated into analyze');
-  shimAction('billing.bi_scan_schedule_patterns', 'billing.analyze', 'Billing BI consolidated into analyze');
-  shimAction('billing.bi_search_invoices', 'billing.analyze', 'Billing BI consolidated into analyze');
-  shimAction('billing.learn_preference', 'billing.settings', 'Billing learn_preference consolidated into settings');
-
-  // billing.sync_qb replaces push_to_qb + bi_prepare_for_qb + qb_connection_status
-  shimAction('billing.push_to_qb', 'billing.sync_qb', 'Billing push_to_qb consolidated into sync_qb');
-  shimAction('billing.bi_prepare_for_qb', 'billing.sync_qb', 'Billing bi_prepare_for_qb consolidated into sync_qb');
-  shimAction('billing.qb_connection_status', 'billing.sync_qb', 'Billing qb_connection_status consolidated into sync_qb');
-
-  // billing.settings replaces all get/set/list client/workspace settings
-  shimAction('billing.get_workspace_settings', 'billing.settings', 'Billing settings consolidated');
-  shimAction('billing.set_workspace_settings', 'billing.settings', 'Billing settings consolidated');
-  shimAction('billing.get_client_settings', 'billing.settings', 'Billing settings consolidated');
-  shimAction('billing.set_client_settings', 'billing.settings', 'Billing settings consolidated');
-  shimAction('billing.list_client_settings', 'billing.settings', 'Billing settings consolidated');
-
-  // payroll.draft replaces billing.draft_payroll
-  shimAction('billing.draft_payroll', 'payroll.draft', 'Billing draft_payroll moved to payroll.draft');
-
-  // =========================================================================
-  // PHASE 2 — Notify domain consolidation (9 → 3)
-  // =========================================================================
-  // notify.send now handles all send variants
-  shimAction('notify.send_priority', 'notify.send', 'Notify send_priority consolidated into notify.send');
-  shimAction('notify.send_critical', 'notify.send', 'Notify send_critical consolidated into notify.send');
-  shimAction('notify.send_platform_update', 'notify.send', 'Notify send_platform_update consolidated into notify.send');
-
-  // notify.broadcast replaces broadcast_message + bulk_by_role
-  shimAction('notify.broadcast_message', 'notify.broadcast', 'Notify broadcast_message renamed to notify.broadcast');
-  shimAction('notify.bulk_by_role', 'notify.broadcast', 'Notify bulk_by_role consolidated into notify.broadcast');
-
-  // notify.manage replaces clear_all + mark_all_read + get_stats
-  shimAction('notify.clear_all', 'notify.manage', 'Notify clear_all consolidated into notify.manage');
-  shimAction('notify.mark_all_read', 'notify.manage', 'Notify mark_all_read consolidated into notify.manage');
-  shimAction('notify.get_stats', 'notify.manage', 'Notify get_stats consolidated into notify.manage');
-
-  // =========================================================================
-  // PHASE 2 — Onboarding domain consolidation (17 → 7)
-  // =========================================================================
-  // onboarding.invite replaces send/resend/revoke invitation + client welcome
-  shimAction('onboarding.send_invitation', 'onboarding.invite', 'Onboarding send_invitation consolidated into invite');
-  shimAction('onboarding.resend_invitation', 'onboarding.invite', 'Onboarding resend consolidated into invite');
-  shimAction('onboarding.revoke_invitation', 'onboarding.invite', 'Onboarding revoke consolidated into invite');
-  shimAction('onboarding.send_client_welcome', 'onboarding.invite', 'Onboarding client_welcome consolidated into invite');
-
-  // onboarding.provision replaces provision_workspace + setup_defaults
-  shimAction('onboarding.provision_workspace', 'onboarding.provision', 'Onboarding provision_workspace renamed');
-  shimAction('onboarding.setup_defaults', 'onboarding.provision', 'Onboarding setup_defaults consolidated into provision');
-
-  // onboarding.configure replaces get_routing_config + validate_routing + connect_integration
-  shimAction('onboarding.get_routing_config', 'onboarding.configure', 'Onboarding get_routing consolidated into configure');
-  shimAction('onboarding.validate_routing', 'onboarding.configure', 'Onboarding validate_routing consolidated into configure');
-  shimAction('onboarding.connect_integration', 'onboarding.configure', 'Onboarding connect_integration consolidated into configure');
-
-  // onboarding.migrate replaces migrate_data + apply_auto_fixes
-  shimAction('onboarding.migrate_data', 'onboarding.migrate', 'Onboarding migrate_data renamed');
-  shimAction('onboarding.apply_auto_fixes', 'onboarding.migrate', 'Onboarding apply_auto_fixes consolidated into migrate');
-
-  // onboarding.track replaces track_progress + get_checklist + get_platform_status
-  shimAction('onboarding.track_progress', 'onboarding.track', 'Onboarding track_progress renamed');
-  shimAction('onboarding.get_checklist', 'onboarding.track', 'Onboarding get_checklist consolidated into track');
-  shimAction('onboarding.get_platform_status', 'onboarding.track', 'Onboarding get_platform_status consolidated into track');
-
-  // onboarding.recommend replaces recommend_features + gather_billing_preferences
-  shimAction('onboarding.recommend_features', 'onboarding.recommend', 'Onboarding recommend_features renamed');
-  shimAction('onboarding.gather_billing_preferences', 'onboarding.recommend', 'Onboarding gather_billing_preferences consolidated into recommend');
-
-  // onboarding.diagnose replaces run_diagnostics
-  shimAction('onboarding.run_diagnostics', 'onboarding.diagnose', 'Onboarding run_diagnostics renamed to diagnose');
-
-  const shimCount = 25 + 27 + 8 + 14; // Phase 1 + Billing + Notify + Onboarding (Phase 26A removed platform_roles.assign dangling shim)
-  log.info(`[Action Compatibility Shims] Registered ${shimCount} backward-compatible action redirects (Phase 1: 25, Phase 2: 49)`);
+  log.info(
+    `[Action Compatibility Shims] Registered ${LEGACY_ACTION_SHIMS.length} backward-compatible action redirects`,
+    countByPhase,
+  );
 }
