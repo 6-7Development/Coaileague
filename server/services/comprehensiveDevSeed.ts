@@ -124,7 +124,7 @@ export async function runComprehensiveDevSeed(): Promise<{ success: boolean; log
     for (const c of CLIENTS) {
       await pool.query(
         `INSERT INTO clients (id, workspace_id, first_name, last_name, company_name, contract_rate, billable_hourly_rate, email, address, is_active, created_at, updated_at)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,true,NOW(),NOW())
+         VALUES ($1,$2,$3,$4,$5,$6::numeric,$7::numeric,$8,$9,true,NOW(),NOW())
          ON CONFLICT (id) DO UPDATE
          SET company_name=EXCLUDED.company_name,
              contract_rate=EXCLUDED.contract_rate,
@@ -177,9 +177,9 @@ export async function runComprehensiveDevSeed(): Promise<{ success: boolean; log
 
           await pool.query(
             `INSERT INTO time_entries (id, workspace_id, shift_id, employee_id, client_id, captured_bill_rate, captured_pay_rate, regular_hours, overtime_hours, billable_amount, payable_amount, clock_in, clock_out, total_hours, hourly_rate, total_amount, status, created_at, updated_at)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12::timestamptz,$13::timestamptz,$14,$7,$11,'approved',NOW(),NOW())
+             VALUES ($1,$2,$3,$4,$5,$6::numeric,$7::numeric,$8::numeric,$9::numeric,$10::numeric,$11::numeric,$12::timestamptz,$13::timestamptz,$14::numeric,$15::numeric,$16::numeric,'approved',NOW(),NOW())
              ON CONFLICT (id) DO NOTHING`,
-            [teId, WS, shiftId, emp.empId, client.id, client.billRate, emp.payRate, regularH.toFixed(2), otH.toFixed(2), billable, payable, startISO, endISO, hours.toFixed(2)]
+            [teId, WS, shiftId, emp.empId, client.id, client.billRate, emp.payRate, regularH.toFixed(2), otH.toFixed(2), billable, payable, startISO, endISO, hours.toFixed(2), emp.payRate, payable]
           );
           counts.timeEntries++;
         }
@@ -270,9 +270,9 @@ export async function runComprehensiveDevSeed(): Promise<{ success: boolean; log
 
         await pool.query(
           `INSERT INTO invoices (id, workspace_id, client_id, invoice_number, issue_date, due_date, subtotal, tax_rate, tax_amount, total, platform_fee_percentage, platform_fee_amount, business_amount, status, paid_at, amount_paid, sent_at, created_at, updated_at)
-           VALUES ($1,$2,$3,$4,$5::timestamptz,$6::timestamptz,$7,'0.00','0.00',$7,'8.00',$8,$9,$10,$11::timestamptz,$7,$5::timestamptz,NOW(),NOW())
+           VALUES ($1,$2,$3,$4,$5::timestamptz,$6::timestamptz,$7::numeric,'0.00','0.00',$8::numeric,'8.00',$9::numeric,$10::numeric,$11,$12::timestamptz,$13::numeric,$14::timestamptz,NOW(),NOW())
            ON CONFLICT (id) DO UPDATE SET status=EXCLUDED.status, paid_at=EXCLUDED.paid_at, amount_paid=EXCLUDED.amount_paid, updated_at=NOW()`,
-          [invId, WS, client.id, invoiceNumber, issueDate.toISOString(), dueDate.toISOString(), subtotal.toFixed(2), platformFee.toFixed(2), businessAmt.toFixed(2), isPaid ? 'paid' : 'sent', isPaid ? issueDate.toISOString() : null]
+          [invId, WS, client.id, invoiceNumber, issueDate.toISOString(), dueDate.toISOString(), subtotal.toFixed(2), subtotal.toFixed(2), platformFee.toFixed(2), businessAmt.toFixed(2), isPaid ? 'paid' : 'sent', isPaid ? issueDate.toISOString() : null, subtotal.toFixed(2), issueDate.toISOString()]
         );
         counts.invoices++;
 
