@@ -16,17 +16,17 @@ import { db } from 'server/db';
 import { payrollRuns, payrollEntries, employees } from '@shared/schema';
 import { and, eq, or, gte, lte, inArray, not } from 'drizzle-orm';
 
-const PAYROLL_TERMINAL_STATUSES = ['approved', 'processed', 'paid', 'completed'] as const;
-const PAYROLL_DRAFT_STATUSES = ['draft', 'pending'] as const;
+export const PAYROLL_TERMINAL_STATUSES = ['approved', 'processed', 'paid', 'completed'] as const;
+export const PAYROLL_DRAFT_STATUSES = ['draft', 'pending'] as const;
 
-type PayrollTerminalStatus = typeof PAYROLL_TERMINAL_STATUSES[number];
-type PayrollDraftStatus = typeof PAYROLL_DRAFT_STATUSES[number];
+export type PayrollTerminalStatus = typeof PAYROLL_TERMINAL_STATUSES[number];
+export type PayrollDraftStatus = typeof PAYROLL_DRAFT_STATUSES[number];
 
-function isTerminalPayrollStatus(status: string | null | undefined): status is PayrollTerminalStatus {
+export function isTerminalPayrollStatus(status: string | null | undefined): status is PayrollTerminalStatus {
   return PAYROLL_TERMINAL_STATUSES.includes(status as PayrollTerminalStatus);
 }
 
-function isDraftPayrollStatus(status: string | null | undefined): status is PayrollDraftStatus {
+export function isDraftPayrollStatus(status: string | null | undefined): status is PayrollDraftStatus {
   return PAYROLL_DRAFT_STATUSES.includes(status as PayrollDraftStatus);
 }
 
