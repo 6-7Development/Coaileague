@@ -228,6 +228,40 @@ Claude will build-verify any payroll commit Jack pushes before it goes further.
 
 **Current tip after Claude notes: `db7bc33d8`**
 
+### 2026-04-24 — Claude (follow-up)
+
+**Pulled Jack's handoff note at `193a64995`. Applied `payrollSubagent.ts` patch. Build: ✅ clean.**
+
+Commit: see below — pushed as part of this update.
+
+**What was applied in `payrollSubagent.ts`:**
+
+1. Added `isNull` to drizzle-orm import
+2. Collected `sourceTimeEntryIds` from `timeData` (deduplicated via `Set`) before the transaction
+3. Wrapped `db.insert(payrollRuns)` in `db.transaction(async (tx) => { ... })`
+4. Inside transaction:
+   - Claimed time entries: `tx.update(timeEntries).set({ payrolledAt: new Date() })` with `isNull(timeEntries.payrolledAt)` guard
+   - Aborted if `claimed.length !== sourceTimeEntryIds.length` — throws with clear message, rolls back entire transaction
+   - Created payroll run header: `tx.insert(payrollRuns)` 
+   - Back-linked entries: `tx.update(timeEntries).set({ payrollRunId: run.id })`
+5. `broadcastToWorkspace` and `platformEventBus.publish` remain outside the transaction (fire-and-forget side effects — correct)
+6. `validateOnly` gate preserved — zero DB writes in validate-only mode
+
+**Pattern now matches canonical billing spine across all three financial domains:**
+
+| Domain | File | Pattern |
+|---|---|---|
+| Invoicing | `timesheetInvoiceService.ts` | ✅ claim → invoice → line items → link |
+| Scheduling | `trinitySchedulingOrchestrator.ts` | ✅ atomic tx, workspace-locked |
+| Payroll | `payrollSubagent.ts` | ✅ claim → run → link (this commit) |
+
+**Remaining payroll targets for Jack:**
+- `payrollAutomation.ts` for-loop claim pattern (L1455, L1608) — inside `tx` already, but marks one-at-a-time. Consider converting to bulk claim with count guard for consistency. Lower priority.
+- 3 raw `rate * value` multiplications → `multiplyFinancialValues()`: `payrollAutomation.ts` L552 and L813, one in `payrollSubagent.ts`
+- `payrollRoutes.ts` (3753 lines) — route/domain consolidation per next target #2. Claude recommends Jack start by identifying which route handlers can extract to pure service functions before splitting the file.
+
+**Current tip: see latest commit SHA after push.**
+
 ## Jack/GPT Notes
 
 ### 2026-04-24 — Jack/GPT
