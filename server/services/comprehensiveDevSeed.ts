@@ -74,6 +74,22 @@ function buildFutureAssignments(day: number, fieldStaff: StaffMember[]): Array<S
   return assignments;
 }
 
+async function employeeHasShiftOverlap(workspaceId: string, employeeId: string, startISO: string, endISO: string): Promise<boolean> {
+  const overlap = await pool.query(
+    `SELECT 1
+       FROM shifts
+      WHERE workspace_id = $1
+        AND employee_id = $2
+        AND deleted_at IS NULL
+        AND start_time < $4::timestamptz
+        AND end_time > $3::timestamptz
+      LIMIT 1`,
+    [workspaceId, employeeId, startISO, endISO]
+  );
+
+  return (overlap.rowCount ?? 0) > 0;
+}
+
 const log: string[] = [];
 function info(msg: string) { console.log('[ComprehensiveSeed] ' + msg); log.push(msg); }
 
@@ -215,11 +231,14 @@ export async function runComprehensiveDevSeed(): Promise<{ success: boolean; log
         for (let cIdx2 = 0; cIdx2 < CLIENTS.length; cIdx2++) {
           const client = CLIENTS[cIdx2];
           // ~50% open, 50% assigned — use day+client index to vary
-          const slotIndex = tIdx2 * CLIENTS.length + cIdx2;
-          const emp = futureAssignments[slotIndex];
-          const isOpen = !emp;
           const startISO = daysFromNow(day, tmpl.startH);
           const endISO = daysFromNow(day, tmpl.endH < tmpl.startH ? tmpl.endH + 24 : tmpl.endH);
+          const slotIndex = tIdx2 * CLIENTS.length + cIdx2;
+          let emp = futureAssignments[slotIndex];
+          if (emp && await employeeHasShiftOverlap(WS, emp.empId, startISO, endISO)) {
+            emp = null;
+          }
+          const isOpen = !emp;
           const futureNum = (day - 1) * CLIENTS.length * SHIFT_TEMPLATES.length + tIdx2 * CLIENTS.length + cIdx2 + 1;
           const shiftId = 'dev-shift-future-' + String(futureNum).padStart(4, '0');
 
