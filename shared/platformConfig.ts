@@ -1465,3 +1465,22 @@ export type Feature = keyof typeof FEATURES;
 export type HelpAICredentialType = typeof HELPAI.credentials.supportedTypes[number];
 export type HelpAICategory = typeof HELPAI.registry.categories[number];
 export type ChatServerHubRoomType = keyof typeof CHAT_SERVER_HUB.roomTypes;
+
+// ── Notification Role Groups (Codex handoff: centralized from inline arrays) ──
+export const PLATFORM_NOTIFICATION_EXECUTIVE_ROLES = [
+  'root_admin', 'deputy_admin',
+] as const;
+
+export const PLATFORM_NOTIFICATION_MANAGEMENT_ROLES = [
+  'root_admin', 'deputy_admin', 'support_manager', 'sysop',
+  'org_owner', 'co_owner', 'manager',
+] as const;
+
+export const PLATFORM_NOTIFICATION_OPERATIONS_ROLES = [
+  'root_admin', 'deputy_admin', 'support_manager', 'support_agent',
+  'sysop', 'org_owner', 'co_owner', 'manager', 'supervisor',
+] as const;
+
+export const PLATFORM_NOTIFICATION_SHIFT_ATTENTION_ROLES = [
+  'org_owner', 'co_owner', 'manager', 'supervisor', 'shift_leader',
+] as const;

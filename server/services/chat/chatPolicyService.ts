@@ -130,3 +130,52 @@ export function getRoomLifecycleAccessPolicy(
     reason: 'Only managers or the room owner can close/reopen this room',
   };
 }
+
+// ── Additional policy helpers (Codex handoff 2026-04-23 part 2) ─────────────
+
+/**
+ * Alias for isReservedRoomName — preferred name per Codex spec.
+ */
+export const isReservedPlatformRoomName = isReservedRoomName;
+
+/**
+ * True if the actor can manage (delete, pin, clear) messages for all users in a room.
+ */
+export function canManageRoomMessagesForEveryone(
+  actorRole: string | null | undefined,
+): boolean {
+  return isSupportStaffRole(actorRole) || 
+    ['org_owner', 'co_owner', 'org_manager', 'manager'].includes(actorRole ?? '');
+}
+
+/**
+ * True if the actor can manage workspace room lifecycle (create, archive, delete rooms).
+ */
+export function canManageWorkspaceRoomLifecycle(
+  actorRole: string | null | undefined,
+  isRoomOwner: boolean = false,
+): boolean {
+  if (isSupportStaffRole(actorRole)) return true;
+  if (isRoomOwner) return true;
+  return ['org_owner', 'co_owner', 'org_manager', 'manager'].includes(actorRole ?? '');
+}
+
+/**
+ * True if the actor can invite other members to a workspace room.
+ */
+export function canInviteOthersToWorkspaceRoom(
+  actorRole: string | null | undefined,
+): boolean {
+  if (isSupportStaffRole(actorRole)) return true;
+  return ['org_owner', 'co_owner', 'org_manager', 'manager', 'supervisor'].includes(actorRole ?? '');
+}
+
+/**
+ * True if the room slug is the canonical HelpDesk room identifier.
+ * Guards against variations like 'helpdesk', 'help-desk', 'HelpDesk', etc.
+ */
+export function isCanonicalHelpdeskRoomSlug(slug: string | null | undefined): boolean {
+  if (!slug) return false;
+  const normalized = slug.toLowerCase().trim().replace(/[-_\s]/g, '');
+  return normalized === 'helpdesk' || normalized === 'helpai';
+}

@@ -22,6 +22,7 @@ import { featureRegistryService } from './featureRegistryService';
 import { sanitizeForEndUser } from '@shared/utils/humanFriendlyCopy';
 import { createLogger } from '../lib/logger';
 import { PLATFORM_WORKSPACE_ID } from './billing/billingConstants';
+import { PLATFORM_NOTIFICATION_EXECUTIVE_ROLES, PLATFORM_NOTIFICATION_MANAGEMENT_ROLES, PLATFORM_NOTIFICATION_OPERATIONS_ROLES, PLATFORM_NOTIFICATION_SHIFT_ATTENTION_ROLES } from '@shared/platformConfig';
 const log = createLogger('universalNotificationEngine');
 
 
