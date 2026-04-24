@@ -19,8 +19,6 @@ type ShimPhase =
   | 'phase_1_domain_merge'
   | 'phase_1_split_domain_merge'
   | 'phase_1_notify_merge'
-  | 'phase_2_billing_merge'
-  | 'phase_2_notify_merge'
   | 'phase_2_onboarding_merge';
 
 interface ShimDefinition {
@@ -66,43 +64,9 @@ const LEGACY_ACTION_SHIMS: readonly ShimDefinition[] = [
   { oldId: 'scheduling.notify_shift_swap', newId: 'notify.send', description: 'Scheduling notify consolidated into notify.send', phase: 'phase_1_notify_merge' },
   { oldId: 'scheduling.notify_automation_change', newId: 'notify.send', description: 'Scheduling notify consolidated into notify.send', phase: 'phase_1_notify_merge' },
 
-  // PHASE 2 — Billing domain consolidation (32 -> ~13)
-  { oldId: 'billing.invoices_get', newId: 'billing.invoice', description: 'Billing invoices_get consolidated into billing.invoice', phase: 'phase_2_billing_merge' },
-  { oldId: 'billing.invoices_list', newId: 'billing.invoice', description: 'Billing invoices_list consolidated into billing.invoice', phase: 'phase_2_billing_merge' },
-  { oldId: 'billing.draft_invoices', newId: 'billing.invoice_generate', description: 'Billing draft_invoices renamed to invoice_generate', phase: 'phase_2_billing_merge' },
-  { oldId: 'billing.generate_invoice_pdf', newId: 'billing.invoice_pdf', description: 'Billing generate_invoice_pdf renamed to invoice_pdf', phase: 'phase_2_billing_merge' },
-  { oldId: 'billing.send_invoice', newId: 'billing.invoice_send', description: 'Billing send_invoice consolidated into invoice_send', phase: 'phase_2_billing_merge' },
-  { oldId: 'billing.send_invoice_email', newId: 'billing.invoice_send', description: 'Billing send_invoice_email consolidated into invoice_send', phase: 'phase_2_billing_merge' },
-  { oldId: 'billing.send_invoice_bulk', newId: 'billing.invoice_send', description: 'Billing send_invoice_bulk consolidated into invoice_send', phase: 'phase_2_billing_merge' },
-  { oldId: 'billing.mark_invoice_sent', newId: 'billing.invoice_send', description: 'Billing mark_invoice_sent consolidated into invoice_send', phase: 'phase_2_billing_merge' },
-  { oldId: 'billing.mark_invoice_paid', newId: 'billing.invoice_status', description: 'Billing mark_invoice_paid consolidated into invoice_status', phase: 'phase_2_billing_merge' },
-  { oldId: 'billing.check_invoices_overdue', newId: 'billing.invoice_status', description: 'Billing check_invoices_overdue consolidated into invoice_status', phase: 'phase_2_billing_merge' },
-  { oldId: 'billing.invoices_summary', newId: 'billing.invoice_summary', description: 'Billing invoices_summary renamed to invoice_summary', phase: 'phase_2_billing_merge' },
-  { oldId: 'billing.bi_deep_analysis', newId: 'billing.analyze', description: 'Billing BI deep_analysis consolidated into analyze', phase: 'phase_2_billing_merge' },
-  { oldId: 'billing.bi_learn_invoice_patterns', newId: 'billing.analyze', description: 'Billing BI consolidated into analyze', phase: 'phase_2_billing_merge' },
-  { oldId: 'billing.bi_scan_payroll_patterns', newId: 'billing.analyze', description: 'Billing BI consolidated into analyze', phase: 'phase_2_billing_merge' },
-  { oldId: 'billing.bi_scan_schedule_patterns', newId: 'billing.analyze', description: 'Billing BI consolidated into analyze', phase: 'phase_2_billing_merge' },
-  { oldId: 'billing.bi_search_invoices', newId: 'billing.analyze', description: 'Billing BI consolidated into analyze', phase: 'phase_2_billing_merge' },
-  { oldId: 'billing.learn_preference', newId: 'billing.settings', description: 'Billing learn_preference consolidated into settings', phase: 'phase_2_billing_merge' },
-  { oldId: 'billing.push_to_qb', newId: 'billing.sync_qb', description: 'Billing push_to_qb consolidated into sync_qb', phase: 'phase_2_billing_merge' },
-  { oldId: 'billing.bi_prepare_for_qb', newId: 'billing.sync_qb', description: 'Billing bi_prepare_for_qb consolidated into sync_qb', phase: 'phase_2_billing_merge' },
-  { oldId: 'billing.qb_connection_status', newId: 'billing.sync_qb', description: 'Billing qb_connection_status consolidated into sync_qb', phase: 'phase_2_billing_merge' },
-  { oldId: 'billing.get_workspace_settings', newId: 'billing.settings', description: 'Billing settings consolidated', phase: 'phase_2_billing_merge' },
-  { oldId: 'billing.set_workspace_settings', newId: 'billing.settings', description: 'Billing settings consolidated', phase: 'phase_2_billing_merge' },
-  { oldId: 'billing.get_client_settings', newId: 'billing.settings', description: 'Billing settings consolidated', phase: 'phase_2_billing_merge' },
-  { oldId: 'billing.set_client_settings', newId: 'billing.settings', description: 'Billing settings consolidated', phase: 'phase_2_billing_merge' },
-  { oldId: 'billing.list_client_settings', newId: 'billing.settings', description: 'Billing settings consolidated', phase: 'phase_2_billing_merge' },
-  { oldId: 'billing.draft_payroll', newId: 'payroll.draft', description: 'Billing draft_payroll moved to payroll.draft', phase: 'phase_2_billing_merge' },
-
-  // PHASE 2 — Notify domain consolidation (9 -> 3)
-  { oldId: 'notify.send_priority', newId: 'notify.send', description: 'Notify send_priority consolidated into notify.send', phase: 'phase_2_notify_merge' },
-  { oldId: 'notify.send_critical', newId: 'notify.send', description: 'Notify send_critical consolidated into notify.send', phase: 'phase_2_notify_merge' },
-  { oldId: 'notify.send_platform_update', newId: 'notify.send', description: 'Notify send_platform_update consolidated into notify.send', phase: 'phase_2_notify_merge' },
-  { oldId: 'notify.broadcast_message', newId: 'notify.broadcast', description: 'Notify broadcast_message renamed to notify.broadcast', phase: 'phase_2_notify_merge' },
-  { oldId: 'notify.bulk_by_role', newId: 'notify.broadcast', description: 'Notify bulk_by_role consolidated into notify.broadcast', phase: 'phase_2_notify_merge' },
-  { oldId: 'notify.clear_all', newId: 'notify.manage', description: 'Notify clear_all consolidated into notify.manage', phase: 'phase_2_notify_merge' },
-  { oldId: 'notify.mark_all_read', newId: 'notify.manage', description: 'Notify mark_all_read consolidated into notify.manage', phase: 'phase_2_notify_merge' },
-  { oldId: 'notify.get_stats', newId: 'notify.manage', description: 'Notify get_stats consolidated into notify.manage', phase: 'phase_2_notify_merge' },
+  // PHASE 2 — Billing and notify shims were retired after repository search
+  // showed no active internal callers outside TRINITY_ACTION_AUDIT.md and this
+  // shim registry. Canonical actions remain registered in their owning modules.
 
   // PHASE 2 — Onboarding domain consolidation (17 -> 7)
   { oldId: 'onboarding.send_invitation', newId: 'onboarding.invite', description: 'Onboarding send_invitation consolidated into invite', phase: 'phase_2_onboarding_merge' },
@@ -157,8 +121,6 @@ export function registerActionCompatibilityShims(): void {
     phase_1_domain_merge: 0,
     phase_1_split_domain_merge: 0,
     phase_1_notify_merge: 0,
-    phase_2_billing_merge: 0,
-    phase_2_notify_merge: 0,
     phase_2_onboarding_merge: 0,
   });
 
