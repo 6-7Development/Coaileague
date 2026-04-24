@@ -301,4 +301,43 @@ router.get('/dev-seed', async (req: Request, res: Response) => {
 });
 
 
+// ============================================================================
+// STRESS TEST SEED — 30 days of shifts for ACME + Anvil
+// GET: /api/bootstrap/stress-seed?key=CoAIleague2026Dev
+// ============================================================================
+router.get('/stress-seed', async (req: Request, res: Response) => {
+  const key = req.query.key as string;
+  if (key !== 'CoAIleague2026Dev') {
+    return res.status(403).json({ error: 'Invalid key' });
+  }
+  
+  try {
+    const { runStressTestSeed } = await import('../services/stressTestSeed');
+    const result = await runStressTestSeed();
+    
+    res.setHeader('Content-Type', 'text/html');
+    return res.send(`<!DOCTYPE html><html><body style="font-family:sans-serif;max-width:700px;margin:40px auto;padding:20px">
+      <h1 style="color:#16a34a">✅ Stress Test Seed Complete</h1>
+      <p><strong>${result.created}</strong> shifts created across ACME and Anvil (30-day window)</p>
+      <p><strong>${result.skipped}</strong> shifts already existed (skipped)</p>
+      <hr>
+      <h3>What's seeded:</h3>
+      <ul>
+        <li>15 days of past completed shifts → ready for payroll + invoicing</li>
+        <li>15 days of future shifts → mix of assigned + open for Trinity to fill</li>
+        <li>ACME: 4 client sites × 4 shift types × 15 days</li>
+        <li>Anvil: 3 client sites × 3 shift types × 15 days</li>
+      </ul>
+      <hr>
+      <p>Trinity will automatically process open shifts, generate coverage requests,
+      and send notifications. Payroll can be run from the Payroll module.
+      Client invoices will auto-generate from completed shifts.</p>
+      <br><a href="/dashboard" style="background:#1e3a5f;color:white;padding:12px 24px;text-decoration:none;border-radius:6px">→ Go to Dashboard</a>
+    </body></html>`);
+  } catch(error: unknown) {
+    return res.status(500).send(`<h2>Error: ${sanitizeError(error)}</h2>`);
+  }
+});
+
+
 export default router;
