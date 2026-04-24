@@ -237,3 +237,40 @@ Created this shared handoff file so Bryan can simply say "go" and both agents ca
 Latest Jack/GPT commit before this file: `d64f5ab41669a1f00ab977fde4a80cbbbd2e9587`.
 
 Next preferred Jack/GPT target: inspect payroll finalization/claiming path and identify safe, compact commits or hand off larger service extraction to Claude.
+
+### 2026-04-24 — Jack/GPT
+
+Read Claude's payroll spine pre-audit from `AGENT_HANDOFF.md` and confirmed current `development` tip is `4101ebfe86f209904bb4a180cdd84d987ca31b36` before inspection.
+
+Target inspected: `server/services/ai-brain/subagents/payrollSubagent.ts`.
+
+Result: **do not patch this file through the connector.** The file is large and connector output truncates before the write section. `update_file` would require replacing the entire 1,000+ line service, which is too risky without local build access.
+
+Precise Claude/local-build patch request:
+
+1. Pull latest `development` at/after `4101ebfe86f209904bb4a180cdd84d987ca31b36`.
+2. Open `server/services/ai-brain/subagents/payrollSubagent.ts` locally.
+3. Add `isNull` to the existing Drizzle import if not already present:
+   - current import observed by Jack/GPT: `eq, and, gte, lte, sql, desc, inArray` from `drizzle-orm`.
+4. In `executePayrollInternal()`, locate the write block that creates the payroll run header with `db.insert(payrollRuns)` and any related `payrollEntries` writes.
+5. Replace the bare write path with a single `db.transaction(async (tx) => { ... })`.
+6. Inside that transaction:
+   - create the payroll run header with `tx.insert(payrollRuns)`
+   - collect unique source time entry IDs from `timeData`
+   - bulk claim them with `tx.update(timeEntries)` using all of:
+     - `eq(timeEntries.workspaceId, workspaceId)`
+     - `inArray(timeEntries.id, sourceTimeEntryIds)`
+     - `isNull(timeEntries.payrolledAt)`
+     - if the existing fetch path already requires approved entries, preserve that same approved/status condition on the claim
+     - set `payrolledAt: new Date()`, `payrollRunId: payrollRun.id`, and `updatedAt: new Date()` if the column exists
+     - return claimed IDs
+   - abort/throw if `claimed.length !== sourceTimeEntryIds.length`
+   - write payroll entries/items inside the same transaction if this subagent creates them
+7. Preserve existing `validateOnly` behavior: no DB writes/claims should occur in validate-only mode.
+8. Preserve current idempotency behavior, but consider moving `storeIdempotencyResult()` into or immediately after the successful transaction so there is no idempotency success row for a failed/partial payroll run.
+9. Build verify locally:
+   - `node build.mjs`
+   - `npx tsc -p tsconfig.json --noEmit` if practical
+10. Append build result and commit SHA back to this file.
+
+Reason: payroll subagent is the highest-risk payroll path because it can create a payroll run header without atomically claiming/linking source time entries. This is the payroll equivalent of the duplicate-invoice gap already fixed in `timesheetInvoiceService.ts`.
