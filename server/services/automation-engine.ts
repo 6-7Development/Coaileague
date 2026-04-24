@@ -764,18 +764,26 @@ Return ONLY valid JSON (no markdown):
         continue; // Skip clients with no billable time
       }
 
-      const result = await this.generateInvoice(context, {
-        clientId: client.id,
-        startDate,
-        endDate,
-        timeEntries: clientTimeEntries,
-        client,
+      const decision = buildDeterministicInvoiceDecision(client, clientTimeEntries);
+      await auditLogger.logEvent(context, {
+        eventType: 'invoice_batch_generated',
+        aggregateId: client.id,
+        aggregateType: 'invoice',
+        payload: {
+          clientId: client.id,
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString(),
+          timeEntryCount: clientTimeEntries.length,
+          total: decision.total,
+          requiresApproval: decision.requiresApproval,
+          anomalies: decision.anomalies,
+          mode: 'deterministic_batch',
+        },
       });
+      invoices.push(decision);
 
-      invoices.push(result.decision);
-
-      if (result.decision.requiresApproval) {
-        requiresApproval.push(result.decision);
+      if (decision.requiresApproval) {
+        requiresApproval.push(decision);
       }
     }
 
@@ -968,18 +976,26 @@ Return ONLY valid JSON (no markdown):
         continue; // Skip employees with no hours
       }
 
-      const result = await this.generatePayroll(context, {
-        employeeId: employee.id,
-        startDate,
-        endDate,
-        timeEntries,
-        employee,
+      const decision = buildDeterministicPayrollDecision(employee, employee.id, timeEntries);
+      await auditLogger.logEvent(context, {
+        eventType: 'payroll_batch_generated',
+        aggregateId: employee.id,
+        aggregateType: 'payroll',
+        payload: {
+          employeeId: employee.id,
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString(),
+          timeEntryCount: timeEntries.length,
+          netPay: decision.netPay,
+          requiresApproval: decision.requiresApproval,
+          warnings: decision.warnings,
+          mode: 'deterministic_batch',
+        },
       });
+      payrolls.push(decision);
 
-      payrolls.push(result.decision);
-
-      if (result.decision.requiresApproval) {
-        requiresApproval.push(result.decision);
+      if (decision.requiresApproval) {
+        requiresApproval.push(decision);
       }
     }
 
