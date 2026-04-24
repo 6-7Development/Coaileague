@@ -7,6 +7,9 @@ import { db } from "../db";
 import { chatConversations } from "@shared/schema";
 import { eq, and } from "drizzle-orm";
 import { createLogger } from '../lib/logger';
+
+import { isProtectedDirectMessageRole, isSupportStaffRole, canManageDirectMessageLifecycle } from '../services/chat/chatPolicyService';
+import { broadcastToUser } from '../websocket';
 const log = createLogger('PrivateMessageRoutes');
 
 
@@ -184,7 +187,21 @@ router.post('/send', requireAuth, async (req: AuthenticatedRequest, res) => {
       attachmentName,
     });
 
-    res.json(sentMessage);
+    
+      // Broadcast to both participants via WebSocket for socket-first live updates
+      try {
+        const { broadcastToUser } = await import('../websocket');
+        const wsPayload = {
+          type: 'private_message_received',
+          conversationId: newMessage?.conversationId,
+          message: newMessage,
+        };
+        if (recipientId) broadcastToUser(recipientId, wsPayload);
+        if (userId) broadcastToUser(userId, wsPayload);
+      } catch (_wsErr) {
+        // WebSocket broadcast is best-effort — REST response still succeeds
+      }
+      res.json(sentMessage);
   } catch (error: unknown) {
     log.error("Error sending message:", error);
     res.status(500).json({ message: "Failed to send message" });

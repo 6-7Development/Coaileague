@@ -21,6 +21,7 @@ import { broadcastUserScopedNotification } from "../websocket";
 import { createLogger } from '../lib/logger';
 import { PLATFORM } from '../config/platformConfig';
 import { validateWebhookUrl } from '../services/webhookDeliveryService';
+import { isSupportStaffRole, isProtectedDirectMessageRole, isReservedRoomName, isReservedRoomNameExempt, MANAGER_ROLES, SUPPORT_STAFF_ROLES } from '../services/chat/chatPolicyService';
 const log = createLogger('ChatManagement');
 
 
@@ -1149,8 +1150,8 @@ router.post(
       const _nameLC = name.trim().toLowerCase();
       const _isReserved = RESERVED_ROOM_NAMES.some(r => _nameLC === r || _nameLC.startsWith(r));
       const _platformRole = (authReq.user)?.platformRole || (authReq.user)?.role || '';
-      const _isExempt = SUPPORT_EXEMPT_ROLES.includes(authReq.workspaceRole || '') ||
-                        SUPPORT_EXEMPT_ROLES.includes(_platformRole);
+      const _isExempt = isSupportStaffRole(authReq.workspaceRole || '') ||
+                        isSupportStaffRole(_platformRole);
       if (_isReserved && !_isExempt) {
         log.warn(`[ChatManagement] Blocked reserved room name "${name}" by user ${userId} (role: ${authReq.workspaceRole})`);
         return res.status(403).json({

@@ -26,10 +26,60 @@ import rateLimit from "express-rate-limit";
 import { requireAuth } from '../auth';
 import { softDelete } from '../lib/softDelete';
 import { createLogger } from '../lib/logger';
+import { isSupportStaffRole, isProtectedDirectMessageRole, isReservedRoomName, isReservedRoomNameExempt, MANAGER_ROLES, SUPPORT_STAFF_ROLES, getRoomLifecycleAccessPolicy } from '../services/chat/chatPolicyService';
 const log = createLogger('ChatRooms');
 
 
 const router = Router();
+
+// ── Shared Room Lifecycle Helper (Codex: deduplicated close/reopen) ─────────
+async function handleRoomLifecycleAction(
+  req: any,
+  res: any,
+  action: 'close' | 'reopen',
+): Promise<void> {
+  try {
+    const { roomId } = req.params;
+    const actorId: string = req.user?.id || req.session?.userId;
+    const actorRole: string = req.workspaceRole || req.user?.workspaceRole;
+
+    if (!actorId) {
+      res.status(401).json({ message: 'Unauthorized' });
+      return;
+    }
+
+    // Resolve the room
+    const [room] = await db
+      .select({ id: chatRooms.id, createdBy: chatRooms.createdBy, workspaceId: chatRooms.workspaceId })
+      .from(chatRooms)
+      .where(eq(chatRooms.id, roomId))
+      .limit(1);
+
+    if (!room) {
+      res.status(404).json({ message: 'Room not found' });
+      return;
+    }
+
+    // Centralized access check via chatPolicyService
+    const policy = getRoomLifecycleAccessPolicy(actorRole, actorId, room.createdBy, null);
+    if (!policy.allowed) {
+      res.status(403).json({ message: policy.reason || 'Forbidden' });
+      return;
+    }
+
+    const newStatus = action === 'close' ? 'archived' : 'active';
+    await db
+      .update(chatRooms)
+      .set({ status: newStatus as any, updatedAt: new Date() })
+      .where(eq(chatRooms.id, roomId));
+
+    res.json({ success: true, roomId, status: newStatus, action });
+  } catch (err: unknown) {
+    console.error(`[ChatRooms] ${action} error:`, err);
+    res.status(500).json({ message: 'Failed to ' + action + ' room' });
+  }
+}
+
 
 router.use(requireAuth);
 
@@ -285,21 +335,15 @@ router.post(
       // These names are reserved for system-created platform rooms only.
       // Support agents and platform admins are exempt.
       // ─────────────────────────────────────────────────────────────────────
-      const RESERVED_ROOM_NAMES = [
-        'help desk', 'helpdesk', 'help-desk',
-        // Add additional system room names here if needed
-      ];
-      const SUPPORT_EXEMPT_ROLES = [
-        'root_admin', 'deputy_admin', 'sysop', 'support_manager', 'support_agent',
-        'org_admin', 'org_owner',
-      ];
+      // [chatPolicyService] Use centralized policy — not route-local lists
+      // isReservedRoomName() and isReservedRoomNameExempt() imported from chatPolicyService
       const requestedName = (subject || '').trim().toLowerCase();
       const isReservedName = RESERVED_ROOM_NAMES.some(
         r => requestedName === r || requestedName.startsWith(r)
       );
       const _userPlatformRole = (authReq.user)?.platformRole || (authReq.user)?.role || '';
-      const isSupportExempt = SUPPORT_EXEMPT_ROLES.includes(authReq.workspaceRole || '') ||
-                              SUPPORT_EXEMPT_ROLES.includes(_userPlatformRole);
+      const isSupportExempt = isSupportStaffRole(authReq.workspaceRole || '') ||
+                              isSupportStaffRole(_userPlatformRole);
       if (isReservedName && !isSupportExempt) {
         log.warn(`[ChatRoom CREATE] Blocked reserved room name "${subject}" by user ${userId} (role: ${authReq.workspaceRole})`);
         return res.status(403).json({
