@@ -7,7 +7,12 @@ import { tokenManager, TOKEN_COSTS } from '../services/billing/tokenManager';
 import { aiTokenGateway } from '../services/billing/aiTokenGateway';
 import { automationOrchestration } from '../services/orchestration/automationOrchestration';
 import { platformEventBus } from '../services/platformEventBus';
-import { type AuthenticatedRequest } from '../rbac';
+import {
+  type AuthenticatedRequest,
+  getUserPlatformRole,
+  hasPlatformWideAccess,
+  resolveWorkspaceForUser,
+} from '../rbac';
 import { requireAuth } from '../auth';
 import { typedPool } from '../lib/typedSql';
 import { createLogger } from '../lib/logger';
@@ -18,9 +23,70 @@ const router = Router();
 
 router.use(requireAuth);
 
+function getRequestedWorkspaceId(req: Request): string | undefined {
+  const authReq = req as AuthenticatedRequest;
+  const bodyWorkspaceId = typeof authReq.body?.workspaceId === 'string'
+    ? authReq.body.workspaceId.trim()
+    : undefined;
+  const queryWorkspaceId = typeof authReq.query?.workspaceId === 'string'
+    ? authReq.query.workspaceId.trim()
+    : undefined;
+  const scopedWorkspaceId = typeof authReq.workspaceId === 'string'
+    ? authReq.workspaceId.trim()
+    : undefined;
+  const currentWorkspaceId = typeof authReq.user?.currentWorkspaceId === 'string'
+    ? authReq.user.currentWorkspaceId.trim()
+    : undefined;
+
+  return bodyWorkspaceId || queryWorkspaceId || scopedWorkspaceId || currentWorkspaceId;
+}
+
+async function resolveRouteWorkspace(req: Request): Promise<{
+  workspaceId: string | null;
+  requestedWorkspaceId?: string;
+  error?: string;
+}> {
+  const authReq = req as AuthenticatedRequest;
+  const userId = authReq.user?.id;
+  const requestedWorkspaceId = getRequestedWorkspaceId(req);
+
+  if (!userId) {
+    return {
+      workspaceId: null,
+      requestedWorkspaceId,
+      error: 'Authentication required',
+    };
+  }
+
+  const platformRole = authReq.platformRole || await getUserPlatformRole(userId);
+  if (requestedWorkspaceId && hasPlatformWideAccess(platformRole)) {
+    authReq.platformRole = platformRole;
+    authReq.workspaceId = requestedWorkspaceId;
+    return { workspaceId: requestedWorkspaceId, requestedWorkspaceId };
+  }
+
+  const resolved = await resolveWorkspaceForUser(userId, requestedWorkspaceId);
+  if (resolved.workspaceId) {
+    authReq.workspaceId = resolved.workspaceId;
+    authReq.workspaceRole = resolved.role || undefined;
+    authReq.employeeId = resolved.employeeId || undefined;
+  }
+
+  return {
+    workspaceId: resolved.workspaceId,
+    requestedWorkspaceId,
+    error: resolved.error,
+  };
+}
+
 router.get('/status', async (req: any, res) => {
   try {
-    const workspaceId = req.workspaceId || req.workspaceId;
+    const { workspaceId, error } = await resolveRouteWorkspace(req);
+    if (!workspaceId) {
+      return res.status(error?.includes('Access denied') ? 403 : 400).json({
+        message: error || 'workspaceId is required',
+      });
+    }
     const { pool } = await import('../db');
     // CATEGORY C — Raw SQL retained: ORDER BY | Tables: automation_executions | Verified: 2026-03-23
     const [execRow] = (await typedPool(
@@ -67,12 +133,25 @@ router.post('/ai/fill-shift', async (req: Request, res: Response) => {
   try {
     const authReq = req as AuthenticatedRequest;
     const userId = authReq.user?.id;
-    const workspaceId = req.user?.currentWorkspaceId || req.workspaceId;
     const { shiftId } = req.body;
+    const { workspaceId, requestedWorkspaceId, error } = await resolveRouteWorkspace(req);
 
-    if (!workspaceId || !shiftId) {
-      return res.status(400).json({ message: 'workspaceId and shiftId are required' });
+    if (!workspaceId) {
+      return res.status(error?.includes('Access denied') ? 403 : 400).json({
+        message: error || 'workspaceId is required',
+      });
     }
+
+    if (!shiftId) {
+      return res.status(400).json({ message: 'shiftId is required' });
+    }
+
+    log.info('[OrchestratedSchedule] AI fill requested', {
+      shiftId,
+      userId,
+      requestedWorkspaceId: requestedWorkspaceId || null,
+      resolvedWorkspaceId: workspaceId,
+    });
 
     const preCheck = await creditPreCheck(workspaceId, 'ai_open_shift_fill', userId);
     if (!preCheck.allowed) {
@@ -199,17 +278,32 @@ router.post('/ai/trigger-session', async (req: Request, res: Response) => {
   try {
     const authReq = req as AuthenticatedRequest;
     const userId = authReq.user?.id;
-    const workspaceId = req.user?.currentWorkspaceId || req.workspaceId;
     const { mode = 'fill_gaps', weekStart: weekStartStr } = req.body;
+    const { workspaceId, requestedWorkspaceId, error } = await resolveRouteWorkspace(req);
 
     if (!workspaceId) {
-      return res.status(400).json({ message: 'workspaceId is required' });
+      return res.status(error?.includes('Access denied') ? 403 : 400).json({
+        message: error || 'workspaceId is required',
+      });
     }
 
     const validModes = ['optimize', 'fill_gaps', 'full_generate'];
     if (!validModes.includes(mode)) {
       return res.status(400).json({ message: 'Invalid mode' });
     }
+
+    const parsedWeekStart = weekStartStr ? new Date(weekStartStr) : undefined;
+    if (weekStartStr && (!parsedWeekStart || Number.isNaN(parsedWeekStart.getTime()))) {
+      return res.status(400).json({ message: 'Invalid weekStart' });
+    }
+
+    log.info('[OrchestratedSchedule] Scheduling session requested', {
+      mode,
+      userId,
+      requestedWorkspaceId: requestedWorkspaceId || null,
+      resolvedWorkspaceId: workspaceId,
+      weekStart: parsedWeekStart?.toISOString() || null,
+    });
 
     const costMap: Record<string, keyof typeof TOKEN_COSTS> = {
       'optimize': 'ai_schedule_optimization',
@@ -249,7 +343,7 @@ router.post('/ai/trigger-session', async (req: Request, res: Response) => {
           workspaceId,
           triggeredBy: userId || 'system',
           mode: mode as 'optimize' | 'fill_gaps' | 'full_generate',
-          weekStart: weekStartStr ? new Date(weekStartStr) : undefined,
+          weekStart: parsedWeekStart,
         });
 
         const shiftsProcessed = sessionResult?.totalMutations || 1;
@@ -260,6 +354,10 @@ router.post('/ai/trigger-session', async (req: Request, res: Response) => {
     );
 
     const shiftsProcessed = result.data?.totalMutations || 1;
+    const totalShifts =
+      mode === 'fill_gaps'
+        ? (result.data?.totalOpenShifts ?? 0)
+        : (result.data?.totalShiftsAnalyzed ?? 0);
 
     if (result.success) {
       platformEventBus.emit('schedule.session_complete', {
@@ -275,6 +373,9 @@ router.post('/ai/trigger-session', async (req: Request, res: Response) => {
       orchestrationId: result.orchestrationId,
       sessionId: result.data?.sessionId,
       executionId: result.data?.executionId,
+      totalShifts,
+      totalOpenShifts: result.data?.totalOpenShifts,
+      totalShiftsAnalyzed: result.data?.totalShiftsAnalyzed,
       totalMutations: result.data?.totalMutations,
       mutations: result.data?.mutations,
       summary: result.data?.summary,
@@ -292,11 +393,13 @@ router.post('/ai/trigger-session', async (req: Request, res: Response) => {
 
 router.get('/executions', async (req: Request, res: Response) => {
   try {
-    const workspaceId = req.user?.currentWorkspaceId || req.workspaceId;
+    const { workspaceId, error } = await resolveRouteWorkspace(req);
     const { limit = '10' } = req.query;
 
     if (!workspaceId) {
-      return res.status(400).json({ message: 'workspaceId is required' });
+      return res.status(error?.includes('Access denied') ? 403 : 400).json({
+        message: error || 'workspaceId is required',
+      });
     }
 
     const executions = await db
@@ -376,9 +479,11 @@ router.get('/orchestration/:orchestrationId/steps', async (req: Request, res: Re
 
 router.get('/active-operations', async (req: Request, res: Response) => {
   try {
-    const workspaceId = req.user?.currentWorkspaceId || req.workspaceId;
+    const { workspaceId, error } = await resolveRouteWorkspace(req);
     if (!workspaceId) {
-      return res.status(400).json({ message: 'workspaceId is required' });
+      return res.status(error?.includes('Access denied') ? 403 : 400).json({
+        message: error || 'workspaceId is required',
+      });
     }
 
     const { universalStepLogger } = await import('../services/orchestration/universalStepLogger');
@@ -410,10 +515,12 @@ router.get('/credit-status', async (req: Request, res: Response) => {
   try {
     const authReq = req as AuthenticatedRequest;
     const userId = authReq.user?.id;
-    const workspaceId = req.user?.currentWorkspaceId || req.workspaceId;
+    const { workspaceId, error } = await resolveRouteWorkspace(req);
 
     if (!workspaceId) {
-      return res.status(400).json({ message: 'workspaceId is required' });
+      return res.status(error?.includes('Access denied') ? 403 : 400).json({
+        message: error || 'workspaceId is required',
+      });
     }
 
     const account = await (tokenManager as any).getCreditsAccountWithStatus(

@@ -65,6 +65,8 @@ export interface SchedulingSessionResult {
   workspaceId: string;
   startedAt: Date;
   completedAt: Date;
+  totalShiftsAnalyzed: number;
+  totalOpenShifts: number;
   totalMutations: number;
   mutations: SchedulingMutation[];
   summary: {
@@ -136,6 +138,12 @@ class TrinitySchedulingOrchestratorService {
 
     try {
       const context = await this.gatherSchedulingContext(params.workspaceId, weekStart, weekEnd);
+      const totalShiftsAnalyzed = context.existingShifts.length;
+      const totalOpenShifts = context.openShifts.length;
+
+      log.info(
+        `[TrinitySchedulingOrchestrator] Context ready for ${params.workspaceId}: ${totalOpenShifts} open shifts across ${totalShiftsAnalyzed} scheduled records (${format(weekStart, 'MMM d')} - ${format(weekEnd, 'MMM d')})`
+      );
       
       // NOTE: trinity_scheduling_started is already broadcast directly by
       // trinityAutonomousScheduler via broadcastToWorkspace(). Do NOT emit it
@@ -225,6 +233,8 @@ class TrinitySchedulingOrchestratorService {
         workspaceId: params.workspaceId,
         startedAt,
         completedAt,
+        totalShiftsAnalyzed,
+        totalOpenShifts,
         totalMutations: mutations.length,
         mutations,
         summary,
