@@ -2204,7 +2204,11 @@ process.on('unhandledRejection', (reason: any, promise) => {
 
     // PHASE 1: Critical services (run first, before any seeding tasks)
     log.info('Phase 1: Critical services');
-    await initializeCriticalServices();
+    try {
+      await initializeCriticalServices();
+    } catch (err: any) {
+      log.error(`[CriticalServices] Failed (non-fatal): ${err.message}`);
+    }
 
     // Non-critical seeding tasks — fire-and-forget (do NOT block Phase 2+)
     void (async () => {
@@ -2335,7 +2339,10 @@ process.on('unhandledRejection', (reason: any, promise) => {
       } catch (error) {
         log.error('Onboarding task migration failed (non-fatal)', { error: error instanceof Error ? error.message : String(error) });
       }
-    })();
+    })().catch((err: any) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      log.error(`[PostListen] Unhandled crash: ${msg}`);
+    });
 
     // PHASE 2: Initialize AI Brain core (parallel, after listen)
     log.info('Phase 2: AI Brain core services (parallel)');
