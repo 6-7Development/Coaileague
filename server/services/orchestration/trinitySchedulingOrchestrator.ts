@@ -261,7 +261,7 @@ class TrinitySchedulingOrchestratorService {
     }
   }
 
-  async applyVerifiedMutations(executionId: string): Promise<{ success: boolean; appliedCount: number; errors: string[] }> {
+  async applyVerifiedMutations(executionId: string): Promise<{ success: boolean; appliedCount: number; inserted: number; updated: number; deleted: number; skipped: number; errors: string[] }> {
     const mutations = this.pendingSessions.get(executionId);
     if (!mutations || mutations.length === 0) {
       const execution = await automationExecutionTracker.getExecution(executionId);
@@ -276,82 +276,141 @@ class TrinitySchedulingOrchestratorService {
     return this.applyMutationsToDatabase(mutations, executionId);
   }
 
-  private async applyMutationsToDatabase(mutations: SchedulingMutation[], executionId: string): Promise<{ success: boolean; appliedCount: number; errors: string[] }> {
-    const errors: string[] = [];
-    let appliedCount = 0;
-
+  private async applyMutationsToDatabase(
+    mutations: SchedulingMutation[],
+    executionId: string,
+  ): Promise<{
+    success: boolean;
+    appliedCount: number;
+    inserted: number;
+    updated: number;
+    deleted: number;
+    skipped: number;
+    errors: string[];
+  }> {
     log.info(`[TrinitySchedulingOrchestrator] Applying ${mutations.length} verified mutations for execution ${executionId}`);
 
-    for (const mutation of mutations) {
-      try {
-        if (!mutation.dbOperation) {
-          log.info(`[TrinitySchedulingOrchestrator] Skipping mutation ${mutation.id} - no dbOperation defined`);
-          continue;
-        }
+    // ── Resolve workspace once from the execution record ──────────────────────
+    // Never trust per-mutation data for the workspace scope — pull it from the
+    // authoritative execution record so every write is tenant-locked.
+    const execution = await automationExecutionTracker.getExecution(executionId);
+    const workspaceId: string | undefined = (execution as any)?.workspaceId;
 
-        const { table, action, data, where } = mutation.dbOperation;
-
-        if (table === 'shifts') {
-          switch (action) {
-            case 'insert':
-              if (data) {
-                await db.insert(shifts).values({
-                  id: data.id,
-                  workspaceId: data.workspaceId,
-                  employeeId: data.employeeId,
-                  clientId: data.clientId,
-                  title: data.title,
-                  startTime: new Date(data.startTime),
-                  endTime: new Date(data.endTime),
-                  status: data.status || 'scheduled',
-                  aiGenerated: true,
-                });
-                appliedCount++;
-              }
-              break;
-
-            case 'update':
-              if (data && where?.id) {
-                await db.update(shifts)
-                  .set({ employeeId: data.employeeId })
-                  .where(eq(shifts.id, where.id));
-                appliedCount++;
-              }
-              break;
-
-            case 'delete':
-              if (where?.id) {
-                await db.delete(shifts).where(eq(shifts.id, where.id));
-                appliedCount++;
-              }
-              break;
-          }
-        }
-
-        log.info(`[TrinitySchedulingOrchestrator] Applied mutation: ${mutation.type} - ${mutation.description}`);
-      } catch (error: any) {
-        log.error(`[TrinitySchedulingOrchestrator] Failed to apply mutation ${mutation.id}:`, error);
-        errors.push(`${mutation.type}: ${(error instanceof Error ? error.message : String(error))}`);
-      }
+    if (!workspaceId) {
+      const msg = `Cannot apply mutations: workspaceId not found on execution ${executionId}`;
+      log.error(`[TrinitySchedulingOrchestrator] ${msg}`);
+      return { success: false, appliedCount: 0, inserted: 0, updated: 0, deleted: 0, skipped: 0, errors: [msg] };
     }
 
+    // ── Counters ──────────────────────────────────────────────────────────────
+    let inserted = 0;
+    let updated = 0;
+    let deleted = 0;
+    let skipped = 0;
+    const errors: string[] = [];
+
+    // ── All mutations in one atomic transaction ───────────────────────────────
+    // If any single mutation fails the entire batch rolls back, leaving the DB
+    // in a clean state instead of a half-applied ghost schedule.
+    try {
+      await db.transaction(async (tx) => {
+        for (const mutation of mutations) {
+          if (!mutation.dbOperation) {
+            log.info(`[TrinitySchedulingOrchestrator] Skipping mutation ${mutation.id} — no dbOperation`);
+            skipped++;
+            continue;
+          }
+
+          const { table, action, data, where } = mutation.dbOperation;
+
+          if (table !== 'shifts') {
+            log.warn(`[TrinitySchedulingOrchestrator] Unknown table '${table}' in mutation ${mutation.id} — skipped`);
+            skipped++;
+            continue;
+          }
+
+          switch (action) {
+            case 'insert': {
+              if (!data) { skipped++; break; }
+              await tx.insert(shifts).values({
+                id: data.id,
+                workspaceId,                          // ← always from execution, never from data
+                employeeId: data.employeeId ?? null,
+                clientId: data.clientId ?? null,
+                title: data.title ?? null,
+                startTime: new Date(data.startTime),
+                endTime: new Date(data.endTime),
+                status: data.status ?? 'scheduled',
+                aiGenerated: true,
+              });
+              inserted++;
+              break;
+            }
+
+            case 'update': {
+              if (!data || !where?.id) { skipped++; break; }
+              // Scope by BOTH shift id AND workspaceId — prevents cross-tenant mutations
+              const setPayload: Record<string, unknown> = {};
+              if (data.employeeId !== undefined) setPayload.employeeId = data.employeeId;
+              if (data.status     !== undefined) setPayload.status     = data.status;
+              if (data.startTime  !== undefined) setPayload.startTime  = new Date(data.startTime);
+              if (data.endTime    !== undefined) setPayload.endTime    = new Date(data.endTime);
+              if (data.title      !== undefined) setPayload.title      = data.title;
+              if (data.clientId   !== undefined) setPayload.clientId   = data.clientId;
+              if (Object.keys(setPayload).length === 0) { skipped++; break; }
+              await tx.update(shifts)
+                .set(setPayload)
+                .where(and(eq(shifts.id, where.id), eq(shifts.workspaceId, workspaceId)));
+              updated++;
+              break;
+            }
+
+            case 'delete': {
+              if (!where?.id) { skipped++; break; }
+              // Scope by BOTH shift id AND workspaceId — prevents cross-tenant deletes
+              await tx.delete(shifts)
+                .where(and(eq(shifts.id, where.id), eq(shifts.workspaceId, workspaceId)));
+              deleted++;
+              break;
+            }
+
+            default: {
+              log.warn(`[TrinitySchedulingOrchestrator] Unknown action '${action}' in mutation ${mutation.id} — skipped`);
+              skipped++;
+            }
+          }
+
+          log.info(`[TrinitySchedulingOrchestrator] ${action} ${mutation.type}: ${mutation.description}`);
+        }
+      });
+    } catch (txError: unknown) {
+      // Transaction rolled back — nothing was written
+      const msg = `Transaction rolled back: ${txError instanceof Error ? txError.message : String(txError)}`;
+      log.error(`[TrinitySchedulingOrchestrator] ${msg}`);
+      errors.push(msg);
+    }
+
+    const appliedCount = inserted + updated + deleted;
     this.pendingSessions.delete(executionId);
 
     await automationExecutionTracker.verifyExecution(executionId, {
       verifiedBy: 'trinity-autonomous-scheduler',
       verificationNotes: JSON.stringify({
-        applied: true,
+        applied: errors.length === 0,
         appliedCount,
+        inserted,
+        updated,
+        deleted,
+        skipped,
+        workspaceId,
         appliedAt: new Date().toISOString(),
         errors,
       }),
     });
 
-    return {
-      success: errors.length === 0,
-      appliedCount,
-      errors,
-    };
+    log.info(`[TrinitySchedulingOrchestrator] Mutations complete — inserted:${inserted} updated:${updated} deleted:${deleted} skipped:${skipped} errors:${errors.length}`);
+
+    return { success: errors.length === 0, appliedCount, inserted, updated, deleted, skipped, errors };
   }
 
   async rejectMutations(executionId: string, reason: string): Promise<void> {
