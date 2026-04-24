@@ -7,6 +7,9 @@ What was broken
 - Root cause: orchestrated scheduling routes could fall back to the user's stale session workspace instead of the workspace currently selected in the schedule UI.
 - The schedule page already sends workspaceId, but the backend was not consistently treating that as the source of truth.
 - The Trinity thought bar was not reflecting autonomous scheduling activity clearly, and the Trinity icon was static/generic instead of behaving like an active assistant surface.
+- After validating against the live development app, a second blocker showed up:
+  - Trinity could see real open shifts, but scheduling execution failed with `automation_executions.action_type` null constraint errors.
+  - Root cause: trinitySchedulingOrchestrator was misusing automationExecutionTracker by calling `createExecution(executionId, ...)` for lifecycle transitions instead of the proper start/complete/fail/verify/reject methods.
 
 What changed
 - server/routes/orchestratedScheduleRoutes.ts
@@ -28,6 +31,14 @@ What changed
 - server/services/orchestration/trinitySchedulingOrchestrator.ts
   - Scheduling session results now include totalShiftsAnalyzed and totalOpenShifts.
   - Added logging for how many open shifts Trinity actually sees in the requested week/workspace.
+  - Fixed execution tracker lifecycle calls:
+    - `createExecution(...)` only for initial row creation
+    - `startExecution(...)` when work begins
+    - `completeExecution(...)` for pending verification handoff
+    - `failExecution(...)` on scheduling errors
+    - `verifyExecution(...)` after applying verified mutations
+    - `rejectExecution(...)` when rejecting mutations
+  - This removes the bad second insert path that was creating null `action_type` failures in development.
 
 - client/src/pages/universal-schedule.tsx
   - Updated the auto-fill success handling so the UI uses backend-analyzed shift counts instead of falling back to an incorrect "none open" path.
@@ -55,6 +66,8 @@ Before vs after
 - After: Trinity scheduling respects the same selected workspace the UI is using.
 - Before: users could see 42 open shifts in the grid and still get a "No unassigned shifts to fill" result.
 - After: Trinity reports the analyzed open-shift count from the actual scheduling context.
+- Before: even when Trinity saw real open shifts, execution tracking could fail silently at the DB layer because the orchestrator was re-calling `createExecution` incorrectly.
+- After: the scheduling execution lifecycle uses the correct tracker APIs, so the orchestration can progress instead of dying on `automation_executions`.
 - Before: the thought bar felt passive and disconnected from scheduling work.
 - After: the thought bar reflects autonomous scheduling steps and the Trinity icon animates as an active assistant state.
 

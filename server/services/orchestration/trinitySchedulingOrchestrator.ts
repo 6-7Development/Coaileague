@@ -131,10 +131,7 @@ class TrinitySchedulingOrchestratorService {
       },
     });
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
-    await automationExecutionTracker.createExecution(executionId, {
-      status: 'in_progress',
-    });
+    await automationExecutionTracker.startExecution(executionId);
 
     try {
       const context = await this.gatherSchedulingContext(params.workspaceId, weekStart, weekEnd);
@@ -182,9 +179,7 @@ class TrinitySchedulingOrchestratorService {
         currency: 'USD',
       };
 
-      // @ts-expect-error — TS migration: fix in refactoring sprint
-      await automationExecutionTracker.createExecution(executionId, {
-        status: 'pending_verification',
+      await automationExecutionTracker.completeExecution(executionId, {
         outputPayload: {
           sessionId,
           dryRun: true,
@@ -204,6 +199,7 @@ class TrinitySchedulingOrchestratorService {
         processingTimeMs: completedAt.getTime() - startedAt.getTime(),
         itemsProcessed: mutations.length,
         itemsFailed: 0,
+        requiresVerification: true,
       });
 
       // Publish scheduling session completion — Trinity + automation subscribers receive this
@@ -249,9 +245,7 @@ class TrinitySchedulingOrchestratorService {
     } catch (error: any) {
       log.error(`[TrinitySchedulingOrchestrator] Session ${sessionId} failed:`, error);
 
-      // @ts-expect-error — TS migration: fix in refactoring sprint
-      await automationExecutionTracker.createExecution(executionId, {
-        status: 'failed',
+      await automationExecutionTracker.failExecution(executionId, {
         failureReason: (error instanceof Error ? error.message : String(error)),
         failureCode: 'SCHEDULING_ERROR',
         remediationSteps: [
@@ -343,15 +337,14 @@ class TrinitySchedulingOrchestratorService {
 
     this.pendingSessions.delete(executionId);
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
-    await automationExecutionTracker.createExecution(executionId, {
-      status: 'verified',
-      outputPayload: {
+    await automationExecutionTracker.verifyExecution(executionId, {
+      verifiedBy: 'trinity-autonomous-scheduler',
+      verificationNotes: JSON.stringify({
         applied: true,
         appliedCount,
         appliedAt: new Date().toISOString(),
         errors,
-      },
+      }),
     });
 
     return {
@@ -364,14 +357,9 @@ class TrinitySchedulingOrchestratorService {
   async rejectMutations(executionId: string, reason: string): Promise<void> {
     this.pendingSessions.delete(executionId);
 
-    // @ts-expect-error — TS migration: fix in refactoring sprint
-    await automationExecutionTracker.createExecution(executionId, {
-      status: 'rejected',
-      outputPayload: {
-        rejected: true,
-        rejectedAt: new Date().toISOString(),
-        rejectionReason: reason,
-      },
+    await automationExecutionTracker.rejectExecution(executionId, {
+      rejectedBy: 'trinity-autonomous-scheduler',
+      rejectionReason: reason,
     });
 
     log.info(`[TrinitySchedulingOrchestrator] Mutations rejected for execution ${executionId}: ${reason}`);
