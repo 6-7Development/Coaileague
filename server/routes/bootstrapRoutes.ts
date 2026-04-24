@@ -13,23 +13,37 @@ import bcrypt from 'bcryptjs';
 const log = createLogger('Bootstrap');
 const router = Router();
 
+function getBootstrapKeyErrorResponse(key: string | undefined) {
+  const expectedKey = process.env.DEV_BOOTSTRAP_KEY;
+  if (!expectedKey) {
+    return {
+      status: 503,
+      body: {
+        error: 'DEV_BOOTSTRAP_KEY not set',
+        hint: 'Add DEV_BOOTSTRAP_KEY to Railway development variables',
+      },
+    };
+  }
+
+  if (key !== expectedKey) {
+    return {
+      status: 401,
+      body: { error: 'Invalid bootstrap key' },
+    };
+  }
+
+  return null;
+}
+
 router.post('/dev-seed', async (req: Request, res: Response) => {
   if (isProduction()) {
     return res.status(403).json({ error: 'Bootstrap refused — production environment' });
   }
 
   const key = req.headers['x-bootstrap-key'] || req.body?.bootstrapKey;
-  const expectedKey = process.env.DEV_BOOTSTRAP_KEY;
-
-  if (!expectedKey) {
-    return res.status(503).json({
-      error: 'DEV_BOOTSTRAP_KEY not set',
-      hint: 'Add DEV_BOOTSTRAP_KEY to Railway development variables',
-    });
-  }
-
-  if (key !== expectedKey) {
-    return res.status(401).json({ error: 'Invalid bootstrap key' });
+  const keyError = getBootstrapKeyErrorResponse(typeof key === 'string' ? key : undefined);
+  if (keyError) {
+    return res.status(keyError.status).json(keyError.body);
   }
 
   try {
@@ -307,8 +321,9 @@ router.get('/dev-seed', async (req: Request, res: Response) => {
 // ============================================================================
 router.get('/stress-seed', async (req: Request, res: Response) => {
   const key = req.query.key as string;
-  if (key !== 'CoAIleague2026Dev') {
-    return res.status(403).json({ error: 'Invalid key' });
+  const keyError = getBootstrapKeyErrorResponse(key);
+  if (keyError) {
+    return res.status(keyError.status === 401 ? 403 : keyError.status).json(keyError.body);
   }
   
   try {
@@ -355,8 +370,9 @@ router.get('/seed-status', (_req: Request, res: Response) => {
 
 router.get('/comprehensive-seed', async (req: Request, res: Response) => {
   const key = req.query.key as string;
-  if (key !== 'CoAIleague2026Dev') {
-    return res.status(403).json({ error: 'Invalid key' });
+  const keyError = getBootstrapKeyErrorResponse(key);
+  if (keyError) {
+    return res.status(keyError.status === 401 ? 403 : keyError.status).json(keyError.body);
   }
 
   if (_seedStatus.running) {

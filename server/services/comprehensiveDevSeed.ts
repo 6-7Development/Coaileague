@@ -62,6 +62,14 @@ export async function runComprehensiveDevSeed(): Promise<{ success: boolean; log
   try {
     info('Starting...');
 
+    // 1. Workspace
+    await pool.query(
+      `INSERT INTO workspaces (id, name, owner_id, company_name, subscription_tier, subscription_status, max_employees, platform_fee_percentage, created_at, updated_at)
+       VALUES ($1,'ACME Security Services','dev-owner-001','ACME Security Services, LLC','enterprise','active',500,'8.00',NOW(),NOW())
+       ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, subscription_tier=EXCLUDED.subscription_tier, updated_at=NOW()`,
+      [WS]
+    );
+
     // 2. Users
     for (const s of STAFF) {
       await pool.query(
@@ -73,14 +81,6 @@ export async function runComprehensiveDevSeed(): Promise<{ success: boolean; log
       counts.users++;
     }
     info(counts.users + ' users');
-
-    // 1. Workspace
-    await pool.query(
-      `INSERT INTO workspaces (id, name, owner_id, company_name, subscription_tier, subscription_status, max_employees, platform_fee_percentage, created_at, updated_at)
-       VALUES ($1,'ACME Security Services','dev-owner-001','ACME Security Services, LLC','enterprise','active',500,'8.00',NOW(),NOW())
-       ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, subscription_tier=EXCLUDED.subscription_tier, updated_at=NOW()`,
-      [WS]
-    );
 
     // 3. Employees with userId FK
     for (const s of STAFF) {
