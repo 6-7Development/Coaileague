@@ -92,7 +92,7 @@ export async function runComprehensiveDevSeed(): Promise<{ success: boolean; log
     await pool.query(
       `DELETE FROM shifts
        WHERE workspace_id = $1
-         AND (status = 'completed' OR start_time < NOW())`,
+         AND id LIKE 'dev-shift-%'`,
       [WS]
     );
 
