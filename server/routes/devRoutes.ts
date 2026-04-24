@@ -1,5 +1,5 @@
 import { sanitizeError } from '../middleware/errorHandler';
-import { Router } from "express";
+import { Router, type Response } from "express";
 import { db, pool } from "../db";
 import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import { requireAuth } from "../auth";
@@ -2036,7 +2036,7 @@ router.get('/stress-test/quick', requirePlatformAdmin, async (_req: Authenticate
 
     // 6. Trinity action registry
     try {
-      const { platformActionHub } = await import('../services/ai-brain/platformActionHub');
+      const { platformActionHub } = await import('../services/helpai/platformActionHub');
       const actions = platformActionHub.getRegisteredActions?.() || [];
       checks.push({ name: 'trinity_actions', ok: actions.length > 0, detail: `${actions.length} actions registered` });
     } catch (e: any) { checks.push({ name: 'trinity_actions', ok: false, detail: e?.message }); }

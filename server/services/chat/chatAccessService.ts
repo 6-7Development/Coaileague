@@ -10,7 +10,7 @@
  */
 
 import { db } from '../../db';
-import { chatRooms, chatRoomMembers, privateMessageConversations, privateMessageParticipants } from '@shared/schema';
+import { chatConversations, chatParticipants, organizationChatRooms, organizationRoomMembers } from '@shared/schema';
 import { eq, and } from 'drizzle-orm';
 import { isSupportStaffRole, canManageDirectMessageLifecycle } from './chatPolicyService';
 
@@ -37,13 +37,13 @@ export async function resolveConversationTarget(
   // Try as a chat room first
   const [room] = await db
     .select({
-      id: chatRooms.id,
-      workspaceId: chatRooms.workspaceId,
-      ownerId: chatRooms.createdBy,
-      roomType: chatRooms.roomType,
+      id: organizationChatRooms.id,
+      workspaceId: organizationChatRooms.workspaceId,
+      ownerId: organizationChatRooms.createdBy,
+      roomType: organizationChatRooms.status,
     })
-    .from(chatRooms)
-    .where(eq(chatRooms.id, conversationId))
+    .from(organizationChatRooms)
+    .where(eq(organizationChatRooms.conversationId, conversationId))
     .limit(1);
 
   if (room) {
@@ -59,23 +59,27 @@ export async function resolveConversationTarget(
   // Try as a private message conversation
   try {
     const [dm] = await db
-      .select({ id: privateMessageConversations.id })
-      .from(privateMessageConversations)
-      .where(eq(privateMessageConversations.id, conversationId))
+      .select({
+        id: chatConversations.id,
+        workspaceId: chatConversations.workspaceId,
+        customerId: chatConversations.customerId,
+        supportAgentId: chatConversations.supportAgentId,
+        subject: chatConversations.subject,
+        conversationType: chatConversations.conversationType,
+      })
+      .from(chatConversations)
+      .where(eq(chatConversations.id, conversationId))
       .limit(1);
 
-    if (dm) {
-      const participants = await db
-        .select({ userId: privateMessageParticipants.userId })
-        .from(privateMessageParticipants)
-        .where(eq(privateMessageParticipants.conversationId, conversationId));
+    if (dm && (dm.subject === 'Private Message' || String(dm.conversationType || '').startsWith('dm_'))) {
+      const participants = [dm.customerId, dm.supportAgentId].filter((userId): userId is string => !!userId);
 
       return {
         type: 'dm',
         id: conversationId,
-        workspaceId: null,
+        workspaceId: dm.workspaceId,
         ownerId: null,
-        participantIds: participants.map(p => p.userId),
+        participantIds: participants,
       };
     }
   } catch {
@@ -114,11 +118,11 @@ export async function ensureConversationParticipantAccess(
     }
     // Check membership
     const [member] = await db
-      .select({ userId: chatRoomMembers.userId })
-      .from(chatRoomMembers)
+      .select({ userId: organizationRoomMembers.userId })
+      .from(organizationRoomMembers)
       .where(and(
-        eq(chatRoomMembers.roomId, conversationId),
-        eq(chatRoomMembers.userId, actorId),
+        eq(organizationRoomMembers.roomId, target.id),
+        eq(organizationRoomMembers.userId, actorId),
       ))
       .limit(1);
     if (!member) {

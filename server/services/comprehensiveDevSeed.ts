@@ -62,6 +62,19 @@ export async function runComprehensiveDevSeed(): Promise<{ success: boolean; log
   try {
     info('Starting...');
 
+    info('Repairing stale finance data for workspace...');
+    await pool.query(`DELETE FROM invoice_line_items WHERE workspace_id = $1`, [WS]);
+    await pool.query(`DELETE FROM invoices WHERE workspace_id = $1`, [WS]);
+    await pool.query(`DELETE FROM payroll_entries WHERE workspace_id = $1`, [WS]);
+    await pool.query(`DELETE FROM payroll_runs WHERE workspace_id = $1`, [WS]);
+    await pool.query(`DELETE FROM time_entries WHERE workspace_id = $1`, [WS]);
+    await pool.query(
+      `DELETE FROM shifts
+       WHERE workspace_id = $1
+         AND (status = 'completed' OR start_time < NOW())`,
+      [WS]
+    );
+
     // 1. Workspace
     await pool.query(
       `INSERT INTO workspaces (id, name, owner_id, company_name, subscription_tier, subscription_status, max_employees, platform_fee_percentage, created_at, updated_at)
@@ -110,9 +123,16 @@ export async function runComprehensiveDevSeed(): Promise<{ success: boolean; log
     // 5. Clients
     for (const c of CLIENTS) {
       await pool.query(
-        `INSERT INTO clients (id, workspace_id, first_name, last_name, company_name, billable_hourly_rate, email, address, created_at, updated_at)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW(),NOW())
-         ON CONFLICT (id) DO UPDATE SET company_name=EXCLUDED.company_name, billable_hourly_rate=EXCLUDED.billable_hourly_rate, email=EXCLUDED.email, updated_at=NOW()`,
+        `INSERT INTO clients (id, workspace_id, first_name, last_name, company_name, contract_rate, billable_hourly_rate, email, address, is_active, created_at, updated_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$6,$7,$8,true,NOW(),NOW())
+         ON CONFLICT (id) DO UPDATE
+         SET company_name=EXCLUDED.company_name,
+             contract_rate=EXCLUDED.contract_rate,
+             billable_hourly_rate=EXCLUDED.billable_hourly_rate,
+             email=EXCLUDED.email,
+             address=EXCLUDED.address,
+             is_active=true,
+             updated_at=NOW()`,
         [c.id, WS, c.firstName, c.lastName, c.companyName, c.billRate, c.email, c.address]
       );
       counts.clients++;
@@ -157,7 +177,7 @@ export async function runComprehensiveDevSeed(): Promise<{ success: boolean; log
 
           await pool.query(
             `INSERT INTO time_entries (id, workspace_id, shift_id, employee_id, client_id, captured_bill_rate, captured_pay_rate, regular_hours, overtime_hours, billable_amount, payable_amount, clock_in, clock_out, total_hours, hourly_rate, total_amount, status, created_at, updated_at)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12::timestamptz,$13::timestamptz,$14,$6,$10,'approved',NOW(),NOW())
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12::timestamptz,$13::timestamptz,$14,$7,$11,'approved',NOW(),NOW())
              ON CONFLICT (id) DO NOTHING`,
             [teId, WS, shiftId, emp.empId, client.id, client.billRate, emp.payRate, regularH.toFixed(2), otH.toFixed(2), billable, payable, startISO, endISO, hours.toFixed(2)]
           );

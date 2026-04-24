@@ -29,10 +29,68 @@ import { trinityAutomationToggle } from '../services/automation/trinityAutomatio
 import { photoGeofenceService } from '../services/photoGeofenceService';
 import { quickbooksReceiptService } from '../services/quickbooksReceiptService';
 import { createLogger } from '../lib/logger';
+import {
+  type AuthenticatedRequest,
+  getUserPlatformRole,
+  hasPlatformWideAccess,
+  resolveWorkspaceForUser,
+} from '../rbac';
 const log = createLogger('Automation');
 
 
 export const automationRouter = Router();
+
+function getRequestedWorkspaceId(req: Request): string | undefined {
+  const authReq = req as AuthenticatedRequest;
+  const bodyWorkspaceId = typeof authReq.body?.workspaceId === 'string'
+    ? authReq.body.workspaceId.trim()
+    : undefined;
+  const queryWorkspaceId = typeof authReq.query?.workspaceId === 'string'
+    ? authReq.query.workspaceId.trim()
+    : undefined;
+  const scopedWorkspaceId = typeof authReq.workspaceId === 'string'
+    ? authReq.workspaceId.trim()
+    : undefined;
+  const currentWorkspaceId = typeof authReq.user?.currentWorkspaceId === 'string'
+    ? authReq.user.currentWorkspaceId.trim()
+    : undefined;
+
+  return bodyWorkspaceId || queryWorkspaceId || scopedWorkspaceId || currentWorkspaceId;
+}
+
+async function resolveRouteWorkspace(req: Request): Promise<{
+  workspaceId: string | null;
+  requestedWorkspaceId?: string;
+  error?: string;
+}> {
+  const authReq = req as AuthenticatedRequest;
+  const userId = authReq.user?.id;
+  const requestedWorkspaceId = getRequestedWorkspaceId(req);
+
+  if (!userId) {
+    return { workspaceId: null, requestedWorkspaceId, error: 'Authentication required' };
+  }
+
+  const platformRole = authReq.platformRole || await getUserPlatformRole(userId);
+  if (requestedWorkspaceId && hasPlatformWideAccess(platformRole)) {
+    authReq.platformRole = platformRole;
+    authReq.workspaceId = requestedWorkspaceId;
+    return { workspaceId: requestedWorkspaceId, requestedWorkspaceId };
+  }
+
+  const resolved = await resolveWorkspaceForUser(userId, requestedWorkspaceId);
+  if (resolved.workspaceId) {
+    authReq.workspaceId = resolved.workspaceId;
+    authReq.workspaceRole = resolved.role || undefined;
+    authReq.employeeId = resolved.employeeId || undefined;
+  }
+
+  return {
+    workspaceId: resolved.workspaceId,
+    requestedWorkspaceId,
+    error: resolved.error,
+  };
+}
 
 // ============================================================================
 // REQUEST VALIDATION SCHEMAS
@@ -122,16 +180,17 @@ automationRouter.post('/schedule/generate', requireAuth, async (req: any, res: R
     
     const { startDate, endDate, requirements } = validationResult.data;
     
-    if (!req.user || !(req.workspaceId || req.user?.currentWorkspaceId)) {
-      return res.status(401).json({ error: 'Unauthorized' });
+    const { workspaceId, error } = await resolveRouteWorkspace(req);
+    if (!workspaceId) {
+      return res.status(error?.includes('Access denied') ? 403 : 400).json({ error: error || 'workspaceId is required' });
     }
 
     // Get employees for workspace
-    const employees = await storage.getEmployeesByWorkspace(req.workspaceId);
+    const employees = await storage.getEmployeesByWorkspace(workspaceId);
     
     // Get existing shifts in date range to avoid conflicts
     const existingShifts = await storage.getShiftsByWorkspace(
-      req.workspaceId,
+      workspaceId,
       new Date(startDate),
       new Date(endDate)
     );
@@ -139,7 +198,7 @@ automationRouter.post('/schedule/generate', requireAuth, async (req: any, res: R
     // Call automation engine WITH CREDIT DEDUCTION
     const creditResult = await withTokens(
       {
-        workspaceId: req.workspaceId,
+        workspaceId,
         featureKey: 'ai_scheduling',
         description: `Generated AI schedule from ${startDate} to ${endDate}`,
         userId: req.user?.id,
@@ -150,7 +209,7 @@ automationRouter.post('/schedule/generate', requireAuth, async (req: any, res: R
             actorId: req.user?.id,
             actorType: 'END_USER',
             actorName: req.user?.firstName ? `${req.user.firstName} ${req.user.lastName || ''}`.trim() : undefined,
-            workspaceId: req.workspaceId,
+            workspaceId,
             ipAddress: req.ip,
             userAgent: req.get('user-agent'),
           },
@@ -185,11 +244,11 @@ automationRouter.post('/schedule/generate', requireAuth, async (req: any, res: R
 
     try {
       const { broadcastToWorkspace } = await import('../websocket');
-      broadcastToWorkspace(req.workspaceId, { type: 'schedules_updated' });
+      broadcastToWorkspace(workspaceId, { type: 'schedules_updated' });
     // @ts-expect-error — TS migration: fix in refactoring sprint
     } catch (e: unknown) { log.warn('[Automation] Broadcast failed:', e.message); }
 
-    const _wsId1 = req.workspaceId || req.user?.currentWorkspaceId;
+    const _wsId1 = workspaceId || req.user?.currentWorkspaceId;
     platformEventBus.publish({
       type: 'schedule_published',
       category: 'automation',
@@ -240,8 +299,9 @@ automationRouter.post('/schedule/apply', requireAuth, async (req: any, res: Resp
     
     const { transactionId, shifts } = validationResult.data;
     
-    if (!req.user || !(req.workspaceId || req.user?.currentWorkspaceId)) {
-      return res.status(401).json({ error: 'Unauthorized' });
+    const { workspaceId, error } = await resolveRouteWorkspace(req);
+    if (!workspaceId) {
+      return res.status(error?.includes('Access denied') ? 403 : 400).json({ error: error || 'workspaceId is required' });
     }
 
     // Apply schedule
@@ -250,7 +310,7 @@ automationRouter.post('/schedule/apply', requireAuth, async (req: any, res: Resp
         actorId: req.user?.id,
         actorType: 'END_USER',
         actorName: req.user?.firstName ? `${req.user.firstName} ${req.user.lastName || ''}`.trim() : undefined,
-        workspaceId: req.workspaceId,
+        workspaceId,
         ipAddress: req.ip,
         userAgent: req.get('user-agent'),
       },
@@ -309,18 +369,27 @@ automationRouter.post('/invoice/generate', requireAuth, async (req: any, res: Re
     
     const { clientId, startDate, endDate } = validationResult.data;
     
-    if (!req.user || !(req.workspaceId || req.user?.currentWorkspaceId)) {
-      return res.status(401).json({ error: 'Unauthorized' });
+    const { workspaceId, error } = await resolveRouteWorkspace(req);
+    if (!workspaceId) {
+      return res.status(error?.includes('Access denied') ? 403 : 400).json({ error: error || 'workspaceId is required' });
     }
 
     // Get client
-    const client = await storage.getClient(clientId, req.workspaceId);
-    if (!client || client.workspaceId !== req.workspaceId) {
+    const client = await storage.getClient(clientId, workspaceId);
+    if (!client || client.workspaceId !== workspaceId) {
       return res.status(404).json({ error: 'Client not found' });
     }
 
     // Get unbilled time entries for this client
-    const timeEntries = await storage.getUnbilledTimeEntries(req.workspaceId, clientId);
+    const timeEntries = (await storage.getUnbilledTimeEntries(workspaceId, clientId))
+      .filter((entry) =>
+        entry.status === 'approved' &&
+        !entry.invoiceId &&
+        !entry.billedAt &&
+        !!entry.clockOut &&
+        new Date(entry.clockIn) >= new Date(startDate) &&
+        new Date(entry.clockIn) <= new Date(endDate)
+      );
 
     if (timeEntries.length === 0) {
       return res.status(400).json({
@@ -331,7 +400,7 @@ automationRouter.post('/invoice/generate', requireAuth, async (req: any, res: Re
     // Generate invoice WITH CREDIT DEDUCTION
     const creditResult = await withTokens(
       {
-        workspaceId: req.workspaceId,
+        workspaceId,
         featureKey: 'ai_invoice_generation',
         description: `Generated AI invoice for client ${clientId} (${startDate} to ${endDate})`,
         userId: req.user?.id,
@@ -342,7 +411,7 @@ automationRouter.post('/invoice/generate', requireAuth, async (req: any, res: Re
             actorId: req.user?.id,
             actorType: 'END_USER',
             actorName: req.user?.firstName ? `${req.user.firstName} ${req.user.lastName || ''}`.trim() : undefined,
-            workspaceId: req.workspaceId,
+            workspaceId,
             ipAddress: req.ip,
             userAgent: req.get('user-agent'),
           },
@@ -377,11 +446,11 @@ automationRouter.post('/invoice/generate', requireAuth, async (req: any, res: Re
 
     try {
       const { broadcastToWorkspace } = await import('../websocket');
-      broadcastToWorkspace(req.workspaceId, { type: 'invoices_updated' });
+      broadcastToWorkspace(workspaceId, { type: 'invoices_updated' });
     // @ts-expect-error — TS migration: fix in refactoring sprint
     } catch (e: unknown) { log.warn('[Automation] Broadcast failed:', e.message); }
 
-    const _wsId2 = req.workspaceId || req.user?.currentWorkspaceId;
+    const _wsId2 = workspaceId || req.user?.currentWorkspaceId;
     platformEventBus.publish({
       type: 'invoice_created',
       category: 'automation',
@@ -432,8 +501,9 @@ automationRouter.post('/invoice/anchor-close', requireAuth, async (req: any, res
     
     const { anchorDate } = validationResult.data;
     
-    if (!req.user || !(req.workspaceId || req.user?.currentWorkspaceId)) {
-      return res.status(401).json({ error: 'Unauthorized' });
+    const { workspaceId, error } = await resolveRouteWorkspace(req);
+    if (!workspaceId) {
+      return res.status(error?.includes('Access denied') ? 403 : 400).json({ error: error || 'workspaceId is required' });
     }
 
     // Run anchor period invoicing
@@ -442,12 +512,12 @@ automationRouter.post('/invoice/anchor-close', requireAuth, async (req: any, res
         actorId: req.user?.id,
         actorType: 'END_USER',
         actorName: req.user?.firstName ? `${req.user.firstName} ${req.user.lastName || ''}`.trim() : undefined,
-        workspaceId: req.workspaceId,
+        workspaceId,
         ipAddress: req.ip,
         userAgent: req.get('user-agent'),
       },
       {
-        workspaceId: req.workspaceId,
+        workspaceId,
         anchorDate: new Date(anchorDate),
       }
     );
@@ -459,7 +529,7 @@ automationRouter.post('/invoice/anchor-close', requireAuth, async (req: any, res
           .from(employees)
           .where(
             and(
-              eq(employees.workspaceId, req.workspaceId),
+              eq(employees.workspaceId, workspaceId),
               sql`(${employees.workspaceRole} IN ('org_owner', 'co_owner', 'department_manager'))`
             )
           );
@@ -470,14 +540,14 @@ automationRouter.post('/invoice/anchor-close', requireAuth, async (req: any, res
         for (const leader of orgLeaders) {
           if (leader.userId) {
             await createNotification({
-              workspaceId: req.workspaceId,
+              workspaceId,
               userId: leader.userId,
               type: 'system',
               title: 'Invoices Generated by AI Brain',
               message: `AI Brain generated ${result.invoices.length} invoice(s) totaling $${totalAmount.toFixed(2)}${needsReview > 0 ? `. ${needsReview} require review.` : '. All auto-approved.'}`,
               actionUrl: '/invoices',
               relatedEntityType: 'workspace',
-              relatedEntityId: req.workspaceId,
+              relatedEntityId: workspaceId,
               metadata: { 
                 invoicesGenerated: result.invoices.length,
                 totalAmount,
@@ -485,7 +555,7 @@ automationRouter.post('/invoice/anchor-close', requireAuth, async (req: any, res
                 anchorDate,
               },
               createdBy: 'system-coaileague',
-              idempotencyKey: `system-${req.workspaceId}-${leader.userId}`
+              idempotencyKey: `system-${workspaceId}-${leader.userId}`
             });
           }
         }
@@ -497,11 +567,11 @@ automationRouter.post('/invoice/anchor-close', requireAuth, async (req: any, res
 
     try {
       const { broadcastToWorkspace } = await import('../websocket');
-      broadcastToWorkspace(req.workspaceId, { type: 'invoices_updated' });
+      broadcastToWorkspace(workspaceId, { type: 'invoices_updated' });
     // @ts-expect-error — TS migration: fix in refactoring sprint
     } catch (e: unknown) { log.warn('[Automation] Broadcast failed:', e.message); }
 
-    const _wsId3 = req.workspaceId || req.user?.currentWorkspaceId;
+    const _wsId3 = workspaceId || req.user?.currentWorkspaceId;
     platformEventBus.publish({
       type: 'invoice_created',
       category: 'automation',
@@ -525,6 +595,10 @@ automationRouter.post('/invoice/anchor-close', requireAuth, async (req: any, res
         needsReview: result.requiresApproval.length,
         totalAmount: result.invoices.reduce((sum, inv) => sum + inv.total, 0),
       },
+      diagnostics: result.diagnostics,
+      warnings: result.diagnostics.orphanedClientIds.length > 0
+        ? [`${result.diagnostics.orphanedClientIds.length} client reference(s) on approved time entries are missing current client records.`]
+        : [],
     });
 
   } catch (error) {
@@ -557,23 +631,24 @@ automationRouter.post('/payroll/generate', requireAuth, async (req: any, res: Re
     
     const { employeeId, startDate, endDate } = validationResult.data;
     
-    if (!req.user || !(req.workspaceId || req.user?.currentWorkspaceId)) {
-      return res.status(401).json({ error: 'Unauthorized' });
+    const { workspaceId, error } = await resolveRouteWorkspace(req);
+    if (!workspaceId) {
+      return res.status(error?.includes('Access denied') ? 403 : 400).json({ error: error || 'workspaceId is required' });
     }
 
     // Get employee
-    const employee = await storage.getEmployee(employeeId, req.workspaceId);
-    if (!employee || employee.workspaceId !== req.workspaceId) {
+    const employee = await storage.getEmployee(employeeId, workspaceId);
+    if (!employee || employee.workspaceId !== workspaceId) {
       return res.status(404).json({ error: 'Employee not found' });
     }
 
     // Get time entries for this employee in date range
-    const timeEntries = await storage.getTimeEntriesByEmployeeAndDateRange(
-      req.workspaceId,
+    const timeEntries = (await storage.getTimeEntriesByEmployeeAndDateRange(
+      workspaceId,
       employeeId,
       new Date(startDate),
       new Date(endDate)
-    );
+    )).filter((entry) => entry.status === 'approved' && !entry.payrollRunId && !entry.payrolledAt && !!entry.clockOut);
 
     if (timeEntries.length === 0) {
       return res.status(400).json({
@@ -584,7 +659,7 @@ automationRouter.post('/payroll/generate', requireAuth, async (req: any, res: Re
     // Generate payroll WITH CREDIT DEDUCTION
     const creditResult = await withTokens(
       {
-        workspaceId: req.workspaceId,
+        workspaceId,
         featureKey: 'ai_payroll_processing',
         description: `Generated AI payroll for employee ${employeeId} (${startDate} to ${endDate})`,
         userId: req.user?.id,
@@ -595,7 +670,7 @@ automationRouter.post('/payroll/generate', requireAuth, async (req: any, res: Re
             actorId: req.user?.id,
             actorType: 'END_USER',
             actorName: req.user?.firstName ? `${req.user.firstName} ${req.user.lastName || ''}`.trim() : undefined,
-            workspaceId: req.workspaceId,
+            workspaceId,
             ipAddress: req.ip,
             userAgent: req.get('user-agent'),
           },
@@ -630,11 +705,11 @@ automationRouter.post('/payroll/generate', requireAuth, async (req: any, res: Re
 
     try {
       const { broadcastToWorkspace } = await import('../websocket');
-      broadcastToWorkspace(req.workspaceId, { type: 'payroll_updated' });
+      broadcastToWorkspace(workspaceId, { type: 'payroll_updated' });
     // @ts-expect-error — TS migration: fix in refactoring sprint
     } catch (e: unknown) { log.warn('[Automation] Broadcast failed:', e.message); }
 
-    const _wsId4 = req.workspaceId || req.user?.currentWorkspaceId;
+    const _wsId4 = workspaceId || req.user?.currentWorkspaceId;
     platformEventBus.publish({
       type: 'payroll_run_created',
       category: 'automation',
@@ -685,8 +760,9 @@ automationRouter.post('/payroll/anchor-close', requireAuth, async (req: any, res
     
     const { anchorDate } = validationResult.data;
     
-    if (!req.user || !(req.workspaceId || req.user?.currentWorkspaceId)) {
-      return res.status(401).json({ error: 'Unauthorized' });
+    const { workspaceId, error } = await resolveRouteWorkspace(req);
+    if (!workspaceId) {
+      return res.status(error?.includes('Access denied') ? 403 : 400).json({ error: error || 'workspaceId is required' });
     }
 
     // Run anchor period payroll
@@ -695,12 +771,12 @@ automationRouter.post('/payroll/anchor-close', requireAuth, async (req: any, res
         actorId: req.user?.id,
         actorType: 'END_USER',
         actorName: req.user?.firstName ? `${req.user.firstName} ${req.user.lastName || ''}`.trim() : undefined,
-        workspaceId: req.workspaceId,
+        workspaceId,
         ipAddress: req.ip,
         userAgent: req.get('user-agent'),
       },
       {
-        workspaceId: req.workspaceId,
+        workspaceId,
         anchorDate: new Date(anchorDate),
       }
     );
@@ -712,7 +788,7 @@ automationRouter.post('/payroll/anchor-close', requireAuth, async (req: any, res
           .from(employees)
           .where(
             and(
-              eq(employees.workspaceId, req.workspaceId),
+              eq(employees.workspaceId, workspaceId),
               sql`(${employees.workspaceRole} IN ('org_owner', 'co_owner', 'department_manager'))`
             )
           );
@@ -723,14 +799,14 @@ automationRouter.post('/payroll/anchor-close', requireAuth, async (req: any, res
         for (const leader of orgLeaders) {
           if (leader.userId) {
             await createNotification({
-              workspaceId: req.workspaceId,
+              workspaceId,
               userId: leader.userId,
               type: 'system',
               title: 'Payroll Processed by AI Brain',
               message: `AI Brain processed payroll for ${result.payrolls.length} employee(s) totaling $${totalPayroll.toFixed(2)}${needsReview > 0 ? `. ${needsReview} require review.` : '. All auto-approved.'}`,
               actionUrl: '/payroll',
               relatedEntityType: 'workspace',
-              relatedEntityId: req.workspaceId,
+              relatedEntityId: workspaceId,
               metadata: { 
                 payrollsProcessed: result.payrolls.length,
                 totalPayroll,
@@ -738,7 +814,7 @@ automationRouter.post('/payroll/anchor-close', requireAuth, async (req: any, res
                 anchorDate,
               },
               createdBy: 'system-coaileague',
-              idempotencyKey: `system-${req.workspaceId}-${leader.userId}`
+              idempotencyKey: `system-${workspaceId}-${leader.userId}`
             });
           }
         }
@@ -750,11 +826,11 @@ automationRouter.post('/payroll/anchor-close', requireAuth, async (req: any, res
 
     try {
       const { broadcastToWorkspace } = await import('../websocket');
-      broadcastToWorkspace(req.workspaceId, { type: 'payroll_updated' });
+      broadcastToWorkspace(workspaceId, { type: 'payroll_updated' });
     // @ts-expect-error — TS migration: fix in refactoring sprint
     } catch (e: unknown) { log.warn('[Automation] Broadcast failed:', e.message); }
 
-    const _wsId5 = req.workspaceId || req.user?.currentWorkspaceId;
+    const _wsId5 = workspaceId || req.user?.currentWorkspaceId;
     platformEventBus.publish({
       type: 'payroll_run_created',
       category: 'automation',
@@ -776,6 +852,10 @@ automationRouter.post('/payroll/anchor-close', requireAuth, async (req: any, res
         needsReview: result.requiresApproval.length,
         totalPayroll: result.payrolls.reduce((sum, p) => sum + p.netPay, 0),
       },
+      diagnostics: result.diagnostics,
+      warnings: result.diagnostics.orphanedEmployeeIds.length > 0
+        ? [`${result.diagnostics.orphanedEmployeeIds.length} employee reference(s) on approved time entries are missing current employee records.`]
+        : [],
     });
 
   } catch (error) {
