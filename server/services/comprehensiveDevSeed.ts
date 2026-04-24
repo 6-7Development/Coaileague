@@ -124,7 +124,7 @@ export async function runComprehensiveDevSeed(): Promise<{ success: boolean; log
     for (const c of CLIENTS) {
       await pool.query(
         `INSERT INTO clients (id, workspace_id, first_name, last_name, company_name, contract_rate, billable_hourly_rate, email, address, is_active, created_at, updated_at)
-         VALUES ($1,$2,$3,$4,$5,$6,$6,$7,$8,true,NOW(),NOW())
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,true,NOW(),NOW())
          ON CONFLICT (id) DO UPDATE
          SET company_name=EXCLUDED.company_name,
              contract_rate=EXCLUDED.contract_rate,
@@ -133,7 +133,7 @@ export async function runComprehensiveDevSeed(): Promise<{ success: boolean; log
              address=EXCLUDED.address,
              is_active=true,
              updated_at=NOW()`,
-        [c.id, WS, c.firstName, c.lastName, c.companyName, c.billRate, c.email, c.address]
+        [c.id, WS, c.firstName, c.lastName, c.companyName, c.billRate, c.billRate, c.email, c.address]
       );
       counts.clients++;
     }
