@@ -73,9 +73,9 @@ export async function runComprehensiveDevSeed(): Promise<{ success: boolean; log
     // 2. Users
     for (const s of STAFF) {
       await pool.query(
-        `INSERT INTO users (id, email, first_name, last_name, password_hash, workspace_id, current_workspace_id, workspace_role, is_verified, created_at, updated_at)
-         VALUES ($1,$2,$3,$4,'$2b$10$rMNn5sVW7Kbxe8HJ9QlZpOeD8kqAx1m7oR3vNtYwIi6jGhUzPs4Ke',$5,$5,$6,true,NOW(),NOW())
-         ON CONFLICT (id) DO UPDATE SET email=EXCLUDED.email, workspace_role=EXCLUDED.workspace_role, workspace_id=EXCLUDED.workspace_id, current_workspace_id=EXCLUDED.current_workspace_id, updated_at=NOW()`,
+        `INSERT INTO users (id, email, first_name, last_name, password_hash, current_workspace_id, role, created_at, updated_at)
+         VALUES ($1,$2,$3,$4,'$2b$10$rMNn5sVW7Kbxe8HJ9QlZpOeD8kqAx1m7oR3vNtYwIi6jGhUzPs4Ke',$5,$6,NOW(),NOW())
+         ON CONFLICT (id) DO UPDATE SET email=EXCLUDED.email, role=EXCLUDED.role, current_workspace_id=EXCLUDED.current_workspace_id, updated_at=NOW()`,
         [s.userId, s.email, s.firstName, s.lastName, WS, s.wsRole]
       );
       counts.users++;
@@ -86,10 +86,10 @@ export async function runComprehensiveDevSeed(): Promise<{ success: boolean; log
     for (const s of STAFF) {
       const empNum = 'EMP-ACME-' + s.empId.replace(/[^0-9]/g, '').padStart(5, '0');
       await pool.query(
-        `INSERT INTO employees (id, workspace_id, user_id, employee_number, first_name, last_name, email, position, pay_rate, bill_rate, status, workspace_role, hire_date, created_at, updated_at)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'active',$11,NOW()-interval '180 days',NOW(),NOW())
-         ON CONFLICT (id) DO UPDATE SET user_id=EXCLUDED.user_id, pay_rate=EXCLUDED.pay_rate, bill_rate=EXCLUDED.bill_rate, workspace_role=EXCLUDED.workspace_role, updated_at=NOW()`,
-        [s.empId, WS, s.userId, empNum, s.firstName, s.lastName, s.email, s.position, s.payRate, s.billRate, s.wsRole]
+        `INSERT INTO employees (id, workspace_id, user_id, employee_number, first_name, last_name, email, position, hourly_rate, status, workspace_role, hire_date, created_at, updated_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'active',$10,NOW()-interval '180 days',NOW(),NOW())
+         ON CONFLICT (id) DO UPDATE SET user_id=EXCLUDED.user_id, hourly_rate=EXCLUDED.hourly_rate, workspace_role=EXCLUDED.workspace_role, updated_at=NOW()`,
+        [s.empId, WS, s.userId, empNum, s.firstName, s.lastName, s.email, s.position, s.payRate, s.wsRole]
       );
       counts.employees++;
     }
@@ -175,7 +175,7 @@ export async function runComprehensiveDevSeed(): Promise<{ success: boolean; log
             `INSERT INTO shifts (id, workspace_id, employee_id, client_id, title, date, start_time, end_time, status, pay_rate, bill_rate, billable_to_client, ai_generated, created_at, updated_at)
              VALUES ($1,$2,$3,$4,$5,$6,$7::timestamptz,$8::timestamptz,$9,$10,$11,true,false,NOW(),NOW())
              ON CONFLICT (id) DO UPDATE SET employee_id=EXCLUDED.employee_id, status=EXCLUDED.status, date=EXCLUDED.date, updated_at=NOW()`,
-            [shiftId, WS, emp?.empId || null, client.id, client.name + ' — ' + tmpl.label, dateStr(startISO), startISO, endISO, isOpen ? 'open' : 'assigned', emp?.payRate || '17.00', client.billRate]
+            [shiftId, WS, emp?.empId || null, client.id, client.name + ' — ' + tmpl.label, dateStr(startISO), startISO, endISO, isOpen ? 'published' : 'scheduled', emp?.payRate || '17.00', client.billRate]
           );
           counts.shifts++;
         }
@@ -251,7 +251,7 @@ export async function runComprehensiveDevSeed(): Promise<{ success: boolean; log
           const unitPrice = (8 * parseFloat(client.billRate)).toFixed(2);
           const lineTotal = (qty * parseFloat(unitPrice)).toFixed(2);
           await pool.query(
-            `INSERT INTO invoice_line_items (id, invoice_id, workspace_id, description, quantity, unit_price, total_amount, created_at, updated_at)
+            `INSERT INTO invoice_line_items (id, invoice_id, workspace_id, description, quantity, unit_price, amount, created_at, updated_at)
              VALUES (gen_random_uuid(),$1,$2,$3,$4,$5,$6,NOW(),NOW())
              ON CONFLICT DO NOTHING`,
             [invId, WS, client.name + ' — ' + tmpl.label + ' (' + qty + ' days x 8h @ $' + client.billRate + '/hr)', qty, unitPrice, lineTotal]
