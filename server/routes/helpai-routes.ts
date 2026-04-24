@@ -451,6 +451,7 @@ helpaiRouter.post(
 import { helpaiOrchestrator, type ActionRequest } from '../services/helpai/platformActionHub';
 import { createLogger } from '../lib/logger';
 import { PLATFORM_WORKSPACE_ID } from '../services/billing/billingConstants';
+import { isPlatformSupportStaffRole, canAccessHelpAIAdmin, canManageSupportControls, canIssueSupportAIServiceElevation, canExecuteSupportActions, HELPAI_ADMIN_PLATFORM_ROLES } from '../services/support/supportPolicyService';
 const log = createLogger('HelpaiRoutes');
 
 // ── Phase 48: Prompt Injection Sanitization ──────────────────────────────────

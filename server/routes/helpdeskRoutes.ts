@@ -25,6 +25,7 @@ import { requireAuth } from '../auth';
 import { HelpAIService } from '../helpos-ai';
 import { helpAIBotService, HelpAIState } from '../services/helpai/helpAIBotService';
 import { createLogger } from '../lib/logger';
+import { isPlatformSupportStaffRole, canAccessHelpAIAdmin, canManageSupportControls } from '../services/support/supportPolicyService';
 const log = createLogger('HelpdeskRoutes');
 
 
