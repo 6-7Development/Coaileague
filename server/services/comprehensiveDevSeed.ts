@@ -53,6 +53,27 @@ function calcHours(startH: number, endH: number): number {
   return endH > startH ? endH - startH : (24 - startH) + endH;
 }
 
+function shouldLeaveShiftOpen(day: number, templateIndex: number, clientIndex: number): boolean {
+  return (day + templateIndex + clientIndex) % 2 === 0;
+}
+
+function buildFutureAssignments(day: number, fieldStaff: StaffMember[]): Array<StaffMember | null> {
+  const slotsPerDay = SHIFT_TEMPLATES.length * CLIENTS.length;
+  const assignments: Array<StaffMember | null> = new Array(slotsPerDay).fill(null);
+  const scheduledSlots = Array.from({ length: slotsPerDay }, (_, slotIndex) => slotIndex).filter((slotIndex) => {
+    const templateIndex = Math.floor(slotIndex / CLIENTS.length);
+    const clientIndex = slotIndex % CLIENTS.length;
+    return !shouldLeaveShiftOpen(day, templateIndex, clientIndex);
+  });
+  const rotationOffset = (day - 1) % fieldStaff.length;
+
+  scheduledSlots.forEach((slotIndex, scheduledIndex) => {
+    assignments[slotIndex] = fieldStaff[(rotationOffset + scheduledIndex) % fieldStaff.length];
+  });
+
+  return assignments;
+}
+
 const log: string[] = [];
 function info(msg: string) { console.log('[ComprehensiveSeed] ' + msg); log.push(msg); }
 
@@ -188,14 +209,15 @@ export async function runComprehensiveDevSeed(): Promise<{ success: boolean; log
 
     // Future 14 days (open + assigned)
     for (let day = 1; day <= 14; day++) {
+      const futureAssignments = buildFutureAssignments(day, fieldStaff);
       for (let tIdx2 = 0; tIdx2 < SHIFT_TEMPLATES.length; tIdx2++) {
         const tmpl = SHIFT_TEMPLATES[tIdx2];
         for (let cIdx2 = 0; cIdx2 < CLIENTS.length; cIdx2++) {
           const client = CLIENTS[cIdx2];
           // ~50% open, 50% assigned — use day+client index to vary
-          const isOpen = (day + cIdx2) % 2 === 0;
-          const empIdx2 = (tmplEmpOffset[tIdx2] + cIdx2) % fieldStaff.length;
-          const emp = isOpen ? null : fieldStaff[empIdx2];
+          const slotIndex = tIdx2 * CLIENTS.length + cIdx2;
+          const emp = futureAssignments[slotIndex];
+          const isOpen = !emp;
           const startISO = daysFromNow(day, tmpl.startH);
           const endISO = daysFromNow(day, tmpl.endH < tmpl.startH ? tmpl.endH + 24 : tmpl.endH);
           const futureNum = (day - 1) * CLIENTS.length * SHIFT_TEMPLATES.length + tIdx2 * CLIENTS.length + cIdx2 + 1;
