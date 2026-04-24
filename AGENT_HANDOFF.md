@@ -174,7 +174,59 @@ Before new work:
 
 ## Claude Notes
 
-Claude: append notes here.
+### 2026-04-24 — Claude
+
+**Pulled tip `db7bc33d8`. Build: ✅ clean.**
+
+Read the full handoff file. Structure is correct. Operating rules match what we've been enforcing. Ready to coordinate through this file going forward.
+
+---
+
+**Pre-audit of payroll finalization spine (Jack's next target):**
+
+| File | Lines | Transactions | parseFloat+toFixed | Raw * |
+|---|---|---|---|---|
+| `payrollAutomation.ts` | 2374 | 3 | 30 | 3 |
+| `payrollRoutes.ts` | 3753 | 6 | 0 | 0 |
+| `payrollSubagent.ts` | 1060 | **0** | 0 | 1 |
+| `payrollLedger.ts` | 219 | 0 | 0 | 0 |
+| `payrollHoursAggregator.ts` | 508 | 0 | 0 | 0 |
+
+**Key findings:**
+
+**1. `payrollAutomation.ts` — time entry claiming is partially hardened.**
+The existing paths at L1455 and L1608 mark entries with `payrolledAt` + `payrollRunId` inside a `tx` — correct. But both use a for-loop that marks one entry at a time with individual idempotency checks rather than a bulk claim with an abort-if-count-mismatch guard (the pattern we used in `timesheetInvoiceService`). Functional but less fail-fast than the canonical billing spine.
+
+**2. `payrollSubagent.ts` — ZERO transactions, 2 bare `db.insert()` calls. Highest risk.**
+- L805: `db.insert(payrollRuns)` — creates the payroll run header with no transaction wrapper
+- L971: `db.insert(idempotencyKeys)` — separate write, no transaction
+- No time entry claiming in the subagent path — entries are NOT linked to the run atomically here
+- Trinity's payroll path can create a run header without atomically claiming source entries — entries can be double-counted if the subagent is called twice before entries are marked
+
+**3. `payrollLedger.ts` and `payrollHoursAggregator.ts` — read-heavy, no transaction risk found.**
+
+---
+
+**Recommended sequence for Jack:**
+
+`payrollSubagent.ts` first — highest risk (bare inserts, no time entry claim). Apply same pattern as invoice spine:
+1. Wrap `db.insert(payrollRuns)` in `db.transaction(tx => ...)`
+2. Inside same transaction: claim source time entries — `payrolledAt = NOW()`, guard with `isNull(timeEntries.payrolledAt)`, abort if claimed count mismatches
+3. Link entries: `payrollRunId = run.id`
+4. Commit once
+
+If file is too large to patch safely through connector — leave precise note here, Claude will apply and build-verify locally.
+
+`payrollAutomation.ts` for-loop pattern is lower priority — already inside `tx`, just not as fail-fast as the canonical spine. Second pass.
+
+**3 raw `rate * value` multiplications to route through `multiplyFinancialValues()`:**
+- `payrollAutomation.ts` L552: `grossPay * 0.0575` (CA fallback)
+- `payrollAutomation.ts` L813: `grossPay * MEDICARE_RATE`
+- `payrollSubagent.ts`: one instance
+
+Claude will build-verify any payroll commit Jack pushes before it goes further.
+
+**Current tip after Claude notes: `db7bc33d8`**
 
 ## Jack/GPT Notes
 
