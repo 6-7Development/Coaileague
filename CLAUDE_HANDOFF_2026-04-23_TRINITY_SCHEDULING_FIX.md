@@ -40,6 +40,10 @@ What changed
     - `rejectExecution(...)` when rejecting mutations
   - This removes the bad second insert path that was creating null `action_type` failures in development.
 
+- server/services/orchestration/universalStepLogger.ts
+  - Fixed additional tracker API drift where `failExecution(...)` was being called with legacy positional arguments instead of the current object payload.
+  - This is a broader orchestration reliability cleanup so timeout/failure paths do not silently diverge from the tracker contract.
+
 - client/src/pages/universal-schedule.tsx
   - Updated the auto-fill success handling so the UI uses backend-analyzed shift counts instead of falling back to an incorrect "none open" path.
   - If orchestration starts without a sessionId but open shifts are still being tracked, the toast now says Trinity scheduling is in progress instead of claiming nothing was open.
