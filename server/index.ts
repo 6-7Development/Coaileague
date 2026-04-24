@@ -1659,7 +1659,9 @@ process.on('SIGHUP', () => gracefulShutdown('SIGHUP'));
 
 // Handle uncaught exceptions - be resilient to Neon serverless errors
 process.on('uncaughtException', (err: any) => {
-  log.error('Uncaught exception', { error: err instanceof Error ? { message: err.message, stack: err.stack } : String(err) });
+  const errMsg = err instanceof Error ? err.message : String(err);
+  const errStack = err instanceof Error ? (err.stack || '').split('\n').slice(0,5).join(' | ') : '';
+  log.error(`Uncaught exception: ${errMsg} | code=${err?.code || 'none'} | ${errStack.slice(0,200)}`);
   
   if (err.message?.includes('Cannot set property message') && 
       err.message?.includes('ErrorEvent')) {
@@ -1669,6 +1671,11 @@ process.on('uncaughtException', (err: any) => {
   
   if (err.code === '57P01' || err.message?.includes('terminating connection due to administrator command')) {
     log.warn('Database connection terminated by administrator (non-fatal), continuing');
+    return;
+  }
+  
+  if (errMsg?.includes('column "date" does not exist') || errMsg?.includes("column 'date' does not exist")) {
+    log.warn('platform_updates.date column missing (non-fatal) — migration will add it');
     return;
   }
   
@@ -2197,7 +2204,11 @@ process.on('unhandledRejection', (reason: any, promise) => {
 
     // PHASE 1: Critical services (run first, before any seeding tasks)
     log.info('Phase 1: Critical services');
-    await initializeCriticalServices();
+    try {
+      await initializeCriticalServices();
+    } catch (err: any) {
+      log.error(`[CriticalServices] Failed (non-fatal): ${err.message}`);
+    }
 
     // Non-critical seeding tasks — fire-and-forget (do NOT block Phase 2+)
     void (async () => {
@@ -2328,7 +2339,10 @@ process.on('unhandledRejection', (reason: any, promise) => {
       } catch (error) {
         log.error('Onboarding task migration failed (non-fatal)', { error: error instanceof Error ? error.message : String(error) });
       }
-    })();
+    })().catch((err: any) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      log.error(`[PostListen] Unhandled crash: ${msg}`);
+    });
 
     // PHASE 2: Initialize AI Brain core (parallel, after listen)
     log.info('Phase 2: AI Brain core services (parallel)');

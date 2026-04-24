@@ -527,6 +527,7 @@ async function onTrainingCertificateExpired(event: PlatformEvent): Promise<void>
         userId: ws.ownerId,
         type: 'compliance_alert',
         title: `Training Certificate Expired: ${officerName}`,
+        idempotencyKey: `compliance_alert-${Date.now()}-${ws.ownerId}`,
         message: `${officerName}'s ${moduleTitle} certificate (#${certNumber}) expired ${expiredDaysAgo} day${expiredDaysAgo !== 1 ? 's' : ''} ago. Renewal required before scheduling.`,
         actionUrl: `/training-certification?tab=compliance`,
         isRead: false,

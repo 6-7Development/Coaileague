@@ -25,6 +25,7 @@ interface CreateNotificationParams {
   type: string;
   title: string;
   message: string;
+  idempotencyKey?: string;
   actionUrl?: string;
   relatedEntityType?: string;
   relatedEntityId?: string;
@@ -33,7 +34,7 @@ interface CreateNotificationParams {
   priority?: 'low' | 'normal' | 'high' | 'urgent';
   data?: Record<string, any>;
   category?: string;
-  idempotencyKey?: string;
+  targetRole?: string;
 }
 
 // All notification_type enum values that exist in the DB.
