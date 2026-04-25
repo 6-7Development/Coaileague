@@ -134,6 +134,7 @@ import { mutationLimiter } from "../middleware/rateLimiter";
 import { isValidPayrollTransition, resolvePayrollLifecycleStatus } from "../services/payroll/payrollStateMachine";
 import { createLogger } from '../lib/logger';
 import { isTerminalPayrollStatus, isDraftPayrollStatus, isValidPayrollTransition, PAYROLL_TERMINAL_STATUSES, PAYROLL_DRAFT_STATUSES } from '../services/payroll/payrollStatus';
+import { getPayrollTaxFilingDeadlines, getPayrollTaxFilingGuide, getPayrollStatePortals } from '../services/payroll/payrollTaxFilingGuideService';
 const log = createLogger('PayrollRoutes');
 
 const router = Router();
@@ -1592,18 +1593,9 @@ router.get('/my-tax-forms/:formId/download', async (req: AuthenticatedRequest, r
   }
 });
 
-router.get('/tax-filing/deadlines', async (req: AuthenticatedRequest, res) => {
+router.get('/tax-filing/deadlines', async (_req, res) => {
   try {
-    const year = req.query.year ? parseInt(req.query.year as string) : new Date().getFullYear();
-
-    const { taxFilingAssistanceService } = await import('../services/taxFilingAssistanceService');
-    const deadlines = taxFilingAssistanceService.getFilingDeadlines(year);
-
-    res.json({
-      year,
-      deadlines,
-      disclaimer: 'Filing deadlines are provided for reference only. This platform is middleware — verify all deadlines with the IRS or your tax professional.',
-    });
+    res.json(getPayrollTaxFilingDeadlines());
   } catch (error: unknown) {
     log.error('Error fetching filing deadlines:', error);
     res.status(500).json({ message: 'Failed to fetch filing deadlines' });
@@ -1612,56 +1604,19 @@ router.get('/tax-filing/deadlines', async (req: AuthenticatedRequest, res) => {
 
 router.get('/tax-filing/guide/:formType', async (req: AuthenticatedRequest, res) => {
   try {
-    const formType = req.params.formType as '941' | '940' | 'w2' | '1099';
-    if (!['941', '940', 'w2', '1099'].includes(formType)) {
-      return res.status(400).json({ message: 'Invalid form type. Must be 941, 940, w2, or 1099.' });
-    }
-
-    const state = req.query.state as string | undefined;
-    const workspaceId = req.workspaceId;
-
-    if (workspaceId) {
-      try {
-        const { tokenManager } = await import('../services/billing/tokenManager');
-        await tokenManager.recordUsage({
-          workspaceId,
-          userId: req.user?.id || 'system',
-          featureKey: 'tax_filing_assistance',
-          // @ts-expect-error — TS migration: fix in refactoring sprint
-          featureName: 'Tax Filing Assistance Guide',
-          description: `Tax filing guide for form ${req.params.formType}`,
-        });
-      } catch (billingErr) {
-        log.warn('[TaxFiling] Credit deduction failed for filing guide (non-blocking):', billingErr);
-      }
-    }
-
-    const { taxFilingAssistanceService } = await import('../services/taxFilingAssistanceService');
-    const guide = taxFilingAssistanceService.getFilingGuide(formType, state);
-
-    res.json({
-      ...guide,
-      disclaimer: 'Filing guidance is provided for convenience only. This platform is middleware — not a CPA or tax filing service. Consult a qualified tax professional.',
-    });
+    const formType = req.params.formType;
+    const guide = getPayrollTaxFilingGuide(formType);
+    if (!guide) return res.status(404).json({ error: 'Unsupported payroll tax form type' });
+    res.json(guide);
   } catch (error: unknown) {
     log.error('Error fetching filing guide:', error);
     res.status(500).json({ message: 'Failed to fetch filing guide' });
   }
 });
 
-router.get('/tax-filing/state-portals', async (req: AuthenticatedRequest, res) => {
+router.get('/tax-filing/state-portals', async (_req, res) => {
   try {
-    const state = req.query.state as string | undefined;
-
-    const { taxFilingAssistanceService } = await import('../services/taxFilingAssistanceService');
-    const portals = taxFilingAssistanceService.getStatePortals(state);
-
-    res.json({
-      count: portals.length,
-      portals,
-      irsPortals: taxFilingAssistanceService.getIRSPortals(),
-      disclaimer: `Portal URLs are provided for convenience. ${PLATFORM.name} is not responsible for external website availability or changes.`,
-    });
+    res.json(getPayrollStatePortals());
   } catch (error: unknown) {
     log.error('Error fetching state portals:', error);
     res.status(500).json({ message: 'Failed to fetch state portals' });

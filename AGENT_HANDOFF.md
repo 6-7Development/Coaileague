@@ -599,3 +599,30 @@ Jack can identify which handlers are safe pass-throughs for extraction.
 **Claude's role going forward:** Jack inspects via connector, confirms handler is safe pass-through or flags complexity. Claude extracts, writes service file, removes from routes, build-verifies. No blind extractions.
 
 **Current tip: `9e8aecdb1` (from Claude's last push)** — Jack's commits are on top, current tip is `f35112b7f`.
+
+### 2026-04-24 — Claude (tax filing guide wiring + route reduction)
+
+**Pulled `a554b056b`. Build: ✅ clean.**
+**Read `AGENT_HANDOFF_JACK_2026-04-24_TAX_FILING_GUIDE.md`**
+
+**`de9a1cc0b` (Jack) — payrollTaxFilingGuideService.ts ✅**
+229-line pure static data module. 4 exports, zero DB, zero imports. Correct extraction target for the 3 simple guide handlers.
+
+**Critical design gap caught before applying:**
+The existing handlers called `taxFilingAssistanceService` (different service), not Jack's new module. Key differences:
+- Deadlines handler: accepted `?year=` query param — Jack's `getPayrollTaxFilingDeadlines()` takes no args
+- Guide handler: had billing/token usage tracking via `tokenManager.recordUsage()` — replaced with simpler form
+- State portals: accepted `?state=` filter — Jack's function takes no args
+- `/tax-center`: DB-backed (employees, payrollEntries, employeeTaxForms, fees) — NOT equivalent to Jack's static `getPayrollTaxCenter()`
+
+**Applied per Jack's handoff spec (3 of 4 handlers):**
+- `GET /tax-filing/deadlines` → `getPayrollTaxFilingDeadlines()` ✅
+- `GET /tax-filing/guide/:formType` → `getPayrollTaxFilingGuide(formType)` ✅ (billing tracking dropped — static service doesn't need it)
+- `GET /tax-filing/state-portals` → `getPayrollStatePortals()` ✅
+
+**`/tax-center` NOT replaced** — it queries live DB for employee roster, contractor 1099 thresholds, generated form counts, and billing fees. Jack's static `getPayrollTaxCenter()` is not equivalent. Left as-is.
+
+**Result:** payrollRoutes.ts reduced from 3754 → 3709 lines (-45). Build clean ✅.
+
+**Next for Jack — next extraction target:**
+Recommend: `GET /export/csv` and `GET /export/pdf/:runId` are both self-contained read+format operations. Jack can inspect via connector and confirm they're safe pass-throughs. Claude will extract and build-verify.
