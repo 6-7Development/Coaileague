@@ -1,131 +1,111 @@
+# ═══════════════════════════════════════════════════════════
+# AGENT SYNC BLOCK — READ THIS BEFORE ANY WORK
+# Updated: 2026-04-25 | Both agents update this every commit
+# ═══════════════════════════════════════════════════════════
+
+## WHO GOES NEXT: JACK ✋
 
 ---
 
-## 🎯 GO-LIVE PLAN — End of Month Target
-### Bryan directive 2026-04-25 | Both agents read this before ANY work
+## CURRENT POSITION IN PLATFORM REFACTOR
 
-**The real problem:** 361 route files, 200,508 lines of route code, 125 files over 500 lines.
-The schema is huge. The routes are huge. The complaint is valid.
-
-**The wrong fix:** Create more service files that add complexity.
-**The right fix:** Consolidate duplicate paths, delete dead code, use what we have universally.
+**Domain:** BILLING (active)
+**Overall order:** ✅ Payroll → 🔄 Billing → Scheduling → Time → HR → Client → Compliance → Trinity → Chat → Auth → Reporting → Ops → Support → Bloat/Delete
 
 ---
 
-### RULES FOR BOTH AGENTS — NON-NEGOTIABLE
+## WHAT WAS JUST DONE (last 2 commits)
 
-1. **No new files unless absolutely necessary.** If the operation already exists somewhere, wire to it. Don't create a parallel path.
-
-2. **One canonical path per operation.** If `POST /api/invoices` and `POST /api/billing/invoices` do the same thing — one dies. The other uses the canonical service.
-
-3. **Delete > Extract.** Before creating a service file, ask: does this handler need to exist at all? Dead routes, dev-only routes, and duplicates get deleted first.
-
-4. **Domain services are singletons.** `invoiceService`, `storage`, `platformEventBus`, `db` — use them. Don't re-implement DB queries that already have a canonical home.
-
-5. **If a route file is bloated, find the duplicates first.** `miscRoutes.ts` (2,776L) and `devRoutes.ts` (2,458L) are almost certainly full of dead code — audit before touching.
+| Commit | Agent | What | Result |
+|---|---|---|---|
+| `c853bcf61` | Claude | Caller audit on billing-api.ts — 33 dead routes deleted, 3 duplicates resolved | billing-api.ts: 1,870 → 912 lines (-958L) |
+| `98063bf6b` | Claude | Caller audit on domains/billing.ts — 7 dead routes deleted, ai-usage migrated | domains/billing.ts: pure mount file, 0 inline routes |
+| `987817876` | Jack | Deleted 2 shadow routes from domains/billing.ts | Confirmed shadow conflict removed |
 
 ---
 
-### STRATEGIC PRIORITY ORDER (end of month go-live)
+## JACK'S NEXT TASK
 
-**Tier 1 — Must ship (core business operations):**
-| Domain | Biggest file | Action |
-|---|---|---|
-| ✅ Payroll | payrollRoutes.ts (was 3,754L → 2,068L) | DONE |
-| Billing | billing-api.ts (1,838L) | Thin routes → billingTiersRegistry enforcement |
-| Scheduling | shiftRoutes.ts (3,622L) | Audit for duplicates, extract shift mutation service |
-| Time | time-entry-routes.ts (2,707L) | Consolidate with timeEntryRoutes.ts (924L) — likely 60% overlap |
-| Invoicing | invoiceRoutes.ts (3,818L) | Extract to invoiceService (partially done) |
+**Target:** `server/routes/billingSettingsRoutes.ts` (600L)
 
-**Tier 2 — Ship if time allows:**
-| Domain | Action |
+**Exact workflow:**
+1. Read the BILLING section in `CODEBASE_INDEX.md`
+2. Run caller audit on every route — the pattern that worked on billing-api.ts:
+   ```
+   grep -rn "/api/billing-settings/ROUTE_PATH" client/ server/ | grep -v "billingSettingsRoutes.ts"
+   ```
+3. Delete routes with zero callers
+4. Check for duplicates already covered by billing-api.ts
+5. Commit with exact before/after line count
+
+**Then:** `stripeInlineRoutes.ts` (923L) — keep the Stripe webhook handler, audit everything else.
+
+**DO NOT touch:** billing-api.ts (done), domains/billing.ts (done), stripeInlineRoutes.ts webhooks.
+
+---
+
+## CLAUDE'S NEXT TASK (after Jack commits)
+
+1. Pull Jack's commit — `git fetch origin development && git reset --hard FETCH_HEAD`
+2. Run `node build.mjs` — must be clean before proceeding
+3. Verify Jack's deletions didn't break any imports
+4. Remove any unused imports left behind
+5. Commit with build verification
+6. Update this SYNC BLOCK (WHO GOES NEXT → JACK, and update the table)
+
+---
+
+## FAST CALLER AUDIT PATTERN (copy-paste ready)
+
+```bash
+# Step 1: List all routes in the target file
+grep -n "router\.\(get\|post\|put\|patch\|delete\)\|app\.\(get\|post\|put\|patch\|delete\)" server/routes/TARGET_FILE.ts
+
+# Step 2: For each route path, check callers
+grep -rn "/api/MOUNT_PREFIX/ROUTE_PATH" client/ server/ | grep -v "TARGET_FILE.ts"
+
+# If zero results → safe to delete
+# If results → keep, note the caller file
+
+# Step 3: Check for duplicates
+grep -n "router\.\(get\|post\|put\|patch\|delete\)('/ROUTE'" server/routes/billing-api.ts server/routes/billingSettingsRoutes.ts
+```
+
+---
+
+## BILLING DOMAIN STATUS
+
+| File | Before | After | Status |
+|---|---|---|---|
+| `domains/billing.ts` | ~155L | 112L | ✅ Pure mount file |
+| `billing-api.ts` | 1,870L | 912L | ✅ 33 dead deleted, 0 dupes |
+| `billingSettingsRoutes.ts` | 600L | TBD | 🔄 Jack's turn |
+| `stripeInlineRoutes.ts` | 923L | TBD | ⏳ After billing settings |
+| `invoiceRoutes.ts` | 3,818L | TBD | ⏳ After stripe |
+| `billingTiersRegistry.ts` enforcement | — | TBD | ⏳ After file cleanup |
+
+---
+
+## NON-NEGOTIABLE RULES (enforced every commit)
+
+1. **Read CODEBASE_INDEX.md for the domain before touching any file**
+2. **Run caller audit before deleting any route** — never guess
+3. **No new files unless the operation genuinely doesn't exist anywhere**
+4. **Every commit reduces total line count** — if it adds lines, justify it
+5. **Both agents update this SYNC BLOCK after every commit**
+6. **Build must be clean before pushing** — Claude verifies, Jack trusts Claude on this
+
+---
+
+## PLATFORM STATS (live)
+
+| Metric | Value |
 |---|---|
-| HR | hrInlineRoutes.ts (1,795L) → employeeRoutes.ts (2,451L) — find overlap |
-| Compliance | complianceRoutes.ts (1,823L) → use existing complianceEngine |
-| Chat/Comms | chat.ts (1,666L) + chat-rooms.ts (2,828L) → consolidate |
-
-**Tier 3 — Post go-live cleanup:**
-- miscRoutes.ts (2,776L) — audit + delete dead code
-- devRoutes.ts (2,458L) — production should strip this entirely
-- voiceRoutes.ts (5,059L) — largest file, needs dedicated sprint
-- mascot-routes.ts (2,580L) — non-critical, schedule for later
-
----
-
-### WHAT GO-LIVE ACTUALLY REQUIRES
-
-1. **Billing enforcement** — without it, nothing gets charged. Priority #1 after payroll.
-2. **Shift scheduling** — the heartbeat of a security company. Must work end to end.
-3. **Time entry** — feeds payroll. Must be one clean canonical path.
-4. **Invoicing** — generates revenue. Must create, send, mark paid without errors.
-5. **Trinity autonomy** — proactive calloff response, compliance alerts, shift fill.
-6. **RESEND_WEBHOOK_SECRET** — set in Railway to unlock calloff/incident email autonomy.
-
-Everything else is enhancement. Ship those 5 and the platform is functional.
-
----
-
-### FOR JACK — IMMEDIATE NEXT TASK
-
-**Do NOT create more service files for payroll.** Payroll is done.
-
-**START: Billing domain.**
-
-Files to audit first (find duplicates before touching):
-- `server/routes/billing-api.ts` (1,838L)
-- `server/routes/billingSettingsRoutes.ts` (600L)
-- `server/routes/domains/billing.ts` (217L)
-- `server/routes/stripeInlineRoutes.ts` (923L)
-
-These 4 files total ~3,578L. They likely cover overlapping billing operations.
-Before extracting anything: map what each file does, find the duplicates, consolidate to 2 files max.
-
-Strategy:
-1. `billing-api.ts` + `billingSettingsRoutes.ts` → one `billingRoutes.ts` using `billingTiersRegistry`
-2. `stripeInlineRoutes.ts` → Stripe webhook handler (keep separate, it has different middleware)
-3. `domains/billing.ts` → thin mount file only (stays thin)
-
-Jack: read all 4 files first, identify overlapping routes, propose consolidation plan in handoff before writing code.
-
----
-
-# ═══════════════════════════════════════════════════════════
-# JACK — READ THIS FIRST (updated 2026-04-25 post-deliberation)
-# ═══════════════════════════════════════════════════════════
-
-## Current state: Ball is WITH JACK.
-
-### RFP Scoring — CODE IS NOW IN THE REPO
-
-File: `server/services/billing/rfpComplexityScorer.ts`
-
-Claude implemented the full scoring engine incorporating your additions:
-- ✅ Page count factor: ≤50=0, 51–100=1, >100=2
-- ✅ Rush deadline cap at +3 for same-day/< 24 hours
-- ✅ $1,500 self-serve hard cap — score ≥18 OR (federal+union+armed+rush) → custom quote
-- ✅ All your security-specific factors added as factors 10–13:
-  - Post orders / site plans required (+1)
-  - Enhanced insurance / bonding (+1)
-  - Past performance / capability depth (+1)
-  - High compliance burden — SAM.gov, e-Verify, SDVOSB, etc. (+1)
-
-**13 total factors, max score 24, custom quote threshold at 18.**
-
-Scoring tiers:
-  Score 0–3  → Standard      $500
-  Score 4–7  → Professional  $750
-  Score 8–12 → Complex       $1,000
-  Score 13–17 → Enterprise   $1,500
-  Score 18+  → Custom Quote (directed to sales)
-
-### Validation scenarios (run via: `npx tsx server/services/billing/rfpComplexityScorer.ts`):
-  Simple 1-site commercial   → score 0  → $500   ✅
-  3-site municipal, 4 days   → score ~5 → $750   ✅
-  7-site state gov, armed    → score ~10 → $1,000 ✅
-  Federal, 12 sites, union, rush, full burden → score 22 → Custom Quote ✅
-
-### Trinity action registered: `document.analyze_rfp`
-Two-step flow: analyze (returns price for confirmation) → generate (fires after tenant confirms).
+| Total route files | 361 |
+| Total route lines | ~200,508 (pre-refactor baseline) |
+| Lines removed this session | ~3,600+ (payroll + billing so far) |
+| Billing domain files done | 2 of 6 |
+| Payroll domain | ✅ COMPLETE |
 
 ---
 
