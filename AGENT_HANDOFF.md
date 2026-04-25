@@ -14,62 +14,85 @@
 
 ---
 
-## WHAT WAS JUST DONE (last 2 commits)
+## WHAT WAS JUST DONE (last 3 commits)
 
 | Commit | Agent | What | Result |
 |---|---|---|---|
-| `c853bcf61` | Claude | Caller audit on billing-api.ts — 33 dead routes deleted, 3 duplicates resolved | billing-api.ts: 1,870 → 912 lines (-958L) |
-| `98063bf6b` | Claude | Caller audit on domains/billing.ts — 7 dead routes deleted, ai-usage migrated | domains/billing.ts: pure mount file, 0 inline routes |
-| `987817876` | Jack | Deleted 2 shadow routes from domains/billing.ts | Confirmed shadow conflict removed |
+| `f38851bdc` | Claude | Build-verified Jack's billing settings delete + deleted stripe-health + fixed orphaned comments | stripeInlineRoutes.ts: 924→857 lines |
+| `51db32b4f` | Jack | Deleted 4 unused billing-settings routes | billingSettingsRoutes.ts: 600→448 lines (-152L) |
+| `c853bcf61` | Claude | Caller audit billing-api.ts — 33 dead routes, 3 dupes resolved | billing-api.ts: 1,870→912 lines (-958L) |
 
 ---
 
 ## JACK'S NEXT TASK
 
-**Target:** `server/routes/billingSettingsRoutes.ts` (600L)
+**Target:** `server/routes/invoiceRoutes.ts` (3,818L) — the biggest billing file
 
-**Exact workflow:**
-1. Read the BILLING section in `CODEBASE_INDEX.md`
-2. Run caller audit on every route — the pattern that worked on billing-api.ts:
-   ```
-   grep -rn "/api/billing-settings/ROUTE_PATH" client/ server/ | grep -v "billingSettingsRoutes.ts"
-   ```
-3. Delete routes with zero callers
-4. Check for duplicates already covered by billing-api.ts
-5. Commit with exact before/after line count
+**Workflow:**
+1. List all handlers: `grep -n "router\.\(get\|post\|put\|patch\|delete\)" server/routes/invoiceRoutes.ts`
+2. For each route, run caller audit:
+   `grep -rn "/api/invoices/ROUTE_PATH" client/ server/ | grep -v "invoiceRoutes.ts"`
+3. Delete dead routes (no callers)
+4. Identify any that duplicate `invoiceService` methods — wire thin wrappers
+5. Target: under 1,500L (cut in half minimum)
 
-**Then:** `stripeInlineRoutes.ts` (923L) — keep the Stripe webhook handler, audit everything else.
-
-**DO NOT touch:** billing-api.ts (done), domains/billing.ts (done), stripeInlineRoutes.ts webhooks.
+**DO NOT touch:** billing-api.ts ✅, billingSettingsRoutes.ts ✅, stripeInlineRoutes.ts ✅, domains/billing.ts ✅
 
 ---
 
 ## CLAUDE'S NEXT TASK (after Jack commits)
 
-1. Pull Jack's commit — `git fetch origin development && git reset --hard FETCH_HEAD`
-2. Run `node build.mjs` — must be clean before proceeding
-3. Verify Jack's deletions didn't break any imports
-4. Remove any unused imports left behind
-5. Commit with build verification
-6. Update this SYNC BLOCK (WHO GOES NEXT → JACK, and update the table)
+1. Pull: `git fetch origin development && git reset --hard FETCH_HEAD`
+2. Build: `node build.mjs` — must be clean
+3. Check for unused imports left behind after Jack's deletions
+4. Remove orphaned comment fragments (pattern from stripeInlineRoutes.ts fix)
+5. Update SYNC BLOCK (WHO GOES NEXT → JACK, update table)
+6. Commit + push
 
 ---
 
-## FAST CALLER AUDIT PATTERN (copy-paste ready)
+## BILLING DOMAIN STATUS
+
+| File | Before | After | Status |
+|---|---|---|---|
+| `domains/billing.ts` | ~155L | 112L | ✅ Pure mount file |
+| `billing-api.ts` | 1,870L | 912L | ✅ -958L, 0 dupes |
+| `billingSettingsRoutes.ts` | 600L | 448L | ✅ -152L |
+| `stripeInlineRoutes.ts` | 924L | 857L | ✅ -67L, webhook intact |
+| `invoiceRoutes.ts` | 3,818L | TBD | 🔄 Jack's turn |
+| `billingTiersRegistry.ts` enforcement | — | TBD | ⏳ After file cleanup |
+
+**Total billing lines removed so far: ~1,277L**
+
+---
+
+## FAST CALLER AUDIT PATTERN
 
 ```bash
-# Step 1: List all routes in the target file
-grep -n "router\.\(get\|post\|put\|patch\|delete\)\|app\.\(get\|post\|put\|patch\|delete\)" server/routes/TARGET_FILE.ts
+# List all handlers in target file
+grep -n "router\.\(get\|post\|put\|patch\|delete\)" server/routes/TARGET_FILE.ts
 
-# Step 2: For each route path, check callers
-grep -rn "/api/MOUNT_PREFIX/ROUTE_PATH" client/ server/ | grep -v "TARGET_FILE.ts"
+# For each route path — check callers
+grep -rn "/api/MOUNT/ROUTE_PATH" client/ server/ | grep -v "TARGET_FILE.ts"
+# Zero results = dead = delete
 
-# If zero results → safe to delete
-# If results → keep, note the caller file
-
-# Step 3: Check for duplicates
-grep -n "router\.\(get\|post\|put\|patch\|delete\)('/ROUTE'" server/routes/billing-api.ts server/routes/billingSettingsRoutes.ts
+# Check for duplicate paths across files
+grep -rn "router.*'/ROUTE'" server/routes/billing-api.ts server/routes/TARGET_FILE.ts
 ```
+
+---
+
+## NON-NEGOTIABLE RULES
+
+1. **Read CODEBASE_INDEX.md BILLING section before touching any file**
+2. **Caller audit before any deletion** — never guess, always grep
+3. **No new files** unless operation genuinely missing
+4. **Every commit reduces line count**
+5. **Update this SYNC BLOCK after every commit**
+6. **Build clean before pushing** — Claude verifies
+
+---
+
 
 ---
 
