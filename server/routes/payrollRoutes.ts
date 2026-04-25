@@ -161,6 +161,12 @@ import { taxFilingAssistanceService } from '../services/taxFilingAssistanceServi
 import { executeInternalPayroll, amendPayrollEntry } from '../services/payrollAutomation';
 import { startOfWeek, endOfWeek, subDays, startOfMonth, endOfMonth, format as dateFnsFormat } from 'date-fns';
 import { generateNachaFile } from '../services/payroll/payrollNachaService';
+import { generatePayrollRunPdf } from '../services/payroll/payrollPdfExportService';
+import { initiatePayrollAchTransfer } from '../services/payroll/achTransferService';
+import { retryFailedPayrollTransfers } from '../services/payroll/payrollRetryService';
+import { PLATFORM } from '@shared/platformConfig';
+import { getMiddlewareFees } from '@shared/billingConfig';
+import { createBonusPayEntry, createCommissionPayEntry } from '../services/payroll/payrollSupplementalPayService';
 const log = createLogger('PayrollRoutes');
 
 const router = Router();
@@ -957,7 +963,7 @@ router.get('/tax-center', async (req: AuthenticatedRequest, res) => {
 
     // 5. Fees — pull tier discount and compute
     const tierId = (await getWorkspaceTier(workspaceId)) as any;
-    const { getMiddlewareFees } = await import('@shared/billingConfig');
+    // getMiddlewareFees — now static import at top
     const fees = getMiddlewareFees(tierId);
     const w2PerFormDollars = fees.taxForms.w2PerFormCents / 100;
     const form1099PerFormDollars = fees.taxForms.form1099PerFormCents / 100;
@@ -1780,94 +1786,14 @@ router.post('/runs/:id/retry-failed-transfers', async (req: AuthenticatedRequest
     const userId = req.user?.id;
     if (!userId) return res.status(401).json({ message: 'Unauthorized' });
 
-    // ACH transfer retries are a Professional-tier feature
-    // getWorkspaceTier, hasTierAccess — now static import at top
     const tier = await getWorkspaceTier(workspaceId);
     if (!hasTierAccess(tier, 'professional')) {
       return res.status(402).json({ error: 'ACH payroll requires the Professional plan or higher', currentTier: tier, minimumTier: 'professional', requiresTierUpgrade: true });
     }
 
-    const { id: runId } = req.params;
-
-    // Verify run exists and belongs to workspace
-    const run = await storage.getPayrollRun(runId, workspaceId);
-    if (!run) return res.status(404).json({ message: 'Payroll run not found' });
-
-    // Get all failed/poll_failed pay stubs for this run
-    const failedStubs = await db.select()
-      .from(payStubs)
-      .where(and(
-        eq(payStubs.payrollRunId, runId),
-        eq(payStubs.workspaceId, workspaceId),
-        sql`${payStubs.plaidTransferStatus} IN ('failed', 'poll_failed', 'returned')`,
-      ));
-
-    if (failedStubs.length === 0) {
-      return res.status(400).json({ message: 'No failed transfers found for this payroll run' });
-    }
-
-    const { initiatePayrollAchTransfer } = await import('../services/payroll/achTransferService');
-
-    const results: { stubId: string; employeeId: string; status: 'retried' | 'skipped' | 'failed'; transferId?: string; reason?: string }[] = [];
-
-    for (const stub of failedStubs) {
-      try {
-        const empId = stub.employeeId;
-        const netPay = parseFloat(String(stub.netPay ?? 0));
-        const transferResult = await initiatePayrollAchTransfer({
-          workspaceId,
-          employeeId: empId,
-          payrollRunId: runId,
-          payrollEntryId: stub.payrollEntryId || null,
-          payStubId: stub.id,
-          amount: netPay,
-          idempotencyKey: `retry-${stub.id}`,
-          description: 'Payroll Retry',
-          legalName: empId,
-        });
-
-        if (transferResult.status === 'initiated') {
-          platformEventBus.publish({
-            type: 'payroll_transfer_initiated' as any,
-            category: 'payroll',
-            title: 'ACH Transfer Retry Initiated',
-            description: `Retry transfer ${transferResult.transferId} initiated for employee ${empId}`,
-            workspaceId,
-            userId,
-            metadata: { payrollRunId: runId, employeeId: empId, transferId: transferResult.transferId, amount: netPay, isRetry: true },
-            visibility: 'manager',
-          }).catch((err: any) => log.warn('[EventBus] Publish failed (non-blocking):', err?.message));
-
-          results.push({ stubId: stub.id, employeeId: empId, status: 'retried', transferId: transferResult.transferId });
-          continue;
-        }
-
-        if (transferResult.status === 'payment_held') {
-          results.push({ stubId: stub.id, employeeId: empId, status: 'skipped', reason: transferResult.reason || 'PAYMENT_HELD' });
-          continue;
-        }
-
-        if (transferResult.status === 'skipped') {
-          results.push({ stubId: stub.id, employeeId: empId, status: 'skipped', reason: transferResult.reason || 'Transfer skipped' });
-          continue;
-        }
-
-        results.push({ stubId: stub.id, employeeId: empId, status: 'failed', reason: transferResult.reason || 'Transfer failed' });
-      } catch (err: unknown) {
-        results.push({ stubId: stub.id, employeeId: stub.employeeId, status: 'failed', reason: (err instanceof Error ? err.message : String(err)) });
-      }
-    }
-
-    const retriedCount = results.filter(r => r.status === 'retried').length;
-    res.json({
-      success: true,
-      runId,
-      totalFailed: failedStubs.length,
-      retriedCount,
-      skippedCount: results.filter(r => r.status === 'skipped').length,
-      errorCount: results.filter(r => r.status === 'failed').length,
-      results,
-    });
+    const result = await retryFailedPayrollTransfers(workspaceId, req.params.id, userId);
+    if (!result.success) return res.status(result.status || 500).json({ message: result.error });
+    res.json(result);
   } catch (error: unknown) {
     log.error('[PayrollRoute] Error retrying failed transfers:', error);
     res.status(500).json({ message: sanitizeError(error) || 'Failed to retry transfers' });
@@ -1960,109 +1886,16 @@ router.post('/:entryId/amend', async (req: AuthenticatedRequest, res) => {
 router.get('/export/pdf/:runId', async (req: AuthenticatedRequest, res) => {
   try {
     const roleCheck = checkManagerRole(req);
-    if (!roleCheck.allowed) {
-      return res.status(roleCheck.status || 403).json({ message: roleCheck.error });
-    }
+    if (!roleCheck.allowed) return res.status(roleCheck.status || 403).json({ message: roleCheck.error });
     const workspaceId = req.workspaceId;
     if (!workspaceId) return res.status(400).json({ message: 'Workspace context required' });
 
-    const { runId } = req.params;
-
-    const [run] = await db.select().from(payrollRuns)
-      .where(and(eq(payrollRuns.id, runId), eq(payrollRuns.workspaceId, workspaceId)))
-      .limit(1);
-
-    if (!run) return res.status(404).json({ message: 'Payroll run not found' });
-
-    const entries = await db.select({
-      id: payrollEntries.id,
-      employeeId: payrollEntries.employeeId,
-      regularHours: payrollEntries.regularHours,
-      overtimeHours: payrollEntries.overtimeHours,
-      hourlyRate: payrollEntries.hourlyRate,
-      grossPay: payrollEntries.grossPay,
-      federalTax: payrollEntries.federalTax,
-      stateTax: payrollEntries.stateTax,
-      socialSecurity: payrollEntries.socialSecurity,
-      medicare: payrollEntries.medicare,
-      netPay: payrollEntries.netPay,
-      workerType: payrollEntries.workerType,
-    }).from(payrollEntries)
-      .where(and(
-        eq(payrollEntries.payrollRunId, runId),
-        eq(payrollEntries.workspaceId, workspaceId),
-      ));
-
-    const workspace = await storage.getWorkspace(workspaceId);
-    // @shared/schema symbols — now static import at top
-    const empList = await db.select({ id: employeesTable.id, firstName: employeesTable.firstName, lastName: employeesTable.lastName })
-      .from(employeesTable)
-      .where(eq(employeesTable.workspaceId, workspaceId));
-    const empMap = new Map(empList.map(e => [e.id, `${e.firstName} ${e.lastName}`.trim()]));
-
-    const doc = new PDFDocument({ size: 'LETTER', margins: { top: 50, bottom: 50, left: 50, right: 50 } });
+    const result = await generatePayrollRunPdf(workspaceId, req.params.runId);
+    if (!result.success) return res.status(result.status || 500).json({ message: result.error });
 
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="payroll-run-${format(run.periodStart || new Date(), 'yyyy-MM-dd')}.pdf"`);
-    doc.pipe(res);
-
-    doc.fontSize(20).text(workspace?.companyName || 'Company', { align: 'center' });
-    doc.fontSize(14).text('PAYROLL RUN SUMMARY', { align: 'center' });
-    doc.moveDown(0.5);
-    doc.fontSize(10).text(
-      `Pay Period: ${format(new Date(run.periodStart || new Date()), 'MMMM d, yyyy')} – ${format(new Date(run.periodEnd || new Date()), 'MMMM d, yyyy')}`,
-      { align: 'center' },
-    );
-    doc.text(`Generated: ${format(new Date(), 'MMMM d, yyyy')}`, { align: 'center' });
-    doc.text(`Status: ${(run.status || '').toUpperCase()}`, { align: 'center' });
-    doc.moveDown();
-
-    doc.fontSize(12).text('EMPLOYEE BREAKDOWN', { underline: true });
-    doc.moveDown(0.3);
-
-    const colX = { name: 50, hours: 220, rate: 290, gross: 360, taxes: 420, net: 490 };
-    doc.fontSize(9).font('Helvetica-Bold');
-    doc.text('Employee', colX.name, doc.y, { continued: false });
-    const headerY = doc.y - 12;
-    doc.text('Reg Hrs', colX.hours, headerY, { continued: false });
-    doc.text('Rate', colX.rate, headerY, { continued: false });
-    doc.text('Gross', colX.gross, headerY, { continued: false });
-    doc.text('Taxes', colX.taxes, headerY, { continued: false });
-    doc.text('Net Pay', colX.net, headerY, { continued: false });
-    doc.moveDown(0.2);
-    doc.moveTo(50, doc.y).lineTo(560, doc.y).stroke();
-    doc.moveDown(0.3);
-
-    doc.font('Helvetica').fontSize(9);
-
-    for (const entry of entries) {
-      const name = empMap.get(entry.employeeId) || 'Unknown';
-      const taxes = (parseFloat(entry.federalTax || '0') + parseFloat(entry.stateTax || '0') +
-        parseFloat(entry.socialSecurity || '0') + parseFloat(entry.medicare || '0')).toFixed(2);
-      const rowY = doc.y;
-      doc.text(name, colX.name, rowY, { width: 165, continued: false });
-      doc.text(`${parseFloat(entry.regularHours || '0').toFixed(1)}`, colX.hours, rowY);
-      doc.text(`$${parseFloat(entry.hourlyRate || '0').toFixed(2)}`, colX.rate, rowY);
-      doc.text(`$${parseFloat(entry.grossPay || '0').toFixed(2)}`, colX.gross, rowY);
-      doc.text(`$${taxes}`, colX.taxes, rowY);
-      doc.text(`$${parseFloat(entry.netPay || '0').toFixed(2)}`, colX.net, rowY);
-      doc.moveDown(0.4);
-    }
-
-    doc.moveDown(0.5);
-    doc.moveTo(50, doc.y).lineTo(560, doc.y).stroke();
-    doc.moveDown(0.3);
-    doc.font('Helvetica-Bold').fontSize(10);
-    doc.text(`Total Employees: ${entries.length}`, 50);
-    doc.text(`Total Gross Pay: $${parseFloat(run.totalGrossPay || '0').toFixed(2)}`, 50);
-    doc.text(`Total Taxes: $${(parseFloat(run.totalTaxes || '0')).toFixed(2)}`, 50);
-    doc.text(`Total Net Pay: $${parseFloat(run.totalNetPay || '0').toFixed(2)}`, 50);
-
-    doc.moveDown();
-    doc.fontSize(8).font('Helvetica').fillColor('grey')
-      .text('This document is confidential. Generated by Trinity Payroll Automation.', { align: 'center' });
-
-    doc.end();
+    res.setHeader('Content-Disposition', `attachment; filename="${result.filename}"`);
+    res.send(result.pdfBuffer);
   } catch (error: unknown) {
     log.error('Error generating payroll PDF:', error);
     if (!res.headersSent) res.status(500).json({ message: 'Failed to generate payroll PDF' });
@@ -2371,6 +2204,57 @@ router.delete('/employees/:employeeId/bank-accounts/:accountId', async (req: Aut
   } catch (error: unknown) {
     log.error('[BankAccounts] DELETE error:', error);
     res.status(400).json({ error: sanitizeError(error) });
+  }
+});
+
+
+// ── Bonus Pay ─────────────────────────────────────────────────────────────────
+// POST /payroll/bonus — create a standalone bonus pay entry for an employee
+// Supports: performance, retention, referral, sign-on, holiday, discretionary
+// Tax: 22% federal supplemental flat rate + FICA (SS 6.2% + Medicare 1.45%)
+router.post('/bonus', async (req: AuthenticatedRequest, res) => {
+  try {
+    const roleCheck = checkManagerRole(req);
+    if (!roleCheck.allowed) return res.status(roleCheck.status || 403).json({ message: roleCheck.error });
+    const workspaceId = req.workspaceId!;
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+    const result = await createBonusPayEntry(workspaceId, userId, req.body);
+    if (!result.success) return res.status(result.status || 400).json({ message: result.error });
+    res.status(201).json({
+      ...result,
+      irsNotice: 'Federal tax withheld at 22% supplemental flat rate (IRS Pub. 15-T). This is an estimate — consult your CPA for aggregate method if more appropriate.',
+    });
+  } catch (error: unknown) {
+    const status = (error as any)?.status || 500;
+    log.error('Error creating bonus pay:', error);
+    res.status(status).json({ message: error instanceof Error ? sanitizeError(error) : 'Failed to create bonus pay' });
+  }
+});
+
+// ── Commission Pay ────────────────────────────────────────────────────────────
+// POST /payroll/commission — create a commission pay entry for an employee
+// Sources: contract_sale, contract_renewal, referral_client, performance, overtime_incentive
+// Tax: 22% federal supplemental flat rate + FICA
+router.post('/commission', async (req: AuthenticatedRequest, res) => {
+  try {
+    const roleCheck = checkManagerRole(req);
+    if (!roleCheck.allowed) return res.status(roleCheck.status || 403).json({ message: roleCheck.error });
+    const workspaceId = req.workspaceId!;
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+    const result = await createCommissionPayEntry(workspaceId, userId, req.body);
+    if (!result.success) return res.status(result.status || 400).json({ message: result.error });
+    res.status(201).json({
+      ...result,
+      irsNotice: 'Commission withheld at 22% federal supplemental flat rate. Commissions may be subject to FICA — consult your CPA.',
+    });
+  } catch (error: unknown) {
+    const status = (error as any)?.status || 500;
+    log.error('Error creating commission pay:', error);
+    res.status(status).json({ message: error instanceof Error ? sanitizeError(error) : 'Failed to create commission pay' });
   }
 });
 
