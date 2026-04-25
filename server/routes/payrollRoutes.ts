@@ -145,6 +145,7 @@ import { broadcastToWorkspace } from '../websocket';
 import { universalNotificationEngine } from '../services/universalNotificationEngine';
 import { taxFormGeneratorService } from '../services/taxFormGeneratorService';
 import { markPayrollRunPaid } from '../services/payroll/payrollRunMarkPaidService';
+import { processPayrollRunState } from '../services/payroll/payrollRunProcessStateService';
 const log = createLogger('PayrollRoutes');
 
 const router = Router();
@@ -1014,8 +1015,13 @@ function checkManagerRole(req: AuthenticatedRequest): { allowed: boolean; error?
 
       res.json(updated);
     } catch (error: unknown) {
-      log.error("Error processing payroll run:", error);
-      res.status(500).json({ message: "Failed to process payroll run" });
+      const status = (error as any)?.status || 500;
+      const extra = (error as any)?.extra || {};
+      log.error('Error processing payroll run:', error);
+      res.status(status).json({
+        message: error instanceof Error ? sanitizeError(error) : 'Failed to process payroll run',
+        ...extra,
+      });
     }
   });
 
