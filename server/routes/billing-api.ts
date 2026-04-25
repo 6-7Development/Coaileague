@@ -42,6 +42,7 @@ export const billingRouter = Router();
 
 import { subscriptionTiers, orgSubscriptions, creditBalances, platformInvoices, employees } from '@shared/schema';
 import { createLogger } from '../lib/logger';
+import { requireBillingFeature, requireBillingTier, attachBillingContext } from '../middleware/billingEnforcement';
 const log = createLogger('BillingApi');
 
 billingRouter.use((req, res, next) => {
