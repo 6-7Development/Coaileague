@@ -157,7 +157,7 @@ const BUSINESS_ARTIFACT_CATALOG: BusinessArtifactCatalogEntry[] = [
     cadence: 'per_run',
     sourceDomain: 'billing',
     sourceTables: ['invoices', 'invoiceLineItems', 'timeEntries'],
-    vaultBacked: false,
+    vaultBacked: true,
     availableToTenant: true,
     availableToEmployee: false,
     notes: ['Cataloged as required business artifact. Confirm generator/vault path during billing extraction.'],

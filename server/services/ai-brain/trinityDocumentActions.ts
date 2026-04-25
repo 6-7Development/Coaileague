@@ -21,6 +21,8 @@ import { randomUUID } from 'crypto';
 import { format } from 'date-fns';
 import { universalAudit } from '../universalAuditService';
 import { createLogger } from '../../lib/logger';
+import { diagnoseBusinessArtifactCoverage } from '../documents/businessArtifactDiagnosticService';
+import { invoiceService } from '../billing/invoice';
 import {
   generateProofOfEmployment,
   generateDirectDepositConfirmation,
@@ -747,6 +749,30 @@ export async function scanOverdueI9s(workspaceId: string): Promise<void> {
         return { actionId: request.actionId, success: false, error: 'workspaceId and taxYear required' };
       }
       const result = await generateW3Transmittal({ workspaceId, taxYear: Number(taxYear), generatedBy });
+      return { actionId: request.actionId, ...result };
+    },
+  });
+
+
+  orchestrator.registerAction({
+    actionId: 'document.business_artifact_diagnostics',
+    description: 'Read-only diagnostic: returns coverage summary and gaps for all business artifact types. Support/admin use only.',
+    async execute(request: any) {
+      const result = diagnoseBusinessArtifactCoverage();
+      return { actionId: request.actionId, success: true, ...result };
+    },
+  });
+
+
+  orchestrator.registerAction({
+    actionId: 'document.generate_invoice_pdf',
+    description: 'Generate a branded per-invoice PDF and save to tenant vault. Returns vaultId and documentNumber.',
+    async execute(request: any) {
+      const { invoiceId, workspaceId } = request.parameters || {};
+      if (!invoiceId || !workspaceId) {
+        return { actionId: request.actionId, success: false, error: 'invoiceId and workspaceId required' };
+      }
+      const result = await invoiceService.generateInvoicePDF(invoiceId, workspaceId);
       return { actionId: request.actionId, ...result };
     },
   });

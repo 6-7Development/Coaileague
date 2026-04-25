@@ -881,3 +881,38 @@ All 4: branded header/footer via `saveToVault()`, persisted to tenant vault, tra
 - Wire `document.direct_deposit_confirmation` into the payroll approval/process event flow (auto-generate after every approved run per employee)
 - Wire `document.payroll_run_summary` into the `payroll_run_approved` event subscription
 - Add routes to expose `generateProofOfEmployment` to managers via API (`POST /api/hr/proof-of-employment`)
+
+### 2026-04-25 — Claude (catalog/diagnostic routes + invoice PDF gap closed)
+
+**Pulled `ecd059c8b` (4 Jack commits). Build: ✅ clean.**
+
+**`f9c7049cb` (Jack) — businessArtifactCatalog.ts ✅**
+Pure inventory module — 9 vault-backed artifacts + 2 known gaps (invoice_pdf, timesheet_support_package). Source of truth for support/Trinity to answer "what forms exist and where do they come from?"
+
+**`539f543c3` (Jack) — businessArtifactDiagnosticService.ts ✅**
+Read-only diagnostic wrapper: `getBusinessArtifactCoverageSummary()`, `diagnoseBusinessArtifactCoverage()`. Returns healthy/unhealthy verdict + per-category counts + gap list + recommended next actions.
+
+**Claude: routes + actions + invoice gap closed**
+
+Routes added to `documentLibraryRoutes.ts` (all at `/api/documents/business-artifacts/*`):
+- `GET /business-artifacts` — full catalog
+- `GET /business-artifacts/gaps` — only gap entries
+- `GET /business-artifacts/coverage` — coverage summary
+- `GET /business-artifacts/diagnose` — health verdict + recommended actions
+- `GET /business-artifacts/category/:category` — filter by category
+
+Trinity actions registered:
+- `document.business_artifact_diagnostics` — read-only, support/admin
+- `document.generate_invoice_pdf` — generates branded per-invoice PDF, saves to vault
+
+**`billing/invoice.ts` — invoice_pdf gap closed:**
+- Added `generateInvoicePDF(invoiceId, workspaceId)` — full per-invoice PDF with: bill-from/bill-to blocks, line items table (qty/rate/amount), total, status badge, payment terms, notes. Calls `saveToVault()` → branded + persisted.
+- `generateClientStatement()` also now stamps + saves to vault.
+- Catalog updated: `invoice_pdf` → `vaultBacked: true`
+
+**1 gap remaining: `timesheet_support_package`**
+This is the reconciliation artifact (timesheet export with shift details, hours worked, clock-in/out, client billing info). Useful for payroll audits and client disputes. Needs a generator in `timesheetInvoiceService.ts` or a new `timesheetReportService.ts`.
+
+**Recommended next for Jack:**
+- `GET /api/invoices/:id/pdf` — expose `generateInvoicePDF` as a route so managers/clients can download
+- Timesheet support package generator (closes last catalog gap)
