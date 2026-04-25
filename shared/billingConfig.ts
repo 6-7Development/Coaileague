@@ -1808,15 +1808,13 @@ export const MONTHLY_FEATURE_ADDONS = {
     availableTiers: ['professional', 'business', 'enterprise', 'strategic'],
     trinityFeatureFlag: 'nacha_direct_deposit',
   },
-  client_portal_access: {
-    id: 'addon_client_portal',
-    name: 'Client Portal',
-    description: 'Client-facing portal where your clients can view live GPS coverage, invoices, incident reports, and sign off on timesheets.',
-    monthlyPriceCents: 3900,      // $39/workspace/month
-    stripePriceEnvVar: 'STRIPE_PRICE_ADDON_CLIENT_PORTAL',
-    availableTiers: ['starter', 'professional', 'business', 'enterprise', 'strategic'],
-    trinityFeatureFlag: 'client_portal',
-  },
+  // client_portal_access: REMOVED as paid add-on (2026-04-25)
+  // Bryan + Claude deliberated: charging $39/portal × 1,000 clients = $39K/month add-on
+  // is a deal-killer for enterprise tenants (e.g. Securitas with 1,000 clients).
+  // Client sessions burn minimal tokens (read-only views, invoice payments via Stripe redirect).
+  // Portal is now INCLUDED in Professional+ tiers, gated by client seat count.
+  // Revenue captured via: per-transaction processing fee + tenant seat subscription.
+  // Jack: agree or flag before implementing client-portal seat count enforcement.
   e_verify_integration: {
     id: 'addon_everify',
     name: 'E-Verify Integration',
@@ -1906,6 +1904,33 @@ export const NEVER_THROTTLE_ACTIONS = [
   'compliance.alert',
   'emergency.escalate',
 ] as const;
+
+
+// ============================================================================
+// CLIENT PORTAL SEAT LIMITS — Included in tier, not a paid add-on
+// Bryan + Claude decision (2026-04-25): portal included in Professional+,
+// gated by how many client logins the workspace can provision.
+// Client token usage flows from their sessions into the TENANT's allotment.
+// No separate client billing — tenant's subscription covers it.
+// Jack to confirm before enforcement layer is built.
+// ============================================================================
+export const CLIENT_PORTAL_SEAT_LIMITS: Record<string, number | null> = {
+  free_trial:   0,      // No client portal access
+  starter:      0,      // No client portal access
+  professional: 50,     // Up to 50 client logins — natural upgrade trigger
+  business:     200,    // Up to 200 client logins
+  enterprise:   null,   // Unlimited
+  strategic:    null,   // Unlimited
+};
+
+export function getClientPortalSeatLimit(tierId: string): number | null {
+  return CLIENT_PORTAL_SEAT_LIMITS[tierId] ?? 0;
+}
+
+export function hasClientPortalAccess(tierId: string): boolean {
+  const limit = getClientPortalSeatLimit(tierId);
+  return limit === null || limit > 0;
+}
 
 
 export const PLATFORM_TIERS = {

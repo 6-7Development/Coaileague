@@ -612,14 +612,11 @@ export const MONTHLY_ADDONS_DISPLAY: MonthlyAddon[] = [
     availableTiers: ['professional', 'business', 'enterprise', 'strategic'],
     highlight: 'Pay your team directly — no third-party payroll bureau',
   },
-  {
-    id: 'client_portal_access',
-    name: 'Client Portal',
-    description: 'Your clients get their own portal: live GPS coverage, invoices, incident reports, timesheet approvals.',
-    monthlyPrice: 39,
-    availableTiers: ['starter', 'professional', 'business', 'enterprise', 'strategic'],
-    highlight: 'Increase client retention by giving them visibility',
-  },
+  // Client Portal removed as paid add-on (2026-04-25 — Bryan + Claude decision)
+  // Now included in Professional+ tiers, gated by client seat count (50 / 200 / unlimited)
+  // {
+  //   id: 'client_portal_access', monthlyPrice: 39 — RETIRED
+  // }
   {
     id: 'compliance_guard_package',
     name: 'Compliance Guard Package',

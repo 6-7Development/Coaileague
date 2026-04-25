@@ -1379,3 +1379,34 @@ The proposal approval/rejection pair is now fully extracted. The remaining handl
 
 **Next milestone: begin Billing domain**
 Once Jack does one more extraction pass or decides remaining payroll routes are stable enough, we pivot to `billingTiersRegistry.ts` — the enforcement layer.
+
+### 2026-04-25 — Claude (client portal pricing decision)
+
+**Bryan + Claude decision — documented for Jack to confirm before enforcement.**
+
+**Client Portal is no longer a $39/month paid add-on.**
+
+**Reasoning:**
+- $39/portal × 1,000 clients (e.g. Securitas) = $39,000/month in add-on fees — deal-killer
+- Client sessions burn minimal tokens: invoice views = read-only DB queries, payments = Stripe redirect, timesheet sign-off = simple approval. Even heavy HelpAI use = a few thousand tokens, fractions of a cent
+- Token cost from client sessions is negligible — flows from their activity into the TENANT's allotment as-is
+- Revenue already captured via: per-transaction processing fee + tenant monthly subscription
+
+**New model — included in tier, gated by client seat count:**
+
+| Tier | Client portal logins |
+|---|---|
+| Starter | None |
+| Professional | Up to 50 client logins |
+| Business | Up to 200 client logins |
+| Enterprise | Unlimited |
+| Strategic | Unlimited |
+
+A Professional tenant hitting the 50-client cap upgrades to Business naturally — without feeling nickel-and-dimed.
+
+**What changed in code:**
+- `shared/billingConfig.ts`: `client_portal_access` removed from `MONTHLY_FEATURE_ADDONS`. Added `CLIENT_PORTAL_SEAT_LIMITS` constant + `getClientPortalSeatLimit()` + `hasClientPortalAccess()` helpers.
+- `client/src/config/pricing.ts`: portal removed from `MONTHLY_ADDONS_DISPLAY`.
+
+**Jack: please confirm you agree before the enforcement layer gates by seat count.**
+If you agree, next step is wiring `CLIENT_PORTAL_SEAT_LIMITS` into the tier guard middleware when we reach the billing enforcement layer.
